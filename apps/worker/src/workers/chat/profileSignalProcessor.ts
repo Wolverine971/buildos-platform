@@ -379,10 +379,7 @@ async function ensureChapterForCategory(params: {
 	}
 	if (existing) return existing as ProfileDocumentRow;
 
-	const title =
-		(params.suggestedTitle && params.suggestedTitle.trim()) ||
-		TYPE_KEY_TO_TITLE[typeKey] ||
-		'General Profile';
+	const title = params.suggestedTitle?.trim() || TYPE_KEY_TO_TITLE[typeKey] || 'General Profile';
 
 	const { data: created, error: createError } = await supabaseAny
 		.from('profile_documents')

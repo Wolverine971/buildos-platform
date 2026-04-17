@@ -1,6 +1,6 @@
 // apps/worker/tests/manual-test.ts
 import { addDays, setHours, setMinutes, setSeconds, format } from 'date-fns';
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 // Recreate the key functions for testing
 function calculateDailyRunTime(
@@ -10,14 +10,14 @@ function calculateDailyRunTime(
 	seconds: number,
 	timezone: string
 ): Date {
-	const nowInTz = utcToZonedTime(now, timezone);
+	const nowInTz = toZonedTime(now, timezone);
 	let targetInTz = setSeconds(setMinutes(setHours(nowInTz, hours), minutes), seconds);
 
 	if (targetInTz <= nowInTz) {
 		targetInTz = addDays(targetInTz, 1);
 	}
 
-	return zonedTimeToUtc(targetInTz, timezone);
+	return fromZonedTime(targetInTz, timezone);
 }
 
 function testScheduler() {
@@ -52,8 +52,8 @@ function testScheduler() {
 
 	timezones.forEach((tz) => {
 		const nextRun = calculateDailyRunTime(baseTime, 9, 0, 0, tz);
-		const nowInTz = utcToZonedTime(baseTime, tz);
-		const nextRunInTz = utcToZonedTime(nextRun, tz);
+		const nowInTz = toZonedTime(baseTime, tz);
+		const nextRunInTz = toZonedTime(nextRun, tz);
 
 		console.log(`  ${tz}:`);
 		console.log(`    Current time: ${format(nowInTz, 'yyyy-MM-dd HH:mm:ss')} ${tz}`);

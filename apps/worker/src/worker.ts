@@ -1,5 +1,5 @@
 // apps/worker/src/worker.ts
-import { SupabaseQueue, ProcessingJob } from './lib/supabaseQueue';
+import { ProcessingJob, SupabaseQueue } from './lib/supabaseQueue';
 import { processBriefJob } from './workers/brief/briefWorker';
 import { processOnboardingAnalysisJob } from './workers/onboarding/onboardingWorker';
 import { processSMSJob } from './workers/smsWorker';

@@ -1,6 +1,7 @@
 // apps/worker/src/index.ts
 import cors from 'cors';
-import { format, utcToZonedTime } from 'date-fns-tz';
+import { format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import dotenv from 'dotenv';
 import express from 'express';
 
@@ -257,7 +258,7 @@ app.post('/queue/brief', async (req, res) => {
 			// Use consistent timezone (from preferences or requested)
 			const targetBriefDate =
 				normalizedRequestedBriefDate ||
-				format(utcToZonedTime(new Date(), timezone), 'yyyy-MM-dd');
+				format(toZonedTime(new Date(), timezone), 'yyyy-MM-dd');
 
 			// Atomically cancel existing jobs for this date
 			const { count } = await queue.cancelBriefJobsForDate(userId, targetBriefDate);
@@ -285,7 +286,7 @@ app.post('/queue/brief', async (req, res) => {
 		}
 
 		// Calculate brief date
-		const zonedDate = utcToZonedTime(scheduleTime, timezone);
+		const zonedDate = toZonedTime(scheduleTime, timezone);
 		const briefDate = normalizedRequestedBriefDate || format(zonedDate, 'yyyy-MM-dd');
 
 		// Queue the job using Supabase queue

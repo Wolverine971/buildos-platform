@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase.js';
 import type { BriefJobData } from '../shared/queueUtils.js';
 import type { Json } from '@buildos/shared-types';
 import { format, parseISO } from 'date-fns';
-import { utcToZonedTime, zonedTimeToUtc, formatInTimeZone } from 'date-fns-tz';
+import { formatInTimeZone, fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { getHoliday } from '../../lib/utils/holiday-finder.js';
 import { SmartLLMService } from '../../lib/services/smart-llm-service.js';
 import { OntologyBriefDataLoader, getWorkMode } from './ontologyBriefDataLoader.js';
@@ -22,17 +22,17 @@ import {
 } from './ontologyPrompts.js';
 import { generateProjectNextStepsForBrief } from './projectNextStepGenerator.js';
 import type {
+	CalendarBriefItem,
+	CalendarBriefSection,
+	GoalProgress,
 	OntoProjectWithRelations,
+	OntoTask,
 	OntologyBriefData,
 	OntologyBriefMetadata,
 	OntologyDailyBriefRow,
 	OntologyProjectBriefRow,
-	GoalProgress,
-	OntoTask,
-	CalendarBriefItem,
-	CalendarBriefSection,
-	ProjectBriefData,
 	ProjectActivityEntry,
+	ProjectBriefData,
 	ProjectRecentChange
 } from './ontologyBriefTypes.js';
 
@@ -75,7 +75,7 @@ const PROJECT_BRIEF_MODELS = [
 
 function getDateInTimezone(timestamp: string | Date, timezone: string): string {
 	const date = typeof timestamp === 'string' ? parseISO(timestamp) : timestamp;
-	const zonedDate = utcToZonedTime(date, timezone);
+	const zonedDate = toZonedTime(date, timezone);
 	return format(zonedDate, 'yyyy-MM-dd');
 }
 
@@ -110,7 +110,7 @@ function formatDateInTimezone(
 	includeTime: boolean = false
 ): string {
 	const date = parseISO(timestamp);
-	const zonedDate = utcToZonedTime(date, timezone);
+	const zonedDate = toZonedTime(date, timezone);
 	if (includeTime) {
 		return format(zonedDate, 'MMM d, yyyy h:mm a');
 	}

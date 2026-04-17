@@ -1,7 +1,7 @@
 // apps/worker/tests/scheduler-utils.test.ts
 import { describe, it, expect, vi } from 'vitest';
 import { addHours, addDays, setHours, setMinutes, setSeconds } from 'date-fns';
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 // Mock the dependencies
 vi.mock('../src/lib/supabase', () => ({
@@ -28,14 +28,14 @@ function calculateDailyRunTime(
 	seconds: number,
 	timezone: string
 ): Date {
-	const nowInTz = utcToZonedTime(now, timezone);
+	const nowInTz = toZonedTime(now, timezone);
 	let targetInTz = setSeconds(setMinutes(setHours(nowInTz, hours), minutes), seconds);
 
 	if (targetInTz <= nowInTz) {
 		targetInTz = addDays(targetInTz, 1);
 	}
 
-	return zonedTimeToUtc(targetInTz, timezone);
+	return fromZonedTime(targetInTz, timezone);
 }
 
 function calculateWeeklyRunTime(
@@ -46,7 +46,7 @@ function calculateWeeklyRunTime(
 	seconds: number,
 	timezone: string
 ): Date {
-	const nowInTz = utcToZonedTime(now, timezone);
+	const nowInTz = toZonedTime(now, timezone);
 	const currentDayOfWeek = nowInTz.getDay();
 	let daysUntilTarget = (dayOfWeek - currentDayOfWeek + 7) % 7;
 
@@ -60,7 +60,7 @@ function calculateWeeklyRunTime(
 	const targetDate = addDays(nowInTz, daysUntilTarget);
 	const targetInTz = setSeconds(setMinutes(setHours(targetDate, hours), minutes), seconds);
 
-	return zonedTimeToUtc(targetInTz, timezone);
+	return fromZonedTime(targetInTz, timezone);
 }
 
 describe('Scheduler Logic Tests', () => {

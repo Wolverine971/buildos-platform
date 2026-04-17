@@ -1,7 +1,7 @@
 // apps/worker/src/workers/tree-agent/tools/treeAgentToolExecutor.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json } from '@buildos/shared-types';
-import { isToolAllowedForContext, type TreeAgentContextType } from './treeAgentToolRegistry';
+import { type TreeAgentContextType, isToolAllowedForContext } from './treeAgentToolRegistry';
 
 export type TreeAgentToolCall = {
 	name: string;

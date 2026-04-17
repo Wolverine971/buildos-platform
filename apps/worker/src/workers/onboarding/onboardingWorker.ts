@@ -1,9 +1,9 @@
 // apps/worker/src/workers/onboarding/onboardingWorker.ts
 import { supabase } from '../../lib/supabase';
 import {
-	updateJobStatus,
+	OnboardingAnalysisJobData,
 	broadcastUserEvent,
-	OnboardingAnalysisJobData
+	updateJobStatus
 } from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
 import { OnboardingAnalysisService } from './onboardingAnalysisService';

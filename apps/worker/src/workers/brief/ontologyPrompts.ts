@@ -7,14 +7,14 @@
  */
 
 import type {
-	OntologyBriefData,
-	GoalProgress,
-	OntoTask,
-	OntoRisk,
-	OntoRequirement,
-	ProjectBriefData,
 	CalendarBriefCounts,
 	CalendarBriefItem,
+	GoalProgress,
+	OntoRequirement,
+	OntoRisk,
+	OntoTask,
+	OntologyBriefData,
+	ProjectBriefData,
 	ProjectRecentChange
 } from './ontologyBriefTypes.js';
 import { format, parseISO } from 'date-fns';

@@ -8,7 +8,7 @@
  * - Regenerate message content
  */
 
-import { Router, Request, Response } from 'express';
+import { Request, Response, Router } from 'express';
 import type { Router as ExpressRouter } from 'express';
 import { supabase } from '../../lib/supabase';
 import { SMSMessageGenerator } from '../../lib/services/smsMessageGenerator';

@@ -9,7 +9,7 @@
  * Purpose: Ensure consistent quiet hours and rate limiting across all SMS flows
  */
 
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { format, parseISO } from 'date-fns';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 
@@ -67,7 +67,7 @@ export function checkQuietHours(
 
 	try {
 		// Convert send time to user's timezone
-		const timeInUserTz = utcToZonedTime(sendTime, timezone);
+		const timeInUserTz = toZonedTime(sendTime, timezone);
 		const currentHour = timeInUserTz.getHours();
 		const currentMinute = timeInUserTz.getMinutes();
 		const currentMinutes = currentHour * 60 + currentMinute;
@@ -103,7 +103,7 @@ export function checkQuietHours(
 		}
 
 		// Convert back to UTC
-		const rescheduleTimeUTC = zonedTimeToUtc(rescheduleTime, timezone);
+		const rescheduleTimeUTC = fromZonedTime(rescheduleTime, timezone);
 
 		return {
 			inQuietHours: true,

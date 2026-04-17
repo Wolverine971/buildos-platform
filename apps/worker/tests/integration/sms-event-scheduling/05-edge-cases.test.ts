@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { setupIntegrationTest } from './setup';
 import { TimeController, TestDataBuilder, QueueHelpers } from './helpers';
 import { addMinutes, addDays, format } from 'date-fns';
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 describe('SMS Event Scheduling - Edge Cases', () => {
 	const testSetup = setupIntegrationTest();

@@ -15,13 +15,13 @@ import { processSessionActivityAndNextSteps } from './chatSessionActivityProcess
 import { processProfileSignals } from './profileSignalProcessor';
 import { processContactSignals } from './contactSignalProcessor';
 import {
+	type SessionExtractedEntities,
 	emptySessionExtractedEntities,
-	sanitizeSessionExtractedEntities,
-	type SessionExtractedEntities
+	sanitizeSessionExtractedEntities
 } from './libriSessionEntities';
 import {
-	handoffLibriSessionEntities,
-	type LibriEntityHandoffStatus
+	type LibriEntityHandoffStatus,
+	handoffLibriSessionEntities
 } from './libriEntityHandoffClient';
 
 /**

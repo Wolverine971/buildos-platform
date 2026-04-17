@@ -3,7 +3,7 @@ import type { ProcessingJob } from '../../lib/supabaseQueue';
 import type { Database, HomeworkJobMetadata, Json } from '@buildos/shared-types';
 import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
-import { runHomeworkIteration, type UsageEvent } from './engine/homeworkEngine';
+import { type UsageEvent, runHomeworkIteration } from './engine/homeworkEngine';
 import { createTrackedInAppNotification } from '../../lib/utils/trackedInAppNotification';
 
 const DEFAULT_MAX_WALL_CLOCK_MS = 60 * 60 * 1000; // 60 minutes

@@ -1,6 +1,6 @@
 // apps/worker/src/workers/brief/briefWorker.ts
 import { format } from 'date-fns';
-import { utcToZonedTime, getTimezoneOffset } from 'date-fns-tz';
+import { getTimezoneOffset, toZonedTime } from 'date-fns-tz';
 
 import { supabase } from '../../lib/supabase';
 import { createServiceClient } from '@buildos/supabase-client';
@@ -66,7 +66,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 		let briefDate = job.data.briefDate;
 		if (!briefDate) {
 			// For immediate briefs, use "today" in the user's timezone
-			const userCurrentTime = utcToZonedTime(new Date(), timezone);
+			const userCurrentTime = toZonedTime(new Date(), timezone);
 			briefDate = format(userCurrentTime, 'yyyy-MM-dd');
 		}
 
@@ -102,7 +102,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 		);
 
 		// Log timezone conversion for debugging
-		const userCurrentTime = utcToZonedTime(new Date(), timezone);
+		const userCurrentTime = toZonedTime(new Date(), timezone);
 		console.log(
 			`🕐 User's current time: ${format(userCurrentTime, 'yyyy-MM-dd HH:mm:ss zzz')}`
 		);

@@ -8,12 +8,12 @@
 
 import { SmartLLMService } from './smart-llm-service';
 import { addMinutes, formatDistance } from 'date-fns';
-import { utcToZonedTime } from 'date-fns-tz';
+import { toZonedTime } from 'date-fns-tz';
 import {
-	getUserPrompt,
-	getSystemPrompt,
+	type EventPromptContext,
 	type MessageType,
-	type EventPromptContext
+	getSystemPrompt,
+	getUserPrompt
 } from '../../workers/sms/prompts';
 
 // ============================================
@@ -73,8 +73,8 @@ export class SMSMessageGenerator {
 			// The message will be sent leadTimeMinutes before the event, so calculate
 			// the time remaining from that send time to the event start
 			const sendTime = addMinutes(event.startTime, -leadTimeMinutes);
-			const sendTimeInUserTz = utcToZonedTime(sendTime, event.userTimezone);
-			const startInUserTz = utcToZonedTime(event.startTime, event.userTimezone);
+			const sendTimeInUserTz = toZonedTime(sendTime, event.userTimezone);
+			const startInUserTz = toZonedTime(event.startTime, event.userTimezone);
 			const timeUntil = formatDistance(startInUserTz, sendTimeInUserTz, {
 				addSuffix: false
 			});

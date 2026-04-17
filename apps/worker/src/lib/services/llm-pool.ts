@@ -1,5 +1,5 @@
 // apps/worker/src/lib/services/llm-pool.ts
-import type { LLMProvider, LLMRequest, LLMResponse, LLMModel } from '../types/llm';
+import type { LLMModel, LLMProvider, LLMRequest, LLMResponse } from '../types/llm';
 import type { ActivityLogger } from '../utils/activityLogger';
 
 export interface LLMGenerationOptions {

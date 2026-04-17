@@ -3,7 +3,7 @@
 // Run with: npx tsx scripts/test-scheduler.ts
 
 import { addDays, format } from 'date-fns';
-import { utcToZonedTime } from 'date-fns-tz';
+import { toZonedTime } from 'date-fns-tz';
 import { calculateNextRunTime, validateUserPreference } from '../src/scheduler';
 
 interface TestUserBriefPreference {
@@ -73,8 +73,8 @@ function runSchedulerDiagnostics() {
 
 		const nextRun = calculateNextRunTime(tzUser as any, now);
 		if (nextRun) {
-			const userCurrentTime = utcToZonedTime(now, timezone);
-			const userNextRun = utcToZonedTime(nextRun, timezone);
+			const userCurrentTime = toZonedTime(now, timezone);
+			const userNextRun = toZonedTime(nextRun, timezone);
 
 			console.log(`${timezone}:`);
 			console.log(
@@ -248,7 +248,7 @@ function checkForSchedulingIssues() {
 	console.log(`   Next run: ${nextRunDuringDST?.toISOString()}`);
 
 	if (nextRunDuringDST) {
-		const nyTime = utcToZonedTime(nextRunDuringDST, 'America/New_York');
+		const nyTime = toZonedTime(nextRunDuringDST, 'America/New_York');
 		const isCorrect = nyTime.getHours() === 9;
 		console.log(`   NY Time: ${format(nyTime, 'yyyy-MM-dd HH:mm:ss zzz')}`);
 		console.log(`   ✅ DST handling: ${isCorrect ? 'CORRECT' : '❌ NEEDS REVIEW'}`);

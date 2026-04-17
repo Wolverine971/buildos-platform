@@ -1,6 +1,6 @@
 // apps/worker/src/scheduler.ts
 import { addDays, addHours, isAfter, isBefore, setHours, setMinutes, setSeconds } from 'date-fns';
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import cron from 'node-cron';
 import { format } from 'date-fns';
 
@@ -10,7 +10,7 @@ import { cleanupStaleJobs } from './lib/utils/queueCleanup';
 import { queue } from './worker';
 import type { Database } from '@buildos/shared-types';
 import { BriefBackoffCalculator } from './lib/briefBackoffCalculator';
-import { smsAlertsService, smsMetricsService, type Alert } from '@buildos/shared-utils';
+import { type Alert, smsAlertsService, smsMetricsService } from '@buildos/shared-utils';
 import { resolveScheduledBriefDate } from './workers/brief/briefDateGuard';
 
 export type UserBriefPreference = Database['public']['Tables']['user_brief_preferences']['Row'];
@@ -595,7 +595,7 @@ function calculateDailyRunTime(
 	timezone: string
 ): Date {
 	// Get current time in user's timezone
-	const nowInUserTz = utcToZonedTime(now, timezone);
+	const nowInUserTz = toZonedTime(now, timezone);
 
 	// Set target time for today with precise time (no milliseconds)
 	let targetInUserTz = setHours(nowInUserTz, hours);
@@ -609,7 +609,7 @@ function calculateDailyRunTime(
 	}
 
 	// Convert back to UTC
-	return zonedTimeToUtc(targetInUserTz, timezone);
+	return fromZonedTime(targetInUserTz, timezone);
 }
 
 /**
@@ -624,7 +624,7 @@ function calculateWeeklyRunTime(
 	timezone: string
 ): Date {
 	// Get current time in user's timezone
-	const nowInUserTz = utcToZonedTime(now, timezone);
+	const nowInUserTz = toZonedTime(now, timezone);
 	const currentDayOfWeek = nowInUserTz.getDay();
 
 	// Calculate days until target day
@@ -646,7 +646,7 @@ function calculateWeeklyRunTime(
 	}
 
 	// Convert back to UTC
-	return zonedTimeToUtc(targetInUserTz, timezone);
+	return fromZonedTime(targetInUserTz, timezone);
 }
 
 /**
@@ -751,7 +751,7 @@ async function checkAndScheduleDailySMS() {
 				const now = new Date();
 
 				// Calculate today's date in user's timezone
-				const userNow = utcToZonedTime(now, userTimezone);
+				const userNow = toZonedTime(now, userTimezone);
 				const todayDate = format(userNow, 'yyyy-MM-dd');
 
 				// Queue job to process this user's daily SMS

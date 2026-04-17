@@ -14,7 +14,7 @@
 // ⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createGmailTransporter, getGmailConfig, formatSender } from './gmail-transporter';
+import { createGmailTransporter, formatSender, getGmailConfig } from './gmail-transporter';
 import type { Transporter } from 'nodemailer';
 import { generateMinimalEmailHTML } from '../utils/emailTemplate';
 

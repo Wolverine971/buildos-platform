@@ -1,6 +1,6 @@
 // apps/worker/src/workers/brief/briefDateGuard.ts
 import { format } from 'date-fns';
-import { utcToZonedTime } from 'date-fns-tz';
+import { toZonedTime } from 'date-fns-tz';
 
 import type { BriefJobData } from '../shared/queueUtils';
 
@@ -25,7 +25,7 @@ interface ResolveBriefDateParams {
 }
 
 export function getLocalDateString(date: Date, timezone: string): string {
-	return format(utcToZonedTime(date, timezone), 'yyyy-MM-dd');
+	return format(toZonedTime(date, timezone), 'yyyy-MM-dd');
 }
 
 function isExplicitBriefDateRequest(options?: BriefJobData['options']): boolean {

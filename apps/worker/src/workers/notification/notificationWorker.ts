@@ -11,27 +11,27 @@
 
 import { createServiceClient } from '@buildos/supabase-client';
 import type {
-	NotificationJobMetadata,
-	NotificationDelivery,
+	EventType,
 	NotificationChannel,
+	NotificationDelivery,
+	NotificationJobMetadata,
 	NotificationStatus,
-	PushSubscription as PushSubscriptionType,
-	EventType
+	PushSubscription as PushSubscriptionType
 } from '@buildos/shared-types';
 import {
+	getFallbackPayload,
 	transformEventPayload,
-	validateNotificationPayload,
-	getFallbackPayload
+	validateNotificationPayload
 } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue.js';
 import webpush from 'web-push';
 import { sendEmailNotification } from './emailAdapter.js';
 import { sendSMSNotification } from './smsAdapter.js';
 import {
+	type Logger,
 	createLogger,
-	generateCorrelationId,
 	extractCorrelationContext,
-	type Logger
+	generateCorrelationId
 } from '@buildos/shared-utils';
 import { checkUserPreferences } from './preferenceChecker.js';
 import { getStaleBriefJobDecision } from '../brief/briefDateGuard.js';

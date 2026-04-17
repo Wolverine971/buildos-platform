@@ -8,8 +8,8 @@
 
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database } from '@buildos/shared-types';
-import { formatInTimeZone, zonedTimeToUtc } from 'date-fns-tz';
-import { addDays, subDays, subHours, parseISO, differenceInDays } from 'date-fns';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
+import { addDays, differenceInDays, parseISO, subDays, subHours } from 'date-fns';
 
 // ============================================================================
 // ENTITY CAPS (from PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
@@ -27,36 +27,36 @@ export const ENTITY_CAPS = {
 } as const;
 
 import type {
-	OntoProject,
-	OntoTask,
-	OntoGoal,
-	OntoPlan,
-	OntoMilestone,
-	OntoRisk,
-	OntoDocument,
-	OntoRequirement,
-	OntoEdge,
-	OntoActor,
-	OntoProjectWithRelations,
-	CategorizedTasks,
-	GoalProgress,
-	MilestoneStatus,
-	UnblockingTask,
-	RecentUpdates,
-	PlanProgress,
-	OntologyBriefData,
-	ProjectBriefData,
-	OntologyBriefMetadata,
-	ProjectActivityEntry,
-	ProjectRecentChange,
-	ProjectRecentChangeKind,
+	CalendarBriefCounts,
 	CalendarBriefItem,
 	CalendarBriefItemKind,
 	CalendarBriefSection,
-	CalendarBriefCounts,
 	CalendarBriefSource,
 	CalendarBriefSourceLabel,
-	CalendarBriefSyncFreshness
+	CalendarBriefSyncFreshness,
+	CategorizedTasks,
+	GoalProgress,
+	MilestoneStatus,
+	OntoActor,
+	OntoDocument,
+	OntoEdge,
+	OntoGoal,
+	OntoMilestone,
+	OntoPlan,
+	OntoProject,
+	OntoProjectWithRelations,
+	OntoRequirement,
+	OntoRisk,
+	OntoTask,
+	OntologyBriefData,
+	OntologyBriefMetadata,
+	PlanProgress,
+	ProjectActivityEntry,
+	ProjectBriefData,
+	ProjectRecentChange,
+	ProjectRecentChangeKind,
+	RecentUpdates,
+	UnblockingTask
 } from './ontologyBriefTypes.js';
 
 export const CALENDAR_BRIEF_CAPS = {
@@ -112,7 +112,7 @@ type OntoCalendarEventRow = Pick<
 function addDaysToLocalDate(dateStr: string, days: number, timezone: string): string {
 	// Convert the user's local date at noon to a UTC Date object
 	// Using noon avoids DST edge cases where midnight might not exist
-	const localDateAtNoon = zonedTimeToUtc(`${dateStr} 12:00:00`, timezone);
+	const localDateAtNoon = fromZonedTime(`${dateStr} 12:00:00`, timezone);
 	// Add the specified number of days
 	const resultDate = addDays(localDateAtNoon, days);
 	// Format back to yyyy-MM-dd in user's timezone
@@ -130,9 +130,9 @@ function getTodayInTimezone(timezone: string): string {
 }
 
 function getLocalDayUtcBounds(dateStr: string, timezone: string): { start: Date; end: Date } {
-	const start = zonedTimeToUtc(`${dateStr} 00:00:00`, timezone);
+	const start = fromZonedTime(`${dateStr} 00:00:00`, timezone);
 	const nextDateStr = addDaysToLocalDate(dateStr, 1, timezone);
-	const end = zonedTimeToUtc(`${nextDateStr} 00:00:00`, timezone);
+	const end = fromZonedTime(`${nextDateStr} 00:00:00`, timezone);
 	return { start, end };
 }
 
@@ -151,7 +151,7 @@ function getCalendarBriefWindow(
 	);
 	return {
 		todayStart: today.start,
-		windowEnd: zonedTimeToUtc(`${windowEndDate} 00:00:00`, timezone)
+		windowEnd: fromZonedTime(`${windowEndDate} 00:00:00`, timezone)
 	};
 }
 
@@ -1555,8 +1555,8 @@ function resolveActorDisplayName(
 	actor: { name: string | null; email: string | null } | null,
 	fallback: string
 ): string {
-	if (actor?.name && actor.name.trim()) return actor.name.trim();
-	if (actor?.email && actor.email.trim()) return actor.email.trim();
+	if (actor?.name?.trim()) return actor.name.trim();
+	if (actor?.email?.trim()) return actor.email.trim();
 	return fallback;
 }
 

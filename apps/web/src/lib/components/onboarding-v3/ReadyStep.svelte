@@ -1,12 +1,15 @@
 <!-- apps/web/src/lib/components/onboarding-v3/ReadyStep.svelte -->
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import {
 		CheckCircle,
 		ArrowRight,
 		ArrowLeft,
 		FolderOpen,
 		MessageCircle,
-		Mail
+		Mail,
+		Globe,
+		Check
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -32,6 +35,77 @@
 	let { userId, summary, onBack, onboardingStartedAtMs }: Props = $props();
 
 	let isCompleting = $state(false);
+
+	// Username claim state — lets the user lock in their `/p/{username}/...`
+	// public URL prefix during onboarding so their first share has a clean link.
+	// Skippable; defaults to derived-from-name if skipped.
+	let usernameValue = $state<string | null>(null);
+	let usernameDraft = $state('');
+	let derivedFallback = $state('user');
+	let usernameLoading = $state(false);
+	let usernameError = $state<string | null>(null);
+	let usernameLoaded = $state(false);
+	let usernameSaved = $state(false);
+
+	onMount(() => {
+		void loadUsername();
+	});
+
+	async function loadUsername() {
+		try {
+			const res = await fetch('/api/profile/me/username');
+			const payload = await res.json().catch(() => null);
+			if (!res.ok) return;
+			usernameValue =
+				typeof payload?.data?.username === 'string' ? payload.data.username : null;
+			derivedFallback =
+				typeof payload?.data?.derived_fallback === 'string'
+					? payload.data.derived_fallback
+					: 'user';
+			// Pre-fill draft from the derived value — friendlier than an empty
+			// field. User can accept it or type something else.
+			usernameDraft = usernameValue ?? derivedFallback;
+			usernameSaved = usernameValue !== null;
+		} catch {
+			// Best-effort; the profile tab offers the same editor later.
+		} finally {
+			usernameLoaded = true;
+		}
+	}
+
+	async function saveUsername() {
+		const trimmed = usernameDraft.trim().toLowerCase();
+		if (!trimmed) {
+			usernameError = 'Please enter a username or skip.';
+			return;
+		}
+		if (trimmed === (usernameValue ?? '')) {
+			usernameSaved = true;
+			return;
+		}
+		usernameLoading = true;
+		usernameError = null;
+		try {
+			const res = await fetch('/api/profile/me/username', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username: trimmed })
+			});
+			const payload = await res.json().catch(() => null);
+			if (!res.ok) {
+				usernameError =
+					payload?.error || 'That username is not available. Try another one.';
+				return;
+			}
+			usernameValue = payload?.data?.username ?? trimmed;
+			usernameDraft = usernameValue ?? '';
+			usernameSaved = true;
+		} catch (e) {
+			usernameError = e instanceof Error ? e.message : 'Failed to save username.';
+		} finally {
+			usernameLoading = false;
+		}
+	}
 
 	// Stats to display (only non-zero)
 	const stats = $derived(
@@ -139,6 +213,88 @@
 					</div>
 				</div>
 			{/each}
+		</div>
+	{/if}
+
+	<!-- Public URL / username claim (optional, skippable) -->
+	{#if usernameLoaded}
+		<div
+			class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak mb-6"
+			in:fade={{ delay: 350, duration: 300 }}
+		>
+			<div class="flex items-start gap-3 mb-3">
+				<div
+					class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-accent/15 text-accent shrink-0"
+				>
+					<Globe class="w-4 h-4" />
+				</div>
+				<div class="min-w-0">
+					<h3 class="text-base font-semibold text-foreground">Claim your public URL</h3>
+					<p class="text-xs text-muted-foreground leading-relaxed mt-0.5">
+						When you share a project doc publicly, your link will start with your
+						username. You can change this any time in profile settings.
+					</p>
+				</div>
+			</div>
+
+			{#if usernameSaved}
+				<div
+					class="flex items-center gap-2 rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-400"
+				>
+					<Check class="w-4 h-4 shrink-0" />
+					<span>
+						Your public URL is
+						<span class="font-mono font-semibold"
+							>build-os.com/p/{usernameValue}/…</span
+						>
+					</span>
+				</div>
+			{:else}
+				<div class="flex flex-wrap items-stretch gap-2">
+					<div
+						class="inline-flex items-center rounded-md border border-border bg-muted/40 px-2 text-[13px] font-mono text-muted-foreground"
+					>
+						build-os.com/p/
+					</div>
+					<input
+						type="text"
+						bind:value={usernameDraft}
+						placeholder={derivedFallback}
+						minlength="3"
+						maxlength="24"
+						class="flex-1 min-w-0 rounded-md border border-border bg-background px-3 py-2 text-sm font-mono focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+						disabled={usernameLoading}
+						aria-label="Public username"
+					/>
+				</div>
+				{#if usernameError}
+					<p class="mt-2 text-xs text-destructive">{usernameError}</p>
+				{/if}
+				<div class="mt-3 flex flex-wrap items-center gap-3">
+					<Button
+						type="button"
+						onclick={saveUsername}
+						disabled={usernameLoading || !usernameDraft.trim()}
+						loading={usernameLoading}
+						variant="primary"
+						size="sm"
+					>
+						Claim username
+					</Button>
+					<button
+						type="button"
+						onclick={() => (usernameSaved = true)}
+						disabled={usernameLoading}
+						class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 disabled:opacity-50"
+					>
+						Skip for now
+					</button>
+				</div>
+				<p class="mt-2 text-[11px] text-muted-foreground">
+					3–24 characters, lowercase letters, numbers, and hyphens. If you skip, your URL
+					defaults to <span class="font-mono text-foreground">{derivedFallback}</span>.
+				</p>
+			{/if}
 		</div>
 	{/if}
 

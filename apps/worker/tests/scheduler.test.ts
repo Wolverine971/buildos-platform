@@ -1,7 +1,7 @@
 // apps/worker/tests/scheduler.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { addHours, addDays, setHours, setMinutes } from 'date-fns';
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { toZonedTime, fromZonedTime } from 'date-fns-tz';
 
 // Mock the imports
 vi.mock('./lib/supabase', () => ({

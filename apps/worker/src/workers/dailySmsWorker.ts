@@ -13,7 +13,7 @@
 import type { Database } from '@buildos/shared-types';
 import { supabase } from '../lib/supabase';
 import type { LegacyJob } from './shared/jobAdapter';
-import { utcToZonedTime, zonedTimeToUtc } from 'date-fns-tz';
+import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { addMinutes, endOfDay, format, isBefore, parseISO, startOfDay } from 'date-fns';
 import { queue } from '../worker';
 import { type EventContext, SMSMessageGenerator } from '../lib/services/smsMessageGenerator';
@@ -134,11 +134,11 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 
 		// Calculate date range for calendar events
 		const userDate = parseISO(`${date}T00:00:00`);
-		const startOfUserDay = utcToZonedTime(startOfDay(userDate), userTimezone);
-		const endOfUserDay = utcToZonedTime(endOfDay(userDate), userTimezone);
+		const startOfUserDay = toZonedTime(startOfDay(userDate), userTimezone);
+		const endOfUserDay = toZonedTime(endOfDay(userDate), userTimezone);
 
-		const startUTC = zonedTimeToUtc(startOfUserDay, userTimezone);
-		const endUTC = zonedTimeToUtc(endOfUserDay, userTimezone);
+		const startUTC = fromZonedTime(startOfUserDay, userTimezone);
+		const endUTC = fromZonedTime(endOfUserDay, userTimezone);
 
 		console.log(
 			`📅 [DailySMS] Fetching events from ${startUTC.toISOString()} to ${endUTC.toISOString()}`
@@ -221,7 +221,7 @@ export async function processDailySMS(job: LegacyJob<DailySMSJobData>) {
 				smsPrefs.quiet_hours_start &&
 				smsPrefs.quiet_hours_end
 			) {
-				const reminderTimeInUserTz = utcToZonedTime(reminderTime, userTimezone);
+				const reminderTimeInUserTz = toZonedTime(reminderTime, userTimezone);
 				const reminderHour = reminderTimeInUserTz.getHours();
 				const reminderMinute = reminderTimeInUserTz.getMinutes();
 

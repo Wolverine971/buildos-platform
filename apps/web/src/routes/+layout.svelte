@@ -830,7 +830,7 @@
 	<title>BuildOS - Your Personal Operating System</title>
 
 	<!-- PERFORMANCE: System fonts used — no external font loading needed -->
-	{@html `<script type="application/ld+json">${siteStructuredData}</script>`}
+	{@html '<script type="application/ld+json">' + siteStructuredData + '<' + '/script>'}
 </svelte:head>
 
 <ModeWatcher />
