@@ -79,7 +79,6 @@
 		'error.critical',
 		'brief.completed',
 		'brief.failed',
-		'brain_dump.processed',
 		'task.due_soon',
 		'task.assigned',
 		'entity.tagged',

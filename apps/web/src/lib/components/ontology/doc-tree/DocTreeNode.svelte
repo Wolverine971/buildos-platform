@@ -64,7 +64,10 @@
 		e.preventDefault();
 		e.stopPropagation();
 		if (!node.public_slug) return;
-		const url = buildAbsolutePublicPageUrl({ slug: node.public_slug });
+		const url = buildAbsolutePublicPageUrl({
+			url_path: node.public_url_path,
+			slug: node.public_slug
+		});
 		if (!url) return;
 		const ok = await copyTextToClipboard(url);
 		if (ok) {
@@ -286,7 +289,11 @@
 				aria-label={node.public_slug
 					? `Copy public link for ${node.title}`
 					: 'Copy public link'}
-				title={node.public_slug ? `Copy link: /p/${node.public_slug}` : 'Copy public link'}
+				title={node.public_url_path
+					? `Copy link: ${node.public_url_path}`
+					: node.public_slug
+						? `Copy link: /p/${node.public_slug}`
+						: 'Copy public link'}
 				draggable="false"
 			>
 				<Globe class="w-2.5 h-2.5" />

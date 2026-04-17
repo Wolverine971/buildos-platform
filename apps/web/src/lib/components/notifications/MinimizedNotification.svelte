@@ -20,7 +20,6 @@
 	let { notification }: { notification: Notification } = $props();
 
 	// Lazy-loaded type-specific components
-	let BrainDumpMinimizedView = $state<any>(null);
 	let ProjectSynthesisMinimizedView = $state<any>(null);
 	let CalendarAnalysisMinimizedView = $state<any>(null);
 	let TimeBlockMinimizedView = $state<any>(null);
@@ -29,14 +28,6 @@
 	async function loadTypeSpecificComponent() {
 		try {
 			switch (notification.type) {
-				case 'brain-dump':
-					if (!BrainDumpMinimizedView) {
-						const module = await import(
-							'./types/brain-dump/BrainDumpMinimizedView.svelte'
-						);
-						BrainDumpMinimizedView = module.default;
-					}
-					break;
 				case 'project-synthesis':
 					if (!ProjectSynthesisMinimizedView) {
 						const module = await import(
@@ -86,55 +77,45 @@
 	// Resolve the type-specific component (if loaded)
 	// FIX: Changed from $derived(() => { ... }) to $derived(expression)
 	let typeSpecificComponent = $derived(
-		notification.type === 'brain-dump'
-			? BrainDumpMinimizedView
-			: notification.type === 'project-synthesis'
-				? ProjectSynthesisMinimizedView
-				: notification.type === 'calendar-analysis'
-					? CalendarAnalysisMinimizedView
-					: notification.type === 'time-block'
-						? TimeBlockMinimizedView
-						: null
+		notification.type === 'project-synthesis'
+			? ProjectSynthesisMinimizedView
+			: notification.type === 'calendar-analysis'
+				? CalendarAnalysisMinimizedView
+				: notification.type === 'time-block'
+					? TimeBlockMinimizedView
+					: null
 	);
 
 	// Get notification title based on type (fallback for generic view)
 	// FIX: Simplified the $derived expression
 	let title = $derived(
-		notification.type === 'brain-dump'
+		notification.type === 'project-synthesis'
 			? notification.status === 'processing'
-				? 'Processing brain dump'
+				? `Analyzing tasks for ${notification.data.projectName}`
 				: notification.status === 'success'
-					? 'Brain dump complete'
+					? 'Synthesis complete'
 					: notification.status === 'error'
-						? 'Brain dump failed'
-						: 'Brain dump'
-			: notification.type === 'project-synthesis'
+						? 'Synthesis failed'
+						: 'Project synthesis'
+			: notification.type === 'calendar-analysis'
 				? notification.status === 'processing'
-					? `Analyzing tasks for ${notification.data.projectName}`
+					? 'Analyzing calendar'
 					: notification.status === 'success'
-						? 'Synthesis complete'
+						? 'Calendar analyzed'
 						: notification.status === 'error'
-							? 'Synthesis failed'
-							: 'Project synthesis'
-				: notification.type === 'calendar-analysis'
+							? 'Calendar analysis failed'
+							: 'Calendar analysis'
+				: notification.type === 'time-block'
 					? notification.status === 'processing'
-						? 'Analyzing calendar'
+						? 'Creating time block'
 						: notification.status === 'success'
-							? 'Calendar analyzed'
-							: notification.status === 'error'
-								? 'Calendar analysis failed'
-								: 'Calendar analysis'
-					: notification.type === 'time-block'
-						? notification.status === 'processing'
-							? 'Creating time block'
-							: notification.status === 'success'
-								? 'Time block ready'
-								: notification.status === 'warning'
-									? 'Time block created (no suggestions)'
-									: 'Time block'
-						: notification.type === 'generic'
-							? notification.data.title
-							: 'Processing'
+							? 'Time block ready'
+							: notification.status === 'warning'
+								? 'Time block created (no suggestions)'
+								: 'Time block'
+					: notification.type === 'generic'
+						? notification.data.title
+						: 'Processing'
 	);
 
 	// Get subtitle/progress message with type-safe handling across progress variants
@@ -213,7 +194,7 @@
 	aria-expanded={!notification.isMinimized}
 >
 	{#if typeSpecificComponent}
-		<!-- Type-specific view (brain dump, phase generation, etc.) -->
+		<!-- Type-specific view (phase generation, calendar sync, etc.) -->
 		{@const TypeComponent = typeSpecificComponent}
 		<TypeComponent {notification} />
 	{:else}

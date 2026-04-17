@@ -6,7 +6,6 @@ import type {
 	PhaseGenerationJobMetadata,
 	OnboardingAnalysisJobMetadata,
 	CalendarSyncJobMetadata,
-	BrainDumpProcessJobMetadata,
 	EmailJobMetadata,
 	RecurringTaskJobMetadata,
 	CleanupJobMetadata,
@@ -395,38 +394,6 @@ export function validateCalendarSyncMetadata(metadata: unknown): CalendarSyncJob
 	return meta as unknown as CalendarSyncJobMetadata;
 }
 
-export function validateBrainDumpProcessMetadata(metadata: unknown): BrainDumpProcessJobMetadata {
-	if (!metadata || typeof metadata !== 'object') {
-		throw new ValidationError('metadata', metadata, 'object');
-	}
-
-	const meta = metadata as Record<string, unknown>;
-
-	if (typeof meta.brainDumpId !== 'string') {
-		throw new ValidationError('brainDumpId', meta.brainDumpId, 'string');
-	}
-
-	if (meta.processMode !== undefined) {
-		const validModes = ['full', 'quick'];
-		if (!validModes.includes(meta.processMode as string)) {
-			throw new ValidationError('processMode', meta.processMode, 'full|quick');
-		}
-	}
-
-	if (meta.projectId !== undefined && typeof meta.projectId !== 'string') {
-		throw new ValidationError('projectId', meta.projectId, 'string');
-	}
-
-	if (
-		meta.includeTaskExtraction !== undefined &&
-		typeof meta.includeTaskExtraction !== 'boolean'
-	) {
-		throw new ValidationError('includeTaskExtraction', meta.includeTaskExtraction, 'boolean');
-	}
-
-	return meta as unknown as BrainDumpProcessJobMetadata;
-}
-
 export function validateEmailJobMetadata(metadata: unknown): EmailJobMetadata {
 	if (!metadata || typeof metadata !== 'object') {
 		throw new ValidationError('metadata', metadata, 'object');
@@ -761,8 +728,6 @@ export function validateJobMetadata<T extends QueueJobType>(
 			return validateOnboardingAnalysisMetadata(metadata) as JobMetadataMap[T];
 		case 'sync_calendar':
 			return validateCalendarSyncMetadata(metadata) as JobMetadataMap[T];
-		case 'process_brain_dump':
-			return validateBrainDumpProcessMetadata(metadata) as JobMetadataMap[T];
 		case 'send_email':
 			return validateEmailJobMetadata(metadata) as JobMetadataMap[T];
 		case 'update_recurring_tasks':

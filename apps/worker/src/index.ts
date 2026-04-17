@@ -493,7 +493,7 @@ app.post('/queue/chat/classify', async (req, res) => {
 	}
 });
 
-// Queue braindump processing endpoint
+// Queue ontology capture processing endpoint.
 app.post('/queue/braindump/process', async (req, res) => {
 	try {
 		const { braindumpId, userId } = req.body;
@@ -512,7 +512,7 @@ app.post('/queue/braindump/process', async (req, res) => {
 			});
 		}
 
-		// Check for existing processing jobs for this braindump
+		// Check for existing processing jobs for this captured context record.
 		const { data: existingJobs } = await supabase
 			.from('queue_jobs')
 			.select('*')
@@ -523,7 +523,7 @@ app.post('/queue/braindump/process', async (req, res) => {
 
 		if (existingJobs && existingJobs.length > 0) {
 			return res.status(409).json({
-				error: 'Processing already in progress for this braindump',
+				error: 'Processing already in progress for this captured context',
 				existingJobId: existingJobs[0].queue_job_id
 			});
 		}
@@ -543,7 +543,7 @@ app.post('/queue/braindump/process', async (req, res) => {
 		);
 
 		console.log(
-			`🧠 API: Queued braindump processing for ${braindumpId}, job ${job.queue_job_id}`
+			`🧠 API: Queued captured context processing for ${braindumpId}, job ${job.queue_job_id}`
 		);
 
 		return res.json({
@@ -553,12 +553,12 @@ app.post('/queue/braindump/process', async (req, res) => {
 			message: 'Braindump processing queued'
 		});
 	} catch (error: any) {
-		console.error('Error queueing braindump processing:', error);
+		console.error('Error queueing captured context processing:', error);
 		await logWorkerError(error, {
 			userId: req.body?.userId,
 			endpoint: '/queue/braindump/process',
 			httpMethod: 'POST',
-			operationType: 'queue_braindump_processing',
+			operationType: 'queue_onto_capture_processing',
 			errorType: 'api_error',
 			severity: 'error',
 			metadata: {
@@ -566,7 +566,7 @@ app.post('/queue/braindump/process', async (req, res) => {
 			}
 		});
 		return res.status(500).json({
-			error: 'Failed to queue braindump processing',
+			error: 'Failed to queue captured context processing',
 			message: error.message
 		});
 	}

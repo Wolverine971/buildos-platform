@@ -94,7 +94,6 @@ export const RATE_LIMITS = {
 	API_AI: { requests: 20, windowMs: 60000 }, // 20 AI requests/min
 
 	// User actions
-	BRAIN_DUMP: { requests: 20, windowMs: 300000 }, // 20 brain dumps/5min
 	PROJECT_CREATE: { requests: 20, windowMs: 300000 }, // 20 projects/5min
 	TASK_CREATE: { requests: 100, windowMs: 300000 }, // 100 tasks/5min
 
@@ -220,13 +219,13 @@ class ProjectService {
 }
 
 // In a component:
-function handleBrainDump() {
-  if (!clientRateLimiter?.canPerformAction('brain-dump', RATE_LIMITS.BRAIN_DUMP)) {
-    toast.error('Please wait before creating another brain dump');
+function handleProjectCreate() {
+  if (!clientRateLimiter?.canPerformAction('project-create', RATE_LIMITS.PROJECT_CREATE)) {
+    toast.error('Please wait before creating another project');
     return;
   }
   
-  // Proceed with brain dump
+  // Proceed with project creation
 }
 
 // In an API route:

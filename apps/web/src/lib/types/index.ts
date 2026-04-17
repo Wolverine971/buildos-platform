@@ -6,17 +6,8 @@ import type { ParsedOperation } from './operations';
 import type { Task, ProjectWithRelations } from './project';
 import type { UserContext } from './user-context';
 
-// Re-export operation types used by brain dump and non-brain-dump flows
-export type {
-	ExecutionResult,
-	GeneratedProjectQuestion,
-	OperationType,
-	ParsedOperation,
-	TableName
-} from './operations';
-
-// Re-export brain dump types
-export type { BrainDumpOptions, BrainDumpParseResult, CompletedBrainDump } from './brain-dump';
+// Re-export operation types used by project synthesis and calendar analysis flows
+export type { ExecutionResult, OperationType, ParsedOperation, TableName } from './operations';
 
 // ==========================================
 // BASE DATABASE TYPES & INTERFACES
@@ -37,8 +28,6 @@ export type TaskFilter = 'all' | 'active' | 'scheduled' | 'overdue' | 'completed
 // Row types from database
 export type Phase = Database['public']['Tables']['phases']['Row'];
 export type ProjectSynthesis = Database['public']['Tables']['project_synthesis']['Row'];
-export type BrainDump = Database['public']['Tables']['brain_dumps']['Row'];
-export type BrainDumpLink = Database['public']['Tables']['brain_dump_links']['Row'];
 export type DailyBrief = Database['public']['Tables']['daily_briefs']['Row'];
 export type ProjectDailyBrief = Database['public']['Tables']['project_daily_briefs']['Row'];
 export type ProjectBriefTemplate = Database['public']['Tables']['project_brief_templates']['Row'];

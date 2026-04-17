@@ -353,9 +353,9 @@
 
 <SEOHead
 	title="Sign Up - BuildOS | Start Your 14-Day Free Trial"
-	description="Create your BuildOS account and transform brain dumps into shared project context. AI-powered project collaboration for ADHD minds, founders, and creators. No credit card required."
+	description="Create your BuildOS account and transform rough project input into shared project context. AI-powered project collaboration for ADHD minds, founders, and creators. No credit card required."
 	canonical="https://build-os.com/auth/register"
-	keywords="BuildOS sign up, free trial, AI project management, ADHD productivity, brain dump app"
+	keywords="BuildOS sign up, free trial, AI project management, ADHD productivity, project context app"
 	noindex={true}
 />
 

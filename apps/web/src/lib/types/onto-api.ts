@@ -284,6 +284,12 @@ export interface DocTreeNode {
 	is_public?: boolean;
 	/** Public slug when document is public */
 	public_slug?: string | null;
+	/**
+	 * Canonical public URL path when document is public
+	 * (e.g. `/p/dj-wayne/market-map`). Cached here so copy-link/open surfaces
+	 * emit the canonical two-part form without a service round-trip.
+	 */
+	public_url_path?: string | null;
 	/** Public lifecycle status for badges/UI */
 	public_status?: 'not_public' | 'pending_confirmation' | 'live' | 'unpublished' | 'archived';
 	/** Order among siblings (0-indexed) */
@@ -324,6 +330,7 @@ export interface EnrichedDocTreeNode {
 	updated_at: string;
 	is_public: boolean;
 	public_slug: string | null;
+	public_url_path: string | null;
 	public_status: 'not_public' | 'pending_confirmation' | 'live' | 'unpublished' | 'archived';
 
 	// Computed for UI
@@ -376,6 +383,7 @@ export interface DocumentPublicPageState {
 	last_live_sync_at: string | null;
 	last_live_sync_error: string | null;
 	is_live_public: boolean;
+	is_listed_public: boolean;
 }
 
 export interface DocumentPublicPagePreview {

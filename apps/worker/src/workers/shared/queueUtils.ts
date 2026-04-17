@@ -59,7 +59,7 @@ export interface ChatClassificationJobData {
 
 export interface BraindumpProcessingJobData {
 	braindumpId: string; // ID of the onto_braindumps record to process
-	userId: string; // User ID who owns the braindump
+	userId: string; // User ID who owns the captured context
 }
 
 // Update job status in database
@@ -267,7 +267,7 @@ export function validateChatClassificationJobData(data: any): ChatClassification
 
 /**
  * Validate BraindumpProcessingJobData and throw if invalid
- * Ensures data integrity before braindump processing job processing
+ * Ensures data integrity before ontology capture processing job processing
  */
 export function validateBraindumpProcessingJobData(data: any): BraindumpProcessingJobData {
 	// Check braindumpId

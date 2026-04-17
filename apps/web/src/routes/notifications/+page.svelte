@@ -112,10 +112,6 @@
 			'document.shared': { action: 'Document Shared', past: 'A document was shared' },
 			'brief.completed': { action: 'Daily Brief Ready', past: 'Your daily brief is ready' },
 			'brief.failed': { action: 'Brief Failed', past: 'Daily brief generation failed' },
-			'brain_dump.processed': {
-				action: 'Brain Dump Processed',
-				past: 'Your brain dump was processed'
-			},
 			'project.phase_scheduled': {
 				action: 'Phase Scheduled',
 				past: 'A project phase was scheduled'
@@ -172,7 +168,6 @@
 		if (eventType.includes('invite') || eventType.includes('shared')) return Share2;
 		if (eventType === 'brief.completed') return Coffee;
 		if (eventType === 'brief.failed') return AlertTriangle;
-		if (eventType === 'brain_dump.processed') return Sparkles;
 		if (eventType === 'task.due_soon') return Clock;
 		if (eventType.includes('task')) return CheckCircle2;
 		if (eventType.includes('comment')) return MessageSquare;
@@ -516,20 +511,6 @@
 			const retryCount = ep.retry_count as number | undefined;
 			if (retryCount !== undefined) stats.push({ label: 'Retries', value: retryCount });
 			if (errorMsg) summary = errorMsg;
-		} else if (eventType === 'brain_dump.processed') {
-			const tasksCreated = ep.tasks_created as number | undefined;
-			const processingTime = ep.processing_time_ms as number | undefined;
-			const projectName = ep.project_name as string | undefined;
-
-			if (tasksCreated !== undefined)
-				stats.push({ label: 'Tasks created', value: tasksCreated });
-			if (processingTime !== undefined) {
-				const seconds = (processingTime / 1000).toFixed(1);
-				stats.push({ label: 'Processing time', value: `${seconds}s` });
-			}
-			if (projectName) {
-				summary = `Added to project: ${projectName}`;
-			}
 		} else if (eventType === 'task.due_soon') {
 			const taskTitle = ep.task_title as string | undefined;
 			const projectName = ep.project_name as string | undefined;

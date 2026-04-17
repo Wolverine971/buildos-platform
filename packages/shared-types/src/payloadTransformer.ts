@@ -14,7 +14,6 @@ import type {
 	NotificationPayload,
 	BriefCompletedEventPayload,
 	BriefFailedEventPayload,
-	BrainDumpProcessedEventPayload,
 	TaskDueSoonEventPayload,
 	ProjectActivityChangedEventPayload,
 	ProjectActivityBatchedEventPayload,
@@ -31,7 +30,6 @@ import type {
 export type EventPayload =
 	| BriefCompletedEventPayload
 	| BriefFailedEventPayload
-	| BrainDumpProcessedEventPayload
 	| TaskDueSoonEventPayload
 	| ProjectActivityChangedEventPayload
 	| ProjectActivityBatchedEventPayload
@@ -110,38 +108,6 @@ function transformBriefFailed(payload: BriefFailedEventPayload): NotificationPay
 			brief_date: payload.brief_date,
 			error_message: payload.error_message,
 			retry_count: payload.retry_count
-		}
-	};
-}
-
-/**
- * Transform brain_dump.processed event payload
- */
-function transformBrainDumpProcessed(payload: BrainDumpProcessedEventPayload): NotificationPayload {
-	const taskText = payload.tasks_created === 1 ? '1 task' : `${payload.tasks_created} tasks`;
-
-	if (payload.project_name) {
-		return {
-			title: 'Brain Dump Processed ✨',
-			body: `Created ${taskText} in "${payload.project_name}"`,
-			action_url: `/projects/${payload.project_id}`,
-			icon_url: '/AppImages/android/android-launchericon-192-192.png',
-			data: {
-				brain_dump_id: payload.brain_dump_id,
-				project_id: payload.project_id,
-				tasks_created: payload.tasks_created
-			}
-		};
-	}
-
-	return {
-		title: 'Brain Dump Processed ✨',
-		body: `Your thoughts have been organized into ${taskText}`,
-		action_url: '/projects',
-		icon_url: '/AppImages/android/android-launchericon-192-192.png',
-		data: {
-			brain_dump_id: payload.brain_dump_id,
-			tasks_created: payload.tasks_created
 		}
 	};
 }
@@ -504,9 +470,6 @@ export function transformEventPayload(
 
 			case 'brief.failed':
 				return transformBriefFailed(eventPayload as BriefFailedEventPayload);
-
-			case 'brain_dump.processed':
-				return transformBrainDumpProcessed(eventPayload as BrainDumpProcessedEventPayload);
 
 			case 'task.due_soon':
 				return transformTaskDueSoon(eventPayload as TaskDueSoonEventPayload);

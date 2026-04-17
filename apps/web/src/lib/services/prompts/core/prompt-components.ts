@@ -6,7 +6,11 @@
 
 // Import centralized data models
 import { TaskModels, ProjectModels, PhaseModels } from './data-models';
-import type { DisplayedBrainDumpQuestion } from '$lib/types/brain-dump';
+
+type DisplayedQuestion = {
+	id: string;
+	question: string;
+};
 
 /**
  * Generates date parsing instructions with examples
@@ -72,7 +76,7 @@ Write a markdown document that orients any human or agent to the project's visio
 
 **Avoid**
 - Task lists, status checklists, or implementation minutiae
-- Raw braindump transcripts or disconnected bullet soup
+- Raw transcripts or disconnected bullet soup
 - Step-by-step directives that belong inside the task model
 
 **Formatting**
@@ -159,7 +163,7 @@ Each core dimension field MUST be formatted as markdown, not plain text. Capture
 Let the structure emerge naturally based on the content:
 - Use formatting as information naturally calls for it
 - Structure evolves as project grows
-- First braindump: 1-2 sentences; as it matures: richer structure
+- First update: 1-2 sentences; as it matures: richer structure
 
 **Examples of STRATEGIC evolution** (NOT execution details):
 
@@ -242,8 +246,8 @@ export function getProjectModel(includeRequired: boolean = true): string {
   context: string ${includeRequired ? '(required, rich markdown)' : ''},
   executive_summary: string (<500 chars),
   status: "active"|"paused"|"completed"|"archived",
-  start_date: "YYYY-MM-DD" ${includeRequired ? '(REQUIRED - parse from braindump or use today)' : ''},
-  end_date?: "YYYY-MM-DD" (parse timeline from braindump or leave null),
+  start_date: "YYYY-MM-DD" ${includeRequired ? '(REQUIRED - parse from user input or use today)' : ''},
+  end_date?: "YYYY-MM-DD" (parse timeline from user input or leave null),
   tags: string[]
 }`;
 }
@@ -256,7 +260,7 @@ projects update: {
   executive_summary?: string (Executive summary of the state of the project, update if project shifted),
   status?: "active"|"paused"|"completed"|"archived",
   start_date?: "YYYY-MM-DD" (update if timeline changes mentioned),
-  end_date?: "YYYY-MM-DD" (parse timeline changes from braindump),
+  end_date?: "YYYY-MM-DD" (parse timeline changes from user input),
   tags?: string[]
 }`;
 }
@@ -291,7 +295,7 @@ export function getTaskModel(options?: {
 
 	model += `
   description: string,
-  details: string (specifics mentioned in braindump),
+  details: string (specifics mentioned in user input),
   status: "backlog"|"in_progress"|"done"|"blocked",
   priority: "low"|"medium"|"high",
   task_type: "one_off"|"recurring",
@@ -301,7 +305,7 @@ export function getTaskModel(options?: {
 	if (includeRecurring) {
 		model += `
   recurrence_pattern?: "daily"|"weekdays"|"weekly"|"biweekly"|"monthly"|"quarterly"|"yearly" (REQUIRED if task_type is "recurring"),
-  recurrence_ends?: "YYYY-MM-DD" (date only - parse from braindump or defaults to project end date if not specified),`;
+  recurrence_ends?: "YYYY-MM-DD" (date only - parse from user input or defaults to project end date if not specified),`;
 	}
 
 	model += `
@@ -328,7 +332,7 @@ export function getTaskCreateModel(projectId?: string): string {
   "project_ref": "new-project-1",`
   }
   "description": "Task summary",
-  "details": "COMPREHENSIVE details - capture ALL specifics, implementation notes, research, ideas, observations, and context related to this task from the braindump",
+  "details": "COMPREHENSIVE details - capture ALL specifics, implementation notes, research, ideas, observations, and context related to this task from the user input",
   "priority": "low|medium|high",
   "status": "backlog",
   "task_type": "one_off|recurring", (if recurring, must have 'start_date')
@@ -351,7 +355,7 @@ export function getTaskUpdateModel(projectId?: string): string {
   "title": "Updated title if changed",
   "project_id": "${projectId}"
   "description": "Updated description if mentioned",
-  "details": "Updated/additional details (specifics mentioned in braindump)",
+  "details": "Updated/additional details (specifics mentioned in user input)",
   "status": "backlog|in_progress|done|blocked",
   "priority": "low|medium|high",
   // Include only fields that should be updated
@@ -425,7 +429,7 @@ export function getDecisionMatrixUpdateCriteria(): string {
 - Major events or milestones happen
 - The story needs to continue
 
-**Update Core Dimensions when braindump touches:**
+**Update Core Dimensions when user input touches:**
 1. **Integrity & Ideals** ("core_integrity_ideals") — Ideal end-state, quality bars, definitions of “done/right.”
 2. **People & Bonds** ("core_people_bonds") — Who’s involved, roles, dynamics, power/comms patterns.
 3. **Goals & Momentum** ("core_goals_momentum") — Milestones, deliverables, metrics, cadence.
@@ -446,8 +450,8 @@ export function getDecisionMatrixUpdateCriteria(): string {
 **Remember**: 
 - Context is a living narrative - update it to continue the story
 - Core dimensions are replaced entirely when updated (not appended)
-- Both can be updated in the same braindump
-- Not every braindump requires updates`;
+- Both can be updated in the same user update
+- Not every update requires changes`;
 }
 
 /**
@@ -484,7 +488,7 @@ export function generateQuestionGenerationInstructions(options?: {
 
 	if (includeGuidelines) {
 		instructions += `Generate 3-5 NEW questions that:
-- Help the user think about the next steps based off of the project's current state and the new info coming from the braindump
+- Help the user think about the next steps based on the project's current state and the new information provided
 - Help clarify vague aspects or ambiguous requirements
 - Identify critical decisions that need to be made
 - Break down complex problems into manageable steps
@@ -493,7 +497,7 @@ export function generateQuestionGenerationInstructions(options?: {
 
 Questions should:
 - Be specific and actionable and reference something specific in the project
-- Spark creative thinking for productive future braindumps`;
+- Spark creative thinking for productive future updates`;
 	}
 
 	if (includeCategories) {
@@ -523,7 +527,7 @@ Questions should:
  * Generates question analysis instructions for displayed questions
  */
 export function generateQuestionAnalysisInstructions(
-	displayedQuestions?: DisplayedBrainDumpQuestion[]
+	displayedQuestions?: DisplayedQuestion[]
 ): string {
 	if (!displayedQuestions || displayedQuestions.length === 0) {
 		return '';
@@ -536,7 +540,7 @@ export function generateQuestionAnalysisInstructions(
 	return `## Questions to Analyze:
 ${questionsText}
 
-Determine if each question was addressed in the braindump.
+Determine if each question was addressed in the user input.
 Include in your response:
 "questionAnalysis": {
   "[questionId]": {
@@ -1327,7 +1331,7 @@ If user gives explicit instructions, follow them exactly.`;
 export function generateFullPreprocessingSteps(currentDate: string): string {
 	return `**PREPROCESSING STEPS** (Execute in order):
 
-1. **USER INSTRUCTION SCAN**: Look for meta-instructions about how to process this brain dump
+1. **USER INSTRUCTION SCAN**: Look for meta-instructions about how to process this input
    - Keywords: "just", "only", "don't", "focus on", "treat as", "break into"
    - Processing preferences: "just notes", "full project", "tasks only"
    - Scope limiters: "don't create tasks", "document only", "capture for later"

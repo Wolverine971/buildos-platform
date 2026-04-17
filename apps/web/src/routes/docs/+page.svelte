@@ -21,9 +21,9 @@
 
 <SEOHead
 	title="Documentation - BuildOS | Complete Guide to AI-Native Productivity"
-	description="Complete documentation for BuildOS. Learn how to transform brain dumps into organized projects with AI-powered context building, daily briefs, and calendar integration."
+	description="Complete documentation for BuildOS. Learn how to transform rough project context into organized projects with AI-powered context building, daily briefs, and calendar integration."
 	canonical="https://build-os.com/docs"
-	keywords="BuildOS documentation, brain dump guide, project context building, daily briefs, AI productivity tutorial, calendar integration, MCP server"
+	keywords="BuildOS documentation, AI project planning, project context building, daily briefs, AI productivity tutorial, calendar integration, MCP server"
 />
 
 <div class="min-h-screen bg-background">
@@ -106,9 +106,9 @@
 								</li>
 								<li>
 									<a
-										href="#brain-dump"
+										href="#capture"
 										class="text-muted-foreground hover:text-foreground transition-colors"
-										>Brain Dump</a
+										>Project Capture</a
 									>
 								</li>
 								<li>
@@ -177,12 +177,12 @@
 								>
 									<li class="text-muted-foreground">
 										<strong class="text-foreground"
-											>Log in and go to Brain Dump page</strong
-										> - This is where the magic begins
+											>Log in and open BuildOS AI</strong
+										> - This is where the work begins
 									</li>
 									<li class="text-muted-foreground">
 										<strong class="text-foreground"
-											>Brain dump about your first project</strong
+											>Talk through your first project</strong
 										> - Choose "New Project" and talk about goals, current state,
 										what's happening
 									</li>
@@ -215,10 +215,10 @@
 										💡 Pro Tip: Think in Projects
 									</h4>
 									<p class="text-muted-foreground">
-										Always frame your brain dumps as projects with clear goals,
-										phases, current state, and blockers. This helps BuildOS
-										create rich, actionable context that you can use with any
-										LLM.
+										Always frame your first session as a project with clear
+										goals, phases, current state, and blockers. This helps
+										BuildOS create rich, actionable context that you can use
+										with any LLM.
 									</p>
 								</div>
 							</div>
@@ -253,7 +253,7 @@
 												• Today's tasks and tomorrow's agenda
 											</li>
 											<li class="text-muted-foreground">
-												• Recent brain dumps
+												• Recent project context
 											</li>
 											<li class="text-muted-foreground">
 												• Past week's accomplishments
@@ -270,11 +270,11 @@
 										<div class="flex items-center mb-3">
 											<Brain class="w-6 h-6 text-accent mr-3" />
 											<h4 class="font-semibold text-foreground">
-												Brain Dump
+												BuildOS AI
 											</h4>
 										</div>
 										<p class="text-sm text-muted-foreground mb-2">
-											Apple Notes-style interface for:
+											Agent workspace for:
 										</p>
 										<ul class="text-xs text-muted-foreground space-y-1">
 											<li class="text-muted-foreground">
@@ -345,9 +345,9 @@
 										<h4 class="font-semibold text-foreground">History</h4>
 									</div>
 									<p class="text-sm text-muted-foreground">
-										Chronological view of all your brain dumps. Perfect for
-										reflecting on your thinking patterns and tracking how
-										projects evolved over time.
+										Chronological view of captured context and chat sessions.
+										Perfect for reflecting on your thinking patterns and
+										tracking how projects evolved over time.
 									</p>
 								</div>
 
@@ -394,7 +394,7 @@
 											</div>
 											<div class="flex-1">
 												<h4 class="font-semibold text-foreground">
-													Brain Dump About Projects
+													Talk Through Projects
 												</h4>
 												<p class="text-sm text-muted-foreground">
 													Capture project goals, current state, blockers,
@@ -486,8 +486,8 @@
 										The Context Building Loop
 									</h4>
 									<p class="text-muted-foreground">
-										Each brain dump builds richer project context. Copy this
-										context to work with any LLM, then dump your learnings,
+										Each project session builds richer context. Copy this
+										context to work with any LLM, then bring your learnings,
 										research, and new insights back into BuildOS. This creates a
 										powerful feedback loop of continuous project intelligence.
 									</p>
@@ -495,49 +495,22 @@
 							</div>
 						</section>
 
-						<!-- Brain Dump -->
-						<section id="brain-dump">
+						<!-- Project Capture -->
+						<section id="capture">
 							<h2 class="text-3xl font-bold text-foreground mb-6 flex items-center">
 								<Brain class="w-7 h-7 mr-3 text-accent" />
-								Brain Dump: The Starting Point
+								Project Capture: The Starting Point
 							</h2>
 							<div class="prose dark:prose-invert max-w-none">
 								<p class="text-muted-foreground mb-6">
-									Brain dumping is where all organization begins in BuildOS. The
-									interface is designed to capture thoughts quickly and
-									intelligently process them into structured projects.
+									Start by talking through the messy version of what you are
+									building. BuildOS turns that context into structured projects,
+									tasks, notes, and follow-up actions.
 								</p>
 
 								<h3 class="text-xl font-semibold text-foreground mb-4">
-									Brain Dump Interface
+									Agent Chat Interface
 								</h3>
-
-								<div class="relative mb-6">
-									<div
-										class="bg-muted border border-border rounded-lg p-4 shadow-ink-strong"
-									>
-										<div class="relative overflow-hidden rounded-lg bg-card">
-											<img
-												src="/blogs/s-braindump-page.webp"
-												alt="BuildOS Brain Dump Interface - Project selection dropdown with Apple Notes-style input area"
-												class="w-full h-auto object-contain max-w-full"
-												style="aspect-ratio: 1405 / 893"
-												loading="lazy"
-												decoding="async"
-											/>
-											<!-- Optional: Add a subtle overlay for better text contrast if needed -->
-											<div
-												class="absolute inset-0 bg-gradient-to-t from-black/5 to-transparent pointer-events-none"
-											></div>
-										</div>
-										<!-- Caption -->
-										<p
-											class="text-sm text-muted-foreground mt-3 text-center italic"
-										>
-											Brain Dump interface showing project selection
-										</p>
-									</div>
-								</div>
 
 								<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
 									<div class="bg-muted rounded-lg p-6">
@@ -601,7 +574,7 @@
 								<div class="bg-accent/10 rounded-lg p-6 mb-6">
 									<p class="text-muted-foreground mb-4">
 										When creating a new project, include these elements in your
-										brain dump:
+										first session:
 									</p>
 									<ul
 										class="list-disc list-inside space-y-2 text-muted-foreground"
@@ -630,11 +603,11 @@
 								</div>
 
 								<h3 class="text-xl font-semibold text-foreground mb-4">
-									AI Processing & Approval
+									AI Processing & Confirmation
 								</h3>
 								<p class="text-muted-foreground mb-4">
-									After brain dumping, BuildOS shows you exactly what it plans to
-									create:
+									BuildOS shows you what it plans to create or update before
+									taking action:
 								</p>
 								<div class="space-y-3 mb-6">
 									<div class="flex items-center space-x-3">
@@ -673,7 +646,7 @@
 
 								<div class="bg-muted border border-border rounded-lg p-6">
 									<h4 class="font-semibold text-foreground mb-3">
-										Example Brain Dump (Fitness Project)
+										Example First Session (Fitness Project)
 									</h4>
 									<blockquote class="text-muted-foreground italic">
 										"I want to start a fitness project. My goal is to lose 20
@@ -699,8 +672,8 @@
 								<p class="text-muted-foreground mb-6">
 									Project context is the most powerful feature of BuildOS. It's
 									rich, structured information about your projects that gets
-									smarter with every brain dump and serves as the foundation for
-									AI collaboration.
+									smarter with every session and serves as the foundation for AI
+									collaboration.
 								</p>
 
 								<h3 class="text-xl font-semibold text-foreground mb-4">
@@ -748,7 +721,7 @@
 										<div>
 											<p class="text-muted-foreground">
 												<strong class="text-foreground"
-													>Initial Brain Dump:</strong
+													>Initial Session:</strong
 												> AI creates foundational context structure
 											</p>
 										</div>
@@ -762,7 +735,7 @@
 										<div>
 											<p class="text-muted-foreground">
 												<strong class="text-foreground"
-													>Ongoing Brain Dumps:</strong
+													>Ongoing Sessions:</strong
 												> Each session adds new insights and updates
 											</p>
 										</div>
@@ -1031,7 +1004,7 @@
 											<p class="text-muted-foreground">
 												<strong class="text-foreground"
 													>AI Task Generation:</strong
-												> Tasks created automatically from brain dumps
+												> Tasks created automatically from project context
 											</p>
 										</div>
 									</div>
@@ -1354,7 +1327,7 @@
 										</li>
 										<li class="text-muted-foreground">
 											<strong class="text-foreground">Recent Context:</strong>
-											Insights from latest brain dumps
+											Insights from latest project sessions
 										</li>
 										<li class="text-muted-foreground">
 											<strong class="text-foreground"
@@ -1447,7 +1420,7 @@
 										<div>
 											<p class="text-muted-foreground">
 												<strong class="text-foreground"
-													>Brain Dump Results:</strong
+													>Session Results:</strong
 												> Add new insights back to BuildOS to enrich context
 											</p>
 										</div>

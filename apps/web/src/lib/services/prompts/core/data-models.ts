@@ -14,7 +14,7 @@
 export const TASK_CORE_FIELDS = {
 	title: 'string (required, max 255)',
 	description: 'string',
-	details: 'string (comprehensive specifics from braindump)',
+	details: 'string (comprehensive specifics from user input)',
 	status: '"backlog"|"in_progress"|"done"|"blocked"',
 	priority: '"low"|"medium"|"high"',
 	task_type: '"one_off"|"recurring"',
@@ -51,7 +51,7 @@ export function getTaskCreateModel(projectId?: string): string {
     "project_ref": "new-project-1" (link to project),`
 	}
     "description": "Task summary",
-    "details": "COMPREHENSIVE details - capture ALL specifics, implementation notes, research, ideas, observations, and context related to this task from the braindump",
+    "details": "COMPREHENSIVE details - capture ALL specifics, implementation notes, research, ideas, observations, and context related to this task from the user input",
     "priority": "low|medium|high",
     "status": "backlog",
     "task_type": "one_off|recurring",
@@ -78,7 +78,7 @@ export function getTaskUpdateModel(): string {
     // Include only fields that should be updated:
     "title": "Updated title if changed",
     "description": "Updated description if mentioned",
-    "details": "Updated/additional details (specifics mentioned in braindump)",
+    "details": "Updated/additional details (specifics mentioned in user input)",
     "status": "backlog|in_progress|done|blocked",
     "priority": "low|medium|high",
     "task_type": "one_off|recurring",
@@ -148,8 +148,8 @@ export function getProjectCreateModel(): string {
     "executive_summary": "Executive summary (<500 chars)",
     "status": "active|paused|completed|archived",
     "visibility": "private|public|team",
-    "start_date": "YYYY-MM-DD" (REQUIRED - parse from braindump or use today),
-    "end_date": "YYYY-MM-DD" (parse timeline from braindump or leave null),
+    "start_date": "YYYY-MM-DD" (REQUIRED - parse from user input or use today),
+    "end_date": "YYYY-MM-DD" (parse timeline from user input or leave null),
     "tags": ["optional", "tags"]
   }
 }`;

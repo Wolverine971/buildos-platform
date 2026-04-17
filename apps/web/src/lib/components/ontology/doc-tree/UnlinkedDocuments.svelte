@@ -53,6 +53,7 @@
 			updated_at: doc.updated_at ?? new Date().toISOString(),
 			is_public: false,
 			public_slug: null,
+			public_url_path: null,
 			public_status: 'not_public'
 		};
 	}

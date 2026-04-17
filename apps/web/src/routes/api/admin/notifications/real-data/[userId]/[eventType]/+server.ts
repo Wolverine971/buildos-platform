@@ -80,62 +80,6 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				break;
 			}
 
-			case 'brain_dump.processed': {
-				// Fetch user's most recent brain dump
-				const { data: brainDump } = await supabase
-					.from('onto_braindumps')
-					.select('id, status, metadata, processed_at, created_at')
-					.eq('user_id', userId)
-					.eq('status', 'processed')
-					.order('created_at', { ascending: false })
-					.limit(1)
-					.single();
-
-				if (brainDump) {
-					const metadata = (brainDump.metadata || {}) as Record<string, any>;
-					const projectId =
-						typeof metadata?.project_id === 'string'
-							? metadata.project_id
-							: typeof metadata?.projectId === 'string'
-								? metadata.projectId
-								: null;
-					let projectName = 'Unlinked Project';
-
-					if (projectId) {
-						const { data: project } = await supabase
-							.from('onto_projects')
-							.select('name')
-							.eq('id', projectId)
-							.single();
-						projectName = project?.name || 'Unnamed Project';
-					}
-
-					const tasksCreated =
-						typeof metadata?.tasks_created === 'number'
-							? metadata.tasks_created
-							: typeof metadata?.task_count === 'number'
-								? metadata.task_count
-								: 0;
-					const processingTimeMs =
-						typeof metadata?.processing_time_ms === 'number'
-							? metadata.processing_time_ms
-							: brainDump.processed_at && brainDump.created_at
-								? new Date(brainDump.processed_at).getTime() -
-									new Date(brainDump.created_at).getTime()
-								: 1500;
-					const safeProcessingTimeMs = Math.max(0, processingTimeMs);
-
-					payload = {
-						brain_dump_id: brainDump.id,
-						project_id: projectId || '',
-						project_name: projectName,
-						tasks_created: tasksCreated,
-						processing_time_ms: safeProcessingTimeMs
-					};
-				}
-				break;
-			}
-
 			case 'task.due_soon': {
 				// Fetch user's next upcoming task
 				const now = new Date().toISOString();

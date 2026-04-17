@@ -11,6 +11,7 @@ vi.mock('$lib/server/public-page-content-review.service', () => ({
 
 import {
 	buildPublicPageUrlPath,
+	getPublicPageBySlug,
 	normalizePublicPageSlugBase,
 	normalizePublicPageSlugPrefix,
 	prepareDocumentPublicPagePreview,
@@ -44,6 +45,50 @@ describe('public-page.service slug helpers', () => {
 			'/p/dj-wayne/market-map'
 		);
 		expect(buildPublicPageUrlPath('legacy-page')).toBe('/p/legacy-page');
+	});
+});
+
+describe('getPublicPageBySlug', () => {
+	it('returns a public page row regardless of visibility (unlisted resolves via direct link)', async () => {
+		const filters: Record<string, unknown> = {};
+		const builder: any = {
+			select: vi.fn(() => builder),
+			eq: vi.fn((key: string, value: unknown) => {
+				filters[key] = value;
+				return builder;
+			}),
+			is: vi.fn((key: string, value: unknown) => {
+				filters[`is:${key}`] = value;
+				return builder;
+			}),
+			maybeSingle: vi.fn(async () => ({
+				data: {
+					id: 'pg-1',
+					slug: 'dj-wayne-market-map',
+					slug_prefix: 'dj-wayne',
+					slug_base: 'market-map',
+					status: 'published',
+					public_status: 'live',
+					visibility: 'unlisted',
+					deleted_at: null
+				},
+				error: null
+			}))
+		};
+		const supabase = { from: vi.fn(() => builder) } as any;
+
+		const row = await getPublicPageBySlug(supabase, 'dj-wayne-market-map');
+
+		expect(row).toMatchObject({ visibility: 'unlisted', public_status: 'live' });
+		// Critical: we must NOT filter by visibility here. Unlisted pages are
+		// direct-link readable; excluding them would 404 every unlisted share.
+		expect(filters).not.toHaveProperty('visibility');
+		expect(filters).toMatchObject({
+			slug: 'dj-wayne-market-map',
+			status: 'published',
+			public_status: 'live',
+			'is:deleted_at': null
+		});
 	});
 });
 

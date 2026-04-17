@@ -3,12 +3,7 @@
 		{
 			"file": "src/routes/+layout.svelte",
 			"type": "page",
-			"components": [
-				"OnboardingModal",
-				"ToastContainer",
-				"PaymentWarning",
-				"BackgroundJobIndicator"
-			]
+			"components": ["OnboardingModal", "ToastContainer", "PaymentWarning"]
 		},
 		{
 			"file": "src/routes/+page.svelte",
@@ -26,26 +21,6 @@
 			"components": ["AgentChatModal", "GraphControls", "OntologyGraph", "NodeDetailsPanel"]
 		},
 		{
-			"file": "src/routes/dashboard/calendar/+page.svelte",
-			"type": "page",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": [
-				"MobileCommandCenter",
-				"ProjectDocumentsSection",
-				"ProjectInsightRail",
-				"ProjectModalsHost"
-			]
-		},
-		{
 			"file": "src/lib/components/dashboard/AnalyticsDashboard.svelte",
 			"type": "component",
 			"components": ["DailyBriefModal", "BriefChatModal", "OverdueTaskTriageModal"]
@@ -59,7 +34,6 @@
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
 			"type": "component",
 			"components": [
-				"BrainDumpMinimizedView",
 				"ProjectSynthesisMinimizedView",
 				"CalendarAnalysisMinimizedView",
 				"TimeBlockMinimizedView"
@@ -69,7 +43,6 @@
 			"file": "src/lib/components/notifications/NotificationModal.svelte",
 			"type": "component",
 			"components": [
-				"BrainDumpModalContent",
 				"ProjectSynthesisModalContent",
 				"CalendarAnalysisModalContent",
 				"TimeBlockModalContent"
@@ -160,19 +133,29 @@
 			]
 		},
 		{
+			"file": "src/routes/dashboard/calendar/+page.svelte",
+			"type": "page",
+			"components": ["TaskEditModal", "EventEditModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": [
+				"MobileCommandCenter",
+				"ProjectDocumentsSection",
+				"ProjectInsightRail",
+				"ProjectModalsHost"
+			]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",
 			"type": "page",
 			"components": ["SvelteFlowGraph", "G6Graph"]
-		},
-		{
-			"file": "src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte",
-			"type": "component",
-			"components": [
-				"ParseResultsDiffView",
-				"DualProcessingResults",
-				"SuccessView",
-				"OperationEditModal"
-			]
 		},
 		{
 			"file": "src/routes/projects/[id]/tasks/[task_id]/+page.svelte",
@@ -192,39 +175,6 @@
 				"logUpdateAsync",
 				"logDeleteAsync"
 			]
-		},
-		{
-			"file": "src/lib/services/brain-dump-notification.bridge.ts",
-			"type": "service",
-			"components": [],
-			"exports": [
-				"initBrainDumpNotificationBridge",
-				"cleanupBrainDumpNotificationBridge",
-				"handleBrainDumpStreamUpdate",
-				"completeBrainDumpNotification",
-				"getActiveBrainDumpNotificationId",
-				"clearActiveBrainDumpNotification",
-				"cancelBrainDumpAPIStream",
-				"forceResetAllBrainDumpState"
-			]
-		},
-		{
-			"file": "src/lib/services/braindump-api.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["brainDumpService"]
-		},
-		{
-			"file": "src/lib/services/braindump-background.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["backgroundBrainDumpService"]
-		},
-		{
-			"file": "src/lib/services/braindump-status.service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["BrainDumpStatusService"]
 		},
 		{
 			"file": "src/lib/services/briefClient.service.ts",
@@ -290,12 +240,6 @@
 			"type": "service",
 			"components": [],
 			"exports": ["CHAT_COMPRESSION_DEFAULTS", "ChatCompressionService"]
-		},
-		{
-			"file": "src/lib/services/chat-context-service.ts",
-			"type": "service",
-			"components": [],
-			"exports": ["ChatContextService"]
 		},
 		{
 			"file": "src/lib/services/dunning-service.ts",
@@ -569,46 +513,6 @@
 			"exports": ["VoiceRecordingService", "voiceRecordingService"]
 		},
 		{
-			"file": "src/lib/stores/backgroundJobs.ts",
-			"type": "store",
-			"components": [],
-			"exports": [
-				"backgroundJobs",
-				"activeBackgroundJobs",
-				"processingJobs",
-				"completedJobs",
-				"failedJobs"
-			]
-		},
-		{
-			"file": "src/lib/stores/brain-dump-v2.store.ts",
-			"type": "store",
-			"components": [],
-			"exports": [
-				"brainDumpV2Store",
-				"brainDumpComputed",
-				"selectedProjectName",
-				"hasUnsavedChanges",
-				"canParse",
-				"canApply",
-				"enabledOperationsCount",
-				"disabledOperationsCount",
-				"hasParseResults",
-				"canAutoAccept",
-				"hasOperationErrors",
-				"hasCriticalErrors",
-				"operationErrorSummary",
-				"isProcessingActive",
-				"processingStatus",
-				"isModalOpen",
-				"isNotificationOpen",
-				"isNotificationMinimized",
-				"showingParseResults",
-				"isTextareaCollapsed",
-				"processingProjectIds"
-			]
-		},
-		{
 			"file": "src/lib/stores/briefChatSession.store.ts",
 			"type": "store",
 			"components": [],
@@ -713,20 +617,6 @@
 			]
 		},
 		{
-			"file": "src/lib/components/chat/project-selector-browser.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_PROJECT_SELECTOR_LIMIT",
-				"MAX_PROJECT_SELECTOR_LIMIT",
-				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
-				"normalizeProjectSelectionSearch",
-				"normalizeProjectSelectionLimit",
-				"clearProjectSelectionBrowserCache",
-				"fetchProjectSelectionSummaries"
-			]
-		},
-		{
 			"file": "src/lib/components/agent/agent-chat-formatters.ts",
 			"type": "component",
 			"components": [],
@@ -809,6 +699,20 @@
 			]
 		},
 		{
+			"file": "src/lib/components/chat/project-selector-browser.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"DEFAULT_PROJECT_SELECTOR_LIMIT",
+				"MAX_PROJECT_SELECTOR_LIMIT",
+				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
+				"normalizeProjectSelectionSearch",
+				"normalizeProjectSelectionLimit",
+				"clearProjectSelectionBrowserCache",
+				"fetchProjectSelectionSummaries"
+			]
+		},
+		{
 			"file": "src/lib/components/project/project-page-data-controller.ts",
 			"type": "component",
 			"components": [],
@@ -853,36 +757,6 @@
 			"type": "component",
 			"components": [],
 			"exports": ["createDragDropState"]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"fetchLinkedEntities",
-				"fetchAvailableEntities",
-				"createEdges",
-				"linkEntities",
-				"deleteEdge",
-				"unlinkEntity",
-				"filterEntities"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"ALLOWED_LINKS",
-				"canLink",
-				"RELATIONSHIP_MAP",
-				"getRelationship",
-				"getAllowedTargetKinds",
-				"ENTITY_SECTIONS",
-				"getEntityDisplayName",
-				"formatRelationshipLabel",
-				"getFilteredSections"
-			]
 		},
 		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
@@ -942,6 +816,36 @@
 				"getTaskPersonRelevanceScore",
 				"taskMatchesPersonFocusFilter",
 				"getTaskPersonRelevanceLabel"
+			]
+		},
+		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"fetchLinkedEntities",
+				"fetchAvailableEntities",
+				"createEdges",
+				"linkEntities",
+				"deleteEdge",
+				"unlinkEntity",
+				"filterEntities"
+			]
+		},
+		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"ALLOWED_LINKS",
+				"canLink",
+				"RELATIONSHIP_MAP",
+				"getRelationship",
+				"getAllowedTargetKinds",
+				"ENTITY_SECTIONS",
+				"getEntityDisplayName",
+				"formatRelationshipLabel",
+				"getFilteredSections"
 			]
 		},
 		{
@@ -1027,17 +931,6 @@
 		}
 	],
 	"dependencies": {
-		"src/routes/dashboard/calendar/+page.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/EventEditModal.svelte"
-		],
-		"src/routes/projects/[id]/+page.svelte": [
-			"src/lib/components/project/ProjectInsightRail.svelte",
-			"src/lib/components/project/ProjectModalsHost.svelte"
-		],
-		"src/lib/components/notifications/NotificationModal.svelte": [
-			"src/lib/components/notifications/types/brain-dump/BrainDumpModalContent.svelte"
-		],
 		"src/lib/components/ontology/EventEditModal.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/GoalEditModal.svelte",
@@ -1067,6 +960,14 @@
 			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
 		],
+		"src/routes/dashboard/calendar/+page.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/EventEditModal.svelte"
+		],
+		"src/routes/projects/[id]/+page.svelte": [
+			"src/lib/components/project/ProjectInsightRail.svelte",
+			"src/lib/components/project/ProjectModalsHost.svelte"
+		],
 		"src/routes/projects/[id]/tasks/[task_id]/+page.svelte": [
 			"src/lib/components/ontology/DocumentModal.svelte",
 			"src/lib/components/ontology/GoalEditModal.svelte",
@@ -1081,7 +982,6 @@
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
 		"src/lib/components/admin/adminRoutes.ts",
-		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat-operation-activity.ts",
 		"src/lib/components/agent/agent-chat-session.ts",
@@ -1089,16 +989,17 @@
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
+		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
 		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",

@@ -87,16 +87,6 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 			return ApiResponse.forbidden();
 		}
 
-		// Remove note references from brain_dump_links
-		const { error: brainDumpLinksError } = await supabase
-			.from('brain_dump_links')
-			.update({ note_id: null })
-			.eq('note_id', params.id);
-
-		if (brainDumpLinksError) {
-			return ApiResponse.databaseError(brainDumpLinksError);
-		}
-
 		// Delete the note
 		const { error } = await supabase.from('notes').delete().eq('id', params.id);
 

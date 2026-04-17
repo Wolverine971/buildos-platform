@@ -1354,7 +1354,7 @@ function buildFindings(input: {
 				'No prompt-injection scanner events were recorded, so this page uses operational and access-control data for the main posture.',
 			evidence: ['security_logs returned zero rows for the selected time period'],
 			recommendation:
-				'Confirm the detector still logs blocked, detected, false-positive, and rate-limit events when suspicious brain dumps are submitted.',
+				'Confirm the detector still logs blocked, detected, false-positive, and rate-limit events when suspicious freeform input is submitted.',
 			source: SOURCE_LABELS.securityLogs
 		});
 	}

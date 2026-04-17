@@ -95,8 +95,8 @@
 				</h1>
 
 				<p class="text-sm sm:text-base text-muted-foreground max-w-xl">
-					BuildOS listens to brain dumps, carves structure out of noise, and keeps context
-					warm — so you can stay in flow.
+					BuildOS listens to messy project context, carves structure out of noise, and
+					keeps context warm — so you can stay in flow.
 				</p>
 
 				<div class="flex flex-wrap gap-3 items-center">
@@ -131,7 +131,7 @@
 							<div
 								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
 							>
-								Raw brain dump
+								Raw project context
 							</div>
 							<p class="text-[0.8rem] text-muted-foreground leading-relaxed">
 								“Schedule investor calls, fix landing copy, ship onboarding. Also

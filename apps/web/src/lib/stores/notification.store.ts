@@ -3,7 +3,7 @@
 /**
  * Generic Stackable Notification Store
  *
- * Manages a stack of notifications for async operations (brain dumps, phase generation, etc.)
+ * Manages a stack of notifications for async operations.
  * - Multiple notifications can exist simultaneously
  * - Only one notification can be expanded at a time
  * - Notifications persist across page navigation (session storage)
@@ -600,9 +600,7 @@ export function createNotificationStore() {
 			};
 
 			// Add error to data based on type
-			if (updated.type === 'brain-dump') {
-				updated.data.error = error;
-			} else if (updated.type === 'calendar-analysis') {
+			if (updated.type === 'calendar-analysis') {
 				updated.data.error = error;
 			} else if (updated.type === 'generic') {
 				updated.data.error = error;

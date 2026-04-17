@@ -29,43 +29,9 @@ export async function savePromptForAudit({
 			// New project scenarios
 			'new-project-singular': 'new-project/singular/new-project-singular-prompt.md',
 
-			// New project dual processing
-			'new-project-dual-context':
-				'new-project/dual-processing/context/new-project-context-prompt.md',
-			'new-project-dual-tasks':
-				'new-project/dual-processing/tasks/new-project-task-extraction-prompt.md',
-
-			// Existing project dual processing
-			'existing-project-dual-context':
-				'existing-project/dual-processing/context/existing-project-context-prompt.md',
-			'existing-project-dual-tasks':
-				'existing-project/dual-processing/tasks/existing-project-task-extraction-prompt.md',
-			'existing-project-dual-tasks-with-questions':
-				'existing-project/dual-processing/tasks/existing-project-task-extraction-with-questions-prompt.md',
-
-			// Existing project short braindump (conditional dual processing)
-			'short-braindump-task-extraction':
-				'existing-project/short-braindump/tasks/short-braindump-task-extraction-prompt.md',
-			'short-braindump-task-extraction-with-questions':
-				'existing-project/short-braindump/tasks/short-braindump-task-extraction-with-questions-prompt.md',
-			'short-braindump-context-update':
-				'existing-project/short-braindump/context/short-braindump-context-update-prompt.md',
-
 			// Legacy mappings (kept for backwards compatibility)
 			'new-project-long': 'new-project/singular/new-project-singular-prompt.md',
 			'new-project-short': 'new-project/singular/new-project-singular-prompt.md',
-			'existing-project-long':
-				'existing-project/dual-processing/context/existing-project-context-prompt.md',
-			'existing-project-short':
-				'existing-project/short-braindump/tasks/short-braindump-task-extraction-prompt.md',
-			'existing-project-context-update':
-				'existing-project/short-braindump/context/short-braindump-context-update-prompt.md',
-			'dual-processing-context':
-				'existing-project/dual-processing/context/existing-project-context-prompt.md',
-			'dual-processing-tasks':
-				'existing-project/dual-processing/tasks/existing-project-task-extraction-prompt.md',
-			'dual-processing-tasks-with-questions':
-				'existing-project/dual-processing/tasks/existing-project-task-extraction-with-questions-prompt.md',
 
 			// Task synthesis
 			'task-synthesis': 'task-synthesis/task-synthesis-reorganization-prompt.md',
@@ -208,69 +174,5 @@ Each accepted suggestion creates a new ontology project graph (no merge/dedup wi
 		console.error(`Scenario: ${scenarioType}`);
 		console.error(`Error:`, error);
 		console.error('='.repeat(80) + '\n');
-	}
-}
-
-/**
- * Determine the scenario type based on the context
- */
-export function determineScenarioType({
-	isNewProject,
-	brainDumpLength,
-	isDualProcessing,
-	processingType,
-	isShortBrainDump,
-	hasQuestions
-}: {
-	isNewProject: boolean;
-	brainDumpLength: number;
-	isDualProcessing?: boolean;
-	processingType?: 'context' | 'tasks' | 'context-update';
-	isShortBrainDump?: boolean;
-	hasQuestions?: boolean;
-}): string {
-	// Short braindump scenarios (existing project only)
-	if (isShortBrainDump && !isNewProject) {
-		if (processingType === 'context-update') {
-			return 'short-braindump-context-update';
-		} else if (processingType === 'tasks') {
-			return hasQuestions
-				? 'short-braindump-task-extraction-with-questions'
-				: 'short-braindump-task-extraction';
-		}
-	}
-
-	// Dual processing scenarios
-	if (isDualProcessing) {
-		if (isNewProject) {
-			// New project dual processing
-			if (processingType === 'context') {
-				return 'new-project-dual-context';
-			} else if (processingType === 'tasks') {
-				return 'new-project-dual-tasks';
-			}
-		} else {
-			// Existing project dual processing
-			if (processingType === 'context') {
-				return 'existing-project-dual-context';
-			} else if (processingType === 'tasks') {
-				return hasQuestions
-					? 'existing-project-dual-tasks-with-questions'
-					: 'existing-project-dual-tasks';
-			}
-		}
-	}
-
-	// Singular processing (edge case: new project without dual processing)
-	if (isNewProject && !isDualProcessing) {
-		return 'new-project-singular';
-	}
-
-	// Fallback for backwards compatibility
-	const isShort = brainDumpLength < 500;
-	if (isNewProject) {
-		return 'new-project-singular';
-	} else {
-		return isShort ? 'short-braindump-task-extraction' : 'existing-project-dual-context';
 	}
 }

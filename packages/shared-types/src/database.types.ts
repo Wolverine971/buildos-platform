@@ -2375,8 +2375,8 @@ export type Database = {
           message_chars: number
           messages_sha256: string
           model_messages: Json
-          prompt_variant: string
           prompt_sections: Json | null
+          prompt_variant: string
           rendered_dump_text: string | null
           request_payload: Json | null
           session_id: string
@@ -2397,8 +2397,8 @@ export type Database = {
           message_chars: number
           messages_sha256: string
           model_messages?: Json
-          prompt_variant?: string
           prompt_sections?: Json | null
+          prompt_variant?: string
           rendered_dump_text?: string | null
           request_payload?: Json | null
           session_id: string
@@ -2419,8 +2419,8 @@ export type Database = {
           message_chars?: number
           messages_sha256?: string
           model_messages?: Json
-          prompt_variant?: string
           prompt_sections?: Json | null
+          prompt_variant?: string
           rendered_dump_text?: string | null
           request_payload?: Json | null
           session_id?: string
@@ -4917,7 +4917,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
-          correlation_id: string
+          correlation_id?: string
           created_at?: string
           error_stack?: string | null
           id?: string
@@ -7005,6 +7005,47 @@ export type Database = {
           },
         ]
       }
+      onto_public_page_views: {
+        Row: {
+          created_at: string
+          id: string
+          is_author: boolean
+          public_page_id: string
+          referrer: string | null
+          session_id: string | null
+          viewed_at: string
+          viewer_hash: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_author?: boolean
+          public_page_id: string
+          referrer?: string | null
+          session_id?: string | null
+          viewed_at?: string
+          viewer_hash?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_author?: boolean
+          public_page_id?: string
+          referrer?: string | null
+          session_id?: string | null
+          viewed_at?: string
+          viewer_hash?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onto_public_page_views_public_page_id_fkey"
+            columns: ["public_page_id"]
+            isOneToOne: false
+            referencedRelation: "onto_public_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onto_public_pages: {
         Row: {
           created_at: string
@@ -7033,6 +7074,9 @@ export type Database = {
           title: string
           updated_at: string
           updated_by: string
+          view_count_30d: number
+          view_count_30d_updated_at: string | null
+          view_count_all: number
           visibility: string
         }
         Insert: {
@@ -7062,6 +7106,9 @@ export type Database = {
           title: string
           updated_at?: string
           updated_by: string
+          view_count_30d?: number
+          view_count_30d_updated_at?: string | null
+          view_count_all?: number
           visibility?: string
         }
         Update: {
@@ -7091,6 +7138,9 @@ export type Database = {
           title?: string
           updated_at?: string
           updated_by?: string
+          view_count_30d?: number
+          view_count_30d_updated_at?: string | null
+          view_count_all?: number
           visibility?: string
         }
         Relationships: [
@@ -9456,6 +9506,54 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      security_event_daily_rollups: {
+        Row: {
+          category: string
+          event_count: number
+          event_type: string
+          first_seen_at: string | null
+          id: string
+          last_seen_at: string | null
+          max_risk_score: number | null
+          outcome: string
+          rollup_date: string
+          severity: string
+          unique_actor_user_count: number
+          unique_external_agent_caller_count: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          event_count?: number
+          event_type: string
+          first_seen_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          max_risk_score?: number | null
+          outcome: string
+          rollup_date: string
+          severity: string
+          unique_actor_user_count?: number
+          unique_external_agent_caller_count?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          event_count?: number
+          event_type?: string
+          first_seen_at?: string | null
+          id?: string
+          last_seen_at?: string | null
+          max_risk_score?: number | null
+          outcome?: string
+          rollup_date?: string
+          severity?: string
+          unique_actor_user_count?: number
+          unique_external_agent_caller_count?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       security_events: {
         Row: {
@@ -12181,6 +12279,7 @@ export type Database = {
           trial_ends_at: string | null
           updated_at: string
           usage_archetype: string | null
+          username: string | null
         }
         Insert: {
           access_restricted?: boolean | null
@@ -12207,6 +12306,7 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string
           usage_archetype?: string | null
+          username?: string | null
         }
         Update: {
           access_restricted?: boolean | null
@@ -12233,6 +12333,7 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string
           usage_archetype?: string | null
+          username?: string | null
         }
         Relationships: [
           {
@@ -12910,6 +13011,14 @@ export type Database = {
           updated_at: string
         }[]
       }
+      build_fastchat_project_intelligence: {
+        Args: {
+          p_context_type: string
+          p_project_id?: string
+          p_user_id: string
+        }
+        Returns: Json
+      }
       cancel_brief_jobs_for_date: {
         Args: {
           p_brief_date: string
@@ -13006,6 +13115,22 @@ export type Database = {
       cleanup_project_history: {
         Args: { target_project_id: string }
         Returns: undefined
+      }
+      cleanup_security_events: {
+        Args: {
+          p_dry_run?: boolean
+          p_high_signal_retention_days?: number
+          p_low_signal_retention_days?: number
+          p_now?: string
+        }
+        Returns: {
+          deleted_count: number
+          dry_run: boolean
+          high_signal_candidate_count: number
+          high_signal_cutoff: string
+          low_signal_candidate_count: number
+          low_signal_cutoff: string
+        }[]
       }
       cleanup_stale_brief_generations: {
         Args: { p_timeout_minutes?: number; p_user_id: string }
@@ -13246,6 +13371,42 @@ export type Database = {
           date: string
           total_briefs: number
           unique_users: number
+        }[]
+      }
+      get_content_release_performance: {
+        Args: { p_from_date?: string; p_limit?: number; p_to_date?: string }
+        Returns: {
+          avg_scroll_pct: number
+          avg_time_on_page_ms: number
+          benchmark_basis: string
+          benchmark_sample_size: number
+          benchmark_score: number
+          bounce_rate: number
+          decay_rate_after_spike: number
+          first_view_at: string
+          growth_slope_7d: number
+          id: number
+          median_time_on_page_ms: number
+          minutes_to_first_view: number
+          path: string
+          performance_band: string
+          published_at: string
+          release_stage: string
+          slug: string
+          title: string
+          total_unique_visitors: number
+          total_views: number
+          unique_24h: number
+          unique_30d: number
+          unique_7d: number
+          views_1h: number
+          views_24h: number
+          views_24h_percentile: number
+          views_30d: number
+          views_30d_percentile: number
+          views_6h: number
+          views_7d: number
+          views_7d_percentile: number
         }[]
       }
       get_daily_active_users: {
@@ -13555,21 +13716,37 @@ export type Database = {
           template_fallback_count: number
         }[]
       }
-      get_sms_notification_stats: {
-        Args: { p_interval?: string }
-        Returns: {
-          avg_sms_delivery_time_seconds: number
-          opt_out_rate: number
-          phone_verification_rate: number
-          sms_adoption_rate: number
-          sms_delivery_rate_24h: number
-          total_sms_sent_24h: number
-          total_users_with_phone: number
-          users_opted_out: number
-          users_phone_verified: number
-          users_sms_enabled: number
-        }[]
-      }
+      get_sms_notification_stats:
+        | {
+            Args: never
+            Returns: {
+              avg_sms_delivery_time_seconds: number
+              opt_out_rate: number
+              phone_verification_rate: number
+              sms_adoption_rate: number
+              sms_delivery_rate_24h: number
+              total_sms_sent_24h: number
+              total_users_with_phone: number
+              users_opted_out: number
+              users_phone_verified: number
+              users_sms_enabled: number
+            }[]
+          }
+        | {
+            Args: { p_interval?: string }
+            Returns: {
+              avg_sms_delivery_time_seconds: number
+              opt_out_rate: number
+              phone_verification_rate: number
+              sms_adoption_rate: number
+              sms_delivery_rate_24h: number
+              total_sms_sent_24h: number
+              total_users_with_phone: number
+              users_opted_out: number
+              users_phone_verified: number
+              users_sms_enabled: number
+            }[]
+          }
       get_subscription_overview: {
         Args: never
         Returns: {
@@ -13663,6 +13840,10 @@ export type Database = {
         Args: { row_id: number }
         Returns: undefined
       }
+      increment_onto_public_page_view_count: {
+        Args: { p_is_author?: boolean; p_public_page_id: string }
+        Returns: number
+      }
       increment_question_display_count: {
         Args: { question_ids: string[] }
         Returns: undefined
@@ -13670,6 +13851,10 @@ export type Database = {
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { user_id: string }; Returns: boolean }
+      is_high_signal_security_event: {
+        Args: { p_event_type: string; p_outcome: string; p_severity: string }
+        Returns: boolean
+      }
       jsonb_increment_counter: {
         Args: { p_counts: Json; p_increment?: number; p_key: string }
         Returns: Json
@@ -13803,6 +13988,17 @@ export type Database = {
           type_key: string
         }[]
       }
+      onto_task_update_atomic: {
+        Args: {
+          p_assigned_by_actor_id: string
+          p_assignee_actor_ids: string[]
+          p_source?: string
+          p_sync_assignees: boolean
+          p_task_id: string
+          p_updates: Json
+        }
+        Returns: Json
+      }
       prune_stale_profile_fragments: {
         Args: { p_older_than_days?: number }
         Returns: number
@@ -13840,6 +14036,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      refresh_onto_public_page_30d_counts: { Args: never; Returns: number }
       refresh_sms_metrics_daily: { Args: never; Returns: undefined }
       refresh_user_migration_stats: {
         Args: never
@@ -13869,6 +14066,15 @@ export type Database = {
       resolve_onto_public_page_slug_prefix: {
         Args: { p_actor_id: string }
         Returns: string
+      }
+      rollup_security_events: {
+        Args: { p_end_date?: string; p_start_date?: string }
+        Returns: {
+          rolled_event_count: number
+          rollup_rows: number
+          summary_end_date: string
+          summary_start_date: string
+        }[]
       }
       search_all_content: {
         Args: {

@@ -2,12 +2,17 @@
 import type { PageServerLoad } from './$types';
 import { error, redirect } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ params, fetch }) => {
+export const load: PageServerLoad = async ({ params, fetch, locals }) => {
 	const slugPrefix = params.slugPrefix?.trim().toLowerCase();
 	const slugBase = params.slugBase?.trim().toLowerCase();
 	if (!slugPrefix || !slugBase) {
 		throw error(404, 'Public page not found');
 	}
+
+	const session = await locals.safeGetSession();
+	const currentUser = session?.user
+		? { id: session.user.id, email: session.user.email ?? null }
+		: null;
 
 	const response = await fetch(`/api/public/pages/${slugPrefix}-${slugBase}`);
 	const payload = await response.json().catch(() => null);
@@ -24,5 +29,5 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 		throw error(404, 'Public page not found');
 	}
 
-	return { page };
+	return { page, currentUser };
 };

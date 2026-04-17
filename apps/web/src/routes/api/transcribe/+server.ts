@@ -324,8 +324,7 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 				// Execute transcription with timeout
 				// Custom vocabulary prompt helps the model recognize domain-specific terms
 				// Base terms are always included, custom terms (like project names) are appended
-				const baseVocabulary =
-					'BuildOS, brain dump, ontology, daily brief, phase, project context';
+				const baseVocabulary = 'BuildOS, ontology, daily brief, phase, project context';
 				const vocabularyPrompt = customVocabulary
 					? `${baseVocabulary}, ${customVocabulary}`
 					: baseVocabulary;

@@ -6,9 +6,9 @@
 
 <SEOHead
 	title="Privacy Policy - BuildOS | Data Protection & User Privacy"
-	description="BuildOS privacy policy: Learn how we protect your data, handle brain dumps securely, and respect your privacy. GDPR compliant, data encrypted, you own your content."
+	description="BuildOS privacy policy: Learn how we protect your data, handle project context securely, and respect your privacy. GDPR compliant, data encrypted, you own your content."
 	canonical="https://build-os.com/privacy"
-	keywords="BuildOS privacy policy, data protection, GDPR compliance, user privacy, brain dump security, data encryption, privacy rights"
+	keywords="BuildOS privacy policy, data protection, GDPR compliance, user privacy, project context security, data encryption, privacy rights"
 	author="BuildOS"
 />
 
@@ -90,7 +90,7 @@
 						</li>
 						<li class="text-muted-foreground">
 							<strong class="text-foreground">Content Data:</strong> Your projects, tasks,
-							notes, brain dumps, and onboarding questionnaire responses
+							notes, captured context, and onboarding questionnaire responses
 						</li>
 						<li class="text-muted-foreground">
 							<strong class="text-foreground">Phone Number (Optional):</strong> Your phone
@@ -157,9 +157,9 @@
 							</h3>
 							<p class="text-sm text-muted-foreground">
 								To provide AI-powered insights, we send your project data, task
-								information, brain dumps, and onboarding responses to AI providers
-								including OpenAI and Anthropic. This data is processed to organize
-								and enhance your productivity workflow.
+								information, captured context, and onboarding responses to AI
+								providers including OpenAI and Anthropic. This data is processed to
+								organize and enhance your productivity workflow.
 							</p>
 						</div>
 					</div>

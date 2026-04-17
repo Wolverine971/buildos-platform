@@ -676,7 +676,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	get_buildos_usage_guide: {
 		summary: 'Step-by-step BuildOS usage playbook for onboarding, planning, and automation.',
 		capabilities: [
-			'Describes workflows (brain dumps → ontology → scheduling)',
+			'Describes workflows (captured context -> ontology -> scheduling)',
 			'Highlights prop inference + calendar actions',
 			'Suggests follow-up tool calls'
 		],

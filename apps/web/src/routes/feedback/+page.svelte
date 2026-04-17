@@ -524,7 +524,7 @@
 						</div>
 					</div>
 					<blockquote class="text-muted-foreground text-sm mb-4 italic">
-						"It would be nice to braindump on any page."
+						"It would be nice to capture ideas on any page."
 					</blockquote>
 					<div class="bg-accent/10 rounded-lg p-3">
 						<div class="flex items-center text-accent text-sm">
@@ -532,7 +532,7 @@
 							<span class="font-medium">Implemented!</span>
 						</div>
 						<p class="text-xs text-muted-foreground mt-1">
-							Added quick brain dump icon in nav bar.
+							Added quick capture icon in nav bar.
 						</p>
 					</div>
 				</div>

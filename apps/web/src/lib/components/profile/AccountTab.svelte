@@ -638,7 +638,7 @@
 											class="list-disc list-inside mt-2 text-muted-foreground space-y-1"
 										>
 											<li>All projects and tasks</li>
-											<li>Daily briefs and brain dumps</li>
+											<li>Daily briefs and captured project context</li>
 											<li>Calendar integration settings</li>
 											<li>Subscription and billing data</li>
 										</ul>

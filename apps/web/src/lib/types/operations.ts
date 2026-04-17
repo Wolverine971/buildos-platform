@@ -1,6 +1,6 @@
 // apps/web/src/lib/types/operations.ts
 
-// Shared operation-shape types used by brain dump and non-brain-dump flows.
+// Shared operation-shape types used by project synthesis and calendar analysis flows.
 
 export type TableName =
 	| 'projects'
@@ -9,7 +9,6 @@ export type TableName =
 	| 'phases'
 	| 'project_context'
 	| 'project_notes'
-	| 'brain_dumps'
 	| 'daily_briefs'
 	| 'project_questions';
 
@@ -106,17 +105,4 @@ export interface ExecutionResult {
 		[key: string]: any;
 	}>;
 	error?: string;
-}
-
-export interface GeneratedProjectQuestion {
-	question: string;
-	category: string;
-	priority: string;
-	context?: string;
-	expectedOutcome?: string;
-	triggers?: {
-		braindumpMention?: string;
-		gapIdentified?: string;
-		projectState?: string;
-	};
 }

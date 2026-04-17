@@ -153,7 +153,7 @@
 				</div>
 				<div class="flex items-center text-xs">
 					<div class="w-2.5 h-2.5 bg-indigo-500 rounded mr-1"></div>
-					<span class="text-muted-foreground">Brain Dumps</span>
+					<span class="text-muted-foreground">Captured Context</span>
 				</div>
 				<div class="flex items-center text-xs">
 					<div class="w-2.5 h-2.5 bg-blue-500 rounded mr-1"></div>

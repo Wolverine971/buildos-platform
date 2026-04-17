@@ -335,7 +335,7 @@
 						<h4 class="text-sm font-semibold text-foreground uppercase tracking-wider">
 							Primary Actions
 						</h4>
-						<Button variant="primary" icon={Zap} fullWidth>Process Brain Dump</Button>
+						<Button variant="primary" icon={Zap} fullWidth>Process Context</Button>
 						<Button variant="primary" size="lg" fullWidth>Large Primary</Button>
 						<Button variant="primary" size="sm" fullWidth>Small Primary</Button>
 					</div>
@@ -434,7 +434,7 @@
 							placeholder="Choose a project..."
 						>
 							<option value="new">New Project</option>
-							<option value="1">Brain Dump System</option>
+							<option value="1">Project Capture System</option>
 							<option value="2">Ontology Migration</option>
 							<option value="3">Design System Update</option>
 						</Select>
@@ -644,7 +644,7 @@
 					class="bg-muted/50 border-b border-border px-6 py-4 tx tx-strip tx-weak flex items-center justify-between"
 				>
 					<div>
-						<p class="micro-label mb-1">New Brain Dump</p>
+						<p class="micro-label mb-1">New Capture</p>
 						<h3 class="text-lg font-semibold text-foreground">Capture Your Thoughts</h3>
 					</div>
 					<Badge variant="info">Draft</Badge>

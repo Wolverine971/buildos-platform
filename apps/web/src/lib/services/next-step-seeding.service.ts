@@ -3,14 +3,13 @@
  * NextStepSeedingService - Generates and seeds initial next steps for new projects
  *
  * This service is called when:
- * - A project is created via brain dump processing
  * - A project is created via the ontology system
  *
  * It uses goal-first heuristics to generate contextually appropriate next steps based on:
  * - Project name and description
  * - Project template type
  * - Initial tasks created
- * - Brain dump content (if available)
+ * - Source content (if available)
  *
  * @see /apps/web/docs/features/project-activity-logging/IMPLEMENTATION_PLAN.md
  */
@@ -66,7 +65,7 @@ interface SeedNextStepParams {
 	userId: string;
 	projectData?: Partial<ProjectContext>;
 	tasks?: TaskContext[];
-	brainDumpContent?: string;
+	sourceContent?: string;
 }
 
 interface GeneratedNextStep {
@@ -92,7 +91,7 @@ export class NextStepSeedingService {
 	 * @param params - Seeding parameters
 	 */
 	async seedNextSteps(params: SeedNextStepParams): Promise<void> {
-		const { projectId, projectData, tasks, brainDumpContent } = params;
+		const { projectId, projectData, tasks, sourceContent } = params;
 
 		console.log(`🌱 Seeding next steps for project ${projectId}`);
 
@@ -133,7 +132,7 @@ export class NextStepSeedingService {
 				projectTasks,
 				projectGoals,
 				taskGoalLinks,
-				brainDumpContent
+				sourceContent
 			);
 
 			// 5. Update project with next steps
@@ -257,7 +256,7 @@ export class NextStepSeedingService {
 		tasks: TaskContext[],
 		goals: GoalContext[],
 		taskGoalLinks: TaskGoalLink[],
-		brainDumpContent?: string
+		sourceContent?: string
 	): Promise<GeneratedNextStep> {
 		const tasksById = new Map(tasks.map((task) => [task.id, task]));
 		const { taskToGoalIds, goalToTaskIds } = this.buildTaskGoalMaps(taskGoalLinks);
@@ -345,10 +344,10 @@ export class NextStepSeedingService {
 				this.sortTasksByPriority(pendingTasks).slice(0, 3),
 				project
 			);
-		} else if (project.description || project.context || brainDumpContent) {
+		} else if (project.description || project.context || sourceContent) {
 			// No tasks yet, focus on planning
 			shortStep = `Review the project scope and create your first tasks.`;
-			const detailSource = brainDumpContent ? ' and your brain dump notes' : '';
+			const detailSource = sourceContent ? ' and your source notes' : '';
 			longStep = `This project is ready to be planned out. Review the description${detailSource}, then break it down into actionable tasks. Consider what the first deliverable should be and work backwards from there.`;
 		} else {
 			// Minimal context

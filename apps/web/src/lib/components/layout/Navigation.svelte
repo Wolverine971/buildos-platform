@@ -449,14 +449,14 @@
 						<BriefStatusIndicator />
 					</div>
 
-					<!-- Brain Dump & Chat Button -->
+					<!-- Agent Chat Button -->
 					<Button
 						variant="outline"
 						size="sm"
 						onclick={handleOpenChat}
 						class={`relative flex items-center gap-2 px-3 h-9 rounded font-bold tracking-tight text-xs md:text-sm transition-all duration-200 group pressable border tx tx-grain tx-weak ${showChatModal ? 'text-accent-foreground bg-accent border-accent shadow-ink' : 'text-muted-foreground bg-card border-border hover:border-accent hover:bg-accent/10 hover:text-accent shadow-ink'}`}
-						aria-label="Open Brain Dump & Chat"
-						title="Brain Dump & Chat - AI-Powered Planning"
+						aria-label="Open BuildOS AI"
+						title="BuildOS AI"
 						btnType="container"
 					>
 						<div class="relative flex items-center justify-center">
@@ -464,25 +464,25 @@
 							<!-- Light mode: light version by default, color on hover -->
 							<img
 								src="/brain-bolt.png"
-								alt="Brain Dump & Chat"
+								alt="BuildOS AI"
 								class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 group-hover:opacity-0 dark:hidden"
 							/>
 							<!-- Light mode hover: colored version -->
 							<img
 								src="/brain-bolt.png"
-								alt="Brain Dump & Chat"
+								alt="BuildOS AI"
 								class="absolute inset-0 w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:hidden"
 							/>
 							<!-- Dark mode: dark version by default, color on hover -->
 							<img
 								src="/brain-bolt.png"
-								alt="Brain Dump & Chat"
+								alt="BuildOS AI"
 								class="hidden w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 group-hover:opacity-0 dark:block"
 							/>
 							<!-- Dark mode hover: colored version -->
 							<img
 								src="/brain-bolt.png"
-								alt="Brain Dump & Chat"
+								alt="BuildOS AI"
 								class="hidden absolute inset-0 w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:block"
 							/>
 							<!-- Overlay icon - changes based on modal state -->
@@ -505,7 +505,7 @@
 							{/if}
 						</div>
 						<!-- Text - Hidden on smaller screens, shown on larger -->
-						<span class="hidden xl:inline-block leading-none">Brain Dump & Chat</span>
+						<span class="hidden xl:inline-block leading-none">BuildOS AI</span>
 					</Button>
 				{/if}
 
@@ -1072,7 +1072,7 @@
 	{/if}
 </nav>
 
-<!-- Brain Dump & Chat Modal -->
+<!-- Agent Chat Modal -->
 {#if showChatModal}
 	{#await import('$lib/components/agent/AgentChatModal.svelte') then { default: AgentChatModal }}
 		<AgentChatModal

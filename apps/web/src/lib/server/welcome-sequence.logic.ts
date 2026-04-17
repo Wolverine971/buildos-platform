@@ -302,7 +302,7 @@ function getWelcomeUrls(baseUrl: string, state: WelcomeSequenceProductState) {
 }
 
 function buildEmail1(state: WelcomeSequenceProductState, baseUrl: string): WelcomeEmailContent {
-	const ctaLabel = 'Start your first brain dump';
+	const ctaLabel = 'Start your first project';
 	const ctaUrl = getWelcomeUrls(baseUrl, state).start;
 	const subject = 'Welcome to BuildOS';
 	const greeting = getPlainGreeting(state.name);
@@ -369,7 +369,7 @@ function buildEmail2(state: WelcomeSequenceProductState, baseUrl: string): Welco
 	const ctaLabel = 'Open BuildOS';
 	const ctaUrl = getWelcomeUrls(baseUrl, state).openApp;
 	const intentHook = getIntentHook(state.onboardingIntent);
-	const subject = 'What to put in your first brain dump';
+	const subject = 'What to bring to your first BuildOS session';
 	const greeting = getPlainGreeting(state.name);
 	const htmlGreeting = getHtmlGreeting(state.name);
 	const intentLine = intentHook
@@ -380,7 +380,7 @@ function buildEmail2(state: WelcomeSequenceProductState, baseUrl: string): Welco
 
 If you opened BuildOS and thought "I should come back when I can explain this better," do not do that.
 
-A good first brain dump sounds more like this:
+A good first session sounds more like this:
 
 "I am trying to [goal]. These are the things already in motion. These are the loose ends. This is what is blocking me. These are the things I do not want to forget."
 
@@ -393,7 +393,7 @@ You do not need:
 
 You just need a real starting point.
 
-Open BuildOS and dump the messy version. Let the system do the organizing after.
+Open BuildOS and give it the messy version. Let the system do the organizing after.
 
 ${ctaLabel}: ${ctaUrl}
 
@@ -404,7 +404,7 @@ DJ`;
 		`
 			<p>${htmlGreeting}</p>
 			<p>If you opened BuildOS and thought "I should come back when I can explain this better," do not do that.</p>
-			<p>A good first brain dump sounds more like this:</p>
+			<p>A good first session sounds more like this:</p>
 			<blockquote>
 				I am trying to [goal]. These are the things already in motion. These are the loose ends. This is what is blocking me. These are the things I do not want to forget.
 			</blockquote>
@@ -416,7 +416,7 @@ DJ`;
 				<li>the right format</li>
 			</ul>
 			<p>You just need a real starting point.</p>
-			<p>Open BuildOS and dump the messy version. Let the system do the organizing after.</p>
+			<p>Open BuildOS and give it the messy version. Let the system do the organizing after.</p>
 		`,
 		ctaLabel,
 		ctaUrl
@@ -543,7 +543,7 @@ You write notes in one place, tasks in another, talk to AI in another, and then 
 
 That is the part BuildOS is trying to remove.
 
-When you brain dump into BuildOS, the goal is not just to generate text once.
+When you talk through messy work in BuildOS, the goal is not just to generate text once.
 
 The goal is to create a project you can keep building on without starting from zero every time.
 
@@ -565,7 +565,7 @@ DJ`;
 			<p>Most tools make you maintain the system.</p>
 			<p>You write notes in one place, tasks in another, talk to AI in another, and then you become the person responsible for stitching all of it back together.</p>
 			<p>That is the part BuildOS is trying to remove.</p>
-			<p>When you brain dump into BuildOS, the goal is not just to generate text once.</p>
+			<p>When you talk through messy work in BuildOS, the goal is not just to generate text once.</p>
 			<p>The goal is to create a project you can keep building on without starting from zero every time.</p>
 			<p>Try this:</p>
 			<ol>
@@ -610,7 +610,7 @@ If you still have onboarding left, finish it now so the project you started does
 
 You do not need to set up everything at once.
 
-Just get to ready-state and give BuildOS one way to help you stay in motion after the brain dump.
+Just get to ready-state and give BuildOS one way to help you stay in motion after the first capture.
 
 ${ctaLabel}: ${ctaUrl}
 
@@ -624,7 +624,7 @@ DJ`;
 				<p>Making sure BuildOS can keep showing up for the work after that is step two.</p>
 				<p>If you still have onboarding left, finish it now so the project you started does not turn into another thing you have to remember on your own.</p>
 				<p>You do not need to set up everything at once.</p>
-				<p>Just get to ready-state and give BuildOS one way to help you stay in motion after the brain dump.</p>
+				<p>Just get to ready-state and give BuildOS one way to help you stay in motion after the first capture.</p>
 			`,
 			ctaLabel,
 			ctaUrl
@@ -674,7 +674,7 @@ Pick one:
 
 You do not need to set up everything at once.
 
-Just give BuildOS one way to help you stay in motion after the brain dump.
+Just give BuildOS one way to help you stay in motion after the first capture.
 
 ${ctaLabel}: ${ctaUrl}
 
@@ -694,7 +694,7 @@ DJ`;
 				<li>connect your calendar if time and deadlines are part of your workflow</li>
 			</ul>
 			<p>You do not need to set up everything at once.</p>
-			<p>Just give BuildOS one way to help you stay in motion after the brain dump.</p>
+			<p>Just give BuildOS one way to help you stay in motion after the first capture.</p>
 		`,
 		ctaLabel,
 		ctaUrl

@@ -51,6 +51,7 @@ export interface UpdateDocMetadataOptions {
 	description?: string | null;
 	is_public?: boolean;
 	public_slug?: string | null;
+	public_url_path?: string | null;
 	public_status?: 'not_public' | 'pending_confirmation' | 'live' | 'unpublished' | 'archived';
 }
 
@@ -102,6 +103,13 @@ function normalizeDocTreeNodes(nodes: unknown): DocTreeNode[] {
 				: publicSlugCandidate === null
 					? null
 					: undefined;
+		const publicUrlPathCandidate = record.public_url_path;
+		const publicUrlPath =
+			typeof publicUrlPathCandidate === 'string'
+				? publicUrlPathCandidate
+				: publicUrlPathCandidate === null
+					? null
+					: undefined;
 		const publicStatusCandidate = record.public_status;
 		const publicStatus =
 			publicStatusCandidate === 'not_public' ||
@@ -121,6 +129,7 @@ function normalizeDocTreeNodes(nodes: unknown): DocTreeNode[] {
 			...(description !== undefined ? { description } : {}),
 			...(isPublic !== undefined ? { is_public: isPublic } : {}),
 			...(publicSlug !== undefined ? { public_slug: publicSlug } : {}),
+			...(publicUrlPath !== undefined ? { public_url_path: publicUrlPath } : {}),
 			...(publicStatus !== undefined ? { public_status: publicStatus } : {}),
 			...(children.length > 0 ? { children } : {})
 		};
@@ -461,6 +470,7 @@ export function enrichTreeNodes(
 			updated_at: doc?.updated_at || new Date().toISOString(),
 			is_public: node.is_public === true,
 			public_slug: node.public_slug ?? null,
+			public_url_path: node.public_url_path ?? null,
 			public_status: node.public_status ?? (node.is_public ? 'live' : 'not_public'),
 			depth,
 			path
@@ -721,6 +731,7 @@ export async function addDocumentToTree(
 		...(resolvedDescription !== undefined ? { description: resolvedDescription } : {}),
 		is_public: false,
 		public_slug: null,
+		public_url_path: null,
 		public_status: 'not_public'
 	};
 
@@ -834,6 +845,9 @@ export async function moveDocument(
 		...(findResult?.node.public_slug !== undefined
 			? { public_slug: findResult.node.public_slug }
 			: {}),
+		...(findResult?.node.public_url_path !== undefined
+			? { public_url_path: findResult.node.public_url_path }
+			: {}),
 		...(findResult?.node.public_status !== undefined
 			? { public_status: findResult.node.public_status }
 			: {}),
@@ -867,6 +881,7 @@ export async function updateDocNodeMetadata(
 		metadata.description === undefined &&
 		metadata.is_public === undefined &&
 		metadata.public_slug === undefined &&
+		metadata.public_url_path === undefined &&
 		metadata.public_status === undefined
 	) {
 		return null;
@@ -891,6 +906,10 @@ export async function updateDocNodeMetadata(
 					metadata.is_public !== undefined ? metadata.is_public : node.is_public;
 				const nextPublicSlug =
 					metadata.public_slug !== undefined ? metadata.public_slug : node.public_slug;
+				const nextPublicUrlPath =
+					metadata.public_url_path !== undefined
+						? metadata.public_url_path
+						: node.public_url_path;
 				const nextPublicStatus =
 					metadata.public_status !== undefined
 						? metadata.public_status
@@ -901,6 +920,7 @@ export async function updateDocNodeMetadata(
 					nextDescription !== node.description ||
 					nextIsPublic !== node.is_public ||
 					nextPublicSlug !== node.public_slug ||
+					nextPublicUrlPath !== node.public_url_path ||
 					nextPublicStatus !== node.public_status
 				) {
 					nodeChanged = true;
@@ -915,6 +935,9 @@ export async function updateDocNodeMetadata(
 							: {}),
 						...(metadata.public_slug !== undefined
 							? { public_slug: metadata.public_slug }
+							: {}),
+						...(metadata.public_url_path !== undefined
+							? { public_url_path: metadata.public_url_path }
 							: {}),
 						...(metadata.public_status !== undefined
 							? { public_status: metadata.public_status }

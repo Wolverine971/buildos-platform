@@ -1,5 +1,5 @@
 // apps/worker/src/workers/braindump/braindumpProcessor.ts
-// Worker processor for processing braindumps and generating title/topics/summary
+// Worker processor for processing ontology captures and generating title/topics/summary
 
 import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
@@ -10,7 +10,7 @@ import {
 } from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
 
-// Type for braindump record (before types are regenerated from migration)
+// Type for onto_braindumps records (before types are regenerated from migration)
 interface OntoBraindump {
 	id: string;
 	content: string;
@@ -40,9 +40,9 @@ const isPlaceholderBraindumpTitle = (title?: string | null) => {
 };
 
 /**
- * System prompt for braindump processing
+ * System prompt for captured-context processing
  */
-const PROCESSING_SYSTEM_PROMPT = `You are a thought analyst helping users organize raw braindumps. Your task is to analyze unstructured thoughts and generate:
+const PROCESSING_SYSTEM_PROMPT = `You are a thought analyst helping users organize captured project context. Your task is to analyze unstructured thoughts and generate:
 
 1. A concise, descriptive title (max 100 characters) that captures the essence
 2. A list of 3-7 topic keywords that represent the main themes
@@ -51,8 +51,8 @@ const PROCESSING_SYSTEM_PROMPT = `You are a thought analyst helping users organi
 Guidelines:
 - The title should be human-readable and capture the main intent or topic
 - Topics should be specific keywords, not sentences (e.g., "project planning", "personal goals", "work stress")
-- The summary should be a helpful distillation that could remind the user what this braindump was about
-- Be supportive and non-judgmental - braindumps are raw thoughts
+- The summary should be a helpful distillation that could remind the user what this captured context was about
+- Be supportive and non-judgmental - captured thoughts can be raw
 - If the content is very brief or unclear, generate reasonable defaults
 - Focus on extracting value and clarity from the raw thoughts
 
@@ -64,20 +64,20 @@ Respond ONLY with valid JSON in this exact format:
 }`;
 
 /**
- * Build the user prompt with braindump content
+ * Build the user prompt with captured context
  */
 function buildUserPrompt(content: string): string {
-	// Truncate very long braindumps to avoid token limits
+	// Truncate very long captured context to avoid token limits
 	const truncatedContent = content.length > 8000 ? content.slice(0, 8000) + '...' : content;
 
-	return `Analyze this braindump and generate a title, topics, and summary:\n\n${truncatedContent}`;
+	return `Analyze this captured project context and generate a title, topics, and summary:\n\n${truncatedContent}`;
 }
 
 /**
- * Process a braindump processing job
+ * Process an ontology capture processing job
  */
 export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProcessingJobData>) {
-	console.log(`🧠 Processing braindump job ${job.id} for braindump ${job.data.braindumpId}`);
+	console.log(`🧠 Processing ontology capture job ${job.id} for record ${job.data.braindumpId}`);
 
 	try {
 		// Validate job data
@@ -85,7 +85,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 
 		await updateJobStatus(job.id, 'processing', 'process_onto_braindump');
 
-		// Fetch the braindump to verify it exists and get content
+		// Fetch the captured context record to verify it exists and get content
 		// Note: Using type assertion until types are regenerated from migration
 		const { data: braindump, error: braindumpError } = (await (supabase as any)
 			.from('onto_braindumps')
@@ -96,7 +96,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 
 		if (braindumpError || !braindump) {
 			throw new Error(
-				`Braindump not found: ${braindumpError?.message || 'Braindump does not exist'}`
+				`Captured context not found: ${braindumpError?.message || 'record does not exist'}`
 			);
 		}
 
@@ -109,12 +109,14 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 			(braindump.topics?.length ?? 0) > 0 &&
 			braindump.summary
 		) {
-			console.log(`⏭️  Braindump ${validatedData.braindumpId} already processed, skipping`);
+			console.log(
+				`⏭️  Captured context ${validatedData.braindumpId} already processed, skipping`
+			);
 			await updateJobStatus(job.id, 'completed', 'process_onto_braindump');
 			return { success: true, skipped: true, reason: 'already_processed' };
 		}
 
-		// Mark as processing in the braindump table
+		// Mark as processing in the ontology capture table
 		await (supabase as any)
 			.from('onto_braindumps')
 			.update({ status: 'processing' })
@@ -123,7 +125,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 		// Check if content is too short for meaningful processing
 		if (!braindump.content || braindump.content.trim().length < 10) {
 			console.log(
-				`⚠️  Braindump ${validatedData.braindumpId} has insufficient content (${braindump.content?.length || 0} chars)`
+				`⚠️  Captured context ${validatedData.braindumpId} has insufficient content (${braindump.content?.length || 0} chars)`
 			);
 
 			// Update with default values
@@ -140,7 +142,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 				.eq('id', validatedData.braindumpId);
 
 			if (updateError) {
-				throw new Error(`Failed to update braindump: ${updateError.message}`);
+				throw new Error(`Failed to update captured context: ${updateError.message}`);
 			}
 
 			await updateJobStatus(job.id, 'completed', 'process_onto_braindump');
@@ -156,14 +158,14 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 		// Initialize LLM service
 		const llmService = new SmartLLMService({
 			httpReferer: (process.env.PUBLIC_APP_URL || 'https://build-os.com').trim(),
-			appName: 'BuildOS Braindump Processor'
+			appName: 'BuildOS Ontology Capture Processor'
 		});
 
 		// Build prompt with content
 		const userPrompt = buildUserPrompt(braindump.content);
 
 		// Call LLM for processing
-		console.log(`🤖 Calling LLM to process braindump ${validatedData.braindumpId}...`);
+		console.log(`🤖 Calling LLM to process captured context ${validatedData.braindumpId}...`);
 		const result = await llmService.getJSONResponse<BraindumpProcessingResponse>({
 			systemPrompt: PROCESSING_SYSTEM_PROMPT,
 			userPrompt,
@@ -183,7 +185,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 
 		console.log(`✅ Processing result: "${title}" with topics: [${topics.join(', ')}]`);
 
-		// Update the braindump with processing results
+		// Update the captured context with processing results
 		const { error: updateError } = await (supabase as any)
 			.from('onto_braindumps')
 			.update({
@@ -198,7 +200,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 
 		if (updateError) {
 			throw new Error(
-				`Failed to update braindump with processing results: ${updateError.message}`
+				`Failed to update captured context with processing results: ${updateError.message}`
 			);
 		}
 
@@ -213,9 +215,9 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 			contentLength: braindump.content.length
 		};
 	} catch (error: any) {
-		console.error(`❌ Braindump processing job ${job.id} failed:`, error.message);
+		console.error(`❌ Captured context processing job ${job.id} failed:`, error.message);
 
-		// Mark braindump as failed
+		// Mark captured context as failed
 		try {
 			await (supabase as any)
 				.from('onto_braindumps')
@@ -226,7 +228,7 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 				})
 				.eq('id', job.data.braindumpId);
 		} catch (updateErr) {
-			console.error('Failed to update braindump status to failed:', updateErr);
+			console.error('Failed to update captured context status to failed:', updateErr);
 		}
 
 		await updateJobStatus(job.id, 'failed', 'process_onto_braindump', error.message);

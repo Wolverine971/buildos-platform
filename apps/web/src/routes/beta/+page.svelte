@@ -225,7 +225,7 @@
 	title="BuildOS Beta — Thinking Environment for Complex Creative Work"
 	description="Early access to BuildOS. Turn rough notes, voice dumps, and scattered research into structured projects with memory. Built for authors, YouTubers, and other creators making complex things."
 	canonical="https://build-os.com/beta"
-	keywords="BuildOS beta, thinking environment, project memory, brain dump, creator workflow, author workflow, YouTube workflow, structured work"
+	keywords="BuildOS beta, thinking environment, project memory, creator workflow, author workflow, YouTube workflow, structured work"
 />
 
 <main class="min-h-screen bg-background">

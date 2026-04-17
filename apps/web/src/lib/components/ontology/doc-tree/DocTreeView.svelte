@@ -421,7 +421,10 @@
 			toastService.error('This document is not public yet.');
 			return;
 		}
-		const url = buildAbsolutePublicPageUrl({ slug: node.public_slug });
+		const url = buildAbsolutePublicPageUrl({
+			url_path: node.public_url_path,
+			slug: node.public_slug
+		});
 		if (!url) return;
 		const ok = await copyTextToClipboard(url);
 		if (ok) {
@@ -433,7 +436,10 @@
 
 	function handleOpenPublicPage(node: EnrichedDocTreeNode) {
 		if (!node.public_slug || !browser) return;
-		const path = buildPublicPageUrlPath({ slug: node.public_slug });
+		const path = buildPublicPageUrlPath({
+			url_path: node.public_url_path,
+			slug: node.public_slug
+		});
 		if (!path) return;
 		window.open(path, '_blank', 'noopener,noreferrer');
 	}

@@ -69,13 +69,6 @@
 			category: 'user'
 		},
 		{
-			value: 'brain_dump.processed',
-			label: 'Brain Dump Processed',
-			description: 'Brain dump has been successfully processed and tasks created',
-			adminOnly: false,
-			category: 'user'
-		},
-		{
 			value: 'task.due_soon',
 			label: 'Task Due Soon',
 			description: 'Reminder that a task is approaching its due date',

@@ -50,8 +50,8 @@ async function sendBetaApprovalEmail(signupData: any) {
 	<p>We're purposely trying not to say too much here because we want to see what <em>you're</em> going to build and how <em>you</em> are going to use the system.</p>
 
 	<div style="background-color: #fef3c7; border: 2px solid #f59e0b; padding: 20px; border-radius: 12px; margin: 24px 0;">
-		<h3 style="margin-top: 0; color: #92400e;">🧠 Your First Mission: Brain Dump</h3>
-		<p style="margin-bottom: 0;">The first thing we request that you do is <strong>brain dump a project</strong> and see how the system handles what you said. We're excited to see you use it and see what you build!</p>
+		<h3 style="margin-top: 0; color: #92400e;">🧠 Your First Mission: Talk Through a Project</h3>
+		<p style="margin-bottom: 0;">The first thing we request that you do is <strong>talk through a real project</strong> and see how the system handles what you said. We're excited to see you use it and see what you build!</p>
 	</div>
 
 	<div style="background-color: #FDF4ED; border: 2px solid #D96C1E; padding: 20px; border-radius: 12px; margin: 24px 0;">

@@ -63,7 +63,7 @@ export interface LastTurnContext {
 }
 
 // ============================================================================
-// Base Operation Types (shared with brain-dump system)
+// Base Operation Types
 // ============================================================================
 
 export type TableName =
@@ -73,7 +73,6 @@ export type TableName =
   | 'phases'
   | 'project_context'
   | 'project_notes'
-  | 'brain_dumps'
   | 'daily_briefs'
   | 'project_questions'
   | 'draft_tasks'
@@ -260,7 +259,7 @@ export interface AgentMetadata {
 }
 
 export type AgentSessionPhase =
-  | 'gathering_info'  // Initial brain dump collection
+  | 'gathering_info'  // Initial information collection
   | 'clarifying'      // Asking dimension questions
   | 'finalizing'      // Ready to create project
   | 'completed'       // Project created
@@ -275,7 +274,7 @@ export interface TemplateCreationRequestDetail {
   request_id: string;
   session_id?: string;
   user_id?: string;
-  braindump: string;
+  source_text: string;
   realm_suggestion: string;
   template_hints?: string[];
   missing_information?: string[];
@@ -570,7 +569,6 @@ export interface AgentConfig {
   enabled: boolean;
   rollout_percentage: number;
   modes_enabled: Record<AgentChatType, boolean>;
-  show_old_braindump: boolean;
   default_auto_accept: boolean;
   max_questions_simple: number;
   max_questions_complex: number;
@@ -589,7 +587,6 @@ export const DEFAULT_AGENT_CONFIG: AgentConfig = {
     project: true,
     daily_brief_update: false // Phase 2
   },
-  show_old_braindump: true,
   default_auto_accept: false, // User requirement: require approval by default
   max_questions_simple: 5,
   max_questions_complex: 10,
@@ -943,11 +940,9 @@ export const TOOL_PERMISSIONS = {
     'list_tasks',
     'search_projects',
     'search_notes',
-    'search_brain_dumps',
     'get_task_details',
     'get_project_details',
     'get_note_details',
-    'get_brain_dump_details',
     'get_calendar_events',
     'find_available_slots',
     'get_task_calendar_events',
@@ -960,7 +955,6 @@ export const TOOL_PERMISSIONS = {
     'update_task',
     'update_project',
     'create_note',
-    'create_brain_dump',
     'schedule_task',
     'update_calendar_event',
     'delete_calendar_event',

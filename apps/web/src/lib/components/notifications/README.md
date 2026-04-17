@@ -60,7 +60,7 @@
 
 **Testing interface** ⚠️ Remove before production
 
-- 5 test scenarios (Brain Dump, Phase Gen, Calendar, Error, Clear All)
+- 5 test scenarios (Phase Gen, Calendar, Error, Clear All, Generic)
 - See: [Testing Documentation](../../../../../../NOTIFICATION_SYSTEM_IMPLEMENTATION.md#testing)
 
 ---
@@ -81,15 +81,14 @@ import { notificationStore } from '$lib/stores/notification.store';
 
 // Create a notification
 const id = notificationStore.add({
-	type: 'brain-dump',
+	type: 'generic',
 	status: 'processing',
 	isMinimized: true,
 	isPersistent: true,
 	autoCloseMs: null,
 	data: {
-		brainDumpId: 'bd-123',
-		inputText: 'User input...',
-		processingType: 'dual'
+		title: 'Processing',
+		message: 'Working on your request...'
 	},
 	progress: {
 		type: 'streaming',
@@ -129,19 +128,6 @@ notificationStore.setStatus(id, 'success');
 ## Notification Types
 
 All types are defined in `/src/lib/types/notification.types.ts`
-
-### Brain Dump
-
-```typescript
-type: 'brain-dump'
-data: {
-  brainDumpId: string
-  inputText: string
-  processingType: 'short' | 'dual' | 'background'
-  selectedProject?: { id: string; name: string }
-  parseResults?: BrainDumpParseResult
-}
-```
 
 ### Phase Generation
 
@@ -294,9 +280,9 @@ onDestroy(() => {
 
 ## Next Steps
 
-**Phase 2: Brain Dump Integration** (2-4 hours)
+**Phase 2: Feature Integration** (2-4 hours)
 
-- Integrate with actual brain dump flow
+- Integrate with actual feature flows
 - Create type-specific minimized/modal views
 - Wire up SSE streaming
 

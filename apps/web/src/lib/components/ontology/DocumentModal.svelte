@@ -196,6 +196,7 @@
 		last_live_sync_at: string | null;
 		last_live_sync_error: string | null;
 		is_live_public: boolean;
+		is_listed_public: boolean;
 		view_count_all: number;
 		view_count_30d: number;
 	};
@@ -608,6 +609,7 @@
 			last_live_sync_error:
 				typeof row.last_live_sync_error === 'string' ? row.last_live_sync_error : null,
 			is_live_public: row.is_live_public === true,
+			is_listed_public: row.is_listed_public === true,
 			view_count_all: typeof row.view_count_all === 'number' ? row.view_count_all : 0,
 			view_count_30d: typeof row.view_count_30d === 'number' ? row.view_count_30d : 0
 		};

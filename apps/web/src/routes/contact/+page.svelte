@@ -58,7 +58,7 @@
 			href: '/beta',
 			icon: MessageCircle,
 			title: 'Join Beta',
-			description: 'Early access to BuildOS - AI that organizes your brain dumps',
+			description: 'Early access to BuildOS - AI that organizes messy project context',
 			badge: 'Limited Access'
 		},
 		{
@@ -107,8 +107,8 @@
 			</div>
 			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-4">Building BuildOS</h1>
 			<p class="text-xl text-muted-foreground max-w-2xl mx-auto mb-6">
-				AI that organizes your brain dumps into structured projects and tasks. Never lose
-				information, build context as you go.
+				AI that organizes messy project context into structured projects and tasks. Never
+				lose information, build context as you go.
 			</p>
 
 			<!-- Founder credibility -->

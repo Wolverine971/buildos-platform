@@ -12,10 +12,10 @@
 
 	export let title = 'BuildOS - Turn Messy Thinking into Structured Work';
 	export let description =
-		'BuildOS is a thinking environment for people making complex things. Brain dump rough ideas, notes, and research, then turn them into structured projects with memory and a clear next move.';
+		'BuildOS is a thinking environment for people making complex things. Bring rough ideas, notes, and research, then turn them into structured projects with memory and a clear next move.';
 	export let canonical = 'https://build-os.com/';
 	export let keywords =
-		'thinking environment, brain dump app, project memory, creator workflow, author workflow, YouTube workflow, task organization, daily briefs, voice notes';
+		'thinking environment, project memory, creator workflow, author workflow, YouTube workflow, task organization, daily briefs, voice notes';
 	export let ogType = 'website';
 	export let ogImage = DEFAULT_SOCIAL_IMAGE_URL;
 	export let ogImageAlt = DEFAULT_SOCIAL_IMAGE_ALT;

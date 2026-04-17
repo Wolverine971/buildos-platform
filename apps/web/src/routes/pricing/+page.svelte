@@ -54,7 +54,7 @@
 	title="Pricing - BuildOS | AI-Powered Productivity Plans"
 	description="Choose the BuildOS plan. Start with a 14-day free trial, then unlock unlimited AI-powered organization for $20/month."
 	canonical="https://build-os.com/pricing"
-	keywords="BuildOS pricing, productivity app pricing, AI task management cost, project management pricing, brain dump app plans"
+	keywords="BuildOS pricing, productivity app pricing, AI task management cost, project management pricing, AI project planning plans"
 	jsonLd={{
 		'@context': 'https://schema.org',
 		'@type': 'Product',
@@ -161,7 +161,7 @@
 								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
 								aria-hidden="true"
 							/>
-							<span class="text-muted-foreground">AI-powered brain dump parsing</span>
+							<span class="text-muted-foreground">AI-powered project context</span>
 						</li>
 						<li class="flex items-center">
 							<Check

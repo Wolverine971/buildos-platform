@@ -242,7 +242,7 @@ If other people are involved, shared context makes it even stronger because
 everyone can work in parallel from the same project instead of rebuilding the
 plan in meetings, docs, and chat threads.
 
-If you are open to a 5-minute test, try one real brain dump here:
+If you are open to a 5-minute test, talk through one real project here:
 ${appUrl}
 
 Use something you are actually working on, not a fake test.
@@ -260,7 +260,7 @@ DJ`;
 					'<p>That is the big difference.</p>',
 					'<p>You can dump messy thinking into BuildOS now, come back later, and keep refining the same project instead of re-explaining everything again.</p>',
 					'<p>If other people are involved, shared context makes it even stronger because everyone can work in parallel from the same project instead of rebuilding the plan in meetings, docs, and chat threads.</p>',
-					`<p>If you are open to a 5-minute test, <a href="${escapeHtml(appUrl)}">try one real brain dump here</a>.</p>`,
+					`<p>If you are open to a 5-minute test, <a href="${escapeHtml(appUrl)}">talk through one real project here</a>.</p>`,
 					'<p><strong>Use something you are actually working on, not a fake test.</strong></p>',
 					'<p>If it still feels weak, reply and tell me why. I read every reply.</p>',
 					'<p>DJ</p>'
@@ -291,7 +291,7 @@ Quick thought on why I think current BuildOS is worth another look.
 Most AI tools are helpful in the moment.
 BuildOS is meant to get more useful after the moment.
 
-Every brain dump becomes context:
+Every real project session becomes context:
 
 - what you are trying to do
 - what constraints you have
@@ -311,7 +311,7 @@ ${demoUrl}
 If you would rather test it yourself, use this:
 ${appUrl}
 
-Suggested test: brain dump one active project today, then come back tomorrow
+Suggested test: talk through one active project today, then come back tomorrow
 and ask BuildOS what changed or what should happen next.
 
 DJ`;
@@ -322,13 +322,13 @@ DJ`;
 					`<p>${htmlGreeting}</p>`,
 					'<p>Quick thought on why I think current BuildOS is worth another look.</p>',
 					'<p>Most AI tools are helpful in the moment.<br>BuildOS is meant to get more useful after the moment.</p>',
-					'<p>Every brain dump becomes context:</p>',
+					'<p>Every real project session becomes context:</p>',
 					'<ul><li>what you are trying to do</li><li>what constraints you have</li><li>what decisions already got made</li><li>what still feels unclear</li></ul>',
 					'<p>That matters because AI can only help well later if the context exists now.</p>',
 					'<p>This is also where collaboration gets interesting. If two or three people are moving the same project forward, shared context means people can work in parallel without constantly asking, &quot;wait, what is the current plan?&quot;</p>',
 					`<p>If you want the fast version, <a href="${escapeHtml(demoUrl)}">watch this</a>.</p>`,
 					`<p>If you would rather test it yourself, <a href="${escapeHtml(appUrl)}">use this</a>.</p>`,
-					'<p><strong>Suggested test:</strong> brain dump one active project today, then come back tomorrow and ask BuildOS what changed or what should happen next.</p>',
+					'<p><strong>Suggested test:</strong> talk through one active project today, then come back tomorrow and ask BuildOS what changed or what should happen next.</p>',
 					'<p>DJ</p>'
 				].join('')
 			);

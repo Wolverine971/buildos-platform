@@ -2,8 +2,8 @@
 import type { Database } from './database.types';
 import type { NotificationJobMetadata } from './notification.types';
 
-// Re-export database enums as the single source of truth
-export type QueueJobType = Database['public']['Enums']['queue_type'];
+// Re-export database enums as the single source of truth, minus retired legacy jobs.
+export type QueueJobType = Exclude<Database['public']['Enums']['queue_type'], 'process_brain_dump'>;
 export type QueueJobStatus = Database['public']['Enums']['queue_status'];
 
 export type OntologyEntityType = 'task' | 'plan' | 'goal' | 'risk' | 'milestone' | 'document';
@@ -108,13 +108,6 @@ export interface OntoProjectEventSyncJobMetadata {
 export type CalendarSyncJobMetadata =
 	| LegacyCalendarSyncJobMetadata
 	| OntoProjectEventSyncJobMetadata;
-
-export interface BrainDumpProcessJobMetadata {
-	brainDumpId: string;
-	processMode: 'full' | 'quick';
-	projectId?: string;
-	includeTaskExtraction?: boolean;
-}
 
 export interface EmailJobMetadata {
 	recipientUserId: string;
@@ -242,7 +235,6 @@ export interface JobMetadataMap {
 	generate_phases: PhaseGenerationJobMetadata;
 	onboarding_analysis: OnboardingAnalysisJobMetadata;
 	sync_calendar: CalendarSyncJobMetadata;
-	process_brain_dump: BrainDumpProcessJobMetadata;
 	send_email: EmailJobMetadata;
 	update_recurring_tasks: RecurringTaskJobMetadata;
 	cleanup_old_data: CleanupJobMetadata;
@@ -358,7 +350,6 @@ export interface JobResultMap {
 	generate_phases: PhaseGenerationResult;
 	onboarding_analysis: OnboardingAnalysisResult;
 	sync_calendar: CalendarSyncResult;
-	process_brain_dump: BrainDumpProcessResult;
 	send_email: EmailSendResult;
 	update_recurring_tasks: RecurringTaskResult;
 	cleanup_old_data: CleanupResult;
@@ -406,13 +397,6 @@ export interface CalendarSyncResult {
 	eventsDeleted: number;
 	conflicts: string[];
 	lastSyncedAt: string;
-}
-
-export interface BrainDumpProcessResult {
-	projectsCreated: string[];
-	tasksCreated: string[];
-	processingTimeMs: number;
-	extractedContext?: string;
 }
 
 export interface EmailSendResult {
@@ -484,7 +468,6 @@ export interface QueueJob<T extends QueueJobType = QueueJobType> {
 export type DailyBriefQueueJob = QueueJob<'generate_daily_brief'>;
 export type PhaseQueueJob = QueueJob<'generate_phases'>;
 export type EmailQueueJob = QueueJob<'send_email'>;
-export type BrainDumpQueueJob = QueueJob<'process_brain_dump'>;
 export type SendSMSQueueJob = QueueJob<'send_sms'>;
 
 // Type guards
@@ -501,8 +484,6 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isOnboardingAnalysisMetadata(metadata);
 		case 'sync_calendar':
 			return isCalendarSyncMetadata(metadata);
-		case 'process_brain_dump':
-			return isBrainDumpProcessMetadata(metadata);
 		case 'send_email':
 			return isEmailJobMetadata(metadata);
 		case 'update_recurring_tasks':
@@ -567,15 +548,6 @@ function isCalendarSyncMetadata(obj: unknown): obj is CalendarSyncJobMetadata {
 		typeof meta.calendarId === 'string' &&
 		(!meta.syncDirection ||
 			['to_google', 'from_google', 'bidirectional'].includes(meta.syncDirection as string))
-	);
-}
-
-function isBrainDumpProcessMetadata(obj: unknown): obj is BrainDumpProcessJobMetadata {
-	if (!obj || typeof obj !== 'object') return false;
-	const meta = obj as Record<string, unknown>;
-	return (
-		typeof meta.brainDumpId === 'string' &&
-		(!meta.processMode || ['full', 'quick'].includes(meta.processMode as string))
 	);
 }
 

@@ -14,7 +14,7 @@
 	title="Welcome Back to BuildOS"
 	description="A short returning-user path for the BuildOS reactivation pilot: what changed, what to try first, and the fastest 5-minute test."
 	canonical="https://build-os.com/welcome-back"
-	keywords="BuildOS welcome back, reactivation, brain dump, context, project collaboration"
+	keywords="BuildOS welcome back, reactivation, project context, project collaboration"
 	author="DJ Wayne"
 />
 
@@ -52,7 +52,7 @@
 							href={data.continueUrl}
 							class="inline-flex min-h-[48px] items-center justify-center gap-2 rounded-lg border border-accent bg-accent px-6 py-3 text-base font-semibold tracking-tight text-accent-foreground shadow-ink transition-colors hover:bg-accent/90 tx tx-bloom tx-weak"
 						>
-							Try your brain dump
+							Try one real project
 							<ArrowRight class="h-5 w-5" />
 						</a>
 						<a
@@ -180,7 +180,7 @@
 						</div>
 						<div>
 							<p class="text-sm font-semibold text-foreground">Fastest path</p>
-							<p class="text-sm text-muted-foreground">One real brain dump today.</p>
+							<p class="text-sm text-muted-foreground">One real project today.</p>
 						</div>
 					</div>
 					<a

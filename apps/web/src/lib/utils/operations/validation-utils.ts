@@ -1,5 +1,6 @@
 // apps/web/src/lib/utils/operations/validation-utils.ts
-import { UUID_REGEX } from './validation-schemas';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // Generate slug from text
 export const generateSlug = (text: string): string => {

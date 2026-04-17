@@ -1,11 +1,7 @@
 // apps/web/src/lib/server/expensive-operation-limiter.ts
 type BudgetMetric = 'tokens' | 'bytes';
 
-export type ExpensiveOperationPolicyKey =
-	| 'agent_fastchat'
-	| 'braindump_parse'
-	| 'braindump_stream'
-	| 'transcribe';
+export type ExpensiveOperationPolicyKey = 'agent_fastchat' | 'transcribe';
 
 export interface ExpensiveOperationPolicy {
 	key: ExpensiveOperationPolicyKey;
@@ -80,28 +76,6 @@ const DEFAULT_POLICIES: Record<ExpensiveOperationPolicyKey, ExpensiveOperationPo
 		budgetMetric: 'tokens',
 		activeTtlMs: 30 * 60 * 1000
 	},
-	braindump_parse: {
-		key: 'braindump_parse',
-		startWindowMs: 10 * 60 * 1000,
-		maxStartsPerWindow: 10,
-		budgetWindowMs: 60 * 60 * 1000,
-		maxBudgetPerWindow: 250_000,
-		maxConcurrent: 2,
-		defaultEstimatedCost: 25_000,
-		budgetMetric: 'tokens',
-		activeTtlMs: 30 * 60 * 1000
-	},
-	braindump_stream: {
-		key: 'braindump_stream',
-		startWindowMs: 10 * 60 * 1000,
-		maxStartsPerWindow: 10,
-		budgetWindowMs: 60 * 60 * 1000,
-		maxBudgetPerWindow: 250_000,
-		maxConcurrent: 2,
-		defaultEstimatedCost: 25_000,
-		budgetMetric: 'tokens',
-		activeTtlMs: 30 * 60 * 1000
-	},
 	transcribe: {
 		key: 'transcribe',
 		startWindowMs: 10 * 60 * 1000,
@@ -161,11 +135,6 @@ function loadPolicyOverrides(
 function buildDefaultPolicies(): Record<ExpensiveOperationPolicyKey, ExpensiveOperationPolicy> {
 	return {
 		agent_fastchat: loadPolicyOverrides('agent_fastchat', DEFAULT_POLICIES.agent_fastchat),
-		braindump_parse: loadPolicyOverrides('braindump_parse', DEFAULT_POLICIES.braindump_parse),
-		braindump_stream: loadPolicyOverrides(
-			'braindump_stream',
-			DEFAULT_POLICIES.braindump_stream
-		),
 		transcribe: loadPolicyOverrides('transcribe', DEFAULT_POLICIES.transcribe)
 	};
 }
@@ -187,10 +156,6 @@ function retryAfterSecondsFromMs(ms: number): number {
 
 export function estimateFastChatReservation(message: string): number {
 	return clampCost(Math.max(6_000, Math.min(30_000, Math.ceil(message.length * 12))), 12_000);
-}
-
-export function estimateBrainDumpReservation(text: string): number {
-	return clampCost(Math.max(10_000, Math.min(60_000, Math.ceil(text.length * 4))), 25_000);
 }
 
 export function estimateTranscriptionReservation(bytes: number): number {

@@ -38,7 +38,6 @@ export class NotificationRealDataService {
 		const supportedTypes: EventType[] = [
 			'brief.completed',
 			'brief.failed',
-			'brain_dump.processed',
 			'task.due_soon',
 			'project.activity.changed',
 			'project.activity.batched',
@@ -59,8 +58,6 @@ export class NotificationRealDataService {
 				return "Loads data from user's most recent daily brief";
 			case 'brief.failed':
 				return "Uses user's timezone and current date";
-			case 'brain_dump.processed':
-				return "Loads data from user's most recent processed brain dump";
 			case 'task.due_soon':
 				return "Loads user's next upcoming task";
 			case 'project.activity.changed':

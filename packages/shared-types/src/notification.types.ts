@@ -19,7 +19,6 @@ export type EventType =
   // User Events (per-user notifications)
   | "brief.completed"
   | "brief.failed"
-  | "brain_dump.processed"
   | "task.due_soon"
   | "task.assigned"
   | "entity.tagged"
@@ -194,14 +193,6 @@ export interface BriefFailedEventPayload {
   timezone: string;
   error_message: string;
   retry_count: number;
-}
-
-export interface BrainDumpProcessedEventPayload {
-  brain_dump_id: string;
-  project_id?: string;
-  project_name?: string;
-  tasks_created: number;
-  processing_time_ms: number;
 }
 
 export interface TaskDueSoonEventPayload {

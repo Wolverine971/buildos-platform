@@ -204,7 +204,7 @@ export class OnboardingClientService {
 	}
 
 	/**
-	 * Get project suggestions from user input for brain dump prompting
+	 * Get project suggestions from user input for onboarding prompts
 	 */
 	static getProjectSuggestions(context: UserContext | null): string[] {
 		if (!context) return [];

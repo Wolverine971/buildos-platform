@@ -19,7 +19,6 @@
 	let { notification }: { notification: Notification } = $props();
 
 	// Lazy-loaded type-specific components
-	let BrainDumpModalContent = $state<any>(null);
 	let ProjectSynthesisModalContent = $state<any>(null);
 	let CalendarAnalysisModalContent = $state<any>(null);
 	let TimeBlockModalContent = $state<any>(null);
@@ -28,14 +27,6 @@
 	async function loadTypeSpecificComponent() {
 		try {
 			switch (notification.type) {
-				case 'brain-dump':
-					if (!BrainDumpModalContent) {
-						const module = await import(
-							'./types/brain-dump/BrainDumpModalContent.svelte'
-						);
-						BrainDumpModalContent = module.default;
-					}
-					break;
 				case 'project-synthesis':
 					if (!ProjectSynthesisModalContent) {
 						const module = await import(
@@ -81,30 +72,26 @@
 
 	// Resolve the type-specific component (if loaded)
 	let typeSpecificComponent = $derived(
-		notification.type === 'brain-dump'
-			? BrainDumpModalContent
-			: notification.type === 'project-synthesis'
-				? ProjectSynthesisModalContent
-				: notification.type === 'calendar-analysis'
-					? CalendarAnalysisModalContent
-					: notification.type === 'time-block'
-						? TimeBlockModalContent
-						: null
+		notification.type === 'project-synthesis'
+			? ProjectSynthesisModalContent
+			: notification.type === 'calendar-analysis'
+				? CalendarAnalysisModalContent
+				: notification.type === 'time-block'
+					? TimeBlockModalContent
+					: null
 	);
 
 	// Get modal title based on notification type (fallback for generic view)
 	let modalTitle = $derived(
-		notification.type === 'brain-dump'
-			? 'Brain Dump Processing'
-			: notification.type === 'project-synthesis'
-				? `Project Synthesis - ${notification.data.projectName}`
-				: notification.type === 'calendar-analysis'
-					? 'Calendar Analysis'
-					: notification.type === 'generic'
-						? notification.data.title
-						: notification.type === 'time-block'
-							? 'Time Block Suggestions'
-							: 'Processing'
+		notification.type === 'project-synthesis'
+			? `Project Synthesis - ${notification.data.projectName}`
+			: notification.type === 'calendar-analysis'
+				? 'Calendar Analysis'
+				: notification.type === 'generic'
+					? notification.data.title
+					: notification.type === 'time-block'
+						? 'Time Block Suggestions'
+						: 'Processing'
 	);
 
 	// Handle minimize (for ongoing processing)
@@ -137,7 +124,7 @@
 </script>
 
 {#if typeSpecificComponent}
-	<!-- Type-specific modal content (e.g., BrainDumpModalContent) - already has Modal wrapper -->
+	<!-- Type-specific modal content - already has Modal wrapper -->
 	{@const TypeSpecificComponent = typeSpecificComponent}
 	<TypeSpecificComponent
 		{notification}
@@ -224,13 +211,11 @@
 							<CircleCheck class="w-16 h-16 text-accent mx-auto mb-4" />
 							<h3 class="text-lg font-semibold text-foreground mb-2">Success!</h3>
 							<p class="text-muted-foreground">
-								{notification.type === 'brain-dump'
-									? 'Brain dump processed successfully'
-									: notification.type === 'calendar-analysis'
-										? 'Calendar analyzed successfully'
-										: notification.type === 'generic'
-											? notification.data.message
-											: 'Operation completed successfully'}
+								{notification.type === 'calendar-analysis'
+									? 'Calendar analyzed successfully'
+									: notification.type === 'generic'
+										? notification.data.message
+										: 'Operation completed successfully'}
 							</p>
 						</div>
 					{:else if notification.status === 'error'}
@@ -238,13 +223,11 @@
 							<AlertCircle class="w-16 h-16 text-destructive mx-auto mb-4" />
 							<h3 class="text-lg font-semibold text-foreground mb-2">Error</h3>
 							<p class="text-destructive">
-								{notification.type === 'brain-dump'
-									? notification.data?.error || 'Brain dump processing failed'
-									: notification.type === 'calendar-analysis'
-										? notification.data?.error || 'Calendar analysis failed'
-										: notification.type === 'generic'
-											? notification.data?.error || 'An error occurred'
-											: 'An error occurred'}
+								{notification.type === 'calendar-analysis'
+									? notification.data?.error || 'Calendar analysis failed'
+									: notification.type === 'generic'
+										? notification.data?.error || 'An error occurred'
+										: 'An error occurred'}
 							</p>
 						</div>
 					{/if}

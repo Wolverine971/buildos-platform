@@ -638,7 +638,7 @@ The tool responds with a structured document that summarizes the mission, archit
 		function: {
 			name: 'get_buildos_usage_guide',
 			description: `Return the hands-on BuildOS usage playbook.
-Use this when the user needs step-by-step instructions for capturing brain dumps, creating ontology projects, connecting calendar integrations, or collaborating with the agentic chat system.
+Use this when the user needs step-by-step instructions for capturing messy project context, creating ontology projects, connecting calendar integrations, or collaborating with the agentic chat system.
 It responds with a structured guide that walks through onboarding, planning, automation, and agent workflows.`,
 			parameters: {
 				type: 'object',

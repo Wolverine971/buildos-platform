@@ -1,16 +1,15 @@
 // apps/web/src/routes/api/onto/braindumps/+server.ts
 /**
- * Braindump API Endpoint for the Agent Chat braindump context
+ * Ontology capture API endpoint for agent chat.
  *
- * This endpoint handles raw braindump capture from the agent chat modal.
- * Braindumps can be saved directly or used as conversation starters.
+ * This endpoint stores raw captured context for ontology/history processing.
  *
- * POST: Create a new braindump
+ * POST: Create a new captured context record
  * - Saves the raw content to onto_braindumps
  * - Queues async processing to generate title, topics, and summary
  *
- * GET: List user's braindumps
- * - Returns paginated list of braindumps
+ * GET: List user's captured context records
+ * - Returns paginated list of captures
  * - Supports filtering by status
  */
 import type { RequestHandler } from './$types';
@@ -43,7 +42,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest('Content exceeds maximum length of 50,000 characters');
 		}
 
-		// Create the braindump
+		// Create the captured context record.
 		const braindumpData = {
 			user_id: user.id,
 			content: trimmedContent,
@@ -52,7 +51,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				...metadata,
 				source: 'agent_chat',
 				content_length: trimmedContent.length,
-				created_via: 'braindump_context'
+				created_via: 'agent_chat'
 			},
 			chat_session_id: chat_session_id || null
 		};
@@ -64,7 +63,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			.single();
 
 		if (createError) {
-			console.error('Error creating braindump:', createError);
+			console.error('Error creating captured context:', createError);
 			return ApiResponse.databaseError(createError);
 		}
 
@@ -72,7 +71,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// This will generate title, topics, and summary in the background
 		queueBraindumpProcessing({ braindumpId: braindump.id, userId: user.id }).catch((err) => {
 			// Silently log - processing is optional enhancement
-			console.warn('Failed to queue braindump processing:', err);
+			console.warn('Failed to queue captured context processing:', err);
 		});
 
 		return ApiResponse.created({
@@ -81,10 +80,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				status: braindump.status,
 				created_at: braindump.created_at
 			},
-			message: 'Braindump saved successfully'
+			message: 'Captured context saved successfully'
 		});
 	} catch (error) {
-		console.error('Error in braindump create endpoint:', error);
+		console.error('Error in captured context create endpoint:', error);
 		return ApiResponse.internalError(error);
 	}
 };
@@ -126,7 +125,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const { data: braindumps, error, count } = await query;
 
 		if (error) {
-			console.error('Error fetching braindumps:', error);
+			console.error('Error fetching captured context:', error);
 			return ApiResponse.databaseError(error);
 		}
 
@@ -138,7 +137,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			hasMore: (count || 0) > offset + limit
 		});
 	} catch (error) {
-		console.error('Error in braindump list endpoint:', error);
+		console.error('Error in captured context list endpoint:', error);
 		return ApiResponse.internalError(error);
 	}
 };

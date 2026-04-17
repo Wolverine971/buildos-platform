@@ -89,19 +89,6 @@ export const PATCH: RequestHandler = async ({
 			request
 		);
 
-		// Also update any brain_dump_links that reference this note
-		// to include the project reference
-		const { error: linkUpdateError } = await supabase
-			.from('brain_dump_links')
-			.update({ project_id: project_id })
-			.eq('note_id', params.id)
-			.is('project_id', null);
-
-		if (linkUpdateError) {
-			console.error('Failed to update brain_dump_links:', linkUpdateError);
-			// Non-critical error, continue
-		}
-
 		return ApiResponse.success({
 			note: updatedNote,
 			project: {
@@ -164,17 +151,6 @@ export const DELETE: RequestHandler = async ({ params, locals: { supabase, safeG
 			action: 'unlinked_from_project',
 			previous_project_id: existingNote.project_id
 		});
-
-		// Also update any brain_dump_links that reference this note
-		const { error: linkUpdateError } = await supabase
-			.from('brain_dump_links')
-			.update({ project_id: null })
-			.eq('note_id', params.id);
-
-		if (linkUpdateError) {
-			console.error('Failed to update brain_dump_links:', linkUpdateError);
-			// Non-critical error, continue
-		}
 
 		return ApiResponse.success({
 			note: updatedNote,

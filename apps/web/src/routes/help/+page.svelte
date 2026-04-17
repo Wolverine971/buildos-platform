@@ -22,8 +22,8 @@
 			answer: 'BuildOS is a thinking environment for people making complex things. You start in chat with rough ideas, notes, voice memos, and research, and BuildOS turns them into structured projects with persistent memory and a clear next move.'
 		},
 		{
-			question: 'What is a brain dump and how does it work?',
-			answer: 'A brain dump is when you write or speak raw thoughts without stopping to organize first. BuildOS reads the dump and turns it into projects, tasks, documents, and milestones that match what you are actually building — so you never have to structure everything upfront.'
+			question: 'What should I bring to my first BuildOS session?',
+			answer: 'Bring rough thoughts, notes, voice memos, scripts, or research from a real project. BuildOS turns the messy version into projects, tasks, documents, and milestones that match what you are actually building.'
 		},
 		{
 			question: 'How is BuildOS different from Notion, Obsidian, or a task manager?',
@@ -69,9 +69,9 @@
 
 <SEOHead
 	title="BuildOS Help Center — Guides, Tutorials, and Getting Started"
-	description="Learn how to brain-dump, structure projects, generate daily briefs, and get the most out of BuildOS. Tutorials, walkthroughs, and answers to common questions."
+	description="Learn how to structure projects, generate daily briefs, and get the most out of BuildOS. Tutorials, walkthroughs, and answers to common questions."
 	canonical="https://build-os.com/help"
-	keywords="BuildOS help, brain dump tutorial, daily briefs, project organization, getting started, BuildOS tutorials, BuildOS support"
+	keywords="BuildOS help, AI project planning, daily briefs, project organization, getting started, BuildOS tutorials, BuildOS support"
 	author="DJ Wayne"
 	jsonLd={faqJsonLd}
 />
@@ -125,7 +125,7 @@
 
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
 				<a
-					href="/blogs/getting-started/effective-brain-dumping"
+					href="/blogs/getting-started/first-project-setup"
 					class="group bg-card rounded-lg border border-border shadow-ink p-6 hover:shadow-ink-strong transition-all duration-300 hover:scale-105 tx tx-grain tx-weak pressable"
 				>
 					<div
@@ -133,9 +133,9 @@
 					>
 						<Brain class="w-6 h-6 text-accent" />
 					</div>
-					<h3 class="font-semibold text-foreground mb-2">1. Brain Dump</h3>
+					<h3 class="font-semibold text-foreground mb-2">1. Start a Project</h3>
 					<p class="text-sm text-muted-foreground">
-						Start by capturing all your thoughts and ideas
+						Start by talking through what you want to build
 					</p>
 				</a>
 
@@ -196,14 +196,12 @@
 				<article
 					class="bg-background rounded-lg p-6 hover:shadow-ink transition-shadow border border-border"
 				>
-					<h3 class="font-semibold text-foreground mb-3">
-						How to effectively brain dump
-					</h3>
+					<h3 class="font-semibold text-foreground mb-3">Set up your first project</h3>
 					<p class="text-muted-foreground text-sm mb-4">
-						Learn the best practices for capturing your thoughts and ideas in BuildOS.
+						Learn how to turn messy project context into goals, tasks, and next steps.
 					</p>
 					<a
-						href="/blogs/getting-started/effective-brain-dumping"
+						href="/blogs/getting-started/first-project-setup"
 						class="text-accent text-sm font-medium hover:underline flex items-center"
 					>
 						Read more <ArrowRight class="w-4 h-4 ml-1" />

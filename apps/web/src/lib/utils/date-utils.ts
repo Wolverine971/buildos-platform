@@ -754,7 +754,7 @@ export function getTimeAgoText(dateString: string): string {
 
 /**
  * Parse natural language date expressions into YYYY-MM-DD format
- * Used by brain dump processor to convert human-readable dates
+ * Used by project-context processors to convert human-readable dates
  * @param dateExpression - Natural language date like "30 days", "next week", etc.
  * @param referenceDate - Base date to calculate from (defaults to today)
  * @returns YYYY-MM-DD string or null if not parseable
@@ -950,21 +950,21 @@ export function parseNaturalLanguageDate(
 }
 
 /**
- * Extract timeline information from brain dump text
+ * Extract timeline information from source text
  * Looks for common patterns that indicate project timelines
- * @param brainDumpText - The brain dump content
+ * @param sourceText - The source content
  * @returns Object with parsed start and end dates
  */
-export function extractTimelineFromText(brainDumpText: string): {
+export function extractTimelineFromText(sourceText: string): {
 	startDate: string | null;
 	endDate: string | null;
 	detectedPhrases: string[];
 } {
-	if (!brainDumpText) {
+	if (!sourceText) {
 		return { startDate: null, endDate: null, detectedPhrases: [] };
 	}
 
-	const text = brainDumpText.toLowerCase();
+	const text = sourceText.toLowerCase();
 	const detectedPhrases: string[] = [];
 	let startDate: string | null = null;
 	let endDate: string | null = null;

@@ -34,8 +34,8 @@ export const POST: RequestHandler = async ({ params, locals: { supabase, safeGet
 
 	if (!result.queued) {
 		return ApiResponse.internalError(
-			new Error(result.reason || 'Failed to queue braindump processing'),
-			'Failed to queue braindump processing'
+			new Error(result.reason || 'Failed to queue captured context processing'),
+			'Failed to queue captured context processing'
 		);
 	}
 

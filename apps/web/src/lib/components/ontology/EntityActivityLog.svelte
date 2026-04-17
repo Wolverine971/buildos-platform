@@ -218,7 +218,7 @@
 			case 'form':
 				return 'form';
 			case 'brain_dump':
-				return 'brain dump';
+				return 'captured context';
 			case 'api':
 				return 'API';
 			default:

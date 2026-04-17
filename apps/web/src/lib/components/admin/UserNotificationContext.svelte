@@ -256,7 +256,7 @@
 						</div>
 					</div>
 					<div>
-						<div class="text-muted-foreground">Brain Dumps</div>
+						<div class="text-muted-foreground">Captured Context</div>
 						<div class="text-lg font-semibold text-indigo-600">
 							{context.activity.brain_dump_count}
 						</div>

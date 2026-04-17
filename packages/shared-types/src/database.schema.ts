@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-04-17T14:23:03.773Z
+// Generated on: 2026-04-17T17:42:12.373Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -576,8 +576,8 @@ export type DatabaseSchema = {
 		message_chars: number;
 		messages_sha256: string;
 		model_messages: Json;
-		prompt_variant: string;
 		prompt_sections: Json | null;
+		prompt_variant: string;
 		rendered_dump_text: string | null;
 		request_payload: Json | null;
 		session_id: string;
@@ -1678,6 +1678,16 @@ export type DatabaseSchema = {
 		project_id: string;
 		public_page_id: string;
 	};
+	onto_public_page_views: {
+		created_at: string;
+		id: string;
+		is_author: boolean;
+		public_page_id: string;
+		referrer: string | null;
+		session_id: string | null;
+		viewed_at: string;
+		viewer_hash: string | null;
+	};
 	onto_public_pages: {
 		created_at: string;
 		created_by: string;
@@ -1705,6 +1715,9 @@ export type DatabaseSchema = {
 		title: string;
 		updated_at: string;
 		updated_by: string;
+		view_count_30d: number;
+		view_count_30d_updated_at: string | null;
+		view_count_all: number;
 		visibility: string;
 	};
 	onto_requirements: {
@@ -2270,6 +2283,21 @@ export type DatabaseSchema = {
 		twilio_sid: string | null;
 		updated_at: string | null;
 		user_id: string;
+	};
+	security_event_daily_rollups: {
+		category: string;
+		event_count: number;
+		event_type: string;
+		first_seen_at: string | null;
+		id: string;
+		last_seen_at: string | null;
+		max_risk_score: number | null;
+		outcome: string;
+		rollup_date: string;
+		severity: string;
+		unique_actor_user_count: number;
+		unique_external_agent_caller_count: number;
+		updated_at: string;
 	};
 	security_events: {
 		actor_type: string;
@@ -2938,6 +2966,7 @@ export type DatabaseSchema = {
 		trial_ends_at: string | null;
 		updated_at: string;
 		usage_archetype: string | null;
+		username: string | null;
 	};
 	visitors: {
 		created_at: string;
@@ -3152,6 +3181,7 @@ export const tableNames = [
 	'onto_projects',
 	'onto_public_page_review_attempts',
 	'onto_public_page_slug_history',
+	'onto_public_page_views',
 	'onto_public_pages',
 	'onto_requirements',
 	'onto_risks',
@@ -3192,6 +3222,7 @@ export const tableNames = [
 	'research_artifact_refs',
 	'retargeting_founder_pilot_members',
 	'scheduled_sms_messages',
+	'security_event_daily_rollups',
 	'security_events',
 	'security_logs',
 	'sms_alert_history',

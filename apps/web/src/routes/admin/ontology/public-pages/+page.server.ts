@@ -203,10 +203,10 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 				: null,
 		page_url_path:
 			review.public_page_id && pageById.has(review.public_page_id)
-				? ((pageById.get(review.public_page_id)?.slug_prefix &&
+				? pageById.get(review.public_page_id)?.slug_prefix &&
 					pageById.get(review.public_page_id)?.slug_base
-						? `/p/${pageById.get(review.public_page_id)?.slug_prefix}/${pageById.get(review.public_page_id)?.slug_base}`
-						: `/p/${pageById.get(review.public_page_id)?.slug}`) ?? null)
+					? `/p/${pageById.get(review.public_page_id)?.slug_prefix}/${pageById.get(review.public_page_id)?.slug_base}`
+					: `/p/${pageById.get(review.public_page_id)?.slug}`
 				: null,
 		source: review.source,
 		status: review.status,

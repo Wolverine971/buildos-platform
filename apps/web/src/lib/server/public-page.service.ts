@@ -65,6 +65,7 @@ export type PublicPageState = {
 	last_live_sync_at: string | null;
 	last_live_sync_error: string | null;
 	is_live_public: boolean;
+	is_listed_public: boolean;
 	view_count_all: number;
 	view_count_30d: number;
 };
@@ -230,11 +231,12 @@ function toPublicPageState(row: Record<string, any>): PublicPageState {
 	const visibility = (row.visibility ?? 'public') as PublicPageState['visibility'];
 	const noindex = row.noindex === true;
 	const liveSyncEnabled = row.live_sync_enabled !== false;
-	const isLivePublic =
-		status === 'published' &&
-		publicStatus === 'live' &&
-		visibility === 'public' &&
-		!row.deleted_at;
+	// `is_live_public`: live and directly-linkable (includes `unlisted`). Drives
+	// DocumentModal state, live sync, doc-tree public badge, Owner Bar mode.
+	// `is_listed_public`: also visible in author index + eligible for public
+	// comments. Only true when `visibility='public'`.
+	const isLivePublic = status === 'published' && publicStatus === 'live' && !row.deleted_at;
+	const isListedPublic = isLivePublic && visibility === 'public';
 	const slug = String(row.slug);
 	const storedSlugPrefix = toStringOrNull(row.slug_prefix);
 	const storedSlugBase = toStringOrNull(row.slug_base);
@@ -263,6 +265,7 @@ function toPublicPageState(row: Record<string, any>): PublicPageState {
 		last_live_sync_at: toStringOrNull(row.last_live_sync_at),
 		last_live_sync_error: toStringOrNull(row.last_live_sync_error),
 		is_live_public: isLivePublic,
+		is_listed_public: isListedPublic,
 		view_count_all: typeof row.view_count_all === 'number' ? row.view_count_all : 0,
 		view_count_30d: typeof row.view_count_30d === 'number' ? row.view_count_30d : 0
 	};
@@ -310,6 +313,7 @@ async function syncDocTreePublicMetadata(
 	const isPublic = Boolean(state?.is_live_public);
 	const publicStatus = state?.public_status ?? 'not_public';
 	const publicSlug = state?.slug ?? null;
+	const publicUrlPath = isPublic && state?.url_path ? state.url_path : null;
 
 	await updateDocNodeMetadata(
 		supabase,
@@ -318,6 +322,7 @@ async function syncDocTreePublicMetadata(
 		{
 			is_public: isPublic,
 			public_slug: publicSlug,
+			public_url_path: publicUrlPath,
 			public_status: publicStatus
 		},
 		actorId
@@ -791,13 +796,16 @@ export async function getPublicPageBySlug(
 	supabase: SupabaseLike,
 	slug: string
 ): Promise<Record<string, any> | null> {
+	// Does NOT filter by `visibility`. Unlisted pages must resolve via direct
+	// link; they are only excluded from author index listings and public
+	// comment access (see `canAccessPublicComments()` and the author-pages
+	// endpoint for the narrower filters).
 	const { data, error } = await (supabase as any)
 		.from('onto_public_pages')
 		.select('*')
 		.eq('slug', slug)
 		.eq('status', 'published')
 		.eq('public_status', 'live')
-		.eq('visibility', 'public')
 		.is('deleted_at', null)
 		.maybeSingle();
 

@@ -597,7 +597,6 @@
 						placeholder="All"
 					>
 						<option value="">All</option>
-						<option value="brain_dump_processing">Brain Dump</option>
 						<option value="llm_error">LLM Error</option>
 						<option value="tool_execution">Tool Execution</option>
 						<option value="database_error">Database</option>

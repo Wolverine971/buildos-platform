@@ -34,10 +34,10 @@
 </script>
 
 <SEOHead
-	title="About BuildOS - AI-Powered Brain Dump Organization | DJ Wayne"
-	description="BuildOS transforms scattered thoughts into organized action with AI. Founded by DJ Wayne, a former USMC Scout Sniper turned software engineer. Brain dump your ideas, get daily briefs, and build context for better productivity."
+	title="About BuildOS - AI-Powered Project Context | DJ Wayne"
+	description="BuildOS transforms scattered thoughts into organized action with AI. Founded by DJ Wayne, a former USMC Scout Sniper turned software engineer. Talk through your ideas, get daily briefs, and build context for better productivity."
 	canonical="https://build-os.com/about"
-	keywords="BuildOS story, DJ Wayne, AI productivity tool, brain dump organization, context building, productivity chaos solution, LLM integration"
+	keywords="BuildOS story, DJ Wayne, AI productivity tool, project context, context building, productivity chaos solution, LLM integration"
 	author="DJ Wayne"
 	twitterCreator="@djwayne3"
 	jsonLd={{
@@ -102,8 +102,8 @@
 
 				<!-- Subtitle -->
 				<p class="text-sm sm:text-base text-muted-foreground mb-4 max-w-2xl mx-auto">
-					Let AI organize your thoughts. Transform brain dumps into structured action with
-					daily briefs and intelligent calendar integration.
+					Let AI organize your thoughts. Transform messy project context into structured
+					action with daily briefs and intelligent calendar integration.
 				</p>
 
 				<!-- Tag -->
@@ -219,21 +219,21 @@
 					How BuildOS Works
 				</h2>
 				<p class="text-sm text-muted-foreground max-w-2xl mx-auto">
-					Brain dump everything. Let AI organize it. Get daily briefs. Schedule tasks.
-					Build context for better iteration.
+					Talk through the messy version. Let AI organize it. Get daily briefs. Schedule
+					tasks. Build context for better iteration.
 				</p>
 			</header>
 
 			<!-- Feature Grid -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-				<!-- Brain Dump -->
+				<!-- Capture -->
 				<article class="text-center sp-inline">
 					<div
 						class="w-12 h-12 sm:w-14 sm:h-14 flex items-center justify-center mb-2 mx-auto tx tx-bloom tx-weak wt-paper"
 					>
 						<Brain class="w-6 h-6 sm:w-7 sm:h-7 text-foreground" aria-hidden="true" />
 					</div>
-					<h3 class="text-sm font-semibold text-foreground mb-1">Brain Dump</h3>
+					<h3 class="text-sm font-semibold text-foreground mb-1">Project Capture</h3>
 					<p class="text-xs text-muted-foreground">
 						Capture scattered thoughts without structure
 					</p>
@@ -419,7 +419,7 @@
 					</div>
 					<h3 class="text-sm font-semibold text-foreground mb-1">Building Phase</h3>
 					<p class="text-xs text-muted-foreground">
-						Core brain dump processing and AI organization
+						Core project capture and AI organization
 					</p>
 				</article>
 

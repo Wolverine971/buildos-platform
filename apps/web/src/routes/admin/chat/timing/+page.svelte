@@ -298,7 +298,6 @@
 						<option value="general">General</option>
 						<option value="project">Project</option>
 						<option value="calendar">Calendar</option>
-						<option value="brain_dump">Brain Dump</option>
 						<option value="ontology">Ontology</option>
 					</Select>
 				</div>

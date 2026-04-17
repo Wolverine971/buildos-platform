@@ -294,7 +294,7 @@
 			case 'form':
 				return 'Form';
 			case 'brain_dump':
-				return 'Brain Dump';
+				return 'Captured Context';
 			case 'api':
 				return 'API';
 			case 'agent':

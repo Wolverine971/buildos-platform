@@ -23,7 +23,7 @@ const OPENAI_API_KEY =
 const TRANSCRIPTION_MODEL = process.env.TRANSCRIPTION_MODEL || 'gpt-4o-mini-transcribe';
 const OPENAI_TRANSCRIBE_URL = 'https://api.openai.com/v1/audio/transcriptions';
 
-const BASE_VOCABULARY = 'BuildOS, brain dump, ontology, daily brief, phase, project context';
+const BASE_VOCABULARY = 'BuildOS, ontology, daily brief, phase, project context';
 
 function buildFilename(storagePath: string, mimeType: string | null): string {
 	const basename = storagePath.split('/').pop();

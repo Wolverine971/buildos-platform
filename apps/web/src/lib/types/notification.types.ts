@@ -12,7 +12,6 @@ import type {
 	TimeBlockSuggestionsState,
 	TimeBlockType
 } from '@buildos/shared-types';
-import type { BrainDumpParseResult } from './brain-dump';
 import type { ParsedOperation } from './operations';
 import type { SynthesisOptions } from './synthesis';
 import type { TaskComparison } from '$lib/types';
@@ -37,7 +36,6 @@ export type NotificationStatus =
  * Notification type discriminator
  */
 export type NotificationType =
-	| 'brain-dump'
 	| 'project-synthesis'
 	| 'calendar-analysis'
 	| 'daily-brief'
@@ -155,48 +153,6 @@ export interface NotificationActions {
 	dismiss?: () => void;
 	cancel?: () => void;
 	[key: string]: (() => void) | undefined;
-}
-
-// ============================================================================
-// Brain Dump Notification
-// ============================================================================
-
-export interface BrainDumpNotification extends BaseNotification {
-	type: 'brain-dump';
-	data: {
-		brainDumpId: string;
-		inputText: string;
-		selectedProject?: {
-			id: string;
-			name: string;
-		};
-		processingType: 'dual' | 'background' | 'short';
-		streamingState?: {
-			analysisStatus?: 'processing' | 'completed' | 'error' | 'not_needed';
-			contextStatus?: 'processing' | 'completed' | 'error';
-			tasksStatus?: 'processing' | 'completed' | 'error';
-			analysisProgress?: string;
-			contextProgress?: string;
-			tasksProgress?: string;
-			analysisResult?: any;
-			contextResult?: any;
-			tasksResult?: any;
-		};
-		parseResults?: BrainDumpParseResult;
-		executionResult?: {
-			successful?: any[];
-			failed?: any[];
-			successfulOperations?: number;
-			failedOperations?: number;
-			projectInfo?: any;
-			results?: any[];
-			brainDumpId?: string;
-			[key: string]: any;
-		};
-		error?: string;
-	};
-	progress: NotificationProgress;
-	actions: NotificationActions;
 }
 
 // ============================================================================
@@ -319,7 +275,6 @@ export interface GenericNotification extends BaseNotification {
  * Use this type for all notification handling
  */
 export type Notification =
-	| BrainDumpNotification
 	| TimeBlockNotification
 	| ProjectSynthesisNotification
 	| CalendarAnalysisNotification
@@ -369,12 +324,6 @@ export interface NotificationStoreState {
 // ============================================================================
 // Type Guards
 // ============================================================================
-
-export function isBrainDumpNotification(
-	notification: Notification
-): notification is BrainDumpNotification {
-	return notification.type === 'brain-dump';
-}
 
 export function isProjectSynthesisNotification(
 	notification: Notification

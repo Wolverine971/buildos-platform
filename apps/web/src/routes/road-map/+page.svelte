@@ -12,7 +12,7 @@
 	title="Roadmap - BuildOS | AI-Powered Project Management Development Timeline"
 	description="Detailed BuildOS development roadmap with monthly milestones. Track our progress building the AI co-pilot for chaotic, idea-rich minds."
 	canonical="https://build-os.com/road-map"
-	keywords="BuildOS roadmap, AI productivity development, project management roadmap, AI assistant timeline, brain dump organization roadmap"
+	keywords="BuildOS roadmap, AI productivity development, project management roadmap, AI assistant timeline, project context roadmap"
 	jsonLd={{
 		'@context': 'https://schema.org',
 		'@type': 'Article',
@@ -72,8 +72,8 @@
 			>
 				<h2 class="text-lg font-semibold mb-3 text-foreground">🎯 Mission</h2>
 				<p class="text-muted-foreground">
-					Build the AI co-pilot for your chaotic, idea-rich mind. Users brain dump → AI
-					organizes everything → Users execute → Projects get completed.
+					Build the AI co-pilot for your chaotic, idea-rich mind. Users talk through rough
+					work → AI organizes everything → Users execute → Projects get completed.
 				</p>
 			</div>
 
@@ -122,10 +122,10 @@
 					>
 						<h3 class="font-semibold mb-3 flex items-center gap-2 text-foreground">
 							<CircleCheck class="w-4 h-4 text-success" />
-							Core Brain Dump & Project System
+							Core Capture & Project System
 						</h3>
 						<ul class="space-y-2 text-sm text-muted-foreground">
-							<li>✅ Brain Dump Capture (text & voice)</li>
+							<li>✅ Project Capture (text & voice)</li>
 							<li>
 								✅ AI Parsing Engine - automatically extracts projects, tasks, notes
 							</li>
@@ -134,17 +134,17 @@
 								✅ Rich Project Context - AI-generated markdown for each project
 							</li>
 							<li>
-								✅ Voice-to-Action - convert voice dumps into structured projects
+								✅ Voice-to-Action - convert voice notes into structured projects
 								and tasks
 							</li>
 							<li>✅ AI Summarization - actionable briefs for projects</li>
 							<li>
 								🔗 Context Linking - automatically connect related tasks, notes,
-								projects to the original brain dump
+								projects to the original captured context
 							</li>
 							<li>
 								📜 View project context history - see how project has evolved from
-								one braindump to the next
+								one session to the next
 							</li>
 						</ul>
 					</div>
@@ -383,15 +383,13 @@
 						</h3>
 						<ul class="space-y-2 text-sm text-muted-foreground">
 							<li>
-								🇼🇮🇵 Eliminate separate /braindump page - everything flows through
+								✅ Eliminate separate capture page - everything flows through
 								projects
 							</li>
+							<li>✅ Context-aware capture - knows which project you're updating</li>
 							<li>
-								🇼🇮🇵 Context-aware braindump parsing - knows which project you're
-								updating
-							</li>
-							<li>
-								🇼🇮🇵 Daily brief braindumping - update projects through morning brief
+								🇼🇮🇵 Daily brief project updates - update projects through morning
+								brief
 							</li>
 						</ul>
 					</div>

@@ -46,7 +46,7 @@ export const CALENDAR_FEATURE_REFERENCE: BuildosDocReference = {
 export const ONBOARDING_REFERENCE: BuildosDocReference = {
 	title: 'Onboarding Feature Overview',
 	summary:
-		'The onboarding flow introduces new users to BuildOS core concepts: brain dumps, the ontology system, and AI-powered planning. It walks them through a sample brain dump in a safe environment, explains how unstructured thoughts become structured projects, and guides them to connect priority integrations like Google Calendar. The flow also gathers user intent (personal vs. client work, focus areas) so future projects can inherit appropriate facets and classifications.'
+		'The onboarding flow introduces new users to BuildOS core concepts: project capture, the ontology system, and AI-powered planning. It walks them through unstructured thoughts becoming structured projects and guides them to connect priority integrations like Google Calendar. The flow also gathers user intent (personal vs. client work, focus areas) so future projects can inherit appropriate facets and classifications.'
 };
 
 export const STYLE_GUIDE_REFERENCE: BuildosDocReference = {

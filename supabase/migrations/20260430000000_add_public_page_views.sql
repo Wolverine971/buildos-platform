@@ -2,9 +2,12 @@
 -- apps/web/docs/features/public-pages/phase-1-ui-brief.md §Views
 --
 -- View tracking for public pages. Privacy notes:
---   * No raw IP stored. `viewer_hash` is a salted SHA256 of ip+user_agent with
---     a daily-rotating salt (salt rotation happens in application code; we
---     just store the hashed result).
+--   * No raw IP stored. `viewer_hash` is a salted SHA256 of ip+user_agent.
+--     The salt is a stable application-layer constant (see
+--     apps/web/src/routes/api/public/pages/[slug]/view/+server.ts) so the
+--     24-hour dedup query against `viewed_at` can match the same viewer
+--     across UTC midnight. Rotating the salt daily was considered; we use a
+--     stable salt + 24h viewed_at window instead.
 --   * Author's own views are logged but flagged via `is_author` and excluded
 --     from the public-facing counters.
 --   * Known crawler user-agents are filtered at the application layer and

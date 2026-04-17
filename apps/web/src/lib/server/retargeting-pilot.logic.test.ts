@@ -84,7 +84,7 @@ describe('retargeting pilot logic', () => {
 		expect(content.primaryCtaUrl).toContain('cohort_id=founder-pilot-2026-03');
 		expect(content.primaryCtaUrl).toContain('batch_id=batch_01');
 		expect(content.body).toContain('Use something you are actually working on');
-		expect(content.html).toContain('try one real brain dump here');
+		expect(content.html).toContain('talk through one real project here');
 	});
 
 	it('requires a demo URL for Touch 2', () => {

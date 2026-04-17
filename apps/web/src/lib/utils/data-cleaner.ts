@@ -155,7 +155,7 @@ const tableSchemas = {
 		end_date: { type: 'date' },
 		tags: { type: 'array' },
 
-		// Core dimension fields (extracted from brain dumps via preparatory analysis)
+		// Core dimension fields extracted via preparatory analysis.
 		core_context_descriptions: { type: 'json' },
 		core_goals_momentum: { type: 'string' },
 		core_harmony_integration: { type: 'string' },
@@ -213,20 +213,6 @@ const tableSchemas = {
 		category: { type: 'string', maxLength: 100 },
 		tags: { type: 'array' },
 		pinned: { type: 'boolean' },
-		created_at: { type: 'timestamp' },
-		updated_at: { type: 'timestamp' }
-	},
-
-	brain_dumps: {
-		id: { type: 'uuid' },
-		user_id: { type: 'uuid', required: true },
-		project_id: { type: 'uuid' },
-		title: { type: 'string', maxLength: 255 },
-		content: { type: 'string', required: true },
-		status: { type: 'enum', values: ['draft', 'saved', 'processed'] },
-		tags: { type: 'array' },
-		ai_insights: { type: 'json' },
-		ai_summary: { type: 'string' },
 		created_at: { type: 'timestamp' },
 		updated_at: { type: 'timestamp' }
 	},
@@ -401,7 +387,6 @@ export function cleanDataForEmbedding(data: any, table: string): string | null {
 		],
 		tasks: ['title', 'description', 'priority', 'status', 'task_type', 'details'],
 		notes: ['title', 'content', 'category', 'tags'],
-		brain_dumps: ['title', 'content', 'ai_summary'],
 		phases: ['name', 'description', 'status']
 	};
 
@@ -427,4 +412,3 @@ export function cleanDataForEmbedding(data: any, table: string): string | null {
 export const cleanProjectData = (data: any) => cleanDataForTable('projects', data);
 export const cleanTaskData = (data: any) => cleanDataForTable('tasks', data);
 export const cleanNoteData = (data: any) => cleanDataForTable('notes', data);
-export const cleanBrainDumpData = (data: any) => cleanDataForTable('brain_dumps', data);

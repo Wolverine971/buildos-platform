@@ -157,8 +157,8 @@
 					<p class="text-foreground font-medium mb-2">Your Content Belongs to You</p>
 					<p class="text-muted-foreground">
 						You retain all rights to the content you create in BuildOS. We claim no
-						ownership over your brain dumps, projects, goals, or any other content you
-						input into the service.
+						ownership over your captured context, projects, goals, or any other content
+						you input into the service.
 					</p>
 				</div>
 
@@ -167,10 +167,10 @@
 						AI Processing Notice
 					</p>
 					<p class="text-muted-foreground">
-						To provide AI-powered insights, your project data, tasks, brain dumps, and
-						onboarding responses are sent to third-party AI providers including OpenAI
-						and Anthropic. Only content necessary for organizing and enhancing your
-						productivity is processed.
+						To provide AI-powered insights, your project data, tasks, captured context,
+						and onboarding responses are sent to third-party AI providers including
+						OpenAI and Anthropic. Only content necessary for organizing and enhancing
+						your productivity is processed.
 					</p>
 				</div>
 

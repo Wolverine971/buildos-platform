@@ -166,7 +166,6 @@ export interface AbbreviatedProject {
 	// Hints for drilling down
 	has_phases: boolean;
 	has_notes: boolean;
-	has_brain_dumps: boolean;
 }
 
 export interface AbbreviatedNote {
@@ -177,16 +176,6 @@ export interface AbbreviatedNote {
 	tags: string[] | null;
 	created_at: string;
 	project_name?: string;
-}
-
-export interface AbbreviatedBrainDump {
-	id: string;
-	title: string | null;
-	ai_summary: string | null; // Full summary (already concise)
-	status: string;
-	created_at: string;
-	project_name?: string;
-	operation_count?: number;
 }
 
 export interface AbbreviatedCalendarEvent {
@@ -271,7 +260,6 @@ export interface GetProjectDetailsArgs {
 	include_tasks?: boolean;
 	include_phases?: boolean;
 	include_notes?: boolean;
-	include_brain_dumps?: boolean;
 }
 
 export interface GetNoteDetailsArgs {
@@ -391,22 +379,6 @@ export interface CreateNoteArgs {
 	project_id?: string;
 	category?: string;
 	tags?: string[];
-}
-
-export interface CreateBrainDumpArgs {
-	content: string;
-	project_id?: string;
-}
-
-export interface SearchBrainDumpsArgs {
-	query?: string;
-	project_id?: string;
-	status?: 'pending' | 'processing' | 'completed' | 'failed';
-	limit?: number;
-}
-
-export interface GetBrainDumpDetailsArgs {
-	brain_dump_id: string;
 }
 
 // =====================================================

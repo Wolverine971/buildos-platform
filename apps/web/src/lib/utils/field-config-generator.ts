@@ -267,8 +267,7 @@ function getAllFieldsForTable(tableName: TableName): string[] {
 			'context', // Now stored directly in projects table
 			'executive_summary' // Now stored directly in projects table
 		],
-		notes: ['title', 'content', 'project_id', 'tags', 'category'],
-		brain_dumps: ['title', 'content', 'tags', 'ai_summary', 'ai_insights', 'linked_data']
+		notes: ['title', 'content', 'project_id', 'tags', 'category']
 	};
 
 	return tableFields[tableName] || [];

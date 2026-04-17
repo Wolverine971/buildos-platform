@@ -2002,7 +2002,6 @@
 					<option value="calendar">Calendar</option>
 					<option value="daily_brief">Daily Brief</option>
 					<option value="daily_brief_update">Daily Brief Update</option>
-					<option value="brain_dump">Brain Dump</option>
 					<option value="ontology">Ontology</option>
 				</Select>
 				<Select
