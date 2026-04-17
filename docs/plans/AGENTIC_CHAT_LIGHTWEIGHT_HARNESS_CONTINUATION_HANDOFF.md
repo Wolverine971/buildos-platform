@@ -2,7 +2,7 @@
 
 # Agentic Chat Lightweight Harness Continuation Handoff
 
-Status: Strategic context zoom tool implemented; hidden turnProfile router deferred
+Status: **Superseded by the 2026-04-16 lite prompt consolidation.** The FastChat v2 builder and its routing have been removed; `lite_seed_v1` is now the only live prompt path. This handoff remains for historical context. New work should start from the consolidation spec: [docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md](../specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md).
 Date: 2026-04-15
 Owner: BuildOS Agentic Chat
 

@@ -79,10 +79,10 @@
 </script>
 
 <SEOHead
-	title="Contact BuildOS - Founded by DJ Wayne | AI Productivity Platform"
-	description="Contact BuildOS founder DJ Wayne. Building AI that organizes brain dumps into projects. A veteran solving productivity chaos."
+	title="Contact BuildOS — Partnerships, Press, and Founder Contact"
+	description="Reach BuildOS founder DJ Wayne. Partnerships, press, investor inquiries, and user feedback. BuildOS is a thinking environment for people making complex things."
 	canonical="https://build-os.com/contact"
-	keywords="BuildOS contact, DJ Wayne, AI productivity, brain dump organization, productivity platform, veteran founder"
+	keywords="BuildOS contact, DJ Wayne, thinking environment, partnerships, press, founder contact, investor contact"
 	author="DJ Wayne"
 />
 

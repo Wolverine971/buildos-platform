@@ -10,7 +10,7 @@ import {
 	buildToolSurfaceSizeReport,
 	type ToolSurfaceSizeReport
 } from '$lib/services/agentic-chat-v2/tool-surface-size-report';
-import type { MasterPromptContext } from '$lib/services/agentic-chat-v2/master-prompt-builder';
+import type { MasterPromptContext } from '$lib/services/agentic-chat-lite/prompt/types';
 import type { FastChatHistoryMessage } from '$lib/services/agentic-chat-v2/types';
 import {
 	buildLitePromptEnvelope,

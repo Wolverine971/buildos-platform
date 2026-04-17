@@ -1,6 +1,6 @@
 ---
-title: 'The Future of Personal Knowledge Management: From Collection to Action'
-description: 'Personal knowledge management is shifting from manual curation to AI-assisted discovery. Static archives are becoming dynamic context that evolves with your thinking.'
+title: "Personal Knowledge Management Is Broken — Here's What's Next"
+description: "Studies suggest 80% of notes are never revisited. Most PKM is productivity theater. See what's replacing static archives with systems that turn notes into action."
 author: 'DJ Wayne'
 date: '2025-10-09'
 lastmod: '2025-10-09'
@@ -23,7 +23,7 @@ tags:
         'AI-organization'
     ]
 readingTime: 10
-excerpt: 'Most knowledge management is productivity theater. Studies suggest 80% of notes are never revisited. The future is not better filing cabinets. It is AI systems that turn chaos into clarity and knowledge into action.'
+excerpt: "Most knowledge management is productivity theater. Studies suggest 80% of notes are never revisited. The future isn't better filing cabinets — it's systems that turn chaos into clarity and notes into action."
 pic: 'knowledge-management-future'
 path: apps/web/src/content/blogs/philosophy/future-of-personal-knowledge-management.md
 ---

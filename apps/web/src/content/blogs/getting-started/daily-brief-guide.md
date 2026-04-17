@@ -1,25 +1,25 @@
 ---
-title: 'Using Daily Briefs Effectively: Your Personal Intelligence System'
-description: 'Make the most of your daily AI-generated briefs—contextual intelligence that draws from your goals, plans, tasks, and documents to provide personalized strategic guidance.'
+title: "Using Daily Briefs: Start the Day Knowing What Actually Matters"
+description: "Most mornings start buried in a task list or staring at a blank page. A BuildOS daily brief starts with context — what you worked on, what's due, and why it matters today. Here's how to use them well."
 author: 'DJ Wayne'
 date: '2025-06-26'
-lastmod: '2026-03-24'
+lastmod: '2026-04-16'
 changefreq: 'monthly'
 priority: '0.8'
 published: true
 tags:
     [
         'daily-briefs',
-        'ai-intelligence',
         'productivity',
         'getting-started',
         'decision-making',
-        'contextual-intelligence',
+        'project-memory',
         'project-lens',
-        'context-compounding'
+        'context-compounding',
+        'thinking-environment'
     ]
 readingTime: 8
-excerpt: 'Transform your daily productivity with AI-powered briefs that draw from your full context—goals, plans, tasks, and documents—to provide personalized strategic intelligence.'
+excerpt: "Most mornings start buried in a task list. A BuildOS daily brief starts with context — what you worked on yesterday, what's due today, and why it matters. AI does the overnight work; you get the clarity."
 pic: 'daily-briefs-guide'
 path: apps/web/src/content/blogs/getting-started/daily-brief-guide.md
 ---

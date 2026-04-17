@@ -44,7 +44,6 @@ import {
 } from '$lib/services/agentic-chat/state/agent-state-reconciliation-service';
 import {
 	createFastChatSessionService,
-	buildMasterPrompt,
 	buildFastContextUsageSnapshot,
 	loadFastChatPromptContext,
 	normalizeFastContextType,
@@ -53,15 +52,12 @@ import {
 	streamFastChat,
 	type FastAgentStreamRequest
 } from '$lib/services/agentic-chat-v2';
-import {
-	FASTCHAT_PROMPT_VARIANT,
-	isLitePromptVariant,
-	normalizeFastChatPromptVariantRequest
-} from '$lib/services/agentic-chat-v2/prompt-variant';
+import { FASTCHAT_PROMPT_VARIANT } from '$lib/services/agentic-chat-v2/prompt-variant';
 import {
 	buildLitePromptEnvelope,
 	LITE_PROMPT_VARIANT,
-	type LitePromptEnvelope
+	type LitePromptEnvelope,
+	type LitePromptVariant
 } from '$lib/services/agentic-chat-lite/prompt';
 import {
 	buildEntityResolutionHint,
@@ -177,22 +173,6 @@ function isAbortLikeError(error: unknown): boolean {
 async function parseRequest(request: Request): Promise<FastAgentStreamRequest> {
 	const body = (await request.json()) as FastAgentStreamRequest;
 	return body;
-}
-
-async function canUseLitePromptVariant(params: {
-	supabase: any;
-	userId: string;
-	dev: boolean;
-}): Promise<boolean> {
-	if (params.dev) return true;
-
-	const { data, error } = await params.supabase
-		.from('admin_users')
-		.select('user_id')
-		.eq('user_id', params.userId)
-		.maybeSingle();
-
-	return !error && Boolean(data);
 }
 
 function waitMs(ms: number): Promise<void> {
@@ -1784,17 +1764,101 @@ function buildPersistedToolTrace(
 	});
 }
 
+const GATEWAY_DISCOVERY_TOOL_NAMES_FOR_TRACE = new Set([
+	'skill_load',
+	'tool_search',
+	'tool_schema'
+]);
+
+type ToolTraceCategory = 'write' | 'read_discovery' | 'other';
+
+function classifyTraceEntry(entry: PersistedToolTraceEntry): ToolTraceCategory {
+	const toolName = entry.tool_name ?? '';
+	if (GATEWAY_DISCOVERY_TOOL_NAMES_FOR_TRACE.has(toolName)) return 'read_discovery';
+	if (
+		toolName.startsWith('create_onto_') ||
+		toolName.startsWith('update_onto_') ||
+		toolName.startsWith('delete_onto_') ||
+		toolName === 'move_document_in_tree' ||
+		toolName === 'create_task_document' ||
+		toolName === 'link_onto_entities' ||
+		toolName === 'unlink_onto_edge' ||
+		toolName === 'tag_onto_entity' ||
+		toolName === 'reorganize_onto_project_graph' ||
+		toolName === 'create_calendar_event' ||
+		toolName === 'update_calendar_event' ||
+		toolName === 'delete_calendar_event' ||
+		toolName === 'set_project_calendar' ||
+		toolName === 'change_chat_context'
+	) {
+		return 'write';
+	}
+	return 'other';
+}
+
+function summarizeTraceGroup(
+	entries: PersistedToolTraceEntry[],
+	maxLabels: number
+): { label: string; failures: string[] } {
+	const successCounts = new Map<string, number>();
+	const failures: string[] = [];
+	for (const entry of entries) {
+		const label = entry.op ?? entry.tool_name ?? 'unknown';
+		if (entry.success) {
+			successCounts.set(label, (successCounts.get(label) ?? 0) + 1);
+		} else {
+			failures.push(`${label}${entry.error ? `(${entry.error})` : ''}`);
+		}
+	}
+	const successLabels = Array.from(successCounts.entries())
+		.sort((a, b) => b[1] - a[1])
+		.slice(0, maxLabels)
+		.map(([name, count]) => (count > 1 ? `${name} x${count}` : name))
+		.join(', ');
+	return { label: successLabels, failures };
+}
+
 function buildPersistedToolTraceSummary(trace: PersistedToolTraceEntry[]): string | null {
 	if (!trace.length) return null;
-	const line = trace
-		.slice(0, 6)
-		.map((entry) => {
-			const label = entry.op ?? entry.tool_name;
-			if (entry.success) return `${label}:ok`;
-			return `${label}:err${entry.error ? `(${entry.error})` : ''}`;
-		})
-		.join('; ');
-	return `Tool trace: ${truncateToolTraceText(line, 420)}`;
+
+	const writes: PersistedToolTraceEntry[] = [];
+	const reads: PersistedToolTraceEntry[] = [];
+	const others: PersistedToolTraceEntry[] = [];
+	let failures = 0;
+	for (const entry of trace) {
+		if (!entry.success) failures += 1;
+		switch (classifyTraceEntry(entry)) {
+			case 'write':
+				writes.push(entry);
+				break;
+			case 'read_discovery':
+				reads.push(entry);
+				break;
+			default:
+				others.push(entry);
+		}
+	}
+
+	const writeSummary = summarizeTraceGroup(writes, 6);
+	const readSummary = summarizeTraceGroup(reads, 6);
+	const otherSummary = summarizeTraceGroup(others, 4);
+
+	const parts: string[] = [];
+	parts.push(`Tool trace: ${trace.length} calls, ${writes.length} writes, ${failures} failures.`);
+	if (writeSummary.label) parts.push(`Writes: ${writeSummary.label}.`);
+	if (readSummary.label) parts.push(`Discovery/reads: ${readSummary.label}.`);
+	if (otherSummary.label) parts.push(`Other: ${otherSummary.label}.`);
+	// Always surface failures in full — never truncate failures away.
+	const allFailures = [
+		...writeSummary.failures,
+		...readSummary.failures,
+		...otherSummary.failures
+	];
+	if (allFailures.length > 0) {
+		parts.push(`Failures: ${allFailures.join('; ')}.`);
+	}
+
+	return truncateToolTraceText(parts.join(' '), 600);
 }
 
 type ToolExecutionInsertRow = {
@@ -2179,19 +2243,23 @@ export const POST: RequestHandler = async ({
 	if (!message) {
 		return ApiResponse.badRequest('Message is required');
 	}
-	const promptVariantResolution = normalizeFastChatPromptVariantRequest(
-		streamRequest.prompt_variant
-	);
-	if (!promptVariantResolution.ok) {
-		return ApiResponse.badRequest(promptVariantResolution.error);
+	// Lite is now the only prompt path (docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md).
+	// We still accept the `prompt_variant` input for backwards compatibility, but we reject any
+	// explicit request for a non-lite variant rather than silently downgrading.
+	const requestedPromptVariantRaw =
+		typeof streamRequest.prompt_variant === 'string'
+			? streamRequest.prompt_variant.trim()
+			: '';
+	if (
+		requestedPromptVariantRaw &&
+		requestedPromptVariantRaw !== LITE_PROMPT_VARIANT &&
+		requestedPromptVariantRaw !== FASTCHAT_PROMPT_VARIANT
+	) {
+		return ApiResponse.badRequest(
+			`Unsupported prompt_variant: ${requestedPromptVariantRaw}`
+		);
 	}
-	const promptVariant = promptVariantResolution.promptVariant;
-	if (promptVariantResolution.requiresAdminOrDev) {
-		const allowed = await canUseLitePromptVariant({ supabase, userId, dev });
-		if (!allowed) {
-			return ApiResponse.forbidden('Lite prompt variant requires admin access');
-		}
-	}
+	const promptVariant: LitePromptVariant = LITE_PROMPT_VARIANT;
 	const clientTurnIdRaw = streamRequest.client_turn_id;
 	const clientTurnId =
 		typeof clientTurnIdRaw === 'string' && clientTurnIdRaw.trim().length > 0
@@ -3028,18 +3096,13 @@ export const POST: RequestHandler = async ({
 				promptContext.entityResolutionHint =
 					buildEntityResolutionHint(requestLastTurnContext);
 
-				if (isLitePromptVariant(promptVariant)) {
-					litePromptEnvelope = buildLitePromptEnvelope({
-						...promptContext,
-						tools,
-						productSurface: FASTCHAT_STREAM_ENDPOINT,
-						conversationPosition: `live stream turn ${streamRunId}`
-					});
-					systemPrompt = litePromptEnvelope.systemPrompt;
-				} else {
-					litePromptEnvelope = null;
-					systemPrompt = buildMasterPrompt(promptContext);
-				}
+				litePromptEnvelope = buildLitePromptEnvelope({
+					...promptContext,
+					tools,
+					productSurface: FASTCHAT_STREAM_ENDPOINT,
+					conversationPosition: `live stream turn ${streamRunId}`
+				});
+				systemPrompt = litePromptEnvelope.systemPrompt;
 
 				const usageSnapshot = buildFastContextUsageSnapshot({
 					systemPrompt,
@@ -3234,9 +3297,7 @@ export const POST: RequestHandler = async ({
 				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
 				tools,
 				debugContext: {
-					promptVariant: litePromptEnvelope
-						? LITE_PROMPT_VARIANT
-						: FASTCHAT_PROMPT_VARIANT,
+					promptVariant: LITE_PROMPT_VARIANT,
 					turnNumber: promptDumpTurnNumber,
 					gatewayEnabled,
 					historyStrategy: historyComposition.strategy,

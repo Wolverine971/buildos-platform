@@ -1,6 +1,23 @@
 // apps/web/src/lib/services/agentic-chat-lite/prompt/types.ts
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
-import type { MasterPromptContext } from '$lib/services/agentic-chat-v2/master-prompt-builder';
+
+/**
+ * Shared context shape used by both the Lite prompt builder and the data loaders
+ * that feed it. Previously lived in `agentic-chat-v2/master-prompt-builder.ts`;
+ * moved here as part of the lite prompt consolidation (docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md).
+ */
+export type MasterPromptContext = {
+	contextType: ChatContextType;
+	entityId?: string | null;
+	projectId?: string | null;
+	projectName?: string | null;
+	focusEntityType?: string | null;
+	focusEntityId?: string | null;
+	focusEntityName?: string | null;
+	conversationSummary?: string | null;
+	entityResolutionHint?: string | null;
+	data?: Record<string, unknown> | string | null;
+};
 
 export const LITE_PROMPT_VARIANT = 'lite_seed_v1' as const;
 

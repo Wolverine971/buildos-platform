@@ -1,20 +1,14 @@
 // apps/web/src/lib/services/agentic-chat-lite/preview/build-lite-prompt-preview.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const {
-	buildMasterPromptMock,
-	loadFastChatPromptContextMock,
-	normalizeFastContextTypeMock,
-	selectFastChatToolsMock
-} = vi.hoisted(() => ({
-	buildMasterPromptMock: vi.fn(),
-	loadFastChatPromptContextMock: vi.fn(),
-	normalizeFastContextTypeMock: vi.fn(),
-	selectFastChatToolsMock: vi.fn()
-}));
+const { loadFastChatPromptContextMock, normalizeFastContextTypeMock, selectFastChatToolsMock } =
+	vi.hoisted(() => ({
+		loadFastChatPromptContextMock: vi.fn(),
+		normalizeFastContextTypeMock: vi.fn(),
+		selectFastChatToolsMock: vi.fn()
+	}));
 
 vi.mock('$lib/services/agentic-chat-v2', () => ({
-	buildMasterPrompt: buildMasterPromptMock,
 	loadFastChatPromptContext: loadFastChatPromptContextMock,
 	normalizeFastContextType: normalizeFastContextTypeMock,
 	selectFastChatTools: selectFastChatToolsMock
@@ -59,7 +53,6 @@ describe('buildLitePromptPreview', () => {
 			!input || input === 'general' ? 'global' : input
 		);
 		selectFastChatToolsMock.mockReturnValue(toolFixtures);
-		buildMasterPromptMock.mockReturnValue('<instructions>current v2</instructions>');
 		loadFastChatPromptContextMock.mockResolvedValue({
 			contextType: 'global',
 			entityId: null,
@@ -93,7 +86,7 @@ describe('buildLitePromptPreview', () => {
 		});
 	});
 
-	it('builds a global lite prompt preview without current v2 by default', async () => {
+	it('builds a global lite prompt preview with the consolidated section order', async () => {
 		const preview = await buildLitePromptPreview({
 			supabase: {} as any,
 			userId: 'admin-1',
@@ -106,17 +99,16 @@ describe('buildLitePromptPreview', () => {
 		});
 
 		expect(preview.prompt_variant).toBe('lite_seed_v1');
-		expect(preview.current_v2).toBeUndefined();
 		expect(preview.lite.sections.map((section) => section.id)).toEqual([
 			'identity_mission',
+			'capabilities_skills_tools',
+			'tool_surface_dynamic',
 			'operating_strategy',
 			'safety_data_rules',
-			'capabilities_skills_tools',
 			'focus_purpose',
 			'location_loaded_context',
 			'timeline_recent_activity',
-			'context_inventory_retrieval',
-			'tool_surface_dynamic'
+			'context_inventory_retrieval'
 		]);
 		expect(preview.lite.system_prompt).toContain('Prompt variant: lite_seed_v1');
 		expect(preview.lite.context_inventory.dataSummary.arrayCounts.projects).toBe(1);
@@ -132,7 +124,6 @@ describe('buildLitePromptPreview', () => {
 				projectFocus: null
 			})
 		);
-		expect(buildMasterPromptMock).not.toHaveBeenCalled();
 	});
 
 	it('normalizes project focused entity input into the v2 context loader shape', async () => {
@@ -193,22 +184,6 @@ describe('buildLitePromptPreview', () => {
 			focusEntityId: 'task-1'
 		});
 		expect(preview.lite.system_prompt).toContain('Focus entity: task Draft proposal');
-	});
-
-	it('includes the current v2 prompt only when requested', async () => {
-		const preview = await buildLitePromptPreview({
-			supabase: {} as any,
-			userId: 'admin-1',
-			input: {
-				context_type: 'global',
-				sample_message: 'Compare these prompts.',
-				include_current_v2: true
-			}
-		});
-
-		expect(buildMasterPromptMock).toHaveBeenCalledTimes(1);
-		expect(preview.current_v2?.system_prompt).toBe('<instructions>current v2</instructions>');
-		expect(preview.current_v2?.cost_breakdown.system_prompt.chars).toBeGreaterThan(0);
 	});
 
 	it('rejects unsupported context and focus types before loading context', async () => {

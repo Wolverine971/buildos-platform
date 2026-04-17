@@ -29,7 +29,7 @@ import type {
 	LinkedEdge
 } from './context-models';
 import { buildDocStructureSummary, collectDocStructureIds } from './context-models';
-import type { MasterPromptContext } from './master-prompt-builder';
+import type { MasterPromptContext } from '$lib/services/agentic-chat-lite/prompt/types';
 import {
 	ensureActorId,
 	fetchProjectSummaries
@@ -1022,7 +1022,14 @@ function buildProjectContextData(params: {
 				events: params.events,
 				logs: params.projectLogs ?? [],
 				projectId: mappedProject.id,
-				projectName: mappedProject.name
+				projectName: mappedProject.name,
+				// Extend title fallback with plans/documents that aren't on the
+				// snapshot's core inputs. Recent-change entries referencing these
+				// kinds would otherwise fall back to the literal kind ("document").
+				titlesByKindId: buildEntityTitleLookup({
+					plans: params.plans,
+					documents: params.documents
+				})
 			}),
 		context_meta: {
 			generated_at: new Date().toISOString(),
@@ -1496,9 +1503,42 @@ function extractProjectLogTitle(row: ProjectLogRow): string | null {
 	return extractTitle(row.after_data) ?? extractTitle(row.before_data);
 }
 
+/**
+ * Build a kind+id → title lookup map from already-loaded entity rows.
+ * Used as a fallback for recent-change titles when the project-log JSON
+ * payload (after_data / before_data) doesn't expose a title field.
+ */
+function buildEntityTitleLookup(params: {
+	projects?: Array<{ id: string; name?: string | null }>;
+	goals?: Array<{ id: string; name?: string | null }>;
+	milestones?: Array<{ id: string; title?: string | null }>;
+	plans?: Array<{ id: string; name?: string | null }>;
+	tasks?: Array<{ id: string; title?: string | null }>;
+	documents?: Array<{ id: string; title?: string | null }>;
+	events?: Array<{ id: string; title?: string | null }>;
+	risks?: Array<{ id: string; title?: string | null }>;
+}): Map<string, string> {
+	const map = new Map<string, string>();
+	const add = (kind: string, id: string, label: string | null | undefined): void => {
+		const title = normalizeOptionalText(label);
+		if (!id || !title) return;
+		map.set(`${kind}:${id}`, title);
+	};
+	for (const project of params.projects ?? []) add('project', project.id, project.name);
+	for (const goal of params.goals ?? []) add('goal', goal.id, goal.name);
+	for (const milestone of params.milestones ?? []) add('milestone', milestone.id, milestone.title);
+	for (const plan of params.plans ?? []) add('plan', plan.id, plan.name);
+	for (const task of params.tasks ?? []) add('task', task.id, task.title);
+	for (const document of params.documents ?? []) add('document', document.id, document.title);
+	for (const event of params.events ?? []) add('event', event.id, event.title);
+	for (const risk of params.risks ?? []) add('risk', risk.id, risk.title);
+	return map;
+}
+
 function buildRecentChanges(params: {
 	logs: ProjectLogRow[];
 	projectNames: Map<string, string | null>;
+	titlesByKindId?: Map<string, string>;
 	nowMs: number;
 }): FastChatRecentChange[] {
 	const recentCutoffMs = params.nowMs - PROJECT_INTELLIGENCE_RECENT_CHANGES_DAYS * DAY_IN_MS;
@@ -1513,18 +1553,26 @@ function buildRecentChanges(params: {
 		);
 	const recent = eligible.filter((entry) => entry.changedMs >= recentCutoffMs);
 	const selectedWindow = recent.length > 0 ? recent : eligible;
+	const titlesByKindId = params.titlesByKindId;
 
 	return selectedWindow
 		.sort((left, right) => right.changedMs - left.changedMs)
-		.map(({ row, changedMs }) => ({
-			kind: row.entity_type,
-			id: row.entity_id,
-			project_id: row.project_id,
-			project_name: params.projectNames.get(row.project_id) ?? null,
-			title: extractProjectLogTitle(row),
-			action: row.action,
-			changed_at: new Date(changedMs).toISOString()
-		}));
+		.map(({ row, changedMs }) => {
+			const logTitle = extractProjectLogTitle(row);
+			const lookupTitle =
+				!logTitle && titlesByKindId
+					? (titlesByKindId.get(`${row.entity_type}:${row.entity_id}`) ?? null)
+					: null;
+			return {
+				kind: row.entity_type,
+				id: row.entity_id,
+				project_id: row.project_id,
+				project_name: params.projectNames.get(row.project_id) ?? null,
+				title: logTitle ?? lookupTitle,
+				action: row.action,
+				changed_at: new Date(changedMs).toISOString()
+			};
+		});
 }
 
 function addProjectCounts(
@@ -1618,6 +1666,12 @@ function buildProjectIntelligenceSnapshot(params: {
 	projectId?: string | null;
 	projectName?: string | null;
 	now?: Date;
+	/**
+	 * Optional kind+id → title map used as a fallback when project-log payloads
+	 * don't expose titles. Callers typically build this from the entities they
+	 * already loaded (documents, plans, etc.) via `buildEntityTitleLookup`.
+	 */
+	titlesByKindId?: Map<string, string>;
 }): FastChatProjectIntelligence {
 	const now = params.now ?? new Date();
 	const nowMs = now.getTime();
@@ -1730,9 +1784,27 @@ function buildProjectIntelligenceSnapshot(params: {
 		if (signal?.bucket === 'upcoming') work.push(signal);
 	}
 
+	// Always merge in project/goal/milestone/task/event titles from the
+	// snapshot's own params (those are already required). Callers can pass an
+	// extended `titlesByKindId` map that also covers documents/plans/risks.
+	const baseTitleLookup = buildEntityTitleLookup({
+		projects: params.projects,
+		goals: params.goals,
+		milestones: params.milestones,
+		tasks: params.tasks,
+		events: params.events
+	});
+	const titlesByKindId = params.titlesByKindId
+		? new Map<string, string>([
+				...baseTitleLookup.entries(),
+				...params.titlesByKindId.entries()
+			])
+		: baseTitleLookup;
+
 	const recentChanges = buildRecentChanges({
 		logs: params.logs.filter((log) => projectsById.has(log.project_id)),
 		projectNames,
+		titlesByKindId,
 		nowMs
 	});
 	const overdueOrDueSoon = work
@@ -1933,7 +2005,8 @@ function buildGlobalContextFromRpc(payload: FastChatContextRpcResponse): GlobalC
 				milestones,
 				tasks,
 				events,
-				logs
+				logs,
+				titlesByKindId: buildEntityTitleLookup({ plans })
 			}),
 		context_meta: buildGlobalContextMeta({
 			source: 'rpc',
@@ -2272,7 +2345,10 @@ async function loadGlobalContextData(
 			milestones: milestoneRows,
 			tasks: taskRows,
 			events: eventRows,
-			logs: logRows
+			logs: logRows,
+			// Extend title fallback with plans so recent-change rows referencing
+			// plans don't fall back to the literal "plan" label.
+			titlesByKindId: buildEntityTitleLookup({ plans: planRows })
 		}),
 		context_meta: buildGlobalContextMeta({
 			source: 'fallback',

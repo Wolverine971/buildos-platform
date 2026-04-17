@@ -2,7 +2,7 @@
 
 # Agentic Chat Current Path Cleanup Prompt
 
-Status: Draft handoff prompt
+Status: **Largely completed by the 2026-04-16 lite prompt consolidation.** The FastChat v2 builder, its admin-gating, and the prompt-variant routing have been removed; `lite_seed_v1` is now the only live prompt path. The frontend variant-picker UI was also removed. Remaining cleanup (observability label renames, admin dashboard grouping) is tracked in the consolidation spec's deferred work section: [docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md](../specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md).
 Date: 2026-04-14
 Owner: BuildOS Agentic Chat
 

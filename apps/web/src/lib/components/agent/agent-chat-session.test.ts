@@ -33,12 +33,18 @@ describe('agent-chat-session helpers', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('normalizes and gates prompt variant requests for admin test sessions', () => {
+	it('collapses prompt variant helpers to the consolidated lite path', () => {
+		// After the 2026-04-16 lite prompt consolidation, the agentic chat runtime has
+		// a single prompt path. Both exported constants alias LITE_PROMPT_VARIANT, and
+		// the request helper never pins a variant — the server defaults to lite.
+		expect(AGENT_CHAT_LITE_PROMPT_VARIANT).toBe('lite_seed_v1');
+		expect(AGENT_CHAT_DEFAULT_PROMPT_VARIANT).toBe('lite_seed_v1');
+
 		expect(normalizeAgentChatPromptVariantSelection('lite_seed_v1')).toBe(
 			AGENT_CHAT_LITE_PROMPT_VARIANT
 		);
 		expect(normalizeAgentChatPromptVariantSelection('unknown')).toBe(
-			AGENT_CHAT_DEFAULT_PROMPT_VARIANT
+			AGENT_CHAT_LITE_PROMPT_VARIANT
 		);
 
 		expect(
@@ -50,15 +56,9 @@ describe('agent-chat-session helpers', () => {
 		expect(
 			resolveAgentChatPromptVariantForRequest({
 				canUsePromptVariantControls: true,
-				selectedPromptVariant: AGENT_CHAT_DEFAULT_PROMPT_VARIANT
-			})
-		).toBeNull();
-		expect(
-			resolveAgentChatPromptVariantForRequest({
-				canUsePromptVariantControls: true,
 				selectedPromptVariant: AGENT_CHAT_LITE_PROMPT_VARIANT
 			})
-		).toBe(AGENT_CHAT_LITE_PROMPT_VARIANT);
+		).toBeNull();
 	});
 
 	it('deriveSessionTitle prefers a non-placeholder manual title and falls back to auto title', () => {

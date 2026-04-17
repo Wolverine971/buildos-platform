@@ -2,7 +2,9 @@
 
 # Agentic Chat Write Integrity Companion Assessment
 
-Status: Partially addressed; follow-up architecture work still open
+Status: All identified items addressed in code; awaiting next fantasy-novel
+replay for validation of the write-outcome ledger and surface-routing union
+in realistic traffic
 Date: 2026-04-16
 Owner: BuildOS Agentic Chat
 
@@ -52,30 +54,40 @@ A follow-up pass addressed two items from this companion doc:
 
 Items still open for the next agent (priority order):
 
-1. 🟡 **Rebuild final prose from the tool ledger for mutation-heavy turns.**
-   See [Final-Answer Integrity Assessment](#final-answer-integrity-assessment).
-   Prompt rule landed, but enforcement is still "append a caveat." Move to
-   ledger-constrained rendering.
-2. 🟡 **Run the next fantasy-novel replay.** See
-   [Expected Next Test Results](#expected-next-test-results). The high-risk
-   schema/replay/prompt cleanup has landed; the next datapoint should verify
-   whether the model still attempts markup leakage or overclaims outcomes.
-3. ✅ **Scope `update_strategy` to document tools only** — fixed 2026-04-16
+1. 🟡 **Run the next fantasy-novel replay.** The six items flagged after the
+   875/13fc replays now have code-level fixes (see the second-late-pass status
+   below). The next run is a validation replay, not a polishing replay.
+2. ✅ **Surface routing union for mixed project turns** — fixed 2026-04-16
+   second late pass. See
+   [Project Write Surface](#project-write-surface-status) below.
+3. ✅ **Write-outcome ledger for final responses** — fixed 2026-04-16 second
+   late pass. See [Final-Answer Integrity Assessment](#final-answer-integrity-assessment).
+   The prompt-only "append a caveat" pattern has been replaced with a
+   structured ledger system message injected after every tool round.
+4. ✅ **Task-state coverage rule** — fixed 2026-04-16 second late pass. Both
+   prompts now require `state_key` on `update_onto_task` when work advances,
+   and record user-reported data conflicts as open questions instead of
+   picking canon.
+5. ✅ **Document placement contract decision** — fixed 2026-04-16 second late
+   pass. Decision: `parent_id` on create is NOT sufficient. The agent must
+   call `onto.document.tree.move` after create and may only claim placement
+   after that call succeeds. Both prompts and the `document_workspace` skill
+   were updated.
+6. ✅ **Lite post-tool bookend parity** — fixed 2026-04-16 second late pass.
+   Lite safety now has the explicit post-tool outcome rule that fastchat had.
+7. ✅ **Trace summary completeness** — fixed 2026-04-16 second late pass.
+   `buildPersistedToolTraceSummary` now classifies by kind (write / discovery
+   / other), shows success counts as `op xN`, and never truncates failures.
+8. ✅ **Scope `update_strategy` to document tools only** — fixed 2026-04-16
    late pass. See [Update Strategy Confusion](#update-strategy-confusion).
-4. ✅ **Redact bad durable content from repair replay history** — fixed
+9. ✅ **Redact bad durable content from repair replay history** — fixed
    2026-04-16 late pass. See [Repair Loop Risk](#repair-loop-risk).
-5. ✅ **Chat turn bookends** — fixed 2026-04-16 late pass. See
-   [Chat Turn Bookends](#chat-turn-bookends).
-6. ✅ **Document type normalization** — fixed 2026-04-16 evening, forgiving
-   policy. The `/api/onto/documents/create` endpoint now extracts `type_key`
-   from the body and persists the requested value if it matches the document
-   taxonomy; a malformed value silently falls back to `document.default` with
-   a dev-mode warning (no rejection). PATCH applies the same forgiving rule
-   — a bad `type_key` on update is dropped, but the rest of the update still
-   succeeds. Tests cover valid type persists, missing type defaults, and
-   malformed type falls back without rejecting the write. See
-   [Document Type Normalization Investigation](#document-type-normalization-investigation)
-   below for the original trace.
+10. ✅ **Chat turn bookends (pre-tool intent rule)** — fixed 2026-04-16 late
+    pass. See [Chat Turn Bookends](#chat-turn-bookends). The post-tool half
+    was completed in the second late pass (item 6).
+11. ✅ **Document type normalization** — fixed 2026-04-16 evening, forgiving
+    policy. See
+    [Document Type Normalization Investigation](#document-type-normalization-investigation).
 
 Verification after the earlier passes:
 
@@ -94,6 +106,46 @@ Verification after the 2026-04-16 late pass:
 - A full `pnpm run check` still fails on unrelated pre-existing repo-wide
   Svelte/type errors. The replay-redaction type issue found during review was
   fixed and no longer appears in that output.
+
+Verification after the 2026-04-16 second late pass:
+
+- 273 tests pass across the full agentic-chat test suite (47 test files,
+  including 7 new `write-ledger.test.ts` tests and 1 new union-surface-routing
+  test in `tool-selector.test.ts`).
+- `pnpm check` reports zero new errors in any file touched by the second pass.
+- Existing repair-replay end-to-end test continues to pass unchanged. The
+  ledger injection adds a system message after each tool round but does not
+  interfere with the redaction assertions because the ledger formats errors as
+  text and never echoes the rejected tool-call args.
+
+## Project Write Surface Status
+
+✅ **Addressed 2026-04-16 second late pass.** The 875 and 13fc post-fix
+replays both still needed two `tool_search` calls on Turn 2 (the Chapter 2
+progress turn). Prompt-dump inspection showed both landed on `project_document`
+(14 tools, no task writes). The root cause was that
+`resolveSurfaceProfileForTurn` picked `project_document` when either regex
+matched and never considered that a mixed turn needs both task and document
+tools.
+
+Fix landed:
+
+- A new `project_write_document` profile in
+  [gateway-surface.ts](../../apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts)
+  unions `project_write` (task writes) and `project_document` (document
+  workspace tools).
+- [tool-selector.ts](../../apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts)
+  now checks both regexes independently and routes to the union profile when
+  both match. Singleton patterns continue to route to `project_write` or
+  `project_document` as before.
+- A new test in
+  [tool-selector.test.ts](../../apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts)
+  feeds a Chapter 2 progress message and asserts all four write tools plus the
+  document-tree tools are preloaded.
+
+Expected effect on replays: Turn 2 should no longer call `tool_search` for
+`create_onto_task` / `update_onto_task`; those should be preloaded as part of
+the union surface.
 
 ## Primary Evidence
 
@@ -314,20 +366,41 @@ need to see the invalid string repeated.
 
 ## Final-Answer Integrity Assessment
 
-🟡 **Partially addressed.** Added prompt rules stating that final responses
-must match the actual write set and that discovery/schema is not completion.
-The enforcement layer still appends a caveat after the fact instead of
-rebuilding the prose from the tool ledger.
+✅ **Addressed 2026-04-16 second late pass.** Ledger-constrained rendering has
+landed. The orchestrator now injects a structured write ledger as a system
+message after every tool round.
 
-Next direction: treat the outcome summary as a constrained rendering step.
-After tool execution the orchestrator already has a structured ledger of
-successes and failures (see
-[`round-analysis.ts`](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/round-analysis.ts)
-helpers). Feed that ledger as the only source of truth for phrasing "what
-changed"; the model supplies context and interpretation around it, not the
-verbs. Options: a second smaller model call that takes the ledger plus the
-pre-tool user intent and writes the outcome paragraph; or a deterministic
-template the model is forced to fill.
+Fix landed:
+
+- New
+  [write-ledger.ts](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/write-ledger.ts)
+  module builds a ledger from cumulative `toolExecutions`. It extracts each
+  durable write's tool name, entity id, title, state_key, type_key, parent_id,
+  and update_strategy from the combined args + result. Failures include a
+  truncated error string. Non-write tools (list, search, skill_load,
+  tool_schema) are filtered out to keep the ledger focused.
+- The ledger message is injected in
+  [stream-orchestrator/index.ts](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts)
+  right after tool results are pushed to `messages`. It is skipped when a
+  round has no writes or failures to surface, so pure-read rounds do not bloat
+  the prompt.
+- The ledger carries explicit final-response rules: mention every successful
+  write, do not claim task progress / document type / tree placement /
+  linking without a matching ledger entry, and disclose every failed write.
+- 7 new tests in
+  [write-ledger.test.ts](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/write-ledger.test.ts)
+  cover task creates with state_key, document append strategy, move_document
+  parent tracking, failure capture, filtering of non-write tools, and the
+  rendered message shape.
+
+Remaining uncertainty for next replay:
+
+- The ledger is still instructional rather than rendered — the model still
+  writes the final prose in its own words, now constrained by a structured
+  source of truth instead of only by prompt bookends. If the next replay shows
+  persistent overclaims despite the ledger, the next step is a deterministic
+  template rendered from the ledger (second constrained pass). Hold that
+  decision until replay data is available.
 
 ---
 
@@ -408,23 +481,42 @@ checked against successful operations.
 
 ## Chat Turn Bookends
 
-✅ **Addressed 2026-04-16 late pass.** Both prompt paths now distinguish the
-pre-tool lead-in from the post-tool outcome summary.
+✅ **Addressed 2026-04-16 late pass + second late pass.** Both prompt paths
+now distinguish the pre-tool lead-in from the post-tool outcome summary, and
+the bookend rules are symmetric across variants.
 
-Changes landed:
+Changes landed (first late pass — pre-tool rule):
 
 - [master-prompt-builder.ts](../../apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts)
-  — FastChat V2 communication guidance now says lead-ins are intent-only and
-  must not state the final outcome, success, or persisted update until all tool
+  — FastChat V2 communication guidance says lead-ins are intent-only and must
+  not state the final outcome, success, or persisted update until all tool
   calls complete.
 - [build-lite-prompt.ts](../../apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts)
-  — Lite safety/data rules now carry the same temporal discipline.
+  — Lite safety/data rules carry the same pre-tool temporal discipline.
+
+Changes landed (second late pass — post-tool rule parity, plus task-state
+coverage):
+
+- Lite safety now includes the explicit post-tool bookend rule that fastchat
+  already had: "After tool calls complete, ground the final user-facing
+  summary in the actual tool results: what succeeded, what failed, and what
+  did not change. Do not carry optimistic lead-in language into the outcome."
+- Both prompts now include a task-state coverage rule: when a task's
+  real-world work visibly advanced, include `state_key` in the
+  `update_onto_task` call alongside any description change. And: record
+  user-reported data inconsistencies (for example "Chapter 1 says 16, Chapter
+  2 says 17") as open questions or fix tasks; do not pick canon unless the
+  user stated which value is canonical.
+
+Test coverage:
+
 - [master-prompt-builder.test.ts](../../apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.test.ts)
   and [build-lite-prompt.test.ts](../../apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.test.ts)
   assert the bookend language is present.
 
-This pairs with, but does not replace, the Final-Answer Integrity
-ledger-rendering work above.
+This pairs with the write-outcome ledger above: the bookend rules constrain
+the model's phrasing discipline, and the ledger supplies the authoritative
+source-of-truth content the outcome half of the bookend must ground itself in.
 
 ---
 
@@ -532,6 +624,7 @@ behavior or would naturally house regression cases:
 - [Tool selector tests](../../apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts)
 - [Repair instruction tests](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/repair-instructions.test.ts)
 - [Tool argument replay/redaction tests](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-arguments.test.ts)
+- [Write-outcome ledger tests](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/write-ledger.test.ts)
 - [Prompt dump debug output](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/prompt-dump-debug.ts)
 
 ## Residual Product Questions
@@ -650,23 +743,35 @@ classification paths.
 
 ## Handoff Notes For The Next Agent
 
-Recommended order of attack:
+All items this assessment identified now have code-level fixes. The next
+actions are validation and instrumentation, not more implementation.
 
-1. **Next replay/testing pass** — rerun the fantasy-novel flow and compare
-   against [Expected Next Test Results](#expected-next-test-results). The
-   schema/replay/prompt cleanup should reduce the markup leak and strategy
-   confusion rate; the result should determine whether more prompt work is
-   needed or whether remaining issues are mostly final-answer grounding.
-2. **Final-answer ledger rendering** — larger architectural change. The
-   residual overclaim rate should be smaller after schema scoping, replay
-   redaction, and bookend prompt guidance, making the design choice
-   (deterministic template vs. constrained second pass) clearer.
-3. **Formal replay/eval coverage** — add the fantasy-novel sequence as a
-   repeatable eval so the next prompt/runtime change can be measured against
-   durable writes, final claims, and token/cost behavior.
-4. **Project/document write surface tuning** — if the next replay still uses
-   multiple discovery passes for common task/document writes, tune gateway
-   surfaces rather than adding more prompt text.
+Recommended order:
+
+1. **Next fantasy-novel replay (validation).** Rerun the three-turn flow on
+   both `fastchat_prompt_v1` and `lite_seed_v1`. Confirm against the
+   acceptance checks in
+   [Expected Next Testing Round](../reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md#expected-next-testing-round)
+   of the audit doc — specifically: mixed Chapter-2-style turns land on the
+   `project_write_document` union surface and skip `tool_search`; final prose
+   names every successful write; dedicated research documents are placed via
+   an explicit `move_document_in_tree` call; task-state updates accompany
+   description changes when work advanced.
+2. **Measure against the 13fc baseline.** Record tokens and tool-call counts
+   per turn. Lite's new baseline to beat is 78,438 tokens / 10 tool calls /
+   `$0.02187023` over three turns.
+3. **Decide on deterministic final-response rendering.** If the write ledger
+   alone does not fully eliminate final-prose overclaims, promote the ledger
+   to a constrained template (second pass) rather than an instructional
+   system message. Hold this decision until the next replay data is in.
+4. **Formal replay/eval coverage.** Add the fantasy-novel sequence to the
+   automated prompt-eval scenarios so cost, tool-call count, ledger
+   compliance, and write-integrity regressions are caught before reaching
+   human replay review.
+5. **Skill-load heaviness (lower priority).** Measure how often
+   `task_management` loads with `include_examples: true` in practice; if it
+   remains common in replays despite the task-state rule already living in
+   the prompt, consider hard-banning the heavy variant in lite.
 
 Each item above has concrete file pointers in its section. The existing tests
 in the Related Test And Verification Surfaces list are the right places to

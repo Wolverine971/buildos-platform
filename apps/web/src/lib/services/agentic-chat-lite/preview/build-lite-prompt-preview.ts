@@ -3,7 +3,6 @@ import type { ChatContextType, Database } from '@buildos/shared-types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import {
-	buildMasterPrompt,
 	loadFastChatPromptContext,
 	normalizeFastContextType,
 	selectFastChatTools
@@ -41,7 +40,6 @@ export type LitePromptPreviewRequest = {
 	project_focus?: LitePromptPreviewProjectFocusInput | null;
 	projectFocus?: LitePromptPreviewProjectFocusInput | null;
 	sample_message?: string | null;
-	include_current_v2?: boolean | null;
 	now?: Date | string | null;
 	timezone?: string | null;
 	product_surface?: string | null;
@@ -57,10 +55,6 @@ export type LitePromptPreview = {
 		tools_summary: LitePromptToolsSummary;
 		cost_breakdown: PromptCostBreakdown;
 		tool_surface_report: ToolSurfaceSizeReport;
-	};
-	current_v2?: {
-		system_prompt: string;
-		cost_breakdown: PromptCostBreakdown;
 	};
 };
 
@@ -177,7 +171,7 @@ export async function buildLitePromptPreview(params: {
 		tools
 	});
 
-	const preview: LitePromptPreview = {
+	return {
 		prompt_variant: LITE_PROMPT_VARIANT,
 		lite: {
 			system_prompt: liteEnvelope.systemPrompt,
@@ -188,19 +182,4 @@ export async function buildLitePromptPreview(params: {
 			tool_surface_report: toolSurfaceReport
 		}
 	};
-
-	if (params.input.include_current_v2 === true) {
-		const currentV2Prompt = buildMasterPrompt(promptContext);
-		preview.current_v2 = {
-			system_prompt: currentV2Prompt,
-			cost_breakdown: buildPromptCostBreakdown({
-				systemPrompt: currentV2Prompt,
-				history: [],
-				userMessage: sampleMessage,
-				tools
-			})
-		};
-	}
-
-	return preview;
 }

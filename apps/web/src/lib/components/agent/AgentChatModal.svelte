@@ -67,17 +67,12 @@
 		type FastChatContextCache
 	} from '$lib/services/agentic-chat-v2/context-cache';
 	import {
-		AGENT_CHAT_DEFAULT_PROMPT_VARIANT,
-		AGENT_CHAT_LITE_PROMPT_VARIANT,
 		buildProjectWideFocus,
 		deriveSessionTitle,
 		isProjectContext,
 		loadAgentChatSessionSnapshot,
 		normalizeSessionContextType,
-		normalizeAgentChatPromptVariantSelection,
-		prewarmAgentContext,
-		resolveAgentChatPromptVariantForRequest,
-		type AgentChatPromptVariantSelection
+		prewarmAgentContext
 	} from './agent-chat-session';
 	import {
 		buildSkillLoadActivityEvent,
@@ -170,9 +165,6 @@
 	let wasOpen = $state(false);
 	let lastPrewarmKey = $state<string | null>(null);
 	let prewarmedContext = $state<FastChatContextCache | null>(null);
-	let selectedPromptVariant = $state<AgentChatPromptVariantSelection>(
-		AGENT_CHAT_DEFAULT_PROMPT_VARIANT
-	);
 	const ENABLE_V2_PREWARM = true;
 
 	const contextDescriptor = $derived(
@@ -257,7 +249,6 @@
 	let _lastCompletedStreamTiming = $state<ClientStreamTimingState | null>(null);
 
 	const isAdminUser = $derived(Boolean($page.data?.user?.is_admin));
-	const canUsePromptVariantControls = $derived(dev || isAdminUser);
 
 	const adminSessionHref = $derived.by(() => {
 		const sessionId = currentSession?.id;
@@ -484,9 +475,6 @@
 			!agentToAgentMode &&
 			!(isBraindumpContext && (braindumpMode === 'input' || braindumpMode === 'options'))
 	);
-	const showPromptVariantControls = $derived(
-		canUsePromptVariantControls && shouldShowComposer && Boolean(selectedContextType)
-	);
 
 	const chatComposerVocabularyTerms = $derived(
 		resolvedProjectFocus?.projectName ?? displayContextLabel
@@ -643,11 +631,6 @@
 		}, delay);
 		pendingTimeouts.add(id);
 		return id;
-	}
-
-	function handlePromptVariantChange(event: Event) {
-		const target = event.currentTarget as HTMLSelectElement | null;
-		selectedPromptVariant = normalizeAgentChatPromptVariantSelection(target?.value);
 	}
 
 	function handleContextSelectionNavChange(view: 'primary' | 'project-selection') {
@@ -3167,10 +3150,6 @@
 		const now = new Date();
 		const clientTurnId = crypto.randomUUID();
 		const transportStreamRunId = crypto.randomUUID();
-		const promptVariantForTurn = resolveAgentChatPromptVariantForRequest({
-			canUsePromptVariantControls,
-			selectedPromptVariant
-		});
 
 		// Add user message
 		const userMessage: UIMessage = {
@@ -3185,8 +3164,7 @@
 			metadata: {
 				...(activeVoiceNoteGroupId ? { voice_note_group_id: activeVoiceNoteGroupId } : {}),
 				client_turn_id: clientTurnId,
-				stream_run_id: transportStreamRunId,
-				...(promptVariantForTurn ? { prompt_variant: promptVariantForTurn } : {})
+				stream_run_id: transportStreamRunId
 			}
 		};
 
@@ -3275,7 +3253,6 @@
 					stream_run_id: transportStreamRunId,
 					client_turn_id: clientTurnId,
 					voiceNoteGroupId: activeVoiceNoteGroupId,
-					...(promptVariantForTurn ? { prompt_variant: promptVariantForTurn } : {}),
 					prewarmedContext: matchingPrewarmedContext
 				})
 			});
@@ -4398,35 +4375,6 @@
 			</div>
 		</div>
 	{:else}
-		{#if showPromptVariantControls}
-			<div
-				class="border-b border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground tx tx-thread tx-weak sm:px-4"
-			>
-				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-					<div class="flex flex-wrap items-center gap-2">
-						<label
-							for="agent-chat-prompt-variant"
-							class="font-semibold text-foreground/70"
-						>
-							Prompt variant
-						</label>
-						<select
-							id="agent-chat-prompt-variant"
-							class="h-8 rounded-lg border border-border bg-card px-2 text-xs font-semibold text-foreground shadow-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
-							value={selectedPromptVariant}
-							disabled={isStreaming || isSessionBusy}
-							onchange={handlePromptVariantChange}
-						>
-							<option value={AGENT_CHAT_DEFAULT_PROMPT_VARIANT}> FastChat v2 </option>
-							<option value={AGENT_CHAT_LITE_PROMPT_VARIANT}> Lite seed </option>
-						</select>
-					</div>
-					<p class="text-[0.7rem] leading-snug text-muted-foreground">
-						Selection persists until changed.
-					</p>
-				</div>
-			</div>
-		{/if}
 		<AgentMessageList
 			{messages}
 			{displayContextLabel}

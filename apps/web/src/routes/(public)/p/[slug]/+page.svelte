@@ -124,7 +124,20 @@
 					<span class="micro-label">{page.project_name}</span>
 					<span class="text-border text-xs">·</span>
 				{/if}
-				<span class="micro-label text-muted-foreground/60"> Published with BuildOS </span>
+				<a
+					href="https://build-os.com/?utm_source=public-page&utm_medium=attribution&utm_campaign=made-with"
+					target="_blank"
+					rel="noopener"
+					class="group inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground hover:text-foreground transition-colors"
+				>
+					<span
+						aria-hidden="true"
+						class="inline-flex h-3.5 w-3.5 items-center justify-center rounded-sm bg-foreground text-[8px] font-bold leading-none text-background group-hover:bg-accent transition-colors"
+					>
+						B
+					</span>
+					<span>Made with BuildOS</span>
+				</a>
 			</div>
 		</footer>
 	</div>

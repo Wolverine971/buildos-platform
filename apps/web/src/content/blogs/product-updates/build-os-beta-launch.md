@@ -1,15 +1,15 @@
 ---
-title: 'BuildOS Beta Launch: Your Personal Operating System is Here'
-description: 'Announcing the BuildOS beta launch. Join the revolution in AI-powered productivity and personal knowledge management.'
+title: 'BuildOS Beta Is Live — A Thinking Environment for Complex Creative Work'
+description: 'BuildOS is a thinking environment for people making complex things. Brain-dump rough notes, voice memos, and scattered research, and turn them into structured projects with memory. The beta is live.'
 author: 'DJ Wayne'
 date: '2025-10-23'
 lastmod: '2025-10-23'
 changefreq: 'monthly'
 priority: '0.9'
 published: false
-tags: ['product-updates', 'launch', 'beta', 'announcement', 'news']
+tags: ['product-updates', 'launch', 'beta', 'announcement', 'news', 'thinking-environment']
 readingTime: 5
-excerpt: 'BuildOS beta is now live! Discover the AI-powered productivity platform that transforms how you organize your work and life.'
+excerpt: 'BuildOS beta is live. A thinking environment where brain dumps, voice memos, and scattered research become structured projects with memory — built for authors, YouTubers, and anyone making complex things.'
 pic: 'beta-launch'
 path: apps/web/src/content/blogs/product-updates/build-os-beta-launch.md
 ---

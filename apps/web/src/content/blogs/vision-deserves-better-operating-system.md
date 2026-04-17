@@ -1,5 +1,5 @@
 ---
-title: 'Your Vision Deserves a Better Operating System'
+title: 'Your Vision Deserves Better Infrastructure'
 description: "For builders creating something that exceeds the capacity of human working memory, productivity apps aren't enough. You need infrastructure that matches your ambition."
 slug: 'vision-deserves-better-operating-system'
 publishDate: '2025-10-30'
@@ -8,27 +8,27 @@ category: 'Philosophy'
 tags:
     [
         'vision',
-        'empire-building',
         'founders',
         'creators',
         'context',
         'ambition',
         'systems-thinking',
-        'productivity-philosophy'
+        'thinking-environment',
+        'project-memory'
     ]
 featured: true
 draft: false
 seo:
-    title: 'Your Vision Deserves Better Infrastructure | BuildOS for Empire Builders'
-    description: 'Stop shrinking your ambition to fit your tools. BuildOS is the operating system for visionaries building something too complex for traditional productivity apps.'
+    title: 'Your Vision Deserves Better Infrastructure | BuildOS'
+    description: "Stop shrinking your ambition to fit your tools. BuildOS is a thinking environment for builders working on something too complex for traditional productivity apps — where context stays connected instead of scattering across six tools."
     keywords:
         [
             'productivity for founders',
             'context preservation tools',
-            'empire building tools',
             'vision to execution',
             'tools for ambitious projects',
-            'productivity infrastructure',
+            'thinking environment',
+            'project memory',
             'thought organization system',
             'working memory tools'
         ]

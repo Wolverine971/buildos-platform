@@ -27,6 +27,8 @@
 
 The project-level Claude config is **functional but drifting**. There are concrete bugs from a botched template import (HumanLayer), stale tech references (BullMQ, missing `CLAUDE.md` files), naming/casing inconsistency, AI-generated description cruft, and a permissions file that's ballooned with one-off allowances. Nothing is on fire, but a ~30-minute cleanup would materially improve reliability and cost (less Opus usage), and a handful of additions would close real gaps.
 
+**Status (2026-04-16):** pass 1 landed all the Quick Wins from §5.1 and one Medium (`settings.local.json`). One Medium reverted by design (twitter-warmup split). Four Mediums + five New Additions still open. See the progress log above and the status tags in §5.
+
 ---
 
 ## 1. Inventory
@@ -201,31 +203,31 @@ You have a massive warmup → reply two-stage pipeline but no agent that audits 
 
 ### Quick wins (≤ 15 min each)
 
-1. **Delete or rewrite `agents/create_plan.md`.** The built-in `create-plan` agent already exists. Lowest-risk fix is delete.
-2. **Fix `commands/code-cleanup-agent.md` frontmatter.** Remove `path:`, align `name:` with filename, drop `model: opus`.
-3. **Patch BullMQ drift** in `fix-bug.md` and `research_codebase_generic.md` — replace with "Supabase queue RPCs (`add_queue_job`, `claim_pending_jobs`, …)".
-4. **Patch `project-cleanup.md`** to remove references to non-existent `/apps/*/CLAUDE.md`.
-5. **Rename `skills/create-skill/` → match `name:`** (or change `name: create-skill`).
-6. **Rename command files** `implement_plan.md` → `implement-plan.md`, `research_codebase_generic.md` → `research-codebase.md`.
-7. **Collapse bloated agent descriptions** on `accessibility-auditor` and `content-editor` to one sentence each; move examples into the body.
-8. **Drop `NotebookEdit`** from all `disallowedTools:` lists.
-9. **Replace `TodoWrite` references** with `TaskCreate`/`TaskUpdate` in the 3 files that mention it.
+1. ✅ **Delete or rewrite `agents/create_plan.md`.** → Deleted. Built-in `create-plan` covers the slot.
+2. ✅ **Fix `commands/code-cleanup-agent.md` frontmatter.** → Renamed to `code-cleanup.md`; frontmatter cleaned.
+3. ✅ **Patch BullMQ drift** in `fix-bug.md` and `research_codebase_generic.md`. → `fix-bug.md` rewritten (BullMQ → Supabase queue RPCs); `research_codebase_generic.md` was deleted outright, which resolves its drift.
+4. ✅ **Patch `project-cleanup.md`** to remove references to non-existent `/apps/*/CLAUDE.md`. → Rewrote the command; those refs gone.
+5. ✅ **Rename `skills/create-skill/` → match `name:`.** → Fixed by setting `name: create-skill` in the frontmatter (kept directory name; no rename needed).
+6. ✅ **Rename command files (underscore → hyphen).** → `code-cleanup-agent.md` → `code-cleanup.md`. The other two (`implement_plan.md`, `research_codebase_generic.md`) were deleted, so no renames needed.
+7. ✅ **Collapse bloated agent descriptions** on `accessibility-auditor` and `content-editor`. → Both descriptions now one sentence each.
+8. ✅ **Drop `NotebookEdit`** from all `disallowedTools:` lists. → Removed from all 6 growth/outreach agents.
+9. ✅ **Replace `TodoWrite` references.** → All 3 files that mentioned it (`create_plan.md`, `implement_plan.md`, `research_codebase_generic.md`) were deleted, so no remaining `TodoWrite` refs in project config.
 
 ### Medium (~30–60 min)
 
-10. **Clean `settings.local.json`:** remove the `annawayne` path, drop the embedded commit message, remove shell-fragment entries, dedupe `pnpm X` vs `pnpm run X` pairs, compress WebFetch list to domains you'd actually visit again.
-11. **Split `accessibility-auditor` into skill + references** (`wcag-2.2-success-criteria.md`, `remediation-patterns.md`). Drop to `model: inherit`.
-12. **Create per-app `CLAUDE.md` files** for `apps/web/` and `apps/worker/`. Move app-specific rules from root CLAUDE.md there.
-13. **Extract `buildos-brand-voice` skill** so the 5 growth/outreach agents stop repeating positioning copy.
-14. **Merge `twitter-warmup.md` + `twitter-warmup-buildos.md`** into one command that takes an account argument.
+10. ✅ **Clean `settings.local.json`.** → 201 → 116 lines. Cross-machine path, commit blob, shell fragments, dupes, and one-off WebFetch domains all removed. Grouped what remained.
+11. ⏳ **Split `accessibility-auditor` into skill + references.** → NOT DONE. Description collapsed and model switched to `inherit`, but the 1953-line WCAG reference body has not been split into `references/`. Still an efficiency win on the table.
+12. ⏳ **Create per-app `CLAUDE.md` files** for `apps/web/` and `apps/worker/`. → NOT DONE. Root `CLAUDE.md` still carries web+worker rules.
+13. ⏳ **Extract `buildos-brand-voice` skill.** → NOT DONE. The 5 growth/outreach agents still duplicate BuildOS positioning copy.
+14. ↩️ **Merge twitter warmup commands.** → **REVERTED by design.** Personal (@djwayne3) and product (@build_os) are intentionally distinct workflows (different voice doc, scan order, product-mention cadence, cross-promo logic). Keeping them as two commands is correct.
 
 ### New additions to consider
 
-15. **`svelte5-runes-reviewer` agent** — reviews PRs for runes usage, Inkprint token usage, `ApiResponse` compliance, etc.
-16. **`supabase-migration-writer` agent** — writes safe migrations + `gen:all`.
-17. **`test-verifier` agent** — runs `pnpm pre-push`, parses failures, reports root-causes.
-18. **`social-voice-guardrail` agent** — audits queued social drafts against your saved tone memories.
-19. **PostToolUse hook on Svelte files** — auto-run `pnpm --filter=web check` on touched files.
+15. ⏳ **`svelte5-runes-reviewer` agent** — reviews PRs for runes usage, Inkprint token usage, `ApiResponse` compliance, etc.
+16. ⏳ **`supabase-migration-writer` agent** — writes safe migrations + `gen:all`.
+17. ⏳ **`test-verifier` agent** — runs `pnpm pre-push`, parses failures, reports root-causes.
+18. ⏳ **`social-voice-guardrail` agent** — audits queued social drafts against your saved tone memories.
+19. ⏳ **PostToolUse hook on Svelte files** — auto-run `pnpm --filter=web check` on touched files.
 
 ---
 
@@ -253,4 +255,11 @@ Stale tech mentions:
 
 ---
 
-**Next step:** pick which of §5 to apply; I can do all of the Quick Wins in one pass and show you a diff before you commit.
+**Outstanding work** (not yet done):
+
+- §5.11 — split `accessibility-auditor` into SKILL-style references to trim its 1953-line body.
+- §5.12 — per-app `CLAUDE.md` files for `apps/web/` and `apps/worker/`.
+- §5.13 — extract `buildos-brand-voice` skill to stop duplicating positioning copy across 5 agents.
+- §5.15–19 — all new-addition agents/hooks (Svelte 5 reviewer, migration writer, test verifier, social-voice guardrail, Svelte PostToolUse hook).
+
+Say the word on any of these and I'll pick it up.

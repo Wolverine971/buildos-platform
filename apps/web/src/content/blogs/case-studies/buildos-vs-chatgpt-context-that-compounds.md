@@ -10,7 +10,7 @@ priority: '0.9'
 published: true
 tags: ['chatgpt', 'ai', 'productivity', 'comparison', 'context-engineering']
 readingTime: 8
-excerpt: "ChatGPT remembers your name. BuildOS remembers your projects. Here's why that difference changes everything about AI-assisted work."
+excerpt: "ChatGPT remembers your name. BuildOS remembers your projects. Here's why that difference changes everything when you're actually trying to ship something complex."
 pic: 'buildos-vs-chatgpt'
 path: apps/web/src/content/blogs/case-studies/buildos-vs-chatgpt-context-that-compounds.md
 ---

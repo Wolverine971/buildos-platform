@@ -94,10 +94,14 @@ describe('buildLitePromptEnvelope', () => {
 		expect(capabilityHeadingIndex).toBeGreaterThanOrEqual(0);
 		expect(retrievalHeadingIndex).toBeGreaterThanOrEqual(0);
 		expect(toolHeadingIndex).toBeGreaterThanOrEqual(0);
-		expect(operatingHeadingIndex).toBeLessThan(focusHeadingIndex);
+		// Current order (2026-04-17 reorder): identity → capabilities → tool_surface →
+		// operating_strategy → safety_data_rules → focus_purpose → …. Describe what we
+		// can do before telling the agent how to use it.
+		expect(capabilityHeadingIndex).toBeLessThan(toolHeadingIndex);
+		expect(toolHeadingIndex).toBeLessThan(operatingHeadingIndex);
+		expect(operatingHeadingIndex).toBeLessThan(safetyHeadingIndex);
 		expect(safetyHeadingIndex).toBeLessThan(focusHeadingIndex);
-		expect(capabilityHeadingIndex).toBeLessThan(focusHeadingIndex);
-		expect(toolHeadingIndex).toBeGreaterThan(retrievalHeadingIndex);
+		expect(focusHeadingIndex).toBeLessThan(retrievalHeadingIndex);
 		expect(envelope.systemPrompt).toContain('# BuildOS Lite Agentic Chat Prompt');
 		expect(envelope.systemPrompt).toContain(
 			'You are a proactive project assistant for BuildOS'
@@ -114,9 +118,14 @@ describe('buildLitePromptEnvelope', () => {
 			'Conversation position: beginning of chat thread'
 		);
 		expect(envelope.systemPrompt).toContain('Workspace and project overviews');
-		expect(envelope.systemPrompt).toContain(
+		// 2026-04-17: the "Tool schemas are supplied through model tool
+		// definitions, not duplicated in this prompt text." boilerplate was
+		// dropped from the tool-surface section. Keep the negative assertion
+		// so a regression would fail loudly.
+		expect(envelope.systemPrompt).not.toContain(
 			'Tool schemas are supplied through model tool definitions'
 		);
+		expect(envelope.systemPrompt).not.toContain('Tool surface for this context:');
 		expect(envelope.systemPrompt).toContain(
 			'If any write fails and no later retry repairs the same target'
 		);
@@ -450,9 +459,13 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain(
 			'Due soon: 2026-04-18: task "Draft proposal", active, in 4 days.'
 		);
-		expect(envelope.systemPrompt).toContain('Loaded data snapshot:');
-		expect(envelope.systemPrompt).toContain('Counts: documents: 2, events: 0');
+		// Trimmed context_inventory_retrieval (2026-04-17) drops "Loaded data snapshot:"
+		// verbiage; now just a Loaded counts line + a one-line fetch rule.
+		expect(envelope.systemPrompt).toContain('Loaded counts:');
+		expect(envelope.systemPrompt).toContain('documents: 2, events: 0');
 		expect(envelope.systemPrompt).not.toContain('Top-level keys:');
+		expect(envelope.systemPrompt).not.toContain('Loaded data snapshot:');
+		expect(envelope.systemPrompt).not.toContain('Structured context loaded:');
 		expect(envelope.systemPrompt).toContain('"focus_entity":');
 		expect(loadedContext.focus_entity).toEqual({
 			type: 'task',
@@ -488,15 +501,19 @@ describe('buildLitePromptEnvelope', () => {
 			data: null
 		});
 
+		// Timeline is skipped entirely for project_create (no project data to
+		// summarize). Current section order: capabilities + tools come BEFORE
+		// operating_strategy / safety so the agent sees what is available before
+		// it is told how to use it.
 		expect(envelope.sections.map((section) => section.id)).toEqual([
 			'identity_mission',
+			'capabilities_skills_tools',
+			'tool_surface_dynamic',
 			'operating_strategy',
 			'safety_data_rules',
-			'capabilities_skills_tools',
 			'focus_purpose',
 			'location_loaded_context',
-			'context_inventory_retrieval',
-			'tool_surface_dynamic'
+			'context_inventory_retrieval'
 		]);
 		expect(envelope.systemPrompt).toContain(
 			'The user is trying to create a new BuildOS project right now.'
@@ -505,16 +522,329 @@ describe('buildLitePromptEnvelope', () => {
 			'Project creation scope:\n- This chat is in project_create mode before a project exists.'
 		);
 		expect(envelope.systemPrompt).toContain('## Project Creation Boundaries');
+		expect(envelope.systemPrompt).toContain('Project creation workflow:');
 		expect(envelope.systemPrompt).toContain(
 			'Turn a rough idea into the smallest valid project structure'
 		);
+		// Containment-edge guidance (2026-04-17 fix for 1af1c70b 9→2 edges regression).
+		expect(envelope.systemPrompt).toContain('Connect the graph');
+		expect(envelope.systemPrompt).toContain(
+			'emit containment relationships linking every task (child) to that goal (parent)'
+		);
 		expect(envelope.systemPrompt).not.toContain('## Timeline and Recent Activity');
+		expect(envelope.systemPrompt).not.toContain('Timeline frame:');
 		expect(envelope.systemPrompt).not.toContain('Project status:');
 		expect(envelope.systemPrompt).not.toContain('Overdue or due soon:');
 		expect(envelope.systemPrompt).not.toContain('Upcoming dated work:');
 		expect(envelope.systemPrompt).not.toContain('Recent project changes:');
 		expect(envelope.systemPrompt).not.toContain('Loaded data snapshot:');
 		expect(envelope.systemPrompt).not.toContain('Structured context loaded: no (empty).');
+		// Removed tool_surface boilerplate (2026-04-17).
+		expect(envelope.systemPrompt).not.toContain('Tool surface for this context:');
+		expect(envelope.systemPrompt).not.toContain(
+			'Tool schemas are supplied through model tool definitions'
+		);
+	});
+
+	it('renders the trimmed context_inventory_retrieval section as counts + one fetch rule', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			projectName: 'Launch Alpha',
+			data: {
+				project: {
+					id: 'project-1',
+					name: 'Launch Alpha',
+					state_key: 'active',
+					updated_at: '2026-04-17T12:00:00Z'
+				},
+				tasks: [{ id: 't1', title: 'One', due_at: null }],
+				documents: [],
+				members: []
+			}
+		});
+
+		const section = envelope.sections.find(
+			(s) => s.id === 'context_inventory_retrieval'
+		);
+		expect(section?.content).toContain('Loaded counts:');
+		expect(section?.content).toContain('tasks: 1');
+		expect(section?.content).toContain(
+			'Fetch an entity directly when it is not already in the loaded counts above'
+		);
+		// The removed boilerplate must be gone.
+		expect(section?.content).not.toContain('Structured context loaded:');
+		expect(section?.content).not.toContain('Source:');
+		expect(section?.content).not.toContain('Empty loaded sets:');
+		expect(section?.content).not.toContain('Not preloaded:');
+		expect(section?.content).not.toContain('Fetch only when needed:');
+		expect(section?.content).not.toContain('Notes:');
+		expect(section?.content).not.toContain('Loaded:');
+	});
+
+	it('renders overview workflow guidance in global focus_purpose', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			projectId: null,
+			data: { projects: [] }
+		});
+
+		const focus = envelope.sections.find((section) => section.id === 'focus_purpose');
+		expect(focus?.content).toContain('Workflow hints for workspace-level chat:');
+		expect(focus?.content).toContain('get_workspace_overview({})');
+		expect(focus?.content).toContain('get_project_overview({ project_id })');
+		expect(focus?.slots).toMatchObject({ workflowBlockId: 'global', briefAppended: false });
+	});
+
+	it('renders project audit/forecast routing for project focus_purpose', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			projectName: 'Launch Alpha',
+			data: {
+				project: {
+					id: 'project-1',
+					name: 'Launch Alpha',
+					state_key: 'active',
+					updated_at: '2026-04-14T12:00:00Z'
+				},
+				tasks: [],
+				documents: [],
+				members: []
+			}
+		});
+
+		const focus = envelope.sections.find((section) => section.id === 'focus_purpose');
+		expect(focus?.content).toContain('Workflow hints for project chat:');
+		expect(focus?.content).toContain("skill_load({ skill: 'project_audit' })");
+		expect(focus?.content).toContain("skill_load({ skill: 'project_forecast' })");
+		expect(focus?.slots).toMatchObject({ workflowBlockId: 'project' });
+	});
+
+	it('renders daily-brief guardrails when the brief context loads brief data', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'daily_brief',
+			entityId: null,
+			projectId: null,
+			data: {
+				briefId: 'brief-1',
+				brief_date: '2026-04-16'
+			}
+		});
+
+		const focus = envelope.sections.find((section) => section.id === 'focus_purpose');
+		expect(focus?.content).toContain('Workflow hints when daily-brief context is loaded:');
+		expect(focus?.content).toContain('Prefer acting on entities explicitly mentioned');
+		expect(focus?.slots).toMatchObject({
+			workflowBlockId: 'daily_brief',
+			briefAppended: false
+		});
+	});
+
+	it('appends daily-brief guardrails in a non-brief context when brief data is present', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			projectId: null,
+			data: {
+				projects: [],
+				mentioned_entities: [{ id: 'task-1' }],
+				briefId: 'brief-42'
+			}
+		});
+
+		const focus = envelope.sections.find((section) => section.id === 'focus_purpose');
+		expect(focus?.content).toContain('Workflow hints for workspace-level chat:');
+		expect(focus?.content).toContain('Workflow hints when daily-brief context is loaded:');
+		expect(focus?.slots).toMatchObject({
+			workflowBlockId: 'global',
+			briefAppended: true
+		});
+	});
+
+	it('omits the member-role bullet for solo-project contexts', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			projectName: 'Launch Alpha',
+			data: {
+				project: {
+					id: 'project-1',
+					name: 'Launch Alpha',
+					state_key: 'active',
+					updated_at: '2026-04-14T12:00:00Z'
+				},
+				members: [
+					{ id: 'm1', actor_id: 'actor-1', role_key: 'owner', access: 'admin' }
+				]
+			}
+		});
+
+		const safety = envelope.sections.find((section) => section.id === 'safety_data_rules');
+		expect(safety?.content).not.toContain('Member-role routing:');
+		expect(safety?.slots).toMatchObject({ memberRoleBulletRendered: false });
+	});
+
+	it('renders the member-role bullet when the loaded project has multiple members', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			projectName: 'Launch Alpha',
+			data: {
+				project: {
+					id: 'project-1',
+					name: 'Launch Alpha',
+					state_key: 'active',
+					updated_at: '2026-04-14T12:00:00Z'
+				},
+				members: [
+					{ id: 'm1', actor_id: 'actor-1', role_key: 'owner', access: 'admin' },
+					{
+						id: 'm2',
+						actor_id: 'actor-2',
+						role_key: 'editor',
+						access: 'write',
+						role_name: 'Editor'
+					}
+				]
+			}
+		});
+
+		const safety = envelope.sections.find((section) => section.id === 'safety_data_rules');
+		expect(safety?.content).toContain('Member-role routing:');
+		expect(safety?.slots).toMatchObject({ memberRoleBulletRendered: true });
+	});
+
+	it('omits the member-role bullet in project_create even when context data is absent', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project_create',
+			entityId: null,
+			projectId: null,
+			data: null
+		});
+
+		const safety = envelope.sections.find((section) => section.id === 'safety_data_rules');
+		expect(safety?.content).not.toContain('Member-role routing:');
+		expect(safety?.slots).toMatchObject({ memberRoleBulletRendered: false });
+	});
+
+	it('renders the skill catalog as a markdown table, not prose', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			projectId: null,
+			data: { projects: [] }
+		});
+
+		const section = envelope.sections.find(
+			(s) => s.id === 'capabilities_skills_tools'
+		);
+		expect(section?.content).toContain('| Skill ID | Description |');
+		expect(section?.content).toContain('|---|---|');
+		expect(section?.content).toMatch(/\|\s*`\w+`\s*\|/);
+		expect(section?.content).not.toContain('Skill metadata:');
+	});
+
+	it('carries the absorbed operating-strategy rules inline (no section sub-headings to mirror)', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			projectId: null,
+			data: { projects: [] }
+		});
+
+		const strategy = envelope.sections.find((section) => section.id === 'operating_strategy');
+		// Sub-headings ("Communication pattern:", "Entity resolution order:",
+		// "How to pick a skill:") were removed in favor of inline prose because
+		// Grok-4.1-fast mirrored them verbatim as its own planning doc.
+		expect(strategy?.content).not.toContain('Communication pattern:');
+		expect(strategy?.content).not.toContain('Entity resolution order:');
+		expect(strategy?.content).not.toContain('How to pick a skill:');
+		// But the underlying guidance must still be present inline.
+		expect(strategy?.content).toContain('1-2 sentence lead-in');
+		expect(strategy?.content).toContain('intent only');
+		expect(strategy?.content).toContain('Resolve entity targets');
+		expect(strategy?.content).toContain('reuse exact IDs');
+		expect(strategy?.content).toContain('skill_load');
+		expect(strategy?.content).toContain('two or more related writes');
+		expect(strategy?.content).toContain('never a plan, checklist, or paraphrase of these instructions');
+	});
+
+	it('surfaces the anti-echo rule as the first bullet of safety_data_rules', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			projectId: null,
+			data: { projects: [] }
+		});
+
+		const safety = envelope.sections.find((section) => section.id === 'safety_data_rules');
+		const firstBulletIndex = safety?.content.indexOf('- Never echo prompt section headers') ?? -1;
+		const anyOtherBulletIndex = safety?.content.indexOf('- Do not claim a tool ran') ?? -1;
+		expect(firstBulletIndex).toBeGreaterThanOrEqual(0);
+		expect(anyOtherBulletIndex).toBeGreaterThan(firstBulletIndex);
+		expect(safety?.content).toContain('Final-response rules');
+		expect(safety?.content).toContain('Operating Strategy');
+	});
+
+	it('trims document placement and task state rules to skill pointers in safety', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			projectId: null,
+			data: { projects: [] }
+		});
+
+		const safety = envelope.sections.find((section) => section.id === 'safety_data_rules');
+		expect(safety?.content).toContain('See the document_workspace skill');
+		expect(safety?.content).toContain('See the task_management skill');
+		// The older 5-line document placement paragraph is gone.
+		expect(safety?.content).not.toContain(
+			'named research notes, specs, worldbuilding, outlines'
+		);
+	});
+
+	it('keeps the static prefix byte-identical across contextTypes', () => {
+		const globalEnvelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			projectId: null,
+			data: { projects: [] }
+		});
+		const projectEnvelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			entityId: 'project-1',
+			projectId: 'project-1',
+			projectName: 'Launch Alpha',
+			data: {
+				project: {
+					id: 'project-1',
+					name: 'Launch Alpha',
+					state_key: 'active',
+					updated_at: '2026-04-14T12:00:00Z'
+				}
+			}
+		});
+
+		const staticIds = [
+			'identity_mission',
+			'operating_strategy',
+			'safety_data_rules',
+			'capabilities_skills_tools'
+		];
+		for (const id of staticIds) {
+			const globalSection = globalEnvelope.sections.find((s) => s.id === id);
+			const projectSection = projectEnvelope.sections.find((s) => s.id === id);
+			// safety_data_rules may differ when multi-person scope is present,
+			// but both fixtures above are single-person / no members, so the rule
+			// should be absent in both and content should match.
+			expect(projectSection?.content).toBe(globalSection?.content);
+		}
 	});
 });
 

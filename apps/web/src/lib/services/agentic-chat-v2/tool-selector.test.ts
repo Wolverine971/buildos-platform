@@ -111,6 +111,28 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('move_document_in_tree');
 	});
 
+	it('routes mixed task+document turns to the union write/document profile', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+
+		// Example Chapter 2 progress turn — mixes task work (revise, draft) with
+		// document work (save progress notes). Neither project_write nor
+		// project_document alone covers both; the union surface should.
+		const names = selectFastChatTools({
+			contextType: 'project',
+			latestUserMessage:
+				'Chapter 2 is complete at 4,500 words. Draft Chapter 3 and save the progress notes to the project document.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).toContain('create_onto_task');
+		expect(names).toContain('update_onto_task');
+		expect(names).toContain('create_onto_document');
+		expect(names).toContain('update_onto_document');
+		expect(names).toContain('get_document_tree');
+		expect(names).toContain('move_document_in_tree');
+	});
+
 	it('does not expose Libri when the feature flag is disabled', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'false');
 		const names = selectFastChatTools({ contextType: 'global' })

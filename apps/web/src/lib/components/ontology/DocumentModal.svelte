@@ -727,6 +727,35 @@
 		window.open(urlPath, '_blank', 'noopener,noreferrer');
 	}
 
+	function getAbsolutePublicPageUrl(): string | null {
+		const urlPath = publicPageState?.url_path;
+		if (!urlPath || !browser) return null;
+		return `${window.location.origin}${urlPath}`;
+	}
+
+	async function handleCopyPublicPageUrl() {
+		const absoluteUrl = getAbsolutePublicPageUrl();
+		if (!absoluteUrl) return;
+		try {
+			if (navigator.clipboard?.writeText) {
+				await navigator.clipboard.writeText(absoluteUrl);
+			} else {
+				const textarea = document.createElement('textarea');
+				textarea.value = absoluteUrl;
+				textarea.setAttribute('readonly', '');
+				textarea.style.position = 'fixed';
+				textarea.style.opacity = '0';
+				document.body.appendChild(textarea);
+				textarea.select();
+				document.execCommand('copy');
+				document.body.removeChild(textarea);
+			}
+			toastService.success('Link copied');
+		} catch (_error) {
+			toastService.error('Failed to copy link. Select the URL and copy it manually.');
+		}
+	}
+
 	function clearDeferredDocumentLoads() {
 		cancelCommentsCountLoad();
 		cancelPublicPageLoad();
@@ -2400,23 +2429,35 @@
 													>
 														{publicPageUrlPath}
 													</span>
-													<div class="flex items-center gap-2 shrink-0">
-														<button
-															type="button"
-															onclick={handleMakeDocumentPublic}
-															class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900 hover:text-emerald-700 transition-colors pressable"
-														>
-															Edit Public Settings
-														</button>
-														<button
-															type="button"
-															onclick={openPublicPageInNewTab}
-															class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900 hover:text-emerald-700 transition-colors pressable"
-														>
-															Open
-															<ExternalLink class="w-3 h-3" />
-														</button>
-													</div>
+												</div>
+												<div
+													class="flex flex-wrap items-center gap-1.5"
+												>
+													<button
+														type="button"
+														onclick={handleCopyPublicPageUrl}
+														aria-label="Copy public page link"
+														class="inline-flex min-h-[32px] items-center gap-1 rounded-md border border-emerald-300/70 bg-emerald-100/70 px-2 py-1 text-[11px] font-semibold text-emerald-900 hover:bg-emerald-200/70 transition-colors pressable"
+													>
+														<Link class="w-3 h-3" />
+														Copy link
+													</button>
+													<button
+														type="button"
+														onclick={openPublicPageInNewTab}
+														aria-label="Open public page in new tab"
+														class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-emerald-900 hover:bg-emerald-100/70 transition-colors pressable"
+													>
+														Open
+														<ExternalLink class="w-3 h-3" />
+													</button>
+													<button
+														type="button"
+														onclick={handleMakeDocumentPublic}
+														class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-emerald-900 hover:bg-emerald-100/70 transition-colors pressable"
+													>
+														Edit settings
+													</button>
 												</div>
 												<label
 													class="flex items-center justify-between gap-2 text-[11px] text-emerald-900"
@@ -3091,27 +3132,37 @@
 																>
 																	{publicPageUrlPath}
 																</span>
-																<div
-																	class="flex items-center gap-2 shrink-0"
+															</div>
+															<div
+																class="flex flex-wrap items-center gap-1.5"
+															>
+																<button
+																	type="button"
+																	onclick={handleCopyPublicPageUrl}
+																	aria-label="Copy public page link"
+																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md border border-emerald-300/70 bg-emerald-100/70 px-2 py-1 text-[11px] font-semibold text-emerald-900 hover:bg-emerald-200/70 transition-colors pressable"
 																>
-																	<button
-																		type="button"
-																		onclick={handleMakeDocumentPublic}
-																		class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900"
-																	>
-																		Edit
-																	</button>
-																	<button
-																		type="button"
-																		onclick={openPublicPageInNewTab}
-																		class="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-900"
-																	>
-																		Open
-																		<ExternalLink
-																			class="w-3 h-3"
-																		/>
-																	</button>
-																</div>
+																	<Link class="w-3 h-3" />
+																	Copy link
+																</button>
+																<button
+																	type="button"
+																	onclick={openPublicPageInNewTab}
+																	aria-label="Open public page in new tab"
+																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-emerald-900 hover:bg-emerald-100/70 transition-colors pressable"
+																>
+																	Open
+																	<ExternalLink
+																		class="w-3 h-3"
+																	/>
+																</button>
+																<button
+																	type="button"
+																	onclick={handleMakeDocumentPublic}
+																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-emerald-900 hover:bg-emerald-100/70 transition-colors pressable"
+																>
+																	Edit settings
+																</button>
 															</div>
 															<label
 																class="flex items-center justify-between gap-2 text-[11px] text-emerald-900"

@@ -152,14 +152,14 @@
 </script>
 
 <svelte:head>
-	<title>{data.post.title} - BuildOS Blog | AI-Native Productivity</title>
+	<title>{data.post.title} | BuildOS</title>
 	<meta name="description" content={data.post.description} />
 	<meta name="author" content={data.post.author || 'BuildOS Team'} />
 	<meta
 		name="keywords"
 		content="{data.post.tags.join(
 			', '
-		)}, BuildOS, AI productivity, {categoryDisplayName.toLowerCase()}, personal operating system"
+		)}, BuildOS, thinking environment, project memory, structured work, {categoryDisplayName.toLowerCase()}"
 	/>
 	<link rel="canonical" href="https://build-os.com/blogs/{data.post.category}/{data.post.slug}" />
 
@@ -169,7 +169,7 @@
 		property="og:url"
 		content="https://build-os.com/blogs/{data.post.category}/{data.post.slug}"
 	/>
-	<meta property="og:title" content="{data.post.title} - BuildOS Blog" />
+	<meta property="og:title" content="{data.post.title} | BuildOS" />
 	<meta property="og:description" content={data.post.description} />
 	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta property="og:image:secure_url" content={DEFAULT_SOCIAL_IMAGE_URL} />
@@ -198,7 +198,7 @@
 	/>
 	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
 	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
-	<meta name="twitter:title" content="{data.post.title} - BuildOS Blog" />
+	<meta name="twitter:title" content="{data.post.title} | BuildOS" />
 	<meta name="twitter:description" content={data.post.description} />
 	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />

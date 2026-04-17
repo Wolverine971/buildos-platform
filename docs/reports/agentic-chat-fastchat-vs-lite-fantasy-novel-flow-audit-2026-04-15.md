@@ -5,7 +5,9 @@
 Date: 2026-04-15
 Updated: 2026-04-16
 
-Scope: audit of agentic chat sessions for the same fantasy-novel project creation and follow-up workflow. The original comparison covered one full standard fastchat run and one full lite run. This update adds two 2026-04-16 lite reruns: the three-turn 74a4 rerun and the four-turn ac79 confirmation-flow run. It also notes one earlier one-turn fastchat repair pilot for context.
+> **Post-consolidation note (2026-04-16).** The `fastchat_prompt_v1` builder has been removed. `lite_seed_v1` is now the only runtime prompt path. The historical fastchat columns in this audit remain as a baseline for cost, reliability, and write-integrity comparisons; the "variant A vs variant B" framing no longer reflects live behavior. See the consolidation spec: [docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md](../specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md). The `13fc` post-fix lite replay below is the live baseline going forward.
+
+Scope: audit of agentic chat sessions for the same fantasy-novel project creation and follow-up workflow. The original comparison covered one full standard fastchat run and one full lite run. This update adds two 2026-04-16 lite reruns, one four-turn confirmation-flow run, a later post-fix fastchat replay, and a later post-fix lite replay. It also notes one earlier one-turn fastchat repair pilot for context.
 
 ## Primary Sources
 
@@ -13,6 +15,8 @@ Scope: audit of agentic chat sessions for the same fantasy-novel project creatio
 - Lite session audit: [chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-5e74e634-0992-49-2026-04-15.md](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-5e74e634-0992-49-2026-04-15.md)
 - Lite rerun session audit: [chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-74a4f0ef-9607-4e-2026-04-16.md](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-74a4f0ef-9607-4e-2026-04-16.md)
 - Lite confirmation-flow session audit: [chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-ac79da05-7120-4b-2026-04-16.md](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-ac79da05-7120-4b-2026-04-16.md)
+- Post-fix fastchat replay audit: [chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-875b3470-7831-48-2026-04-16.md](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-875b3470-7831-48-2026-04-16.md)
+- Post-fix lite replay audit: [chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-13fc9ea8-13d7-4a-2026-04-16.md](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-13fc9ea8-13d7-4a-2026-04-16.md)
 - Earlier one-turn repair pilot: [chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-3f288e0f-a385-43-2026-04-15.md](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-3f288e0f-a385-43-2026-04-15.md)
 - Current agentic chat feature map: [apps/web/docs/features/agentic-chat/README.md](../../apps/web/docs/features/agentic-chat/README.md)
 - Agentic chat operating model: [docs/specs/agentic-chat-operating-model.md](../specs/agentic-chat-operating-model.md)
@@ -42,9 +46,14 @@ Net: lite is still ahead on architecture, cost, and initial project modeling. Th
 
 A second April 16 lite run, `ac79da05`, adds a useful variation: the assistant paused after the Chapter 2 progress message and waited for the user to say "Yeah, let's save all this." That made the flow four turns instead of three. It produced the best Chapter 2 persistence artifact by creating a dedicated "Chapter 2 Progress & Revisions" document, but it was more expensive than the other lite full runs and repeated the same release-blocking markup-artifact bug in a task description.
 
-Late-pass implementation notes and next-test expectations are recorded in
-[Post-Fix Update: 2026-04-16 Late Pass](#post-fix-update-2026-04-16-late-pass)
-and [Expected Next Testing Round](#expected-next-testing-round).
+A later post-fix fastchat replay, `875b3470`, is the first real-world check after the late-pass write-integrity cleanup. It is materially better than the original fastchat run: 3 turns, 11 tool calls, 0 failures, 116,001 tokens, and `$0.03860488`. It created the primary goal, avoided internal-markup persistence, used a valid document append with content, and created the magic research document with `document.knowledge.research` preserved. The main remaining failure moved up the stack: final responses still did not match the successful write set. The Chapter 2 response omitted the successful context-document update and did not name either created task; the magic-system response omitted the newly created research document entirely.
+
+A post-fix lite replay, `13fc9ea8`, is now the strongest full run on combined cost and reliability: 3 turns, 10 tool calls, 0 failures, 78,438 tokens, and `$0.02187023`. Compared with `875b3470`, it used 32.4% fewer tokens and cost 43.3% less. It preserved the main project graph, used a valid Chapter 2 append, avoided markup persistence, preserved the research document type, and gave the best Chapter 2 final-response grounding so far. Remaining issues are narrower but still important: the initial response said "7 Tasks" but listed only four, the outline task received description detail but stayed `todo`, the magic-system turn created a clean document but did not update related tasks, and the final "nested under overview" claim depends on the `parent_id` create contract rather than a separate tree verification.
+
+Late-pass implementation notes and the first post-fix replay results are recorded in
+[Post-Fix Update: 2026-04-16 Late Pass](#post-fix-update-2026-04-16-late-pass),
+[Post-Fix Replay Result: 875b3470](#post-fix-replay-result-875b3470), and
+[Post-Fix Replay Result: 13fc9ea8](#post-fix-replay-result-13fc9ea8).
 
 ## Which File Was Which
 
@@ -53,14 +62,20 @@ and [Expected Next Testing Round](#expected-next-testing-round).
 | [3f288e0f audit](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-3f288e0f-a385-43-2026-04-15.md) | `fastchat_prompt_v1` | One-turn pilot. First create failed on invalid `type_key`, then repaired and succeeded       |  21,834 |  `$0.0060579` |  1 tool failure |
 | [09e3ca0b audit](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-09e3ca0b-8163-47-2026-04-15.md) | `fastchat_prompt_v1` | Full flow. No tool failures, but missed the primary project goal                             | 143,388 |  `$0.0522584` | 0 tool failures |
 | [5e74e634 audit](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-5e74e634-0992-49-2026-04-15.md) |       `lite_seed_v1` | Full flow. Better project structure, but one hidden failed document update                   | 118,687 | `$0.03410443` |  1 tool failure |
-| [74a4f0ef audit](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-74a4f0ef-9607-4e-2026-04-16.md) |       `lite_seed_v1` | Full rerun. No failed tools and cheapest run, but persisted tool markup in document content  | 106,280 |  `$0.0302656` | 0 tool failures |
+| [74a4f0ef audit](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-74a4f0ef-9607-4e-2026-04-16.md) |       `lite_seed_v1` | Full rerun. No failed tools and then-cheapest run, but persisted tool markup in document content | 106,280 |  `$0.0302656` | 0 tool failures |
 | [ac79da05 audit](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-ac79da05-7120-4b-2026-04-16.md) |       `lite_seed_v1` | Four-turn confirmation flow. Best Chapter 2 doc capture, but persisted tool markup in a task | 123,727 | `$0.04469285` | 0 tool failures |
+| [875b3470 audit](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-875b3470-7831-48-2026-04-16.md)  | `fastchat_prompt_v1` | Post-fix replay. No failed tools or markup leak, but final responses omitted key writes      | 116,001 | `$0.03860488` | 0 tool failures |
+| [13fc9ea8 audit](../../chat-session-audit-i-m-starting-my-first-fantasy-novel-the-last-emb-13fc9ea8-13d7-4a-2026-04-16.md) |       `lite_seed_v1` | Post-fix replay. Cheapest clean full run; best Chapter 2 grounding, weaker magic task coverage |  78,438 | `$0.02187023` | 0 tool failures |
 
 The April 15 lite run reduced tokens by about 17.2% and cost by about 34.8% versus the full fastchat run, despite taking a failed-tool path and making more tool calls.
 
 The April 16 lite rerun improved that further: about 25.9% fewer tokens and 42.1% lower cost than full fastchat, and about 10.5% fewer tokens and 11.3% lower cost than the April 15 lite run. The earlier 3f288e0f run is useful as a repair-policy datapoint, but it is only one turn and should not be compared directly to the three-turn totals.
 
 The ac79da05 run is also not a clean apples-to-apples cost comparison because it includes an extra user confirmation turn. It still cost less than the full fastchat run, but it was materially more expensive than the three-turn April 16 lite rerun.
+
+The 875b3470 post-fix fastchat replay is directly comparable to the three-turn full runs. It is about 19.1% fewer tokens and 26.1% lower cost than the original fastchat run. It is also slightly fewer tokens than the April 15 lite run, but still more expensive than both three-turn lite runs.
+
+The 13fc9ea8 post-fix lite replay is the new cost baseline among full three-turn runs. It is about 45.3% fewer tokens and 58.1% lower cost than the original fastchat run, 26.2% fewer tokens and 27.7% lower cost than the 74a4 lite rerun, and 32.4% fewer tokens and 43.3% lower cost than the post-fix fastchat replay.
 
 ## Runtime Context
 
@@ -94,10 +109,14 @@ Relevant docs:
 | Successful write quality    | One task description polluted with tool markup          | No known successful write pollution                                   | Project context doc polluted with tool markup                                    | Write sanitization is now release-blocking                                   |
 | Tool-call success           | No tool failures                                        | One failed document update                                            | No tool failures                                                                 | Apr 16 was best on raw failure count                                         |
 | Error disclosure            | No errors to disclose                                   | Failed document write was hidden                                      | No failed writes, but successful bad write was not detected                      | Runtime needs failed-write and bad-write integrity checks                    |
-| Token efficiency            | 143,388 tokens                                          | 118,687 tokens                                                        | 106,280 tokens                                                                   | Apr 16 was cheapest                                                          |
+| Token efficiency            | 143,388 tokens                                          | 118,687 tokens                                                        | 106,280 tokens                                                                   | Apr 16 was cheapest among the historical three-column runs                   |
 | Tool discovery overhead     | Heavy skill/schema/tool-search use                      | Still significant discovery use                                       | Lower total calls, but still loaded examples and fetched unused document schema  | Project write/document surfaces still need tuning                            |
 
 The ac79 confirmation-flow run is excluded from this three-column comparison table because it added an extra user confirmation turn. Compared with the three-turn 74a4 rerun, ac79 improved Chapter 2 document capture but regressed cost and repeated the internal-markup persistence bug in a task description.
+
+The 875 post-fix fastchat replay is also excluded from this historical three-column table because it tested a later implementation state. Compared with the original fastchat run, it fixed goal extraction, reduced cost/tool calls, avoided markup pollution, and preserved the requested magic-document type. Compared with the best lite rerun, it was still more expensive and weaker on final prose.
+
+The 13fc post-fix lite replay is also excluded from the historical three-column table for the same reason. It should now be treated as the strongest post-fix lite datapoint: cheaper than every prior full run, clean on the observed P0 write-integrity failures, better than 875 on Chapter 2 final-response grounding, but weaker than 875 on magic-system task updates.
 
 ## What Happened By Turn
 
@@ -275,6 +294,107 @@ The magic-system turn was mixed:
 
 This confirms the prior audit's strongest conclusion: raw "0 tool failures" is not enough. Successful writes still need payload hygiene checks.
 
+## April 16 875 Fastchat Post-Fix Replay Reassessment
+
+The 875b3470 run used `fastchat_prompt_v1`, but it is not the same behavioral baseline as the original 09e3ca0b fastchat run. The prompt and tool guidance had late-pass write-integrity changes, including document-only update strategy language, stronger document placement rules, and stricter intent-before-tool / outcome-after-tool guidance.
+
+### 875 Verdict
+
+This replay is better than the original fastchat run and better than the polluted April 16 lite reruns on write integrity. It created the goal, wrote a valid progress append, created a dedicated magic-system document with the requested research type preserved, and did not persist internal tool markup.
+
+It is not a clean pass. The remaining user-trust issue is final-answer integrity. The assistant performed useful writes, but the final prose omitted material successful writes. That means the next architectural fix should prioritize a write-outcome ledger or deterministic final-response constraints, not more prompt-only wording.
+
+### Turn 1: Project Creation
+
+875 fixed the original fastchat project-shape failure. It created project `0eb834f6-9393-486b-811e-363f71dcfeed` with 1 goal, 7 tasks, 1 context document, and 9 edges. The goal was "Write the fantasy novel 'The Last Ember'", and the seven requested work items became tasks linked under that goal.
+
+This is a meaningful improvement over the original fastchat run, which created 0 goals. The final response also summarized all seven task areas correctly.
+
+### Turn 2: Chapter 2 Progress
+
+The Chapter 2 turn showed several improvements:
+
+- It appended a clean "Writing Progress - 2026-04-16" section to the context document with actual `content`.
+- It did not repeat the no-content append failure.
+- It did not persist internal tool markup.
+- It created "Revise Chapter 2" and "Draft Chapter 3" tasks under the main goal.
+- It used compact `task_management` skill output.
+
+The remaining weaknesses are important:
+
+- It did not update "Outline first three chapters" to `in_progress`, even though Chapter 2 was complete and Chapter 3 plans were supplied.
+- The final response said "Created two new tasks under the main goal:" but did not name either task.
+- The final response omitted the successful context-document update entirely.
+- The compact trace summary collapsed two task creates into a single `onto.task.create:ok` entry.
+
+This is a better write path than the original lite failure, but still not a good final user experience.
+
+### Turn 3: Magic System Research Notes
+
+The magic-system turn was the strongest document-write result so far:
+
+- It created a dedicated "Magic System Research Notes" document.
+- The requested `document.knowledge.research` type persisted correctly.
+- The create call included `parent_id` for the context document.
+- It updated the "Create magic system based on metal and fire" and "Research medieval blacksmithing techniques" tasks to `in_progress`.
+- It did not leak `<parameter name=...>` or other internal tool syntax into durable text.
+
+Remaining issues:
+
+- The final response omitted the new "Magic System Research Notes" document and only reported the task state changes.
+- The trace does not include a separate `get_document_tree` or `move_document_in_tree` call. If `parent_id` on create is the supported placement contract, this is fine; if not, document placement still needs explicit verification.
+- The assistant did not update "Map out the kingdom of Aethermoor" despite world-building additions about regional forging techniques across Aethermoor.
+
+The post-fix replay therefore confirms the P0 write-integrity fixes are moving in the right direction, but it also confirms that final-response grounding remains open.
+
+## April 16 13fc Lite Post-Fix Replay Reassessment
+
+The 13fc9ea8 run used `lite_seed_v1` after the same late-pass cleanup period. It is directly comparable to the full three-turn fantasy-novel runs and is the first post-fix lite replay in this audit set.
+
+### 13fc Verdict
+
+This is the best overall full run so far if the product weights cost, raw reliability, and user-facing response accuracy together. It completed the scenario with 10 tool calls, 0 failures, no observed internal-markup persistence, a valid document append, and a clean dedicated magic-system research document. It also gave the best Chapter 2 final answer because it explicitly named the document update, both new tasks, and the existing task it updated.
+
+It is not a full pass. The remaining issues are less catastrophic than the earlier P0 failures but still product-relevant: initial task summary completeness, task-state coverage, related-task coverage on the magic-system turn, mild content overreach around Elena's canonical age, and document-placement confirmation semantics.
+
+### Turn 1: Project Creation
+
+13fc created project `04af5167-e41f-4d10-931b-c257c12767bb` with 1 goal, 7 tasks, 1 context document, and 9 edges. The goal was "Complete first draft of 'The Last Ember'", and the seven requested work items were persisted as tasks under the goal.
+
+This matches or beats every earlier full run on project graph shape. The remaining weakness is only in the final prose: the assistant said "7 Tasks" but listed four task areas, omitting the backstory, magic-system, and antagonist-profile tasks from the visible summary even though they were persisted.
+
+### Turn 2: Chapter 2 Progress
+
+This was the strongest Chapter 2 turn among the three-turn runs:
+
+- It appended progress to "The Last Ember - Project Overview" with non-empty `content`.
+- It created "Revise Chapter 2: Strengthen dialogue, pacing, sensory details, and fix continuity".
+- It created "Write Chapter 3".
+- It updated "Outline first three chapters" with Chapter 3 details.
+- The final response reported the document update, named both created tasks, and named the updated outline task.
+
+Remaining issues:
+
+- The outline task stayed `todo`; the update only changed its description.
+- The revision task chose "standardize to 17" for Elena's age. The user reported a continuity conflict between 16 and 17 but did not specify which value was canonical, so the agent should record the conflict without deciding canon unless it frames the value as a recommendation.
+- The turn still used two `tool_search` calls for ordinary task create/update work. That is better than the earlier discovery-heavy traces, but the project follow-up path still needs a more direct write surface or routing heuristic.
+
+### Turn 3: Magic System Research Notes
+
+The magic-system document write was clean:
+
+- It created "Magic System and World-Building Research Notes".
+- The persisted type was `document.knowledge.research`.
+- The content captured the emotion-forged-weapons concept, research directions, and Aethermoor world-building additions.
+- The create arguments included `parent_id`, `parent`, and `parents` pointing at "The Last Ember - Project Overview".
+- The final response accurately reported the created document and persisted type.
+
+Remaining issues:
+
+- No related task was updated. The existing magic-system task stayed untouched, and the blacksmithing/Aethermoor tasks were also plausible updates given the content.
+- The final response said the document was nested under the overview. That is probably correct if `parent_id` on `create_onto_document` is the supported placement contract, but the result did not echo parent placement and the trace did not perform a separate tree read/move verification.
+- Compared with 875, this run was cheaper and had better final-response grounding, but 875 had better magic-system task progress because it updated the magic-system and blacksmithing tasks.
+
 ## Tool Call Evaluation
 
 ### Scoring Key
@@ -383,6 +503,45 @@ This confirms the prior audit's strongest conclusion: raw "0 tool failures" is n
 |    4 | No document placement/link operation          | Missing         | The assistant said the new doc was linked to the main goal, but no graph/document link or doc-tree placement call is visible.                         |
 |    4 | Final response                                | Mostly improper | It accurately reported the document creation, but overclaimed type and linking and did not notice the polluted task update.                           |
 
+### April 16 875 Fastchat Post-Fix Tool Call Evaluation
+
+| Turn | Tool/action                                      | Verdict         | Notes                                                                                                                                                 |
+| ---: | ------------------------------------------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+|    1 | `create_onto_project`                            | Proper          | Correct project skeleton: 1 goal, 7 tasks, 1 document, 9 edges. This fixes the original fastchat no-goal failure.                                    |
+|    1 | Final response                                   | Proper          | Reported the project, goal, all seven task areas, context document, and project scope accurately.                                                     |
+|    2 | `update_onto_document` progress append           | Proper          | Correct target and valid append with non-empty `content`. No no-content append failure and no markup artifact.                                       |
+|    2 | `skill_load(task_management, short)`             | Proper          | Compact skill load was appropriate for task creation/update guidance.                                                                                 |
+|    2 | `list_onto_tasks`                                | Proper          | Needed to identify existing tasks and IDs.                                                                                                           |
+|    2 | Two `tool_search` calls for task create/update   | Mostly proper   | Lower discovery overhead than earlier runs, but still points to the project write-surface gap for common follow-up turns.                             |
+|    2 | `create_onto_task` for Chapter 2 revision        | Proper          | Correct task with dialogue, pacing, sensory detail, and age-continuity fix.                                                                           |
+|    2 | `create_onto_task` for Chapter 3 draft           | Proper          | Correct task with forging attempt, herald, and prophecy details.                                                                                      |
+|    2 | No `update_onto_task` for outline progress       | Missing         | "Outline first three chapters" should have moved to `in_progress`, as the best lite runs did.                                                        |
+|    2 | Final response                                   | Mostly improper | It said two tasks were created but did not name them, and omitted the successful context-document update.                                             |
+|    3 | `create_onto_document` for magic notes           | Proper          | Best document-create result so far: dedicated research doc, clean content, requested `document.knowledge.research` persisted, and `parent_id` passed. |
+|    3 | `update_onto_task` for magic-system task         | Proper          | Correctly moved the magic-system task to `in_progress` without description pollution.                                                                 |
+|    3 | `update_onto_task` for blacksmithing task        | Proper          | Correctly moved the blacksmithing research task to `in_progress`.                                                                                    |
+|    3 | No update for Aethermoor/map task                | Missing/optional | World-building notes included regional forging differences across Aethermoor, so the map/world task was a plausible related update.                 |
+|    3 | No explicit tree read/move                       | Unclear         | The create call included `parent_id`; if create supports placement this is fine, but the trace does not independently verify tree placement.          |
+|    3 | Final response                                   | Improper        | It omitted the successfully created "Magic System Research Notes" document and reported only task state changes.                                      |
+
+### April 16 13fc Lite Post-Fix Tool Call Evaluation
+
+| Turn | Tool/action                                      | Verdict          | Notes                                                                                                                                                                        |
+| ---: | ------------------------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|    1 | `create_onto_project`                            | Proper           | Correct project skeleton: 1 goal, 7 tasks, 1 document, 9 edges. All seven user bullets became tasks under the goal.                                                          |
+|    1 | Final response                                   | Mostly proper    | It correctly reported the project, goal, document, and "7 Tasks", but listed only four task areas in prose.                                                                  |
+|    2 | `update_onto_document` progress append           | Proper           | Correct target and valid append with non-empty `content`. No no-content append failure and no markup artifact.                                                               |
+|    2 | Two `tool_search` calls for task create/update   | Mostly proper    | The calls found the needed write tools, but they are still unnecessary overhead for a routine project follow-up.                                                              |
+|    2 | `list_onto_tasks`                                | Proper           | Needed to identify the existing outline task and goal-linked project tasks.                                                                                                  |
+|    2 | `create_onto_task` for Chapter 2 revision        | Mostly proper    | Correct durable follow-up. Minor content overreach: the description chose "standardize to 17" when the user only reported an age-continuity conflict.                       |
+|    2 | `update_onto_task` for outline details           | Mostly proper    | Correct target and useful Chapter 3 detail, but the task remained `todo`; it did not move to `in_progress`.                                                                  |
+|    2 | `create_onto_task` for Chapter 3 draft           | Proper           | Correct follow-up task with useful description and goal link.                                                                                                                |
+|    2 | Final response                                   | Proper           | Best Chapter 2 grounding so far: it mentioned the document update, named both created tasks, and named the updated outline task without claiming a state change.              |
+|    3 | `create_onto_document` for magic/world notes     | Proper           | Clean dedicated document, useful content, requested `document.knowledge.research` persisted, and parent metadata was passed.                                                 |
+|    3 | No related task updates                          | Missing/optional | The magic-system, blacksmithing, and Aethermoor/world tasks were plausible updates based on the research content, but no task write occurred.                                |
+|    3 | No explicit tree read/move                       | Unclear          | The create call passed `parent_id`, `parent`, and `parents`; if create supports placement this is fine, but the result did not independently confirm parent placement.        |
+|    3 | Final response                                   | Mostly proper    | It accurately reported the created document and persisted type. The "nested under Project Overview" claim depends on the create-parent contract rather than a confirmed tree read. |
+
 ## Specific Findings
 
 ### P0: Successful Writes Can Persist Internal Tool Markup
@@ -392,6 +551,18 @@ backstop now reject this class before persistence, and repair replay redacts
 the rejected string before the next model pass. The next test should verify
 that the model either avoids the artifact entirely or retries cleanly after a
 validation failure.
+
+875 replay result: the post-fix fastchat replay did not reproduce the markup
+artifact. The valid document append, task creates, task updates, and research
+document create all persisted clean text. Keep this as a release-blocking
+regression check because earlier sessions proved the failure can be silent and
+durable.
+
+13fc replay result: the post-fix lite replay also did not reproduce the markup
+artifact. The valid document append, task creates/update, and research document
+create all persisted clean text. This is the first lite replay in this audit set
+that is both cheaper than the earlier lite reruns and clean on observed durable
+markup.
 
 The April 16 lite rerun exposed a higher-confidence version of the markup-artifact problem. The model emitted a document update where `update_strategy` leaked into the `content` string instead of becoming a structured argument:
 
@@ -451,6 +622,14 @@ non-empty content, and the repair/runtime validation tests cover this path. The
 next replay should still explicitly inspect for append/merge calls that include
 only `merge_instructions`.
 
+875 replay result: the Chapter 2 progress turn used the desired shape: non-empty
+`content` plus `update_strategy: "append"` and `merge_instructions`. The append
+succeeded and preserved existing context-document content.
+
+13fc replay result: the Chapter 2 progress turn also used the desired append
+shape with non-empty `content`, succeeded, and did not leak internal markup into
+the document body.
+
 ### P0: Lite Did Not Surface A Failed Write
 
 The final lite response after Turn 2 did not mention that the document update failed. It only reported the successful task updates/creates and asked whether the user wanted a dedicated "Chapter Progress Log" doc.
@@ -478,6 +657,39 @@ post-tool outcome claims. This should reduce premature success language, but
 ledger-rendered final prose is still open and should remain part of the next
 test's acceptance checks.
 
+875 replay result: there were no failed writes to disclose. However, the same
+final-response integrity gap appeared in a different form: successful writes
+were omitted from the final responses. That means failed-write disclosure should
+be treated as one case of a broader write-ledger finalization problem.
+
+### P0/P1: Final Responses Still Do Not Match The Successful Write Set
+
+The 875 post-fix replay proves that prompt bookend guidance is not enough.
+After successful writes, the assistant still failed to summarize what actually
+happened:
+
+- Turn 2 successfully appended Chapter 2 progress to the context document and
+  created two tasks, but the final response only said "Created two new tasks"
+  and did not name them or mention the document update.
+- Turn 3 successfully created "Magic System Research Notes" and updated two
+  tasks, but the final response omitted the new document entirely.
+
+This is not a tool-execution failure. It is a finalization/grounding failure.
+
+Recommendation:
+
+- Add or reuse a per-turn write-outcome ledger.
+- Before final answer generation, inject a compact list of material successful
+  writes, failed writes, normalized fields, and warnings.
+- Add deterministic tests that final prose mentions material successful writes
+  and does not claim unsupported updates, links, or document types.
+
+13fc replay result: the post-fix lite path improved this materially but did not
+close it. Turn 2 is the best example so far of final prose matching the write
+set, but Turn 1 still listed only four of seven tasks in the visible summary and
+Turn 3 made a placement claim that depends on the `parent_id` create contract
+rather than a confirmed tree result.
+
 ### P1: Fastchat Missed The Initial Goal
 
 Fastchat created no goal even though the user clearly stated an outcome: starting and developing the fantasy novel "The Last Ember".
@@ -491,6 +703,14 @@ Recommendation:
 - Assert the seven user-provided bullets become tasks.
 - Assert the goal contains or relates to the tasks.
 - Consider making the project creation schema/examples emphasize "goal plus concrete task children" more strongly.
+
+875 replay result: this issue appears fixed for the post-fix fastchat path. The
+replay created one primary goal, seven tasks, one context document, and nine
+edges.
+
+13fc replay result: the post-fix lite path also created one primary goal, seven
+tasks, one context document, and nine edges. The graph shape is no longer the
+active issue for this scenario.
 
 ### P1: Project Context Tool Surface Is Too Read-Heavy For Follow-Ups
 
@@ -513,6 +733,16 @@ Common follow-up turns in a project are not read-only. Users say things like "I 
 - sometimes `get_document_tree` and `move_document_in_tree`
 
 Because these are not preloaded in basic project context, the full runs had to use repeated `tool_search` and `tool_schema` calls. That increased tokens and created more opportunities for mistakes.
+
+875 replay result: discovery overhead improved but did not disappear. The full
+three-turn replay used 11 tool calls, down from 20 in the original fastchat run,
+but the Chapter 2 turn still needed two `tool_search` calls for ordinary task
+create/update work.
+
+13fc replay result: total overhead improved again to 10 tool calls, but the
+Chapter 2 turn still used two `tool_search` calls for ordinary task create/update
+work. That makes the issue a routing/surface design problem, not just a
+fastchat-prompt problem.
 
 Recommendation:
 
@@ -551,6 +781,8 @@ Examples:
 - Fastchat Turn 2 summary includes `onto.task.update:ok`, but that entry was only a `tool_schema` call for `onto.task.update`, not an actual `update_onto_task` execution.
 - April 16 lite Turn 2 summary collapses three task creates into `onto.task.create:ok`, which is compact but not enough to audit whether the final prose mentioned all created tasks.
 - ac79 Turn 3 summary stops after skill/load, list, and discovery calls; it omits the later outline update, two task creates, and Chapter 2 document create.
+- 875 Turn 2 summary includes the document update and task-create category, but collapses two task creates into one `onto.task.create:ok` entry. 875 Turn 3 summary is better because it lists all three writes.
+- 13fc Turn 2 summary includes the document update and task-create category, but again collapses two task creates into one `onto.task.create:ok` entry and omits the final list. 13fc Turn 3 summary is accurate because there was only one write.
 
 This makes audits harder and can make a session look less or more successful than it was.
 
@@ -574,6 +806,19 @@ Lite appended substantial research notes to the project context document. This i
 Fastchat created a dedicated research document and nested it. That is a better durable workspace shape for the magic-system notes.
 
 April 16 reassessment: the lite rerun improved the artifact choice by creating a dedicated "Magic System Research Notes" document. It still missed document placement because it did not call `get_document_tree` or `move_document_in_tree`, and it updated the context document with polluted content. The product rule should therefore cover both artifact choice and placement/write hygiene.
+
+875 replay result: the post-fix fastchat path produced the strongest research
+document create result so far. It created a dedicated research document, the
+requested `document.knowledge.research` type persisted, and the call included
+`parent_id` for the context document. The remaining question is whether
+`parent_id` on create is the supported placement contract or whether tree
+placement still needs an explicit read/move operation.
+
+13fc replay result: the post-fix lite path matched the strongest document-create
+shape: a dedicated research/world-building document, clean content, persisted
+`document.knowledge.research`, and parent metadata passed on create. The same
+placement-contract question remains because the trace did not include a separate
+tree read/move and the result did not echo parent placement.
 
 Recommendation:
 
@@ -636,6 +881,16 @@ Fastchat requested `type_key: "document.knowledge.research"` for the Magic Syste
 
 The April 16 lite reruns repeated this mismatch. The 74a4 rerun requested `type_key: "document.knowledge.research"` when creating "Magic System Research Notes", and the result persisted `type_key: "document.default"`. The ac79 run did the same for "Magic System Research Notes" and also requested `document.context.project` for "Chapter 2 Progress & Revisions", which persisted as `document.default`.
 
+875 replay result: this improved in the post-fix fastchat path. "Magic System
+Research Notes" requested `document.knowledge.research`, and the result
+persisted `document.knowledge.research`.
+
+13fc replay result: the post-fix lite path also persisted
+`document.knowledge.research` for "Magic System and World-Building Research
+Notes". This suggests the earlier mismatch may now be fixed or avoided for the
+post-fix write path, but it should remain in replay assertions until type
+normalization is understood.
+
 This did not harm the user-facing flow, but it may indicate a type taxonomy mismatch, API coercion, or unsupported document type.
 
 Recommendation:
@@ -685,7 +940,22 @@ Recommendation:
 - The ac79 magic-system turn repeated the markup-pollution bug in a task description despite 0 failed tools.
 - The ac79 final answer overclaimed the created document's type and said it was linked to the main goal even though the result persisted `document.default` and no link or placement operation was visible.
 - The ac79 Turn 3 trace summary omitted the later successful writes, making the best Chapter 2 persistence work hard to see from the compact trace alone.
+- The 875 post-fix fastchat replay fixed the original fastchat no-goal failure: it created one goal, seven tasks, one document, and nine edges.
+- The 875 replay did not reproduce the internal-markup persistence bug.
+- The 875 replay used a valid document append for Chapter 2 progress with actual content and no hidden failed write.
+- The 875 magic-system document persisted as `document.knowledge.research`, unlike the earlier type-normalization failures.
+- The 875 final responses still omitted material successful writes: Turn 2 omitted the context-document update and task names, and Turn 3 omitted the created magic-system research document.
+- The 875 replay still missed updating the existing "Outline first three chapters" task on the Chapter 2 turn.
+- The 875 replay reduced original fastchat cost and tool calls, but it was still more expensive than the three-turn lite reruns.
 - Fastchat's Turn 3 final answer may overstate "cross-linked" because no actual semantic link call is visible.
+- The 13fc post-fix lite replay is now the cheapest full run: 78,438 tokens and `$0.02187023`.
+- The 13fc replay did not reproduce the no-content append, durable-markup, or document-type mismatch failures.
+- The 13fc Chapter 2 final response was the best grounded response so far: it mentioned the document append, named both created tasks, and named the updated outline task.
+- The 13fc replay still left "Outline first three chapters" in `todo`; it updated the description but not the task state.
+- The 13fc revision task decided to standardize Elena's age to 17 even though the user only reported a 16/17 continuity conflict.
+- The 13fc magic-system turn created a clean dedicated document but did not update the existing magic-system, blacksmithing, or Aethermoor tasks.
+- The 13fc magic-system final answer claimed the document was nested under the project overview. The create arguments passed parent metadata, but the trace did not independently verify tree placement.
+- The 13fc run shows that lite can beat post-fix fastchat on cost and final-response grounding while still needing better related-task coverage and write-surface routing.
 - The full runs overused discovery because project context only preloads basic read tools.
 - The full runs would benefit from a project write surface for normal follow-up project updates.
 - The lite prompt's bounded context index helped it know the project goal and recent tasks.
@@ -700,6 +970,18 @@ Recommendation:
 ## Recommended Fix Plan
 
 2026-04-16 priority adjustment: keep the original P0 fixes for invalid document append and failed-write disclosure, but promote markup-artifact rejection ahead of rollout. The April 16 reruns prove that a session can show 0 tool failures while still corrupting durable document content or task descriptions.
+
+875 replay priority adjustment: the post-fix fastchat replay did not reproduce
+the invalid append, document type, or markup-persistence failures. Those should
+remain release-blocking regression gates. The highest remaining active gap is
+final-response grounding against the actual write set.
+
+13fc replay priority adjustment: the post-fix lite replay is now the best
+candidate baseline. It keeps the P0 write-integrity fixes intact while cutting
+cost substantially. The active fix list should therefore shift toward
+architectural polish that makes the good path reliable: ledger-grounded final
+responses, direct project-write routing, task-state/related-task coverage, and
+confirmed document placement semantics.
 
 ### 1. Fix Document Update Validation
 
@@ -769,7 +1051,35 @@ Changes:
 - Add tests around task/document descriptions and document content.
 - Treat rejected markup writes as failed writes for final-response disclosure and retry handling.
 
-### 4. Add A Project Write Surface
+### 4. Add A Write Outcome Ledger For Final Responses
+
+Status: still open. The 875 replay showed successful writes being omitted from
+final prose even after prompt bookend guidance improved.
+
+13fc update: Turn 2 shows the desired behavior, but Turn 1 task-summary
+incompleteness and Turn 3 placement wording still support keeping this open.
+
+Target files:
+
+- [stream endpoint](../../apps/web/src/routes/api/agent/v2/stream/+server.ts)
+- [stream orchestrator](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/README.md) and implementation files under the same directory
+- prompt observability/finalization files under [apps/web/src/lib/services/agentic-chat-v2](../../apps/web/src/lib/services/agentic-chat-v2)
+
+Changes:
+
+- Track every material write result in a per-turn write outcome ledger.
+- Include successful writes, failed writes, validation rejections, normalized
+  result fields, and warnings.
+- Inject or render this ledger before final answer generation so final prose
+  cannot omit material writes or claim unsupported writes.
+- Add tests for omitted successful document creates, omitted document updates,
+  unsupported task-progress claims, unsupported document type claims, and
+  unsupported link/tree-placement language.
+
+### 5. Add A Project Write Surface
+
+Status after 13fc: still open. The post-fix lite replay had the lowest tool
+count so far, but still used discovery for ordinary task create/update work.
 
 Target file:
 
@@ -787,7 +1097,10 @@ Changes:
     - `move_document_in_tree`
 - Keep the surface smaller than full document management unless the request clearly needs tree operations.
 
-### 5. Backport Lite's Better Project Create Behavior
+### 6. Backport Lite's Better Project Create Behavior
+
+Status: appears fixed for post-fix fastchat based on the 875 replay, but should
+remain in formal replay coverage.
 
 Target files:
 
@@ -801,11 +1114,16 @@ Changes:
 - Assert tasks are linked under the goal.
 - Assert no extra plans/milestones are invented.
 
-### 6. Add Document Placement Guidance
+### 7. Add Document Placement Guidance
 
 Status: prompt guidance added for Lite and FastChat V2. The next replay should
 verify whether the model actually follows it by creating and moving substantial
 research notes into the document tree.
+
+13fc update: Lite now creates the right dedicated document and passes parent
+metadata on create. The remaining architectural decision is whether that is the
+official placement contract or whether the agent should still verify/place with
+document-tree tools.
 
 Target files:
 
@@ -820,7 +1138,7 @@ Changes:
 - Use `get_document_tree` and `move_document_in_tree` when placing the doc.
 - Avoid saying "linked" unless a link/edge was actually created.
 
-### 7. Improve Tool Trace Summaries
+### 8. Improve Tool Trace Summaries
 
 Target files:
 
@@ -834,7 +1152,7 @@ Changes:
 - Include counts by kind: reads, writes, discovery, failures.
 - Do not truncate away failures.
 
-### 8. Add Formal Replay/Eval Coverage
+### 9. Add Formal Replay/Eval Coverage
 
 Target files:
 
@@ -861,12 +1179,13 @@ Eval assertions:
 ## Suggested Acceptance Criteria Before Wider Lite Rollout
 
 - `lite_seed_v1` passes the fantasy-novel replay scenario without hidden failures.
+- The post-fix `fastchat_prompt_v1` and `lite_seed_v1` replay set both pass the write-integrity checks.
 - No `update_onto_document` append/merge call can execute without content. _(Covered by current tests; verify in replay.)_
 - Empty `props: {}` no longer counts as an update field. _(Covered by current tests; verify in replay.)_
 - Failed write results are surfaced in final assistant responses. _(Prompt language improved; ledger-enforced final prose still open.)_
 - Tool-call markup artifacts cannot persist in task descriptions or document content. _(Validator/executor guard landed; verify in replay.)_
-- Successful-write summaries are checked against the actual write set, so created tasks are not omitted and task progress is not claimed without an update.
-- Document type and linking claims are checked against actual create/link/move results before the final response. _(Still needs ledger-grounded final-answer enforcement.)_
+- Successful-write summaries are checked against the actual write set, so created tasks/documents are not omitted and task progress is not claimed without an update. _(Improved in 13fc Turn 2, still open because task summaries and placement claims need ledger grounding.)_
+- Document type and linking/placement claims are checked against actual create/link/move results before the final response. _(Document type improved in 875 and 13fc; placement semantics still need explicit confirmation.)_
 - Project create eval confirms one primary goal for outcome-style projects.
 - Project follow-up turns do not require more than one discovery pass for common task/document writes.
 - Trace summaries include all writes and all failures.
@@ -877,6 +1196,8 @@ Eval assertions:
 Lite should become the foundation, but not until write integrity is fixed at both failure and success boundaries. The April 16 reruns strengthen the case for lite on project-shape quality and show that the previous hidden failed document append is avoidable. They also weaken any argument that raw tool success is enough, because one successful document update polluted durable content and one successful task update polluted a task description with internal parameter markup.
 
 The ac79 run adds nuance: a confirmation-first turn can improve capture quality for ambiguous progress updates, but it is not a replacement for validator and response-integrity fixes. The highest priority is not prompt polish. It is making the tool layer impossible to misuse in the observed ways: reject no-op append/merge calls, reject internal tool syntax before persistence, and force final responses to match the actual write set. After that, the next most important work is project-write surface routing and document-placement guidance.
+
+The 13fc post-fix lite replay changes the near-term recommendation: lite should remain the preferred direction and is now the best candidate baseline, but the work should not stop at P0 write-integrity gates. The next layer is making the good behavior deterministic: final prose grounded in the actual write ledger, ordinary project writes available without discovery, task-state updates applied when work clearly advances, and document placement claims backed by an explicit contract or tree result.
 
 ## Post-Fix Update: 2026-04-16 Late Pass
 
@@ -911,43 +1232,212 @@ Verification from the cleanup pass:
   Svelte/type issues; no remaining failure was attributed to the write-integrity
   cleanup.
 
+## Post-Fix Replay Result: 875b3470
+
+The 875b3470 replay is the first fantasy-novel run after the late-pass cleanup.
+It used `fastchat_prompt_v1`, completed the same three-turn scenario, and
+reported 0 tool failures.
+
+Confirmed improvements:
+
+- Project creation now includes the primary goal, seven tasks, one context
+  document, and goal-task relationships.
+- Chapter 2 progress used a valid document append with non-empty `content`.
+- No durable field in the inspected trace contained `<parameter name=...>` or a
+  similar internal tool artifact.
+- "Magic System Research Notes" persisted as `document.knowledge.research`.
+- Tool calls fell from 20 in the original fastchat run to 11, and cost fell from
+  `$0.0522584` to `$0.03860488`.
+
+Remaining failures:
+
+- Final responses still omitted material successful writes. Turn 2 omitted the
+  context-document update and did not name the two created tasks. Turn 3 omitted
+  the created magic-system research document.
+- Chapter 2 still did not update the existing "Outline first three chapters"
+  task to `in_progress`.
+- Turn 2 still needed discovery for ordinary task create/update work.
+- Turn 2 trace summary still collapsed multiple task creates into one compact
+  category entry.
+- Document placement is better but should be verified architecturally: the
+  research document create call included `parent_id`, but there was no separate
+  tree read/move operation in the trace.
+
+Current bottom line after 875: write-integrity fixes appear to be working for
+this replay, but final-answer grounding is now the highest-priority active
+failure.
+
+## Post-Fix Replay Result: 13fc9ea8
+
+The 13fc9ea8 replay is the first post-fix lite replay in this audit set. It
+used `lite_seed_v1`, completed the same three-turn scenario, and reported 0 tool
+failures.
+
+Confirmed improvements:
+
+- It is the cheapest full run so far: 78,438 tokens and `$0.02187023`.
+- Project creation included the primary goal, seven tasks, one context document,
+  and goal-task relationships.
+- Chapter 2 progress used a valid document append with non-empty `content`.
+- No durable field in the inspected trace contained `<parameter name=...>` or a
+  similar internal tool artifact.
+- "Magic System and World-Building Research Notes" persisted as
+  `document.knowledge.research`.
+- The Chapter 2 final response matched the write set better than any prior full
+  run: it mentioned the context-document update, named both created tasks, and
+  named the updated outline task.
+
+Remaining failures or gaps:
+
+- The Turn 1 final response said "7 Tasks" but visibly listed only four task
+  areas.
+- The Chapter 2 outline update added useful details but left the task state as
+  `todo`.
+- The Chapter 2 revision task chose a canon age of 17 from a user-reported
+  16/17 continuity conflict.
+- The magic-system turn created a clean document but did not update related
+  magic-system, blacksmithing, or Aethermoor/world tasks.
+- The magic-system final response said the new document was nested under the
+  project overview. The create call passed parent metadata, but the tool result
+  did not independently confirm placement and no separate tree read/move ran.
+- The Chapter 2 trace summary still collapsed multiple task creates into one
+  compact `onto.task.create:ok` entry.
+
+Current bottom line after 13fc: lite is the strongest current candidate on cost,
+write integrity, and Chapter 2 user-facing grounding. The remaining work is no
+longer mainly "stop bad writes"; it is "make the good write path complete and
+architecturally verified."
+
+## Post-Fix Update: 2026-04-16 Second Late Pass
+
+After the 875 and 13fc replays this audit set named final-answer grounding,
+task-state coverage, document placement, and discovery overhead on mixed
+project turns as the next active gaps. Those items now have code-level fixes
+and should be re-tested rather than treated as open.
+
+Changes landed (six items):
+
+1. **Surface routing union.** A new `project_write_document` gateway profile
+   unions `project_write` (task writes) and `project_document` (document
+   workspace tools). `tool-selector.ts` now routes to that union when the user
+   message matches BOTH the mutation regex and the document-write regex, which
+   was the root cause of the residual `tool_search` on 875 Turn 2 and 13fc
+   Turn 2. Prompt-dump inspection showed both runs landed on `project_document`
+   (14 tools, no task writes) even though the turn needed both kinds of writes.
+   Relevant files:
+    - [gateway-surface.ts](../../apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts)
+    - [tool-selector.ts](../../apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts)
+    - [tool-selector.test.ts](../../apps/web/src/lib/services/agentic-chat-v2/tool-selector.test.ts)
+2. **Write-outcome ledger.** New
+   [write-ledger.ts](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/write-ledger.ts)
+   builds a structured ledger from cumulative `toolExecutions` after each tool
+   round, extracting entity id, title, state_key, type_key, parent_id, and
+   update_strategy from args and results. The ledger is injected as a system
+   message in
+   [stream-orchestrator/index.ts](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts)
+   right after tool results are pushed to `messages`, so the model's next
+   response (including the final-answer turn) sees an authoritative "what
+   actually happened" summary plus explicit final-response rules. New
+   [write-ledger.test.ts](../../apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/write-ledger.test.ts)
+   covers successes, failures, strategy extraction, move placement, and
+   filtering of non-write tools.
+3. **Task-state coverage rule.** Both prompts now instruct the model to
+   include `state_key` on `update_onto_task` when a task's real-world work
+   visibly advanced, not just update the description. Also: record
+   user-reported inconsistencies (e.g. "Chapter 1 says 16, Chapter 2 says 17")
+   as open questions or fix tasks rather than picking canon. See
+   [build-lite-prompt.ts](../../apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts)
+   and the new "Task state coverage" subsection in
+   [master-prompt-builder.ts](../../apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts).
+4. **Document placement contract decided.** `parent_id` on
+   `onto.document.create` is NOT the placement contract. The model must now
+   call `onto.document.tree.move` after create to actually nest a document,
+   and must claim "nested under X" only after the move succeeds. Both prompts
+   and the
+   [document_workspace SKILL.md](../../apps/web/src/lib/services/agentic-chat/tools/skills/definitions/document_workspace/SKILL.md)
+   playbook now teach the two-step create → move flow explicitly, including a
+   worked example.
+5. **Lite post-tool bookend parity.** Lite safety now has the explicit
+   post-tool bookend rule that fastchat already had: "After tool calls
+   complete, ground the final user-facing summary in the actual tool results…
+   Do not carry optimistic lead-in language into the outcome."
+6. **Trace summary completeness.** `buildPersistedToolTraceSummary` in
+   [+server.ts](../../apps/web/src/routes/api/agent/v2/stream/+server.ts) no
+   longer slices to the first six calls and no longer collapses multiple
+   creates into one category entry. It now classifies calls as writes /
+   discovery-reads / other, shows success counts as `op xN`, and always
+   surfaces every failure in full.
+
+Verification:
+
+- 273 tests pass across the full agentic-chat test suite (47 test files,
+  including 7 new write-ledger tests and 1 new union-surface-routing test).
+- `pnpm check` reports zero errors in any file touched by this pass.
+- Existing repair-replay end-to-end test continues to pass; ledger injection
+  does not interfere with the redaction assertions because the ledger formats
+  errors as text and never echoes the rejected tool-call args.
+
 ## Expected Next Testing Round
 
-The next fantasy-novel replay should answer whether the new schema and repair
-guardrails changed model behavior in practice.
+The 875 and 13fc replays validated the P0 write-integrity fixes. The second
+late pass above then addressed the remaining gaps those replays surfaced:
+final-answer grounding, task-state coverage, document placement, and discovery
+overhead on mixed project turns. The next fantasy-novel replay is therefore a
+validation run for the second late pass — not a polishing run.
 
-Expected improvements:
-
-- The model should no longer emit `update_strategy` on task, goal, project, or
-  plan update calls because those schemas no longer expose that parameter.
-- If the model still leaks internal tool syntax into a durable text field, the
-  write should be blocked before persistence.
-- The repair pass should not echo the rejected durable string back to the model.
-  It should contain a validation fact and a redacted placeholder.
-- Pre-tool text should read as "I will do X" rather than "I did X."
-- Document append/merge calls should include non-empty document content, not
-  only `merge_instructions`.
-
-Things that may still fail and should be measured:
-
-- Final answers can still overclaim if the model says a task advanced, a
-  document was linked, or a document type persisted when the tool ledger does
-  not support that claim. Ledger-rendered final prose remains open.
-- The assistant may still omit successful writes from the final summary.
-- The model may still overuse discovery/tool-schema calls for common
-  project-document workflows.
-- Dedicated research notes may still be created without tree placement unless
-  the model calls `move_document_in_tree`.
-
-Recommended acceptance checks for the next replay:
+Regression checks that must stay true (from the first late pass):
 
 - No durable task/document/project/goal/plan field contains `<parameter`,
   `<tool_call`, `<function_call`, or `<arguments`.
-- Any rejected durable write is either retried successfully or disclosed as not
-  persisted.
-- Task updates use direct replacement semantics and no document merge controls.
-- Final response claims are checked against actual successful writes,
-  especially task progress, document type, tree placement, and link/cross-link
-  language.
-- Token and tool-call counts are recorded so the cleanup can be evaluated
-  against the prior lite reruns, not only qualitatively.
+- The model does not emit `update_strategy` on task, goal, project, or plan
+  update calls because those schemas no longer expose that parameter.
+- The repair pass does not echo the rejected durable string back to the model;
+  it sees a validation fact plus a redacted placeholder.
+- Document append/merge calls include non-empty `content`, not only
+  `merge_instructions`.
+- Pre-tool text reads as intent ("I will do X"), not completion.
+
+New expectations the second late pass targets (must begin to hold):
+
+- Mixed Chapter-2-style turns (task writes + document capture) do not require
+  `tool_search` for `create_onto_task` / `update_onto_task`. The preloaded tool
+  surface should be `project_write_document`.
+- Turn 2 final prose names every successful write: document update, each
+  created task, and any task state change. 13fc Turn 2 showed this is
+  achievable; the write ledger should now make it consistent.
+- Turn 3 final prose names the newly created research document and includes its
+  persisted type. The 875 Turn 3 omission should not recur.
+- When a task's real-world work advanced, the `update_onto_task` call includes
+  `state_key`, not only description.
+- When the user flags a data inconsistency (for example a 16/17 age
+  conflict), the assistant records it as an open question or fix task instead
+  of picking canon.
+- Dedicated research documents are placed via an explicit
+  `move_document_in_tree` call after create. Claims like "nested under Project
+  Overview" appear only after that move returns successfully.
+- Trace summaries show all writes (with `op xN` counts) and all failures; they
+  are not truncated to the first six calls.
+
+Still genuinely open (not yet addressed in code):
+
+- If the ledger alone does not fully eliminate overclaims, a deterministic
+  renderer (second constrained pass that fills a template from the ledger)
+  may be needed. Hold for next replay data before adding.
+- Skill-load heaviness: task_management with `include_examples: true` is still
+  loadable, and the prompt does not hard-ban the heavy variant.
+- Lite prompt cost breakdown buckets and snapshot version labels remain
+  cosmetically confusing during audits; both tracked as P2.
+
+Recommended acceptance checks for the next replay:
+
+- Surface selection on Turn 2 is `project_write_document` when the turn message
+  mixes task and document work.
+- Final-answer prose matches the write ledger for every turn: no omitted
+  successful writes, no unsupported task-progress or placement claims.
+- Task state_key updates appear alongside description changes when work
+  advanced.
+- Any dedicated research document created is followed by a
+  `move_document_in_tree` call before the final response claims placement.
+- Token and tool-call counts per turn are recorded and compared against 13fc
+  (78,438 tokens, 10 tool calls) as the post-fix lite baseline — the comparison
+  should be quantitative across prior lite reruns, not only qualitative.

@@ -1,9 +1,9 @@
 ---
 title: 'Prompt Engineering is Out. Context Engineering is In.'
-description: 'Why the future of AI productivity moves beyond crafting clever prompts to building persistent, contextual systems. See how BuildOS implements context engineering with rich ontology and Project Lens.'
+description: "The way you work with AI is changing. Prompt engineering was about crafting one-off asks. Context engineering is about building persistent systems the model can reason over. Here's how BuildOS puts it into practice."
 author: 'DJ Wayne'
 date: '2025-08-05'
-lastmod: '2026-01-24'
+lastmod: '2026-04-16'
 changefreq: 'monthly'
 priority: '0.9'
 published: true
@@ -11,7 +11,6 @@ tags:
     [
         'prompt-engineering',
         'context-engineering',
-        'AI-productivity',
         'AI-workflows',
         'LLM-optimization',
         'knowledge-management',
@@ -19,12 +18,13 @@ tags:
         'build-os',
         'ai-context',
         'prompt-optimization',
-        'ontology',
+        'project-memory',
         'project-lens',
+        'thinking-environment',
         'zoom'
     ]
 readingTime: 7
-excerpt: 'The evolution from prompt engineering to context engineering represents a fundamental shift in how we work with AI. Learn why building contextual systems beats crafting perfect prompts—and how BuildOS implements this with rich context architecture and Project Lens.'
+excerpt: "Prompt engineering was the first phase of working with AI: craft the perfect ask. Context engineering is the next: build persistent systems the model can reason across. Here's why the shift matters — and how BuildOS implements it with project memory and Project Lens."
 pic: ''
 path: apps/web/src/content/blogs/productivity-tips/context-engineering-101.md
 ---

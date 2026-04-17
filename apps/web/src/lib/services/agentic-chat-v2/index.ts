@@ -1,6 +1,5 @@
 // apps/web/src/lib/services/agentic-chat-v2/index.ts
 export { buildFastSystemPrompt, normalizeFastContextType } from './prompt-builder';
-export { buildMasterPrompt } from './master-prompt-builder';
 export { loadFastChatPromptContext } from './context-loader';
 export { buildFastContextUsageSnapshot, estimateTokensFromText } from './context-usage';
 export { selectFastChatTools } from './tool-selector';

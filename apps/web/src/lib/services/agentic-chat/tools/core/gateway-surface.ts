@@ -14,6 +14,7 @@ export const GATEWAY_SURFACE_PROFILE_NAMES = [
 	'project_basic',
 	'project_write',
 	'project_document',
+	'project_write_document',
 	'project_calendar',
 	'project_create_minimal'
 ] as const;
@@ -54,6 +55,20 @@ const PROJECT_DOCUMENT_DIRECT_TOOL_NAMES = [
 	'move_document_in_tree'
 ] as const;
 
+// Union surface for turns that need both task writes and document workspace
+// operations (e.g. "Chapter 2 is complete — draft chapter 3 and save progress
+// notes"). Combines PROJECT_WRITE and PROJECT_DOCUMENT without duplicates.
+const PROJECT_WRITE_DOCUMENT_DIRECT_TOOL_NAMES = [
+	...PROJECT_BASIC_DIRECT_TOOL_NAMES,
+	'create_onto_task',
+	'update_onto_task',
+	'get_onto_document_details',
+	'create_onto_document',
+	'update_onto_document',
+	'get_document_tree',
+	'move_document_in_tree'
+] as const;
+
 const PROJECT_CALENDAR_DIRECT_TOOL_NAMES = [
 	'get_project_overview',
 	'list_calendar_events',
@@ -74,6 +89,7 @@ const GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE: Record<
 	project_basic: PROJECT_BASIC_DIRECT_TOOL_NAMES,
 	project_write: PROJECT_WRITE_DIRECT_TOOL_NAMES,
 	project_document: PROJECT_DOCUMENT_DIRECT_TOOL_NAMES,
+	project_write_document: PROJECT_WRITE_DOCUMENT_DIRECT_TOOL_NAMES,
 	project_calendar: PROJECT_CALENDAR_DIRECT_TOOL_NAMES,
 	project_create_minimal: PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES
 };

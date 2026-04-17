@@ -47,8 +47,7 @@ describe('POST /api/admin/chat/lite-prompt-preview', () => {
 	it('returns a lite prompt preview for admin users', async () => {
 		const body = {
 			context_type: 'global',
-			sample_message: 'Preview this prompt.',
-			include_current_v2: true
+			sample_message: 'Preview this prompt.'
 		};
 		const response = await POST({
 			request: new Request('http://localhost/api/admin/chat/lite-prompt-preview', {

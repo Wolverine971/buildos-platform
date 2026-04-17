@@ -222,10 +222,10 @@
 </script>
 
 <SEOHead
-	title="Join Beta Program - BuildOS | Early Access to AI Productivity"
-	description="Join the BuildOS beta program. Get early access to AI-powered brain dump organization, weekly founder calls, and help shape the future of productivity. Limited spots available."
+	title="BuildOS Beta — Thinking Environment for Complex Creative Work"
+	description="Early access to BuildOS. Turn rough notes, voice dumps, and scattered research into structured projects with memory. Built for authors, YouTubers, and other creators making complex things."
 	canonical="https://build-os.com/beta"
-	keywords="BuildOS beta, early access, beta program, AI productivity beta, brain dump app beta, founder access, productivity tool beta testing"
+	keywords="BuildOS beta, thinking environment, project memory, brain dump, creator workflow, author workflow, YouTube workflow, structured work"
 />
 
 <main class="min-h-screen bg-background">

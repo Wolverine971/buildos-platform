@@ -8,18 +8,72 @@
 		StickyNote,
 		Search,
 		MessageCircle,
-		ArrowRight
+		ArrowRight,
+		HelpCircle,
+		ChevronDown
 	} from 'lucide-svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { SITE_URL } from '$lib/constants/seo';
+
+	const faqs = [
+		{
+			question: 'What is BuildOS?',
+			answer: 'BuildOS is a thinking environment for people making complex things. You start in chat with rough ideas, notes, voice memos, and research, and BuildOS turns them into structured projects with persistent memory and a clear next move.'
+		},
+		{
+			question: 'What is a brain dump and how does it work?',
+			answer: 'A brain dump is when you write or speak raw thoughts without stopping to organize first. BuildOS reads the dump and turns it into projects, tasks, documents, and milestones that match what you are actually building — so you never have to structure everything upfront.'
+		},
+		{
+			question: 'How is BuildOS different from Notion, Obsidian, or a task manager?',
+			answer: 'Notion gives you blank pages. Task managers give you orphan lists. Stateless AI chats forget context between sessions. BuildOS connects capture, tasks, documents, and persistent project memory in one place, so context stays warm instead of scattered across six disconnected apps.'
+		},
+		{
+			question: 'Do I need to organize my notes before using BuildOS?',
+			answer: 'No. BuildOS is built for messy input. Dump rough notes, voice memos, scripts, or research as-is. Structure comes out the other side — organized projects, tasks, documents, and milestones that stay connected over time.'
+		},
+		{
+			question: 'Does BuildOS sync with Google Calendar?',
+			answer: 'Yes. BuildOS integrates with Google Calendar to sync tasks with due dates and read existing events, so your project work is scheduled around commitments you already have booked.'
+		},
+		{
+			question: 'What are daily briefs?',
+			answer: 'Daily briefs are personalized morning summaries showing what you worked on, what is next across your projects, and which tasks are due today. They are generated each day based on your active projects and delivered in-app or by email.'
+		},
+		{
+			question: 'Who is BuildOS for?',
+			answer: 'People making complex things whose work depends on preserved context: authors, YouTubers, podcasters, newsletter operators, course creators, researchers, and builders juggling product work alongside content. BuildOS is for work that generic productivity tools flatten.'
+		},
+		{
+			question: 'Is there a free trial?',
+			answer: 'Yes. BuildOS Pro includes a 14-day free trial so you can build real projects and see context compound before committing to a paid plan.'
+		}
+	] as const;
+
+	const faqJsonLd = {
+		'@context': 'https://schema.org',
+		'@type': 'FAQPage',
+		'@id': `${SITE_URL}/help#faqpage`,
+		url: `${SITE_URL}/help`,
+		mainEntity: faqs.map((faq) => ({
+			'@type': 'Question',
+			name: faq.question,
+			acceptedAnswer: {
+				'@type': 'Answer',
+				text: faq.answer
+			}
+		}))
+	};
 </script>
 
 <SEOHead
-	title="Help Center - BuildOS | Guides, Tutorials & Support"
-	description="Get help with BuildOS. Comprehensive tutorials, guides, and answers to common questions about transforming brain dumps into organized projects with AI."
+	title="BuildOS Help Center — Guides, Tutorials, and Getting Started"
+	description="Learn how to brain-dump, structure projects, generate daily briefs, and get the most out of BuildOS. Tutorials, walkthroughs, and answers to common questions."
 	canonical="https://build-os.com/help"
-	keywords="BuildOS help, brain dump tutorial, project collaboration guide, daily briefs, AI productivity, getting started, support documentation"
+	keywords="BuildOS help, brain dump tutorial, daily briefs, project organization, getting started, BuildOS tutorials, BuildOS support"
 	author="DJ Wayne"
+	jsonLd={faqJsonLd}
 />
 
 <div class="min-h-screen bg-background">
@@ -241,6 +295,43 @@
 						Read more <ArrowRight class="w-4 h-4 ml-1" />
 					</a>
 				</article>
+			</div>
+		</div>
+	</section>
+
+	<!-- Frequently Asked Questions -->
+	<section class="py-20 bg-background rounded-lg">
+		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+			<div class="text-center mb-12">
+				<div
+					class="inline-flex items-center justify-center w-12 h-12 bg-accent/10 rounded-lg mb-4"
+				>
+					<HelpCircle class="w-6 h-6 text-accent" />
+				</div>
+				<h2 class="text-3xl font-bold text-foreground mb-4">Frequently asked questions</h2>
+				<p class="text-lg text-muted-foreground">
+					Quick answers to the things people ask before they start.
+				</p>
+			</div>
+
+			<div class="space-y-3">
+				{#each faqs as faq}
+					<details
+						class="group bg-card rounded-lg border border-border shadow-ink tx tx-frame tx-weak overflow-hidden"
+					>
+						<summary
+							class="flex items-center justify-between gap-4 cursor-pointer list-none p-5 font-semibold text-foreground hover:bg-accent/5 transition-colors"
+						>
+							<span>{faq.question}</span>
+							<ChevronDown
+								class="w-5 h-5 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+							/>
+						</summary>
+						<div class="px-5 pb-5 text-muted-foreground leading-relaxed">
+							{faq.answer}
+						</div>
+					</details>
+				{/each}
 			</div>
 		</div>
 	</section>

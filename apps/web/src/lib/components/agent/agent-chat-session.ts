@@ -4,7 +4,6 @@ import type { ChatContextType, ChatRole, ChatSession } from '@buildos/shared-typ
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { VoiceNote } from '$lib/types/voice-notes';
 import type { FastAgentPrewarmRequest } from '$lib/services/agentic-chat-v2';
-import { FASTCHAT_PROMPT_VARIANT } from '$lib/services/agentic-chat-v2/prompt-variant';
 import type { FastChatContextCache } from '$lib/services/agentic-chat-v2/context-cache';
 import { LITE_PROMPT_VARIANT } from '$lib/services/agentic-chat-lite/prompt/types';
 import type { UIMessage } from './agent-chat.types';
@@ -38,29 +37,40 @@ export interface AgentChatSessionSnapshot {
 	voiceNotesByGroupId: Record<string, VoiceNote[]>;
 }
 
-export const AGENT_CHAT_DEFAULT_PROMPT_VARIANT = FASTCHAT_PROMPT_VARIANT;
+/**
+ * After the 2026-04-16 lite prompt consolidation, the agentic chat runtime has a
+ * single prompt variant (`lite_seed_v1`). The backend still accepts the legacy
+ * `prompt_variant` field for backward compatibility, but the frontend no longer
+ * exposes a variant picker — every session runs the lite prompt.
+ *
+ * The exported constant and helpers below remain so existing call sites keep
+ * compiling; they just collapse to the lite variant.
+ */
 export const AGENT_CHAT_LITE_PROMPT_VARIANT = LITE_PROMPT_VARIANT;
+export const AGENT_CHAT_DEFAULT_PROMPT_VARIANT = LITE_PROMPT_VARIANT;
 
-export type AgentChatPromptVariantSelection =
-	| typeof AGENT_CHAT_DEFAULT_PROMPT_VARIANT
-	| typeof AGENT_CHAT_LITE_PROMPT_VARIANT;
+export type AgentChatPromptVariantSelection = typeof LITE_PROMPT_VARIANT;
 
+/**
+ * Returns the single supported variant. Kept for API shape compatibility with
+ * the earlier dev-mode toggle; any unknown value collapses to lite.
+ */
 export function normalizeAgentChatPromptVariantSelection(
-	value: unknown
+	_value: unknown
 ): AgentChatPromptVariantSelection {
-	return value === AGENT_CHAT_LITE_PROMPT_VARIANT
-		? AGENT_CHAT_LITE_PROMPT_VARIANT
-		: AGENT_CHAT_DEFAULT_PROMPT_VARIANT;
+	return LITE_PROMPT_VARIANT;
 }
 
-export function resolveAgentChatPromptVariantForRequest(params: {
+/**
+ * Returns the variant to attach to outgoing stream requests. Returns `null`
+ * when there is no need to pin the variant explicitly — the server defaults to
+ * lite. Accepts the legacy params shape so existing call sites compile.
+ */
+export function resolveAgentChatPromptVariantForRequest(_params: {
 	canUsePromptVariantControls: boolean;
 	selectedPromptVariant: AgentChatPromptVariantSelection | null | undefined;
-}): typeof AGENT_CHAT_LITE_PROMPT_VARIANT | null {
-	if (!params.canUsePromptVariantControls) return null;
-	return params.selectedPromptVariant === AGENT_CHAT_LITE_PROMPT_VARIANT
-		? AGENT_CHAT_LITE_PROMPT_VARIANT
-		: null;
+}): AgentChatPromptVariantSelection | null {
+	return null;
 }
 
 const DEFAULT_CHAT_SESSION_TITLES = [

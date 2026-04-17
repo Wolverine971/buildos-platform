@@ -1,71 +1,27 @@
 // apps/web/src/lib/services/agentic-chat-v2/prompt-variant.ts
-import {
-	LITE_PROMPT_VARIANT,
-	type LitePromptVariant
-} from '$lib/services/agentic-chat-lite/prompt/types';
+//
+// After the lite prompt consolidation (docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md),
+// Lite is the only live prompt path. This file now exports the prompt-variant
+// string labels used by observability, eval tooling, and historical snapshots.
+// The legacy routing / admin-gating helpers were removed with the fastchat builder.
+import { LITE_PROMPT_VARIANT as LITE_VARIANT } from '$lib/services/agentic-chat-lite/prompt/types';
+import type { LitePromptVariant as LitePromptVariantType } from '$lib/services/agentic-chat-lite/prompt/types';
 
+export const LITE_PROMPT_VARIANT = LITE_VARIANT;
+export type LitePromptVariant = LitePromptVariantType;
+
+/**
+ * Legacy prompt variant label. The fastchat builder is gone; the constant
+ * remains so historical prompt snapshots, eval reports, and dashboards can
+ * still reference the string `'fastchat_prompt_v1'`. New sessions always
+ * record `LITE_PROMPT_VARIANT`.
+ */
 export const FASTCHAT_PROMPT_VARIANT = 'fastchat_prompt_v1' as const;
 
-export type FastChatPromptVariant = typeof FASTCHAT_PROMPT_VARIANT | LitePromptVariant;
-
-export type FastChatPromptVariantResolution =
-	| {
-			ok: true;
-			promptVariant: FastChatPromptVariant;
-			requestedPromptVariant: FastChatPromptVariant | null;
-			requiresAdminOrDev: boolean;
-	  }
-	| {
-			ok: false;
-			error: string;
-	  };
-
-export function isLitePromptVariant(
-	promptVariant: FastChatPromptVariant
-): promptVariant is LitePromptVariant {
-	return promptVariant === LITE_PROMPT_VARIANT;
-}
-
-export function normalizeFastChatPromptVariantRequest(
-	value: unknown
-): FastChatPromptVariantResolution {
-	if (value === undefined || value === null || value === '') {
-		return {
-			ok: true,
-			promptVariant: FASTCHAT_PROMPT_VARIANT,
-			requestedPromptVariant: null,
-			requiresAdminOrDev: false
-		};
-	}
-
-	if (typeof value !== 'string') {
-		return {
-			ok: false,
-			error: 'prompt_variant must be a string when provided'
-		};
-	}
-
-	const normalized = value.trim();
-	if (!normalized || normalized === FASTCHAT_PROMPT_VARIANT) {
-		return {
-			ok: true,
-			promptVariant: FASTCHAT_PROMPT_VARIANT,
-			requestedPromptVariant: normalized ? FASTCHAT_PROMPT_VARIANT : null,
-			requiresAdminOrDev: false
-		};
-	}
-
-	if (normalized === LITE_PROMPT_VARIANT) {
-		return {
-			ok: true,
-			promptVariant: LITE_PROMPT_VARIANT,
-			requestedPromptVariant: LITE_PROMPT_VARIANT,
-			requiresAdminOrDev: true
-		};
-	}
-
-	return {
-		ok: false,
-		error: `Unsupported prompt_variant: ${normalized}`
-	};
-}
+/**
+ * Union used by observability and eval tooling to describe prompt-variant
+ * labels that may appear on a prompt snapshot row. Live sessions always
+ * record `LITE_PROMPT_VARIANT`; older snapshots may still carry
+ * `FASTCHAT_PROMPT_VARIANT`.
+ */
+export type FastChatPromptVariant = typeof FASTCHAT_PROMPT_VARIANT | LitePromptVariantType;

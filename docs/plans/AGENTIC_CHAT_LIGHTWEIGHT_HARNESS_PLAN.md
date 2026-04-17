@@ -2,12 +2,13 @@
 
 # Agentic Chat Lightweight Harness Plan
 
-Status: Strategic context zoom tool implemented; hidden turnProfile router deferred
+Status: **Superseded by the 2026-04-16 consolidation.** `lite_seed_v1` is now the only live prompt path; `fastchat_prompt_v1` and `master-prompt-builder.ts` have been removed. See the consolidation spec for shipped behavior and remaining follow-ups: [docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md](../specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md). This plan remains for historical context about the harness rollout.
 Date: 2026-04-15
 Owner: BuildOS Agentic Chat
 
 Related:
 
+- [Lite Prompt Consolidation Spec (2026-04-16)](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md)
 - [Seed Context Static and Dynamic Spec](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-seed-context-static-dynamic.md)
 - [Initial Seed Context Gap Analysis](/Users/djwayne/buildos-platform/docs/reports/agentic-chat-initial-seed-context-gap-analysis-2026-04-14.md)
 - [Prompt Observability Plan](/Users/djwayne/buildos-platform/docs/plans/AGENTIC_CHAT_PROMPT_OBSERVABILITY_PLAN.md)

@@ -8,7 +8,7 @@ import type {
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { FastChatHistoryMessage, FastAgentStreamUsage } from '../types';
 import { normalizeFastContextType } from '../prompt-builder';
-import { buildMasterPrompt } from '../master-prompt-builder';
+import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
 import { FASTCHAT_LIMITS } from '../limits';
 import {
 	extractGatewayMaterializedToolNames,
@@ -59,6 +59,7 @@ import {
 	hasDocumentOrganizationValidationIssue
 } from './round-analysis';
 import { validateToolCalls } from './tool-validation';
+import { buildWriteLedgerMessage } from './write-ledger';
 
 type StreamFastChatParams = {
 	llm: SmartLLMService;
@@ -105,10 +106,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const normalizedContext = normalizeFastContextType(contextType);
 	const systemPrompt =
 		params.systemPrompt ??
-		buildMasterPrompt({
+		buildLitePromptEnvelope({
 			contextType: normalizedContext,
-			entityId
-		});
+			entityId: entityId ?? null
+		}).systemPrompt;
 
 	const messages: FastChatHistoryMessage[] = [
 		{ role: 'system', content: systemPrompt },
@@ -876,6 +877,16 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 			if (toolLimitNotice) {
 				break;
+			}
+
+			// Write-outcome ledger: after each tool round, surface the cumulative
+			// set of durable writes (successes + failures) as a system message so
+			// the model can ground its next response — including the eventual
+			// final user-facing summary — in actual tool results rather than
+			// planned intent. Skipped when the round has no writes to report.
+			const writeLedgerMessage = buildWriteLedgerMessage(toolExecutions);
+			if (writeLedgerMessage) {
+				messages.push({ role: 'system', content: writeLedgerMessage });
 			}
 
 			const roundPattern = buildRoundToolPattern(pendingToolCalls);

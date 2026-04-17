@@ -35,10 +35,20 @@ function resolveSurfaceProfileForTurn(
 	const text = latestUserMessage?.trim().toLowerCase() ?? '';
 	if (!text) return null;
 
-	if (looksLikeProjectDocumentWriteTurn(text)) {
+	const documentWriteTurn = looksLikeProjectDocumentWriteTurn(text);
+	const mutationTurn = looksLikeProjectMutationTurn(text);
+
+	// Mixed turns (e.g. "Chapter 2 complete — draft chapter 3 and save progress
+	// notes") need both task writes and document workspace tools. Neither single
+	// surface covers that, so prior runs fell back to tool_search for the
+	// missing half. Route to the union surface instead.
+	if (documentWriteTurn && mutationTurn) {
+		return 'project_write_document';
+	}
+	if (documentWriteTurn) {
 		return 'project_document';
 	}
-	if (looksLikeProjectMutationTurn(text)) {
+	if (mutationTurn) {
 		return 'project_write';
 	}
 

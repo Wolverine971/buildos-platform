@@ -40,17 +40,71 @@ const PROMPT_RECENT_CHANGE_LIMIT = 6;
 const PROMPT_RECENT_OVERDUE_DAYS = 45;
 const PROMPT_STALE_OVERDUE_DAYS = 90;
 
+// Section order rationale (2026-04-17): describe what the agent can do
+// (capabilities + skills + tools) BEFORE telling it how to use them
+// (operating_strategy + safety). Keeps the static prefix cacheable and reads
+// naturally: what → how → where/when.
 export const LITE_PROMPT_SECTION_ORDER: LitePromptSectionId[] = [
 	'identity_mission',
+	'capabilities_skills_tools',
+	'tool_surface_dynamic',
 	'operating_strategy',
 	'safety_data_rules',
-	'capabilities_skills_tools',
 	'focus_purpose',
 	'location_loaded_context',
 	'timeline_recent_activity',
-	'context_inventory_retrieval',
-	'tool_surface_dynamic'
+	'context_inventory_retrieval'
 ];
+
+const OVERVIEW_GUIDANCE_LITE = [
+	'Workflow hints for workspace-level chat:',
+	'- For routine status questions about the workspace or a named project, prefer overview retrieval first instead of generic ontology discovery.',
+	'- Workspace-wide status -> get_workspace_overview({}).',
+	'- Named or in-scope project status -> get_project_overview({ project_id }) when the ID is known, otherwise get_project_overview({ query }).',
+	'- If structured context already has a clear next_step_short or equivalent summary, answer from context instead of loading audit skills or repeating project graph reads.'
+].join('\n');
+
+const PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE = [
+	'Workflow hints for project chat:',
+	'- Audit and forecast are project skills, not separate context types. Stay in project.',
+	"- For audits, health reviews, stress tests, blockers, stale work, or gap analysis -> load skill_load({ skill: 'project_audit' }) before the analysis if the answer is multi-step or evidence-heavy.",
+	'- For forecasts, schedule risk, slippage, scenarios, or "are we on track" -> load skill_load({ skill: \'project_forecast\' }) before the analysis if the answer depends on assumptions or multiple signals.',
+	'- Use the current project_id and project-focused direct tools; do not invent project_audit or project_forecast sessions.'
+].join('\n');
+
+const PROJECT_CREATE_WORKFLOW_LITE = [
+	'Project creation workflow:',
+	'- Turn a rough idea into the smallest valid project structure with a clear name, type_key, description / props, and only the entities and relationships the user actually described.',
+	'- project.type_key must start with "project.", for example project.creative.novel.',
+	'- Always include entities: [] and relationships: [] arrays even when empty.',
+	'- If the user stated an outcome, add one goal. If they listed concrete actions, add only those task entities. Add plans or milestones only when they clearly described workstreams, phases, or date-driven structure.',
+	'- Entity labels: goal / plan / metric use `name`; task / milestone / document / risk use `title`; requirement uses `text`; source uses `uri`. Milestones also require `due_at`.',
+	'- For goal entities, use dedicated fields like target_date and measurement_criteria instead of burying them only in props. If the user gives a month/day without a year, infer the next plausible future date in the user\'s locale.',
+	'- **Connect the graph.** When the user has both a goal and tasks, emit containment relationships linking every task (child) to that goal (parent). A project with 1 goal + N tasks should produce N+ goal-task containment edges; leaving tasks unlinked defeats the graph model.',
+	'- Relationship item shape: every entry must reference entities by `{ temp_id, kind }`. Use the form `{ from: { temp_id, kind }, to: { temp_id, kind } }` (or the array form `[{ temp_id, kind }, { temp_id, kind }]`) with an explicit `type` such as `contains`. Never pass raw temp_id strings like `["g1", "t1"]`.',
+	'- Use clarifications[] only when critical information cannot be reasonably inferred; still send the project skeleton.',
+	'- Ask one concise clarification only when a required detail blocks a safe create payload.',
+	'- After creation succeeds, continue inside the created project instead of staying in abstract creation mode.'
+].join('\n');
+
+const DAILY_BRIEF_GUARDRAILS_LITE = [
+	'Workflow hints when daily-brief context is loaded:',
+	'- Prefer acting on entities explicitly mentioned in the brief.',
+	'- For out-of-brief entities, proceed only when target identity is clear.',
+	'- If target identity is ambiguous, ask one concise clarification before writing.',
+	'- For delete / reassign / delegate actions, confirm target unless intent is crystal clear.'
+].join('\n');
+
+const FOCUS_WORKFLOW_GUIDANCE: Partial<Record<ChatContextType, string>> = {
+	global: OVERVIEW_GUIDANCE_LITE,
+	general: OVERVIEW_GUIDANCE_LITE,
+	project: PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE,
+	ontology: PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE,
+	project_create: PROJECT_CREATE_WORKFLOW_LITE,
+	daily_brief: DAILY_BRIEF_GUARDRAILS_LITE,
+	daily_brief_update: DAILY_BRIEF_GUARDRAILS_LITE
+};
+
 
 type SectionDraft = Omit<LitePromptSection, 'chars' | 'estimatedTokens'>;
 
@@ -69,18 +123,20 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 		projectDigest
 	};
 
-	const sections = [
+	const timelineSection = shouldRenderTimelineSection(focus)
+		? buildTimelineRecentActivitySection(timeline, focus, projectDigest)
+		: null;
+
+	const sections: LitePromptSection[] = [
 		buildIdentityMissionSection(),
-		buildOperatingStrategySection(),
-		buildSafetyDataRulesSection(),
 		buildCapabilitiesSkillsToolsSection(),
-		buildFocusPurposeSection(focus, projectDigest),
+		buildToolSurfaceDynamicSection(toolsSummary),
+		buildOperatingStrategySection(),
+		buildSafetyDataRulesSection(input.data ?? null),
+		buildFocusPurposeSection(focus, projectDigest, input.data ?? null),
 		buildLocationLoadedContextSection(focus, input.data),
-		...(shouldIncludeTimelineRecentActivitySection(focus)
-			? [buildTimelineRecentActivitySection(timeline)]
-			: []),
-		buildContextInventoryRetrievalSection(contextInventory),
-		buildToolSurfaceDynamicSection(toolsSummary)
+		...(timelineSection ? [timelineSection] : []),
+		buildContextInventoryRetrievalSection(contextInventory)
 	];
 
 	return {
@@ -113,9 +169,30 @@ function buildIdentityMissionSection(): LitePromptSection {
 
 function buildFocusPurposeSection(
 	focus: LitePromptFocus,
-	projectDigest: LitePromptProjectDigest | null
+	projectDigest: LitePromptProjectDigest | null,
+	data: LitePromptInput['data']
 ): LitePromptSection {
+	const workflowBlock = FOCUS_WORKFLOW_GUIDANCE[focus.contextType] ?? null;
+	const isBriefContext =
+		focus.contextType === 'daily_brief' || focus.contextType === 'daily_brief_update';
+	const appendBriefBlock =
+		!isBriefContext && shouldApplyDailyBriefGuardrails(data)
+			? DAILY_BRIEF_GUARDRAILS_LITE
+			: null;
+	const extraWorkflow = [workflowBlock, appendBriefBlock].filter(
+		(section): section is string => Boolean(section)
+	);
+
 	if (focus.contextType === 'project_create') {
+		const coreContent = [
+			'Current focus:',
+			'- The user is trying to create a new BuildOS project right now.',
+			'- No existing project or focus entity exists yet; treat the user message as the source of truth for the initial project.',
+			'',
+			'Use this seed for:',
+			`- ${describePurpose(focus)}`
+		].join('\n');
+
 		return makeSection({
 			id: 'focus_purpose',
 			title: 'Current Focus and Purpose',
@@ -128,17 +205,11 @@ function buildFocusPurposeSection(
 				entityId: focus.entityId,
 				focusEntityType: focus.focusEntityType,
 				focusEntityId: focus.focusEntityId,
-				focusEntityName: focus.focusEntityName
+				focusEntityName: focus.focusEntityName,
+				workflowBlockId: workflowBlock ? focus.contextType : null,
+				briefAppended: Boolean(appendBriefBlock)
 			},
-			content: [
-				'Current focus:',
-				'- The user is trying to create a new BuildOS project right now.',
-				'- No existing project or focus entity exists yet; treat the user message as the source of truth for the initial project.',
-				'',
-				'Project creation means:',
-				'- Turn a rough idea into the smallest valid project structure with a clear name, type_key, description/props, and only the entities and relationships the user actually described.',
-				'- Ask one concise clarification only when a required detail blocks a safe create payload.'
-			].join('\n')
+			content: [coreContent, ...extraWorkflow].join('\n\n')
 		});
 	}
 
@@ -161,6 +232,14 @@ function buildFocusPurposeSection(
 				`- Focus entity: ${formatFocusEntity(focus)}`
 			];
 
+	const coreContent = [
+		projectDigest ? 'Current project focus:' : 'Current focus:',
+		...focusLines,
+		'',
+		'Use this seed for:',
+		`- ${describePurpose(focus)}`
+	].join('\n');
+
 	return makeSection({
 		id: 'focus_purpose',
 		title: 'Current Focus and Purpose',
@@ -173,15 +252,11 @@ function buildFocusPurposeSection(
 			entityId: focus.entityId,
 			focusEntityType: focus.focusEntityType,
 			focusEntityId: focus.focusEntityId,
-			focusEntityName: focus.focusEntityName
+			focusEntityName: focus.focusEntityName,
+			workflowBlockId: workflowBlock ? focus.contextType : null,
+			briefAppended: Boolean(appendBriefBlock)
 		},
-		content: [
-			projectDigest ? 'Current project focus:' : 'Current focus:',
-			...focusLines,
-			'',
-			'Use this seed for:',
-			`- ${describePurpose(focus)}`
-		].join('\n')
+		content: [coreContent, ...extraWorkflow].join('\n\n')
 	});
 }
 
@@ -235,8 +310,44 @@ function buildLocationLoadedContextSection(
 }
 
 function buildTimelineRecentActivitySection(
-	timeline: LitePromptTimelineSummary
+	timeline: LitePromptTimelineSummary,
+	focus: LitePromptFocus,
+	projectDigest: LitePromptProjectDigest | null
 ): LitePromptSection {
+	const frameLines = [
+		'Timeline frame:',
+		`- Current time: ${timeline.generatedAt}`,
+		`- Timezone: ${timeline.timezone}`,
+		`- Scope: ${timeline.scope}`
+	];
+
+	const mode = resolveTimelineRenderMode(focus, timeline, projectDigest);
+
+	const content =
+		mode === 'full'
+			? [
+					...frameLines,
+					'',
+					'Project status:',
+					formatBullets(timeline.statusLines, 'No project status summary was loaded.'),
+					'',
+					'Overdue or due soon:',
+					formatBullets(
+						timeline.overdueLines,
+						'No overdue or near-term due work is loaded.'
+					),
+					'',
+					'Upcoming dated work:',
+					formatBullets(timeline.upcomingLines, 'No upcoming dated work is loaded.'),
+					'',
+					'Recent project changes:',
+					formatBullets(
+						timeline.recentChangeLines,
+						'No recent project changes are loaded.'
+					)
+				].join('\n')
+			: frameLines.join('\n');
+
 	return makeSection({
 		id: 'timeline_recent_activity',
 		title: 'Timeline and Recent Activity',
@@ -246,34 +357,58 @@ function buildTimelineRecentActivitySection(
 			generatedAt: timeline.generatedAt,
 			timezone: timeline.timezone,
 			scope: timeline.scope,
-			factCount: timeline.facts.length
+			factCount: timeline.facts.length,
+			renderMode: mode
 		},
-		content: [
-			'Timeline frame:',
-			`- Current time: ${timeline.generatedAt}`,
-			`- Timezone: ${timeline.timezone}`,
-			`- Scope: ${timeline.scope}`,
-			'',
-			'Project status:',
-			formatBullets(timeline.statusLines, 'No project status summary was loaded.'),
-			'',
-			'Overdue or due soon:',
-			formatBullets(timeline.overdueLines, 'No overdue or near-term due work is loaded.'),
-			'',
-			'Upcoming dated work:',
-			formatBullets(timeline.upcomingLines, 'No upcoming dated work is loaded.'),
-			'',
-			'Recent project changes:',
-			formatBullets(timeline.recentChangeLines, 'No recent project changes are loaded.')
-		].join('\n')
+		content
 	});
 }
 
-function shouldIncludeTimelineRecentActivitySection(focus: LitePromptFocus): boolean {
+/**
+ * Whether to render the Timeline section at all for this context.
+ *
+ * Design note: the earlier consolidation forced a `frame_only` render for
+ * `project_create` to extend the cacheable prefix. Benchmarking showed the
+ * prefix already breaks at `focus_purpose` (position 6) because the per-context
+ * workflow block varies, so the frame-only render in project_create costs
+ * ~100 tokens without any cache benefit. Revert to skipping the section
+ * entirely for project_create, where no project data exists and time-relative
+ * queries are rare. Non-project_create contexts still render (full when data
+ * is loaded, frame_only fallback otherwise) because "what is today" queries
+ * can be useful even without project data.
+ */
+function shouldRenderTimelineSection(focus: LitePromptFocus): boolean {
 	return focus.contextType !== 'project_create';
 }
 
+function resolveTimelineRenderMode(
+	focus: LitePromptFocus,
+	timeline: LitePromptTimelineSummary,
+	projectDigest: LitePromptProjectDigest | null
+): 'frame_only' | 'full' {
+	const hasTimelineSignal =
+		timeline.statusLines.length > 0 ||
+		timeline.overdueLines.length > 0 ||
+		timeline.upcomingLines.length > 0 ||
+		timeline.recentChangeLines.length > 0;
+	const hasProjectDigestSignal = Boolean(
+		projectDigest &&
+			(projectDigest.statusLines.length > 0 ||
+				projectDigest.priorityTasks.length > 0 ||
+				projectDigest.overdueItems.length > 0 ||
+				projectDigest.upcomingItems.length > 0 ||
+				projectDigest.recentChanges.length > 0)
+	);
+	return hasTimelineSignal || hasProjectDigestSignal ? 'full' : 'frame_only';
+}
+
 function buildOperatingStrategySection(): LitePromptSection {
+	// NOTE: all strategy guidance is kept as a single flat bullet list under one
+	// heading. Earlier versions used sub-sections ("Communication pattern:",
+	// "Entity resolution order:", "How to pick a skill:"), but model replays
+	// showed Grok-4.1-fast mirroring those sub-headings verbatim as its own
+	// planning doc before the final response. Inline prose avoids the
+	// mirror-my-section-headers failure mode.
 	return makeSection({
 		id: 'operating_strategy',
 		title: 'Operating Strategy',
@@ -282,13 +417,14 @@ function buildOperatingStrategySection(): LitePromptSection {
 		content: [
 			'How to act:',
 			'- Start with the loaded context. If the loaded context is enough, answer without extra tool calls.',
-			'- Treat context zooming as durable state movement. Use change_chat_context early when the latest request should zoom into one resolved project or back out to the workspace.',
-			'- Do not bounce contexts for ambiguous project names, multi-project comparisons, or brief side mentions. Resolve ambiguity first, then shift only when the intended focus is clear.',
-			'- Use direct tools first when they fit. Use discovery tools only when the exact operation or schema is missing.',
-			'- Load a skill when the workflow is multi-step, stateful, or easy to get wrong; do not load full skill playbooks for simple answers.',
+			'- Before any tool call, open the turn with a 1-2 sentence lead-in describing what you are about to do. Lead-ins are intent only; do not claim outcomes until tool results are back.',
+			'- Use direct tools first when they fit. Use discovery tools (tool_search, tool_schema) only when the exact operation or schema is missing.',
+			"- Load a skill with skill_load only when the workflow is two or more related writes or required fields are uncertain; default to format: short and request include_examples: true only after a prior failure on the same op. Skill choice follows from the capability that matches the user's intent.",
+			'- Resolve entity targets in this order: reuse exact IDs from loaded context or prior tool results; search within the current project when project scope is known; search the workspace when project scope is unknown; ask one concise clarification when multiple plausible matches remain.',
 			'- Ask one concise clarification only when the missing detail blocks a safe answer or write.',
+			'- Treat context zooming as durable state movement. Use change_chat_context early when the latest request should zoom into one resolved project or back out to the workspace. Do not bounce contexts for ambiguous project names, multi-project comparisons, or brief side mentions.',
 			'- After a tool call, anchor the next step in what the tool actually returned: what changed, where the runtime is now, and what should happen next.',
-			'- Keep scratch reasoning private and make user-facing responses direct.'
+			'- Keep scratch reasoning private. Your user-facing response must be direct prose for the user — never a plan, checklist, or paraphrase of these instructions.'
 		].join('\n')
 	});
 }
@@ -297,9 +433,14 @@ function buildCapabilitiesSkillsToolsSection(): LitePromptSection {
 	const capabilities = listCapabilities('available').map(
 		(capability) => `${capability.name}: ${capability.summary}`
 	);
-	const skills = listAllSkills()
+	const skillRows = listAllSkills()
 		.sort((a, b) => a.id.localeCompare(b.id))
-		.map((skill) => `${skill.id}: ${skill.summary}`);
+		.map((skill) => `| \`${skill.id}\` | ${skill.summary} |`);
+
+	const skillTable =
+		skillRows.length > 0
+			? ['| Skill ID | Description |', '|---|---|', ...skillRows].join('\n')
+			: 'No skills are registered.';
 
 	return makeSection({
 		id: 'capabilities_skills_tools',
@@ -311,13 +452,16 @@ function buildCapabilitiesSkillsToolsSection(): LitePromptSection {
 			'',
 			'1. Capability - what BuildOS can do for the user.',
 			'2. Skill - workflow guidance for doing that work well. Skill metadata is preloaded in this prompt; call skill_load when the task is multi-step or easy to get wrong and you need the full markdown playbook.',
-			'3. Tool / Op - the exact execution surface. The current tool names are listed later in Current Tool Surface.',
+			'3. Tool / Op - the exact execution surface. The current tool names are listed in Current Tool Surface below.',
 			'',
 			'Capabilities:',
 			formatBullets(capabilities, 'No capabilities are registered.'),
 			'',
-			'Skill metadata:',
-			formatBullets(skills, 'No skills are registered.')
+			'Skill catalog (use `skill_load` to fetch the playbook):',
+			'',
+			skillTable,
+			'',
+			'See Operating Strategy for when to call `skill_load`. Tool names live in the tool surface section below.'
 		].join('\n')
 	});
 }
@@ -335,9 +479,6 @@ function buildToolSurfaceDynamicSection(toolsSummary: LitePromptToolsSummary): L
 			totalTools: toolsSummary.totalTools
 		},
 		content: [
-			'Tool surface for this context:',
-			'- Tool schemas are supplied through model tool definitions, not duplicated in this prompt text.',
-			'',
 			'Discovery tools:',
 			formatBullets(toolsSummary.discoveryTools, 'No discovery tools are preloaded.'),
 			'',
@@ -369,22 +510,7 @@ function buildContextInventoryRetrievalSection(
 				'Creation boundaries:',
 				'- Use the user idea and project_create mode state as the working context.',
 				'- Do not load existing workspace/project data just to begin project creation.',
-				'- Prefer the project_creation skill for multi-step creation, then call the direct create tool once the payload is ready.',
-				'',
-				'Loaded:',
-				formatBullets(retrievalMap.loaded, 'Only project_create mode state is loaded.'),
-				'',
-				'Not preloaded:',
-				formatBullets(
-					retrievalMap.omitted,
-					'Existing project graph data is not preloaded.'
-				),
-				'',
-				'Fetch only when needed:',
-				formatBullets(
-					retrievalMap.fetchWhenNeeded,
-					'No follow-up fetch rules were provided.'
-				)
+				'- Prefer the project_creation skill for multi-step creation, then call the direct create tool once the payload is ready.'
 			].join('\n')
 		});
 	}
@@ -392,9 +518,6 @@ function buildContextInventoryRetrievalSection(
 	const arrayCountLines = Object.entries(dataSummary.arrayCounts).map(
 		([key, count]) => `${key}: ${count}`
 	);
-	const emptyArrayKeys = Object.entries(dataSummary.arrayCounts)
-		.filter(([, count]) => count === 0)
-		.map(([key]) => key);
 
 	return makeSection({
 		id: 'context_inventory_retrieval',
@@ -409,53 +532,60 @@ function buildContextInventoryRetrievalSection(
 			omitted: retrievalMap.omitted,
 			fetchWhenNeeded: retrievalMap.fetchWhenNeeded
 		},
+		// Trimmed 2026-04-17: the old "Structured context loaded:", "Source:",
+		// "Empty loaded sets:", plus the full Loaded / Not preloaded / Fetch
+		// when needed / Notes lists, were either boilerplate or redundant with
+		// rules the agent already has in operating_strategy + safety. Keep the
+		// counts line (genuinely useful) and a one-line fetch rule.
 		content: [
-			'Loaded data snapshot:',
-			`- Structured context loaded: ${dataSummary.hasData ? 'yes' : 'no'} (${dataSummary.kind}).`,
-			dataSummary.contextMeta
-				? `- Source: ${formatContextSource(dataSummary.contextMeta)}`
-				: '- Source: not specified.',
-			`- Counts: ${arrayCountLines.length > 0 ? arrayCountLines.join(', ') : 'no top-level arrays loaded'}.`,
-			`- Empty loaded sets: ${emptyArrayKeys.length > 0 ? emptyArrayKeys.join(', ') : 'none'}.`,
-			'',
-			'Retrieval boundaries:',
-			'Loaded:',
-			formatBullets(retrievalMap.loaded, 'Nothing explicit was marked as loaded.'),
-			'',
-			'Not preloaded:',
-			formatBullets(retrievalMap.omitted, 'Nothing explicit was marked as omitted.'),
-			'',
-			'Fetch only when needed:',
-			formatBullets(retrievalMap.fetchWhenNeeded, 'No follow-up fetch rules were provided.'),
-			'',
-			'Notes:',
-			formatBullets(retrievalMap.notes, 'No retrieval notes were provided.')
+			`Loaded counts: ${arrayCountLines.length > 0 ? arrayCountLines.join(', ') : 'no top-level arrays loaded'}.`,
+			'Fetch an entity directly when it is not already in the loaded counts above and the user asks about it; otherwise answer from loaded context.'
 		].join('\n')
 	});
 }
 
-function buildSafetyDataRulesSection(): LitePromptSection {
+function buildSafetyDataRulesSection(data: LitePromptInput['data']): LitePromptSection {
+	const renderMemberRoleBullet = hasMultiPersonScope(data);
+	const lines: string[] = [
+		// Anti-echo rule intentionally first so it stays salient at the top of
+		// the block. Some providers (notably Grok-4.1-fast) will otherwise restate
+		// prompt section headers verbatim as their "plan" before answering.
+		'- Never echo prompt section headers ("Safety and Data Rules", "Operating Strategy", "Final-response rules", "Communication pattern", etc.), rule labels, write-ledger labels, or planning commentary in your user-facing response. Write directly to the user in natural prose. If you find yourself about to paraphrase these instructions, answer the user instead.',
+		'- Do not claim a tool ran unless the runtime supplied a successful tool result.',
+		'- Discovering a tool, loading a schema, reading context, or planning is not completion. Only say an entity was created, updated, moved, merged, archived, deleted, scheduled, or linked after the corresponding write tool succeeded.',
+		'- Pre-tool lead-ins are intent only: say what you will attempt, not that it already happened. Do not state the final outcome, success, or persisted update until all tool calls for that turn have completed.',
+		'- After tool calls complete, ground the final user-facing summary in the actual tool results: what succeeded, what failed, and what did not change. Do not carry optimistic lead-in language into the outcome.',
+		'- If any write fails and no later retry repairs the same target, state what did not persist and keep the partial-success summary precise. When you cannot execute the requested write at all, say "I was unable to <requested action>" and briefly name the blocker so the user knows exactly what did not change.',
+		'- Final responses must match the actual write set: mention every successful write that materially matters, and do not claim task progress, document type, tree placement, or linking when the corresponding tool call did not run or did not succeed.',
+		'- Task state coverage: when a task has visibly advanced (started, in progress, blocked, or finished), include `state_key` in `update_onto_task` alongside any description change. See the task_management skill for the full playbook.',
+		'- Record user-reported inconsistencies (for example "Chapter 1 says 16, Chapter 2 says 17") as open questions or fix tasks. Do not pick a canonical value unless the user stated which one is canonical.',
+		'- Do not claim a requested document type, tree placement, link, or cross-link unless the successful tool result confirms the actual type or operation.',
+		'- User-visible durable fields (titles, descriptions, document content, project descriptions, props) must contain only final user-visible content. Never let tool-control syntax or argument framing leak into those strings; put control parameters in their own tool arguments, not inside text fields.',
+		'- Do not invent project, task, document, calendar, member, or Libri data that is not in loaded context or tool results.',
+		'- For writes, use exact IDs from context or tool results. Full UUIDs only; never truncate, abbreviate, or use placeholders like `"..."`, `"REPLACE_ME"`, `"<task_id>"`, `"TBD"`, `"none"`, or `"null"`. If the target is ambiguous, resolve it with a read op or ask one concise question before writing.',
+		'- Treat permissions and access as hard constraints.',
+		'- Document placement is a two-step contract (create, then tree-move). See the document_workspace skill for placement, hierarchy, and append rules.',
+		'- Document append/merge writes require non-empty content. merge_instructions alone is not enough.',
+		'- When context is incomplete, state the limit and use the narrowest tool that can fill the gap.'
+	];
+
+	if (renderMemberRoleBullet) {
+		lines.push(
+			'- Member-role routing: prefer assigning work to members whose role_name / role_description aligns with the responsibility. Treat role and access as hard constraints. Ask once if multiple members overlap.'
+		);
+	}
+
 	return makeSection({
 		id: 'safety_data_rules',
 		title: 'Safety and Data Rules',
-		kind: 'static',
+		// mostly static invariants, with one conditional bullet (member-role) gated
+		// on whether loaded context contains a multi-person project in scope.
+		kind: 'mixed',
 		source: 'lite.safety',
-		content: [
-			'- Do not claim a tool ran unless the runtime supplied a successful tool result.',
-			'- Discovering a tool, loading a schema, reading context, or planning is not completion. Only say an entity was created, updated, moved, merged, archived, deleted, scheduled, or linked after the corresponding write tool succeeded.',
-			'- Pre-tool lead-ins are intent only: say what you will attempt, not that it already happened. Do not state the final outcome, success, or persisted update until all tool calls for that turn have completed.',
-			'- If any write fails and no later retry repairs the same target, state what did not persist and keep the partial-success summary precise. When you cannot execute the requested write at all, say "I was unable to <requested action>" and briefly name the blocker so the user knows exactly what did not change.',
-			'- Final responses must match the actual write set: mention every successful write that materially matters, and do not claim task progress, document type, tree placement, or linking when the corresponding tool call did not run or did not succeed.',
-			'- Do not claim a requested document type, tree placement, link, or cross-link unless the successful tool result confirms the actual type or operation.',
-			'- User-visible durable fields (titles, descriptions, document content, project descriptions, props) must contain only final user-visible content. Never let tool-control syntax or argument framing leak into those strings; put control parameters in their own tool arguments, not inside text fields.',
-			'- Do not invent project, task, document, calendar, member, or Libri data that is not in loaded context or tool results.',
-			'- For writes, use exact IDs from context or tool results. If the target is ambiguous, ask before mutating state.',
-			'- Treat permissions, member roles, and access as hard constraints.',
-			'- Preserve document hierarchy rules: documents live in the document tree, not graph edges.',
-			'- Document placement: named research notes, specs, worldbuilding, outlines, or multi-section research go in a dedicated document via create_onto_document, then place it with move_document_in_tree (usually nested under the project context document). Short progress snippets can append to an existing context or progress document.',
-			'- Document append/merge writes require non-empty content. merge_instructions alone is not enough — always include the actual content to persist.',
-			'- When context is incomplete, state the limit and use the narrowest tool that can fill the gap.'
-		].join('\n')
+		slots: {
+			memberRoleBulletRendered: renderMemberRoleBullet
+		},
+		content: lines.join('\n')
 	});
 }
 
@@ -1078,6 +1208,42 @@ function isProjectScoped(contextType: ChatContextType): boolean {
 	return ['project', 'ontology'].includes(contextType);
 }
 
+/**
+ * Detect whether the loaded data exposes a project with more than one member in scope.
+ * Today only project / ontology contexts load `members` in the seed payload
+ * (see context-loader.ts project branch). Global / brief contexts do not expose
+ * per-project member counts today; spec §9.6 tracks the loader change that
+ * unblocks multi-context detection without touching the prompt.
+ */
+function hasMultiPersonScope(data: LitePromptInput['data']): boolean {
+	if (!isRecord(data)) return false;
+	const members = data.members;
+	if (!Array.isArray(members)) return false;
+	const actorIds = new Set<string>();
+	for (const entry of members) {
+		if (!isRecord(entry)) continue;
+		const actorId = stringValue(entry.actor_id) ?? stringValue(entry.id);
+		if (actorId) actorIds.add(actorId);
+	}
+	return actorIds.size > 1;
+}
+
+/**
+ * Detect whether daily-brief guardrails should render in focus_purpose for a
+ * non-brief context. Mirrors the check from the legacy master-prompt-builder.
+ */
+function shouldApplyDailyBriefGuardrails(data: LitePromptInput['data']): boolean {
+	if (!isRecord(data)) return false;
+	return (
+		'briefId' in data ||
+		'brief_id' in data ||
+		'briefDate' in data ||
+		'brief_date' in data ||
+		'mentionedEntities' in data ||
+		'mentioned_entities' in data
+	);
+}
+
 function defaultProductSurface(contextType: ChatContextType): string {
 	switch (contextType) {
 		case 'global':
@@ -1698,18 +1864,6 @@ function truncateText(value: string | null, maxChars = 240): string | null {
 	return `${normalized.slice(0, Math.max(0, maxChars - 3))}...`;
 }
 
-function formatContextSource(contextMeta: Record<string, unknown>): string {
-	const source = stringValue(contextMeta.source) ?? 'unknown';
-	const generatedAt = stringValue(contextMeta.generated_at);
-	const cacheAge = numberValue(contextMeta.cache_age_seconds);
-	return [
-		source,
-		generatedAt ? `generated ${generatedAt}` : null,
-		cacheAge !== null ? `cache age ${cacheAge}s` : null
-	]
-		.filter(Boolean)
-		.join(', ');
-}
 
 function normalizeTime(value: Date | string | null | undefined): string {
 	if (value instanceof Date) return value.toISOString();

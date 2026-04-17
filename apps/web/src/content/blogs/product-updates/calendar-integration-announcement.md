@@ -1,15 +1,15 @@
 ---
-title: 'Introducing Calendar Integration: Your Schedule Meets Your Projects'
-description: 'New calendar integration brings seamless scheduling to BuildOS. Connect Google Calendar and let AI help you plan your time.'
+title: 'Calendar Integration: Your Project Work Meets Your Schedule'
+description: "Connect Google Calendar to BuildOS. Tasks with due dates sync to your calendar; existing commitments show up in your project view. Project work and real-life scheduling stop fighting each other."
 author: 'DJ Wayne'
 date: '2025-10-23'
 lastmod: '2025-10-23'
 changefreq: 'monthly'
 priority: '0.8'
 published: false
-tags: ['product-updates', 'calendar', 'integration', 'features', 'google-calendar']
+tags: ['product-updates', 'calendar', 'integration', 'features', 'google-calendar', 'thinking-environment']
 readingTime: 6
-excerpt: 'BuildOS now integrates with Google Calendar for intelligent time blocking and task scheduling. Learn how to connect your calendar.'
+excerpt: "BuildOS now syncs with Google Calendar. Tasks flow to your schedule, and existing commitments show up in your project view — so project work and calendar work stop living in different apps."
 pic: 'calendar-announcement'
 path: apps/web/src/content/blogs/product-updates/calendar-integration-announcement.md
 ---
