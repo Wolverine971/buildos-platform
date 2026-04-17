@@ -70,6 +70,7 @@
 		type DocumentExportFormat,
 		type DocumentExportPayload
 	} from '$lib/utils/document-export';
+	import { buildAbsolutePublicPageUrl, copyTextToClipboard } from '$lib/utils/public-page-url';
 	import {
 		Archive,
 		FileText,
@@ -195,6 +196,8 @@
 		last_live_sync_at: string | null;
 		last_live_sync_error: string | null;
 		is_live_public: boolean;
+		view_count_all: number;
+		view_count_30d: number;
 	};
 
 	type PublicPagePreview = {
@@ -604,7 +607,9 @@
 				typeof row.last_live_sync_at === 'string' ? row.last_live_sync_at : null,
 			last_live_sync_error:
 				typeof row.last_live_sync_error === 'string' ? row.last_live_sync_error : null,
-			is_live_public: row.is_live_public === true
+			is_live_public: row.is_live_public === true,
+			view_count_all: typeof row.view_count_all === 'number' ? row.view_count_all : 0,
+			view_count_30d: typeof row.view_count_30d === 'number' ? row.view_count_30d : 0
 		};
 	}
 
@@ -727,31 +732,19 @@
 		window.open(urlPath, '_blank', 'noopener,noreferrer');
 	}
 
-	function getAbsolutePublicPageUrl(): string | null {
-		const urlPath = publicPageState?.url_path;
-		if (!urlPath || !browser) return null;
-		return `${window.location.origin}${urlPath}`;
-	}
-
 	async function handleCopyPublicPageUrl() {
-		const absoluteUrl = getAbsolutePublicPageUrl();
+		if (!publicPageState) return;
+		const absoluteUrl = buildAbsolutePublicPageUrl({
+			slug: publicPageState.slug,
+			slug_prefix: publicPageState.slug_prefix,
+			slug_base: publicPageState.slug_base,
+			url_path: publicPageState.url_path
+		});
 		if (!absoluteUrl) return;
-		try {
-			if (navigator.clipboard?.writeText) {
-				await navigator.clipboard.writeText(absoluteUrl);
-			} else {
-				const textarea = document.createElement('textarea');
-				textarea.value = absoluteUrl;
-				textarea.setAttribute('readonly', '');
-				textarea.style.position = 'fixed';
-				textarea.style.opacity = '0';
-				document.body.appendChild(textarea);
-				textarea.select();
-				document.execCommand('copy');
-				document.body.removeChild(textarea);
-			}
+		const ok = await copyTextToClipboard(absoluteUrl);
+		if (ok) {
 			toastService.success('Link copied');
-		} catch (_error) {
+		} else {
 			toastService.error('Failed to copy link. Select the URL and copy it manually.');
 		}
 	}
@@ -1116,6 +1109,55 @@
 				operation: 'document_public_page_live_sync_toggle'
 			});
 			toastService.error(message);
+		}
+	}
+
+	async function handleUnpublishPublicPage() {
+		if (!activeDocumentId || !publicPageState) return;
+		if (publicPageActionLoading) return;
+		const confirmed =
+			typeof window !== 'undefined'
+				? window.confirm(
+						'Unpublish this page? The public link will return 404. You can republish at the same URL any time.'
+					)
+				: true;
+		if (!confirmed) return;
+
+		try {
+			publicPageActionLoading = true;
+			const response = await fetch(
+				`/api/onto/documents/${activeDocumentId}/public-page/unpublish`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' }
+				}
+			);
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error || 'Failed to unpublish public page');
+			}
+			const updated = normalizePublicPageState(payload?.data?.publicPage);
+			if (updated) {
+				publicPageState = updated;
+			} else {
+				publicPageState = null;
+			}
+			toastService.success('Unpublished. The link will now 404.');
+			onSaved?.();
+		} catch (error) {
+			const message =
+				error instanceof Error ? error.message : 'Failed to unpublish public page';
+			void logOntologyClientError(error, {
+				endpoint: `/api/onto/documents/${activeDocumentId}/public-page/unpublish`,
+				method: 'POST',
+				projectId,
+				entityType: 'document',
+				entityId: activeDocumentId,
+				operation: 'document_public_page_unpublish'
+			});
+			toastService.error(message);
+		} finally {
+			publicPageActionLoading = false;
 		}
 	}
 
@@ -2430,9 +2472,28 @@
 														{publicPageUrlPath}
 													</span>
 												</div>
-												<div
-													class="flex flex-wrap items-center gap-1.5"
-												>
+												{#if publicPageState.view_count_all > 0}
+													<div
+														class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-emerald-800"
+													>
+														<span>
+															{publicPageState.view_count_all.toLocaleString()}
+															{publicPageState.view_count_all === 1
+																? 'view'
+																: 'views'}
+														</span>
+														{#if publicPageState.view_count_30d > 0}
+															<span class="text-emerald-900/50"
+																>·</span
+															>
+															<span>
+																{publicPageState.view_count_30d.toLocaleString()}
+																in 30d
+															</span>
+														{/if}
+													</div>
+												{/if}
+												<div class="flex flex-wrap items-center gap-1.5">
 													<button
 														type="button"
 														onclick={handleCopyPublicPageUrl}
@@ -2457,6 +2518,15 @@
 														class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-emerald-900 hover:bg-emerald-100/70 transition-colors pressable"
 													>
 														Edit settings
+													</button>
+													<button
+														type="button"
+														onclick={handleUnpublishPublicPage}
+														disabled={publicPageActionLoading}
+														aria-label="Unpublish public page"
+														class="ml-auto inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-rose-800 hover:bg-rose-100/60 transition-colors pressable disabled:opacity-50"
+													>
+														Unpublish
 													</button>
 												</div>
 												<label
@@ -2485,6 +2555,24 @@
 											</div>
 										{:else}
 											<div class="space-y-1">
+												{#if publicPageState?.public_status === 'unpublished'}
+													<p
+														class="text-[11px] text-muted-foreground leading-snug"
+													>
+														Previously published at <span
+															class="font-mono text-foreground"
+															>{publicPageUrlPath}</span
+														>. Republish to make it live again at the
+														same URL.
+													</p>
+												{:else if publicPageState?.public_status === 'pending_confirmation'}
+													<p
+														class="text-[11px] text-amber-700 leading-snug"
+													>
+														Publish in progress — awaiting review. Try
+														again in a moment.
+													</p>
+												{/if}
 												<Button
 													type="button"
 													variant="outline"
@@ -2497,12 +2585,16 @@
 												>
 													<Globe class="w-3.5 h-3.5" />
 													<span class="ml-1">
-														{publicPageState
-															? 'Update Public Page'
-															: 'Make This Document Public'}
+														{#if publicPageState?.public_status === 'unpublished'}
+															Republish
+														{:else if publicPageState}
+															Update Public Page
+														{:else}
+															Share publicly
+														{/if}
 													</span>
 												</Button>
-												{#if publicPageState?.public_status && publicPageState.public_status !== 'not_public'}
+												{#if publicPageState?.public_status && publicPageState.public_status !== 'not_public' && publicPageState.public_status !== 'unpublished' && publicPageState.public_status !== 'pending_confirmation'}
 													<p class="text-[11px] text-muted-foreground">
 														Status: {publicPageState.public_status.replace(
 															'_',
@@ -3133,6 +3225,29 @@
 																	{publicPageUrlPath}
 																</span>
 															</div>
+															{#if publicPageState.view_count_all > 0}
+																<div
+																	class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-emerald-800"
+																>
+																	<span>
+																		{publicPageState.view_count_all.toLocaleString()}
+																		{publicPageState.view_count_all ===
+																		1
+																			? 'view'
+																			: 'views'}
+																	</span>
+																	{#if publicPageState.view_count_30d > 0}
+																		<span
+																			class="text-emerald-900/50"
+																			>·</span
+																		>
+																		<span>
+																			{publicPageState.view_count_30d.toLocaleString()}
+																			in 30d
+																		</span>
+																	{/if}
+																</div>
+															{/if}
 															<div
 																class="flex flex-wrap items-center gap-1.5"
 															>
@@ -3152,9 +3267,7 @@
 																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-emerald-900 hover:bg-emerald-100/70 transition-colors pressable"
 																>
 																	Open
-																	<ExternalLink
-																		class="w-3 h-3"
-																	/>
+																	<ExternalLink class="w-3 h-3" />
 																</button>
 																<button
 																	type="button"
@@ -3162,6 +3275,15 @@
 																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-emerald-900 hover:bg-emerald-100/70 transition-colors pressable"
 																>
 																	Edit settings
+																</button>
+																<button
+																	type="button"
+																	onclick={handleUnpublishPublicPage}
+																	disabled={publicPageActionLoading}
+																	aria-label="Unpublish public page"
+																	class="ml-auto inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-rose-800 hover:bg-rose-100/60 transition-colors pressable disabled:opacity-50"
+																>
+																	Unpublish
 																</button>
 															</div>
 															<label
@@ -3189,23 +3311,48 @@
 															{/if}
 														</div>
 													{:else}
-														<Button
-															type="button"
-															variant="outline"
-															size="sm"
-															onclick={handleMakeDocumentPublic}
-															disabled={blockingSave ||
-																publicPageActionLoading ||
-																isArchivedDocument}
-															class="w-full text-xs justify-center"
-														>
-															<Globe class="w-3.5 h-3.5" />
-															<span class="ml-1">
-																{publicPageState
-																	? 'Update Public Page'
-																	: 'Make This Document Public'}
-															</span>
-														</Button>
+														<div class="space-y-1">
+															{#if publicPageState?.public_status === 'unpublished'}
+																<p
+																	class="text-[11px] text-muted-foreground leading-snug"
+																>
+																	Previously published at
+																	<span
+																		class="font-mono text-foreground"
+																		>{publicPageUrlPath}</span
+																	>. Republish to make it live
+																	again at the same URL.
+																</p>
+															{:else if publicPageState?.public_status === 'pending_confirmation'}
+																<p
+																	class="text-[11px] text-amber-700 leading-snug"
+																>
+																	Publish in progress — awaiting
+																	review. Try again in a moment.
+																</p>
+															{/if}
+															<Button
+																type="button"
+																variant="outline"
+																size="sm"
+																onclick={handleMakeDocumentPublic}
+																disabled={blockingSave ||
+																	publicPageActionLoading ||
+																	isArchivedDocument}
+																class="w-full text-xs justify-center"
+															>
+																<Globe class="w-3.5 h-3.5" />
+																<span class="ml-1">
+																	{#if publicPageState?.public_status === 'unpublished'}
+																		Republish
+																	{:else if publicPageState}
+																		Update Public Page
+																	{:else}
+																		Share publicly
+																	{/if}
+																</span>
+															</Button>
+														</div>
 													{/if}
 
 													{#if hasFlaggedPublicPageReview && latestPublicPageReview}

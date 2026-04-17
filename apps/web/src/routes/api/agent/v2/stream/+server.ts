@@ -2247,17 +2247,13 @@ export const POST: RequestHandler = async ({
 	// We still accept the `prompt_variant` input for backwards compatibility, but we reject any
 	// explicit request for a non-lite variant rather than silently downgrading.
 	const requestedPromptVariantRaw =
-		typeof streamRequest.prompt_variant === 'string'
-			? streamRequest.prompt_variant.trim()
-			: '';
+		typeof streamRequest.prompt_variant === 'string' ? streamRequest.prompt_variant.trim() : '';
 	if (
 		requestedPromptVariantRaw &&
 		requestedPromptVariantRaw !== LITE_PROMPT_VARIANT &&
 		requestedPromptVariantRaw !== FASTCHAT_PROMPT_VARIANT
 	) {
-		return ApiResponse.badRequest(
-			`Unsupported prompt_variant: ${requestedPromptVariantRaw}`
-		);
+		return ApiResponse.badRequest(`Unsupported prompt_variant: ${requestedPromptVariantRaw}`);
 	}
 	const promptVariant: LitePromptVariant = LITE_PROMPT_VARIANT;
 	const clientTurnIdRaw = streamRequest.client_turn_id;

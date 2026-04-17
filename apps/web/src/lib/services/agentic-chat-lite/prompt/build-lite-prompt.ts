@@ -79,7 +79,7 @@ const PROJECT_CREATE_WORKFLOW_LITE = [
 	'- Always include entities: [] and relationships: [] arrays even when empty.',
 	'- If the user stated an outcome, add one goal. If they listed concrete actions, add only those task entities. Add plans or milestones only when they clearly described workstreams, phases, or date-driven structure.',
 	'- Entity labels: goal / plan / metric use `name`; task / milestone / document / risk use `title`; requirement uses `text`; source uses `uri`. Milestones also require `due_at`.',
-	'- For goal entities, use dedicated fields like target_date and measurement_criteria instead of burying them only in props. If the user gives a month/day without a year, infer the next plausible future date in the user\'s locale.',
+	"- For goal entities, use dedicated fields like target_date and measurement_criteria instead of burying them only in props. If the user gives a month/day without a year, infer the next plausible future date in the user's locale.",
 	'- **Connect the graph.** When the user has both a goal and tasks, emit containment relationships linking every task (child) to that goal (parent). A project with 1 goal + N tasks should produce N+ goal-task containment edges; leaving tasks unlinked defeats the graph model.',
 	'- Relationship item shape: every entry must reference entities by `{ temp_id, kind }`. Use the form `{ from: { temp_id, kind }, to: { temp_id, kind } }` (or the array form `[{ temp_id, kind }, { temp_id, kind }]`) with an explicit `type` such as `contains`. Never pass raw temp_id strings like `["g1", "t1"]`.',
 	'- Use clarifications[] only when critical information cannot be reasonably inferred; still send the project skeleton.',
@@ -104,7 +104,6 @@ const FOCUS_WORKFLOW_GUIDANCE: Partial<Record<ChatContextType, string>> = {
 	daily_brief: DAILY_BRIEF_GUARDRAILS_LITE,
 	daily_brief_update: DAILY_BRIEF_GUARDRAILS_LITE
 };
-
 
 type SectionDraft = Omit<LitePromptSection, 'chars' | 'estimatedTokens'>;
 
@@ -179,8 +178,8 @@ function buildFocusPurposeSection(
 		!isBriefContext && shouldApplyDailyBriefGuardrails(data)
 			? DAILY_BRIEF_GUARDRAILS_LITE
 			: null;
-	const extraWorkflow = [workflowBlock, appendBriefBlock].filter(
-		(section): section is string => Boolean(section)
+	const extraWorkflow = [workflowBlock, appendBriefBlock].filter((section): section is string =>
+		Boolean(section)
 	);
 
 	if (focus.contextType === 'project_create') {
@@ -1863,7 +1862,6 @@ function truncateText(value: string | null, maxChars = 240): string | null {
 	if (normalized.length <= maxChars) return normalized;
 	return `${normalized.slice(0, Math.max(0, maxChars - 3))}...`;
 }
-
 
 function normalizeTime(value: Date | string | null | undefined): string {
 	if (value instanceof Date) return value.toISOString();

@@ -1,5 +1,5 @@
 ---
-title: "Using Daily Briefs: Start the Day Knowing What Actually Matters"
+title: 'Using Daily Briefs: Start the Day Knowing What Actually Matters'
 description: "Most mornings start buried in a task list or staring at a blank page. A BuildOS daily brief starts with context — what you worked on, what's due, and why it matters today. Here's how to use them well."
 author: 'DJ Wayne'
 date: '2025-06-26'

@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/profile/AccountTab.svelte -->
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { User, Lock, Trash2, TriangleAlert, CircleCheck, Eye, EyeOff } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -38,6 +39,86 @@
 
 	let errors = $state<string[]>([]);
 	let successMessage = $state('');
+
+	// Public URL / username editor state
+	let usernameValue = $state<string | null>(null);
+	let usernameDraft = $state('');
+	let derivedFallback = $state('user');
+	let usernameLoading = $state(false);
+	let usernameError = $state<string | null>(null);
+
+	onMount(() => {
+		void loadUsername();
+	});
+
+	async function loadUsername() {
+		try {
+			const res = await fetch('/api/profile/me/username');
+			const payload = await res.json().catch(() => null);
+			if (!res.ok) return;
+			usernameValue =
+				typeof payload?.data?.username === 'string' ? payload.data.username : null;
+			derivedFallback =
+				typeof payload?.data?.derived_fallback === 'string'
+					? payload.data.derived_fallback
+					: 'user';
+			usernameDraft = usernameValue ?? '';
+		} catch {
+			// Best-effort; leave defaults.
+		}
+	}
+
+	async function saveUsername() {
+		const trimmed = usernameDraft.trim().toLowerCase();
+		if (!trimmed || trimmed === (usernameValue ?? '')) return;
+		usernameLoading = true;
+		usernameError = null;
+		try {
+			const res = await fetch('/api/profile/me/username', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username: trimmed })
+			});
+			const payload = await res.json().catch(() => null);
+			if (!res.ok) {
+				usernameError =
+					payload?.error || 'Could not update username. Please try a different one.';
+				return;
+			}
+			usernameValue = payload?.data?.username ?? trimmed;
+			usernameDraft = usernameValue ?? '';
+			toastService.success('Username updated');
+		} catch (e) {
+			usernameError = e instanceof Error ? e.message : 'Failed to update username.';
+		} finally {
+			usernameLoading = false;
+		}
+	}
+
+	async function clearUsername() {
+		if (!usernameValue) return;
+		usernameLoading = true;
+		usernameError = null;
+		try {
+			const res = await fetch('/api/profile/me/username', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ username: null })
+			});
+			const payload = await res.json().catch(() => null);
+			if (!res.ok) {
+				usernameError = payload?.error || 'Failed to clear username.';
+				return;
+			}
+			usernameValue = null;
+			usernameDraft = '';
+			toastService.success('Username cleared. Public URLs now use your derived name.');
+		} catch (e) {
+			usernameError = e instanceof Error ? e.message : 'Failed to clear username.';
+		} finally {
+			usernameLoading = false;
+		}
+	}
 
 	async function updateProfile() {
 		if (loading) return;
@@ -342,6 +423,65 @@
 						>
 							{loading ? 'Updating...' : 'Update Profile'}
 						</Button>
+					</div>
+
+					<!-- Public URL / Username -->
+					<div class="mt-6 border-t border-border pt-5">
+						<h4 class="text-sm font-semibold text-foreground">Your public URL</h4>
+						<p class="mt-1 text-xs text-muted-foreground leading-relaxed">
+							When you publish a project doc, the link uses your username as the first
+							segment:
+							<span class="font-mono text-foreground"
+								>build-os.com/p/{usernameValue || derivedFallback}/…</span
+							>
+						</p>
+						<div class="mt-3 space-y-2">
+							<div class="flex flex-wrap items-stretch gap-2">
+								<div
+									class="inline-flex items-center rounded-md border border-border bg-muted/40 px-2 text-[12px] font-mono text-muted-foreground"
+								>
+									build-os.com/p/
+								</div>
+								<input
+									type="text"
+									bind:value={usernameDraft}
+									placeholder={derivedFallback}
+									minlength="3"
+									maxlength="24"
+									pattern={'^[a-z0-9]+(-[a-z0-9]+)*$'}
+									class="flex-1 min-w-0 rounded-md border border-border bg-background px-2 py-1.5 text-sm font-mono focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
+									disabled={usernameLoading}
+									aria-label="Public username"
+								/>
+							</div>
+							{#if usernameError}
+								<p class="text-xs text-destructive">{usernameError}</p>
+							{/if}
+							<div class="flex flex-wrap items-center gap-2">
+								<Button
+									type="button"
+									onclick={saveUsername}
+									disabled={usernameLoading ||
+										!usernameDraft.trim() ||
+										usernameDraft.trim() === (usernameValue ?? '')}
+									variant="primary"
+									size="sm"
+									loading={usernameLoading}
+								>
+									{usernameValue ? 'Update username' : 'Claim username'}
+								</Button>
+								{#if usernameValue}
+									<button
+										type="button"
+										onclick={clearUsername}
+										disabled={usernameLoading}
+										class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 disabled:opacity-50"
+									>
+										Clear (revert to derived)
+									</button>
+								{/if}
+							</div>
+						</div>
 					</div>
 				</div>
 			{/if}

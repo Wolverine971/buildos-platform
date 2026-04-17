@@ -57,9 +57,9 @@ Nearly every major podcaster and brand you've heard of has run a campaign in the
 
 Here's the part that matters for your mind.
 
-Algorithms use volume of distinct posts about a topic as a proxy for *importance* of that topic. It's the same signal that surfaces a real news event. If a volcano erupts, the algorithm sees thousands of people suddenly posting about it, decides it's important, and features it. That logic worked when volume was a symptom of things actually happening.
+Algorithms use volume of distinct posts about a topic as a proxy for _importance_ of that topic. It's the same signal that surfaces a real news event. If a volcano erupts, the algorithm sees thousands of people suddenly posting about it, decides it's important, and features it. That logic worked when volume was a symptom of things actually happening.
 
-Now volume is a product you can buy. 69,000 clips in 30 days tells every major feed: *this is the most important person in the world*. So the feed shows that person to you. To hundreds of millions of people. Every day. Whether you engaged or not. Whether you clicked "not interested" or not. Whether you even know who the person is.
+Now volume is a product you can buy. 69,000 clips in 30 days tells every major feed: _this is the most important person in the world_. So the feed shows that person to you. To hundreds of millions of people. Every day. Whether you engaged or not. Whether you clicked "not interested" or not. Whether you even know who the person is.
 
 The second-order effect is worse than astroturfing. When the algorithm has already decided someone is important, **content quality decouples from reach**. It doesn't matter if the 51,776th clip is boring. The algorithm already learned, from the 51,775 before it, to push it. The old content-creation loop where audiences voted with attention and good creators earned their spot is broken. You can't "not interested" your way out of two billion views of someone a platform executive decided to boost.
 
@@ -77,7 +77,7 @@ The thing you lost wasn't attention. Attention is easy to name, and everyone tal
 
 **You stopped choosing what you think about.**
 
-For most of human history, your thoughts were shaped by your immediate surroundings, the people you sought out, the books and shows you went and found. You had to do a little work. The work was the filter. The filter was also the part where *you* happened — where your taste, your interests, your concerns showed up in what you consumed.
+For most of human history, your thoughts were shaped by your immediate surroundings, the people you sought out, the books and shows you went and found. You had to do a little work. The work was the filter. The filter was also the part where _you_ happened — where your taste, your interests, your concerns showed up in what you consumed.
 
 Interest media skipped the filter. It pre-selected the shape of your day before you woke up. By the time you opened your phone, someone else had already decided what your morning was about.
 
@@ -107,11 +107,11 @@ The second ritual is the one that rebuilt my mornings.
 
 Most people's first waking input is whatever their phone has queued up. News alerts a platform decided were important. A text chain that went off at 6am. Instagram reels from someone's kid. A Slack scroll from overnight. TikToks the algorithm served. By the time you're fully awake, your mind has been shaped by a committee of strangers with distribution budgets, and you've made zero choices.
 
-BuildOS sends you a **daily brief**. It's a single document, delivered at a time you choose, that shows you *your* work. The projects you said mattered. The tasks you chose to do today. The decisions you're circling. The context from your past brain dumps that's relevant now. Your calendar for the day. That's the morning input.
+BuildOS sends you a **daily brief**. It's a single document, delivered at a time you choose, that shows you _your_ work. The projects you said mattered. The tasks you chose to do today. The decisions you're circling. The context from your past brain dumps that's relevant now. Your calendar for the day. That's the morning input.
 
 It is, quite literally, **your morning without the algorithm**.
 
-It's a small ritual. But it's the exact inverse of interest media. The feed is designed to make you forget what you chose. The daily brief is designed to remind you. The feed runs on volume. The brief runs on deliberate selection. The feed rewards whoever paid the most clippers. The brief rewards *you*, yesterday, telling today's you what to focus on.
+It's a small ritual. But it's the exact inverse of interest media. The feed is designed to make you forget what you chose. The daily brief is designed to remind you. The feed runs on volume. The brief runs on deliberate selection. The feed rewards whoever paid the most clippers. The brief rewards _you_, yesterday, telling today's you what to focus on.
 
 I didn't set out to build an anti-feed product. I set out to build a thinking environment. But when I watch what manufactured virality is doing to people's ability to think their own thoughts, I realize that's what a thinking environment is now. It's the quiet place. It's the room without the astroturf.
 
@@ -123,7 +123,7 @@ Two predictions worth holding:
 
 **Second, the internet bifurcates.** Public feeds become manufactured entertainment. Private, chosen, curated surfaces — Discord, Substack, newsletters, podcasts, IRL — become where actual signal lives. You are already doing this. Look at where you trust a link from. It's almost never the feed anymore. It's a friend, or a person you chose to follow somewhere quieter.
 
-BuildOS's bet is that your own mind deserves a surface in that quieter half. That the most important thing you'll read tomorrow morning is something *you* wrote today. Not because you're a writer. Because you're a person with things you're actually trying to do, and the only way those things survive the interest media era is if you give them a room of their own.
+BuildOS's bet is that your own mind deserves a surface in that quieter half. That the most important thing you'll read tomorrow morning is something _you_ wrote today. Not because you're a writer. Because you're a person with things you're actually trying to do, and the only way those things survive the interest media era is if you give them a room of their own.
 
 ## The practice
 
@@ -139,6 +139,6 @@ The feed will still be there when you're done. It won't miss you. It has 1,610 c
 
 ---
 
-*Devin Nash's original video, "Exposing the New Manufactured Viral Content Economy," is worth watching in full. He spent three weeks inside the invite-only Discord servers to document how this works. It's the best receipts-first analysis of the creator economy I've seen.*
+_Devin Nash's original video, "Exposing the New Manufactured Viral Content Economy," is worth watching in full. He spent three weeks inside the invite-only Discord servers to document how this works. It's the best receipts-first analysis of the creator economy I've seen._
 
-*BuildOS is a thinking environment for people making complex things. Brain dumps in, structured work out. [Try it free.](https://build-os.com)*
+_BuildOS is a thinking environment for people making complex things. Brain dumps in, structured work out. [Try it free.](https://build-os.com)_

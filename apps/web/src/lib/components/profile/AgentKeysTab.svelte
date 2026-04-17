@@ -179,19 +179,41 @@
 		return caller.caller_key.split(':').at(-1)?.replace(/-/g, ' ') || caller.caller_key;
 	}
 
+	function unavailableProjectCount(caller: BuildosAgentCallerSummary): number {
+		return Math.max(0, caller.unavailable_project_count ?? 0);
+	}
+
+	function projectCountLabel(count: number): string {
+		return `${count} project${count === 1 ? '' : 's'}`;
+	}
+
+	function unavailableProjectSuffix(caller: BuildosAgentCallerSummary): string {
+		const count = unavailableProjectCount(caller);
+		return count > 0 ? ` + ${projectCountLabel(count)} unavailable` : '';
+	}
+
+	function filterAvailableProjectIds(projectIds: string[]): string[] {
+		const availableProjectIds = new Set(availableProjects.map((project) => project.id));
+		return projectIds.filter((projectId) => availableProjectIds.has(projectId));
+	}
+
 	function scopeLabel(caller: BuildosAgentCallerSummary): string {
+		const unavailableSuffix = unavailableProjectSuffix(caller);
+
 		if (!caller.allowed_project_ids || caller.allowed_project_ids.length === 0) {
-			return 'All projects';
+			return unavailableProjectCount(caller) > 0
+				? `${projectCountLabel(unavailableProjectCount(caller))} unavailable`
+				: 'All projects';
 		}
 
 		if (caller.allowed_project_ids.length === 1) {
 			const project = availableProjects.find(
 				(entry) => entry.id === caller.allowed_project_ids?.[0]
 			);
-			return project?.name || '1 project';
+			return `${project?.name || '1 project'}${unavailableSuffix}`;
 		}
 
-		return `${caller.allowed_project_ids.length} projects`;
+		return `${projectCountLabel(caller.allowed_project_ids.length)}${unavailableSuffix}`;
 	}
 
 	function accessModeLabel(caller: BuildosAgentCallerSummary): string {
@@ -264,7 +286,7 @@
 		providerMode = caller.provider === 'openclaw' ? 'openclaw' : 'custom';
 		customProvider = caller.provider === 'openclaw' ? '' : caller.provider;
 		installationName = installationDisplayName(caller);
-		selectedProjectIds = [...(caller.allowed_project_ids ?? [])];
+		selectedProjectIds = filterAvailableProjectIds(caller.allowed_project_ids ?? []);
 		scopeMode = caller.scope_mode;
 		selectedWriteOps = enabledWriteOps(caller);
 		showGenerateModal = true;
@@ -338,10 +360,18 @@
 
 	function projectScopeDescription(caller: BuildosAgentCallerSummary): string {
 		if (!caller.allowed_project_ids || caller.allowed_project_ids.length === 0) {
-			return 'All visible BuildOS projects';
+			return unavailableProjectCount(caller) > 0
+				? `${projectCountLabel(unavailableProjectCount(caller))} no longer available in your workspace`
+				: 'All visible BuildOS projects';
 		}
 
-		return caller.allowed_project_ids.map(projectName).join(', ');
+		const visibleProjects = caller.allowed_project_ids.map(projectName).join(', ');
+		const unavailableCount = unavailableProjectCount(caller);
+		if (unavailableCount === 0) {
+			return visibleProjects;
+		}
+
+		return `${visibleProjects}; ${projectCountLabel(unavailableCount)} no longer available in your workspace`;
 	}
 
 	function allowedOpsDescription(caller: BuildosAgentCallerSummary): string {
@@ -469,7 +499,6 @@
 					installation_name:
 						installationName.trim() || installationDisplayName(existingCaller)
 				};
-				allowedProjectIds = selectedProjectIds.length > 0 ? selectedProjectIds : undefined;
 			} else {
 				provider = requireValidProvider(currentProvider());
 				if (!provider) {
@@ -482,8 +511,11 @@
 				metadata = {
 					installation_name: installationName.trim()
 				};
-				allowedProjectIds = selectedProjectIds.length > 0 ? selectedProjectIds : undefined;
 			}
+
+			const availableSelectedProjectIds = filterAvailableProjectIds(selectedProjectIds);
+			allowedProjectIds =
+				availableSelectedProjectIds.length > 0 ? availableSelectedProjectIds : undefined;
 
 			if (scopeMode === 'read_write' && selectedWriteOps.length === 0) {
 				throw new Error(
@@ -769,7 +801,7 @@
 								</div>
 							</div>
 
-							{#if caller.allowed_project_ids && caller.allowed_project_ids.length > 0}
+							{#if (caller.allowed_project_ids && caller.allowed_project_ids.length > 0) || unavailableProjectCount(caller) > 0}
 								<div class="mt-3 pt-3 border-t border-border">
 									<div
 										class="text-xs uppercase tracking-wider text-muted-foreground mb-1.5"
@@ -777,9 +809,19 @@
 										Scoped Projects
 									</div>
 									<div class="flex flex-wrap gap-1.5">
-										{#each caller.allowed_project_ids as projectId (projectId)}
-											<Badge variant="accent">{projectName(projectId)}</Badge>
-										{/each}
+										{#if caller.allowed_project_ids && caller.allowed_project_ids.length > 0}
+											{#each caller.allowed_project_ids as projectId (projectId)}
+												<Badge variant="accent"
+													>{projectName(projectId)}</Badge
+												>
+											{/each}
+										{/if}
+										{#if unavailableProjectCount(caller) > 0}
+											<Badge variant="warning">
+												{projectCountLabel(unavailableProjectCount(caller))}
+												unavailable
+											</Badge>
+										{/if}
 									</div>
 								</div>
 							{/if}
@@ -948,6 +990,16 @@
 				<p class="text-xs text-muted-foreground">
 					Leave unchecked to allow access to all your projects.
 				</p>
+
+				{#if editingCaller && unavailableProjectCount(editingCaller) > 0}
+					<div
+						class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200"
+					>
+						{projectCountLabel(unavailableProjectCount(editingCaller))} previously scoped
+						to this key are no longer available in your workspace. Rotating the key will
+						keep only currently selected projects.
+					</div>
+				{/if}
 
 				{#if availableProjects.length === 0}
 					<div

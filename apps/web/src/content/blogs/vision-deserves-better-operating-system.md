@@ -20,7 +20,7 @@ featured: true
 draft: false
 seo:
     title: 'Your Vision Deserves Better Infrastructure | BuildOS'
-    description: "Stop shrinking your ambition to fit your tools. BuildOS is a thinking environment for builders working on something too complex for traditional productivity apps — where context stays connected instead of scattering across six tools."
+    description: 'Stop shrinking your ambition to fit your tools. BuildOS is a thinking environment for builders working on something too complex for traditional productivity apps — where context stays connected instead of scattering across six tools.'
     keywords:
         [
             'productivity for founders',

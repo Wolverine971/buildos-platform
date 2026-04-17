@@ -141,14 +141,25 @@ function generateBearerToken(): { token: string; tokenPrefix: string } {
 	};
 }
 
-function mapCallerSummary(record: ExternalAgentCallerRecord): BuildosAgentCallerSummary {
+function mapCallerSummary(
+	record: ExternalAgentCallerRecord,
+	visibleProjectIds?: Set<string>
+): BuildosAgentCallerSummary {
 	const scopeMode = extractScopeModeFromPolicy(record.policy);
 	const allowedOps = extractAllowedOpsFromPolicy(record.policy, scopeMode);
-	const allowedProjectIds = Array.isArray(record.policy?.allowed_project_ids)
+	const storedAllowedProjectIds = Array.isArray(record.policy?.allowed_project_ids)
 		? record.policy.allowed_project_ids.filter(
 				(value): value is string => typeof value === 'string'
 			)
 		: undefined;
+	const allowedProjectIds =
+		storedAllowedProjectIds && visibleProjectIds
+			? storedAllowedProjectIds.filter((projectId) => visibleProjectIds.has(projectId))
+			: storedAllowedProjectIds;
+	const unavailableProjectCount =
+		storedAllowedProjectIds && visibleProjectIds
+			? storedAllowedProjectIds.length - (allowedProjectIds?.length ?? 0)
+			: 0;
 
 	return {
 		id: record.id,
@@ -159,6 +170,9 @@ function mapCallerSummary(record: ExternalAgentCallerRecord): BuildosAgentCaller
 		scope_mode: scopeMode,
 		allowed_ops: allowedOps,
 		allowed_project_ids: allowedProjectIds,
+		...(unavailableProjectCount > 0
+			? { unavailable_project_count: unavailableProjectCount }
+			: {}),
 		metadata: record.metadata ?? {},
 		last_used_at: record.last_used_at,
 		created_at: record.created_at,
@@ -286,6 +300,7 @@ export class CallerProvisioningService {
 	async listForUser(userId: string): Promise<BuildosAgentCallerListResponse> {
 		const buildosAgent = await ensureUserBuildosAgent(this.admin, userId);
 		const visibleProjects = await this.loadVisibleProjects(userId);
+		const visibleProjectIds = new Set(visibleProjects.map((project) => project.id));
 		const { data, error } = await this.admin
 			.from('external_agent_callers')
 			.select('*')
@@ -306,7 +321,9 @@ export class CallerProvisioningService {
 				handle: buildosAgent.agent_handle,
 				status: buildosAgent.status
 			},
-			callers: ((data ?? []) as ExternalAgentCallerRecord[]).map(mapCallerSummary),
+			callers: ((data ?? []) as ExternalAgentCallerRecord[]).map((caller) =>
+				mapCallerSummary(caller, visibleProjectIds)
+			),
 			available_projects: visibleProjects.map((project) => ({
 				id: project.id,
 				name: project.name,

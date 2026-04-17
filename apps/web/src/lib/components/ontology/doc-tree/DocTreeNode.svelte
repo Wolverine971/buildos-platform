@@ -21,6 +21,8 @@
 	import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 	import DocTreeNode from './DocTreeNode.svelte';
 	import type { DragState, DropZone } from './useDragDrop.svelte';
+	import { toastService } from '$lib/stores/toast.store';
+	import { buildAbsolutePublicPageUrl, copyTextToClipboard } from '$lib/utils/public-page-url';
 
 	interface Props {
 		node: EnrichedDocTreeNode;
@@ -57,6 +59,20 @@
 		cutNodeId = null,
 		onFocus
 	}: Props = $props();
+
+	async function handleCopyPublicLink(e: MouseEvent) {
+		e.preventDefault();
+		e.stopPropagation();
+		if (!node.public_slug) return;
+		const url = buildAbsolutePublicPageUrl({ slug: node.public_slug });
+		if (!url) return;
+		const ok = await copyTextToClipboard(url);
+		if (ok) {
+			toastService.success('Link copied');
+		} else {
+			toastService.error('Failed to copy link');
+		}
+	}
 
 	let nodeElement: HTMLElement | null = $state(null);
 
@@ -253,22 +269,30 @@
 				</span>
 			{/if}
 
-			<!-- Public page indicator -->
-			{#if !isFolder && node.is_public}
-				<span
-					class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 flex-shrink-0"
-					title={node.public_slug ? `Public page: /p/${node.public_slug}` : 'Public page'}
-				>
-					<Globe class="w-2.5 h-2.5" />
-					Public
-				</span>
-			{/if}
-
 			<!-- Converting indicator -->
 			{#if isConverting}
 				<span class="text-xs text-accent font-medium flex-shrink-0">Drop here</span>
 			{/if}
 		</button>
+
+		<!-- Public page indicator (tap = copy link) — sibling of the row button so nesting is valid -->
+		{#if !isFolder && node.is_public}
+			<button
+				type="button"
+				onclick={handleCopyPublicLink}
+				onmousedown={(e) => e.stopPropagation()}
+				ontouchstart={(e) => e.stopPropagation()}
+				class="mr-2 inline-flex min-h-[24px] items-center gap-1 flex-shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors pressable"
+				aria-label={node.public_slug
+					? `Copy public link for ${node.title}`
+					: 'Copy public link'}
+				title={node.public_slug ? `Copy link: /p/${node.public_slug}` : 'Copy public link'}
+				draggable="false"
+			>
+				<Globe class="w-2.5 h-2.5" />
+				Public
+			</button>
+		{/if}
 	</div>
 
 	<!-- Insertion line (after) -->

@@ -120,8 +120,7 @@ describe('buildWriteLedger', () => {
 				args: { task_id: 'task-1', description: 'ok' },
 				result: null,
 				success: false,
-				error:
-					'args.description contains internal tool-call markup (parameter_tag). Remove the tool syntax and pass only user-visible content.'
+				error: 'args.description contains internal tool-call markup (parameter_tag). Remove the tool syntax and pass only user-visible content.'
 			})
 		]);
 
@@ -194,9 +193,7 @@ describe('formatWriteLedgerMessage', () => {
 		expect(text).toContain('internal tool-call markup');
 		// Declarative grounding sentence (post §16 revert).
 		expect(text).toContain('Your next user-facing response names each listed successful write');
-		expect(text).toContain(
-			'discloses each listed failed write as not persisted'
-		);
+		expect(text).toContain('discloses each listed failed write as not persisted');
 		expect(text).toContain('Do not claim any state_key');
 		// Reverted rubric-style phrasings must be gone (they triggered Grok's
 		// evaluation-mode collapse in the 2026-04-17 `1aea16fb` replay).

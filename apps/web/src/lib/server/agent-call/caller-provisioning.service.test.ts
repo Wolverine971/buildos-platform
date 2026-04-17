@@ -425,6 +425,42 @@ describe('CallerProvisioningService', () => {
 		expect(JSON.stringify(response)).not.toContain('bearer_token');
 	});
 
+	it('marks stored caller project scopes that are no longer visible to the user', async () => {
+		const state: State = {
+			callerRows: [
+				{
+					id: '11111111-1111-1111-1111-111111111111',
+					user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+					provider: 'openclaw',
+					caller_key: 'openclaw:workspace:test',
+					token_prefix: 'boca_123456',
+					token_hash: 'hashed-token',
+					status: 'trusted',
+					policy: {
+						allowed_project_ids: [
+							'44444444-4444-4444-4444-444444444444',
+							'55555555-5555-5555-5555-555555555555'
+						]
+					},
+					metadata: {},
+					last_used_at: null,
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:00:00.000Z'
+				}
+			],
+			bootstrapRows: []
+		};
+		const { CallerProvisioningService } = await import('./caller-provisioning.service');
+		const service = new CallerProvisioningService(createAdminMock(state));
+
+		const response = await service.listForUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+
+		expect(response.callers[0]).toMatchObject({
+			allowed_project_ids: ['44444444-4444-4444-4444-444444444444'],
+			unavailable_project_count: 1
+		});
+	});
+
 	it('revokes a caller for the user', async () => {
 		const state: State = {
 			callerRows: [

@@ -160,6 +160,7 @@ export interface BuildosAgentCallerSummary {
 	scope_mode: BuildosAgentScopeMode;
 	allowed_ops?: BuildosAgentAllowedOp[];
 	allowed_project_ids?: string[];
+	unavailable_project_count?: number;
 	metadata: Record<string, unknown>;
 	last_used_at: string | null;
 	created_at: string;

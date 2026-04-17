@@ -78,6 +78,7 @@
 	import type { PageData } from './$types';
 	import ProjectHeaderCard from '$lib/components/project/ProjectHeaderCard.svelte';
 	import ProjectInsightRailSkeleton from '$lib/components/project/ProjectInsightRailSkeleton.svelte';
+	import PublishedPanel from '$lib/components/project/PublishedPanel.svelte';
 	import ProjectHistorySection from '$lib/components/project/ProjectHistorySection.svelte';
 	import {
 		archiveProjectDocument,
@@ -245,6 +246,7 @@
 	let showEventCreateModal = $state(false);
 	let editingEventId = $state<string | null>(null);
 	let imageAssetsPanelRef = $state<ImageUploadPanelRef | null>(null);
+	let publishedPanelRef = $state<{ refresh: () => void } | null>(null);
 	let pendingImageUploadOpen = $state(false);
 	let projectNotificationSettings = $state<ProjectNotificationSettings | null>(null);
 	let isNotificationSettingsLoading = $state(false);
@@ -380,6 +382,20 @@
 		if (typeof window !== 'undefined' && window.localStorage) {
 			const stored = window.localStorage.getItem('buildos:project-graph-hidden');
 			graphHidden = stored === 'true';
+		}
+
+		// Open a document via query params (used by OwnerBar "Edit original"):
+		//   /projects/{id}?doc={docId}&openPublish=true
+		if (typeof window !== 'undefined') {
+			const params = new URLSearchParams(window.location.search);
+			const docId = params.get('doc');
+			if (docId) {
+				activeDocumentId = docId;
+				showDocumentModal = true;
+				// Strip the query so a refresh doesn't re-open the modal.
+				const cleanUrl = window.location.pathname + window.location.hash;
+				window.history.replaceState({}, '', cleanUrl);
+			}
 		}
 
 		if (data.skeleton) {
@@ -1056,6 +1072,7 @@
 		// Refresh data but keep modal open - user can close manually when done editing
 		await refreshData({ showSuccessToast: false });
 		docTreeViewRef?.refresh();
+		publishedPanelRef?.refresh();
 	}
 
 	async function handleDocumentDeleted() {
@@ -1734,83 +1751,102 @@
 						onShowGraphModal={() => (showGraphModal = true)}
 					/>
 				{:else}
-					{#await import('$lib/components/project/ProjectInsightRail.svelte')}
-						<ProjectInsightRailSkeleton
-							skeletonCounts={{
-								task_count: Math.max(tasks.length, skeletonCounts?.task_count ?? 0),
-								document_count: Math.max(
-									documents.length,
-									skeletonCounts?.document_count ?? 0
-								),
-								goal_count: Math.max(goals.length, skeletonCounts?.goal_count ?? 0),
-								plan_count: Math.max(plans.length, skeletonCounts?.plan_count ?? 0),
-								milestone_count: Math.max(
-									milestones.length,
-									skeletonCounts?.milestone_count ?? 0
-								),
-								risk_count: Math.max(risks.length, skeletonCounts?.risk_count ?? 0),
-								image_count: Math.max(
-									images.length,
-									skeletonCounts?.image_count ?? 0
-								)
-							}}
-							{graphHidden}
-							{canViewLogs}
-							onShowGraphModal={() => (showGraphModal = true)}
-						/>
-					{:then { default: ProjectInsightRail }}
-						<ProjectInsightRail
-							{isHydrating}
-							{skeletonCounts}
-							{graphHidden}
-							{canViewLogs}
-							{canEdit}
+					<div class="space-y-3">
+						<PublishedPanel
+							bind:this={publishedPanelRef}
 							projectId={project.id}
-							projectName={project.name || 'Project'}
-							{insightPanels}
-							{expandedPanels}
-							{panelStates}
-							{panelCounts}
-							{filteredTasks}
-							{filteredPlans}
-							{filteredGoals}
-							{filteredRisks}
-							{filteredEvents}
-							{milestonesByGoalId}
-							{getPanelFilterGroups}
-							{getPanelIconStyles}
-							{formatState}
-							{formatTaskAssigneeSummary}
-							{getTaskSortSummary}
-							{formatEventDateCompact}
-							{isEventSynced}
-							onShowGraphModal={() => (showGraphModal = true)}
-							onTogglePanel={togglePanel}
-							onOpenCreateModalForPanel={openCreateModalForPanel}
-							onUpdatePanelFilters={updatePanelFilters}
-							onUpdatePanelSort={updatePanelSort}
-							onUpdatePanelToggle={updatePanelToggle}
-							onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
-							onEditTask={(id) => (editingTaskId = id)}
-							onEditPlan={(id) => (editingPlanId = id)}
-							onEditGoal={(id) => (editingGoalId = id)}
-							onEditRisk={(id) => (editingRiskId = id)}
-							onEditMilestone={(id) => (editingMilestoneId = id)}
-							onEditEvent={(id) => (editingEventId = id)}
-							onToggleMilestoneComplete={handleToggleMilestoneComplete}
-							onHistoryEntityClick={handleActivityLogEntityClick}
-							onRefreshData={refreshProjectSilently}
-							onImageAssetsPanelRefChange={(ref) => {
-								imageAssetsPanelRef = ref;
-							}}
+							onOpenDocument={handleOpenDocument}
 						/>
-					{:catch}
-						<div
-							class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
-						>
-							Unable to load insight rail.
-						</div>
-					{/await}
+						{#await import('$lib/components/project/ProjectInsightRail.svelte')}
+							<ProjectInsightRailSkeleton
+								skeletonCounts={{
+									task_count: Math.max(
+										tasks.length,
+										skeletonCounts?.task_count ?? 0
+									),
+									document_count: Math.max(
+										documents.length,
+										skeletonCounts?.document_count ?? 0
+									),
+									goal_count: Math.max(
+										goals.length,
+										skeletonCounts?.goal_count ?? 0
+									),
+									plan_count: Math.max(
+										plans.length,
+										skeletonCounts?.plan_count ?? 0
+									),
+									milestone_count: Math.max(
+										milestones.length,
+										skeletonCounts?.milestone_count ?? 0
+									),
+									risk_count: Math.max(
+										risks.length,
+										skeletonCounts?.risk_count ?? 0
+									),
+									image_count: Math.max(
+										images.length,
+										skeletonCounts?.image_count ?? 0
+									)
+								}}
+								{graphHidden}
+								{canViewLogs}
+								onShowGraphModal={() => (showGraphModal = true)}
+							/>
+						{:then { default: ProjectInsightRail }}
+							<ProjectInsightRail
+								{isHydrating}
+								{skeletonCounts}
+								{graphHidden}
+								{canViewLogs}
+								{canEdit}
+								projectId={project.id}
+								projectName={project.name || 'Project'}
+								{insightPanels}
+								{expandedPanels}
+								{panelStates}
+								{panelCounts}
+								{filteredTasks}
+								{filteredPlans}
+								{filteredGoals}
+								{filteredRisks}
+								{filteredEvents}
+								{milestonesByGoalId}
+								{getPanelFilterGroups}
+								{getPanelIconStyles}
+								{formatState}
+								{formatTaskAssigneeSummary}
+								{getTaskSortSummary}
+								{formatEventDateCompact}
+								{isEventSynced}
+								onShowGraphModal={() => (showGraphModal = true)}
+								onTogglePanel={togglePanel}
+								onOpenCreateModalForPanel={openCreateModalForPanel}
+								onUpdatePanelFilters={updatePanelFilters}
+								onUpdatePanelSort={updatePanelSort}
+								onUpdatePanelToggle={updatePanelToggle}
+								onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
+								onEditTask={(id) => (editingTaskId = id)}
+								onEditPlan={(id) => (editingPlanId = id)}
+								onEditGoal={(id) => (editingGoalId = id)}
+								onEditRisk={(id) => (editingRiskId = id)}
+								onEditMilestone={(id) => (editingMilestoneId = id)}
+								onEditEvent={(id) => (editingEventId = id)}
+								onToggleMilestoneComplete={handleToggleMilestoneComplete}
+								onHistoryEntityClick={handleActivityLogEntityClick}
+								onRefreshData={refreshProjectSilently}
+								onImageAssetsPanelRefChange={(ref) => {
+									imageAssetsPanelRef = ref;
+								}}
+							/>
+						{:catch}
+							<div
+								class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
+							>
+								Unable to load insight rail.
+							</div>
+						{/await}
+					</div>
 				{/if}
 			</div>
 		</main>

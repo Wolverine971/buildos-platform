@@ -147,11 +147,11 @@ Set in env (see root `.env.example`):
 ## Deployment (Vercel)
 
 - `vercel.json` defines the build command (`turbo build --force --filter=@buildos/web...`), security headers, long-cache static assets, and cron jobs:
-  - `/api/cron/dunning` — daily 09:00 UTC
-  - `/api/cron/trial-reminders` — daily 10:00 UTC
-  - `/api/cron/billing-ops-monitoring` — daily 11:00 UTC
-  - `/api/cron/welcome-sequence` — hourly
-  - `/api/cron/security-events-retention` — daily 04:30 UTC
+    - `/api/cron/dunning` — daily 09:00 UTC
+    - `/api/cron/trial-reminders` — daily 10:00 UTC
+    - `/api/cron/billing-ops-monitoring` — daily 11:00 UTC
+    - `/api/cron/welcome-sequence` — hourly
+    - `/api/cron/security-events-retention` — daily 04:30 UTC
 - Adapter: `@sveltejs/adapter-vercel` with `runtime: 'nodejs22.x'`.
 
 ## Documentation

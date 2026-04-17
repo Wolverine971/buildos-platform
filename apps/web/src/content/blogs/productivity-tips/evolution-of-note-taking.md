@@ -21,7 +21,7 @@ tags:
         'project-memory'
     ]
 readingTime: 8
-excerpt: "GTD to Notion to AI-powered note apps: each generation promised a better filing cabinet. Most of it was the same thing with fresh paint. The real inflection is moving from collection to action — which is where a thinking environment beats a smarter notes app."
+excerpt: 'GTD to Notion to AI-powered note apps: each generation promised a better filing cabinet. Most of it was the same thing with fresh paint. The real inflection is moving from collection to action — which is where a thinking environment beats a smarter notes app.'
 pic: 'note-taking-evolution'
 path: apps/web/src/content/blogs/productivity-tips/evolution-of-note-taking.md
 ---

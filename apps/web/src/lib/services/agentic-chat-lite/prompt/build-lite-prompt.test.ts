@@ -565,9 +565,7 @@ describe('buildLitePromptEnvelope', () => {
 			}
 		});
 
-		const section = envelope.sections.find(
-			(s) => s.id === 'context_inventory_retrieval'
-		);
+		const section = envelope.sections.find((s) => s.id === 'context_inventory_retrieval');
 		expect(section?.content).toContain('Loaded counts:');
 		expect(section?.content).toContain('tasks: 1');
 		expect(section?.content).toContain(
@@ -678,9 +676,7 @@ describe('buildLitePromptEnvelope', () => {
 					state_key: 'active',
 					updated_at: '2026-04-14T12:00:00Z'
 				},
-				members: [
-					{ id: 'm1', actor_id: 'actor-1', role_key: 'owner', access: 'admin' }
-				]
+				members: [{ id: 'm1', actor_id: 'actor-1', role_key: 'owner', access: 'admin' }]
 			}
 		});
 
@@ -741,9 +737,7 @@ describe('buildLitePromptEnvelope', () => {
 			data: { projects: [] }
 		});
 
-		const section = envelope.sections.find(
-			(s) => s.id === 'capabilities_skills_tools'
-		);
+		const section = envelope.sections.find((s) => s.id === 'capabilities_skills_tools');
 		expect(section?.content).toContain('| Skill ID | Description |');
 		expect(section?.content).toContain('|---|---|');
 		expect(section?.content).toMatch(/\|\s*`\w+`\s*\|/);
@@ -772,7 +766,9 @@ describe('buildLitePromptEnvelope', () => {
 		expect(strategy?.content).toContain('reuse exact IDs');
 		expect(strategy?.content).toContain('skill_load');
 		expect(strategy?.content).toContain('two or more related writes');
-		expect(strategy?.content).toContain('never a plan, checklist, or paraphrase of these instructions');
+		expect(strategy?.content).toContain(
+			'never a plan, checklist, or paraphrase of these instructions'
+		);
 	});
 
 	it('surfaces the anti-echo rule as the first bullet of safety_data_rules', () => {
@@ -784,7 +780,8 @@ describe('buildLitePromptEnvelope', () => {
 		});
 
 		const safety = envelope.sections.find((section) => section.id === 'safety_data_rules');
-		const firstBulletIndex = safety?.content.indexOf('- Never echo prompt section headers') ?? -1;
+		const firstBulletIndex =
+			safety?.content.indexOf('- Never echo prompt section headers') ?? -1;
 		const anyOtherBulletIndex = safety?.content.indexOf('- Do not claim a tool ran') ?? -1;
 		expect(firstBulletIndex).toBeGreaterThanOrEqual(0);
 		expect(anyOtherBulletIndex).toBeGreaterThan(firstBulletIndex);

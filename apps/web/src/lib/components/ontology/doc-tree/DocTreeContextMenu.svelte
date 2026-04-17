@@ -7,10 +7,20 @@
 		- Create child document
 		- Move document
 		- Archive document
+		- Publish / Manage / Copy link / Open public page (documents only)
 -->
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import { Archive, FileText, FolderPlus, Move } from 'lucide-svelte';
+	import {
+		Archive,
+		ExternalLink,
+		FileText,
+		FolderPlus,
+		Globe,
+		Link,
+		Move,
+		Settings2
+	} from 'lucide-svelte';
 	import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 
 	interface Props {
@@ -25,6 +35,7 @@
 	let menuRef = $state<HTMLDivElement | null>(null);
 
 	const isFolder = $derived(node.type === 'folder');
+	const isPublic = $derived(!isFolder && node.is_public === true);
 
 	// Position the menu within viewport
 	const menuStyle = $derived.by(() => {
@@ -32,8 +43,8 @@
 		let y = position.y;
 
 		// Adjust for viewport bounds (approximate menu size)
-		const menuWidth = 180;
-		const menuHeight = 160;
+		const menuWidth = 200;
+		const menuHeight = isPublic ? 260 : isFolder ? 160 : 200;
 
 		if (typeof window !== 'undefined') {
 			if (x + menuWidth > window.innerWidth) {
@@ -77,7 +88,7 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
 	bind:this={menuRef}
-	class="fixed z-50 min-w-[160px] bg-card border border-border rounded-lg shadow-ink-strong overflow-hidden"
+	class="fixed z-50 min-w-[180px] bg-card border border-border rounded-lg shadow-ink-strong overflow-hidden"
 	style={menuStyle}
 >
 	<div class="py-1">
@@ -100,6 +111,46 @@
 			<FolderPlus class="w-4 h-4 text-muted-foreground" />
 			Create child
 		</button>
+
+		<!-- Public page actions (documents only) -->
+		{#if !isFolder}
+			<div class="my-1 border-t border-border"></div>
+			{#if isPublic}
+				<button
+					type="button"
+					onclick={() => handleAction('copy-public-link')}
+					class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent/10 transition-colors"
+				>
+					<Link class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+					Copy public link
+				</button>
+				<button
+					type="button"
+					onclick={() => handleAction('open-public-page')}
+					class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent/10 transition-colors"
+				>
+					<ExternalLink class="w-4 h-4 text-muted-foreground" />
+					Open public page
+				</button>
+				<button
+					type="button"
+					onclick={() => handleAction('manage-public-page')}
+					class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent/10 transition-colors"
+				>
+					<Settings2 class="w-4 h-4 text-muted-foreground" />
+					Manage public page...
+				</button>
+			{:else}
+				<button
+					type="button"
+					onclick={() => handleAction('publish-public-page')}
+					class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent/10 transition-colors"
+				>
+					<Globe class="w-4 h-4 text-muted-foreground" />
+					Share publicly...
+				</button>
+			{/if}
+		{/if}
 
 		<div class="my-1 border-t border-border"></div>
 

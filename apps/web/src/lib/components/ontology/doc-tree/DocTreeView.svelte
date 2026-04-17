@@ -20,6 +20,12 @@
 	import { browser } from '$app/environment';
 	import { onMount, onDestroy } from 'svelte';
 	import { Archive, FileText, RefreshCw, Plus } from 'lucide-svelte';
+	import { toastService } from '$lib/stores/toast.store';
+	import {
+		buildAbsolutePublicPageUrl,
+		buildPublicPageUrlPath,
+		copyTextToClipboard
+	} from '$lib/utils/public-page-url';
 	import DocTreeNode from './DocTreeNode.svelte';
 	import DocTreeSkeleton from './DocTreeSkeleton.svelte';
 	import DocTreeContextMenu from './DocTreeContextMenu.svelte';
@@ -394,9 +400,42 @@
 					contextMenuNode.type === 'folder' && !!contextMenuNode.children?.length
 				);
 				break;
+			case 'copy-public-link':
+				void handleCopyPublicLink(contextMenuNode);
+				break;
+			case 'open-public-page':
+				handleOpenPublicPage(contextMenuNode);
+				break;
+			case 'manage-public-page':
+			case 'publish-public-page':
+				// Both open the DocumentModal; it already has publish controls in the sidebar.
+				onOpenDocument(contextMenuNode.id);
+				break;
 		}
 
 		closeContextMenu();
+	}
+
+	async function handleCopyPublicLink(node: EnrichedDocTreeNode) {
+		if (!node.public_slug) {
+			toastService.error('This document is not public yet.');
+			return;
+		}
+		const url = buildAbsolutePublicPageUrl({ slug: node.public_slug });
+		if (!url) return;
+		const ok = await copyTextToClipboard(url);
+		if (ok) {
+			toastService.success('Link copied');
+		} else {
+			toastService.error('Failed to copy link');
+		}
+	}
+
+	function handleOpenPublicPage(node: EnrichedDocTreeNode) {
+		if (!node.public_slug || !browser) return;
+		const path = buildPublicPageUrlPath({ slug: node.public_slug });
+		if (!path) return;
+		window.open(path, '_blank', 'noopener,noreferrer');
 	}
 
 	// Refresh after update notification

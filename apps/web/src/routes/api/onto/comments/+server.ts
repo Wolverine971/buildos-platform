@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../shared/error-logging';
 import { handleCommentMentions } from './comment-mentions';
+import { canAccessPublicComments } from '$lib/server/comment-public-access';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -116,7 +117,14 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 		}
 
 		if (!project.is_public && !hasAccess) {
-			return ApiResponse.forbidden('Access denied');
+			// Last-resort: allow reads of comments on documents that have a live,
+			// public-visibility public page. This is the document-level gate that
+			// backs commenting on /p/{user}/{slug} without requiring project
+			// membership.
+			const docIsLivePublic = await canAccessPublicComments(supabase, entityType, entityId);
+			if (!docIsLivePublic) {
+				return ApiResponse.forbidden('Access denied');
+			}
 		}
 
 		if (countOnly) {
@@ -344,7 +352,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		if (!hasAccess) {
-			return ApiResponse.forbidden('Access denied');
+			// Fall back to document-level public access: any authenticated user
+			// may comment on a doc whose public page is live + public.
+			const docIsLivePublic = await canAccessPublicComments(supabase, entityType, entityId);
+			if (!docIsLivePublic) {
+				return ApiResponse.forbidden('Access denied');
+			}
 		}
 
 		const { data: targetValid, error: validateError } = await supabase.rpc(

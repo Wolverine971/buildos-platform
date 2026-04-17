@@ -739,8 +739,8 @@
 			"type": "component",
 			"components": [],
 			"exports": [
-				"AGENT_CHAT_DEFAULT_PROMPT_VARIANT",
 				"AGENT_CHAT_LITE_PROMPT_VARIANT",
+				"AGENT_CHAT_DEFAULT_PROMPT_VARIANT",
 				"normalizeAgentChatPromptVariantSelection",
 				"resolveAgentChatPromptVariantForRequest",
 				"isProjectContext",

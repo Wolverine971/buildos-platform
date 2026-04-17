@@ -125,6 +125,24 @@ async function queueBriefGeneration(
 }
 
 /**
+ * Nightly task: refresh the 30-day rolling view counts on `onto_public_pages`.
+ * Delegates entirely to a Postgres RPC that recomputes from the detail table.
+ */
+async function refreshPublicPage30dViewCounts() {
+	try {
+		const { data, error } = await (supabase as any).rpc('refresh_onto_public_page_30d_counts');
+		if (error) {
+			console.error('Failed to refresh public page 30d view counts:', error);
+			return;
+		}
+		const pagesUpdated = typeof data === 'number' ? data : 0;
+		console.log(`👀 Refreshed 30d view counts for ${pagesUpdated} public pages`);
+	} catch (error) {
+		console.error('Unexpected error refreshing public page 30d view counts:', error);
+	}
+}
+
+/**
  * Start the scheduler
  */
 export function startScheduler() {
@@ -146,6 +164,12 @@ export function startScheduler() {
 	cron.schedule('0 * * * *', async () => {
 		console.log('🚨 Checking SMS alert thresholds...');
 		await checkSMSAlerts();
+	});
+
+	// Nightly refresh of the 30-day rolling view counts on public pages.
+	cron.schedule('17 3 * * *', async () => {
+		console.log('👀 Refreshing public-page 30d view counts...');
+		await refreshPublicPage30dViewCounts();
 	});
 
 	// Run queue retention cleanup on a cron schedule

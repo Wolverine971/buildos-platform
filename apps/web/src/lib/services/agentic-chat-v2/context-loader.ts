@@ -1526,7 +1526,8 @@ function buildEntityTitleLookup(params: {
 	};
 	for (const project of params.projects ?? []) add('project', project.id, project.name);
 	for (const goal of params.goals ?? []) add('goal', goal.id, goal.name);
-	for (const milestone of params.milestones ?? []) add('milestone', milestone.id, milestone.title);
+	for (const milestone of params.milestones ?? [])
+		add('milestone', milestone.id, milestone.title);
 	for (const plan of params.plans ?? []) add('plan', plan.id, plan.name);
 	for (const task of params.tasks ?? []) add('task', task.id, task.title);
 	for (const document of params.documents ?? []) add('document', document.id, document.title);

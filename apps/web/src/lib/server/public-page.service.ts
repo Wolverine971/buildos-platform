@@ -65,6 +65,8 @@ export type PublicPageState = {
 	last_live_sync_at: string | null;
 	last_live_sync_error: string | null;
 	is_live_public: boolean;
+	view_count_all: number;
+	view_count_30d: number;
 };
 
 export type PublicPagePreview = {
@@ -260,7 +262,9 @@ function toPublicPageState(row: Record<string, any>): PublicPageState {
 		published_at: toStringOrNull(row.published_at),
 		last_live_sync_at: toStringOrNull(row.last_live_sync_at),
 		last_live_sync_error: toStringOrNull(row.last_live_sync_error),
-		is_live_public: isLivePublic
+		is_live_public: isLivePublic,
+		view_count_all: typeof row.view_count_all === 'number' ? row.view_count_all : 0,
+		view_count_30d: typeof row.view_count_30d === 'number' ? row.view_count_30d : 0
 	};
 }
 
@@ -573,6 +577,36 @@ export async function confirmDocumentPublicPage(
 	}
 
 	const state = toPublicPageState(row);
+	await syncDocTreePublicMetadata(supabase, document.project_id, document.id, state, actorId);
+	return state;
+}
+
+export async function unpublishDocumentPublicPage(
+	supabase: SupabaseLike,
+	document: DocumentLike,
+	actorId: string
+): Promise<PublicPageState | null> {
+	const existing = await getDocumentPublicPageState(supabase, document.id);
+	if (!existing) return null;
+
+	const nowIso = new Date().toISOString();
+	const { data, error } = await (supabase as any)
+		.from('onto_public_pages')
+		.update({
+			status: 'unpublished',
+			public_status: 'unpublished',
+			last_unpublished_at: nowIso,
+			updated_by: actorId
+		})
+		.eq('id', existing.id)
+		.select('*')
+		.single();
+
+	if (error || !data) {
+		throw error ?? new Error('Failed to unpublish public page');
+	}
+
+	const state = toPublicPageState(data as Record<string, any>);
 	await syncDocTreePublicMetadata(supabase, document.project_id, document.id, state, actorId);
 	return state;
 }

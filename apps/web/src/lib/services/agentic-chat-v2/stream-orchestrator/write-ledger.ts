@@ -84,7 +84,10 @@ function resolveEntityKind(toolName: string): string | null {
 	return null;
 }
 
-function extractIdFromResult(entityKind: string | null, result: ParsedArgs | null): string | undefined {
+function extractIdFromResult(
+	entityKind: string | null,
+	result: ParsedArgs | null
+): string | undefined {
 	if (!result || !entityKind) return undefined;
 	const direct = readString((result as Record<string, unknown>)[`${entityKind}_id`]);
 	if (direct) return direct;
@@ -103,7 +106,16 @@ function extractTitleFromResult(result: ParsedArgs | null): string | undefined {
 		readString((result as Record<string, unknown>).title) ??
 		readString((result as Record<string, unknown>).name);
 	if (directTitle) return directTitle;
-	for (const key of ['task', 'project', 'goal', 'plan', 'document', 'milestone', 'risk', 'event']) {
+	for (const key of [
+		'task',
+		'project',
+		'goal',
+		'plan',
+		'document',
+		'milestone',
+		'risk',
+		'event'
+	]) {
 		const nested = (result as Record<string, unknown>)[key];
 		if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
 			const nestedTitle =
@@ -169,7 +181,8 @@ function buildEntryFromExecution(execution: FastToolExecution): WriteLedgerEntry
 	if (execution.result.success) {
 		const id = extractIdFromResult(entityKind, result);
 		if (id) entry.entityId = id;
-		const title = extractTitleFromResult(result) ?? readString(args.title) ?? readString(args.name);
+		const title =
+			extractTitleFromResult(result) ?? readString(args.title) ?? readString(args.name);
 		if (title) entry.title = title;
 		const stateKey = extractStateKey(result, args);
 		if (stateKey) entry.stateKey = stateKey;

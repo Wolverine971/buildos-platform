@@ -93,17 +93,17 @@ Two changes relative to today's Lite order:
 
 ### 4.2 Static/dynamic discipline
 
-| Section | Kind | Source of variation |
-| --- | --- | --- |
-| `identity_mission` | static | none |
-| `operating_strategy` | static | none |
-| `safety_data_rules` | static-ish | may render one conditional bullet (member-role constraint) when loaded data includes any multi-person project — see §5.3 |
-| `capabilities_skills_tools` | static | derived from registries; changes only when we ship new capabilities/skills |
-| `tool_surface_dynamic` | semi-static | per contextType |
-| `focus_purpose` | dynamic | contextType + focus entity; carries per-context workflow block including the `daily_brief` guardrails when that context is active |
-| `location_loaded_context` | dynamic | loaded data |
-| `timeline_recent_activity` | dynamic | loaded timeline/project intelligence; for `project_create` only the Timeline frame header renders (no project-status bullets) |
-| `context_inventory_retrieval` | dynamic | retrievalMap |
+| Section                       | Kind        | Source of variation                                                                                                               |
+| ----------------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `identity_mission`            | static      | none                                                                                                                              |
+| `operating_strategy`          | static      | none                                                                                                                              |
+| `safety_data_rules`           | static-ish  | may render one conditional bullet (member-role constraint) when loaded data includes any multi-person project — see §5.3          |
+| `capabilities_skills_tools`   | static      | derived from registries; changes only when we ship new capabilities/skills                                                        |
+| `tool_surface_dynamic`        | semi-static | per contextType                                                                                                                   |
+| `focus_purpose`               | dynamic     | contextType + focus entity; carries per-context workflow block including the `daily_brief` guardrails when that context is active |
+| `location_loaded_context`     | dynamic     | loaded data                                                                                                                       |
+| `timeline_recent_activity`    | dynamic     | loaded timeline/project intelligence; for `project_create` only the Timeline frame header renders (no project-status bullets)     |
+| `context_inventory_retrieval` | dynamic     | retrievalMap                                                                                                                      |
 
 ---
 
@@ -126,6 +126,7 @@ Rationale: absorbs the best of FastChat's Communication pattern section without 
 **Add: Entity resolution order (4-bullet list).**
 
 > "When identifying an entity for a write:
+>
 > 1. Reuse exact IDs already in loaded context, recent history, or prior tool results.
 > 2. If not yet known, search within the current project first when project scope is known.
 > 3. If project scope is unknown or search does not resolve, search across the workspace.
@@ -156,11 +157,11 @@ Rationale: the audit shows `skill_load(task_management, include_examples: true)`
 
 **Trim to 1-line pointers (specifics move to skills):**
 
-| Currently in safety | New 1-liner in safety | Specifics live in |
-| --- | --- | --- |
-| Two-step document placement contract (5 lines) | "Document placement is a two-step contract (create + tree-move). See `document_workspace` skill." | `document_workspace` SKILL.md |
-| Append/merge content rule (1.5 lines) | "Document append/merge writes require non-empty `content`." | `document_workspace` SKILL.md (also enforced at executor) |
-| Task state_key coverage rule (2 lines) | "Update `state_key` whenever the user reports task work advanced. See `task_management` skill." | `task_management` SKILL.md |
+| Currently in safety                            | New 1-liner in safety                                                                             | Specifics live in                                         |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Two-step document placement contract (5 lines) | "Document placement is a two-step contract (create + tree-move). See `document_workspace` skill." | `document_workspace` SKILL.md                             |
+| Append/merge content rule (1.5 lines)          | "Document append/merge writes require non-empty `content`."                                       | `document_workspace` SKILL.md (also enforced at executor) |
+| Task state_key coverage rule (2 lines)         | "Update `state_key` whenever the user reports task work advanced. See `task_management` skill."   | `task_management` SKILL.md                                |
 
 **Add: Member-role constraint (1 conditional bullet).**
 
@@ -172,15 +173,15 @@ Rationale: absorbs the legacy builder's Member roles subsection in compressed fo
 
 Research findings on data sources available to this helper today:
 
-| Context | Data shape | Detection feasible today? |
-| --- | --- | --- |
-| `project` / `ontology` (with `projectId`) | `data.members` is a top-level array of `LightProjectMember` rows loaded via `onto_project_members` (`context-loader.ts:2354`, `context-models.ts:215`). Each row has `actor_id`, `role_key`, `role_name`, `role_description`. | **Yes.** `data.members.length > 1` (with a distinct-actor-id safety check). |
-| `ontology` (no `projectId`) | Loader falls back to workspace-style data; member roster is not populated. | No — render skipped. |
-| `global` / `general` | `data.projects` is an array of `GlobalContextProjectBundle` (`context-models.ts:235`, `context-loader.ts:1793-1806`). Bundles carry `project, recent_activity, goals, milestones, plans` — **no `members` field today.** | Not yet. Needs a loader addition (see below). Render skipped until that lands. |
-| `daily_brief` / `daily_brief_update` | Uses brief-scoped payload; member roster is not guaranteed. | No — render skipped unless brief payload evolves to include a member reference. |
-| `brain_dump` | Capture-scoped payload; no member roster. | No — render skipped. |
-| `calendar` | Event-scoped payload; no member roster. | No — render skipped. |
-| `project_create` | By definition no collaborators yet. | Never render. |
+| Context                                   | Data shape                                                                                                                                                                                                                    | Detection feasible today?                                                       |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `project` / `ontology` (with `projectId`) | `data.members` is a top-level array of `LightProjectMember` rows loaded via `onto_project_members` (`context-loader.ts:2354`, `context-models.ts:215`). Each row has `actor_id`, `role_key`, `role_name`, `role_description`. | **Yes.** `data.members.length > 1` (with a distinct-actor-id safety check).     |
+| `ontology` (no `projectId`)               | Loader falls back to workspace-style data; member roster is not populated.                                                                                                                                                    | No — render skipped.                                                            |
+| `global` / `general`                      | `data.projects` is an array of `GlobalContextProjectBundle` (`context-models.ts:235`, `context-loader.ts:1793-1806`). Bundles carry `project, recent_activity, goals, milestones, plans` — **no `members` field today.**      | Not yet. Needs a loader addition (see below). Render skipped until that lands.  |
+| `daily_brief` / `daily_brief_update`      | Uses brief-scoped payload; member roster is not guaranteed.                                                                                                                                                                   | No — render skipped unless brief payload evolves to include a member reference. |
+| `brain_dump`                              | Capture-scoped payload; no member roster.                                                                                                                                                                                     | No — render skipped.                                                            |
+| `calendar`                                | Event-scoped payload; no member roster.                                                                                                                                                                                       | No — render skipped.                                                            |
+| `project_create`                          | By definition no collaborators yet.                                                                                                                                                                                           | Never render.                                                                   |
 
 **Implementation in this spec.**
 
@@ -198,25 +199,27 @@ Tighten, do not remove.
 - Keep the Capabilities list as-is — 1 line per capability.
 - **Swap Skills from the current prose list into the legacy builder's table form.** Both current formats source the same data (`listAllSkills()` → `id` + `summary`) so there is no field regression:
 
-  Current Lite render (prose, per `build-lite-prompt.ts:296-322`):
-  ```
-  Skill metadata:
-  - task_management: Task workflow playbook for ...
-  - document_workspace: Project document hierarchy playbook for ...
-  ```
+    Current Lite render (prose, per `build-lite-prompt.ts:296-322`):
 
-  New render (table, ported from `master-prompt-builder.ts:229-234`):
-  ```
-  ### Skill Catalog
+    ```
+    Skill metadata:
+    - task_management: Task workflow playbook for ...
+    - document_workspace: Project document hierarchy playbook for ...
+    ```
 
-  Use `skill_load` to fetch a skill playbook before executing multi-step or stateful workflows.
+    New render (table, ported from `master-prompt-builder.ts:229-234`):
 
-  | Skill ID | Description |
-  |---|---|
-  | `task_management` | Task workflow playbook for deciding when work should become a task and how to manage task scope, ownership, schedule, and relationships safely. |
-  | `document_workspace` | Project document hierarchy playbook for doc tree operations, unlinked docs, task docs, and document CRUD rules. |
-  ...
-  ```
+    ```
+    ### Skill Catalog
+
+    Use `skill_load` to fetch a skill playbook before executing multi-step or stateful workflows.
+
+    | Skill ID | Description |
+    |---|---|
+    | `task_management` | Task workflow playbook for deciding when work should become a task and how to manage task scope, ownership, schedule, and relationships safely. |
+    | `document_workspace` | Project document hierarchy playbook for doc tree operations, unlinked docs, task docs, and document CRUD rules. |
+    ...
+    ```
 
 - Add a 1-line closer: "See `operating_strategy` for when to call `skill_load`. Tool names live in the tool surface section below."
 
@@ -252,6 +255,7 @@ Use this seed for:
 ##### `global` / `general` — "Workspace orientation"
 
 > "Workflow hints for workspace-level chat:
+>
 > - For routine status questions about the workspace or a named project, prefer overview retrieval first instead of generic ontology discovery.
 > - Workspace-wide status → `get_workspace_overview({})`.
 > - Named or in-scope project status → `get_project_overview({ project_id })` when the ID is known, otherwise `get_project_overview({ query })`.
@@ -262,6 +266,7 @@ Source: FastChat `OVERVIEW_GUIDANCE` constant, compressed.
 ##### `project` / `ontology` — "Project audit / forecast routing"
 
 > "Workflow hints for project chat:
+>
 > - Audit and forecast are project skills, not separate context types. Stay in `project`.
 > - For audits, health reviews, stress tests, blockers, stale work, or gap analysis → load `skill_load({ skill: 'project_audit' })` before the analysis if the answer is multi-step or evidence-heavy.
 > - For forecasts, schedule risk, slippage, scenarios, or "are we on track" → load `skill_load({ skill: 'project_forecast' })` before the analysis if the answer depends on assumptions or multiple signals.
@@ -286,6 +291,7 @@ Spec choice: bind both `project` and `ontology` to the same `PROJECT_ANALYSIS_SK
 Expand Lite's current inline content with the remaining useful items from FastChat's `PROJECT_CREATE_WORKFLOW`:
 
 > "Project creation workflow:
+>
 > - Turn a rough idea into the smallest valid project structure with a clear name, `type_key`, description / props, and only the entities and relationships the user actually described.
 > - `project.type_key` must start with `project.`, for example `project.creative.novel`.
 > - Always include `entities: []` and `relationships: []` arrays even when empty.
@@ -302,6 +308,7 @@ Source: merge of Lite's current inline content + FastChat `PROJECT_CREATE_WORKFL
 ##### `daily_brief` / `daily_brief_update` — "Daily brief guardrails"
 
 > "Workflow hints when daily-brief context is loaded:
+>
 > - Prefer acting on entities explicitly mentioned in the brief.
 > - For out-of-brief entities, proceed only when target identity is clear.
 > - If target identity is ambiguous, ask one concise clarification before writing.
@@ -325,13 +332,13 @@ In `build-lite-prompt.ts`, the per-context workflow content should be sourced fr
 
 ```ts
 const FOCUS_WORKFLOW_GUIDANCE: Partial<Record<ChatContextType, string>> = {
-  global: OVERVIEW_GUIDANCE_LITE,
-  general: OVERVIEW_GUIDANCE_LITE,
-  project: PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE,
-  ontology: PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE,
-  project_create: PROJECT_CREATE_WORKFLOW_LITE,
-  daily_brief: DAILY_BRIEF_GUARDRAILS_LITE,
-  daily_brief_update: DAILY_BRIEF_GUARDRAILS_LITE
+	global: OVERVIEW_GUIDANCE_LITE,
+	general: OVERVIEW_GUIDANCE_LITE,
+	project: PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE,
+	ontology: PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE,
+	project_create: PROJECT_CREATE_WORKFLOW_LITE,
+	daily_brief: DAILY_BRIEF_GUARDRAILS_LITE,
+	daily_brief_update: DAILY_BRIEF_GUARDRAILS_LITE
 };
 ```
 
@@ -351,14 +358,14 @@ Render for every contextType, but tier the content by what actually makes sense 
 
 - **Frame-only mode** — render only the Timeline frame header. Used for `project_create` (no existing project data to summarize) and any context where project-intelligence data is absent.
 
-  ```
-  Timeline frame:
-  - Current time: <ISO>
-  - Timezone: <user TZ when available, else UTC>
-  - Scope: <scope>
-  ```
+    ```
+    Timeline frame:
+    - Current time: <ISO>
+    - Timezone: <user TZ when available, else UTC>
+    - Scope: <scope>
+    ```
 
-  The Timeline frame itself is always useful because relative phrases like "today" and "next week" depend on the model knowing the current time and timezone.
+    The Timeline frame itself is always useful because relative phrases like "today" and "next week" depend on the model knowing the current time and timezone.
 
 - **Full mode** — render the Timeline frame plus `Project status`, `Overdue or due soon`, `Upcoming dated work`, and `Recent project changes` blocks (current Lite behavior). Used when `project_intelligence` or equivalent data is loaded.
 
@@ -385,28 +392,28 @@ No change.
 
 The current safety/data rules are re-homed per the "prompt / skill / schema" principle.
 
-| Rule | Current home | New home | Notes |
-| --- | --- | --- | --- |
-| Grounding: no claim without result | prompt | prompt | invariant |
-| Pre-tool intent / post-tool outcome bookend | prompt | prompt | invariant |
-| Failed-write disclosure | prompt | prompt | invariant; full ledger is separate effort (§9.4) |
-| No placeholder IDs / full UUIDs | FastChat only | prompt (Lite) | promote to Lite |
-| No markup in durable strings | prompt | prompt + executor | executor is authoritative; prompt is defensive |
-| ID resolution order | FastChat only | prompt (Lite) | promote to Lite `operating_strategy` |
-| Entity relationships (Project→Goal→Milestone→Plan→Task) | FastChat Data Rules | `project_creation` skill | already in skill; remove from prompt |
-| Document hierarchy (edges not allowed; doc_structure is source of truth) | FastChat Data Rules | `document_workspace` skill | already in skill; remove from prompt |
-| Two-step document placement contract | both prompts | `document_workspace` skill (detailed) + prompt (1-liner pointer) | |
-| Append / merge require `content` | both prompts | `document_workspace` skill (detailed) + executor (enforced) + prompt (1-liner) | |
-| Task state_key coverage | both prompts | `task_management` skill (detailed) + prompt (1-liner pointer) | |
-| User-reported inconsistency → open question | both prompts | prompt | invariant; keep concise |
-| Member-role constraints | FastChat Data Rules | prompt (Lite `safety_data_rules`) conditional | 1 bullet, renders only when loaded data shows a multi-person project in scope |
-| Daily-brief guardrails | FastChat conditional | prompt `focus_purpose` conditional (Lite) | rendered for `daily_brief` / `daily_brief_update` or when `shouldApplyDailyBriefGuardrails(data)` |
-| Workspace overview-first | FastChat conditional | prompt `focus_purpose` for `global` | workflow, not safety |
-| Project audit / forecast skill routing | FastChat conditional | prompt `focus_purpose` for `project` | workflow, not safety |
-| Project create workflow | FastChat conditional | prompt `focus_purpose` for `project_create` | already there; expanded |
-| Empty `props: {}` is not an update | was prompt | executor (done) | no prompt mention |
-| Markup artifact rejection | was prompt | executor (done) | keep defensive prompt rule |
-| Document type_key coercion | — | executor (§9.5) | not a prompt issue |
+| Rule                                                                     | Current home         | New home                                                                       | Notes                                                                                             |
+| ------------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| Grounding: no claim without result                                       | prompt               | prompt                                                                         | invariant                                                                                         |
+| Pre-tool intent / post-tool outcome bookend                              | prompt               | prompt                                                                         | invariant                                                                                         |
+| Failed-write disclosure                                                  | prompt               | prompt                                                                         | invariant; full ledger is separate effort (§9.4)                                                  |
+| No placeholder IDs / full UUIDs                                          | FastChat only        | prompt (Lite)                                                                  | promote to Lite                                                                                   |
+| No markup in durable strings                                             | prompt               | prompt + executor                                                              | executor is authoritative; prompt is defensive                                                    |
+| ID resolution order                                                      | FastChat only        | prompt (Lite)                                                                  | promote to Lite `operating_strategy`                                                              |
+| Entity relationships (Project→Goal→Milestone→Plan→Task)                  | FastChat Data Rules  | `project_creation` skill                                                       | already in skill; remove from prompt                                                              |
+| Document hierarchy (edges not allowed; doc_structure is source of truth) | FastChat Data Rules  | `document_workspace` skill                                                     | already in skill; remove from prompt                                                              |
+| Two-step document placement contract                                     | both prompts         | `document_workspace` skill (detailed) + prompt (1-liner pointer)               |                                                                                                   |
+| Append / merge require `content`                                         | both prompts         | `document_workspace` skill (detailed) + executor (enforced) + prompt (1-liner) |                                                                                                   |
+| Task state_key coverage                                                  | both prompts         | `task_management` skill (detailed) + prompt (1-liner pointer)                  |                                                                                                   |
+| User-reported inconsistency → open question                              | both prompts         | prompt                                                                         | invariant; keep concise                                                                           |
+| Member-role constraints                                                  | FastChat Data Rules  | prompt (Lite `safety_data_rules`) conditional                                  | 1 bullet, renders only when loaded data shows a multi-person project in scope                     |
+| Daily-brief guardrails                                                   | FastChat conditional | prompt `focus_purpose` conditional (Lite)                                      | rendered for `daily_brief` / `daily_brief_update` or when `shouldApplyDailyBriefGuardrails(data)` |
+| Workspace overview-first                                                 | FastChat conditional | prompt `focus_purpose` for `global`                                            | workflow, not safety                                                                              |
+| Project audit / forecast skill routing                                   | FastChat conditional | prompt `focus_purpose` for `project`                                           | workflow, not safety                                                                              |
+| Project create workflow                                                  | FastChat conditional | prompt `focus_purpose` for `project_create`                                    | already there; expanded                                                                           |
+| Empty `props: {}` is not an update                                       | was prompt           | executor (done)                                                                | no prompt mention                                                                                 |
+| Markup artifact rejection                                                | was prompt           | executor (done)                                                                | keep defensive prompt rule                                                                        |
+| Document type_key coercion                                               | —                    | executor (§9.5)                                                                | not a prompt issue                                                                                |
 
 ---
 
@@ -515,11 +522,11 @@ Once shipped, extend `hasMultiPersonScope(data)` to inspect the new field. No pr
 4. **Verify `document_workspace/SKILL.md`** has the placement + append rules clearly (§7.2).
 5. **Update `safety_data_rules` pointers to reference the skills** (`see document_workspace skill`, `see task_management skill`).
 6. **Add or reuse tests covering:**
-   - static prefix byte-equality across contextTypes;
-   - per-context `focus_purpose` content;
-   - `timeline_recent_activity` renders for `project_create`;
-   - daily-brief guardrail conditional render;
-   - safety_data_rules character count reduced by the trimmed rules.
+    - static prefix byte-equality across contextTypes;
+    - per-context `focus_purpose` content;
+    - `timeline_recent_activity` renders for `project_create`;
+    - daily-brief guardrail conditional render;
+    - safety_data_rules character count reduced by the trimmed rules.
 7. **Run the fantasy-novel replay** (`13fc` scenario) against the consolidated prompt; compare tokens, cost, tool count, and P0/P1 failures to the post-fix baseline.
 8. **Remove `fastchat_prompt_v1`** — once replay passes, delete the routing branch from `prompt-variant.ts` and remove `master-prompt-builder.ts`. Any exported helpers the Lite builder currently imports from there (e.g. `buildProjectIntelligencePromptSections`, `extractProjectIntelligence`, `serializeLoadedContext`) should already live in `build-lite-prompt.ts`; verify no dangling imports before deletion.
 9. **Update prompt-cost buckets** to the new Lite section order (audit P2).
@@ -657,9 +664,9 @@ The 2026-04-17 replay session (`3283045b-7c5c-4628-a231-1df5010a081e`) ran the c
 - `write-ledger.test.ts`: replaced the legacy-format assertions with structured-format assertions (`<write_ledger>`, `successful_writes: # count=N`, YAML rows, single-sentence grounding instruction). Added an empty-section test covering `failed_writes: # count=0` / `[]` sentinel.
 - `assistant-text-sanitization.test.ts` (new file, 5 tests): covers the exact Grok-style leak from the 2026-04-17 replay (full turn-1 scratchpad stripped to just the real response), legitimate prose with the word "rules" in it (no false positives), legacy scratchpad patterns, ledger-wrapper mirroring, and clean-text passthrough.
 - `build-lite-prompt.test.ts`:
-  - Replaced the operating-strategy test to assert the sub-headings are **absent** and the inline guidance is still present (`1-2 sentence lead-in`, `intent only`, `Resolve entity targets`, `skill_load`, `two or more related writes`, `never a plan, checklist, or paraphrase of these instructions`).
-  - Added a safety anti-echo test: asserts the anti-echo bullet is the first bullet in `safety_data_rules` and lists the mirrored header strings.
-  - Updated the `project_create` test to assert timeline is **not** rendered (section absent, no "Timeline frame:" / "Project status:" strings).
+    - Replaced the operating-strategy test to assert the sub-headings are **absent** and the inline guidance is still present (`1-2 sentence lead-in`, `intent only`, `Resolve entity targets`, `skill_load`, `two or more related writes`, `never a plan, checklist, or paraphrase of these instructions`).
+    - Added a safety anti-echo test: asserts the anti-echo bullet is the first bullet in `safety_data_rules` and lists the mirrored header strings.
+    - Updated the `project_create` test to assert timeline is **not** rendered (section absent, no "Timeline frame:" / "Project status:" strings).
 
 ### 14.4 Validation
 
@@ -682,7 +689,7 @@ The 2026-04-17 replay after the §14 fixes (session `1af1c70b-dd20-463d-81bd-d23
 
 - **Turn 1 graph shape regressed.** Same inputs as the earlier runs, but only 2 edges produced. The consolidated `PROJECT_CREATE_WORKFLOW_LITE` block still said "Every relationships item must reference entities with temp_id and kind" (shape rule) but had dropped the implicit nudge to actually emit goal↔task containment edges.
 - **Turn 2 under-enumerated.** Scratchpad was gone, but the model named 3 of 7 writes because the ledger's single soft grounding sentence did not force per-item enumeration.
-- **Section ordering read backwards.** Describing *how to act* before *what is available* left the model doing strategy reasoning against tools it hadn't seen yet.
+- **Section ordering read backwards.** Describing _how to act_ before _what is available_ left the model doing strategy reasoning against tools it hadn't seen yet.
 - **Boilerplate tool-surface line.** `"Tool surface for this context: / - Tool schemas are supplied through model tool definitions, not duplicated in this prompt text."` added zero information.
 - **Recent-change entries showed kind-only labels.** Rows rendered as `task (task_id: ...) task created` because the project-log JSON payloads didn't expose `title` and the formatter had no entity-level fallback.
 - **`context_inventory_retrieval` was bloated.** Four info sections (`Loaded data snapshot`, `Retrieval boundaries / Loaded / Not preloaded / Fetch only when needed / Notes`) with rules the agent already has in `operating_strategy` + `safety_data_rules`.
@@ -699,18 +706,18 @@ Dropped the `Tool surface for this context: / - Tool schemas…` lead-in from `b
 
 **Goal↔task containment re-emphasized (`build-lite-prompt.ts`)**
 
-Added a bold `**Connect the graph.**` bullet to `PROJECT_CREATE_WORKFLOW_LITE`: *"When the user has both a goal and tasks, emit containment relationships linking every task (child) to that goal (parent). A project with 1 goal + N tasks should produce N+ goal-task containment edges; leaving tasks unlinked defeats the graph model."* Also expanded the relationship-shape bullet to explicitly show the `{ from, to }` form with an explicit `type`.
+Added a bold `**Connect the graph.**` bullet to `PROJECT_CREATE_WORKFLOW_LITE`: _"When the user has both a goal and tasks, emit containment relationships linking every task (child) to that goal (parent). A project with 1 goal + N tasks should produce N+ goal-task containment edges; leaving tasks unlinked defeats the graph model."_ Also expanded the relationship-shape bullet to explicitly show the `{ from, to }` form with an explicit `type`.
 
 **Write-ledger enumeration hardened (`write-ledger.ts`)**
 
 - Switched YAML entries to numbered list (`1. tool: …`, `2. tool: …`, `3. tool: …`) so every row has a positional anchor.
-- Replaced the single soft grounding sentence with a hard enumeration imperative: *"Enumeration requirement: your next user-facing response MUST reference each of the N successful writes above by title (or, when no title exists, by what changed) at least once. Missing a title makes the response incomplete. Do not batch multiple writes under a single collective noun ('created 5 tasks' without naming each); name every one."* Separate imperative for failed writes and a final no-unsupported-claims sentence.
+- Replaced the single soft grounding sentence with a hard enumeration imperative: _"Enumeration requirement: your next user-facing response MUST reference each of the N successful writes above by title (or, when no title exists, by what changed) at least once. Missing a title makes the response incomplete. Do not batch multiple writes under a single collective noun ('created 5 tasks' without naming each); name every one."_ Separate imperative for failed writes and a final no-unsupported-claims sentence.
 
 **Recent-change labels enriched with entity titles (`context-loader.ts`)**
 
 The underlying data gap: `onto_project_logs` rows expose `after_data` / `before_data` JSONB payloads, but those payloads don't reliably carry `title`/`name`, so `extractProjectLogTitle` returns null. Added a fallback layer:
 
-- New `buildEntityTitleLookup` helper that builds a `Map<\`${kind}:${id}\`, string>` from any of `projects / goals / milestones / plans / tasks / documents / events / risks` already loaded in the snapshot.
+- New `buildEntityTitleLookup` helper that builds a `Map<\`${kind}:${id}\`, string>`from any of`projects / goals / milestones / plans / tasks / documents / events / risks` already loaded in the snapshot.
 - New optional `titlesByKindId` param on `buildProjectIntelligenceSnapshot` and `buildRecentChanges`. Inside, the snapshot builder merges its own core entities (projects/goals/milestones/tasks/events) with the caller-supplied map so plans + documents also get covered.
 - `buildRecentChanges` uses the map as a fallback only when `extractProjectLogTitle` returns null — never overrides a real log title.
 - Updated three call sites (`mapProjectContext`, RPC-backed global context builder, fallback global context builder) to pass the extended map using the plans/documents they already have loaded.
@@ -733,16 +740,16 @@ Also removed the now-unused `formatContextSource` helper.
 ### 15.3 New tests
 
 - `build-lite-prompt.test.ts`:
-  - Section-order assertions updated for the new `identity → capabilities → tool_surface → operating_strategy → safety → …` order, both in the main global test and the `project_create` test.
-  - `project_create` test now asserts presence of the `Connect the graph` bullet and the containment wording.
-  - `project_create` test also asserts absence of the removed tool-surface boilerplate.
-  - New test: `renders the trimmed context_inventory_retrieval section as counts + one fetch rule` — asserts `Loaded counts:` is present and `Structured context loaded:` / `Source:` / `Empty loaded sets:` / `Not preloaded:` / `Fetch only when needed:` / `Notes:` / `Retrieval boundaries:` are absent.
-  - Existing "project entity focus" test updated: asserts `Loaded counts:` is present and `Loaded data snapshot:` / `Structured context loaded:` / `Top-level keys:` are absent.
-  - First global-seed test flipped the `toContain('Tool schemas are supplied through model tool definitions')` assertion to `not.toContain` and added the same for `Tool surface for this context:`.
+    - Section-order assertions updated for the new `identity → capabilities → tool_surface → operating_strategy → safety → …` order, both in the main global test and the `project_create` test.
+    - `project_create` test now asserts presence of the `Connect the graph` bullet and the containment wording.
+    - `project_create` test also asserts absence of the removed tool-surface boilerplate.
+    - New test: `renders the trimmed context_inventory_retrieval section as counts + one fetch rule` — asserts `Loaded counts:` is present and `Structured context loaded:` / `Source:` / `Empty loaded sets:` / `Not preloaded:` / `Fetch only when needed:` / `Notes:` / `Retrieval boundaries:` are absent.
+    - Existing "project entity focus" test updated: asserts `Loaded counts:` is present and `Loaded data snapshot:` / `Structured context loaded:` / `Top-level keys:` are absent.
+    - First global-seed test flipped the `toContain('Tool schemas are supplied through model tool definitions')` assertion to `not.toContain` and added the same for `Tool surface for this context:`.
 - `build-lite-prompt-preview.test.ts`: section-order expectation updated to the new order.
 - `write-ledger.test.ts`:
-  - Main test renamed to "renders an XML/YAML-framed ledger with numbered entries and enumeration imperative"; asserts numbered entries (`1. tool: …`), the `MUST reference each of the N` phrasing, `Missing a title makes the response incomplete`, `Do not batch multiple writes`, failed-write disclosure imperative, and `Do not claim any state_key`. Negative assertions ensure the old "Final-response rules" / "Use this ledger as the source of truth" / "Ground your next user-facing response strictly" phrasings are gone.
-  - New test: `pluralizes the enumeration sentence for multi-write turns` — asserts `successful_writes: # count=3`, numbered `1.`/`2.`/`3.` rows, and `MUST reference each of the 3 successful writes`.
+    - Main test renamed to "renders an XML/YAML-framed ledger with numbered entries and enumeration imperative"; asserts numbered entries (`1. tool: …`), the `MUST reference each of the N` phrasing, `Missing a title makes the response incomplete`, `Do not batch multiple writes`, failed-write disclosure imperative, and `Do not claim any state_key`. Negative assertions ensure the old "Final-response rules" / "Use this ledger as the source of truth" / "Ground your next user-facing response strictly" phrasings are gone.
+    - New test: `pluralizes the enumeration sentence for multi-write turns` — asserts `successful_writes: # count=3`, numbered `1.`/`2.`/`3.` rows, and `MUST reference each of the 3 successful writes`.
 
 ### 15.4 Validation
 
@@ -768,19 +775,19 @@ The §15 hardening of the write-ledger grounding instruction broke Turn 1 catast
 
 The `1aea16fb` replay surfaced three regressions vs `1af1c70b`:
 
-| # | Regression | Turn | Attribution |
-| --- | --- | --- | --- |
-| A | Evaluation-mode scratchpad: model narrated "Previous assistant response already did this perfectly", hallucinated a `<policy>` tag, transcribed a response mid-sentence, truncated at "Outline first three" | 1 | **§15 change #6 (hardened ledger imperative), high confidence** |
-| B | Zero related-task updates (was 3 in `1af1c70b`: magic system, blacksmithing, Aethermoor) | 3 | §15 change #6 downstream effect + model variance, medium-low confidence |
-| C | Final response omits the newly created document's title — says "This is now linked to your project…" with no ID or title | 3 | §15 change #6, medium confidence |
+| #   | Regression                                                                                                                                                                                                  | Turn | Attribution                                                             |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ----------------------------------------------------------------------- |
+| A   | Evaluation-mode scratchpad: model narrated "Previous assistant response already did this perfectly", hallucinated a `<policy>` tag, transcribed a response mid-sentence, truncated at "Outline first three" | 1    | **§15 change #6 (hardened ledger imperative), high confidence**         |
+| B   | Zero related-task updates (was 3 in `1af1c70b`: magic system, blacksmithing, Aethermoor)                                                                                                                    | 3    | §15 change #6 downstream effect + model variance, medium-low confidence |
+| C   | Final response omits the newly created document's title — says "This is now linked to your project…" with no ID or title                                                                                    | 3    | §15 change #6, medium confidence                                        |
 
 **Direct evidence for regression A**: the Turn 1 scratchpad literally quotes §15's hardened imperative back as grading criteria:
 
-> *"The final response must: - Reference each successful write by title: project 'The Last Ember', goal…, each of the 7 tasks by title. - Do not batch: name every one."*
+> _"The final response must: - Reference each successful write by title: project 'The Last Ember', goal…, each of the 7 tasks by title. - Do not batch: name every one."_
 
 That wording maps 1:1 onto the §15 write-ledger phrasing:
 
-> *"MUST reference each of the N successful writes above by title … Do not batch multiple writes under a single collective noun ('created 5 tasks' without naming each); name every one."*
+> _"MUST reference each of the N successful writes above by title … Do not batch multiple writes under a single collective noun ('created 5 tasks' without naming each); name every one."_
 
 Three specific phrasings in §15 change #6 collectively read like a grading rubric:
 
@@ -822,15 +829,15 @@ appear in a ledger row.
 
 The differences that matter:
 
-| Aspect | §15 (rubric) | §16 (declarative) |
-| --- | --- | --- |
-| Verb mood | `MUST reference` | `names` |
-| Counting | `each of the N` | `each listed` |
-| Grading language | `Missing a title makes the response incomplete` | removed |
-| Counter-example | `Do not batch … ('created 5 tasks' without naming each)` | removed |
-| Sentence count | 3 imperatives | 1 declarative + 1 negative constraint |
+| Aspect           | §15 (rubric)                                             | §16 (declarative)                     |
+| ---------------- | -------------------------------------------------------- | ------------------------------------- |
+| Verb mood        | `MUST reference`                                         | `names`                               |
+| Counting         | `each of the N`                                          | `each listed`                         |
+| Grading language | `Missing a title makes the response incomplete`          | removed                               |
+| Counter-example  | `Do not batch … ('created 5 tasks' without naming each)` | removed                               |
+| Sentence count   | 3 imperatives                                            | 1 declarative + 1 negative constraint |
 
-The enumeration intent survives in *"names each listed successful write by title"*. The enumeration pressure comes from the **numbered-entry data structure** (`1. tool: …`, `2. tool: …`), which was kept.
+The enumeration intent survives in _"names each listed successful write by title"_. The enumeration pressure comes from the **numbered-entry data structure** (`1. tool: …`, `2. tool: …`), which was kept.
 
 ### 16.3 What was **not** changed
 

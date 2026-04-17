@@ -5,7 +5,15 @@ slug: 'buildos-vs-obsidian-knowledge-management'
 publishDate: '2025-09-16'
 author: 'DJ Wayne'
 category: 'Comparison'
-tags: ['obsidian', 'knowledge-management', 'research', 'comparison', 'project-memory', 'thinking-environment']
+tags:
+    [
+        'obsidian',
+        'knowledge-management',
+        'research',
+        'comparison',
+        'project-memory',
+        'thinking-environment'
+    ]
 featured: true
 draft: true
 seo:
@@ -47,7 +55,7 @@ Every note needs a name you'll remember. Every link has to be made by you. Every
 
 Most people don't mind this up front. The cost shows up three weeks in, when you open the vault and realize the last eight notes you wrote never got linked to anything. They're floating. You could fix it tonight. Or you could write the chapter.
 
-This is the Obsidian tax. It isn't a bug. It's the thing the tool is built to reward. For the people who love it, the filing *is* the thinking. For everyone else, it's where the thinking goes to die.
+This is the Obsidian tax. It isn't a bug. It's the thing the tool is built to reward. For the people who love it, the filing _is_ the thinking. For everyone else, it's where the thinking goes to die.
 
 ## The same Tuesday, in two tools
 
@@ -85,7 +93,7 @@ Open Obsidian on a Tuesday morning and you'll see whatever you saw last time. A 
 
 Open BuildOS and your day has already been staged. The **daily brief** is a single document that shows you what matters this morning: the tasks you chose, the decisions you're circling, the projects that have moved, the context from your past dumps that's relevant now, your calendar. It arrives at the time you pick. If you hate mornings, it meets you at 10:30. If you're a 6am person, it's there with the coffee.
 
-This is the mechanic most comparisons miss. Obsidian's model of a good morning is *you open the vault and find your own work*. BuildOS's model is *your work finds you, pre-assembled*. Neither is wrong. They're opposite ideas about whose job it is to re-enter the project each day.
+This is the mechanic most comparisons miss. Obsidian's model of a good morning is _you open the vault and find your own work_. BuildOS's model is _your work finds you, pre-assembled_. Neither is wrong. They're opposite ideas about whose job it is to re-enter the project each day.
 
 For people doing genuinely complex work — a book, a podcast season, a product, a dissertation — restarting is 40% of the job. Reducing that restart cost is where BuildOS earns its keep.
 
@@ -95,7 +103,7 @@ BuildOS connects to your Google Calendar. That line usually gets waved past. It 
 
 When a brain dump produces a task with a due date, BuildOS can put it on your calendar as a real block. When you move a meeting, tasks attached to that project can shift. When you're triaging the week, you're not in one tab for "what I want to do" and a different tab for "when things actually happen." Thinking and scheduling share a surface.
 
-Obsidian does not do this natively. There are plugins — `obsidian-tasks`, `Day Planner`, various Google Calendar bridges — and assembled carefully they approximate the behavior. Assembling them is also an evening's work, and then another evening every time one of them updates in a way that breaks your setup. If you enjoy that assembly, Obsidian rewards you. If you'd rather spend the evening writing, BuildOS ships the wire already laid.
+Obsidian does not do this natively. There are plugins — `obsidian-tasks`, `Day Planner`, various Google Calendar bridges — and assembled carefully they approximate the behavior. Assembling them is also an evening's work, and then another evening every time one of them updates in a way that breaks your setup. If you enjoy that assembly, Obsidian rewards you. If you'd rather spend the evening writing, BuildOS comes wired.
 
 ## Voice in, structure out
 

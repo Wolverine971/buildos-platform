@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../shared/error-logging';
 import { handleCommentMentions } from '../comment-mentions';
+import { resolveCommentEntityOwnerActorId } from '$lib/server/comment-public-access';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	const supabase = locals.supabase;
@@ -274,8 +275,19 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 				return ApiResponse.error('Failed to verify permissions', 500);
 			}
 
-			if (!isAdmin) {
-				return ApiResponse.forbidden('Only the author can delete this comment');
+			// Document author / page owner can also delete comments on their
+			// own published document (public-page moderation primitive).
+			const pageOwnerActorId = await resolveCommentEntityOwnerActorId(
+				supabase,
+				comment.entity_type,
+				comment.entity_id
+			);
+			const isPageOwner = pageOwnerActorId === actorId;
+
+			if (!isAdmin && !isPageOwner) {
+				return ApiResponse.forbidden(
+					'Only the comment author or document owner can delete this comment'
+				);
 			}
 		}
 
