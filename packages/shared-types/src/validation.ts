@@ -770,15 +770,8 @@ export function validateTreeAgentMetadata(metadata: unknown): TreeAgentJobMetada
 		throw new ValidationError('root_node_id', meta.root_node_id, 'valid UUID');
 	}
 
-	if (
-		typeof meta.workspace_project_id !== 'string' ||
-		!isValidUUID(meta.workspace_project_id)
-	) {
-		throw new ValidationError(
-			'workspace_project_id',
-			meta.workspace_project_id,
-			'valid UUID'
-		);
+	if (typeof meta.workspace_project_id !== 'string' || !isValidUUID(meta.workspace_project_id)) {
+		throw new ValidationError('workspace_project_id', meta.workspace_project_id, 'valid UUID');
 	}
 
 	if (!meta.budgets || typeof meta.budgets !== 'object') {

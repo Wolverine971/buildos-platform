@@ -1,4 +1,12 @@
 // apps/web/src/routes/api/transcribe/+server.ts
+
+// Audio upload + Whisper round-trip — needs higher memory for the file buffer
+// and longer duration for slower transcriptions.
+export const config = {
+	maxDuration: 120,
+	memory: 1024
+};
+
 import { PRIVATE_OPENAI_API_KEY } from '$env/static/private';
 import { env } from '$env/dynamic/private';
 import OpenAI from 'openai';

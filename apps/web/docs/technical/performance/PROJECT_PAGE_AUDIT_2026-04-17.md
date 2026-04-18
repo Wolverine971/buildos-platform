@@ -6,7 +6,7 @@
 **Scope:** `apps/web/src/routes/projects/[id]/` and the components/endpoints it pulls from
 **Context:** Follow-up audit after consolidating the SSR hot path into `get_project_skeleton_with_access` in this worktree (see `supabase/migrations/20260430000008_get_project_skeleton_with_access.sql`). SSR is now designed around 1 DB round-trip. This audit focuses on everything downstream: hydration, post-mount fetches, mutation refreshes, and skeleton-to-content transitions.
 
-**Implementation update, 2026-04-18:** Recommended items #1-#6 have been applied in this worktree. Generic refresh now uses `/full` and no longer force-refreshes members/settings; `/full` now includes user-scoped events and public page counts; `PublishedPanel` lazy-loads page details; and `DocTreeView` is seeded from hydrated project/documents data with visibility-gated, structure-only polling. The remaining planned work starts at member loading and perceived smoothness.
+**Implementation update, 2026-04-18:** Recommended items #1-#7 have been applied in this worktree. Generic refresh now uses `/full` and no longer force-refreshes members/settings; `/full` now includes user-scoped events, public page counts, and `current_actor_id`; `PublishedPanel` lazy-loads page details; `DocTreeView` is seeded from hydrated project/documents data with visibility-gated, structure-only polling; and the full member roster now lazy-loads from task filter/collaboration needs instead of every page mount. The remaining planned work starts at perceived smoothness and optimistic create/update flows.
 
 > Round-trip counts below are static path counts from the current code, not a production trace. Confirm final deltas with browser network timing and Supabase query timing after each PR.
 
@@ -17,7 +17,7 @@
 The direction is right: SSR is tight, and the biggest remaining UX cost is client-side fan-out after first paint.
 
 - **First paint:** fast, via `get_project_skeleton_with_access`.
-- **Automatic post-load fetches after applied chunks:** `/full` plus `/members`; `/events` and doc-tree data are folded into the hydrated path, and public-page details are lazy unless live pages need an open panel.
+- **Automatic post-load fetches after applied chunks:** `/full` is the common required browser fetch after SSR. `/events`, doc-tree data, public-page counts, and current actor identity are folded into the hydrated path; public-page details and the full member roster are lazy.
 - **Lazy fetches:** `/briefs` and `/logs` are already lazy behind collapsed history panels.
 - **Mutation refreshes after applied chunks:** `refreshData()` uses the canonical `/full` snapshot and no longer force-refreshes unrelated member or notification settings data.
 
@@ -29,6 +29,7 @@ Applied changes so far:
 4. `/full` includes public page counts, and `PublishedPanel` uses those counts before fetching page details.
 5. The page builds a seeded doc-tree model from `project.doc_structure` and `documents[]`, including `unlinked` and `archived` buckets derived with the shared doc-tree normalization helpers.
 6. `DocTreeView` accepts the seeded model, skips the mount-time `/doc-tree` fetch when present, and polls only structure/version data while the document is visible.
+7. `current_actor_id` is now available from `/full` and the skeleton access bundle, so "Assigned to me" and person-focus filters work without a mount-time `/members` request. The full member roster loads only when the task filter dropdown opens, and the page invalidates that cache after collaboration member removals.
 
 ---
 
@@ -46,12 +47,12 @@ Not every mutation uses this path: deletes and milestone completion toggles are 
 
 ## Current Hot Path After Applied Chunks
 
-| Phase                        | Current behavior                                                                                                                                                                   | Remaining cost                                                                                                 |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| **SSR**                      | Unchanged: skeleton/access data comes from `get_project_skeleton_with_access`.                                                                                                     | 1 DB RPC on the intended path, with the existing fallback retained.                                            |
-| **Hydration fetch**          | `/full` is now the canonical client snapshot. It returns core project data, user-scoped events, public page counts, and enough project/document data to seed the doc tree.         | 1 API call; DB side is still the core RPC plus parallel server-side enrichment/fan-in.                         |
-| **Automatic post-hydration** | `/events`, `/doc-tree`, and zero-count `/public-pages` no longer fire as separate mount requests. `/members` still loads after hydration to preserve current actor/person filters. | Common no-live-page desktop path is `/full` + `/members`; live public pages may still fetch details by design. |
-| **Generic mutation refresh** | `refreshData()` now calls `/full` and consumes included events/counts without forcing member or notification-settings refreshes.                                                   | 1 canonical snapshot call; document/public-page actions can still explicitly refresh their own panel data.     |
+| Phase                        | Current behavior                                                                                                                                                           | Remaining cost                                                                                                           |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **SSR**                      | Unchanged: skeleton/access data comes from `get_project_skeleton_with_access`.                                                                                             | 1 DB RPC on the intended path, with the existing fallback retained.                                                      |
+| **Hydration fetch**          | `/full` is now the canonical client snapshot. It returns core project data, user-scoped events, public page counts, and enough project/document data to seed the doc tree. | 1 API call; DB side is still the core RPC plus parallel server-side enrichment/fan-in.                                   |
+| **Automatic post-hydration** | `/events`, `/doc-tree`, zero-count `/public-pages`, and `/members` no longer fire as separate mount requests. Current actor identity comes from `/full`/access payloads.   | Common no-live-page desktop path is `/full`; live public pages and member roster details may still fetch by interaction. |
+| **Generic mutation refresh** | `refreshData()` now calls `/full` and consumes included events/counts without forcing member or notification-settings refreshes.                                           | 1 canonical snapshot call; document/public-page actions can still explicitly refresh their own panel data.               |
 
 ---
 
@@ -171,14 +172,14 @@ The first option reduces DB calls more, but the second option is safer and still
 | 4   | Seed `DocTreeView` from hydrated `project.doc_structure` + `documents[]`, including derived unlinked/archived lists                           | M            | Done                                                     | Removes the automatic `/doc-tree` browser request                  |
 | 5   | Visibility-gate doc-tree polling and make polling structure/version-only                                                                      | S            | Done                                                     | Reduces background network and DB load                             |
 | 6   | Add public-page count to `/full`; lazy-load `PublishedPanel` details on expand                                                                | S            | Done                                                     | Removes mount-time `/public-pages` for projects with no live pages |
-| 7   | Add `current_actor_id` to the hydrated/access payload, then lazy-load full members only on filter/collab need                                 | S            | Next                                                     | Removes mount-time `/members` without breaking "me" filters        |
+| 7   | Add `current_actor_id` to the hydrated/access payload, then lazy-load full members only on filter/collab need                                 | S            | Done                                                     | Removes mount-time `/members` without breaking "me" filters        |
 | 8   | Warm dynamic imports in `onMount` alongside hydration                                                                                         | S            | Pending                                                  | Reduces skeleton-to-skeleton flicker                               |
 | 9   | Convert create/update modal callbacks to pass returned entities and merge local state optimistically                                          | M/L          | Pending                                                  | Removes most happy-path generic refreshes                          |
 | 10  | Remove the `+page.server.ts` full-data fallback after production observation                                                                  | XS, deferred | Deferred                                                 | Simplifies code after the new RPC is proven                        |
 
 ### Expected Combined Effect
 
-- **Automatic cold desktop visit after HTML:** originally `/full` + `/events` + `/members` + `/public-pages` + `/doc-tree`; after applied chunks, common no-live-page desktop path is `/full` + `/members`.
+- **Automatic cold desktop visit after HTML:** originally `/full` + `/events` + `/members` + `/public-pages` + `/doc-tree`; after applied chunks, common no-live-page desktop path is `/full`.
 - **Generic mutation refresh before optimistic updates:** originally up to 4 API calls and broad fan-out; after applied chunks, this is 1 canonical `/full` snapshot call.
 - **Generic mutation happy path after optimistic updates:** local merge, with background reconciliation only when needed.
 
@@ -189,7 +190,7 @@ The first option reduces DB calls more, but the second option is safer and still
 - Do not add SSE/streaming for the project page yet. Pull-to-refresh plus explicit reconciliation is enough until collaborative editing gets heavier.
 - Do not delete the `+page.server.ts` fallback until the new skeleton/access RPC has been observed stable in production for at least a week or two.
 - Do not collapse `PublishedPanel` without adding a count/badge source. Users with live public pages still need a visible signal.
-- Do not lazy-remove the members load until `currentProjectActorId` is available without it.
+- Do not regress the member-loading change by reintroducing a mount-time `/members` request. "Me" filters should continue to read `currentProjectActorId` from the hydrated/access payload.
 - Do not put events into `get_project_full` in a way that returns other users' `onto_event_sync` rows.
 - Do not optimize filter/sort derivations or Lucide imports before fixing network fan-out.
 
@@ -200,10 +201,9 @@ The first option reduces DB calls more, but the second option is safer and still
 1. **Small PR 1 - generic refresh cleanup:** #1 and #2. This is the highest confidence win and reduces mutation cost immediately.
 2. **Small PR 2 - safe hydration fan-in:** #3 and #6. Keep user-scoped event sync and public-page counts explicit in tests.
 3. **Medium PR - document tree contract:** #4 and #5. This changes component props and refresh behavior, so review it separately.
-4. **Small PR 3 - member loading:** #7 after `current_actor_id` is present in hydrated data.
-5. **Small PR 4 - perceived smoothness:** #8. Low risk, but validate the visual result on cold cache.
-6. **Dedicated PR - optimistic creates/updates:** #9. This crosses modal contracts and should include tests for success and reconciliation paths.
-7. **Deferred cleanup:** #10 after production observation.
+4. **Small PR 3 - perceived smoothness:** #8. Low risk, but validate the visual result on cold cache.
+5. **Dedicated PR - optimistic creates/updates:** #9. This crosses modal contracts and should include tests for success and reconciliation paths.
+6. **Deferred cleanup:** #10 after production observation.
 
 ---
 

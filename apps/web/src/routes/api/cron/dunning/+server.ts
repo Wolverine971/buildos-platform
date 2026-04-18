@@ -1,4 +1,10 @@
 // apps/web/src/routes/api/cron/dunning/+server.ts
+
+// Cron job — Stripe API calls + DB writes. Allow longer duration for batches.
+export const config = {
+	maxDuration: 60
+};
+
 import type { RequestHandler } from './$types';
 import { DunningService } from '$lib/services/dunning-service';
 import { env } from '$env/dynamic/private';

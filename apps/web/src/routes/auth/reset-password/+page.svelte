@@ -28,7 +28,7 @@
 				<div
 					class="w-16 h-16 rounded-lg flex items-center justify-center border border-border bg-card shadow-ink tx tx-bloom tx-weak"
 				>
-					<img src="/brain-bolt.png" alt="BuildOS Icon" class="w-12 h-12" />
+					<img src="/brain-bolt.webp" alt="BuildOS Icon" class="w-12 h-12" />
 				</div>
 			</div>
 

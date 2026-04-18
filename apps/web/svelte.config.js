@@ -19,7 +19,13 @@ export default {
 
 	kit: {
 		adapter: adapter({
-			runtime: 'nodejs22.x'
+			runtime: 'nodejs22.x',
+			// Defaults for every function. Routes that need more can override
+			// with `export const config = { maxDuration, memory }` at the top
+			// of their +server.ts / +page.server.ts / +layout.server.ts.
+			// See apps/web/docs/technical/performance/VERCEL_OPTIMIZATIONS_2026-04-18.md
+			memory: 512,
+			maxDuration: 10
 		}),
 
 		alias: {

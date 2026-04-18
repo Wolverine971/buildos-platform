@@ -44,7 +44,7 @@
 		<div class="max-w-4xl mx-auto">
 			<div class="flex items-center gap-4 mb-8">
 				<img
-					src="/brain-bolt.png"
+					src="/brain-bolt.webp"
 					alt="BuildOS"
 					class="w-12 h-12 rounded-xl shadow-ink"
 					width="48"

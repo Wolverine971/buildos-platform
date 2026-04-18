@@ -1,4 +1,10 @@
 // apps/web/src/routes/api/cron/trial-reminders/+server.ts
+
+// Cron job — iterates trial users and sends emails. Allow longer duration.
+export const config = {
+	maxDuration: 60
+};
+
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { PRIVATE_CRON_SECRET } from '$env/static/private';

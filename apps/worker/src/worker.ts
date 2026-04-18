@@ -10,10 +10,7 @@ import type {
 import { ProcessingJob, SupabaseQueue } from './lib/supabaseQueue';
 import { processBriefJob } from './workers/brief/briefWorker';
 import { processOnboardingAnalysisJob } from './workers/onboarding/onboardingWorker';
-import type {
-	BriefJobData,
-	OnboardingAnalysisJobData
-} from './workers/shared/queueUtils';
+import type { BriefJobData, OnboardingAnalysisJobData } from './workers/shared/queueUtils';
 import { processSMSJob } from './workers/smsWorker';
 import { processNotification } from './workers/notification/notificationWorker';
 import { processProjectActivityBatchFlushJob } from './workers/notification/projectActivityBatchWorker';
@@ -63,7 +60,8 @@ const queue = new SupabaseQueue({
  */
 async function processBrief(job: ProcessingJob<BriefJobData>) {
 	const startTime = Date.now();
-	const jobType = (job.data as { priority?: number })?.priority === 1 ? '⚡ IMMEDIATE' : '📅 SCHEDULED';
+	const jobType =
+		(job.data as { priority?: number })?.priority === 1 ? '⚡ IMMEDIATE' : '📅 SCHEDULED';
 
 	await job.log(`${jobType} brief started for user ${job.userId}`);
 	await job.log(`Brief date: ${job.data.briefDate}`);

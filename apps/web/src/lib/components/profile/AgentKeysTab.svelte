@@ -133,7 +133,8 @@
 		{
 			id: 'author_docs_tasks',
 			label: 'Author docs + tasks (OpenClaw default)',
-			description: 'Recommended for Claude Code / OpenClaw. Create/update documents and tasks.',
+			description:
+				'Recommended for Claude Code / OpenClaw. Create/update documents and tasks.',
 			scopeMode: 'read_write',
 			writeOps: [...OPENCLAW_DEFAULT_WRITE_OPS] as BuildosAgentAllowedOp[]
 		},
@@ -396,7 +397,9 @@
 		selectedProjectIds = [];
 		providerMode = 'openclaw';
 		customProvider = '';
-		const defaultBundle = PERMISSION_BUNDLES.find((bundle) => bundle.id === 'author_docs_tasks');
+		const defaultBundle = PERMISSION_BUNDLES.find(
+			(bundle) => bundle.id === 'author_docs_tasks'
+		);
 		if (defaultBundle) {
 			scopeMode = defaultBundle.scopeMode;
 			selectedWriteOps = [...defaultBundle.writeOps];
@@ -1067,8 +1070,12 @@
 								onchange={() => applyBundle(bundle)}
 							/>
 							<div>
-								<div class="text-sm font-medium text-foreground">{bundle.label}</div>
-								<div class="text-xs text-muted-foreground">{bundle.description}</div>
+								<div class="text-sm font-medium text-foreground">
+									{bundle.label}
+								</div>
+								<div class="text-xs text-muted-foreground">
+									{bundle.description}
+								</div>
 							</div>
 						</label>
 					{/each}

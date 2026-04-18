@@ -1,4 +1,10 @@
 // apps/web/src/routes/api/cron/billing-ops-monitoring/+server.ts
+
+// Cron job — aggregates billing telemetry. Allow longer duration for queries.
+export const config = {
+	maxDuration: 60
+};
+
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { PRIVATE_CRON_SECRET } from '$env/static/private';

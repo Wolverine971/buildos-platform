@@ -424,7 +424,7 @@
 					title="Chat about this risk"
 				>
 					<img
-						src="/brain-bolt.png"
+						src="/brain-bolt.webp"
 						alt="Chat about this risk"
 						class="w-6 h-6 rounded object-cover"
 					/>

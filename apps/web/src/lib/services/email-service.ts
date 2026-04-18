@@ -121,8 +121,7 @@ export class EmailService {
 			if (lifecycleSink === 'gmail' && dev && !this.isLifecycleDevRecipientAllowed(data.to)) {
 				return {
 					success: false,
-					error:
-						'Lifecycle Gmail dev sink requires PRIVATE_LIFECYCLE_DEV_ALLOWLIST to include the recipient'
+					error: 'Lifecycle Gmail dev sink requires PRIVATE_LIFECYCLE_DEV_ALLOWLIST to include the recipient'
 				};
 			}
 
@@ -273,11 +272,7 @@ export class EmailService {
 
 	private getLifecycleEmailSink(): LifecycleEmailSink | null {
 		const configuredSink = env.PRIVATE_LIFECYCLE_EMAIL_SINK?.trim().toLowerCase();
-		if (
-			configuredSink === 'log' ||
-			configuredSink === 'smtp' ||
-			configuredSink === 'gmail'
-		) {
+		if (configuredSink === 'log' || configuredSink === 'smtp' || configuredSink === 'gmail') {
 			return configuredSink;
 		}
 

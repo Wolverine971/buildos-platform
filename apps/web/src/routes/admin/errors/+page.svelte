@@ -811,7 +811,7 @@
 								</td>
 								<td class="px-3 py-2 hidden sm:table-cell">
 									<span class="text-xs text-muted-foreground">
-										{(error.error_type)?.replace(/_/g, ' ')}
+										{error.error_type?.replace(/_/g, ' ')}
 									</span>
 								</td>
 								<td class="px-3 py-2 max-w-[200px] sm:max-w-xs lg:max-w-md">
@@ -1027,9 +1027,7 @@
 								Occurred
 							</p>
 							<p class="text-xs text-foreground">
-								{formatFullDate(
-									selectedError.created_at
-								)}
+								{formatFullDate(selectedError.created_at)}
 							</p>
 						</div>
 					</div>
@@ -1046,10 +1044,7 @@
 						<span
 							class="bg-muted text-muted-foreground px-2 py-1 rounded text-xs font-medium border border-border"
 						>
-							{(selectedError.error_type)?.replace(
-								/_/g,
-								' '
-							)}
+							{selectedError.error_type?.replace(/_/g, ' ')}
 						</span>
 						{#if selectedError.error_code}
 							<span
@@ -1385,9 +1380,7 @@
 							</div>
 							<div class="space-y-1 text-xs">
 								<p class="text-muted-foreground">
-									{formatFullDate(
-										selectedError.resolved_at
-									)}
+									{formatFullDate(selectedError.resolved_at)}
 								</p>
 								{#if selectedError.resolution_notes}
 									<p class="text-foreground italic">

@@ -1,4 +1,11 @@
 // apps/web/src/routes/api/onto/goals/[id]/reverse/+server.ts
+
+// AI goal reverse-engineering — needs more time than the 10s default.
+export const config = {
+	maxDuration: 60,
+	memory: 1024
+};
+
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { SmartLLMService } from '$lib/services/smart-llm-service';

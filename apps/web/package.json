@@ -46,7 +46,6 @@
 		"gen:sitemap": "node --import tsx scripts/generate-sitemap.ts",
 		"gen:web": "pnpm run gen:blog-context && pnpm run gen:sitemap && pnpm run gen:sctx",
 		"gen:api-docs": "node --import tsx scripts/generate-api-docs.ts",
-		"merge:comments": "node --import tsx scripts/merge-comments.ts",
 		"cleanup:archived-doc-structure": "node --import tsx scripts/cleanup-archived-doc-structure.ts",
 		"gen:route-docs": "node --import tsx scripts/generate-route-docs.ts",
 		"docs:api": "pnpm run gen:api-docs && pnpm run gen:route-docs",

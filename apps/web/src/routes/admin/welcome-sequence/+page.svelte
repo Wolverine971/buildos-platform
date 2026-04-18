@@ -1,6 +1,16 @@
 <!-- apps/web/src/routes/admin/welcome-sequence/+page.svelte -->
 <script lang="ts">
-	import { CheckCircle2, Code2, GitCompareArrows, RefreshCw, TriangleAlert } from 'lucide-svelte';
+	import {
+		Activity,
+		CheckCircle2,
+		Code2,
+		GitCompareArrows,
+		Mail,
+		RefreshCw,
+		Send,
+		TriangleAlert
+	} from 'lucide-svelte';
+	import type { ActionData, PageData } from './$types';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 
@@ -89,7 +99,46 @@
 		onboardingIntent: string;
 	};
 
-	let { data } = $props();
+	type QueueRow = {
+		id: string;
+		user_id: string;
+		recipient_email: string;
+		status: string;
+		current_step_number: number;
+		next_step_number: number | null;
+		next_send_at: string | null;
+		last_sent_at: string | null;
+		processing_started_at: string | null;
+		failure_count: number | null;
+		exit_reason: string | null;
+		last_error: string | null;
+		created_at: string;
+		updated_at: string;
+		branchPreview: string | null;
+	};
+
+	type AlertRow = {
+		severity: 'P1' | 'P2' | 'P3';
+		message: string;
+		detail: string;
+	};
+
+	type EngagementStats = {
+		emails: number;
+		tracked: number;
+		opens: number;
+		clicks: number;
+		unsubscribes: number;
+		uniqueOpened: number;
+		uniqueClicked: number;
+		openRate: number;
+		clickRate: number;
+		suppressions: number;
+		suppressionReasons: Record<string, number>;
+		suppressionSources: Record<string, number>;
+	};
+
+	let { data, form }: { data: PageData; form?: ActionData } = $props();
 
 	const summary = data.summary as {
 		total: number;
@@ -102,6 +151,9 @@
 	const steps = (data.steps ?? []) as StepMetadata[];
 	const localPreviews = (data.localPreviews ?? []) as Preview[];
 	const sandbox = data.sandbox as { input: SandboxInput; preview: Preview };
+	const queueRows = (data.queueRows ?? []) as QueueRow[];
+	const alerts = (data.alerts ?? []) as AlertRow[];
+	const engagement = (data.engagement ?? null) as EngagementStats | null;
 
 	const eventCounts = stats?.eventCounts ?? {};
 	const emailLogCounts = stats?.emailLogCounts ?? {};
@@ -124,6 +176,27 @@
 
 	function entries(record: Record<string, number>): Array<[string, number]> {
 		return Object.entries(record).sort((left, right) => right[1] - left[1]);
+	}
+
+	function formatPercent(value: number | null | undefined): string {
+		if (value == null || !Number.isFinite(value)) {
+			return '0%';
+		}
+
+		return `${(value * 100).toFixed(1)}%`;
+	}
+
+	function alertTone(severity: AlertRow['severity']): 'danger' | 'warning' | 'info' {
+		if (severity === 'P1') return 'danger';
+		if (severity === 'P2') return 'warning';
+		return 'info';
+	}
+
+	function canSendNextNow(row: QueueRow): boolean {
+		return (
+			row.next_step_number != null &&
+			(row.status === 'active' || row.status === 'paused' || row.status === 'errored')
+		);
 	}
 </script>
 
@@ -154,6 +227,22 @@
 						Apply the Phase 2 migration before validating shadow queue parity.
 					</p>
 				</div>
+			</div>
+		</AdminCard>
+	{/if}
+
+	{#if form?.error}
+		<AdminCard tone="danger" padding="sm">
+			<div class="flex items-start gap-3 text-sm text-destructive">
+				<TriangleAlert class="mt-0.5 h-4 w-4 shrink-0" />
+				<p>{form.error}</p>
+			</div>
+		</AdminCard>
+	{:else if form?.success}
+		<AdminCard tone="success" padding="sm">
+			<div class="flex items-start gap-3 text-sm text-emerald-800">
+				<CheckCircle2 class="mt-0.5 h-4 w-4 shrink-0" />
+				<p>{form.message ?? 'Welcome sequence admin action completed.'}</p>
 			</div>
 		</AdminCard>
 	{/if}
@@ -190,6 +279,49 @@
 		</AdminCard>
 	{/if}
 
+	{#if !data.statsError}
+		<div class="grid gap-4 lg:grid-cols-3">
+			{#if alerts.length > 0}
+				{#each alerts as alert}
+					<AdminCard tone={alertTone(alert.severity)} padding="md">
+						<div class="flex items-start gap-3">
+							<TriangleAlert class="mt-0.5 h-5 w-5 shrink-0" />
+							<div>
+								<div class="flex items-center gap-2">
+									<span
+										class="rounded-md bg-background px-2 py-1 text-xs font-semibold text-foreground"
+									>
+										{alert.severity}
+									</span>
+									<h2 class="text-sm font-semibold text-foreground">
+										{alert.message}
+									</h2>
+								</div>
+								<p class="mt-2 text-sm text-muted-foreground">{alert.detail}</p>
+							</div>
+						</div>
+					</AdminCard>
+				{/each}
+			{:else}
+				<AdminCard tone="success" padding="md" class="lg:col-span-3">
+					<div class="flex items-start gap-3">
+						<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+						<div>
+							<h2 class="text-sm font-semibold text-foreground">
+								No active alert thresholds
+							</h2>
+							<p class="mt-1 text-sm text-muted-foreground">
+								Email 1 delivery, cron failures, errored enrollments, stuck
+								processing rows, and suppression rate are below the Phase 2 alert
+								thresholds.
+							</p>
+						</div>
+					</div>
+				</AdminCard>
+			{/if}
+		</div>
+	{/if}
+
 	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
 		<AdminCard tone="info" padding="md">
 			<p class="text-sm font-medium text-muted-foreground">Enrollments</p>
@@ -212,6 +344,50 @@
 			<p class="mt-2 text-3xl font-bold text-foreground">{eventCounts.failed ?? 0}</p>
 		</AdminCard>
 	</div>
+
+	{#if engagement}
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+			<AdminCard tone="muted" padding="md">
+				<div class="flex items-center gap-2">
+					<Mail class="h-4 w-4 text-muted-foreground" />
+					<p class="text-sm font-medium text-muted-foreground">Production Emails</p>
+				</div>
+				<p class="mt-2 text-3xl font-bold text-foreground">{engagement.emails}</p>
+				<p class="mt-1 text-xs text-muted-foreground">
+					{engagement.tracked} with tracking enabled
+				</p>
+			</AdminCard>
+			<AdminCard tone="info" padding="md">
+				<div class="flex items-center gap-2">
+					<Activity class="h-4 w-4 text-sky-700" />
+					<p class="text-sm font-medium text-muted-foreground">Unique Opens</p>
+				</div>
+				<p class="mt-2 text-3xl font-bold text-foreground">{engagement.uniqueOpened}</p>
+				<p class="mt-1 text-xs text-muted-foreground">
+					{formatPercent(engagement.openRate)} open rate, {engagement.opens} events
+				</p>
+			</AdminCard>
+			<AdminCard tone="success" padding="md">
+				<p class="text-sm font-medium text-muted-foreground">Unique Clicks</p>
+				<p class="mt-2 text-3xl font-bold text-foreground">{engagement.uniqueClicked}</p>
+				<p class="mt-1 text-xs text-muted-foreground">
+					{formatPercent(engagement.clickRate)} click rate, {engagement.clicks} events
+				</p>
+			</AdminCard>
+			<AdminCard tone={engagement.unsubscribes > 0 ? 'warning' : 'muted'} padding="md">
+				<p class="text-sm font-medium text-muted-foreground">Unsubscribes</p>
+				<p class="mt-2 text-3xl font-bold text-foreground">{engagement.unsubscribes}</p>
+				<p class="mt-1 text-xs text-muted-foreground">Tracked unsubscribe events</p>
+			</AdminCard>
+			<AdminCard tone={engagement.suppressions > 0 ? 'warning' : 'muted'} padding="md">
+				<p class="text-sm font-medium text-muted-foreground">Suppressions</p>
+				<p class="mt-2 text-3xl font-bold text-foreground">{engagement.suppressions}</p>
+				<p class="mt-1 text-xs text-muted-foreground">
+					Lifecycle and global suppressions in range
+				</p>
+			</AdminCard>
+		</div>
+	{/if}
 
 	<div class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
 		<AdminCard padding="none" class="overflow-hidden">
@@ -448,6 +624,77 @@
 					Preview
 				</button>
 			</form>
+
+			<div class="mt-6 border-t border-border pt-5">
+				<div class="flex items-center gap-2">
+					<Send class="h-4 w-4 text-muted-foreground" />
+					<h3 class="text-sm font-semibold text-foreground">Test Sends</h3>
+				</div>
+				<p class="mt-1 text-sm text-muted-foreground">
+					Test sends use the current sandbox state, disable tracking, and are excluded
+					from production metrics.
+				</p>
+				<form method="POST" class="mt-4 grid gap-3">
+					<input type="hidden" name="preview_step" value={sandbox.input.step} />
+					<input type="hidden" name="preview_name" value={sandbox.input.name} />
+					<input
+						type="hidden"
+						name="onboarding_intent"
+						value={sandbox.input.onboardingIntent}
+					/>
+					<input type="hidden" name="project_count" value={sandbox.input.projectCount} />
+					<input
+						type="hidden"
+						name="onboarding_completed"
+						value={String(sandbox.input.onboardingCompleted)}
+					/>
+					<input
+						type="hidden"
+						name="email_daily_brief_enabled"
+						value={String(sandbox.input.emailDailyBriefEnabled)}
+					/>
+					<input
+						type="hidden"
+						name="sms_channel_enabled"
+						value={String(sandbox.input.smsChannelEnabled)}
+					/>
+					<input
+						type="hidden"
+						name="calendar_connected"
+						value={String(sandbox.input.calendarConnected)}
+					/>
+					<input type="hidden" name="returned" value={String(sandbox.input.returned)} />
+					<label class="grid gap-1 text-sm font-medium text-foreground">
+						<span>Recipient</span>
+						<input
+							name="test_recipient"
+							type="email"
+							required
+							placeholder="you@example.com"
+							class="h-10 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+						/>
+					</label>
+					<div class="flex flex-wrap gap-2">
+						<button
+							type="submit"
+							formaction="?/testSend"
+							disabled={!sandbox.preview.content || sandbox.preview.action !== 'send'}
+							class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							<Mail class="h-4 w-4" />
+							Current Step
+						</button>
+						<button
+							type="submit"
+							formaction="?/testFullSequence"
+							class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
+						>
+							<Send class="h-4 w-4" />
+							Full Sequence
+						</button>
+					</div>
+				</form>
+			</div>
 		</AdminCard>
 
 		<AdminCard>
@@ -563,6 +810,110 @@
 					</div>
 				</details>
 			{/each}
+		</div>
+	</AdminCard>
+
+	<AdminCard padding="none" class="overflow-hidden">
+		<div class="border-b border-border px-4 py-3">
+			<h2 class="text-base font-semibold text-foreground">Live Queue</h2>
+			<p class="mt-1 text-sm text-muted-foreground">
+				First 100 sequence enrollments sorted by next send time.
+			</p>
+		</div>
+		<div class="overflow-x-auto">
+			<table class="min-w-full divide-y divide-border text-sm">
+				<thead class="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
+					<tr>
+						<th class="px-4 py-3 font-semibold">Recipient</th>
+						<th class="px-4 py-3 font-semibold">Status</th>
+						<th class="px-4 py-3 font-semibold">Next Step</th>
+						<th class="px-4 py-3 font-semibold">Next Send</th>
+						<th class="px-4 py-3 font-semibold">Failures</th>
+						<th class="px-4 py-3 font-semibold">Branch</th>
+						<th class="px-4 py-3 font-semibold">Action</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-border">
+					{#each queueRows as row}
+						<tr class={row.status === 'errored' ? 'bg-destructive/5' : ''}>
+							<td class="px-4 py-3 align-top">
+								<div class="font-medium text-foreground">{row.recipient_email}</div>
+								<div class="mt-1 font-mono text-xs text-muted-foreground">
+									{row.user_id}
+								</div>
+							</td>
+							<td class="px-4 py-3 align-top">
+								<span
+									class="rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
+								>
+									{row.status}
+								</span>
+								{#if row.exit_reason}
+									<div class="mt-2 text-xs text-muted-foreground">
+										Exit: {row.exit_reason}
+									</div>
+								{/if}
+							</td>
+							<td class="px-4 py-3 align-top text-muted-foreground">
+								{#if row.next_step_number}
+									<span class="font-medium text-foreground">
+										{row.next_step_number}. email_{row.next_step_number}
+									</span>
+								{:else}
+									none
+								{/if}
+								<div class="mt-1 text-xs">
+									Current: {row.current_step_number}
+								</div>
+							</td>
+							<td class="px-4 py-3 align-top text-muted-foreground">
+								{formatValue(row.next_send_at)}
+								{#if row.processing_started_at}
+									<div class="mt-1 text-xs">
+										Processing since {formatValue(row.processing_started_at)}
+									</div>
+								{/if}
+							</td>
+							<td class="px-4 py-3 align-top text-muted-foreground">
+								{row.failure_count ?? 0}
+								{#if row.last_error}
+									<div
+										class="mt-2 max-w-xs rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs text-destructive"
+									>
+										{row.last_error}
+									</div>
+								{/if}
+							</td>
+							<td class="px-4 py-3 align-top text-muted-foreground">
+								{row.branchPreview ?? 'none'}
+							</td>
+							<td class="px-4 py-3 align-top">
+								<form method="POST" action="?/sendNextNow">
+									<input type="hidden" name="enrollment_id" value={row.id} />
+									<button
+										type="submit"
+										disabled={!canSendNextNow(row)}
+										class="inline-flex h-9 items-center justify-center rounded-md border border-border bg-card px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+									>
+										Send next now
+									</button>
+								</form>
+							</td>
+						</tr>
+					{/each}
+
+					{#if queueRows.length === 0}
+						<tr>
+							<td
+								colspan="7"
+								class="px-4 py-10 text-center text-sm text-muted-foreground"
+							>
+								No welcome sequence enrollments found.
+							</td>
+						</tr>
+					{/if}
+				</tbody>
+			</table>
 		</div>
 	</AdminCard>
 

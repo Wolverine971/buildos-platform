@@ -650,9 +650,7 @@ function isProjectActivityBatchFlushMetadata(
 	return typeof snake === 'string' || typeof camel === 'string';
 }
 
-function isVoiceNoteTranscriptionMetadata(
-	obj: unknown
-): obj is VoiceNoteTranscriptionJobMetadata {
+function isVoiceNoteTranscriptionMetadata(obj: unknown): obj is VoiceNoteTranscriptionJobMetadata {
 	if (!obj || typeof obj !== 'object') return false;
 	const meta = obj as Record<string, unknown>;
 	return typeof meta.voiceNoteId === 'string' && typeof meta.userId === 'string';
@@ -686,9 +684,7 @@ function isTreeAgentMetadata(obj: unknown): obj is TreeAgentJobMetadata {
 	return typeof budgets.max_wall_clock_ms === 'number';
 }
 
-function isProjectContextSnapshotMetadata(
-	obj: unknown
-): obj is ProjectContextSnapshotJobMetadata {
+function isProjectContextSnapshotMetadata(obj: unknown): obj is ProjectContextSnapshotJobMetadata {
 	if (!obj || typeof obj !== 'object') return false;
 	const meta = obj as Record<string, unknown>;
 	return typeof meta.projectId === 'string';

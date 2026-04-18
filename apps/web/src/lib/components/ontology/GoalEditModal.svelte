@@ -478,7 +478,7 @@
 					title="Chat about this goal"
 				>
 					<img
-						src="/brain-bolt.png"
+						src="/brain-bolt.webp"
 						alt="Chat about this goal"
 						class="w-6 h-6 rounded object-cover"
 					/>

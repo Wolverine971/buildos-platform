@@ -2339,7 +2339,7 @@
 						title="Chat about this document"
 					>
 						<img
-							src="/brain-bolt.png"
+							src="/brain-bolt.webp"
 							alt="Chat"
 							class="w-6 h-6 rounded object-cover"
 						/>

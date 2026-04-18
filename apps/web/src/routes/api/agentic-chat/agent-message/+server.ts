@@ -1,6 +1,12 @@
 // apps/web/src/routes/api/agentic-chat/agent-message/+server.ts
 // Generates an actionable message from a selected agent to send into the BuildOS agent chat.
 
+// LLM call with prompt building — needs more headroom than the 10s default.
+export const config = {
+	maxDuration: 60,
+	memory: 1024
+};
+
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { SmartLLMService } from '$lib/services/smart-llm-service';

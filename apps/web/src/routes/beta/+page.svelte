@@ -238,7 +238,7 @@
 						class="w-20 h-20 rounded-lg flex items-center justify-center border border-border bg-card shadow-ink tx tx-bloom tx-weak"
 					>
 						<img
-							src="/brain-bolt.png"
+							src="/brain-bolt.webp"
 							alt="BuildOS application icon"
 							class="w-16 h-16"
 							width="64"

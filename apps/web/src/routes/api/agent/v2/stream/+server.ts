@@ -9,6 +9,12 @@
  * - Async persistence
  */
 
+// SSE streaming session — needs full duration + room for tool execution.
+export const config = {
+	maxDuration: 300,
+	memory: 1024
+};
+
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
 import { ApiResponse } from '$lib/utils/api-response';

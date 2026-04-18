@@ -1,4 +1,11 @@
 // apps/web/src/routes/api/onto/projects/[id]/members/me/role-profile/alternatives/+server.ts
+
+// AI generation of multiple alternatives — needs more time than the 10s default.
+export const config = {
+	maxDuration: 60,
+	memory: 1024
+};
+
 /**
  * Generate multiple role profile alternatives for the current member.
  * - POST: generate role profile alternatives from freeform role context

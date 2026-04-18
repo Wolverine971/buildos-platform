@@ -37,7 +37,6 @@
 		type AgentToAgentMessageHistory
 	} from '$lib/services/agentic-chat/agent-to-agent-service';
 	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
-	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 	import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
 	import { buildLiveContextUsageSnapshot } from './agent-chat-formatters';
 	import {
@@ -56,12 +55,6 @@
 	import { haptic } from '$lib/utils/haptic';
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
 	import { createProjectInvalidation } from '$lib/utils/invalidation';
-	import type { VoiceNote } from '$lib/types/voice-notes';
-	import {
-		buildFastChatContextCacheKey,
-		isFastChatContextCacheFresh,
-		type FastChatContextCache
-	} from '$lib/services/agentic-chat-v2/context-cache';
 	import {
 		buildProjectWideFocus,
 		deriveSessionTitle,
@@ -87,6 +80,8 @@
 		type PendingToolStatus,
 		type SSEHandlerDeps
 	} from './agent-chat-sse-handler';
+	import { createVoiceAdapter } from './agent-chat-voice.svelte';
+	import { createPrewarmController } from './agent-chat-prewarm.svelte';
 	import {
 		downloadChatSessionAuditMarkdown,
 		fetchChatSessionAuditPayload
@@ -158,9 +153,8 @@
 	let autoInitDismissed = $state(false);
 	let lastAutoInitProjectId = $state<string | null>(null);
 	let wasOpen = $state(false);
-	let lastPrewarmKey = $state<string | null>(null);
-	let prewarmedContext = $state<FastChatContextCache | null>(null);
-	const ENABLE_V2_PREWARM = true;
+	// Prewarm state lives in the PrewarmController instance created below,
+	// once all dependent state and helpers are declared.
 
 	const contextDescriptor = $derived(
 		selectedContextType ? CONTEXT_DESCRIPTORS[selectedContextType] : null
@@ -380,18 +374,14 @@
 	let agentProjectsError = $state<string | null>(null);
 	let agentProjectsLoading = $state(false);
 
-	let voiceInputRef = $state<TextareaWithVoiceComponent | null>(null);
-	let isVoiceRecording = $state(false);
-	let isVoiceInitializing = $state(false);
-	let isVoiceStopping = $state(false);
-	let isVoiceTranscribing = $state(false);
-	let voiceErrorMessage = $state('');
-	let voiceSupportsLiveTranscript = $state(false);
-	let voiceRecordingDuration = $state(0);
-	let voiceNoteGroupId = $state<string | null>(null);
-	let voiceNotesByGroupId = $state<Record<string, VoiceNote[]>>({});
-	// When user clicks send while recording, we stop recording and auto-send after transcription
-	let pendingSendAfterTranscription = $state(false);
+	// Voice recording adapter — see agent-chat-voice.svelte.ts
+	const voice = createVoiceAdapter({
+		toastError: (msg) => toastService.error(msg),
+		logWarn: (msg, err) => {
+			// eslint-disable-next-line no-console
+			console.error(msg, err);
+		}
+	});
 
 	// Session resumption state
 	let isLoadingSession = $state(false);
@@ -457,6 +447,30 @@
 		return true;
 	});
 
+	// Prewarm controller — owns the context-cache prewarm lifecycle.
+	// See agent-chat-prewarm.svelte.ts.
+	const prewarm = createPrewarmController({
+		getIsOpen: () => isOpen,
+		getIsBrowser: () => browser,
+		getSelectedContextType: () => selectedContextType,
+		getSelectedEntityId: () => selectedEntityId,
+		getResolvedProjectFocus: () => resolvedProjectFocus,
+		getIsPreparingSession: () => isPreparingSession,
+		getCurrentSession: () => currentSession,
+		getCanPrimeActiveChatSession: () => canPrimeActiveChatSession,
+		getInputValue: () => inputValue,
+		getIsVoiceBusy: () => voice.isBusy,
+		getIsVoicePending: () => voice.pendingSendAfterTranscription,
+		prewarmAgentContext: (payload, options) => prewarmAgentContext(payload, options),
+		hydrateSessionFromEvent: (session) => hydrateSessionFromEvent(session),
+		logWarn: (msg, err) => {
+			if (dev) {
+				// eslint-disable-next-line no-console
+				console.warn(msg, err);
+			}
+		}
+	});
+
 	function cancelSessionBootstrap() {
 		sessionBootstrapRequestId += 1;
 		if (sessionBootstrapController) {
@@ -520,10 +534,7 @@
 			}
 
 			hydrateSessionFromEvent(warmed.session);
-			if (warmed.prewarmedContext && isFastChatContextCacheFresh(warmed.prewarmedContext)) {
-				prewarmedContext = warmed.prewarmedContext;
-				lastPrewarmKey = warmed.prewarmedContext.key;
-			}
+			prewarm.adopt(warmed.prewarmedContext);
 
 			return warmed.session;
 		})().finally(() => {
@@ -544,7 +555,7 @@
 
 	function handleBackNavigation() {
 		if (isStreaming) return;
-		stopVoiceInput();
+		voice.stop();
 
 		// Handle back based on current view state
 		if (showContextSelection && contextSelectionView !== 'primary') {
@@ -593,75 +604,25 @@
 		contextSelectionView = view;
 	}
 
-	// Note: isVoiceRecording is NOT included - clicking send while recording will
+	// Note: voice.isRecording is NOT included - clicking send while recording will
 	// stop the recording and auto-send after transcription completes.
 	// Streaming only blocks send on non-touch devices (touch uses Send & Stop).
 	const isSendDisabled = $derived(
 		agentToAgentMode ||
 			!selectedContextType ||
 			isSessionBusy ||
-			(!inputValue.trim() && !isVoiceRecording) || // Allow send if recording (will get transcribed text)
+			(!inputValue.trim() && !voice.isRecording) || // Allow send if recording (will get transcribed text)
 			(isStreaming && !isTouchDevice) ||
-			isVoiceInitializing ||
-			isVoiceStopping ||
-			isVoiceTranscribing ||
-			pendingSendAfterTranscription // Prevent double-clicks while waiting for transcription
+			voice.isInitializing ||
+			voice.isStopping ||
+			voice.isTranscribing ||
+			voice.pendingSendAfterTranscription // Prevent double-clicks while waiting for transcription
 	);
-
-	async function stopVoiceInput() {
-		try {
-			await voiceInputRef?.stopRecording?.();
-		} catch (error) {
-			console.error('Failed to stop voice input', error);
-		}
-	}
-
-	async function cleanupVoiceInput() {
-		try {
-			await voiceInputRef?.cleanup?.();
-		} catch (error) {
-			console.error('Failed to cleanup voice input', error);
-		}
-	}
-
-	function upsertVoiceNoteInGroup(note: VoiceNote) {
-		if (!note.group_id) return;
-		const groupId = note.group_id;
-		const existing = voiceNotesByGroupId[groupId] ?? [];
-		const next = [...existing.filter((entry) => entry.id !== note.id), note].sort((a, b) => {
-			const aIndex = a.segment_index ?? 0;
-			const bIndex = b.segment_index ?? 0;
-			if (aIndex !== bIndex) return aIndex - bIndex;
-			return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-		});
-		voiceNotesByGroupId = { ...voiceNotesByGroupId, [groupId]: next };
-	}
-
-	function removeVoiceNoteFromGroup(groupId: string, noteId: string) {
-		const existing = voiceNotesByGroupId[groupId];
-		if (!existing) return;
-		const next = existing.filter((entry) => entry.id !== noteId);
-		if (next.length === 0) {
-			const { [groupId]: _removed, ...rest } = voiceNotesByGroupId;
-			voiceNotesByGroupId = rest;
-			return;
-		}
-		voiceNotesByGroupId = { ...voiceNotesByGroupId, [groupId]: next };
-	}
-
-	function handleVoiceNoteSegmentSaved(note: VoiceNote) {
-		upsertVoiceNoteInGroup(note);
-	}
-
-	function handleVoiceNoteSegmentError(message: string) {
-		if (!message) return;
-		toastService.error(message);
-	}
 
 	function resetConversation(options: { preserveContext?: boolean } = {}) {
 		const { preserveContext = true } = options;
 
-		stopVoiceInput();
+		voice.stop();
 		cancelSessionBootstrap();
 
 		messages = [];
@@ -683,11 +644,7 @@
 		_lastCompletedStreamTiming = null;
 		pendingToolResults.clear();
 		presenter.resetMutationTracking();
-		voiceErrorMessage = '';
-		isVoiceStopping = false;
-		voiceNoteGroupId = null;
-		voiceNotesByGroupId = {};
-		pendingSendAfterTranscription = false;
+		voice.reset();
 		showFocusSelector = false;
 		showProjectActionSelector = false;
 		agentLoopActive = false;
@@ -759,7 +716,7 @@
 
 	function changeContext() {
 		if (isStreaming) return;
-		stopVoiceInput();
+		voice.stop();
 		autoInitDismissed = true;
 		// Clear the conversation but keep user in context selection mode
 		// This allows them to navigate back through the selection screens
@@ -1048,8 +1005,7 @@
 				lastAutoInitProjectId = null;
 				lastLoadedSessionId = null; // Reset to allow reloading same session
 				showProjectActionSelector = false;
-				lastPrewarmKey = null;
-				prewarmedContext = null;
+				prewarm.reset();
 				cancelSessionBootstrap();
 				if (sessionLoadController) {
 					sessionLoadController.abort();
@@ -1117,86 +1073,10 @@
 		initializeFromAutoInit(autoInitProject);
 	});
 
-	$effect(() => {
-		if (!ENABLE_V2_PREWARM) return;
-		if (!browser || !isOpen || !selectedContextType) return;
-		if (isPreparingSession) return;
-		const prewarmEntityId = selectedEntityId ?? resolvedProjectFocus?.projectId;
-		if (isProjectContext(selectedContextType) && !prewarmEntityId) return;
-		const shouldPrewarmDraftContext =
-			canPrimeActiveChatSession &&
-			(inputValue.trim().length > 0 ||
-				isVoiceRecording ||
-				isVoiceInitializing ||
-				isVoiceStopping ||
-				isVoiceTranscribing ||
-				pendingSendAfterTranscription);
-		const key = buildFastChatContextCacheKey({
-			contextType: selectedContextType,
-			entityId: prewarmEntityId ?? null,
-			projectFocus: resolvedProjectFocus
-		});
-		const hasFreshMatchingPrewarm =
-			prewarmedContext &&
-			prewarmedContext.key === key &&
-			isFastChatContextCacheFresh(prewarmedContext);
-		if (!key) return;
-
-		// Keep draft-time prewarm cache-only. Creating a session while the user is typing
-		// briefly disabled the composer, which caused mobile blur/keyboard thrash on the
-		// first character. Session creation still happens on send.
-		if (!currentSession?.id && !shouldPrewarmDraftContext) {
-			return;
-		}
-
-		if (key === lastPrewarmKey && hasFreshMatchingPrewarm) return;
-		lastPrewarmKey = key;
-		const controller = new AbortController();
-
-		void (async () => {
-			try {
-				const warmed = await prewarmAgentContext(
-					{
-						session_id: currentSession?.id ?? undefined,
-						context_type: selectedContextType,
-						entity_id: prewarmEntityId,
-						projectFocus: resolvedProjectFocus,
-						ensure_session: currentSession?.id ? undefined : false
-					},
-					{ signal: controller.signal }
-				);
-
-				if (controller.signal.aborted) return;
-				if (warmed?.session) {
-					hydrateSessionFromEvent(warmed.session);
-				}
-				if (
-					warmed?.prewarmedContext &&
-					warmed.prewarmedContext.key === key &&
-					isFastChatContextCacheFresh(warmed.prewarmedContext)
-				) {
-					prewarmedContext = warmed.prewarmedContext;
-				}
-			} catch (err) {
-				if ((err as DOMException)?.name !== 'AbortError' && dev) {
-					console.warn('[AgentChat] Background prewarm failed:', err);
-				}
-			}
-		})();
-
-		return () => controller.abort();
-	});
+	$effect(() => prewarm.orchestrate());
 
 	$effect(() => {
-		if (!selectedContextType || !prewarmedContext) return;
-		const activeKey = buildFastChatContextCacheKey({
-			contextType: selectedContextType,
-			entityId: selectedEntityId ?? resolvedProjectFocus?.projectId ?? null,
-			projectFocus: resolvedProjectFocus
-		});
-		if (prewarmedContext.key !== activeKey || !isFastChatContextCacheFresh(prewarmedContext)) {
-			prewarmedContext = null;
-		}
+		prewarm.invalidateIfStale();
 	});
 
 	// Handle initialProjectFocus prop - when opening chat focused on a specific ontology entity
@@ -1289,7 +1169,7 @@
 			selectedContextLabel = snapshot.selectedContextLabel;
 			projectFocus = snapshot.projectFocus;
 			messages = snapshot.messages;
-			voiceNotesByGroupId = snapshot.voiceNotesByGroupId;
+			voice.hydrateNotesByGroupId(snapshot.voiceNotesByGroupId);
 		} catch (err: any) {
 			if (controller.signal.aborted || requestId !== sessionLoadRequestId) {
 				return;
@@ -1724,7 +1604,7 @@
 
 	function handleClose() {
 		finalizeSession('close');
-		stopVoiceInput();
+		voice.stop();
 		cancelSessionBootstrap();
 		if (currentStreamController && isStreaming) {
 			void handleStopGeneration('user_cancelled');
@@ -1734,7 +1614,7 @@
 			activeTransportStreamRunId = null;
 			activeClientTurnId = null;
 		}
-		cleanupVoiceInput();
+		voice.cleanup();
 
 		// Clear any pending tool results to prevent memory leaks
 		pendingToolResults.clear();
@@ -1796,7 +1676,7 @@
 			event.preventDefault();
 			// If streaming, sendMessage will stop current run first
 			// Use handleSendMessage to properly handle "send while recording" flow
-			if (!isSendDisabled || isStreaming || isVoiceRecording) {
+			if (!isSendDisabled || isStreaming || voice.isRecording) {
 				handleSendMessage();
 			}
 		}
@@ -1808,9 +1688,9 @@
 		haptic('medium');
 
 		// If currently recording, stop and queue auto-send after transcription
-		if (isVoiceRecording) {
-			pendingSendAfterTranscription = true;
-			await stopVoiceInput();
+		if (voice.isRecording) {
+			voice.pendingSendAfterTranscription = true;
+			await voice.stop();
 			return; // The $effect below will auto-send when transcription completes
 		}
 		sendMessage();
@@ -1818,18 +1698,18 @@
 
 	// Auto-send after transcription completes (when user clicked send while recording)
 	$effect(() => {
-		if (!pendingSendAfterTranscription) return;
-		if (isVoiceRecording || isVoiceStopping || isVoiceTranscribing || isVoiceInitializing) {
+		if (!voice.pendingSendAfterTranscription) return;
+		if (voice.isRecording || voice.isStopping || voice.isTranscribing || voice.isInitializing) {
 			return;
 		}
 
 		if (inputValue.trim()) {
-			pendingSendAfterTranscription = false;
+			voice.pendingSendAfterTranscription = false;
 			sendMessage();
 			return;
 		}
 
-		pendingSendAfterTranscription = false;
+		voice.pendingSendAfterTranscription = false;
 	});
 
 	async function sendMessage(
@@ -1838,8 +1718,8 @@
 	) {
 		const { senderType = 'user', suppressInputClear = false } = options;
 		const trimmed = (contentOverride ?? inputValue).trim();
-		const activeVoiceNoteGroupId = voiceNoteGroupId;
-		if (!trimmed || isVoiceInitializing || isVoiceStopping || isVoiceTranscribing) return;
+		const activeVoiceNoteGroupId = voice.noteGroupId;
+		if (!trimmed || voice.isInitializing || voice.isStopping || voice.isTranscribing) return;
 		if (!selectedContextType) {
 			error = 'Select a focus before starting the conversation.';
 			return;
@@ -1910,7 +1790,7 @@
 			inputValue = '';
 		}
 		if (activeVoiceNoteGroupId) {
-			voiceNoteGroupId = null;
+			voice.noteGroupId = null;
 		}
 		error = null;
 
@@ -1956,20 +1836,9 @@
 			if (requestProjectFocus && requestProjectFocus.focusType !== 'project-wide') {
 				ontologyEntityType = requestProjectFocus.focusType;
 			}
-			const prewarmCacheKey =
-				requestContextType &&
-				buildFastChatContextCacheKey({
-					contextType: requestContextType,
-					entityId: requestEntityId ?? requestProjectFocus?.projectId ?? null,
-					projectFocus: requestProjectFocus
-				});
-			const matchingPrewarmedContext =
-				prewarmCacheKey &&
-				prewarmedContext &&
-				prewarmedContext.key === prewarmCacheKey &&
-				isFastChatContextCacheFresh(prewarmedContext)
-					? prewarmedContext
-					: null;
+			const matchingPrewarmedContext = prewarm.matchingFreshContext(
+				prewarm.resolveCurrentKey()
+			);
 
 			const response = await fetch('/api/agent/v2/stream', {
 				method: 'POST',
@@ -2565,7 +2434,7 @@
 		}
 		cancelSessionBootstrap();
 		finalizeSession('destroy');
-		stopVoiceInput();
+		voice.stop();
 		if (currentStreamController && isStreaming) {
 			void handleStopGeneration('user_cancelled');
 		} else if (currentStreamController) {
@@ -2574,7 +2443,7 @@
 			activeTransportStreamRunId = null;
 			activeClientTurnId = null;
 		}
-		cleanupVoiceInput();
+		voice.cleanup();
 	});
 </script>
 
@@ -2630,8 +2499,8 @@
 			onToggleThinkingBlock={toggleThinkingBlockCollapse}
 			bind:container={messagesContainer}
 			onScroll={handleScroll}
-			{voiceNotesByGroupId}
-			onDeleteVoiceNote={removeVoiceNoteFromGroup}
+			voiceNotesByGroupId={voice.notesByGroupId}
+			onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
 		/>
 	{/if}
 
@@ -2652,24 +2521,24 @@
 		class="flex-shrink-0 overflow-visible bg-background/60 px-4 pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3"
 	>
 		<AgentComposer
-			bind:voiceInputRef
+			bind:voiceInputRef={voice.ref}
 			bind:inputValue
-			bind:isVoiceRecording
-			bind:isVoiceInitializing
-			bind:isVoiceStopping
-			bind:isVoiceTranscribing
-			bind:voiceErrorMessage
-			bind:voiceRecordingDuration
-			bind:voiceSupportsLiveTranscript
-			bind:voiceNoteGroupId
+			bind:isVoiceRecording={voice.isRecording}
+			bind:isVoiceInitializing={voice.isInitializing}
+			bind:isVoiceStopping={voice.isStopping}
+			bind:isVoiceTranscribing={voice.isTranscribing}
+			bind:voiceErrorMessage={voice.errorMessage}
+			bind:voiceRecordingDuration={voice.recordingDuration}
+			bind:voiceSupportsLiveTranscript={voice.supportsLiveTranscript}
+			bind:voiceNoteGroupId={voice.noteGroupId}
 			{isStreaming}
 			{isSendDisabled}
 			allowSendWhileStreaming={isTouchDevice}
 			{displayContextLabel}
 			disabled={isSessionBusy}
 			vocabularyTerms={chatComposerVocabularyTerms}
-			onVoiceNoteSegmentSaved={handleVoiceNoteSegmentSaved}
-			onVoiceNoteSegmentError={handleVoiceNoteSegmentError}
+			onVoiceNoteSegmentSaved={voice.handleSegmentSaved.bind(voice)}
+			onVoiceNoteSegmentError={voice.handleSegmentError.bind(voice)}
 			onKeyDownHandler={handleKeyDown}
 			onSend={handleSendMessage}
 			onStop={() => void handleStopGeneration('user_cancelled')}

@@ -2,7 +2,7 @@
 
 # Multi-Surface Content Idea Workflow — Design Note
 
-**Status:** Exploration / partially scoped
+**Status:** PoC shipped — document write surface live; remaining entity writes deferred
 **Date:** 2026-04-17 (updated 2026-04-18)
 **Author:** DJ (with Claude)
 **Context:** User wants to move flexibly between BuildOS, Claude Code / OpenClaw (third-party agent surfaces), and Libri (the user's own library / data lake for books, authors, and YouTube videos — a separate service, not inside BuildOS). The near-term bottleneck is that BuildOS's external agent-call gateway exposes a narrow slice of the data model, so third-party agents can't yet do routine authoring work against BuildOS. The content-idea workflow is one downstream use case; the immediate need is a wider, trusted tool surface.
@@ -50,6 +50,41 @@ Before building content-idea-specific ops, expand what third-party agents can do
 ### Scope boundary
 
 Do not invent new primitives in this PoC. Everything listed above already exists as an `onto_*` table and as an internal agentic-chat tool. The work is exposure + scope enforcement, not schema design.
+
+### Implementation progress (2026-04-18)
+
+**Shipped:**
+
+- **Shared types** (`packages/shared-types/src/agent-call.types.ts`) — `BUILDOS_AGENT_WRITE_OPS` expanded from 2 ops to 14. Added `OPENCLAW_DEFAULT_WRITE_OPS` (the "Author docs + tasks" bundle) and `LEGACY_OPENCLAW_DEFAULT_WRITE_OPS` (for the auto-upgrade detection).
+- **Document gateway handlers** — `onto.document.create` and `onto.document.update` live in `apps/web/src/lib/server/agent-call/external-tool-gateway.ts`. Markdown stored as-is, 200 KB cap enforced, wholesale replace on update, project root is the default tree placement, version snapshots via `createOrMergeDocumentVersion`, activity log entries, mention notifications, and `props.origin = 'external_agent'` facet for auditability.
+- **Auto-upgrade migration** — `upgradeLegacyOpenClawAllowedOps` in `agent-call-policy.ts` detects OpenClaw callers still carrying the old narrow scope and returns the expanded bundle. `caller-auth.ts` persists the upgrade to `external_agent_callers.policy` on next auth and emits an `agent.caller.policy.upgraded` security event.
+- **Agent Keys UI** (`apps/web/src/lib/components/profile/AgentKeysTab.svelte`) — bundles lead the permissions picker (Read only / Author docs + tasks [default] / Full read/write / Custom); full per-op matrix behind an Advanced disclosure; new-key default is the Author docs + tasks bundle.
+- **User-facing docs** (`apps/web/src/content/docs/connect-agents.md`) — permission-bundle table, expanded op list with "coming soon" markers for the other entities, and a worked `onto.document.create` example.
+
+**Deferred (registered, stubbed, not wired):**
+
+- `onto.project.create` / `update`
+- `onto.goal.create` / `update`
+- `onto.plan.create` / `update`
+- `onto.milestone.create` / `update`
+- `onto.risk.create` / `update`
+
+These ops exist in `BUILDOS_AGENT_WRITE_OPS` and show up in the Agent Keys Advanced disclosure, but the handlers throw `INTERNAL` ("not yet implemented") until wired. The docs page labels them as "coming soon." Implement by following the document-handler pattern in `external-tool-gateway.ts` when ready.
+
+**Also deferred:**
+
+- Integration tests covering happy path, scope denial, validation (title required, content > 200 KB), idempotent replay, and the OpenClaw auto-upgrade path.
+- Content-idea workflow ops (`onto.content_idea.*`) — these stay wrappers to be built once the primitives above exist.
+- Brief rendering for `origin = external_agent` documents as a dedicated "New from external agents" section.
+
+### Decisions locked before implementation
+
+- **Update semantics for `onto.document.update`** — wholesale replace. If `content` is provided in the update payload, it replaces the full document body. Individual metadata fields (`title`, `description`, `type_key`, `state_key`) update independently when present. No append/diff mode in v1.
+- **Default tree placement** — when `parent_document_id` is omitted on create, the document lands at the project root, matching the internal `create_onto_document` default. No "agent inbox" lane.
+- **Idempotency key convention** — recommend `{callerId}:{project_id}:{title-slug}:{YYYY-MM-DD}` in the op description so same-day re-uploads of the same titled doc don't duplicate. Agents may override; the gateway's `idempotency_key` contract stays opaque.
+- **Markdown size cap** — 200 KB (204,800 bytes) per `content` field. Above that, return `VALIDATION_ERROR`. Accommodates long research docs; well below anything that stresses the brief renderer.
+- **Existing OpenClaw caller migration** — auto-upgrade. On caller load, if the caller's provider is `openclaw` and the stored `allowed_ops` matches the old narrow default, expand it in place to the new "Author docs + tasks" bundle. Log once per caller.
+- **Acceptance criteria** — (1) integration tests per new op covering happy path, scope denial, validation error, and idempotent replay; (2) one smoke test that end-to-end uploads a markdown doc from a mocked OpenClaw caller and verifies it surfaces in the document list.
 
 ---
 
@@ -125,9 +160,9 @@ No in-worker yt-dlp shim. That was Variant B2 in a previous draft; it duplicates
 
 ### 1. Gateway ops — expanded surface (PoC, build first)
 
-Extend `EXTERNAL_OP_HANDLERS` in `apps/web/src/lib/server/agent-call/external-tool-gateway.ts` and the op lists in `packages/shared-types/src/agent-call.types.ts`:
+Extend `EXTERNAL_OP_HANDLERS` in `apps/web/src/lib/server/agent-call/external-tool-gateway.ts` and the op lists in `packages/shared-types/src/agent-call.types.ts`. Op shapes mirror the internal agentic-chat tool shapes (e.g. `create_onto_document`) — same required args, same semantics — so agents work identically on either surface.
 
-- **Documents (PoC headline):** `onto.document.create`, `onto.document.update`, `onto.document.move` — accept raw markdown and parse structure into the document tree.
+- **Documents (PoC headline):** `onto.document.create`, `onto.document.update`, `onto.document.move`. Store markdown as-is; no structural parsing. Always takes a `project_id`.
 - **Projects:** `onto.project.create`, `onto.project.update`.
 - **Goals / plans / milestones / risks:** `onto.goal.create`/`update`, `onto.plan.create`/`update`, `onto.milestone.create`/`update`, `onto.risk.create`/`update`.
 - **Links (optional but cheap):** `onto.link.create`, `onto.link.delete` to attach documents to tasks/goals/plans.
@@ -169,8 +204,8 @@ In `apps/worker/src/workers/brief/ontologyBriefGenerator.ts`, add a **"Content p
 
 Update `apps/web/src/lib/components/profile/AgentKeysTab.svelte`:
 
-- Replace the two-item `WRITE_PERMISSION_OPTIONS` array with a grouped structure: Documents, Projects, Tasks, Planning (goals/plans/milestones/risks). Per-group create/update toggles.
-- Add preset bundles: "Read only", "Read + author docs and tasks (OpenClaw default)", "Full read/write".
+- Lead with preset bundles: **"Read only"**, **"Author docs + tasks" (OpenClaw default)**, **"Full read/write"**. Selecting a bundle sets `scope_mode` + `allowed_ops` in one click.
+- Put the full per-op matrix (create/update × documents, projects, tasks, goals, plans, milestones, risks) behind an "Advanced" disclosure for users who want finer control.
 - Keep per-project scope selection unchanged — that layer already works.
 
 ### 7. (Optional) Project-page UI surface
@@ -181,11 +216,11 @@ For a v1, reuse the existing project view with a content-idea-aware header. A de
 
 ## Where each surface fits
 
-| Surface              | Role                                                                                                                       |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Claude Code**      | Workflow initiator + heavy thinking/drafting companion. Can both start ideas and manipulate existing ones via the gateway. |
-| **BuildOS (web)**    | Source of truth. Review, edit, approve drafts. Daily brief surfaces the pipeline.                                          |
-| **BuildOS (worker)** | Orchestrator. Runs enrichment + draft jobs. Calls out to LLMs, Libri, etc.                                                 |
+| Surface              | Role                                                                                                                                                                                                                                                                                                                   |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Claude Code**      | Workflow initiator + heavy thinking/drafting companion. Can both start ideas and manipulate existing ones via the gateway.                                                                                                                                                                                             |
+| **BuildOS (web)**    | Source of truth. Review, edit, approve drafts. Daily brief surfaces the pipeline.                                                                                                                                                                                                                                      |
+| **BuildOS (worker)** | Orchestrator. Runs enrichment + draft jobs. Calls out to LLMs, Libri, etc.                                                                                                                                                                                                                                             |
 | **Libri**            | Separate library / data lake service the user runs. Already wired as a read tool on internal chat and as a post-chat ingestion target for mentioned people/books/videos. For content ideas, BuildOS's enrichment worker calls Libri for transcripts. Not on the critical path for generic agent-call document uploads. |
 
 The key insight: **only BuildOS owns state; the other surfaces are authoring and reviewing clients.** That asymmetry is what makes the whole thing coherent.
@@ -196,10 +231,12 @@ The key insight: **only BuildOS owns state; the other surfaces are authoring and
 
 ### Tool-surface expansion
 
-1. **Per-op permission granularity, or entity-group bundles?** `WRITE_PERMISSION_OPTIONS` can expose twelve toggles (create/update × four entity groups) or a smaller set of bundles. Leaning toward bundles with an "advanced" disclosure for granular control. OpenClaw's default bundle needs to be decided up front.
-2. **Default scope mode for OpenClaw installations.** Should provisioning an OpenClaw caller default to `read_write` with the "author docs + tasks" bundle, or stay `read_only` and force explicit opt-in? The latter is safer; the former removes friction for the PoC user (DJ).
-3. **Markdown structure contract.** When Claude Code uploads a markdown doc, what structural conventions apply? Likely: H1 becomes the document title, H2 sections become child documents in the tree, fenced code and lists stay inline. Needs a decision so the write handler is deterministic.
-4. **Do we need a `dry_run` preview specifically for document creates?** Useful to show the resulting tree before committing when a big markdown doc would create many children.
+**Decided (2026-04-18):**
+
+- Lead with bundles in the Agent Keys UI; expose granular per-op toggles behind an "Advanced" disclosure.
+- OpenClaw provisioning default: `read_write` with the **"Author docs + tasks"** bundle (create/update on documents and tasks).
+- Markdown uploads store the body as-is. No H1/H2 parsing, no "sections" payload, no server-side structural rewriting. Uploads target a specific project via `project_id`, mirroring the internal `create_onto_document` tool shape.
+- No `dry_run` preview for document creates — not needed.
 
 ### Content-idea workflow (downstream)
 

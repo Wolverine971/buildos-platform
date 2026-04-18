@@ -114,7 +114,7 @@
 	<!-- Brain-bolt icon -->
 	<div class="relative shrink-0">
 		<img
-			src="/brain-bolt.png"
+			src="/brain-bolt.webp"
 			alt="BuildOS Assistant"
 			class="h-7 w-7 rounded-lg object-cover shadow-ink"
 		/>

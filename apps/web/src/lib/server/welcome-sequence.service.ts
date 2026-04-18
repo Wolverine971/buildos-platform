@@ -232,7 +232,14 @@ function getTimeZoneOffsetMs(timezone: string, date: Date): number {
 
 function localDateTimeToUtc(
 	timezone: string,
-	parts: { year: number; month: number; day: number; hour: number; minute?: number; second?: number }
+	parts: {
+		year: number;
+		month: number;
+		day: number;
+		hour: number;
+		minute?: number;
+		second?: number;
+	}
 ): Date {
 	const localAsUtc = Date.UTC(
 		parts.year,
@@ -266,10 +273,7 @@ function isLocalWeekend(timezone: string | null | undefined, date: Date): boolea
 	return parts.weekday === 'Sat' || parts.weekday === 'Sun';
 }
 
-function nextWelcomeSendWindowStart(
-	timezone: string | null | undefined,
-	fromDate: Date
-): Date {
+function nextWelcomeSendWindowStart(timezone: string | null | undefined, fromDate: Date): Date {
 	const resolvedTimezone = safeWelcomeTimezone(timezone);
 	const localParts = getLocalDateParts(resolvedTimezone, fromDate);
 	let targetDate = {
@@ -303,10 +307,7 @@ function nextWelcomeSendWindowStart(
 	return new Date(fromDate.getTime() + 24 * 60 * 60 * 1000);
 }
 
-function isWithinQueueSendWindow(
-	timezone: string | null | undefined,
-	date: Date
-): boolean {
+function isWithinQueueSendWindow(timezone: string | null | undefined, date: Date): boolean {
 	const resolvedTimezone = safeWelcomeTimezone(timezone);
 	const parts = getLocalDateParts(resolvedTimezone, date);
 	return (
@@ -406,9 +407,12 @@ export class WelcomeSequenceService {
 				limit
 			);
 		} catch (error) {
-			console.error('Failed to claim welcome sequence queue rows; falling back to legacy path:', {
-				error
-			});
+			console.error(
+				'Failed to claim welcome sequence queue rows; falling back to legacy path:',
+				{
+					error
+				}
+			);
 			return await this.processLegacyDueSequences(options);
 		}
 
@@ -570,7 +574,9 @@ export class WelcomeSequenceService {
 	private async processQueueEnrollment(
 		enrollment: EmailSequenceEnrollment,
 		options: { now: Date; immediate?: boolean }
-	): Promise<Omit<WelcomeSequenceRunResult, 'evaluated' | 'claimed' | 'errors' | 'retried' | 'errored'>> {
+	): Promise<
+		Omit<WelcomeSequenceRunResult, 'evaluated' | 'claimed' | 'errors' | 'retried' | 'errored'>
+	> {
 		const now = options.now;
 		const nowIso = now.toISOString();
 		const emptyOutcome = {
@@ -617,7 +623,11 @@ export class WelcomeSequenceService {
 			return { ...emptyOutcome, cancelled: 1, suppressed: 1 };
 		}
 
-		if (!options.immediate && step !== 'email_1' && !isWithinQueueSendWindow(state.timezone, now)) {
+		if (
+			!options.immediate &&
+			step !== 'email_1' &&
+			!isWithinQueueSendWindow(state.timezone, now)
+		) {
 			const nextSendAt = nextWelcomeSendWindowStart(state.timezone, now);
 			await this.emailSequenceRpcs.deferEmailSequenceStep({
 				enrollmentId: enrollment.id,
@@ -634,7 +644,13 @@ export class WelcomeSequenceService {
 		const action = determineNextWelcomeAction(progress, state, now);
 
 		if (action.action === 'wait') {
-			const nextSendAt = this.resolveQueueDeferTime(step, progress, state, action.reason, now);
+			const nextSendAt = this.resolveQueueDeferTime(
+				step,
+				progress,
+				state,
+				action.reason,
+				now
+			);
 			await this.emailSequenceRpcs.deferEmailSequenceStep({
 				enrollmentId: enrollment.id,
 				nextSendAt: nextSendAt.toISOString(),
@@ -672,7 +688,12 @@ export class WelcomeSequenceService {
 				enrollmentId: enrollment.id,
 				branchKey: action.branchKey ?? null,
 				reason: action.reason,
-				metadata: this.buildQueueEventMetadata(enrollment, action.step, state, action.branchKey)
+				metadata: this.buildQueueEventMetadata(
+					enrollment,
+					action.step,
+					state,
+					action.branchKey
+				)
 			});
 			await this.markLegacyStepShadow({
 				enrollment,
@@ -777,7 +798,11 @@ export class WelcomeSequenceService {
 			sequence_step: step,
 			step_number: stepNumberForWelcomeStep(step),
 			branch_key: branchKey ?? null,
-			trigger_source: metadataString(enrollment.metadata, 'trigger_source', 'account_created'),
+			trigger_source: metadataString(
+				enrollment.metadata,
+				'trigger_source',
+				'account_created'
+			),
 			signup_method: metadataString(enrollment.metadata, 'signup_method', 'unknown'),
 			onboarding_intent: state.onboardingIntent,
 			onboarding_completed: state.onboardingCompleted,
@@ -897,7 +922,9 @@ export class WelcomeSequenceService {
 			if (fallback) {
 				return fallback;
 			}
-			throw new Error(`Failed to create legacy welcome sequence shadow row: ${error.message}`);
+			throw new Error(
+				`Failed to create legacy welcome sequence shadow row: ${error.message}`
+			);
 		}
 
 		return data as WelcomeSequenceRow;

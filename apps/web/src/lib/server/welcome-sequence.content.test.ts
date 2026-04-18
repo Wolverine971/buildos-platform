@@ -101,12 +101,22 @@ describe('welcome sequence content', () => {
 	it('snapshots rendered subject and plain text for every welcome branch', () => {
 		const variants = [
 			contentVariant('email_1/welcome', 'email_1'),
-			contentVariant('email_2/no_project', 'email_2', {}, {
-				sentAt: { email_1: STARTED_AT }
-			}),
-			contentVariant('email_3/no_project', 'email_3', {}, {
-				sentAt: { email_1: STARTED_AT, email_2: STARTED_AT }
-			}),
+			contentVariant(
+				'email_2/no_project',
+				'email_2',
+				{},
+				{
+					sentAt: { email_1: STARTED_AT }
+				}
+			),
+			contentVariant(
+				'email_3/no_project',
+				'email_3',
+				{},
+				{
+					sentAt: { email_1: STARTED_AT, email_2: STARTED_AT }
+				}
+			),
 			contentVariant(
 				'email_3/finish_setup',
 				'email_3',

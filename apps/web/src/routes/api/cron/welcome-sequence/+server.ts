@@ -1,4 +1,11 @@
 // apps/web/src/routes/api/cron/welcome-sequence/+server.ts
+
+// Cron job — iterates eligible users and sends emails. Allow longer duration
+// for batches; default memory is fine.
+export const config = {
+	maxDuration: 60
+};
+
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { PRIVATE_CRON_SECRET } from '$env/static/private';

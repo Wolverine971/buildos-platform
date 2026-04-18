@@ -473,25 +473,25 @@
 							<!-- brain-bolt icon - responsive sizing with dithering, light/dark mode switching -->
 							<!-- Light mode: light version by default, color on hover -->
 							<img
-								src="/brain-bolt.png"
+								src="/brain-bolt.webp"
 								alt={chatLabel}
 								class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 group-hover:opacity-0 dark:hidden"
 							/>
 							<!-- Light mode hover: colored version -->
 							<img
-								src="/brain-bolt.png"
+								src="/brain-bolt.webp"
 								alt={chatLabel}
 								class="absolute inset-0 w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:hidden"
 							/>
 							<!-- Dark mode: dark version by default, color on hover -->
 							<img
-								src="/brain-bolt.png"
+								src="/brain-bolt.webp"
 								alt={chatLabel}
 								class="hidden w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 group-hover:opacity-0 dark:block"
 							/>
 							<!-- Dark mode hover: colored version -->
 							<img
-								src="/brain-bolt.png"
+								src="/brain-bolt.webp"
 								alt={chatLabel}
 								class="hidden absolute inset-0 w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 opacity-0 group-hover:opacity-100 dark:block"
 							/>

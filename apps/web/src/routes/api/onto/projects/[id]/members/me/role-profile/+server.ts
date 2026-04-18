@@ -1,4 +1,11 @@
 // apps/web/src/routes/api/onto/projects/[id]/members/me/role-profile/+server.ts
+
+// AI-assisted role profile generation — needs more time than the 10s default.
+export const config = {
+	maxDuration: 60,
+	memory: 1024
+};
+
 /**
  * Manage the current member's project role profile.
  * - PATCH: manually update role_name / role_description

@@ -629,7 +629,7 @@
 					>
 						<div class="flex justify-center">
 							<img
-								src="/brain-bolt.png"
+								src="/brain-bolt.webp"
 								alt="BuildOS"
 								class="w-10 h-10 rounded-md object-cover opacity-80"
 							/>

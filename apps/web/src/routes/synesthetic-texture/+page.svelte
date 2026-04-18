@@ -37,7 +37,7 @@
 		<div class="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-4">
 			<div class="flex items-center gap-3">
 				<img
-					src="/brain-bolt.png"
+					src="/brain-bolt.webp"
 					alt="BuildOS"
 					class="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-md object-cover transition-opacity duration-200 group-hover:opacity-0"
 				/>

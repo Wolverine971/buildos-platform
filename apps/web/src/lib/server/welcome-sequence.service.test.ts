@@ -639,9 +639,7 @@ function advanceEnrollment(state: MockState, enrollment: Record<string, any>) {
 		exit_reason: hasNext ? null : 'completed',
 		updated_at: new Date().toISOString()
 	};
-	state.emailSequenceEnrollments![
-		enrollmentKey(updated.sequence_id, updated.user_id)
-	] = updated;
+	state.emailSequenceEnrollments![enrollmentKey(updated.sequence_id, updated.user_id)] = updated;
 	return updated;
 }
 
@@ -685,31 +683,29 @@ function createMockSupabase(state: MockState) {
 				const key = enrollmentKey(sequence.id, userId);
 				const now = new Date().toISOString();
 				const existing = state.emailSequenceEnrollments[key];
-				const enrollment =
-					existing ??
-					{
-						id: `enrollment-${userId}`,
-						sequence_id: sequence.id,
-						user_id: userId,
-						recipient_email: args?.p_recipient_email,
-						status: 'active',
-						current_step_number: 0,
-						next_step_number: 1,
-						next_send_at: now,
-						last_sent_at: null,
-						last_email_id: null,
-						processing_started_at: null,
-						failure_count: 0,
-						exit_reason: null,
-						last_error: null,
-						metadata: {
-							signup_method: args?.p_signup_method,
-							trigger_source: args?.p_trigger_source,
-							...(args?.p_metadata ?? {})
-						},
-						created_at: now,
-						updated_at: now
-					};
+				const enrollment = existing ?? {
+					id: `enrollment-${userId}`,
+					sequence_id: sequence.id,
+					user_id: userId,
+					recipient_email: args?.p_recipient_email,
+					status: 'active',
+					current_step_number: 0,
+					next_step_number: 1,
+					next_send_at: now,
+					last_sent_at: null,
+					last_email_id: null,
+					processing_started_at: null,
+					failure_count: 0,
+					exit_reason: null,
+					last_error: null,
+					metadata: {
+						signup_method: args?.p_signup_method,
+						trigger_source: args?.p_trigger_source,
+						...(args?.p_metadata ?? {})
+					},
+					created_at: now,
+					updated_at: now
+				};
 				state.emailSequenceEnrollments[key] = {
 					...enrollment,
 					recipient_email: args?.p_recipient_email,
@@ -814,7 +810,9 @@ function createMockSupabase(state: MockState) {
 
 			if (fn === 'exit_user_from_email_sequence' || fn === 'exit_email_from_email_sequence') {
 				let count = 0;
-				for (const enrollment of Object.values(state.emailSequenceEnrollments ?? {}) as any[]) {
+				for (const enrollment of Object.values(
+					state.emailSequenceEnrollments ?? {}
+				) as any[]) {
 					const matches =
 						fn === 'exit_user_from_email_sequence'
 							? enrollment.user_id === args?.p_user_id

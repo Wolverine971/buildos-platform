@@ -44,12 +44,12 @@ The difference is a snapshot versus an account. With the gateway, your external 
 
 The Agent Keys UI leads with preset bundles. Pick one and you're done — the per-op matrix sits behind an **Advanced permissions** disclosure if you need finer control.
 
-| Bundle                                  | What it grants                                                                |
-| --------------------------------------- | ----------------------------------------------------------------------------- |
-| **Read only**                           | Every read op. No writes.                                                     |
-| **Author docs + tasks** (OpenClaw default) | Reads plus `onto.document.create/update` and `onto.task.create/update`.       |
-| **Full read/write**                     | Reads plus every write op the gateway currently exposes.                      |
-| **Custom**                              | Any per-op combination you pick in Advanced.                                  |
+| Bundle                                     | What it grants                                                          |
+| ------------------------------------------ | ----------------------------------------------------------------------- |
+| **Read only**                              | Every read op. No writes.                                               |
+| **Author docs + tasks** (OpenClaw default) | Reads plus `onto.document.create/update` and `onto.task.create/update`. |
+| **Full read/write**                        | Reads plus every write op the gateway currently exposes.                |
+| **Custom**                                 | Any per-op combination you pick in Advanced.                            |
 
 Existing OpenClaw keys that still carry the old narrow default (task writes only) auto-upgrade to **Author docs + tasks** on the next call — no action needed.
 
@@ -66,11 +66,11 @@ Existing OpenClaw keys that still carry the old narrow default (task writes only
 
 - `onto.task.create`, `onto.task.update`
 - `onto.document.create`, `onto.document.update`
-- `onto.project.create`, `onto.project.update` *(coming soon — registered but not yet wired)*
-- `onto.goal.create`, `onto.goal.update` *(coming soon)*
-- `onto.plan.create`, `onto.plan.update` *(coming soon)*
-- `onto.milestone.create`, `onto.milestone.update` *(coming soon)*
-- `onto.risk.create`, `onto.risk.update` *(coming soon)*
+- `onto.project.create`, `onto.project.update` _(coming soon — registered but not yet wired)_
+- `onto.goal.create`, `onto.goal.update` _(coming soon)_
+- `onto.plan.create`, `onto.plan.update` _(coming soon)_
+- `onto.milestone.create`, `onto.milestone.update` _(coming soon)_
+- `onto.risk.create`, `onto.risk.update` _(coming soon)_
 
 **Discovery**
 
@@ -86,19 +86,19 @@ The headline v1 write op is `onto.document.create`. An external agent (Claude Co
 
 ```json
 {
-    "method": "tools/call",
-    "params": {
-        "call_id": "<your call id>",
-        "name": "onto.document.create",
-        "arguments": {
-            "project_id": "<project uuid>",
-            "title": "Research: creator distribution loops",
-            "content": "# Research\n\nFull markdown body here...",
-            "description": "Initial pass on distribution tactics",
-            "state_key": "draft",
-            "idempotency_key": "openclaw:<project>:research-creator-distribution-loops:2026-04-18"
-        }
-    }
+	"method": "tools/call",
+	"params": {
+		"call_id": "<your call id>",
+		"name": "onto.document.create",
+		"arguments": {
+			"project_id": "<project uuid>",
+			"title": "Research: creator distribution loops",
+			"content": "# Research\n\nFull markdown body here...",
+			"description": "Initial pass on distribution tactics",
+			"state_key": "draft",
+			"idempotency_key": "openclaw:<project>:research-creator-distribution-loops:2026-04-18"
+		}
+	}
 }
 ```
 

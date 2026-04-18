@@ -36,9 +36,6 @@ thoughts/
 .claude/
 .vscode/
 
-# Auto-generated files
-postgrest.api.d.ts
-
 # Deprecated/archived code
 delete/
 
