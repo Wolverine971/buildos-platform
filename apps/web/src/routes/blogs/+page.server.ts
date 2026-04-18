@@ -2,9 +2,8 @@
 import type { PageServerLoad } from './$types';
 import { loadBlogPosts, BLOG_CATEGORIES } from '$lib/utils/blog';
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async () => {
 	const allPosts = await loadBlogPosts();
-	const initialQuery = url.searchParams.get('q')?.trim() ?? '';
 
 	// Count posts per category (for filter pill counts)
 	const categoryCounts: Record<string, number> = {};
@@ -16,7 +15,6 @@ export const load: PageServerLoad = async ({ url }) => {
 		allPosts,
 		categories: BLOG_CATEGORIES,
 		categoryCounts,
-		totalPosts: allPosts.length,
-		initialQuery
+		totalPosts: allPosts.length
 	};
 };

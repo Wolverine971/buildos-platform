@@ -1,8 +1,8 @@
 // apps/web/src/lib/server/welcome-sequence.logic.test.ts
 import { describe, expect, it } from 'vitest';
 
+import { buildWelcomeEmailContent } from './welcome-sequence.content';
 import {
-	buildWelcomeEmailContent,
 	determineNextWelcomeAction,
 	hasReturnedForSecondSession,
 	type WelcomeSequenceProductState,

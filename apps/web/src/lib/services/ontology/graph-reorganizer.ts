@@ -128,7 +128,7 @@ function buildEdgeKey(edge: {
 type EdgeRow = Database['public']['Tables']['onto_edges']['Row'];
 
 function toOntoEdge(row: EdgeRow): OntoEdge {
-	const props = isPlainObject(row.props) ? (row.props as Record<string, unknown>) : null;
+	const props = isPlainObject(row.props) ? (row.props as Record<string, unknown>) : {};
 	return { ...row, props };
 }
 

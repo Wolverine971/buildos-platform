@@ -22,11 +22,9 @@ export interface JobProgress {
 	[key: string]: Json | undefined;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic defaults require any for queue flexibility
-export type JobProcessor<T = any> = (job: ProcessingJob<T>) => Promise<unknown>;
+export type JobProcessor<T = unknown> = (job: ProcessingJob<T>) => Promise<unknown>;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generic defaults require any for queue flexibility
-export interface ProcessingJob<T = any> {
+export interface ProcessingJob<T = unknown> {
 	id: string;
 	userId: string;
 	data: T;
@@ -97,10 +95,11 @@ export class SupabaseQueue {
 	}
 
 	/**
-	 * Register a processor for a job type
+	 * Register a processor for a job type. `T` is the concrete metadata type
+	 * the processor expects (per-job); the queue stores them type-erased.
 	 */
-	process(jobType: JobType, processor: JobProcessor): void {
-		this.processors.set(jobType, processor);
+	process<T>(jobType: JobType, processor: JobProcessor<T>): void {
+		this.processors.set(jobType, processor as JobProcessor);
 		console.log(`🔧 Registered processor for ${jobType}`);
 	}
 

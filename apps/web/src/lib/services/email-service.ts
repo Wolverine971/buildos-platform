@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/email-service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
+import { createTransport } from 'nodemailer';
 
 import { dev } from '$app/environment';
 import { env } from '$env/dynamic/private';
@@ -14,6 +15,8 @@ import {
 } from '$lib/utils/email-config';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
 import { ErrorLoggerService } from './errorLogger.service';
+
+type LifecycleEmailSink = 'log' | 'smtp' | 'gmail';
 
 export interface EmailData {
 	to: string;
@@ -86,7 +89,6 @@ export class EmailService {
 			? `<img src="${baseUrl}/api/email-tracking/${trackingId}" width="1" height="1" style="display:none;" alt="" />`
 			: '';
 
-		const transporter = createGmailTransporter(senderType);
 		const textBody = this.composeTextBody(data.body, unsubscribeUrl);
 		const htmlBody = this.composeHtmlBody({
 			subject: data.subject,
@@ -101,10 +103,39 @@ export class EmailService {
 			sender,
 			unsubscribeUrl
 		});
+		const lifecycleSink = isLifecycleEmail ? this.getLifecycleEmailSink() : null;
 
 		try {
+			if (lifecycleSink === 'log') {
+				return this.sendLifecycleLogSink({
+					data,
+					textBody,
+					htmlBody,
+					trackingId,
+					sendMetadata,
+					senderType,
+					sentAt
+				});
+			}
+
+			if (lifecycleSink === 'gmail' && dev && !this.isLifecycleDevRecipientAllowed(data.to)) {
+				return {
+					success: false,
+					error:
+						'Lifecycle Gmail dev sink requires PRIVATE_LIFECYCLE_DEV_ALLOWLIST to include the recipient'
+				};
+			}
+
+			const transporter =
+				lifecycleSink === 'smtp'
+					? this.createLifecycleSmtpTransporter()
+					: createGmailTransporter(senderType);
+			const fromAddress =
+				lifecycleSink === 'smtp' && env.PRIVATE_LIFECYCLE_SMTP_FROM
+					? env.PRIVATE_LIFECYCLE_SMTP_FROM
+					: `${sender.name || 'BuildOS'} <${sender.email}>`;
 			const info = await transporter.sendMail({
-				from: `${sender.name || 'BuildOS'} <${sender.email}>`,
+				from: fromAddress,
 				to: data.to,
 				subject: data.subject,
 				text: textBody,
@@ -238,6 +269,90 @@ export class EmailService {
 				error: errorMessage
 			};
 		}
+	}
+
+	private getLifecycleEmailSink(): LifecycleEmailSink | null {
+		const configuredSink = env.PRIVATE_LIFECYCLE_EMAIL_SINK?.trim().toLowerCase();
+		if (
+			configuredSink === 'log' ||
+			configuredSink === 'smtp' ||
+			configuredSink === 'gmail'
+		) {
+			return configuredSink;
+		}
+
+		return dev ? 'log' : null;
+	}
+
+	private isLifecycleDevRecipientAllowed(email: string): boolean {
+		const normalizedRecipient = this.normalizeEmail(email);
+		if (!normalizedRecipient) {
+			return false;
+		}
+
+		const allowlist = (env.PRIVATE_LIFECYCLE_DEV_ALLOWLIST || '')
+			.split(/[,\s]+/)
+			.map((value) => this.normalizeEmail(value))
+			.filter((value): value is string => Boolean(value));
+
+		return allowlist.includes(normalizedRecipient);
+	}
+
+	private createLifecycleSmtpTransporter() {
+		const host = env.PRIVATE_LIFECYCLE_SMTP_HOST;
+		if (!host) {
+			throw new Error(
+				'PRIVATE_LIFECYCLE_EMAIL_SINK=smtp requires PRIVATE_LIFECYCLE_SMTP_HOST'
+			);
+		}
+
+		const port = Number.parseInt(env.PRIVATE_LIFECYCLE_SMTP_PORT || '587', 10);
+		const user = env.PRIVATE_LIFECYCLE_SMTP_USER;
+		const pass = env.PRIVATE_LIFECYCLE_SMTP_PASS;
+
+		return createTransport({
+			host,
+			port: Number.isFinite(port) ? port : 587,
+			secure: env.PRIVATE_LIFECYCLE_SMTP_SECURE === 'true',
+			auth: user ? { user, pass } : undefined
+		});
+	}
+
+	private sendLifecycleLogSink({
+		data,
+		textBody,
+		htmlBody,
+		trackingId,
+		sendMetadata,
+		senderType,
+		sentAt
+	}: {
+		data: EmailData;
+		textBody: string;
+		htmlBody: string;
+		trackingId: string | null;
+		sendMetadata?: Record<string, any>;
+		senderType: SenderType;
+		sentAt: string;
+	}): { success: boolean; messageId: string; emailId: null } {
+		const messageId = `lifecycle-log-sink/${trackingId || randomUUID()}`;
+		console.info('Lifecycle email log sink', {
+			messageId,
+			to: data.to,
+			subject: data.subject,
+			text: textBody,
+			html: htmlBody,
+			tokens: sendMetadata ?? {},
+			metadata: sendMetadata ?? {},
+			senderType,
+			sentAt
+		});
+
+		return {
+			success: true,
+			messageId,
+			emailId: null
+		};
 	}
 
 	private composeHtmlBody({
@@ -414,6 +529,11 @@ ${unsubscribeUrl}`;
 			.replaceAll('>', '&gt;')
 			.replaceAll('"', '&quot;')
 			.replaceAll("'", '&#39;');
+	}
+
+	private normalizeEmail(value: string): string | null {
+		const normalized = value.trim().toLowerCase();
+		return normalized || null;
 	}
 
 	private async notifyEmailDeliveryFailure({

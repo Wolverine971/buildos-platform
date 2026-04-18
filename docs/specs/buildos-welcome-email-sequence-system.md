@@ -908,6 +908,7 @@ Snapshot rendered subject + plain text for each (step, branch) pair. Add a lint 
 | Supabase service role env          | Required wherever `createAdminSupabaseClient()` runs.                                                                                                                                                                                       |
 | `PRIVATE_LIFECYCLE_EMAIL_SINK`     | `log` / `smtp` / `gmail`. Default `log` in dev, `gmail` in prod.                                                                                                                                                                            |
 | `PRIVATE_LIFECYCLE_DEV_ALLOWLIST`  | Comma-separated allowlist for dev gmail mode.                                                                                                                                                                                               |
+| `PRIVATE_LIFECYCLE_SMTP_*`         | Optional local SMTP sink settings for `smtp` mode (`HOST`, `PORT`, `USER`, `PASS`, `SECURE`, `FROM`).                                                                                                                                      |
 | `PRIVATE_RESEND_API_KEY`           | Phase 6: Resend provider key.                                                                                                                                                                                                               |
 | `PRIVATE_ALERTS_SLACK_WEBHOOK_URL` | Phase 0: Slack Incoming Webhook URL for `email_delivery_failure` alerts. Free-tier Slack supports Incoming Webhooks — create a Slack App at api.slack.com/apps, enable Incoming Webhooks, install to the workspace, and paste the URL here. |
 
@@ -1183,11 +1184,11 @@ When the reactivation spec is written, reference this section and the framework 
 
 ### Phase 4 — Content Split
 
-- [ ] `welcome-sequence.content.ts` with all copy + null fallbacks.
-- [ ] Pure `welcome-sequence.logic.ts`.
-- [ ] Voice regression snapshot tests.
-- [ ] Banned-phrase lint.
-- [ ] Local dev sink.
+- [x] `welcome-sequence.content.ts` with all copy + null fallbacks.
+- [x] Pure `welcome-sequence.logic.ts`.
+- [x] Voice regression snapshot tests.
+- [x] Banned-phrase lint.
+- [x] Local dev sink.
 
 ### Phase 5 — Admin UI
 

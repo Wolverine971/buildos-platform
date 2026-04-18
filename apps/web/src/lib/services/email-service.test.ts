@@ -2,10 +2,11 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { sendMailMock, logAPIErrorMock, logDatabaseErrorMock } = vi.hoisted(() => ({
+const { sendMailMock, logAPIErrorMock, logDatabaseErrorMock, privateEnv } = vi.hoisted(() => ({
 	sendMailMock: vi.fn(),
 	logAPIErrorMock: vi.fn(),
-	logDatabaseErrorMock: vi.fn()
+	logDatabaseErrorMock: vi.fn(),
+	privateEnv: {} as Record<string, string | undefined>
 }));
 
 vi.mock('$app/environment', () => ({
@@ -17,7 +18,7 @@ vi.mock('$env/static/public', () => ({
 }));
 
 vi.mock('$env/dynamic/private', () => ({
-	env: {}
+	env: privateEnv
 }));
 
 vi.mock('$lib/utils/email-config', () => ({
@@ -116,6 +117,9 @@ function createSupabaseMock() {
 describe('EmailService lifecycle compliance', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		for (const key of Object.keys(privateEnv)) {
+			delete privateEnv[key];
+		}
 		sendMailMock.mockResolvedValue({ messageId: 'message-1' });
 	});
 
@@ -172,5 +176,45 @@ describe('EmailService lifecycle compliance', () => {
 		expect(mailOptions.headers).toBeUndefined();
 		expect(mailOptions.text).not.toContain('opt out');
 		expect(mailOptions.html).not.toContain('opt out');
+	});
+
+	it('routes lifecycle emails to the local log sink without calling Gmail', async () => {
+		privateEnv.PRIVATE_LIFECYCLE_EMAIL_SINK = 'log';
+		const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+		const service = new EmailService(createSupabaseMock() as any);
+
+		const result = await service.sendEmail({
+			to: 'user@example.com',
+			subject: 'Welcome to BuildOS',
+			body: 'Hi there,\n\nWelcome.',
+			html: '<p>Hi there,</p><p>Welcome.</p>',
+			metadata: {
+				category: 'welcome_sequence',
+				campaign: 'welcome-sequence',
+				campaign_type: 'lifecycle',
+				sequence_step: 'email_1'
+			}
+		});
+
+		expect(result).toMatchObject({
+			success: true,
+			emailId: null
+		});
+		expect(result.messageId).toContain('lifecycle-log-sink/');
+		expect(sendMailMock).not.toHaveBeenCalled();
+		expect(consoleInfo).toHaveBeenCalledWith(
+			'Lifecycle email log sink',
+			expect.objectContaining({
+				to: 'user@example.com',
+				subject: 'Welcome to BuildOS',
+				text: expect.stringContaining('Welcome.'),
+				html: expect.stringContaining('<p>Welcome.</p>'),
+				tokens: expect.objectContaining({
+					sequence_step: 'email_1'
+				})
+			})
+		);
+
+		consoleInfo.mockRestore();
 	});
 });

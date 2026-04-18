@@ -62,7 +62,7 @@
 	}
 
 	function getErrorUserId(entry: ErrorLogEntry | null | undefined): string | undefined {
-		return entry?.user?.id || entry?.user_id || entry?.userId;
+		return entry?.user?.id || entry?.user_id;
 	}
 
 	function getAdminUserHref(entry: ErrorLogEntry | null | undefined): string | undefined {
@@ -137,8 +137,7 @@
 	}
 
 	function isToolExecutionError(entry: ErrorLogEntry): boolean {
-		const operationType = entry.operation_type || entry.operationType;
-		if (operationType === 'tool_execution') return true;
+		if (entry.operation_type === 'tool_execution') return true;
 		const metadata = getMetadataRecord(entry.metadata);
 		return Boolean(metadata?.toolName || metadata?.tool_name);
 	}
@@ -148,7 +147,7 @@
 	{@const modalStyles = getSeverityStyles(error.severity)}
 	{@const metadata = getMetadataRecord(error.metadata)}
 	{@const isToolExecution = isToolExecutionError(error)}
-	{@const operationPayload = error.operation_payload || error.operationPayload}
+	{@const operationPayload = error.operation_payload}
 	{@const toolName = getMetadataValue(metadata, 'toolName', 'tool_name')}
 	{@const toolCategory = getMetadataValue(metadata, 'toolCategory', 'tool_category')}
 	{@const toolCallId = getMetadataValue(metadata, 'toolCallId', 'tool_call_id')}
@@ -207,7 +206,7 @@
 								Occurred
 							</p>
 							<p class="text-xs text-foreground">
-								{formatFullDate(error.created_at || error.createdAt)}
+								{formatFullDate(error.created_at)}
 							</p>
 						</div>
 					</div>
@@ -222,18 +221,18 @@
 						<span
 							class="bg-muted text-muted-foreground px-2 py-1 rounded text-xs font-medium border border-border"
 						>
-							{(error.error_type || error.errorType)?.replace(/_/g, ' ')}
+							{error.error_type?.replace(/_/g, ' ')}
 						</span>
-						{#if error.error_code || error.errorCode}
+						{#if error.error_code}
 							<span
 								class="bg-red-500/10 text-red-600 dark:text-red-400 px-2 py-1 rounded text-xs font-mono border border-red-500/20"
 							>
-								{error.error_code || error.errorCode}
+								{error.error_code}
 							</span>
 						{/if}
 					</div>
 
-					{#if error.user || error.user_id || error.userId}
+					{#if error.user || error.user_id}
 						<div class="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
 							<p
 								class="text-[0.65rem] uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-2"
@@ -257,7 +256,7 @@
 								</div>
 							{:else}
 								<p class="text-xs text-foreground font-mono">
-									{error.user_id || error.userId}
+									{error.user_id}
 								</p>
 							{/if}
 							{#if userAdminHref}
@@ -274,7 +273,7 @@
 						</div>
 					{/if}
 
-					{#if error.endpoint || error.http_method || error.httpMethod}
+					{#if error.endpoint || error.http_method}
 						<div class="bg-muted/50 border border-border rounded-lg p-3">
 							<p
 								class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-2"
@@ -290,19 +289,19 @@
 										</p>
 									</div>
 								{/if}
-								{#if error.http_method || error.httpMethod}
+								{#if error.http_method}
 									<div>
 										<span class="text-muted-foreground">Method:</span>
 										<p class="text-foreground font-medium">
-											{error.http_method || error.httpMethod}
+											{error.http_method}
 										</p>
 									</div>
 								{/if}
-								{#if error.ip_address || error.ipAddress}
+								{#if error.ip_address}
 									<div>
 										<span class="text-muted-foreground">IP:</span>
 										<p class="text-foreground font-mono">
-											{error.ip_address || error.ipAddress}
+											{error.ip_address}
 										</p>
 									</div>
 								{/if}
@@ -320,7 +319,7 @@
 							<p
 								class="text-xs text-foreground whitespace-pre-wrap font-mono leading-relaxed"
 							>
-								{error.error_message || error.errorMessage}
+								{error.error_message}
 							</p>
 						</div>
 					</div>
@@ -458,7 +457,7 @@
 						</div>
 					{/if}
 
-					{#if error.error_stack || error.errorStack}
+					{#if error.error_stack}
 						<div class="space-y-1">
 							<p
 								class="text-[0.65rem] uppercase tracking-wider text-muted-foreground"
@@ -466,12 +465,11 @@
 								Stack Trace
 							</p>
 							<pre
-								class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{error.error_stack ||
-									error.errorStack}</pre>
+								class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-40 leading-relaxed">{error.error_stack}</pre>
 						</div>
 					{/if}
 
-					{#if !isToolExecution && (error.operation_type || error.operationType || error.table_name || error.tableName)}
+					{#if !isToolExecution && (error.operation_type || error.table_name)}
 						<div class="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
 							<p
 								class="text-[0.65rem] uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2"
@@ -479,19 +477,19 @@
 								Operation Context
 							</p>
 							<div class="grid grid-cols-2 gap-2 text-xs">
-								{#if error.operation_type || error.operationType}
+								{#if error.operation_type}
 									<div>
 										<span class="text-muted-foreground">Operation:</span>
 										<p class="text-foreground font-medium uppercase">
-											{error.operation_type || error.operationType}
+											{error.operation_type}
 										</p>
 									</div>
 								{/if}
-								{#if error.table_name || error.tableName}
+								{#if error.table_name}
 									<div>
 										<span class="text-muted-foreground">Table:</span>
 										<p class="text-foreground font-mono">
-											{error.table_name || error.tableName}
+											{error.table_name}
 										</p>
 									</div>
 								{/if}
@@ -499,7 +497,7 @@
 						</div>
 					{/if}
 
-					{#if error.llm_provider || error.llmProvider}
+					{#if error.llm_provider}
 						<div class="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
 							<p
 								class="text-[0.65rem] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2"
@@ -510,23 +508,20 @@
 								<div>
 									<span class="text-muted-foreground">Provider:</span>
 									<p class="text-foreground font-medium">
-										{error.llm_provider || error.llmProvider}
+										{error.llm_provider}
 									</p>
 								</div>
 								<div>
 									<span class="text-muted-foreground">Model:</span>
 									<p class="text-foreground">
-										{error.llm_model || error.llmModel}
+										{error.llm_model}
 									</p>
 								</div>
-								{#if error.total_tokens || error.totalTokens}
+								{#if error.total_tokens}
 									<div>
 										<span class="text-muted-foreground">Tokens:</span>
 										<p class="text-foreground tabular-nums">
-											{(
-												(error.total_tokens || error.totalTokens) ??
-												0
-											).toLocaleString()}
+											{(error.total_tokens ?? 0).toLocaleString()}
 										</p>
 									</div>
 								{/if}
@@ -546,11 +541,11 @@
 							</div>
 							<div class="space-y-1 text-xs">
 								<p class="text-muted-foreground">
-									{formatFullDate(error.resolved_at || error.resolvedAt)}
+									{formatFullDate(error.resolved_at)}
 								</p>
-								{#if error.resolution_notes || error.resolutionNotes}
+								{#if error.resolution_notes}
 									<p class="text-foreground italic">
-										"{error.resolution_notes || error.resolutionNotes}"
+										"{error.resolution_notes}"
 									</p>
 								{/if}
 							</div>

@@ -1042,9 +1042,7 @@
 												<span
 													class="px-1.5 py-0.5 rounded border text-[0.6rem] bg-muted text-muted-foreground border-border"
 												>
-													{humanizeLabel(
-														error.error_type || error.errorType
-													)}
+													{humanizeLabel(error.error_type)}
 												</span>
 												<span
 													class="px-1.5 py-0.5 rounded border text-[0.6rem] {error.resolved
@@ -1055,25 +1053,19 @@
 												</span>
 											</div>
 											<p class="text-sm font-medium text-foreground mt-1">
-												{error.error_message || error.errorMessage}
+												{error.error_message}
 											</p>
 											<p class="text-[0.7rem] text-muted-foreground mt-1">
 												{error.endpoint ||
 													error.operation_type ||
-													error.operationType ||
 													'Unknown source'}
-												{#if error.request_id || error.requestId}
-													· Request {(
-														error.request_id ||
-														error.requestId ||
-														''
-													).slice(0, 8)}
+												{#if error.request_id}
+													· Request {(error.request_id ?? '').slice(0, 8)}
 												{/if}
 											</p>
-											{#if error.resolution_notes || error.resolutionNotes}
+											{#if error.resolution_notes}
 												<p class="text-[0.7rem] text-muted-foreground mt-1">
-													Resolution: {error.resolution_notes ||
-														error.resolutionNotes}
+													Resolution: {error.resolution_notes}
 												</p>
 											{/if}
 											<p class="text-[0.7rem] text-accent mt-1">
@@ -1081,9 +1073,7 @@
 											</p>
 										</div>
 										<div class="text-[0.7rem] text-muted-foreground shrink-0">
-											{formatRelativeDate(
-												error.created_at || error.createdAt
-											)}
+											{formatRelativeDate(error.created_at)}
 										</div>
 									</div>
 								</div>

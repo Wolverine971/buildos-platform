@@ -8,8 +8,8 @@ import {
 	buildLegacyWelcomeSequenceMirrorPayload,
 	type LegacyWelcomeSequenceRowForMirror
 } from '$lib/server/email-sequence-rpcs';
+import { buildWelcomeEmailContent } from '$lib/server/welcome-sequence.content';
 import {
-	buildWelcomeEmailContent,
 	determineNextWelcomeAction,
 	WELCOME_SEQUENCE_STEPS,
 	type WelcomeSequenceProductState,
@@ -90,7 +90,7 @@ const COMPARISON_FIELDS = [
 
 const DATE_FIELDS = new Set<DiffField>(['next_send_at', 'last_sent_at']);
 const COPY_SOURCE_PATH =
-	'/Users/djwayne/buildos-platform/apps/web/src/lib/server/welcome-sequence.logic.ts';
+	'/Users/djwayne/buildos-platform/apps/web/src/lib/server/welcome-sequence.content.ts';
 const PREVIEW_STARTED_AT = '2026-03-01T10:00:00.000Z';
 
 function getBaseUrl(): string {

@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/blogs/+page.svelte -->
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import {
 		DEFAULT_ORGANIZATION_LOGO_URL,
 		DEFAULT_SOCIAL_IMAGE_ALT,
@@ -72,7 +73,7 @@
 		return haystack.includes(query);
 	}
 
-	let searchQuery = $state(data.initialQuery ?? '');
+	let searchQuery = $state('');
 	let normalizedSearchQuery = $derived(searchQuery.trim().toLowerCase());
 	let hasActiveSearch = $derived(normalizedSearchQuery.length > 0);
 
@@ -105,6 +106,13 @@
 	);
 
 	let jsonLdString = $derived(generateBlogJsonLd(data.allPosts));
+
+	onMount(() => {
+		const query = new URLSearchParams(window.location.search).get('q')?.trim() ?? '';
+		if (query) {
+			searchQuery = query;
+		}
+	});
 </script>
 
 <svelte:head>

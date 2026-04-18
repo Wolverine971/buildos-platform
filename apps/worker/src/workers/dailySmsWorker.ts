@@ -19,7 +19,7 @@ import { queue } from '../worker';
 import { type EventContext, SMSMessageGenerator } from '../lib/services/smsMessageGenerator';
 import { smsMetricsService } from '@buildos/shared-utils';
 
-interface DailySMSJobData {
+export interface DailySMSJobData {
 	userId: string;
 	date: string; // YYYY-MM-DD
 	timezone: string;

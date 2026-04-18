@@ -37,7 +37,7 @@ export interface TimeBlock {
   calendar_event_id: string | null;
   calendar_event_link: string | null;
   sync_status: TimeBlockSyncStatus;
-  sync_source: TimeBlockSyncSource;
+  sync_source: TimeBlockSyncSource | null;
   last_synced_at: string | null;
   ai_suggestions: TimeBlockSuggestion[] | null;
   suggestions_summary: string | null;

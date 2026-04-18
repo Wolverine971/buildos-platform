@@ -5,9 +5,10 @@
 import { JobProgress, ProcessingJob } from '../../lib/supabaseQueue';
 
 /**
- * Legacy BullMQ-compatible job interface that our existing workers expect
+ * Legacy BullMQ-compatible job interface that our existing workers expect.
+ * Callers must pass the concrete metadata type (e.g. `LegacyJob<BriefJobData>`).
  */
-export interface LegacyJob<T = any> {
+export interface LegacyJob<T> {
 	id: string;
 	data: T & { userId: string };
 	opts: {
@@ -22,7 +23,7 @@ export interface LegacyJob<T = any> {
 /**
  * Type-safe adapter that converts ProcessingJob to LegacyJob format
  */
-export class JobAdapter<T = any> {
+export class JobAdapter<T> {
 	private processingJob: ProcessingJob<T>;
 	private legacyJob: LegacyJob<T>;
 
@@ -42,15 +43,17 @@ export class JobAdapter<T = any> {
 	 * Create the legacy job interface with proper type safety
 	 */
 	private createLegacyInterface(): LegacyJob<T> {
+		const data = (this.processingJob.data ?? {}) as Record<string, unknown>;
+		const priorityField = data.priority;
+		const priority = typeof priorityField === 'number' ? priorityField : 10;
+
 		return {
 			id: this.processingJob.id,
 			data: {
-				...this.processingJob.data,
+				...(this.processingJob.data as T),
 				userId: this.processingJob.userId // Ensure userId is at top level
 			},
-			opts: {
-				priority: (this.processingJob.data as any)?.priority || 10
-			},
+			opts: { priority },
 			timestamp: Date.now(),
 			attemptsMade: this.processingJob.attempts,
 			updateProgress: this.createProgressUpdater(),
@@ -93,12 +96,12 @@ export class JobAdapter<T = any> {
 	/**
 	 * Normalize and validate progress objects
 	 */
-	private normalizeProgressObject(progress: any): JobProgress {
+	private normalizeProgressObject(progress: object): JobProgress {
 		// Ensure we have at least current and total
 		const normalized: JobProgress = {
 			current: 0,
 			total: 100,
-			...progress
+			...(progress as Record<string, unknown>)
 		};
 
 		// Validate required fields
@@ -130,31 +133,34 @@ export function createLegacyJob<T>(processingJob: ProcessingJob<T>): LegacyJob<T
 /**
  * Type guard to check if an object is a valid ProcessingJob
  */
-export function isProcessingJob(obj: any): obj is ProcessingJob {
+export function isProcessingJob(obj: unknown): obj is ProcessingJob {
+	if (!obj || typeof obj !== 'object') return false;
+	const candidate = obj as Record<string, unknown>;
 	return (
-		obj &&
-		typeof obj.id === 'string' &&
-		typeof obj.userId === 'string' &&
-		obj.data !== undefined &&
-		typeof obj.attempts === 'number' &&
-		typeof obj.updateProgress === 'function' &&
-		typeof obj.log === 'function'
+		typeof candidate.id === 'string' &&
+		typeof candidate.userId === 'string' &&
+		candidate.data !== undefined &&
+		typeof candidate.attempts === 'number' &&
+		typeof candidate.updateProgress === 'function' &&
+		typeof candidate.log === 'function'
 	);
 }
 
 /**
  * Type guard to check if an object is a valid LegacyJob
  */
-export function isLegacyJob(obj: any): obj is LegacyJob {
+export function isLegacyJob(obj: unknown): obj is LegacyJob<unknown> {
+	if (!obj || typeof obj !== 'object') return false;
+	const candidate = obj as Record<string, unknown>;
+	const data = candidate.data as Record<string, unknown> | undefined;
 	return (
-		obj &&
-		typeof obj.id === 'string' &&
-		obj.data &&
-		typeof obj.data.userId === 'string' &&
-		obj.opts &&
-		typeof obj.timestamp === 'number' &&
-		typeof obj.attemptsMade === 'number' &&
-		typeof obj.updateProgress === 'function' &&
-		typeof obj.log === 'function'
+		typeof candidate.id === 'string' &&
+		!!data &&
+		typeof data.userId === 'string' &&
+		typeof candidate.opts === 'object' &&
+		typeof candidate.timestamp === 'number' &&
+		typeof candidate.attemptsMade === 'number' &&
+		typeof candidate.updateProgress === 'function' &&
+		typeof candidate.log === 'function'
 	);
 }

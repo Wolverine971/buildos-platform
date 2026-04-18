@@ -4,13 +4,13 @@ import type { Database } from '@buildos/shared-types';
 import { dev } from '$app/environment';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import { EmailService } from '$lib/services/email-service';
+import { buildWelcomeEmailContent } from './welcome-sequence.content';
 import {
 	BUILDOS_WELCOME_SEQUENCE_KEY,
 	EmailSequenceRpcClient,
 	type EmailSequenceEnrollment
 } from './email-sequence-rpcs';
 import {
-	buildWelcomeEmailContent,
 	determineNextWelcomeAction,
 	type WelcomeSequenceProductState,
 	type WelcomeSequenceProgress,

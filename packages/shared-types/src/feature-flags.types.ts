@@ -1,9 +1,6 @@
 // packages/shared-types/src/feature-flags.types.ts
 
-export type FeatureName =
-  | "time_play"
-  | "future_feature"
-  | "migration.dualwrite.projects";
+export type FeatureName = "time_play" | "migration.dualwrite.projects";
 
 export interface FeatureFlag {
   id: string;

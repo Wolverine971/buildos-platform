@@ -3,11 +3,20 @@
 
 import type { ApiResponseBody as SharedApiResponse, Database } from '@buildos/shared-types';
 import type { ParsedOperation } from './operations';
-import type { Task, ProjectWithRelations } from './project';
-import type { UserContext } from './user-context';
+import type { Task } from './project';
 
 // Re-export operation types used by project synthesis and calendar analysis flows
 export type { ExecutionResult, OperationType, ParsedOperation, TableName } from './operations';
+
+// Re-export canonical project/UI types from `project.ts` to avoid duplicate definitions.
+export type {
+	Phase,
+	PhaseInsert,
+	PhaseWithTasks,
+	UserDataResult,
+	TabType,
+	ModalState
+} from './project';
 
 // ==========================================
 // BASE DATABASE TYPES & INTERFACES
@@ -26,29 +35,10 @@ export type TaskFilter = 'all' | 'active' | 'scheduled' | 'overdue' | 'completed
 // ==========================================
 
 // Row types from database
-export type Phase = Database['public']['Tables']['phases']['Row'];
 export type ProjectSynthesis = Database['public']['Tables']['project_synthesis']['Row'];
 export type DailyBrief = Database['public']['Tables']['daily_briefs']['Row'];
 export type ProjectDailyBrief = Database['public']['Tables']['project_daily_briefs']['Row'];
 export type ProjectBriefTemplate = Database['public']['Tables']['project_brief_templates']['Row'];
-
-// Insert types for creating new records
-export type PhaseInsert = Database['public']['Tables']['phases']['Insert'];
-
-// ==========================================
-// COMPOSITE TYPES WITH RELATIONS
-// ==========================================
-
-export interface PhaseWithTasks extends Phase {
-	tasks: Task[];
-	task_count: number;
-	completed_tasks: number;
-}
-
-export interface UserDataResult {
-	projects: ProjectWithRelations[];
-	userContext: UserContext | null;
-}
 
 // ==========================================
 // DAILY BRIEF TYPES
@@ -184,18 +174,6 @@ export interface SynthesisContent {
 	insights: string;
 	comparison: TaskComparison[];
 	summary: string;
-}
-
-// ==========================================
-// UI/COMPONENT TYPES
-// ==========================================
-
-export type TabType = 'tasks' | 'context' | 'notes' | 'phases';
-
-export interface ModalState {
-	show: boolean;
-	type: 'task' | 'note' | 'phase' | 'context' | 'delete' | string;
-	data: any;
 }
 
 // ==========================================

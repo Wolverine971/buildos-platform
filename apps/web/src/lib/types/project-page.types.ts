@@ -1,22 +1,30 @@
 // apps/web/src/lib/types/project-page.types.ts
+import type { Database } from '@buildos/shared-types';
 import type { Project, Task, Note, Phase } from '$lib/types/project';
 
 // ==========================================
 // CALENDAR EVENT TYPES
 // ==========================================
 
-export interface TaskCalendarEvent {
-	id: string;
-	calendar_event_id: string;
-	calendar_id: string;
-	event_start: string;
-	event_end: string;
-	event_link: string | null;
-	event_title: string | null;
-	sync_status: 'pending' | 'synced' | 'error' | 'deleted';
-	sync_error: string | null;
-	last_synced_at: string | null;
-}
+type TaskCalendarEventRow = Database['public']['Tables']['task_calendar_events']['Row'];
+
+/**
+ * Narrowed projection of `task_calendar_events` used by task/phase UI.
+ * Only the fields the UI actually reads — keep aligned with the DB row.
+ */
+export type TaskCalendarEvent = Pick<
+	TaskCalendarEventRow,
+	| 'id'
+	| 'calendar_event_id'
+	| 'calendar_id'
+	| 'event_start'
+	| 'event_end'
+	| 'event_link'
+	| 'event_title'
+	| 'sync_status'
+	| 'sync_error'
+	| 'last_synced_at'
+>;
 
 // ==========================================
 // ENHANCED TASK TYPE WITH CALENDAR EVENTS

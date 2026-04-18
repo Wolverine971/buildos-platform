@@ -4,6 +4,12 @@
  *
  * These types ensure type safety across all ontology API endpoints
  * and eliminate the need for 'any' type casts.
+ *
+ * ⚠️ Note: the `Onto*` entity interfaces below are UI-facing projections of
+ * the `onto_*` tables. They intentionally omit internal columns like
+ * `search_vector` and may add UI-computed fields (e.g. `children`,
+ * `doc_structure`). For raw DB row types, use
+ * `Database['public']['Tables']['onto_<table>']['Row']` from `@buildos/shared-types`.
  */
 
 import type { Template, Facets } from './onto';
@@ -64,7 +70,7 @@ export interface OntoProject {
 	description?: string | null;
 	type_key: string;
 	state_key: string;
-	props: Record<string, unknown> | null;
+	props: Record<string, unknown>;
 	start_at?: string | null;
 	end_at?: string | null;
 	facet_context?: string | null;
@@ -90,7 +96,7 @@ export interface OntoTask {
 	description?: string | null;
 	state_key: string;
 	priority: number;
-	props: Record<string, unknown> | null;
+	props: Record<string, unknown>;
 	created_by: string;
 	created_at: string;
 	updated_at: string;
@@ -112,7 +118,7 @@ export interface OntoGoal {
 	description?: string | null;
 	state_key?: string | null;
 	target_date?: string | null;
-	props: Record<string, unknown> | null;
+	props: Record<string, unknown>;
 	created_by: string;
 	created_at: string;
 	updated_at?: string;
@@ -131,7 +137,7 @@ export interface OntoPlan {
 	plan?: string | null;
 	description?: string | null;
 	state_key: string;
-	props: Record<string, unknown> | null;
+	props: Record<string, unknown>;
 	created_by: string;
 	created_at: string;
 	updated_at: string;
@@ -150,7 +156,7 @@ export interface OntoEdge {
 	dst_id: string;
 	dst_kind: string;
 	rel: string;
-	props?: Record<string, unknown> | null;
+	props: Record<string, unknown>;
 	created_at: string;
 	/** Denormalized project reference for efficient project-scoped queries */
 	project_id: string;
@@ -167,7 +173,7 @@ export interface OntoDocument {
 	state_key: string;
 	content?: string | null;
 	description?: string | null;
-	props: Record<string, unknown> | null;
+	props: Record<string, unknown>;
 	/** Immediate child documents for hierarchy */
 	children?: DocumentChildren | null;
 	created_by: string;
@@ -194,7 +200,7 @@ export interface OntoRequirement {
 	project_id: string;
 	text: string;
 	type_key?: string | null;
-	props: Record<string, unknown> | null;
+	props: Record<string, unknown>;
 	created_by: string;
 	created_at: string;
 }
@@ -211,7 +217,7 @@ export interface OntoRisk {
 	impact?: string;
 	state_key?: string;
 	content?: string | null;
-	props: Record<string, unknown> | null;
+	props: Record<string, unknown>;
 	created_by: string;
 	created_at: string;
 	updated_at?: string;
@@ -230,7 +236,7 @@ export interface OntoMilestone {
 	due_at?: string | null;
 	milestone?: string | null;
 	description?: string | null;
-	props: Record<string, unknown> | null;
+	props: Record<string, unknown>;
 	created_by: string;
 	created_at: string;
 	updated_at?: string;
@@ -248,7 +254,7 @@ export interface OntoMetric {
 	definition?: string | null;
 	unit?: string | null;
 	target_value?: number | null;
-	props: Record<string, unknown> | null;
+	props: Record<string, unknown>;
 	created_by: string;
 	created_at: string;
 }
@@ -261,7 +267,7 @@ export interface OntoSource {
 	project_id: string;
 	name: string;
 	uri?: string | null;
-	props: Record<string, unknown> | null;
+	props: Record<string, unknown>;
 	created_at: string;
 }
 

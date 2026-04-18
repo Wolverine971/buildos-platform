@@ -1,19 +1,34 @@
 // apps/worker/src/worker.ts
 import type {
 	AssetOcrJobMetadata,
+	HomeworkJobMetadata,
 	ProjectContextSnapshotJobMetadata,
 	ProjectIconGenerationJobMetadata,
-	TreeAgentJobMetadata
+	TreeAgentJobMetadata,
+	VoiceNoteTranscriptionJobMetadata
 } from '@buildos/shared-types';
 import { ProcessingJob, SupabaseQueue } from './lib/supabaseQueue';
 import { processBriefJob } from './workers/brief/briefWorker';
 import { processOnboardingAnalysisJob } from './workers/onboarding/onboardingWorker';
+import type {
+	BriefJobData,
+	OnboardingAnalysisJobData
+} from './workers/shared/queueUtils';
 import { processSMSJob } from './workers/smsWorker';
 import { processNotification } from './workers/notification/notificationWorker';
 import { processProjectActivityBatchFlushJob } from './workers/notification/projectActivityBatchWorker';
-import { processDailySMS } from './workers/dailySmsWorker';
+import type {
+	NotificationJobMetadata,
+	ProjectActivityBatchFlushJobMetadata,
+	SendSMSJobMetadata
+} from '@buildos/shared-types';
+import { processDailySMS, type DailySMSJobData } from './workers/dailySmsWorker';
 import { processChatClassificationJob } from './workers/chat/chatSessionClassifier';
 import { processBraindumpProcessingJob } from './workers/braindump/braindumpProcessor';
+import type {
+	BraindumpProcessingJobData,
+	ChatClassificationJobData
+} from './workers/shared/queueUtils';
 import { processVoiceNoteTranscriptionJob } from './workers/voice-notes/voiceNoteTranscriptionWorker';
 import { processAssetOcrJob } from './workers/assets/assetOcrWorker';
 import { processHomeworkJob } from './workers/homework/homeworkWorker';
@@ -46,9 +61,9 @@ const queue = new SupabaseQueue({
 /**
  * Brief generation processor
  */
-async function processBrief(job: ProcessingJob) {
+async function processBrief(job: ProcessingJob<BriefJobData>) {
 	const startTime = Date.now();
-	const jobType = job.data.priority === 1 ? '⚡ IMMEDIATE' : '📅 SCHEDULED';
+	const jobType = (job.data as { priority?: number })?.priority === 1 ? '⚡ IMMEDIATE' : '📅 SCHEDULED';
 
 	await job.log(`${jobType} brief started for user ${job.userId}`);
 	await job.log(`Brief date: ${job.data.briefDate}`);
@@ -73,7 +88,7 @@ async function processBrief(job: ProcessingJob) {
 /**
  * Onboarding analysis processor
  */
-async function processOnboarding(job: ProcessingJob) {
+async function processOnboarding(job: ProcessingJob<OnboardingAnalysisJobData>) {
 	await job.log('Starting onboarding analysis');
 
 	try {
@@ -93,7 +108,7 @@ async function processOnboarding(job: ProcessingJob) {
 /**
  * SMS sending processor
  */
-async function processSMS(job: ProcessingJob) {
+async function processSMS(job: ProcessingJob<SendSMSJobMetadata>) {
 	await job.log(`Sending SMS to ${job.data.phone_number}`);
 
 	try {
@@ -113,7 +128,7 @@ async function processSMS(job: ProcessingJob) {
 /**
  * Notification processor (Multi-channel notifications)
  */
-async function processNotificationWrapper(job: ProcessingJob) {
+async function processNotificationWrapper(job: ProcessingJob<NotificationJobMetadata>) {
 	const channel = job.data.channel || 'unknown';
 	await job.log(`📬 Processing ${channel} notification`);
 
@@ -132,7 +147,9 @@ async function processNotificationWrapper(job: ProcessingJob) {
 /**
  * Project activity batch flush processor
  */
-async function processProjectActivityBatchFlush(job: ProcessingJob) {
+async function processProjectActivityBatchFlush(
+	job: ProcessingJob<ProjectActivityBatchFlushJobMetadata>
+) {
 	const batchId = job.data.batch_id || job.data.batchId || 'unknown';
 	await job.log(`🧩 Flushing project activity batch ${batchId}`);
 
@@ -151,7 +168,7 @@ async function processProjectActivityBatchFlush(job: ProcessingJob) {
 /**
  * Daily SMS scheduler processor (Calendar event reminders)
  */
-async function processScheduleDailySMS(job: ProcessingJob) {
+async function processScheduleDailySMS(job: ProcessingJob<DailySMSJobData>) {
 	const { userId, date } = job.data;
 	const startTime = Date.now();
 
@@ -180,7 +197,7 @@ async function processScheduleDailySMS(job: ProcessingJob) {
  * Chat session classification processor
  * Generates titles and extracts topics from chat sessions
  */
-async function processChatClassification(job: ProcessingJob) {
+async function processChatClassification(job: ProcessingJob<ChatClassificationJobData>) {
 	const { sessionId } = job.data;
 	const startTime = Date.now();
 
@@ -207,7 +224,7 @@ async function processChatClassification(job: ProcessingJob) {
  * Braindump processing processor
  * Generates titles, topics, and summaries from captured context
  */
-async function processBraindumpProcessing(job: ProcessingJob) {
+async function processBraindumpProcessing(job: ProcessingJob<BraindumpProcessingJobData>) {
 	const { braindumpId } = job.data;
 	const startTime = Date.now();
 
@@ -233,7 +250,9 @@ async function processBraindumpProcessing(job: ProcessingJob) {
 /**
  * Voice note transcription processor (background for long recordings)
  */
-async function processVoiceNoteTranscription(job: ProcessingJob) {
+async function processVoiceNoteTranscription(
+	job: ProcessingJob<VoiceNoteTranscriptionJobMetadata>
+) {
 	const { voiceNoteId } = job.data;
 
 	await job.log(`🎙️ Voice note transcription started for ${voiceNoteId}`);
@@ -268,7 +287,7 @@ async function processAssetOcr(job: ProcessingJob<AssetOcrJobMetadata>) {
 /**
  * Homework (long-running task) processor
  */
-async function processHomework(job: ProcessingJob) {
+async function processHomework(job: ProcessingJob<HomeworkJobMetadata>) {
 	await job.log('Homework job received');
 
 	try {

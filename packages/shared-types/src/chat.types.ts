@@ -120,8 +120,8 @@ export interface SystemPromptMetadata {
 export interface AbbreviatedTask {
 	id: string;
 	title: string;
-	status: 'backlog' | 'in_progress' | 'done' | 'blocked';
-	priority: 'low' | 'medium' | 'high';
+	status: Database['public']['Enums']['task_status'];
+	priority: Database['public']['Enums']['priority_level'];
 	start_date: string | null;
 	duration_minutes: number | null;
 
@@ -143,7 +143,7 @@ export interface AbbreviatedProject {
 	id: string;
 	name: string;
 	slug: string;
-	status: 'active' | 'paused' | 'completed' | 'archived';
+	status: Database['public']['Enums']['project_status'];
 
 	// Dates
 	start_date: string | null;

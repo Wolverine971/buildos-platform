@@ -8,7 +8,6 @@ const ROW_NOT_FOUND = 'PGRST116';
 
 export const FEATURE_KEYS = {
 	timeBlocks: 'time_play' as FeatureName,
-	futureFeature: 'future_feature' as FeatureName,
 	migrationDualWriteProjects: 'migration.dualwrite.projects' as FeatureName
 } as const;
 
