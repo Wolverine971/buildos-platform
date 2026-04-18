@@ -54,11 +54,17 @@
 		onDataLoaded?: (data: {
 			structure: DocStructure;
 			documents: Record<string, OntoDocument>;
+			unlinked: OntoDocument[];
+			archived: OntoDocument[];
 		}) => void;
 		selectedDocumentId?: string | null;
 		maxInitialDepth?: number;
 		pollInterval?: number;
 		enableDragDrop?: boolean;
+		initialStructure?: DocStructure | null;
+		initialDocuments?: Record<string, OntoDocument>;
+		initialUnlinked?: OntoDocument[];
+		initialArchived?: OntoDocument[];
 	}
 
 	let {
@@ -71,19 +77,39 @@
 		selectedDocumentId = null,
 		maxInitialDepth = 3,
 		pollInterval = 30000,
-		enableDragDrop = true
+		enableDragDrop = true,
+		initialStructure = null,
+		initialDocuments = {},
+		initialUnlinked = [],
+		initialArchived = []
 	}: Props = $props();
 
+	function getInitialStructure() {
+		return initialStructure;
+	}
+
+	function getInitialDocuments() {
+		return initialDocuments;
+	}
+
+	function getInitialUnlinked() {
+		return initialUnlinked;
+	}
+
+	function getInitialArchived() {
+		return initialArchived;
+	}
+
 	// State
-	let loading = $state(true);
+	let loading = $state(getInitialStructure() === null);
 	let error = $state<string | null>(null);
-	let structure = $state<DocStructure | null>(null);
-	let documents = $state<Record<string, OntoDocument>>({});
-	let unlinked = $state<OntoDocument[]>([]);
-	let archived = $state<OntoDocument[]>([]);
+	let structure = $state<DocStructure | null>(getInitialStructure());
+	let documents = $state<Record<string, OntoDocument>>(getInitialDocuments());
+	let unlinked = $state<OntoDocument[]>(getInitialUnlinked());
+	let archived = $state<OntoDocument[]>(getInitialArchived());
 	let archivedExpanded = $state(true);
 	let expandedIds = $state<Set<string>>(new Set());
-	let currentVersion = $state(0);
+	let currentVersion = $state(getInitialStructure()?.version ?? 0);
 	let hasUpdate = $state(false);
 
 	// Context menu state
@@ -202,6 +228,8 @@
 			// Update local state with new structure
 			structure = data.data.structure;
 			currentVersion = data.data.structure.version;
+			unlinked = unlinked.filter((doc) => doc.id !== documentId);
+			publishDataLoaded(data.data.structure, documents, unlinked, archived);
 
 			// Ensure parent is expanded so moved item is visible
 			if (newParentId) {
@@ -306,15 +334,41 @@
 		return toExpand;
 	}
 
+	function publishDataLoaded(
+		nextStructure: DocStructure | null = structure,
+		nextDocuments: Record<string, OntoDocument> = documents,
+		nextUnlinked: OntoDocument[] = unlinked,
+		nextArchived: OntoDocument[] = archived
+	) {
+		if (!nextStructure) return;
+		onDataLoaded?.({
+			structure: nextStructure,
+			documents: nextDocuments,
+			unlinked: nextUnlinked,
+			archived: nextArchived
+		});
+	}
+
+	function initializeExpandedState() {
+		if (!structure || expandedIds.size > 0) return;
+
+		loadExpandedState();
+		if (expandedIds.size === 0) {
+			const enriched = enrichTreeNodes(structure.root, documents, 0, []);
+			expandedIds = autoExpandInitialLevels(enriched, maxInitialDepth);
+		}
+	}
+
 	// Fetch tree data
 	async function fetchTree(isPolling = false) {
 		if (!isPolling) {
 			loading = true;
+			error = null;
 		}
-		error = null;
 
 		try {
-			const res = await fetch(`/api/onto/projects/${projectId}/doc-tree`);
+			const query = isPolling ? '?include_documents=false&include_content=false' : '';
+			const res = await fetch(`/api/onto/projects/${projectId}/doc-tree${query}`);
 			if (!res.ok) {
 				const data = await res.json().catch(() => ({}));
 				throw new Error(data.error || `Failed to load document tree`);
@@ -323,10 +377,11 @@
 			const data: { data: GetDocTreeResponse } = await res.json();
 			const newVersion = data.data.structure.version;
 
-			// Check if structure was updated externally
-			if (isPolling && currentVersion > 0 && newVersion !== currentVersion) {
-				hasUpdate = true;
-				return; // Don't update state, let user choose to refresh
+			if (isPolling) {
+				if (currentVersion > 0 && newVersion !== currentVersion) {
+					hasUpdate = true;
+				}
+				return;
 			}
 
 			structure = data.data.structure;
@@ -335,20 +390,12 @@
 			archived = data.data.archived ?? [];
 			currentVersion = newVersion;
 
-			// Notify parent of loaded data
-			onDataLoaded?.({ structure: data.data.structure, documents: data.data.documents });
-
-			// On first load, set up initial expansion
-			if (!isPolling && expandedIds.size === 0) {
-				loadExpandedState();
-				// If still empty after loading from storage, auto-expand
-				if (expandedIds.size === 0) {
-					const enriched = enrichTreeNodes(structure.root, documents, 0, []);
-					expandedIds = autoExpandInitialLevels(enriched, maxInitialDepth);
-				}
-			}
+			publishDataLoaded(structure, documents, unlinked, archived);
+			initializeExpandedState();
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Failed to load document tree';
+			if (!isPolling) {
+				error = err instanceof Error ? err.message : 'Failed to load document tree';
+			}
 		} finally {
 			if (!isPolling) {
 				loading = false;
@@ -458,9 +505,10 @@
 	let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 	function startPolling() {
-		if (pollTimer) return;
+		if (pollTimer || pollInterval <= 0 || !browser || document.visibilityState !== 'visible')
+			return;
 		pollTimer = setInterval(() => {
-			fetchTree(true);
+			void fetchTree(true);
 		}, pollInterval);
 	}
 
@@ -471,14 +519,34 @@
 		}
 	}
 
-	// Lifecycle
-	onMount(() => {
-		fetchTree();
-		if (pollInterval > 0) {
+	function handleVisibilityChange() {
+		if (document.visibilityState === 'visible') {
+			if (currentVersion > 0) {
+				void fetchTree(true);
+			}
 			startPolling();
+			return;
 		}
 
+		stopPolling();
+	}
+
+	// Lifecycle
+	onMount(() => {
+		if (structure) {
+			loading = false;
+			publishDataLoaded();
+			initializeExpandedState();
+		} else {
+			void fetchTree();
+		}
+		startPolling();
+
 		// Add global event listeners for drag
+		if (browser) {
+			document.addEventListener('visibilitychange', handleVisibilityChange);
+		}
+
 		if (browser && enableDragDrop) {
 			document.addEventListener('mousemove', handleGlobalMouseMove);
 			document.addEventListener('mouseup', handleGlobalMouseUp);
@@ -494,6 +562,10 @@
 		dragDrop?.cleanup();
 
 		// Remove global event listeners
+		if (browser) {
+			document.removeEventListener('visibilitychange', handleVisibilityChange);
+		}
+
 		if (browser && enableDragDrop) {
 			document.removeEventListener('mousemove', handleGlobalMouseMove);
 			document.removeEventListener('mouseup', handleGlobalMouseUp);

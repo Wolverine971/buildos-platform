@@ -81,6 +81,27 @@ describe('buildSessionDetailPayload', () => {
 					created_at: '2026-04-03T12:00:12.000Z',
 					arguments: { query: '9takes' },
 					result: { ok: true }
+				},
+				{
+					id: 'tool-2',
+					message_id: 'message-assistant',
+					turn_run_id: 'run-1',
+					stream_run_id: 'stream-1',
+					client_turn_id: 'turn-1',
+					tool_name: 'create_onto_document',
+					tool_category: 'write',
+					gateway_op: 'onto.document.create',
+					help_path: null,
+					sequence_index: 2,
+					success: true,
+					execution_time_ms: 45,
+					created_at: '2026-04-03T12:00:13.000Z',
+					arguments: {
+						project_id: 'project-1',
+						title: 'Launch brief',
+						description: 'A concise project launch brief.'
+					},
+					result: { ok: true, document_id: 'doc-1' }
 				}
 			],
 			llmCalls: [
@@ -278,6 +299,24 @@ describe('buildSessionDetailPayload', () => {
 				query: '9takes'
 			},
 			tool_result_source: 'chat_tool_executions'
+		});
+
+		const directToolExecutionEvent = payload.timeline.find(
+			(event) => event.id === 'tool:tool-2'
+		);
+		expect(directToolExecutionEvent).toMatchObject({
+			type: 'tool_execution',
+			title: 'Tool Execution: create_onto_document (onto.document.create)',
+			summary: 'create_onto_document (onto.document.create) succeeded in 45ms',
+			payload: {
+				tool_name: 'create_onto_document',
+				gateway_op: 'onto.document.create',
+				arguments: {
+					project_id: 'project-1',
+					title: 'Launch brief',
+					description: 'A concise project launch brief.'
+				}
+			}
 		});
 	});
 

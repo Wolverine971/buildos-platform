@@ -56,6 +56,7 @@ export type ProjectFullData = {
 	events?: OntoEventWithSync[];
 	context_document?: Document | null;
 	public_page_counts?: ProjectPublicPageCounts;
+	current_actor_id?: string | null;
 };
 
 type JsonRecord = Record<string, unknown>;

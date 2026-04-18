@@ -100,6 +100,7 @@
 		onToggleMilestoneComplete,
 		onHistoryEntityClick,
 		onRefreshData,
+		onFilterOpen,
 		onImageAssetsPanelRefChange
 	}: {
 		isHydrating: boolean;
@@ -145,6 +146,7 @@
 		onToggleMilestoneComplete: (milestoneId: string, currentState: string) => void;
 		onHistoryEntityClick: (entityType: ProjectLogEntityType, entityId: string) => void;
 		onRefreshData: () => void | Promise<void>;
+		onFilterOpen?: (panelKey: InsightPanelKey) => void | Promise<void>;
 		onImageAssetsPanelRefChange?: (ref: { openUploadModal: () => void } | null) => void;
 	} = $props();
 
@@ -358,6 +360,7 @@
 									activeFilters={panelStates[section.key].filters}
 									onchange={(filters) =>
 										onUpdatePanelFilters(section.key, filters)}
+									onopen={() => onFilterOpen?.(section.key)}
 								/>
 								<InsightSortDropdown
 									sortOptions={PANEL_CONFIGS[section.key].sorts}

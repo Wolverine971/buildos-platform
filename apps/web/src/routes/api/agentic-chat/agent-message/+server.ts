@@ -144,13 +144,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.badRequest('Unsupported agent');
 	}
 
-	// Resolve actor -> project ownership
-	const { data: actorData, error: actorError } = await locals.supabase.rpc(
-		'ensure_actor_for_user',
-		{
-			p_user_id: user.id
-		}
-	);
+	// Run actor resolution, access check, and project lookup in parallel — none depend on
+	// each other (the access RPC uses auth.uid(), not actorId; the project fetch is by id).
+	const [actorResult, accessResult, projectResult] = await Promise.all([
+		locals.supabase.rpc('ensure_actor_for_user', { p_user_id: user.id }),
+		locals.supabase.rpc('current_actor_has_project_access', {
+			p_project_id: projectId,
+			p_required_access: 'write'
+		}),
+		locals.supabase.from('onto_projects').select('id, name, props').eq('id', projectId).single()
+	]);
+
+	const { data: actorData, error: actorError } = actorResult;
 
 	if (actorError || !actorData) {
 		logger.error('Failed to resolve actor for user', {
@@ -173,13 +178,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	const actorId = actorData as EnsureActorResponse;
 
-	const { data: hasAccess, error: accessError } = await locals.supabase.rpc(
-		'current_actor_has_project_access',
-		{
-			p_project_id: projectId,
-			p_required_access: 'write'
-		}
-	);
+	const { data: hasAccess, error: accessError } = accessResult;
 
 	if (accessError) {
 		logger.error('Failed to check project access', {
@@ -217,11 +216,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.forbidden('You do not have access to this project');
 	}
 
-	const { data: project, error: projectError } = await locals.supabase
-		.from('onto_projects')
-		.select('id, name, props')
-		.eq('id', projectId)
-		.single();
+	const { data: project, error: projectError } = projectResult;
 
 	if (projectError || !project) {
 		if (projectError) {

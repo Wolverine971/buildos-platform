@@ -140,7 +140,7 @@ function normalizeDocTreeNodes(nodes: unknown): DocTreeNode[] {
 	return result;
 }
 
-function parseDocStructure(value: unknown): DocStructure {
+export function parseDocStructure(value: unknown): DocStructure {
 	if (value === null || value === undefined) return getDefaultDocStructure();
 
 	if (typeof value === 'string') {
@@ -178,7 +178,7 @@ type DocMeta = {
 	description: string | null;
 };
 
-function normalizeDocumentState(state: unknown): string {
+export function normalizeDocumentState(state: unknown): string {
 	if (typeof state !== 'string') return 'draft';
 	const normalized = state
 		.trim()

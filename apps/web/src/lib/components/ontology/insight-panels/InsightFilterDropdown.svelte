@@ -15,11 +15,13 @@
 	let {
 		filterGroups,
 		activeFilters = {},
-		onchange
+		onchange,
+		onopen
 	}: {
 		filterGroups: FilterGroup[];
 		activeFilters: Record<string, string[]>;
 		onchange: (filters: Record<string, string[]>) => void;
+		onopen?: () => void | Promise<void>;
 	} = $props();
 
 	// Local state
@@ -107,6 +109,15 @@
 		}
 		localFilters = reset;
 	}
+
+	function handleTriggerClick(event: MouseEvent) {
+		event.stopPropagation();
+		const willOpen = !isOpen;
+		isOpen = willOpen;
+		if (willOpen) {
+			void onopen?.();
+		}
+	}
 </script>
 
 <svelte:window onclick={handleClickOutside} onkeydown={handleKeydown} />
@@ -115,10 +126,7 @@
 	<!-- Trigger Button -->
 	<button
 		type="button"
-		onclick={(e) => {
-			e.stopPropagation();
-			isOpen = !isOpen;
-		}}
+		onclick={handleTriggerClick}
 		class="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded-md
 			bg-muted/50 hover:bg-muted border border-border
 			text-muted-foreground hover:text-foreground

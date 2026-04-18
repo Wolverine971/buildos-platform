@@ -65,6 +65,52 @@ npm run check
 
 Result: failed on the existing workspace backlog. Two tool-surface diagnostics were found and fixed during this stability pass. A filtered rerun against the touched tool-surface paths produced no diagnostics. Remaining failures are outside this workstream, including admin UI components, onboarding/profile/project routes, overdue task utilities, voice recording, and public project graph routes.
 
+Additional observability stability pass:
+
+- Recent prompt dumps confirmed the hybrid surface is being admitted correctly in `project_create` and `project` contexts.
+- `project_create` dumps showed discovery tools plus `create_onto_project`, `create_onto_goal`, `create_onto_plan`, `create_onto_task`, and `create_onto_document`.
+- `project` dumps showed discovery tools plus the direct project read/write bundle, including task, document, project overview, document tree, and project calendar tools.
+- Actual executions in the inspected dumps used direct tools such as `create_onto_project`, `update_onto_task`, `create_onto_task`, and `create_onto_document`.
+- A UI/trace gap was fixed: direct tools now resolve their canonical operation from the tool registry, so turn events, persisted tool execution rows, assistant trace summaries, local runtime dumps, admin timelines, and audit exports can show `tool_name` plus canonical op instead of only the raw direct tool name.
+
+Relevant observability files:
+
+- [prompt-observability.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/prompt-observability.ts)
+- [prompt-dump-debug.ts](/Users/djwayne/buildos-platform/apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/prompt-dump-debug.ts)
+- [+server.ts](/Users/djwayne/buildos-platform/apps/web/src/routes/api/agent/v2/stream/+server.ts)
+- [session-detail-payload.ts](/Users/djwayne/buildos-platform/apps/web/src/routes/api/admin/chat/sessions/[id]/session-detail-payload.ts)
+- [AGENTIC_CHAT_HYBRID_TOOL_SURFACE_PROMPT_TESTS_2026-04-10.md](/Users/djwayne/buildos-platform/docs/testing/AGENTIC_CHAT_HYBRID_TOOL_SURFACE_PROMPT_TESTS_2026-04-10.md)
+
+Focused observability verification from `apps/web`:
+
+```bash
+npm run test -- src/lib/services/agentic-chat-v2/entity-resolution.test.ts src/lib/services/agentic-chat-v2/prompt-observability.test.ts 'src/routes/api/admin/chat/sessions/[id]/session-detail-payload.test.ts' src/lib/services/admin/chat-session-audit-export.test.ts
+```
+
+Result: 4 files passed, 12 tests passed.
+
+Rerun broader agentic-chat verification from `apps/web`:
+
+```bash
+npm run test -- src/lib/services/agentic-chat-v2 src/lib/services/agentic-chat/tools/registry src/lib/services/agentic-chat/tools/skills src/lib/services/agentic-chat/execution/tool-execution-service.gateway.test.ts src/lib/services/agentic-chat/prompts/prompt-generation-service.test.ts
+```
+
+Result: 20 files passed, 161 tests passed.
+
+Focused lint verification for the edited TypeScript paths from `apps/web` passed:
+
+```bash
+node scripts/run-eslint.cjs src/routes/api/agent/v2/stream/+server.ts src/lib/services/agentic-chat-v2/entity-resolution.ts src/lib/services/agentic-chat-v2/entity-resolution.test.ts src/lib/services/agentic-chat-v2/prompt-observability.ts src/lib/services/agentic-chat-v2/prompt-observability.test.ts src/lib/services/agentic-chat-v2/stream-orchestrator/prompt-dump-debug.ts 'src/routes/api/admin/chat/sessions/[id]/session-detail-payload.ts' 'src/routes/api/admin/chat/sessions/[id]/session-detail-payload.test.ts' src/lib/services/admin/chat-session-audit-export.test.ts
+```
+
+Full workspace type/Svelte check from `apps/web` still fails on the existing backlog:
+
+```bash
+npm run check
+```
+
+Result: 228 errors and 214 warnings in 119 files. A targeted search of the check log found no remaining diagnostics for the edited agentic-chat/admin observability paths.
+
 ## 1. Why this plan exists
 
 The current BuildOS gateway solved one problem and created another.

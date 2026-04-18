@@ -88,13 +88,21 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 	try {
 		const actorId = await ensureActorId(supabase, user.id);
-		// Parse query parameters
+		// Parse query parameters. Clamp limit to [1, 100] to bound payload size;
+		// switch count to 'estimated' so the search-ILIKE branch doesn't trigger
+		// a full COUNT(*) over `notes`.
 		const projectId = url.searchParams.get('project_id');
-		const limit = Number(url.searchParams.get('limit')) || 50;
+		const rawLimit = Number(url.searchParams.get('limit'));
+		const limit =
+			Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(Math.floor(rawLimit), 100) : 50;
 		const search = url.searchParams.get('search')?.trim();
-		const offset = Number(url.searchParams.get('offset')) || 0;
+		const rawOffset = Number(url.searchParams.get('offset'));
+		const offset = Number.isFinite(rawOffset) && rawOffset > 0 ? Math.floor(rawOffset) : 0;
 
-		let query = supabase.from('notes').select('*', { count: 'exact' }).eq('user_id', user.id);
+		let query = supabase
+			.from('notes')
+			.select('*', { count: 'estimated' })
+			.eq('user_id', user.id);
 
 		// Apply filters
 		if (projectId) {

@@ -232,6 +232,18 @@ describe('prompt observability helpers', () => {
 				arguments: JSON.stringify({ project_id: 'project-1' })
 			}
 		};
+		const documentCreateCall: ChatToolCall = {
+			id: 'tool-3',
+			type: 'function',
+			function: {
+				name: 'create_onto_document',
+				arguments: JSON.stringify({
+					project_id: 'project-1',
+					title: 'Launch brief',
+					description: 'A concise project launch brief.'
+				})
+			}
+		};
 
 		expect(extractFastChatToolCallMeta(schemaCall)).toMatchObject({
 			toolName: 'tool_schema',
@@ -242,6 +254,11 @@ describe('prompt observability helpers', () => {
 			toolName: 'get_document_tree',
 			helpPath: null,
 			canonicalOp: 'onto.document.tree.get'
+		});
+		expect(extractFastChatToolCallMeta(documentCreateCall)).toMatchObject({
+			toolName: 'create_onto_document',
+			helpPath: null,
+			canonicalOp: 'onto.document.create'
 		});
 	});
 
@@ -254,6 +271,18 @@ describe('prompt observability helpers', () => {
 				arguments: JSON.stringify({ query: '9takes' })
 			}
 		};
+		const directToolCall: ChatToolCall = {
+			id: 'tool-4',
+			type: 'function',
+			function: {
+				name: 'create_onto_document',
+				arguments: JSON.stringify({
+					project_id: 'project-1',
+					title: 'Launch brief',
+					description: 'A concise project launch brief.'
+				})
+			}
+		};
 		const result: ChatToolResult = {
 			tool_call_id: 'tool-3',
 			result: { ok: true },
@@ -264,6 +293,15 @@ describe('prompt observability helpers', () => {
 		expect(buildToolCallEventPayload(toolCall)).toMatchObject({
 			tool_name: 'get_project_overview',
 			canonical_op: 'util.project.overview'
+		});
+		expect(buildToolCallEventPayload(directToolCall)).toMatchObject({
+			tool_name: 'create_onto_document',
+			canonical_op: 'onto.document.create',
+			args: {
+				project_id: 'project-1',
+				title: 'Launch brief',
+				description: 'A concise project launch brief.'
+			}
 		});
 		expect(buildToolResultEventPayload(toolCall, result)).toMatchObject({
 			tool_name: 'get_project_overview',

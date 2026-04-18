@@ -49,6 +49,44 @@
 			]
 		},
 		{
+			"file": "src/lib/components/project/ProjectCalendarSettingsModal.svelte",
+			"type": "component",
+			"components": ["TaskEditModal", "EventEditModal"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectHistorySection.svelte",
+			"type": "component",
+			"components": ["ProjectBriefsPanel", "ProjectActivityLogPanel"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectInsightRail.svelte",
+			"type": "component",
+			"components": ["ImageAssetsPanel"]
+		},
+		{
+			"file": "src/lib/components/project/ProjectModalsHost.svelte",
+			"type": "component",
+			"components": [
+				"DocumentModal",
+				"TaskCreateModal",
+				"TaskEditModal",
+				"PlanCreateModal",
+				"PlanEditModal",
+				"GoalCreateModal",
+				"GoalEditModal",
+				"RiskCreateModal",
+				"RiskEditModal",
+				"MilestoneCreateModal",
+				"MilestoneEditModal",
+				"EventCreateModal",
+				"EventEditModal",
+				"ProjectCalendarSettingsModal",
+				"OntologyProjectEditModal",
+				"ProjectCollaborationModal",
+				"ProjectGraphSection"
+			]
+		},
+		{
 			"file": "src/lib/components/ontology/DocumentModal.svelte",
 			"type": "component",
 			"components": ["AgentChatModal"]
@@ -92,44 +130,6 @@
 				"GoalEditModal",
 				"PlanEditModal",
 				"AgentChatModal"
-			]
-		},
-		{
-			"file": "src/lib/components/project/ProjectCalendarSettingsModal.svelte",
-			"type": "component",
-			"components": ["TaskEditModal", "EventEditModal"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectHistorySection.svelte",
-			"type": "component",
-			"components": ["ProjectBriefsPanel", "ProjectActivityLogPanel"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectInsightRail.svelte",
-			"type": "component",
-			"components": ["ImageAssetsPanel"]
-		},
-		{
-			"file": "src/lib/components/project/ProjectModalsHost.svelte",
-			"type": "component",
-			"components": [
-				"DocumentModal",
-				"TaskCreateModal",
-				"TaskEditModal",
-				"PlanCreateModal",
-				"PlanEditModal",
-				"GoalCreateModal",
-				"GoalEditModal",
-				"RiskCreateModal",
-				"RiskEditModal",
-				"MilestoneCreateModal",
-				"MilestoneEditModal",
-				"EventCreateModal",
-				"EventEditModal",
-				"ProjectCalendarSettingsModal",
-				"OntologyProjectEditModal",
-				"ProjectCollaborationModal",
-				"ProjectGraphSection"
 			]
 		},
 		{
@@ -600,6 +600,17 @@
 			"exports": ["userContextStore"]
 		},
 		{
+			"file": "src/lib/components/admin/adminRoutes.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"CHAT_ADMIN_ROOT",
+				"CHAT_ADMIN_TITLE",
+				"CHAT_ADMIN_NAV_ITEMS",
+				"isChatAdminSubpath"
+			]
+		},
+		{
 			"file": "src/lib/components/agent/agent-chat-formatters.ts",
 			"type": "component",
 			"components": [],
@@ -689,17 +700,6 @@
 				"normalizeProjectSelectionLimit",
 				"clearProjectSelectionBrowserCache",
 				"fetchProjectSelectionSummaries"
-			]
-		},
-		{
-			"file": "src/lib/components/admin/adminRoutes.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"CHAT_ADMIN_ROOT",
-				"CHAT_ADMIN_TITLE",
-				"CHAT_ADMIN_NAV_ITEMS",
-				"isChatAdminSubpath"
 			]
 		},
 		{
@@ -921,20 +921,6 @@
 		}
 	],
 	"dependencies": {
-		"src/lib/components/ontology/EventEditModal.svelte": [
-			"src/lib/components/ontology/TaskEditModal.svelte",
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte",
-			"src/lib/components/ontology/DocumentModal.svelte"
-		],
-		"src/lib/components/ontology/GoalEditModal.svelte": [
-			"src/lib/components/ontology/MilestoneEditModal.svelte"
-		],
-		"src/lib/components/ontology/TaskEditModal.svelte": [
-			"src/lib/components/ontology/DocumentModal.svelte",
-			"src/lib/components/ontology/GoalEditModal.svelte",
-			"src/lib/components/ontology/PlanEditModal.svelte"
-		],
 		"src/lib/components/project/ProjectCalendarSettingsModal.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
 			"src/lib/components/ontology/EventEditModal.svelte"
@@ -949,6 +935,20 @@
 			"src/lib/components/ontology/EventEditModal.svelte",
 			"src/lib/components/project/ProjectCalendarSettingsModal.svelte",
 			"src/lib/components/ontology/OntologyProjectEditModal.svelte"
+		],
+		"src/lib/components/ontology/EventEditModal.svelte": [
+			"src/lib/components/ontology/TaskEditModal.svelte",
+			"src/lib/components/ontology/GoalEditModal.svelte",
+			"src/lib/components/ontology/PlanEditModal.svelte",
+			"src/lib/components/ontology/DocumentModal.svelte"
+		],
+		"src/lib/components/ontology/GoalEditModal.svelte": [
+			"src/lib/components/ontology/MilestoneEditModal.svelte"
+		],
+		"src/lib/components/ontology/TaskEditModal.svelte": [
+			"src/lib/components/ontology/DocumentModal.svelte",
+			"src/lib/components/ontology/GoalEditModal.svelte",
+			"src/lib/components/ontology/PlanEditModal.svelte"
 		],
 		"src/routes/dashboard/calendar/+page.svelte": [
 			"src/lib/components/ontology/TaskEditModal.svelte",
@@ -971,6 +971,7 @@
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
+		"src/lib/components/admin/adminRoutes.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat-operation-activity.ts",
 		"src/lib/components/agent/agent-chat-session.ts",
@@ -979,7 +980,6 @@
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
 		"src/lib/components/chat/project-selector-browser.ts",
-		"src/lib/components/admin/adminRoutes.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",

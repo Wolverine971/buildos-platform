@@ -40,9 +40,13 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 	const limit = parseLimit(url.searchParams.get('limit'), 50);
 	const offset = parseOffset(url.searchParams.get('offset'));
 
+	// Narrowed select drops `metadata` (unbounded JSON, never read in list views).
+	// Detail handlers (`[id]/attach`) still pull it via a focused query when needed.
 	let query = supabase
 		.from('voice_note_groups')
-		.select('*')
+		.select(
+			'id, user_id, linked_entity_type, linked_entity_id, chat_session_id, status, created_at, updated_at, deleted_at'
+		)
 		.eq('user_id', user.id)
 		.is('deleted_at', null)
 		.order('created_at', { ascending: false })

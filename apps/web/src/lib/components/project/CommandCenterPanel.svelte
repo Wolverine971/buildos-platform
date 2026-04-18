@@ -50,6 +50,7 @@
 		onFilterChange?: (filters: Record<string, string[]>) => void;
 		onSortChange?: (sort: { field: string; direction: 'asc' | 'desc' }) => void;
 		onToggleChange?: (toggleId: string, value: boolean) => void;
+		onFilterOpen?: () => void | Promise<void>;
 	}
 
 	let {
@@ -71,7 +72,8 @@
 		toggleCounts = {},
 		onFilterChange,
 		onSortChange,
-		onToggleChange
+		onToggleChange,
+		onFilterOpen
 	}: Props = $props();
 
 	// Check if filter/sort controls should be shown
@@ -126,6 +128,7 @@
 							filterGroups={filterGroups ?? panelConfig.filters}
 							activeFilters={panelState.filters}
 							onchange={onFilterChange}
+							onopen={onFilterOpen}
 						/>
 						<InsightSortDropdown
 							sortOptions={panelConfig.sorts}

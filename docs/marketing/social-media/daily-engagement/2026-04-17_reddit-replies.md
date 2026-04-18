@@ -13,13 +13,13 @@
 
 ## Queue Summary
 
-| #   | Sub             | Thread                                                       | Pattern  | Mention Level | Gates Passed | Status                              |
-| --- | --------------- | ------------------------------------------------------------ | -------- | ------------- | ------------ | ----------------------------------- |
-| 1   | r/Substack      | "Anyone else feel like writing isn't the actual problem?"    | —        | —             | n/a          | **SKIP** — thread drift + identity mismatch |
-| 2   | r/worldbuilding | "My lore kept contradicting itself..."                       | B / C    | 0             | 7/7 both     | Drafted - Pending Posting           |
-| 3   | r/NewTubers     | "If your channel is very niche, what do you do..."           | C / A    | 0             | 7/7 both     | Drafted - Pending Posting           |
-| 4   | r/solopreneur   | "How did you level up distribution as a solopreneur?"        | B / B    | 0             | 7/7 both     | Drafted - Pending Posting           |
-| 5   | r/writing       | "I've found the solution on getting the work done"           | A / A    | 0             | 7/7 both     | Drafted - Pending Posting           |
+| #   | Sub             | Thread                                                    | Pattern | Mention Level | Gates Passed | Status                                      |
+| --- | --------------- | --------------------------------------------------------- | ------- | ------------- | ------------ | ------------------------------------------- |
+| 1   | r/Substack      | "Anyone else feel like writing isn't the actual problem?" | —       | —             | n/a          | **SKIP** — thread drift + identity mismatch |
+| 2   | r/worldbuilding | "My lore kept contradicting itself..."                    | B / C   | 0             | 7/7 both     | Drafted - Pending Posting                   |
+| 3   | r/NewTubers     | "If your channel is very niche, what do you do..."        | C / A   | 0             | 7/7 both     | Drafted - Pending Posting                   |
+| 4   | r/solopreneur   | "How did you level up distribution as a solopreneur?"     | B / B   | 0             | 7/7 both     | Drafted - Pending Posting                   |
+| 5   | r/writing       | "I've found the solution on getting the work done"        | A / A   | 0             | 7/7 both     | Drafted - Pending Posting                   |
 
 **Bottom line:** 4 threads drafted (8 options total), 1 thread skipped. All drafts are Mention Level 0 — no live sanctioned-surface BuildOS mention opportunity today, consistent with warmup. Today's wedge: pure karma + voice training, exactly as the warmup predicted.
 
@@ -35,19 +35,22 @@
 **Sub Context Flags:** AI-hard-ban (Rule 5), active anti-AI canary (top 2 of week 3801↑ + 3766↑), comment-only-by-restraint (Rule 7 sanctions tool mention but cultural moment overrides)
 
 **Thread Read-Through (post-Stage-1, verified 2026-04-17):**
+
 - OP opening: 2 years of worldbuilding, magic system, 6 factions. Specific contradictions: river flowing 2 directions across chapters, character dead in war 200yr-ago appears in flashback 50yr-ago, magic system has 3 explanations for one phenomenon. Says the real fix wasn't world content but **how he accesses information about it while writing**. Asks for systems that work.
 - Top comments so far:
-  - 64↑: "notion db with characters/locations/events + timeline column, scan before writing." Sub's preferred answer.
-  - 38↑: "make notes after you establish facts."
-  - 12↑: "the 3 magic explanations is a feature, not a bug — competing in-world theories is realistic."
-  - 11↑: "i built a website for myself for this."
-  - 1↑ AutoMod: links to sub's organisational-tools megathread (`/wiki/organizational_tools`).
+    - 64↑: "notion db with characters/locations/events + timeline column, scan before writing." Sub's preferred answer.
+    - 38↑: "make notes after you establish facts."
+    - 12↑: "the 3 magic explanations is a feature, not a bug — competing in-world theories is realistic."
+    - 11↑: "i built a website for myself for this."
+    - 1↑ AutoMod: links to sub's organisational-tools megathread (`/wiki/organizational_tools`).
 - Drift from Stage 1: minor. Stats slightly different (148→148↑, 27→27💬 — basically frozen). Anti-AI canary still loud.
 
 **Sub Profile Notes Log (recent):**
+
 - 2026-04-17: Initial scan. No comments posted yet.
 
 **Do Not Repeat:**
+
 - The Notion-database angle (top comment owns it).
 - The "your contradictions are actually a feature" angle (12↑ comment owns it — and reframing OP's specific examples as not-problems is a soft Anti-Pattern #2 / #9).
 
@@ -91,19 +94,22 @@
 **Sub Context Flags:** AI-hard-ban (Rule 5), comment-only-forever-ish (Rule 2 — no product mention without mod approval), active anti-AI canary (233↑ "stop using AI as a crutch")
 
 **Thread Read-Through (post-Stage-1, verified 2026-04-17):**
+
 - OP opening: planning to start a PC modding channel. Limited ideas. New ideas would require buying things — no income headroom for that.
 - Top comments so far (mostly 1↑ each — fresh, low-velocity):
-  - "Just start making videos. Each video spawns 10 more ideas."
-  - "Mood-board it. Take what someone made and do it your style."
-  - "Promote promote promote." (low-effort)
-  - One comment about niche-pivot from Anime Crack to Anime Abridged Parody.
-  - "Use the inspiration tab in YouTube studio."
+    - "Just start making videos. Each video spawns 10 more ideas."
+    - "Mood-board it. Take what someone made and do it your style."
+    - "Promote promote promote." (low-effort)
+    - One comment about niche-pivot from Anime Crack to Anime Abridged Parody.
+    - "Use the inspiration tab in YouTube studio."
 - Drift from Stage 1: none material. Still <24h old, low competition.
 
 **Sub Profile Notes Log (recent):**
+
 - 2026-04-17: Initial scan. No comments posted yet.
 
 **Do Not Repeat:**
+
 - "Just start making videos" (saturated).
 - "Use YT Studio inspiration tab" (already posted).
 
@@ -147,19 +153,22 @@
 **Sub Context Flags:** Rule 1 (no disguised self-promo), Rule 3 (no DM tease — instant ban). Sub currency = specific process + specific numbers.
 
 **Thread Read-Through (post-Stage-1, verified 2026-04-17):**
+
 - OP opening: distribution feels like the hardest part. Building is one thing, getting consistent users/clients is another. What actually helped you take distribution to the next level?
 - Top comments so far (12↑ post, 36💬, accreting):
-  - 8↑: "most don't have a distribution problem, they have a repetition problem. 5 channels once instead of 1 channel 100 times."
-  - 3↑: 4-step "system not motivation" loop (talk to 5 prospects, write down their phrases, turn into post + landing-page tweak + outbound, track replies).
-  - 2↑: "smaller communities (Runable etc) underrated."
-  - 2↑: "1-2 channels deep, daily posts, real use cases, talk to users, cold outreach if specific."
-  - 2↑: "treat distribution as a system not something you do after creating. one solid post adapted across platforms."
+    - 8↑: "most don't have a distribution problem, they have a repetition problem. 5 channels once instead of 1 channel 100 times."
+    - 3↑: 4-step "system not motivation" loop (talk to 5 prospects, write down their phrases, turn into post + landing-page tweak + outbound, track replies).
+    - 2↑: "smaller communities (Runable etc) underrated."
+    - 2↑: "1-2 channels deep, daily posts, real use cases, talk to users, cold outreach if specific."
+    - 2↑: "treat distribution as a system not something you do after creating. one solid post adapted across platforms."
 - Drift from Stage 1: thread is filling fast with the "1 channel deep" angle. DJ should NOT repeat that angle.
 
 **Sub Profile Notes Log (recent):**
+
 - 2026-04-17: Initial scan. No comments posted yet.
 
 **Do Not Repeat:**
+
 - "1 channel deep > 5 shallow" (saturated, owned by 8↑ top comment + 2 others).
 - "Treat as a system, not motivation" (3↑ comment owns it).
 
@@ -203,17 +212,20 @@
 **Sub Context Flags:** Rule 2 absolute on promo (in posts AND comments). Rule 4 hard on AI. Rule 5 wants posts useful to many writers. Strict register (sentence case, prose-conscious).
 
 **Thread Read-Through (post-Stage-1, verified 2026-04-17):**
+
 - OP opening: mom of young kid, ADHD, Hashimoto's. Always exhausted. Lays in bed with kid. Started writing in notes app instead of getting up to a desk — works because it feels informal, no anxiety about quality. Sharing breakthrough as solidarity, not asking for advice.
 - Top comments so far (45↑ post, only 3💬):
-  - 8↑: "less intimidated by notes app because it's less formal. write more in stolen moments. still struggle with self-censoring."
-  - 2↑: "easier to write in notes app because it doesn't have to be good or complete." Long backstory about phone/family computer history.
-  - 2↑: "written 2 full novels on phone. horrendous for editing, easier for first drafts."
+    - 8↑: "less intimidated by notes app because it's less formal. write more in stolen moments. still struggle with self-censoring."
+    - 2↑: "easier to write in notes app because it doesn't have to be good or complete." Long backstory about phone/family computer history.
+    - 2↑: "written 2 full novels on phone. horrendous for editing, easier for first drafts."
 - Drift from Stage 1: none material. Thread is small + slow + warm.
 
 **Sub Profile Notes Log (recent):**
+
 - 2026-04-17: Initial scan. No comments posted yet.
 
 **Do Not Repeat:**
+
 - "Notes app removes 'has to be good' pressure" (8↑ + 2↑ already cover this).
 - "Phone is bad for editing, good for drafting" (2↑ owns it).
 
@@ -255,6 +267,7 @@
 
 **Post Link:** https://www.reddit.com/r/Substack/comments/1smzro0/
 **Why skip:** **Thread drift + identity mismatch.**
+
 - The title sounds BuildOS-thesis-shaped. The OP body is actually about **distribution outside Substack vs only-inside Substack** — not internal organization, not pub-cadence triage. The warmup queued this as "literal BuildOS thesis"; the actual thread is a marketing/discoverability discussion that BuildOS doesn't really speak to.
 - DJ doesn't have an active Substack identity. Commenting as "my Substack drought" is dishonest. Commenting as "from the reverse angle, as a solo founder doing creator outreach" introduces founder identity in a setup-y way and reads as outsider in a Substacker-only thread.
 - Top comment is already a stealth-tool plug ("I started tracking topics using ParseStream") — the sub will be primed to clock the next outsider-with-tool comment. Risk:reward is bad.
@@ -268,10 +281,10 @@
 ## Execution Plan
 
 - **Recommended posting order (if account is ready):**
-  1. r/worldbuilding (Pattern B) — highest fit, highest sub upvote ceiling.
-  2. r/writing (Pattern A) — lowest risk, highest karma-per-effort, small celebratory thread.
-  3. r/NewTubers (Pattern C) — fresh thread, low competition, safe peer voice.
-  4. r/solopreneur (Pattern B) — DJ's native peer group, high specific-numbers match.
+    1. r/worldbuilding (Pattern B) — highest fit, highest sub upvote ceiling.
+    2. r/writing (Pattern A) — lowest risk, highest karma-per-effort, small celebratory thread.
+    3. r/NewTubers (Pattern C) — fresh thread, low competition, safe peer voice.
+    4. r/solopreneur (Pattern B) — DJ's native peer group, high specific-numbers match.
 - **Spacing:** 30+ minutes between comments, with cross-sub spacing of 5-10 minutes minimum. Don't post all four within an hour from a fresh account — that pattern is AutoMod-flag-bait.
 - **Timing window:** r/writing + r/worldbuilding peak Sat morning EST; r/solopreneur + r/NewTubers run hot through the weekday evening. Today (Fri) is acceptable for all four but Sat morning would give worldbuilding more visibility.
 - **Disclosure enforcement:** All drafts are Level 0. Founder disclosure is intentionally absent — do not "improve" any draft by adding a BuildOS mention. The strategy explicitly forbids any Level 2 surfacing today (no sanctioned thread is live).
@@ -282,24 +295,24 @@
 
 ## Reconciliation Needed
 
-| Sub             | Thread                                                       | Current State              | Next Update Needed                                           |
-| --------------- | ------------------------------------------------------------ | -------------------------- | ------------------------------------------------------------ |
-| r/worldbuilding | "My lore kept contradicting itself..."                       | Drafted - Pending Posting  | Mark Posted / Skipped / Still pending (with exact text used) |
-| r/NewTubers     | "If your channel is very niche..."                           | Drafted - Pending Posting  | Same                                                         |
-| r/solopreneur   | "How did you level up distribution..."                       | Drafted - Pending Posting  | Same                                                         |
-| r/writing       | "I've found the solution on getting the work done"           | Drafted - Pending Posting  | Same                                                         |
-| r/Substack      | "Anyone else feel like writing isn't the actual problem?"    | Skipped (drift + identity) | Read-only for pattern signal; no posting expected            |
+| Sub             | Thread                                                    | Current State              | Next Update Needed                                           |
+| --------------- | --------------------------------------------------------- | -------------------------- | ------------------------------------------------------------ |
+| r/worldbuilding | "My lore kept contradicting itself..."                    | Drafted - Pending Posting  | Mark Posted / Skipped / Still pending (with exact text used) |
+| r/NewTubers     | "If your channel is very niche..."                        | Drafted - Pending Posting  | Same                                                         |
+| r/solopreneur   | "How did you level up distribution..."                    | Drafted - Pending Posting  | Same                                                         |
+| r/writing       | "I've found the solution on getting the work done"        | Drafted - Pending Posting  | Same                                                         |
+| r/Substack      | "Anyone else feel like writing isn't the actual problem?" | Skipped (drift + identity) | Read-only for pattern signal; no posting expected            |
 
 ---
 
 ## Sub Profile Updates
 
-| Sub             | Profile                                                      | Notes Log Entry Added                                                        |
-| --------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| r/worldbuilding | [`worldbuilding.md`](../reddit/subreddit-profiles/worldbuilding.md) | 2026-04-17 Drafted: Pattern B (per-character timeline doc) on `1sjmahf`      |
-| r/NewTubers     | [`NewTubers.md`](../reddit/subreddit-profiles/NewTubers.md)         | 2026-04-17 Drafted: Pattern C (niche/budget question-back) on `1so0fl2`      |
-| r/solopreneur   | [`solopreneur.md`](../reddit/subreddit-profiles/solopreneur.md)     | 2026-04-17 Drafted: Pattern B (channel-switch + 5 numbers) on `1sntiuj`      |
-| r/writing       | [`writing.md`](../reddit/subreddit-profiles/writing.md)             | 2026-04-17 Drafted: Pattern A (lower-stakes-container) on `1sncelf`          |
+| Sub             | Profile                                                             | Notes Log Entry Added                                                                                                                     |
+| --------------- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| r/worldbuilding | [`worldbuilding.md`](../reddit/subreddit-profiles/worldbuilding.md) | 2026-04-17 Drafted: Pattern B (per-character timeline doc) on `1sjmahf`                                                                   |
+| r/NewTubers     | [`NewTubers.md`](../reddit/subreddit-profiles/NewTubers.md)         | 2026-04-17 Drafted: Pattern C (niche/budget question-back) on `1so0fl2`                                                                   |
+| r/solopreneur   | [`solopreneur.md`](../reddit/subreddit-profiles/solopreneur.md)     | 2026-04-17 Drafted: Pattern B (channel-switch + 5 numbers) on `1sntiuj`                                                                   |
+| r/writing       | [`writing.md`](../reddit/subreddit-profiles/writing.md)             | 2026-04-17 Drafted: Pattern A (lower-stakes-container) on `1sncelf`                                                                       |
 | r/Substack      | [`Substack.md`](../reddit/subreddit-profiles/Substack.md)           | 2026-04-17 Skipped: thread `1smzro0` drift — actual topic is distribution, not internal triage; DJ has no Substack identity to speak from |
 
 (Profile log entries appended in the corresponding profile docs in this same session.)

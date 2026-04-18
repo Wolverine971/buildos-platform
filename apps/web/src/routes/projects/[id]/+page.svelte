@@ -50,13 +50,21 @@
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { getNavigationData } from '$lib/stores/project-navigation.store';
 	import { resolveMilestoneState } from '$lib/utils/milestone-state';
+	import {
+		collectDocIds,
+		normalizeDocumentState,
+		parseDocStructure
+	} from '$lib/services/ontology/doc-structure.service';
 	import ProjectContentSkeleton from '$lib/components/ontology/ProjectContentSkeleton.svelte';
 	import {
 		AlertCircle,
+		AlertTriangle,
 		Calendar,
 		Bell,
 		BellOff,
+		ChevronDown,
 		Clock,
+		FileText,
 		Image as ImageIcon,
 		ListChecks,
 		Pencil,
@@ -101,7 +109,7 @@
 		resolveEntityOpenAction
 	} from '$lib/components/project/project-page-interactions';
 	import type { ImageUploadPanelRef } from '$lib/components/project/project-page-interactions';
-	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
+	import type { DocStructure, GetDocTreeResponse, OntoDocument } from '$lib/types/onto-api';
 	import type { OntologyImageAsset } from '$lib/components/ontology/image-assets/types';
 	import type { EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
@@ -141,6 +149,11 @@
 		description?: string;
 	};
 
+	type DocTreeLoadedData = Pick<
+		GetDocTreeResponse,
+		'structure' | 'documents' | 'unlinked' | 'archived'
+	>;
+
 	function normalizePublicPageCounts(value: unknown): ProjectPublicPageCounts {
 		if (!value || typeof value !== 'object') {
 			return { total: 0, live: 0 };
@@ -155,6 +168,49 @@
 		};
 	}
 
+	function buildDocTreeSeed(
+		sourceProject: Project | null | undefined,
+		sourceDocuments: Document[] | null | undefined
+	): DocTreeLoadedData {
+		const structure = parseDocStructure(sourceProject?.doc_structure);
+		const typedDocs = ((sourceDocuments ?? []) as unknown as OntoDocument[]).filter(
+			(doc) => doc && typeof doc.id === 'string'
+		);
+		const documentsById: Record<string, OntoDocument> = {};
+		for (const doc of typedDocs) {
+			documentsById[doc.id] = doc;
+		}
+
+		const structureDocIds = collectDocIds(structure.root);
+		const archived = typedDocs.filter(
+			(doc) => normalizeDocumentState(doc.state_key) === 'archived'
+		);
+		const archivedDocIds = new Set(archived.map((doc) => doc.id));
+		const unlinked = typedDocs.filter(
+			(doc) => !archivedDocIds.has(doc.id) && !structureDocIds.has(doc.id)
+		);
+
+		return { structure, documents: documentsById, unlinked, archived };
+	}
+
+	function getInitialDocTreeSeed(): DocTreeLoadedData | null {
+		if (data.skeleton) return null;
+		return buildDocTreeSeed(data.project as Project, (data.documents || []) as Document[]);
+	}
+
+	function getInitialEventsIncluded(): boolean {
+		return !data.skeleton && Array.isArray(data.events);
+	}
+
+	function getInitialCurrentActorId(): string | null {
+		const accessActorId = data.access?.currentActorId;
+		if (typeof accessActorId === 'string') return accessActorId;
+		if (!data.skeleton && typeof data.current_actor_id === 'string') {
+			return data.current_actor_id;
+		}
+		return null;
+	}
+
 	// ============================================================
 	// PROPS & DATA
 	// ============================================================
@@ -166,7 +222,8 @@
 			canInvite: false,
 			canViewLogs: false,
 			isOwner: false,
-			isAuthenticated: false
+			isAuthenticated: false,
+			currentActorId: null
 		}
 	);
 	const canEdit = $derived(access.canEdit);
@@ -240,7 +297,8 @@
 			? ({ total: 0, live: 0 } satisfies ProjectPublicPageCounts)
 			: normalizePublicPageCounts(data.public_page_counts)
 	);
-	const initialEventsIncluded = !data.skeleton && Array.isArray(data.events);
+	const initialEventsIncluded = getInitialEventsIncluded();
+	const initialDocTreeSeed = getInitialDocTreeSeed();
 
 	// Context for creating milestone from within a goal
 	let milestoneCreateGoalContext = $state<{ goalId: string; goalName: string } | null>(null);
@@ -273,15 +331,19 @@
 	let isNotificationSettingsLoading = $state(false);
 	let isNotificationSettingsSaving = $state(false);
 	let notificationSettingsLoadPromise = $state<Promise<void> | null>(null);
-	let currentProjectActorId = $state<string | null>(null);
+	let currentProjectActorId = $state<string | null>(getInitialCurrentActorId());
 	let taskAssigneeFilterMembers = $state<TaskAssigneeFilterMember[]>([]);
 	let membersLoadPromise = $state<Promise<void> | null>(null);
 	let membersLoaded = $state(false);
 
 	// Document Tree State
 	let parentDocumentId = $state<string | null>(null);
-	let docTreeStructure = $state<DocStructure | null>(null);
-	let docTreeDocuments = $state<Record<string, OntoDocument>>({});
+	let docTreeStructure = $state<DocStructure | null>(initialDocTreeSeed?.structure ?? null);
+	let docTreeDocuments = $state<Record<string, OntoDocument>>(
+		initialDocTreeSeed?.documents ?? {}
+	);
+	let docTreeUnlinked = $state<OntoDocument[]>(initialDocTreeSeed?.unlinked ?? []);
+	let docTreeArchived = $state<OntoDocument[]>(initialDocTreeSeed?.archived ?? []);
 	let showMoveDocModal = $state(false);
 	let moveDocumentId = $state<string | null>(null);
 	let moveDocumentTitle = $state('');
@@ -359,6 +421,13 @@
 	// HYDRATION - Load full data after skeleton render
 	// ============================================================
 
+	function applyDocTreeSeed(seed: DocTreeLoadedData) {
+		docTreeStructure = seed.structure;
+		docTreeDocuments = seed.documents;
+		docTreeUnlinked = seed.unlinked;
+		docTreeArchived = seed.archived;
+	}
+
 	/**
 	 * Hydrate full project data from the API.
 	 * Called on mount when in skeleton mode.
@@ -381,9 +450,17 @@
 			events = fullData.events || [];
 			contextDocument = fullData.context_document || null;
 			publicPageCounts = normalizePublicPageCounts(fullData.public_page_counts);
+			if ('current_actor_id' in fullData) {
+				currentProjectActorId = fullData.current_actor_id ?? null;
+			}
+			applyDocTreeSeed(
+				buildDocTreeSeed(
+					fullData.project || project,
+					(fullData.documents || []) as Document[]
+				)
+			);
 
 			isHydrating = false;
-			void ensureProjectMembersLoaded();
 		} catch (err) {
 			console.error('[Project Page] Hydration failed:', err);
 			void logOntologyClientError(err, {
@@ -448,7 +525,6 @@
 			if (!initialEventsIncluded) {
 				void loadProjectEvents();
 			}
-			void ensureProjectMembersLoaded();
 		}
 	});
 
@@ -536,6 +612,15 @@
 		await membersLoadPromise;
 	}
 
+	function handleCollaborationMembersChanged() {
+		const shouldReload = membersLoaded;
+		membersLoaded = false;
+		taskAssigneeFilterMembers = [];
+		if (shouldReload) {
+			void ensureProjectMembersLoaded({ force: true });
+		}
+	}
+
 	// ============================================================
 	// DERIVED STATE
 	// ============================================================
@@ -598,6 +683,12 @@
 			return taskFilterGroups;
 		}
 		return PANEL_CONFIGS[panelKey].filters;
+	}
+
+	function handleInsightFilterOpen(panelKey: ConfigPanelKey) {
+		if (panelKey === 'tasks') {
+			void ensureProjectMembersLoaded();
+		}
 	}
 
 	// ============================================================
@@ -1070,6 +1161,15 @@
 			}
 			contextDocument = newData.context_document || null;
 			publicPageCounts = normalizePublicPageCounts(newData.public_page_counts);
+			if ('current_actor_id' in newData) {
+				currentProjectActorId = newData.current_actor_id ?? null;
+			}
+			applyDocTreeSeed(
+				buildDocTreeSeed(
+					newData.project || project,
+					(newData.documents || []) as Document[]
+				)
+			);
 
 			if (showSuccessToast) {
 				toastService.success('Data refreshed');
@@ -1230,9 +1330,13 @@
 	function handleDocTreeDataLoaded(data: {
 		structure: DocStructure;
 		documents: Record<string, OntoDocument>;
+		unlinked?: OntoDocument[];
+		archived?: OntoDocument[];
 	}) {
 		docTreeStructure = data.structure;
 		docTreeDocuments = data.documents;
+		docTreeUnlinked = data.unlinked ?? [];
+		docTreeArchived = data.archived ?? [];
 	}
 
 	function handleTaskCreated(taskId: string) {
@@ -1640,29 +1744,100 @@
 			<!-- Mobile Command Center (shown only on mobile < 640px) -->
 			<div class="sm:hidden mb-2">
 				{#if isHydrating}
-					<div class="space-y-1.5">
+					<!-- Skeleton matches MobileCommandCenter's CommandCenterPanel cards:
+					     h-14 card, tx-frame texture, icon + label + count on left,
+					     chevron on right. Order: Goals → Tasks+Plans → Risks+Documents → Events. -->
+					<div class="space-y-1.5" aria-busy="true" aria-label="Loading project panels">
 						<!-- Row 1: Goals (full width) -->
-						<div class="w-full h-[52px] bg-muted animate-pulse rounded-lg"></div>
+						<div
+							class="w-full h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden flex items-center justify-between px-2.5 py-2"
+						>
+							<div class="flex items-center gap-2 min-w-0">
+								<Target class="w-4 h-4 shrink-0 text-amber-500" />
+								<span class="text-xs font-semibold text-foreground truncate"
+									>Goals</span
+								>
+								<span class="text-[10px] text-muted-foreground shrink-0"
+									>({skeletonCounts?.goal_count ?? 0})</span
+								>
+							</div>
+							<ChevronDown class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+						</div>
 						<!-- Row 2: Tasks + Plans -->
 						<div class="flex flex-wrap gap-1.5">
 							<div
-								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
-							></div>
+								class="w-[calc(50%-3px)] h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden flex items-center justify-between px-2.5 py-2"
+							>
+								<div class="flex items-center gap-2 min-w-0">
+									<ListChecks class="w-4 h-4 shrink-0 text-muted-foreground" />
+									<span class="text-xs font-semibold text-foreground truncate"
+										>Tasks</span
+									>
+									<span class="text-[10px] text-muted-foreground shrink-0"
+										>({skeletonCounts?.task_count ?? 0})</span
+									>
+								</div>
+								<ChevronDown class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+							</div>
 							<div
-								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
-							></div>
+								class="w-[calc(50%-3px)] h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden flex items-center justify-between px-2.5 py-2"
+							>
+								<div class="flex items-center gap-2 min-w-0">
+									<Calendar class="w-4 h-4 shrink-0 text-indigo-500" />
+									<span class="text-xs font-semibold text-foreground truncate"
+										>Plans</span
+									>
+									<span class="text-[10px] text-muted-foreground shrink-0"
+										>({skeletonCounts?.plan_count ?? 0})</span
+									>
+								</div>
+								<ChevronDown class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+							</div>
 						</div>
 						<!-- Row 3: Risks + Documents -->
 						<div class="flex flex-wrap gap-1.5">
 							<div
-								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
-							></div>
+								class="w-[calc(50%-3px)] h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden flex items-center justify-between px-2.5 py-2"
+							>
+								<div class="flex items-center gap-2 min-w-0">
+									<AlertTriangle class="w-4 h-4 shrink-0 text-red-500" />
+									<span class="text-xs font-semibold text-foreground truncate"
+										>Risks</span
+									>
+									<span class="text-[10px] text-muted-foreground shrink-0"
+										>({skeletonCounts?.risk_count ?? 0})</span
+									>
+								</div>
+								<ChevronDown class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+							</div>
 							<div
-								class="w-[calc(50%-3px)] h-[52px] bg-muted animate-pulse rounded-lg"
-							></div>
+								class="w-[calc(50%-3px)] h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden flex items-center justify-between px-2.5 py-2"
+							>
+								<div class="flex items-center gap-2 min-w-0">
+									<FileText class="w-4 h-4 shrink-0 text-sky-500" />
+									<span class="text-xs font-semibold text-foreground truncate"
+										>Documents</span
+									>
+									<span class="text-[10px] text-muted-foreground shrink-0"
+										>({skeletonCounts?.document_count ?? 0})</span
+									>
+								</div>
+								<ChevronDown class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+							</div>
 						</div>
 						<!-- Row 4: Events (full width) -->
-						<div class="w-full h-[52px] bg-muted animate-pulse rounded-lg"></div>
+						<div
+							class="w-full h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden flex items-center justify-between px-2.5 py-2"
+						>
+							<div class="flex items-center gap-2 min-w-0">
+								<Clock class="w-4 h-4 shrink-0 text-teal-500" />
+								<span class="text-xs font-semibold text-foreground truncate"
+									>Events</span
+								>
+								<span class="text-[10px] text-muted-foreground shrink-0">(0)</span>
+							</div>
+							<ChevronDown class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+						</div>
 					</div>
 				{:else}
 					{#await import('$lib/components/project/MobileCommandCenter.svelte') then { default: MobileCommandCenter }}
@@ -1702,6 +1877,7 @@
 							onFilterChange={updatePanelFilters}
 							onSortChange={updatePanelSort}
 							onToggleChange={updatePanelToggle}
+							onFilterOpen={handleInsightFilterOpen}
 							{taskFilterGroups}
 						/>
 					{:catch}
@@ -1727,7 +1903,10 @@
 				<!-- Left Column: Documents -->
 				{#if isHydrating && skeletonCounts}
 					<!-- Skeleton state - show loading placeholders with counts -->
-					<ProjectContentSkeleton documentCount={skeletonCounts.document_count} />
+					<ProjectContentSkeleton
+						documentCount={skeletonCounts.document_count}
+						{canEdit}
+					/>
 				{:else}
 					<!-- Hydrated state - show real content -->
 					<div class="min-w-0 space-y-2 sm:space-y-4">
@@ -1737,6 +1916,7 @@
 									documents.length,
 									skeletonCounts?.document_count ?? 0
 								)}
+								{canEdit}
 							/>
 						{:then { default: ProjectDocumentsSection }}
 							<ProjectDocumentsSection
@@ -1751,6 +1931,10 @@
 								onMoveDocument={canEdit ? handleMoveDocument : undefined}
 								onDeleteDocument={canEdit ? handleDeleteDocument : undefined}
 								onDataLoaded={handleDocTreeDataLoaded}
+								initialStructure={docTreeStructure}
+								initialDocuments={docTreeDocuments}
+								initialUnlinked={docTreeUnlinked}
+								initialArchived={docTreeArchived}
 								onTreeRefChange={(ref) => {
 									docTreeViewRef = ref;
 								}}
@@ -1771,6 +1955,7 @@
 						{skeletonCounts}
 						{graphHidden}
 						{canViewLogs}
+						{canEdit}
 						onShowGraphModal={() => (showGraphModal = true)}
 					/>
 				{:else}
@@ -1816,6 +2001,7 @@
 								}}
 								{graphHidden}
 								{canViewLogs}
+								{canEdit}
 								onShowGraphModal={() => (showGraphModal = true)}
 							/>
 						{:then { default: ProjectInsightRail }}
@@ -1850,6 +2036,7 @@
 								onUpdatePanelFilters={updatePanelFilters}
 								onUpdatePanelSort={updatePanelSort}
 								onUpdatePanelToggle={updatePanelToggle}
+								onFilterOpen={handleInsightFilterOpen}
 								onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
 								onEditTask={(id) => (editingTaskId = id)}
 								onEditPlan={(id) => (editingPlanId = id)}
@@ -1964,6 +2151,7 @@
 			onProjectSaved={handleProjectSaved}
 			onCloseCollabModal={closeCollabModal}
 			onLeftProject={handleCollaborationLeftProject}
+			onCollaborationMembersChanged={handleCollaborationMembersChanged}
 			onProjectDeleteConfirm={handleProjectDeleteConfirm}
 			onCancelProjectDelete={cancelDeleteProjectModal}
 			onCloseGraphModal={closeGraphModal}

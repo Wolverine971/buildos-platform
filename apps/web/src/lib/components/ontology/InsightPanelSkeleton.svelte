@@ -1,21 +1,15 @@
 <!-- apps/web/src/lib/components/ontology/InsightPanelSkeleton.svelte -->
 <!--
-	InsightPanelSkeleton - REFACTORED with proper Inkprint spacing
+	InsightPanelSkeleton — loading state for insight-rail panels.
 
-	Loading state for insight panels with:
-	- Consistent spacing (px-3 py-2.5 for items, p-4 for header)
-	- Proper border radius (rounded-lg)
-	- Entity-specific texture (tx-pulse for loading)
-	- High information density
-
-	CHANGES FROM ORIGINAL:
-	- Removed responsive padding (px-3 sm:px-4 → px-4)
-	- Removed responsive radius (rounded-lg sm:rounded-xl → rounded-lg)
-	- Simplified skeleton item spacing
-	- Fixed icon sizing (w-4 h-4 consistent)
+	Mirrors the header structure of the loaded ProjectInsightRail panel exactly
+	(same texture, padding, gap, Plus + ChevronDown button footprints) so the
+	hydration transition doesn't shift. Accepts `iconStyles` to match the
+	per-panel color (amber/indigo/etc.) used by `getPanelIconStyles` on the
+	project page.
 -->
 <script lang="ts">
-	import { ChevronDown, type Icon as LucideIcon } from 'lucide-svelte';
+	import { ChevronDown, Plus, type Icon as LucideIcon } from 'lucide-svelte';
 
 	interface Props {
 		icon: typeof LucideIcon;
@@ -23,6 +17,8 @@
 		count: number;
 		description?: string;
 		expanded?: boolean;
+		iconStyles?: string;
+		canEdit?: boolean;
 		class?: string;
 	}
 
@@ -32,45 +28,48 @@
 		count,
 		description,
 		expanded = false,
+		iconStyles = 'bg-accent/10 text-accent',
+		canEdit = false,
 		class: className = ''
 	}: Props = $props();
 </script>
 
 <div
-	class="bg-card border border-border rounded-lg shadow-ink tx tx-pulse tx-weak overflow-hidden {className}"
+	class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden {className}"
 >
-	<!-- Header - matches EntityListItem spacing -->
+	<!-- Header - matches the loaded ProjectInsightRail panel header exactly -->
 	<div
 		class="flex items-center justify-between gap-2 px-3 py-2.5"
 		aria-busy="true"
 		aria-label="Loading {label}"
 	>
 		<div class="flex items-center gap-3 flex-1 min-w-0">
-			<div class="w-8 h-8 rounded-md bg-accent/10 flex items-center justify-center shrink-0">
-				<Icon class="w-4 h-4 text-accent" />
+			<div class="w-8 h-8 rounded-md flex items-center justify-center shrink-0 {iconStyles}">
+				<Icon class="w-4 h-4" />
 			</div>
 			<div class="min-w-0 flex-1">
-				<p class="text-sm font-semibold text-foreground flex items-center gap-1.5">
+				<p class="text-sm font-semibold text-foreground">
 					{label}
-					<span class="inline-flex items-center gap-1 text-muted-foreground font-normal">
-						<span class="inline-block w-2 h-2 rounded-full bg-accent/60 animate-pulse"
-						></span>
-						<span>({count})</span>
-					</span>
+					<span class="text-muted-foreground font-normal">({count})</span>
 				</p>
 				{#if description}
 					<p class="text-xs text-muted-foreground">{description}</p>
 				{/if}
 			</div>
 		</div>
-		<div class="flex items-center gap-2 shrink-0">
-			<!-- Skeleton add button -->
-			<div class="w-6 h-6 rounded-md bg-muted/50"></div>
-			<ChevronDown
-				class="w-4 h-4 text-muted-foreground transition-transform {expanded
-					? 'rotate-180'
-					: ''}"
-			/>
+		<div class="flex items-center gap-1.5 shrink-0">
+			{#if canEdit}
+				<div class="p-1.5 rounded-md">
+					<Plus class="w-4 h-4 text-muted-foreground/60" />
+				</div>
+			{/if}
+			<div class="p-1.5 rounded-md">
+				<ChevronDown
+					class="w-4 h-4 text-muted-foreground transition-transform {expanded
+						? 'rotate-180'
+						: ''}"
+				/>
+			</div>
 		</div>
 	</div>
 

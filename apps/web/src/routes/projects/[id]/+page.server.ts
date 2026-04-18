@@ -30,14 +30,14 @@ import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import type { Database } from '@buildos/shared-types';
-import { decorateMilestonesWithGoals } from '$lib/server/milestone-decorators';
+import {
+	decorateMilestonesWithGoals,
+	type GoalMilestoneEdge
+} from '$lib/server/milestone-decorators';
 import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
-import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
-import {
-	attachLastChangedByActorToTasks,
-	fetchTaskLastChangedByActorMap
-} from '$lib/server/task-relevance.service';
+import { attachAssigneesToTasks, type TaskAssignee } from '$lib/server/task-assignment.service';
+import { attachLastChangedByActorToTasks } from '$lib/server/task-relevance.service';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -49,6 +49,7 @@ interface ProjectAccessPayload {
 	can_view_logs?: boolean;
 	is_owner?: boolean;
 	is_authenticated?: boolean;
+	current_actor_id?: string | null;
 }
 
 interface ProjectSkeletonWithAccessResponse {
@@ -89,6 +90,7 @@ export interface ProjectSkeletonData {
 		canViewLogs: boolean;
 		isOwner: boolean;
 		isAuthenticated: boolean;
+		currentActorId: string | null;
 	};
 	project: {
 		id: string;
@@ -127,7 +129,9 @@ function normalizeAccess(
 		canInvite: Boolean(access?.can_invite),
 		canViewLogs: Boolean(access?.can_view_logs),
 		isOwner: Boolean(access?.is_owner),
-		isAuthenticated: Boolean(access?.is_authenticated ?? isAuthenticated)
+		isAuthenticated: Boolean(access?.is_authenticated ?? isAuthenticated),
+		currentActorId:
+			typeof access?.current_actor_id === 'string' ? access.current_actor_id : null
 	};
 }
 
@@ -177,7 +181,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		);
 		return {
 			...fallbackData,
-			access: normalizeAccess(null, isAuthenticated)
+			access: normalizeAccess({ current_actor_id: fallbackActorId }, isAuthenticated)
 		};
 	}
 
@@ -248,44 +252,44 @@ async function loadFullData(
 		data.project = sanitizeProjectForClient(data.project as Record<string, unknown>);
 	}
 	const rawTasks = (data.tasks || []) as Array<{ id: string } & Record<string, unknown>>;
-	const taskIds = rawTasks.map((task) => task.id);
 	const goals = (data.goals || []) as GoalRow[];
 	const milestones = (data.milestones || []) as MilestoneRow[];
 
-	// Run independent post-RPC fetches in parallel: milestone decoration, task
-	// assignees, and task last-changed-by actors.
-	const [milestoneDecorateResult, assigneeMapResult, lastChangedByActorMapResult] =
-		await Promise.all([
-			decorateMilestonesWithGoals(supabase, goals, milestones),
-			rawTasks.length > 0
-				? fetchTaskAssigneesMap({ supabase, taskIds }).catch((assigneeError) => {
-						console.warn(
-							'[Project Page] Failed to enrich task assignees in fallback load:',
-							assigneeError
-						);
-						return null;
-					})
-				: Promise.resolve(null),
-			rawTasks.length > 0
-				? fetchTaskLastChangedByActorMap({ supabase, projectId: id, taskIds }).catch(
-						(relevanceError) => {
-							console.warn(
-								'[Project Page] Failed to enrich task relevance actors in fallback load:',
-								relevanceError
-							);
-							return null;
-						}
-					)
-				: Promise.resolve(null)
-		]);
+	// Task assignees and last-changed-by actor maps are baked into get_project_full
+	// (migration 20260501000002) so the fallback no longer needs extra round-trips.
+	const assigneeMap = new Map<string, TaskAssignee[]>();
+	const rawAssignees = data.task_assignees as Record<string, TaskAssignee[]> | null | undefined;
+	if (rawAssignees) {
+		for (const [taskId, assignees] of Object.entries(rawAssignees)) {
+			if (Array.isArray(assignees) && assignees.length > 0) {
+				assigneeMap.set(taskId, assignees);
+			}
+		}
+	}
 
-	let enrichedTasks: Array<{ id: string } & Record<string, unknown>> = rawTasks;
-	if (assigneeMapResult) {
-		enrichedTasks = attachAssigneesToTasks(rawTasks, assigneeMapResult);
+	const lastChangedByActorMap = new Map<string, string>();
+	const rawLastChanged = data.task_last_changed_by as Record<string, string> | null | undefined;
+	if (rawLastChanged) {
+		for (const [taskId, actorId] of Object.entries(rawLastChanged)) {
+			if (typeof actorId === 'string' && actorId.length > 0) {
+				lastChangedByActorMap.set(taskId, actorId);
+			}
+		}
 	}
-	if (lastChangedByActorMapResult) {
-		enrichedTasks = attachLastChangedByActorToTasks(enrichedTasks, lastChangedByActorMapResult);
-	}
+
+	const goalMilestoneEdges = (data.goal_milestone_edges ?? []) as GoalMilestoneEdge[];
+	const milestoneDecorateResult = await decorateMilestonesWithGoals(
+		supabase,
+		goals,
+		milestones,
+		goalMilestoneEdges
+	);
+
+	let enrichedTasks: Array<{ id: string } & Record<string, unknown>> = attachAssigneesToTasks(
+		rawTasks,
+		assigneeMap
+	);
+	enrichedTasks = attachLastChangedByActorToTasks(enrichedTasks, lastChangedByActorMap);
 	data.tasks = enrichedTasks;
 
 	const { milestones: decoratedMilestones } = milestoneDecorateResult;
@@ -295,6 +299,7 @@ async function loadFullData(
 		skeleton: false,
 		projectId: id,
 		...data,
+		current_actor_id: actorId,
 		goals,
 		milestones: decoratedMilestones
 	};

@@ -75,7 +75,9 @@ describe('tool surface size report', () => {
 		);
 		const createTask = projectWrite.tools.find((tool) => tool.name === 'create_onto_task');
 
-		expect(createProject?.chars).toBeLessThanOrEqual(5000);
+		// 2026-04-18: budget bumped from 5000 → 5500 after adding `kind` enum
+		// constraints to relationship endpoints (regression bc05e6ac fix).
+		expect(createProject?.chars).toBeLessThanOrEqual(5500);
 		expect(createTask?.chars).toBeLessThanOrEqual(2500);
 	});
 

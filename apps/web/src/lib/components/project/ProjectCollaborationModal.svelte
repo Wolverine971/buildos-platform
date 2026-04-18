@@ -58,6 +58,7 @@
 		isOpen?: boolean;
 		onClose?: () => void;
 		onLeftProject?: () => void;
+		onMembersChanged?: () => void | Promise<void>;
 		projectId: string;
 		projectName: string;
 		canManageMembers?: boolean;
@@ -72,6 +73,7 @@
 		isOpen = $bindable(false),
 		onClose,
 		onLeftProject,
+		onMembersChanged,
 		projectId,
 		projectName,
 		canManageMembers = false
@@ -838,6 +840,7 @@
 
 			toastService.success(`Removed ${label}`);
 			await loadShareData();
+			void onMembersChanged?.();
 		} catch (err) {
 			console.error('[ProjectCollaborationModal] Failed to remove member:', err);
 			const message = err instanceof Error ? err.message : 'Failed to remove member';

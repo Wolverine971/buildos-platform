@@ -483,6 +483,36 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					assistantBuffer += event.content;
 					activeAssistantBuffer = assistantBuffer;
 					await tryEmitEarlyAssistantLeadIn(assistantBuffer);
+				} else if (event.type === 'reasoning') {
+					// Reasoning stays out of the user-visible content buffer.
+					// Track per-pass counters so we can tell at a glance whether
+					// the provider is using the reasoning channel correctly.
+					// If a model emits reasoning via delta.content instead, we
+					// will see content tokens climb while these counters stay
+					// at zero, a clear signal to switch models or add a
+					// targeted sanitizer for that provider.
+					const reasoningEvent = event as {
+						reasoning?: string;
+						reasoning_details?: unknown[];
+					};
+					const reasoningLen =
+						(typeof reasoningEvent.reasoning === 'string'
+							? reasoningEvent.reasoning.length
+							: 0) +
+						(Array.isArray(reasoningEvent.reasoning_details)
+							? reasoningEvent.reasoning_details.reduce<number>(
+									(acc: number, part: unknown) => {
+										if (!part || typeof part !== 'object') return acc;
+										const text = (part as { text?: unknown }).text;
+										return acc + (typeof text === 'string' ? text.length : 0);
+									},
+									0
+								)
+							: 0);
+					llmPassMeta.reasoningChannelChunks =
+						(llmPassMeta.reasoningChannelChunks ?? 0) + 1;
+					llmPassMeta.reasoningChannelChars =
+						(llmPassMeta.reasoningChannelChars ?? 0) + reasoningLen;
 				} else if (event.type === 'tool_call' && event.tool_call) {
 					const normalizedToolCall = normalizeToolCallDefaults(
 						event.tool_call,

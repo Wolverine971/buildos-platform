@@ -855,7 +855,7 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 						type: 'array',
 						default: [],
 						description:
-							'Required directional temp_id connections. Items can be [from, to] or { from, to, rel?, intent? }.',
+							'Required directional temp_id connections between entities defined in the entities array. The project itself is implicit and must NOT be a relationship endpoint. Items can be [from, to] or { from, to, rel?, intent? }.',
 						items: {
 							oneOf: [
 								{
@@ -866,7 +866,20 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 										type: 'object',
 										properties: {
 											temp_id: { type: 'string' },
-											kind: { type: 'string' }
+											kind: {
+												type: 'string',
+												enum: [
+													'goal',
+													'milestone',
+													'plan',
+													'task',
+													'document',
+													'risk',
+													'requirement',
+													'metric',
+													'source'
+												]
+											}
 										},
 										required: ['temp_id', 'kind']
 									}
@@ -878,7 +891,20 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 											type: 'object',
 											properties: {
 												temp_id: { type: 'string' },
-												kind: { type: 'string' }
+												kind: {
+													type: 'string',
+													enum: [
+														'goal',
+														'milestone',
+														'plan',
+														'task',
+														'document',
+														'risk',
+														'requirement',
+														'metric',
+														'source'
+													]
+												}
 											},
 											required: ['temp_id', 'kind']
 										},
@@ -886,7 +912,20 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 											type: 'object',
 											properties: {
 												temp_id: { type: 'string' },
-												kind: { type: 'string' }
+												kind: {
+													type: 'string',
+													enum: [
+														'goal',
+														'milestone',
+														'plan',
+														'task',
+														'document',
+														'risk',
+														'requirement',
+														'metric',
+														'source'
+													]
+												}
 											},
 											required: ['temp_id', 'kind']
 										},

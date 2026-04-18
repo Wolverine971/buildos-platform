@@ -137,9 +137,13 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession, supab
 	const limit = parseLimit(url.searchParams.get('limit'), 50);
 	const offset = parseOffset(url.searchParams.get('offset'));
 
+	// Narrowed select drops `metadata` (unbounded JSON, never read in list views).
+	// `transcript` is kept because the player toggles it inline.
 	let query = supabase
 		.from('voice_notes')
-		.select('*')
+		.select(
+			'id, user_id, storage_path, storage_bucket, file_size_bytes, duration_seconds, mime_type, transcript, transcription_model, transcription_status, transcription_error, linked_entity_type, linked_entity_id, group_id, segment_index, recorded_at, created_at, updated_at, deleted_at'
+		)
 		.eq('user_id', user.id)
 		.is('deleted_at', null)
 		.order('created_at', { ascending: false })

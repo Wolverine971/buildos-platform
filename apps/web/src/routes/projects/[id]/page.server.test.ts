@@ -20,6 +20,7 @@ type BundleAccess = {
 	can_view_logs?: boolean;
 	is_owner?: boolean;
 	is_authenticated?: boolean;
+	current_actor_id?: string | null;
 };
 
 type HarnessOptions = {
@@ -36,7 +37,8 @@ function buildDefaultAccess(userId: string | null | undefined): BundleAccess {
 		can_invite: false,
 		can_view_logs: false,
 		is_owner: false,
-		is_authenticated: Boolean(userId)
+		is_authenticated: Boolean(userId),
+		current_actor_id: userId ? 'actor-current' : null
 	};
 }
 
@@ -142,7 +144,8 @@ describe('projects/[id] +page.server load', () => {
 			canInvite: true,
 			canViewLogs: true,
 			isOwner: true,
-			isAuthenticated: true
+			isAuthenticated: true,
+			currentActorId: 'actor-current'
 		});
 		// New hot path: exactly one DB round-trip.
 		expect(operations).toEqual(['rpc:get_project_skeleton_with_access']);
@@ -170,7 +173,8 @@ describe('projects/[id] +page.server load', () => {
 			canInvite: true,
 			canViewLogs: true,
 			isOwner: false,
-			isAuthenticated: true
+			isAuthenticated: true,
+			currentActorId: 'actor-current'
 		});
 	});
 
@@ -194,7 +198,8 @@ describe('projects/[id] +page.server load', () => {
 			canInvite: false,
 			canViewLogs: true,
 			isOwner: false,
-			isAuthenticated: true
+			isAuthenticated: true,
+			currentActorId: 'actor-current'
 		});
 	});
 
@@ -210,7 +215,8 @@ describe('projects/[id] +page.server load', () => {
 			canInvite: false,
 			canViewLogs: false,
 			isOwner: false,
-			isAuthenticated: false
+			isAuthenticated: false,
+			currentActorId: null
 		});
 		expect(operations).toEqual(['rpc:get_project_skeleton_with_access']);
 		expect(from).not.toHaveBeenCalled();

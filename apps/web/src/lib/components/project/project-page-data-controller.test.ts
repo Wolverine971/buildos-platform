@@ -51,7 +51,8 @@ describe('project-page-data-controller', () => {
 					project: { id: 'project-1', name: 'Project 1' },
 					tasks: [{ id: 'task-1' }],
 					events: [{ id: 'event-1' }],
-					public_page_counts: { total: 2, live: 1 }
+					public_page_counts: { total: 2, live: 1 },
+					current_actor_id: 'actor-current'
 				})
 			})
 		);
@@ -62,6 +63,7 @@ describe('project-page-data-controller', () => {
 		expect(result.tasks).toHaveLength(1);
 		expect(result.events).toHaveLength(1);
 		expect(result.public_page_counts).toEqual({ total: 2, live: 1 });
+		expect(result.current_actor_id).toBe('actor-current');
 		expect(global.fetch).toHaveBeenCalledWith('/api/onto/projects/project-1/full', undefined);
 	});
 

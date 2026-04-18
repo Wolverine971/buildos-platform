@@ -1802,7 +1802,7 @@ export class SmartLLMService {
 		entityId?: string; // Optional entity ID for additional tracking
 		projectId?: string; // Optional project ID for additional tracking
 	}): AsyncGenerator<{
-		type: 'text' | 'tool_call' | 'done' | 'error';
+		type: 'text' | 'tool_call' | 'done' | 'error' | 'reasoning';
 		content?: string;
 		tool_call?: any;
 		usage?: any;
@@ -1818,6 +1818,11 @@ export class SmartLLMService {
 		reasoningTokens?: number;
 		cache_status?: string;
 		cacheStatus?: string;
+		// Populated for type: 'reasoning'. Separate channel so reasoning never
+		// pollutes the user-visible content buffer. See
+		// docs/reports/agentic-chat-session-audit-fantasy-novel-2026-04-17.md.
+		reasoning?: string;
+		reasoning_details?: unknown[];
 	}> {
 		this.requireUserId(options.userId, 'streamText');
 		const requestStartedAt = new Date();
@@ -2200,6 +2205,39 @@ export class SmartLLMService {
 			let streamSystemFingerprint: string | undefined = responseSystemFingerprintHeader;
 			let terminalFinishReason: string | undefined;
 
+			// Debug instrumentation for reasoning / content channel attribution.
+			// Enable with LLM_STREAM_DEBUG=1. Captures per-chunk delta key shapes
+			// and a sample of raw deltas so we can see which channel (content vs
+			// reasoning vs reasoning_details) a given provider actually uses.
+			const streamDebugEnabled = process.env.LLM_STREAM_DEBUG === '1';
+			const streamDebugStats: {
+				chunkCount: number;
+				contentChunks: number;
+				contentChars: number;
+				reasoningChunks: number;
+				reasoningChars: number;
+				reasoningDetailsChunks: number;
+				reasoningDetailsItems: number;
+				toolCallChunks: number;
+				otherChunks: number;
+				deltaKeyShapes: Record<string, number>;
+				firstDeltas: unknown[];
+				firstReasoningDeltas: unknown[];
+			} = {
+				chunkCount: 0,
+				contentChunks: 0,
+				contentChars: 0,
+				reasoningChunks: 0,
+				reasoningChars: 0,
+				reasoningDetailsChunks: 0,
+				reasoningDetailsItems: 0,
+				toolCallChunks: 0,
+				otherChunks: 0,
+				deltaKeyShapes: {},
+				firstDeltas: [],
+				firstReasoningDeltas: []
+			};
+
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
@@ -2324,6 +2362,23 @@ export class SmartLLMService {
 								: undefined;
 						const cacheStatus = this.describePromptCacheStatus(usage);
 
+						if (streamDebugEnabled) {
+							void this.writeStreamDebugSummary({
+								model: resolvedModel,
+								provider: resolvedProvider,
+								requestId: streamRequestId,
+								sessionId: options.sessionId,
+								messageId: options.messageId,
+								turnRunId: options.turnRunId,
+								streamRunId: options.streamRunId,
+								clientTurnId: options.clientTurnId,
+								contextType: options.contextType,
+								finishedReason: terminalFinishReason ?? 'stop',
+								usageReasoningTokens: reasoningTokens,
+								stats: streamDebugStats
+							});
+						}
+
 						yield {
 							type: 'done',
 							usage,
@@ -2391,6 +2446,27 @@ export class SmartLLMService {
 								terminalFinishReason = choice.finish_reason;
 							}
 
+							// Debug: record which fields this delta carried. The
+							// shape key is a sorted, deduped list of delta keys
+							// so we can quickly see things like "content" vs
+							// "reasoning" vs "content+reasoning".
+							if (streamDebugEnabled && delta && typeof delta === 'object') {
+								streamDebugStats.chunkCount++;
+								const keys = Object.keys(delta)
+									.filter(
+										(k) =>
+											(delta as any)[k] !== null &&
+											(delta as any)[k] !== undefined
+									)
+									.sort();
+								const shapeKey = keys.length > 0 ? keys.join('+') : '<empty>';
+								streamDebugStats.deltaKeyShapes[shapeKey] =
+									(streamDebugStats.deltaKeyShapes[shapeKey] ?? 0) + 1;
+								if (streamDebugStats.firstDeltas.length < 3) {
+									streamDebugStats.firstDeltas.push(delta);
+								}
+							}
+
 							if (delta.content) {
 								const {
 									text: filteredContent,
@@ -2398,6 +2474,14 @@ export class SmartLLMService {
 								} = normalizeStreamingContent(delta.content, inThinkingBlock);
 
 								inThinkingBlock = nextThinkingState;
+
+								if (streamDebugEnabled) {
+									streamDebugStats.contentChunks++;
+									streamDebugStats.contentChars +=
+										typeof filteredContent === 'string'
+											? filteredContent.length
+											: 0;
+								}
 
 								if (filteredContent) {
 									yield {
@@ -2407,7 +2491,53 @@ export class SmartLLMService {
 								}
 							}
 
+							// Reasoning channel: OpenRouter exposes reasoning in two
+							// shapes depending on the upstream model.
+							//   - delta.reasoning: flat string (Grok, some OpenAI)
+							//   - delta.reasoning_details: typed array
+							//       [{type:"reasoning.text", text, id, format, ...}]
+							// We capture both as a separate event so the orchestrator
+							// never merges them into the user-visible content buffer.
+							const rawReasoning = (delta as { reasoning?: unknown }).reasoning;
+							const rawReasoningDetails = (delta as { reasoning_details?: unknown })
+								.reasoning_details;
+							const reasoningString =
+								typeof rawReasoning === 'string' && rawReasoning.length > 0
+									? rawReasoning
+									: undefined;
+							const reasoningDetailsArray =
+								Array.isArray(rawReasoningDetails) && rawReasoningDetails.length > 0
+									? (rawReasoningDetails as unknown[])
+									: undefined;
+							if (reasoningString || reasoningDetailsArray) {
+								if (streamDebugEnabled) {
+									if (reasoningString) {
+										streamDebugStats.reasoningChunks++;
+										streamDebugStats.reasoningChars += reasoningString.length;
+									}
+									if (reasoningDetailsArray) {
+										streamDebugStats.reasoningDetailsChunks++;
+										streamDebugStats.reasoningDetailsItems +=
+											reasoningDetailsArray.length;
+									}
+									if (streamDebugStats.firstReasoningDeltas.length < 3) {
+										streamDebugStats.firstReasoningDeltas.push({
+											reasoning: reasoningString,
+											reasoning_details: reasoningDetailsArray
+										});
+									}
+								}
+								yield {
+									type: 'reasoning',
+									reasoning: reasoningString,
+									reasoning_details: reasoningDetailsArray
+								};
+							}
+
 							if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) {
+								if (streamDebugEnabled) {
+									streamDebugStats.toolCallChunks++;
+								}
 								for (const toolCallDelta of delta.tool_calls) {
 									if (!toolCallDelta) continue;
 									toolCallAssembler.ingest(toolCallDelta);
@@ -2644,6 +2774,150 @@ export class SmartLLMService {
 			if (process.env.KIMI_TOOL_CALL_LOG_DEBUG === '1') {
 				console.warn('[SmartLLMService] Failed to log Kimi tool call', e);
 			}
+		}
+	}
+
+	/**
+	 * LLM stream debug summary writer.
+	 *
+	 * Enabled by env var LLM_STREAM_DEBUG=1. Writes one JSONL line per
+	 * completed stream to apps/web/.prompt-dumps/llm-stream-deltas-<date>.jsonl
+	 * and also logs a compact summary to the console. Purpose: see exactly
+	 * which delta channel a provider is using (content vs reasoning vs
+	 * reasoning_details). Useful for diagnosing cases like Grok-4.1-fast
+	 * routing its "thinking" prose through delta.content.
+	 */
+	private async writeStreamDebugSummary(payload: {
+		model?: string;
+		provider?: string;
+		requestId?: string;
+		sessionId?: string;
+		messageId?: string;
+		turnRunId?: string;
+		streamRunId?: string;
+		clientTurnId?: string;
+		contextType?: string;
+		finishedReason?: string;
+		usageReasoningTokens?: number;
+		stats: {
+			chunkCount: number;
+			contentChunks: number;
+			contentChars: number;
+			reasoningChunks: number;
+			reasoningChars: number;
+			reasoningDetailsChunks: number;
+			reasoningDetailsItems: number;
+			toolCallChunks: number;
+			otherChunks: number;
+			deltaKeyShapes: Record<string, number>;
+			firstDeltas: unknown[];
+			firstReasoningDeltas: unknown[];
+		};
+	}): Promise<void> {
+		try {
+			// Always emit a compact console summary so developers can read it
+			// without opening a file.
+			console.debug('[LLM_STREAM_DEBUG] stream complete', {
+				model: payload.model,
+				provider: payload.provider,
+				requestId: payload.requestId,
+				contextType: payload.contextType,
+				finishedReason: payload.finishedReason,
+				chunks: payload.stats.chunkCount,
+				content: {
+					chunks: payload.stats.contentChunks,
+					chars: payload.stats.contentChars
+				},
+				reasoning: {
+					chunks: payload.stats.reasoningChunks,
+					chars: payload.stats.reasoningChars
+				},
+				reasoningDetails: {
+					chunks: payload.stats.reasoningDetailsChunks,
+					items: payload.stats.reasoningDetailsItems
+				},
+				deltaKeyShapes: payload.stats.deltaKeyShapes,
+				usageReasoningTokens: payload.usageReasoningTokens
+			});
+		} catch {
+			// swallow
+		}
+
+		if (typeof process === 'undefined' || !process.versions || !process.versions.node) {
+			return;
+		}
+
+		try {
+			const [{ appendFile, mkdir, access }, path] = await Promise.all([
+				import('node:fs/promises'),
+				import('node:path')
+			]);
+
+			const exists = async (target: string): Promise<boolean> => {
+				try {
+					await access(target);
+					return true;
+				} catch {
+					return false;
+				}
+			};
+
+			const resolveBaseDir = async (): Promise<string> => {
+				const override =
+					process.env.LLM_STREAM_DEBUG_DIR || process.env.BUILDOS_PROMPT_DUMPS_DIR;
+				if (override) {
+					return path.resolve(override);
+				}
+				const markers = ['pnpm-workspace.yaml', 'turbo.json', '.git'];
+				let current = process.cwd();
+				for (let i = 0; i < 8; i++) {
+					for (const marker of markers) {
+						if (await exists(path.join(current, marker))) {
+							return path.join(current, 'apps', 'web', '.prompt-dumps');
+						}
+					}
+					const parent = path.dirname(current);
+					if (parent === current) break;
+					current = parent;
+				}
+				return path.resolve(process.cwd(), 'apps', 'web', '.prompt-dumps');
+			};
+
+			const baseDir = await resolveBaseDir();
+			await mkdir(baseDir, { recursive: true });
+			const date = new Date();
+			const dateStamp = date.toISOString().slice(0, 10);
+			const filePath = path.join(baseDir, `llm-stream-deltas-${dateStamp}.jsonl`);
+			const record = {
+				timestamp: date.toISOString(),
+				model: payload.model ?? null,
+				provider: payload.provider ?? null,
+				requestId: payload.requestId ?? null,
+				sessionId: payload.sessionId ?? null,
+				messageId: payload.messageId ?? null,
+				turnRunId: payload.turnRunId ?? null,
+				streamRunId: payload.streamRunId ?? null,
+				clientTurnId: payload.clientTurnId ?? null,
+				contextType: payload.contextType ?? null,
+				finishedReason: payload.finishedReason ?? null,
+				usageReasoningTokens: payload.usageReasoningTokens ?? null,
+				stats: {
+					chunkCount: payload.stats.chunkCount,
+					contentChunks: payload.stats.contentChunks,
+					contentChars: payload.stats.contentChars,
+					reasoningChunks: payload.stats.reasoningChunks,
+					reasoningChars: payload.stats.reasoningChars,
+					reasoningDetailsChunks: payload.stats.reasoningDetailsChunks,
+					reasoningDetailsItems: payload.stats.reasoningDetailsItems,
+					toolCallChunks: payload.stats.toolCallChunks,
+					deltaKeyShapes: payload.stats.deltaKeyShapes
+				},
+				firstDeltas: payload.stats.firstDeltas,
+				firstReasoningDeltas: payload.stats.firstReasoningDeltas
+			};
+			await appendFile(filePath, `${JSON.stringify(record)}\n`, 'utf8');
+		} catch (e) {
+			console.warn('[LLM_STREAM_DEBUG] Failed to write debug summary', e);
 		}
 	}
 

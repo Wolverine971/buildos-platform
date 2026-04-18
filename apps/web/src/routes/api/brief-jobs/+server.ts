@@ -18,9 +18,12 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		// Build query. No count mode — the Brief Settings UI only renders
 		// returned rows; tracking an exact count would force Postgres to run
 		// a second COUNT(*) on queue_jobs for every poll.
+		// Narrowed select drops `result` (post-job output JSON, can be large).
 		let query = supabase
 			.from('queue_jobs')
-			.select('*')
+			.select(
+				'id, user_id, job_type, status, scheduled_for, created_at, updated_at, processed_at, completed_at, started_at, error_message, queue_job_id, metadata, attempts, max_attempts, priority, dedup_key'
+			)
 			.eq('user_id', user.id)
 			.eq('job_type', jobType as any)
 			.order('created_at', { ascending: false });

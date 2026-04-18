@@ -43,15 +43,17 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const supabase = locals.supabase;
-		const actorId = await ensureActorId(supabase, user.id);
 
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
-			{
+		// Run actor resolution + access check in parallel — neither depends on the other's result.
+		const [actorId, accessResult] = await Promise.all([
+			ensureActorId(supabase, user.id),
+			supabase.rpc('current_actor_has_project_access', {
 				p_project_id: projectId,
 				p_required_access: 'read'
-			}
-		);
+			})
+		]);
+
+		const { data: hasAccess, error: accessError } = accessResult;
 
 		if (accessError) {
 			await logOntologyApiError({

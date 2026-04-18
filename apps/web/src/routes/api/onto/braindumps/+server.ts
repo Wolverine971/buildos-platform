@@ -103,12 +103,15 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const offset = parseInt(url.searchParams.get('offset') || '0');
 		const status = url.searchParams.get('status'); // pending, processing, processed, failed
 
-		// Build query
+		// Build query.
+		// Narrowed select drops the raw `content` blob (up to 50 KB) — list callers
+		// only render title/topics/summary/status. Detail endpoints still return content.
+		// Switched count to 'estimated' (pg_class snapshot) — `total` is informational only.
 		let query = supabase
 			.from('onto_braindumps')
 			.select(
-				'id, title, topics, summary, status, content, created_at, updated_at, chat_session_id, metadata',
-				{ count: 'exact' }
+				'id, title, topics, summary, status, created_at, updated_at, chat_session_id, metadata',
+				{ count: 'estimated' }
 			)
 			.eq('user_id', user.id)
 			.order('created_at', { ascending: false })

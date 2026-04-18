@@ -91,6 +91,7 @@
 		onProjectSaved,
 		onCloseCollabModal,
 		onLeftProject,
+		onCollaborationMembersChanged,
 		onProjectDeleteConfirm,
 		onCancelProjectDelete,
 		onCloseGraphModal,
@@ -181,6 +182,7 @@
 		onProjectSaved: () => void | Promise<void>;
 		onCloseCollabModal: () => void;
 		onLeftProject: () => void;
+		onCollaborationMembersChanged?: () => void | Promise<void>;
 		onProjectDeleteConfirm: () => void | Promise<void>;
 		onCancelProjectDelete: () => void;
 		onCloseGraphModal: () => void;
@@ -417,6 +419,7 @@
 			projectName={project.name || 'Project'}
 			canManageMembers={canAdmin}
 			{onLeftProject}
+			onMembersChanged={onCollaborationMembersChanged}
 			onClose={onCloseCollabModal}
 		/>
 	{/await}

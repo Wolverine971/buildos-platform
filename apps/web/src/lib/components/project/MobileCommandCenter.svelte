@@ -84,6 +84,7 @@
 			sort: { field: string; direction: 'asc' | 'desc' }
 		) => void;
 		onToggleChange?: (panelKey: InsightPanelKey, toggleId: string, value: boolean) => void;
+		onFilterOpen?: (panelKey: InsightPanelKey) => void | Promise<void>;
 		taskFilterGroups?: FilterGroup[];
 
 		// Permissions
@@ -122,6 +123,7 @@
 		onFilterChange,
 		onSortChange,
 		onToggleChange,
+		onFilterOpen,
 		taskFilterGroups,
 		canEdit = true
 	}: Props = $props();
@@ -265,6 +267,7 @@
 			onFilterChange={hasControls && onFilterChange
 				? (filters) => onFilterChange('goals', filters)
 				: undefined}
+			onFilterOpen={hasControls && onFilterOpen ? () => onFilterOpen('goals') : undefined}
 			onSortChange={hasControls && onSortChange
 				? (sort) => onSortChange('goals', sort)
 				: undefined}
@@ -345,6 +348,7 @@
 			onFilterChange={hasControls && onFilterChange
 				? (filters) => onFilterChange('tasks', filters)
 				: undefined}
+			onFilterOpen={hasControls && onFilterOpen ? () => onFilterOpen('tasks') : undefined}
 			onSortChange={hasControls && onSortChange
 				? (sort) => onSortChange('tasks', sort)
 				: undefined}
@@ -396,6 +400,7 @@
 			onFilterChange={hasControls && onFilterChange
 				? (filters) => onFilterChange('plans', filters)
 				: undefined}
+			onFilterOpen={hasControls && onFilterOpen ? () => onFilterOpen('plans') : undefined}
 			onSortChange={hasControls && onSortChange
 				? (sort) => onSortChange('plans', sort)
 				: undefined}
@@ -442,6 +447,7 @@
 			onFilterChange={hasControls && onFilterChange
 				? (filters) => onFilterChange('risks', filters)
 				: undefined}
+			onFilterOpen={hasControls && onFilterOpen ? () => onFilterOpen('risks') : undefined}
 			onSortChange={hasControls && onSortChange
 				? (sort) => onSortChange('risks', sort)
 				: undefined}
@@ -503,6 +509,7 @@
 			onFilterChange={hasControls && onFilterChange
 				? (filters) => onFilterChange('events', filters)
 				: undefined}
+			onFilterOpen={hasControls && onFilterOpen ? () => onFilterOpen('events') : undefined}
 			onSortChange={hasControls && onSortChange
 				? (sort) => onSortChange('events', sort)
 				: undefined}

@@ -1040,15 +1040,18 @@ export const buildSessionDetailPayload = ({
 	for (const tool of toolExecutions) {
 		const timestamp = toIsoOrFallback(tool.created_at, sessionCreatedAt);
 		const success = tool.success === true;
+		const toolLabel = tool.gateway_op
+			? `${tool.tool_name} (${tool.gateway_op})`
+			: tool.tool_name;
 		timeline.push({
 			id: `tool:${tool.id}`,
 			timestamp,
 			type: 'tool_execution',
 			severity: success ? 'success' : 'error',
-			title: `Tool Execution: ${tool.tool_name}`,
+			title: `Tool Execution: ${toolLabel}`,
 			summary: success
-				? `${tool.tool_name} succeeded${tool.execution_time_ms ? ` in ${tool.execution_time_ms}ms` : ''}`
-				: `${tool.tool_name} failed${tool.error_message ? `: ${tool.error_message}` : ''}`,
+				? `${toolLabel} succeeded${tool.execution_time_ms ? ` in ${tool.execution_time_ms}ms` : ''}`
+				: `${toolLabel} failed${tool.error_message ? `: ${tool.error_message}` : ''}`,
 			turn_index: resolveTurnIndex(timestamp, userMessageTimestamps),
 			payload: {
 				id: tool.id,

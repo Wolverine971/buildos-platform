@@ -386,3 +386,98 @@ rg "prompt_variant" apps/web/src/lib/components
 ```
 
 All three greps return the evidence this spec relies on.
+
+---
+
+## 8. Implementation log — 2026-04-17
+
+All §3 deletions landed in a single cleanup pass on 2026-04-17. The PR sequencing in §5 was collapsed because each step's risk was low, the test coverage was already in place, and keeping the deletions bundled meant the diff could be reviewed as one coherent "drop the legacy planner/executor surface + request-side back-compat" operation.
+
+### 8.1 Deletions landed
+
+- [x] **A. Legacy planner/executor UI surface**
+    - [x] Deleted `apps/web/src/lib/components/agent/PlanVisualization.svelte` (−384 LOC).
+    - [x] Deleted `apps/web/src/routes/test-plan-viz/+page.svelte` (−204 LOC).
+    - [x] Stripped 8 dead SSE branches from `AgentChatModal.svelte` (`plan_created`, `plan_ready_for_review`, `step_start`, `executor_spawned`, `plan_review`, `entity_patch`, `executor_result`, `step_complete`) plus `updatePlanStepStatus`, `addPlanStatusAssistantMessage`, `currentPlan` state, `executing_plan` state transitions, `AgentPlan` import (−278 LOC).
+    - [x] Removed `message.type === 'plan'` dev-warning branch in `AgentMessageList.svelte` (−40 LOC).
+    - [x] Stripped `PlanVisualization` import, `planCollapseStates`, `togglePlanCollapse`, dead activity-icon entries, `{#if activity.activityType === 'plan_created'}` branch, unused `AgentLoopState`/`ActivityEntry` imports in `ThinkingBlock.svelte` (−119 LOC).
+    - [x] Dropped `'plan_created' | 'plan_review' | 'step_start' | 'step_complete' | 'executor_spawned' | 'executor_result'` from `ActivityType`; dropped `'plan' | 'step' | 'executor'` from `UIMessage.type`; dropped `'executing_plan'` from `AgentLoopState` in `agent-chat.types.ts` (−11 LOC).
+    - [x] Dropped `plan_created`, `plan_ready_for_review`, `plan_review`, `executor_instructions`, `'executing_plan'` state in `agent-chat-enhancement.ts` (−12 LOC).
+    - [x] Dropped `'executing_plan'` from `agent_state.state` union in `agentic-chat-v2/types.ts`.
+    - [x] Dropped `'plan_review'` entry from `AgentOperationType` + `TEMPERATURE_BY_OPERATION` + `MAX_TOKENS_BY_OPERATION` in `model-selection-config.ts` (−3 LOC).
+    - [x] Removed `HIDDEN_THINKING_TOOLS` empty set + its two dead guards in `AgentChatModal.svelte` (included in the big modal delta).
+
+- [x] **B. Thin shims collapsed**
+    - [x] Renamed `tool-executor-refactored.ts` → `tool-executor.ts` (overwrote the 10-LOC shim). Updated the single direct import at `/api/agent/v2/stream/+server.ts`. Existing `tool-executor.test.ts`, `tool-executor-libri.test.ts`, and `progressive-flow.test.ts` continue to import `./tool-executor` and picked up the rename without change.
+    - [x] Deleted `agentic-chat-v2/stream-orchestrator.ts` (2-LOC shim). Pointed the barrel `agentic-chat-v2/index.ts` and `stream-orchestrator.test.ts` at `./stream-orchestrator/index` directly.
+
+- [x] **C. `prompt_variant` request-side back-compat removed**
+    - [x] Deleted the input validator + `FASTCHAT_PROMPT_VARIANT` import in `/api/agent/v2/stream/+server.ts:2224–2235`. Kept `promptVariant: LitePromptVariant = LITE_PROMPT_VARIANT` as the single source.
+    - [x] Dropped `resolveAgentChatPromptVariantForRequest`, `AgentChatPromptVariantSelection`, `normalizeAgentChatPromptVariantSelection`, `AGENT_CHAT_DEFAULT_PROMPT_VARIANT`, `AGENT_CHAT_LITE_PROMPT_VARIANT` from `agent-chat-session.ts` and the corresponding test in `agent-chat-session.test.ts`.
+    - [x] Rewrote `server.test.ts` to assert that the legacy `prompt_variant` request field is ignored silently (the endpoint no longer returns 400 on unknown variants, and does not consult `admin_users`).
+    - [x] Dropped `prompt_variant?: string | null` from `FastAgentStreamRequest` in `agentic-chat-v2/types.ts`.
+    - [x] **Kept** `FASTCHAT_PROMPT_VARIANT` constant + `FastChatPromptVariant` type in `agentic-chat-v2/prompt-variant.ts` — they back historical-snapshot rendering in `prompt-observability.ts`, `prompt-dump-debug.ts`, the admin sessions page, `chat-session-audit-export.ts`, and `prompt-eval-comparison.ts`. Verified via grep.
+
+- [x] **D. Shared-types planner/executor cleanup**
+    - [x] Dropped dead variants on `AgentSSEMessage` (`plan_created`, `plan_ready_for_review`, `step_start`, `step_complete`, `executor_spawned`, `executor_result`, `plan_review`, `entity_patch`) in `packages/shared-types/src/agent.types.ts`.
+    - [x] Dropped `'executing_plan'` from the `agent_state.state` union.
+    - [x] Deleted `MultiAgentStreamEvent`, `AgentPermission`, `AgentType`, `Agent`, `AgentChatSession`, `AgentChatMessage`, `AgentExecution`, `AgentPlan`, `AgentPlanStep`, `AgentPlanMetadata`, `AgentPlanInsert`, `AgentInsert`, `AgentExecutionInsert`, `AgentChatSessionInsert`, `AgentChatMessageInsert`, `ExecutorTaskDefinition`, `PlanningStrategy`, `TOOL_PERMISSIONS`, `isWriteTool`, `getToolsForAgent`, `AGENT_MODEL_PREFERENCES` (−388 LOC).
+    - [x] Dropped `executor_instructions` variant in `LegacyAgentSSEMessage`.
+    - [x] Rebuild confirmed clean: `pnpm --filter=@buildos/shared-types build` → success (ESM/CJS/DTS all built).
+
+- [x] **E. Dead scaffolding in `agentic-chat/shared/types.ts`**
+    - [x] Dropped `AgentPlan`, `PlanStep`, `ExecutorResult`, `PlanExecutionMode`, `ExecutorSpawnParams`, `PlannerContext`, `EnhancedServiceContext` interfaces (none were imported outside this file; only `ServiceContext` is exported externally).
+    - [x] Dropped `PersistenceOperations` interface, `TimingMetricInsert` type alias (self-referenced only).
+    - [x] Dropped `PlanExecutionError` class + `PLAN_EXECUTION_ERROR` code enum variant.
+    - [x] Removed now-unused imports (`AgentInsert`, `AgentPlanInsert`, `AgentChatSessionInsert`, `AgentChatMessageInsert`, `Database`, `Json`, `ChatToolDefinition`, `LLMMessage`, `ChatStrategy`, `ResearchResult`, `StrategyAnalysis`).
+
+- [x] **F. Doc updates**
+    - [x] Updated `apps/web/docs/features/agentic-chat/README.md` — fixed tool-executor + stream-orchestrator file paths in the code map, replaced stale planner/executor-event note in §5.
+    - [x] Updated `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/README.md` — removed reference to the deleted shim.
+    - [x] Updated `apps/web/docs/features/agentic-chat/AUDIT_2026-04-17_OVERVIEW.md` — marked §4.2 items as resolved with cross-reference to this spec.
+
+### 8.2 Verification evidence
+
+- **Typecheck:** `pnpm --filter=web check` → **0 errors**, 216 pre-existing warnings (unchanged). 60 files checked.
+- **Targeted tests (cleanup-adjacent, 54 files):** 304/304 passing — `agentic-chat*`, `agent-chat-session`, `stream-orchestrator/*`, `tool-executor`, `tool-executor-libri`, `progressive-flow`, `prompt-variant`, `prompt-observability`, `prompt-eval-*`, `chat-session-audit-export`.
+- **Full suite:** 833/838 passing. 5 failures in `next-step-generation.service.test.ts`, `openrouter-v2/model-lanes.test.ts`, and `api/onto/tasks/[id]/task-patch-*.test.ts` — **verified pre-existing** by stashing the cleanup changes and re-running the failing tests against the baseline (same 5 failed). None import or touch any file changed in this cleanup.
+- **Shared-types build:** `pnpm --filter=@buildos/shared-types build` → success.
+
+### 8.3 Net diff
+
+21 files changed. **−2,451 insertions / +733 lines** → **net −1,718 LOC**.
+
+| File                                                                            |                            Δ |
+| ------------------------------------------------------------------------------- | ---------------------------: |
+| `packages/shared-types/src/agent.types.ts`                                      |                         −388 |
+| `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor-refactored.ts` |               −681 (renamed) |
+| `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.ts`            | +681 (renamed target, net 0) |
+| `apps/web/src/lib/components/agent/PlanVisualization.svelte`                    |               −384 (deleted) |
+| `apps/web/src/lib/components/agent/AgentChatModal.svelte`                       |                         −278 |
+| `apps/web/src/lib/services/agentic-chat/shared/types.ts`                        |                         −246 |
+| `apps/web/src/routes/test-plan-viz/+page.svelte`                                |               −204 (deleted) |
+| `apps/web/src/lib/components/agent/ThinkingBlock.svelte`                        |                         −119 |
+| `apps/web/src/lib/components/agent/AgentMessageList.svelte`                     |                          −40 |
+| `apps/web/src/lib/components/agent/agent-chat-session.ts`                       |                          −37 |
+| `apps/web/src/lib/components/agent/agent-chat-session.test.ts`                  |                      −34 net |
+| `apps/web/src/routes/api/agent/v2/stream/server.test.ts`                        |                      −38 net |
+| `apps/web/src/routes/api/agent/v2/stream/+server.ts`                            |                          −17 |
+| `apps/web/src/lib/components/agent/agent-chat.types.ts`                         |                          −11 |
+| `apps/web/src/lib/types/agent-chat-enhancement.ts`                              |                          −12 |
+| `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator.ts`              |            −2 (deleted shim) |
+| `apps/web/src/lib/services/agentic-chat/config/model-selection-config.ts`       |                           −3 |
+| `apps/web/src/lib/services/agentic-chat-v2/types.ts`                            |                           −3 |
+| `apps/web/src/lib/services/agentic-chat-v2/index.ts`                            |         ±1 (barrel retarget) |
+| `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator.test.ts`         |         ±1 (import retarget) |
+| `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/README.md`       |                           ±1 |
+
+### 8.4 What this cleanup did NOT do (follow-up work)
+
+The naming work in §3A (identifier renames + directory moves) is **not** landed. It is scoped for a follow-up PR because it touches ~50 importers and is better reviewed on its own. Also deferred:
+
+- Decomposition of `AgentChatModal.svelte` (still 3,850+ LOC after this pass) → see FE audit brief in §5 of `AUDIT_2026-04-17_OVERVIEW.md`.
+- Decomposition of `/api/agent/v2/stream/+server.ts` (still 4,200+ LOC after this pass) → see BE audit brief.
+- Decomposition of `context-loader.ts`, `tool-execution-service.ts`, `build-lite-prompt.ts`.
+- Further dedup of `DATA_MUTATION_TOOLS` vs `MUTATION_TRACKED_TOOLS` (audit §4.4).
+- Write-amplification on `chat_sessions.agent_metadata` (audit §4.6).
+- Revisiting whether the `agent-to-agent-service.ts` + `/api/agentic-chat/agent-message` bridge is still live (flagged in audit §7 and cleanup §6.1).

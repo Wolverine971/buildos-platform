@@ -23,11 +23,8 @@ import {
 } from '$lib/server/milestone-decorators';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
-import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
-import {
-	attachLastChangedByActorToTasks,
-	fetchTaskLastChangedByActorMap
-} from '$lib/server/task-relevance.service';
+import { attachAssigneesToTasks, type TaskAssignee } from '$lib/server/task-assignment.service';
+import { attachLastChangedByActorToTasks } from '$lib/server/task-relevance.service';
 import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
 
 // Type for the RPC response
@@ -45,6 +42,34 @@ interface ProjectFullData {
 	metrics: unknown[];
 	context_document: unknown | null;
 	goal_milestone_edges?: GoalMilestoneEdge[] | null;
+	task_assignees?: Record<string, TaskAssignee[]> | null;
+	task_last_changed_by?: Record<string, string> | null;
+}
+
+function buildTaskAssigneesMap(
+	rawAssignees: Record<string, TaskAssignee[]> | null | undefined
+): Map<string, TaskAssignee[]> {
+	const map = new Map<string, TaskAssignee[]>();
+	if (!rawAssignees) return map;
+	for (const [taskId, assignees] of Object.entries(rawAssignees)) {
+		if (Array.isArray(assignees) && assignees.length > 0) {
+			map.set(taskId, assignees);
+		}
+	}
+	return map;
+}
+
+function buildLastChangedByActorMap(
+	rawMap: Record<string, string> | null | undefined
+): Map<string, string> {
+	const map = new Map<string, string>();
+	if (!rawMap) return map;
+	for (const [taskId, actorId] of Object.entries(rawMap)) {
+		if (typeof actorId === 'string' && actorId.length > 0) {
+			map.set(taskId, actorId);
+		}
+	}
+	return map;
 }
 
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -184,34 +209,20 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const goals = (data.goals || []) as GoalRow[];
 		const milestones = (data.milestones || []) as MilestoneRow[];
 		const rawTasks = (data.tasks || []) as Array<{ id: string } & Record<string, unknown>>;
-		const taskIds = rawTasks.map((task) => task.id);
 		const goalMilestoneEdges = (data.goal_milestone_edges ?? []) as GoalMilestoneEdge[];
+		// Task assignees and last-changed-by actor maps are now baked into the
+		// RPC response (migration 20260501000002), eliminating two extra DB
+		// round-trips on the project page hot path.
+		const assigneeMap = buildTaskAssigneesMap(data.task_assignees);
+		const lastChangedByActorMap = buildLastChangedByActorMap(data.task_last_changed_by);
 
 		const eventService = new OntoEventSyncService(supabase);
 
-		// Run independent post-RPC fetches in parallel: milestone/goal decoration
-		// (edges already supplied by RPC), task enrichment, events, and public-page counts.
-		const [
-			milestoneDecorateResult,
-			assigneeMapResult,
-			lastChangedByActorMapResult,
-			eventsResult,
-			publicPageCountsResult
-		] = await Promise.all([
+		// Run remaining independent post-RPC fetches in parallel: milestone/goal
+		// decoration (edges already supplied by RPC), events, and public-page
+		// counts.
+		const [milestoneDecorateResult, eventsResult, publicPageCountsResult] = await Promise.all([
 			decorateMilestonesWithGoals(supabase, goals, milestones, goalMilestoneEdges),
-			fetchTaskAssigneesMap({ supabase, taskIds }).catch((assigneeError) => {
-				console.warn('[Project Full API] Failed to enrich task assignees:', assigneeError);
-				return null;
-			}),
-			fetchTaskLastChangedByActorMap({ supabase, projectId: id, taskIds }).catch(
-				(relevanceError) => {
-					console.warn(
-						'[Project Full API] Failed to enrich task relevance actors:',
-						relevanceError
-					);
-					return null;
-				}
-			),
 			eventService
 				.listProjectEvents(
 					id,
@@ -234,19 +245,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const sanitizedProject = sanitizeProjectForClient(data.project as Record<string, unknown>);
 
-		let tasksWithAssignees = rawTasks;
-		if (assigneeMapResult) {
-			tasksWithAssignees = attachAssigneesToTasks(rawTasks, assigneeMapResult);
-		}
-		if (lastChangedByActorMapResult) {
-			tasksWithAssignees = attachLastChangedByActorToTasks(
-				tasksWithAssignees,
-				lastChangedByActorMapResult
-			);
-		}
+		let tasksWithAssignees = attachAssigneesToTasks(rawTasks, assigneeMap);
+		tasksWithAssignees = attachLastChangedByActorToTasks(
+			tasksWithAssignees,
+			lastChangedByActorMap
+		);
 
 		return ApiResponse.success({
 			project: sanitizedProject,
+			current_actor_id: actorId,
 			goals,
 			requirements: data.requirements || [],
 			plans: data.plans || [],

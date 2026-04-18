@@ -34,8 +34,11 @@ export const GET: RequestHandler = async ({ locals }) => {
 			return ApiResponse.internalError(error, 'Failed to fetch public projects');
 		}
 
-		return ApiResponse.success({
-			projects: projects || []
+		// Public example projects list churns very rarely (manual is_public flip).
+		// Public cache: 1 hour fresh, 1 day SWR — homepage example picker.
+		return ApiResponse.cached({ projects: projects || [] }, undefined, 3600, {
+			public: true,
+			staleWhileRevalidate: 86400
 		});
 	} catch (err) {
 		console.error('[Public Projects API] Unexpected error:', err);

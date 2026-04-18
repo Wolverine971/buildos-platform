@@ -11,7 +11,7 @@
 --      which handles public-project access for anonymous callers.
 --   3. Returns the skeleton payload (matching get_project_skeleton) plus an
 --      access object { can_edit, can_admin, can_invite, can_view_logs,
---      is_owner, is_authenticated }.
+--      is_owner, is_authenticated, current_actor_id }.
 --
 -- Returns NULL if the project does not exist or the caller lacks read access.
 
@@ -122,7 +122,8 @@ BEGIN
 			'can_invite', v_can_edit,
 			'can_view_logs', v_can_admin OR v_is_member,
 			'is_owner', v_is_owner,
-			'is_authenticated', v_user_id IS NOT NULL
+			'is_authenticated', v_user_id IS NOT NULL,
+			'current_actor_id', v_actor_id
 		)
 	);
 END;

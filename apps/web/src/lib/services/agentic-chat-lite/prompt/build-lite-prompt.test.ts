@@ -531,6 +531,13 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain(
 			'emit containment relationships linking every task (child) to that goal (parent)'
 		);
+		// 2026-04-18: project must not appear as a relationship endpoint.
+		// Regression bc05e6ac: "N+" wording made the model emit a project→goal edge
+		// with kind: "project", which Zod's ProjectSpecRelationshipNodeSchema rejects.
+		expect(envelope.systemPrompt).toContain(
+			'The project itself is implicit and must NOT appear as a relationship endpoint'
+		);
+		expect(envelope.systemPrompt).not.toContain('N+ goal-task containment edges');
 		expect(envelope.systemPrompt).not.toContain('## Timeline and Recent Activity');
 		expect(envelope.systemPrompt).not.toContain('Timeline frame:');
 		expect(envelope.systemPrompt).not.toContain('Project status:');

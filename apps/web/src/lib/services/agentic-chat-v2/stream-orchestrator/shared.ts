@@ -39,4 +39,10 @@ export type LLMStreamPassMetadata = {
 	promptTokens?: number;
 	completionTokens?: number;
 	totalTokens?: number;
+	// Reasoning channel counters (populated when the provider emits reasoning
+	// via delta.reasoning or delta.reasoning_details). Lets us see at a glance
+	// whether a provider properly separates reasoning from content, or leaks
+	// it into delta.content instead. See the 2026-04-17 audit.
+	reasoningChannelChunks?: number;
+	reasoningChannelChars?: number;
 };

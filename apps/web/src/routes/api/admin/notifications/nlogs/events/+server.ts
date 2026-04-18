@@ -18,10 +18,14 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		const userId = url.searchParams.get('user_id');
 		const from = url.searchParams.get('from');
 		const to = url.searchParams.get('to');
-		const page = parseInt(url.searchParams.get('page') || '1');
-		const limit = parseInt(url.searchParams.get('limit') || '50');
+		const page = Math.max(parseInt(url.searchParams.get('page') || '1'), 1);
+		const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50'), 1), 200);
 
-		// Build query
+		// Build query.
+		// `payload` and `metadata` are kept because the admin event table renders
+		// them inside an expandable detail row. They are bounded by the page limit
+		// (max 200) so total bytes stay reasonable. Switched count to 'estimated'
+		// to avoid a per-page COUNT(*) over the entire notification_events table.
 		let query = supabase
 			.from('notification_events')
 			.select(
@@ -45,7 +49,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					recipient_user_id
 				)
 			`,
-				{ count: 'exact' }
+				{ count: 'estimated' }
 			)
 			.order('created_at', { ascending: false });
 

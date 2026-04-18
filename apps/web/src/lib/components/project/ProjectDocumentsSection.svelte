@@ -18,7 +18,11 @@
 		onMoveDocument,
 		onDeleteDocument,
 		onDataLoaded,
-		onTreeRefChange
+		onTreeRefChange,
+		initialStructure = null,
+		initialDocuments = {},
+		initialUnlinked = [],
+		initialArchived = []
 	}: {
 		projectId: string;
 		documents: Document[];
@@ -33,8 +37,14 @@
 		onDataLoaded: (data: {
 			structure: DocStructure;
 			documents: Record<string, OntoDocument>;
+			unlinked?: OntoDocument[];
+			archived?: OntoDocument[];
 		}) => void;
 		onTreeRefChange?: ((ref: { refresh: () => void } | null) => void) | undefined;
+		initialStructure?: DocStructure | null;
+		initialDocuments?: Record<string, OntoDocument>;
+		initialUnlinked?: OntoDocument[];
+		initialArchived?: OntoDocument[];
 	} = $props();
 
 	let docTreeViewRef: { refresh: () => void } | null = null;
@@ -99,6 +109,10 @@
 				{onMoveDocument}
 				{onDeleteDocument}
 				{onDataLoaded}
+				{initialStructure}
+				{initialDocuments}
+				{initialUnlinked}
+				{initialArchived}
 				selectedDocumentId={activeDocumentId}
 			/>
 		</div>
