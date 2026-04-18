@@ -1,4 +1,10 @@
 // apps/worker/src/worker.ts
+import type {
+	AssetOcrJobMetadata,
+	ProjectContextSnapshotJobMetadata,
+	ProjectIconGenerationJobMetadata,
+	TreeAgentJobMetadata
+} from '@buildos/shared-types';
 import { ProcessingJob, SupabaseQueue } from './lib/supabaseQueue';
 import { processBriefJob } from './workers/brief/briefWorker';
 import { processOnboardingAnalysisJob } from './workers/onboarding/onboardingWorker';
@@ -246,11 +252,11 @@ async function processVoiceNoteTranscription(job: ProcessingJob) {
 /**
  * Ontology asset OCR processor
  */
-async function processAssetOcr(job: ProcessingJob) {
+async function processAssetOcr(job: ProcessingJob<AssetOcrJobMetadata>) {
 	await job.log('Ontology asset OCR job received');
 	try {
-		const legacyJob = createLegacyJob(job);
-		const result = await processAssetOcrJob(legacyJob as any);
+		const legacyJob = createLegacyJob<AssetOcrJobMetadata>(job);
+		const result = await processAssetOcrJob(legacyJob);
 		await job.log('Ontology asset OCR job completed');
 		return result;
 	} catch (error: any) {
@@ -278,11 +284,11 @@ async function processHomework(job: ProcessingJob) {
 /**
  * Tree Agent orchestration processor
  */
-async function processTreeAgent(job: ProcessingJob) {
+async function processTreeAgent(job: ProcessingJob<TreeAgentJobMetadata>) {
 	await job.log('Tree Agent job received');
 
 	try {
-		const result = await processTreeAgentJob(job as any);
+		const result = await processTreeAgentJob(job);
 		await job.log('Tree Agent job completed');
 		return result;
 	} catch (error: any) {
@@ -294,11 +300,13 @@ async function processTreeAgent(job: ProcessingJob) {
 /**
  * Project context snapshot processor
  */
-async function processProjectContextSnapshot(job: ProcessingJob) {
+async function processProjectContextSnapshot(
+	job: ProcessingJob<ProjectContextSnapshotJobMetadata>
+) {
 	await job.log('Project context snapshot job received');
 
 	try {
-		const result = await processProjectContextSnapshotJob(job as any);
+		const result = await processProjectContextSnapshotJob(job);
 		await job.log('Project context snapshot job completed');
 		return result;
 	} catch (error: any) {
@@ -310,11 +318,11 @@ async function processProjectContextSnapshot(job: ProcessingJob) {
 /**
  * Project icon generation processor
  */
-async function processProjectIcon(job: ProcessingJob) {
+async function processProjectIcon(job: ProcessingJob<ProjectIconGenerationJobMetadata>) {
 	await job.log('Project icon generation job received');
 
 	try {
-		const result = await processProjectIconJob(job as any);
+		const result = await processProjectIconJob(job);
 		await job.log('Project icon generation job completed');
 		return result;
 	} catch (error: any) {
@@ -351,7 +359,7 @@ export async function startWorker() {
 
 	// Register notification processor (multi-channel: push, email, in-app, SMS)
 	queue.process('send_notification', processNotificationWrapper);
-	queue.process('project_activity_batch_flush' as any, processProjectActivityBatchFlush);
+	queue.process('project_activity_batch_flush', processProjectActivityBatchFlush);
 
 	// Register SMS processors
 	queue.process('schedule_daily_sms', processScheduleDailySMS); // Daily calendar event SMS scheduling
@@ -367,19 +375,19 @@ export async function startWorker() {
 	queue.process('transcribe_voice_note', processVoiceNoteTranscription);
 
 	// Register ontology asset OCR processor
-	queue.process('extract_onto_asset_ocr' as any, processAssetOcr);
+	queue.process('extract_onto_asset_ocr', processAssetOcr);
 
 	// Register homework (long-running task) processor
 	queue.process('buildos_homework', processHomework);
 
-	// Register Tree Agent processor (cast until database types are regenerated)
-	queue.process('buildos_tree_agent' as any, processTreeAgent);
+	// Register Tree Agent processor
+	queue.process('buildos_tree_agent', processTreeAgent);
 
 	// Register project context snapshot processor
-	queue.process('build_project_context_snapshot' as any, processProjectContextSnapshot);
+	queue.process('build_project_context_snapshot', processProjectContextSnapshot);
 
 	// Register project icon generation processor
-	queue.process('generate_project_icon' as any, processProjectIcon);
+	queue.process('generate_project_icon', processProjectIcon);
 
 	// Register calendar sync projection processor
 	queue.process('sync_calendar', processCalendarSync);

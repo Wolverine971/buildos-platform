@@ -1,5 +1,5 @@
 // apps/web/src/lib/utils/api-client-helpers.ts
-import type { ApiResponse as SharedApiResponse } from '@buildos/shared-types';
+import type { ApiResponseBody as SharedApiResponse } from '@buildos/shared-types';
 
 export interface ClientResponse<T = any> {
 	success: boolean;

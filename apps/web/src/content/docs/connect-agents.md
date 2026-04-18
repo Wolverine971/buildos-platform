@@ -5,7 +5,7 @@ slug: connect-agents
 summary: Let Claude Code, OpenClaw, or a custom agent work in your BuildOS projects — with scopes you control.
 icon: Plug
 order: 9
-lastUpdated: 2026-04-17
+lastUpdated: 2026-04-18
 path: apps/web/src/content/docs/connect-agents.md
 ---
 
@@ -40,6 +40,19 @@ The difference is a snapshot versus an account. With the gateway, your external 
 | **Write op whitelist** | Per-op toggle for every mutation the gateway exposes.                              |
 | **Audit trail**        | Every call is logged with the key prefix, the op, and the entity touched.          |
 
+## Permission bundles
+
+The Agent Keys UI leads with preset bundles. Pick one and you're done — the per-op matrix sits behind an **Advanced permissions** disclosure if you need finer control.
+
+| Bundle                                  | What it grants                                                                |
+| --------------------------------------- | ----------------------------------------------------------------------------- |
+| **Read only**                           | Every read op. No writes.                                                     |
+| **Author docs + tasks** (OpenClaw default) | Reads plus `onto.document.create/update` and `onto.task.create/update`.       |
+| **Full read/write**                     | Reads plus every write op the gateway currently exposes.                      |
+| **Custom**                              | Any per-op combination you pick in Advanced.                                  |
+
+Existing OpenClaw keys that still carry the old narrow default (task writes only) auto-upgrade to **Author docs + tasks** on the next call — no action needed.
+
 ## What's exposed
 
 **Reads** (available on every key)
@@ -51,8 +64,13 @@ The difference is a snapshot versus an account. With the gateway, your external 
 
 **Writes** (require `read_write`)
 
-- `onto.task.create`
-- `onto.task.update`
+- `onto.task.create`, `onto.task.update`
+- `onto.document.create`, `onto.document.update`
+- `onto.project.create`, `onto.project.update` *(coming soon — registered but not yet wired)*
+- `onto.goal.create`, `onto.goal.update` *(coming soon)*
+- `onto.plan.create`, `onto.plan.update` *(coming soon)*
+- `onto.milestone.create`, `onto.milestone.update` *(coming soon)*
+- `onto.risk.create`, `onto.risk.update` *(coming soon)*
 
 **Discovery**
 
@@ -61,6 +79,36 @@ The difference is a snapshot versus an account. With the gateway, your external 
 **Session methods**
 
 - `call.dial`, `tools/list`, `tools/call`, `call.hangup`
+
+## Saving a markdown document from an external agent
+
+The headline v1 write op is `onto.document.create`. An external agent (Claude Code, OpenClaw, custom) can save a markdown artifact into a specific project in a single call.
+
+```json
+{
+    "method": "tools/call",
+    "params": {
+        "call_id": "<your call id>",
+        "name": "onto.document.create",
+        "arguments": {
+            "project_id": "<project uuid>",
+            "title": "Research: creator distribution loops",
+            "content": "# Research\n\nFull markdown body here...",
+            "description": "Initial pass on distribution tactics",
+            "state_key": "draft",
+            "idempotency_key": "openclaw:<project>:research-creator-distribution-loops:2026-04-18"
+        }
+    }
+}
+```
+
+Notes:
+
+- Content is stored as-is. No H1/H2 tree parsing; the markdown you send is the markdown we save.
+- Content cap is **200 KB** per document. Larger bodies return `VALIDATION_ERROR`.
+- `onto.document.update` is **wholesale replace** — if you send `content`, it replaces the body in full. Individual metadata fields (`title`, `description`, `type_key`, `state_key`) update independently when present.
+- `parent_document_id` is optional; omit it to land at the project root.
+- Documents created through the gateway are tagged with `props.origin = "external_agent"` for auditability.
 
 ## One-click bootstrap
 
@@ -84,9 +132,13 @@ Content-Type: application/json
 
 Payload is JSON-RPC. Start with `call.dial`, list your tools with `tools/list`, call them via `tools/call`, and close with `call.hangup`. Types live in `packages/shared-types/src/agent-call.types.ts`.
 
-## Roadmap: external document ingestion
+## Roadmap
 
-The next write ops planned for the gateway are `onto.document.create` and `onto.document.update`. When they ship, an external agent can author polished documents — research notes, specs, decisions — that flow into your project and show up in daily briefs. Design doc: `apps/web/docs/features/agent-call/EXTERNAL_RESEARCH_INGESTION_DESIGN.md`.
+- **`onto.document.create` / `onto.document.update`** — **shipped.** External agents can author markdown documents directly into projects.
+- **`onto.project.create` / `onto.project.update`** — registered, wiring in progress. Will let agents spin up projects before writing docs/tasks.
+- **Goals, plans, milestones, risks** — registered, wiring in progress. Rounds out the write surface so anything the internal agent can do is also available through the gateway.
+
+Design doc: `apps/web/docs/features/agent-call/MULTI_SURFACE_CONTENT_IDEA_WORKFLOW.md`.
 
 ## Next
 

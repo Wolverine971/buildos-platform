@@ -1,7 +1,7 @@
 // apps/web/src/lib/utils/api-response.ts
 import { json } from '@sveltejs/kit';
 import { createHash } from 'crypto';
-import type { ApiResponse as SharedApiResponse, ApiWarning } from '@buildos/shared-types';
+import type { ApiResponseBody as SharedApiResponse, ApiWarning } from '@buildos/shared-types';
 
 export interface ApiError {
 	success: false;

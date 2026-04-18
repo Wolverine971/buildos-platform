@@ -23,12 +23,49 @@ export const BUILDOS_AGENT_READ_OPS = [
 	'onto.search'
 ] as const;
 
-export const BUILDOS_AGENT_WRITE_OPS = ['onto.task.create', 'onto.task.update'] as const;
+export const BUILDOS_AGENT_WRITE_OPS = [
+	'onto.task.create',
+	'onto.task.update',
+	'onto.document.create',
+	'onto.document.update',
+	'onto.project.create',
+	'onto.project.update',
+	'onto.goal.create',
+	'onto.goal.update',
+	'onto.plan.create',
+	'onto.plan.update',
+	'onto.milestone.create',
+	'onto.milestone.update',
+	'onto.risk.create',
+	'onto.risk.update'
+] as const;
 
 export const BUILDOS_AGENT_SUPPORTED_OPS = [
 	...BUILDOS_AGENT_READ_OPS,
 	...BUILDOS_AGENT_WRITE_OPS
 ] as const;
+
+/**
+ * OpenClaw default bundle: "Author docs + tasks".
+ * Applied automatically when an OpenClaw caller is provisioned (and, via auto-upgrade,
+ * when an existing OpenClaw caller still carries the old narrow default).
+ */
+export const OPENCLAW_DEFAULT_WRITE_OPS = [
+	'onto.task.create',
+	'onto.task.update',
+	'onto.document.create',
+	'onto.document.update'
+] as const satisfies readonly (typeof BUILDOS_AGENT_WRITE_OPS)[number][];
+
+/**
+ * The pre-expansion default bundle. Used by the auto-upgrade migration to detect
+ * existing OpenClaw callers that still carry the old narrow scope and haven't been
+ * further customized by the user.
+ */
+export const LEGACY_OPENCLAW_DEFAULT_WRITE_OPS = [
+	'onto.task.create',
+	'onto.task.update'
+] as const satisfies readonly (typeof BUILDOS_AGENT_WRITE_OPS)[number][];
 
 export type BuildosAgentReadOp = (typeof BUILDOS_AGENT_READ_OPS)[number];
 export type BuildosAgentWriteOp = (typeof BUILDOS_AGENT_WRITE_OPS)[number];

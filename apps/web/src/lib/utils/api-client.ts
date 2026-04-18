@@ -1,6 +1,6 @@
 // apps/web/src/lib/utils/api-client.ts
 import { browser } from '$app/environment';
-import type { ApiResponse as SharedApiResponse, ApiWarning } from '@buildos/shared-types';
+import type { ApiResponseBody as SharedApiResponse, ApiWarning } from '@buildos/shared-types';
 import { extractApiErrorMessage } from './api-client-helpers';
 
 export class ApiError extends Error {

@@ -7,8 +7,6 @@ export type TableName =
 	| 'tasks'
 	| 'notes'
 	| 'phases'
-	| 'project_context'
-	| 'project_notes'
 	| 'daily_briefs'
 	| 'project_questions';
 

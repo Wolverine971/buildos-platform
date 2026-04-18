@@ -94,10 +94,10 @@ export function isProjectWithRelations(obj: ProjectWithRelations): obj is Projec
 // UTILITY TYPES
 // ==========================================
 
-export type ProjectStatus = 'active' | 'paused' | 'completed' | 'archived';
-export type TaskStatus = 'backlog' | 'in_progress' | 'done' | 'blocked';
-export type TaskPriority = 'low' | 'medium' | 'high';
-export type TaskType = 'one_off' | 'recurring';
+export type ProjectStatus = Database['public']['Enums']['project_status'];
+export type TaskStatus = Database['public']['Enums']['task_status'];
+export type TaskPriority = Database['public']['Enums']['priority_level'];
+export type TaskType = Database['public']['Enums']['task_type'];
 export type NoteCategory =
 	| 'insight'
 	| 'research'

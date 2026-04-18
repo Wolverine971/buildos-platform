@@ -39,37 +39,50 @@
 		graphHidden,
 		canViewLogs,
 		canEdit = false,
-		onShowGraphModal
+		includePublishedPlaceholder = true
 	}: {
 		skeletonCounts: SkeletonCounts;
 		graphHidden: boolean;
 		canViewLogs: boolean;
 		canEdit?: boolean;
-		onShowGraphModal: () => void;
+		// Omit the Published placeholder when the real PublishedPanel is already
+		// rendered above this skeleton (e.g. the dynamic-import fallback).
+		includePublishedPlaceholder?: boolean;
 	} = $props();
 </script>
 
 <aside class="min-w-0 space-y-3 lg:sticky lg:top-24">
-	<!-- Published panel placeholder (always present in loaded state) -->
-	<section
-		class="rounded-lg border border-border bg-card shadow-ink overflow-hidden"
-		aria-busy="true"
-		aria-label="Loading published pages"
-	>
-		<div class="w-full flex items-center justify-between gap-2 px-3 py-2">
-			<div class="flex items-center gap-2 min-w-0">
-				<Globe class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-				<span class="text-sm font-semibold text-foreground">Published</span>
-			</div>
-			<ChevronDown class="w-4 h-4 text-muted-foreground -rotate-90" />
-		</div>
-	</section>
+	{#if includePublishedPlaceholder}
+		<!-- Published panel placeholder — mirrors PublishedPanel collapsed state -->
+		<section
+			class="rounded-lg border border-border bg-card shadow-ink overflow-hidden"
+			aria-busy="true"
+			aria-label="Loading published pages"
+		>
+			<button
+				type="button"
+				disabled
+				class="w-full flex items-center justify-between gap-2 px-3 py-2 text-left pressable cursor-default"
+				aria-expanded="false"
+			>
+				<div class="flex items-center gap-2 min-w-0">
+					<Globe class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+					<span class="text-sm font-semibold text-foreground">Published</span>
+				</div>
+				<ChevronDown
+					class="w-4 h-4 text-muted-foreground transition-transform duration-150 -rotate-90"
+				/>
+			</button>
+		</section>
+	{/if}
 
 	{#if !graphHidden}
+		<!-- Disabled during loading — graph modal needs hydrated data. -->
 		<button
 			type="button"
-			onclick={onShowGraphModal}
-			class="w-full bg-card border border-border rounded-lg shadow-ink tx tx-thread tx-weak overflow-hidden text-left hover:bg-muted/50 transition-colors pressable group"
+			disabled
+			class="w-full bg-card border border-border rounded-lg shadow-ink tx tx-thread tx-weak overflow-hidden text-left pressable cursor-default"
+			aria-label="Project graph (loading)"
 		>
 			<div class="flex items-center justify-between gap-2 px-4 py-3">
 				<div class="flex items-center gap-3">
@@ -81,9 +94,7 @@
 						<p class="text-xs text-muted-foreground">Click to explore</p>
 					</div>
 				</div>
-				<Maximize2
-					class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-				/>
+				<Maximize2 class="w-4 h-4 text-muted-foreground" />
 			</div>
 		</button>
 	{/if}

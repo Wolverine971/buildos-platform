@@ -1,8 +1,10 @@
 // apps/worker/src/workers/shared/queueUtils.ts
 // Utility functions for queue operations (Redis-free version)
 
-import type { DailyBriefJobMetadata, QueueJobStatus } from '@buildos/shared-types';
+import type { Database, DailyBriefJobMetadata, QueueJobStatus } from '@buildos/shared-types';
 import { supabase } from '../../lib/supabase';
+
+type QueueJobUpdate = Database['public']['Tables']['queue_jobs']['Update'];
 
 // Legacy job data interfaces - kept for backward compatibility
 // These map to the new metadata types
@@ -80,7 +82,7 @@ export async function updateJobStatus(
 	// Status is now consistent - no mapping needed
 	const mappedStatus = status;
 
-	const updateData: any = {
+	const updateData: QueueJobUpdate = {
 		status: mappedStatus,
 		processed_at: new Date().toISOString(),
 		updated_at: new Date().toISOString()
@@ -144,23 +146,33 @@ export async function broadcastUserEvent(
  * Validate BriefJobData and throw if invalid
  * Ensures data integrity before job processing
  */
-export function validateBriefJobData(data: any): BriefJobData {
+export function validateBriefJobData(data: unknown): BriefJobData {
+	if (!data || typeof data !== 'object') {
+		throw new Error('Invalid job data: expected object');
+	}
+	const d = data as Record<string, unknown>;
+
 	// Check userId
-	if (!data.userId || typeof data.userId !== 'string') {
+	if (!d.userId || typeof d.userId !== 'string') {
 		throw new Error('Invalid job data: userId is required and must be string');
 	}
 
 	// Validate briefDate if provided
-	if (data.briefDate) {
-		const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-		if (!dateRegex.test(data.briefDate)) {
+	if (d.briefDate !== undefined && d.briefDate !== null) {
+		if (typeof d.briefDate !== 'string') {
 			throw new Error(
-				`Invalid job data: briefDate must be YYYY-MM-DD format, got "${data.briefDate}"`
+				`Invalid job data: briefDate must be YYYY-MM-DD string, got ${typeof d.briefDate}`
+			);
+		}
+		const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+		if (!dateRegex.test(d.briefDate)) {
+			throw new Error(
+				`Invalid job data: briefDate must be YYYY-MM-DD format, got "${d.briefDate}"`
 			);
 		}
 
 		// Validate date is reasonable (not in future by more than 30 days)
-		const jobDate = new Date(data.briefDate);
+		const jobDate = new Date(d.briefDate);
 		const maxFuture = new Date();
 		maxFuture.setDate(maxFuture.getDate() + 30);
 
@@ -170,11 +182,14 @@ export function validateBriefJobData(data: any): BriefJobData {
 	}
 
 	// Validate timezone if provided
-	if (data.timezone) {
+	if (d.timezone !== undefined && d.timezone !== null) {
+		if (typeof d.timezone !== 'string') {
+			throw new Error(`Invalid job data: timezone must be string`);
+		}
 		try {
-			new Intl.DateTimeFormat('en-US', { timeZone: data.timezone });
+			new Intl.DateTimeFormat('en-US', { timeZone: d.timezone });
 		} catch {
-			throw new Error(`Invalid job data: timezone "${data.timezone}" is not valid`);
+			throw new Error(`Invalid job data: timezone "${d.timezone}" is not valid`);
 		}
 	}
 
@@ -185,43 +200,48 @@ export function validateBriefJobData(data: any): BriefJobData {
  * Validate SMSJobData and throw if invalid
  * Ensures data integrity before SMS job processing
  */
-export function validateSMSJobData(data: any): SMSJobData {
+export function validateSMSJobData(data: unknown): SMSJobData {
+	if (!data || typeof data !== 'object') {
+		throw new Error('Invalid SMS job data: expected object');
+	}
+	const d = data as Record<string, unknown>;
+
 	// Check required fields
-	if (!data.message_id || typeof data.message_id !== 'string') {
+	if (!d.message_id || typeof d.message_id !== 'string') {
 		throw new Error('Invalid SMS job data: message_id is required and must be string');
 	}
 
-	if (!data.phone_number || typeof data.phone_number !== 'string') {
+	if (!d.phone_number || typeof d.phone_number !== 'string') {
 		throw new Error('Invalid SMS job data: phone_number is required and must be string');
 	}
 
-	if (!data.message || typeof data.message !== 'string') {
+	if (!d.message || typeof d.message !== 'string') {
 		throw new Error('Invalid SMS job data: message is required and must be string');
 	}
 
-	if (!data.user_id || typeof data.user_id !== 'string') {
+	if (!d.user_id || typeof d.user_id !== 'string') {
 		throw new Error('Invalid SMS job data: user_id is required and must be string');
 	}
 
 	// Validate phone number format (E.164)
 	const e164Regex = /^\+[1-9]\d{1,14}$/;
-	if (!e164Regex.test(data.phone_number)) {
+	if (!e164Regex.test(d.phone_number)) {
 		throw new Error(
-			`Invalid SMS job data: phone_number must be in E.164 format (+1234567890), got "${data.phone_number}"`
+			`Invalid SMS job data: phone_number must be in E.164 format (+1234567890), got "${d.phone_number}"`
 		);
 	}
 
 	// Validate message length (Twilio SMS limit is 1600 characters for concatenated messages)
-	if (data.message.length > 1600) {
+	if (d.message.length > 1600) {
 		throw new Error(
-			`Invalid SMS job data: message exceeds maximum length of 1600 characters (got ${data.message.length})`
+			`Invalid SMS job data: message exceeds maximum length of 1600 characters (got ${d.message.length})`
 		);
 	}
 
 	// Validate priority if provided
-	if (data.priority && data.priority !== 'normal' && data.priority !== 'urgent') {
+	if (d.priority !== undefined && d.priority !== 'normal' && d.priority !== 'urgent') {
 		throw new Error(
-			`Invalid SMS job data: priority must be "normal" or "urgent", got "${data.priority}"`
+			`Invalid SMS job data: priority must be "normal" or "urgent", got "${String(d.priority)}"`
 		);
 	}
 
@@ -232,9 +252,14 @@ export function validateSMSJobData(data: any): SMSJobData {
  * Validate ChatClassificationJobData and throw if invalid
  * Ensures data integrity before chat classification job processing
  */
-export function validateChatClassificationJobData(data: any): ChatClassificationJobData {
+export function validateChatClassificationJobData(data: unknown): ChatClassificationJobData {
+	if (!data || typeof data !== 'object') {
+		throw new Error('Invalid chat classification job data: expected object');
+	}
+	const d = data as Record<string, unknown>;
+
 	// Check sessionId
-	if (!data.sessionId || typeof data.sessionId !== 'string') {
+	if (!d.sessionId || typeof d.sessionId !== 'string') {
 		throw new Error(
 			'Invalid chat classification job data: sessionId is required and must be string'
 		);
@@ -242,23 +267,23 @@ export function validateChatClassificationJobData(data: any): ChatClassification
 
 	// Validate UUID format for sessionId
 	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-	if (!uuidRegex.test(data.sessionId)) {
+	if (!uuidRegex.test(d.sessionId)) {
 		throw new Error(
-			`Invalid chat classification job data: sessionId must be a valid UUID, got "${data.sessionId}"`
+			`Invalid chat classification job data: sessionId must be a valid UUID, got "${d.sessionId}"`
 		);
 	}
 
 	// Check userId
-	if (!data.userId || typeof data.userId !== 'string') {
+	if (!d.userId || typeof d.userId !== 'string') {
 		throw new Error(
 			'Invalid chat classification job data: userId is required and must be string'
 		);
 	}
 
 	// Validate UUID format for userId
-	if (!uuidRegex.test(data.userId)) {
+	if (!uuidRegex.test(d.userId)) {
 		throw new Error(
-			`Invalid chat classification job data: userId must be a valid UUID, got "${data.userId}"`
+			`Invalid chat classification job data: userId must be a valid UUID, got "${d.userId}"`
 		);
 	}
 
@@ -269,9 +294,14 @@ export function validateChatClassificationJobData(data: any): ChatClassification
  * Validate BraindumpProcessingJobData and throw if invalid
  * Ensures data integrity before ontology capture processing job processing
  */
-export function validateBraindumpProcessingJobData(data: any): BraindumpProcessingJobData {
+export function validateBraindumpProcessingJobData(data: unknown): BraindumpProcessingJobData {
+	if (!data || typeof data !== 'object') {
+		throw new Error('Invalid braindump processing job data: expected object');
+	}
+	const d = data as Record<string, unknown>;
+
 	// Check braindumpId
-	if (!data.braindumpId || typeof data.braindumpId !== 'string') {
+	if (!d.braindumpId || typeof d.braindumpId !== 'string') {
 		throw new Error(
 			'Invalid braindump processing job data: braindumpId is required and must be string'
 		);
@@ -279,23 +309,23 @@ export function validateBraindumpProcessingJobData(data: any): BraindumpProcessi
 
 	// Validate UUID format for braindumpId
 	const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-	if (!uuidRegex.test(data.braindumpId)) {
+	if (!uuidRegex.test(d.braindumpId)) {
 		throw new Error(
-			`Invalid braindump processing job data: braindumpId must be a valid UUID, got "${data.braindumpId}"`
+			`Invalid braindump processing job data: braindumpId must be a valid UUID, got "${d.braindumpId}"`
 		);
 	}
 
 	// Check userId
-	if (!data.userId || typeof data.userId !== 'string') {
+	if (!d.userId || typeof d.userId !== 'string') {
 		throw new Error(
 			'Invalid braindump processing job data: userId is required and must be string'
 		);
 	}
 
 	// Validate UUID format for userId
-	if (!uuidRegex.test(data.userId)) {
+	if (!uuidRegex.test(d.userId)) {
 		throw new Error(
-			`Invalid braindump processing job data: userId must be a valid UUID, got "${data.userId}"`
+			`Invalid braindump processing job data: userId must be a valid UUID, got "${d.userId}"`
 		);
 	}
 

@@ -1,7 +1,7 @@
 // apps/web/src/lib/types/index.ts
 // Comprehensive type definitions for your SvelteKit + Supabase project
 
-import type { ApiResponse as SharedApiResponse, Database } from '@buildos/shared-types';
+import type { ApiResponseBody as SharedApiResponse, Database } from '@buildos/shared-types';
 import type { ParsedOperation } from './operations';
 import type { Task, ProjectWithRelations } from './project';
 import type { UserContext } from './user-context';

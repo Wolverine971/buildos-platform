@@ -2,7 +2,9 @@
 import {
 	BUILDOS_AGENT_READ_OPS,
 	BUILDOS_AGENT_SUPPORTED_OPS,
-	BUILDOS_AGENT_WRITE_OPS
+	BUILDOS_AGENT_WRITE_OPS,
+	LEGACY_OPENCLAW_DEFAULT_WRITE_OPS,
+	OPENCLAW_DEFAULT_WRITE_OPS
 } from '@buildos/shared-types';
 import type { BuildosAgentAllowedOp, BuildosAgentScopeMode } from '@buildos/shared-types';
 
@@ -160,4 +162,46 @@ export function intersectAllowedOps(
 
 export function describeScopeMode(mode: BuildosAgentScopeMode): string {
 	return mode === 'read_write' ? 'read and write' : 'read only';
+}
+
+/**
+ * Detect OpenClaw callers whose stored allowed_ops still match the pre-expansion
+ * narrow default (task create + update only). These are auto-upgraded to the
+ * current OPENCLAW_DEFAULT_WRITE_OPS bundle so existing installations pick up the
+ * expanded surface without manual reconfiguration.
+ */
+export function upgradeLegacyOpenClawAllowedOps(params: {
+	provider: string | null | undefined;
+	scopeMode: BuildosAgentScopeMode;
+	allowedOps: BuildosAgentAllowedOp[];
+}): { upgraded: boolean; allowedOps: BuildosAgentAllowedOp[] } {
+	if (params.scopeMode !== 'read_write') {
+		return { upgraded: false, allowedOps: params.allowedOps };
+	}
+
+	if ((params.provider ?? '').toLowerCase() !== 'openclaw') {
+		return { upgraded: false, allowedOps: params.allowedOps };
+	}
+
+	const writeOps = params.allowedOps.filter((op) => WRITE_OP_SET.has(op));
+	if (writeOps.length !== LEGACY_OPENCLAW_DEFAULT_WRITE_OPS.length) {
+		return { upgraded: false, allowedOps: params.allowedOps };
+	}
+
+	const writeOpsSet = new Set(writeOps);
+	const isExactLegacyMatch = LEGACY_OPENCLAW_DEFAULT_WRITE_OPS.every((op) => writeOpsSet.has(op));
+	if (!isExactLegacyMatch) {
+		return { upgraded: false, allowedOps: params.allowedOps };
+	}
+
+	const readOps = params.allowedOps.filter((op) => !WRITE_OP_SET.has(op));
+	const expanded: BuildosAgentAllowedOp[] = [...readOps, ...OPENCLAW_DEFAULT_WRITE_OPS];
+	const seen = new Set<BuildosAgentAllowedOp>();
+	const deduped = expanded.filter((op) => {
+		if (seen.has(op)) return false;
+		seen.add(op);
+		return true;
+	});
+
+	return { upgraded: true, allowedOps: deduped };
 }

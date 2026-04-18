@@ -8,7 +8,7 @@ import { supabase } from './lib/supabase';
 import { queueConfig } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
 import { queue } from './worker';
-import type { Database } from '@buildos/shared-types';
+import type { Database, DailyBriefJobMetadata } from '@buildos/shared-types';
 import { BriefBackoffCalculator } from './lib/briefBackoffCalculator';
 import { type Alert, smsAlertsService, smsMetricsService } from '@buildos/shared-utils';
 import { resolveScheduledBriefDate } from './workers/brief/briefDateGuard';
@@ -34,10 +34,13 @@ const backoffCalculator = new BriefBackoffCalculator();
  * @param engagementMetadata - Re-engagement tracking metadata
  * @param notificationScheduledFor - When to SEND the notification (user's scheduled time)
  */
+type QueueBriefOptions = NonNullable<DailyBriefJobMetadata['options']>;
+type QueueJobRow = Database['public']['Tables']['queue_jobs']['Row'];
+
 async function queueBriefGeneration(
 	userId: string,
 	scheduledFor: Date,
-	options?: any,
+	options?: QueueBriefOptions,
 	timezone: string = 'UTC',
 	engagementMetadata?: {
 		isReengagement: boolean;
@@ -45,7 +48,7 @@ async function queueBriefGeneration(
 	},
 	notificationScheduledFor?: Date,
 	userNameMap?: Map<string, string>
-): Promise<any> {
+): Promise<QueueJobRow> {
 	// Fetch the latest timezone and name from users table (centralized source of truth)
 	const { data: user } = await supabase
 		.from('users')

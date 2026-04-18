@@ -58,7 +58,7 @@ Copy the durable architecture. Adapt only project-specific pieces: product-state
 - **Explicit processing state:** `active -> processing -> active/completed/exited/errored` makes retries and crash recovery understandable.
 - **Immediate first send:** signup claims and processes Email 1 in-request instead of waiting for cron.
 - **Suppression at send time:** unsubscribe/suppression is checked right before sending, not at enrollment.
-- **Code-managed copy override:** DB content is the seed/fallback, source-controlled code copy wins in production.
+- **Code-managed copy:** source-controlled local copy wins in production; Supabase does not store subject/body/HTML.
 - **Per-enrollment exit reasons:** the sequence records why it stopped, not just when it sent.
 - **Tracked sends:** each outbound email has a durable send record with tracking IDs.
 - **Admin preview/test tools:** every step can be rendered with tokens and test-sent without polluting analytics.
@@ -283,7 +283,9 @@ Named containers for lifecycle sequences.
 
 ### 5.2 `email_sequence_steps`
 
-Ordered steps per sequence. Seed/fallback content and admin metadata. Production copy is code-managed.
+Ordered steps per sequence. Schedule/admin metadata only.
+
+**Important:** email subjects, plain text, and HTML are **not** stored in Supabase. Production copy lives in local source-controlled app files so it can be edited, reviewed, and fixed without treating the database as a CMS.
 
 | Column                             | Type    | Notes                                                               |
 | ---------------------------------- | ------- | ------------------------------------------------------------------- |
@@ -296,9 +298,6 @@ Ordered steps per sequence. Seed/fallback content and admin metadata. Production
 | `send_window_start_hour`           | INT     | Default 9 local time for non-immediate steps.                       |
 | `send_window_end_hour`             | INT     | Default 17 local time.                                              |
 | `send_on_weekends`                 | BOOL    | Default FALSE. Steps due Saturday/Sunday shift to Monday 9am local. |
-| `subject`                          | TEXT    | DB fallback subject.                                                |
-| `html_content`                     | TEXT    | DB fallback HTML/template.                                          |
-| `plain_text`                       | TEXT    | DB fallback plain text.                                             |
 | `status`                           | TEXT    | `active`, `paused`.                                                 |
 | `UNIQUE(sequence_id, step_number)` |         |                                                                     |
 
@@ -575,16 +574,11 @@ Load fresh before every step:
 | `apps/web/src/lib/server/welcome-sequence.service.ts` | DB claims, state loading, send orchestration, completion/retry calls. |
 | `apps/web/src/lib/server/email-sequence-rpcs.ts`      | Thin typed wrappers around Supabase RPCs.                             |
 
-### Code Override Wins
+### Local Copy Wins
 
-```ts
-const managedContent = getManagedSequenceContent(sequenceKey, stepNumber, branchKey);
-const subjectTemplate = managedContent?.subject ?? dbStep.subject;
-const htmlTemplate = managedContent?.htmlContent ?? dbStep.html_content;
-const plainTextTemplate = managedContent?.plainText ?? dbStep.plain_text;
-```
+Supabase stores sequence state, schedule metadata, queue status, and events. It does not store the email copy.
 
-Why: production copy reviewed in PRs; DB seeds for disaster recovery and admin preview; admins can experiment with DB rows, then promote winners into code.
+Why: lifecycle copy should be easy to edit in source, reviewed like product code, and kept out of the database so production state cannot silently drift from local intent. The admin page renders previews from the same local code path used for sends.
 
 ### Tokens
 
@@ -1031,7 +1025,7 @@ The 0/94 number means **nobody has been looking at these tables**, not that fail
 - Old table still written for one week as shadow-read fallback (in case we need to roll back).
 - Add `defer_email_sequence_step` for send-window handling.
 - Add weekend shift logic.
-- Add the no-backfill guard (users older than 14 days rejected at enrollment).
+- Add the no-backfill guard (users older than 14 days or older than the sequence deploy timestamp are rejected at enrollment).
 
 **Ship criteria:** Cron runs under the new RPC path for one week with zero duplicate sends and zero lost sends. Compare send counts to the old path — must match.
 
@@ -1184,7 +1178,7 @@ When the reactivation spec is written, reference this section and the framework 
 - [ ] Cron uses `claim_pending_email_sequence_sends`.
 - [ ] Signup uses `claim_specific_email_sequence_send`.
 - [ ] Add `defer_email_sequence_step` + weekend shift.
-- [ ] No-backfill guard enforced via `WELCOME_SYSTEM_DEPLOY_AT` (reject any `users.created_at <` deploy timestamp at enrollment).
+- [ ] No-backfill guard enforced at enrollment (reject users older than 14 days or with `users.created_at <` deploy timestamp).
 - [ ] One-week shadow-read verification.
 
 ### Phase 4 — Content Split

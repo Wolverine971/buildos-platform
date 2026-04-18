@@ -45,6 +45,7 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { fade } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
@@ -474,6 +475,22 @@
 			isHydrating = false;
 		}
 	}
+
+	// Respect the OS-level "reduce motion" preference for hydration fades.
+	let prefersReducedMotion = $state(false);
+	const fadeIn = $derived(prefersReducedMotion ? { duration: 0 } : { duration: 120, delay: 40 });
+	const fadeOut = $derived(prefersReducedMotion ? { duration: 0 } : { duration: 70 });
+
+	$effect(() => {
+		if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+		const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+		prefersReducedMotion = mq.matches;
+		const handler = (e: MediaQueryListEvent) => {
+			prefersReducedMotion = e.matches;
+		};
+		mq.addEventListener('change', handler);
+		return () => mq.removeEventListener('change', handler);
+	});
 
 	// Hydrate on mount if in skeleton mode
 	onMount(() => {
@@ -1742,12 +1759,18 @@
 			{/if}
 
 			<!-- Mobile Command Center (shown only on mobile < 640px) -->
-			<div class="sm:hidden mb-2">
+			<div class="sm:hidden mb-2 grid">
 				{#if isHydrating}
 					<!-- Skeleton matches MobileCommandCenter's CommandCenterPanel cards:
 					     h-14 card, tx-frame texture, icon + label + count on left,
 					     chevron on right. Order: Goals → Tasks+Plans → Risks+Documents → Events. -->
-					<div class="space-y-1.5" aria-busy="true" aria-label="Loading project panels">
+					<div
+						class="space-y-1.5 col-start-1 row-start-1"
+						aria-busy="true"
+						aria-label="Loading project panels"
+						in:fade={fadeIn}
+						out:fade={fadeOut}
+					>
 						<!-- Row 1: Goals (full width) -->
 						<div
 							class="w-full h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden flex items-center justify-between px-2.5 py-2"
@@ -1840,76 +1863,87 @@
 						</div>
 					</div>
 				{:else}
-					{#await import('$lib/components/project/MobileCommandCenter.svelte') then { default: MobileCommandCenter }}
-						<MobileCommandCenter
-							goals={filteredGoals}
-							milestones={filteredMilestones}
-							tasks={filteredTasks}
-							plans={filteredPlans}
-							risks={filteredRisks}
-							{documents}
-							events={filteredEvents}
-							{milestonesByGoalId}
-							docStructure={docTreeStructure}
-							{docTreeDocuments}
-							projectId={project.id}
-							{canEdit}
-							onAddGoal={() => canEdit && (showGoalCreateModal = true)}
-							onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
-							onAddTask={() => canEdit && (showTaskCreateModal = true)}
-							onAddPlan={() => canEdit && (showPlanCreateModal = true)}
-							onAddRisk={() => canEdit && (showRiskCreateModal = true)}
-							onAddDocument={(parentId) => canEdit && handleCreateDocument(parentId)}
-							onAddEvent={() => canEdit && (showEventCreateModal = true)}
-							onEditGoal={(id) => (editingGoalId = id)}
-							onEditMilestone={(id) => (editingMilestoneId = id)}
-							onEditTask={(id) => (editingTaskId = id)}
-							onEditPlan={(id) => (editingPlanId = id)}
-							onEditRisk={(id) => (editingRiskId = id)}
-							onEditDocument={(id) => {
-								activeDocumentId = id;
-								showDocumentModal = true;
-							}}
-							onEditEvent={(id) => (editingEventId = id)}
-							onToggleMilestoneComplete={handleToggleMilestoneComplete}
-							{panelStates}
-							{panelCounts}
-							onFilterChange={updatePanelFilters}
-							onSortChange={updatePanelSort}
-							onToggleChange={updatePanelToggle}
-							onFilterOpen={handleInsightFilterOpen}
-							{taskFilterGroups}
-						/>
-					{:catch}
-						<div
-							class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
-						>
-							Unable to load mobile command center.
-						</div>
-					{/await}
+					<div class="col-start-1 row-start-1" in:fade={fadeIn} out:fade={fadeOut}>
+						{#await import('$lib/components/project/MobileCommandCenter.svelte') then { default: MobileCommandCenter }}
+							<MobileCommandCenter
+								goals={filteredGoals}
+								milestones={filteredMilestones}
+								tasks={filteredTasks}
+								plans={filteredPlans}
+								risks={filteredRisks}
+								{documents}
+								events={filteredEvents}
+								{milestonesByGoalId}
+								docStructure={docTreeStructure}
+								{docTreeDocuments}
+								projectId={project.id}
+								{canEdit}
+								onAddGoal={() => canEdit && (showGoalCreateModal = true)}
+								onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
+								onAddTask={() => canEdit && (showTaskCreateModal = true)}
+								onAddPlan={() => canEdit && (showPlanCreateModal = true)}
+								onAddRisk={() => canEdit && (showRiskCreateModal = true)}
+								onAddDocument={(parentId) =>
+									canEdit && handleCreateDocument(parentId)}
+								onAddEvent={() => canEdit && (showEventCreateModal = true)}
+								onEditGoal={(id) => (editingGoalId = id)}
+								onEditMilestone={(id) => (editingMilestoneId = id)}
+								onEditTask={(id) => (editingTaskId = id)}
+								onEditPlan={(id) => (editingPlanId = id)}
+								onEditRisk={(id) => (editingRiskId = id)}
+								onEditDocument={(id) => {
+									activeDocumentId = id;
+									showDocumentModal = true;
+								}}
+								onEditEvent={(id) => (editingEventId = id)}
+								onToggleMilestoneComplete={handleToggleMilestoneComplete}
+								{panelStates}
+								{panelCounts}
+								onFilterChange={updatePanelFilters}
+								onSortChange={updatePanelSort}
+								onToggleChange={updatePanelToggle}
+								onFilterOpen={handleInsightFilterOpen}
+								{taskFilterGroups}
+							/>
+						{:catch}
+							<div
+								class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
+							>
+								Unable to load mobile command center.
+							</div>
+						{/await}
 
-					<ProjectHistorySection
-						{canViewLogs}
-						projectId={project.id}
-						projectName={project.name || 'Project'}
-						compact={true}
-						onEntityClick={handleActivityLogEntityClick}
-					/>
+						<ProjectHistorySection
+							{canViewLogs}
+							projectId={project.id}
+							projectName={project.name || 'Project'}
+							compact={true}
+							onEntityClick={handleActivityLogEntityClick}
+						/>
+					</div>
 				{/if}
 			</div>
 
 			<!-- Desktop Layout (hidden on mobile) -->
+			<!-- Explicit row/col positioning so skeleton and loaded occupy the same
+			     grid cell during the fade transition (no layout shift). -->
 			<div class="hidden sm:grid lg:grid-cols-[minmax(0,1fr)_360px] gap-3 sm:gap-4">
 				<!-- Left Column: Documents -->
 				{#if isHydrating && skeletonCounts}
 					<!-- Skeleton state - show loading placeholders with counts -->
-					<ProjectContentSkeleton
-						documentCount={skeletonCounts.document_count}
-						{canEdit}
-					/>
+					<div class="row-start-1 col-start-1" in:fade={fadeIn} out:fade={fadeOut}>
+						<ProjectContentSkeleton
+							documentCount={skeletonCounts.document_count}
+							{canEdit}
+						/>
+					</div>
 				{:else}
 					<!-- Hydrated state - show real content -->
-					<div class="min-w-0 space-y-2 sm:space-y-4">
+					<div
+						class="row-start-1 col-start-1 min-w-0 space-y-2 sm:space-y-4"
+						in:fade={fadeIn}
+						out:fade={fadeOut}
+					>
 						{#await import('$lib/components/project/ProjectDocumentsSection.svelte')}
 							<ProjectContentSkeleton
 								documentCount={Math.max(
@@ -1951,15 +1985,24 @@
 
 				<!-- Right Column: Insight Panels -->
 				{#if isHydrating && skeletonCounts}
-					<ProjectInsightRailSkeleton
-						{skeletonCounts}
-						{graphHidden}
-						{canViewLogs}
-						{canEdit}
-						onShowGraphModal={() => (showGraphModal = true)}
-					/>
+					<div
+						class="row-start-2 col-start-1 lg:row-start-1 lg:col-start-2"
+						in:fade={fadeIn}
+						out:fade={fadeOut}
+					>
+						<ProjectInsightRailSkeleton
+							{skeletonCounts}
+							{graphHidden}
+							{canViewLogs}
+							{canEdit}
+						/>
+					</div>
 				{:else}
-					<div class="space-y-3">
+					<div
+						class="row-start-2 col-start-1 lg:row-start-1 lg:col-start-2 space-y-3"
+						in:fade={fadeIn}
+						out:fade={fadeOut}
+					>
 						<PublishedPanel
 							bind:this={publishedPanelRef}
 							projectId={project.id}
@@ -2002,7 +2045,7 @@
 								{graphHidden}
 								{canViewLogs}
 								{canEdit}
-								onShowGraphModal={() => (showGraphModal = true)}
+								includePublishedPlaceholder={false}
 							/>
 						{:then { default: ProjectInsightRail }}
 							<ProjectInsightRail

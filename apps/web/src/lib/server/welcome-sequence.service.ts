@@ -5,6 +5,11 @@ import { dev } from '$app/environment';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import { EmailService } from '$lib/services/email-service';
 import {
+	BUILDOS_WELCOME_SEQUENCE_KEY,
+	EmailSequenceRpcClient,
+	type EmailSequenceEnrollment
+} from './email-sequence-rpcs';
+import {
 	buildWelcomeEmailContent,
 	determineNextWelcomeAction,
 	type WelcomeSequenceProductState,
@@ -29,6 +34,16 @@ type SequenceTimestampKey =
 	| 'email_5_skipped_at';
 
 const WELCOME_STEP_CLAIM_WINDOW_MS = 10 * 60 * 1000;
+const DEFAULT_WELCOME_TIMEZONE = 'America/Los_Angeles';
+const WELCOME_QUEUE_SEND_WINDOW_START_HOUR = 9;
+const WELCOME_QUEUE_SEND_WINDOW_END_HOUR = 17;
+const WELCOME_STEP_DAY_OFFSETS: Record<WelcomeSequenceStep, number> = {
+	email_1: 0,
+	email_2: 1,
+	email_3: 3,
+	email_4: 6,
+	email_5: 9
+};
 
 function isMissingLastEvaluatedAtError(error: unknown): boolean {
 	const err = error as { code?: string; message?: string; details?: string } | undefined;
@@ -86,8 +101,12 @@ interface WelcomeSequenceSeedState {
 
 interface WelcomeSequenceRunResult {
 	evaluated: number;
+	claimed: number;
 	sent: number;
 	skipped: number;
+	deferred: number;
+	retried: number;
+	errored: number;
 	completed: number;
 	cancelled: number;
 	suppressed: number;
@@ -137,14 +156,177 @@ function applyRowUpdate(
 	};
 }
 
+function welcomeStepForNumber(stepNumber: number | null | undefined): WelcomeSequenceStep | null {
+	if (!stepNumber || stepNumber < 1 || stepNumber > WELCOME_SEQUENCE_STEPS.length) {
+		return null;
+	}
+
+	return WELCOME_SEQUENCE_STEPS[stepNumber - 1] ?? null;
+}
+
+function stepNumberForWelcomeStep(step: WelcomeSequenceStep): number {
+	return WELCOME_SEQUENCE_STEPS.indexOf(step) + 1;
+}
+
+function metadataString(
+	metadata: Record<string, unknown> | null | undefined,
+	key: string,
+	fallback: string
+): string {
+	const value = metadata?.[key];
+	return typeof value === 'string' && value.trim() ? value : fallback;
+}
+
+function safeWelcomeTimezone(timezone: string | null | undefined): string {
+	if (!timezone) {
+		return DEFAULT_WELCOME_TIMEZONE;
+	}
+
+	try {
+		new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format(new Date());
+		return timezone;
+	} catch {
+		return DEFAULT_WELCOME_TIMEZONE;
+	}
+}
+
+function getLocalDateParts(timezone: string, date: Date) {
+	const formatter = new Intl.DateTimeFormat('en-US', {
+		timeZone: timezone,
+		weekday: 'short',
+		year: 'numeric',
+		month: '2-digit',
+		day: '2-digit',
+		hour: '2-digit',
+		minute: '2-digit',
+		second: '2-digit',
+		hourCycle: 'h23'
+	});
+	const parts = Object.fromEntries(
+		formatter.formatToParts(date).map((part) => [part.type, part.value])
+	);
+
+	return {
+		weekday: parts.weekday,
+		year: Number(parts.year),
+		month: Number(parts.month),
+		day: Number(parts.day),
+		hour: Number(parts.hour),
+		minute: Number(parts.minute),
+		second: Number(parts.second)
+	};
+}
+
+function getTimeZoneOffsetMs(timezone: string, date: Date): number {
+	const parts = getLocalDateParts(timezone, date);
+	const localAsUtc = Date.UTC(
+		parts.year,
+		parts.month - 1,
+		parts.day,
+		parts.hour,
+		parts.minute,
+		parts.second
+	);
+	return localAsUtc - date.getTime();
+}
+
+function localDateTimeToUtc(
+	timezone: string,
+	parts: { year: number; month: number; day: number; hour: number; minute?: number; second?: number }
+): Date {
+	const localAsUtc = Date.UTC(
+		parts.year,
+		parts.month - 1,
+		parts.day,
+		parts.hour,
+		parts.minute ?? 0,
+		parts.second ?? 0
+	);
+	let offsetMs = getTimeZoneOffsetMs(timezone, new Date(localAsUtc));
+	let utc = new Date(localAsUtc - offsetMs);
+	offsetMs = getTimeZoneOffsetMs(timezone, utc);
+	utc = new Date(localAsUtc - offsetMs);
+	return utc;
+}
+
+function addLocalCalendarDays(
+	parts: { year: number; month: number; day: number },
+	days: number
+): { year: number; month: number; day: number } {
+	const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + days, 12));
+	return {
+		year: date.getUTCFullYear(),
+		month: date.getUTCMonth() + 1,
+		day: date.getUTCDate()
+	};
+}
+
+function isLocalWeekend(timezone: string | null | undefined, date: Date): boolean {
+	const parts = getLocalDateParts(safeWelcomeTimezone(timezone), date);
+	return parts.weekday === 'Sat' || parts.weekday === 'Sun';
+}
+
+function nextWelcomeSendWindowStart(
+	timezone: string | null | undefined,
+	fromDate: Date
+): Date {
+	const resolvedTimezone = safeWelcomeTimezone(timezone);
+	const localParts = getLocalDateParts(resolvedTimezone, fromDate);
+	let targetDate = {
+		year: localParts.year,
+		month: localParts.month,
+		day: localParts.day
+	};
+	let addDays = 0;
+
+	if (localParts.weekday === 'Sat') {
+		addDays = 2;
+	} else if (localParts.weekday === 'Sun') {
+		addDays = 1;
+	} else if (localParts.hour >= WELCOME_QUEUE_SEND_WINDOW_END_HOUR) {
+		addDays = 1;
+	}
+
+	targetDate = addLocalCalendarDays(targetDate, addDays);
+
+	for (let guard = 0; guard < 7; guard += 1) {
+		const candidate = localDateTimeToUtc(resolvedTimezone, {
+			...targetDate,
+			hour: WELCOME_QUEUE_SEND_WINDOW_START_HOUR
+		});
+		if (!isLocalWeekend(resolvedTimezone, candidate)) {
+			return candidate;
+		}
+		targetDate = addLocalCalendarDays(targetDate, 1);
+	}
+
+	return new Date(fromDate.getTime() + 24 * 60 * 60 * 1000);
+}
+
+function isWithinQueueSendWindow(
+	timezone: string | null | undefined,
+	date: Date
+): boolean {
+	const resolvedTimezone = safeWelcomeTimezone(timezone);
+	const parts = getLocalDateParts(resolvedTimezone, date);
+	return (
+		parts.weekday !== 'Sat' &&
+		parts.weekday !== 'Sun' &&
+		parts.hour >= WELCOME_QUEUE_SEND_WINDOW_START_HOUR &&
+		parts.hour < WELCOME_QUEUE_SEND_WINDOW_END_HOUR
+	);
+}
+
 export class WelcomeSequenceService {
 	private readonly emailService: EmailService;
+	private readonly emailSequenceRpcs: EmailSequenceRpcClient;
 	private readonly baseUrl: string;
 	private supportsLastEvaluatedAtColumn = true;
 	private supportsUpdatedAtColumn = true;
 
 	constructor(private readonly supabase: TypedSupabaseClient) {
 		this.emailService = new EmailService(supabase);
+		this.emailSequenceRpcs = new EmailSequenceRpcClient(supabase);
 		this.baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
 	}
 
@@ -154,43 +336,45 @@ export class WelcomeSequenceService {
 			return;
 		}
 
-		let state: WelcomeSequenceProductState | null = null;
+		const recipientEmail = await this.loadUserEmailForSequenceMirror(input.userId);
+		if (!recipientEmail) {
+			return;
+		}
+
+		const enrollment = await this.emailSequenceRpcs.enrollUserInEmailSequence({
+			userId: input.userId,
+			sequenceKey: BUILDOS_WELCOME_SEQUENCE_KEY,
+			recipientEmail,
+			signupMethod: input.signupMethod,
+			triggerSource: input.triggerSource || 'account_created',
+			metadata: {
+				legacy_table: 'welcome_email_sequences',
+				legacy_sequence_version: row.sequence_version,
+				legacy_started_at: row.started_at
+			}
+		});
+
+		if (!enrollment?.id) {
+			return;
+		}
+
+		const claimedEnrollment = await this.emailSequenceRpcs.claimSpecificEmailSequenceSend(
+			enrollment.id
+		);
+		if (!claimedEnrollment) {
+			return;
+		}
+
 		try {
-			state = await this.loadUserState(input.userId);
+			await this.processQueueEnrollment(claimedEnrollment, {
+				now: this.resolveImmediateEvaluationTime(row.started_at),
+				immediate: true
+			});
 		} catch (error) {
-			await this.safeMarkEvaluated(input.userId, new Date().toISOString());
-			throw error;
-		}
-
-		if (!state?.email) {
-			return;
-		}
-
-		if (await this.isEmailSuppressedForLifecycle(state.email)) {
-			await this.cancelSequenceForSuppression(input.userId, new Date().toISOString());
-			return;
-		}
-
-		const hydratedRow = await this.hydrateSentStepsFromEmailLogs(row);
-
-		const progress = toProgress(hydratedRow);
-		const immediateNow = this.resolveImmediateEvaluationTime(hydratedRow.started_at);
-		const action = determineNextWelcomeAction(progress, state, immediateNow);
-		if (action.action !== 'send' || action.step !== 'email_1') {
-			return;
-		}
-
-		try {
-			await this.sendStep(
-				hydratedRow,
-				progress,
-				state,
-				action.step,
-				action.branchKey || 'welcome',
-				immediateNow
-			);
-		} catch (error) {
-			await this.safeMarkEvaluated(input.userId, new Date().toISOString());
+			await this.safeRetryQueueEnrollment(claimedEnrollment.id, error);
+			await this.safeMarkEvaluated(input.userId, new Date().toISOString(), {
+				mirrorToQueue: false
+			});
 			throw error;
 		}
 	}
@@ -203,8 +387,78 @@ export class WelcomeSequenceService {
 		const now = options?.now ?? new Date();
 		const result: WelcomeSequenceRunResult = {
 			evaluated: 0,
+			claimed: 0,
 			sent: 0,
 			skipped: 0,
+			deferred: 0,
+			retried: 0,
+			errored: 0,
+			completed: 0,
+			cancelled: 0,
+			suppressed: 0,
+			errors: []
+		};
+
+		let claimedEnrollments: EmailSequenceEnrollment[];
+		try {
+			claimedEnrollments = await this.emailSequenceRpcs.claimPendingEmailSequenceSends(
+				BUILDOS_WELCOME_SEQUENCE_KEY,
+				limit
+			);
+		} catch (error) {
+			console.error('Failed to claim welcome sequence queue rows; falling back to legacy path:', {
+				error
+			});
+			return await this.processLegacyDueSequences(options);
+		}
+
+		result.claimed = claimedEnrollments.length;
+
+		for (const enrollment of claimedEnrollments) {
+			result.evaluated += 1;
+
+			try {
+				const outcome = await this.processQueueEnrollment(enrollment, { now });
+				result.sent += outcome.sent;
+				result.skipped += outcome.skipped;
+				result.deferred += outcome.deferred;
+				result.completed += outcome.completed;
+				result.cancelled += outcome.cancelled;
+				result.suppressed += outcome.suppressed;
+			} catch (error) {
+				const retryOutcome = await this.safeRetryQueueEnrollment(enrollment.id, error);
+				if (retryOutcome === 'errored') {
+					result.errored += 1;
+				} else {
+					result.retried += 1;
+				}
+				await this.safeMarkEvaluated(enrollment.user_id, now.toISOString(), {
+					mirrorToQueue: false
+				});
+				result.errors.push({
+					userId: enrollment.user_id,
+					error: error instanceof Error ? error.message : 'Unknown error'
+				});
+			}
+		}
+
+		return result;
+	}
+
+	private async processLegacyDueSequences(options?: {
+		limit?: number;
+		now?: Date;
+	}): Promise<WelcomeSequenceRunResult> {
+		const limit = options?.limit ?? 200;
+		const now = options?.now ?? new Date();
+		const result: WelcomeSequenceRunResult = {
+			evaluated: 0,
+			claimed: 0,
+			sent: 0,
+			skipped: 0,
+			deferred: 0,
+			retried: 0,
+			errored: 0,
 			completed: 0,
 			cancelled: 0,
 			suppressed: 0,
@@ -311,6 +565,361 @@ export class WelcomeSequenceService {
 		}
 
 		return result;
+	}
+
+	private async processQueueEnrollment(
+		enrollment: EmailSequenceEnrollment,
+		options: { now: Date; immediate?: boolean }
+	): Promise<Omit<WelcomeSequenceRunResult, 'evaluated' | 'claimed' | 'errors' | 'retried' | 'errored'>> {
+		const now = options.now;
+		const nowIso = now.toISOString();
+		const emptyOutcome = {
+			sent: 0,
+			skipped: 0,
+			deferred: 0,
+			completed: 0,
+			cancelled: 0,
+			suppressed: 0
+		};
+		const step = welcomeStepForNumber(enrollment.next_step_number);
+		if (!step) {
+			return emptyOutcome;
+		}
+
+		const state = await this.loadUserState(enrollment.user_id);
+		if (!state?.email) {
+			await this.emailSequenceRpcs.exitUserFromEmailSequence({
+				userId: enrollment.user_id,
+				sequenceKey: BUILDOS_WELCOME_SEQUENCE_KEY,
+				reason: 'user_deleted'
+			});
+			await this.updateSequenceRow(
+				enrollment.user_id,
+				{
+					status: 'cancelled',
+					completed_at: nowIso,
+					last_evaluated_at: nowIso
+				},
+				{ mirrorToQueue: false }
+			);
+			return { ...emptyOutcome, cancelled: 1 };
+		}
+
+		if (await this.isEmailSuppressedForLifecycle(state.email)) {
+			await this.emailSequenceRpcs.exitEmailFromEmailSequence({
+				email: state.email,
+				sequenceKey: BUILDOS_WELCOME_SEQUENCE_KEY,
+				reason: 'suppressed'
+			});
+			await this.cancelSequenceForSuppression(enrollment.user_id, nowIso, {
+				mirrorToQueue: false
+			});
+			return { ...emptyOutcome, cancelled: 1, suppressed: 1 };
+		}
+
+		if (!options.immediate && step !== 'email_1' && !isWithinQueueSendWindow(state.timezone, now)) {
+			const nextSendAt = nextWelcomeSendWindowStart(state.timezone, now);
+			await this.emailSequenceRpcs.deferEmailSequenceStep({
+				enrollmentId: enrollment.id,
+				nextSendAt: nextSendAt.toISOString(),
+				reason: isLocalWeekend(state.timezone, now)
+					? 'weekend_send_window_shift'
+					: 'outside_send_window'
+			});
+			await this.safeMarkEvaluated(enrollment.user_id, nowIso, { mirrorToQueue: false });
+			return { ...emptyOutcome, deferred: 1 };
+		}
+
+		const progress = this.progressFromEnrollment(enrollment);
+		const action = determineNextWelcomeAction(progress, state, now);
+
+		if (action.action === 'wait') {
+			const nextSendAt = this.resolveQueueDeferTime(step, progress, state, action.reason, now);
+			await this.emailSequenceRpcs.deferEmailSequenceStep({
+				enrollmentId: enrollment.id,
+				nextSendAt: nextSendAt.toISOString(),
+				reason: action.reason
+			});
+			await this.safeMarkEvaluated(enrollment.user_id, nowIso, { mirrorToQueue: false });
+			return { ...emptyOutcome, deferred: 1 };
+		}
+
+		if (action.action === 'complete') {
+			await this.emailSequenceRpcs.skipEmailSequenceStep({
+				enrollmentId: enrollment.id,
+				branchKey: action.branchKey ?? null,
+				reason: action.reason,
+				metadata: this.buildQueueEventMetadata(enrollment, step, state, action.branchKey)
+			});
+			await this.updateSequenceRow(
+				enrollment.user_id,
+				{
+					status: 'completed',
+					completed_at: nowIso,
+					last_evaluated_at: nowIso
+				},
+				{ mirrorToQueue: false }
+			);
+			return { ...emptyOutcome, completed: 1 };
+		}
+
+		if (!action.step) {
+			return emptyOutcome;
+		}
+
+		if (action.action === 'skip') {
+			const updatedEnrollment = await this.emailSequenceRpcs.skipEmailSequenceStep({
+				enrollmentId: enrollment.id,
+				branchKey: action.branchKey ?? null,
+				reason: action.reason,
+				metadata: this.buildQueueEventMetadata(enrollment, action.step, state, action.branchKey)
+			});
+			await this.markLegacyStepShadow({
+				enrollment,
+				step: action.step,
+				outcome: 'skipped',
+				timestamp: nowIso,
+				completed: updatedEnrollment.status === 'completed'
+			});
+			return {
+				...emptyOutcome,
+				skipped: 1,
+				completed: updatedEnrollment.status === 'completed' ? 1 : 0
+			};
+		}
+
+		const sendResult = await this.sendQueueStep(
+			enrollment,
+			progress,
+			state,
+			action.step,
+			action.branchKey || 'unknown',
+			now
+		);
+		const updatedEnrollment = await this.emailSequenceRpcs.completeEmailSequenceSend({
+			enrollmentId: enrollment.id,
+			emailId: sendResult.emailId,
+			branchKey: action.branchKey ?? null,
+			metadata: sendResult.metadata
+		});
+		await this.markLegacyStepShadow({
+			enrollment,
+			step: action.step,
+			outcome: 'sent',
+			timestamp: nowIso,
+			completed: updatedEnrollment.status === 'completed'
+		});
+
+		return {
+			...emptyOutcome,
+			sent: 1,
+			completed: updatedEnrollment.status === 'completed' ? 1 : 0
+		};
+	}
+
+	private progressFromEnrollment(enrollment: EmailSequenceEnrollment): WelcomeSequenceProgress {
+		const sentAt: WelcomeSequenceProgress['sentAt'] = {};
+		for (const step of WELCOME_SEQUENCE_STEPS) {
+			if (stepNumberForWelcomeStep(step) <= enrollment.current_step_number) {
+				sentAt[step] = enrollment.last_sent_at ?? enrollment.created_at;
+			}
+		}
+
+		return {
+			startedAt: metadataString(
+				enrollment.metadata,
+				'started_at',
+				metadataString(enrollment.metadata, 'legacy_started_at', enrollment.created_at)
+			),
+			status:
+				enrollment.status === 'completed' || enrollment.status === 'cancelled'
+					? enrollment.status
+					: 'active',
+			sentAt,
+			skippedAt: {}
+		};
+	}
+
+	private resolveQueueDeferTime(
+		step: WelcomeSequenceStep,
+		progress: WelcomeSequenceProgress,
+		state: WelcomeSequenceProductState,
+		reason: string,
+		now: Date
+	): Date {
+		const startedAtMs = Date.parse(progress.startedAt);
+		const dueAt = Number.isNaN(startedAtMs)
+			? now
+			: new Date(startedAtMs + WELCOME_STEP_DAY_OFFSETS[step] * 24 * 60 * 60 * 1000);
+		const candidate = reason.endsWith('_not_due') && dueAt > now ? dueAt : now;
+
+		if (step === 'email_1') {
+			return candidate;
+		}
+
+		return isWithinQueueSendWindow(state.timezone, candidate)
+			? candidate
+			: nextWelcomeSendWindowStart(state.timezone, candidate);
+	}
+
+	private buildQueueEventMetadata(
+		enrollment: EmailSequenceEnrollment,
+		step: WelcomeSequenceStep,
+		state: WelcomeSequenceProductState,
+		branchKey: string | null | undefined,
+		extra: Record<string, unknown> = {}
+	): Record<string, unknown> {
+		return {
+			sequence_key: BUILDOS_WELCOME_SEQUENCE_KEY,
+			sequence_name: 'buildos-welcome-sequence',
+			sequence_version: WELCOME_SEQUENCE_VERSION,
+			enrollment_id: enrollment.id,
+			sequence_step: step,
+			step_number: stepNumberForWelcomeStep(step),
+			branch_key: branchKey ?? null,
+			trigger_source: metadataString(enrollment.metadata, 'trigger_source', 'account_created'),
+			signup_method: metadataString(enrollment.metadata, 'signup_method', 'unknown'),
+			onboarding_intent: state.onboardingIntent,
+			onboarding_completed: state.onboardingCompleted,
+			project_count: state.projectCount,
+			email_daily_brief_enabled: state.emailDailyBriefEnabled,
+			sms_channel_enabled: state.smsChannelEnabled,
+			calendar_connected: state.calendarConnected,
+			...extra
+		};
+	}
+
+	private async sendQueueStep(
+		enrollment: EmailSequenceEnrollment,
+		progress: WelcomeSequenceProgress,
+		state: WelcomeSequenceProductState,
+		step: WelcomeSequenceStep,
+		branchKey: string,
+		now: Date
+	): Promise<{ emailId: string | null; metadata: Record<string, unknown> }> {
+		const content = buildWelcomeEmailContent(step, progress, state, this.baseUrl);
+		const metadata = this.buildQueueEventMetadata(enrollment, step, state, branchKey, {
+			category: 'welcome_sequence',
+			campaign: 'welcome-sequence',
+			campaign_type: 'lifecycle',
+			cta_label: content.ctaLabel,
+			cta_url: content.ctaUrl,
+			evaluated_at: now.toISOString()
+		});
+
+		const sendResult = await this.emailService.sendEmail({
+			to: state.email,
+			subject: content.subject,
+			body: content.body,
+			html: content.html,
+			from: 'dj',
+			userId: state.userId,
+			createdBy: state.userId,
+			metadata
+		});
+
+		if (!sendResult.success) {
+			throw new Error(sendResult.error || `Failed to send ${step}`);
+		}
+
+		return {
+			emailId: sendResult.emailId ?? null,
+			metadata: {
+				...metadata,
+				message_id: sendResult.messageId ?? null,
+				email_id: sendResult.emailId ?? null
+			}
+		};
+	}
+
+	private async markLegacyStepShadow({
+		enrollment,
+		step,
+		outcome,
+		timestamp,
+		completed
+	}: {
+		enrollment: EmailSequenceEnrollment;
+		step: WelcomeSequenceStep;
+		outcome: 'sent' | 'skipped';
+		timestamp: string;
+		completed: boolean;
+	}): Promise<void> {
+		await this.ensureLegacySequenceRowForEnrollment(enrollment);
+		const field = stepTimestampField(step, outcome);
+		const updates: Partial<WelcomeSequenceRow> = {
+			[field]: timestamp,
+			last_evaluated_at: timestamp
+		} as Partial<WelcomeSequenceRow>;
+
+		if (completed) {
+			updates.status = 'completed';
+			updates.completed_at = timestamp;
+		}
+
+		await this.updateSequenceRow(enrollment.user_id, updates, { mirrorToQueue: false });
+	}
+
+	private async ensureLegacySequenceRowForEnrollment(
+		enrollment: EmailSequenceEnrollment
+	): Promise<WelcomeSequenceRow | null> {
+		const existing = await this.getSequenceRow(enrollment.user_id);
+		if (existing) {
+			return existing;
+		}
+
+		const seed = await this.loadSequenceSeedState(enrollment.user_id);
+		if (!seed) {
+			return null;
+		}
+
+		const metadata = enrollment.metadata ?? {};
+		const startedAt = metadataString(
+			metadata,
+			'started_at',
+			metadataString(metadata, 'legacy_started_at', seed.createdAt)
+		);
+		const insertRow = {
+			user_id: enrollment.user_id,
+			sequence_version: metadataString(
+				metadata,
+				'sequence_version',
+				WELCOME_SEQUENCE_VERSION
+			),
+			trigger_source: metadataString(metadata, 'trigger_source', 'account_created'),
+			signup_method: metadataString(metadata, 'signup_method', 'unknown'),
+			started_at: startedAt
+		};
+
+		const { data, error } = await this.sequenceTable().insert(insertRow).select('*').single();
+		if (error) {
+			const fallback = await this.getSequenceRow(enrollment.user_id);
+			if (fallback) {
+				return fallback;
+			}
+			throw new Error(`Failed to create legacy welcome sequence shadow row: ${error.message}`);
+		}
+
+		return data as WelcomeSequenceRow;
+	}
+
+	private async safeRetryQueueEnrollment(
+		enrollmentId: string,
+		error: unknown
+	): Promise<'retried' | 'errored'> {
+		try {
+			const updatedEnrollment = await this.emailSequenceRpcs.retryOrFailEmailSequenceSend(
+				enrollmentId,
+				error instanceof Error ? error.message : 'Unknown error'
+			);
+			return updatedEnrollment.status === 'errored' ? 'errored' : 'retried';
+		} catch (retryError) {
+			console.error('Failed to retry or fail welcome sequence queue row:', {
+				enrollmentId,
+				error: retryError
+			});
+			return 'errored';
+		}
 	}
 
 	private sequenceTable() {
@@ -428,7 +1037,8 @@ export class WelcomeSequenceService {
 
 	private async updateSequenceRow(
 		userId: string,
-		updates: Partial<WelcomeSequenceRow>
+		updates: Partial<WelcomeSequenceRow>,
+		options: { mirrorToQueue?: boolean } = {}
 	): Promise<void> {
 		let compatibleUpdates = this.toCompatibleUpdates(updates);
 		if (Object.keys(compatibleUpdates).length === 0) {
@@ -440,6 +1050,9 @@ export class WelcomeSequenceService {
 				.update(compatibleUpdates)
 				.eq('user_id', userId);
 			if (!error) {
+				if (options.mirrorToQueue !== false) {
+					await this.safeMirrorLegacySequenceByUserId(userId);
+				}
 				return;
 			}
 
@@ -457,6 +1070,93 @@ export class WelcomeSequenceService {
 		}
 	}
 
+	private async safeEnrollShadowSequence(
+		input: WelcomeSequenceStartInput,
+		row: WelcomeSequenceRow
+	): Promise<void> {
+		let recipientEmail: string | null = null;
+
+		try {
+			recipientEmail = await this.loadUserEmailForSequenceMirror(row.user_id);
+			if (!recipientEmail) {
+				return;
+			}
+
+			await this.emailSequenceRpcs.enrollUserInEmailSequence({
+				userId: input.userId,
+				sequenceKey: BUILDOS_WELCOME_SEQUENCE_KEY,
+				recipientEmail,
+				signupMethod: input.signupMethod,
+				triggerSource: input.triggerSource || 'account_created',
+				metadata: {
+					legacy_table: 'welcome_email_sequences',
+					legacy_sequence_version: row.sequence_version,
+					legacy_started_at: row.started_at
+				}
+			});
+		} catch (error) {
+			console.error('Failed to enroll welcome sequence shadow queue row:', {
+				userId: input.userId,
+				error
+			});
+		}
+
+		if (recipientEmail) {
+			await this.safeMirrorLegacySequence(row, recipientEmail);
+		}
+	}
+
+	private async safeMirrorLegacySequenceByUserId(userId: string): Promise<void> {
+		try {
+			const row = await this.getSequenceRow(userId);
+			if (!row) {
+				return;
+			}
+
+			await this.safeMirrorLegacySequence(row);
+		} catch (error) {
+			console.error('Failed to load welcome sequence for shadow mirror:', {
+				userId,
+				error
+			});
+		}
+	}
+
+	private async safeMirrorLegacySequence(
+		row: WelcomeSequenceRow,
+		recipientEmail?: string | null
+	): Promise<void> {
+		try {
+			const resolvedEmail =
+				recipientEmail || (await this.loadUserEmailForSequenceMirror(row.user_id));
+			if (!resolvedEmail) {
+				return;
+			}
+
+			await this.emailSequenceRpcs.mirrorLegacyWelcomeSequence(row, resolvedEmail);
+		} catch (error) {
+			console.error('Failed to mirror welcome sequence shadow queue row:', {
+				userId: row.user_id,
+				error
+			});
+		}
+	}
+
+	private async loadUserEmailForSequenceMirror(userId: string): Promise<string | null> {
+		const { data, error } = await this.supabase
+			.from('users')
+			.select('email')
+			.eq('id', userId)
+			.maybeSingle();
+
+		if (error) {
+			throw new Error(`Failed to load welcome sequence mirror email: ${error.message}`);
+		}
+
+		const email = typeof data?.email === 'string' ? data.email.trim() : '';
+		return email || null;
+	}
+
 	private resolveImmediateEvaluationTime(startedAt: string): Date {
 		const now = new Date();
 		const startedAtMs = Date.parse(startedAt);
@@ -467,11 +1167,19 @@ export class WelcomeSequenceService {
 		return new Date(Math.max(now.getTime(), startedAtMs));
 	}
 
-	private async safeMarkEvaluated(userId: string, evaluatedAt: string): Promise<void> {
+	private async safeMarkEvaluated(
+		userId: string,
+		evaluatedAt: string,
+		options: { mirrorToQueue?: boolean } = {}
+	): Promise<void> {
 		try {
-			await this.updateSequenceRow(userId, {
-				last_evaluated_at: evaluatedAt
-			});
+			await this.updateSequenceRow(
+				userId,
+				{
+					last_evaluated_at: evaluatedAt
+				},
+				options
+			);
 		} catch (error) {
 			console.error('Failed to mark welcome sequence evaluation timestamp:', {
 				userId,
@@ -499,12 +1207,20 @@ export class WelcomeSequenceService {
 		return data === true;
 	}
 
-	private async cancelSequenceForSuppression(userId: string, cancelledAt: string): Promise<void> {
-		await this.updateSequenceRow(userId, {
-			status: 'cancelled',
-			completed_at: cancelledAt,
-			last_evaluated_at: cancelledAt
-		});
+	private async cancelSequenceForSuppression(
+		userId: string,
+		cancelledAt: string,
+		options: { mirrorToQueue?: boolean } = {}
+	): Promise<void> {
+		await this.updateSequenceRow(
+			userId,
+			{
+				status: 'cancelled',
+				completed_at: cancelledAt,
+				last_evaluated_at: cancelledAt
+			},
+			options
+		);
 	}
 
 	private async claimStep(

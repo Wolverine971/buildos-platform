@@ -1,33 +1,43 @@
 // apps/web/src/lib/types/daily-brief.ts
+
+/**
+ * UI-facing composite shape for a daily brief. Combines columns from the
+ * `daily_briefs` table with fields synthesized from `ontology_daily_briefs`
+ * (`chat_brief_id`, `executive_summary`) by the ontology mappers.
+ *
+ * Do not pass this directly to DB writes — use `Database[...]['Tables']['daily_briefs']['Insert' | 'Update']`.
+ */
 export interface DailyBrief {
 	id: string;
-	chat_brief_id?: string; // Ontology brief id to use for brief chat context
 	user_id: string;
 	brief_date: string;
 	summary_content: string;
-	executive_summary?: string; // Used when mapping from ontology briefs
-	llm_analysis?: any; // LLM analysis data from ontology briefs
-	project_brief_ids?: string[];
-	insights?: string;
-	priority_actions?: string[];
-	generation_status?: 'pending' | 'completed' | 'failed';
-	generation_error?: string;
-	generation_started_at?: string;
-	generation_completed_at?: string;
-	generation_progress?: any;
+	generation_status: 'pending' | 'processing' | 'completed' | 'failed';
+	generation_error?: string | null;
+	generation_started_at?: string | null;
+	generation_completed_at?: string | null;
+	generation_progress?: Record<string, any> | null;
+	project_brief_ids?: string[] | null;
+	insights?: string | null;
+	priority_actions?: string[] | null;
 	metadata?: any;
 	created_at?: string;
 	updated_at?: string;
+
+	// Synthesized by ontology mappers — not columns on `daily_briefs`.
+	chat_brief_id?: string;
+	executive_summary?: string;
+	llm_analysis?: any;
 }
 
 export interface ProjectDailyBrief {
 	id: string;
 	user_id: string;
 	project_id: string;
-	template_id?: string;
+	template_id?: string | null;
 	brief_content: string;
 	brief_date: string;
-	generation_status?: 'pending' | 'completed' | 'failed';
+	generation_status: 'pending' | 'processing' | 'completed' | 'failed';
 	metadata?: any;
 	created_at?: string;
 	updated_at?: string;
@@ -56,7 +66,7 @@ export interface BriefTemplate {
 	description: string | null;
 	template_content: string;
 	is_default: boolean | null;
-	variables: any;
+	variables: Record<string, any> | null;
 	created_at: string | null;
 	updated_at: string | null;
 }

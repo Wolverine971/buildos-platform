@@ -1,6 +1,12 @@
 // packages/shared-types/src/api-types.ts
 
-export interface ApiResponse<T = unknown> {
+/**
+ * JSON body shape returned by BuildOS REST endpoints.
+ *
+ * Named `ApiResponseBody` (not `ApiResponse`) to avoid colliding with the
+ * `ApiResponse` helper class in `apps/web/src/lib/utils/api-response.ts`.
+ */
+export interface ApiResponseBody<T = unknown> {
 	success: boolean;
 	data?: T;
 	error?: string;
@@ -12,6 +18,9 @@ export interface ApiResponse<T = unknown> {
 	timestamp: string;
 	requestId?: string;
 }
+
+/** @deprecated Use `ApiResponseBody` instead. */
+export type ApiResponse<T = unknown> = ApiResponseBody<T>;
 
 export interface ApiWarning {
 	message: string;

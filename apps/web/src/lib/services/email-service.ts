@@ -47,7 +47,7 @@ export class EmailService {
 	 */
 	async sendEmail(
 		data: EmailData
-	): Promise<{ success: boolean; messageId?: string; error?: string }> {
+	): Promise<{ success: boolean; messageId?: string; emailId?: string | null; error?: string }> {
 		const sentAt = new Date().toISOString();
 		const senderType = data.from || 'dj';
 		const trackingEnabled = data.trackingEnabled ?? true;
@@ -114,9 +114,10 @@ export class EmailService {
 				replyTo,
 				headers
 			});
+			let emailRecordId: string | null = null;
 
 			try {
-				const emailRecordId = await this.logRichEmailData({
+				emailRecordId = await this.logRichEmailData({
 					recipientEmail: data.to,
 					recipientId: data.userId ?? null,
 					subject: data.subject,
@@ -176,7 +177,8 @@ export class EmailService {
 
 			return {
 				success: true,
-				messageId: info.messageId
+				messageId: info.messageId,
+				emailId: emailRecordId
 			};
 		} catch (error) {
 			console.error('Error sending email:', error);

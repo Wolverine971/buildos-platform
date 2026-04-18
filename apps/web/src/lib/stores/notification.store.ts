@@ -23,7 +23,7 @@ import type {
 	Notification,
 	NotificationStoreState,
 	NotificationConfig,
-	NotificationStatus,
+	UiNotificationStatus,
 	NotificationProgress,
 	CreateNotificationInput,
 	UpdateNotificationInput
@@ -566,7 +566,7 @@ export function createNotificationStore() {
 	/**
 	 * Update notification status
 	 */
-	function setStatus(id: string, status: NotificationStatus): void {
+	function setStatus(id: string, status: UiNotificationStatus): void {
 		updateNotification(id, { status });
 
 		// Auto-close on success if configured
@@ -595,7 +595,7 @@ export function createNotificationStore() {
 
 			const updated = {
 				...notification,
-				status: 'error' as NotificationStatus,
+				status: 'error' as UiNotificationStatus,
 				updatedAt: Date.now()
 			};
 

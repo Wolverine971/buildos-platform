@@ -1,10 +1,5 @@
 // apps/web/src/lib/types/search.ts
 
-// Enum type definitions matching your database
-export type ProjectStatus = 'active' | 'paused' | 'completed' | 'archived';
-export type TaskStatus = 'backlog' | 'in_progress' | 'done' | 'blocked';
-export type PriorityLevel = 'low' | 'medium' | 'high';
-
 export interface SearchResult {
 	item_type: 'project' | 'task';
 	item_id: string;

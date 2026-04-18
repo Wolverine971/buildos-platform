@@ -6,6 +6,11 @@ import {
 	logSecurityEvent,
 	type SecurityEventLogOptions
 } from '$lib/server/security-event-logger';
+import {
+	extractAllowedOpsFromPolicy,
+	extractScopeModeFromPolicy,
+	upgradeLegacyOpenClawAllowedOps
+} from './agent-call-policy';
 
 export class AgentCallAuthError extends Error {
 	constructor(
@@ -131,10 +136,50 @@ export async function authenticateExternalAgentCaller(
 		});
 	}
 
-	await admin
-		.from('external_agent_callers')
-		.update({ last_used_at: new Date().toISOString() })
-		.eq('id', data.id);
+	const record = data as ExternalAgentCallerRecord;
+	const scopeMode = extractScopeModeFromPolicy(record.policy);
+	const allowedOps = extractAllowedOpsFromPolicy(record.policy, scopeMode);
+	const upgrade = upgradeLegacyOpenClawAllowedOps({
+		provider: record.provider,
+		scopeMode,
+		allowedOps
+	});
 
-	return data as ExternalAgentCallerRecord;
+	const updatePatch: Record<string, unknown> = {
+		last_used_at: new Date().toISOString()
+	};
+
+	if (upgrade.upgraded) {
+		const nextPolicy = {
+			...(record.policy ?? {}),
+			scope_mode: scopeMode,
+			allowed_ops: upgrade.allowedOps
+		};
+		updatePatch.policy = nextPolicy;
+		record.policy = nextPolicy;
+
+		await logSecurityEvent(
+			{
+				eventType: 'agent.caller.policy.upgraded',
+				category: 'agent',
+				outcome: 'success',
+				severity: 'low',
+				actorType: 'external_agent',
+				actorUserId: record.user_id,
+				externalAgentCallerId: record.id,
+				reason: 'openclaw_legacy_bundle_auto_upgrade',
+				...getSecurityRequestContext(request),
+				metadata: {
+					provider: record.provider,
+					previous_allowed_ops: allowedOps,
+					next_allowed_ops: upgrade.allowedOps
+				}
+			},
+			{ ...securityEventOptions, supabase: admin }
+		);
+	}
+
+	await admin.from('external_agent_callers').update(updatePatch).eq('id', record.id);
+
+	return record;
 }

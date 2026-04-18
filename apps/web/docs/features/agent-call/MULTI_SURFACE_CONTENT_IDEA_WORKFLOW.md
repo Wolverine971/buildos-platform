@@ -2,25 +2,54 @@
 
 # Multi-Surface Content Idea Workflow — Design Note
 
-**Status:** Exploration / not implemented
-**Date:** 2026-04-17
+**Status:** Exploration / partially scoped
+**Date:** 2026-04-17 (updated 2026-04-18)
 **Author:** DJ (with Claude)
-**Context:** User wants to move flexibly between three surfaces — BuildOS, Claude Code, and Libri (unclear whether a local tool or a deployed service; see open questions) — and have a single workflow span all of them. Canonical example: from Claude Code, "ingest this YouTube video because I want to do a TikTok on it," which should store the content idea in BuildOS and fetch a transcript via Libri, so the user has everything they need to generate derived assets.
+**Context:** User wants to move flexibly between BuildOS, Claude Code / OpenClaw (third-party agent surfaces), and Libri (the user's own library / data lake for books, authors, and YouTube videos — a separate service, not inside BuildOS). The near-term bottleneck is that BuildOS's external agent-call gateway exposes a narrow slice of the data model, so third-party agents can't yet do routine authoring work against BuildOS. The content-idea workflow is one downstream use case; the immediate need is a wider, trusted tool surface.
 
 ---
 
 ## Problem
 
-Today BuildOS has no primitive for "content idea." A user who wants to turn a YouTube video into a TikTok has to:
+Two problems stack on top of each other.
 
-1. Fetch the transcript somewhere
-2. Stash it somewhere
-3. Remember to come back to it
-4. Draft the TikTok manually
+**Problem 1 — External agents can only do a sliver of what BuildOS supports.**
+The external agent-call gateway currently exposes read access to projects/tasks/documents plus `onto.task.create` and `onto.task.update`. Everything else that the internal agentic chat can do — creating documents, creating projects, creating goals/plans/milestones/risks, tree organization — is off-limits to third-party agents, even though the internal tool surface already handles the same operations safely. The Agent Keys UI on the profile page mirrors this narrow set, so even a trusted caller like OpenClaw can't, for example, save a research markdown as a BuildOS document.
 
-Each step lives on a different surface. Nothing is orchestrating them, and nothing guarantees the idea ever surfaces again (e.g. in the daily brief).
+**Problem 2 — There's no primitive for "content idea" spanning surfaces.**
+When the user wants to turn a YouTube video into a TikTok, they have to fetch the transcript somewhere, stash it somewhere, remember to come back, and draft the TikTok manually — all on different surfaces. Nothing orchestrates the flow and nothing guarantees the idea resurfaces (e.g. in the daily brief).
 
-The underlying question: **when a workflow spans multiple surfaces and services, where does the state machine live, and who initiates each hop?**
+The underlying question for Problem 2 — **when a workflow spans multiple surfaces and services, where does the state machine live, and who initiates each hop?** — depends on Problem 1 being solved first. Without a broader gateway surface, Claude Code can't author the doc/project shape needed to orchestrate the workflow.
+
+---
+
+## Nearest proof of concept: expand the agent-call tool surface
+
+Before building content-idea-specific ops, expand what third-party agents can do at all. The internal agentic chat has already validated the behaviors on live users; the policy layer (scopes, write audit, idempotency) already exists. **The work is re-registering existing internal handlers on the external gateway, not inventing new data models.**
+
+### Why it's safe to expand now
+
+- Agent Keys already gate per-caller scope mode, allowed ops, and allowed project IDs (`agent-call-policy.ts`).
+- Write audit + idempotency already wrap every write op (`agent-call-write-audit.service.ts`).
+- RLS + project access checks (`assertProjectWriteAccess`) already fire on every handler.
+- The agentic chat quality bar has improved enough that the internal write handlers are stable — we're not exposing experimental paths.
+
+### Ordered expansion plan
+
+1. **`onto.document.create` + `onto.document.update`** — the headline proof of concept. Claude Code / OpenClaw produces a markdown artifact and writes it as a project-scoped BuildOS document in one call. Takes `project_id`, `title`, `content` (markdown, stored as-is — no H1/H2 tree-parsing, no "sections" payload), plus the same optional metadata the internal `create_onto_document` tool accepts (`description`, `type_key`, `parent_document_id` for explicit tree placement). Reuse the validation and tree-placement logic already in `apps/web/src/routes/api/onto/documents/create/+server.ts` and `doc-structure.service.ts`; do not reinvent. Mirror the internal tool shape so agents that already know `create_onto_document` feel at home.
+2. **`onto.project.create` + `onto.project.update`** — lets an external agent set up a new project before writing docs/tasks into it. Without this, users keep having to pre-create projects in the web UI.
+3. **`onto.goal.*`, `onto.plan.*`, `onto.milestone.*`, `onto.risk.*`** — round out the write surface so any structural edit the internal chat can do is also available through the gateway. Each one is a ~50-line handler that delegates to the same internal API route. Mirror the scope-mode and idempotency plumbing used by `onto.task.*`.
+4. **Agent Keys UI (profile page)** — `WRITE_PERMISSION_OPTIONS` in `apps/web/src/lib/components/profile/AgentKeysTab.svelte` today lists only two options. Lead with preset bundles (default: **"Author docs + tasks"** — create/update on documents and tasks; this is the OpenClaw default). Put per-op toggles behind an "Advanced" disclosure so users can still grant finer or broader scope when they want it.
+
+### Where this slots into the type system
+
+- `BUILDOS_AGENT_READ_OPS` / `BUILDOS_AGENT_WRITE_OPS` in `packages/shared-types/src/agent-call.types.ts` need entries added for each new op.
+- `EXTERNAL_OP_HANDLERS` + `EXTERNAL_WRITE_OP_SCHEMAS` in `apps/web/src/lib/server/agent-call/external-tool-gateway.ts` need matching handler registrations and JSON schemas.
+- The public tool registry and `AgentKeysTab.svelte` pick up the new ops from the shared-types lists automatically — no duplicate wiring if the types are the source of truth.
+
+### Scope boundary
+
+Do not invent new primitives in this PoC. Everything listed above already exists as an `onto_*` table and as an internal agentic-chat tool. The work is exposure + scope enforcement, not schema design.
 
 ---
 
@@ -39,7 +68,11 @@ Why BuildOS is the right orchestrator:
 
 ---
 
-## Worked example: "TikTok from this YouTube video"
+## Downstream use case: "TikTok from this YouTube video"
+
+Once the expanded tool surface is live, the content-idea workflow becomes a natural composition of those ops rather than a bespoke feature. Treat this section as the first concrete user story validating the expanded surface, not as the immediate build target.
+
+### Worked example
 
 1. User in Claude Code: _"ingest `https://youtu.be/XYZ`, want to do a TikTok on it."_
 2. Claude Code calls `buildos.content_idea.create({ source_url, platform_hints: ['tiktok'], note })` via the agent-call gateway.
@@ -67,56 +100,80 @@ This plays cleanly with the existing brief generator — projects/docs/tasks alr
 
 ---
 
-## Orchestration: who pulls the transcript?
+## Libri's role (clarified)
 
-Two variants depending on what **Libri** actually is (see [Open questions](#open-questions)):
+Libri is a separate deployed service the user operates as a durable library / data lake for books, authors, people, and YouTube videos. It runs its own ingestion and enrichment pipeline. BuildOS is **already** integrated with it on the read side:
 
-### Variant A — Libri is a deployed service with an API
+- Internal agentic chat exposes `resolve_libri_resource` (person/author lookup with optional enqueue) and `query_libri_library` (structured library inventory) — see `apps/web/src/lib/services/agentic-chat/tools/core/definitions/utility.ts:409-509`.
+- On chat session close, BuildOS scans for mentioned people/books/videos and forwards them to Libri for ingestion (fire-and-forget).
 
-BuildOS worker calls Libri directly (new outbound integration, like Google Calendar). Clean. Works regardless of which surface triggered the flow.
+Two consequences for this design:
 
-### Variant B — Libri is a local tool (e.g. `yt-dlp` + `youtube-transcript-api` on your laptop)
+1. **Libri is not in the critical path of the expanded BuildOS tool surface.** Uploading a markdown document to BuildOS from Claude Code does not go through Libri. Libri is a peer service, not a dependency.
+2. **For the content-idea transcript step, Libri is the preferred fetcher** — it already has a transcript pipeline, so BuildOS's enrichment worker should call Libri rather than re-implementing yt-dlp. If Libri's transcript API isn't available for a given source, fall back to inline upload from Claude Code.
 
-BuildOS servers can't reach your laptop. Two sub-options:
+### Transcript fetch, reconsidered
 
-- **B1:** Claude Code pulls the transcript locally and posts the full payload (transcript inline) to BuildOS. Simpler, but only works when you're in Claude Code.
-- **B2:** Build a small in-worker transcript fetcher using the same underlying tools (yt-dlp + youtube-transcript-api) that the local `youtube-transcript` skill already uses. Removes the Libri dependency entirely for this workflow.
+- **Primary:** BuildOS enrichment worker calls Libri's transcript API (same pattern as any other outbound integration — lives in the worker, not the web layer).
+- **Fallback:** Claude Code fetches the transcript locally and posts it inline on the `onto.document.create` call. This works even when BuildOS can't reach the source (private links, auth-gated content).
 
-**Recommendation if Libri is local-only:** go with **B2**. It makes the workflow work from any surface (mobile, web) not just Claude Code on your laptop. Libri remains useful for ad-hoc local transcript work, but it's not in the critical path of the orchestrated workflow.
+No in-worker yt-dlp shim. That was Variant B2 in a previous draft; it duplicates what Libri already does.
 
 ---
 
 ## Concrete components to build
 
-### 1. Gateway ops (extend `EXTERNAL_OP_HANDLERS`)
+### 1. Gateway ops — expanded surface (PoC, build first)
 
-- `onto.content_idea.create` — `{ source_url, platform_hints, note, project_id? }`
-- `onto.content_idea.draft` — `{ idea_id, platform, style? }`
-- `onto.content_idea.get` — `{ idea_id }`
+Extend `EXTERNAL_OP_HANDLERS` in `apps/web/src/lib/server/agent-call/external-tool-gateway.ts` and the op lists in `packages/shared-types/src/agent-call.types.ts`:
 
-Prerequisite: the `onto.document.create` / `onto.document.update` ops from the [research ingestion design](./EXTERNAL_RESEARCH_INGESTION_DESIGN.md) — content-idea ops will reuse the document-mutation layer.
+- **Documents (PoC headline):** `onto.document.create`, `onto.document.update`, `onto.document.move` — accept raw markdown and parse structure into the document tree.
+- **Projects:** `onto.project.create`, `onto.project.update`.
+- **Goals / plans / milestones / risks:** `onto.goal.create`/`update`, `onto.plan.create`/`update`, `onto.milestone.create`/`update`, `onto.risk.create`/`update`.
+- **Links (optional but cheap):** `onto.link.create`, `onto.link.delete` to attach documents to tasks/goals/plans.
 
-### 2. Worker jobs
+Each handler delegates to the existing internal API route or service layer (`apps/web/src/routes/api/onto/*`, `apps/web/src/lib/services/ontology/*`). Do not reinvent validation or side-effect plumbing.
 
-Register in `apps/worker/src/worker.ts`:
+See the [External Research Ingestion design](./EXTERNAL_RESEARCH_INGESTION_DESIGN.md) for the full `onto.document.create` spec (idempotency, `document.origin = external_agent` facet, brief-section rendering). The recommendation there holds.
 
-- `buildos_enrich_content_idea` — fetches source media/transcript and writes it into the content-idea project.
+### 2. Gateway ops — content-idea workflow (layered on top, later)
+
+- `onto.content_idea.create` — `{ source_url, platform_hints, note, project_id? }` (under the hood: creates a project via `onto.project.create` with `kind = content_idea`, seeds a transcript placeholder via `onto.document.create`, enqueues enrichment).
+- `onto.content_idea.draft` — `{ idea_id, platform, style? }`.
+- `onto.content_idea.get` — `{ idea_id }`.
+
+These become thin wrappers once the primitives exist. They are optional convenience ops — Claude Code could just as easily compose the three underlying ops itself.
+
+### 3. Worker jobs
+
+Register in `apps/worker/src/worker.ts` (only needed once the content-idea wrapper ops are built):
+
+- `buildos_enrich_content_idea` — calls Libri for the transcript and writes it into the content-idea project via `onto.document.update`.
 - `buildos_draft_content_asset` — generates a derived asset via the LLM using transcript + platform template.
 
 Both jobs follow the existing `JobAdapter` pattern in `workers/shared/jobAdapter.ts`.
 
-### 3. Schema/facets
+### 4. Schema/facets
 
 - `project.kind` facet — starts with `content_idea`, generalizes.
 - `document.kind` facet — `transcript`, `source_reference`, `derived_asset`.
 - `document.platform` facet on derived assets.
+- `document.origin` facet — `external_agent` vs internal, so the brief can filter/label.
 - No new tables needed.
 
-### 4. Brief integration
+### 5. Brief integration
 
-In `apps/worker/src/workers/brief/ontologyBriefGenerator.ts`, add a **"Content pipeline"** section that groups content-idea projects by state: _awaiting enrichment_, _enriched & ready to draft_, _drafted & ready to record_, _recorded_.
+In `apps/worker/src/workers/brief/ontologyBriefGenerator.ts`, add a **"Content pipeline"** section that groups content-idea projects by state: _awaiting enrichment_, _enriched & ready to draft_, _drafted & ready to record_, _recorded_. Also add a **"New from external agents"** section for documents with `origin = external_agent` updated since the last brief — so the user can see what Claude Code / OpenClaw wrote overnight.
 
-### 5. (Optional) UI surface
+### 6. Agent Keys UI
+
+Update `apps/web/src/lib/components/profile/AgentKeysTab.svelte`:
+
+- Replace the two-item `WRITE_PERMISSION_OPTIONS` array with a grouped structure: Documents, Projects, Tasks, Planning (goals/plans/milestones/risks). Per-group create/update toggles.
+- Add preset bundles: "Read only", "Read + author docs and tasks (OpenClaw default)", "Full read/write".
+- Keep per-project scope selection unchanged — that layer already works.
+
+### 7. (Optional) Project-page UI surface
 
 For a v1, reuse the existing project view with a content-idea-aware header. A dedicated "Content pipeline" page can come later.
 
@@ -129,7 +186,7 @@ For a v1, reuse the existing project view with a content-idea-aware header. A de
 | **Claude Code**      | Workflow initiator + heavy thinking/drafting companion. Can both start ideas and manipulate existing ones via the gateway. |
 | **BuildOS (web)**    | Source of truth. Review, edit, approve drafts. Daily brief surfaces the pipeline.                                          |
 | **BuildOS (worker)** | Orchestrator. Runs enrichment + draft jobs. Calls out to LLMs, Libri, etc.                                                 |
-| **Libri**            | Either an outbound integration BuildOS worker calls (Variant A), or removed from this critical path (Variant B2).          |
+| **Libri**            | Separate library / data lake service the user runs. Already wired as a read tool on internal chat and as a post-chat ingestion target for mentioned people/books/videos. For content ideas, BuildOS's enrichment worker calls Libri for transcripts. Not on the critical path for generic agent-call document uploads. |
 
 The key insight: **only BuildOS owns state; the other surfaces are authoring and reviewing clients.** That asymmetry is what makes the whole thing coherent.
 
@@ -137,12 +194,20 @@ The key insight: **only BuildOS owns state; the other surfaces are authoring and
 
 ## Open questions
 
-1. **What is Libri?** Deployed service with an HTTP API, local CLI tool, or something else? This is the biggest fork in the design (Variant A vs B).
-2. **One project per source, or one per platform?** A YouTube video might fan out into TikTok + Twitter + blog — three derived assets on one project, or three separate content-idea projects each pointing back at the same source? Leaning toward one project per source with multiple derived assets; cleaner pipeline view.
-3. **Fire-and-forget vs progress notification?** "Ingest and tell me when it's ready" may want a push notification (already wired), vs just showing up in tomorrow's brief.
-4. **Draft generation quality bar.** LLM-first-pass + human edit, human outline + LLM polish, or pure LLM? Affects whether `draft` is a one-shot or a conversation.
-5. **Does Libri's role generalize?** If Libri also handles podcast transcripts, PDF extraction, etc., the design becomes "pluggable source fetcher" rather than one YouTube-shaped integration.
-6. **Claude Code's role in drafting.** After enrichment, does Claude Code _call_ `content_idea.draft` (server-side LLM), or does it pull the transcript and draft in-conversation, then post the finished asset back? The second option makes more use of Claude Code's agentic strength — but the first option means mobile/web users get the same capability without needing Claude Code.
+### Tool-surface expansion
+
+1. **Per-op permission granularity, or entity-group bundles?** `WRITE_PERMISSION_OPTIONS` can expose twelve toggles (create/update × four entity groups) or a smaller set of bundles. Leaning toward bundles with an "advanced" disclosure for granular control. OpenClaw's default bundle needs to be decided up front.
+2. **Default scope mode for OpenClaw installations.** Should provisioning an OpenClaw caller default to `read_write` with the "author docs + tasks" bundle, or stay `read_only` and force explicit opt-in? The latter is safer; the former removes friction for the PoC user (DJ).
+3. **Markdown structure contract.** When Claude Code uploads a markdown doc, what structural conventions apply? Likely: H1 becomes the document title, H2 sections become child documents in the tree, fenced code and lists stay inline. Needs a decision so the write handler is deterministic.
+4. **Do we need a `dry_run` preview specifically for document creates?** Useful to show the resulting tree before committing when a big markdown doc would create many children.
+
+### Content-idea workflow (downstream)
+
+5. **One project per source, or one per platform?** A YouTube video might fan out into TikTok + Twitter + blog — three derived assets on one project, or three separate content-idea projects each pointing back at the same source? Leaning toward one project per source with multiple derived assets; cleaner pipeline view.
+6. **Fire-and-forget vs progress notification?** "Ingest and tell me when it's ready" may want a push notification (already wired), vs just showing up in tomorrow's brief.
+7. **Draft generation quality bar.** LLM-first-pass + human edit, human outline + LLM polish, or pure LLM? Affects whether `draft` is a one-shot or a conversation.
+8. **Does Libri's transcript coverage generalize?** If Libri also handles podcast transcripts, PDF extraction, etc., the enrichment worker calls Libri's generic fetcher rather than a YouTube-specific one.
+9. **Claude Code's role in drafting.** After enrichment, does Claude Code _call_ `content_idea.draft` (server-side LLM), or does it pull the transcript and draft in-conversation, then post the finished asset back via `onto.document.create`? The second option leans on Claude Code's agentic strength; the first gives mobile/web users the same capability. Expanded tool surface makes option two low-cost, so probably default there.
 
 ---
 
@@ -155,10 +220,22 @@ The key insight: **only BuildOS owns state; the other surfaces are authoring and
 
 ## Related files
 
-- `apps/web/src/routes/api/agent-call/buildos/+server.ts` — JSON-RPC entry point
-- `apps/web/src/lib/server/agent-call/external-tool-gateway.ts` — where `onto.content_idea.*` ops register
-- `apps/worker/src/worker.ts` — where new worker job types register
-- `apps/worker/src/workers/shared/jobAdapter.ts` — job processor pattern
-- `apps/worker/src/workers/brief/ontologyBriefGenerator.ts` — where the "Content pipeline" brief section lives
-- `packages/smart-llm/` — LLM abstraction for the drafting job
-- `youtube-transcripts/` (repo root) — current local transcript artifacts; likely related to what Libri becomes or replaces
+### Tool-surface expansion (PoC build)
+
+- `packages/shared-types/src/agent-call.types.ts` — `BUILDOS_AGENT_READ_OPS` / `WRITE_OPS` lists (add new entries here first).
+- `apps/web/src/lib/server/agent-call/external-tool-gateway.ts` — register new handlers and JSON schemas (currently at `EXTERNAL_OP_HANDLERS` ~line 185, `EXTERNAL_WRITE_OP_SCHEMAS` ~line 96).
+- `apps/web/src/lib/server/agent-call/agent-call-policy.ts` — scope enforcement.
+- `apps/web/src/lib/server/agent-call/agent-call-write-audit.service.ts` — write audit (already covers new ops for free).
+- `apps/web/src/routes/api/agent-call/buildos/+server.ts` — JSON-RPC entry point.
+- `apps/web/src/routes/api/onto/documents/create/+server.ts` and `apps/web/src/routes/api/onto/documents/[id]/+server.ts` — reuse this validation for document handlers.
+- `apps/web/src/lib/services/ontology/doc-structure.service.ts` — tree placement for uploaded markdown.
+- `apps/web/src/lib/services/agentic-chat/tools/core/definitions/ontology-write.ts` — the internal write tool shapes to mirror.
+- `apps/web/src/lib/components/profile/AgentKeysTab.svelte` — `WRITE_PERMISSION_OPTIONS` needs the grouped/bundled rewrite.
+
+### Content-idea workflow (downstream)
+
+- `apps/worker/src/worker.ts` — where new worker job types register.
+- `apps/worker/src/workers/shared/jobAdapter.ts` — job processor pattern.
+- `apps/worker/src/workers/brief/ontologyBriefGenerator.ts` — where the "Content pipeline" brief section lives.
+- `packages/smart-llm/` — LLM abstraction for the drafting job.
+- `apps/web/src/lib/services/agentic-chat/tools/core/definitions/utility.ts:409-509` — existing internal Libri tools (`resolve_libri_resource`, `query_libri_library`); pattern to mirror if a gateway-facing Libri op is ever needed.

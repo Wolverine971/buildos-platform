@@ -24,7 +24,7 @@ import type { TaskComparison } from '$lib/types';
 /**
  * Notification status lifecycle
  */
-export type NotificationStatus =
+export type UiNotificationStatus =
 	| 'idle' // Not started yet
 	| 'processing' // Currently processing
 	| 'success' // Completed successfully
@@ -67,7 +67,7 @@ export interface BaseNotification {
 	type: NotificationType;
 
 	/** Current status */
-	status: NotificationStatus;
+	status: UiNotificationStatus;
 
 	/** Creation timestamp */
 	createdAt: number;

@@ -27,6 +27,12 @@ interface MockState {
 	calendarTokensByUserId?: Record<string, number>;
 	emailLogsByUserId?: Record<string, Array<Record<string, any>>>;
 	suppressedEmails?: string[];
+	emailSequences?: Record<string, Record<string, any>>;
+	emailSequenceEnrollments?: Record<string, Record<string, any>>;
+	emailSequenceEnrollCalls?: Array<Record<string, any>>;
+	emailSequenceUpserts?: Array<Record<string, any>>;
+	emailSequenceRpcCalls?: Array<{ fn: string; args: Record<string, any> }>;
+	failEmailSequenceEnrollmentRpc?: boolean;
 }
 
 class QueryBuilderMock implements PromiseLike<any> {
@@ -166,6 +172,15 @@ class QueryBuilderMock implements PromiseLike<any> {
 				};
 			}
 
+			if (this.selectedColumns === 'email') {
+				return {
+					data: {
+						email: user.email
+					},
+					error: null
+				};
+			}
+
 			if (this.state.failFullUserLoad) {
 				return {
 					data: null,
@@ -246,6 +261,26 @@ class QueryBuilderMock implements PromiseLike<any> {
 			return { data: rows, error: null };
 		}
 
+		if (this.table === 'email_sequences') {
+			const key = this.getFilterValue('eq', 'key');
+			const sequence = key ? (this.state.emailSequences?.[key] ?? null) : null;
+			return {
+				data: this.resultMode === 'many' ? (sequence ? [sequence] : []) : sequence,
+				error: null
+			};
+		}
+
+		if (this.table === 'email_sequence_enrollments') {
+			const sequenceId = this.getFilterValue('eq', 'sequence_id');
+			const userId = this.getFilterValue('eq', 'user_id');
+			const key = sequenceId && userId ? `${sequenceId}:${userId}` : '';
+			const enrollment = key ? (this.state.emailSequenceEnrollments?.[key] ?? null) : null;
+			return {
+				data: this.resultMode === 'many' ? (enrollment ? [enrollment] : []) : enrollment,
+				error: null
+			};
+		}
+
 		return {
 			data: this.resultMode === 'many' ? [] : null,
 			error: null
@@ -300,6 +335,31 @@ class QueryBuilderMock implements PromiseLike<any> {
 			this.state.actorId = actorId;
 			return {
 				data: { id: actorId },
+				error: null
+			};
+		}
+
+		if (this.table === 'email_sequence_enrollments' && this.insertPayload) {
+			this.state.emailSequenceUpserts ??= [];
+			this.state.emailSequenceEnrollments ??= {};
+			this.state.emailSequenceUpserts.push(this.insertPayload);
+
+			const key = `${this.insertPayload.sequence_id}:${this.insertPayload.user_id}`;
+			const existing = this.state.emailSequenceEnrollments[key] ?? {};
+			const row = {
+				...existing,
+				...this.insertPayload,
+				id:
+					existing.id ??
+					`email-sequence-enrollment-${this.state.emailSequenceUpserts.length}`
+			};
+			this.state.emailSequenceEnrollments[key] = row;
+
+			return {
+				data:
+					this.resultMode === 'maybeSingle' || this.resultMode === 'single'
+						? this.projectSelectedColumns(row)
+						: row,
 				error: null
 			};
 		}
@@ -470,10 +530,128 @@ function createSequenceRow(userId: string) {
 	};
 }
 
+const TEST_SEQUENCE_ID = 'sequence-1';
+const TEST_STEP_OFFSETS: Record<string, number> = {
+	email_1: 0,
+	email_2: 1,
+	email_3: 3,
+	email_4: 6,
+	email_5: 9
+};
+const TEST_STEPS = ['email_1', 'email_2', 'email_3', 'email_4', 'email_5'] as const;
+
+function ensureMockSequence(state: MockState) {
+	state.emailSequences ??= {};
+	state.emailSequences.buildos_welcome ??= {
+		id: TEST_SEQUENCE_ID,
+		key: 'buildos_welcome',
+		metadata: {}
+	};
+	return state.emailSequences.buildos_welcome;
+}
+
+function enrollmentKey(sequenceId: string, userId: string) {
+	return `${sequenceId}:${userId}`;
+}
+
+function latestTimestamp(values: Array<string | null | undefined>) {
+	return values.filter(Boolean).sort().at(-1) ?? null;
+}
+
+function addDaysIso(startedAt: string, days: number) {
+	const date = new Date(startedAt);
+	date.setUTCDate(date.getUTCDate() + days);
+	return date.toISOString();
+}
+
+function finalizedStepNumber(row: Record<string, any>) {
+	let finalized = 0;
+	for (const [index, step] of TEST_STEPS.entries()) {
+		if (row[`${step}_sent_at`] || row[`${step}_skipped_at`]) {
+			finalized = index + 1;
+		}
+	}
+	return finalized;
+}
+
+function nextStepNumber(row: Record<string, any>) {
+	for (const [index, step] of TEST_STEPS.entries()) {
+		if (!row[`${step}_sent_at`] && !row[`${step}_skipped_at`]) {
+			return index + 1;
+		}
+	}
+	return null;
+}
+
+function createEnrollmentFromWelcomeRow(state: MockState, row: Record<string, any>) {
+	const sequence = ensureMockSequence(state);
+	const next = nextStepNumber(row);
+	const sentAt = latestTimestamp(TEST_STEPS.map((step) => row[`${step}_sent_at`]));
+	return {
+		id: `enrollment-${row.user_id}`,
+		sequence_id: sequence.id,
+		user_id: row.user_id,
+		recipient_email: state.users[row.user_id]?.email?.toLowerCase() ?? 'user@example.com',
+		status: row.status === 'active' ? 'active' : row.status,
+		current_step_number: finalizedStepNumber(row),
+		next_step_number: row.status === 'active' ? next : null,
+		next_send_at:
+			row.status === 'active' && next
+				? addDaysIso(row.started_at, TEST_STEP_OFFSETS[`email_${next}`])
+				: null,
+		last_sent_at: sentAt,
+		last_email_id: null,
+		processing_started_at: null,
+		failure_count: 0,
+		exit_reason: row.status === 'completed' ? 'completed' : null,
+		last_error: null,
+		metadata: {
+			signup_method: row.signup_method,
+			trigger_source: row.trigger_source,
+			legacy_started_at: row.started_at,
+			sequence_version: row.sequence_version
+		},
+		created_at: row.started_at,
+		updated_at: row.updated_at
+	};
+}
+
+function getEnrollmentById(state: MockState, enrollmentId: string) {
+	return Object.values(state.emailSequenceEnrollments ?? {}).find(
+		(enrollment: any) => enrollment.id === enrollmentId
+	) as Record<string, any> | undefined;
+}
+
+function advanceEnrollment(state: MockState, enrollment: Record<string, any>) {
+	const nextStepNumberValue =
+		typeof enrollment.next_step_number === 'number' ? enrollment.next_step_number + 1 : null;
+	const hasNext = nextStepNumberValue != null && nextStepNumberValue <= TEST_STEPS.length;
+	const updated = {
+		...enrollment,
+		status: hasNext ? 'active' : 'completed',
+		current_step_number: enrollment.next_step_number,
+		next_step_number: hasNext ? nextStepNumberValue : null,
+		next_send_at: hasNext
+			? addDaysIso(enrollment.created_at, TEST_STEP_OFFSETS[`email_${nextStepNumberValue}`])
+			: null,
+		processing_started_at: null,
+		failure_count: 0,
+		exit_reason: hasNext ? null : 'completed',
+		updated_at: new Date().toISOString()
+	};
+	state.emailSequenceEnrollments![
+		enrollmentKey(updated.sequence_id, updated.user_id)
+	] = updated;
+	return updated;
+}
+
 function createMockSupabase(state: MockState) {
 	return {
 		from: (table: string) => new QueryBuilderMock(table, state),
 		rpc: vi.fn(async (fn: string, args?: Record<string, any>) => {
+			state.emailSequenceRpcCalls ??= [];
+			state.emailSequenceRpcCalls.push({ fn, args: args ?? {} });
+
 			if (fn === 'ensure_actor_for_user') {
 				return state.failRpc
 					? { data: null, error: { message: 'rpc unavailable' } }
@@ -491,6 +669,166 @@ function createMockSupabase(state: MockState) {
 						: false,
 					error: null
 				};
+			}
+
+			if (fn === 'enroll_user_in_email_sequence') {
+				state.emailSequenceEnrollCalls ??= [];
+				state.emailSequenceEnrollCalls.push(args ?? {});
+
+				if (state.failEmailSequenceEnrollmentRpc) {
+					return { data: null, error: { message: 'email sequence rpc unavailable' } };
+				}
+
+				const sequence = ensureMockSequence(state);
+				state.emailSequenceEnrollments ??= {};
+				const userId = args?.p_user_id;
+				const key = enrollmentKey(sequence.id, userId);
+				const now = new Date().toISOString();
+				const existing = state.emailSequenceEnrollments[key];
+				const enrollment =
+					existing ??
+					{
+						id: `enrollment-${userId}`,
+						sequence_id: sequence.id,
+						user_id: userId,
+						recipient_email: args?.p_recipient_email,
+						status: 'active',
+						current_step_number: 0,
+						next_step_number: 1,
+						next_send_at: now,
+						last_sent_at: null,
+						last_email_id: null,
+						processing_started_at: null,
+						failure_count: 0,
+						exit_reason: null,
+						last_error: null,
+						metadata: {
+							signup_method: args?.p_signup_method,
+							trigger_source: args?.p_trigger_source,
+							...(args?.p_metadata ?? {})
+						},
+						created_at: now,
+						updated_at: now
+					};
+				state.emailSequenceEnrollments[key] = {
+					...enrollment,
+					recipient_email: args?.p_recipient_email,
+					metadata: {
+						...(enrollment.metadata ?? {}),
+						signup_method: args?.p_signup_method,
+						trigger_source: args?.p_trigger_source,
+						...(args?.p_metadata ?? {})
+					}
+				};
+				return { data: state.emailSequenceEnrollments[key], error: null };
+			}
+
+			if (fn === 'claim_specific_email_sequence_send') {
+				const enrollment = getEnrollmentById(state, args?.p_enrollment_id);
+				if (
+					!enrollment ||
+					enrollment.status !== 'active' ||
+					!enrollment.next_step_number ||
+					(enrollment.next_send_at &&
+						new Date(enrollment.next_send_at).getTime() > Date.now())
+				) {
+					return { data: null, error: null };
+				}
+
+				enrollment.status = 'processing';
+				enrollment.processing_started_at = new Date().toISOString();
+				return { data: enrollment, error: null };
+			}
+
+			if (fn === 'claim_pending_email_sequence_sends') {
+				const sequence = ensureMockSequence(state);
+				state.emailSequenceEnrollments ??= {};
+				for (const row of Object.values(state.welcomeRows)) {
+					const key = enrollmentKey(sequence.id, row.user_id);
+					if (!state.emailSequenceEnrollments[key]) {
+						state.emailSequenceEnrollments[key] = createEnrollmentFromWelcomeRow(
+							state,
+							row
+						);
+					}
+				}
+
+				const limit = args?.p_limit ?? 50;
+				const due = Object.values(state.emailSequenceEnrollments)
+					.filter(
+						(enrollment: any) =>
+							enrollment.status === 'active' &&
+							enrollment.next_step_number &&
+							enrollment.next_send_at &&
+							new Date(enrollment.next_send_at).getTime() <= Date.now()
+					)
+					.slice(0, limit);
+
+				for (const enrollment of due as any[]) {
+					enrollment.status = 'processing';
+					enrollment.processing_started_at = new Date().toISOString();
+				}
+
+				return { data: due, error: null };
+			}
+
+			if (fn === 'complete_email_sequence_send' || fn === 'skip_email_sequence_step') {
+				const enrollment = getEnrollmentById(state, args?.p_enrollment_id);
+				if (!enrollment || enrollment.status !== 'processing') {
+					return { data: null, error: { message: 'not processing' } };
+				}
+
+				if (fn === 'complete_email_sequence_send') {
+					enrollment.last_sent_at = new Date().toISOString();
+					enrollment.last_email_id = args?.p_email_id ?? null;
+				}
+
+				return { data: advanceEnrollment(state, enrollment), error: null };
+			}
+
+			if (fn === 'defer_email_sequence_step') {
+				const enrollment = getEnrollmentById(state, args?.p_enrollment_id);
+				if (!enrollment || enrollment.status !== 'processing') {
+					return { data: null, error: { message: 'not processing' } };
+				}
+
+				enrollment.status = 'active';
+				enrollment.next_send_at = args?.p_next_send_at;
+				enrollment.processing_started_at = null;
+				enrollment.updated_at = new Date().toISOString();
+				return { data: enrollment, error: null };
+			}
+
+			if (fn === 'retry_or_fail_email_sequence_send') {
+				const enrollment = getEnrollmentById(state, args?.p_enrollment_id);
+				if (!enrollment) {
+					return { data: null, error: { message: 'not found' } };
+				}
+
+				enrollment.failure_count = (enrollment.failure_count ?? 0) + 1;
+				enrollment.status = enrollment.failure_count >= 3 ? 'errored' : 'active';
+				enrollment.processing_started_at = null;
+				enrollment.last_error = args?.p_error;
+				return { data: enrollment, error: null };
+			}
+
+			if (fn === 'exit_user_from_email_sequence' || fn === 'exit_email_from_email_sequence') {
+				let count = 0;
+				for (const enrollment of Object.values(state.emailSequenceEnrollments ?? {}) as any[]) {
+					const matches =
+						fn === 'exit_user_from_email_sequence'
+							? enrollment.user_id === args?.p_user_id
+							: enrollment.recipient_email === args?.p_email;
+					if (matches && ['active', 'processing', 'paused'].includes(enrollment.status)) {
+						enrollment.status = 'exited';
+						enrollment.next_step_number = null;
+						enrollment.next_send_at = null;
+						enrollment.processing_started_at = null;
+						enrollment.exit_reason = args?.p_reason;
+						count += 1;
+					}
+				}
+				return { data: count, error: null };
 			}
 
 			return { data: null, error: null };
@@ -664,6 +1002,70 @@ describe('WelcomeSequenceService failure recovery', () => {
 		expect(state.welcomeRows['user-1']?.email_1_sent_at).toBe('2026-03-01T10:00:00.050Z');
 	});
 
+	it('enrolls signup in the queue, claims email_1, and shadows completion to legacy', async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-03-01T10:00:00.000Z'));
+
+		const state: MockState = {
+			users: {
+				'user-1': {
+					id: 'user-1',
+					email: 'USER@example.com',
+					name: 'Alex Builder',
+					created_at: '2026-03-01T10:00:00.000Z',
+					last_visit: null,
+					onboarding_completed_at: null,
+					onboarding_intent: 'plan',
+					timezone: 'UTC'
+				}
+			},
+			welcomeRows: {},
+			updates: [],
+			failRpc: false,
+			emailSequences: {
+				buildos_welcome: {
+					id: 'sequence-1',
+					key: 'buildos_welcome',
+					metadata: {}
+				}
+			},
+			emailSequenceEnrollCalls: [],
+			emailSequenceUpserts: []
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+
+		await service.startSequenceForUser({
+			userId: 'user-1',
+			signupMethod: 'email',
+			triggerSource: 'account_created'
+		});
+
+		expect(state.emailSequenceEnrollCalls).toEqual([
+			expect.objectContaining({
+				p_user_id: 'user-1',
+				p_sequence_key: 'buildos_welcome',
+				p_recipient_email: 'user@example.com',
+				p_signup_method: 'email',
+				p_trigger_source: 'account_created'
+			})
+		]);
+
+		const enrollment = state.emailSequenceEnrollments?.['sequence-1:user-1'];
+		expect(enrollment).toMatchObject({
+			sequence_id: 'sequence-1',
+			user_id: 'user-1',
+			recipient_email: 'user@example.com',
+			status: 'active',
+			current_step_number: 1,
+			next_step_number: 2,
+			next_send_at: '2026-03-02T10:00:00.000Z',
+			last_sent_at: '2026-03-01T10:00:00.000Z'
+		});
+		expect(state.welcomeRows['user-1']?.email_1_sent_at).toBe('2026-03-01T10:00:00.000Z');
+	});
+
 	it('cancels a suppressed user at sequence start without sending email_1', async () => {
 		const state: MockState = {
 			users: {
@@ -736,6 +1138,46 @@ describe('WelcomeSequenceService failure recovery', () => {
 		expect(state.welcomeRows['user-1']?.email_2_sent_at).toBeNull();
 	});
 
+	it('defers a claimed queue step to the next weekday send window', async () => {
+		const row = createSequenceRow('user-1');
+		row.email_1_sent_at = '2026-03-01T10:01:00.000Z';
+		const state: MockState = {
+			users: {
+				'user-1': {
+					id: 'user-1',
+					email: 'user@example.com',
+					name: 'Alex Builder',
+					created_at: '2026-03-01T10:00:00.000Z',
+					last_visit: null,
+					onboarding_completed_at: null,
+					onboarding_intent: 'plan',
+					timezone: 'America/New_York'
+				}
+			},
+			welcomeRows: {
+				'user-1': row
+			},
+			updates: [],
+			failRpc: false,
+			actorId: 'actor-1'
+		};
+
+		const { WelcomeSequenceService } = await import('./welcome-sequence.service');
+		const service = new WelcomeSequenceService(createMockSupabase(state) as any);
+		const result = await service.processDueSequences({
+			now: new Date('2026-03-07T15:00:00.000Z')
+		});
+
+		expect(result.deferred).toBe(1);
+		expect(sendEmailMock).not.toHaveBeenCalled();
+		expect(state.emailSequenceEnrollments?.['sequence-1:user-1']).toMatchObject({
+			status: 'active',
+			next_step_number: 2,
+			next_send_at: '2026-03-09T13:00:00.000Z'
+		});
+		expect(state.welcomeRows['user-1']?.email_2_sent_at).toBeNull();
+	});
+
 	it('counts legacy user-owned projects when deciding later welcome steps', async () => {
 		const row = createSequenceRow('user-1');
 		row.email_1_sent_at = '2026-03-01T10:01:00.000Z';
@@ -758,6 +1200,14 @@ describe('WelcomeSequenceService failure recovery', () => {
 			updates: [],
 			failRpc: false,
 			actorId: 'actor-1',
+			emailSequences: {
+				buildos_welcome: {
+					id: 'sequence-1',
+					key: 'buildos_welcome',
+					metadata: {}
+				}
+			},
+			emailSequenceUpserts: [],
 			projectsByActorId: {
 				'user-1': [
 					{
@@ -778,6 +1228,15 @@ describe('WelcomeSequenceService failure recovery', () => {
 		expect(result.skipped).toBe(1);
 		expect(sendEmailMock).not.toHaveBeenCalled();
 		expect(state.welcomeRows['user-1']?.email_2_skipped_at).toEqual('2026-03-02T10:30:00.000Z');
+		expect(state.emailSequenceEnrollments?.['sequence-1:user-1']).toMatchObject({
+			sequence_id: 'sequence-1',
+			user_id: 'user-1',
+			status: 'active',
+			current_step_number: 2,
+			next_step_number: 3,
+			next_send_at: '2026-03-04T10:00:00.000Z',
+			last_sent_at: '2026-03-01T10:01:00.000Z'
+		});
 	});
 
 	it('falls back to updated_at when the legacy sequence table is missing last_evaluated_at', async () => {

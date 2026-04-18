@@ -18,7 +18,11 @@ import type {
 	VoiceNoteTranscriptionJobMetadata,
 	ProjectIconGenerationJobMetadata,
 	ProjectActivityBatchFlushJobMetadata,
-	AssetOcrJobMetadata
+	AssetOcrJobMetadata,
+	HomeworkJobMetadata,
+	TreeAgentJobMetadata,
+	ProjectContextSnapshotJobMetadata,
+	OntoBraindumpProcessingJobMetadata
 } from './queue-types';
 import type { NotificationJobMetadata } from './notification.types';
 
@@ -714,6 +718,118 @@ export function validateAssetOcrMetadata(metadata: unknown): AssetOcrJobMetadata
 	return meta as unknown as AssetOcrJobMetadata;
 }
 
+export function validateHomeworkMetadata(metadata: unknown): HomeworkJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+	const meta = metadata as Record<string, unknown>;
+
+	if (typeof meta.run_id !== 'string' || !isValidUUID(meta.run_id)) {
+		throw new ValidationError('run_id', meta.run_id, 'valid UUID');
+	}
+
+	if (typeof meta.iteration !== 'number' || !Number.isInteger(meta.iteration)) {
+		throw new ValidationError('iteration', meta.iteration, 'integer');
+	}
+
+	if (!meta.budgets || typeof meta.budgets !== 'object') {
+		throw new ValidationError('budgets', meta.budgets, 'object');
+	}
+	const budgets = meta.budgets as Record<string, unknown>;
+	if (typeof budgets.max_wall_clock_ms !== 'number') {
+		throw new ValidationError('budgets.max_wall_clock_ms', budgets.max_wall_clock_ms, 'number');
+	}
+
+	if (!meta.permissions || typeof meta.permissions !== 'object') {
+		throw new ValidationError('permissions', meta.permissions, 'object');
+	}
+	const permissions = meta.permissions as Record<string, unknown>;
+	const writeMode = permissions.write_mode;
+	if (writeMode !== 'autopilot' && writeMode !== 'approve_plan' && writeMode !== 'per_write') {
+		throw new ValidationError(
+			'permissions.write_mode',
+			writeMode,
+			"'autopilot' | 'approve_plan' | 'per_write'"
+		);
+	}
+
+	return meta as unknown as HomeworkJobMetadata;
+}
+
+export function validateTreeAgentMetadata(metadata: unknown): TreeAgentJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+	const meta = metadata as Record<string, unknown>;
+
+	if (typeof meta.run_id !== 'string' || !isValidUUID(meta.run_id)) {
+		throw new ValidationError('run_id', meta.run_id, 'valid UUID');
+	}
+
+	if (typeof meta.root_node_id !== 'string' || !isValidUUID(meta.root_node_id)) {
+		throw new ValidationError('root_node_id', meta.root_node_id, 'valid UUID');
+	}
+
+	if (
+		typeof meta.workspace_project_id !== 'string' ||
+		!isValidUUID(meta.workspace_project_id)
+	) {
+		throw new ValidationError(
+			'workspace_project_id',
+			meta.workspace_project_id,
+			'valid UUID'
+		);
+	}
+
+	if (!meta.budgets || typeof meta.budgets !== 'object') {
+		throw new ValidationError('budgets', meta.budgets, 'object');
+	}
+	const budgets = meta.budgets as Record<string, unknown>;
+	if (typeof budgets.max_wall_clock_ms !== 'number') {
+		throw new ValidationError('budgets.max_wall_clock_ms', budgets.max_wall_clock_ms, 'number');
+	}
+
+	return meta as unknown as TreeAgentJobMetadata;
+}
+
+export function validateProjectContextSnapshotMetadata(
+	metadata: unknown
+): ProjectContextSnapshotJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+	const meta = metadata as Record<string, unknown>;
+
+	if (typeof meta.projectId !== 'string' || !isValidUUID(meta.projectId)) {
+		throw new ValidationError('projectId', meta.projectId, 'valid UUID');
+	}
+
+	if (meta.force !== undefined && typeof meta.force !== 'boolean') {
+		throw new ValidationError('force', meta.force, 'boolean');
+	}
+
+	return meta as unknown as ProjectContextSnapshotJobMetadata;
+}
+
+export function validateOntoBraindumpProcessingMetadata(
+	metadata: unknown
+): OntoBraindumpProcessingJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+	const meta = metadata as Record<string, unknown>;
+
+	if (typeof meta.braindumpId !== 'string' || !isValidUUID(meta.braindumpId)) {
+		throw new ValidationError('braindumpId', meta.braindumpId, 'valid UUID');
+	}
+
+	if (typeof meta.userId !== 'string' || !isValidUUID(meta.userId)) {
+		throw new ValidationError('userId', meta.userId, 'valid UUID');
+	}
+
+	return meta as unknown as OntoBraindumpProcessingJobMetadata;
+}
+
 // Main validation function
 export function validateJobMetadata<T extends QueueJobType>(
 	jobType: T,
@@ -752,6 +868,14 @@ export function validateJobMetadata<T extends QueueJobType>(
 			return validateAssetOcrMetadata(metadata) as JobMetadataMap[T];
 		case 'project_activity_batch_flush':
 			return validateProjectActivityBatchFlushMetadata(metadata) as JobMetadataMap[T];
+		case 'buildos_homework':
+			return validateHomeworkMetadata(metadata) as JobMetadataMap[T];
+		case 'buildos_tree_agent':
+			return validateTreeAgentMetadata(metadata) as JobMetadataMap[T];
+		case 'build_project_context_snapshot':
+			return validateProjectContextSnapshotMetadata(metadata) as JobMetadataMap[T];
+		case 'process_onto_braindump':
+			return validateOntoBraindumpProcessingMetadata(metadata) as JobMetadataMap[T];
 		case 'other':
 			return metadata as JobMetadataMap[T];
 		default:

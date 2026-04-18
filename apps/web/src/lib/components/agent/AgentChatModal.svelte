@@ -39,10 +39,7 @@
 	import type { LastTurnContext, ProjectFocus } from '$lib/types/agent-chat-enhancement';
 	import type TextareaWithVoiceComponent from '$lib/components/ui/TextareaWithVoice.svelte';
 	import { CONTEXT_DESCRIPTORS } from './agent-chat.constants';
-	import {
-		buildLiveContextUsageSnapshot,
-		deriveContextOverheadTokens
-	} from './agent-chat-formatters';
+	import { buildLiveContextUsageSnapshot } from './agent-chat-formatters';
 	import {
 		findThinkingBlockById,
 		type ActivityEntry,
@@ -85,6 +82,11 @@
 		type OntologyEntityKind,
 		type ToolPresenter
 	} from './agent-chat-tool-presenter';
+	import {
+		createSSEHandler,
+		type PendingToolStatus,
+		type SSEHandlerDeps
+	} from './agent-chat-sse-handler';
 	import {
 		downloadChatSessionAuditMarkdown,
 		fetchChatSessionAuditPayload
@@ -217,10 +219,7 @@
 	let pendingAssistantTextFlushHandle: number | null = null;
 	let currentThinkingBlockId = $state<string | null>(null);
 	let hasSentMessage = $state(false);
-	const pendingToolResults = new Map<
-		string,
-		{ status: 'completed' | 'failed'; errorMessage?: string }
-	>(); // Tool results that arrive before tool_call
+	const pendingToolResults = new Map<string, PendingToolStatus>(); // Tool results that arrive before tool_call
 	const hiddenToolCallIds = new Set<string>();
 
 	// Track setTimeout IDs for cleanup to prevent memory leaks
@@ -2121,361 +2120,81 @@
 		}
 	}
 
-	function handleSSEMessage(event: AgentSSEMessage) {
-		if (event.type !== 'text' && event.type !== 'text_delta') {
-			flushAssistantText();
-		}
-		switch (event.type) {
-			case 'session':
-				// Session hydration
-				if (event.session) {
-					hydrateSessionFromEvent(event.session);
-				}
-				break;
-
-			case 'context_usage':
-				contextUsage = event.usage ?? null;
-				contextUsageOverheadTokens = event.usage
-					? deriveContextOverheadTokens({
-							serverSnapshot: event.usage,
-							messages,
-							draft: inputValue
-						})
-					: 0;
-				break;
-
-			case 'timing':
-				attachServerTiming(activeStreamRunId, event.timing);
-				break;
-
-			case 'last_turn_context':
-				// Store last turn context for next message
-				lastTurnContext = event.context;
-				if (dev) {
-					console.debug(
-						'[AgentChat] Stored last turn context:',
-						$state.snapshot(lastTurnContext)
-					);
-				}
-				break;
-
-			case 'focus_active':
-				projectFocus = event.focus;
-				break;
-
-			case 'focus_changed':
-				projectFocus = event.focus;
-				logFocusActivity('Focus changed', event.focus);
-				break;
-
-			case 'agent_state': {
-				const state = event.state as AgentLoopState;
-				updateThinkingBlockState(state, event.details);
-				if (event.details) {
-					addActivityToThinkingBlock(event.details, 'state_change', {
-						state,
-						details: event.details
-					});
-				}
-				switch (state) {
-					case 'waiting_on_user':
-						currentActivity = 'Waiting on your direction...';
-						break;
-					case 'thinking':
-					default:
-						currentActivity = event.details ?? 'Analyzing request...';
-						break;
-				}
-				break;
+	const sseHandlerDeps: SSEHandlerDeps = {
+		presenter,
+		thinking: {
+			ensure: ensureThinkingBlock,
+			update: updateThinkingBlock,
+			addActivity: addActivityToThinkingBlock,
+			updateState: updateThinkingBlockState,
+			upsertSkillActivity: upsertSkillActivityInThinkingBlock,
+			upsertOperationActivity: upsertOperationActivityInThinkingBlock,
+			updateActivityStatus,
+			finalize: finalizeThinkingBlock,
+			getCurrentBlockId: () => currentThinkingBlockId
+		},
+		state: {
+			getMessages: () => messages,
+			getInputValue: () => inputValue,
+			getCurrentSession: () => currentSession,
+			getSelectedContextLabel: () => selectedContextLabel,
+			getActiveStreamRunId: () => activeStreamRunId,
+			isAgentToAgentMode: () => agentToAgentMode,
+			getAgentLoopActive: () => agentLoopActive,
+			getAgentTurnsRemaining: () => agentTurnsRemaining,
+			setContextUsage: (usage, overheadTokens) => {
+				contextUsage = usage;
+				contextUsageOverheadTokens = overheadTokens;
+			},
+			setLastTurnContext: (ctx) => {
+				lastTurnContext = ctx;
+			},
+			setProjectFocus: (focus) => {
+				projectFocus = focus;
+			},
+			setCurrentActivity: (label) => {
+				currentActivity = label;
+			},
+			setIsStreaming: (value) => {
+				isStreaming = value;
+			},
+			setError: (message) => {
+				error = message;
+			},
+			setSelectedContext: ({ contextType, entityId, label }) => {
+				selectedContextType = contextType;
+				selectedEntityId = entityId;
+				selectedContextLabel = label;
+			},
+			setShowFocusSelector: (value) => {
+				showFocusSelector = value;
+			},
+			setShowProjectActionSelector: (value) => {
+				showProjectActionSelector = value;
+			},
+			setCurrentSession: (session) => {
+				currentSession = session;
+			},
+			setAgentLoopActive: (value) => {
+				agentLoopActive = value;
+			},
+			setAgentTurnsRemaining: (value) => {
+				agentTurnsRemaining = value;
 			}
+		},
+		hydrateSessionFromEvent,
+		attachServerTiming,
+		bufferAssistantText,
+		flushAssistantText,
+		finalizeAssistantMessage,
+		hiddenToolCallIds,
+		pendingToolResults,
+		addClarifyingQuestionsMessage,
+		logFocusActivity,
+		isDev: dev
+	};
 
-			case 'clarifying_questions': {
-				addClarifyingQuestionsMessage(event.questions);
-				const questionCount = Array.isArray(event.questions)
-					? event.questions.filter(
-							(question: unknown) => typeof question === 'string' && question.trim()
-						).length
-					: 0;
-				if (questionCount > 0) {
-					addActivityToThinkingBlock(
-						`Clarifying questions requested (${questionCount})`,
-						'clarification',
-						{
-							questionCount,
-							questions: event.questions
-						}
-					);
-					currentActivity = 'Waiting on your clarifications to continue...';
-					updateThinkingBlockState(
-						'waiting_on_user',
-						'Waiting on your clarifications to continue...'
-					);
-				}
-				break;
-			}
-
-			case 'text_delta':
-			case 'text':
-				// Streaming text (could be from planner or executor)
-				if (event.content) {
-					bufferAssistantText(event.content);
-				}
-				break;
-
-			case 'tool_call':
-				// Tool being called - parse arguments for meaningful display
-				const rawToolName = event.tool_call?.function?.name || 'unknown';
-				const toolCallId = event.tool_call?.id;
-				const args = event.tool_call?.function?.arguments || '';
-				const displayPayload = presenter.normalizeToolDisplayPayload(rawToolName, args);
-
-				if (displayPayload.hidden) {
-					if (toolCallId) {
-						hiddenToolCallIds.add(toolCallId);
-					}
-					break;
-				}
-
-				if (dev) {
-					console.log('[AgentChat] Tool call:', {
-						toolName: rawToolName,
-						toolCallId,
-						args:
-							typeof args === 'string'
-								? args.substring(0, 100)
-								: JSON.stringify(args).slice(0, 100)
-					});
-				}
-
-				// Format message with parsed arguments
-				const displayMessage = presenter.formatToolMessage(
-					displayPayload.toolName,
-					displayPayload.args,
-					'pending'
-				);
-				const skillActivity =
-					displayPayload.toolName === 'skill_load'
-						? buildSkillLoadActivityEvent('requested', displayPayload.args)
-						: null;
-
-				const activity: ActivityEntry = {
-					id: crypto.randomUUID(),
-					content: displayMessage,
-					timestamp: new Date(),
-					activityType: 'tool_call',
-					status: 'pending',
-					toolCallId,
-					metadata: {
-						toolName: displayPayload.toolName,
-						originalToolName: displayPayload.originalToolName,
-						gatewayOp: displayPayload.gatewayOp,
-						toolCallId,
-						arguments: displayPayload.args,
-						rawArguments: args,
-						status: 'pending',
-						toolCall: event.tool_call,
-						...(skillActivity
-							? {
-									skillActivity,
-									skillPath: skillActivity.path,
-									skillVia: skillActivity.via,
-									skillAction: skillActivity.action
-								}
-							: {})
-					}
-				};
-
-				const blockId = ensureThinkingBlock();
-				updateThinkingBlock(blockId, (block) => ({
-					...block,
-					activities: [...block.activities, activity]
-				}));
-
-				if (toolCallId && pendingToolResults.has(toolCallId)) {
-					const pendingStatus = pendingToolResults.get(toolCallId);
-					if (pendingStatus) {
-						updateActivityStatus(
-							toolCallId,
-							pendingStatus.status,
-							pendingStatus.errorMessage
-						);
-					}
-					pendingToolResults.delete(toolCallId);
-				}
-				break;
-
-			case 'tool_result': {
-				// Tool result received - update matching tool call activity
-				const toolResult = event.result;
-				const resultToolCallId = toolResult?.toolCallId ?? toolResult?.tool_call_id;
-				const rawResultToolName =
-					(typeof toolResult?.toolName === 'string' && toolResult.toolName) ||
-					(typeof toolResult?.tool_name === 'string' && toolResult.tool_name) ||
-					undefined;
-				const success = toolResult?.success ?? true;
-				const toolError = toolResult?.error;
-				const toolErrorMessage = success
-					? undefined
-					: presenter.formatErrorMessage(toolError);
-				let resolvedToolName: string | undefined;
-				let resolvedArgs: string | Record<string, unknown> | undefined;
-
-				if (dev) {
-					console.log('[AgentChat] Tool result:', {
-						resultToolCallId,
-						success,
-						hasError: !!toolError
-					});
-				}
-
-				presenter.indexEntitiesFromToolResult(toolResult);
-
-				if (resultToolCallId && hiddenToolCallIds.has(resultToolCallId)) {
-					hiddenToolCallIds.delete(resultToolCallId);
-					pendingToolResults.delete(resultToolCallId);
-					break;
-				}
-
-				if (resultToolCallId) {
-					// Update the matching activity status
-					const result = updateActivityStatus(
-						resultToolCallId,
-						success ? 'completed' : 'failed',
-						toolErrorMessage
-					);
-
-					if (!result.matched) {
-						pendingToolResults.set(resultToolCallId, {
-							status: success ? 'completed' : 'failed',
-							errorMessage: toolErrorMessage
-						});
-					} else if (result.toolName && result.args !== undefined) {
-						// Show toast for data mutation operations
-						presenter.showToolResultToast(result.toolName, result.args, success);
-						resolvedToolName = result.toolName;
-						resolvedArgs = result.args;
-					}
-					resolvedToolName = resolvedToolName ?? rawResultToolName;
-				} else {
-					// No matching tool call ID - log warning but don't add duplicate message
-					if (dev) {
-						console.warn(
-							'[AgentChat] Tool result without matching tool_call_id:',
-							event
-						);
-					}
-					resolvedToolName = rawResultToolName;
-				}
-
-				presenter.recordDataMutation(resolvedToolName, resolvedArgs, success, toolResult);
-				break;
-			}
-
-			case 'skill_activity':
-				upsertSkillActivityInThinkingBlock(event);
-				break;
-
-			case 'operation': {
-				const operationPayload =
-					'operation' in event && event.operation ? event.operation : event;
-				const operationFormat = presenter.formatOperationEvent(
-					operationPayload as Record<string, any>
-				);
-				upsertOperationActivityInThinkingBlock(
-					operationPayload as Record<string, unknown>,
-					operationFormat
-				);
-				break;
-			}
-
-			case 'context_shift': {
-				const shift = event.context_shift;
-				if (shift) {
-					const normalizedContext = (
-						shift.new_context === 'general' ? 'global' : shift.new_context
-					) as ChatContextType;
-					selectedContextType = normalizedContext;
-					selectedEntityId = shift.entity_id ?? undefined;
-					selectedContextLabel =
-						shift.entity_name ??
-						CONTEXT_DESCRIPTORS[normalizedContext]?.title ??
-						selectedContextLabel;
-
-					if (shift.entity_id && shift.entity_name && shift.entity_type !== 'workspace') {
-						presenter.cacheEntityName(
-							(shift.entity_type as OntologyEntityKind) ??
-								(isProjectContext(normalizedContext) ? 'project' : 'entity'),
-							shift.entity_id,
-							shift.entity_name
-						);
-					}
-
-					if (isProjectContext(normalizedContext) && shift.entity_id) {
-						projectFocus = buildProjectWideFocus(
-							shift.entity_id,
-							shift.entity_name ?? selectedContextLabel
-						);
-					} else {
-						projectFocus = null;
-						showFocusSelector = false;
-					}
-					showProjectActionSelector = false;
-
-					if (currentSession) {
-						currentSession = {
-							...currentSession,
-							context_type: normalizedContext,
-							entity_id: shift.entity_id ?? null
-						};
-					}
-
-					const activityMessage =
-						shift.message ??
-						`Context updated to ${selectedContextLabel ?? normalizedContext}`;
-					addActivityToThinkingBlock(activityMessage, 'context_shift', {
-						contextShift: shift
-					});
-				}
-				break;
-			}
-
-			case 'done':
-				// All done - clear activity and re-enable input
-				currentActivity = '';
-				finalizeAssistantMessage();
-				finalizeThinkingBlock();
-				// Note: isStreaming will be set to false by onComplete callback
-				// But we can also set it here for immediate UI response
-				isStreaming = false;
-				if (agentToAgentMode && agentLoopActive) {
-					if (agentTurnsRemaining > 0) {
-						agentTurnsRemaining = Math.max(0, agentTurnsRemaining - 1);
-					}
-					if (agentTurnsRemaining <= 0) {
-						agentLoopActive = false;
-						currentActivity = 'Turn limit reached';
-						break;
-					}
-				}
-				break;
-
-			case 'error':
-				const streamErrorMessage = event.error || 'An error occurred';
-				error = streamErrorMessage;
-				isStreaming = false;
-				currentActivity = '';
-				if (currentThinkingBlockId) {
-					addActivityToThinkingBlock(
-						streamErrorMessage,
-						'general',
-						{ error: streamErrorMessage },
-						'failed'
-					);
-					finalizeThinkingBlock('error');
-				}
-				break;
-		}
-	}
+	const handleSSEMessage = createSSEHandler(sseHandlerDeps);
 
 	function describeFocus(focus: ProjectFocus | null): string {
 		if (!focus) return 'project workspace';

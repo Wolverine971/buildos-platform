@@ -1,4 +1,5 @@
 // apps/worker/src/workers/ontology/projectContextSnapshotWorker.ts
+import type { ProjectContextSnapshotJobMetadata } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
 
@@ -403,7 +404,7 @@ const buildEntityCounts = (graph: ProjectGraphDataLight) => ({
 });
 
 export async function processProjectContextSnapshotJob(
-	job: ProcessingJob<{ projectId: string; reason?: string; force?: boolean }>
+	job: ProcessingJob<ProjectContextSnapshotJobMetadata>
 ) {
 	const start = Date.now();
 	const projectId = job.data.projectId;

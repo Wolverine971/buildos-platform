@@ -342,6 +342,13 @@ export interface AssetOcrResult {
 	error?: string;
 }
 
+export interface TreeAgentJobResult {
+	success: boolean;
+	runId: string;
+	message?: string;
+	rootResult?: unknown;
+}
+
 // Job result types
 export interface JobResultMap {
 	// Allow indexing by queue job types that are not explicitly listed yet.
@@ -361,6 +368,7 @@ export interface JobResultMap {
 	process_onto_braindump: OntoBraindumpProcessingResult;
 	transcribe_voice_note: VoiceNoteTranscriptionResult;
 	buildos_homework: HomeworkJobResult;
+	buildos_tree_agent: TreeAgentJobResult;
 	build_project_context_snapshot: ProjectContextSnapshotResult;
 	generate_project_icon: ProjectIconGenerationResult;
 	project_activity_batch_flush: ProjectActivityBatchFlushResult;
@@ -502,10 +510,22 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isClassifyChatSessionMetadata(metadata);
 		case 'process_onto_braindump':
 			return isOntoBraindumpProcessingMetadata(metadata);
+		case 'transcribe_voice_note':
+			return isVoiceNoteTranscriptionMetadata(metadata);
+		case 'buildos_homework':
+			return isHomeworkMetadata(metadata);
+		case 'buildos_tree_agent':
+			return isTreeAgentMetadata(metadata);
+		case 'build_project_context_snapshot':
+			return isProjectContextSnapshotMetadata(metadata);
+		case 'extract_onto_asset_ocr':
+			return isAssetOcrMetadata(metadata);
 		case 'generate_project_icon':
 			return isProjectIconGenerationMetadata(metadata);
 		case 'project_activity_batch_flush':
 			return isProjectActivityBatchFlushMetadata(metadata);
+		case 'other':
+			return true;
 		default:
 			return true;
 	}
@@ -628,6 +648,60 @@ function isProjectActivityBatchFlushMetadata(
 	const snake = meta.batch_id;
 	const camel = meta.batchId;
 	return typeof snake === 'string' || typeof camel === 'string';
+}
+
+function isVoiceNoteTranscriptionMetadata(
+	obj: unknown
+): obj is VoiceNoteTranscriptionJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return typeof meta.voiceNoteId === 'string' && typeof meta.userId === 'string';
+}
+
+function isHomeworkMetadata(obj: unknown): obj is HomeworkJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	if (typeof meta.run_id !== 'string') return false;
+	if (typeof meta.iteration !== 'number') return false;
+	if (!meta.budgets || typeof meta.budgets !== 'object') return false;
+	const budgets = meta.budgets as Record<string, unknown>;
+	if (typeof budgets.max_wall_clock_ms !== 'number') return false;
+	if (!meta.permissions || typeof meta.permissions !== 'object') return false;
+	const permissions = meta.permissions as Record<string, unknown>;
+	return (
+		permissions.write_mode === 'autopilot' ||
+		permissions.write_mode === 'approve_plan' ||
+		permissions.write_mode === 'per_write'
+	);
+}
+
+function isTreeAgentMetadata(obj: unknown): obj is TreeAgentJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	if (typeof meta.run_id !== 'string') return false;
+	if (typeof meta.root_node_id !== 'string') return false;
+	if (typeof meta.workspace_project_id !== 'string') return false;
+	if (!meta.budgets || typeof meta.budgets !== 'object') return false;
+	const budgets = meta.budgets as Record<string, unknown>;
+	return typeof budgets.max_wall_clock_ms === 'number';
+}
+
+function isProjectContextSnapshotMetadata(
+	obj: unknown
+): obj is ProjectContextSnapshotJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return typeof meta.projectId === 'string';
+}
+
+function isAssetOcrMetadata(obj: unknown): obj is AssetOcrJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return (
+		typeof meta.assetId === 'string' &&
+		typeof meta.projectId === 'string' &&
+		typeof meta.userId === 'string'
+	);
 }
 
 function isProjectIconGenerationMetadata(obj: unknown): obj is ProjectIconGenerationJobMetadata {

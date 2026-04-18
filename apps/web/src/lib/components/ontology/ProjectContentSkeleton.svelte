@@ -1,11 +1,11 @@
 <!-- apps/web/src/lib/components/ontology/ProjectContentSkeleton.svelte -->
 <!--
-	ProjectContentSkeleton - Loading state for main content area
+	ProjectContentSkeleton — pixel-parity loading state for the documents card.
 
-	Mirrors the ProjectDocumentsSection header structure exactly (same texture,
-	icon radius, and label layout) so hydration doesn't shift the UI. The body
-	reproduces the tree-indented skeleton rows from DocTreeSkeleton, which is
-	what DocTreeView renders while it fetches.
+	Intentionally mirrors ProjectDocumentsSection down to the element types
+	(button/div) and class lists so hydration does not shift pixels or restyle
+	text. Body reproduces DocTreeSkeleton, which is what DocTreeView renders
+	while it fetches.
 
 	Usage:
 	<ProjectContentSkeleton documentCount={2} canEdit={true} />
@@ -30,42 +30,56 @@
 </script>
 
 <div class="min-w-0 space-y-2 sm:space-y-4">
-	<!-- Documents Section Skeleton - matches ProjectDocumentsSection structure -->
+	<!-- Matches ProjectDocumentsSection 1:1 for zero-shift hydration -->
 	<section
 		class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
 		aria-busy="true"
 		aria-label="Loading documents"
 	>
 		<div class="flex items-center justify-between gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3">
-			<div class="flex items-center gap-2 flex-1 min-w-0">
+			<button
+				type="button"
+				disabled
+				class="flex items-center gap-2 flex-1 text-left rounded-lg transition-colors pressable cursor-default"
+			>
 				<div
-					class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center shrink-0"
+					class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg bg-accent/10 flex items-center justify-center"
 				>
 					<FileText class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-accent" />
 				</div>
-				<div class="min-w-0">
+				<div>
 					<p class="text-xs sm:text-sm font-semibold text-foreground">Documents</p>
 					<p class="text-[10px] sm:text-xs text-muted-foreground">
 						{documentCount}
 						{documentCount === 1 ? 'document' : 'documents'}
 					</p>
 				</div>
-			</div>
+			</button>
 			<div class="flex items-center gap-1 sm:gap-2">
 				{#if canEdit}
-					<div class="p-1 sm:p-1.5 rounded-md">
-						<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground/60" />
-					</div>
+					<button
+						type="button"
+						disabled
+						class="p-1 sm:p-1.5 rounded-md pressable cursor-default"
+						aria-label="Add document"
+					>
+						<Plus class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground" />
+					</button>
 				{/if}
-				<div class="p-1 sm:p-1.5 rounded-md">
+				<button
+					type="button"
+					disabled
+					class="p-1 sm:p-1.5 rounded-md pressable cursor-default"
+					aria-label="Expand documents"
+				>
 					<ChevronDown
 						class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-muted-foreground rotate-180"
 					/>
-				</div>
+				</button>
 			</div>
 		</div>
 
-		<!-- Body - matches DocTreeView's loading state (DocTreeSkeleton) -->
+		<!-- Body mirrors DocTreeView's loading state (DocTreeSkeleton) -->
 		<div class="border-t border-border">
 			{#if documentCount === 0}
 				<div

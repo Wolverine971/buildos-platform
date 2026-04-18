@@ -13,7 +13,11 @@
 		BuildosAgentIdentitySummary,
 		BuildosAgentScopeMode
 	} from '@buildos/shared-types';
-	import { BUILDOS_AGENT_READ_OPS, BUILDOS_AGENT_WRITE_OPS } from '@buildos/shared-types';
+	import {
+		BUILDOS_AGENT_READ_OPS,
+		BUILDOS_AGENT_WRITE_OPS,
+		OPENCLAW_DEFAULT_WRITE_OPS
+	} from '@buildos/shared-types';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
@@ -45,6 +49,100 @@
 			op: 'onto.task.update',
 			label: 'Update tasks',
 			description: 'Allow the agent to change task fields like title, status, and due date.'
+		},
+		{
+			op: 'onto.document.create',
+			label: 'Create documents',
+			description: 'Allow the agent to save markdown documents into projects.'
+		},
+		{
+			op: 'onto.document.update',
+			label: 'Update documents',
+			description: 'Allow the agent to edit existing document metadata and content.'
+		},
+		{
+			op: 'onto.project.create',
+			label: 'Create projects',
+			description: 'Allow the agent to spin up new projects. Use carefully.'
+		},
+		{
+			op: 'onto.project.update',
+			label: 'Update projects',
+			description: 'Allow the agent to change project fields like name, state, and type.'
+		},
+		{
+			op: 'onto.goal.create',
+			label: 'Create goals',
+			description: 'Allow the agent to add new goals within permitted projects.'
+		},
+		{
+			op: 'onto.goal.update',
+			label: 'Update goals',
+			description: 'Allow the agent to edit goal fields within permitted projects.'
+		},
+		{
+			op: 'onto.plan.create',
+			label: 'Create plans',
+			description: 'Allow the agent to add new plans within permitted projects.'
+		},
+		{
+			op: 'onto.plan.update',
+			label: 'Update plans',
+			description: 'Allow the agent to edit plan fields within permitted projects.'
+		},
+		{
+			op: 'onto.milestone.create',
+			label: 'Create milestones',
+			description: 'Allow the agent to add new milestones within permitted projects.'
+		},
+		{
+			op: 'onto.milestone.update',
+			label: 'Update milestones',
+			description: 'Allow the agent to edit milestone fields.'
+		},
+		{
+			op: 'onto.risk.create',
+			label: 'Create risks',
+			description: 'Allow the agent to add new risks within permitted projects.'
+		},
+		{
+			op: 'onto.risk.update',
+			label: 'Update risks',
+			description: 'Allow the agent to edit risk fields.'
+		}
+	];
+
+	type PermissionBundleId = 'read_only' | 'author_docs_tasks' | 'full_write' | 'custom';
+
+	type PermissionBundle = {
+		id: PermissionBundleId;
+		label: string;
+		description: string;
+		scopeMode: BuildosAgentScopeMode;
+		writeOps: BuildosAgentAllowedOp[];
+	};
+
+	const PERMISSION_BUNDLES: PermissionBundle[] = [
+		{
+			id: 'read_only',
+			label: 'Read only',
+			description: 'Agent can read projects, tasks, and documents. No writes.',
+			scopeMode: 'read_only',
+			writeOps: []
+		},
+		{
+			id: 'author_docs_tasks',
+			label: 'Author docs + tasks (OpenClaw default)',
+			description: 'Recommended for Claude Code / OpenClaw. Create/update documents and tasks.',
+			scopeMode: 'read_write',
+			writeOps: [...OPENCLAW_DEFAULT_WRITE_OPS] as BuildosAgentAllowedOp[]
+		},
+		{
+			id: 'full_write',
+			label: 'Full read/write',
+			description: 'Every exposed write op. Use for trusted automations you control.',
+			scopeMode: 'read_write',
+			writeOps: [...BUILDOS_AGENT_WRITE_OPS] as BuildosAgentAllowedOp[]
 		}
 	];
 
@@ -72,6 +170,32 @@
 	let selectedProjectIds = $state<string[]>([]);
 	let scopeMode = $state<BuildosAgentScopeMode>('read_only');
 	let selectedWriteOps = $state<BuildosAgentAllowedOp[]>([]);
+	let showAdvancedPermissions = $state(false);
+
+	let activeBundleId = $derived(detectBundleId(scopeMode, selectedWriteOps));
+
+	function detectBundleId(
+		mode: BuildosAgentScopeMode,
+		writeOps: BuildosAgentAllowedOp[]
+	): PermissionBundleId {
+		for (const bundle of PERMISSION_BUNDLES) {
+			if (bundle.scopeMode !== mode) continue;
+			if (bundle.writeOps.length !== writeOps.length) continue;
+			const bundleSet = new Set(bundle.writeOps);
+			if (writeOps.every((op) => bundleSet.has(op))) {
+				return bundle.id;
+			}
+		}
+		return 'custom';
+	}
+
+	function applyBundle(bundle: PermissionBundle) {
+		scopeMode = bundle.scopeMode;
+		selectedWriteOps = [...bundle.writeOps];
+		if (bundle.id === 'read_only') {
+			showAdvancedPermissions = false;
+		}
+	}
 
 	let allProjectsSelected = $derived(
 		availableProjects.length > 0 && selectedProjectIds.length === availableProjects.length
@@ -272,8 +396,15 @@
 		selectedProjectIds = [];
 		providerMode = 'openclaw';
 		customProvider = '';
-		scopeMode = 'read_only';
-		selectedWriteOps = [];
+		const defaultBundle = PERMISSION_BUNDLES.find((bundle) => bundle.id === 'author_docs_tasks');
+		if (defaultBundle) {
+			scopeMode = defaultBundle.scopeMode;
+			selectedWriteOps = [...defaultBundle.writeOps];
+		} else {
+			scopeMode = 'read_only';
+			selectedWriteOps = [];
+		}
+		showAdvancedPermissions = false;
 	}
 
 	function openGenerateModal() {
@@ -912,61 +1043,108 @@
 				</FormField>
 			{/if}
 
-			<div class="grid gap-4 sm:grid-cols-2">
-				<FormField
-					label="Access Level"
-					labelFor="agent-scope-mode"
-					hint="Choose whether this key can only read or can also update tasks."
-				>
-					<Select id="agent-scope-mode" bind:value={scopeMode}>
-						<option value="read_only">Read only</option>
-						<option value="read_write">Read & write</option>
-					</Select>
-				</FormField>
-
-				<div class="rounded-lg border border-border bg-muted/20 px-3 py-2">
-					<div class="text-xs uppercase tracking-wider text-muted-foreground">
-						Included by default
-					</div>
-					<p class="mt-1 text-sm text-foreground">
-						Project, task, document, and search reads are always available.
-					</p>
+			<div class="space-y-2">
+				<div class="flex items-center justify-between gap-3">
+					<h4 class="text-sm font-semibold text-foreground">Permission Bundle</h4>
+					<span class="text-xs text-muted-foreground">
+						Project, task, document, and search reads are always included.
+					</span>
+				</div>
+				<div class="grid gap-2">
+					{#each PERMISSION_BUNDLES as bundle (bundle.id)}
+						{@const isActive = activeBundleId === bundle.id}
+						<label
+							class="flex items-start gap-2.5 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors {isActive
+								? 'border-accent bg-accent/5'
+								: 'border-border hover:bg-muted/40'}"
+						>
+							<input
+								type="radio"
+								name="agent-permission-bundle"
+								class="mt-1 h-3.5 w-3.5 border-border text-accent focus:ring-accent"
+								value={bundle.id}
+								checked={isActive}
+								onchange={() => applyBundle(bundle)}
+							/>
+							<div>
+								<div class="text-sm font-medium text-foreground">{bundle.label}</div>
+								<div class="text-xs text-muted-foreground">{bundle.description}</div>
+							</div>
+						</label>
+					{/each}
+					{#if activeBundleId === 'custom'}
+						<div
+							class="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground"
+						>
+							Custom bundle — configured via Advanced permissions below.
+						</div>
+					{/if}
 				</div>
 			</div>
 
-			{#if scopeMode === 'read_write'}
-				<div class="space-y-2">
-					<div class="flex items-center justify-between gap-3">
-						<h4 class="text-sm font-semibold text-foreground">Write Permissions</h4>
-						<Badge variant="warning">{selectedWriteOps.length} enabled</Badge>
-					</div>
-					<p class="text-xs text-muted-foreground">
-						Choose exactly which BuildOS write actions this key can perform.
-					</p>
+			<div class="space-y-2">
+				<button
+					type="button"
+					class="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+					onclick={() => (showAdvancedPermissions = !showAdvancedPermissions)}
+				>
+					<span>{showAdvancedPermissions ? '▾' : '▸'}</span>
+					Advanced permissions ({selectedWriteOps.length} write op{selectedWriteOps.length ===
+					1
+						? ''
+						: 's'} selected)
+				</button>
+				{#if showAdvancedPermissions}
 					<div class="space-y-2 rounded-lg border border-border p-2">
-						{#each WRITE_PERMISSION_OPTIONS as option (option.op)}
-							<label
-								class="flex items-start gap-2.5 rounded-md px-2.5 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
-							>
-								<input
-									type="checkbox"
-									class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
-									checked={selectedWriteOps.includes(option.op)}
-									onchange={() => toggleWriteOp(option.op)}
-								/>
-								<div>
-									<div class="text-sm font-medium text-foreground">
-										{option.label}
-									</div>
-									<div class="text-xs text-muted-foreground">
-										{option.description}
-									</div>
+						<p class="text-xs text-muted-foreground px-2">
+							Fine-tune which write ops the key can perform. Picking any combination
+							here switches the bundle to Custom.
+						</p>
+						<label
+							class="flex items-start gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
+						>
+							<input
+								type="checkbox"
+								class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+								checked={scopeMode === 'read_write'}
+								onchange={() =>
+									(scopeMode =
+										scopeMode === 'read_write' ? 'read_only' : 'read_write')}
+							/>
+							<div>
+								<div class="text-sm font-medium text-foreground">
+									Enable write scope
 								</div>
-							</label>
-						{/each}
+								<div class="text-xs text-muted-foreground">
+									Required before selecting any individual write op.
+								</div>
+							</div>
+						</label>
+						{#if scopeMode === 'read_write'}
+							{#each WRITE_PERMISSION_OPTIONS as option (option.op)}
+								<label
+									class="flex items-start gap-2.5 rounded-md px-2.5 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
+								>
+									<input
+										type="checkbox"
+										class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+										checked={selectedWriteOps.includes(option.op)}
+										onchange={() => toggleWriteOp(option.op)}
+									/>
+									<div>
+										<div class="text-sm font-medium text-foreground">
+											{option.label}
+										</div>
+										<div class="text-xs text-muted-foreground">
+											{option.description}
+										</div>
+									</div>
+								</label>
+							{/each}
+						{/if}
 					</div>
-				</div>
-			{/if}
+				{/if}
+			</div>
 
 			<div class="space-y-2">
 				<div class="flex items-center justify-between gap-3">

@@ -41,7 +41,16 @@ import {
 	resolveEntityMentionUserIds
 } from '$lib/server/entity-mention-notification.service';
 import { normalizeTaskStateInput } from '../../../routes/api/onto/shared/task-state';
+import { normalizeDocumentStateInput } from '../../../routes/api/onto/shared/document-state';
+import { normalizeMarkdownInput } from '$lib/utils/markdown-normalization';
+import {
+	createOrMergeDocumentVersion,
+	toDocumentSnapshot
+} from '$lib/services/ontology/versioning.service';
+import { DOCUMENT_STATES, isValidTypeKey } from '$lib/types/onto';
 import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
+
+const MAX_DOCUMENT_CONTENT_BYTES = 200 * 1024;
 
 type ToolExecutionContext = {
 	admin: any;
@@ -137,6 +146,83 @@ const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<st
 		},
 		required: ['project_id', 'title']
 	},
+	'onto.document.create': {
+		type: 'object',
+		additionalProperties: false,
+		properties: {
+			project_id: {
+				type: 'string',
+				description: 'Project UUID the document belongs to.'
+			},
+			title: {
+				type: 'string',
+				description: 'Document title.'
+			},
+			content: {
+				type: 'string',
+				description:
+					'Markdown body, stored as-is (up to 200 KB). No server-side structural parsing.'
+			},
+			description: {
+				type: ['string', 'null'],
+				description: 'Optional short description.'
+			},
+			type_key: {
+				type: 'string',
+				description:
+					'Optional document type key (e.g. document.research, document.transcript). Falls back to document.default when not recognized.'
+			},
+			state_key: {
+				type: 'string',
+				description: `Optional document state. Valid: ${DOCUMENT_STATES.join(', ')}. Defaults to draft.`
+			},
+			parent_document_id: {
+				type: ['string', 'null'],
+				description: 'Optional parent document UUID for tree placement.'
+			},
+			props: {
+				type: 'object',
+				description: 'Optional JSON props merged onto the document.'
+			}
+		},
+		required: ['project_id', 'title']
+	},
+	'onto.document.update': {
+		type: 'object',
+		additionalProperties: false,
+		properties: {
+			document_id: {
+				type: 'string',
+				description: 'Document UUID.'
+			},
+			title: {
+				type: 'string',
+				description: 'Optional replacement title.'
+			},
+			content: {
+				type: 'string',
+				description:
+					'Optional replacement markdown body. Wholesale replace (up to 200 KB). No append mode.'
+			},
+			description: {
+				type: ['string', 'null'],
+				description: 'Optional replacement description. Use null to clear.'
+			},
+			type_key: {
+				type: 'string',
+				description: 'Optional replacement document type key.'
+			},
+			state_key: {
+				type: 'string',
+				description: `Optional state update. Valid: ${DOCUMENT_STATES.join(', ')}.`
+			},
+			props: {
+				type: 'object',
+				description: 'Optional JSON props merged onto the document.'
+			}
+		},
+		required: ['document_id']
+	},
 	'onto.task.update': {
 		type: 'object',
 		additionalProperties: false,
@@ -200,8 +286,33 @@ const EXTERNAL_OP_HANDLERS: Record<
 	'onto.document.list': listDocuments,
 	'onto.document.search': searchDocuments,
 	'onto.document.get': getDocument,
-	'onto.search': searchOntology
+	'onto.document.create': createDocument,
+	'onto.document.update': updateDocument,
+	'onto.search': searchOntology,
+	// The remaining expanded write ops are registered in shared-types/agent-call but not
+	// yet implemented on the gateway. They will surface FORBIDDEN (wrong scope) rather
+	// than NOT_FOUND when a caller attempts them, which is intentional while we roll
+	// out the PoC incrementally.
+	'onto.project.create': notImplementedHandler('onto.project.create'),
+	'onto.project.update': notImplementedHandler('onto.project.update'),
+	'onto.goal.create': notImplementedHandler('onto.goal.create'),
+	'onto.goal.update': notImplementedHandler('onto.goal.update'),
+	'onto.plan.create': notImplementedHandler('onto.plan.create'),
+	'onto.plan.update': notImplementedHandler('onto.plan.update'),
+	'onto.milestone.create': notImplementedHandler('onto.milestone.create'),
+	'onto.milestone.update': notImplementedHandler('onto.milestone.update'),
+	'onto.risk.create': notImplementedHandler('onto.risk.create'),
+	'onto.risk.update': notImplementedHandler('onto.risk.update')
 };
+
+function notImplementedHandler(op: string) {
+	return async () => {
+		throw new ExternalToolGatewayError(
+			'INTERNAL',
+			`${op} is registered but not yet implemented on the external gateway.`
+		);
+	};
+}
 
 function clampLimit(value: unknown, fallback: number, min = 1, max = 50): number {
 	if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
@@ -452,15 +563,23 @@ function extractWriteEntityMeta(params: {
 	op: BuildosAgentAllowedOp;
 	result: Record<string, unknown>;
 }): { entityKind?: string; entityId?: string } {
-	if (params.op.startsWith('onto.task.')) {
-		const task = params.result.task;
-		if (task && typeof task === 'object' && !Array.isArray(task)) {
-			const taskId = (task as { id?: unknown }).id;
-			if (typeof taskId === 'string' && isValidUUID(taskId)) {
-				return {
-					entityKind: 'task',
-					entityId: taskId
-				};
+	const entityKeyMap: Array<{ prefix: string; kind: string; resultKey: string }> = [
+		{ prefix: 'onto.task.', kind: 'task', resultKey: 'task' },
+		{ prefix: 'onto.document.', kind: 'document', resultKey: 'document' },
+		{ prefix: 'onto.project.', kind: 'project', resultKey: 'project' },
+		{ prefix: 'onto.goal.', kind: 'goal', resultKey: 'goal' },
+		{ prefix: 'onto.plan.', kind: 'plan', resultKey: 'plan' },
+		{ prefix: 'onto.milestone.', kind: 'milestone', resultKey: 'milestone' },
+		{ prefix: 'onto.risk.', kind: 'risk', resultKey: 'risk' }
+	];
+
+	for (const { prefix, kind, resultKey } of entityKeyMap) {
+		if (!params.op.startsWith(prefix)) continue;
+		const entity = params.result[resultKey];
+		if (entity && typeof entity === 'object' && !Array.isArray(entity)) {
+			const entityId = (entity as { id?: unknown }).id;
+			if (typeof entityId === 'string' && isValidUUID(entityId)) {
+				return { entityKind: kind, entityId };
 			}
 		}
 	}
@@ -1067,6 +1186,328 @@ async function updateTask(context: ToolExecutionContext, args: Record<string, un
 
 	return {
 		task: {
+			...data,
+			project_name: project.name
+		}
+	};
+}
+
+function assertContentWithinCap(value: string | null | undefined, fieldName: string): void {
+	if (typeof value !== 'string' || value.length === 0) return;
+	const byteLength = Buffer.byteLength(value, 'utf8');
+	if (byteLength > MAX_DOCUMENT_CONTENT_BYTES) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`${fieldName} exceeds the 200 KB limit for external document writes`,
+			{ byte_length: byteLength, limit_bytes: MAX_DOCUMENT_CONTENT_BYTES }
+		);
+	}
+}
+
+function resolveDocumentTypeKey(value: unknown): string {
+	if (typeof value !== 'string' || !value.trim()) {
+		return 'document.default';
+	}
+	const trimmed = value.trim();
+	return isValidTypeKey(trimmed, 'document') ? trimmed : 'document.default';
+}
+
+async function createDocument(context: ToolExecutionContext, args: Record<string, unknown>) {
+	const visible = await loadVisibleProjects(context);
+	const project = assertAccessibleProject(visible.projectMap, args.project_id);
+	assertProjectWriteAccess(project);
+
+	const title = requireTrimmedString(args.title, 'title');
+	const description =
+		args.description === undefined
+			? null
+			: args.description === null
+				? null
+				: requireTrimmedString(args.description, 'description', { allowEmpty: true });
+
+	const rawContent = typeof args.content === 'string' ? args.content : null;
+	const normalizedContent = normalizeMarkdownInput(rawContent);
+	assertContentWithinCap(normalizedContent, 'content');
+
+	const typeKey = resolveDocumentTypeKey(args.type_key);
+
+	const stateInput =
+		args.state_key === undefined
+			? undefined
+			: requireTrimmedString(args.state_key, 'state_key');
+	const normalizedState =
+		stateInput === undefined ? 'draft' : normalizeDocumentStateInput(stateInput);
+	if (!normalizedState) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`state_key must be one of: ${DOCUMENT_STATES.join(', ')}`
+		);
+	}
+
+	const parentDocumentId =
+		args.parent_document_id === undefined || args.parent_document_id === null
+			? null
+			: typeof args.parent_document_id === 'string' && isValidUUID(args.parent_document_id)
+				? args.parent_document_id
+				: (() => {
+						throw new ExternalToolGatewayError(
+							'VALIDATION_ERROR',
+							'parent_document_id must be a valid UUID'
+						);
+					})();
+
+	const props = normalizeProps(args.props, 'props') ?? {};
+	const actorId = await ensureActorId(context.admin, context.userId);
+
+	const insertPayload: Record<string, unknown> = {
+		project_id: project.id,
+		title,
+		description,
+		type_key: typeKey,
+		state_key: normalizedState,
+		content: normalizedContent,
+		parent_id: parentDocumentId,
+		props: {
+			...props,
+			...(normalizedContent ? { body_markdown: normalizedContent } : {}),
+			origin: 'external_agent'
+		},
+		created_by: actorId
+	};
+
+	const { data, error } = await context.admin
+		.from('onto_documents')
+		.insert(insertPayload)
+		.select('*')
+		.single();
+
+	if (error || !data) {
+		throw new ExternalToolGatewayError(
+			'INTERNAL',
+			error?.message || 'Failed to create document'
+		);
+	}
+
+	try {
+		await createOrMergeDocumentVersion({
+			supabase: context.admin,
+			documentId: data.id,
+			actorId,
+			snapshot: toDocumentSnapshot(data),
+			changeSource: 'api'
+		});
+	} catch (versionError) {
+		console.warn(
+			'[External Tool Gateway] Failed to record initial document version:',
+			versionError
+		);
+	}
+
+	await notifyEntityMentionsAdded({
+		supabase: context.admin,
+		projectId: project.id,
+		projectName: project.name,
+		entityType: 'document',
+		entityId: String(data.id),
+		entityTitle: typeof data.title === 'string' ? data.title : null,
+		actorUserId: context.userId,
+		actorDisplayName: 'BuildOS agent',
+		mentionedUserIds: await resolveEntityMentionUserIds({
+			supabase: context.admin,
+			projectId: project.id,
+			projectOwnerActorId: project.owner_actor_id,
+			actorUserId: context.userId,
+			nextTextValues: [
+				typeof data.title === 'string' ? data.title : null,
+				typeof data.description === 'string' ? data.description : null,
+				typeof data.content === 'string' ? data.content : null
+			]
+		}),
+		source: 'agent_ping'
+	});
+
+	logCreateAsync(
+		context.admin,
+		project.id,
+		'document',
+		String(data.id),
+		{
+			title: data.title,
+			type_key: data.type_key,
+			state_key: data.state_key
+		},
+		context.userId,
+		'api'
+	);
+
+	return {
+		document: {
+			...data,
+			project_name: project.name
+		}
+	};
+}
+
+async function updateDocument(context: ToolExecutionContext, args: Record<string, unknown>) {
+	const documentId = args.document_id;
+	if (typeof documentId !== 'string' || !isValidUUID(documentId)) {
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'document_id must be a valid UUID');
+	}
+
+	const visible = await loadVisibleProjects(context);
+	if (visible.projects.length === 0) {
+		throw new ExternalToolGatewayError('NOT_FOUND', 'Document not found');
+	}
+
+	const { data: existingDocument, error: existingError } = await context.admin
+		.from('onto_documents')
+		.select('*')
+		.eq('id', documentId)
+		.in(
+			'project_id',
+			visible.projects.map((project) => project.id)
+		)
+		.is('deleted_at', null)
+		.maybeSingle();
+
+	if (existingError) {
+		throw new ExternalToolGatewayError(
+			'INTERNAL',
+			existingError.message || 'Failed to load document'
+		);
+	}
+
+	if (!existingDocument) {
+		throw new ExternalToolGatewayError('NOT_FOUND', 'Document not found');
+	}
+
+	const project = assertVisibleEntityProject(visible.projectMap, existingDocument.project_id);
+	assertProjectWriteAccess(project);
+	const actorId = await ensureActorId(context.admin, context.userId);
+
+	const updateData: Record<string, unknown> = {
+		updated_at: new Date().toISOString()
+	};
+	let changedFieldCount = 0;
+	let propsTouched = false;
+	const mergedProps: Record<string, unknown> = {
+		...((existingDocument.props as Record<string, unknown> | null) ?? {})
+	};
+
+	if (args.title !== undefined) {
+		updateData.title = requireTrimmedString(args.title, 'title');
+		changedFieldCount += 1;
+	}
+
+	if (args.description !== undefined) {
+		if (args.description === null) {
+			updateData.description = null;
+		} else {
+			updateData.description = requireTrimmedString(args.description, 'description', {
+				allowEmpty: true
+			});
+		}
+		changedFieldCount += 1;
+	}
+
+	if (args.type_key !== undefined) {
+		updateData.type_key = resolveDocumentTypeKey(args.type_key);
+		changedFieldCount += 1;
+	}
+
+	if (args.state_key !== undefined) {
+		const normalizedStateInput = requireTrimmedString(args.state_key, 'state_key');
+		const normalizedState = normalizeDocumentStateInput(normalizedStateInput);
+		if (!normalizedState) {
+			throw new ExternalToolGatewayError(
+				'VALIDATION_ERROR',
+				`state_key must be one of: ${DOCUMENT_STATES.join(', ')}`
+			);
+		}
+		updateData.state_key = normalizedState;
+		changedFieldCount += 1;
+	}
+
+	if (args.content !== undefined) {
+		const rawContent = typeof args.content === 'string' ? args.content : null;
+		const normalizedContent = normalizeMarkdownInput(rawContent);
+		assertContentWithinCap(normalizedContent, 'content');
+		updateData.content = normalizedContent;
+		if (normalizedContent) {
+			mergedProps.body_markdown = normalizedContent;
+		} else {
+			delete mergedProps.body_markdown;
+		}
+		propsTouched = true;
+		changedFieldCount += 1;
+	}
+
+	if (args.props !== undefined) {
+		const propsPatch = normalizeProps(args.props, 'props');
+		Object.assign(mergedProps, propsPatch ?? {});
+		propsTouched = true;
+		changedFieldCount += 1;
+	}
+
+	if (propsTouched) {
+		mergedProps.origin = mergedProps.origin ?? 'external_agent';
+		updateData.props = mergedProps;
+	}
+
+	if (changedFieldCount === 0) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'At least one writable document field is required'
+		);
+	}
+
+	const { data, error } = await context.admin
+		.from('onto_documents')
+		.update(updateData)
+		.eq('id', documentId)
+		.select('*')
+		.single();
+
+	if (error || !data) {
+		throw new ExternalToolGatewayError(
+			'INTERNAL',
+			error?.message || 'Failed to update document'
+		);
+	}
+
+	try {
+		await createOrMergeDocumentVersion({
+			supabase: context.admin,
+			documentId: data.id,
+			actorId,
+			snapshot: toDocumentSnapshot(data),
+			changeSource: 'api'
+		});
+	} catch (versionError) {
+		console.warn('[External Tool Gateway] Failed to record document version:', versionError);
+	}
+
+	logUpdateAsync(
+		context.admin,
+		project.id,
+		'document',
+		String(data.id),
+		{
+			title: existingDocument.title,
+			state_key: existingDocument.state_key,
+			type_key: existingDocument.type_key
+		},
+		{
+			title: data.title,
+			state_key: data.state_key,
+			type_key: data.type_key
+		},
+		context.userId,
+		'api'
+	);
+
+	return {
+		document: {
 			...data,
 			project_name: project.name
 		}
