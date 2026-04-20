@@ -376,8 +376,8 @@
 					throw new Error(result.error ?? 'Failed to update project');
 				}
 
-				if (result.project) {
-					updatedProject = result.project as Project;
+				if (result.data?.project) {
+					updatedProject = result.data.project as Project;
 				}
 			}
 

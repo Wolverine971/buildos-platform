@@ -369,10 +369,21 @@ type EntityKind =
 	| 'milestone'
 	| 'risk'
 	| 'requirement';
+type EntityTableName = keyof Pick<
+	Database['public']['Tables'],
+	| 'onto_projects'
+	| 'onto_tasks'
+	| 'onto_documents'
+	| 'onto_goals'
+	| 'onto_plans'
+	| 'onto_milestones'
+	| 'onto_risks'
+	| 'onto_requirements'
+>;
 
 const ENTITY_KIND_CONFIG: Record<
 	EntityKind,
-	{ table: string; projectField?: string; select: string; labelField: string }
+	{ table: EntityTableName; projectField?: string; select: string; labelField: string }
 > = {
 	project: {
 		table: 'onto_projects',
@@ -438,9 +449,8 @@ async function getEntityProjectId(
 	const config = ENTITY_KIND_CONFIG[kind];
 	if (!config.projectField) return null;
 	const projectField = config.projectField;
-	const adminSb = ctx.supabase as any;
 
-	const { data } = await adminSb
+	const { data } = await ctx.supabase
 		.from(config.table)
 		.select(projectField)
 		.eq('id', entityId)
@@ -456,15 +466,14 @@ async function fetchEntitiesByKind(
 ): Promise<Array<Record<string, unknown>>> {
 	if (!ids.length) return [];
 	const config = ENTITY_KIND_CONFIG[kind];
-	const adminSb = ctx.supabase as any;
-	const { data, error } = await adminSb
+	const { data, error } = await ctx.supabase
 		.from(config.table)
 		.select(config.select)
 		.in('id', ids)
 		.limit(Math.min(ids.length, 200));
 	if (error) throw error;
 
-	const rows = (data ?? []) as Array<Record<string, unknown>>;
+	const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
 	const projectField = config.projectField;
 	if (!projectField) return rows;
 	return rows.filter((row) => {

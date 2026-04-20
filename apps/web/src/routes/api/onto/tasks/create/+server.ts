@@ -20,6 +20,13 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
+import {
+	normalizeDateTimeInput,
+	normalizeOptionalString,
+	normalizePriorityInput,
+	normalizeRequiredString,
+	normalizeTypeKeyInput
+} from '../../shared/input-normalization';
 import { parseTaskCreateBody } from './request-parser';
 import {
 	TaskAssignmentValidationError,
@@ -57,6 +64,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id,
 			title,
 			description,
+			type_key,
 			priority,
 			plan_id,
 			state_key,
@@ -64,24 +72,59 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			supporting_milestone_id,
 			start_at,
 			due_at,
+			props,
 			parent,
 			parents,
 			connections,
 			classificationSource
 		} = parseTaskCreateBody(body);
-		requestProjectId = project_id;
-		requestTitle = title;
-		requestStateKey = state_key;
+
+		const normalizedProjectId = normalizeRequiredString(project_id, 'Project ID');
+		if (!normalizedProjectId.ok) {
+			return ApiResponse.badRequest(normalizedProjectId.error);
+		}
+
+		const normalizedTitle = normalizeRequiredString(title, 'Title');
+		if (!normalizedTitle.ok) {
+			return ApiResponse.badRequest(normalizedTitle.error);
+		}
+
+		const normalizedPriority = normalizePriorityInput(priority, { defaultValue: 3 });
+		if (!normalizedPriority.ok) {
+			return ApiResponse.badRequest(normalizedPriority.error);
+		}
+
+		const normalizedStartAt = normalizeDateTimeInput(start_at, 'start_at', 'start');
+		if (!normalizedStartAt.ok) {
+			return ApiResponse.badRequest(normalizedStartAt.error);
+		}
+
+		const normalizedDueAt = normalizeDateTimeInput(due_at, 'due_at', 'end');
+		if (!normalizedDueAt.ok) {
+			return ApiResponse.badRequest(normalizedDueAt.error);
+		}
+
+		const projectId = normalizedProjectId.value;
+		const taskTitle = normalizedTitle.value;
+		const taskDescription = normalizeOptionalString(description);
+		const taskPriority = normalizedPriority.value ?? 3;
+		const taskTypeKey = normalizeTypeKeyInput(type_key, 'task', 'task.default');
+		const taskProps =
+			props && typeof props === 'object' && !Array.isArray(props)
+				? (props as Record<string, unknown>)
+				: {};
+		const taskStartAt = normalizedStartAt.value ?? null;
+		const taskDueAt = normalizedDueAt.value ?? null;
+
+		requestProjectId = projectId;
+		requestTitle = taskTitle;
+		requestStateKey = typeof state_key === 'string' ? state_key : undefined;
 		requestPlanId = typeof plan_id === 'string' ? plan_id : undefined;
 		requestGoalId = typeof goal_id === 'string' ? goal_id : undefined;
 		requestMilestoneId =
 			typeof supporting_milestone_id === 'string' ? supporting_milestone_id : undefined;
 		const { hasInput: hasAssigneeInput, assigneeActorIds } = parseAssigneeActorIds(body);
 		requestAssigneeActorIds = assigneeActorIds;
-		// Validate required fields
-		if (!project_id || !title) {
-			return ApiResponse.badRequest('Project ID and title are required');
-		}
 		const normalizedState = normalizeTaskStateInput(state_key);
 		const finalState = normalizedState ?? 'todo';
 		// Get user's actor ID
@@ -96,7 +139,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				endpoint: '/api/onto/tasks/create',
 				method: 'POST',
 				userId: user.id,
-				projectId: project_id,
+				projectId,
 				entityType: 'task',
 				operation: 'task_actor_resolve'
 			});
@@ -107,7 +150,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
 			.select('id, name, created_by')
-			.eq('id', project_id)
+			.eq('id', projectId)
 			.is('deleted_at', null)
 			.single();
 		if (projectError || !project) {
@@ -116,7 +159,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
 			'current_actor_has_project_access',
 			{
-				p_project_id: project_id,
+				p_project_id: projectId,
 				p_required_access: 'write'
 			}
 		);
@@ -128,7 +171,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				endpoint: '/api/onto/tasks/create',
 				method: 'POST',
 				userId: user.id,
-				projectId: project_id,
+				projectId,
 				entityType: 'task',
 				operation: 'task_access_check'
 			});
@@ -142,19 +185,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (hasAssigneeInput) {
 			await validateAssigneesAreProjectEligible({
 				supabase,
-				projectId: project_id,
+				projectId,
 				assigneeActorIds,
 				projectOwnerActorId: project.created_by
 			});
 		}
+		const normalizedPlanId =
+			typeof plan_id === 'string' && plan_id.trim().length > 0 ? plan_id : null;
 		// If plan_id is provided, verify it belongs to the project
-		if (plan_id) {
+		if (normalizedPlanId) {
 			const { data: plan, error: planError } = await supabase
 				.from('onto_plans')
 				.select('id')
-				.eq('id', plan_id)
+				.eq('id', normalizedPlanId)
 				.is('deleted_at', null)
-				.eq('project_id', project_id)
+				.eq('project_id', projectId)
 				.single();
 			if (planError || !plan) {
 				return ApiResponse.notFound('Plan');
@@ -164,8 +209,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		let validatedGoalId: string | null = null;
 		let validatedMilestoneId: string | null = null;
 		const explicitParents = toParentRefs({ parent, parents });
-		const normalizedPlanId =
-			typeof plan_id === 'string' && plan_id.trim().length > 0 ? plan_id : null;
 		const normalizedGoalId =
 			typeof goal_id === 'string' && goal_id.trim().length > 0 ? goal_id : null;
 		const normalizedMilestoneId =
@@ -198,7 +241,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (connectionList.length > 0) {
 			await assertEntityRefsInProject({
 				supabase,
-				projectId: project_id,
+				projectId,
 				refs: connectionList,
 				allowProject: true
 			});
@@ -213,16 +256,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Description is now a proper column (not just in props)
 		// completed_at is auto-set when state_key is 'done'
 		const taskData = {
-			project_id,
-			title,
-			description: description || null,
-			type_key: 'task.default',
+			project_id: projectId,
+			title: taskTitle,
+			description: taskDescription ?? null,
+			type_key: taskTypeKey,
 			state_key: finalState,
-			priority,
-			start_at: start_at || null,
-			due_at: due_at || null,
+			priority: taskPriority,
+			start_at: taskStartAt,
+			due_at: taskDueAt,
 			created_by: actorId,
 			props: {
+				...taskProps,
 				// Keep goal_id and milestone_id in props for edge reference
 				...(validatedGoalId ? { goal_id: validatedGoalId } : {}),
 				...(validatedMilestoneId ? { supporting_milestone_id: validatedMilestoneId } : {})
@@ -243,7 +287,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				endpoint: '/api/onto/tasks/create',
 				method: 'POST',
 				userId: user.id,
-				projectId: project_id,
+				projectId,
 				entityType: 'task',
 				operation: 'task_create',
 				tableName: 'onto_tasks'
@@ -252,7 +296,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 		await autoOrganizeConnections({
 			supabase,
-			projectId: project_id,
+			projectId,
 			entity: { kind: 'task', id: task.id },
 			connections: connectionList,
 			options: { mode: 'replace' }
@@ -263,23 +307,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			'A teammate';
 		const mentionUserIds = await resolveEntityMentionUserIds({
 			supabase,
-			projectId: project_id,
+			projectId,
 			projectOwnerActorId: project.created_by,
 			actorUserId: user.id,
-			nextTextValues: [title, description]
+			nextTextValues: [taskTitle, taskDescription]
 		});
 		let assignmentRecipientUserIds: string[] = [];
 		if (hasAssigneeInput) {
 			const { addedActorIds } = await syncTaskAssignees({
 				supabase,
-				projectId: project_id,
+				projectId,
 				taskId: task.id,
 				assigneeActorIds,
 				assignedByActorId: actorId
 			});
 			const { recipientUserIds } = await notifyTaskAssignmentAdded({
 				supabase,
-				projectId: project_id,
+				projectId,
 				projectName: project.name,
 				taskId: task.id,
 				taskTitle: task.title,
@@ -292,7 +336,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 		await notifyEntityMentionsAdded({
 			supabase,
-			projectId: project_id,
+			projectId,
 			projectName: project.name,
 			entityType: 'task',
 			entityId: task.id,
@@ -312,7 +356,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Log activity async (non-blocking)
 		logCreateAsync(
 			supabase,
-			project_id,
+			projectId,
 			'task',
 			task.id,
 			{

@@ -1,5 +1,5 @@
 // apps/worker/src/workers/ontology/projectContextSnapshotWorker.ts
-import type { ProjectContextSnapshotJobMetadata } from '@buildos/shared-types';
+import type { Json, ProjectContextSnapshotJobMetadata } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
 
@@ -22,6 +22,10 @@ type ProjectGraphDataLight = {
 	insights: any[];
 	edges: any[];
 };
+
+function asJson(value: unknown): Json {
+	return value as Json;
+}
 
 function isReadyForAutoIcon(project: {
 	taskCount: number;
@@ -59,7 +63,7 @@ async function queueAutoProjectIconGeneration(params: {
 		return { queued: false, reason: 'readiness_not_met' as const };
 	}
 
-	const { data: latestAutoGeneration, error: latestAutoGenerationError } = await (supabase as any)
+	const { data: latestAutoGeneration, error: latestAutoGenerationError } = await supabase
 		.from('onto_project_icon_generations')
 		.select('id, created_at')
 		.eq('project_id', params.projectId)
@@ -81,7 +85,7 @@ async function queueAutoProjectIconGeneration(params: {
 		}
 	}
 
-	const { data: generationRow, error: generationCreateError } = await (supabase as any)
+	const { data: generationRow, error: generationCreateError } = await supabase
 		.from('onto_project_icon_generations')
 		.insert({
 			project_id: params.projectId,
@@ -104,21 +108,21 @@ async function queueAutoProjectIconGeneration(params: {
 	const { error: queueError } = await supabase.rpc('add_queue_job', {
 		p_user_id: params.userId,
 		p_job_type: 'generate_project_icon',
-		p_metadata: {
+		p_metadata: asJson({
 			generationId,
 			projectId: params.projectId,
 			requestedByUserId: params.userId,
 			triggerSource: 'auto',
 			candidateCount: 1,
 			autoSelect: true
-		},
+		}),
 		p_priority: 9,
 		p_scheduled_for: new Date().toISOString(),
 		p_dedup_key: `project-icon:auto:${params.projectId}`
 	});
 
 	if (queueError) {
-		await (supabase as any)
+		await supabase
 			.from('onto_project_icon_generations')
 			.update({
 				status: 'failed',
@@ -416,7 +420,7 @@ export async function processProjectContextSnapshotJob(
 			throw new Error('projectId is required');
 		}
 
-		const { data: existing, error: existingError } = await (supabase as any)
+		const { data: existing, error: existingError } = await supabase
 			.from('project_context_snapshot')
 			.select('computed_at')
 			.eq('project_id', projectId)
@@ -426,7 +430,7 @@ export async function processProjectContextSnapshotJob(
 			const computedAt = Date.parse(existing.computed_at);
 			if (computedAt && Date.now() - computedAt < SNAPSHOT_TTL_MS) {
 				await job.log('Snapshot is fresh; skipping rebuild');
-				await (supabase as any).from('project_context_snapshot_metrics').insert({
+				await supabase.from('project_context_snapshot_metrics').insert({
 					project_id: projectId,
 					snapshot_version: SNAPSHOT_VERSION,
 					status: 'skipped',
@@ -449,7 +453,7 @@ export async function processProjectContextSnapshotJob(
 			throw new Error(`Failed to load project graph: ${graphError.message}`);
 		}
 
-		const payload = graphData as any;
+		const payload = graphData as unknown as ProjectGraphDataLight;
 		if (!payload?.project) {
 			throw new Error('Project not found or access denied');
 		}
@@ -468,7 +472,7 @@ export async function processProjectContextSnapshotJob(
 			edges: Array.isArray(payload.edges) ? payload.edges : []
 		};
 
-		const { data: projectRow, error: projectError } = await (supabase as any)
+		const { data: projectRow, error: projectError } = await supabase
 			.from('onto_projects')
 			.select('doc_structure, updated_at, description, icon_svg')
 			.eq('id', projectId)
@@ -504,22 +508,20 @@ export async function processProjectContextSnapshotJob(
 
 		const duration = Date.now() - start;
 
-		const { error: upsertError } = await (supabase as any)
-			.from('project_context_snapshot')
-			.upsert({
-				project_id: projectId,
-				snapshot: context,
-				snapshot_version: SNAPSHOT_VERSION,
-				source_updated_at: projectRow?.updated_at ?? graph.project.updated_at ?? null,
-				computed_at: new Date().toISOString(),
-				compute_ms: duration
-			});
+		const { error: upsertError } = await supabase.from('project_context_snapshot').upsert({
+			project_id: projectId,
+			snapshot: asJson(context),
+			snapshot_version: SNAPSHOT_VERSION,
+			source_updated_at: projectRow?.updated_at ?? graph.project.updated_at ?? null,
+			computed_at: new Date().toISOString(),
+			compute_ms: duration
+		});
 
 		if (upsertError) {
 			throw new Error(`Failed to upsert snapshot: ${upsertError.message}`);
 		}
 
-		await (supabase as any).from('project_context_snapshot_metrics').insert({
+		await supabase.from('project_context_snapshot_metrics').insert({
 			project_id: projectId,
 			snapshot_version: SNAPSHOT_VERSION,
 			status: 'success',
@@ -543,17 +545,19 @@ export async function processProjectContextSnapshotJob(
 			} else {
 				await job.log(`Auto icon generation skipped (${autoResult.reason})`);
 			}
-		} catch (autoQueueError: any) {
-			await job.log(`Auto icon generation trigger failed: ${autoQueueError.message}`);
+		} catch (autoQueueError: unknown) {
+			const message =
+				autoQueueError instanceof Error ? autoQueueError.message : 'Unknown error';
+			await job.log(`Auto icon generation trigger failed: ${message}`);
 		}
 
 		await job.log(`Snapshot build completed in ${duration}ms`);
 		return { success: true, projectId, duration_ms: duration };
-	} catch (error: any) {
+	} catch (error: unknown) {
 		const message = error instanceof Error ? error.message : 'Unknown error';
 		await job.log(`Snapshot build failed: ${message}`);
 		if (projectId) {
-			await (supabase as any).from('project_context_snapshot_metrics').insert({
+			await supabase.from('project_context_snapshot_metrics').insert({
 				project_id: projectId,
 				snapshot_version: SNAPSHOT_VERSION,
 				status: 'failed',

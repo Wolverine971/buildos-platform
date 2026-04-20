@@ -20,17 +20,17 @@
 
 ## Priority Summary
 
-| # | Account | Topic | Age | Comments | Opp Type | Mention Fit | Score | Profile | Queue |
-|---|---------|-------|-----|----------|----------|-------------|-------|---------|-------|
-| _Scanning..._ | | | | | | | | | |
+| #             | Account | Topic | Age | Comments | Opp Type | Mention Fit | Score | Profile | Queue |
+| ------------- | ------- | ----- | --- | -------- | -------- | ----------- | ----- | ------- | ----- |
+| _Scanning..._ |         |       |     |          |          |             |       |         |       |
 
 ---
 
 ## Reply Queue
 
-| # | Account | Topic | Post Link | Opp Type | Strategic Role | Mention Fit | Profile | Reply Angle |
-|---|---------|-------|-----------|----------|----------------|-------------|---------|-------------|
-| _Scanning..._ | | | | | | | | |
+| #             | Account | Topic | Post Link | Opp Type | Strategic Role | Mention Fit | Profile | Reply Angle |
+| ------------- | ------- | ----- | --------- | -------- | -------------- | ----------- | ------- | ----------- |
+| _Scanning..._ |         |       |           |          |                |             |         |             |
 
 ---
 
@@ -43,7 +43,7 @@ _Scanning..._
 ## New Accounts Discovered
 
 | Account | Followers | Theme | Suggested Tier | Strategic Role | Why |
-|---------|-----------|-------|----------------|----------------|-----|
+| ------- | --------- | ----- | -------------- | -------------- | --- |
 
 ---
 
@@ -62,4 +62,4 @@ _Pending scan..._
 ## Relationship Memory Updates
 
 | Account | Profile | Update |
-|---------|---------|--------|
+| ------- | ------- | ------ |

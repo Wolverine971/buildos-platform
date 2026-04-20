@@ -1,6 +1,6 @@
 // apps/web/src/lib/server/email-sequence-rpcs.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@buildos/shared-types';
+import type { Database, Json } from '@buildos/shared-types';
 import {
 	WELCOME_SEQUENCE_STEPS,
 	WELCOME_SEQUENCE_VERSION,
@@ -8,6 +8,26 @@ import {
 } from './welcome-sequence.logic';
 
 type TypedSupabaseClient = SupabaseClient<Database>;
+type EmailSequenceEnrollmentRow = Database['public']['Tables']['email_sequence_enrollments']['Row'];
+type EmailSequenceEnrollmentInsert =
+	Database['public']['Tables']['email_sequence_enrollments']['Insert'];
+type EmailSequenceRow = Pick<
+	Database['public']['Tables']['email_sequences']['Row'],
+	'id' | 'key' | 'metadata'
+>;
+type EmailSequenceFunctionName = keyof Pick<
+	Database['public']['Functions'],
+	| 'admin_send_next_step_now'
+	| 'claim_pending_email_sequence_sends'
+	| 'claim_specific_email_sequence_send'
+	| 'complete_email_sequence_send'
+	| 'defer_email_sequence_step'
+	| 'enroll_user_in_email_sequence'
+	| 'exit_email_from_email_sequence'
+	| 'exit_user_from_email_sequence'
+	| 'retry_or_fail_email_sequence_send'
+	| 'skip_email_sequence_step'
+>;
 type LegacyWelcomeSequenceStatus = 'active' | 'completed' | 'cancelled';
 export type EmailSequenceEnrollmentStatus =
 	| 'active'
@@ -72,12 +92,6 @@ export interface EmailSequenceEnrollment {
 	updated_at: string;
 }
 
-interface EmailSequenceRow {
-	id: string;
-	key?: string;
-	metadata?: Record<string, unknown> | null;
-}
-
 export type LegacyWelcomeSequenceMirrorPayload = ReturnType<
 	typeof buildLegacyWelcomeSequenceMirrorPayload
 >;
@@ -101,6 +115,31 @@ const STEP_DAY_OFFSETS: Record<WelcomeSequenceStep, number> = {
 function normalizeEmail(email: string): string | null {
 	const normalized = email.trim().toLowerCase();
 	return normalized || null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function metadataRecord(metadata: Json): Record<string, unknown> {
+	return isRecord(metadata) ? metadata : {};
+}
+
+function toEnrollment(row: EmailSequenceEnrollmentRow): EmailSequenceEnrollment {
+	return {
+		...row,
+		status: row.status as EmailSequenceEnrollmentStatus,
+		metadata: metadataRecord(row.metadata)
+	};
+}
+
+function toEnrollmentInsert(
+	payload: NonNullable<LegacyWelcomeSequenceMirrorPayload>
+): EmailSequenceEnrollmentInsert {
+	return {
+		...payload,
+		metadata: payload.metadata as Json
+	};
 }
 
 function stepTimestampField(
@@ -259,43 +298,42 @@ export class EmailSequenceRpcClient {
 			return null;
 		}
 
-		const { data, error } = await (this.supabase as any).rpc('enroll_user_in_email_sequence', {
+		const { data, error } = await this.supabase.rpc('enroll_user_in_email_sequence', {
 			p_user_id: input.userId,
 			p_sequence_key: input.sequenceKey,
 			p_recipient_email: normalizedEmail,
 			p_signup_method: input.signupMethod || 'unknown',
 			p_trigger_source: input.triggerSource || 'account_created',
-			p_metadata: input.metadata || {}
+			p_metadata: (input.metadata || {}) as Json
 		});
 
 		if (error) {
 			throw new Error(`Failed to enroll user in email sequence: ${error.message}`);
 		}
 
-		return (data as EmailSequenceEnrollment | null) ?? null;
+		return data ? toEnrollment(data) : null;
 	}
 
 	async claimPendingEmailSequenceSends(
 		sequenceKey: string,
 		limit = 50
 	): Promise<EmailSequenceEnrollment[]> {
-		return (
-			(await this.callRpc<EmailSequenceEnrollment[]>('claim_pending_email_sequence_sends', {
-				p_sequence_key: sequenceKey,
-				p_limit: limit
-			})) ?? []
-		);
+		const data = await this.callRpc('claim_pending_email_sequence_sends', {
+			p_sequence_key: sequenceKey,
+			p_limit: limit
+		});
+
+		return data.map(toEnrollment);
 	}
 
 	async claimSpecificEmailSequenceSend(
 		enrollmentId: string
 	): Promise<EmailSequenceEnrollment | null> {
-		return await this.callRpc<EmailSequenceEnrollment | null>(
-			'claim_specific_email_sequence_send',
-			{
-				p_enrollment_id: enrollmentId
-			}
-		);
+		const data = await this.callRpc('claim_specific_email_sequence_send', {
+			p_enrollment_id: enrollmentId
+		});
+
+		return data ? toEnrollment(data) : null;
 	}
 
 	async completeEmailSequenceSend(input: {
@@ -304,12 +342,20 @@ export class EmailSequenceRpcClient {
 		branchKey?: string | null;
 		metadata?: Record<string, unknown>;
 	}): Promise<EmailSequenceEnrollment> {
-		return await this.callRpc<EmailSequenceEnrollment>('complete_email_sequence_send', {
+		if (!input.emailId) {
+			throw new Error('Cannot complete email sequence send without an email id');
+		}
+
+		const args: Database['public']['Functions']['complete_email_sequence_send']['Args'] = {
 			p_enrollment_id: input.enrollmentId,
-			p_email_id: input.emailId ?? null,
-			p_branch_key: input.branchKey ?? null,
-			p_metadata: input.metadata ?? {}
-		});
+			p_email_id: input.emailId,
+			p_metadata: (input.metadata ?? {}) as Json
+		};
+		if (input.branchKey) {
+			args.p_branch_key = input.branchKey;
+		}
+
+		return toEnrollment(await this.callRpc('complete_email_sequence_send', args));
 	}
 
 	async skipEmailSequenceStep(input: {
@@ -318,12 +364,16 @@ export class EmailSequenceRpcClient {
 		reason?: string;
 		metadata?: Record<string, unknown>;
 	}): Promise<EmailSequenceEnrollment> {
-		return await this.callRpc<EmailSequenceEnrollment>('skip_email_sequence_step', {
+		const args: Database['public']['Functions']['skip_email_sequence_step']['Args'] = {
 			p_enrollment_id: input.enrollmentId,
-			p_branch_key: input.branchKey ?? null,
 			p_reason: input.reason ?? 'skipped',
-			p_metadata: input.metadata ?? {}
-		});
+			p_metadata: (input.metadata ?? {}) as Json
+		};
+		if (input.branchKey) {
+			args.p_branch_key = input.branchKey;
+		}
+
+		return toEnrollment(await this.callRpc('skip_email_sequence_step', args));
 	}
 
 	async deferEmailSequenceStep(input: {
@@ -331,21 +381,25 @@ export class EmailSequenceRpcClient {
 		nextSendAt: string;
 		reason?: string;
 	}): Promise<EmailSequenceEnrollment> {
-		return await this.callRpc<EmailSequenceEnrollment>('defer_email_sequence_step', {
-			p_enrollment_id: input.enrollmentId,
-			p_next_send_at: input.nextSendAt,
-			p_reason: input.reason ?? 'deferred'
-		});
+		return toEnrollment(
+			await this.callRpc('defer_email_sequence_step', {
+				p_enrollment_id: input.enrollmentId,
+				p_next_send_at: input.nextSendAt,
+				p_reason: input.reason ?? 'deferred'
+			})
+		);
 	}
 
 	async retryOrFailEmailSequenceSend(
 		enrollmentId: string,
 		errorMessage: string
 	): Promise<EmailSequenceEnrollment> {
-		return await this.callRpc<EmailSequenceEnrollment>('retry_or_fail_email_sequence_send', {
-			p_enrollment_id: enrollmentId,
-			p_error: errorMessage
-		});
+		return toEnrollment(
+			await this.callRpc('retry_or_fail_email_sequence_send', {
+				p_enrollment_id: enrollmentId,
+				p_error: errorMessage
+			})
+		);
 	}
 
 	async exitUserFromEmailSequence(input: {
@@ -353,7 +407,7 @@ export class EmailSequenceRpcClient {
 		sequenceKey: string;
 		reason?: string;
 	}): Promise<number> {
-		return await this.callRpc<number>('exit_user_from_email_sequence', {
+		return await this.callRpc('exit_user_from_email_sequence', {
 			p_user_id: input.userId,
 			p_sequence_key: input.sequenceKey,
 			p_reason: input.reason ?? 'manual'
@@ -370,7 +424,7 @@ export class EmailSequenceRpcClient {
 			return 0;
 		}
 
-		return await this.callRpc<number>('exit_email_from_email_sequence', {
+		return await this.callRpc('exit_email_from_email_sequence', {
 			p_email: normalizedEmail,
 			p_sequence_key: input.sequenceKey,
 			p_reason: input.reason ?? 'suppressed'
@@ -378,9 +432,11 @@ export class EmailSequenceRpcClient {
 	}
 
 	async adminSendNextStepNow(enrollmentId: string): Promise<EmailSequenceEnrollment | null> {
-		return await this.callRpc<EmailSequenceEnrollment | null>('admin_send_next_step_now', {
+		const data = await this.callRpc('admin_send_next_step_now', {
 			p_enrollment_id: enrollmentId
 		});
+
+		return data ? toEnrollment(data) : null;
 	}
 
 	async mirrorLegacyWelcomeSequence(
@@ -403,9 +459,9 @@ export class EmailSequenceRpcClient {
 			return null;
 		}
 
-		const { data, error } = await (this.supabase as any)
+		const { data, error } = await this.supabase
 			.from('email_sequence_enrollments')
-			.upsert(payload, { onConflict: 'sequence_id,user_id' })
+			.upsert(toEnrollmentInsert(payload), { onConflict: 'sequence_id,user_id' })
 			.select('*')
 			.maybeSingle();
 
@@ -413,11 +469,11 @@ export class EmailSequenceRpcClient {
 			throw new Error(`Failed to mirror legacy welcome sequence: ${error.message}`);
 		}
 
-		return data ?? null;
+		return data ? toEnrollment(data) : null;
 	}
 
 	private async getSequence(sequenceKey: string): Promise<EmailSequenceRow | null> {
-		const { data, error } = await (this.supabase as any)
+		const { data, error } = await this.supabase
 			.from('email_sequences')
 			.select('id, key, metadata')
 			.eq('key', sequenceKey)
@@ -427,15 +483,18 @@ export class EmailSequenceRpcClient {
 			throw new Error(`Failed to load email sequence ${sequenceKey}: ${error.message}`);
 		}
 
-		return (data as EmailSequenceRow | null) || null;
+		return data || null;
 	}
 
-	private async callRpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
-		const { data, error } = await (this.supabase as any).rpc(fn, args);
+	private async callRpc<Fn extends EmailSequenceFunctionName>(
+		fn: Fn,
+		args: Database['public']['Functions'][Fn]['Args']
+	): Promise<Database['public']['Functions'][Fn]['Returns']> {
+		const { data, error } = await this.supabase.rpc(fn, args);
 		if (error) {
 			throw new Error(`Email sequence RPC ${fn} failed: ${error.message}`);
 		}
 
-		return data as T;
+		return data as unknown as Database['public']['Functions'][Fn]['Returns'];
 	}
 }

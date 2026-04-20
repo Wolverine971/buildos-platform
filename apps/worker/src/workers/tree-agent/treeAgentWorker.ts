@@ -1,7 +1,7 @@
 // apps/worker/src/workers/tree-agent/treeAgentWorker.ts
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@buildos/shared-types';
+import type { Database, Json } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
 import { logWorkerError } from '../../lib/errorLogger';
@@ -25,31 +25,14 @@ const DEFAULT_DOC_STATE = 'draft';
 const MAX_PARALLEL_CHILDREN = 3;
 const MAX_TOOL_CALLS_PER_PASS = 6;
 
-type TreeAgentRunRow = {
-	id: string;
-	user_id: string;
-	objective: string;
-	status: string;
-	root_node_id: string | null;
-	workspace_project_id: string | null;
-	metrics: Record<string, unknown> | null;
-	// Context fields (Phase 2)
+type TreeAgentRunRow = Database['public']['Tables']['tree_agent_runs']['Row'] & {
+	// Context fields may be present in newer deployments before local generated types catch up.
 	scope?: 'global' | 'project' | 'multi_project';
 	project_ids?: string[] | null;
 };
-
-type TreeAgentNodeRow = {
-	id: string;
-	run_id: string;
-	parent_node_id: string | null;
-	title: string;
-	reason: string;
-	success_criteria: unknown;
-	status: string;
-	role_state: string;
-	scratchpad_doc_id: string | null;
-	depth: number;
-};
+type TreeAgentNodeRow = Database['public']['Tables']['tree_agent_nodes']['Row'];
+type TreeAgentNodeStatus = Database['public']['Enums']['tree_agent_node_status'];
+type TreeAgentRoleState = Database['public']['Enums']['tree_agent_role_state'];
 
 type TreeAgentJobMetadata = {
 	run_id: string;
@@ -167,6 +150,19 @@ function isJsonObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function asJson(value: unknown): Json {
+	return value as Json;
+}
+
+function formatSuccessCriteria(value: Json): string {
+	if (!Array.isArray(value)) return '- none';
+	const lines = value
+		.map((criterion) => (typeof criterion === 'string' ? criterion : JSON.stringify(criterion)))
+		.filter((criterion): criterion is string => Boolean(criterion?.trim()))
+		.map((criterion) => `- ${criterion}`);
+	return lines.join('\n') || '- none';
+}
+
 function tailPreviewFromEntry(entry: string): string {
 	const lines = entry
 		.split('\n')
@@ -227,12 +223,12 @@ function resolveRunContext(
 }
 
 async function insertEvent(runId: string, nodeId: string, type: string, payload: unknown) {
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 	const { error } = await adminSb.from('tree_agent_events').insert({
 		run_id: runId,
 		node_id: nodeId,
 		event_type: type,
-		payload
+		payload: asJson(payload)
 	});
 	if (error) {
 		console.error('[TreeAgent] Failed to insert event', type, error.message);
@@ -268,7 +264,7 @@ async function ensureNodeScratchpad(params: {
 	}
 	if (node.scratchpad_doc_id) return node.scratchpad_doc_id;
 
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 	const { data: doc, error } = await adminSb
 		.from('onto_documents')
 		.insert({
@@ -306,7 +302,7 @@ async function ensureNodeScratchpad(params: {
 }
 
 async function appendScratchpad(docId: string, entry: string) {
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 	const { data: existing } = await adminSb
 		.from('onto_documents')
 		.select('content')
@@ -320,7 +316,7 @@ async function appendScratchpad(docId: string, entry: string) {
 }
 
 async function loadScratchpadContent(docId: string): Promise<string> {
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 	const { data } = await adminSb
 		.from('onto_documents')
 		.select('content')
@@ -332,12 +328,12 @@ async function loadScratchpadContent(docId: string): Promise<string> {
 async function updateNodeStatus(params: {
 	runId: string;
 	nodeId: string;
-	status: string;
-	role: string;
+	status: TreeAgentNodeStatus;
+	role: TreeAgentRoleState;
 	message?: string;
 }) {
 	const { runId, nodeId, status, role, message } = params;
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 	await adminSb.from('tree_agent_nodes').update({ status, role_state: role }).eq('id', nodeId);
 	await insertEvent(runId, nodeId, 'tree.node_status', {
 		status,
@@ -422,7 +418,7 @@ async function runToolBootstrap(params: {
 async function persistPlan(params: { runId: string; nodeId: string; plan: PlannerOutput['plan'] }) {
 	const { runId, nodeId, plan } = params;
 	if (!plan) return null;
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 
 	const { data: latest } = await adminSb
 		.from('tree_agent_plans')
@@ -446,7 +442,7 @@ async function persistPlan(params: { runId: string; nodeId: string; plan: Planne
 			run_id: runId,
 			node_id: nodeId,
 			version: nextVersion,
-			plan_json: planJson
+			plan_json: asJson(planJson)
 		})
 		.select('id')
 		.single();
@@ -480,7 +476,7 @@ async function registerJsonArtifact(params: {
 	artifactType?: 'json' | 'summary' | 'other';
 }) {
 	const { runId, nodeId, label, jsonPayload, isPrimary = false, artifactType = 'json' } = params;
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 	const { data: artifact, error } = await adminSb
 		.from('tree_agent_artifacts')
 		.insert({
@@ -488,7 +484,7 @@ async function registerJsonArtifact(params: {
 			node_id: nodeId,
 			artifact_type: artifactType,
 			label,
-			json_payload: jsonPayload ?? {},
+			json_payload: asJson(jsonPayload ?? {}),
 			is_primary: isPrimary
 		})
 		.select('id')
@@ -671,12 +667,12 @@ Rules:
 - Always include scratchpad updates.`;
 
 	const contextBlock = `Context: ${contextType}${contextProjectId ? ` (${contextProjectId})` : ''}`;
-	const criteria = Array.isArray(node.success_criteria) ? node.success_criteria : [];
+	const criteria = formatSuccessCriteria(node.success_criteria);
 	const userPrompt = `Objective: ${run.objective}
 Node: ${node.title}
 Reason: ${node.reason}
 Success Criteria:
-${criteria.map((c: string) => `- ${c}`).join('\n') || '- none'}
+${criteria}
 Depth: ${node.depth}
 ${contextBlock}
 
@@ -756,7 +752,7 @@ Rules:
 - If you create document artifacts, include title + documentMarkdown.`;
 
 	const contextBlock = `Context: ${contextType}${contextProjectId ? ` (${contextProjectId})` : ''}`;
-	const criteria = Array.isArray(node.success_criteria) ? node.success_criteria : [];
+	const criteria = formatSuccessCriteria(node.success_criteria);
 	const toolBlock = toolResultsBlock
 		? `
 Tool Results:
@@ -768,7 +764,7 @@ ${toolResultsBlock}
 Node: ${node.title}
 Reason: ${node.reason}
 Success Criteria:
-${criteria.map((c: string) => `- ${c}`).join('\n') || '- none'}
+${criteria}
 Depth: ${node.depth}
 ${contextBlock}
 ${toolBlock}
@@ -832,12 +828,12 @@ Rules:
 - Use child results to synthesize; cite key evidence in synthesis.`;
 
 	const contextBlock = `Context: ${contextType}${contextProjectId ? ` (${contextProjectId})` : ''}`;
-	const criteria = Array.isArray(node.success_criteria) ? node.success_criteria : [];
+	const criteria = formatSuccessCriteria(node.success_criteria);
 	const userPrompt = `Objective: ${run.objective}
 Node: ${node.title}
 Reason: ${node.reason}
 Success Criteria:
-${criteria.map((c: string) => `- ${c}`).join('\n') || '- none'}
+${criteria}
 Depth: ${node.depth}
 ${contextBlock}
 
@@ -872,7 +868,7 @@ async function createArtifactDocument(params: {
 	if (!run.workspace_project_id) {
 		throw new Error('Run missing workspace_project_id');
 	}
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 	const { data: doc, error } = await adminSb
 		.from('onto_documents')
 		.insert({
@@ -907,7 +903,7 @@ async function registerDocumentArtifact(params: {
 	isPrimary?: boolean;
 }) {
 	const { runId, nodeId, documentId, label, isPrimary = true } = params;
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 	const { data: artifact, error } = await adminSb
 		.from('tree_agent_artifacts')
 		.insert({
@@ -934,11 +930,11 @@ async function completeNode(params: {
 	status?: 'completed' | 'failed';
 }) {
 	const { runId, nodeId, result, status = 'completed' } = params;
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 	const endedAt = nowIso();
 	await adminSb
 		.from('tree_agent_nodes')
-		.update({ status, role_state: 'executor', result, ended_at: endedAt })
+		.update({ status, role_state: 'executor', result: asJson(result), ended_at: endedAt })
 		.eq('id', nodeId);
 	await insertEvent(runId, nodeId, 'tree.node_result', { result });
 	await insertEvent(runId, nodeId, 'tree.node_completed', { outcome: 'success' });
@@ -958,7 +954,7 @@ async function createChildNode(params: {
 	depth: number;
 }) {
 	const { run, parentNodeId, step, depth } = params;
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 	const { data: node, error } = await adminSb
 		.from('tree_agent_nodes')
 		.insert({
@@ -1040,7 +1036,7 @@ async function collectChildSummaries(params: {
 	children: Array<{ nodeId: string; result?: TreeAgentResult }>;
 }) {
 	const { children } = params;
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 	const childIds = children.map((c) => c.nodeId);
 	const resultsMap = new Map(children.map((c) => [c.nodeId, c.result]));
 
@@ -1129,7 +1125,7 @@ async function runNode(params: {
 		budgetDeadlineMs,
 		replanCount = 0
 	} = params;
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 
 	if (Date.now() > budgetDeadlineMs) {
 		throw new Error('budget_exceeded');
@@ -1435,7 +1431,7 @@ async function runNode(params: {
 
 export async function processTreeAgentJob(job: ProcessingJob<TreeAgentJobMetadata>) {
 	const { run_id: runId, root_node_id: rootNodeId } = job.data;
-	const adminSb = supabase as any;
+	const adminSb = supabase;
 
 	await job.log(`Tree Agent run ${runId} started`);
 
@@ -1471,7 +1467,7 @@ export async function processTreeAgentJob(job: ProcessingJob<TreeAgentJobMetadat
 		message: 'worker_started'
 	});
 
-	const typedSb = supabase as unknown as SupabaseClient<Database>;
+	const typedSb: SupabaseClient<Database> = supabase;
 	const runContext = resolveRunContext(runRow, job.data);
 	let contextType: TreeAgentContextType = runContext.contextType;
 	let contextProjectId = runContext.contextProjectId;
@@ -1534,7 +1530,10 @@ export async function processTreeAgentJob(job: ProcessingJob<TreeAgentJobMetadat
 		tool_manifest: toolManifest,
 		tool_guide_preview: toolGuidePreview
 	};
-	await adminSb.from('tree_agent_runs').update({ metrics: nextMetrics }).eq('id', runId);
+	await adminSb
+		.from('tree_agent_runs')
+		.update({ metrics: asJson(nextMetrics) })
+		.eq('id', runId);
 	await insertEvent(runId, root.id, 'tree.tools_manifest', toolManifest);
 
 	const bootstrapCalls: TreeAgentToolCall[] = [
@@ -1585,7 +1584,10 @@ export async function processTreeAgentJob(job: ProcessingJob<TreeAgentJobMetadat
 			cost_total_usd: costTotal,
 			last_model: event.model
 		};
-		await adminSb.from('tree_agent_runs').update({ metrics: updatedMetrics }).eq('id', runId);
+		await adminSb
+			.from('tree_agent_runs')
+			.update({ metrics: asJson(updatedMetrics) })
+			.eq('id', runId);
 	};
 
 	const budgetMs =
@@ -1616,10 +1618,10 @@ export async function processTreeAgentJob(job: ProcessingJob<TreeAgentJobMetadat
 			.update({
 				status: message === 'budget_exceeded' ? 'stopped' : 'failed',
 				completed_at: nowIso(),
-				metrics: {
+				metrics: asJson({
 					...(updatedMetrics as Record<string, unknown>),
 					stop_reason: { type: 'error', detail: message }
-				}
+				})
 			})
 			.eq('id', runId);
 		await job.log(`Tree Agent run ${runId} failed: ${message}`);
@@ -1631,10 +1633,10 @@ export async function processTreeAgentJob(job: ProcessingJob<TreeAgentJobMetadat
 		.update({
 			status: 'completed',
 			completed_at: nowIso(),
-			metrics: {
+			metrics: asJson({
 				...(updatedMetrics as Record<string, unknown>),
 				last_root_result: rootResult
-			}
+			})
 		})
 		.eq('id', runId);
 

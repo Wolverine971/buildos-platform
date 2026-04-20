@@ -52,6 +52,12 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
+import {
+	normalizeDateTimeInput,
+	normalizeOptionalString,
+	normalizeRequiredString,
+	normalizeTypeKeyInput
+} from '../../shared/input-normalization';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -68,6 +74,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const body = await request.json();
 		const {
 			project_id,
+			type_key,
 			name,
 			goal,
 			description,
@@ -75,18 +82,46 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			state_key = 'draft',
 			measurement_criteria,
 			priority,
+			props,
 			connections
 		} = body;
 		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
-		// Validate required fields
-		if (!project_id || !name) {
-			return ApiResponse.badRequest('Project ID and name are required');
+		const normalizedProjectId = normalizeRequiredString(project_id, 'Project ID');
+		if (!normalizedProjectId.ok) {
+			return ApiResponse.badRequest(normalizedProjectId.error);
 		}
 
-		if (state_key && !GOAL_STATES.includes(state_key)) {
+		const normalizedName = normalizeRequiredString(name, 'Name');
+		if (!normalizedName.ok) {
+			return ApiResponse.badRequest(normalizedName.error);
+		}
+
+		const normalizedTargetDate = normalizeDateTimeInput(target_date, 'target_date', 'end');
+		if (!normalizedTargetDate.ok) {
+			return ApiResponse.badRequest(normalizedTargetDate.error);
+		}
+
+		const projectId = normalizedProjectId.value;
+		const goalName = normalizedName.value;
+		const goalBody = normalizeOptionalString(goal);
+		const goalDescription = normalizeOptionalString(description);
+		const goalMeasurementCriteria = normalizeOptionalString(measurement_criteria);
+		const goalTargetDate = normalizedTargetDate.value ?? null;
+		const goalTypeKey = normalizeTypeKeyInput(type_key, 'goal', 'goal.default');
+		const rawGoalStateKey =
+			typeof state_key === 'string' && state_key.trim().length > 0
+				? state_key.trim()
+				: 'draft';
+		const incomingProps =
+			props && typeof props === 'object' && !Array.isArray(props)
+				? (props as Record<string, unknown>)
+				: {};
+
+		if (!GOAL_STATES.includes(rawGoalStateKey as (typeof GOAL_STATES)[number])) {
 			return ApiResponse.badRequest(`state_key must be one of: ${GOAL_STATES.join(', ')}`);
 		}
+		const goalStateKey = rawGoalStateKey as (typeof GOAL_STATES)[number];
 
 		// Get user's actor ID
 		const { data: actorData, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -101,7 +136,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				endpoint: '/api/onto/goals/create',
 				method: 'POST',
 				userId: user.id,
-				projectId: project_id,
+				projectId,
 				entityType: 'goal',
 				operation: 'goal_actor_resolve'
 			});
@@ -114,7 +149,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
 			.select('id, name, created_by')
-			.eq('id', project_id)
+			.eq('id', projectId)
 			.is('deleted_at', null)
 			.single();
 
@@ -125,7 +160,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
 			'current_actor_has_project_access',
 			{
-				p_project_id: project_id,
+				p_project_id: projectId,
 				p_required_access: 'write'
 			}
 		);
@@ -138,7 +173,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				endpoint: '/api/onto/goals/create',
 				method: 'POST',
 				userId: user.id,
-				projectId: project_id,
+				projectId,
 				entityType: 'goal',
 				operation: 'goal_access_check'
 			});
@@ -153,21 +188,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Create the goal
 		const goalData = {
-			project_id,
-			type_key: 'goal.default',
-			name,
-			goal: goal || null,
-			description: description || null, // Use dedicated column
-			target_date: target_date || null, // Use dedicated column
-			state_key,
+			project_id: projectId,
+			type_key: goalTypeKey,
+			name: goalName,
+			goal: goalBody ?? null,
+			description: goalDescription ?? null, // Use dedicated column
+			target_date: goalTargetDate, // Use dedicated column
+			state_key: goalStateKey,
 			created_by: actorId,
-			completed_at: state_key === 'achieved' ? new Date().toISOString() : null,
+			completed_at: goalStateKey === 'achieved' ? new Date().toISOString() : null,
 			props: {
+				...incomingProps,
 				// Maintain backwards compatibility by also storing in props
-				goal: goal || null,
-				description: description || null,
-				target_date: target_date || null,
-				measurement_criteria: measurement_criteria || null,
+				goal: goalBody ?? null,
+				description: goalDescription ?? null,
+				target_date: goalTargetDate,
+				measurement_criteria: goalMeasurementCriteria ?? null,
 				priority: priority || null
 			}
 		};
@@ -186,7 +222,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				endpoint: '/api/onto/goals/create',
 				method: 'POST',
 				userId: user.id,
-				projectId: project_id,
+				projectId,
 				entityType: 'goal',
 				entityId: (createdGoal as { id?: string } | null)?.id,
 				operation: 'goal_create',
@@ -201,7 +237,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (connectionList.length > 0) {
 			await assertEntityRefsInProject({
 				supabase,
-				projectId: project_id,
+				projectId,
 				refs: connectionList,
 				allowProject: true
 			});
@@ -209,7 +245,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		await autoOrganizeConnections({
 			supabase,
-			projectId: project_id,
+			projectId,
 			entity: { kind: 'goal', id: createdGoal.id },
 			connections: connectionList,
 			options: { mode: 'replace' }
@@ -221,7 +257,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			'A teammate';
 		const mentionUserIds = await resolveEntityMentionUserIds({
 			supabase,
-			projectId: project_id,
+			projectId,
 			projectOwnerActorId: project.created_by,
 			actorUserId: user.id,
 			nextTextValues: [createdGoal.name, createdGoal.goal, createdGoal.description]
@@ -229,7 +265,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		await notifyEntityMentionsAdded({
 			supabase,
-			projectId: project_id,
+			projectId,
 			projectName: project.name,
 			entityType: 'goal',
 			entityId: createdGoal.id,
@@ -242,7 +278,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Log activity async (non-blocking)
 		logCreateAsync(
 			supabase,
-			project_id,
+			projectId,
 			'goal',
 			createdGoal.id,
 			{ name: createdGoal.name, type_key: createdGoal.type_key },

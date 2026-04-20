@@ -67,6 +67,18 @@ type ProjectContextPayload = {
 	topDocuments: Array<{ title: string; description: string | null }>;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function recordArray(value: unknown): Array<Record<string, unknown>> {
+	return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+function optionalString(value: unknown): string | null {
+	return typeof value === 'string' ? value : null;
+}
+
 function sanitizeIconSvg(raw: string): string {
 	return sanitizeHtml(raw, {
 		allowedTags: ALLOWED_TAGS,
@@ -121,40 +133,41 @@ function validateSanitizedIconSvg(svg: string): { valid: true } | { valid: false
 	return { valid: true };
 }
 
-function buildProjectContextPayload(raw: any): ProjectContextPayload {
-	const project = raw?.project ?? {};
-	const goals = Array.isArray(raw?.goals) ? raw.goals : [];
-	const tasks = Array.isArray(raw?.tasks) ? raw.tasks : [];
-	const documents = Array.isArray(raw?.documents) ? raw.documents : [];
+function buildProjectContextPayload(raw: unknown): ProjectContextPayload {
+	const root = isRecord(raw) ? raw : {};
+	const project = isRecord(root.project) ? root.project : {};
+	const goals = recordArray(root.goals);
+	const tasks = recordArray(root.tasks);
+	const documents = recordArray(root.documents);
 
 	return {
 		project: {
-			id: project.id,
-			name: project.name ?? null,
-			description: project.description ?? null,
-			facet_context: project.facet_context ?? null,
-			facet_stage: project.facet_stage ?? null,
-			state_key: project.state_key ?? null
+			id: optionalString(project.id) ?? '',
+			name: optionalString(project.name),
+			description: optionalString(project.description),
+			facet_context: optionalString(project.facet_context),
+			facet_stage: optionalString(project.facet_stage),
+			state_key: optionalString(project.state_key)
 		},
 		topGoals: goals
-			.filter((goal: any) => typeof goal?.name === 'string' && goal.name.trim().length > 0)
+			.filter((goal) => typeof goal.name === 'string' && goal.name.trim().length > 0)
 			.slice(0, 6)
-			.map((goal: any) => ({
-				name: goal.name.trim(),
+			.map((goal) => ({
+				name: String(goal.name).trim(),
 				description:
 					typeof goal.description === 'string' && goal.description.trim().length > 0
 						? goal.description.trim()
 						: null
 			})),
 		topTasks: tasks
-			.filter((task: any) => typeof task?.title === 'string' && task.title.trim().length > 0)
+			.filter((task) => typeof task.title === 'string' && task.title.trim().length > 0)
 			.slice(0, 10)
-			.map((task: any) => ({ title: task.title.trim() })),
+			.map((task) => ({ title: String(task.title).trim() })),
 		topDocuments: documents
-			.filter((doc: any) => typeof doc?.title === 'string' && doc.title.trim().length > 0)
+			.filter((doc) => typeof doc.title === 'string' && doc.title.trim().length > 0)
 			.slice(0, 8)
-			.map((doc: any) => ({
-				title: doc.title.trim(),
+			.map((doc) => ({
+				title: String(doc.title).trim(),
 				description:
 					typeof doc.description === 'string' && doc.description.trim().length > 0
 						? doc.description.trim()
@@ -375,20 +388,22 @@ function buildCandidateGenerationPrompts(params: {
 	return { systemPrompt, userPrompt };
 }
 
-function normalizeRawCandidates(response: any): Array<{ concept: string; svg: string }> {
-	const candidates = Array.isArray(response?.candidates)
-		? response.candidates
+function normalizeRawCandidates(response: unknown): Array<{ concept: string; svg: string }> {
+	const responseRecord = isRecord(response) ? response : {};
+	const candidates = Array.isArray(responseRecord.candidates)
+		? responseRecord.candidates
 		: Array.isArray(response)
 			? response
 			: [];
 
 	return candidates
-		.map((candidate: any) => ({
+		.filter(isRecord)
+		.map((candidate) => ({
 			concept:
-				typeof candidate?.concept === 'string' && candidate.concept.trim().length > 0
+				typeof candidate.concept === 'string' && candidate.concept.trim().length > 0
 					? candidate.concept.trim()
 					: 'Icon concept',
-			svg: typeof candidate?.svg === 'string' ? candidate.svg : ''
+			svg: typeof candidate.svg === 'string' ? candidate.svg : ''
 		}))
 		.filter((candidate: { concept: string; svg: string }) => candidate.svg.trim().length > 0);
 }
@@ -465,7 +480,7 @@ async function markGenerationFailed(
 	projectId: string,
 	errorMessage: string
 ): Promise<void> {
-	const { error } = await (supabase as any)
+	const { error } = await supabase
 		.from('onto_project_icon_generations')
 		.update({
 			status: 'failed',
@@ -539,7 +554,7 @@ export async function processProjectIconJob(
 		);
 
 		stage = 'load_generation';
-		const { data: generation, error: generationError } = await (supabase as any)
+		const { data: generation, error: generationError } = await supabase
 			.from('onto_project_icon_generations')
 			.select('id, project_id, status')
 			.eq('id', generationId)
@@ -565,7 +580,7 @@ export async function processProjectIconJob(
 		}
 
 		stage = 'mark_processing';
-		const { error: setProcessingError } = await (supabase as any)
+		const { error: setProcessingError } = await supabase
 			.from('onto_project_icon_generations')
 			.update({
 				status: 'processing',
@@ -591,8 +606,8 @@ export async function processProjectIconJob(
 		if (graphError) {
 			throw new Error(`Failed to load project graph context: ${graphError.message}`);
 		}
-		const graphPayload = graphData as any;
-		if (!graphPayload?.project) {
+		const graphPayload = isRecord(graphData) ? graphData : {};
+		if (!graphPayload.project) {
 			throw new Error('Project not found while loading context');
 		}
 
@@ -618,7 +633,7 @@ export async function processProjectIconJob(
 		);
 
 		stage = 'persist_image_prompt_query';
-		const { error: promptPersistError } = await (supabase as any)
+		const { error: promptPersistError } = await supabase
 			.from('onto_project_icon_generations')
 			.update({
 				steering_prompt: imagePromptQuery
@@ -687,7 +702,7 @@ export async function processProjectIconJob(
 		}
 
 		stage = 'persist_candidates';
-		const { data: upsertedCandidates, error: upsertError } = await (supabase as any)
+		const { data: upsertedCandidates, error: upsertError } = await supabase
 			.from('onto_project_icon_candidates')
 			.upsert(
 				candidates.map((candidate, index) => ({
@@ -729,7 +744,7 @@ export async function processProjectIconJob(
 			}
 			selectedCandidateId = chosen.id;
 
-			const { error: clearSelectionError } = await (supabase as any)
+			const { error: clearSelectionError } = await supabase
 				.from('onto_project_icon_candidates')
 				.update({ selected_at: null })
 				.eq('generation_id', generationId)
@@ -740,7 +755,7 @@ export async function processProjectIconJob(
 				);
 			}
 
-			const { error: selectedCandidateError } = await (supabase as any)
+			const { error: selectedCandidateError } = await supabase
 				.from('onto_project_icon_candidates')
 				.update({ selected_at: completedAt })
 				.eq('id', chosen.id)
@@ -753,7 +768,7 @@ export async function processProjectIconJob(
 			}
 
 			const source = triggerSource === 'auto' ? 'auto' : 'manual';
-			const { error: projectUpdateError } = await (supabase as any)
+			const { error: projectUpdateError } = await supabase
 				.from('onto_projects')
 				.update({
 					icon_svg: chosen.svg_sanitized,
@@ -771,7 +786,7 @@ export async function processProjectIconJob(
 		}
 
 		stage = 'complete_generation';
-		const { error: generationUpdateError } = await (supabase as any)
+		const { error: generationUpdateError } = await supabase
 			.from('onto_project_icon_generations')
 			.update({
 				status: 'completed',

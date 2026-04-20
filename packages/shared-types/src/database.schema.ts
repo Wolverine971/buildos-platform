@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-04-20T12:39:20.267Z
+// Generated on: 2026-04-20T14:24:58.401Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -710,6 +710,7 @@ export type DatabaseSchema = {
 		executed_at: string;
 		id: string;
 		job_name: string;
+		message: string | null;
 		status: string;
 	};
 	customer_subscriptions: {
@@ -843,6 +844,75 @@ export type DatabaseSchema = {
 		sent_at: string | null;
 		status: string;
 		updated_at: string | null;
+	};
+	email_sequence_enrollments: {
+		created_at: string;
+		current_step_number: number;
+		exit_reason: string | null;
+		failure_count: number;
+		id: string;
+		last_email_id: string | null;
+		last_error: string | null;
+		last_sent_at: string | null;
+		metadata: Json;
+		next_send_at: string | null;
+		next_step_number: number | null;
+		processing_started_at: string | null;
+		recipient_email: string;
+		sequence_id: string;
+		status: string;
+		updated_at: string;
+		user_id: string;
+	};
+	email_sequence_events: {
+		branch_key: string | null;
+		created_at: string;
+		email_id: string | null;
+		enrollment_id: string | null;
+		event_type: string;
+		id: string;
+		metadata: Json;
+		reason: string | null;
+		sequence_id: string;
+		step_key: string | null;
+		step_number: number | null;
+		user_id: string | null;
+	};
+	email_sequence_steps: {
+		absolute_day_offset: number;
+		created_at: string;
+		delay_days_after_previous: number;
+		id: string;
+		metadata: Json;
+		send_on_weekends: boolean;
+		send_window_end_hour: number;
+		send_window_start_hour: number;
+		sequence_id: string;
+		status: string;
+		step_key: string;
+		step_number: number;
+		updated_at: string;
+	};
+	email_sequences: {
+		created_at: string;
+		description: string | null;
+		display_name: string;
+		id: string;
+		key: string;
+		metadata: Json;
+		status: string;
+		trigger_type: string;
+		updated_at: string;
+	};
+	email_suppressions: {
+		created_at: string;
+		email: string;
+		id: string;
+		metadata: Json;
+		reason: string;
+		scope: string;
+		source: string;
+		updated_at: string;
 	};
 	email_tracking_events: {
 		clicked_url: string | null;
@@ -3125,6 +3195,11 @@ export const tableNames = [
 	'email_attachments',
 	'email_logs',
 	'email_recipients',
+	'email_sequence_enrollments',
+	'email_sequence_events',
+	'email_sequence_steps',
+	'email_sequences',
+	'email_suppressions',
 	'email_tracking_events',
 	'emails',
 	'error_logs',

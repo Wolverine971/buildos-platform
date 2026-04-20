@@ -74,11 +74,21 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 	try {
 		const data = await getCachedDashboardAnalytics(supabase, timeframe, bypassCache);
-		return ApiResponse.success(data, undefined, {
-			public: false,
-			maxAge: 15,
-			staleWhileRevalidate: 30
-		});
+		return ApiResponse.success(
+			data,
+			undefined,
+			bypassCache
+				? {
+						public: false,
+						maxAge: 0,
+						mustRevalidate: true
+					}
+				: {
+						public: false,
+						maxAge: 15,
+						staleWhileRevalidate: 30
+					}
+		);
 	} catch (err) {
 		console.error('[Admin Analytics] Failed to build dashboard payload:', err);
 		return ApiResponse.internalError(err, 'Failed to load analytics dashboard data');

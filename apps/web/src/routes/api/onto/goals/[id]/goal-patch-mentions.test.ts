@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
+let capturedGoalUpdatePayload: Record<string, unknown> | null = null;
 
 vi.mock('$lib/services/async-activity-logger', () => ({
 	logUpdateAsync: vi.fn(),
@@ -39,6 +40,7 @@ class QueryBuilderMock {
 		description: 'Before description',
 		props: {},
 		state_key: 'draft',
+		type_key: 'goal.default',
 		project: {
 			id: 'project-1',
 			name: 'Project One',
@@ -56,6 +58,7 @@ class QueryBuilderMock {
 	update(payload: Record<string, unknown>) {
 		this.action = 'update';
 		this.updatePayload = payload;
+		capturedGoalUpdatePayload = payload;
 		return this;
 	}
 
@@ -105,6 +108,7 @@ function createSupabaseMock() {
 describe('PATCH /api/onto/goals/[id] mention notifications', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		capturedGoalUpdatePayload = null;
 		resolveEntityMentionUserIdsMock.mockResolvedValue(['user-mentioned']);
 		notifyEntityMentionsAddedMock.mockResolvedValue({ notifiedUserIds: ['user-mentioned'] });
 	});
@@ -149,5 +153,56 @@ describe('PATCH /api/onto/goals/[id] mention notifications', () => {
 				mentionedUserIds: ['user-mentioned']
 			})
 		);
+	});
+
+	it('persists type_key updates from goal edit callers', async () => {
+		const { PATCH } = await import('./+server');
+		const response = await PATCH({
+			params: { id: 'goal-1' },
+			request: new Request('http://localhost/api/onto/goals/goal-1', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					type_key: 'goal.metric.revenue'
+				})
+			}),
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: async () => ({
+					user: { id: 'user-actor', name: 'DJ', email: 'dj@example.com' }
+				})
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(capturedGoalUpdatePayload).toMatchObject({
+			type_key: 'goal.metric.revenue'
+		});
+	});
+
+	it('returns 400 when props is not an object', async () => {
+		const { PATCH } = await import('./+server');
+		const response = await PATCH({
+			params: { id: 'goal-1' },
+			request: new Request('http://localhost/api/onto/goals/goal-1', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					props: 'not-json-object'
+				})
+			}),
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: async () => ({
+					user: { id: 'user-actor', name: 'DJ', email: 'dj@example.com' }
+				})
+			}
+		} as any);
+
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toMatchObject({
+			success: false,
+			error: 'props must be an object'
+		});
 	});
 });

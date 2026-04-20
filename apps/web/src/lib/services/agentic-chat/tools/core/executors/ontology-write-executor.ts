@@ -957,6 +957,10 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			name: args.name,
 			description: args.description ?? null,
 			type_key: args.type_key ?? 'goal.outcome.project',
+			state_key: args.state_key ?? 'draft',
+			target_date: args.target_date ?? null,
+			measurement_criteria: args.measurement_criteria ?? null,
+			priority: args.priority ?? null,
 			props: args.props ?? {}
 		};
 
@@ -983,6 +987,8 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			description: args.description ?? null,
 			type_key: args.type_key ?? 'plan.phase.project',
 			state_key: args.state_key ?? 'draft',
+			start_date: args.start_date ?? null,
+			end_date: args.end_date ?? null,
 			props: args.props ?? {},
 			goal_id: args.goal_id,
 			milestone_id: args.milestone_id,
@@ -1409,6 +1415,8 @@ export class OntologyWriteExecutor extends BaseExecutor {
 
 		if (args.name !== undefined) updateData.name = args.name;
 		if (args.description !== undefined) updateData.description = args.description;
+		if (args.type_key !== undefined) updateData.type_key = args.type_key;
+		if (args.state_key !== undefined) updateData.state_key = args.state_key;
 		if (args.priority !== undefined) updateData.priority = args.priority;
 		if (args.target_date !== undefined) updateData.target_date = args.target_date;
 		if (args.measurement_criteria !== undefined)
@@ -1443,6 +1451,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 		if (args.name !== undefined) updateData.name = args.name;
 		if (args.description !== undefined) updateData.description = args.description;
 		if (args.plan !== undefined) updateData.plan = args.plan;
+		if (args.type_key !== undefined) updateData.type_key = args.type_key;
 		if (args.start_date !== undefined) updateData.start_date = args.start_date;
 		if (args.end_date !== undefined) updateData.end_date = args.end_date;
 		if (args.state_key !== undefined) updateData.state_key = args.state_key;

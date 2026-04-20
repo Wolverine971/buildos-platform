@@ -191,4 +191,58 @@ describe('POST /api/onto/tasks/create assignment + mention coalescing', () => {
 			})
 		);
 	});
+
+	it('returns 400 for invalid priority types before inserting', async () => {
+		const { POST } = await import('./+server');
+		const response = await POST({
+			request: new Request('http://localhost/api/onto/tasks/create', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					project_id: 'project-1',
+					title: 'Task with invalid priority',
+					priority: { rank: 1 }
+				})
+			}),
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: async () => ({
+					user: { id: 'user-actor', name: 'DJ', email: 'dj@example.com' }
+				})
+			}
+		} as any);
+
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toMatchObject({
+			success: false,
+			error: expect.stringContaining('priority')
+		});
+	});
+
+	it('returns 400 for invalid scheduled date values before inserting', async () => {
+		const { POST } = await import('./+server');
+		const response = await POST({
+			request: new Request('http://localhost/api/onto/tasks/create', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					project_id: 'project-1',
+					title: 'Task with invalid date',
+					due_at: '2026-02-30'
+				})
+			}),
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: async () => ({
+					user: { id: 'user-actor', name: 'DJ', email: 'dj@example.com' }
+				})
+			}
+		} as any);
+
+		expect(response.status).toBe(400);
+		await expect(response.json()).resolves.toMatchObject({
+			success: false,
+			error: expect.stringContaining('due_at')
+		});
+	});
 });

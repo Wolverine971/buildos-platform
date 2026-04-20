@@ -52,6 +52,7 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
+import { normalizeDateTimeInput, normalizeTypeKeyInput } from '../../shared/input-normalization';
 
 // GET /api/onto/goals/[id] - Get a single goal
 export const GET: RequestHandler = async ({ params, locals }) => {
@@ -168,6 +169,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			name,
 			goal,
 			description,
+			type_key,
 			priority,
 			target_date,
 			measurement_criteria,
@@ -262,6 +264,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.error('Access denied', 403);
 		}
 
+		const normalizedTargetDate = normalizeDateTimeInput(target_date, 'target_date', 'end');
+		if (!normalizedTargetDate.ok) {
+			return ApiResponse.badRequest(normalizedTargetDate.error);
+		}
+
 		// Build update object
 		const updateData: Record<string, unknown> = {
 			updated_at: new Date().toISOString()
@@ -276,7 +283,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			updateData.description = description || null;
 		}
 		if (target_date !== undefined) {
-			updateData.target_date = target_date || null;
+			updateData.target_date = normalizedTargetDate.value ?? null;
+		}
+		if (type_key !== undefined) {
+			updateData.type_key = normalizeTypeKeyInput(
+				type_key,
+				'goal',
+				existingGoal.type_key || 'goal.default'
+			);
 		}
 
 		if (state_key === 'achieved' && existingGoal.state_key !== 'achieved') {
@@ -290,6 +304,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			...(existingGoal.props as Record<string, unknown>)
 		};
 		let hasPropsUpdate = false;
+
+		if (
+			props !== undefined &&
+			props !== null &&
+			(typeof props !== 'object' || Array.isArray(props))
+		) {
+			return ApiResponse.badRequest('props must be an object');
+		}
 
 		if (props !== undefined && typeof props === 'object' && props !== null) {
 			Object.assign(propsUpdate, props);
@@ -310,7 +332,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			hasPropsUpdate = true;
 		}
 		if (target_date !== undefined) {
-			propsUpdate.target_date = target_date || null;
+			propsUpdate.target_date = normalizedTargetDate.value ?? null;
 			hasPropsUpdate = true;
 		}
 		if (measurement_criteria !== undefined) {

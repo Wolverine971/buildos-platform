@@ -177,6 +177,63 @@ describe('plan markdown normalization', () => {
 		expect(captures.insertPayload?.props?.plan).toBe(normalizedAgentPlan);
 	});
 
+	it('normalizes required plan create fields before inserting', async () => {
+		const { POST } = await import('./create/+server');
+		const captures: Captures = {};
+		const request = new Request('http://localhost/api/onto/plans/create', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				project_id: ' project-1 ',
+				name: ' First Draft Writing Schedule ',
+				state_key: ''
+			})
+		});
+
+		const response = await POST({
+			request,
+			locals: {
+				supabase: createSupabaseMock(captures) as any,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(201);
+		expect(captures.insertPayload).toMatchObject({
+			project_id: 'project-1',
+			name: 'First Draft Writing Schedule',
+			state_key: 'draft'
+		});
+	});
+
+	it('returns 400 for invalid required plan create fields', async () => {
+		const { POST } = await import('./create/+server');
+		const captures: Captures = {};
+		const request = new Request('http://localhost/api/onto/plans/create', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				project_id: 'project-1',
+				name: '   '
+			})
+		});
+
+		const response = await POST({
+			request,
+			locals: {
+				supabase: createSupabaseMock(captures) as any,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(400);
+		expect(captures.insertPayload).toBeUndefined();
+		await expect(response.json()).resolves.toMatchObject({
+			success: false,
+			error: 'Name is required'
+		});
+	});
+
 	it('normalizes plan details before updating a plan', async () => {
 		const { PATCH } = await import('./[id]/+server');
 		const captures: Captures = {};
@@ -208,5 +265,75 @@ describe('plan markdown normalization', () => {
 		expect(response.status).toBe(200);
 		expect(captures.updatePayload?.plan).toBe(normalizedAgentPlan);
 		expect(captures.updatePayload?.props?.plan).toBe(normalizedAgentPlan);
+	});
+
+	it('persists plan type_key updates', async () => {
+		const { PATCH } = await import('./[id]/+server');
+		const captures: Captures = {};
+		const existingPlan = {
+			id: 'plan-1',
+			project_id: 'project-1',
+			name: 'First Draft Writing Schedule',
+			type_key: 'plan.default',
+			state_key: 'draft',
+			props: {},
+			project: { id: 'project-1' }
+		};
+		const request = new Request('http://localhost/api/onto/plans/plan-1', {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				type_key: 'plan.phase.launch'
+			})
+		});
+
+		const response = await PATCH({
+			params: { id: 'plan-1' },
+			request,
+			locals: {
+				supabase: createSupabaseMock(captures, { existingPlan }) as any,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(200);
+		expect(captures.updatePayload?.type_key).toBe('plan.phase.launch');
+	});
+
+	it('returns 400 when plan update props is not an object', async () => {
+		const { PATCH } = await import('./[id]/+server');
+		const captures: Captures = {};
+		const existingPlan = {
+			id: 'plan-1',
+			project_id: 'project-1',
+			name: 'First Draft Writing Schedule',
+			type_key: 'plan.default',
+			state_key: 'draft',
+			props: {},
+			project: { id: 'project-1' }
+		};
+		const request = new Request('http://localhost/api/onto/plans/plan-1', {
+			method: 'PATCH',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				props: ['not', 'an', 'object']
+			})
+		});
+
+		const response = await PATCH({
+			params: { id: 'plan-1' },
+			request,
+			locals: {
+				supabase: createSupabaseMock(captures, { existingPlan }) as any,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			}
+		} as any);
+
+		expect(response.status).toBe(400);
+		expect(captures.updatePayload).toBeUndefined();
+		await expect(response.json()).resolves.toMatchObject({
+			success: false,
+			error: 'props must be an object'
+		});
 	});
 });

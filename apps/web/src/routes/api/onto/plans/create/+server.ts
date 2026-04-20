@@ -49,7 +49,15 @@ import {
 } from '$lib/services/ontology/auto-organizer.service';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import { logOntologyApiError } from '../../shared/error-logging';
+import {
+	normalizeOptionalString,
+	normalizeRequiredString,
+	normalizeTypeKeyInput
+} from '../../shared/input-normalization';
 import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
+
+type ParentInput = NonNullable<Parameters<typeof toParentRefs>[0]>['parent'];
+type ParentsInput = NonNullable<Parameters<typeof toParentRefs>[0]>['parents'];
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -63,7 +71,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	try {
 		// Parse request body
-		const body = await request.json();
+		const body = (await request.json()) as Record<string, unknown>;
 		const {
 			project_id,
 			name,
@@ -82,19 +90,31 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		} = body;
 		const classificationSource = body?.classification_source ?? body?.classificationSource;
 
-		// Validate required fields
-		if (!project_id || !name) {
-			return ApiResponse.badRequest('Project ID and name are required');
+		const normalizedProjectId = normalizeRequiredString(project_id, 'Project ID');
+		if (!normalizedProjectId.ok) {
+			return ApiResponse.badRequest(normalizedProjectId.error);
 		}
 
-		if (state_key && !PLAN_STATES.includes(state_key)) {
+		const normalizedName = normalizeRequiredString(name, 'Name');
+		if (!normalizedName.ok) {
+			return ApiResponse.badRequest(normalizedName.error);
+		}
+
+		const rawPlanStateKey =
+			typeof state_key === 'string' && state_key.trim().length > 0
+				? state_key.trim()
+				: 'draft';
+		if (!PLAN_STATES.includes(rawPlanStateKey as (typeof PLAN_STATES)[number])) {
 			return ApiResponse.badRequest(`state_key must be one of: ${PLAN_STATES.join(', ')}`);
 		}
 
-		const normalizedTypeKey =
-			typeof type_key === 'string' && type_key.trim().length > 0
-				? type_key.trim()
-				: 'plan.default';
+		const projectId = normalizedProjectId.value;
+		const planName = normalizedName.value;
+		const planStateKey = rawPlanStateKey as (typeof PLAN_STATES)[number];
+		const normalizedDescription = normalizeOptionalString(description);
+		const planStartDate = normalizeOptionalString(start_date);
+		const planEndDate = normalizeOptionalString(end_date);
+		const normalizedTypeKey = normalizeTypeKeyInput(type_key, 'plan', 'plan.default');
 		const incomingProps =
 			props && typeof props === 'object' && !Array.isArray(props)
 				? (props as Record<string, unknown>)
@@ -114,7 +134,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				endpoint: '/api/onto/plans/create',
 				method: 'POST',
 				userId: user.id,
-				projectId: project_id,
+				projectId,
 				entityType: 'plan',
 				operation: 'plan_actor_resolve'
 			});
@@ -125,7 +145,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
 			.select('id')
-			.eq('id', project_id)
+			.eq('id', projectId)
 			.is('deleted_at', null)
 			.single();
 
@@ -136,7 +156,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
 			'current_actor_has_project_access',
 			{
-				p_project_id: project_id,
+				p_project_id: projectId,
 				p_required_access: 'write'
 			}
 		);
@@ -149,7 +169,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				endpoint: '/api/onto/plans/create',
 				method: 'POST',
 				userId: user.id,
-				projectId: project_id,
+				projectId,
 				entityType: 'plan',
 				operation: 'plan_access_check'
 			});
@@ -165,7 +185,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Validate optional goal or milestone parent
 		let validatedGoalId: string | null = null;
 		let validatedMilestoneId: string | null = null;
-		const explicitParents = toParentRefs({ parent, parents });
+		const explicitParents = toParentRefs({
+			parent: parent as ParentInput,
+			parents: parents as ParentsInput
+		});
 		const normalizedGoalId =
 			typeof goal_id === 'string' && goal_id.trim().length > 0 ? goal_id : null;
 		const normalizedMilestoneId =
@@ -196,12 +219,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		];
 
 		const connectionList: ConnectionRef[] =
-			Array.isArray(connections) && connections.length > 0 ? connections : legacyConnections;
+			Array.isArray(connections) && connections.length > 0
+				? (connections as ConnectionRef[])
+				: legacyConnections;
 
 		if (connectionList.length > 0) {
 			await assertEntityRefsInProject({
 				supabase,
-				projectId: project_id,
+				projectId,
 				refs: connectionList,
 				allowProject: true
 			});
@@ -209,20 +234,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Create the plan
 		const planData = {
-			project_id,
+			project_id: projectId,
 			type_key: normalizedTypeKey,
-			name,
-			state_key,
+			name: planName,
+			state_key: planStateKey,
 			plan: normalizedPlan || null,
-			description: description || null, // Use dedicated column
+			description: normalizedDescription ?? null, // Use dedicated column
 			created_by: actorId,
 			props: {
 				...incomingProps,
 				// Maintain backwards compatibility by also storing in props
 				plan: normalizedPlan || null,
-				description: description || null,
-				start_date: start_date || null,
-				end_date: end_date || null
+				description: normalizedDescription ?? null,
+				start_date: planStartDate ?? null,
+				end_date: planEndDate ?? null
 			}
 		};
 
@@ -240,7 +265,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				endpoint: '/api/onto/plans/create',
 				method: 'POST',
 				userId: user.id,
-				projectId: project_id,
+				projectId,
 				entityType: 'plan',
 				entityId: (createdPlan as { id?: string } | null)?.id,
 				operation: 'plan_create',
@@ -251,7 +276,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		await autoOrganizeConnections({
 			supabase,
-			projectId: project_id,
+			projectId,
 			entity: { kind: 'plan', id: createdPlan.id },
 			connections: connectionList,
 			options: { mode: 'replace' }
@@ -260,7 +285,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Log activity async (non-blocking)
 		logCreateAsync(
 			supabase,
-			project_id,
+			projectId,
 			'plan',
 			createdPlan.id,
 			{

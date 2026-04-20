@@ -51,6 +51,7 @@ import {
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import type { EntityKind } from '$lib/services/ontology/edge-direction';
 import { logOntologyApiError } from '../../shared/error-logging';
+import { normalizeTypeKeyInput } from '../../shared/input-normalization';
 import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
 
 // GET /api/onto/plans/[id] - Get a single plan
@@ -164,6 +165,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const body = await request.json();
 		const {
 			name,
+			type_key,
 			plan,
 			description,
 			start_date,
@@ -329,6 +331,13 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		};
 
 		if (name !== undefined) updateData.name = name;
+		if (type_key !== undefined) {
+			updateData.type_key = normalizeTypeKeyInput(
+				type_key,
+				'plan',
+				existingPlan.type_key || 'plan.default'
+			);
+		}
 		if (state_key !== undefined) updateData.state_key = state_key;
 
 		if (plan !== undefined) {
@@ -345,6 +354,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			...(existingPlan.props as Record<string, unknown>)
 		};
 		let hasPropsUpdate = false;
+
+		if (
+			props !== undefined &&
+			props !== null &&
+			(typeof props !== 'object' || Array.isArray(props))
+		) {
+			return ApiResponse.badRequest('props must be an object');
+		}
 
 		if (props !== undefined && typeof props === 'object' && props !== null) {
 			Object.assign(propsUpdate, props);
@@ -434,10 +451,16 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			params.id,
 			{
 				name: existingPlan.name,
+				type_key: existingPlan.type_key,
 				state_key: existingPlan.state_key,
 				props: existingPlan.props
 			},
-			{ name: updatedPlan.name, state_key: updatedPlan.state_key, props: updatedPlan.props },
+			{
+				name: updatedPlan.name,
+				type_key: updatedPlan.type_key,
+				state_key: updatedPlan.state_key,
+				props: updatedPlan.props
+			},
 			session.user.id,
 			getChangeSourceFromRequest(request),
 			chatSessionId

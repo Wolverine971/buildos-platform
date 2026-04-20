@@ -833,7 +833,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	const sandbox = buildSandboxPreview(url, baseUrl);
 	const supabase = createAdminSupabaseClient();
 
-	const { data: sequence, error: sequenceError } = await (supabase as any)
+	const { data: sequence, error: sequenceError } = await supabase
 		.from('email_sequences')
 		.select('id, key, metadata')
 		.eq('key', BUILDOS_WELCOME_SEQUENCE_KEY)
@@ -895,48 +895,48 @@ export const load: PageServerLoad = async ({ url }) => {
 		{ data: suppressionData, error: suppressionError },
 		{ data: cronLogsData, error: cronLogsError }
 	] = await Promise.all([
-		(supabase as any)
+		supabase
 			.from('email_sequence_steps')
 			.select(
 				'step_number, step_key, delay_days_after_previous, absolute_day_offset, send_window_start_hour, send_window_end_hour, send_on_weekends, status, metadata'
 			)
 			.eq('sequence_id', sequence.id)
 			.order('step_number', { ascending: true }),
-		(supabase as any)
+		supabase
 			.from('email_sequence_enrollments')
 			.select(
 				'id, user_id, recipient_email, status, current_step_number, next_step_number, next_send_at, last_sent_at, processing_started_at, failure_count, exit_reason, last_error, metadata, created_at, updated_at'
 			)
 			.eq('sequence_id', sequence.id),
-		(supabase as any)
+		supabase
 			.from('email_sequence_events')
 			.select('event_type, step_number, branch_key, created_at')
 			.eq('sequence_id', sequence.id)
 			.gte('created_at', since)
 			.order('created_at', { ascending: false })
 			.limit(5000),
-		(supabase as any)
+		supabase
 			.from('email_logs')
 			.select('status, metadata, created_at, sent_at')
 			.contains('metadata', { campaign: 'welcome-sequence' })
 			.gte('created_at', since)
 			.order('created_at', { ascending: false })
 			.limit(5000),
-		(supabase as any)
+		supabase
 			.from('emails')
 			.select('id, status, template_data, created_at, sent_at, tracking_enabled')
 			.eq('category', 'welcome_sequence')
 			.gte('created_at', since)
 			.order('created_at', { ascending: false })
 			.limit(5000),
-		(supabase as any)
+		supabase
 			.from('email_suppressions')
 			.select('reason, source, created_at')
 			.in('scope', ['lifecycle', 'all'])
 			.gte('created_at', since)
 			.order('created_at', { ascending: false })
 			.limit(5000),
-		(supabase as any)
+		supabase
 			.from('cron_logs')
 			.select('status, executed_at, error_message')
 			.eq('job_name', 'welcome_sequence')
@@ -975,7 +975,7 @@ export const load: PageServerLoad = async ({ url }) => {
 	const emailIds = emailRows.map((email) => email.id);
 	const trackingEventsResult =
 		emailIds.length > 0
-			? await (supabase as any)
+			? await supabase
 					.from('email_tracking_events')
 					.select('email_id, event_type, created_at, timestamp')
 					.in('email_id', emailIds)
@@ -1003,7 +1003,7 @@ export const load: PageServerLoad = async ({ url }) => {
 					now: new Date()
 				});
 
-	const { data: legacyData, error: legacyError } = await (supabase as any)
+	const { data: legacyData, error: legacyError } = await supabase
 		.from('welcome_email_sequences')
 		.select('*')
 		.order('started_at', { ascending: false })
@@ -1044,8 +1044,8 @@ export const load: PageServerLoad = async ({ url }) => {
 			{ data: userData, error: userError },
 			{ data: enrollmentData, error: enrollmentError }
 		] = await Promise.all([
-			(supabase as any).from('users').select('id, email').in('id', userIds),
-			(supabase as any)
+			supabase.from('users').select('id, email').in('id', userIds),
+			supabase
 				.from('email_sequence_enrollments')
 				.select('*')
 				.eq('sequence_id', sequence.id)

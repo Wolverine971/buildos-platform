@@ -97,7 +97,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 		const lowSignalCandidates = Number(cleanupSummary?.low_signal_candidate_count ?? 0);
 		const highSignalCandidates = Number(cleanupSummary?.high_signal_candidate_count ?? 0);
 
-		await (supabase as any).from('cron_logs').insert({
+		await supabase.from('cron_logs').insert({
 			job_name: 'security_events_retention',
 			status: 'success',
 			message: `Rolled up ${rollupSummary?.rolled_event_count ?? 0} security event(s); cleanup ${dryRun ? 'dry run found' : 'deleted'} ${dryRun ? lowSignalCandidates + highSignalCandidates : deletedCount} event(s).`,
@@ -116,7 +116,7 @@ export const GET: RequestHandler = async ({ request, url }) => {
 	} catch (error) {
 		console.error('Security events retention cron error:', error);
 
-		await (supabase as any).from('cron_logs').insert({
+		await supabase.from('cron_logs').insert({
 			job_name: 'security_events_retention',
 			status: 'error',
 			error_message: error instanceof Error ? error.message : 'Unknown error',

@@ -57,6 +57,11 @@ import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver
 import type { EntityKind } from '$lib/services/ontology/edge-direction';
 import { logOntologyApiError } from '../../shared/error-logging';
 import {
+	normalizeDateTimeInput,
+	normalizePriorityInput,
+	normalizeTypeKeyInput
+} from '../../shared/input-normalization';
+import {
 	TaskAssignmentValidationError,
 	attachAssigneesToTask,
 	fetchTaskAssigneesMap,
@@ -408,16 +413,45 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			});
 		}
 
+		const normalizedPriority = normalizePriorityInput(priority, { allowNull: true });
+		if (!normalizedPriority.ok) {
+			return ApiResponse.badRequest(normalizedPriority.error);
+		}
+
+		const normalizedStartAt = normalizeDateTimeInput(start_at, 'start_at', 'start');
+		if (!normalizedStartAt.ok) {
+			return ApiResponse.badRequest(normalizedStartAt.error);
+		}
+
+		const normalizedDueAt = normalizeDateTimeInput(due_at, 'due_at', 'end');
+		if (!normalizedDueAt.ok) {
+			return ApiResponse.badRequest(normalizedDueAt.error);
+		}
+
+		if (
+			props !== undefined &&
+			props !== null &&
+			(typeof props !== 'object' || Array.isArray(props))
+		) {
+			return ApiResponse.badRequest('props must be an object');
+		}
+
 		// Build update object
 		const updateData: any = {
 			updated_at: new Date().toISOString()
 		};
 
 		if (title !== undefined) updateData.title = title;
-		if (priority !== undefined) updateData.priority = priority;
-		if (type_key !== undefined) updateData.type_key = type_key;
-		if (start_at !== undefined) updateData.start_at = start_at || null;
-		if (due_at !== undefined) updateData.due_at = due_at;
+		if (priority !== undefined) updateData.priority = normalizedPriority.value ?? null;
+		if (type_key !== undefined) {
+			updateData.type_key = normalizeTypeKeyInput(
+				type_key,
+				'task',
+				existingTask.type_key || 'task.default'
+			);
+		}
+		if (start_at !== undefined) updateData.start_at = normalizedStartAt.value ?? null;
+		if (due_at !== undefined) updateData.due_at = normalizedDueAt.value ?? null;
 
 		// Handle description as a direct column (no longer in props)
 		if (description !== undefined) {
@@ -450,7 +484,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		// Handle props update - merge with existing (description no longer stored here)
 		const currentProps = (existingTask.props as Record<string, unknown> | null) ?? {};
-		const nextProps = { ...currentProps, ...(props || {}) };
+		const propsPatch =
+			props && typeof props === 'object' && !Array.isArray(props)
+				? (props as Record<string, unknown>)
+				: {};
+		const nextProps = { ...currentProps, ...propsPatch };
 		let includeProps = false;
 
 		if (props !== undefined) {

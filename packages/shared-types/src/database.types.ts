@@ -2960,6 +2960,7 @@ export type Database = {
           executed_at: string
           id: string
           job_name: string
+          message: string | null
           status: string
         }
         Insert: {
@@ -2968,6 +2969,7 @@ export type Database = {
           executed_at: string
           id?: string
           job_name: string
+          message?: string | null
           status: string
         }
         Update: {
@@ -2976,6 +2978,7 @@ export type Database = {
           executed_at?: string
           id?: string
           job_name?: string
+          message?: string | null
           status?: string
         }
         Relationships: []
@@ -3493,6 +3496,287 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      email_sequence_enrollments: {
+        Row: {
+          created_at: string
+          current_step_number: number
+          exit_reason: string | null
+          failure_count: number
+          id: string
+          last_email_id: string | null
+          last_error: string | null
+          last_sent_at: string | null
+          metadata: Json
+          next_send_at: string | null
+          next_step_number: number | null
+          processing_started_at: string | null
+          recipient_email: string
+          sequence_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_step_number?: number
+          exit_reason?: string | null
+          failure_count?: number
+          id?: string
+          last_email_id?: string | null
+          last_error?: string | null
+          last_sent_at?: string | null
+          metadata?: Json
+          next_send_at?: string | null
+          next_step_number?: number | null
+          processing_started_at?: string | null
+          recipient_email: string
+          sequence_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_step_number?: number
+          exit_reason?: string | null
+          failure_count?: number
+          id?: string
+          last_email_id?: string | null
+          last_error?: string | null
+          last_sent_at?: string | null
+          metadata?: Json
+          next_send_at?: string | null
+          next_step_number?: number | null
+          processing_started_at?: string | null
+          recipient_email?: string
+          sequence_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sequence_enrollments_last_email_id_fkey"
+            columns: ["last_email_id"]
+            isOneToOne: false
+            referencedRelation: "emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_sequence_enrollments_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "email_sequences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_sequence_enrollments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_sequence_events: {
+        Row: {
+          branch_key: string | null
+          created_at: string
+          email_id: string | null
+          enrollment_id: string | null
+          event_type: string
+          id: string
+          metadata: Json
+          reason: string | null
+          sequence_id: string
+          step_key: string | null
+          step_number: number | null
+          user_id: string | null
+        }
+        Insert: {
+          branch_key?: string | null
+          created_at?: string
+          email_id?: string | null
+          enrollment_id?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          sequence_id: string
+          step_key?: string | null
+          step_number?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          branch_key?: string | null
+          created_at?: string
+          email_id?: string | null
+          enrollment_id?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json
+          reason?: string | null
+          sequence_id?: string
+          step_key?: string | null
+          step_number?: number | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sequence_events_email_id_fkey"
+            columns: ["email_id"]
+            isOneToOne: false
+            referencedRelation: "emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_sequence_events_enrollment_id_fkey"
+            columns: ["enrollment_id"]
+            isOneToOne: false
+            referencedRelation: "email_sequence_enrollments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_sequence_events_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "email_sequences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_sequence_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_sequence_steps: {
+        Row: {
+          absolute_day_offset: number
+          created_at: string
+          delay_days_after_previous: number
+          id: string
+          metadata: Json
+          send_on_weekends: boolean
+          send_window_end_hour: number
+          send_window_start_hour: number
+          sequence_id: string
+          status: string
+          step_key: string
+          step_number: number
+          updated_at: string
+        }
+        Insert: {
+          absolute_day_offset?: number
+          created_at?: string
+          delay_days_after_previous?: number
+          id?: string
+          metadata?: Json
+          send_on_weekends?: boolean
+          send_window_end_hour?: number
+          send_window_start_hour?: number
+          sequence_id: string
+          status?: string
+          step_key: string
+          step_number: number
+          updated_at?: string
+        }
+        Update: {
+          absolute_day_offset?: number
+          created_at?: string
+          delay_days_after_previous?: number
+          id?: string
+          metadata?: Json
+          send_on_weekends?: boolean
+          send_window_end_hour?: number
+          send_window_start_hour?: number
+          sequence_id?: string
+          status?: string
+          step_key?: string
+          step_number?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sequence_steps_sequence_id_fkey"
+            columns: ["sequence_id"]
+            isOneToOne: false
+            referencedRelation: "email_sequences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_sequences: {
+        Row: {
+          created_at: string
+          description: string | null
+          display_name: string
+          id: string
+          key: string
+          metadata: Json
+          status: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          display_name: string
+          id?: string
+          key: string
+          metadata?: Json
+          status?: string
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          id?: string
+          key?: string
+          metadata?: Json
+          status?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_suppressions: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          metadata: Json
+          reason: string
+          scope: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          metadata?: Json
+          reason: string
+          scope: string
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          metadata?: Json
+          reason?: string
+          scope?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       email_tracking_events: {
         Row: {
@@ -12993,6 +13277,34 @@ export type Database = {
         }
         Returns: string
       }
+      admin_send_next_step_now: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          created_at: string
+          current_step_number: number
+          exit_reason: string | null
+          failure_count: number
+          id: string
+          last_email_id: string | null
+          last_error: string | null
+          last_sent_at: string | null
+          metadata: Json
+          next_send_at: string | null
+          next_step_number: number | null
+          processing_started_at: string | null
+          recipient_email: string
+          sequence_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "email_sequence_enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       apply_graph_reorg_changes: {
         Args: {
           p_deletes: Json
@@ -13092,6 +13404,34 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: boolean
       }
+      claim_pending_email_sequence_sends: {
+        Args: { p_limit?: number; p_sequence_key: string }
+        Returns: {
+          created_at: string
+          current_step_number: number
+          exit_reason: string | null
+          failure_count: number
+          id: string
+          last_email_id: string | null
+          last_error: string | null
+          last_sent_at: string | null
+          metadata: Json
+          next_send_at: string | null
+          next_step_number: number | null
+          processing_started_at: string | null
+          recipient_email: string
+          sequence_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "email_sequence_enrollments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       claim_pending_jobs: {
         Args: { p_batch_size?: number; p_job_types: string[] }
         Returns: {
@@ -13111,6 +13451,34 @@ export type Database = {
           updated_at: string
           user_id: string
         }[]
+      }
+      claim_specific_email_sequence_send: {
+        Args: { p_enrollment_id: string }
+        Returns: {
+          created_at: string
+          current_step_number: number
+          exit_reason: string | null
+          failure_count: number
+          id: string
+          last_email_id: string | null
+          last_error: string | null
+          last_sent_at: string | null
+          metadata: Json
+          next_send_at: string | null
+          next_step_number: number | null
+          processing_started_at: string | null
+          recipient_email: string
+          sequence_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "email_sequence_enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       cleanup_project_history: {
         Args: { target_project_id: string }
@@ -13140,6 +13508,39 @@ export type Database = {
         }[]
       }
       cleanup_structure_history: { Args: never; Returns: undefined }
+      complete_email_sequence_send: {
+        Args: {
+          p_branch_key?: string
+          p_email_id: string
+          p_enrollment_id: string
+          p_metadata?: Json
+        }
+        Returns: {
+          created_at: string
+          current_step_number: number
+          exit_reason: string | null
+          failure_count: number
+          id: string
+          last_email_id: string | null
+          last_error: string | null
+          last_sent_at: string | null
+          metadata: Json
+          next_send_at: string | null
+          next_step_number: number | null
+          processing_started_at: string | null
+          recipient_email: string
+          sequence_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "email_sequence_enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       complete_queue_job: {
         Args: { p_job_id: string; p_result?: Json }
         Returns: boolean
@@ -13175,6 +13576,38 @@ export type Database = {
       decrement_phase_order: {
         Args: { p_order_threshold: number; p_project_id: string }
         Returns: undefined
+      }
+      defer_email_sequence_step: {
+        Args: {
+          p_enrollment_id: string
+          p_next_send_at: string
+          p_reason?: string
+        }
+        Returns: {
+          created_at: string
+          current_step_number: number
+          exit_reason: string | null
+          failure_count: number
+          id: string
+          last_email_id: string | null
+          last_error: string | null
+          last_sent_at: string | null
+          metadata: Json
+          next_send_at: string | null
+          next_step_number: number | null
+          processing_started_at: string | null
+          recipient_email: string
+          sequence_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "email_sequence_enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       delete_old_completed_queue_jobs: {
         Args: {
@@ -13214,6 +13647,41 @@ export type Database = {
         }
         Returns: string
       }
+      enroll_user_in_email_sequence: {
+        Args: {
+          p_metadata?: Json
+          p_recipient_email: string
+          p_sequence_key: string
+          p_signup_method?: string
+          p_trigger_source?: string
+          p_user_id: string
+        }
+        Returns: {
+          created_at: string
+          current_step_number: number
+          exit_reason: string | null
+          failure_count: number
+          id: string
+          last_email_id: string | null
+          last_error: string | null
+          last_sent_at: string | null
+          metadata: Json
+          next_send_at: string | null
+          next_step_number: number | null
+          processing_started_at: string | null
+          recipient_email: string
+          sequence_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "email_sequence_enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       ensure_actor_for_user: { Args: { p_user_id: string }; Returns: string }
       evaluate_user_consumption_gate: {
         Args: {
@@ -13230,6 +13698,14 @@ export type Database = {
           trigger_reason: string
           user_id: string
         }[]
+      }
+      exit_email_from_email_sequence: {
+        Args: { p_email: string; p_reason?: string; p_sequence_key: string }
+        Returns: number
+      }
+      exit_user_from_email_sequence: {
+        Args: { p_reason?: string; p_sequence_key: string; p_user_id: string }
+        Returns: number
       }
       fail_queue_job: {
         Args: { p_error_message: string; p_job_id: string; p_retry?: boolean }
@@ -13306,6 +13782,22 @@ export type Database = {
         }[]
       }
       generate_short_code: { Args: { length?: number }; Returns: string }
+      get_admin_dashboard_chat_usage: {
+        Args: { end_ts: string; start_ts: string }
+        Returns: {
+          avg_messages_per_session: number
+          avg_tokens_per_session: number
+          executor_sessions: number
+          failed_sessions: number
+          failure_rate: number
+          planner_sessions: number
+          tool_sessions: number
+          total_messages: number
+          total_sessions: number
+          total_tokens: number
+          unique_users: number
+        }[]
+      }
       get_admin_model_breakdown: {
         Args: { p_end_date: string; p_start_date: string }
         Returns: {
@@ -13531,7 +14023,7 @@ export type Database = {
         }[]
       }
       get_onto_project_summaries_v1: {
-        Args: { p_actor_id: string }
+        Args: { p_actor_id: string; p_limit?: number }
         Returns: {
           access_level: string
           access_role: string
@@ -13855,6 +14347,10 @@ export type Database = {
       is_admin:
         | { Args: never; Returns: boolean }
         | { Args: { user_id: string }; Returns: boolean }
+      is_email_suppressed: {
+        Args: { p_email: string; p_scope: string }
+        Returns: boolean
+      }
       is_high_signal_security_event: {
         Args: { p_event_type: string; p_outcome: string; p_severity: string }
         Returns: boolean
@@ -14071,6 +14567,34 @@ export type Database = {
         Args: { p_actor_id: string }
         Returns: string
       }
+      retry_or_fail_email_sequence_send: {
+        Args: { p_enrollment_id: string; p_error: string }
+        Returns: {
+          created_at: string
+          current_step_number: number
+          exit_reason: string | null
+          failure_count: number
+          id: string
+          last_email_id: string | null
+          last_error: string | null
+          last_sent_at: string | null
+          metadata: Json
+          next_send_at: string | null
+          next_step_number: number | null
+          processing_started_at: string | null
+          recipient_email: string
+          sequence_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "email_sequence_enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       rollup_security_events: {
         Args: { p_end_date?: string; p_start_date?: string }
         Returns: {
@@ -14166,6 +14690,39 @@ export type Database = {
       }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      skip_email_sequence_step: {
+        Args: {
+          p_branch_key?: string
+          p_enrollment_id: string
+          p_metadata?: Json
+          p_reason?: string
+        }
+        Returns: {
+          created_at: string
+          current_step_number: number
+          exit_reason: string | null
+          failure_count: number
+          id: string
+          last_email_id: string | null
+          last_error: string | null
+          last_sent_at: string | null
+          metadata: Json
+          next_send_at: string | null
+          next_step_number: number | null
+          processing_started_at: string | null
+          recipient_email: string
+          sequence_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "email_sequence_enrollments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       soft_delete_onto_project: {
         Args: { p_project_id: string }
         Returns: undefined
@@ -14240,6 +14797,16 @@ export type Database = {
           updated_sms: boolean
           user_id: string
         }[]
+      }
+      upsert_email_suppression: {
+        Args: {
+          p_email: string
+          p_metadata?: Json
+          p_reason: string
+          p_scope: string
+          p_source: string
+        }
+        Returns: string
       }
       upsert_legacy_entity_mapping: {
         Args: {

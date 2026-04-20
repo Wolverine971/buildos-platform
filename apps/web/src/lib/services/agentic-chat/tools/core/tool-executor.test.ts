@@ -773,6 +773,57 @@ describe('ChatToolExecutor - Update Behavior', () => {
 			expect(mockLLMService.generateTextDetailed).not.toHaveBeenCalled();
 		});
 
+		it('should send goal type_key updates through the agentic chat executor', async () => {
+			mockFetch = vi.fn().mockImplementation((url, options) => {
+				if (url.includes('/api/onto/goals/') && options?.method === 'PATCH') {
+					return Promise.resolve({
+						ok: true,
+						json: () =>
+							Promise.resolve({
+								success: true,
+								goal: {
+									id: 'goal-123',
+									name: 'Test Goal',
+									type_key: 'goal.metric.revenue'
+								}
+							})
+					});
+				}
+				return Promise.resolve({ ok: false });
+			});
+
+			const executor = new ChatToolExecutor(
+				mockSupabase,
+				userId,
+				sessionId,
+				mockFetch,
+				mockLLMService
+			);
+
+			const toolCall: ChatToolCall = {
+				id: 'call-12b',
+				type: 'function',
+				function: {
+					name: 'update_onto_goal',
+					arguments: JSON.stringify({
+						goal_id: 'goal-123',
+						type_key: 'goal.metric.revenue'
+					})
+				}
+			} as ChatToolCall;
+
+			const result = await executor.execute(toolCall);
+
+			expect(result.success).toBe(true);
+			expect(mockFetch).toHaveBeenCalledWith(
+				expect.stringContaining('/api/onto/goals/goal-123'),
+				expect.objectContaining({
+					method: 'PATCH',
+					body: expect.stringContaining('"type_key":"goal.metric.revenue"')
+				})
+			);
+		});
+
 		it('should directly replace plan descriptions and ignore stray strategy args', async () => {
 			// Mock plan endpoints
 			mockFetch = vi.fn().mockImplementation((url, options) => {

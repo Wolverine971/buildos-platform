@@ -20,6 +20,7 @@ import {
 } from './welcome-sequence.logic';
 
 type TypedSupabaseClient = SupabaseClient<Database>;
+type WelcomeSequenceUpdate = Database['public']['Tables']['welcome_email_sequences']['Update'];
 type WelcomeSequenceStatus = 'active' | 'completed' | 'cancelled';
 type SequenceTimestampKey =
 	| 'email_1_sent_at'
@@ -950,7 +951,7 @@ export class WelcomeSequenceService {
 	}
 
 	private sequenceTable() {
-		return (this.supabase as any).from('welcome_email_sequences');
+		return this.supabase.from('welcome_email_sequences');
 	}
 
 	private markLastEvaluatedAtColumnUnavailable(error: unknown): boolean {
@@ -971,10 +972,10 @@ export class WelcomeSequenceService {
 		return true;
 	}
 
-	private toCompatibleUpdates(updates: Partial<WelcomeSequenceRow>): Partial<WelcomeSequenceRow> {
-		const compatible: Partial<WelcomeSequenceRow> = {
+	private toCompatibleUpdates(updates: Partial<WelcomeSequenceRow>): WelcomeSequenceUpdate {
+		const compatible = {
 			...updates
-		};
+		} as WelcomeSequenceUpdate;
 
 		if (!this.supportsLastEvaluatedAtColumn) {
 			const lastEvaluatedAt = compatible.last_evaluated_at;
@@ -988,7 +989,7 @@ export class WelcomeSequenceService {
 			}
 		}
 
-		if (!this.supportsUpdatedAtColumn) {
+		if (compatible.updated_at == null || !this.supportsUpdatedAtColumn) {
 			delete compatible.updated_at;
 		}
 
@@ -1222,7 +1223,7 @@ export class WelcomeSequenceService {
 			return true;
 		}
 
-		const { data, error } = await (this.supabase as any).rpc('is_email_suppressed', {
+		const { data, error } = await this.supabase.rpc('is_email_suppressed', {
 			p_email: normalizedEmail,
 			p_scope: 'lifecycle'
 		});

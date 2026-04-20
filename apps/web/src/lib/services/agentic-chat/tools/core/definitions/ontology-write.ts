@@ -154,6 +154,24 @@ Goals define project objectives and success criteria.`,
 						description: `Goal type taxonomy: goal.{family}[.{variant}]
 Families: outcome, metric, behavior, learning. Default: goal.outcome.project`
 					},
+					state_key: {
+						type: 'string',
+						default: 'draft',
+						description: 'Initial state. Valid: draft, active, achieved, abandoned'
+					},
+					target_date: {
+						type: 'string',
+						description:
+							'Target date. ISO timestamps and YYYY-MM-DD dates are accepted.'
+					},
+					measurement_criteria: {
+						type: 'string',
+						description: 'How success is measured'
+					},
+					priority: {
+						type: ['string', 'number'],
+						description: 'Goal priority, e.g. high, medium, low, or a numeric value.'
+					},
 					props: {
 						type: 'object',
 						description: 'Additional properties'
@@ -200,6 +218,16 @@ Families: timebox, pipeline, campaign, roadmap, process, phase. Default: plan.ph
 						type: 'string',
 						default: 'draft',
 						description: 'Initial state (draft, active, completed)'
+					},
+					start_date: {
+						type: 'string',
+						description:
+							'Planned start date. ISO timestamps and YYYY-MM-DD dates are accepted.'
+					},
+					end_date: {
+						type: 'string',
+						description:
+							'Planned end date. ISO timestamps and YYYY-MM-DD dates are accepted.'
 					},
 					props: {
 						type: 'object',
@@ -1161,6 +1189,15 @@ Use for edits to goal names, descriptions, priorities, target dates, or metadata
 						type: 'string',
 						description: 'Goal description'
 					},
+					type_key: {
+						type: 'string',
+						description:
+							'Goal type taxonomy: goal.{family}[.{variant}], e.g. goal.outcome.project or goal.metric.revenue.'
+					},
+					state_key: {
+						type: 'string',
+						description: 'Goal state (draft, active, achieved, abandoned)'
+					},
 					priority: {
 						type: 'number',
 						description: 'Priority value for the goal'
@@ -1210,13 +1247,20 @@ Use for edits to plan names, detailed plan body, dates, status, or metadata.`,
 						description:
 							'Detailed plan body. Use this for the durable source-of-truth plan: objective, scope, success criteria, timeline, dependencies, risks, and task breakdown.'
 					},
+					type_key: {
+						type: 'string',
+						description:
+							'Plan type taxonomy: plan.{family}[.{variant}], e.g. plan.phase.project or plan.timebox.sprint.'
+					},
 					start_date: {
 						type: 'string',
-						description: 'Planned start date (ISO timestamp)'
+						description:
+							'Planned start date. ISO timestamps and YYYY-MM-DD dates are accepted.'
 					},
 					end_date: {
 						type: 'string',
-						description: 'Planned end date (ISO timestamp)'
+						description:
+							'Planned end date. ISO timestamps and YYYY-MM-DD dates are accepted.'
 					},
 					state_key: {
 						type: 'string',

@@ -249,6 +249,10 @@ export interface CreateOntoGoalArgs {
 	name: string;
 	description?: string;
 	type_key?: string;
+	state_key?: string;
+	target_date?: string;
+	measurement_criteria?: string;
+	priority?: string | number;
 	props?: Record<string, unknown>;
 }
 
@@ -259,6 +263,8 @@ export interface CreateOntoPlanArgs {
 	plan?: string;
 	type_key?: string;
 	state_key?: string;
+	start_date?: string;
+	end_date?: string;
 	props?: Record<string, unknown>;
 	goal_id?: string;
 	milestone_id?: string;
@@ -468,6 +474,8 @@ export interface UpdateOntoGoalArgs {
 	goal_id: string;
 	name?: string;
 	description?: string;
+	type_key?: string;
+	state_key?: string;
 	priority?: number;
 	target_date?: string;
 	measurement_criteria?: string;
@@ -479,6 +487,7 @@ export interface UpdateOntoPlanArgs {
 	name?: string;
 	description?: string;
 	plan?: string;
+	type_key?: string;
 	start_date?: string;
 	end_date?: string;
 	state_key?: string;
