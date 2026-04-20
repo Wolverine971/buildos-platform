@@ -110,6 +110,17 @@ describe('welcome sequence content', () => {
 				}
 			),
 			contentVariant(
+				'email_2/already_created_project',
+				'email_2',
+				{
+					projectCount: 1,
+					latestProjectId: 'project-1'
+				},
+				{
+					sentAt: { email_1: STARTED_AT }
+				}
+			),
+			contentVariant(
 				'email_3/no_project',
 				'email_3',
 				{},
@@ -243,6 +254,30 @@ describe('welcome sequence content', () => {
 			    "branchKey": "no_project",
 			    "label": "email_2/no_project",
 			    "subject": "What to bring to your first BuildOS session",
+			  },
+			  {
+			    "body": "Hi Alex,
+
+			Nice. You already got something into BuildOS, which is usually the hardest part.
+
+			One thing most tools get wrong: they make you maintain a clean system forever. BuildOS is the opposite. It gets more useful the more real work you throw at it.
+
+			A few ways people make it click in the first week:
+			- Connect your calendar so deadlines and time context land inside the project instead of living in a separate place.
+			- Turn on the daily brief so the system shows back up for you on days you would have otherwise forgotten.
+			- Add a second project. Personal, side work, something you have been putting off. One rough dump is enough.
+			- Re-open the project you already started and add whatever changed since last time. The second session is where BuildOS starts to click.
+
+			You do not have to do all of these. Pick the one closest to what you actually need this week.
+
+			Connect your calendar: https://build-os.com/profile?tab=calendar
+
+			Or just reply and tell me what you are building. I will tell you the fastest way to keep it moving in BuildOS.
+
+			DJ",
+			    "branchKey": "already_created_project",
+			    "label": "email_2/already_created_project",
+			    "subject": "You got your first project in. Here is what to do next.",
 			  },
 			  {
 			    "body": "Hi Alex,
@@ -418,6 +453,10 @@ describe('welcome sequence content', () => {
 		const rendered = [
 			contentVariant('email_1/welcome', 'email_1'),
 			contentVariant('email_2/no_project', 'email_2'),
+			contentVariant('email_2/already_created_project', 'email_2', {
+				projectCount: 1,
+				latestProjectId: 'project-1'
+			}),
 			contentVariant('email_3/no_project', 'email_3'),
 			contentVariant('email_3/finish_setup', 'email_3', {
 				projectCount: 1,

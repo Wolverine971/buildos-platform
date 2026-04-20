@@ -908,7 +908,7 @@ Snapshot rendered subject + plain text for each (step, branch) pair. Add a lint 
 | Supabase service role env          | Required wherever `createAdminSupabaseClient()` runs.                                                                                                                                                                                       |
 | `PRIVATE_LIFECYCLE_EMAIL_SINK`     | `log` / `smtp` / `gmail`. Default `log` in dev, `gmail` in prod.                                                                                                                                                                            |
 | `PRIVATE_LIFECYCLE_DEV_ALLOWLIST`  | Comma-separated allowlist for dev gmail mode.                                                                                                                                                                                               |
-| `PRIVATE_LIFECYCLE_SMTP_*`         | Optional local SMTP sink settings for `smtp` mode (`HOST`, `PORT`, `USER`, `PASS`, `SECURE`, `FROM`).                                                                                                                                      |
+| `PRIVATE_LIFECYCLE_SMTP_*`         | Optional local SMTP sink settings for `smtp` mode (`HOST`, `PORT`, `USER`, `PASS`, `SECURE`, `FROM`).                                                                                                                                       |
 | `PRIVATE_RESEND_API_KEY`           | Phase 6: Resend provider key.                                                                                                                                                                                                               |
 | `PRIVATE_ALERTS_SLACK_WEBHOOK_URL` | Phase 0: Slack Incoming Webhook URL for `email_delivery_failure` alerts. Free-tier Slack supports Incoming Webhooks — create a Slack App at api.slack.com/apps, enable Incoming Webhooks, install to the workspace, and paste the URL here. |
 
@@ -1192,9 +1192,9 @@ When the reactivation spec is written, reference this section and the framework 
 
 ### Phase 5 — Admin UI
 
-- [ ] `/admin/welcome-sequence` preview, queue, metrics.
-- [ ] Alerting thresholds.
-- [ ] `admin_send_next_step_now` RPC.
+- [x] `/admin/welcome-sequence` preview, queue, metrics, and test sends.
+- [x] Alerting thresholds.
+- [x] `admin_send_next_step_now` RPC.
 
 ### Phase 6 — Provider Upgrade
 

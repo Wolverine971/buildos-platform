@@ -26,116 +26,120 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
-	const publishedDate = parseBlogDate(data.post.date);
-	const formattedDate = formatBlogDate(data.post.date, 'MMMM dd, yyyy');
-	const formattedLastmod = formatBlogDate(data.post.lastmod || data.post.date, 'MMMM dd, yyyy');
-	const showUpdatedDate = (data.post.lastmod || data.post.date) !== data.post.date;
-	const categoryDisplayName = data.post.category
-		.replace('-', ' ')
-		.replace(/\b\w/g, (l) => l.toUpperCase());
+	const publishedDate = $derived(parseBlogDate(data.post.date));
+	const formattedDate = $derived(formatBlogDate(data.post.date, 'MMMM dd, yyyy'));
+	const formattedLastmod = $derived(
+		formatBlogDate(data.post.lastmod || data.post.date, 'MMMM dd, yyyy')
+	);
+	const showUpdatedDate = $derived((data.post.lastmod || data.post.date) !== data.post.date);
+	const categoryDisplayName = $derived(
+		data.post.category.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+	);
 
-	const articleUrl = `${SITE_URL}/blogs/${data.post.category}/${data.post.slug}`;
+	const articleUrl = $derived(`${SITE_URL}/blogs/${data.post.category}/${data.post.slug}`);
 
-	const graphItems: Record<string, unknown>[] = [
-		{
-			'@type': 'BlogPosting',
-			'@id': `${articleUrl}#article`,
-			headline: data.post.title,
-			description: data.post.description,
-			image: {
-				'@type': 'ImageObject',
-				url: DEFAULT_SOCIAL_IMAGE_URL,
-				width: DEFAULT_SOCIAL_IMAGE_WIDTH,
-				height: DEFAULT_SOCIAL_IMAGE_HEIGHT
-			},
-			url: articleUrl,
-			datePublished: data.post.date,
-			dateModified: data.post.lastmod || data.post.date,
-			author: {
-				'@type': 'Person',
-				name: data.post.author || 'BuildOS Team',
-				url: `${SITE_URL}/about`,
-				sameAs: ['https://twitter.com/djwayne3', 'https://www.linkedin.com/in/djwayne3']
-			},
-			publisher: {
-				'@type': 'Organization',
-				'@id': DEFAULT_ORGANIZATION_ID,
-				name: SITE_NAME,
-				url: SITE_URL,
-				logo: {
+	const jsonLd = $derived.by(() => {
+		const graphItems: Record<string, unknown>[] = [
+			{
+				'@type': 'BlogPosting',
+				'@id': `${articleUrl}#article`,
+				headline: data.post.title,
+				description: data.post.description,
+				image: {
 					'@type': 'ImageObject',
-					url: DEFAULT_ORGANIZATION_LOGO_URL
+					url: DEFAULT_SOCIAL_IMAGE_URL,
+					width: DEFAULT_SOCIAL_IMAGE_WIDTH,
+					height: DEFAULT_SOCIAL_IMAGE_HEIGHT
 				},
-				sameAs: [...DEFAULT_ORGANIZATION_SOCIAL_PROFILES]
+				url: articleUrl,
+				datePublished: data.post.date,
+				dateModified: data.post.lastmod || data.post.date,
+				author: {
+					'@type': 'Person',
+					name: data.post.author || 'BuildOS Team',
+					url: `${SITE_URL}/about`,
+					sameAs: ['https://twitter.com/djwayne3', 'https://www.linkedin.com/in/djwayne3']
+				},
+				publisher: {
+					'@type': 'Organization',
+					'@id': DEFAULT_ORGANIZATION_ID,
+					name: SITE_NAME,
+					url: SITE_URL,
+					logo: {
+						'@type': 'ImageObject',
+						url: DEFAULT_ORGANIZATION_LOGO_URL
+					},
+					sameAs: [...DEFAULT_ORGANIZATION_SOCIAL_PROFILES]
+				},
+				mainEntityOfPage: {
+					'@type': 'WebPage',
+					'@id': articleUrl
+				},
+				keywords: data.post.tags.join(', '),
+				wordCount: data.post.readingTime * 200,
+				timeRequired: `PT${data.post.readingTime}M`,
+				articleSection: categoryDisplayName,
+				inLanguage: 'en-US',
+				copyrightYear: publishedDate?.getFullYear(),
+				copyrightHolder: {
+					'@id': DEFAULT_ORGANIZATION_ID
+				},
+				speakable: {
+					'@type': 'SpeakableSpecification',
+					cssSelector: ['[data-speakable="headline"]', '[data-speakable="description"]']
+				},
+				isPartOf: {
+					'@type': 'Blog',
+					'@id': `${SITE_URL}/blogs#blog`,
+					name: `${SITE_NAME} Blog`,
+					url: `${SITE_URL}/blogs`
+				}
 			},
-			mainEntityOfPage: {
-				'@type': 'WebPage',
-				'@id': articleUrl
-			},
-			keywords: data.post.tags.join(', '),
-			wordCount: data.post.readingTime * 200,
-			timeRequired: `PT${data.post.readingTime}M`,
-			articleSection: categoryDisplayName,
-			inLanguage: 'en-US',
-			copyrightYear: publishedDate?.getFullYear(),
-			copyrightHolder: {
-				'@id': DEFAULT_ORGANIZATION_ID
-			},
-			speakable: {
-				'@type': 'SpeakableSpecification',
-				cssSelector: ['[data-speakable="headline"]', '[data-speakable="description"]']
-			},
-			isPartOf: {
-				'@type': 'Blog',
-				'@id': `${SITE_URL}/blogs#blog`,
-				name: `${SITE_NAME} Blog`,
-				url: `${SITE_URL}/blogs`
+			{
+				'@type': 'BreadcrumbList',
+				'@id': `${articleUrl}#breadcrumb`,
+				itemListElement: [
+					{
+						'@type': 'ListItem',
+						position: 1,
+						name: 'Blog',
+						item: `${SITE_URL}/blogs`
+					},
+					{
+						'@type': 'ListItem',
+						position: 2,
+						name: categoryDisplayName,
+						item: `${SITE_URL}/blogs/${data.post.category}`
+					},
+					{
+						'@type': 'ListItem',
+						position: 3,
+						name: data.post.title
+					}
+				]
 			}
-		},
-		{
-			'@type': 'BreadcrumbList',
-			'@id': `${articleUrl}#breadcrumb`,
-			itemListElement: [
-				{
-					'@type': 'ListItem',
-					position: 1,
-					name: 'Blog',
-					item: `${SITE_URL}/blogs`
-				},
-				{
-					'@type': 'ListItem',
-					position: 2,
-					name: categoryDisplayName,
-					item: `${SITE_URL}/blogs/${data.post.category}`
-				},
-				{
-					'@type': 'ListItem',
-					position: 3,
-					name: data.post.title
-				}
-			]
+		];
+
+		if (data.post.faq?.length) {
+			graphItems.push({
+				'@type': 'FAQPage',
+				'@id': `${articleUrl}#faq`,
+				mainEntity: data.post.faq.map((item) => ({
+					'@type': 'Question',
+					name: item.q,
+					acceptedAnswer: {
+						'@type': 'Answer',
+						text: item.a
+					}
+				}))
+			});
 		}
-	];
 
-	if (data.post.faq?.length) {
-		graphItems.push({
-			'@type': 'FAQPage',
-			'@id': `${articleUrl}#faq`,
-			mainEntity: data.post.faq.map((item) => ({
-				'@type': 'Question',
-				name: item.q,
-				acceptedAnswer: {
-					'@type': 'Answer',
-					text: item.a
-				}
-			}))
-		});
-	}
-
-	const jsonLd = {
-		'@context': 'https://schema.org',
-		'@graph': graphItems
-	};
+		return {
+			'@context': 'https://schema.org',
+			'@graph': graphItems
+		};
+	});
 
 	onMount(async () => {
 		try {

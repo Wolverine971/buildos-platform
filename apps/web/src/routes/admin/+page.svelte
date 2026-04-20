@@ -728,7 +728,7 @@
 			if (refreshTimer) {
 				clearInterval(refreshTimer);
 			}
-			refreshTimer = setInterval(() => loadAnalytics(true), 30000);
+			refreshTimer = setInterval(() => loadAnalytics({ skipSpinner: true }), 30000);
 			return () => {
 				if (refreshTimer) {
 					clearInterval(refreshTimer);
@@ -742,25 +742,28 @@
 		}
 	});
 
-	async function loadAnalytics(skipSpinner = false) {
+	async function loadAnalytics(options: { skipSpinner?: boolean; fresh?: boolean } = {}) {
 		if (!browser) return;
 		if (currentRequest) {
 			currentRequest.abort();
 		}
 		const controller = new AbortController();
 		currentRequest = controller;
+		const skipSpinner = options.skipSpinner ?? false;
 		if (!skipSpinner) {
 			isLoading = true;
 		}
 		error = null;
 
 		try {
-			const response = await fetch(
-				`/api/admin/analytics/dashboard?timeframe=${selectedTimeframe}`,
-				{
-					signal: controller.signal
-				}
-			);
+			const params = new URLSearchParams({ timeframe: selectedTimeframe });
+			if (options.fresh) {
+				params.set('fresh', '1');
+			}
+
+			const response = await fetch(`/api/admin/analytics/dashboard?${params.toString()}`, {
+				signal: controller.signal
+			});
 
 			if (!response.ok) throw new Error('Failed to load analytics dashboard');
 
@@ -973,7 +976,7 @@
 				</Button>
 
 				<Button
-					onclick={() => loadAnalytics()}
+					onclick={() => loadAnalytics({ fresh: true })}
 					disabled={isLoading}
 					variant="secondary"
 					size="sm"

@@ -3,15 +3,19 @@
 	import {
 		Activity,
 		CheckCircle2,
+		ChevronDown,
 		Code2,
+		Eye,
 		GitCompareArrows,
 		Mail,
 		RefreshCw,
 		Send,
+		SkipForward,
 		TriangleAlert
 	} from 'lucide-svelte';
 	import type { ActionData, PageData } from './$types';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
+	import AdminCollapsibleSection from '$lib/components/admin/AdminCollapsibleSection.svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 
 	type DiffEntry = {
@@ -198,6 +202,27 @@
 			(row.status === 'active' || row.status === 'paused' || row.status === 'errored')
 		);
 	}
+
+	function actionBadgeClasses(action: string): string {
+		switch (action) {
+			case 'send':
+				return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+			case 'skip':
+				return 'bg-amber-500/10 text-amber-700 dark:text-amber-300';
+			case 'wait':
+				return 'bg-sky-500/10 text-sky-700 dark:text-sky-300';
+			case 'complete':
+				return 'bg-muted text-muted-foreground';
+			default:
+				return 'bg-muted text-muted-foreground';
+		}
+	}
+
+	let openHtmlPreviews = $state<Record<string, boolean>>({});
+
+	function toggleHtmlPreview(key: string) {
+		openHtmlPreviews[key] = !openHtmlPreviews[key];
+	}
 </script>
 
 <div class="admin-page space-y-6">
@@ -247,20 +272,14 @@
 		</AdminCard>
 	{/if}
 
-	<AdminCard tone="info">
-		<div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-			<div>
-				<div class="flex items-center gap-2">
-					<Code2 class="h-5 w-5 text-sky-700" />
-					<h2 class="text-base font-semibold text-foreground">Copy is local</h2>
-				</div>
-				<p class="mt-2 text-sm text-muted-foreground">
-					Supabase stores sequence state, scheduling, events, and stats. Subjects, plain
-					text, and HTML are rendered from source code.
-				</p>
-			</div>
+	<AdminCard tone="info" padding="sm">
+		<div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
+			<Code2 class="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-300" />
+			<span class="text-foreground font-medium">Copy lives in source.</span>
+			<span>Supabase stores state, schedule, and stats only.</span>
 			<code
-				class="rounded-md border border-border bg-background px-3 py-2 text-xs text-muted-foreground"
+				class="ml-auto max-w-full truncate rounded-md border border-border bg-background px-2 py-1 font-mono text-[11px]"
+				title={data.copySourcePath}
 			>
 				{data.copySourcePath}
 			</code>
@@ -754,61 +773,129 @@
 	</div>
 
 	<AdminCard padding="none" class="overflow-hidden">
-		<div class="border-b border-border px-4 py-3">
-			<h2 class="text-base font-semibold text-foreground">Local Copy Variants</h2>
-			<p class="mt-1 text-sm text-muted-foreground">
-				Every sendable branch rendered from the local source file.
-			</p>
+		<div
+			class="flex flex-wrap items-end justify-between gap-3 border-b border-border px-4 py-3"
+		>
+			<div>
+				<h2 class="text-base font-semibold text-foreground">Local Copy Variants</h2>
+				<p class="mt-1 text-sm text-muted-foreground">
+					Every sendable branch rendered from the local source file. Subject, CTA, and
+					body are visible at a glance.
+				</p>
+			</div>
+			<span class="text-xs text-muted-foreground">
+				{localPreviews.length} variant{localPreviews.length === 1 ? '' : 's'}
+			</span>
 		</div>
-		<div class="divide-y divide-border">
-			{#each localPreviews as preview}
-				<details class="group">
-					<summary
-						class="flex cursor-pointer items-center justify-between gap-4 px-4 py-3"
-					>
-						<div>
-							<div class="font-medium text-foreground">{preview.label}</div>
-							<div class="mt-1 text-sm text-muted-foreground">
-								{preview.description}
+		<div class="grid gap-4 p-4 lg:grid-cols-2">
+			{#each localPreviews as preview, index}
+				{@const previewKey = `variant-${index}`}
+				{@const showHtml = openHtmlPreviews[previewKey] ?? false}
+				<div
+					class="flex flex-col rounded-lg border border-border bg-background/50 p-4 transition-colors hover:bg-background"
+				>
+					<div class="flex flex-wrap items-start justify-between gap-2">
+						<div class="min-w-0">
+							<div class="flex items-center gap-2">
+								<span class="text-sm font-semibold text-foreground">
+									{preview.label}
+								</span>
 							</div>
+							{#if preview.description}
+								<p class="mt-0.5 text-xs text-muted-foreground">
+									{preview.description}
+								</p>
+							{/if}
 						</div>
-						<div class="flex shrink-0 flex-wrap justify-end gap-2">
+						<div class="flex flex-wrap justify-end gap-1.5">
 							<span
-								class="rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
+								class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide {actionBadgeClasses(
+									preview.action
+								)}"
 							>
+								{#if preview.action === 'send'}
+									<Send class="h-3 w-3" />
+								{:else if preview.action === 'skip'}
+									<SkipForward class="h-3 w-3" />
+								{/if}
 								{preview.action}
 							</span>
 							{#if preview.branchKey}
 								<span
-									class="rounded-md bg-sky-500/10 px-2 py-1 text-xs font-medium text-sky-700"
+									class="rounded-md bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-300"
 								>
 									{preview.branchKey}
 								</span>
 							{/if}
 						</div>
-					</summary>
-					<div class="grid gap-4 border-t border-border px-4 py-4 lg:grid-cols-2">
-						{#if preview.content}
+					</div>
+
+					{#if preview.content}
+						<div class="mt-3 space-y-2">
 							<div>
-								<p class="text-sm font-semibold text-foreground">
+								<p
+									class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+								>
+									Subject
+								</p>
+								<p class="mt-0.5 text-sm font-medium text-foreground">
 									{preview.content.subject}
 								</p>
-								<pre
-									class="mt-3 max-h-96 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-foreground">{preview
-										.content.body}</pre>
 							</div>
+							<div>
+								<p
+									class="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+								>
+									CTA
+								</p>
+								<p class="mt-0.5 text-xs text-foreground">
+									<span class="font-medium">{preview.content.ctaLabel}</span>
+									<span class="text-muted-foreground"> → </span>
+									<span
+										class="break-all font-mono text-[11px] text-muted-foreground"
+										>{preview.content.ctaUrl}</span
+									>
+								</p>
+							</div>
+						</div>
+
+						<pre
+							class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-foreground">{preview
+								.content.body}</pre>
+
+						<button
+							type="button"
+							onclick={() => toggleHtmlPreview(previewKey)}
+							class="mt-3 inline-flex items-center gap-1.5 self-start rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+						>
+							<Eye class="h-3.5 w-3.5" />
+							{showHtml ? 'Hide HTML preview' : 'Show HTML preview'}
+							<ChevronDown
+								class="h-3 w-3 transition-transform duration-150 {showHtml
+									? 'rotate-180'
+									: ''}"
+							/>
+						</button>
+
+						{#if showHtml}
 							<iframe
 								title={`${preview.label} HTML preview`}
 								srcdoc={preview.content.html}
-								class="h-96 w-full rounded-md border border-border bg-white"
+								class="mt-3 h-96 w-full rounded-md border border-border bg-white"
 							></iframe>
-						{:else}
-							<p class="text-sm text-muted-foreground">
-								No email body renders for this branch because it is skipped.
-							</p>
 						{/if}
-					</div>
-				</details>
+					{:else}
+						<div class="mt-3 flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
+							<SkipForward class="h-4 w-4 text-muted-foreground" />
+							<p class="text-xs text-muted-foreground">
+								No email body renders for this branch — it is skipped or waiting.
+								<span class="mt-0.5 block text-[11px]"
+									>Reason: {preview.reason}</span
+								>
+							</p>
+						</div>
+					{/if}
+				</div>
 			{/each}
 		</div>
 	</AdminCard>
@@ -917,185 +1004,198 @@
 		</div>
 	</AdminCard>
 
-	<div class="flex items-center justify-between">
-		<div>
-			<h2 class="text-lg font-semibold text-foreground">Shadow Queue Parity</h2>
-			<p class="mt-1 text-sm text-muted-foreground">
-				Legacy welcome rows compared with Phase 2 shadow enrollments.
-			</p>
-		</div>
-	</div>
+	<AdminCollapsibleSection
+		title="Shadow Queue Parity"
+		subtitle="Legacy welcome rows compared with Phase 2 shadow enrollments"
+		icon={GitCompareArrows}
+		badge={summary.mismatched + summary.missing > 0
+			? summary.mismatched + summary.missing
+			: null}
+		badgeColor={summary.missing > 0 ? 'danger' : summary.mismatched > 0 ? 'warning' : 'default'}
+		defaultExpanded={false}
+	>
+		<div class="space-y-4 p-4">
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				<AdminCard tone="info" padding="md">
+					<p class="text-sm font-medium text-muted-foreground">Legacy Rows</p>
+					<p class="mt-2 text-3xl font-bold text-foreground">{summary.total}</p>
+				</AdminCard>
+				<AdminCard tone="success" padding="md">
+					<p class="text-sm font-medium text-muted-foreground">Matched</p>
+					<p class="mt-2 text-3xl font-bold text-foreground">{summary.matched}</p>
+				</AdminCard>
+				<AdminCard tone={summary.mismatched > 0 ? 'warning' : 'muted'} padding="md">
+					<p class="text-sm font-medium text-muted-foreground">Mismatched</p>
+					<p class="mt-2 text-3xl font-bold text-foreground">{summary.mismatched}</p>
+				</AdminCard>
+				<AdminCard tone={summary.missing > 0 ? 'danger' : 'muted'} padding="md">
+					<p class="text-sm font-medium text-muted-foreground">Missing Shadow Rows</p>
+					<p class="mt-2 text-3xl font-bold text-foreground">{summary.missing}</p>
+				</AdminCard>
+			</div>
 
-	<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-		<AdminCard tone="info" padding="md">
-			<p class="text-sm font-medium text-muted-foreground">Legacy Rows</p>
-			<p class="mt-2 text-3xl font-bold text-foreground">{summary.total}</p>
-		</AdminCard>
-		<AdminCard tone="success" padding="md">
-			<p class="text-sm font-medium text-muted-foreground">Matched</p>
-			<p class="mt-2 text-3xl font-bold text-foreground">{summary.matched}</p>
-		</AdminCard>
-		<AdminCard tone={summary.mismatched > 0 ? 'warning' : 'muted'} padding="md">
-			<p class="text-sm font-medium text-muted-foreground">Mismatched</p>
-			<p class="mt-2 text-3xl font-bold text-foreground">{summary.mismatched}</p>
-		</AdminCard>
-		<AdminCard tone={summary.missing > 0 ? 'danger' : 'muted'} padding="md">
-			<p class="text-sm font-medium text-muted-foreground">Missing Shadow Rows</p>
-			<p class="mt-2 text-3xl font-bold text-foreground">{summary.missing}</p>
-		</AdminCard>
-	</div>
-
-	<AdminCard padding="md">
-		<form method="GET" class="flex flex-wrap items-end gap-3">
-			<input type="hidden" name="preview_step" value={sandbox.input.step} />
-			<input type="hidden" name="preview_name" value={sandbox.input.name} />
-			<input type="hidden" name="onboarding_intent" value={sandbox.input.onboardingIntent} />
-			<input type="hidden" name="project_count" value={sandbox.input.projectCount} />
-			{#if sandbox.input.onboardingCompleted}
-				<input type="hidden" name="onboarding_completed" value="true" />
-			{/if}
-			{#if sandbox.input.emailDailyBriefEnabled}
-				<input type="hidden" name="email_daily_brief_enabled" value="true" />
-			{/if}
-			{#if sandbox.input.smsChannelEnabled}
-				<input type="hidden" name="sms_channel_enabled" value="true" />
-			{/if}
-			{#if sandbox.input.calendarConnected}
-				<input type="hidden" name="calendar_connected" value="true" />
-			{/if}
-			{#if sandbox.input.returned}
-				<input type="hidden" name="returned" value="true" />
-			{/if}
-			<label class="flex flex-col gap-1 text-sm font-medium text-foreground">
-				<span>Rows</span>
-				<input
-					name="limit"
-					type="number"
-					min="1"
-					max="500"
-					value={data.limit}
-					class="h-10 w-28 rounded-md border border-border bg-background px-3 text-sm text-foreground"
-				/>
-			</label>
-			<label class="flex flex-col gap-1 text-sm font-medium text-foreground">
-				<span>Stats Days</span>
-				<input
-					name="days"
-					type="number"
-					min="1"
-					max="365"
-					value={data.days}
-					class="h-10 w-28 rounded-md border border-border bg-background px-3 text-sm text-foreground"
-				/>
-			</label>
-			<button
-				type="submit"
-				class="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-			>
-				<RefreshCw class="h-4 w-4" />
-				Refresh
-			</button>
-		</form>
-	</AdminCard>
-
-	<AdminCard padding="none" class="overflow-hidden">
-		<div class="overflow-x-auto">
-			<table class="min-w-full divide-y divide-border text-sm">
-				<thead class="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
-					<tr>
-						<th class="px-4 py-3 font-semibold">User</th>
-						<th class="px-4 py-3 font-semibold">Legacy</th>
-						<th class="px-4 py-3 font-semibold">Shadow</th>
-						<th class="px-4 py-3 font-semibold">Next Step</th>
-						<th class="px-4 py-3 font-semibold">Diffs</th>
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-border">
-					{#each rows as row}
-						<tr class={row.diffCount > 0 ? 'bg-amber-500/5' : ''}>
-							<td class="px-4 py-3 align-top">
-								<div class="font-medium text-foreground">
-									{row.email || 'No email'}
-								</div>
-								<div class="mt-1 font-mono text-xs text-muted-foreground">
-									{row.userId}
-								</div>
-								<div class="mt-1 text-xs text-muted-foreground">
-									Started {formatValue(row.legacyStartedAt)}
-								</div>
-							</td>
-							<td class="px-4 py-3 align-top text-muted-foreground">
-								<span class="font-medium text-foreground">{row.legacyStatus}</span>
-							</td>
-							<td class="px-4 py-3 align-top text-muted-foreground">
-								<span class="font-medium text-foreground">
-									{row.actualStatus ?? 'missing'}
-								</span>
-								{#if row.expectedStatus !== row.actualStatus}
-									<div class="mt-1 text-xs">
-										Expected {row.expectedStatus ?? 'null'}
-									</div>
-								{/if}
-							</td>
-							<td class="px-4 py-3 align-top text-muted-foreground">
-								<span class="font-medium text-foreground">
-									{row.actualNextStep ?? 'null'}
-								</span>
-								{#if row.expectedNextStep !== row.actualNextStep}
-									<div class="mt-1 text-xs">
-										Expected {row.expectedNextStep ?? 'null'}
-									</div>
-								{/if}
-							</td>
-							<td class="px-4 py-3 align-top">
-								{#if row.diffCount === 0}
-									<div
-										class="inline-flex items-center gap-2 rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700"
-									>
-										<CheckCircle2 class="h-3.5 w-3.5" />
-										Matched
-									</div>
-								{:else}
-									<div class="space-y-2">
-										<div
-											class="inline-flex items-center gap-2 rounded-md bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700"
-										>
-											<TriangleAlert class="h-3.5 w-3.5" />
-											{row.diffCount} difference{row.diffCount === 1
-												? ''
-												: 's'}
-										</div>
-										<div class="space-y-1">
-											{#each row.diffs as diff}
-												<div
-													class="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
-												>
-													<span class="font-medium text-foreground"
-														>{diff.field}</span
-													>: expected {formatValue(diff.expected)}, actual {formatValue(
-														diff.actual
-													)}
-												</div>
-											{/each}
-										</div>
-									</div>
-								{/if}
-							</td>
-						</tr>
-					{/each}
-
-					{#if rows.length === 0}
-						<tr>
-							<td
-								colspan="5"
-								class="px-4 py-10 text-center text-sm text-muted-foreground"
-							>
-								No legacy welcome rows found.
-							</td>
-						</tr>
+			<AdminCard padding="md">
+				<form method="GET" class="flex flex-wrap items-end gap-3">
+					<input type="hidden" name="preview_step" value={sandbox.input.step} />
+					<input type="hidden" name="preview_name" value={sandbox.input.name} />
+					<input
+						type="hidden"
+						name="onboarding_intent"
+						value={sandbox.input.onboardingIntent}
+					/>
+					<input type="hidden" name="project_count" value={sandbox.input.projectCount} />
+					{#if sandbox.input.onboardingCompleted}
+						<input type="hidden" name="onboarding_completed" value="true" />
 					{/if}
-				</tbody>
-			</table>
+					{#if sandbox.input.emailDailyBriefEnabled}
+						<input type="hidden" name="email_daily_brief_enabled" value="true" />
+					{/if}
+					{#if sandbox.input.smsChannelEnabled}
+						<input type="hidden" name="sms_channel_enabled" value="true" />
+					{/if}
+					{#if sandbox.input.calendarConnected}
+						<input type="hidden" name="calendar_connected" value="true" />
+					{/if}
+					{#if sandbox.input.returned}
+						<input type="hidden" name="returned" value="true" />
+					{/if}
+					<label class="flex flex-col gap-1 text-sm font-medium text-foreground">
+						<span>Rows</span>
+						<input
+							name="limit"
+							type="number"
+							min="1"
+							max="500"
+							value={data.limit}
+							class="h-10 w-28 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+						/>
+					</label>
+					<label class="flex flex-col gap-1 text-sm font-medium text-foreground">
+						<span>Stats Days</span>
+						<input
+							name="days"
+							type="number"
+							min="1"
+							max="365"
+							value={data.days}
+							class="h-10 w-28 rounded-md border border-border bg-background px-3 text-sm text-foreground"
+						/>
+					</label>
+					<button
+						type="submit"
+						class="inline-flex h-10 items-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+					>
+						<RefreshCw class="h-4 w-4" />
+						Refresh
+					</button>
+				</form>
+			</AdminCard>
+
+			<AdminCard padding="none" class="overflow-hidden">
+				<div class="overflow-x-auto">
+					<table class="min-w-full divide-y divide-border text-sm">
+						<thead
+							class="bg-muted/60 text-left text-xs uppercase text-muted-foreground"
+						>
+							<tr>
+								<th class="px-4 py-3 font-semibold">User</th>
+								<th class="px-4 py-3 font-semibold">Legacy</th>
+								<th class="px-4 py-3 font-semibold">Shadow</th>
+								<th class="px-4 py-3 font-semibold">Next Step</th>
+								<th class="px-4 py-3 font-semibold">Diffs</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-border">
+							{#each rows as row}
+								<tr class={row.diffCount > 0 ? 'bg-amber-500/5' : ''}>
+									<td class="px-4 py-3 align-top">
+										<div class="font-medium text-foreground">
+											{row.email || 'No email'}
+										</div>
+										<div class="mt-1 font-mono text-xs text-muted-foreground">
+											{row.userId}
+										</div>
+										<div class="mt-1 text-xs text-muted-foreground">
+											Started {formatValue(row.legacyStartedAt)}
+										</div>
+									</td>
+									<td class="px-4 py-3 align-top text-muted-foreground">
+										<span class="font-medium text-foreground"
+											>{row.legacyStatus}</span
+										>
+									</td>
+									<td class="px-4 py-3 align-top text-muted-foreground">
+										<span class="font-medium text-foreground">
+											{row.actualStatus ?? 'missing'}
+										</span>
+										{#if row.expectedStatus !== row.actualStatus}
+											<div class="mt-1 text-xs">
+												Expected {row.expectedStatus ?? 'null'}
+											</div>
+										{/if}
+									</td>
+									<td class="px-4 py-3 align-top text-muted-foreground">
+										<span class="font-medium text-foreground">
+											{row.actualNextStep ?? 'null'}
+										</span>
+										{#if row.expectedNextStep !== row.actualNextStep}
+											<div class="mt-1 text-xs">
+												Expected {row.expectedNextStep ?? 'null'}
+											</div>
+										{/if}
+									</td>
+									<td class="px-4 py-3 align-top">
+										{#if row.diffCount === 0}
+											<div
+												class="inline-flex items-center gap-2 rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700"
+											>
+												<CheckCircle2 class="h-3.5 w-3.5" />
+												Matched
+											</div>
+										{:else}
+											<div class="space-y-2">
+												<div
+													class="inline-flex items-center gap-2 rounded-md bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700"
+												>
+													<TriangleAlert class="h-3.5 w-3.5" />
+													{row.diffCount} difference{row.diffCount === 1
+														? ''
+														: 's'}
+												</div>
+												<div class="space-y-1">
+													{#each row.diffs as diff}
+														<div
+															class="rounded-md border border-border bg-background px-2 py-1 text-xs text-muted-foreground"
+														>
+															<span
+																class="font-medium text-foreground"
+																>{diff.field}</span
+															>: expected {formatValue(
+																diff.expected
+															)}, actual {formatValue(diff.actual)}
+														</div>
+													{/each}
+												</div>
+											</div>
+										{/if}
+									</td>
+								</tr>
+							{/each}
+
+							{#if rows.length === 0}
+								<tr>
+									<td
+										colspan="5"
+										class="px-4 py-10 text-center text-sm text-muted-foreground"
+									>
+										No legacy welcome rows found.
+									</td>
+								</tr>
+							{/if}
+						</tbody>
+					</table>
+				</div>
+			</AdminCard>
 		</div>
-	</AdminCard>
+	</AdminCollapsibleSection>
 </div>

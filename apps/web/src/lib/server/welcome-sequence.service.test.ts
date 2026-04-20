@@ -1223,9 +1223,10 @@ describe('WelcomeSequenceService failure recovery', () => {
 			now: new Date('2026-03-02T10:30:00.000Z')
 		});
 
-		expect(result.skipped).toBe(1);
-		expect(sendEmailMock).not.toHaveBeenCalled();
-		expect(state.welcomeRows['user-1']?.email_2_skipped_at).toEqual('2026-03-02T10:30:00.000Z');
+		expect(result.sent).toBe(1);
+		expect(sendEmailMock).toHaveBeenCalledTimes(1);
+		expect(state.welcomeRows['user-1']?.email_2_sent_at).toEqual('2026-03-02T10:30:00.000Z');
+		expect(state.welcomeRows['user-1']?.email_2_skipped_at).toBeNull();
 		expect(state.emailSequenceEnrollments?.['sequence-1:user-1']).toMatchObject({
 			sequence_id: 'sequence-1',
 			user_id: 'user-1',
@@ -1233,7 +1234,14 @@ describe('WelcomeSequenceService failure recovery', () => {
 			current_step_number: 2,
 			next_step_number: 3,
 			next_send_at: '2026-03-04T10:00:00.000Z',
-			last_sent_at: '2026-03-01T10:01:00.000Z'
+			last_sent_at: expect.any(String)
+		});
+		const sendCallArgs = sendEmailMock.mock.calls[0]?.[0];
+		expect(sendCallArgs).toMatchObject({
+			metadata: expect.objectContaining({
+				sequence_step: 'email_2',
+				branch_key: 'already_created_project'
+			})
 		});
 	});
 

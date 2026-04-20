@@ -204,12 +204,17 @@ DJ`,
 }
 
 function buildEmail2(state: WelcomeSequenceProductState, baseUrl: string): WelcomeEmailContent {
+	const greeting = getPlainGreeting(state.name);
+	const htmlGreeting = getHtmlGreeting(state.name);
+
+	if (state.projectCount > 0) {
+		return buildEmail2AlreadyCreatedProject(state, baseUrl, greeting, htmlGreeting);
+	}
+
 	const ctaLabel = 'Open BuildOS';
 	const ctaUrl = getWelcomeUrls(baseUrl, state).openApp;
 	const intentHook = getIntentHook(state.onboardingIntent);
 	const subject = 'What to bring to your first BuildOS session';
-	const greeting = getPlainGreeting(state.name);
-	const htmlGreeting = getHtmlGreeting(state.name);
 	const intentLine = intentHook
 		? `If you came to BuildOS to ${intentHook}, use that as your starting point.`
 		: 'Use the thing you most need to move forward as your starting point.';
@@ -269,6 +274,96 @@ DJ`,
 	return {
 		step: 'email_2',
 		branchKey: 'no_project',
+		subject,
+		body,
+		html,
+		ctaLabel,
+		ctaUrl
+	};
+}
+
+function buildEmail2AlreadyCreatedProject(
+	state: WelcomeSequenceProductState,
+	baseUrl: string,
+	greeting: string,
+	htmlGreeting: string
+): WelcomeEmailContent {
+	const urls = getWelcomeUrls(baseUrl, state);
+	const needsCalendar = !state.calendarConnected;
+	const needsBrief = !state.emailDailyBriefEnabled;
+
+	const ctaLabel = needsCalendar
+		? 'Connect your calendar'
+		: needsBrief
+			? 'Turn on your daily brief'
+			: 'Open BuildOS';
+	const ctaUrl = needsCalendar ? urls.calendar : needsBrief ? urls.briefs : urls.project;
+
+	const subject = 'You got your first project in. Here is what to do next.';
+
+	const calendarLine = needsCalendar
+		? '- Connect your calendar so deadlines and time context land inside the project instead of living in a separate place.'
+		: null;
+	const briefLine = needsBrief
+		? '- Turn on the daily brief so the system shows back up for you on days you would have otherwise forgotten.'
+		: null;
+	const secondProjectLine =
+		'- Add a second project. Personal, side work, something you have been putting off. One rough dump is enough.';
+	const reopenLine =
+		'- Re-open the project you already started and add whatever changed since last time. The second session is where BuildOS starts to click.';
+
+	const optionLines = [calendarLine, briefLine, secondProjectLine, reopenLine].filter(
+		(line): line is string => line !== null
+	);
+
+	const plainOptions = optionLines.join('\n');
+
+	const body = renderWelcomeTemplate(
+		`{{greeting}}
+
+Nice. You already got something into BuildOS, which is usually the hardest part.
+
+One thing most tools get wrong: they make you maintain a clean system forever. BuildOS is the opposite. It gets more useful the more real work you throw at it.
+
+A few ways people make it click in the first week:
+{{optionLines}}
+
+You do not have to do all of these. Pick the one closest to what you actually need this week.
+
+{{ctaLabel}}: {{ctaUrl}}
+
+Or just reply and tell me what you are building. I will tell you the fastest way to keep it moving in BuildOS.
+
+DJ`,
+		{ greeting, optionLines: plainOptions, ctaLabel, ctaUrl }
+	);
+
+	const htmlOptions = optionLines
+		.map((line) => `<li>${escapeHtml(line.replace(/^-\s+/, ''))}</li>`)
+		.join('\n');
+
+	const html = wrapEmailHtml(
+		subject,
+		renderWelcomeTemplate(
+			`
+			<p>{{htmlGreeting}}</p>
+			<p>Nice. You already got something into BuildOS, which is usually the hardest part.</p>
+			<p>One thing most tools get wrong: they make you maintain a clean system forever. BuildOS is the opposite. It gets more useful the more real work you throw at it.</p>
+			<p>A few ways people make it click in the first week:</p>
+			<ul>{{htmlOptions}}</ul>
+			<p>You do not have to do all of these. Pick the one closest to what you actually need this week.</p>
+			<p>Or just reply and tell me what you are building. I will tell you the fastest way to keep it moving in BuildOS.</p>
+		`,
+			{ htmlGreeting, htmlOptions },
+			{ html: false }
+		),
+		ctaLabel,
+		ctaUrl
+	);
+
+	return {
+		step: 'email_2',
+		branchKey: 'already_created_project',
 		subject,
 		body,
 		html,

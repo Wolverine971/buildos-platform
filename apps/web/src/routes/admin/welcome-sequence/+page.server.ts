@@ -1,4 +1,9 @@
 // apps/web/src/routes/admin/welcome-sequence/+page.server.ts
+export const config = {
+	maxDuration: 60,
+	memory: 1024
+};
+
 import { dev } from '$app/environment';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import { fail } from '@sveltejs/kit';
@@ -312,6 +317,19 @@ function buildLocalPreviews(baseUrl: string) {
 			label: 'Email 2 - no project',
 			description: 'Sent on day 1 when the user has not created a project.',
 			...buildPreview('email_2', createPreviewState(), baseUrl)
+		},
+		{
+			label: 'Email 2 - already created project',
+			description:
+				'Sent on day 1 when the user already has a project. Nudges a second project, calendar, or briefs.',
+			...buildPreview(
+				'email_2',
+				createPreviewState({
+					projectCount: 1,
+					latestProjectId: 'preview-project'
+				}),
+				baseUrl
+			)
 		},
 		{
 			label: 'Email 3 - no project',

@@ -59,7 +59,7 @@ describe('welcome sequence logic', () => {
 		});
 	});
 
-	it('skips Email 2 when a first project already exists', () => {
+	it('sends Email 2 with already_created_project branch when a first project already exists', () => {
 		const action = determineNextWelcomeAction(
 			createProgress({
 				sentAt: {
@@ -74,7 +74,7 @@ describe('welcome sequence logic', () => {
 		);
 
 		expect(action).toMatchObject({
-			action: 'skip',
+			action: 'send',
 			step: 'email_2',
 			branchKey: 'already_created_project'
 		});

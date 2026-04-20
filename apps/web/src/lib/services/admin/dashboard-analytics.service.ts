@@ -234,8 +234,23 @@ type CurrentChatToolAnalyticsRow = {
 	success: boolean | null;
 };
 
+type AdminDashboardChatUsageRpcRow = {
+	total_sessions?: unknown;
+	total_messages?: unknown;
+	total_tokens?: unknown;
+	unique_users?: unknown;
+	avg_messages_per_session?: unknown;
+	avg_tokens_per_session?: unknown;
+	planner_sessions?: unknown;
+	executor_sessions?: unknown;
+	tool_sessions?: unknown;
+	failed_sessions?: unknown;
+	failure_rate?: unknown;
+};
+
 const PAGE_SIZE = 1000;
 const MAX_ADMIN_ANALYTICS_ROWS = 50_000;
+let warnedAdminChatUsageRpcFallback = false;
 
 async function fetchPaginatedRows<T>(
 	buildQuery: (from: number, to: number) => unknown,
@@ -374,6 +389,29 @@ export function buildAgentChatUsage(params: {
 		toolSessions: toolSessionIds.size,
 		failedSessions,
 		failureRate
+	};
+}
+
+function normalizeAdminDashboardChatUsage(
+	value: AdminDashboardChatUsageRpcRow[] | AdminDashboardChatUsageRpcRow | null | undefined
+): typeof DEFAULT_AGENT_CHAT_USAGE {
+	const source = Array.isArray(value) ? value[0] : value;
+	if (!source || typeof source !== 'object') {
+		return clone(DEFAULT_AGENT_CHAT_USAGE);
+	}
+
+	return {
+		totalSessions: coerceNumber(source.total_sessions),
+		totalMessages: coerceNumber(source.total_messages),
+		totalTokens: coerceNumber(source.total_tokens),
+		uniqueUsers: coerceNumber(source.unique_users),
+		avgMessagesPerSession: coerceNumber(source.avg_messages_per_session),
+		avgTokensPerSession: coerceNumber(source.avg_tokens_per_session),
+		plannerSessions: coerceNumber(source.planner_sessions),
+		executorSessions: coerceNumber(source.executor_sessions),
+		toolSessions: coerceNumber(source.tool_sessions),
+		failedSessions: coerceNumber(source.failed_sessions),
+		failureRate: coerceNumber(source.failure_rate)
 	};
 }
 
@@ -1348,12 +1386,11 @@ export async function getErrorSummary(client: TypedSupabaseClient) {
 	};
 }
 
-export async function getAgentChatUsage(
+async function getAgentChatUsageFromRows(
 	client: TypedSupabaseClient,
-	timeframe: AnalyticsTimeframe
+	startDateTime: string,
+	endDateTime: string
 ): Promise<typeof DEFAULT_AGENT_CHAT_USAGE> {
-	const { startDateTime, endDateTime } = resolveTrailingDateTimeRange(timeframe);
-
 	const [sessions, messages, usageLogs, toolExecutions] = await Promise.all([
 		fetchPaginatedRows<CurrentChatSessionAnalyticsRow>(
 			(from, to) =>
@@ -1412,6 +1449,36 @@ export async function getAgentChatUsage(
 		usageLogs,
 		toolExecutions
 	});
+}
+
+export async function getAgentChatUsage(
+	client: TypedSupabaseClient,
+	timeframe: AnalyticsTimeframe
+): Promise<typeof DEFAULT_AGENT_CHAT_USAGE> {
+	const { startDateTime, endDateTime } = resolveTrailingDateTimeRange(timeframe);
+
+	try {
+		const { data, error } = await (client as any).rpc('get_admin_dashboard_chat_usage', {
+			start_ts: startDateTime,
+			end_ts: endDateTime
+		});
+
+		if (error) {
+			throw error;
+		}
+
+		return normalizeAdminDashboardChatUsage(data);
+	} catch (err) {
+		if (!warnedAdminChatUsageRpcFallback) {
+			console.warn(
+				'[Admin Analytics] get_admin_dashboard_chat_usage RPC unavailable; falling back to paginated row scans',
+				err
+			);
+			warnedAdminChatUsageRpcFallback = true;
+		}
+
+		return getAgentChatUsageFromRows(client, startDateTime, endDateTime);
+	}
 }
 
 export async function getBriefDeliveryStats(

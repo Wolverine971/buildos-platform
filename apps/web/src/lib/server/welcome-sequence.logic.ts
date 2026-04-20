@@ -167,7 +167,7 @@ export function determineNextWelcomeAction(
 					return { action: 'send', step, branchKey: 'no_project', reason: 'no_project' };
 				}
 				return {
-					action: 'skip',
+					action: 'send',
 					step,
 					branchKey: 'already_created_project',
 					reason: 'project_already_created'
