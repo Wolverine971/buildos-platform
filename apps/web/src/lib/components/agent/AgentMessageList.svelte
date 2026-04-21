@@ -17,6 +17,7 @@
 		container?: HTMLElement;
 		voiceNotesByGroupId?: Record<string, VoiceNote[]>;
 		onDeleteVoiceNote?: (groupId: string, noteId: string) => void;
+		onSelectSuggestion?: (text: string) => void;
 	}
 
 	let {
@@ -26,10 +27,17 @@
 		displayContextLabel,
 		container = $bindable(),
 		voiceNotesByGroupId = {},
-		onDeleteVoiceNote
+		onDeleteVoiceNote,
+		onSelectSuggestion
 	}: Props = $props();
 
 	const proseClasses = getProseClasses('sm');
+
+	const emptyStateSuggestions = [
+		'Summarize where this stands',
+		'Draft the next update',
+		'What should we do next?'
+	];
 
 	const USER_MESSAGE_PREVIEW_LINES = 10;
 	const USER_MESSAGE_COLLAPSE_CHAR_THRESHOLD = 800;
@@ -91,20 +99,25 @@
 					Ask BuildOS to plan, explain, or take the next step for
 					{displayContextLabel.toLowerCase()}.
 				</p>
-				<!-- Suggestion list -->
-				<ul class="space-y-2 text-sm font-medium text-muted-foreground">
-					<li class="flex items-start gap-2">
-						<span class="mt-0.5 text-accent">▸</span>
-						<span>Summarize where this stands</span>
-					</li>
-					<li class="flex items-start gap-2">
-						<span class="mt-0.5 text-accent">▸</span>
-						<span>Draft the next update</span>
-					</li>
-					<li class="flex items-start gap-2">
-						<span class="mt-0.5 text-accent">▸</span>
-						<span>What should we do next?</span>
-					</li>
+				<!-- Suggestion buttons: prefill the composer on click (Principle 1: real affordances) -->
+				<ul class="space-y-1.5">
+					{#each emptyStateSuggestions as suggestion}
+						<li>
+							<button
+								type="button"
+								class="group flex w-full items-start gap-2 rounded-lg border border-border bg-background/60 px-2.5 py-2 text-left text-sm font-medium text-muted-foreground shadow-ink transition pressable hover:border-accent hover:bg-accent/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+								style="-webkit-tap-highlight-color: transparent;"
+								disabled={!onSelectSuggestion}
+								onclick={() => onSelectSuggestion?.(suggestion)}
+							>
+								<span
+									class="mt-0.5 text-accent transition-transform group-hover:translate-x-0.5"
+									>▸</span
+								>
+								<span class="min-w-0 flex-1">{suggestion}</span>
+							</button>
+						</li>
+					{/each}
 				</ul>
 			</div>
 		</div>
@@ -116,7 +129,7 @@
 				<div class="flex flex-col items-end gap-1.5">
 					<!-- Message bubble -->
 					<div
-						class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%] sm:p-4"
+						class="bubble-send max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%] sm:p-4"
 					>
 						<div
 							class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
@@ -137,7 +150,7 @@
 							</button>
 						{/if}
 						<span
-							class="mt-0.5 block text-right text-[0.55rem] leading-none tabular-nums text-accent/50"
+							class="mt-1 block text-right text-[0.65rem] leading-none tabular-nums text-accent/60"
 						>
 							{formatTime(message.timestamp)}
 						</span>
@@ -191,21 +204,21 @@
 						</div>
 					{/if}
 					<span
-						class="mt-0.5 block text-right text-[0.55rem] leading-none tabular-nums text-muted-foreground/50"
+						class="mt-1 block text-right text-[0.65rem] leading-none tabular-nums text-muted-foreground/70"
 					>
 						{formatTime(message.timestamp)}
 					</span>
 				</div>
 			{:else if message.type === 'agent_peer'}
-				<!-- INKPRINT agent peer message with Thread texture -->
+				<!-- INKPRINT agent peer: neutral palette + round avatar (amber reserved for warnings) -->
 				<div class="flex min-w-0 gap-2 sm:gap-3">
 					<div
-						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-amber-600/30 bg-amber-50 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 shadow-ink tx tx-thread tx-weak dark:bg-amber-950/30 dark:text-amber-400 sm:h-9 sm:w-9"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground shadow-ink tx tx-thread tx-weak sm:h-9 sm:w-9"
 					>
 						AI↔
 					</div>
 					<div
-						class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-amber-600/20 bg-amber-50/50 p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-thread tx-weak dark:bg-amber-950/10 sm:max-w-[85%] sm:p-4"
+						class="max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-border bg-muted/40 p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-thread tx-weak sm:max-w-[85%] sm:p-4"
 					>
 						{#if shouldRenderAsMarkdown(message.content)}
 							<div class="agent-markdown {proseClasses} overflow-x-auto break-words">
@@ -217,7 +230,7 @@
 							</div>
 						{/if}
 						<span
-							class="mt-0.5 block text-right text-[0.55rem] leading-none tabular-nums text-amber-600/50 dark:text-amber-400/50"
+							class="mt-1 block text-right text-[0.65rem] leading-none tabular-nums text-muted-foreground/70"
 						>
 							{formatTime(message.timestamp)}
 						</span>
@@ -229,15 +242,15 @@
 					onToggleCollapse={onToggleThinkingBlock}
 				/>
 			{:else if message.type === 'clarification'}
-				<!-- INKPRINT clarification message with Bloom texture -->
+				<!-- INKPRINT clarification: accent palette ("your turn" kin to user bubble) -->
 				<div class="flex min-w-0 gap-2 sm:gap-3">
 					<div
-						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-emerald-600/30 bg-emerald-50 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-emerald-700 shadow-ink tx tx-bloom tx-weak dark:bg-emerald-950/30 dark:text-emerald-400 sm:h-9 sm:w-9"
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-accent/30 bg-accent/10 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-accent shadow-ink tx tx-bloom tx-weak sm:h-9 sm:w-9"
 					>
 						AI
 					</div>
 					<div
-						class="max-w-[90%] min-w-0 overflow-hidden rounded-lg border border-emerald-600/20 bg-emerald-50/50 p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-bloom tx-weak dark:bg-emerald-950/10 sm:max-w-[88%] sm:p-4"
+						class="max-w-[90%] min-w-0 overflow-hidden rounded-lg border border-accent/20 bg-accent/5 p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-bloom tx-weak sm:max-w-[88%] sm:p-4"
 					>
 						<!-- INKPRINT micro-label heading -->
 						<p
@@ -270,7 +283,7 @@
 							Share the answers in your next message to continue
 						</p>
 						<span
-							class="mt-0.5 block text-right text-[0.55rem] leading-none tabular-nums text-emerald-600/50 dark:text-emerald-400/50"
+							class="mt-1 block text-right text-[0.65rem] leading-none tabular-nums text-accent/60"
 						>
 							{formatTime(message.timestamp)}
 						</span>
@@ -325,6 +338,30 @@
 	.user-message-content-collapsed {
 		max-height: calc(10 * 1.625em);
 		overflow: hidden;
+	}
+
+	/* Send-confirmation microinteraction: fire-and-forget on bubble mount.
+	   Plays once per newly-rendered bubble (incl. session load). Honors reduced motion. */
+	@keyframes bubble-send {
+		from {
+			transform: scale(0.96);
+			opacity: 0;
+		}
+		to {
+			transform: scale(1);
+			opacity: 1;
+		}
+	}
+
+	.bubble-send {
+		animation: bubble-send 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+		transform-origin: bottom right;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.bubble-send {
+			animation: none;
+		}
 	}
 
 	.agent-markdown {

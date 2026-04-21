@@ -100,10 +100,13 @@ import {
 	readFastChatCancelReasonFromMetadata,
 	type FastChatCancelReason
 } from '$lib/services/agentic-chat-v2/cancel-reason-channel';
+import { sanitizeAssistantFinalText } from '$lib/services/agentic-chat-v2/stream-orchestrator/assistant-text-sanitization';
 
 const logger = createLogger('API:AgentStreamV2');
 const FASTCHAT_STREAM_ENDPOINT = '/api/agent/v2/stream';
 const FASTCHAT_STREAM_METHOD = 'POST';
+const FASTCHAT_CLEAN_RESPONSE_FALLBACK =
+	'I hit an issue producing a clean final response for that turn. Please try again and I can continue from the project state.';
 
 const FASTCHAT_HISTORY_LOOKBACK_MESSAGES = parsePositiveInt(
 	process.env.FASTCHAT_HISTORY_LOOKBACK_MESSAGES,
@@ -159,6 +162,23 @@ function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean
 	if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
 	if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
 	return fallback;
+}
+
+function resolvePersistableAssistantContent(params: {
+	finalAssistantText?: string | null;
+	assistantText?: string | null;
+	fallback?: string | null;
+}): string | null {
+	for (const candidate of [params.finalAssistantText, params.assistantText]) {
+		if (typeof candidate !== 'string' || candidate.trim().length === 0) {
+			continue;
+		}
+		const sanitized = sanitizeAssistantFinalText(candidate).trim();
+		if (sanitized.length > 0) {
+			return sanitized;
+		}
+	}
+	return params.fallback === undefined ? FASTCHAT_CLEAN_RESPONSE_FALLBACK : params.fallback;
 }
 
 function isAbortLikeError(error: unknown): boolean {
@@ -3667,7 +3687,11 @@ export const POST: RequestHandler = async ({
 
 			const isCancelledTurn =
 				cancelled === true || finishedReason === 'cancelled' || request.signal.aborted;
-			const assistantContent = assistantText.trim();
+			const assistantContent = resolvePersistableAssistantContent({
+				finalAssistantText,
+				assistantText,
+				fallback: null
+			});
 			if (isCancelledTurn) {
 				const interruptedReason = await resolveInterruptedReason({
 					supabase,
@@ -3677,7 +3701,7 @@ export const POST: RequestHandler = async ({
 					requestAborted: request.signal.aborted
 				});
 				let interruptedMessage = null;
-				if (assistantContent.length > 0) {
+				if (assistantContent && assistantContent.length > 0) {
 					assistantPersistStartedAtMs = Date.now();
 					const interruptedMetadata: Record<string, Json | undefined> = {
 						interrupted: true,
@@ -3730,7 +3754,7 @@ export const POST: RequestHandler = async ({
 				finalizationStartedAtMs = Date.now();
 				if (!request.signal.aborted) {
 					const cancelledLastTurnContext = buildLastTurnContext({
-						assistantText: assistantContent,
+						assistantText: assistantContent ?? '',
 						userMessage: message,
 						contextType: effectiveContextType,
 						entityId: effectiveEntityId,
@@ -3838,7 +3862,9 @@ export const POST: RequestHandler = async ({
 
 			const persistedToolTrace = buildPersistedToolTrace(normalizedExecutions);
 			const persistedToolTraceSummary = buildPersistedToolTraceSummary(persistedToolTrace);
-			const persistedAssistantContent = finalAssistantText.trim() || assistantText.trim();
+			const persistedAssistantContent =
+				resolvePersistableAssistantContent({ finalAssistantText, assistantText }) ??
+				FASTCHAT_CLEAN_RESPONSE_FALLBACK;
 			assistantPersistStartedAtMs = Date.now();
 			const assistantMessage = await sessionService.persistMessage({
 				sessionId: session.id,

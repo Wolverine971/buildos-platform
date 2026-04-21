@@ -30,7 +30,68 @@ const SCRATCHPAD_SENTENCE_PATTERNS = [
 	/\bthe input is the full history\b/i,
 	/\blooking back,\s*the conversation flow\b/i,
 	/\brespond as if this is the continuation\b/i,
+	/^\s*i'?m in .*mode\b.*\b(?:tool|created|creation|context)\b/i,
+	/^\s*the tool result (?:gave|returned|provides|confirms|shows|says|indicates)\b/i,
+	/^\s*the write_ledger (?:gave|returned|provides|confirms|shows|says|indicates)\b/i,
+	/^\s*the system message provides\b/i,
+	/^\s*previous assistant response\b/i,
+	/^\s*previous response already\b/i,
+	/^\s*my previous assistant message\b/i,
+	/^\s*now,\s*this is the next turn\b/i,
+	/^\s*now,\s*this is the next assistant turn\b/i,
+	/^\s*here,\s*it'?s\b.*\bproject creation\b/i,
+	/^\s*the human message\b.*\b(?:tool|previous assistant|initial|result came back|prompt)\b/i,
+	/^\s*this might be a mistake in the prompt setup\b/i,
+	/^\s*i think the expectation is\b/i,
+	/^\s*this is a simulation\b/i,
+	/^\s*the previous assistant already\b/i,
+	/^\s*the previous assistant message\b/i,
+	/^\s*the very end is the previous assistant\b/i,
+	/^\s*the response grounds in results\b/i,
+	/^\s*the last line is the assistant'?s response\b/i,
+	/^\s*perhaps this is to verify\b/i,
+	/^\s*looking at the very end\b/i,
+	/^\s*safety rules?\s*:/i,
+	/^\s*name each successful write\b/i,
+	/^\s*mention (?:each|every|the\s+)?successful write\b/i,
+	/^\s*current focus\s*:/i,
+	/^\s*context has shifted\b/i,
+	/^\s*user-facing response(?:\s+rules?)?\s*:/i,
+	/^\s*pre-tool lead-ins?\b/i,
+	/^\s*after creation\b/i,
+	/^\s*end by\b/i,
+	/^\s*lead with success\b/i,
+	/^\s*list what'?s in it\b/i,
+	/^\s*list entities\b/i,
+	/^\s*note (?:the )?context shift\b/i,
+	/^\s*prompt for next action\b/i,
+	/^\s*structure\s*:/i,
+	/^\s*structure the response\s*:/i,
+	/^\s*it includes\s*:/i,
+	/^\s*announce (?:the )?creation\b/i,
+	/^\s*note the context shift\b/i,
+	/^\s*invite next action\b/i,
+	/^\s*do not use tools unless needed\b/i,
+	/^\s*do not claim\b/i,
+	/^\s*all state_key\b/i,
+	/^\s*my previous thought\b/i,
+	/^\s*user reported progress\b/i,
+	/^\s*tools created\b/i,
+	/^\s*loaded context has\b/i,
+	/^\s*project has a context document\b/i,
+	/^\s*perhaps suggest\b/i,
+	/^\s*user might want\b/i,
+	/^\s*but they said\b/i,
+	/^\s*existing tasks\s*:/i,
+	/^\s*for chapter\s+\d+,\s*tool had\b/i,
+	/^\s*keep proactive\b/i,
+	/^\s*keep conversation useful\b/i,
+	/^\s*(?:congratulate|confirm|note linkages|ask what'?s next)\b/i,
+	/^\s*(?:mark research done|start on revisions|create a chapter\s+\d+\s+doc)\??$/i,
 	/\binternal thought\b/i,
+	/\bwrite_ledger\b/i,
+	/\bsuccessful_writes\b/i,
+	/\bfailed_writes\b/i,
 	/^\s*(?:human|assistant|system)\s*:/i,
 	/^\s*<[^>]+>\s*$/i,
 	/^\s*(?:onto|cal|util)\.[a-z0-9_]+(?:\.[a-z0-9_]+){1,6}\s*$/i,
@@ -66,6 +127,13 @@ const SCRATCHPAD_SENTENCE_PATTERNS = [
 	/^\s*failed[_\s]writes\s*:/i
 ];
 
+const CONTEXTUAL_SCRATCHPAD_SENTENCE_PATTERNS = [
+	/^\s*this is fine\.?$/i,
+	/^\s*perfect\.?$/i,
+	/^\s*yes,\s*that'?s it\b/i,
+	/^\s*anyway,\s*since\b/i
+];
+
 const USER_FACING_LEAD_IN_PATTERNS = [
 	/^(?:i'll|i will|let me|i can|i'm going to|first,\s*i'll)\b/i
 ];
@@ -76,7 +144,9 @@ export function sanitizeToolPassLeadIn(raw: string, message: string): string {
 		return '';
 	}
 
-	const cleanSentences = extractCleanAssistantSentences(trimmed);
+	const cleanSentences = extractCleanAssistantSentences(trimmed, {
+		includeContextualScratchpad: true
+	});
 	const preferredLeadIn =
 		cleanSentences.find((sentence) =>
 			USER_FACING_LEAD_IN_PATTERNS.some((pattern) => pattern.test(sentence))
@@ -127,13 +197,22 @@ function containsScratchpadMarkers(raw: string): boolean {
 	);
 }
 
-function extractCleanAssistantSentences(raw: string): string[] {
+function extractCleanAssistantSentences(
+	raw: string,
+	options: { includeContextualScratchpad?: boolean } = {}
+): string[] {
 	const sentences = splitAssistantTextIntoSentences(raw);
+	const includeContextualScratchpad =
+		options.includeContextualScratchpad ||
+		sentences.some((sentence) => looksLikeScratchpadSentence(sentence));
 	const cleanSentences: string[] = [];
 	const seen = new Set<string>();
 
 	for (const sentence of sentences) {
-		if (looksLikeScratchpadSentence(sentence)) {
+		if (
+			looksLikeScratchpadSentence(sentence) ||
+			(includeContextualScratchpad && looksLikeContextualScratchpadSentence(sentence))
+		) {
 			continue;
 		}
 
@@ -158,7 +237,9 @@ function splitAssistantTextIntoSentences(raw: string): string[] {
 		.split(/\n+/)
 		.flatMap((line) =>
 			line
-				.split(/(?<=[.!?])\s+(?=(?:[A-Z0-9"'`<{]|Let me|I'll|I can|I will|Actually|No))/)
+				.split(
+					/(?<=[.!?])(?:\s+|(?=(?:[A-Z0-9"'`<{]|Let me|I'll|I can|I will|Actually|No)))/
+				)
 				.map((segment) => segment.trim())
 		)
 		.filter((segment) => segment.length > 0);
@@ -230,4 +311,16 @@ function looksLikeScratchpadSentence(sentence: string): boolean {
 	}
 
 	return false;
+}
+
+function looksLikeContextualScratchpadSentence(sentence: string): boolean {
+	const normalized = normalizeAssistantSentence(sentence);
+	if (!normalized) {
+		return true;
+	}
+
+	const deBulleted = stripLeadingListMarker(normalized);
+	return CONTEXTUAL_SCRATCHPAD_SENTENCE_PATTERNS.some(
+		(pattern) => pattern.test(normalized) || pattern.test(deBulleted)
+	);
 }

@@ -57,10 +57,17 @@ export type OpenRouterChoice = {
 		role?: string;
 		content?: unknown;
 		tool_calls?: unknown[];
+		reasoning?: unknown;
+		reasoning_content?: unknown;
+		reasoning_details?: unknown[];
 	};
 	text?: string;
 	delta?: {
 		content?: unknown;
+		reasoning?: unknown;
+		reasoning_content?: unknown;
+		reasoning_details?: unknown[];
+		thinking?: unknown;
 		tool_calls?: OpenRouterToolCallDelta[];
 	};
 	finish_reason?: string;
@@ -107,6 +114,11 @@ export type OpenRouterStreamEvent =
 	| {
 			type: 'text';
 			content: string;
+	  }
+	| {
+			type: 'reasoning';
+			reasoning?: string;
+			reasoning_details?: unknown[];
 	  }
 	| {
 			type: 'tool_call';

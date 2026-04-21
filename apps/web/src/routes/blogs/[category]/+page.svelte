@@ -1,13 +1,17 @@
 <!-- apps/web/src/routes/blogs/[category]/+page.svelte -->
 <script lang="ts">
 	import {
+		DEFAULT_ORGANIZATION_ID,
 		DEFAULT_SOCIAL_IMAGE_ALT,
 		DEFAULT_SOCIAL_IMAGE_HEIGHT,
 		DEFAULT_SOCIAL_IMAGE_TYPE,
 		DEFAULT_SOCIAL_IMAGE_URL,
 		DEFAULT_SOCIAL_IMAGE_WIDTH,
 		DEFAULT_TWITTER_CREATOR,
-		DEFAULT_TWITTER_SITE
+		DEFAULT_TWITTER_SITE,
+		DEFAULT_WEBSITE_ID,
+		SITE_NAME,
+		SITE_URL
 	} from '$lib/constants/seo';
 	import { page } from '$app/stores';
 	import {
@@ -24,6 +28,7 @@
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import { formatBlogDate, type BlogCategory } from '$lib/utils/blog';
+	import { escapeSerializedJsonLd } from '$lib/utils/json-ld';
 
 	let { data }: { data: PageData } = $props();
 
@@ -39,25 +44,22 @@
 	let categoryKey = $derived(($page.params.category ?? 'getting-started') as BlogCategory);
 	let IconComponent = $derived(categoryIcons[categoryKey]);
 
-	function getCategoryColorClasses(category: string) {
-		const isPrimary = category === 'getting-started';
-		return {
-			bg: isPrimary ? 'bg-accent/10' : 'bg-muted',
-			text: isPrimary ? 'text-accent' : 'text-foreground',
-			iconBg: isPrimary ? 'bg-accent/10' : 'bg-muted',
-			iconText: isPrimary ? 'text-accent' : 'text-foreground'
-		};
-	}
-
 	function generateCategoryJsonLd(category: any, posts: any[], categoryKey: string) {
 		if (!category || !posts) return '';
 
 		const jsonLd = {
 			'@context': 'https://schema.org',
 			'@type': 'CollectionPage',
+			'@id': `${SITE_URL}/blogs/${categoryKey}`,
 			name: category.name,
 			description: category.description,
-			url: `https://build-os.com/blogs/${categoryKey}`,
+			url: `${SITE_URL}/blogs/${categoryKey}`,
+			publisher: {
+				'@type': 'Organization',
+				'@id': DEFAULT_ORGANIZATION_ID,
+				name: SITE_NAME,
+				url: SITE_URL
+			},
 			mainEntity: {
 				'@type': 'ItemList',
 				numberOfItems: posts.length,
@@ -68,7 +70,7 @@
 						'@type': 'BlogPosting',
 						headline: post.title,
 						description: post.description,
-						url: `https://build-os.com/blogs/${post.category}/${post.slug}`,
+						url: `${SITE_URL}/blogs/${post.category}/${post.slug}`,
 						datePublished: post.date,
 						author: {
 							'@type': 'Person',
@@ -79,15 +81,17 @@
 			},
 			isPartOf: {
 				'@type': 'Blog',
-				name: 'BuildOS Blog',
-				url: 'https://build-os.com/blogs'
+				'@id': `${SITE_URL}/blogs#blog`,
+				name: `${SITE_NAME} Blog`,
+				url: `${SITE_URL}/blogs`,
+				isPartOf: {
+					'@id': DEFAULT_WEBSITE_ID
+				}
 			}
 		};
 
 		return JSON.stringify(jsonLd, null, 2);
 	}
-
-	let colors = $derived(getCategoryColorClasses(categoryKey));
 
 	let jsonLdString = $derived(generateCategoryJsonLd(data.category, data.posts, categoryKey));
 </script>
@@ -150,7 +154,7 @@
 
 	<!-- JSON-LD Structured Data -->
 	{#if jsonLdString}
-		{@html `<script type="application/ld+json">${jsonLdString}</script>`}
+		{@html `<script type="application/ld+json">${escapeSerializedJsonLd(jsonLdString)}</script>`}
 	{/if}
 </svelte:head>
 
@@ -170,13 +174,13 @@
 
 			<div class="flex items-start gap-4">
 				<div
-					class="flex items-center justify-center w-12 h-12 {colors.iconBg} rounded-lg shrink-0"
+					class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg shrink-0"
 				>
-					<IconComponent class="w-6 h-6 {colors.iconText}" />
+					<IconComponent class="w-6 h-6 text-foreground" />
 				</div>
 				<div class="min-w-0">
 					<h1
-						class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight"
+						class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-[1.1]"
 					>
 						{data.category.name}
 					</h1>
@@ -230,7 +234,7 @@
 										<div class="flex flex-wrap gap-1 mb-3">
 											{#each post.tags.slice(0, 3) as tag}
 												<span
-													class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground"
+													class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground"
 												>
 													{tag}
 												</span>
@@ -251,9 +255,9 @@
 			{:else}
 				<div class="text-center py-12">
 					<div
-						class="flex items-center justify-center w-12 h-12 {colors.iconBg} rounded-lg mx-auto mb-4"
+						class="flex items-center justify-center w-12 h-12 bg-muted rounded-lg mx-auto mb-4"
 					>
-						<IconComponent class="w-6 h-6 {colors.iconText}" />
+						<IconComponent class="w-6 h-6 text-foreground" />
 					</div>
 					<h3 class="text-lg font-semibold text-foreground mb-1">No articles yet</h3>
 					<p class="text-sm text-muted-foreground mb-6">
@@ -283,16 +287,15 @@
 						{#if key !== categoryKey}
 							{@const OtherIconComponent =
 								categoryIcons[key as keyof typeof categoryIcons]}
-							{@const otherColors = getCategoryColorClasses(key)}
 
 							<a
 								href="/blogs/{key}"
 								class="group flex items-start gap-3 bg-card border border-border rounded-lg p-3 hover:shadow-ink hover:border-accent/40 transition-all duration-200 pressable"
 							>
 								<div
-									class="flex items-center justify-center w-8 h-8 {otherColors.iconBg} rounded-md shrink-0 group-hover:scale-105 transition-transform"
+									class="flex items-center justify-center w-8 h-8 bg-muted rounded-md shrink-0 group-hover:scale-105 transition-transform"
 								>
-									<OtherIconComponent class="w-4 h-4 {otherColors.iconText}" />
+									<OtherIconComponent class="w-4 h-4 text-foreground" />
 								</div>
 								<div class="min-w-0">
 									<h3 class="text-sm font-medium text-foreground">

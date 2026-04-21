@@ -1,20 +1,25 @@
 <!-- apps/web/src/routes/blogs/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import {
-		DEFAULT_ORGANIZATION_LOGO_URL,
+		DEFAULT_ORGANIZATION_ID,
+		DEFAULT_ORGANIZATION_LOGO_IMAGE,
 		DEFAULT_SOCIAL_IMAGE_ALT,
 		DEFAULT_SOCIAL_IMAGE_HEIGHT,
 		DEFAULT_SOCIAL_IMAGE_TYPE,
 		DEFAULT_SOCIAL_IMAGE_URL,
 		DEFAULT_SOCIAL_IMAGE_WIDTH,
 		DEFAULT_TWITTER_CREATOR,
-		DEFAULT_TWITTER_SITE
+		DEFAULT_TWITTER_SITE,
+		DEFAULT_WEBSITE_ID,
+		SITE_NAME,
+		SITE_URL
 	} from '$lib/constants/seo';
 	import { Calendar, Clock, ArrowRight, Search } from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import { formatBlogDate, type BlogCategory, type BlogPost } from '$lib/utils/blog';
+	import { escapeSerializedJsonLd } from '$lib/utils/json-ld';
 
 	let { data }: { data: PageData } = $props();
 
@@ -26,23 +31,26 @@
 		const jsonLd = {
 			'@context': 'https://schema.org',
 			'@type': 'Blog',
-			name: 'BuildOS Blog',
+			'@id': `${SITE_URL}/blogs#blog`,
+			name: `${SITE_NAME} Blog`,
 			description:
 				'Practical guides, productivity insights, and the philosophy behind turning messy thinking into structured work.',
-			url: 'https://build-os.com/blogs',
+			url: `${SITE_URL}/blogs`,
 			publisher: {
 				'@type': 'Organization',
-				name: 'BuildOS',
-				logo: {
-					'@type': 'ImageObject',
-					url: DEFAULT_ORGANIZATION_LOGO_URL
-				}
+				'@id': DEFAULT_ORGANIZATION_ID,
+				name: SITE_NAME,
+				url: SITE_URL,
+				logo: DEFAULT_ORGANIZATION_LOGO_IMAGE
+			},
+			isPartOf: {
+				'@id': DEFAULT_WEBSITE_ID
 			},
 			blogPost: recentPosts.map((post) => ({
 				'@type': 'BlogPosting',
 				headline: post.title,
 				description: post.description,
-				url: `https://build-os.com/blogs/${post.category}/${post.slug}`,
+				url: `${SITE_URL}/blogs/${post.category}/${post.slug}`,
 				datePublished: post.date,
 				author: {
 					'@type': 'Person',
@@ -52,7 +60,7 @@
 			})),
 			mainEntityOfPage: {
 				'@type': 'WebPage',
-				'@id': 'https://build-os.com/blogs'
+				'@id': `${SITE_URL}/blogs`
 			}
 		};
 
@@ -107,11 +115,10 @@
 
 	let jsonLdString = $derived(generateBlogJsonLd(data.allPosts));
 
-	onMount(() => {
-		const query = new URLSearchParams(window.location.search).get('q')?.trim() ?? '';
-		if (query) {
-			searchQuery = query;
-		}
+	const urlSearchQuery = $derived(page.url.searchParams.get('q')?.trim() ?? '');
+
+	$effect(() => {
+		searchQuery = urlSearchQuery;
 	});
 </script>
 
@@ -164,7 +171,7 @@
 
 	<!-- JSON-LD Structured Data -->
 	{#if jsonLdString}
-		{@html `<script type="application/ld+json">${jsonLdString}</script>`}
+		{@html `<script type="application/ld+json">${escapeSerializedJsonLd(jsonLdString)}</script>`}
 	{/if}
 </svelte:head>
 
@@ -172,7 +179,7 @@
 	<!-- Hero -->
 	<header class="border-b border-border bg-card tx tx-bloom tx-weak">
 		<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14 text-center">
-			<h1 class="text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
+			<h1 class="text-3xl sm:text-4xl font-bold text-foreground tracking-tight leading-[1.1]">
 				BuildOS Blog
 			</h1>
 			<p class="mt-2 text-base text-muted-foreground max-w-xl mx-auto">
@@ -322,9 +329,9 @@
 											{post.readingTime} min
 										</span>
 										<span
-											class="text-xs text-accent font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+											class="text-xs text-accent font-medium flex items-center gap-1"
 										>
-											Read <ArrowRight class="w-3 h-3" />
+											Read article <ArrowRight class="w-3 h-3" />
 										</span>
 									</div>
 								</div>

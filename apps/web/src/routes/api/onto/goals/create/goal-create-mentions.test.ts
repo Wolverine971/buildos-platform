@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
+let capturedGoalInsertPayload: Record<string, unknown> | null = null;
 
 vi.mock('$lib/services/async-activity-logger', () => ({
 	logCreateAsync: vi.fn(),
@@ -45,6 +46,7 @@ class QueryBuilderMock {
 	insert(payload: Record<string, unknown>) {
 		this.action = 'insert';
 		this.insertPayload = payload;
+		capturedGoalInsertPayload = payload;
 		return this;
 	}
 
@@ -76,7 +78,7 @@ class QueryBuilderMock {
 					name: this.insertPayload?.name,
 					goal: this.insertPayload?.goal,
 					description: this.insertPayload?.description,
-					type_key: 'goal.default',
+					type_key: this.insertPayload?.type_key ?? 'goal.default',
 					state_key: this.insertPayload?.state_key ?? 'draft'
 				},
 				error: null
@@ -105,6 +107,7 @@ function createSupabaseMock() {
 describe('POST /api/onto/goals/create mention notifications', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		capturedGoalInsertPayload = null;
 		resolveEntityMentionUserIdsMock.mockResolvedValue(['user-mentioned']);
 		notifyEntityMentionsAddedMock.mockResolvedValue({ notifiedUserIds: ['user-mentioned'] });
 	});
@@ -154,5 +157,74 @@ describe('POST /api/onto/goals/create mention notifications', () => {
 				mentionedUserIds: ['user-mentioned']
 			})
 		);
+	});
+
+	it('normalizes create fields before inserting goal data', async () => {
+		const { POST } = await import('./+server');
+		const response = await POST({
+			request: new Request('http://localhost/api/onto/goals/create', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					project_id: ' project-1 ',
+					name: '  Revenue target  ',
+					type_key: 'goal.metric.revenue',
+					state_key: 'active',
+					target_date: '2026-04-30',
+					measurement_criteria: '  Signed contracts  ',
+					priority: 'high',
+					props: { source: 'agentic-chat' }
+				})
+			}),
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: async () => ({
+					user: { id: 'user-actor', name: 'DJ', email: 'dj@example.com' }
+				})
+			}
+		} as any);
+
+		expect(response.status).toBe(201);
+		expect(capturedGoalInsertPayload).toMatchObject({
+			project_id: 'project-1',
+			name: 'Revenue target',
+			type_key: 'goal.metric.revenue',
+			state_key: 'active',
+			target_date: '2026-04-30T23:59:59.000Z',
+			props: {
+				source: 'agentic-chat',
+				target_date: '2026-04-30T23:59:59.000Z',
+				measurement_criteria: 'Signed contracts',
+				priority: 'high'
+			}
+		});
+	});
+
+	it('returns 400 for invalid target_date before inserting', async () => {
+		const { POST } = await import('./+server');
+		const response = await POST({
+			request: new Request('http://localhost/api/onto/goals/create', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					project_id: 'project-1',
+					name: 'Goal with invalid target',
+					target_date: '2026-02-30'
+				})
+			}),
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: async () => ({
+					user: { id: 'user-actor', name: 'DJ', email: 'dj@example.com' }
+				})
+			}
+		} as any);
+
+		expect(response.status).toBe(400);
+		expect(capturedGoalInsertPayload).toBeNull();
+		await expect(response.json()).resolves.toMatchObject({
+			success: false,
+			error: expect.stringContaining('target_date')
+		});
 	});
 });

@@ -39,6 +39,8 @@ const PROMPT_UPCOMING_SIGNAL_LIMIT = 6;
 const PROMPT_RECENT_CHANGE_LIMIT = 6;
 const PROMPT_RECENT_OVERDUE_DAYS = 45;
 const PROMPT_STALE_OVERDUE_DAYS = 90;
+const VISIBLE_ASSISTANT_CONTENT_CONTRACT =
+	'Every token you put in assistant content is streamed directly to the user and stored in chat history; use assistant content only for final user-visible prose, never reasoning, scratchpad, prompt analysis, rubric checks, or tool-result bookkeeping.';
 
 // Section order rationale (2026-04-17): describe what the agent can do
 // (capabilities + skills + tools) BEFORE telling it how to use them
@@ -1190,6 +1192,8 @@ function renderSystemPrompt(sections: LitePromptSection[]): string {
 		'# BuildOS Lite Agentic Chat Prompt',
 		'',
 		`Prompt variant: ${LITE_PROMPT_VARIANT}`,
+		'',
+		VISIBLE_ASSISTANT_CONTENT_CONTRACT,
 		'',
 		...sections.map((section) => [`## ${section.title}`, '', section.content].join('\n'))
 	].join('\n\n');

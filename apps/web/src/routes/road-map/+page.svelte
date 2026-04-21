@@ -2,7 +2,12 @@
 <script lang="ts">
 	import { CircleCheck, Wrench, Calendar, Sparkles, Users, MessageCircle } from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
-	import { DEFAULT_ORGANIZATION_LOGO_URL } from '$lib/constants/seo';
+	import {
+		DEFAULT_ORGANIZATION_ID,
+		DEFAULT_ORGANIZATION_LOGO_IMAGE,
+		SITE_NAME,
+		SITE_URL
+	} from '$lib/constants/seo';
 
 	let innerWidth = $state(0);
 	let isMobile = $derived(innerWidth < 768);
@@ -16,23 +21,26 @@
 	jsonLd={{
 		'@context': 'https://schema.org',
 		'@type': 'Article',
+		'@id': `${SITE_URL}/road-map#article`,
 		headline: 'BuildOS Development Roadmap',
 		description:
 			'Detailed monthly timeline for BuildOS development - the AI project completion partner',
 		author: {
 			'@type': 'Organization',
-			name: 'BuildOS'
+			'@id': DEFAULT_ORGANIZATION_ID,
+			name: SITE_NAME,
+			url: SITE_URL
 		},
 		publisher: {
 			'@type': 'Organization',
-			name: 'BuildOS',
-			logo: {
-				'@type': 'ImageObject',
-				url: DEFAULT_ORGANIZATION_LOGO_URL
-			}
+			'@id': DEFAULT_ORGANIZATION_ID,
+			name: SITE_NAME,
+			url: SITE_URL,
+			logo: DEFAULT_ORGANIZATION_LOGO_IMAGE
 		},
 		datePublished: '2025-07-21',
-		dateModified: '2025-08-28'
+		dateModified: '2025-08-28',
+		mainEntityOfPage: `${SITE_URL}/road-map`
 	}}
 />
 

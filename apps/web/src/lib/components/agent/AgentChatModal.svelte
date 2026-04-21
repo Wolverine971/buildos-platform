@@ -1663,6 +1663,11 @@
 		}
 	}
 
+	function handleSelectSuggestion(text: string) {
+		if (isStreaming || isSessionBusy) return;
+		inputValue = text;
+	}
+
 	function handleKeyDown(event: KeyboardEvent) {
 		if (event.key === 'Escape' && isStreaming) {
 			event.preventDefault();
@@ -2501,6 +2506,7 @@
 			onScroll={handleScroll}
 			voiceNotesByGroupId={voice.notesByGroupId}
 			onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
+			onSelectSuggestion={handleSelectSuggestion}
 		/>
 	{/if}
 
@@ -2704,7 +2710,7 @@
 									</button>
 									<button
 										type="button"
-										class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted"
+										class="inline-flex items-center justify-center rounded-lg border border-border bg-transparent px-3 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground transition pressable hover:border-accent hover:bg-card hover:text-foreground"
 										onclick={stopAgentLoop}
 									>
 										Stop

@@ -14,6 +14,7 @@
 		DEFAULT_ORGANIZATION_SOCIAL_PROFILES,
 		DEFAULT_SOCIAL_IMAGE_ALT,
 		DEFAULT_SOCIAL_IMAGE_HEIGHT,
+		DEFAULT_SOCIAL_IMAGE_OBJECT,
 		DEFAULT_SOCIAL_IMAGE_TYPE,
 		DEFAULT_SOCIAL_IMAGE_URL,
 		DEFAULT_SOCIAL_IMAGE_WIDTH,
@@ -26,6 +27,7 @@
 	} from '$lib/constants/seo';
 	import AnalyticsDashboard from '$lib/components/dashboard/AnalyticsDashboard.svelte';
 	import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
+	import { serializeJsonLd } from '$lib/utils/json-ld';
 	// Canonical data model icons (consistent with InsightPanels on /projects/[id])
 	import {
 		FolderKanban,
@@ -43,41 +45,6 @@
 	let exampleGraphTarget = $state<HTMLElement | null>(null);
 	let exampleGraphLoading = $state(false);
 	const featuredPublicExampleProjectId = '44444444-4444-4444-4444-444444444444';
-
-	const replacementStack = [
-		{
-			eyebrow: 'Replaces your notes app',
-			title: 'Capture that actually sticks',
-			description:
-				'Voice notes, rough ideas, and research land in one place instead of scattered across apps, chats, and docs.',
-			texture: 'tx tx-frame tx-weak',
-			tags: ['voice notes', 'research', 'rough ideas']
-		},
-		{
-			eyebrow: 'Replaces your task manager',
-			title: 'Tasks with real context',
-			description:
-				'Tasks that know which project, goal, and deadline they belong to — not orphaned items in a disconnected list.',
-			texture: 'tx tx-grain tx-weak',
-			tags: ['projects', 'goals', 'deadlines']
-		},
-		{
-			eyebrow: 'Replaces scattered docs',
-			title: 'Documents attached to the work',
-			description:
-				'Scripts, outlines, research, and references stay connected to the project instead of floating in a separate app.',
-			texture: 'tx tx-thread tx-weak',
-			tags: ['scripts', 'outlines', 'references']
-		},
-		{
-			eyebrow: 'Replaces stateless AI chats',
-			title: 'Context that persists',
-			description:
-				'Your project history stays warm. Stop re-explaining everything every time you open a new chat thread.',
-			texture: 'tx tx-thread tx-weak',
-			tags: ['project memory', 'history', 'no re-explaining']
-		}
-	] as const;
 
 	const creatorProjectExamples = [
 		{
@@ -130,45 +97,6 @@
 		}
 	] as const;
 
-	const audienceSegments = [
-		{
-			label: 'Authors',
-			title: 'Books, series, and messy creative arcs',
-			description:
-				'For writers whose world-building notes, character arcs, and revision plans live in six different apps.'
-		},
-		{
-			label: 'YouTubers',
-			title: 'Research-heavy video systems',
-			description:
-				'For creators whose video ideas turn into scripts, B-roll lists, sponsor notes, and repurposing plans.'
-		},
-		{
-			label: 'Newsletter operators',
-			title: 'Recurring content with deep research',
-			description:
-				'For writers whose ideas, references, drafts, and publishing cadence need to stay connected week after week.'
-		},
-		{
-			label: 'Podcasters',
-			title: 'Episodes with many moving pieces',
-			description:
-				'For hosts juggling booking, prep, recording, editing, clips, and show notes across too many tabs.'
-		},
-		{
-			label: 'Course creators',
-			title: 'Content plus launch operations',
-			description:
-				'For builders shipping curriculum, assets, launch emails, and student questions as one project.'
-		},
-		{
-			label: 'SaaS builders',
-			title: 'Product work tied to content',
-			description:
-				'For founders shipping the product and telling the story around it in the same week.'
-		}
-	] as const;
-
 	function formatCategoryLabel(category: string) {
 		return category
 			.split('-')
@@ -176,7 +104,7 @@
 			.join(' ');
 	}
 
-	const landingStructuredData = JSON.stringify({
+	const landingStructuredData = serializeJsonLd({
 		'@context': 'https://schema.org',
 		'@type': 'SoftwareApplication',
 		'@id': `${SITE_URL}/#software-application`,
@@ -198,7 +126,7 @@
 		publisher: {
 			'@id': DEFAULT_ORGANIZATION_ID
 		},
-		image: DEFAULT_SOCIAL_IMAGE_URL,
+		image: DEFAULT_SOCIAL_IMAGE_OBJECT,
 		featureList: [
 			'Rough input to project structure',
 			'Persistent project context',
@@ -395,7 +323,9 @@
 						>
 					</a>
 
-					<h1 class="text-3xl sm:text-5xl font-semibold tracking-tight leading-tight">
+					<h1
+						class="text-3xl sm:text-5xl font-semibold tracking-tight leading-[1.05]"
+					>
 						Turn messy thinking into <span class="relative">
 							structured work
 							<span
@@ -404,7 +334,7 @@
 						</span>
 					</h1>
 
-					<p class="text-sm sm:text-base text-muted-foreground max-w-xl">
+					<p class="text-sm sm:text-base text-muted-foreground max-w-xl leading-relaxed">
 						BuildOS is a thinking environment for people making complex things. Start in
 						chat with rough ideas, notes, voice memos, and research, then turn them into
 						structured projects with memory and a clear next move. Keep the work
@@ -429,10 +359,10 @@
 							Start in chat
 						</a>
 						<a
-							class="text-xs text-muted-foreground hover:text-accent underline underline-offset-4 transition-colors px-2 py-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
 							href="#how"
+							class="pressable rounded-full border border-border bg-card px-6 py-2.5 text-sm font-semibold shadow-ink hover:border-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						>
-							See how it works →
+							See how it works
 						</a>
 					</div>
 				</div>
@@ -445,137 +375,36 @@
 					>
 						Rough brief → organized plan
 					</div>
-					<div class="p-3 sm:p-4 space-y-3">
-						<div class="grid sm:grid-cols-2 gap-2 sm:gap-3">
-							<div
-								class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-static tx-weak p-3"
-							>
-								<div
-									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
-								>
-									Author brief
-								</div>
-								<p class="text-[0.8rem] text-muted-foreground leading-relaxed">
-									"Chapter 12 drags, I need to fix Maya's motivation, track my
-									magic rules, and pull beta-reader notes into one place..."
-								</p>
-							</div>
-							<div
-								class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-grain tx-weak p-3"
-							>
-								<div
-									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
-								>
-									Structured by BuildOS
-								</div>
-								<ul class="text-[0.8rem] leading-relaxed">
-									<li>▸ Project: Novel draft revision</li>
-									<li>▸ Doc: Character arc notes</li>
-									<li>▸ Doc: Magic rules bible</li>
-									<li>▸ Task: Rewrite chapter 12</li>
-								</ul>
-							</div>
-						</div>
-
-						<div class="grid sm:grid-cols-2 gap-2 sm:gap-3">
-							<div
-								class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-static tx-weak p-3"
-							>
-								<div
-									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
-								>
-									YouTube brief
-								</div>
-								<p class="text-[0.8rem] text-muted-foreground leading-relaxed">
-									"Need a better hook for the AI fatigue episode, a source list,
-									sponsor note, B-roll ideas, and three shorts after the main
-									cut."
-								</p>
-							</div>
-							<div
-								class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-thread tx-weak p-3"
-							>
-								<div
-									class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground mb-2"
-								>
-									Structured by BuildOS
-								</div>
-								<ul class="text-[0.8rem] leading-relaxed">
-									<li>▸ Project: AI fatigue video essay</li>
-									<li>▸ Plan: Research → script → edit</li>
-									<li>▸ Doc: Sources and examples</li>
-									<li>▸ Task: Draft the cold open</li>
-								</ul>
-							</div>
-						</div>
-
+					<div class="p-4 sm:p-5 grid sm:grid-cols-2 gap-3 sm:gap-4">
 						<div
-							class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-thread tx-weak p-3 flex items-center justify-between gap-3"
-						>
-							<p class="text-sm">
-								<span class="text-muted-foreground">Next move:</span> Open the current
-								scene, script, or launch task without losing the rest of the project.
-							</p>
-							<a
-								href="/auth/register"
-								class="pressable rounded-full border border-border bg-accent text-accent-foreground px-3 py-1.5 text-xs font-semibold shadow-ink shrink-0 hover:opacity-90 transition-opacity"
-								aria-label="Sign up to use BuildOS"
-							>
-								Start in chat
-							</a>
-						</div>
-					</div>
-				</div>
-			</div>
-		</section>
-
-		<section id="replace" class="border-b border-border">
-			<div class="mx-auto max-w-6xl px-4 py-8 sm:py-10 space-y-6">
-				<div class="flex items-end justify-between gap-4 flex-wrap">
-					<div>
-						<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
-							Replace your scattered stack.
-						</h2>
-						<p class="mt-2 text-sm text-muted-foreground max-w-2xl">
-							Stop bouncing between notes apps, task managers, docs, and AI chats. One
-							place to capture, organize, and move forward.
-						</p>
-					</div>
-					<a
-						href="#examples"
-						class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
-					>
-						See real examples →
-					</a>
-				</div>
-
-				<div class="grid md:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
-					{#each replacementStack as visual}
-						<article
-							class={`rounded-lg border border-border bg-card shadow-ink p-4 ${visual.texture}`}
+							class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-static tx-weak p-4"
 						>
 							<div
-								class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
+								class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground mb-3"
 							>
-								{visual.eyebrow}
+								Author brief
 							</div>
-							<h3 class="mt-2 text-sm font-semibold text-foreground">
-								{visual.title}
-							</h3>
-							<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-								{visual.description}
+							<p class="text-sm text-muted-foreground leading-relaxed">
+								"Chapter 12 drags, I need to fix Maya's motivation, track my magic
+								rules, and pull beta-reader notes into one place..."
 							</p>
-							<div class="mt-3 flex flex-wrap gap-1.5">
-								{#each visual.tags as tag}
-									<span
-										class="rounded-full border border-border bg-background px-2 py-1 text-[0.65rem] uppercase tracking-wide text-muted-foreground shadow-ink-inner"
-									>
-										{tag}
-									</span>
-								{/each}
+						</div>
+						<div
+							class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-grain tx-weak p-4"
+						>
+							<div
+								class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground mb-3"
+							>
+								Structured by BuildOS
 							</div>
-						</article>
-					{/each}
+							<ul class="text-sm leading-relaxed space-y-1 text-foreground">
+								<li>▸ Project: Novel draft revision</li>
+								<li>▸ Doc: Character arc notes</li>
+								<li>▸ Doc: Magic rules bible</li>
+								<li>▸ Task: Rewrite chapter 12</li>
+							</ul>
+						</div>
+					</div>
 				</div>
 			</div>
 		</section>
@@ -677,99 +506,77 @@
 				</div>
 
 				<div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
-						<div class="flex items-center gap-2 mb-1">
-							<FolderKanban class="w-3.5 h-3.5 text-emerald-500" />
-							<span
-								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-								>Projects</span
-							>
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-4">
+						<div class="flex items-center gap-2 mb-1.5">
+							<FolderKanban class="w-4 h-4 text-muted-foreground" />
+							<span class="text-sm font-semibold text-foreground">Projects</span>
 						</div>
-						<p class="text-sm text-foreground">
+						<p class="text-sm text-muted-foreground leading-relaxed">
 							The bodies of work you are trying to finish and publish.
 						</p>
 					</div>
-					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
-						<div class="flex items-center gap-2 mb-1">
-							<Target class="w-3.5 h-3.5 text-amber-500" />
-							<span
-								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-								>Goals</span
-							>
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-4">
+						<div class="flex items-center gap-2 mb-1.5">
+							<Target class="w-4 h-4 text-muted-foreground" />
+							<span class="text-sm font-semibold text-foreground">Goals</span>
 						</div>
-						<p class="text-sm text-foreground">
+						<p class="text-sm text-muted-foreground leading-relaxed">
 							The outcomes that give the work direction.
 						</p>
 					</div>
-					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
-						<div class="flex items-center gap-2 mb-1">
-							<Calendar class="w-3.5 h-3.5 text-indigo-500" />
-							<span
-								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-								>Plans</span
-							>
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-4">
+						<div class="flex items-center gap-2 mb-1.5">
+							<Calendar class="w-4 h-4 text-muted-foreground" />
+							<span class="text-sm font-semibold text-foreground">Plans</span>
 						</div>
-						<p class="text-sm text-foreground">
+						<p class="text-sm text-muted-foreground leading-relaxed">
 							The stages the work moves through. Draft, record, edit, launch.
 						</p>
 					</div>
-					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
-						<div class="flex items-center gap-2 mb-1">
-							<ListChecks class="w-3.5 h-3.5 text-muted-foreground" />
-							<span
-								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-								>Tasks</span
-							>
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-4">
+						<div class="flex items-center gap-2 mb-1.5">
+							<ListChecks class="w-4 h-4 text-muted-foreground" />
+							<span class="text-sm font-semibold text-foreground">Tasks</span>
 						</div>
-						<p class="text-sm text-foreground">The concrete next moves that ship it.</p>
+						<p class="text-sm text-muted-foreground leading-relaxed">
+							The concrete next moves that ship it.
+						</p>
 					</div>
-					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
-						<div class="flex items-center gap-2 mb-1">
-							<Flag class="w-3.5 h-3.5 text-emerald-500" />
-							<span
-								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-								>Milestones</span
-							>
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-4">
+						<div class="flex items-center gap-2 mb-1.5">
+							<Flag class="w-4 h-4 text-muted-foreground" />
+							<span class="text-sm font-semibold text-foreground">Milestones</span>
 						</div>
-						<p class="text-sm text-foreground">
+						<p class="text-sm text-muted-foreground leading-relaxed">
 							Visible checkpoints that show the project is moving.
 						</p>
 					</div>
-					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
-						<div class="flex items-center gap-2 mb-1">
-							<FileText class="w-3.5 h-3.5 text-sky-500" />
-							<span
-								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-								>Documents</span
-							>
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-4">
+						<div class="flex items-center gap-2 mb-1.5">
+							<FileText class="w-4 h-4 text-muted-foreground" />
+							<span class="text-sm font-semibold text-foreground">Documents</span>
 						</div>
-						<p class="text-sm text-foreground">
+						<p class="text-sm text-muted-foreground leading-relaxed">
 							Research, scripts, chapter notes, outlines, and references.
 						</p>
 					</div>
-					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-3">
-						<div class="flex items-center gap-2 mb-1">
-							<AlertTriangle class="w-3.5 h-3.5 text-red-500" />
-							<span
-								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
-								>Risks</span
-							>
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-4">
+						<div class="flex items-center gap-2 mb-1.5">
+							<AlertTriangle class="w-4 h-4 text-red-500" />
+							<span class="text-sm font-semibold text-foreground">Risks</span>
 						</div>
-						<p class="text-sm text-foreground">
+						<p class="text-sm text-muted-foreground leading-relaxed">
 							Unknowns, blockers, and loose ends worth tracking.
 						</p>
 					</div>
-					<div
-						class="rounded-lg border border-border bg-card shadow-ink tx tx-strip tx-weak p-3"
-					>
-						<div class="flex items-center gap-2 mb-1">
-							<FolderKanban class="w-3.5 h-3.5 text-muted-foreground" />
-							<span
-								class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
+					<div class="rounded-lg border border-border bg-card tx tx-frame tx-weak p-4">
+						<div class="flex items-center gap-2 mb-1.5">
+							<FolderKanban class="w-4 h-4 text-muted-foreground" />
+							<span class="text-sm font-semibold text-foreground"
 								>Flexible Structure</span
 							>
 						</div>
-						<p class="text-sm text-foreground">
+						<p class="text-sm text-muted-foreground leading-relaxed">
 							Project-specific structure that adapts to books, videos, launches, and
 							whatever else you are building.
 						</p>
@@ -843,25 +650,6 @@
 					{/each}
 				</div>
 
-				<div class="grid md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-					{#each audienceSegments as segment}
-						<article
-							class="rounded-lg border border-border bg-card shadow-ink p-4 tx tx-frame tx-weak"
-						>
-							<div
-								class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
-							>
-								{segment.label}
-							</div>
-							<h3 class="mt-2 text-sm font-semibold text-foreground">
-								{segment.title}
-							</h3>
-							<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-								{segment.description}
-							</p>
-						</article>
-					{/each}
-				</div>
 			</div>
 		</section>
 
@@ -932,22 +720,24 @@
 			</section>
 		{/if}
 
-		<!-- honest comparison frame -->
-		<section class="border-b border-border">
-			<div class="mx-auto max-w-6xl px-4 py-8 sm:py-10 space-y-6">
-				<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
-					You have three options.
-				</h2>
+		<!-- honest comparison + final CTA -->
+		<section class="py-10 sm:py-14">
+			<div class="mx-auto max-w-6xl px-4 space-y-8">
+				<div class="max-w-2xl">
+					<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight">
+						You have three options.
+					</h2>
+					<p class="mt-2 text-sm text-muted-foreground">
+						Two of them leave your thinking scattered. One starts compounding today.
+					</p>
+				</div>
+
 				<div class="grid md:grid-cols-3 gap-3 sm:gap-4">
 					<article
 						class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-4"
 					>
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
-						>
-							Option 1
-						</div>
-						<h3 class="mt-2 text-sm font-semibold text-foreground">
+						<div class="text-xs font-medium text-muted-foreground">Option 1</div>
+						<h3 class="mt-1 text-base font-semibold text-foreground">
 							Keep managing the sprawl.
 						</h3>
 						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
@@ -959,12 +749,8 @@
 					<article
 						class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-4"
 					>
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
-						>
-							Option 2
-						</div>
-						<h3 class="mt-2 text-sm font-semibold text-foreground">
+						<div class="text-xs font-medium text-muted-foreground">Option 2</div>
+						<h3 class="mt-1 text-base font-semibold text-foreground">
 							Wait for the perfect tool.
 						</h3>
 						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
@@ -974,12 +760,10 @@
 					</article>
 
 					<article
-						class="rounded-lg border border-accent/30 bg-accent/5 shadow-ink tx tx-bloom tx-weak p-4"
+						class="rounded-lg border border-accent/40 bg-accent/5 shadow-ink-strong tx tx-bloom tx-weak p-4"
 					>
-						<div class="text-[0.65rem] uppercase tracking-[0.18em] text-accent">
-							Option 3
-						</div>
-						<h3 class="mt-2 text-sm font-semibold text-foreground">
+						<div class="text-xs font-semibold text-accent">Option 3</div>
+						<h3 class="mt-1 text-base font-semibold text-foreground">
 							Start building context now.
 						</h3>
 						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
@@ -988,29 +772,19 @@
 						</p>
 					</article>
 				</div>
-			</div>
-		</section>
 
-		<!-- final CTA -->
-		<section class="py-10 sm:py-12">
-			<div class="mx-auto max-w-6xl px-4 text-center">
-				<h2 class="text-2xl sm:text-3xl font-semibold tracking-tight mb-3">
-					Start building context now.
-				</h2>
-				<p class="text-sm text-muted-foreground mb-6 max-w-lg mx-auto">
-					You can keep waiting for the perfect tool, or you can start building context
-					today. Begin with a book, a video series, or a product launch.
-				</p>
-				<div class="flex flex-wrap justify-center gap-2 sm:gap-3">
+				<div
+					class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-2"
+				>
 					<a
 						href="/auth/register"
-						class="pressable rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-ink hover:opacity-90 transition-opacity"
+						class="pressable rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-ink hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
 						Start in chat
 					</a>
 					<a
 						href="/blogs/getting-started/how-buildos-works"
-						class="pressable rounded-full border border-border bg-card px-6 py-2.5 text-sm font-semibold shadow-ink hover:border-accent transition-colors"
+						class="pressable rounded-full border border-border bg-card px-6 py-2.5 text-sm font-semibold shadow-ink hover:border-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
 						Learn more
 					</a>

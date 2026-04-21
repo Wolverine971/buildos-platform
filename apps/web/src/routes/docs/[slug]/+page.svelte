@@ -1,6 +1,5 @@
 <!-- apps/web/src/routes/docs/[slug]/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import type { ComponentType } from 'svelte';
 	import { ArrowLeft, Clock, History } from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
@@ -13,15 +12,31 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 
-	onMount(async () => {
-		try {
-			const module = await import(`../../../content/docs/${data.doc.slug}.md`);
-			contentComponent = module.default;
-		} catch (_err) {
-			error = 'Failed to load documentation content.';
-		} finally {
-			loading = false;
-		}
+	$effect(() => {
+		const { slug } = data.doc;
+		let canceled = false;
+
+		contentComponent = null;
+		error = null;
+		loading = true;
+
+		import(`../../../content/docs/${slug}.md`)
+			.then((module) => {
+				if (canceled) return;
+				contentComponent = module.default;
+			})
+			.catch(() => {
+				if (canceled) return;
+				error = 'Failed to load documentation content.';
+			})
+			.finally(() => {
+				if (canceled) return;
+				loading = false;
+			});
+
+		return () => {
+			canceled = true;
+		};
 	});
 </script>
 

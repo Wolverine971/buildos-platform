@@ -4,7 +4,7 @@
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import {
 		DEFAULT_ORGANIZATION_ID,
-		DEFAULT_ORGANIZATION_LOGO_URL,
+		DEFAULT_ORGANIZATION_LOGO_IMAGE,
 		DEFAULT_ORGANIZATION_SOCIAL_PROFILES
 	} from '$lib/constants/seo';
 
@@ -22,7 +22,7 @@
 		'@id': DEFAULT_ORGANIZATION_ID,
 		name: 'BuildOS',
 		url: 'https://build-os.com',
-		logo: DEFAULT_ORGANIZATION_LOGO_URL,
+		logo: DEFAULT_ORGANIZATION_LOGO_IMAGE,
 		description:
 			'AI-native productivity platform built for the agent economy. Features voice-first design, transparent context engine, and AI-native architecture.',
 		founder: {

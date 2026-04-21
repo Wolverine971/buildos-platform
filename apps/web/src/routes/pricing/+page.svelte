@@ -5,7 +5,13 @@
 	import type { PageData } from './$types';
 	import Button from '$lib/components/ui/Button.svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
-	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
+	import {
+		DEFAULT_APP_ICON_URL,
+		DEFAULT_ORGANIZATION_ID,
+		DEFAULT_SOCIAL_IMAGE_OBJECT,
+		SITE_NAME,
+		SITE_URL
+	} from '$lib/constants/seo';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
 
 	let { data }: { data: PageData } = $props();
@@ -60,11 +66,19 @@
 		'@type': 'Product',
 		name: 'BuildOS Pro',
 		description: 'AI-powered project organization platform with a 14-day free trial.',
+		url: `${SITE_URL}/pricing`,
+		image: DEFAULT_SOCIAL_IMAGE_OBJECT,
+		brand: {
+			'@type': 'Organization',
+			'@id': DEFAULT_ORGANIZATION_ID,
+			name: SITE_NAME,
+			url: SITE_URL
+		},
 		offers: {
 			'@type': 'Offer',
 			price: '20.00',
 			priceCurrency: 'USD',
-			url: 'https://build-os.com/pricing',
+			url: `${SITE_URL}/pricing`,
 			availability: 'https://schema.org/InStock'
 		}
 	}}

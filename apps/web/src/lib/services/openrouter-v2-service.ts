@@ -148,6 +148,49 @@ function normalizeTools(tools: any[] | undefined): any[] {
 	return normalized.length > 0 ? (normalized as any[]) : tools;
 }
 
+function stringifyReasoningDeltaPart(value: unknown): string {
+	if (typeof value === 'string') {
+		return value;
+	}
+	if (Array.isArray(value)) {
+		return value.map(stringifyReasoningDeltaPart).filter(Boolean).join('');
+	}
+	if (value && typeof value === 'object') {
+		const record = value as Record<string, unknown>;
+		const text = record.text ?? record.content ?? record.value;
+		if (typeof text === 'string') {
+			return text;
+		}
+	}
+	return '';
+}
+
+function extractReasoningDelta(
+	delta: unknown
+): { reasoning?: string; reasoning_details?: unknown[] } | null {
+	if (!delta || typeof delta !== 'object') {
+		return null;
+	}
+
+	const record = delta as Record<string, unknown>;
+	const reasoning = [record.reasoning, record.reasoning_content, record.thinking]
+		.map(stringifyReasoningDeltaPart)
+		.filter(Boolean)
+		.join('');
+	const reasoningDetails = Array.isArray(record.reasoning_details)
+		? record.reasoning_details
+		: undefined;
+
+	if (!reasoning && !reasoningDetails) {
+		return null;
+	}
+
+	return {
+		...(reasoning ? { reasoning } : {}),
+		...(reasoningDetails ? { reasoning_details: reasoningDetails } : {})
+	};
+}
+
 function resolveCacheStatus(usage: OpenRouterUsage | undefined): string | undefined {
 	if (!usage) return undefined;
 	const promptTokens =
@@ -964,6 +1007,10 @@ export class OpenRouterV2Service extends SmartLLMService {
 					}
 
 					const delta = choice.delta;
+					const reasoningDelta = extractReasoningDelta(delta);
+					if (reasoningDelta) {
+						yield { type: 'reasoning', ...reasoningDelta };
+					}
 					if (delta?.content !== undefined) {
 						const normalizedChunk = normalizeStreamingContent(
 							delta.content,

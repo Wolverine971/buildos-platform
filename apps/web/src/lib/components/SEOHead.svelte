@@ -9,6 +9,7 @@
 		DEFAULT_TWITTER_CREATOR,
 		DEFAULT_TWITTER_SITE
 	} from '$lib/constants/seo';
+	import { serializeJsonLd } from '$lib/utils/json-ld';
 
 	export let title = 'BuildOS - Turn Messy Thinking into Structured Work';
 	export let description =
@@ -87,6 +88,6 @@
 
 	<!-- Structured Data (JSON-LD) for better SEO -->
 	{#if jsonLd}
-		{@html `<script type="application/ld+json">${JSON.stringify(jsonLd)}</script>`}
+		{@html `<script type="application/ld+json">${serializeJsonLd(jsonLd)}</script>`}
 	{/if}
 </svelte:head>

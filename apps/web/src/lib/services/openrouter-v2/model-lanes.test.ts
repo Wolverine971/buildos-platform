@@ -91,8 +91,8 @@ describe('resolveLaneReasoning', () => {
 		expect(resolveLaneReasoning('text')).toEqual({ exclude: true });
 	});
 
-	it('returns low effort for tool lane', () => {
-		expect(resolveLaneReasoning('tool_calling')).toEqual({ effort: 'low', exclude: true });
+	it('excludes reasoning traces for tool lane', () => {
+		expect(resolveLaneReasoning('tool_calling')).toEqual({ exclude: true });
 	});
 
 	it('returns undefined for json lane', () => {

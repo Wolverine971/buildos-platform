@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/history-composer.ts
 import type { FastChatHistoryMessage } from './types';
+import { sanitizeAssistantFinalText } from './stream-orchestrator/assistant-text-sanitization';
 
 export type FastChatHistoryCompositionSettings = {
 	compressionThresholdMessages?: number;
@@ -39,7 +40,8 @@ export function composeFastChatHistory(params: {
 	);
 	const maxSummaryChars = Math.max(80, settings.maxSummaryChars ?? DEFAULT_MAX_SUMMARY_CHARS);
 	const maxMessageChars = Math.max(120, settings.maxMessageChars ?? DEFAULT_MAX_MESSAGE_CHARS);
-	const history = params.history ?? [];
+	const rawHistory = params.history ?? [];
+	const history = sanitizeHistoryForModel(rawHistory);
 	const continuityHint = normalizeText(params.continuityHint ?? '');
 	const sessionSummary = normalizeText(params.sessionSummary ?? '');
 
@@ -49,7 +51,7 @@ export function composeFastChatHistory(params: {
 				historyForModel: [{ role: 'system', content: continuityHint }],
 				compressed: false,
 				strategy: 'continuity_only',
-				rawHistoryCount: 0,
+				rawHistoryCount: rawHistory.length,
 				tailMessagesKept: 0,
 				continuityHintUsed: true
 			};
@@ -59,7 +61,7 @@ export function composeFastChatHistory(params: {
 			historyForModel: [],
 			compressed: false,
 			strategy: 'raw_history',
-			rawHistoryCount: 0,
+			rawHistoryCount: rawHistory.length,
 			tailMessagesKept: 0,
 			continuityHintUsed: false
 		};
@@ -71,7 +73,7 @@ export function composeFastChatHistory(params: {
 			historyForModel: history,
 			compressed: false,
 			strategy: 'raw_history',
-			rawHistoryCount: history.length,
+			rawHistoryCount: rawHistory.length,
 			tailMessagesKept: history.length,
 			continuityHintUsed: false
 		};
@@ -104,10 +106,30 @@ export function composeFastChatHistory(params: {
 		historyForModel: [{ role: 'system', content: summaryLines.join('\n') }, ...tail],
 		compressed: true,
 		strategy: 'compressed_history',
-		rawHistoryCount: history.length,
+		rawHistoryCount: rawHistory.length,
 		tailMessagesKept: tail.length,
 		continuityHintUsed: Boolean(continuityHint)
 	};
+}
+
+function sanitizeHistoryForModel(history: FastChatHistoryMessage[]): FastChatHistoryMessage[] {
+	const sanitized: FastChatHistoryMessage[] = [];
+	for (const message of history) {
+		if (message.role !== 'assistant') {
+			sanitized.push(message);
+			continue;
+		}
+
+		const cleanContent = sanitizeAssistantFinalText(message.content).trim();
+		if (!cleanContent) {
+			continue;
+		}
+		sanitized.push({
+			...message,
+			content: cleanContent
+		});
+	}
+	return sanitized;
 }
 
 function normalizeText(value: string): string {

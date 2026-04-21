@@ -10,9 +10,28 @@ export const DEFAULT_SOCIAL_IMAGE_ALT =
 export const DEFAULT_SOCIAL_IMAGE_WIDTH = 1200;
 export const DEFAULT_SOCIAL_IMAGE_HEIGHT = 628;
 export const DEFAULT_SOCIAL_IMAGE_TYPE = 'image/png';
+export const DEFAULT_SOCIAL_IMAGE_OBJECT = {
+	'@type': 'ImageObject',
+	url: DEFAULT_SOCIAL_IMAGE_URL,
+	contentUrl: DEFAULT_SOCIAL_IMAGE_URL,
+	encodingFormat: DEFAULT_SOCIAL_IMAGE_TYPE,
+	width: DEFAULT_SOCIAL_IMAGE_WIDTH,
+	height: DEFAULT_SOCIAL_IMAGE_HEIGHT
+} as const;
 
 export const DEFAULT_APP_ICON_URL = `${SITE_URL}/brain-bolt-80.png`;
-export const DEFAULT_ORGANIZATION_LOGO_URL = `${SITE_URL}/buildos-logo-dark.png`;
+export const DEFAULT_ORGANIZATION_LOGO_URL = `${SITE_URL}/android-chrome-512x512.png`;
+export const DEFAULT_ORGANIZATION_LOGO_WIDTH = 512;
+export const DEFAULT_ORGANIZATION_LOGO_HEIGHT = 512;
+export const DEFAULT_ORGANIZATION_LOGO_TYPE = 'image/png';
+export const DEFAULT_ORGANIZATION_LOGO_IMAGE = {
+	'@type': 'ImageObject',
+	url: DEFAULT_ORGANIZATION_LOGO_URL,
+	contentUrl: DEFAULT_ORGANIZATION_LOGO_URL,
+	encodingFormat: DEFAULT_ORGANIZATION_LOGO_TYPE,
+	width: DEFAULT_ORGANIZATION_LOGO_WIDTH,
+	height: DEFAULT_ORGANIZATION_LOGO_HEIGHT
+} as const;
 export const DEFAULT_ORGANIZATION_ID = `${SITE_URL}/#organization`;
 export const DEFAULT_WEBSITE_ID = `${SITE_URL}/#website`;
 export const DEFAULT_ORGANIZATION_SOCIAL_PROFILES = [

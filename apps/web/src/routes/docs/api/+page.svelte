@@ -1,12 +1,15 @@
 <!-- apps/web/src/routes/docs/api/+page.svelte -->
 <script lang="ts">
+	import SEOHead from '$lib/components/SEOHead.svelte';
 	import SwaggerUI from '$lib/components/docs/SwaggerUI.svelte';
 </script>
 
-<svelte:head>
-	<title>BuildOS API Documentation</title>
-	<meta name="description" content="Interactive API documentation for BuildOS" />
-</svelte:head>
+<SEOHead
+	title="BuildOS API Documentation"
+	description="Interactive API documentation for BuildOS agent calls, project context, daily briefs, and platform integrations."
+	canonical="https://build-os.com/docs/api"
+	keywords="BuildOS API documentation, BuildOS developer docs, agent calls, project context API, BuildOS integrations"
+/>
 
 <div class="min-h-screen bg-muted">
 	<div class="max-w-7xl mx-auto px-4 py-8">

@@ -79,6 +79,9 @@ describe('buildLitePromptEnvelope', () => {
 			envelope.sections.find((section) => section.id === 'tool_surface_dynamic')?.kind
 		).toBe('dynamic');
 		const focusHeadingIndex = envelope.systemPrompt.indexOf('## Current Focus and Purpose');
+		const visibleContractIndex = envelope.systemPrompt.indexOf(
+			'Every token you put in assistant content is streamed directly to the user'
+		);
 		const operatingHeadingIndex = envelope.systemPrompt.indexOf('## Operating Strategy');
 		const safetyHeadingIndex = envelope.systemPrompt.indexOf('## Safety and Data Rules');
 		const capabilityHeadingIndex = envelope.systemPrompt.indexOf(
@@ -89,11 +92,16 @@ describe('buildLitePromptEnvelope', () => {
 		);
 		const toolHeadingIndex = envelope.systemPrompt.indexOf('## Current Tool Surface');
 		expect(focusHeadingIndex).toBeGreaterThanOrEqual(0);
+		expect(visibleContractIndex).toBeGreaterThanOrEqual(0);
 		expect(operatingHeadingIndex).toBeGreaterThanOrEqual(0);
 		expect(safetyHeadingIndex).toBeGreaterThanOrEqual(0);
 		expect(capabilityHeadingIndex).toBeGreaterThanOrEqual(0);
 		expect(retrievalHeadingIndex).toBeGreaterThanOrEqual(0);
 		expect(toolHeadingIndex).toBeGreaterThanOrEqual(0);
+		expect(visibleContractIndex).toBeLessThan(capabilityHeadingIndex);
+		expect(envelope.systemPrompt).toContain(
+			'assistant content only for final user-visible prose, never reasoning, scratchpad, prompt analysis, rubric checks, or tool-result bookkeeping'
+		);
 		// Current order (2026-04-17 reorder): identity → capabilities → tool_surface →
 		// operating_strategy → safety_data_rules → focus_purpose → …. Describe what we
 		// can do before telling the agent how to use it.

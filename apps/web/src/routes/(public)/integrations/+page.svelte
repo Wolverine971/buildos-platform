@@ -1,6 +1,7 @@
 <!-- apps/web/src/routes/(public)/integrations/+page.svelte -->
 <script lang="ts">
 	import SEOHead from '$lib/components/SEOHead.svelte';
+	import { DEFAULT_ORGANIZATION_ID, DEFAULT_WEBSITE_ID, SITE_URL } from '$lib/constants/seo';
 	import Alert from '$lib/components/ui/Alert.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -170,10 +171,17 @@ Content-Type: application/json
 	jsonLd={{
 		'@context': 'https://schema.org',
 		'@type': 'WebPage',
+		'@id': `${SITE_URL}/integrations`,
 		name: 'BuildOS Integrations',
 		description:
 			'Set up the OpenClaw to BuildOS agent bridge with user-scoped keys, call sessions, and scoped BuildOS tools.',
-		url: 'https://build-os.com/integrations'
+		url: `${SITE_URL}/integrations`,
+		isPartOf: {
+			'@id': DEFAULT_WEBSITE_ID
+		},
+		publisher: {
+			'@id': DEFAULT_ORGANIZATION_ID
+		}
 	}}
 />
 

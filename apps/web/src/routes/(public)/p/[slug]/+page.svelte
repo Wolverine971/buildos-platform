@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/(public)/p/[slug]/+page.svelte -->
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { tick } from 'svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { getProseClasses, renderMarkdown } from '$lib/utils/markdown';
 	import OwnerBar from '$lib/components/public-page/OwnerBar.svelte';
@@ -11,39 +11,59 @@
 
 	// Early branch: this slug is actually a username-only URL (/p/{user_name})
 	// and we're rendering the author's public-pages index instead of a page.
-	const authorIndexData = data.authorIndex;
+	const authorIndexData = $derived(data.authorIndex);
 
-	const page = data.page;
-	const currentUser = data.currentUser ?? null;
-	const signInHref =
-		typeof window !== 'undefined'
-			? `/signup?return_to=${encodeURIComponent(window.location.pathname)}`
-			: '/signup';
+	const page = $derived(data.page);
+	const currentUser = $derived(data.currentUser ?? null);
+	const signInHref = $derived(
+		page
+			? `/signup?return_to=${encodeURIComponent(page.url_path || `/p/${page.slug}`)}`
+			: '/signup'
+	);
 
-	const title = page?.title || 'Public Page';
-	const description = page?.summary || page?.description || 'Public page from BuildOS';
-	const canonical = page
-		? `https://build-os.com${page.url_path || `/p/${page.slug}`}`
-		: 'https://build-os.com';
-	const updatedAt = page?.last_updated_at || page?.published_at;
-	const viewCount = typeof page?.view_count_all === 'number' ? page.view_count_all : 0;
-	const authorInitials = (page?.author_name || page?.author_slug_prefix || '?')
-		.split(/\s+/)
-		.filter(Boolean)
-		.slice(0, 2)
-		.map((part: string) => part[0]?.toUpperCase() ?? '')
-		.join('');
+	const title = $derived(page?.title || 'Public Page');
+	const description = $derived(
+		page?.summary || page?.description || 'Public page from BuildOS'
+	);
+	const canonical = $derived(
+		page
+			? `https://build-os.com${page.url_path || `/p/${page.slug}`}`
+			: 'https://build-os.com'
+	);
+	const updatedAt = $derived(page?.last_updated_at || page?.published_at);
+	const viewCount = $derived(
+		typeof page?.view_count_all === 'number' ? page.view_count_all : 0
+	);
+	const authorInitials = $derived(
+		(page?.author_name || page?.author_slug_prefix || '?')
+			.split(/\s+/)
+			.filter(Boolean)
+			.slice(0, 2)
+			.map((part: string) => part[0]?.toUpperCase() ?? '')
+			.join('')
+	);
 
 	// Scroll to hash + log a view (fire-and-forget; server filters crawlers & dedups)
-	onMount(async () => {
-		if (!page) return;
-		const hash = window.location.hash;
-		if (hash) {
-			await tick();
-			const el = document.querySelector(hash);
-			el?.scrollIntoView({ behavior: 'smooth' });
-		}
-		void logView();
+	$effect(() => {
+		const currentPage = page;
+		let canceled = false;
+
+		if (!currentPage) return;
+
+		(async () => {
+			const hash = window.location.hash;
+			if (hash) {
+				await tick();
+				if (canceled) return;
+				const el = document.querySelector(hash);
+				el?.scrollIntoView({ behavior: 'smooth' });
+			}
+			if (!canceled) void logView(currentPage.slug);
+		})();
+
+		return () => {
+			canceled = true;
+		};
 	});
 
 	function formatViews(count: number): string {
@@ -52,11 +72,10 @@
 		return `${(count / 1_000_000).toFixed(1)}M`;
 	}
 
-	async function logView() {
-		if (!page) return;
+	async function logView(slug: string) {
 		if (typeof navigator !== 'undefined' && (navigator as any).doNotTrack === '1') return;
 		try {
-			await fetch(`/api/public/pages/${page.slug}/view`, {
+			await fetch(`/api/public/pages/${slug}/view`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'same-origin',
@@ -68,13 +87,15 @@
 		}
 	}
 
-	const formattedDate = updatedAt
-		? new Date(updatedAt).toLocaleDateString('en-US', {
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric'
-			})
-		: null;
+	const formattedDate = $derived(
+		updatedAt
+			? new Date(updatedAt).toLocaleDateString('en-US', {
+					year: 'numeric',
+					month: 'long',
+					day: 'numeric'
+				})
+			: null
+	);
 </script>
 
 {#if authorIndexData}

@@ -399,6 +399,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 						choices: [
 							{
 								delta: {
+									reasoning: 'native hidden reasoning',
 									content: [
 										{ type: 'reasoning', text: 'hidden reasoning' },
 										{ type: 'text', text: 'Visible start' }
@@ -457,15 +458,22 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			.filter((event) => event.type === 'text')
 			.map((event) => event.content)
 			.join('');
+		const reasoningEvents = events.filter((event) => event.type === 'reasoning');
 		const doneEvent = events.find((event) => event.type === 'done');
 
 		expect(streamedText).toBe('Visible start Visible end');
+		expect(reasoningEvents).toHaveLength(1);
+		expect(reasoningEvents[0]).toMatchObject({
+			type: 'reasoning',
+			reasoning: 'native hidden reasoning'
+		});
 		expect(doneEvent).toMatchObject({
 			type: 'done',
 			reasoning_tokens: 4,
 			reasoningTokens: 4,
 			model: 'x-ai/grok-4.1-fast'
 		});
+		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
 		expect(requestBodies[0]?.stream_options).toEqual({ include_usage: true });
 	});
 
@@ -528,6 +536,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			'openai/gpt-oss-120b'
 		]);
 		expect(requestBodies[0]?.tools).toHaveLength(1);
+		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
 	});
 
 	it('logs streaming usage against the started fallback request model and resolved provider', async () => {

@@ -13,13 +13,14 @@
 	import IOSSplashScreens from '$lib/components/layout/IOSSplashScreens.svelte';
 	import {
 		DEFAULT_ORGANIZATION_ID,
-		DEFAULT_ORGANIZATION_LOGO_URL,
+		DEFAULT_ORGANIZATION_LOGO_IMAGE,
 		DEFAULT_ORGANIZATION_SOCIAL_PROFILES,
 		DEFAULT_WEBSITE_ID,
 		SITE_DESCRIPTION,
 		SITE_NAME,
 		SITE_URL
 	} from '$lib/constants/seo';
+	import { serializeJsonLd } from '$lib/utils/json-ld';
 	import { initializePWAEnhancements, setupInstallPrompt } from '$lib/utils/pwa-enhancements';
 	import type { LayoutData } from './$types';
 	// Static import: TrialBanner must be in the SSR pass to prevent layout shift
@@ -742,7 +743,7 @@
 		isOpen: showOnboardingModal || animatingDismiss,
 		onDismiss: handleModalDismiss
 	}));
-	const siteStructuredData = JSON.stringify({
+	const siteStructuredData = serializeJsonLd({
 		'@context': 'https://schema.org',
 		'@graph': [
 			{
@@ -750,12 +751,7 @@
 				'@id': DEFAULT_ORGANIZATION_ID,
 				name: SITE_NAME,
 				url: SITE_URL,
-				logo: {
-					'@type': 'ImageObject',
-					url: DEFAULT_ORGANIZATION_LOGO_URL,
-					width: 512,
-					height: 512
-				},
+				logo: DEFAULT_ORGANIZATION_LOGO_IMAGE,
 				description: SITE_DESCRIPTION,
 				founder: {
 					'@type': 'Person',

@@ -1,12 +1,12 @@
 <!-- apps/web/src/routes/blogs/[category]/[slug]/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import {
-		DEFAULT_ORGANIZATION_LOGO_URL,
+		DEFAULT_ORGANIZATION_LOGO_IMAGE,
 		DEFAULT_ORGANIZATION_ID,
 		DEFAULT_ORGANIZATION_SOCIAL_PROFILES,
 		DEFAULT_SOCIAL_IMAGE_ALT,
 		DEFAULT_SOCIAL_IMAGE_HEIGHT,
+		DEFAULT_SOCIAL_IMAGE_OBJECT,
 		DEFAULT_SOCIAL_IMAGE_TYPE,
 		DEFAULT_SOCIAL_IMAGE_URL,
 		DEFAULT_SOCIAL_IMAGE_WIDTH,
@@ -19,6 +19,7 @@
 	import type { ComponentType } from 'svelte';
 	import { ArrowLeft, Calendar, Clock, History, Tag } from 'lucide-svelte';
 	import { formatBlogDate, parseBlogDate } from '$lib/utils/blog';
+	import { serializeJsonLd } from '$lib/utils/json-ld';
 
 	let { data }: { data: PageData } = $props();
 
@@ -45,12 +46,7 @@
 				'@id': `${articleUrl}#article`,
 				headline: data.post.title,
 				description: data.post.description,
-				image: {
-					'@type': 'ImageObject',
-					url: DEFAULT_SOCIAL_IMAGE_URL,
-					width: DEFAULT_SOCIAL_IMAGE_WIDTH,
-					height: DEFAULT_SOCIAL_IMAGE_HEIGHT
-				},
+				image: DEFAULT_SOCIAL_IMAGE_OBJECT,
 				url: articleUrl,
 				datePublished: data.post.date,
 				dateModified: data.post.lastmod || data.post.date,
@@ -65,10 +61,7 @@
 					'@id': DEFAULT_ORGANIZATION_ID,
 					name: SITE_NAME,
 					url: SITE_URL,
-					logo: {
-						'@type': 'ImageObject',
-						url: DEFAULT_ORGANIZATION_LOGO_URL
-					},
+					logo: DEFAULT_ORGANIZATION_LOGO_IMAGE,
 					sameAs: [...DEFAULT_ORGANIZATION_SOCIAL_PROFILES]
 				},
 				mainEntityOfPage: {
@@ -141,17 +134,31 @@
 		};
 	});
 
-	onMount(async () => {
-		try {
-			const module = await import(
-				`../../../../content/blogs/${data.post.category}/${data.post.slug}.md`
-			);
-			contentComponent = module.default;
-		} catch (_err) {
-			error = 'Failed to load blog content';
-		} finally {
-			loading = false;
-		}
+	$effect(() => {
+		const { category, slug } = data.post;
+		let canceled = false;
+
+		contentComponent = null;
+		error = null;
+		loading = true;
+
+		import(`../../../../content/blogs/${category}/${slug}.md`)
+			.then((module) => {
+				if (canceled) return;
+				contentComponent = module.default;
+			})
+			.catch(() => {
+				if (canceled) return;
+				error = 'Failed to load blog content';
+			})
+			.finally(() => {
+				if (canceled) return;
+				loading = false;
+			});
+
+		return () => {
+			canceled = true;
+		};
 	});
 </script>
 
@@ -211,7 +218,7 @@
 	<meta name="robots" content="index, follow" />
 
 	<!-- JSON-LD Structured Data -->
-	{@html '<script type="application/ld+json">' + JSON.stringify(jsonLd) + '</script>'}
+	{@html '<script type="application/ld+json">' + serializeJsonLd(jsonLd) + '</script>'}
 </svelte:head>
 
 <div class="min-h-screen bg-background">
@@ -239,11 +246,12 @@
 					<Calendar class="w-3 h-3" />
 					Published {formattedDate}
 				</span>
-				<span class="flex items-center gap-1">
-					<History class="w-3 h-3" />
-					{showUpdatedDate ? 'Updated' : 'Last reviewed'}
-					{formattedLastmod}
-				</span>
+				{#if showUpdatedDate}
+					<span class="flex items-center gap-1">
+						<History class="w-3 h-3" />
+						Updated {formattedLastmod}
+					</span>
+				{/if}
 				<span class="flex items-center gap-1">
 					<Clock class="w-3 h-3" />
 					{data.post.readingTime} min read
@@ -251,7 +259,7 @@
 			</div>
 
 			<h1
-				class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-tight"
+				class="text-2xl sm:text-3xl md:text-4xl font-bold text-foreground tracking-tight leading-[1.1]"
 				data-speakable="headline"
 			>
 				{data.post.title}
@@ -275,7 +283,7 @@
 					<div class="flex flex-wrap gap-1.5">
 						{#each data.post.tags as tag}
 							<span
-								class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground"
+								class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground"
 							>
 								<Tag class="w-2.5 h-2.5 mr-0.5" />
 								{tag}
@@ -365,7 +373,7 @@
 							class="group block bg-card border border-border rounded-lg p-4 hover:shadow-ink hover:border-accent/40 transition-all duration-200 pressable"
 						>
 							<span
-								class="flex items-center gap-1 text-[10px] text-muted-foreground mb-2"
+								class="flex items-center gap-1 text-xs text-muted-foreground mb-2"
 							>
 								<Calendar class="w-2.5 h-2.5" />
 								{formatBlogDate(relatedPost.date)}

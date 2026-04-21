@@ -140,12 +140,31 @@ class QueryBuilderMock {
 
 function createSupabaseMock() {
 	return {
-		rpc: vi.fn(async (fn: string) => {
+		rpc: vi.fn(async (fn: string, args?: Record<string, unknown>) => {
 			if (fn === 'ensure_actor_for_user') {
 				return { data: 'actor-current', error: null };
 			}
 			if (fn === 'current_actor_has_project_access') {
 				return { data: true, error: null };
+			}
+			if (fn === 'onto_task_update_atomic') {
+				return {
+					data: {
+						task: {
+							id: 'task-1',
+							project_id: 'project-1',
+							title: 'Old title',
+							description:
+								(args?.p_updates as Record<string, unknown> | undefined)
+									?.description ?? 'Old description',
+							type_key: 'task.default',
+							state_key: 'todo',
+							props: {}
+						},
+						added_actor_ids: ['actor-assignee']
+					},
+					error: null
+				};
 			}
 			return { data: null, error: null };
 		}),
@@ -182,13 +201,7 @@ describe('PATCH /api/onto/tasks/[id] assignment + mention coalescing', () => {
 		} as any);
 
 		expect(response.status).toBe(200);
-		expect(syncTaskAssigneesMock).toHaveBeenCalledWith(
-			expect.objectContaining({
-				projectId: 'project-1',
-				taskId: 'task-1',
-				assignedByActorId: 'actor-current'
-			})
-		);
+		expect(syncTaskAssigneesMock).not.toHaveBeenCalled();
 		expect(notifyTaskAssignmentAddedMock).toHaveBeenCalledWith(
 			expect.objectContaining({
 				addedAssigneeActorIds: ['actor-assignee'],

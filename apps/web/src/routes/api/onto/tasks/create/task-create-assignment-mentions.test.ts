@@ -5,6 +5,7 @@ const syncTaskAssigneesMock = vi.fn();
 const notifyTaskAssignmentAddedMock = vi.fn();
 const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
+let capturedTaskInsertPayload: Record<string, unknown> | null = null;
 
 vi.mock('$lib/services/async-activity-logger', () => ({
 	logCreateAsync: vi.fn(),
@@ -84,6 +85,7 @@ class QueryBuilderMock {
 	insert(payload: Record<string, unknown>) {
 		this.action = 'insert';
 		this.insertPayload = payload;
+		capturedTaskInsertPayload = payload;
 		return this;
 	}
 
@@ -114,7 +116,7 @@ class QueryBuilderMock {
 					project_id: this.insertPayload?.project_id,
 					title: this.insertPayload?.title,
 					description: this.insertPayload?.description,
-					type_key: 'task.default',
+					type_key: this.insertPayload?.type_key ?? 'task.default',
 					state_key: this.insertPayload?.state_key ?? 'todo',
 					priority: this.insertPayload?.priority ?? 3
 				},
@@ -144,6 +146,7 @@ function createSupabaseMock() {
 describe('POST /api/onto/tasks/create assignment + mention coalescing', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		capturedTaskInsertPayload = null;
 		syncTaskAssigneesMock.mockResolvedValue({ addedActorIds: ['actor-assignee'] });
 		notifyTaskAssignmentAddedMock.mockResolvedValue({ recipientUserIds: ['user-assignee'] });
 		resolveEntityMentionUserIdsMock.mockResolvedValue(['user-assignee', 'user-mentioned']);
@@ -190,6 +193,44 @@ describe('POST /api/onto/tasks/create assignment + mention coalescing', () => {
 				skipUserIds: ['user-assignee']
 			})
 		);
+	});
+
+	it('normalizes permissive create inputs before inserting', async () => {
+		const { POST } = await import('./+server');
+		const response = await POST({
+			request: new Request('http://localhost/api/onto/tasks/create', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					project_id: ' project-1 ',
+					title: '  Agent-friendly task  ',
+					description: '  Coordinate launch notes  ',
+					type_key: 'task.execute',
+					priority: 'high',
+					start_at: '2026-04-20',
+					due_at: '2026-04-21',
+					props: { source: 'agentic-chat' }
+				})
+			}),
+			locals: {
+				supabase: createSupabaseMock() as any,
+				safeGetSession: async () => ({
+					user: { id: 'user-actor', name: 'DJ', email: 'dj@example.com' }
+				})
+			}
+		} as any);
+
+		expect(response.status).toBe(201);
+		expect(capturedTaskInsertPayload).toMatchObject({
+			project_id: 'project-1',
+			title: 'Agent-friendly task',
+			description: 'Coordinate launch notes',
+			type_key: 'task.execute',
+			priority: 1,
+			start_at: '2026-04-20T00:00:00.000Z',
+			due_at: '2026-04-21T23:59:59.000Z',
+			props: { source: 'agentic-chat' }
+		});
 	});
 
 	it('returns 400 for invalid priority types before inserting', async () => {
