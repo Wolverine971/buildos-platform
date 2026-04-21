@@ -328,7 +328,8 @@
 					Why BuildOS exists
 				</h2>
 				<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-					BuildOS started with a problem every builder runs into — context that falls apart the moment you need it most.
+					BuildOS started with a problem every builder runs into — context that falls
+					apart the moment you need it most.
 				</p>
 			</header>
 

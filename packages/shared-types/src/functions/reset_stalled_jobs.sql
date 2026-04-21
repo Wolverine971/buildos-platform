@@ -14,7 +14,10 @@ BEGIN
     started_at = NULL,
     updated_at = NOW()
   WHERE status = 'processing'
-    AND started_at < NOW() - p_stall_timeout::INTERVAL;
+    AND GREATEST(
+      COALESCE(started_at, 'epoch'::timestamptz),
+      COALESCE(updated_at, 'epoch'::timestamptz)
+    ) < NOW() - p_stall_timeout::INTERVAL;
 
   GET DIAGNOSTICS v_reset_count = ROW_COUNT;
 

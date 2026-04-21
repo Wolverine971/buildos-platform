@@ -22,18 +22,12 @@
 	);
 
 	const title = $derived(page?.title || 'Public Page');
-	const description = $derived(
-		page?.summary || page?.description || 'Public page from BuildOS'
-	);
+	const description = $derived(page?.summary || page?.description || 'Public page from BuildOS');
 	const canonical = $derived(
-		page
-			? `https://build-os.com${page.url_path || `/p/${page.slug}`}`
-			: 'https://build-os.com'
+		page ? `https://build-os.com${page.url_path || `/p/${page.slug}`}` : 'https://build-os.com'
 	);
 	const updatedAt = $derived(page?.last_updated_at || page?.published_at);
-	const viewCount = $derived(
-		typeof page?.view_count_all === 'number' ? page.view_count_all : 0
-	);
+	const viewCount = $derived(typeof page?.view_count_all === 'number' ? page.view_count_all : 0);
 	const authorInitials = $derived(
 		(page?.author_name || page?.author_slug_prefix || '?')
 			.split(/\s+/)

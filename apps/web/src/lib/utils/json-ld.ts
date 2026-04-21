@@ -1,3 +1,4 @@
+// apps/web/src/lib/utils/json-ld.ts
 export function serializeJsonLd(data: unknown): string {
 	const serialized = JSON.stringify(data);
 	return serialized ? serialized.replace(/</g, '\\u003c') : 'null';

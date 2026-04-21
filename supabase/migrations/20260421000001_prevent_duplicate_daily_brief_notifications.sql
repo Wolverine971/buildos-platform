@@ -1,5 +1,35 @@
--- packages/shared-types/src/functions/emit_notification_event.sql
--- Source: Supabase pg_get_functiondef
+-- supabase/migrations/20260421000001_prevent_duplicate_daily_brief_notifications.sql
+-- Prevent duplicate daily brief sends when long-running brief jobs are reclaimed as stalled.
+
+BEGIN;
+
+CREATE OR REPLACE FUNCTION public.reset_stalled_jobs(p_stall_timeout text DEFAULT '5 minutes'::text)
+ RETURNS integer
+ LANGUAGE plpgsql
+AS $function$
+DECLARE
+  v_reset_count INTEGER;
+BEGIN
+  UPDATE queue_jobs
+  SET
+    status = 'pending',
+    started_at = NULL,
+    updated_at = NOW()
+  WHERE status = 'processing'
+    AND GREATEST(
+      COALESCE(started_at, 'epoch'::timestamptz),
+      COALESCE(updated_at, 'epoch'::timestamptz)
+    ) < NOW() - p_stall_timeout::INTERVAL;
+
+  GET DIAGNOSTICS v_reset_count = ROW_COUNT;
+
+  IF v_reset_count > 0 THEN
+    RAISE NOTICE 'Reset % stalled jobs', v_reset_count;
+  END IF;
+
+  RETURN v_reset_count;
+END;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.emit_notification_event(p_event_type text, p_event_source text DEFAULT 'api_action'::text, p_actor_user_id uuid DEFAULT NULL::uuid, p_target_user_id uuid DEFAULT NULL::uuid, p_payload jsonb DEFAULT '{}'::jsonb, p_metadata jsonb DEFAULT '{}'::jsonb, p_scheduled_for timestamp with time zone DEFAULT NULL::timestamp with time zone)
  RETURNS uuid
@@ -318,4 +348,6 @@ BEGIN
 
   RETURN v_event_id;
 END;
-$function$
+$function$;
+
+COMMIT;

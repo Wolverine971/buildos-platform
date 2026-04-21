@@ -323,9 +323,7 @@
 						>
 					</a>
 
-					<h1
-						class="text-3xl sm:text-5xl font-semibold tracking-tight leading-[1.05]"
-					>
+					<h1 class="text-3xl sm:text-5xl font-semibold tracking-tight leading-[1.05]">
 						Turn messy thinking into <span class="relative">
 							structured work
 							<span
@@ -649,7 +647,6 @@
 						</article>
 					{/each}
 				</div>
-
 			</div>
 		</section>
 
@@ -773,9 +770,7 @@
 					</article>
 				</div>
 
-				<div
-					class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-2"
-				>
+				<div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 pt-2">
 					<a
 						href="/auth/register"
 						class="pressable rounded-full bg-foreground px-6 py-2.5 text-sm font-semibold text-background shadow-ink hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

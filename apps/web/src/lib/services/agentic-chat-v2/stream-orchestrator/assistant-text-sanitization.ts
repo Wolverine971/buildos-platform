@@ -58,7 +58,7 @@ const SCRATCHPAD_SENTENCE_PATTERNS = [
 	/^\s*context has shifted\b/i,
 	/^\s*user-facing response(?:\s+rules?)?\s*:/i,
 	/^\s*pre-tool lead-ins?\b/i,
-	/^\s*after creation\b/i,
+	/^\s*after creation,\s*(?:continue|stay|focus)\s+inside\b/i,
 	/^\s*end by\b/i,
 	/^\s*lead with success\b/i,
 	/^\s*list what'?s in it\b/i,

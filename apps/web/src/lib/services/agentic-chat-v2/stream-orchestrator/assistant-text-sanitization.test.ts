@@ -88,6 +88,12 @@ describe('sanitizeAssistantFinalText', () => {
 		expect(sanitizeAssistantFinalText('Perfect.')).toBe('Perfect.');
 	});
 
+	it('keeps legitimate user-facing prose that starts with "After creation"', () => {
+		const text =
+			'After creation, your project is ready and you can start with the first task immediately.';
+		expect(sanitizeAssistantFinalText(text)).toBe(text);
+	});
+
 	it('does not emit short scratchpad filler as a tool-pass lead-in', () => {
 		expect(sanitizeToolPassLeadIn('This is fine.', 'create a project')).toBe(
 			"I'll look that up in BuildOS and gather the relevant project details."
@@ -294,7 +300,7 @@ describe('sanitizeAssistantFinalText', () => {
 			'',
 			'- Note linkages: all under main goal.',
 			'',
-			'- Ask what\'s next: update context doc with summaries?',
+			"- Ask what's next: update context doc with summaries?",
 			'',
 			'Mark research done?',
 			'',
