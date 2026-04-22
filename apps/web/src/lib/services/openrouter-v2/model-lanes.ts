@@ -1,7 +1,9 @@
 // apps/web/src/lib/services/openrouter-v2/model-lanes.ts
 
 import {
+	ACTIVE_RUNTIME_MODEL_SET,
 	ensureToolCompatibleModels,
+	ACTIVE_EXPERIMENT_MODEL,
 	type JSONProfile,
 	MODEL_CATALOG,
 	OPENROUTER_V2_JSON_MODELS,
@@ -53,7 +55,14 @@ function laneProfileModels(params: {
 	return selectTextModels(params.profile as TextProfile, params.estimatedLength ?? 1500);
 }
 
-function isLaneCompatible(model: string, lane: ModelLane, exactoToolsEnabled: boolean): boolean {
+function isLaneCompatible(
+	model: string,
+	lane: ModelLane,
+	exactoToolsEnabled: boolean,
+	allowedModelSet: ReadonlySet<string>
+): boolean {
+	if (!allowedModelSet.has(model)) return false;
+
 	const profile = MODEL_CATALOG[model];
 	if (!profile) return false;
 
@@ -78,10 +87,11 @@ function isLaneCompatible(model: string, lane: ModelLane, exactoToolsEnabled: bo
 function filterLaneCompatible(
 	models: string[],
 	lane: ModelLane,
-	exactoToolsEnabled: boolean
+	exactoToolsEnabled: boolean,
+	allowedModelSet: ReadonlySet<string>
 ): string[] {
 	return uniqueModels(models).filter((model) =>
-		isLaneCompatible(model, lane, exactoToolsEnabled)
+		isLaneCompatible(model, lane, exactoToolsEnabled, allowedModelSet)
 	);
 }
 
@@ -93,11 +103,20 @@ export type ResolveLaneModelsParams = {
 	profile?: JSONProfile | TextProfile;
 	estimatedLength?: number;
 	complexity?: 'simple' | 'moderate' | 'complex';
+	allowedModelIds?: string[];
+	includeDefaultModels?: boolean;
 };
 
 export function resolveLaneModels(params: ResolveLaneModelsParams): string[] {
 	const exactoToolsEnabled = params.exactoToolsEnabled ?? false;
 	const lane = params.lane;
+	const allowedModelSet =
+		Array.isArray(params.allowedModelIds) && params.allowedModelIds.length > 0
+			? new Set<string>([
+					...ACTIVE_RUNTIME_MODEL_SET,
+					...params.allowedModelIds.map((model) => model.trim()).filter(Boolean)
+				])
+			: ACTIVE_RUNTIME_MODEL_SET;
 	const explicitPrimary = typeof params.model === 'string' ? params.model.trim() : '';
 	const explicitFallbacks = Array.isArray(params.models)
 		? params.models.map((model) => model.trim()).filter(Boolean)
@@ -105,7 +124,8 @@ export function resolveLaneModels(params: ResolveLaneModelsParams): string[] {
 	const explicitModels = filterLaneCompatible(
 		[...(explicitPrimary ? [explicitPrimary] : []), ...explicitFallbacks],
 		lane,
-		exactoToolsEnabled
+		exactoToolsEnabled,
+		allowedModelSet
 	);
 	const profileModels = filterLaneCompatible(
 		laneProfileModels({
@@ -116,13 +136,18 @@ export function resolveLaneModels(params: ResolveLaneModelsParams): string[] {
 			exactoToolsEnabled
 		}),
 		lane,
-		exactoToolsEnabled
+		exactoToolsEnabled,
+		allowedModelSet
 	);
-	const defaults = filterLaneCompatible(
-		laneDefaults(lane, exactoToolsEnabled),
-		lane,
-		exactoToolsEnabled
-	);
+	const defaults =
+		params.includeDefaultModels === false
+			? []
+			: filterLaneCompatible(
+					laneDefaults(lane, exactoToolsEnabled),
+					lane,
+					exactoToolsEnabled,
+					allowedModelSet
+				);
 	const merged =
 		lane === 'tool_calling'
 			? uniqueModels([...explicitModels, ...defaults, ...profileModels])
@@ -132,7 +157,7 @@ export function resolveLaneModels(params: ResolveLaneModelsParams): string[] {
 		return merged;
 	}
 
-	return ['openai/gpt-4o-mini'];
+	return [ACTIVE_EXPERIMENT_MODEL];
 }
 
 export function resolveLaneReasoning(lane: ModelLane):

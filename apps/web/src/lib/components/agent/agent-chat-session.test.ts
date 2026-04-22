@@ -113,6 +113,125 @@ describe('agent-chat-session helpers', () => {
 		]);
 	});
 
+	it('buildAgentChatSessionSnapshot restores persisted tool executions before assistant replies', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: 'Create a task for the history page fix.',
+					created_at: '2026-03-28T10:00:00.000Z'
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Created the task.',
+					created_at: '2026-03-28T10:01:00.000Z'
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'exec-1',
+					message_id: 'assistant-1',
+					client_turn_id: 'turn-1',
+					tool_name: 'create_onto_task',
+					gateway_op: null,
+					sequence_index: 1,
+					arguments: { title: 'Fix restored chat tool calls' },
+					result: { task: { id: 'task-1', title: 'Fix restored chat tool calls' } },
+					execution_time_ms: 184,
+					success: true,
+					error_message: null,
+					created_at: '2026-03-28T10:00:30.000Z'
+				}
+			] as any
+		});
+
+		expect(snapshot.messages.map((message) => message.type)).toEqual([
+			'user',
+			'thinking_block',
+			'assistant',
+			'assistant'
+		]);
+		const block = snapshot.messages[1];
+		expect(block?.type).toBe('thinking_block');
+		expect((block as any).activities).toHaveLength(1);
+		expect((block as any).activities[0]).toMatchObject({
+			activityType: 'tool_call',
+			status: 'completed',
+			content: 'Created task: "Fix restored chat tool calls" (184ms)'
+		});
+	});
+
+	it('buildAgentChatSessionSnapshot dedupes tool executions matched by both message and turn id', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Updated the task.',
+					created_at: '2026-03-28T10:01:00.000Z',
+					metadata: { client_turn_id: 'turn-1' }
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'exec-1',
+					message_id: 'assistant-1',
+					client_turn_id: 'turn-1',
+					tool_name: 'update_onto_task',
+					gateway_op: null,
+					sequence_index: 1,
+					arguments: { title: 'Fix restored chat tool calls' },
+					result: { task: { id: 'task-1', title: 'Fix restored chat tool calls' } },
+					execution_time_ms: 91,
+					success: true,
+					error_message: null,
+					created_at: '2026-03-28T10:00:30.000Z'
+				}
+			] as any
+		});
+
+		const block = snapshot.messages[0];
+		expect(block?.type).toBe('thinking_block');
+		expect((block as any).activities).toHaveLength(1);
+		expect((block as any).activities.map((activity: any) => activity.id)).toEqual([
+			'restored-tool-tool_execution-exec-1'
+		]);
+	});
+
+	it('buildAgentChatSessionSnapshot falls back to compact assistant tool trace metadata', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Updated the project.',
+					created_at: '2026-03-28T10:01:00.000Z',
+					metadata: {
+						fastchat_tool_trace_v1: [
+							{
+								tool_call_id: 'call-1',
+								tool_name: 'update_onto_project',
+								success: true,
+								arguments_preview: '{"project_name":"Website refresh"}'
+							}
+						]
+					}
+				}
+			] as any
+		});
+
+		expect(snapshot.messages[0]?.type).toBe('thinking_block');
+		expect((snapshot.messages[0] as any).activities[0]).toMatchObject({
+			status: 'completed',
+			content: 'Updated project: "Website refresh"'
+		});
+	});
+
 	it('prewarmAgentContext returns parsed session data from the v2 prewarm endpoint', async () => {
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,

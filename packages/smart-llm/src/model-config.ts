@@ -2,6 +2,14 @@
 
 import type { JSONProfile, ModelCapabilities, ModelProfile, TextProfile } from './types';
 
+export const KIMI_EXPERIMENT_MODEL = 'moonshotai/kimi-k2.6' as const;
+export const KIMI_EXPERIMENT_MODELS = [KIMI_EXPERIMENT_MODEL] as const;
+export const QWEN_36_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.6-plus' as const;
+export const ACTIVE_EXPERIMENT_MODEL = QWEN_36_PLUS_EXPERIMENT_MODEL;
+export const ACTIVE_EXPERIMENT_MODELS = [ACTIVE_EXPERIMENT_MODEL] as const;
+export const AGENT_STATE_RECONCILIATION_MODEL = 'qwen/qwen3.5-flash-02-23' as const;
+export const AGENT_STATE_RECONCILIATION_MODELS = [AGENT_STATE_RECONCILIATION_MODEL] as const;
+
 export const MODEL_CATALOG: Record<string, ModelProfile> = {
 	'google/gemini-2.5-flash-lite': {
 		id: 'google/gemini-2.5-flash-lite',
@@ -378,6 +386,34 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		limitations: ['route-only', 'exacto-provider-pinned'],
 		capabilities: { jsonMode: true, structuredOutputs: true, tools: true }
 	},
+	[KIMI_EXPERIMENT_MODEL]: {
+		id: KIMI_EXPERIMENT_MODEL,
+		name: 'Kimi K2.6',
+		speed: 3.4,
+		smartness: 5,
+		creativity: 4.8,
+		cost: 0.95,
+		outputCost: 4,
+		provider: 'moonshotai',
+		bestFor: [
+			'long-horizon-coding',
+			'coding-driven-ui-generation',
+			'multi-agent-orchestration',
+			'agentic-workflows',
+			'multimodal',
+			'structured-output',
+			'tool-calling',
+			'262k-context'
+		],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
 	'moonshotai/kimi-k2.5': {
 		id: 'moonshotai/kimi-k2.5',
 		name: 'Kimi K2.5',
@@ -514,8 +550,12 @@ export function modelSupportsCapability(
 	return MODEL_CATALOG[modelId]?.capabilities?.[capability] === true;
 }
 
-export const JSON_MODELS: Record<string, ModelProfile> = MODEL_CATALOG;
-export const TEXT_MODELS: Record<string, ModelProfile> = MODEL_CATALOG;
+export const ACTIVE_RUNTIME_MODEL_IDS = [...ACTIVE_EXPERIMENT_MODELS];
+export const ACTIVE_RUNTIME_MODEL_SET = new Set<string>(ACTIVE_RUNTIME_MODEL_IDS);
+export const JSON_MODELS: Record<string, ModelProfile> = Object.fromEntries(
+	ACTIVE_RUNTIME_MODEL_IDS.map((modelId) => [modelId, MODEL_CATALOG[modelId]])
+) as Record<string, ModelProfile>;
+export const TEXT_MODELS: Record<string, ModelProfile> = JSON_MODELS;
 
 const PROVIDER_VERSION_SUFFIX_PATTERNS = [/-\d{8}$/, /-\d{4}-\d{2}-\d{2}$/, /-\d{2}-\d{2}$/];
 
@@ -560,164 +600,58 @@ export function resolveModelPricingProfile(
 	return null;
 }
 
+const ACTIVE_ROUTE = ACTIVE_EXPERIMENT_MODELS;
+
 const MODEL_ROUTES = {
 	openRouterV2: {
-		text: [
-			'qwen/qwen3.5-flash-02-23',
-			'google/gemini-3.1-flash-lite-preview',
-			'openai/gpt-4.1-nano'
-		],
-		json: [
-			'qwen/qwen3.6-plus',
-			'deepseek/deepseek-v3.2',
-			'openai/gpt-oss-120b',
-			'openai/gpt-4.1-nano'
-		],
-		toolCalling: [
-			'x-ai/grok-4.1-fast',
-			'minimax/minimax-m2.7',
-			'qwen/qwen3.6-plus',
-			'openai/gpt-oss-120b'
-		],
-		toolCallingExacto: [
-			'deepseek/deepseek-v3.1-terminus:exacto',
-			'qwen/qwen3-coder:exacto',
-			'moonshotai/kimi-k2-0905:exacto',
-			'openai/gpt-4o-mini'
-		]
+		text: ACTIVE_ROUTE,
+		json: ACTIVE_ROUTE,
+		toolCalling: ACTIVE_ROUTE,
+		toolCallingExacto: ACTIVE_ROUTE
 	},
 	tasks: {
-		projectNextStep: [
-			'qwen/qwen3.5-flash-02-23',
-			'openai/gpt-oss-20b',
-			'deepseek/deepseek-v3.2',
-			'qwen/qwen3.6-plus',
-			'openai/gpt-oss-120b',
-			'openai/gpt-4.1-nano'
-		]
+		projectNextStep: ACTIVE_ROUTE
 	},
 	agentRecommendations: {
 		brainDumps: {
-			contextExtraction: ['qwen/qwen3.5-flash-02-23', 'openai/gpt-4.1-nano'],
-			taskExtraction: ['deepseek/deepseek-v3.2', 'openai/gpt-oss-120b'],
-			clarification: ['qwen/qwen3.6-plus', 'openai/gpt-oss-120b']
+			contextExtraction: ACTIVE_ROUTE,
+			taskExtraction: ACTIVE_ROUTE,
+			clarification: ACTIVE_ROUTE
 		},
 		agentChat: {
 			planner: {
-				simple: ['x-ai/grok-4.1-fast', 'qwen/qwen3.5-flash-02-23'],
-				complex: ['qwen/qwen3.6-plus', 'deepseek/deepseek-v3.2', 'openai/gpt-oss-120b'],
-				toolHeavy: ['x-ai/grok-4.1-fast', 'minimax/minimax-m2.7', 'qwen/qwen3.6-plus']
+				simple: ACTIVE_ROUTE,
+				complex: ACTIVE_ROUTE,
+				toolHeavy: ACTIVE_ROUTE
 			},
 			executor: {
-				default: ['qwen/qwen3.5-flash-02-23', 'openai/gpt-4.1-nano'],
-				toolHeavy: ['x-ai/grok-4.1-fast', 'minimax/minimax-m2.7', 'openai/gpt-oss-120b']
+				default: ACTIVE_ROUTE,
+				toolHeavy: ACTIVE_ROUTE
 			},
 			synthesis: {
-				simple: ['qwen/qwen3.5-flash-02-23', 'openai/gpt-oss-120b'],
-				complex: ['qwen/qwen3.6-plus', 'deepseek/deepseek-v3.2', 'openai/gpt-oss-120b']
+				simple: ACTIVE_ROUTE,
+				complex: ACTIVE_ROUTE
 			}
 		},
 		dailyBriefs: {
-			projectBrief: [
-				'openai/gpt-oss-20b:free',
-				'openai/gpt-oss-20b',
-				'qwen/qwen3.5-flash-02-23',
-				'openai/gpt-oss-120b',
-				'openai/gpt-4.1-nano'
-			],
-			generation: ['qwen/qwen3.6-plus', 'deepseek/deepseek-v3.2', 'openai/gpt-oss-120b'],
-			summary: ['qwen/qwen3.5-flash-02-23', 'openai/gpt-4.1-nano']
+			projectBrief: ACTIVE_ROUTE,
+			generation: ACTIVE_ROUTE,
+			summary: ACTIVE_ROUTE
 		}
 	},
-	toolCalling: [
-		'x-ai/grok-4.1-fast',
-		'minimax/minimax-m2.7',
-		'qwen/qwen3.6-plus',
-		'deepseek/deepseek-v3.2',
-		'openai/gpt-oss-120b',
-		'openai/gpt-4.1-nano',
-		'qwen/qwen3.5-flash-02-23',
-		'openai/gpt-4o-mini',
-		'anthropic/claude-haiku-4.5',
-		'moonshotai/kimi-k2.5',
-		'anthropic/claude-sonnet-4.6',
-		'anthropic/claude-opus-4.6'
-	],
-	emergencyTextFallbacks: [
-		'openai/gpt-4.1-nano',
-		'openai/gpt-4o-mini',
-		'anthropic/claude-haiku-4.5'
-	],
+	toolCalling: ACTIVE_ROUTE,
+	emergencyTextFallbacks: ACTIVE_ROUTE,
 	jsonProfiles: {
-		fast: [
-			'openai/gpt-oss-20b',
-			'qwen/qwen3.5-flash-02-23',
-			'openai/gpt-4.1-nano',
-			'google/gemini-2.5-flash-lite',
-			'openai/gpt-4o-mini',
-			'openai/gpt-oss-120b'
-		],
-		balanced: [
-			'qwen/qwen3.6-plus',
-			'deepseek/deepseek-v3.2',
-			'openai/gpt-oss-120b',
-			'x-ai/grok-4.1-fast',
-			'qwen/qwen3.5-flash-02-23',
-			'minimax/minimax-m2.7',
-			'anthropic/claude-haiku-4.5'
-		],
-		powerful: [
-			'qwen/qwen3.6-plus',
-			'deepseek/deepseek-v3.2',
-			'openai/gpt-oss-120b',
-			'minimax/minimax-m2.7',
-			'moonshotai/kimi-k2.5',
-			'anthropic/claude-sonnet-4.6'
-		],
-		maximum: [
-			'anthropic/claude-opus-4.6',
-			'qwen/qwen3.6-plus',
-			'anthropic/claude-sonnet-4.6',
-			'moonshotai/kimi-k2.5',
-			'deepseek/deepseek-v3.2'
-		]
+		fast: ACTIVE_ROUTE,
+		balanced: ACTIVE_ROUTE,
+		powerful: ACTIVE_ROUTE,
+		maximum: ACTIVE_ROUTE
 	},
 	textProfiles: {
-		speed: [
-			'openai/gpt-oss-20b',
-			'qwen/qwen3.5-flash-02-23',
-			'openai/gpt-4.1-nano',
-			'google/gemini-2.5-flash-lite',
-			'x-ai/grok-4.1-fast',
-			'openai/gpt-4o-mini',
-			'openai/gpt-oss-120b'
-		],
-		balanced: [
-			'x-ai/grok-4.1-fast',
-			'qwen/qwen3.5-flash-02-23',
-			'qwen/qwen3.6-plus',
-			'openai/gpt-oss-120b',
-			'deepseek/deepseek-v3.2',
-			'minimax/minimax-m2.7',
-			'anthropic/claude-haiku-4.5',
-			'openai/gpt-4.1-nano'
-		],
-		quality: [
-			'qwen/qwen3.6-plus',
-			'deepseek/deepseek-v3.2',
-			'openai/gpt-oss-120b',
-			'minimax/minimax-m2.7',
-			'moonshotai/kimi-k2.5',
-			'anthropic/claude-sonnet-4.6',
-			'anthropic/claude-haiku-4.5'
-		],
-		creative: [
-			'anthropic/claude-opus-4.6',
-			'anthropic/claude-sonnet-4.6',
-			'qwen/qwen3.6-plus',
-			'moonshotai/kimi-k2.5',
-			'anthropic/claude-haiku-4.5'
-		]
+		speed: ACTIVE_ROUTE,
+		balanced: ACTIVE_ROUTE,
+		quality: ACTIVE_ROUTE,
+		creative: ACTIVE_ROUTE
 	}
 } as const;
 

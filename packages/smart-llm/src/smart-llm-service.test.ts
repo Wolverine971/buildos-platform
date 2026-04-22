@@ -1,6 +1,7 @@
 // packages/smart-llm/src/smart-llm-service.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { SmartLLMService } from './smart-llm-service';
+import { ACTIVE_EXPERIMENT_MODEL } from './model-config';
 
 function buildSSE(payloads: string[], headers?: Record<string, string>): Response {
 	const encoder = new TextEncoder();
@@ -69,7 +70,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 					id: 'chatcmpl-test',
 					object: 'chat.completion.chunk',
 					created: 0,
-					model: 'kimi-k2.5',
+					model: 'kimi-k2.6',
 					choices: [
 						{
 							index: 0,
@@ -91,7 +92,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 					id: 'chatcmpl-test',
 					object: 'chat.completion.chunk',
 					created: 0,
-					model: 'kimi-k2.5',
+					model: 'kimi-k2.6',
 					choices: [
 						{
 							index: 0,
@@ -143,7 +144,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 					id: 'chatcmpl-test',
 					object: 'chat.completion.chunk',
 					created: 0,
-					model: 'kimi-k2.5',
+					model: 'kimi-k2.6',
 					choices: [
 						{
 							index: 0,
@@ -213,7 +214,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 					id: 'chatcmpl-test',
 					object: 'chat.completion.chunk',
 					created: 0,
-					model: 'kimi-k2.5',
+					model: 'kimi-k2.6',
 					choices: [
 						{
 							index: 0,
@@ -302,7 +303,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 					id: 'chatcmpl-test',
 					object: 'chat.completion.chunk',
 					created: 0,
-					model: 'kimi-k2.5',
+					model: 'kimi-k2.6',
 					choices: [
 						{
 							index: 0,
@@ -384,7 +385,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 		}
 	});
 
-	it('does not force-prioritize Kimi for tool calls when Moonshot direct routing is enabled', async () => {
+	it('uses Kimi through OpenRouter for tool calls when Moonshot direct routing is enabled', async () => {
 		const requestBodies: any[] = [];
 		const requestUrls: string[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
@@ -398,7 +399,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 					id: 'chatcmpl-test',
 					object: 'chat.completion.chunk',
 					created: 0,
-					model: 'openai/gpt-4o-mini',
+					model: 'kimi-k2.6',
 					choices: [
 						{
 							index: 0,
@@ -437,14 +438,13 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 
 		expect(requestBodies.length).toBeGreaterThan(0);
 		expect(requestUrls[0]).toContain('openrouter.ai/api/v1/chat/completions');
-		expect(typeof requestBodies[0]?.model).toBe('string');
-		expect((requestBodies[0]?.model as string).startsWith('moonshotai/kimi')).toBe(false);
+		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
 		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'low', exclude: true });
 	});
 });
 
 describe('SmartLLMService model failover', () => {
-	it('falls back to the next model when the primary stream model is unavailable', async () => {
+	it('does not fail over to a non-active model when the experiment model is unavailable', async () => {
 		const requestBodies: any[] = [];
 		const usageLogger = {
 			logUsageToDatabase: vi.fn(async () => undefined)
@@ -458,7 +458,7 @@ describe('SmartLLMService model failover', () => {
 				return new Response(
 					JSON.stringify({
 						error: {
-							message: 'Model x-ai/grok-4.1-fast is no longer available.'
+							message: `Model ${ACTIVE_EXPERIMENT_MODEL} is no longer available.`
 						}
 					}),
 					{
@@ -470,43 +470,7 @@ describe('SmartLLMService model failover', () => {
 				);
 			}
 
-			return buildSSE(
-				[
-					JSON.stringify({
-						id: 'chatcmpl-fallback',
-						object: 'chat.completion.chunk',
-						created: 0,
-						model: 'qwen/qwen3.5-flash-02-23',
-						choices: [
-							{
-								index: 0,
-								delta: { content: 'Recovered response.' },
-								finish_reason: 'stop'
-							}
-						]
-					}),
-					JSON.stringify({
-						id: 'chatcmpl-fallback',
-						object: 'chat.completion.chunk',
-						created: 0,
-						model: 'qwen/qwen3.5-flash-02-23',
-						choices: [{ index: 0, delta: {}, finish_reason: 'stop' }],
-						usage: {
-							prompt_tokens: 15,
-							completion_tokens: 4,
-							total_tokens: 19,
-							prompt_tokens_details: {
-								cached_tokens: 3
-							}
-						}
-					}),
-					'[DONE]'
-				],
-				{
-					'x-openrouter-model': 'qwen/qwen3.5-flash-02-23',
-					'x-openrouter-provider': 'qwen-resolved'
-				}
-			);
+			throw new Error('Unexpected fallback request');
 		});
 
 		const llm = new SmartLLMService({
@@ -530,28 +494,10 @@ describe('SmartLLMService model failover', () => {
 			}
 		}
 
-		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(requestBodies[0]?.model).toBe('x-ai/grok-4.1-fast');
-		expect(requestBodies[0]?.models).toContain('qwen/qwen3.5-flash-02-23');
-		expect(requestBodies[1]?.model).toBe('qwen/qwen3.5-flash-02-23');
-		expect(events.some((event) => event.type === 'error')).toBe(false);
-		expect(events.some((event) => event.type === 'text')).toBe(true);
-		expect(events.find((event) => event.type === 'done')).toBeDefined();
-		await vi.waitFor(() => expect(usageLogger.logUsageToDatabase).toHaveBeenCalledTimes(1));
-		expect(usageLogger.logUsageToDatabase.mock.calls[0]?.[0]).toMatchObject({
-			modelRequested: 'qwen/qwen3.5-flash-02-23',
-			modelUsed: 'qwen/qwen3.5-flash-02-23',
-			provider: 'qwen-resolved',
-			promptTokens: 15,
-			completionTokens: 4,
-			totalTokens: 19,
-			openrouterCacheStatus: '20% cache hit',
-			streaming: true,
-			metadata: {
-				modelRequested: 'qwen/qwen3.5-flash-02-23',
-				modelsAttempted: expect.arrayContaining(['qwen/qwen3.5-flash-02-23']),
-				attempts: 2
-			}
-		});
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(events.some((event) => event.type === 'error')).toBe(true);
+		expect(events.some((event) => event.type === 'text')).toBe(false);
+		expect(usageLogger.logUsageToDatabase).not.toHaveBeenCalled();
 	});
 });

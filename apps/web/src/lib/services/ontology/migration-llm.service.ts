@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/ontology/migration-llm.service.ts
 // LLM Rate Limiter, Circuit Breaker, and Cost Estimation for Migration
+import { ACTIVE_EXPERIMENT_MODEL } from '@buildos/smart-llm';
 
 export interface RateLimitConfig {
 	maxRequestsPerMinute: number;
@@ -27,7 +28,7 @@ export interface CostEstimate {
 }
 
 export interface LLMUsageMetadata {
-	provider: 'openai' | 'deepseek' | 'qwen';
+	provider: 'openai' | 'deepseek' | 'qwen' | 'moonshotai';
 	model: string;
 	inputTokens: number;
 	outputTokens: number;
@@ -36,15 +37,11 @@ export interface LLMUsageMetadata {
 	durationMs: number;
 }
 
-const DEFAULT_MIGRATION_MODEL = 'deepseek/deepseek-v3.2';
+const DEFAULT_MIGRATION_MODEL = ACTIVE_EXPERIMENT_MODEL;
 
 // Token costs per 1000 tokens (OpenRouter pricing checked April 2026)
 const TOKEN_COSTS: Record<string, TokenCosts> = {
-	'deepseek/deepseek-v3.2': { input: 0.00026, output: 0.00038 },
-	'qwen/qwen3.5-flash-02-23': { input: 0.000065, output: 0.00026 },
-	'openai/gpt-oss-120b': { input: 0.000039, output: 0.00019 },
-	'openai/gpt-4.1-nano': { input: 0.0001, output: 0.0004 },
-	'openai/gpt-4o-mini': { input: 0.00015, output: 0.0006 }
+	[ACTIVE_EXPERIMENT_MODEL]: { input: 0.000325, output: 0.00195 }
 };
 
 // Estimated tokens per entity type (based on typical prompt/response sizes)
@@ -207,7 +204,8 @@ export function estimateMigrationCost(
 	avgPhasesPerProject: number = 2,
 	model: string = DEFAULT_MIGRATION_MODEL
 ): CostEstimate {
-	const costs = TOKEN_COSTS[model] ?? TOKEN_COSTS[DEFAULT_MIGRATION_MODEL]!;
+	const resolvedModel = TOKEN_COSTS[model] ? model : DEFAULT_MIGRATION_MODEL;
+	const costs = TOKEN_COSTS[resolvedModel]!;
 
 	// Calculate total tokens
 	const projectInputTokens = projectCount * TOKENS_PER_ENTITY.project.input;
@@ -248,7 +246,7 @@ export function estimateMigrationCost(
 			outputCost: Math.round(outputCost * 1000) / 1000
 		},
 		estimatedDuration,
-		model
+		model: resolvedModel
 	};
 }
 
@@ -261,8 +259,8 @@ export function estimateCostForEntities(counts: {
 	phases: number;
 	model?: string;
 }): CostEstimate {
-	const model = counts.model || DEFAULT_MIGRATION_MODEL;
-	const costs = TOKEN_COSTS[model] ?? TOKEN_COSTS[DEFAULT_MIGRATION_MODEL]!;
+	const model = TOKEN_COSTS[counts.model || ''] ? counts.model! : DEFAULT_MIGRATION_MODEL;
+	const costs = TOKEN_COSTS[model]!;
 
 	const projectInputTokens = counts.projects * TOKENS_PER_ENTITY.project.input;
 	const projectOutputTokens = counts.projects * TOKENS_PER_ENTITY.project.output;
@@ -320,18 +318,19 @@ function formatDuration(ms: number): string {
  * Create LLM usage metadata for migration log
  */
 export function createLLMUsageMetadata(
-	provider: 'openai' | 'deepseek' | 'qwen',
+	provider: 'openai' | 'deepseek' | 'qwen' | 'moonshotai',
 	model: string,
 	inputTokens: number,
 	outputTokens: number,
 	durationMs: number
 ): LLMUsageMetadata {
-	const costs = TOKEN_COSTS[model] ?? TOKEN_COSTS[DEFAULT_MIGRATION_MODEL]!;
+	const resolvedModel = TOKEN_COSTS[model] ? model : DEFAULT_MIGRATION_MODEL;
+	const costs = TOKEN_COSTS[resolvedModel]!;
 	const estimatedCost = (inputTokens / 1000) * costs.input + (outputTokens / 1000) * costs.output;
 
 	return {
 		provider,
-		model,
+		model: resolvedModel,
 		inputTokens,
 		outputTokens,
 		totalTokens: inputTokens + outputTokens,
@@ -351,34 +350,10 @@ export function getAvailableModels(): Array<{
 }> {
 	return [
 		{
-			id: 'deepseek/deepseek-v3.2',
-			name: 'DeepSeek V3.2',
-			costs: TOKEN_COSTS['deepseek/deepseek-v3.2']!,
+			id: ACTIVE_EXPERIMENT_MODEL,
+			name: 'Qwen 3.6 Plus',
+			costs: TOKEN_COSTS[ACTIVE_EXPERIMENT_MODEL]!,
 			recommended: true
-		},
-		{
-			id: 'qwen/qwen3.5-flash-02-23',
-			name: 'Qwen 3.5 Flash',
-			costs: TOKEN_COSTS['qwen/qwen3.5-flash-02-23']!,
-			recommended: true
-		},
-		{
-			id: 'openai/gpt-oss-120b',
-			name: 'GPT-OSS 120B',
-			costs: TOKEN_COSTS['openai/gpt-oss-120b']!,
-			recommended: false
-		},
-		{
-			id: 'openai/gpt-4.1-nano',
-			name: 'GPT-4.1 Nano',
-			costs: TOKEN_COSTS['openai/gpt-4.1-nano']!,
-			recommended: false
-		},
-		{
-			id: 'openai/gpt-4o-mini',
-			name: 'GPT-4o Mini',
-			costs: TOKEN_COSTS['openai/gpt-4o-mini']!,
-			recommended: false
 		}
 	];
 }

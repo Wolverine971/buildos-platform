@@ -7,8 +7,9 @@ import {
 	getAvailableModels
 } from '$lib/services/ontology/migration-llm.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { ACTIVE_EXPERIMENT_MODEL } from '@buildos/smart-llm';
 
-const DEFAULT_MIGRATION_MODEL = 'deepseek/deepseek-v3.2';
+const DEFAULT_MIGRATION_MODEL = ACTIVE_EXPERIMENT_MODEL;
 
 export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
@@ -23,7 +24,9 @@ export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) =
 	// Get parameters
 	const userId = url.searchParams.get('userId');
 	const projectIds = url.searchParams.get('projectIds')?.split(',').filter(Boolean);
-	const model = url.searchParams.get('model') || DEFAULT_MIGRATION_MODEL;
+	const requestedModel = url.searchParams.get('model') || DEFAULT_MIGRATION_MODEL;
+	const model =
+		requestedModel === DEFAULT_MIGRATION_MODEL ? requestedModel : DEFAULT_MIGRATION_MODEL;
 	const includeCompleted = url.searchParams.get('includeCompleted') === 'true';
 
 	const supabase = createAdminSupabaseClient();
@@ -175,7 +178,9 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession }
 	const projects = typeof body?.projects === 'number' ? body.projects : 0;
 	const tasks = typeof body?.tasks === 'number' ? body.tasks : 0;
 	const phases = typeof body?.phases === 'number' ? body.phases : 0;
-	const model = typeof body?.model === 'string' ? body.model : DEFAULT_MIGRATION_MODEL;
+	const requestedModel = typeof body?.model === 'string' ? body.model : DEFAULT_MIGRATION_MODEL;
+	const model =
+		requestedModel === DEFAULT_MIGRATION_MODEL ? requestedModel : DEFAULT_MIGRATION_MODEL;
 
 	try {
 		const estimate = estimateCostForEntities({

@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/ontology/migration-llm.service.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ACTIVE_EXPERIMENT_MODEL } from '@buildos/smart-llm';
 import {
 	LLMRateLimiter,
 	estimateMigrationCost,
@@ -115,12 +116,12 @@ describe('LLMRateLimiter', () => {
 
 describe('estimateMigrationCost', () => {
 	it('should calculate cost for projects', () => {
-		const estimate = estimateMigrationCost(10, 8, 2, 'deepseek/deepseek-v3.2');
+		const estimate = estimateMigrationCost(10, 8, 2, ACTIVE_EXPERIMENT_MODEL);
 
 		expect(estimate.tokens).toBeGreaterThan(0);
 		expect(estimate.cost).toBeGreaterThan(0);
 		expect(estimate.estimatedDuration).toBeTruthy();
-		expect(estimate.model).toBe('deepseek/deepseek-v3.2');
+		expect(estimate.model).toBe(ACTIVE_EXPERIMENT_MODEL);
 	});
 
 	it('should include token breakdown', () => {
@@ -140,14 +141,13 @@ describe('estimateMigrationCost', () => {
 		expect(estimate100.cost).toBeGreaterThan(estimate10.cost);
 	});
 
-	it('should use different rates for different models', () => {
-		const cheapEstimate = estimateMigrationCost(10, 8, 2, 'openai/gpt-oss-120b');
-		const stableEstimate = estimateMigrationCost(10, 8, 2, 'openai/gpt-4.1-nano');
+	it('should clamp unsupported models to the active experiment model', () => {
+		const unsupportedEstimate = estimateMigrationCost(10, 8, 2, 'openai/gpt-oss-120b');
+		const activeEstimate = estimateMigrationCost(10, 8, 2, ACTIVE_EXPERIMENT_MODEL);
 
-		// GPT-4.1 Nano is more expensive than GPT-OSS 120B.
-		expect(stableEstimate.cost).toBeGreaterThan(cheapEstimate.cost);
-		// Same tokens for same entity count
-		expect(stableEstimate.tokens).toBe(cheapEstimate.tokens);
+		expect(unsupportedEstimate.model).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(unsupportedEstimate.cost).toBe(activeEstimate.cost);
+		expect(unsupportedEstimate.tokens).toBe(activeEstimate.tokens);
 	});
 
 	it('should return zero for zero projects', () => {
@@ -198,10 +198,10 @@ describe('estimateCostForEntities', () => {
 
 describe('createLLMUsageMetadata', () => {
 	it('should create metadata with correct structure', () => {
-		const metadata = createLLMUsageMetadata('openai', 'openai/gpt-4.1-nano', 1000, 500, 2500);
+		const metadata = createLLMUsageMetadata('qwen', ACTIVE_EXPERIMENT_MODEL, 1000, 500, 2500);
 
-		expect(metadata.provider).toBe('openai');
-		expect(metadata.model).toBe('openai/gpt-4.1-nano');
+		expect(metadata.provider).toBe('qwen');
+		expect(metadata.model).toBe(ACTIVE_EXPERIMENT_MODEL);
 		expect(metadata.inputTokens).toBe(1000);
 		expect(metadata.outputTokens).toBe(500);
 		expect(metadata.totalTokens).toBe(1500);
@@ -209,17 +209,9 @@ describe('createLLMUsageMetadata', () => {
 	});
 
 	it('should calculate estimated cost', () => {
-		const metadata = createLLMUsageMetadata(
-			'deepseek',
-			'deepseek/deepseek-v3.2',
-			1000,
-			500,
-			1000
-		);
+		const metadata = createLLMUsageMetadata('qwen', ACTIVE_EXPERIMENT_MODEL, 1000, 500, 1000);
 
-		// DeepSeek V3.2 costs: $0.00026/1K input, $0.00038/1K output
-		// Cost = 0.00045, rounded by metadata to 4 decimal places.
-		expect(metadata.estimatedCost).toBe(0.0005);
+		expect(metadata.estimatedCost).toBe(0.0013);
 	});
 });
 
@@ -249,12 +241,12 @@ describe('getAvailableModels', () => {
 		}
 	});
 
-	it('should include DeepSeek V3.2 as recommended', () => {
+	it('should include the active experiment model as the recommended model', () => {
 		const models = getAvailableModels();
-		const deepseek = models.find((m) => m.id === 'deepseek/deepseek-v3.2');
+		const active = models.find((m) => m.id === ACTIVE_EXPERIMENT_MODEL);
 
-		expect(deepseek).toBeDefined();
-		expect(deepseek?.recommended).toBe(true);
+		expect(active).toBeDefined();
+		expect(active?.recommended).toBe(true);
 	});
 });
 

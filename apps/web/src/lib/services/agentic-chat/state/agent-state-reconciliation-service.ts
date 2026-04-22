@@ -7,6 +7,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { AGENT_STATE_RECONCILIATION_MODEL } from '@buildos/smart-llm';
 import type { Database, ChatContextType } from '@buildos/shared-types';
 import type {
 	AgentState,
@@ -17,13 +18,13 @@ import type {
 } from '$lib/types/agent-chat-enhancement';
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import { cleanJSONResponse } from '$lib/services/smart-llm/response-parsing';
-import { getOptimalJSONProfile } from '../config/model-selection-config';
 import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { sanitizeLogText } from '$lib/utils/logging-helpers';
 import { v4 as uuidv4 } from 'uuid';
 
 const logger = createLogger('AgentStateReconciliation');
+const AGENT_STATE_RECONCILIATION_MAX_TOKENS = 1200;
 
 export interface AgentStateMessageSnapshot {
 	role: 'user' | 'assistant' | 'system' | 'tool';
@@ -62,12 +63,18 @@ interface LLMService {
 		userPrompt: string;
 		temperature?: number;
 		profile?: string;
+		model?: string;
+		models?: string[];
+		allowedModelIds?: string[];
+		includeDefaultModels?: boolean;
+		maxTokens?: number;
 		userId?: string;
 		operationType?: string;
 		chatSessionId?: string;
 		turnRunId?: string;
 		streamRunId?: string;
 		clientTurnId?: string;
+		metadata?: Record<string, unknown>;
 		validation?: {
 			retryOnParseError?: boolean;
 			validateSchema?: boolean;
@@ -105,7 +112,6 @@ export class AgentStateReconciliationService {
 		const systemPrompt = this.buildSystemPrompt();
 		const userPrompt = this.buildUserPrompt(input);
 		const llmWithJson = llmService as LLMService;
-		const profile = getOptimalJSONProfile('cost_sensitive', 'simple');
 
 		let rawResponse: unknown;
 
@@ -115,13 +121,20 @@ export class AgentStateReconciliationService {
 					systemPrompt,
 					userPrompt,
 					temperature: 0.25,
-					profile,
+					model: AGENT_STATE_RECONCILIATION_MODEL,
+					models: [AGENT_STATE_RECONCILIATION_MODEL],
+					allowedModelIds: [AGENT_STATE_RECONCILIATION_MODEL],
+					includeDefaultModels: false,
+					maxTokens: AGENT_STATE_RECONCILIATION_MAX_TOKENS,
 					userId: input.userId,
 					operationType: 'agent_state_reconciliation',
 					chatSessionId: input.sessionId,
 					turnRunId: input.turnRunId ?? undefined,
 					streamRunId: input.streamRunId ?? undefined,
 					clientTurnId: input.clientTurnId ?? undefined,
+					metadata: {
+						routing: 'agent_state_reconciliation_cheap_json'
+					},
 					validation: {
 						retryOnParseError: true,
 						maxRetries: 2,

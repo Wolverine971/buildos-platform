@@ -1,5 +1,10 @@
 // apps/web/src/lib/services/openrouter-v2-service.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+	ACTIVE_EXPERIMENT_MODEL,
+	AGENT_STATE_RECONCILIATION_MODEL,
+	KIMI_EXPERIMENT_MODEL
+} from '@buildos/smart-llm';
 
 vi.mock('$env/static/private', () => ({
 	PRIVATE_OPENROUTER_API_KEY: 'openrouter-test-key'
@@ -57,57 +62,26 @@ function createSseResponse(payloads: string[], headers?: Record<string, string>)
 	});
 }
 
-describe('OpenRouterV2Service model failover', () => {
+describe('OpenRouterV2Service model routing', () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();
 	});
 
-	it('falls back to the next JSON lane model when the primary model is unavailable', async () => {
+	it('does not fall back to non-active JSON lane models when the experiment model is unavailable', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
 				requestBodies.push(JSON.parse(init.body));
 			}
 
-			if (requestBodies.length === 1) {
-				return new Response(
-					JSON.stringify({
-						error: {
-							message:
-								'Qwen 3.6 Plus is temporarily unavailable from the upstream provider.'
-						}
-					}),
-					{
-						status: 404,
-						headers: {
-							'content-type': 'application/json'
-						}
-					}
-				);
-			}
-
 			return new Response(
 				JSON.stringify({
-					id: 'chatcmpl-v2-fallback',
-					model: 'deepseek/deepseek-v3.2',
-					choices: [
-						{
-							index: 0,
-							message: {
-								role: 'assistant',
-								content: '{"ok":true}'
-							},
-							finish_reason: 'stop'
-						}
-					],
-					usage: {
-						prompt_tokens: 10,
-						completion_tokens: 4,
-						total_tokens: 14
+					error: {
+						message: `${ACTIVE_EXPERIMENT_MODEL} is temporarily unavailable from the upstream provider.`
 					}
 				}),
 				{
-					status: 200,
+					status: 404,
 					headers: {
 						'content-type': 'application/json'
 					}
@@ -119,23 +93,19 @@ describe('OpenRouterV2Service model failover', () => {
 
 		const service = createService();
 
-		const result = await service.getJSONResponse<{ ok: boolean }>({
-			systemPrompt: 'Return valid JSON.',
-			userPrompt: 'Respond with {"ok":true}.'
-		});
+		await expect(
+			service.getJSONResponse<{ ok: boolean }>({
+				systemPrompt: 'Return valid JSON.',
+				userPrompt: 'Respond with {"ok":true}.'
+			})
+		).rejects.toThrow('Failed to generate valid JSON with OpenRouter V2');
 
-		expect(result).toEqual({ ok: true });
-		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(requestBodies[0]?.model).toBe('qwen/qwen3.6-plus');
-		expect(requestBodies[0]?.models).toEqual([
-			'deepseek/deepseek-v3.2',
-			'openai/gpt-oss-120b',
-			'openai/gpt-4.1-nano'
-		]);
-		expect(requestBodies[1]?.model).toBe('deepseek/deepseek-v3.2');
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(requestBodies[0]?.models).toBeUndefined();
 	});
 
-	it('honors JSON profile hints before JSON lane defaults', async () => {
+	it('honors JSON profile hints while keeping the active model as the only model', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
@@ -145,7 +115,7 @@ describe('OpenRouterV2Service model failover', () => {
 			return new Response(
 				JSON.stringify({
 					id: 'chatcmpl-v2-profile',
-					model: 'qwen/qwen3.5-flash-02-23',
+					model: ACTIVE_EXPERIMENT_MODEL,
 					choices: [
 						{
 							index: 0,
@@ -183,10 +153,68 @@ describe('OpenRouterV2Service model failover', () => {
 
 		expect(result).toEqual({ ok: true });
 		expect(fetchMock).toHaveBeenCalledTimes(1);
-		expect(requestBodies[0]?.model).toBe('openai/gpt-oss-20b');
+		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
 		expect(requestBodies[0]?.response_format).toEqual({ type: 'json_object' });
-		expect(requestBodies[0]?.models).toContain('qwen/qwen3.5-flash-02-23');
-		expect(requestBodies[0]?.models).toContain('openai/gpt-4.1-nano');
+		expect(requestBodies[0]?.models).toBeUndefined();
+	});
+
+	it('routes allowlisted reconciliation JSON calls to the cheaper side-route model', async () => {
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+
+			return new Response(
+				JSON.stringify({
+					id: 'chatcmpl-reconciliation-side-route',
+					model: AGENT_STATE_RECONCILIATION_MODEL,
+					choices: [
+						{
+							index: 0,
+							message: {
+								role: 'assistant',
+								content: '{"ok":true}'
+							},
+							finish_reason: 'stop'
+						}
+					],
+					usage: {
+						prompt_tokens: 10,
+						completion_tokens: 4,
+						total_tokens: 14
+					}
+				}),
+				{
+					status: 200,
+					headers: {
+						'content-type': 'application/json'
+					}
+				}
+			);
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createService();
+
+		const result = await service.getJSONResponse<{ ok: boolean }>({
+			systemPrompt: 'Return valid JSON.',
+			userPrompt: 'Respond with {"ok":true}.',
+			model: AGENT_STATE_RECONCILIATION_MODEL,
+			models: [AGENT_STATE_RECONCILIATION_MODEL],
+			allowedModelIds: [AGENT_STATE_RECONCILIATION_MODEL],
+			includeDefaultModels: false,
+			maxTokens: 1200,
+			operationType: 'agent_state_reconciliation'
+		});
+
+		expect(result).toEqual({ ok: true });
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(requestBodies[0]?.model).toBe(AGENT_STATE_RECONCILIATION_MODEL);
+		expect(requestBodies[0]?.models).toBeUndefined();
+		expect(requestBodies[0]?.max_tokens).toBe(1200);
+		expect(requestBodies[0]?.response_format).toEqual({ type: 'json_object' });
 	});
 });
 
@@ -201,7 +229,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 				new Response(
 					JSON.stringify({
 						id: 'chatcmpl-visible-text',
-						model: 'x-ai/grok-4.1-fast',
+						model: ACTIVE_EXPERIMENT_MODEL,
 						choices: [
 							{
 								index: 0,
@@ -248,7 +276,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 				new Response(
 					JSON.stringify({
 						id: 'chatcmpl-json-usage',
-						model: 'qwen/qwen3.6-plus',
+						model: ACTIVE_EXPERIMENT_MODEL,
 						choices: [
 							{
 								index: 0,
@@ -306,7 +334,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			stream_run_id: 'stream-run-1',
 			client_turn_id: 'client-turn-1',
 			operation_type: 'agent_state_reconciliation',
-			model_used: 'qwen/qwen3.6-plus',
+			model_used: ACTIVE_EXPERIMENT_MODEL,
 			prompt_tokens: 100,
 			completion_tokens: 50,
 			total_tokens: 150,
@@ -333,7 +361,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 				new Response(
 					JSON.stringify({
 						id: 'chatcmpl-versioned-model',
-						model: 'deepseek/deepseek-v3.2-20251201',
+						model: 'moonshotai/kimi-k2.6-20260420',
 						choices: [
 							{
 								index: 0,
@@ -365,8 +393,8 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		await service.getJSONResponse<{ ok: boolean }>({
 			systemPrompt: 'Return valid JSON.',
 			userPrompt: 'Respond with {"ok":true}.',
-			model: 'deepseek/deepseek-v3.2',
-			models: ['deepseek/deepseek-v3.2'],
+			model: KIMI_EXPERIMENT_MODEL,
+			models: [KIMI_EXPERIMENT_MODEL],
 			userId: '11111111-1111-4111-8111-111111111111',
 			chatSessionId: '22222222-2222-4222-8222-222222222222',
 			turnRunId: '33333333-3333-4333-8333-333333333333',
@@ -375,14 +403,14 @@ describe('OpenRouterV2Service visible text filtering', () => {
 
 		await vi.waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
 		expect(insertMock.mock.calls[0]?.[0]).toMatchObject({
-			model_used: 'deepseek/deepseek-v3.2-20251201',
+			model_used: 'moonshotai/kimi-k2.6-20260420',
 			metadata: {
-				pricingModel: 'deepseek/deepseek-v3.2'
+				pricingModel: KIMI_EXPERIMENT_MODEL
 			}
 		});
-		expect(insertMock.mock.calls[0]?.[0]?.input_cost_usd).toBeCloseTo(0.00026);
-		expect(insertMock.mock.calls[0]?.[0]?.output_cost_usd).toBeCloseTo(0.00019);
-		expect(insertMock.mock.calls[0]?.[0]?.total_cost_usd).toBeCloseTo(0.00045);
+		expect(insertMock.mock.calls[0]?.[0]?.input_cost_usd).toBeCloseTo(0.00095);
+		expect(insertMock.mock.calls[0]?.[0]?.output_cost_usd).toBeCloseTo(0.002);
+		expect(insertMock.mock.calls[0]?.[0]?.total_cost_usd).toBeCloseTo(0.00295);
 	});
 
 	it('suppresses streamed reasoning text while preserving reasoning token metadata', async () => {
@@ -395,7 +423,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 				[
 					JSON.stringify({
 						id: 'stream-visible-text',
-						model: 'x-ai/grok-4.1-fast',
+						model: ACTIVE_EXPERIMENT_MODEL,
 						choices: [
 							{
 								delta: {
@@ -437,7 +465,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 					'[DONE]'
 				],
 				{
-					'x-openrouter-model': 'x-ai/grok-4.1-fast'
+					'x-openrouter-model': ACTIVE_EXPERIMENT_MODEL
 				}
 			);
 		});
@@ -471,13 +499,13 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			type: 'done',
 			reasoning_tokens: 4,
 			reasoningTokens: 4,
-			model: 'x-ai/grok-4.1-fast'
+			model: ACTIVE_EXPERIMENT_MODEL
 		});
 		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
 		expect(requestBodies[0]?.stream_options).toEqual({ include_usage: true });
 	});
 
-	it('caps OpenRouter fallback models for profiled tool-calling streams', async () => {
+	it('omits OpenRouter fallback models for profiled tool-calling streams', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
@@ -486,7 +514,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			return createSseResponse([
 				JSON.stringify({
 					id: 'stream-tool-profile',
-					model: 'x-ai/grok-4.1-fast',
+					model: ACTIVE_EXPERIMENT_MODEL,
 					choices: [{ delta: { content: 'Tool-ready answer' } }]
 				}),
 				JSON.stringify({
@@ -528,18 +556,13 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(events.find((event) => event.type === 'done')).toMatchObject({
 			type: 'done'
 		});
-		expect(requestBodies[0]?.model).toBe('x-ai/grok-4.1-fast');
-		expect(requestBodies[0]?.models).toHaveLength(3);
-		expect(requestBodies[0]?.models).toEqual([
-			'minimax/minimax-m2.7',
-			'qwen/qwen3.6-plus',
-			'openai/gpt-oss-120b'
-		]);
+		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(requestBodies[0]?.models).toBeUndefined();
 		expect(requestBodies[0]?.tools).toHaveLength(1);
 		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
 	});
 
-	it('logs streaming usage against the started fallback request model and resolved provider', async () => {
+	it('logs streaming usage against the active request model and resolved provider', async () => {
 		const insertMock = vi.fn(async () => ({ error: null }));
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
@@ -547,31 +570,15 @@ describe('OpenRouterV2Service visible text filtering', () => {
 				requestBodies.push(JSON.parse(init.body));
 			}
 
-			if (requestBodies.length === 1) {
-				return new Response(
-					JSON.stringify({
-						error: {
-							message: 'Primary model is temporarily rate-limited.'
-						}
-					}),
-					{
-						status: 429,
-						headers: {
-							'content-type': 'application/json'
-						}
-					}
-				);
-			}
-
 			return createSseResponse(
 				[
 					JSON.stringify({
-						id: 'stream-fallback',
-						model: 'deepseek/deepseek-v3.2',
+						id: 'stream-qwen',
+						model: ACTIVE_EXPERIMENT_MODEL,
 						choices: [
 							{
 								delta: {
-									content: 'Fallback answer'
+									content: 'Qwen answer'
 								}
 							}
 						]
@@ -587,9 +594,9 @@ describe('OpenRouterV2Service visible text filtering', () => {
 					'[DONE]'
 				],
 				{
-					'x-openrouter-model': 'deepseek/deepseek-v3.2',
-					'x-openrouter-provider': 'resolved-openrouter-provider',
-					'x-openrouter-request-id': 'stream-fallback-request'
+					'x-openrouter-model': ACTIVE_EXPERIMENT_MODEL,
+					'x-openrouter-provider': 'qwen',
+					'x-openrouter-request-id': 'stream-qwen-request'
 				}
 			);
 		});
@@ -614,29 +621,28 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		}
 
 		await vi.waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
-		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(requestBodies[0]?.model).toBe('qwen/qwen3.6-plus');
-		expect(requestBodies[0]?.models).toContain('deepseek/deepseek-v3.2');
-		expect(requestBodies[1]?.model).toBe('deepseek/deepseek-v3.2');
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(requestBodies[0]?.models).toBeUndefined();
 		expect(events.find((event) => event.type === 'done')).toMatchObject({
 			type: 'done',
-			model: 'deepseek/deepseek-v3.2',
-			provider: 'resolved-openrouter-provider'
+			model: ACTIVE_EXPERIMENT_MODEL,
+			provider: 'qwen'
 		});
 		expect(insertMock.mock.calls[0]?.[0]).toMatchObject({
-			model_requested: 'deepseek/deepseek-v3.2',
-			model_used: 'deepseek/deepseek-v3.2',
-			provider: 'resolved-openrouter-provider',
+			model_requested: ACTIVE_EXPERIMENT_MODEL,
+			model_used: ACTIVE_EXPERIMENT_MODEL,
+			provider: 'qwen',
 			streaming: true,
-			openrouter_request_id: 'stream-fallback',
+			openrouter_request_id: 'stream-qwen',
 			prompt_tokens: 20,
 			completion_tokens: 5,
 			total_tokens: 25
 		});
 		expect(insertMock.mock.calls[0]?.[0]?.metadata).toMatchObject({
-			modelRequested: 'deepseek/deepseek-v3.2',
-			modelsAttempted: expect.arrayContaining(['deepseek/deepseek-v3.2']),
-			attempts: 2
+			modelRequested: ACTIVE_EXPERIMENT_MODEL,
+			modelsAttempted: expect.arrayContaining([ACTIVE_EXPERIMENT_MODEL]),
+			attempts: 1
 		});
 	});
 });

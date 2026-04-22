@@ -9,6 +9,7 @@
 import { supabase } from '../../lib/supabase.js';
 import type { BriefJobData } from '../shared/queueUtils.js';
 import type { Json } from '@buildos/shared-types';
+import { ACTIVE_EXPERIMENT_MODEL } from '@buildos/smart-llm';
 import { format, parseISO } from 'date-fns';
 import { formatInTimeZone, fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { getHoliday } from '../../lib/utils/holiday-finder.js';
@@ -61,13 +62,7 @@ interface ProjectBriefLLMResponse {
 	nextAction?: string;
 }
 
-const PROJECT_BRIEF_MODELS = [
-	'openai/gpt-oss-20b:free',
-	'openai/gpt-oss-20b',
-	'qwen/qwen3.5-flash-02-23',
-	'openai/gpt-oss-120b',
-	'openai/gpt-4.1-nano'
-] as const;
+const PROJECT_BRIEF_MODELS = [ACTIVE_EXPERIMENT_MODEL] as const;
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -533,7 +528,7 @@ async function generateOntologyProjectBrief(
 				allowTruncatedJsonRecovery: true
 			},
 			metadata: {
-				model_policy: 'cheapest_project_brief_paid_default',
+				model_policy: 'active_experiment_only',
 				fallback_model_count: PROJECT_BRIEF_MODELS.length
 			},
 			onUsage: (usage) => {

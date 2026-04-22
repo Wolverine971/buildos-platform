@@ -1,7 +1,9 @@
 // packages/smart-llm/src/model-selection.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	ACTIVE_EXPERIMENT_MODEL,
 	AGENTIC_MODEL_RECOMMENDATIONS,
+	KIMI_EXPERIMENT_MODEL,
 	MODEL_CATALOG,
 	OPENROUTER_V2_JSON_MODELS,
 	OPENROUTER_V2_TEXT_MODELS,
@@ -36,15 +38,13 @@ describe('ensureToolCompatibleModels', () => {
 			'google/gemini-2.5-flash-lite',
 			'alpha/model',
 			'legacy/qwen-32b',
+			ACTIVE_EXPERIMENT_MODEL,
 			'openai/gpt-4o-mini',
 			'anthropic/claude-haiku-4.5',
 			'legacy/deepseek-v3'
 		];
 
-		expect(ensureToolCompatibleModels(requested)).toEqual([
-			'openai/gpt-4o-mini',
-			'anthropic/claude-haiku-4.5'
-		]);
+		expect(ensureToolCompatibleModels(requested)).toEqual([ACTIVE_EXPERIMENT_MODEL]);
 	});
 
 	it('falls back to the default tool-calling order when no requested models are tool-capable', () => {
@@ -182,25 +182,17 @@ describe('ensureToolCompatibleModels', () => {
 		expect(result).not.toContain('route/only');
 	});
 
-	it('keeps alpha aliases out of balanced default text routing', () => {
+	it('uses only the active experiment model for balanced default text routing', () => {
 		const models = selectTextModels('balanced', 1200);
 
-		expect(models[0]).toBe('x-ai/grok-4.1-fast');
-		expect(models).toContain('qwen/qwen3.5-flash-02-23');
-		expect(models).toContain('qwen/qwen3.6-plus');
-		expect(models).toContain('openai/gpt-oss-120b');
-		expect(models).toContain('minimax/minimax-m2.7');
+		expect(models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
 		expect(models.every((model) => !model.includes('alpha'))).toBe(true);
 	});
 
-	it('keeps alpha aliases out of balanced default JSON routing', () => {
+	it('uses only the active experiment model for balanced default JSON routing', () => {
 		const models = selectJSONModels('balanced', 'moderate');
 
-		expect(models[0]).toBe('qwen/qwen3.6-plus');
-		expect(models).toContain('deepseek/deepseek-v3.2');
-		expect(models).toContain('openai/gpt-oss-120b');
-		expect(models).toContain('qwen/qwen3.5-flash-02-23');
-		expect(models).toContain('minimax/minimax-m2.7');
+		expect(models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
 		expect(models.every((model) => !model.includes('alpha'))).toBe(true);
 	});
 
@@ -215,6 +207,7 @@ describe('ensureToolCompatibleModels', () => {
 		expect(supportsJsonMode('google/gemini-3.1-flash-lite-preview')).toBe(true);
 		expect(supportsJsonMode('minimax/minimax-m2.7')).toBe(true);
 		expect(supportsJsonMode('nvidia/nemotron-3-super-120b-a12b:free')).toBe(true);
+		expect(supportsJsonMode(KIMI_EXPERIMENT_MODEL)).toBe(true);
 	});
 
 	it('keeps centralized route models in the shared catalog', () => {

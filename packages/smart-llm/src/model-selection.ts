@@ -3,6 +3,7 @@
 import type { JSONProfile, ModelProfile, TextProfile } from './types';
 import {
 	EMERGENCY_TEXT_FALLBACKS,
+	ACTIVE_EXPERIMENT_MODEL,
 	JSON_MODELS,
 	JSON_PROFILE_MODELS,
 	modelSupportsCapability,
@@ -56,10 +57,10 @@ export function selectJSONModels(
 		models = [...JSON_PROFILE_MODELS.balanced];
 	} else if (complexity === 'simple' && profile === 'powerful') {
 		// Can use faster models for simple tasks
-		models = ['openai/gpt-oss-120b', ...models];
+		models = [ACTIVE_EXPERIMENT_MODEL, ...models];
 	}
 
-	return models;
+	return Array.from(new Set(models));
 }
 
 export function selectTextModels(
@@ -88,10 +89,10 @@ export function selectTextModels(
 		models = [...TEXT_PROFILE_MODELS.balanced];
 	} else if (estimatedLength < 500 && profile === 'quality') {
 		// Can use faster models for short content
-		models = ['openai/gpt-oss-120b', ...models];
+		models = [ACTIVE_EXPERIMENT_MODEL, ...models];
 	}
 
-	return models;
+	return Array.from(new Set(models));
 }
 
 export function selectModelsByRequirements(

@@ -4,6 +4,7 @@ import { PRIVATE_OPENROUTER_API_KEY } from '$env/static/private';
 import {
 	analyzeComplexity,
 	estimateResponseLength,
+	ACTIVE_EXPERIMENT_MODEL,
 	resolveModelPricingProfile,
 	shouldFailoverToNextOpenRouterModel
 } from '@buildos/smart-llm';
@@ -299,6 +300,8 @@ function extractTextFromResponse(response: OpenRouterChatResponse): string {
 type JSONRequestWithFallbackModels<T = any> = JSONRequestOptions<T> & {
 	model?: string;
 	models?: string[];
+	allowedModelIds?: string[];
+	includeDefaultModels?: boolean;
 };
 
 type TextRequestWithFallbackModels = TextGenerationOptions & {
@@ -349,6 +352,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 			profile?: JSONRequestOptions['profile'] | TextGenerationOptions['profile'];
 			estimatedLength?: number;
 			complexity?: 'simple' | 'moderate' | 'complex';
+			allowedModelIds?: string[];
+			includeDefaultModels?: boolean;
 		}
 	): string[] {
 		return resolveLaneModels({
@@ -358,7 +363,9 @@ export class OpenRouterV2Service extends SmartLLMService {
 			exactoToolsEnabled: this.exactoToolsEnabled,
 			profile: selection?.profile,
 			estimatedLength: selection?.estimatedLength,
-			complexity: selection?.complexity
+			complexity: selection?.complexity,
+			allowedModelIds: selection?.allowedModelIds,
+			includeDefaultModels: selection?.includeDefaultModels
 		});
 	}
 
@@ -512,8 +519,11 @@ export class OpenRouterV2Service extends SmartLLMService {
 		const startTime = performance.now();
 		const laneModels = this.resolveModels('json', options.model, options.models, {
 			profile: options.profile,
-			complexity: analyzeComplexity(options.userPrompt)
+			complexity: analyzeComplexity(options.userPrompt),
+			allowedModelIds: options.allowedModelIds,
+			includeDefaultModels: options.includeDefaultModels
 		});
+		const maxTokens = options.maxTokens ?? 8192;
 		const messages: OpenRouterChatMessage[] = [
 			{ role: 'system', content: options.systemPrompt },
 			{ role: 'user', content: options.userPrompt }
@@ -523,7 +533,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		let lastError: Error | null = null;
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
-			const model = laneModels[attempt] || laneModels[0] || 'openai/gpt-4o-mini';
+			const model = laneModels[attempt] || laneModels[0] || ACTIVE_EXPERIMENT_MODEL;
 			const models = [
 				model,
 				...laneModels.slice(attempt + 1).filter((entry) => entry !== model)
@@ -535,7 +545,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 					models,
 					messages,
 					temperature: options.temperature ?? 0.2,
-					max_tokens: 8192,
+					max_tokens: maxTokens,
 					response_format: { type: 'json_object' },
 					reasoning: resolveLaneReasoning('json'),
 					timeoutMs: this.resolveTimeout(options.timeoutMs)
@@ -568,7 +578,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 					requestedModel: model,
 					requestStartedAt,
 					startTime,
-					maxTokens: 8192,
+					maxTokens,
 					defaultOperationType: 'other',
 					metadata: {
 						models,
@@ -654,7 +664,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		let lastError: Error | null = null;
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
-			const model = laneModels[attempt] || laneModels[0] || 'openai/gpt-4o-mini';
+			const model = laneModels[attempt] || laneModels[0] || ACTIVE_EXPERIMENT_MODEL;
 			const models = [
 				model,
 				...laneModels.slice(attempt + 1).filter((entry) => entry !== model)
@@ -769,7 +779,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		const maxAttempts = Math.max(laneModels.length, 1);
 		let lastError: Error | null = null;
 		let streamResponse: Response | null = null;
-		let resolvedModel = laneModels[0] || 'openai/gpt-4o-mini';
+		let resolvedModel = laneModels[0] || ACTIVE_EXPERIMENT_MODEL;
 		let resolvedProvider: string | undefined;
 		let requestModelForStartedStream = resolvedModel;
 		let routingModelsForStartedStream = [...laneModels];
@@ -778,7 +788,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		const startTime = performance.now();
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
-			const model = laneModels[attempt] || laneModels[0] || 'openai/gpt-4o-mini';
+			const model = laneModels[attempt] || laneModels[0] || ACTIVE_EXPERIMENT_MODEL;
 			const models = [
 				model,
 				...laneModels.slice(attempt + 1).filter((entry) => entry !== model)

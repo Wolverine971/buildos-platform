@@ -56,6 +56,39 @@ export const GET: RequestHandler = async ({
 		return ApiResponse.databaseError(messagesError);
 	}
 
+	const { data: toolExecutions, error: toolExecutionsError } = await supabase
+		.from('chat_tool_executions')
+		.select(
+			`
+			id,
+			session_id,
+			message_id,
+			turn_run_id,
+			stream_run_id,
+			client_turn_id,
+			tool_name,
+			tool_category,
+			gateway_op,
+			help_path,
+			sequence_index,
+			arguments,
+			result,
+			execution_time_ms,
+			tokens_consumed,
+			success,
+			error_message,
+			requires_user_action,
+			created_at
+		`
+		)
+		.eq('session_id', sessionId)
+		.order('created_at', { ascending: true })
+		.limit(1000);
+
+	if (toolExecutionsError) {
+		return ApiResponse.databaseError(toolExecutionsError);
+	}
+
 	let voiceNotes: any[] = [];
 	let voiceNoteGroups: any[] = [];
 
@@ -105,6 +138,7 @@ export const GET: RequestHandler = async ({
 	return ApiResponse.success({
 		session,
 		messages: messages || [],
+		toolExecutions: toolExecutions || [],
 		voiceNoteGroups,
 		voiceNotes,
 		truncated

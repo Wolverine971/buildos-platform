@@ -21,6 +21,8 @@ import {
 	EMPTY_CONTENT_RETRY_MIN_TOKENS,
 	EMPTY_CONTENT_RETRY_BUFFER_TOKENS,
 	EMPTY_CONTENT_RETRY_MAX_TOKENS,
+	ACTIVE_EXPERIMENT_MODEL,
+	KIMI_EXPERIMENT_MODEL,
 	resolveModelPricingProfile
 } from './model-config';
 import {
@@ -106,13 +108,17 @@ type ProviderRoute = {
 
 const DEFAULT_MOONSHOT_API_URL = 'https://api.moonshot.ai/v1/chat/completions';
 const DEFAULT_MOONSHOT_MODEL_MAP: Record<string, string> = {
-	'moonshotai/kimi-k2.5': 'kimi-k2.5'
+	[KIMI_EXPERIMENT_MODEL]: 'kimi-k2.6',
+	'moonshotai/kimi-k2.5': 'kimi-k2.6'
 };
 const MOONSHOT_REASONING_CONTENT_FALLBACK = '[reasoning omitted]';
 const OPENROUTER_TOOL_STREAM_REASONING = { effort: 'low', exclude: true } as const;
 const CANONICAL_MODEL_ALIASES: Record<string, string> = {
-	'kimi-k2.5': 'moonshotai/kimi-k2.5',
-	'kimi-k2-5': 'moonshotai/kimi-k2.5',
+	'kimi-k2.6': KIMI_EXPERIMENT_MODEL,
+	'kimi-k2-6': KIMI_EXPERIMENT_MODEL,
+	'kimi-k2.5': KIMI_EXPERIMENT_MODEL,
+	'kimi-k2-5': KIMI_EXPERIMENT_MODEL,
+	'moonshotai/kimi-k2.5': KIMI_EXPERIMENT_MODEL,
 	'qwen3.5-flash': 'qwen/qwen3.5-flash-02-23',
 	'qwen-3.5-flash': 'qwen/qwen3.5-flash-02-23',
 	'qwen/qwen3.6-plus-04-02': 'qwen/qwen3.6-plus',
@@ -538,7 +544,7 @@ export class SmartLLMService {
 			.filter((model): model is string => Boolean(model));
 		const preferredModels =
 			requestedModels.length > 0
-				? Array.from(new Set(requestedModels))
+				? [ACTIVE_EXPERIMENT_MODEL]
 				: selectJSONModels(profile, complexity, options.requirements);
 
 		// Add JSON-specific instructions to system prompt
@@ -553,7 +559,7 @@ export class SmartLLMService {
 		let retryCount = 0;
 		const maxRetries = options.validation?.maxRetries || 2;
 		const allowTruncatedJsonRecovery = options.validation?.allowTruncatedJsonRecovery === true;
-		const baseModel = preferredModels[0] || 'openai/gpt-4o-mini';
+		const baseModel = preferredModels[0] || ACTIVE_EXPERIMENT_MODEL;
 		const maxAttempts = Math.max(preferredModels.length, 1);
 		const attemptedModels = new Set<string>();
 		let lastResponse: OpenRouterResponse | null = null;
@@ -667,12 +673,8 @@ export class SmartLLMService {
 							);
 
 							let cleanedRetry = ''; // Declare outside try block for error logging
-							let retryModel = 'anthropic/claude-sonnet-4.6';
-							const retryModels = [
-								'anthropic/claude-sonnet-4.6',
-								'qwen/qwen3.6-plus',
-								'openai/gpt-oss-120b'
-							];
+							let retryModel = ACTIVE_EXPERIMENT_MODEL;
+							const retryModels = [ACTIVE_EXPERIMENT_MODEL];
 							try {
 								// Try again with powerful profile
 								const retryCompletion = await this.callChatCompletions({
@@ -1027,7 +1029,7 @@ export class SmartLLMService {
 		);
 
 		// Make the OpenRouter API call with model routing
-		const baseModel = preferredModels[0] || 'openai/gpt-4o-mini';
+		const baseModel = preferredModels[0] || ACTIVE_EXPERIMENT_MODEL;
 		const maxAttempts = Math.max(preferredModels.length, 1);
 		const attemptedModels = new Set<string>();
 		let lastResponse: OpenRouterResponse | null = null;
@@ -1850,7 +1852,7 @@ export class SmartLLMService {
 		if (needsToolSupport) {
 			preferredModels = ensureToolCompatibleModels(preferredModels);
 		}
-		const baseModel = preferredModels[0] || 'openai/gpt-4o-mini';
+		const baseModel = preferredModels[0] || ACTIVE_EXPERIMENT_MODEL;
 		let resolvedModel = baseModel;
 		let modelResolvedFromStream = false;
 		let resolvedProvider = TEXT_MODELS[resolvedModel]?.provider;
@@ -1888,7 +1890,10 @@ export class SmartLLMService {
 				lastRouteProvider = route.provider;
 				const providerLabel = route.provider === 'moonshot' ? 'Moonshot' : 'OpenRouter';
 
-				const messagesForRequest = options.messages;
+				const messagesForRequest =
+					needsToolSupport && this.isKimiModel(route.requestModel)
+						? this.ensureMoonshotReasoningContent(options.messages)
+						: options.messages;
 				const transforms = needsToolSupport
 					? undefined
 					: this.resolveTransforms(messagesForRequest);
@@ -1923,7 +1928,6 @@ export class SmartLLMService {
 					if (this.moonshotStreamIncludeUsage) {
 						body.stream_options = { include_usage: true };
 					}
-					body.messages = this.ensureMoonshotReasoningContent(body.messages);
 					const promptCacheKey =
 						options.chatSessionId || options.sessionId || options.agentSessionId;
 					if (promptCacheKey) {
@@ -2282,7 +2286,7 @@ export class SmartLLMService {
 						// Log usage if available
 						if (usage) {
 							const actualModel =
-								resolvedModel || preferredModels[0] || 'openai/gpt-4o-mini';
+								resolvedModel || preferredModels[0] || ACTIVE_EXPERIMENT_MODEL;
 							const pricing = resolveModelPricingProfile(actualModel, [
 								requestModelForStartedStream,
 								...routingModelsForStartedStream
@@ -2684,10 +2688,13 @@ export class SmartLLMService {
 		);
 	}
 
-	private isKimiK25Model(model?: string): boolean {
+	private isKimiExperimentModel(model?: string): boolean {
 		if (!model) return false;
 		const normalized = model.toLowerCase();
 		return (
+			normalized.startsWith(KIMI_EXPERIMENT_MODEL) ||
+			normalized.startsWith('kimi-k2.6') ||
+			normalized.startsWith('kimi-k2-6') ||
 			normalized.startsWith('moonshotai/kimi-k2.5') ||
 			normalized.startsWith('kimi-k2.5') ||
 			normalized.startsWith('kimi-k2-5')
@@ -2695,7 +2702,7 @@ export class SmartLLMService {
 	}
 
 	private shouldLogKimiToolCalls(model: string | undefined, hasTools: boolean): boolean {
-		return hasTools && this.isKimiK25Model(model);
+		return hasTools && this.isKimiExperimentModel(model);
 	}
 
 	private async writeKimiToolCallLog(payload: {
