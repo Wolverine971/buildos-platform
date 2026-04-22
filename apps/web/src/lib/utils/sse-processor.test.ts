@@ -15,6 +15,20 @@ function buildSseResponse(events: unknown[]): Response {
 	);
 }
 
+function buildRawSseResponse(chunks: string[]): Response {
+	const encoder = new TextEncoder();
+	return new Response(
+		new ReadableStream({
+			start(controller) {
+				for (const chunk of chunks) {
+					controller.enqueue(encoder.encode(chunk));
+				}
+				controller.close();
+			}
+		})
+	);
+}
+
 describe('SSEProcessor', () => {
 	it('passes V2 agent events through the progress callback', async () => {
 		const onProgress = vi.fn();
@@ -50,5 +64,32 @@ describe('SSEProcessor', () => {
 		});
 
 		expect(onError).toHaveBeenCalledWith('boom');
+	});
+
+	it('parses CRLF-delimited event blocks and data fields without a space', async () => {
+		const onProgress = vi.fn();
+		const onComplete = vi.fn();
+		const onStatus = vi.fn();
+		const payload = [
+			'event: message_start\r\n',
+			`data:${JSON.stringify({ type: 'progress', progress: 1 })}\r\n\r\n`,
+			'data: {"type":\r\n',
+			'data: "done","complete":true}\r\n\r\n',
+			'data: [DONE]\r\n\r\n'
+		];
+
+		await SSEProcessor.processStream(buildRawSseResponse(payload), {
+			onComplete,
+			onProgress,
+			onStatus
+		});
+
+		expect(onStatus).toHaveBeenCalledWith('message_start');
+		expect(onProgress).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'progress', progress: 1 })
+		);
+		expect(onComplete).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'done', complete: true })
+		);
 	});
 });

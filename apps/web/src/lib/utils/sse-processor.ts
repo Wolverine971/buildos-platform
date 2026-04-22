@@ -169,53 +169,28 @@ export class SSEProcessor {
 		onActivity?: () => void
 	): Promise<void> {
 		let buffer = initialBuffer;
-		let isDone = false;
 		let linesSinceYield = 0;
 		let lastYieldAt = Date.now();
 
-		while (!isDone) {
+		while (true) {
 			const { done, value } = await reader.read();
-			isDone = done;
+			if (done) {
+				buffer += decoder.decode();
+				break;
+			}
 
 			if (value) {
 				onActivity?.();
 				const chunk = decoder.decode(value, { stream: true });
 				buffer += chunk;
 
-				// Process complete events in buffer
-				const lines = buffer.split('\n');
-				buffer = lines.pop() || ''; // Keep incomplete line in buffer
+				// Process complete SSE events in buffer. Providers commonly use
+				// CRLF separators, while our own streams use LF.
+				const events = buffer.split(/\r?\n\r?\n/);
+				buffer = events.pop() || '';
 
-				for (const line of lines) {
-					if (line.trim() === '') continue;
-
-					// Parse SSE event
-					if (line.startsWith('data: ')) {
-						const data = line.slice(6).trim();
-
-						// Skip empty data or [DONE] marker
-						if (!data || data === '[DONE]') continue;
-
-						try {
-							if (parseJSON) {
-								const parsed = JSON.parse(data);
-								this.handleParsedEvent(parsed, callbacks);
-							} else {
-								// Pass raw data
-								callbacks.onProgress?.(data);
-							}
-						} catch (error) {
-							if (onParseError) {
-								onParseError(error as Error, data);
-							} else {
-								console.error('Failed to parse SSE data:', error, 'Data:', data);
-							}
-						}
-					} else if (line.startsWith('event: ')) {
-						// Handle custom event types if needed
-						const eventType = line.slice(7).trim();
-						callbacks.onStatus?.(eventType);
-					}
+				for (const event of events) {
+					this.processEventBlock(event, callbacks, parseJSON, onParseError);
 
 					linesSinceYield++;
 					if (
@@ -232,22 +207,50 @@ export class SSEProcessor {
 
 		// Process any remaining buffer
 		if (buffer.trim()) {
-			if (buffer.startsWith('data: ')) {
-				const data = buffer.slice(6).trim();
-				if (data && data !== '[DONE]') {
-					try {
-						if (parseJSON) {
-							const parsed = JSON.parse(data);
-							this.handleParsedEvent(parsed, callbacks);
-						} else {
-							callbacks.onProgress?.(data);
-						}
-					} catch (error) {
-						if (onParseError) {
-							onParseError(error as Error, data);
-						}
-					}
-				}
+			this.processEventBlock(buffer, callbacks, parseJSON, onParseError);
+		}
+	}
+
+	private static processEventBlock(
+		block: string,
+		callbacks: StreamCallbacks,
+		parseJSON: boolean,
+		onParseError?: (error: Error, chunk: string) => void
+	): void {
+		const dataLines: string[] = [];
+
+		for (const rawLine of block.split(/\r?\n/)) {
+			const line = rawLine.trimEnd();
+			if (!line || line.startsWith(':')) continue;
+
+			if (line.startsWith('event:')) {
+				const eventType = line.slice(6).trim();
+				if (eventType) callbacks.onStatus?.(eventType);
+				continue;
+			}
+
+			if (!line.startsWith('data:')) continue;
+			const value = line.slice(5);
+			dataLines.push(value.startsWith(' ') ? value.slice(1) : value);
+		}
+
+		if (dataLines.length === 0) return;
+
+		const data = dataLines.join('\n').trim();
+		if (!data || data === '[DONE]') return;
+
+		try {
+			if (parseJSON) {
+				const parsed = JSON.parse(data);
+				this.handleParsedEvent(parsed, callbacks);
+			} else {
+				callbacks.onProgress?.(data);
+			}
+		} catch (error) {
+			if (onParseError) {
+				onParseError(error as Error, data);
+			} else {
+				console.error('Failed to parse SSE data:', error, 'Data:', data);
 			}
 		}
 	}

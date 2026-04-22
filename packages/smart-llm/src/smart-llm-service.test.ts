@@ -63,6 +63,96 @@ function createToolDefs(): Array<{
 }
 
 describe('SmartLLMService streamText Moonshot tool handling', () => {
+	it('captures include_usage chunks that arrive with empty choices', async () => {
+		const usageLogger = {
+			logUsageToDatabase: vi.fn(async () => undefined)
+		};
+		const fetchMock = vi.fn(async () =>
+			buildSSE([
+				JSON.stringify({
+					id: 'chatcmpl-usage',
+					object: 'chat.completion.chunk',
+					created: 0,
+					model: ACTIVE_EXPERIMENT_MODEL,
+					choices: [
+						{
+							index: 0,
+							delta: { content: 'Hello' },
+							finish_reason: null
+						}
+					],
+					usage: null
+				}),
+				JSON.stringify({
+					id: 'chatcmpl-usage',
+					object: 'chat.completion.chunk',
+					created: 0,
+					model: ACTIVE_EXPERIMENT_MODEL,
+					choices: [
+						{
+							index: 0,
+							delta: {},
+							finish_reason: 'stop'
+						}
+					],
+					usage: null
+				}),
+				JSON.stringify({
+					id: 'chatcmpl-usage',
+					object: 'chat.completion.chunk',
+					created: 0,
+					model: ACTIVE_EXPERIMENT_MODEL,
+					choices: [],
+					usage: {
+						prompt_tokens: 11,
+						completion_tokens: 2,
+						total_tokens: 13,
+						completion_tokens_details: {
+							reasoning_tokens: 0
+						}
+					}
+				}),
+				'[DONE]'
+			])
+		);
+
+		const llm = new SmartLLMService({
+			apiKey: 'openrouter-test-key',
+			usageLogger,
+			fetch: fetchMock as unknown as typeof fetch
+		});
+
+		const events: Array<{ type: string; [key: string]: unknown }> = [];
+		for await (const event of llm.streamText({
+			messages: [{ role: 'user', content: 'Say hello.' }],
+			userId: 'user-usage',
+			sessionId: 'session-usage',
+			chatSessionId: 'chat-usage',
+			operationType: 'test_stream'
+		})) {
+			events.push(event);
+			if (event.type === 'done' || event.type === 'error') {
+				break;
+			}
+		}
+
+		const doneEvent = events.find((event) => event.type === 'done') as any;
+		expect(doneEvent?.usage).toMatchObject({
+			prompt_tokens: 11,
+			completion_tokens: 2,
+			total_tokens: 13
+		});
+		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
+			expect.objectContaining({
+				promptTokens: 11,
+				completionTokens: 2,
+				totalTokens: 13,
+				status: 'success',
+				streaming: true
+			})
+		);
+	});
+
 	it('does not emit partial pending tool calls when stream finishes with stop', async () => {
 		const fetchMock = vi.fn(async () =>
 			buildSSE([

@@ -2439,6 +2439,12 @@ export class SmartLLMService {
 							);
 						}
 
+						// OpenAI-compatible include_usage streams send the final usage
+						// payload as its own chunk with choices: [] just before [DONE].
+						if (chunk.usage && typeof chunk.usage === 'object') {
+							usage = chunk.usage;
+						}
+
 						// Handle different chunk types
 						if (chunk.choices && chunk.choices[0]) {
 							const choice = chunk.choices[0];
@@ -2570,9 +2576,7 @@ export class SmartLLMService {
 							}
 
 							// Track usage
-							if (chunk.usage) {
-								usage = chunk.usage;
-							} else if (choice.usage) {
+							if (choice.usage && typeof choice.usage === 'object') {
 								usage = choice.usage;
 							}
 						}
