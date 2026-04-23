@@ -106,8 +106,11 @@ Notes:
 
 - Content is stored as-is. No H1/H2 tree parsing; the markdown you send is the markdown we save.
 - Content cap is **200 KB** per document. Larger bodies return `VALIDATION_ERROR`.
-- `onto.document.update` is **wholesale replace** — if you send `content`, it replaces the body in full. Individual metadata fields (`title`, `description`, `type_key`, `state_key`) update independently when present.
+- `body_markdown` is accepted as a legacy alias for `content` on create and update.
+- `onto.document.update` defaults to **replace**. It also accepts `update_strategy: "append"` and `update_strategy: "merge_llm"`; on the external gateway, `merge_llm` gracefully falls back to append when no merge worker is available.
 - `parent_document_id` is optional; omit it to land at the project root.
+- `parent_id` is also accepted as a legacy alias on the external gateway when a model uses the internal `create_onto_document` naming.
+- `position` is optional on create for sibling ordering within the project document tree.
 - Documents created through the gateway are tagged with `props.origin = "external_agent"` for auditability.
 
 ## One-click bootstrap

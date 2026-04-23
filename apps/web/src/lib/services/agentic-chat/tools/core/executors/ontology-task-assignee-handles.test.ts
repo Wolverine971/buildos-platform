@@ -163,6 +163,18 @@ describe('OntologyWriteExecutor task assignee handle resolution', () => {
 		expect(lastCreateBody.assignee_actor_ids).toEqual(['actor-jim']);
 	});
 
+	it('defaults create task type_key to task.default when omitted', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await executor.createOntoTask({
+			project_id: 'project-1',
+			title: 'Default type task'
+		});
+
+		const lastCreateBody = (mockFetch as any).lastCreateBody();
+		expect(lastCreateBody.type_key).toBe('task.default');
+	});
+
 	it('resolves @handle inputs for task updates', async () => {
 		const executor = new OntologyWriteExecutor(context);
 

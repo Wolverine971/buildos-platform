@@ -41,8 +41,8 @@ Load task_management for complex task flows.`,
 					},
 					type_key: {
 						type: 'string',
-						default: 'task.execute',
-						description: 'Task type key. Default task.execute.'
+						default: 'task.default',
+						description: 'Task type key. Default task.default.'
 					},
 					state_key: {
 						type: 'string',

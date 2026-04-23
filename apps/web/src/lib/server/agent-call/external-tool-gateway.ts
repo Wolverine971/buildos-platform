@@ -47,8 +47,13 @@ import {
 	createOrMergeDocumentVersion,
 	toDocumentSnapshot
 } from '$lib/services/ontology/versioning.service';
+import { addDocumentToTree } from '$lib/services/ontology/doc-structure.service';
 import { DOCUMENT_STATES, isValidTypeKey } from '$lib/types/onto';
 import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
+import {
+	getDocumentUpdateContentCandidate,
+	isAppendOrMergeUpdateStrategy
+} from '$lib/services/agentic-chat/shared/update-value-validation';
 
 const MAX_DOCUMENT_CONTENT_BYTES = 200 * 1024;
 
@@ -121,7 +126,7 @@ const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<st
 			},
 			type_key: {
 				type: 'string',
-				description: 'Optional task type key.'
+				description: 'Optional task type key. Defaults to task.default.'
 			},
 			state_key: {
 				type: 'string',
@@ -161,7 +166,12 @@ const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<st
 			content: {
 				type: 'string',
 				description:
-					'Markdown body, stored as-is (up to 200 KB). No server-side structural parsing.'
+					'Markdown body, stored as-is (up to 200 KB). Use content or body_markdown.'
+			},
+			body_markdown: {
+				type: 'string',
+				description:
+					'Legacy alias for content. Accepted for compatibility with internal document tools.'
 			},
 			description: {
 				type: ['string', 'null'],
@@ -170,7 +180,7 @@ const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<st
 			type_key: {
 				type: 'string',
 				description:
-					'Optional document type key (e.g. document.research, document.transcript). Falls back to document.default when not recognized.'
+					'Optional document type key (e.g. document.knowledge.research, document.context.project). Falls back to document.default when not recognized.'
 			},
 			state_key: {
 				type: 'string',
@@ -179,6 +189,15 @@ const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<st
 			parent_document_id: {
 				type: ['string', 'null'],
 				description: 'Optional parent document UUID for tree placement.'
+			},
+			parent_id: {
+				type: ['string', 'null'],
+				description:
+					'Legacy alias for parent_document_id. Accepted for compatibility with create_onto_document tool naming.'
+			},
+			position: {
+				type: 'integer',
+				description: 'Optional position among siblings (0-indexed). Omit to place at end.'
 			},
 			props: {
 				type: 'object',
@@ -202,7 +221,12 @@ const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<st
 			content: {
 				type: 'string',
 				description:
-					'Optional replacement markdown body. Wholesale replace (up to 200 KB). No append mode.'
+					'Optional replacement or appended markdown body. Use content or body_markdown.'
+			},
+			body_markdown: {
+				type: 'string',
+				description:
+					'Legacy alias for content. Accepted for compatibility with internal document tools.'
 			},
 			description: {
 				type: ['string', 'null'],
@@ -215,6 +239,17 @@ const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<st
 			state_key: {
 				type: 'string',
 				description: `Optional state update. Valid: ${DOCUMENT_STATES.join(', ')}.`
+			},
+			update_strategy: {
+				type: 'string',
+				enum: ['replace', 'append', 'merge_llm'],
+				description:
+					'How to apply content: replace (default), append, or merge_llm. External merge_llm falls back to append if no merge worker is available.'
+			},
+			merge_instructions: {
+				type: 'string',
+				description:
+					'Optional guidance for merge_llm. Ignored for replace and append strategies.'
 			},
 			props: {
 				type: 'object',
@@ -1212,6 +1247,63 @@ function resolveDocumentTypeKey(value: unknown): string {
 	return isValidTypeKey(trimmed, 'document') ? trimmed : 'document.default';
 }
 
+function normalizeDocumentPosition(value: unknown, fieldName: string): number | undefined {
+	if (value === undefined) return undefined;
+	if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`${fieldName} must be a non-negative integer`
+		);
+	}
+	return value;
+}
+
+function normalizeDocumentUpdateStrategy(
+	value: unknown
+): 'replace' | 'append' | 'merge_llm' {
+	if (value === undefined || value === null) return 'replace';
+	if (value === 'replace' || value === 'append' || value === 'merge_llm') {
+		return value;
+	}
+	throw new ExternalToolGatewayError(
+		'VALIDATION_ERROR',
+		'update_strategy must be one of: replace, append, merge_llm'
+	);
+}
+
+async function resolveExternalDocumentContentWithStrategy(params: {
+	strategy: 'replace' | 'append' | 'merge_llm';
+	newContent: string;
+	existingLoader: () => Promise<string>;
+}): Promise<string> {
+	const { strategy, newContent, existingLoader } = params;
+
+	if (strategy === 'replace') {
+		return newContent;
+	}
+
+	let existingText = '';
+	try {
+		existingText = await existingLoader();
+	} catch (error) {
+		console.warn(
+			'[External Tool Gateway] Failed to load existing document content for merge, using provided content:',
+			error
+		);
+		return newContent;
+	}
+
+	if (!newContent.trim()) {
+		return existingText;
+	}
+
+	if (strategy === 'append' || strategy === 'merge_llm') {
+		return existingText ? `${existingText}\n\n${newContent}` : newContent;
+	}
+
+	return newContent;
+}
+
 async function createDocument(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const visible = await loadVisibleProjects(context);
 	const project = assertAccessibleProject(visible.projectMap, args.project_id);
@@ -1225,7 +1317,12 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 				? null
 				: requireTrimmedString(args.description, 'description', { allowEmpty: true });
 
-	const rawContent = typeof args.content === 'string' ? args.content : null;
+	const rawContent =
+		typeof args.content === 'string'
+			? args.content
+			: typeof args.body_markdown === 'string'
+				? args.body_markdown
+				: null;
 	const normalizedContent = normalizeMarkdownInput(rawContent);
 	assertContentWithinCap(normalizedContent, 'content');
 
@@ -1244,19 +1341,33 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 		);
 	}
 
+	const parentDocumentInput =
+		args.parent_document_id !== undefined ? args.parent_document_id : args.parent_id;
+	if (
+		args.parent_document_id !== undefined &&
+		args.parent_id !== undefined &&
+		args.parent_document_id !== args.parent_id
+	) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'parent_document_id and parent_id must match when both are provided'
+		);
+	}
+
 	const parentDocumentId =
-		args.parent_document_id === undefined || args.parent_document_id === null
+		parentDocumentInput === undefined || parentDocumentInput === null
 			? null
-			: typeof args.parent_document_id === 'string' && isValidUUID(args.parent_document_id)
-				? args.parent_document_id
-				: (() => {
-						throw new ExternalToolGatewayError(
-							'VALIDATION_ERROR',
-							'parent_document_id must be a valid UUID'
-						);
-					})();
+			: typeof parentDocumentInput === 'string' && isValidUUID(parentDocumentInput)
+				? parentDocumentInput
+					: (() => {
+							throw new ExternalToolGatewayError(
+								'VALIDATION_ERROR',
+								'parent_document_id (or parent_id) must be a valid UUID'
+							);
+						})();
 
 	const props = normalizeProps(args.props, 'props') ?? {};
+	const position = normalizeDocumentPosition(args.position, 'position');
 	const actorId = await ensureActorId(context.admin, context.userId);
 
 	const insertPayload: Record<string, unknown> = {
@@ -1266,7 +1377,6 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 		type_key: typeKey,
 		state_key: normalizedState,
 		content: normalizedContent,
-		parent_id: parentDocumentId,
 		props: {
 			...props,
 			...(normalizedContent ? { body_markdown: normalizedContent } : {}),
@@ -1301,6 +1411,26 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 			'[External Tool Gateway] Failed to record initial document version:',
 			versionError
 		);
+	}
+
+	let structure: Record<string, unknown> | null = null;
+	let structureError: string | null = null;
+	try {
+		structure = (await addDocumentToTree(
+			context.admin,
+			project.id,
+			String(data.id),
+			{
+				parentId: parentDocumentId,
+				position,
+				title: typeof data.title === 'string' ? data.title : null,
+				description: typeof data.description === 'string' ? data.description : null
+			},
+			actorId
+		)) as unknown as Record<string, unknown>;
+	} catch (treeError) {
+		structureError = treeError instanceof Error ? treeError.message : String(treeError);
+		console.warn('[External Tool Gateway] Failed to place document in tree:', treeError);
 	}
 
 	await notifyEntityMentionsAdded({
@@ -1344,7 +1474,9 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 		document: {
 			...data,
 			project_name: project.name
-		}
+		},
+		structure,
+		structure_error: structureError
 	};
 }
 
@@ -1393,6 +1525,14 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 	const mergedProps: Record<string, unknown> = {
 		...((existingDocument.props as Record<string, unknown> | null) ?? {})
 	};
+	const strategy = normalizeDocumentUpdateStrategy(args.update_strategy);
+	const mergeInstructions =
+		args.merge_instructions === undefined
+			? undefined
+			: requireTrimmedString(args.merge_instructions, 'merge_instructions', {
+					allowEmpty: true
+				});
+	void mergeInstructions;
 
 	if (args.title !== undefined) {
 		updateData.title = requireTrimmedString(args.title, 'title');
@@ -1428,16 +1568,41 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		changedFieldCount += 1;
 	}
 
-	if (args.content !== undefined) {
-		const rawContent = typeof args.content === 'string' ? args.content : null;
-		const normalizedContent = normalizeMarkdownInput(rawContent);
-		assertContentWithinCap(normalizedContent, 'content');
-		updateData.content = normalizedContent;
-		if (normalizedContent) {
-			mergedProps.body_markdown = normalizedContent;
-		} else {
-			delete mergedProps.body_markdown;
-		}
+	const documentContentCandidate =
+		args.content !== undefined || args.body_markdown !== undefined
+			? typeof args.content === 'string'
+				? args.content
+				: typeof args.body_markdown === 'string'
+					? args.body_markdown
+					: ''
+			: undefined;
+
+	if (
+		isAppendOrMergeUpdateStrategy(strategy) &&
+		!getDocumentUpdateContentCandidate(args)
+	) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`update_onto_document ${strategy} requires non-empty content.`
+		);
+	}
+
+	if (documentContentCandidate !== undefined) {
+		const normalizedContent = normalizeMarkdownInput(documentContentCandidate) ?? '';
+		const resolvedContent = await resolveExternalDocumentContentWithStrategy({
+			strategy,
+			newContent: normalizedContent,
+			existingLoader: async () =>
+				typeof existingDocument.content === 'string'
+					? existingDocument.content
+					: typeof (existingDocument.props as Record<string, unknown> | null)?.body_markdown ===
+							  'string'
+						? ((existingDocument.props as Record<string, unknown>).body_markdown as string)
+						: ''
+		});
+		assertContentWithinCap(resolvedContent, 'content');
+		updateData.content = resolvedContent;
+		mergedProps.body_markdown = resolvedContent;
 		propsTouched = true;
 		changedFieldCount += 1;
 	}

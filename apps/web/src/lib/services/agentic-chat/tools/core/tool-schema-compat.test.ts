@@ -36,6 +36,17 @@ describe('Chat tool schema compatibility', () => {
 		expect(required).not.toContain('content');
 	});
 
+	it('documents the create_onto_task default type key consistently', () => {
+		const tool = CHAT_TOOL_DEFINITIONS.find(
+			(candidate) => candidate.function?.name === 'create_onto_task'
+		);
+		const parameters = tool?.function?.parameters as
+			| { properties?: Record<string, { default?: unknown }> }
+			| undefined;
+
+		expect(parameters?.properties?.type_key?.default).toBe('task.default');
+	});
+
 	it('returns exact create_onto_project schema details through tool_schema', () => {
 		const schema = getToolSchema('onto.project.create', {
 			include_examples: true,

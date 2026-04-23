@@ -22,8 +22,8 @@ Project document hierarchy playbook for doc tree operations, unlinked docs, task
 
 1. Decide whether the request is about a project document or a task document.
 2. For project documents, remember the hierarchy lives in doc_structure, not in document-to-document edges.
-3. For project document creation, onto.document.create must include at least project_id, title, and description.
-4. **Placement is a two-step contract.** After every `onto.document.create` call for a project document that should be nested (for example under the project context document or a research area), follow up with `onto.document.tree.move` using the returned `document_id` and the intended `new_parent_id`. Passing `parent_id` on create does not position the document in the tree — treat new documents as root-level until the move call succeeds. Only claim "nested under X", "placed in", or "moved to" after the tree-move response confirms the placement.
+3. For project document creation, include at least project_id and title. Include description whenever available; some direct tool surfaces require it.
+4. **Placement can happen at create time.** When creating a project document that should be nested, pass `parent_id` and optional `position` on `create_onto_document` / `onto.document.create`. Use `move_document_in_tree` / `onto.document.tree.move` for existing documents, unlinked documents, or later reorganization. Only claim "nested under X" or "placed in" after the create response returns without a tree placement error or a move call succeeds.
 5. For task workspace documents, use onto.task.docs.\* instead of the project doc tree.
 6. For reorganization or linking unlinked docs, call onto.document.tree.get once, analyze the result, then issue targeted onto.document.tree.move calls.
 7. When moving a document, pass exact document_id and new_position; use new_parent_id only when nesting under a parent.
@@ -53,9 +53,9 @@ Project document hierarchy playbook for doc tree operations, unlinked docs, task
 
 ### Create and place a research document
 
-- Call `create_onto_document({ project_id, title, description, type_key, content })` to create the document.
-- Use the returned `document_id` in an `move_document_in_tree({ document_id, new_parent_id, new_position })` call to nest the new document under the intended parent (typically the project context document).
-- Only after the move call returns successfully, report to the user that the document was nested or placed. Before that, describe it as created but unplaced.
+- Call `create_onto_document({ project_id, title, description, type_key, content, parent_id, position })` when the intended parent is already known.
+- If the document already exists or needs to be rehomed after creation, use `move_document_in_tree({ document_id, new_parent_id, new_position })`.
+- Only report the document as nested or placed after the create response succeeds without a tree placement error or the move call returns successfully.
 
 ### Organize unlinked project documents
 

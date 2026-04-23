@@ -12,7 +12,7 @@
 **Connection Level:** 1st
 **Audience Quality:** High
 **Profile Created:** 2026-04-15
-**Last Reviewed:** 2026-04-15
+**Last Reviewed:** 2026-04-23
 **Last Engaged:** Never
 **Source of First Discovery:** Notifications (IRON Mike Steadman reacted to his post)
 
@@ -50,9 +50,10 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                  | Post Link                                                                 | Action  | Status                    | What We Said / Planned                                                                                                                                                           | Outcome | Source                         |
-| ---------- | ------- | -------------------------------------- | ------------------------------------------------------------------------- | ------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------ |
-| 2026-04-15 | Post    | VetraFi teammate spotlight — Lia Kieck | https://www.linkedin.com/feed/update/urn:li:activity:7450160258406207488/ | Drafted | Drafted - Pending Posting | Options: (1) "Army MP → 400K social → fintech. She's built credibility on both sides..." (2) "The best marketing for a veteran-focused product..." (3) "MP background + 400K..." | Pending | 2026-04-15_linkedin-replies.md |
+| Date       | Surface | Topic                                                                                    | Post Link                                                                 | Action  | Status                    | What We Said / Planned                                                                                                                                                           | Outcome | Source                         |
+| ---------- | ------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------ |
+| 2026-04-15 | Post    | VetraFi teammate spotlight — Lia Kieck                                                   | https://www.linkedin.com/feed/update/urn:li:activity:7450160258406207488/ | Drafted | Drafted - Pending Posting | Options: (1) "Army MP → 400K social → fintech. She's built credibility on both sides..." (2) "The best marketing for a veteran-focused product..." (3) "MP background + 400K..." | Pending | 2026-04-15_linkedin-replies.md |
+| 2026-04-23 | Post    | EXSUM: VeteranVC & Defense Tech Office Hours — Brian O'Connor (Darksaber Labs) spotlight | https://www.linkedin.com/feed/update/urn:li:activity:7453112422598336512/ | Queued  | Queued for reply          | Veteran founder cheerleader mode — react to Brian's background specifically (Navy SIGINT → SEAL Team 7 → founder) without making it about BuildOS                                | Pending | 2026-04-23_linkedin-warmup.md  |
 
 ## Open Loops
 

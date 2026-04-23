@@ -9,6 +9,8 @@ const logUpdateAsyncMock = vi.fn();
 const syncTaskEventsMock = vi.fn();
 const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
+const addDocumentToTreeMock = vi.fn();
+const createOrMergeDocumentVersionMock = vi.fn();
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 	ensureActorId: ensureActorIdMock,
@@ -31,17 +33,40 @@ vi.mock('$lib/server/entity-mention-notification.service', () => ({
 	notifyEntityMentionsAdded: notifyEntityMentionsAddedMock
 }));
 
+vi.mock('$lib/services/ontology/doc-structure.service', () => ({
+	addDocumentToTree: addDocumentToTreeMock
+}));
+
+vi.mock('$lib/services/ontology/versioning.service', () => ({
+	createOrMergeDocumentVersion: createOrMergeDocumentVersionMock,
+	toDocumentSnapshot: (document: Record<string, unknown>) => ({
+		title: typeof document.title === 'string' ? document.title : null,
+		content: typeof document.content === 'string' ? document.content : null,
+		description: typeof document.description === 'string' ? document.description : null,
+		props:
+			document.props && typeof document.props === 'object' && !Array.isArray(document.props)
+				? (document.props as Record<string, unknown>)
+				: {},
+		state_key: typeof document.state_key === 'string' ? document.state_key : null,
+		type_key: typeof document.type_key === 'string' ? document.type_key : null,
+		project_id: typeof document.project_id === 'string' ? document.project_id : null
+	})
+}));
+
 type DocumentRow = {
 	id: string;
 	project_id: string;
 	title: string;
 	description: string | null;
 	type_key: string;
-	content: string;
+	content: string | null;
 	state_key: string;
+	props: Record<string, unknown> | null;
 	created_at: string;
 	updated_at: string;
 	deleted_at: string | null;
+	created_by?: string | null;
+	children?: Record<string, unknown> | null;
 };
 
 type TaskRow = {
@@ -71,13 +96,32 @@ type State = {
 };
 
 class OntoDocumentsQueryBuilderMock {
+	private action: 'select' | 'insert' | 'update' | null = null;
 	private idFilter: string | null = null;
 	private projectIdsFilter: string[] | null = null;
 	private deletedAtFilterApplied = false;
+	private insertPayload: Record<string, unknown> | null = null;
+	private updatePayload: Record<string, unknown> | null = null;
 
 	constructor(private readonly state: State) {}
 
 	select() {
+		if (!this.action) {
+			this.action = 'select';
+		}
+
+		return this;
+	}
+
+	insert(payload: Record<string, unknown>) {
+		this.action = 'insert';
+		this.insertPayload = payload;
+		return this;
+	}
+
+	update(payload: Record<string, unknown>) {
+		this.action = 'update';
+		this.updatePayload = payload;
 		return this;
 	}
 
@@ -107,42 +151,105 @@ class OntoDocumentsQueryBuilderMock {
 		return this;
 	}
 
+	private matches(row: DocumentRow): boolean {
+		if (this.idFilter !== null && row.id !== this.idFilter) {
+			return false;
+		}
+
+		if (this.projectIdsFilter !== null && !this.projectIdsFilter.includes(row.project_id)) {
+			return false;
+		}
+
+		if (this.deletedAtFilterApplied && row.deleted_at !== null) {
+			return false;
+		}
+
+		return true;
+	}
+
+	private serialize(row: DocumentRow) {
+		return {
+			id: row.id,
+			project_id: row.project_id,
+			title: row.title,
+			description: row.description,
+			type_key: row.type_key,
+			content: row.content,
+			state_key: row.state_key,
+			props: row.props,
+			created_at: row.created_at,
+			updated_at: row.updated_at,
+			deleted_at: row.deleted_at,
+			created_by: row.created_by ?? null,
+			children: row.children ?? null
+		};
+	}
+
 	maybeSingle() {
-		const row =
-			this.state.documents.find((document) => {
-				if (this.idFilter !== null && document.id !== this.idFilter) {
-					return false;
-				}
-
-				if (
-					this.projectIdsFilter !== null &&
-					!this.projectIdsFilter.includes(document.project_id)
-				) {
-					return false;
-				}
-
-				if (this.deletedAtFilterApplied && document.deleted_at !== null) {
-					return false;
-				}
-
-				return true;
-			}) ?? null;
+		const row = this.state.documents.find((document) => this.matches(document)) ?? null;
 
 		return Promise.resolve({
-			data: row
-				? {
-						id: row.id,
-						project_id: row.project_id,
-						title: row.title,
-						description: row.description,
-						type_key: row.type_key,
-						content: row.content,
-						state_key: row.state_key,
-						created_at: row.created_at,
-						updated_at: row.updated_at
-					}
-				: null,
+			data: row ? this.serialize(row) : null,
 			error: null
+		});
+	}
+
+	single() {
+		if (this.action === 'insert' && this.insertPayload) {
+			const id = `66666666-6666-6666-6666-${String(this.state.documents.length + 1).padStart(12, '0')}`;
+			const row: DocumentRow = {
+				id,
+				project_id: String(this.insertPayload.project_id),
+				title: String(this.insertPayload.title),
+				description:
+					typeof this.insertPayload.description === 'string'
+						? this.insertPayload.description
+						: null,
+				type_key: String(this.insertPayload.type_key),
+				content:
+					typeof this.insertPayload.content === 'string'
+						? this.insertPayload.content
+						: null,
+				state_key: String(this.insertPayload.state_key),
+				props:
+					this.insertPayload.props &&
+					typeof this.insertPayload.props === 'object' &&
+					!Array.isArray(this.insertPayload.props)
+						? (this.insertPayload.props as Record<string, unknown>)
+						: {},
+				created_at: '2026-04-28T00:00:00.000Z',
+				updated_at: '2026-04-28T00:00:00.000Z',
+				deleted_at: null,
+				created_by:
+					typeof this.insertPayload.created_by === 'string'
+						? this.insertPayload.created_by
+						: null,
+				children: null
+			};
+			this.state.documents.push(row);
+			return Promise.resolve({ data: this.serialize(row), error: null });
+		}
+
+		if (this.action === 'update' && this.updatePayload) {
+			const index = this.state.documents.findIndex((document) => this.matches(document));
+			if (index < 0) {
+				return Promise.resolve({ data: null, error: new Error('Document not found') });
+			}
+
+			const current = this.state.documents[index]!;
+			const updated: DocumentRow = {
+				...current,
+				...(this.updatePayload as Partial<DocumentRow>),
+				updated_at: '2026-04-28T00:05:00.000Z'
+			};
+			this.state.documents[index] = updated;
+			return Promise.resolve({ data: this.serialize(updated), error: null });
+		}
+
+		const row = this.state.documents.find((document) => this.matches(document)) ?? null;
+		return Promise.resolve({
+			data: row ? this.serialize(row) : null,
+			error: row ? null : new Error('Document not found')
 		});
 	}
 }
@@ -499,6 +606,12 @@ describe('external tool gateway', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		ensureActorIdMock.mockResolvedValue('actor-1');
+		addDocumentToTreeMock.mockResolvedValue({ version: 2, root: [] });
+		createOrMergeDocumentVersionMock.mockResolvedValue({
+			status: 'created',
+			versionNumber: 1,
+			versionId: 'version-1'
+		});
 		resolveEntityMentionUserIdsMock.mockResolvedValue([]);
 		notifyEntityMentionsAddedMock.mockResolvedValue({ notifiedUserIds: [] });
 		syncTaskEventsMock.mockResolvedValue(undefined);
@@ -666,11 +779,282 @@ describe('external tool gateway', () => {
 		});
 		expect(state.tasks).toHaveLength(1);
 		expect(state.tasks[0]?.created_by).toBe('actor-1');
+		expect(state.tasks[0]?.type_key).toBe('task.default');
 		expect(syncTaskEventsMock).toHaveBeenCalledTimes(1);
 		expect(logCreateAsyncMock).toHaveBeenCalledTimes(1);
 		expect(notifyEntityMentionsAddedMock).toHaveBeenCalledTimes(1);
 		expect(state.toolExecutions).toHaveLength(1);
 		expect(state.toolExecutions[0]?.status).toBe('succeeded');
+	});
+
+	it('exposes placement and legacy content aliases on external document create tools', async () => {
+		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
+
+		const tools = getBuildosAgentGatewayTools({
+			mode: 'read_write',
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.document.create']
+		});
+		const createDocumentTool = tools.find((tool) => tool.name === 'create_onto_document');
+
+		expect(createDocumentTool?.inputSchema).toMatchObject({
+			properties: {
+				body_markdown: expect.any(Object),
+				parent_document_id: expect.any(Object),
+				parent_id: expect.any(Object),
+				position: expect.any(Object)
+			}
+		});
+	});
+
+	it('exposes content strategy fields on external document update tools', async () => {
+		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
+
+		const tools = getBuildosAgentGatewayTools({
+			mode: 'read_write',
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.document.update']
+		});
+		const updateDocumentTool = tools.find((tool) => tool.name === 'update_onto_document');
+
+		expect(updateDocumentTool?.inputSchema).toMatchObject({
+			properties: {
+				body_markdown: expect.any(Object),
+				update_strategy: expect.any(Object),
+				merge_instructions: expect.any(Object)
+			}
+		});
+	});
+
+	it('creates a document through a direct tool and places it in the doc tree', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+		const parentDocumentId = '99999999-9999-9999-9999-999999999999';
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.document.create']
+			},
+			toolName: 'create_onto_document',
+			arguments: {
+				project_id: '44444444-4444-4444-4444-444444444444',
+				title: 'Launch brief',
+				description: 'External agent brief',
+				body_markdown: '# Brief',
+				parent_document_id: parentDocumentId,
+				position: 2
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.document.create',
+			ok: true,
+			result: {
+				document: {
+					title: 'Launch brief',
+					project_name: 'Allowed Project'
+				},
+				structure: {
+					version: 2,
+					root: []
+				},
+				structure_error: null
+			}
+		});
+		expect(state.documents).toHaveLength(1);
+		expect(state.documents[0]?.props).toMatchObject({
+			origin: 'external_agent',
+			body_markdown: '# Brief'
+		});
+		expect(createOrMergeDocumentVersionMock).toHaveBeenCalledTimes(1);
+		expect(addDocumentToTreeMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'44444444-4444-4444-4444-444444444444',
+			state.documents[0]?.id,
+			{
+				parentId: parentDocumentId,
+				position: 2,
+				title: 'Launch brief',
+				description: 'External agent brief'
+			},
+			'actor-1'
+		);
+		expect(state.toolExecutions).toHaveLength(1);
+		expect(state.toolExecutions[0]?.status).toBe('succeeded');
+	});
+
+	it('accepts parent_id as a legacy alias for external document creates', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+		const parentDocumentId = 'aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb';
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.document.create']
+			},
+			toolName: 'create_onto_document',
+			arguments: {
+				project_id: '44444444-4444-4444-4444-444444444444',
+				title: 'Alias test',
+				description: 'Uses parent_id',
+				parent_id: parentDocumentId
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.document.create',
+			ok: true
+		});
+		expect(addDocumentToTreeMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'44444444-4444-4444-4444-444444444444',
+			state.documents[0]?.id,
+			{
+				parentId: parentDocumentId,
+				position: undefined,
+				title: 'Alias test',
+				description: 'Uses parent_id'
+			},
+			'actor-1'
+		);
+	});
+
+	it('appends content through external document updates and keeps body_markdown in props', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [
+				{
+					id: '55555555-5555-5555-5555-555555555555',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					title: 'Existing doc',
+					description: 'Doc summary',
+					type_key: 'document.context.project',
+					content: '# Existing',
+					state_key: 'draft',
+					props: { body_markdown: '# Existing', origin: 'external_agent' },
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:00:00.000Z',
+					deleted_at: null,
+					created_by: 'actor-1'
+				}
+			],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.document.update']
+			},
+			toolName: 'update_onto_document',
+			arguments: {
+				document_id: '55555555-5555-5555-5555-555555555555',
+				body_markdown: '## Update',
+				update_strategy: 'append'
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.document.update',
+			ok: true,
+			result: {
+				document: {
+					id: '55555555-5555-5555-5555-555555555555',
+					content: '# Existing\n\n## Update'
+				}
+			}
+		});
+		expect(state.documents[0]?.content).toBe('# Existing\n\n## Update');
+		expect(state.documents[0]?.props).toMatchObject({
+			body_markdown: '# Existing\n\n## Update',
+			origin: 'external_agent'
+		});
+		expect(createOrMergeDocumentVersionMock).toHaveBeenCalledTimes(1);
+		expect(state.toolExecutions[0]?.status).toBe('succeeded');
+	});
+
+	it('rejects append document updates without content on the external gateway', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [
+				{
+					id: '55555555-5555-5555-5555-555555555555',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					title: 'Existing doc',
+					description: 'Doc summary',
+					type_key: 'document.context.project',
+					content: '# Existing',
+					state_key: 'draft',
+					props: { body_markdown: '# Existing', origin: 'external_agent' },
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:00:00.000Z',
+					deleted_at: null,
+					created_by: 'actor-1'
+				}
+			],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.document.update']
+			},
+			toolName: 'update_onto_document',
+			arguments: {
+				document_id: '55555555-5555-5555-5555-555555555555',
+				update_strategy: 'append',
+				merge_instructions: 'Append under progress.'
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.document.update',
+			ok: false,
+			error: {
+				code: 'VALIDATION_ERROR',
+				message: 'update_onto_document append requires non-empty content.'
+			}
+		});
+		expect(state.documents[0]?.content).toBe('# Existing');
 	});
 
 	it('updates a task through a direct tool when read_write access is granted', async () => {

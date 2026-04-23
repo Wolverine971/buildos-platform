@@ -907,7 +907,7 @@ export class OntologyWriteExecutor extends BaseExecutor {
 			project_id: args.project_id,
 			title: args.title,
 			description: args.description ?? null,
-			type_key: args.type_key ?? 'task.execute',
+			type_key: args.type_key ?? 'task.default',
 			state_key: this.normalizeTaskState(args.state_key) ?? 'todo',
 			priority: args.priority ?? 3,
 			plan_id: args.plan_id ?? null,

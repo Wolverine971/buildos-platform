@@ -723,7 +723,7 @@ export function generateTaskTypeKeyGuidance(mode: 'full' | 'short' = 'short'): s
 **Format**: \`task.{work_mode}\` (2 segments) or \`task.{work_mode}.{specialization}\` (3 segments)
 
 **8 Work Modes**:
-- **execute** — Action tasks, do the work (default)
+- **execute** — Action tasks, do the work (common explicit work mode)
 - **create** — Produce new artifacts (write, build, design)
 - **refine** — Improve existing work (edit, polish, iterate)
 - **research** — Investigate and gather information
@@ -757,7 +757,7 @@ export function generateTaskTypeKeyGuidance(mode: 'full' | 'short' = 'short'): s
 
 | Work Mode | Type Key | Description | When to Use |
 |-----------|----------|-------------|-------------|
-| **execute** | \`task.execute\` | Action tasks - do the work | Default for most tasks, taking action |
+| **execute** | \`task.execute\` | Action tasks - do the work | Common explicit action mode |
 | **create** | \`task.create\` | Produce new artifacts | Writing, building, designing something new |
 | **refine** | \`task.refine\` | Improve existing work | Editing, polishing, iterating |
 | **research** | \`task.research\` | Investigate and gather info | Looking things up, exploring options |
@@ -791,7 +791,7 @@ export function generateTaskTypeKeyGuidance(mode: 'full' | 'short' = 'short'): s
 
 ### Default Behavior
 
-If uncertain, use \`task.execute\` as the default — it's the most common work mode.`;
+If uncertain, omit \`type_key\` and let task creation fall back to \`task.default\`. Use \`task.execute\` only when the task is clearly an action/do-the-work item.`;
 }
 
 /**

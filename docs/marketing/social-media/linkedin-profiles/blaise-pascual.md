@@ -12,7 +12,7 @@
 **Connection Level:** 1st
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-15
+**Last Reviewed:** 2026-04-23
 **Last Engaged:** Never
 **Source of First Discovery:** `linkedin-engagement-targets.md` plus backfill from 2026-03-24 warmup
 
@@ -48,17 +48,21 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                          | Post Link                                     | Action   | Status                  | What We Said / Planned                                          | Outcome | Source                           |
-| ---------- | ------- | ---------------------------------------------- | --------------------------------------------- | -------- | ----------------------- | --------------------------------------------------------------- | ------- | -------------------------------- |
-| 2026-03-24 | Post    | Dropped out with a 4.0 because AI moved faster | Legacy warmup did not capture direct post URL | Queued   | No posting confirmation | Marines-to-builder parallel; shipping beats curriculum          | Unknown | 2026-03-24_linkedin-warmup.md    |
-| 2026-04-15 | Profile | Stale scan — newest post 1 week old            | N/A                                           | Reviewed | N/A                     | No fresh content today; headline and follower count updated     | None    | 2026-04-15_linkedin-warmup.md    |
-| 2026-04-15 | Profile | PM stale scan — 2w old post showing            | N/A                                           | Reviewed | N/A                     | No new content; slug confirmed as `blaise-pascual` (hyphenated) | None    | 2026-04-15_linkedin-warmup-pm.md |
+| Date       | Surface | Topic                                                                | Post Link                                                                 | Action   | Status                  | What We Said / Planned                                                                                   | Outcome | Source                           |
+| ---------- | ------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------- | -------- | ----------------------- | -------------------------------------------------------------------------------------------------------- | ------- | -------------------------------- |
+| 2026-03-24 | Post    | Dropped out with a 4.0 because AI moved faster                       | Legacy warmup did not capture direct post URL                             | Queued   | No posting confirmation | Marines-to-builder parallel; shipping beats curriculum                                                   | Unknown | 2026-03-24_linkedin-warmup.md    |
+| 2026-04-15 | Profile | Stale scan — newest post 1 week old                                  | N/A                                                                       | Reviewed | N/A                     | No fresh content today; headline and follower count updated                                              | None    | 2026-04-15_linkedin-warmup.md    |
+| 2026-04-15 | Profile | PM stale scan — 2w old post showing                                  | N/A                                                                       | Reviewed | N/A                     | No new content; slug confirmed as `blaise-pascual` (hyphenated)                                          | None    | 2026-04-15_linkedin-warmup-pm.md |
+| 2026-04-23 | Post    | Spectre launch — "Your notes app graveyard is officially over" (19h) | https://www.linkedin.com/feed/update/urn:li:activity:7452828475431972865/ | Queued   | Queued for reply        | Cheerleader-mode: celebrate the ship, resonate with the "notes graveyard" frame without pitching BuildOS | Pending | 2026-04-23_linkedin-warmup.md    |
+| 2026-04-23 | Post    | Spectre follow-up promo — "Try it free spectre.blaisep.com" (1h)     | https://www.linkedin.com/feed/update/urn:li:activity:7453090552935362560/ | Reviewed | Logged — secondary      | Fresh launch promo; primary engagement goes on the 19h post                                              | None    | 2026-04-23_linkedin-warmup.md    |
+| 2026-04-23 | Post    | ElevenLabs x turbopuffer hackathon — 2nd place, $4,096 credits (1d)  | https://www.linkedin.com/feed/update/urn:li:activity:7452394874890403841/ | Reviewed | Logged                  | Hackathon win — possible secondary cheerleader touchpoint                                                | None    | 2026-04-23_linkedin-warmup.md    |
 
 ## Open Loops
 
 - Profile URL captured: https://www.linkedin.com/in/blaise-pascual/
-- Newest post from 2026-04-08: "How a Solo Founder Replaces 50-Person Teams Using a Framework From Flight School" — monitor for next fresh post
-- Strong candidate for repeated comments; posting cadence appears to be roughly weekly
+- Newest activity: Spectre (voice-to-app via Kiro + ElevenLabs) just launched on 2026-04-22. Hackathon 2nd place on 2026-04-22. He's shipping publicly right now.
+- Strong candidate for repeated comments; two-to-three posts in the past 24 hours indicates active cadence
+- Watch the nootropic.ai launch — he mentioned it's upcoming
 
 ## Next Best Angles
 

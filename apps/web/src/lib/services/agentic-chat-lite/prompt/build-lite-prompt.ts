@@ -566,7 +566,7 @@ function buildSafetyDataRulesSection(data: LitePromptInput['data']): LitePromptS
 		'- Do not invent project, task, document, calendar, member, or Libri data that is not in loaded context or tool results.',
 		'- For writes, use exact IDs from context or tool results. Full UUIDs only; never truncate, abbreviate, or use placeholders like `"..."`, `"REPLACE_ME"`, `"<task_id>"`, `"TBD"`, `"none"`, or `"null"`. If the target is ambiguous, resolve it with a read op or ask one concise question before writing.',
 		'- Treat permissions and access as hard constraints.',
-		'- Document placement is a two-step contract (create, then tree-move). See the document_workspace skill for placement, hierarchy, and append rules.',
+		'- Document placement can happen on create via `parent_id` and optional `position`. See the document_workspace skill for placement, hierarchy, reorganization, and append rules.',
 		'- Document append/merge writes require non-empty content. merge_instructions alone is not enough.',
 		'- When context is incomplete, state the limit and use the narrowest tool that can fill the gap.'
 	];
