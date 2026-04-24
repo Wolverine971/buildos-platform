@@ -9,7 +9,7 @@
 import { supabase } from '../../lib/supabase.js';
 import type { BriefJobData } from '../shared/queueUtils.js';
 import type { Json } from '@buildos/shared-types';
-import { ACTIVE_EXPERIMENT_MODEL } from '@buildos/smart-llm';
+import { ACTIVE_EXPERIMENT_MODEL, DEEPSEEK_V4_FLASH_MODEL } from '@buildos/smart-llm';
 import { format, parseISO } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { getHoliday } from '../../lib/utils/holiday-finder.js';
@@ -60,7 +60,7 @@ interface ProjectBriefLLMResponse {
 	nextAction?: string;
 }
 
-const PROJECT_BRIEF_MODELS = [ACTIVE_EXPERIMENT_MODEL] as const;
+const PROJECT_BRIEF_MODELS = [DEEPSEEK_V4_FLASH_MODEL, ACTIVE_EXPERIMENT_MODEL] as const;
 
 // ============================================================================
 // HELPER FUNCTIONS

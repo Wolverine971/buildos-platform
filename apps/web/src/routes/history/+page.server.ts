@@ -14,6 +14,15 @@
 
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
+import {
+	needsChatClassification,
+	normalizeHistoryText,
+	normalizeHistoryTopics,
+	resolveChatDisplayState,
+	resolveChatPreview,
+	resolveChatTitle,
+	type HistoryDisplayStatus
+} from './history-display';
 
 /** Braindump from onto_braindumps table */
 interface OntoBraindump {
@@ -47,6 +56,19 @@ interface ChatSession {
 	last_message_at: string | null;
 }
 
+/** Classification job for a chat session summary/title/topics pass */
+interface ChatClassificationJob {
+	id: string;
+	queue_job_id: string;
+	metadata: Record<string, unknown> | null;
+	status: string | null;
+	error_message: string | null;
+	created_at: string | null;
+	updated_at: string | null;
+	started_at: string | null;
+	completed_at: string | null;
+}
+
 /** Unified history item for display */
 export interface HistoryItem {
 	id: string;
@@ -55,69 +77,19 @@ export interface HistoryItem {
 	preview: string;
 	topics: string[];
 	status: string;
+	displayStatus?: HistoryDisplayStatus;
+	statusLabel?: string;
 	createdAt: string;
 	messageCount?: number;
 	contextType?: string;
 	entityId?: string | null;
 	needsClassification?: boolean;
+	canQueueSummary?: boolean;
 	originalData: OntoBraindump | ChatSession;
 }
 
 /** Type filter options */
 type TypeFilter = 'all' | 'braindumps' | 'chats';
-
-const DEFAULT_CHAT_TITLES = [
-	'Agent Session',
-	'Project Assistant',
-	'Task Assistant',
-	'Calendar Assistant',
-	'General Assistant',
-	'New Project Creation',
-	'Project Audit',
-	'Project Forecast',
-	'Task Update',
-	'Daily Brief Settings',
-	'Chat session',
-	'Untitled Chat'
-].map((title) => title.toLowerCase());
-
-const isPlaceholderChatTitle = (title?: string | null) => {
-	const normalized = title?.trim().toLowerCase();
-	if (!normalized) return true;
-	return DEFAULT_CHAT_TITLES.includes(normalized);
-};
-
-const resolveChatTitle = (session: ChatSession): string => {
-	const rawTitle = session.title?.trim() || '';
-	const autoTitle = session.auto_title?.trim() || '';
-
-	if (rawTitle && !isPlaceholderChatTitle(rawTitle)) {
-		return rawTitle;
-	}
-
-	if (autoTitle) {
-		return autoTitle;
-	}
-
-	return rawTitle || 'Untitled Chat';
-};
-
-const hasMeaningfulChatTitle = (session: ChatSession): boolean => {
-	const rawTitle = session.title?.trim() || '';
-	const autoTitle = session.auto_title?.trim() || '';
-
-	if (autoTitle) return true;
-	if (!rawTitle) return false;
-	return !isPlaceholderChatTitle(rawTitle);
-};
-
-const needsChatClassification = (session: ChatSession): boolean => {
-	const hasTopics = (session.chat_topics?.length ?? 0) > 0;
-	const hasSummary = !!session.summary;
-	const hasTitle = hasMeaningfulChatTitle(session);
-
-	return !(hasTitle && hasTopics && hasSummary);
-};
 
 export const load: PageServerLoad = async ({ locals, url, depends }) => {
 	depends('history:data');
@@ -294,6 +266,11 @@ async function loadHistoryData(
 
 		const braindumps = braindumpResult;
 		const chatSessions = chatResult;
+		const classificationJobsBySessionId = await loadChatClassificationJobs(
+			supabase,
+			userId,
+			chatSessions.filter(needsChatClassification).map((session) => session.id)
+		);
 		const braindumpStats = braindumpStatsResult.data;
 		const chatStats = chatStatsResult.data;
 
@@ -314,20 +291,7 @@ async function loadHistoryData(
 				})
 			),
 			...chatSessions.map(
-				(c): HistoryItem => ({
-					id: c.id,
-					type: 'chat_session',
-					title: resolveChatTitle(c),
-					preview: c.summary || 'No summary available',
-					topics: c.chat_topics || [],
-					status: c.status,
-					createdAt: c.created_at || new Date().toISOString(),
-					messageCount: c.message_count || 0,
-					contextType: c.context_type,
-					entityId: c.entity_id,
-					needsClassification: needsChatClassification(c),
-					originalData: c
-				})
+				(c): HistoryItem => toChatHistoryItem(c, classificationJobsBySessionId.get(c.id))
 			)
 		];
 
@@ -358,20 +322,10 @@ async function loadHistoryData(
 			} else if (selectedType === 'chat_session') {
 				const found = chatSessions.find((c) => c.id === selectedId);
 				if (found) {
-					selectedItem = {
-						id: found.id,
-						type: 'chat_session',
-						title: resolveChatTitle(found),
-						preview: found.summary || 'No summary available',
-						topics: found.chat_topics || [],
-						status: found.status,
-						createdAt: found.created_at || new Date().toISOString(),
-						messageCount: found.message_count || 0,
-						contextType: found.context_type,
-						entityId: found.entity_id,
-						needsClassification: needsChatClassification(found),
-						originalData: found
-					};
+					selectedItem = toChatHistoryItem(
+						found,
+						classificationJobsBySessionId.get(found.id)
+					);
 				}
 			}
 		}
@@ -383,7 +337,8 @@ async function loadHistoryData(
 			pendingBraindumps:
 				braindumpStats?.filter((b: any) => b.status === 'pending').length || 0,
 			totalChatSessions: chatStats?.length || 0,
-			chatSessionsWithSummary: chatStats?.filter((c: any) => c.summary).length || 0
+			chatSessionsWithSummary:
+				chatStats?.filter((c: any) => normalizeHistoryText(c.summary)).length || 0
 		};
 
 		return {
@@ -409,4 +364,71 @@ async function loadHistoryData(
 			hasMore: false
 		};
 	}
+}
+
+function toChatHistoryItem(
+	session: ChatSession,
+	classificationJob?: ChatClassificationJob | null
+): HistoryItem {
+	const displayState = resolveChatDisplayState(session, classificationJob);
+
+	return {
+		id: session.id,
+		type: 'chat_session',
+		title: resolveChatTitle(session, displayState),
+		preview: resolveChatPreview(session, displayState),
+		topics: normalizeHistoryTopics(session.chat_topics),
+		status: session.status,
+		displayStatus: displayState.displayStatus,
+		statusLabel: displayState.statusLabel,
+		createdAt: session.created_at || new Date().toISOString(),
+		messageCount: session.message_count || 0,
+		contextType: session.context_type,
+		entityId: session.entity_id,
+		needsClassification: needsChatClassification(session),
+		canQueueSummary: displayState.canQueueSummary,
+		originalData: session
+	};
+}
+
+async function loadChatClassificationJobs(
+	supabase: any,
+	userId: string,
+	sessionIds: string[]
+): Promise<Map<string, ChatClassificationJob>> {
+	const uniqueSessionIds = Array.from(new Set(sessionIds)).filter(Boolean);
+	if (uniqueSessionIds.length === 0) return new Map();
+
+	const { data, error } = await supabase
+		.from('queue_jobs')
+		.select(
+			'id, queue_job_id, metadata, status, error_message, created_at, updated_at, started_at, completed_at'
+		)
+		.eq('user_id', userId)
+		.eq('job_type', 'classify_chat_session')
+		.in('metadata->>sessionId', uniqueSessionIds)
+		.order('created_at', { ascending: false })
+		.limit(Math.min(uniqueSessionIds.length * 3, 150));
+
+	if (error) {
+		console.warn('Error fetching chat classification jobs:', error);
+		return new Map();
+	}
+
+	const jobsBySessionId = new Map<string, ChatClassificationJob>();
+	for (const job of (data || []) as ChatClassificationJob[]) {
+		const sessionId = getClassificationJobSessionId(job);
+		if (!sessionId || jobsBySessionId.has(sessionId)) continue;
+		jobsBySessionId.set(sessionId, job);
+	}
+
+	return jobsBySessionId;
+}
+
+function getClassificationJobSessionId(job: ChatClassificationJob): string | null {
+	const metadata = job.metadata;
+	if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+
+	const sessionId = metadata.sessionId;
+	return typeof sessionId === 'string' && sessionId ? sessionId : null;
 }

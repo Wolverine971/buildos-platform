@@ -167,15 +167,20 @@
 	function getStatusIcon(status: string) {
 		switch (status) {
 			case 'processed':
-			case 'active':
 			case 'completed':
+			case 'done':
 				return CheckCircle;
 			case 'processing':
 				return LoaderCircle;
+			case 'queued':
+			case 'recent':
+			case 'needs_summary':
 			case 'pending':
 				return Clock;
 			case 'failed':
 				return AlertCircle;
+			case 'active':
+				return Clock;
 			default:
 				return Clock;
 		}
@@ -184,18 +189,82 @@
 	function getStatusColor(status: string) {
 		switch (status) {
 			case 'processed':
-			case 'active':
 			case 'completed':
+			case 'done':
 				return 'text-emerald-500';
 			case 'processing':
 				return 'text-accent animate-spin';
+			case 'queued':
+				return 'text-amber-500';
+			case 'recent':
+				return 'text-sky-500';
+			case 'needs_summary':
+				return 'text-muted-foreground';
 			case 'pending':
 				return 'text-amber-500';
 			case 'failed':
 				return 'text-destructive';
+			case 'active':
+				return 'text-muted-foreground';
 			default:
 				return 'text-muted-foreground';
 		}
+	}
+
+	function getStatusBadgeClass(status: string) {
+		switch (status) {
+			case 'processed':
+			case 'completed':
+			case 'done':
+				return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-500';
+			case 'processing':
+				return 'border-accent/25 bg-accent/10 text-accent';
+			case 'queued':
+			case 'pending':
+				return 'border-amber-500/25 bg-amber-500/10 text-amber-500';
+			case 'recent':
+				return 'border-sky-500/25 bg-sky-500/10 text-sky-500';
+			case 'failed':
+				return 'border-destructive/25 bg-destructive/10 text-destructive';
+			case 'needs_summary':
+			default:
+				return 'border-border bg-muted/60 text-muted-foreground';
+		}
+	}
+
+	function getEffectiveDisplayStatus(
+		item: HistoryItem,
+		classifyStatus: 'loading' | 'queued' | 'error' | 'idle'
+	) {
+		if (item.type !== 'chat_session') return item.displayStatus ?? item.status;
+		if (classifyStatus === 'loading') return 'processing';
+		if (classifyStatus === 'queued') return 'queued';
+		if (classifyStatus === 'error') return 'failed';
+		return item.displayStatus ?? item.status;
+	}
+
+	function getEffectiveStatusLabel(
+		item: HistoryItem,
+		classifyStatus: 'loading' | 'queued' | 'error' | 'idle'
+	) {
+		if (item.type !== 'chat_session') {
+			if (item.status === 'processed') return 'Done';
+			return item.status.charAt(0).toUpperCase() + item.status.slice(1);
+		}
+
+		if (classifyStatus === 'loading') return 'Summarizing';
+		if (classifyStatus === 'queued') return 'Queued';
+		if (classifyStatus === 'error') return 'Summary failed';
+		return item.statusLabel ?? 'Needs summary';
+	}
+
+	function canQueueChatSummary(
+		item: HistoryItem,
+		classifyStatus: 'loading' | 'queued' | 'error' | 'idle'
+	) {
+		if (item.type !== 'chat_session' || !item.needsClassification) return false;
+		if (classifyStatus === 'loading' || classifyStatus === 'queued') return false;
+		return item.canQueueSummary || classifyStatus === 'error';
 	}
 
 	function getTypeIcon(type: HistoryItem['type']) {
@@ -529,8 +598,10 @@
 			<div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
 				{#each items as item (item.id)}
 					{@const TypeIcon = getTypeIcon(item.type)}
-					{@const StatusIcon = getStatusIcon(item.status)}
 					{@const classifyStatus = chatClassificationState[item.id] ?? 'idle'}
+					{@const displayStatus = getEffectiveDisplayStatus(item, classifyStatus)}
+					{@const statusLabel = getEffectiveStatusLabel(item, classifyStatus)}
+					{@const StatusIcon = getStatusIcon(displayStatus)}
 					<div
 						role="button"
 						tabindex="0"
@@ -551,7 +622,7 @@
 								>
 							</span>
 							<div class="flex items-center gap-1 sm:gap-2">
-								{#if item.type === 'chat_session' && item.needsClassification}
+								{#if canQueueChatSummary(item, classifyStatus)}
 									<button
 										type="button"
 										onclick={(e) => {
@@ -561,28 +632,31 @@
 										disabled={classifyStatus === 'loading' ||
 											classifyStatus === 'queued'}
 										class="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition pressable hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-70"
-										aria-label="Classify chat session"
+										aria-label="Summarize chat session"
 									>
-										{#if classifyStatus === 'loading'}
-											<LoaderCircle class="h-2.5 w-2.5 animate-spin" />
-											<span class="hidden sm:inline">Queueing</span>
-										{:else if classifyStatus === 'queued'}
-											<Sparkles class="h-2.5 w-2.5 text-emerald-500" />
-											<span class="hidden sm:inline">Queued</span>
-										{:else if classifyStatus === 'error'}
+										{#if classifyStatus === 'error'}
 											<Sparkles class="h-2.5 w-2.5 text-destructive" />
 											<span class="hidden sm:inline">Retry</span>
 										{:else}
 											<Sparkles class="h-2.5 w-2.5" />
-											<span class="hidden sm:inline">Classify</span>
+											<span class="hidden sm:inline">Summarize</span>
 										{/if}
 									</button>
 								{/if}
-								<StatusIcon
-									class="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0 {getStatusColor(
-										item.status
+								<span
+									class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[8px] sm:text-[10px] font-medium {getStatusBadgeClass(
+										displayStatus
 									)}"
-								/>
+								>
+									<StatusIcon
+										class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0 {getStatusColor(
+											displayStatus
+										)}"
+									/>
+									<span class="hidden sm:inline whitespace-nowrap"
+										>{statusLabel}</span
+									>
+								</span>
 							</div>
 						</div>
 

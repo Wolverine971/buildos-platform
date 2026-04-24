@@ -1,7 +1,8 @@
 // apps/web/src/lib/services/ontology/migration-llm.service.test.ts
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ACTIVE_EXPERIMENT_MODEL } from '@buildos/smart-llm';
+import { ACTIVE_EXPERIMENT_MODEL, DEEPSEEK_V4_FLASH_MODEL } from '@buildos/smart-llm';
 import {
+	DEFAULT_MIGRATION_MODEL,
 	LLMRateLimiter,
 	estimateMigrationCost,
 	estimateCostForEntities,
@@ -141,13 +142,13 @@ describe('estimateMigrationCost', () => {
 		expect(estimate100.cost).toBeGreaterThan(estimate10.cost);
 	});
 
-	it('should clamp unsupported models to the active experiment model', () => {
+	it('should clamp unsupported models to the default migration model', () => {
 		const unsupportedEstimate = estimateMigrationCost(10, 8, 2, 'openai/gpt-oss-120b');
-		const activeEstimate = estimateMigrationCost(10, 8, 2, ACTIVE_EXPERIMENT_MODEL);
+		const defaultEstimate = estimateMigrationCost(10, 8, 2, DEFAULT_MIGRATION_MODEL);
 
-		expect(unsupportedEstimate.model).toBe(ACTIVE_EXPERIMENT_MODEL);
-		expect(unsupportedEstimate.cost).toBe(activeEstimate.cost);
-		expect(unsupportedEstimate.tokens).toBe(activeEstimate.tokens);
+		expect(unsupportedEstimate.model).toBe(DEFAULT_MIGRATION_MODEL);
+		expect(unsupportedEstimate.cost).toBe(defaultEstimate.cost);
+		expect(unsupportedEstimate.tokens).toBe(defaultEstimate.tokens);
 	});
 
 	it('should return zero for zero projects', () => {
@@ -241,12 +242,15 @@ describe('getAvailableModels', () => {
 		}
 	});
 
-	it('should include the active experiment model as the recommended model', () => {
+	it('should include DeepSeek V4 Flash as the recommended model', () => {
 		const models = getAvailableModels();
-		const active = models.find((m) => m.id === ACTIVE_EXPERIMENT_MODEL);
+		const recommended = models.find((m) => m.id === DEEPSEEK_V4_FLASH_MODEL);
+		const qwen = models.find((m) => m.id === ACTIVE_EXPERIMENT_MODEL);
 
-		expect(active).toBeDefined();
-		expect(active?.recommended).toBe(true);
+		expect(recommended).toBeDefined();
+		expect(recommended?.recommended).toBe(true);
+		expect(qwen).toBeDefined();
+		expect(qwen?.recommended).toBe(false);
 	});
 });
 

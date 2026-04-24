@@ -1,6 +1,10 @@
 // apps/web/src/lib/services/ontology/migration-llm.service.ts
 // LLM Rate Limiter, Circuit Breaker, and Cost Estimation for Migration
-import { ACTIVE_EXPERIMENT_MODEL } from '@buildos/smart-llm';
+import {
+	ACTIVE_EXPERIMENT_MODEL,
+	DEEPSEEK_V4_FLASH_MODEL,
+	GEMINI_31_FLASH_LITE_PREVIEW_MODEL
+} from '@buildos/smart-llm';
 
 export interface RateLimitConfig {
 	maxRequestsPerMinute: number;
@@ -28,7 +32,7 @@ export interface CostEstimate {
 }
 
 export interface LLMUsageMetadata {
-	provider: 'openai' | 'deepseek' | 'qwen' | 'moonshotai';
+	provider: 'openai' | 'deepseek' | 'qwen' | 'moonshotai' | 'google';
 	model: string;
 	inputTokens: number;
 	outputTokens: number;
@@ -37,10 +41,12 @@ export interface LLMUsageMetadata {
 	durationMs: number;
 }
 
-const DEFAULT_MIGRATION_MODEL = ACTIVE_EXPERIMENT_MODEL;
+export const DEFAULT_MIGRATION_MODEL = DEEPSEEK_V4_FLASH_MODEL;
 
 // Token costs per 1000 tokens (OpenRouter pricing checked April 2026)
 const TOKEN_COSTS: Record<string, TokenCosts> = {
+	[DEEPSEEK_V4_FLASH_MODEL]: { input: 0.00014, output: 0.00028 },
+	[GEMINI_31_FLASH_LITE_PREVIEW_MODEL]: { input: 0.00025, output: 0.0015 },
 	[ACTIVE_EXPERIMENT_MODEL]: { input: 0.000325, output: 0.00195 }
 };
 
@@ -318,7 +324,7 @@ function formatDuration(ms: number): string {
  * Create LLM usage metadata for migration log
  */
 export function createLLMUsageMetadata(
-	provider: 'openai' | 'deepseek' | 'qwen' | 'moonshotai',
+	provider: 'openai' | 'deepseek' | 'qwen' | 'moonshotai' | 'google',
 	model: string,
 	inputTokens: number,
 	outputTokens: number,
@@ -350,12 +356,28 @@ export function getAvailableModels(): Array<{
 }> {
 	return [
 		{
+			id: DEEPSEEK_V4_FLASH_MODEL,
+			name: 'DeepSeek V4 Flash',
+			costs: TOKEN_COSTS[DEEPSEEK_V4_FLASH_MODEL]!,
+			recommended: true
+		},
+		{
+			id: GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
+			name: 'Gemini 3.1 Flash Lite Preview',
+			costs: TOKEN_COSTS[GEMINI_31_FLASH_LITE_PREVIEW_MODEL]!,
+			recommended: false
+		},
+		{
 			id: ACTIVE_EXPERIMENT_MODEL,
 			name: 'Qwen 3.6 Plus',
 			costs: TOKEN_COSTS[ACTIVE_EXPERIMENT_MODEL]!,
-			recommended: true
+			recommended: false
 		}
 	];
+}
+
+export function isAvailableMigrationModel(model: string): boolean {
+	return Boolean(TOKEN_COSTS[model]);
 }
 
 // Export singleton rate limiter for use across the migration system

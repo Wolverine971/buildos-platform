@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	ACTIVE_EXPERIMENT_MODEL,
 	AGENT_STATE_RECONCILIATION_MODEL,
+	DEEPSEEK_V4_FLASH_MODEL,
 	KIMI_EXPERIMENT_MODEL
 } from '@buildos/smart-llm';
 
@@ -67,17 +68,47 @@ describe('OpenRouterV2Service model routing', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('does not fall back to non-active JSON lane models when the experiment model is unavailable', async () => {
+	it('falls back from DeepSeek JSON primary to the Qwen experiment fallback', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
 				requestBodies.push(JSON.parse(init.body));
 			}
 
+			if (requestBodies.length > 1) {
+				return new Response(
+					JSON.stringify({
+						id: 'chatcmpl-v2-fallback',
+						model: ACTIVE_EXPERIMENT_MODEL,
+						choices: [
+							{
+								index: 0,
+								message: {
+									role: 'assistant',
+									content: '{"ok":true}'
+								},
+								finish_reason: 'stop'
+							}
+						],
+						usage: {
+							prompt_tokens: 10,
+							completion_tokens: 4,
+							total_tokens: 14
+						}
+					}),
+					{
+						status: 200,
+						headers: {
+							'content-type': 'application/json'
+						}
+					}
+				);
+			}
+
 			return new Response(
 				JSON.stringify({
 					error: {
-						message: `${ACTIVE_EXPERIMENT_MODEL} is temporarily unavailable from the upstream provider.`
+						message: `${DEEPSEEK_V4_FLASH_MODEL} is temporarily unavailable from the upstream provider.`
 					}
 				}),
 				{
@@ -93,19 +124,20 @@ describe('OpenRouterV2Service model routing', () => {
 
 		const service = createService();
 
-		await expect(
-			service.getJSONResponse<{ ok: boolean }>({
-				systemPrompt: 'Return valid JSON.',
-				userPrompt: 'Respond with {"ok":true}.'
-			})
-		).rejects.toThrow('Failed to generate valid JSON with OpenRouter V2');
+		const result = await service.getJSONResponse<{ ok: boolean }>({
+			systemPrompt: 'Return valid JSON.',
+			userPrompt: 'Respond with {"ok":true}.'
+		});
 
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
-		expect(requestBodies[0]?.models).toBeUndefined();
+		expect(result).toEqual({ ok: true });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(requestBodies[0]?.models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(requestBodies[1]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(requestBodies[1]?.models).toBeUndefined();
 	});
 
-	it('honors JSON profile hints while keeping the active model as the only model', async () => {
+	it('honors JSON profile hints while keeping DeepSeek as the primary model', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
@@ -115,7 +147,7 @@ describe('OpenRouterV2Service model routing', () => {
 			return new Response(
 				JSON.stringify({
 					id: 'chatcmpl-v2-profile',
-					model: ACTIVE_EXPERIMENT_MODEL,
+					model: DEEPSEEK_V4_FLASH_MODEL,
 					choices: [
 						{
 							index: 0,
@@ -153,9 +185,9 @@ describe('OpenRouterV2Service model routing', () => {
 
 		expect(result).toEqual({ ok: true });
 		expect(fetchMock).toHaveBeenCalledTimes(1);
-		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(requestBodies[0]?.response_format).toEqual({ type: 'json_object' });
-		expect(requestBodies[0]?.models).toBeUndefined();
+		expect(requestBodies[0]?.models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
 	});
 
 	it('routes allowlisted reconciliation JSON calls to the cheaper side-route model', async () => {
@@ -505,7 +537,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(requestBodies[0]?.stream_options).toEqual({ include_usage: true });
 	});
 
-	it('omits OpenRouter fallback models for profiled tool-calling streams', async () => {
+	it('includes Qwen fallback models for profiled tool-calling streams', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
@@ -556,8 +588,8 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(events.find((event) => event.type === 'done')).toMatchObject({
 			type: 'done'
 		});
-		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
-		expect(requestBodies[0]?.models).toBeUndefined();
+		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(requestBodies[0]?.models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
 		expect(requestBodies[0]?.tools).toHaveLength(1);
 		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
 	});
@@ -623,7 +655,10 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		await vi.waitFor(() => expect(insertMock).toHaveBeenCalledTimes(1));
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
-		expect(requestBodies[0]?.models).toBeUndefined();
+		expect(requestBodies[0]?.models).toEqual([
+			DEEPSEEK_V4_FLASH_MODEL,
+			'google/gemini-3.1-flash-lite-preview'
+		]);
 		expect(events.find((event) => event.type === 'done')).toMatchObject({
 			type: 'done',
 			model: ACTIVE_EXPERIMENT_MODEL,

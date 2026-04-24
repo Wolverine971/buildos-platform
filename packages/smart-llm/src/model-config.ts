@@ -5,6 +5,9 @@ import type { JSONProfile, ModelCapabilities, ModelProfile, TextProfile } from '
 export const KIMI_EXPERIMENT_MODEL = 'moonshotai/kimi-k2.6' as const;
 export const KIMI_EXPERIMENT_MODELS = [KIMI_EXPERIMENT_MODEL] as const;
 export const QWEN_36_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.6-plus' as const;
+export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
+export const DEEPSEEK_V4_PRO_MODEL = 'deepseek/deepseek-v4-pro' as const;
+export const GEMINI_31_FLASH_LITE_PREVIEW_MODEL = 'google/gemini-3.1-flash-lite-preview' as const;
 export const ACTIVE_EXPERIMENT_MODEL = QWEN_36_PLUS_EXPERIMENT_MODEL;
 export const ACTIVE_EXPERIMENT_MODELS = [ACTIVE_EXPERIMENT_MODEL] as const;
 export const AGENT_STATE_RECONCILIATION_MODEL = 'qwen/qwen3.5-flash-02-23' as const;
@@ -31,8 +34,8 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
-	'google/gemini-3.1-flash-lite-preview': {
-		id: 'google/gemini-3.1-flash-lite-preview',
+	[GEMINI_31_FLASH_LITE_PREVIEW_MODEL]: {
+		id: GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
 		name: 'Gemini 3.1 Flash Lite Preview',
 		speed: 4.7,
 		smartness: 4.5,
@@ -227,6 +230,57 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			tools: true,
 			reasoning: true,
 			multimodal: true,
+			longContext: true
+		}
+	},
+	[DEEPSEEK_V4_FLASH_MODEL]: {
+		id: DEEPSEEK_V4_FLASH_MODEL,
+		name: 'DeepSeek V4 Flash',
+		speed: 4.6,
+		smartness: 4.85,
+		creativity: 4.3,
+		cost: 0.14,
+		outputCost: 0.28,
+		provider: 'deepseek',
+		bestFor: [
+			'low-cost-agentic-workflows',
+			'coding-assistants',
+			'json-mode',
+			'tool-calling',
+			'long-context',
+			'1m-context',
+			'high-throughput'
+		],
+		limitations: ['brand-new-endpoint', 'text-only'],
+		capabilities: {
+			jsonMode: true,
+			tools: true,
+			reasoning: true,
+			longContext: true
+		}
+	},
+	[DEEPSEEK_V4_PRO_MODEL]: {
+		id: DEEPSEEK_V4_PRO_MODEL,
+		name: 'DeepSeek V4 Pro',
+		speed: 2.8,
+		smartness: 5,
+		creativity: 4.5,
+		cost: 1.74,
+		outputCost: 3.48,
+		provider: 'deepseek',
+		bestFor: [
+			'frontier-open-source-reasoning',
+			'long-horizon-agentic-workflows',
+			'full-codebase-analysis',
+			'complex-coding',
+			'large-scale-synthesis',
+			'1m-context'
+		],
+		limitations: ['expensive', 'text-only', 'reasoning-tokens-can-increase-cost'],
+		capabilities: {
+			jsonMode: true,
+			tools: true,
+			reasoning: true,
 			longContext: true
 		}
 	},
@@ -550,7 +604,24 @@ export function modelSupportsCapability(
 	return MODEL_CATALOG[modelId]?.capabilities?.[capability] === true;
 }
 
-export const ACTIVE_RUNTIME_MODEL_IDS = [...ACTIVE_EXPERIMENT_MODELS];
+const OPENROUTER_TEXT_ROUTE = [
+	DEEPSEEK_V4_FLASH_MODEL,
+	GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
+	ACTIVE_EXPERIMENT_MODEL
+] as const;
+const OPENROUTER_JSON_ROUTE = [DEEPSEEK_V4_FLASH_MODEL, ACTIVE_EXPERIMENT_MODEL] as const;
+const OPENROUTER_TOOL_ROUTE = [DEEPSEEK_V4_FLASH_MODEL, ACTIVE_EXPERIMENT_MODEL] as const;
+const EMERGENCY_TEXT_ROUTE = [ACTIVE_EXPERIMENT_MODEL, GEMINI_31_FLASH_LITE_PREVIEW_MODEL] as const;
+
+export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(
+	new Set<string>([
+		...OPENROUTER_TEXT_ROUTE,
+		...OPENROUTER_JSON_ROUTE,
+		...OPENROUTER_TOOL_ROUTE,
+		...EMERGENCY_TEXT_ROUTE,
+		DEEPSEEK_V4_PRO_MODEL
+	])
+);
 export const ACTIVE_RUNTIME_MODEL_SET = new Set<string>(ACTIVE_RUNTIME_MODEL_IDS);
 export const JSON_MODELS: Record<string, ModelProfile> = Object.fromEntries(
 	ACTIVE_RUNTIME_MODEL_IDS.map((modelId) => [modelId, MODEL_CATALOG[modelId]])
@@ -600,58 +671,56 @@ export function resolveModelPricingProfile(
 	return null;
 }
 
-const ACTIVE_ROUTE = ACTIVE_EXPERIMENT_MODELS;
-
 const MODEL_ROUTES = {
 	openRouterV2: {
-		text: ACTIVE_ROUTE,
-		json: ACTIVE_ROUTE,
-		toolCalling: ACTIVE_ROUTE,
-		toolCallingExacto: ACTIVE_ROUTE
+		text: OPENROUTER_TEXT_ROUTE,
+		json: OPENROUTER_JSON_ROUTE,
+		toolCalling: OPENROUTER_TOOL_ROUTE,
+		toolCallingExacto: OPENROUTER_TOOL_ROUTE
 	},
 	tasks: {
-		projectNextStep: ACTIVE_ROUTE
+		projectNextStep: OPENROUTER_JSON_ROUTE
 	},
 	agentRecommendations: {
 		brainDumps: {
-			contextExtraction: ACTIVE_ROUTE,
-			taskExtraction: ACTIVE_ROUTE,
-			clarification: ACTIVE_ROUTE
+			contextExtraction: OPENROUTER_JSON_ROUTE,
+			taskExtraction: OPENROUTER_JSON_ROUTE,
+			clarification: OPENROUTER_TEXT_ROUTE
 		},
 		agentChat: {
 			planner: {
-				simple: ACTIVE_ROUTE,
-				complex: ACTIVE_ROUTE,
-				toolHeavy: ACTIVE_ROUTE
+				simple: OPENROUTER_TEXT_ROUTE,
+				complex: OPENROUTER_JSON_ROUTE,
+				toolHeavy: OPENROUTER_TOOL_ROUTE
 			},
 			executor: {
-				default: ACTIVE_ROUTE,
-				toolHeavy: ACTIVE_ROUTE
+				default: OPENROUTER_TOOL_ROUTE,
+				toolHeavy: OPENROUTER_TOOL_ROUTE
 			},
 			synthesis: {
-				simple: ACTIVE_ROUTE,
-				complex: ACTIVE_ROUTE
+				simple: OPENROUTER_TEXT_ROUTE,
+				complex: OPENROUTER_TEXT_ROUTE
 			}
 		},
 		dailyBriefs: {
-			projectBrief: ACTIVE_ROUTE,
-			generation: ACTIVE_ROUTE,
-			summary: ACTIVE_ROUTE
+			projectBrief: OPENROUTER_TEXT_ROUTE,
+			generation: OPENROUTER_TEXT_ROUTE,
+			summary: OPENROUTER_TEXT_ROUTE
 		}
 	},
-	toolCalling: ACTIVE_ROUTE,
-	emergencyTextFallbacks: ACTIVE_ROUTE,
+	toolCalling: OPENROUTER_TOOL_ROUTE,
+	emergencyTextFallbacks: EMERGENCY_TEXT_ROUTE,
 	jsonProfiles: {
-		fast: ACTIVE_ROUTE,
-		balanced: ACTIVE_ROUTE,
-		powerful: ACTIVE_ROUTE,
-		maximum: ACTIVE_ROUTE
+		fast: OPENROUTER_JSON_ROUTE,
+		balanced: OPENROUTER_JSON_ROUTE,
+		powerful: OPENROUTER_JSON_ROUTE,
+		maximum: [DEEPSEEK_V4_PRO_MODEL, ACTIVE_EXPERIMENT_MODEL]
 	},
 	textProfiles: {
-		speed: ACTIVE_ROUTE,
-		balanced: ACTIVE_ROUTE,
-		quality: ACTIVE_ROUTE,
-		creative: ACTIVE_ROUTE
+		speed: OPENROUTER_TEXT_ROUTE,
+		balanced: OPENROUTER_TEXT_ROUTE,
+		quality: OPENROUTER_TEXT_ROUTE,
+		creative: OPENROUTER_TEXT_ROUTE
 	}
 } as const;
 

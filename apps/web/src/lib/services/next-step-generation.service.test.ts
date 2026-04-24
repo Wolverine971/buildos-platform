@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/next-step-generation.service.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ACTIVE_EXPERIMENT_MODEL } from '@buildos/smart-llm';
+import { ACTIVE_EXPERIMENT_MODEL, DEEPSEEK_V4_FLASH_MODEL } from '@buildos/smart-llm';
 
 vi.mock('$env/static/private', () => ({
 	PRIVATE_OPENROUTER_API_KEY: 'openrouter-test-key'
@@ -17,7 +17,7 @@ describe('next-step generation model fallback', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('does not fall back to non-active models when the experiment model is rate-limited', async () => {
+	it('falls back to Qwen when the DeepSeek primary model is rate-limited', async () => {
 		const requestBodies: Array<Record<string, unknown>> = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
@@ -31,8 +31,8 @@ describe('next-step generation model fallback', () => {
 							message: 'Provider returned error',
 							code: 429,
 							metadata: {
-								raw: `${ACTIVE_EXPERIMENT_MODEL} is temporarily rate-limited upstream`,
-								provider_name: 'Qwen'
+								raw: `${DEEPSEEK_V4_FLASH_MODEL} is temporarily rate-limited upstream`,
+								provider_name: 'DeepSeek'
 							}
 						}
 					}),
@@ -45,7 +45,34 @@ describe('next-step generation model fallback', () => {
 				);
 			}
 
-			throw new Error('Unexpected fallback request');
+			return new Response(
+				JSON.stringify({
+					id: 'chatcmpl-next-step-fallback',
+					model: ACTIVE_EXPERIMENT_MODEL,
+					choices: [
+						{
+							index: 0,
+							message: {
+								role: 'assistant',
+								content:
+									'{"short":"Start the draft","long":"Work on [[task:t1|the draft]] next."}'
+							},
+							finish_reason: 'stop'
+						}
+					],
+					usage: {
+						prompt_tokens: 10,
+						completion_tokens: 4,
+						total_tokens: 14
+					}
+				}),
+				{
+					status: 200,
+					headers: {
+						'content-type': 'application/json'
+					}
+				}
+			);
 		});
 
 		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
@@ -58,9 +85,14 @@ describe('next-step generation model fallback', () => {
 			}
 		);
 
-		expect(result).toBeNull();
-		expect(fetchMock).toHaveBeenCalledTimes(1);
-		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
-		expect(requestBodies[0]?.models).toBeUndefined();
+		expect(result).toEqual({
+			short: 'Start the draft',
+			long: 'Work on [[task:t1|the draft]] next.'
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(requestBodies[0]?.models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(requestBodies[1]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(requestBodies[1]?.models).toBeUndefined();
 	});
 });

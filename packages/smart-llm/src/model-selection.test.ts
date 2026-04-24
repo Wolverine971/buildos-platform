@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	ACTIVE_EXPERIMENT_MODEL,
 	AGENTIC_MODEL_RECOMMENDATIONS,
+	DEEPSEEK_V4_FLASH_MODEL,
+	DEEPSEEK_V4_PRO_MODEL,
 	KIMI_EXPERIMENT_MODEL,
 	MODEL_CATALOG,
 	OPENROUTER_V2_JSON_MODELS,
@@ -182,17 +184,17 @@ describe('ensureToolCompatibleModels', () => {
 		expect(result).not.toContain('route/only');
 	});
 
-	it('uses only the active experiment model for balanced default text routing', () => {
+	it('uses the production fallback order for balanced default text routing', () => {
 		const models = selectTextModels('balanced', 1200);
 
-		expect(models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(models).toEqual([...OPENROUTER_V2_TEXT_MODELS]);
 		expect(models.every((model) => !model.includes('alpha'))).toBe(true);
 	});
 
-	it('uses only the active experiment model for balanced default JSON routing', () => {
+	it('uses the production fallback order for balanced default JSON routing', () => {
 		const models = selectJSONModels('balanced', 'moderate');
 
-		expect(models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(models).toEqual([...OPENROUTER_V2_JSON_MODELS]);
 		expect(models.every((model) => !model.includes('alpha'))).toBe(true);
 	});
 
@@ -205,6 +207,8 @@ describe('ensureToolCompatibleModels', () => {
 		expect(supportsJsonMode('openai/gpt-oss-20b:free')).toBe(true);
 		expect(supportsJsonMode('openai/gpt-oss-120b')).toBe(true);
 		expect(supportsJsonMode('google/gemini-3.1-flash-lite-preview')).toBe(true);
+		expect(supportsJsonMode(DEEPSEEK_V4_FLASH_MODEL)).toBe(true);
+		expect(supportsJsonMode(DEEPSEEK_V4_PRO_MODEL)).toBe(true);
 		expect(supportsJsonMode('minimax/minimax-m2.7')).toBe(true);
 		expect(supportsJsonMode('nvidia/nemotron-3-super-120b-a12b:free')).toBe(true);
 		expect(supportsJsonMode(KIMI_EXPERIMENT_MODEL)).toBe(true);

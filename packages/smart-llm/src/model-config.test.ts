@@ -1,6 +1,10 @@
 // packages/smart-llm/src/model-config.test.ts
 import { describe, expect, it } from 'vitest';
-import { resolveModelPricingProfile } from './model-config';
+import {
+	DEEPSEEK_V4_FLASH_MODEL,
+	DEEPSEEK_V4_PRO_MODEL,
+	resolveModelPricingProfile
+} from './model-config';
 
 describe('resolveModelPricingProfile', () => {
 	it('normalizes provider date-suffixed model ids for pricing', () => {
@@ -25,6 +29,18 @@ describe('resolveModelPricingProfile', () => {
 		expect(result?.modelId).toBe('qwen/qwen3-32b');
 		expect(result?.profile.cost).toBe(0.08);
 		expect(result?.profile.outputCost).toBe(0.24);
+	});
+
+	it('normalizes DeepSeek V4 dated endpoint ids for pricing', () => {
+		const flash = resolveModelPricingProfile('deepseek/deepseek-v4-flash-20260423');
+		const pro = resolveModelPricingProfile('deepseek/deepseek-v4-pro-20260423');
+
+		expect(flash?.modelId).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(flash?.profile.cost).toBe(0.14);
+		expect(flash?.profile.outputCost).toBe(0.28);
+		expect(pro?.modelId).toBe(DEEPSEEK_V4_PRO_MODEL);
+		expect(pro?.profile.cost).toBe(1.74);
+		expect(pro?.profile.outputCost).toBe(3.48);
 	});
 
 	it('falls back to a requested model when the resolved model is not configured', () => {

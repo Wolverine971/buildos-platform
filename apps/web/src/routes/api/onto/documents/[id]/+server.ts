@@ -41,7 +41,10 @@ import { normalizeMarkdownInput } from '../../shared/markdown-normalization';
 import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver';
 import type { DocStructure } from '$lib/types/onto';
 import { logOntologyApiError } from '../../shared/error-logging';
-import { syncLivePublicPageForDocument } from '$lib/server/public-page.service';
+import {
+	syncLivePublicPageForDocument,
+	type PublicPageLiveSyncResult
+} from '$lib/server/public-page.service';
 
 type Locals = App.Locals;
 type ArchiveChildrenMode = 'archive_children' | 'promote_children' | 'unlink_children';
@@ -284,9 +287,11 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			parent,
 			parents,
 			connections,
-			force_version
+			force_version,
+			sync_public_page
 		} = body as Record<string, unknown>;
 		const forceVersion = force_version === true;
+		const syncPublicPageNow = sync_public_page === true;
 
 		const hasStateInput = Object.prototype.hasOwnProperty.call(body, 'state_key');
 		const normalizedState = normalizeDocumentStateInput(state_key);
@@ -656,6 +661,27 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		const userName = session.user.name;
 		const userEmail = session.user.email;
 
+		const syncDocumentPayload = {
+			id: String(updatedDocument.id),
+			project_id: String(updatedDocument.project_id),
+			title: typeof updatedDocument.title === 'string' ? updatedDocument.title : null,
+			description:
+				typeof updatedDocument.description === 'string'
+					? updatedDocument.description
+					: null,
+			content: typeof updatedDocument.content === 'string' ? updatedDocument.content : null,
+			props:
+				updatedDocument.props &&
+				typeof updatedDocument.props === 'object' &&
+				!Array.isArray(updatedDocument.props)
+					? (updatedDocument.props as Record<string, unknown>)
+					: null,
+			state_key:
+				typeof updatedDocument.state_key === 'string' ? updatedDocument.state_key : null,
+			updated_at:
+				typeof updatedDocument.updated_at === 'string' ? updatedDocument.updated_at : null
+		};
+
 		const postSaveWork = async () => {
 			await Promise.all([
 				// Versioning
@@ -754,56 +780,33 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 					);
 				}),
 
-				// Public page live sync
-				syncLivePublicPageForDocument(
-					locals.supabase,
-					{
-						id: String(updatedDocument.id),
-						project_id: String(updatedDocument.project_id),
-						title:
-							typeof updatedDocument.title === 'string'
-								? updatedDocument.title
-								: null,
-						description:
-							typeof updatedDocument.description === 'string'
-								? updatedDocument.description
-								: null,
-						content:
-							typeof updatedDocument.content === 'string'
-								? updatedDocument.content
-								: null,
-						props:
-							updatedDocument.props &&
-							typeof updatedDocument.props === 'object' &&
-							!Array.isArray(updatedDocument.props)
-								? (updatedDocument.props as Record<string, unknown>)
-								: null,
-						state_key:
-							typeof updatedDocument.state_key === 'string'
-								? updatedDocument.state_key
-								: null,
-						updated_at:
-							typeof updatedDocument.updated_at === 'string'
-								? updatedDocument.updated_at
-								: null
-					},
-					actorId,
-					userId
-				).catch((syncError) => {
-					console.error('[Document API] Failed to sync live public page:', syncError);
-					void logOntologyApiError({
-						supabase: locals.supabase,
-						error: syncError,
-						endpoint: `/api/onto/documents/${documentId}`,
-						method: 'PATCH',
-						userId,
-						projectId: document.project_id,
-						entityType: 'document',
-						entityId: documentId,
-						operation: 'public_page_live_sync',
-						metadata: { nonFatal: true }
-					});
-				})
+				// Keep autosave/public-page sync opportunistic in the background. Manual saves
+				// request blocking sync below so the modal can show an accurate live status.
+				!syncPublicPageNow
+					? syncLivePublicPageForDocument(
+							locals.supabase,
+							syncDocumentPayload,
+							actorId,
+							userId
+						).catch((syncError) => {
+							console.error(
+								'[Document API] Failed to sync live public page:',
+								syncError
+							);
+							void logOntologyApiError({
+								supabase: locals.supabase,
+								error: syncError,
+								endpoint: `/api/onto/documents/${documentId}`,
+								method: 'PATCH',
+								userId,
+								projectId: document.project_id,
+								entityType: 'document',
+								entityId: documentId,
+								operation: 'public_page_live_sync',
+								metadata: { nonFatal: true, background: true }
+							});
+						})
+					: Promise.resolve()
 			]);
 		};
 
@@ -837,7 +840,44 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			chatSessionId
 		);
 
-		return ApiResponse.success({ document: updatedDocument });
+		let publicPageSync: PublicPageLiveSyncResult | null = null;
+		if (syncPublicPageNow) {
+			try {
+				publicPageSync = await syncLivePublicPageForDocument(
+					locals.supabase,
+					syncDocumentPayload,
+					actorId,
+					userId
+				);
+			} catch (syncError) {
+				console.error('[Document API] Failed to sync live public page:', syncError);
+				await logOntologyApiError({
+					supabase: locals.supabase,
+					error: syncError,
+					endpoint: `/api/onto/documents/${documentId}`,
+					method: 'PATCH',
+					userId,
+					projectId: document.project_id,
+					entityType: 'document',
+					entityId: documentId,
+					operation: 'public_page_live_sync',
+					metadata: { nonFatal: true, blocking: true }
+				});
+				publicPageSync = {
+					isLivePublic: false,
+					synced: false,
+					blocked: false,
+					page: null,
+					error:
+						syncError instanceof Error && syncError.message
+							? syncError.message
+							: 'Failed to sync live public page',
+					review: null
+				};
+			}
+		}
+
+		return ApiResponse.success({ document: updatedDocument, publicPageSync });
 	} catch (error) {
 		if (error instanceof AutoOrganizeError) {
 			return ApiResponse.error(error.message, error.status);

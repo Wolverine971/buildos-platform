@@ -8,6 +8,7 @@
 		BuildosAgentAllowedOp,
 		BuildosAgentAvailableProject,
 		BuildosAgentCallerListResponse,
+		BuildosAgentCallerProvisionRequest,
 		BuildosAgentCallerProvisionResponse,
 		BuildosAgentCallerSummary,
 		BuildosAgentIdentitySummary,
@@ -158,6 +159,7 @@
 	let latestProvisioned = $state<BuildosAgentCallerProvisionResponse | null>(null);
 	let pendingRevokeCaller = $state<BuildosAgentCallerSummary | null>(null);
 	let revokingCallerId = $state<string | null>(null);
+	let rotatingCallerId = $state<string | null>(null);
 	let editingCaller = $state<BuildosAgentCallerSummary | null>(null);
 
 	// Modal state
@@ -426,6 +428,22 @@
 		showGenerateModal = true;
 	}
 
+	function provisionRequestForCaller(
+		caller: BuildosAgentCallerSummary
+	): BuildosAgentCallerProvisionRequest {
+		return {
+			provider: caller.provider,
+			caller_key: caller.caller_key,
+			scope_mode: caller.scope_mode,
+			allowed_ops: caller.scope_mode === 'read_write' ? caller.allowed_ops : undefined,
+			allowed_project_ids:
+				caller.allowed_project_ids && caller.allowed_project_ids.length > 0
+					? filterAvailableProjectIds(caller.allowed_project_ids)
+					: undefined,
+			metadata: caller.metadata ?? {}
+		};
+	}
+
 	async function loadCallers() {
 		loading = true;
 
@@ -444,19 +462,33 @@
 		}
 	}
 
-	async function copyToClipboard(id: string, text: string, successMessage: string) {
-		if (!browser) return;
+	function markCopied(id: string) {
+		copiedId = id;
+		setTimeout(() => {
+			if (copiedId === id) {
+				copiedId = null;
+			}
+		}, 2000);
+	}
+
+	async function writeToClipboard(id: string, text: string): Promise<boolean> {
+		if (!browser) return false;
 
 		try {
 			await navigator.clipboard.writeText(text);
-			copiedId = id;
-			toastService.success(successMessage);
-			setTimeout(() => {
-				if (copiedId === id) {
-					copiedId = null;
-				}
-			}, 2000);
+			markCopied(id);
+			return true;
 		} catch {
+			return false;
+		}
+	}
+
+	async function copyToClipboard(id: string, text: string, successMessage: string) {
+		const didCopy = await writeToClipboard(id, text);
+
+		if (didCopy) {
+			toastService.success(successMessage);
+		} else {
 			toastService.error('Failed to copy to clipboard');
 		}
 	}
@@ -704,6 +736,52 @@
 		}
 	}
 
+	async function rotateAndShowKey(caller: BuildosAgentCallerSummary) {
+		if (saving || rotatingCallerId) return;
+
+		if (unavailableProjectCount(caller) > 0) {
+			openEditModal(caller);
+			toastService.warning('Review the available project scope before rotating this key.');
+			return;
+		}
+
+		rotatingCallerId = caller.id;
+		editingCaller = caller;
+
+		try {
+			const response = await fetch('/api/agent-call/callers', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(provisionRequestForCaller(caller))
+			});
+
+			const payload = await parseResponse<BuildosAgentCallerProvisionResponse>(response);
+			latestProvisioned = payload;
+			await loadCallers();
+
+			const didCopy = await writeToClipboard(
+				'latest-token',
+				payload.credentials.bearer_token
+			);
+			const action = caller.status === 'revoked' ? 'Reissued' : 'Rotated';
+			const message = didCopy
+				? `${action} and copied the BuildOS key for ${installationDisplayName(caller)}.`
+				: `${action} the BuildOS key for ${installationDisplayName(caller)}. Copy it from the modal.`;
+			toastService.success(message);
+			onsuccess?.({ message });
+			showKeyCreatedModal = true;
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'Failed to rotate agent key';
+			toastService.error(message);
+			onerror?.({ message });
+			editingCaller = null;
+		} finally {
+			rotatingCallerId = null;
+		}
+	}
+
 	async function revokeCaller() {
 		if (!pendingRevokeCaller || revokingCallerId) return;
 
@@ -823,7 +901,7 @@
 				class="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground"
 			>
 				<span class="font-medium text-foreground">Need the full key?</span>
-				For security, BuildOS stores only a hash. Generate a new key or use Edit/Rotate, then
+				For security, BuildOS stores only a hash. Use Rotate + Copy to reissue the key, then
 				copy the full BuildOS Agent Key from the confirmation modal.
 			</div>
 
@@ -913,14 +991,26 @@
 									<Button
 										variant="outline"
 										size="sm"
-										icon={RefreshCw}
-										loading={saving && editingCaller?.id === caller.id}
-										disabled={saving}
-										onclick={() => openEditModal(caller)}
+										icon={Copy}
+										loading={rotatingCallerId === caller.id}
+										disabled={saving ||
+											(rotatingCallerId !== null &&
+												rotatingCallerId !== caller.id)}
+										onclick={() => rotateAndShowKey(caller)}
 									>
 										{caller.status === 'revoked'
-											? 'Reissue Key'
-											: 'Edit / Rotate'}
+											? 'Reissue + Copy'
+											: 'Rotate + Copy'}
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
+										icon={RefreshCw}
+										loading={saving && editingCaller?.id === caller.id}
+										disabled={saving || rotatingCallerId !== null}
+										onclick={() => openEditModal(caller)}
+									>
+										{caller.status === 'revoked' ? 'Reissue Key' : 'Edit'}
 									</Button>
 									{#if caller.status !== 'revoked'}
 										<Button
@@ -1000,11 +1090,21 @@
 		showGenerateModal = false;
 		clearForm();
 	}}
-	title={editingCaller ? 'Edit Agent Key' : 'Generate BuildOS Key'}
+	title={editingCaller ? 'Edit & Rotate Agent Key' : 'Generate BuildOS Key'}
 	size="md"
 >
 	{#snippet children()}
 		<div class="p-4 sm:p-6 space-y-5">
+			{#if editingCaller}
+				<div
+					class="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground"
+				>
+					<span class="font-medium text-foreground">Editing rotates the key.</span>
+					BuildOS cannot reveal the existing secret because only the hash is stored. Save changes
+					to generate a fresh key, then copy it from the next screen.
+				</div>
+			{/if}
+
 			<div class="grid gap-4 sm:grid-cols-2">
 				<FormField
 					label="Agent Type"
@@ -1243,7 +1343,7 @@
 				onclick={provisionCaller}
 				class="w-full sm:w-auto"
 			>
-				{editingCaller ? 'Save + Rotate Key' : 'Generate Key'}
+				{editingCaller ? 'Save + Show New Key' : 'Generate Key'}
 			</Button>
 		</div>
 	{/snippet}
@@ -1256,7 +1356,7 @@
 		showKeyCreatedModal = false;
 		editingCaller = null;
 	}}
-	title={editingCaller ? 'Key Updated' : 'Key Generated'}
+	title={editingCaller ? 'Key Rotated' : 'Key Generated'}
 	size="md"
 >
 	{#snippet children()}

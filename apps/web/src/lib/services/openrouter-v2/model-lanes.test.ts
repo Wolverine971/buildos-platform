@@ -1,32 +1,39 @@
 // apps/web/src/lib/services/openrouter-v2/model-lanes.test.ts
 
 import { describe, expect, it } from 'vitest';
-import { ACTIVE_EXPERIMENT_MODEL, AGENT_STATE_RECONCILIATION_MODEL } from '@buildos/smart-llm';
+import {
+	ACTIVE_EXPERIMENT_MODEL,
+	AGENT_STATE_RECONCILIATION_MODEL,
+	OPENROUTER_V2_JSON_MODELS,
+	OPENROUTER_V2_TEXT_MODELS,
+	OPENROUTER_V2_TOOL_MODELS,
+	OPENROUTER_V2_TOOL_MODELS_EXACTO
+} from '@buildos/smart-llm';
 import { resolveLaneModels, resolveLaneReasoning } from './model-lanes';
 
 describe('resolveLaneModels', () => {
 	it('returns default text lane models when no explicit selection is provided', () => {
 		const result = resolveLaneModels({ lane: 'text' });
 
-		expect(result).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(result).toEqual([...OPENROUTER_V2_TEXT_MODELS]);
 	});
 
 	it('returns default tool lane models when exacto is disabled', () => {
 		const result = resolveLaneModels({ lane: 'tool_calling', exactoToolsEnabled: false });
 
-		expect(result).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(result).toEqual([...OPENROUTER_V2_TOOL_MODELS]);
 	});
 
 	it('returns upgraded JSON lane defaults', () => {
 		const result = resolveLaneModels({ lane: 'json' });
 
-		expect(result).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(result).toEqual([...OPENROUTER_V2_JSON_MODELS]);
 	});
 
 	it('uses exacto defaults for tool lane when enabled', () => {
 		const result = resolveLaneModels({ lane: 'tool_calling', exactoToolsEnabled: true });
 
-		expect(result).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(result).toEqual([...OPENROUTER_V2_TOOL_MODELS_EXACTO]);
 	});
 
 	it('prioritizes explicit compatible models and keeps unique ordering', () => {
@@ -36,7 +43,11 @@ describe('resolveLaneModels', () => {
 			models: [ACTIVE_EXPERIMENT_MODEL, 'openai/gpt-4o-mini']
 		});
 
-		expect(result).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(result).toEqual(
+			[ACTIVE_EXPERIMENT_MODEL, ...OPENROUTER_V2_JSON_MODELS].filter(
+				(model, index, models) => models.indexOf(model) === index
+			)
+		);
 	});
 
 	it('filters explicit unknown or lane-incompatible models before defaults', () => {
@@ -48,7 +59,7 @@ describe('resolveLaneModels', () => {
 
 		expect(result).not.toContain('custom/model');
 		expect(result).not.toContain('nvidia/nemotron-3-super-120b-a12b:free');
-		expect(result).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(result).toEqual([...OPENROUTER_V2_JSON_MODELS]);
 	});
 
 	it('filters non-active side-route models unless they are explicitly allowlisted', () => {
@@ -57,7 +68,7 @@ describe('resolveLaneModels', () => {
 			model: AGENT_STATE_RECONCILIATION_MODEL
 		});
 
-		expect(result).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(result).toEqual([...OPENROUTER_V2_JSON_MODELS]);
 	});
 
 	it('can route a JSON side-route to an allowlisted model without active defaults', () => {
@@ -75,14 +86,14 @@ describe('resolveLaneModels', () => {
 	it('honors text profile hints before text lane defaults', () => {
 		const result = resolveLaneModels({ lane: 'text', profile: 'quality' });
 
-		expect(result).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(result).toEqual([...OPENROUTER_V2_TEXT_MODELS]);
 	});
 
 	it('honors JSON profile hints with JSON-capable models only', () => {
 		const result = resolveLaneModels({ lane: 'json', profile: 'fast' });
 
 		expect(result).not.toContain('custom/model');
-		expect(result).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(result).toEqual([...OPENROUTER_V2_JSON_MODELS]);
 	});
 
 	it('keeps tool lane defaults ahead of broad profile fallbacks', () => {
@@ -92,7 +103,7 @@ describe('resolveLaneModels', () => {
 			exactoToolsEnabled: false
 		});
 
-		expect(result).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(result).toEqual([...OPENROUTER_V2_TOOL_MODELS]);
 	});
 });
 

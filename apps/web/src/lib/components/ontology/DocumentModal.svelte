@@ -61,7 +61,7 @@
 	import type { VoiceNote } from '$lib/types/voice-notes';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
-	import { formatDateForDisplay } from '$lib/utils/date-utils';
+	import { formatDateForDisplay, formatDateTimeForDisplay } from '$lib/utils/date-utils';
 	import { getProseClasses, renderMarkdown } from '$lib/utils/markdown';
 	import {
 		exportDocumentAsDocx,
@@ -193,6 +193,7 @@
 		visibility: 'public' | 'unlisted';
 		noindex: boolean;
 		live_sync_enabled: boolean;
+		published_at: string | null;
 		last_live_sync_at: string | null;
 		last_live_sync_error: string | null;
 		is_live_public: boolean;
@@ -403,6 +404,44 @@
 		if (!publicPageState?.slug) return null;
 		return publicPageState.url_path || `/p/${publicPageState.slug}`;
 	});
+	const publicPageLastLiveUpdateAt = $derived(
+		publicPageState?.last_live_sync_at ?? publicPageState?.published_at ?? null
+	);
+	const publicPageLastLiveUpdateLabel = $derived.by(() =>
+		publicPageLastLiveUpdateAt
+			? formatDateTimeForDisplay(publicPageLastLiveUpdateAt) || 'Unknown'
+			: null
+	);
+	const livePageHasUnpublishedChanges = $derived.by(() => {
+		if (!isLiveDocument || !updatedAt || !publicPageLastLiveUpdateAt) return false;
+		const documentUpdatedMs = new Date(updatedAt).getTime();
+		const liveUpdatedMs = new Date(publicPageLastLiveUpdateAt).getTime();
+		if (!Number.isFinite(documentUpdatedMs) || !Number.isFinite(liveUpdatedMs)) return false;
+		return documentUpdatedMs - liveUpdatedMs > 1000;
+	});
+	const liveDocumentNeedsAttention = $derived(
+		livePageHasUnpublishedChanges ||
+			publicPageState?.live_sync_enabled === false ||
+			Boolean(publicPageState?.last_live_sync_error)
+	);
+	const liveDocumentStatusLabel = $derived.by(() => {
+		if (publicPageState?.last_live_sync_error) return 'LIVE UPDATE FAILED';
+		if (livePageHasUnpublishedChanges) return 'LIVE CHANGES PENDING';
+		if (publicPageState?.live_sync_enabled === false) return 'LIVE SYNC PAUSED';
+		return 'LIVE DOCUMENT';
+	});
+	const liveDocumentStatusText = $derived.by(() => {
+		if (publicPageState?.last_live_sync_error) {
+			return 'The live page may be behind. Review and confirm changes to publish the latest saved version.';
+		}
+		if (livePageHasUnpublishedChanges) {
+			return 'Saved document changes are not live yet. Review and confirm changes to update the public page.';
+		}
+		if (publicPageState?.live_sync_enabled === false) {
+			return 'Saving changes will not update the public page until live sync is enabled or changes are confirmed.';
+		}
+		return 'This public page is up to date. Manual saves update it after content review.';
+	});
 	const publicPageDraftUrlPreview = $derived.by(() =>
 		getPublicPageDraftUrlPreview(publicPageDraft, publicPagePreview)
 	);
@@ -604,6 +643,7 @@
 			visibility: row.visibility === 'unlisted' ? 'unlisted' : 'public',
 			noindex: row.noindex === true,
 			live_sync_enabled: row.live_sync_enabled !== false,
+			published_at: typeof row.published_at === 'string' ? row.published_at : null,
 			last_live_sync_at:
 				typeof row.last_live_sync_at === 'string' ? row.last_live_sync_at : null,
 			last_live_sync_error:
@@ -1445,8 +1485,16 @@
 				description: snapshotAtRequest.description.trim() || null,
 				content: snapshotAtRequest.body
 			};
+			const requestLiveSync =
+				isEditing &&
+				!silent &&
+				publicPageState?.is_live_public === true &&
+				publicPageState.live_sync_enabled === true;
 			if (forceVersion) {
 				payload.force_version = true;
+			}
+			if (requestLiveSync) {
+				payload.sync_public_page = true;
 			}
 
 			// Include expected_updated_at for conflict detection (editing existing docs only)
@@ -1515,6 +1563,25 @@
 				updatedAt = updatedDoc.updated_at;
 			}
 
+			const syncResult =
+				result?.data?.publicPageSync && typeof result.data.publicPageSync === 'object'
+					? (result.data.publicPageSync as Record<string, unknown>)
+					: null;
+			const syncedPublicPageState = normalizePublicPageState(syncResult?.page);
+			if (syncedPublicPageState) {
+				publicPageState = syncedPublicPageState;
+			}
+			const syncReview = normalizePublicPageReview(syncResult?.review);
+			if (syncReview) {
+				latestPublicPageReview = syncReview;
+			}
+			const liveSyncSynced = syncResult?.synced === true;
+			const liveSyncBlocked = syncResult?.blocked === true;
+			const liveSyncError =
+				typeof syncResult?.error === 'string' && syncResult.error.trim()
+					? syncResult.error.trim()
+					: null;
+
 			// Fire-and-forget: sync inline image links in the background
 			if (persistedDocumentId) {
 				void syncInlineImageLinks(persistedDocumentId, snapshotAtRequest.body).catch(
@@ -1544,7 +1611,7 @@
 			captureSnapshot(snapshotAtRequest);
 
 			// Show saved status briefly, then return to idle
-			lastSavePublishedLive = false;
+			lastSavePublishedLive = liveSyncSynced;
 			saveStatus = 'saved';
 			if (savedFeedbackTimer) clearTimeout(savedFeedbackTimer);
 			savedFeedbackTimer = setTimeout(() => {
@@ -1554,7 +1621,22 @@
 			}, 2000);
 
 			if (!silent) {
-				toastService.success(wasCreating ? 'Document created' : 'Document updated');
+				toastService.success(
+					wasCreating
+						? 'Document created'
+						: liveSyncSynced
+							? 'Document updated and live page updated'
+							: 'Document updated'
+				);
+				if (requestLiveSync && liveSyncBlocked) {
+					toastService.warning(
+						'The document was saved, but the live page update is blocked by content review.'
+					);
+				} else if (requestLiveSync && liveSyncError) {
+					toastService.warning(
+						'The document was saved, but the live page was not updated. Review and confirm changes from the live document panel.'
+					);
+				}
 				onSaved?.();
 			}
 
@@ -2447,21 +2529,30 @@
 											</div>
 										{:else if isLiveDocument && publicPageState}
 											<div
-												class="rounded-md border border-emerald-300/70 bg-emerald-50/70 px-2 py-1.5 space-y-1.5 tx tx-grain tx-weak wt-paper"
+												class="rounded-md border px-2 py-1.5 space-y-1.5 tx tx-grain tx-weak wt-paper {liveDocumentNeedsAttention
+													? 'border-amber-300/70 bg-amber-50/80'
+													: 'border-emerald-300/70 bg-emerald-50/70'}"
 											>
 												<div class="flex items-start gap-2">
 													<Globe
-														class="w-3.5 h-3.5 text-emerald-700 mt-0.5"
+														class="w-3.5 h-3.5 mt-0.5 {liveDocumentNeedsAttention
+															? 'text-amber-700'
+															: 'text-emerald-700'}"
 													/>
 													<div class="min-w-0">
-														<p class="micro-label text-emerald-900">
-															LIVE DOCUMENT
+														<p
+															class="micro-label {liveDocumentNeedsAttention
+																? 'text-amber-900'
+																: 'text-emerald-900'}"
+														>
+															{liveDocumentStatusLabel}
 														</p>
 														<p
-															class="text-[11px] leading-snug text-emerald-800"
+															class="text-[11px] leading-snug {liveDocumentNeedsAttention
+																? 'text-amber-800'
+																: 'text-emerald-800'}"
 														>
-															This document is live. Saving updates
-															publishes immediately.
+															{liveDocumentStatusText}
 														</p>
 													</div>
 												</div>
@@ -2469,14 +2560,30 @@
 													class="flex items-center justify-between gap-2"
 												>
 													<span
-														class="text-[11px] text-emerald-900 font-mono truncate"
+														class="text-[11px] font-mono truncate {liveDocumentNeedsAttention
+															? 'text-amber-900'
+															: 'text-emerald-900'}"
 													>
 														{publicPageUrlPath}
 													</span>
 												</div>
+												{#if publicPageLastLiveUpdateLabel}
+													<div
+														class="flex items-center gap-1 text-[11px] {liveDocumentNeedsAttention
+															? 'text-amber-800'
+															: 'text-emerald-800'}"
+													>
+														<Clock class="w-3 h-3 shrink-0" />
+														<span
+															>Live updated {publicPageLastLiveUpdateLabel}</span
+														>
+													</div>
+												{/if}
 												{#if publicPageState.view_count_all > 0}
 													<div
-														class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-emerald-800"
+														class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] {liveDocumentNeedsAttention
+															? 'text-amber-800'
+															: 'text-emerald-800'}"
 													>
 														<span>
 															{publicPageState.view_count_all.toLocaleString()}
@@ -2485,8 +2592,10 @@
 																: 'views'}
 														</span>
 														{#if publicPageState.view_count_30d > 0}
-															<span class="text-emerald-900/50"
-																>·</span
+															<span
+																class={liveDocumentNeedsAttention
+																	? 'text-amber-900/50'
+																	: 'text-emerald-900/50'}>·</span
 															>
 															<span>
 																{publicPageState.view_count_30d.toLocaleString()}
@@ -2500,7 +2609,9 @@
 														type="button"
 														onclick={handleCopyPublicPageUrl}
 														aria-label="Copy public page link"
-														class="inline-flex min-h-[32px] items-center gap-1 rounded-md border border-emerald-300/70 bg-emerald-100/70 px-2 py-1 text-[11px] font-semibold text-emerald-900 hover:bg-emerald-200/70 transition-colors pressable"
+														class="inline-flex min-h-[32px] items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors pressable {liveDocumentNeedsAttention
+															? 'border-amber-300/70 bg-amber-100/70 text-amber-900 hover:bg-amber-200/70'
+															: 'border-emerald-300/70 bg-emerald-100/70 text-emerald-900 hover:bg-emerald-200/70'}"
 													>
 														<Link class="w-3 h-3" />
 														Copy link
@@ -2509,7 +2620,9 @@
 														type="button"
 														onclick={openPublicPageInNewTab}
 														aria-label="Open public page in new tab"
-														class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-emerald-900 hover:bg-emerald-100/70 transition-colors pressable"
+														class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
+															? 'text-amber-900 hover:bg-amber-100/70'
+															: 'text-emerald-900 hover:bg-emerald-100/70'}"
 													>
 														Open
 														<ExternalLink class="w-3 h-3" />
@@ -2517,9 +2630,13 @@
 													<button
 														type="button"
 														onclick={handleMakeDocumentPublic}
-														class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-emerald-900 hover:bg-emerald-100/70 transition-colors pressable"
+														class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
+															? 'text-amber-900 hover:bg-amber-100/70'
+															: 'text-emerald-900 hover:bg-emerald-100/70'}"
 													>
-														Edit settings
+														{livePageHasUnpublishedChanges
+															? 'Review changes'
+															: 'Edit settings'}
 													</button>
 													<button
 														type="button"
@@ -2532,7 +2649,9 @@
 													</button>
 												</div>
 												<label
-													class="flex items-center justify-between gap-2 text-[11px] text-emerald-900"
+													class="flex items-center justify-between gap-2 text-[11px] {liveDocumentNeedsAttention
+														? 'text-amber-900'
+														: 'text-emerald-900'}"
 												>
 													<span>Live sync on save</span>
 													<input
@@ -3207,29 +3326,54 @@
 														</div>
 													{:else if isLiveDocument && publicPageState}
 														<div
-															class="rounded-md border border-emerald-300/70 bg-emerald-50/70 px-2 py-1.5 space-y-1.5"
+															class="rounded-md border px-2 py-1.5 space-y-1.5 {liveDocumentNeedsAttention
+																? 'border-amber-300/70 bg-amber-50/80'
+																: 'border-emerald-300/70 bg-emerald-50/70'}"
 														>
-															<p class="micro-label text-emerald-900">
-																LIVE DOCUMENT
+															<p
+																class="micro-label {liveDocumentNeedsAttention
+																	? 'text-amber-900'
+																	: 'text-emerald-900'}"
+															>
+																{liveDocumentStatusLabel}
 															</p>
 															<p
-																class="text-[11px] leading-snug text-emerald-800"
+																class="text-[11px] leading-snug {liveDocumentNeedsAttention
+																	? 'text-amber-800'
+																	: 'text-emerald-800'}"
 															>
-																Saving updates publishes this page
-																immediately.
+																{liveDocumentStatusText}
 															</p>
 															<div
 																class="flex items-center justify-between gap-2"
 															>
 																<span
-																	class="text-[11px] text-emerald-900 font-mono truncate"
+																	class="text-[11px] font-mono truncate {liveDocumentNeedsAttention
+																		? 'text-amber-900'
+																		: 'text-emerald-900'}"
 																>
 																	{publicPageUrlPath}
 																</span>
 															</div>
+															{#if publicPageLastLiveUpdateLabel}
+																<div
+																	class="flex items-center gap-1 text-[11px] {liveDocumentNeedsAttention
+																		? 'text-amber-800'
+																		: 'text-emerald-800'}"
+																>
+																	<Clock
+																		class="w-3 h-3 shrink-0"
+																	/>
+																	<span
+																		>Live updated {publicPageLastLiveUpdateLabel}</span
+																	>
+																</div>
+															{/if}
 															{#if publicPageState.view_count_all > 0}
 																<div
-																	class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-emerald-800"
+																	class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] {liveDocumentNeedsAttention
+																		? 'text-amber-800'
+																		: 'text-emerald-800'}"
 																>
 																	<span>
 																		{publicPageState.view_count_all.toLocaleString()}
@@ -3240,7 +3384,9 @@
 																	</span>
 																	{#if publicPageState.view_count_30d > 0}
 																		<span
-																			class="text-emerald-900/50"
+																			class={liveDocumentNeedsAttention
+																				? 'text-amber-900/50'
+																				: 'text-emerald-900/50'}
 																			>·</span
 																		>
 																		<span>
@@ -3257,7 +3403,9 @@
 																	type="button"
 																	onclick={handleCopyPublicPageUrl}
 																	aria-label="Copy public page link"
-																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md border border-emerald-300/70 bg-emerald-100/70 px-2 py-1 text-[11px] font-semibold text-emerald-900 hover:bg-emerald-200/70 transition-colors pressable"
+																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors pressable {liveDocumentNeedsAttention
+																		? 'border-amber-300/70 bg-amber-100/70 text-amber-900 hover:bg-amber-200/70'
+																		: 'border-emerald-300/70 bg-emerald-100/70 text-emerald-900 hover:bg-emerald-200/70'}"
 																>
 																	<Link class="w-3 h-3" />
 																	Copy link
@@ -3266,7 +3414,9 @@
 																	type="button"
 																	onclick={openPublicPageInNewTab}
 																	aria-label="Open public page in new tab"
-																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-emerald-900 hover:bg-emerald-100/70 transition-colors pressable"
+																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
+																		? 'text-amber-900 hover:bg-amber-100/70'
+																		: 'text-emerald-900 hover:bg-emerald-100/70'}"
 																>
 																	Open
 																	<ExternalLink class="w-3 h-3" />
@@ -3274,9 +3424,13 @@
 																<button
 																	type="button"
 																	onclick={handleMakeDocumentPublic}
-																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-emerald-900 hover:bg-emerald-100/70 transition-colors pressable"
+																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
+																		? 'text-amber-900 hover:bg-amber-100/70'
+																		: 'text-emerald-900 hover:bg-emerald-100/70'}"
 																>
-																	Edit settings
+																	{livePageHasUnpublishedChanges
+																		? 'Review changes'
+																		: 'Edit settings'}
 																</button>
 																<button
 																	type="button"
@@ -3289,7 +3443,9 @@
 																</button>
 															</div>
 															<label
-																class="flex items-center justify-between gap-2 text-[11px] text-emerald-900"
+																class="flex items-center justify-between gap-2 text-[11px] {liveDocumentNeedsAttention
+																	? 'text-amber-900'
+																	: 'text-emerald-900'}"
 															>
 																<span>Live sync on save</span>
 																<input
