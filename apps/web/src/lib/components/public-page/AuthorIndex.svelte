@@ -37,16 +37,18 @@
 	}
 
 	let { data }: Props = $props();
-	const author = data.author;
-	const pages = data.pages;
+	const author = $derived(data.author);
+	const pages = $derived(data.pages);
 
-	const displayName = author.name || author.slug_prefix;
-	const initials = (displayName || '?')
-		.split(/\s+/)
-		.filter(Boolean)
-		.slice(0, 2)
-		.map((p) => p[0]?.toUpperCase() ?? '')
-		.join('');
+	const displayName = $derived(author.name || author.slug_prefix);
+	const initials = $derived.by(() =>
+		(displayName || '?')
+			.split(/\s+/)
+			.filter(Boolean)
+			.slice(0, 2)
+			.map((p) => p[0]?.toUpperCase() ?? '')
+			.join('')
+	);
 
 	function formatDate(iso: string | null): string | null {
 		if (!iso) return null;

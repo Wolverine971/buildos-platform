@@ -3,11 +3,7 @@
 	import type {
 		ChannelPayloads,
 		NotificationChannel,
-		NotificationPriority,
-		PushNotificationPayload,
-		InAppNotificationPayload,
-		EmailNotificationPayload,
-		SMSNotificationPayload
+		NotificationPriority
 	} from '$lib/types/notification-channel-payloads';
 
 	interface Props {

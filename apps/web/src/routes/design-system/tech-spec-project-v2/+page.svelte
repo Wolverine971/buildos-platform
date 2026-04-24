@@ -24,7 +24,7 @@
 	 * - rim: Edge definition
 	 * - rim-accent: Accent highlights
 	 */
-	import { slide, fade } from 'svelte/transition';
+	import { slide } from 'svelte/transition';
 	import {
 		ArrowLeft,
 		Plus,
@@ -49,15 +49,8 @@
 		Layers,
 		Settings,
 		Share2,
-		Activity,
-		Cpu,
 		Package,
-		Link2,
-		Database,
-		Server,
-		Eye,
-		Bookmark,
-		ExternalLink
+		Eye
 	} from 'lucide-svelte';
 
 	// Demo state
@@ -1055,7 +1048,6 @@
 								class="p-3 font-mono text-[0.65rem] space-y-1 max-h-36 overflow-y-auto"
 							>
 								{#each activityLog as entry}
-									{@const EntryIcon = getEntityTypeIcon(entry.entityType)}
 									<div
 										class="flex items-start gap-2 text-muted-foreground hover:bg-slate-800/50 rounded px-1 py-0.5 -mx-1 transition-colors"
 									>

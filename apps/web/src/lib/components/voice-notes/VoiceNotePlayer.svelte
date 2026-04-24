@@ -36,7 +36,7 @@
 	let audio: HTMLAudioElement | null = $state(null);
 	let isPlaying = $state(false);
 	let currentTime = $state(0);
-	let duration = $state(voiceNote.duration_seconds || 0);
+	let duration = $state(0);
 	let playbackSpeed = $state<PlaybackSpeed>(getStoredPlaybackSpeed());
 	let speedIndex = $state(
 		Math.max(0, PLAYBACK_SPEEDS.indexOf(getStoredPlaybackSpeed() as PlaybackSpeed))
@@ -53,6 +53,10 @@
 		formatTime(duration > 0 ? (duration - currentTime) / playbackSpeed : 0)
 	);
 	const progressPercent = $derived(duration > 0 ? (currentTime / duration) * 100 : 0);
+
+	$effect(() => {
+		duration = voiceNote.duration_seconds || 0;
+	});
 
 	function formatTime(seconds: number): string {
 		if (!Number.isFinite(seconds) || seconds <= 0) return '0:00';

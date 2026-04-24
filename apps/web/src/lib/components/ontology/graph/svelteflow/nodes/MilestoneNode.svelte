@@ -19,7 +19,7 @@
 		}
 	};
 
-	const dueDate = formatDate(data.metadata?.dueAt as string | undefined);
+	const dueDate = $derived(formatDate(data.metadata?.dueAt as string | undefined));
 </script>
 
 <div

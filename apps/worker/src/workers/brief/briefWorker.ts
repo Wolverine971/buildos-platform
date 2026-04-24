@@ -25,7 +25,7 @@ function isValidTimezone(timezone: string): boolean {
 		// Try to get the timezone offset - this will throw if invalid
 		getTimezoneOffset(timezone, new Date());
 		return true;
-	} catch (error) {
+	} catch {
 		return false;
 	}
 }
@@ -35,7 +35,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 
 	try {
 		// Validate job data immediately to catch errors early
-		const validatedData = validateBriefJobData(job.data);
+		validateBriefJobData(job.data);
 
 		await updateJobStatus(job.id, 'processing', 'brief');
 

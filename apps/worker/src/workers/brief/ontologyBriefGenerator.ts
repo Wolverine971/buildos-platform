@@ -11,7 +11,7 @@ import type { BriefJobData } from '../shared/queueUtils.js';
 import type { Json } from '@buildos/shared-types';
 import { ACTIVE_EXPERIMENT_MODEL } from '@buildos/smart-llm';
 import { format, parseISO } from 'date-fns';
-import { formatInTimeZone, fromZonedTime, toZonedTime } from 'date-fns-tz';
+import { toZonedTime } from 'date-fns-tz';
 import { getHoliday } from '../../lib/utils/holiday-finder.js';
 import { SmartLLMService } from '../../lib/services/smart-llm-service.js';
 import { OntologyBriefDataLoader, getWorkMode } from './ontologyBriefDataLoader.js';
@@ -26,11 +26,9 @@ import type {
 	CalendarBriefItem,
 	CalendarBriefSection,
 	GoalProgress,
-	OntoProjectWithRelations,
 	OntoTask,
 	OntologyBriefData,
 	OntologyBriefMetadata,
-	OntologyDailyBriefRow,
 	OntologyProjectBriefRow,
 	ProjectActivityEntry,
 	ProjectBriefData,
@@ -97,31 +95,6 @@ function formatGoalTargetSummary(goal: GoalProgress): string | null {
 	const overdueDays = Math.abs(goal.targetDaysAway);
 	const overdueLabel = overdueDays === 1 ? 'day' : 'days';
 	return `Target: ${formattedDate} (${overdueDays} ${overdueLabel} overdue)`;
-}
-
-function formatDateInTimezone(
-	timestamp: string,
-	timezone: string,
-	includeTime: boolean = false
-): string {
-	const date = parseISO(timestamp);
-	const zonedDate = toZonedTime(date, timezone);
-	if (includeTime) {
-		return format(zonedDate, 'MMM d, yyyy h:mm a');
-	}
-	return format(zonedDate, 'MMM d, yyyy');
-}
-
-function trimMarkdownForPrompt(markdown: string, maxLength: number = 8000): string {
-	if (!markdown) return '';
-	if (markdown.length <= maxLength) {
-		return markdown;
-	}
-	console.warn(
-		`[OntologyBrief] Markdown content truncated from ${markdown.length} to ${maxLength} characters for LLM prompt`
-	);
-	const truncated = markdown.slice(0, maxLength);
-	return `${truncated}\n\n... (content truncated for analysis prompt)`;
 }
 
 function getTaskStatusIcon(task: OntoTask): string {
@@ -324,7 +297,7 @@ async function updateProgress(
 // PROJECT BRIEF GENERATION
 // ============================================================================
 
-function formatOntologyProjectBrief(project: ProjectBriefData, timezone: string): string {
+function formatOntologyProjectBrief(project: ProjectBriefData, _timezone: string): string {
 	const projectId = project.project.id;
 	const projectName = project.project.name;
 	let brief = `## [${projectName}](/projects/${projectId})\n\n`;

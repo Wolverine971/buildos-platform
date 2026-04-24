@@ -198,7 +198,7 @@ describe('EmailService lifecycle compliance', () => {
 
 		expect(result).toMatchObject({
 			success: true,
-			emailId: null
+			emailId: 'email-1'
 		});
 		expect(result.messageId).toContain('lifecycle-log-sink/');
 		expect(sendMailMock).not.toHaveBeenCalled();

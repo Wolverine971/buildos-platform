@@ -1,7 +1,7 @@
 // apps/web/src/lib/components/agent/agent-chat-sse-handler.test.ts
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AgentSSEMessage, ChatSession, ContextShiftPayload } from '@buildos/shared-types';
-import type { ActivityEntry, ThinkingBlockMessage, UIMessage } from './agent-chat.types';
+import type { ThinkingBlockMessage, UIMessage } from './agent-chat.types';
 import {
 	buildToolCallActivity,
 	computeAgentStateActivity,

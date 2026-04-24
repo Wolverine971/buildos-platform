@@ -37,7 +37,6 @@ import type {
 	CategorizedTasks,
 	GoalProgress,
 	MilestoneStatus,
-	OntoActor,
 	OntoDocument,
 	OntoEdge,
 	OntoGoal,
@@ -117,16 +116,6 @@ function addDaysToLocalDate(dateStr: string, days: number, timezone: string): st
 	const resultDate = addDays(localDateAtNoon, days);
 	// Format back to yyyy-MM-dd in user's timezone
 	return formatInTimeZone(resultDate, timezone, 'yyyy-MM-dd');
-}
-
-/**
- * Get "now" as a yyyy-MM-dd string in the user's timezone.
- *
- * @param timezone - The user's timezone
- * @returns Today's date as yyyy-MM-dd in user's timezone
- */
-function getTodayInTimezone(timezone: string): string {
-	return formatInTimeZone(new Date(), timezone, 'yyyy-MM-dd');
 }
 
 function getLocalDayUtcBounds(dateStr: string, timezone: string): { start: Date; end: Date } {
@@ -2287,7 +2276,6 @@ export class OntologyBriefDataLoader {
 		const allTasks = projectsData.flatMap((p) => p.tasks);
 		const allRisks = projectsData.flatMap((p) => p.risks);
 		const allRequirements = projectsData.flatMap((p) => p.requirements);
-		const allEdges = projectsData.flatMap((p) => p.edges);
 
 		// Categorize all tasks
 		const categorizedTasks = categorizeTasks(allTasks, briefDate, timezone);

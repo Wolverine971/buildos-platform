@@ -51,7 +51,7 @@
 		icon: 'text-muted-foreground'
 	};
 
-	const style = stateStyles[data.state ?? 'todo'] ?? defaultStyle;
+	const style = $derived(stateStyles[data.state ?? 'todo'] ?? defaultStyle);
 </script>
 
 <div

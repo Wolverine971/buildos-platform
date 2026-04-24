@@ -127,8 +127,7 @@
 </script>
 
 {#if documentCount === 0}
-	<!-- Empty state handled by parent CommandCenterPanel -->
-	<slot name="empty" />
+	<!-- Empty state handled by parent CommandCenterPanel. -->
 {:else}
 	<div class="doc-tree-compact">
 		{#each visibleItems as node (node.id)}
@@ -137,9 +136,7 @@
 			{@const isExpanded = expandedIds.has(node.id)}
 			{@const hasChildren = isFolder && node.children && node.children.length > 0}
 
-			<button
-				type="button"
-				onclick={() => handleItemTap(node)}
+			<div
 				class="w-full flex items-center gap-1.5 py-1.5 pr-1 text-left hover:bg-accent/5 active:bg-accent/10 transition-colors border-b border-border/30 last:border-b-0"
 				style="padding-left: {styles.padding}px"
 			>
@@ -162,36 +159,44 @@
 					<span class="w-4 shrink-0"></span>
 				{/if}
 
-				<!-- Icon -->
-				<span class="shrink-0 {isFolder ? 'text-accent' : 'text-muted-foreground'}">
-					{#if isFolder}
-						{#if isExpanded}
-							<FolderOpen class={styles.icon} />
+				<button
+					type="button"
+					onclick={() => handleItemTap(node)}
+					class="min-w-0 flex flex-1 items-center gap-1.5 text-left"
+				>
+					<!-- Icon -->
+					<span class="shrink-0 {isFolder ? 'text-accent' : 'text-muted-foreground'}">
+						{#if isFolder}
+							{#if isExpanded}
+								<FolderOpen class={styles.icon} />
+							{:else}
+								<Folder class={styles.icon} />
+							{/if}
 						{:else}
-							<Folder class={styles.icon} />
+							<FileText class={styles.icon} />
 						{/if}
-					{:else}
-						<FileText class={styles.icon} />
-					{/if}
-				</span>
-
-				<!-- Title -->
-				<span class="truncate flex-1 text-foreground {styles.text}">
-					{node.title}
-				</span>
-
-				<!-- Content indicator -->
-				{#if !isFolder && node.has_content}
-					<span class="w-1.5 h-1.5 rounded-full bg-accent/60 shrink-0" title="Has content"
-					></span>
-				{/if}
-
-				<!-- Child count for collapsed folders -->
-				{#if isFolder && !isExpanded && hasChildren}
-					<span class="text-[9px] text-muted-foreground shrink-0 tabular-nums">
-						{node.children?.length}
 					</span>
-				{/if}
+
+					<!-- Title -->
+					<span class="truncate flex-1 text-foreground {styles.text}">
+						{node.title}
+					</span>
+
+					<!-- Content indicator -->
+					{#if !isFolder && node.has_content}
+						<span
+							class="w-1.5 h-1.5 rounded-full bg-accent/60 shrink-0"
+							title="Has content"
+						></span>
+					{/if}
+
+					<!-- Child count for collapsed folders -->
+					{#if isFolder && !isExpanded && hasChildren}
+						<span class="text-[9px] text-muted-foreground shrink-0 tabular-nums">
+							{node.children?.length}
+						</span>
+					{/if}
+				</button>
 
 				<!-- Context menu button -->
 				{#if onContextMenu}
@@ -204,7 +209,7 @@
 						<MoreVertical class="w-3 h-3 text-muted-foreground" />
 					</button>
 				{/if}
-			</button>
+			</div>
 		{/each}
 
 		<!-- Quick add at root level -->

@@ -36,30 +36,6 @@
 	// Show animated hammer only when actively thinking
 	const showAnimatedHammer = $derived(block.status === 'active' && !isThinkingComplete);
 
-	// Derive status label and color
-	const statusLabel = $derived.by(() => {
-		if (block.status === 'active') {
-			return block.content || 'Working...';
-		}
-		if (block.status === 'interrupted') return 'Interrupted';
-		if (block.status === 'cancelled') return 'Cancelled';
-		if (block.status === 'error') return 'Error';
-		return block.content || 'Complete';
-	});
-
-	const statusClass = $derived.by(() => {
-		switch (block.status) {
-			case 'active':
-				return 'text-emerald-600 dark:text-emerald-400';
-			case 'interrupted':
-			case 'cancelled':
-				return 'text-amber-600 dark:text-amber-400';
-			case 'error':
-				return 'text-red-600 dark:text-red-400';
-			default:
-				return 'text-muted-foreground';
-		}
-	});
 	const displayedActivities = $derived(
 		block.activities.filter(
 			(activity) => activity.activityType === 'tool_call' || activity.metadata?.skillActivity

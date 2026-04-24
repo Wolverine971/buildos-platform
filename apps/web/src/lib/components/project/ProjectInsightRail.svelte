@@ -150,7 +150,7 @@
 		onImageAssetsPanelRefChange?: (ref: { openUploadModal: () => void } | null) => void;
 	} = $props();
 
-	let imageAssetsPanelRef: { openUploadModal: () => void } | null = null;
+	let imageAssetsPanelRef = $state<{ openUploadModal: () => void } | null>(null);
 
 	$effect(() => {
 		onImageAssetsPanelRefChange?.(imageAssetsPanelRef);

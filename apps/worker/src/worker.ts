@@ -19,7 +19,7 @@ import type {
 	ProjectActivityBatchFlushJobMetadata,
 	SendSMSJobMetadata
 } from '@buildos/shared-types';
-import { processDailySMS, type DailySMSJobData } from './workers/dailySmsWorker';
+import { type DailySMSJobData, processDailySMS } from './workers/dailySmsWorker';
 import { processChatClassificationJob } from './workers/chat/chatSessionClassifier';
 import { processBraindumpProcessingJob } from './workers/braindump/braindumpProcessor';
 import type {
@@ -55,6 +55,10 @@ const queue = new SupabaseQueue({
 	stalledTimeout: config.stalledTimeout
 });
 
+function getErrorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
 /**
  * Brief generation processor
  */
@@ -77,8 +81,8 @@ async function processBrief(job: ProcessingJob<BriefJobData>) {
 		await job.log(`✅ ${jobType} brief completed in ${duration}ms`);
 
 		return { success: true, duration };
-	} catch (error: any) {
-		await job.log(`❌ ${jobType} brief failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`❌ ${jobType} brief failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -97,8 +101,8 @@ async function processOnboarding(job: ProcessingJob<OnboardingAnalysisJobData>) 
 		await job.log('✅ Onboarding analysis completed');
 
 		return { success: true };
-	} catch (error: any) {
-		await job.log(`❌ Onboarding analysis failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`❌ Onboarding analysis failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -117,8 +121,8 @@ async function processSMS(job: ProcessingJob<SendSMSJobMetadata>) {
 		await job.log('✅ SMS sent successfully');
 
 		return { success: true };
-	} catch (error: any) {
-		await job.log(`❌ SMS send failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`❌ SMS send failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -136,8 +140,8 @@ async function processNotificationWrapper(job: ProcessingJob<NotificationJobMeta
 		await job.log(`✅ ${channel} notification sent successfully`);
 
 		return { success: true };
-	} catch (error: any) {
-		await job.log(`❌ ${channel} notification failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`❌ ${channel} notification failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -157,8 +161,8 @@ async function processProjectActivityBatchFlush(
 			`✅ Project activity batch ${batchId} flush result: ${result.status}${result.event_id ? ` (event ${result.event_id})` : ''}`
 		);
 		return result;
-	} catch (error: any) {
-		await job.log(`❌ Project activity batch flush failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`❌ Project activity batch flush failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -185,8 +189,8 @@ async function processScheduleDailySMS(job: ProcessingJob<DailySMSJobData>) {
 		);
 
 		return result;
-	} catch (error: any) {
-		await job.log(`❌ Daily SMS scheduling failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`❌ Daily SMS scheduling failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -212,8 +216,8 @@ async function processChatClassification(job: ProcessingJob<ChatClassificationJo
 		await job.log(`✅ Chat classification completed in ${duration}ms`);
 
 		return result;
-	} catch (error: any) {
-		await job.log(`❌ Chat classification failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`❌ Chat classification failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -239,8 +243,8 @@ async function processBraindumpProcessing(job: ProcessingJob<BraindumpProcessing
 		await job.log(`✅ Braindump processing completed in ${duration}ms`);
 
 		return result;
-	} catch (error: any) {
-		await job.log(`❌ Braindump processing failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`❌ Braindump processing failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -260,8 +264,8 @@ async function processVoiceNoteTranscription(
 		const result = await processVoiceNoteTranscriptionJob(legacyJob);
 		await job.log('✅ Voice note transcription completed');
 		return result;
-	} catch (error: any) {
-		await job.log(`❌ Voice note transcription failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`❌ Voice note transcription failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -276,8 +280,8 @@ async function processAssetOcr(job: ProcessingJob<AssetOcrJobMetadata>) {
 		const result = await processAssetOcrJob(legacyJob);
 		await job.log('Ontology asset OCR job completed');
 		return result;
-	} catch (error: any) {
-		await job.log(`Ontology asset OCR job failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`Ontology asset OCR job failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -292,8 +296,8 @@ async function processHomework(job: ProcessingJob<HomeworkJobMetadata>) {
 		const result = await processHomeworkJob(job);
 		await job.log('Homework job completed');
 		return result;
-	} catch (error: any) {
-		await job.log(`Homework job failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`Homework job failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -308,8 +312,8 @@ async function processTreeAgent(job: ProcessingJob<TreeAgentJobMetadata>) {
 		const result = await processTreeAgentJob(job);
 		await job.log('Tree Agent job completed');
 		return result;
-	} catch (error: any) {
-		await job.log(`Tree Agent job failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`Tree Agent job failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -326,8 +330,8 @@ async function processProjectContextSnapshot(
 		const result = await processProjectContextSnapshotJob(job);
 		await job.log('Project context snapshot job completed');
 		return result;
-	} catch (error: any) {
-		await job.log(`Project context snapshot job failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`Project context snapshot job failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -342,8 +346,8 @@ async function processProjectIcon(job: ProcessingJob<ProjectIconGenerationJobMet
 		const result = await processProjectIconJob(job);
 		await job.log('Project icon generation job completed');
 		return result;
-	} catch (error: any) {
-		await job.log(`Project icon generation job failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`Project icon generation job failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -358,8 +362,8 @@ async function processCalendarSync(job: ProcessingJob) {
 		const result = await processCalendarSyncJob(job);
 		await job.log('Calendar sync job completed');
 		return result;
-	} catch (error: any) {
-		await job.log(`Calendar sync job failed: ${error.message}`);
+	} catch (error) {
+		await job.log(`Calendar sync job failed: ${getErrorMessage(error)}`);
 		throw error;
 	}
 }
@@ -440,8 +444,8 @@ export async function startWorker() {
 		if (cleanupResult.errors.length > 0) {
 			console.warn('⚠️  Cleanup had errors:', cleanupResult.errors);
 		}
-	} catch (error: any) {
-		console.error('❌ Startup cleanup failed:', error.message);
+	} catch (error) {
+		console.error('❌ Startup cleanup failed:', getErrorMessage(error));
 		// Continue startup even if cleanup fails - don't block the worker
 	}
 
@@ -454,8 +458,10 @@ export async function startWorker() {
 			const stats = await queue.getStats();
 			if (stats && stats.length > 0) {
 				console.log('📊 Queue Statistics:');
-				stats.forEach((stat: any) => {
-					console.log(`   ${stat.job_type} - ${stat.status}: ${stat.count}`);
+				stats.forEach((stat) => {
+					console.log(
+						`   ${String(stat.job_type)} - ${String(stat.status)}: ${String(stat.count)}`
+					);
 				});
 			}
 		}, config.statsUpdateInterval);

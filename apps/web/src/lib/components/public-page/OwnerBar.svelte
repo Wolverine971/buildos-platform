@@ -31,12 +31,16 @@
 
 	let { page }: Props = $props();
 
+	function clonePage(source: OwnerBarPage): OwnerBarPage {
+		return { ...source };
+	}
+
 	let mobileSheetOpen = $state(false);
 	let actionLoading = $state(false);
-	let currentPage = $state<OwnerBarPage>({ ...page });
+	let currentPage = $state<OwnerBarPage>(clonePage(page));
 	// Re-sync when the parent passes new data (e.g. after toggle).
 	$effect(() => {
-		currentPage = { ...page };
+		currentPage = clonePage(page);
 	});
 
 	const statusLabel = $derived.by(() => {

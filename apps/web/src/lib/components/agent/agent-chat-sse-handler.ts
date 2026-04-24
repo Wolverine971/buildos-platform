@@ -316,7 +316,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 		if (isDev) {
 			const rawToolName = event.tool_call?.function?.name || 'unknown';
 			const rawArgs = event.tool_call?.function?.arguments || '';
-			// eslint-disable-next-line no-console
 			console.log('[AgentChat] Tool call:', {
 				toolName: rawToolName,
 				toolCallId: result.toolCallId,
@@ -353,7 +352,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 		const info = computeToolResultInfo(toolResult, presenter);
 
 		if (isDev) {
-			// eslint-disable-next-line no-console
 			console.log('[AgentChat] Tool result:', {
 				resultToolCallId: info.resultToolCallId,
 				success: info.success,
@@ -392,7 +390,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 			resolvedToolName = resolvedToolName ?? info.rawResultToolName;
 		} else {
 			if (isDev) {
-				// eslint-disable-next-line no-console
 				console.warn('[AgentChat] Tool result without matching tool_call_id:', event);
 			}
 			resolvedToolName = info.rawResultToolName;
@@ -469,7 +466,6 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 			case 'last_turn_context':
 				state.setLastTurnContext(event.context);
 				if (isDev) {
-					// eslint-disable-next-line no-console
 					console.debug('[AgentChat] Stored last turn context:', event.context);
 				}
 				return;

@@ -27,6 +27,10 @@
 
 	let { user, onviewbrief }: Props = $props();
 
+	function getInitialTimezone(): string {
+		return browser ? user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC';
+	}
+
 	// Get supabase client from context
 	const supabase = getContext<any>('supabase');
 
@@ -34,9 +38,7 @@
 	let brief = $state<DailyBrief | null>(null);
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
-	let userTimezone = $state(
-		browser ? user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone : 'UTC'
-	);
+	let userTimezone = $state(getInitialTimezone());
 	let hasInitialized = $state(false);
 
 	// Streaming state from stores

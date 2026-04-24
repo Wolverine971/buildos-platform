@@ -34,6 +34,12 @@
 
 	let { isOpen = false, user, onClose, onSave, onReset }: Props = $props();
 
+	function getInitialTimezone(): string {
+		return typeof user?.timezone === 'string' && user.timezone.length > 0
+			? user.timezone
+			: 'UTC';
+	}
+
 	// State
 	let isEditing = $state(false);
 	let briefPreferences = $state<BriefPreferences | null>(null);
@@ -43,9 +49,7 @@
 		time_of_day: '09:00:00',
 		is_active: true
 	});
-	let timezoneValue = $state(
-		typeof user?.timezone === 'string' && user.timezone.length > 0 ? user.timezone : 'UTC'
-	);
+	let timezoneValue = $state(getInitialTimezone());
 
 	// For the time input, we need to handle HH:MM format
 	let timeInputValue = $state('09:00');
@@ -138,7 +142,7 @@
 		if (!briefPreferencesState?.preferences) {
 			try {
 				await briefPreferencesStore.load();
-			} catch (error) {
+			} catch {
 				toastService.error('Failed to load brief preferences');
 			}
 		}

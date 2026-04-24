@@ -837,7 +837,7 @@ function createMockSupabase(state: MockState) {
 describe('WelcomeSequenceService failure recovery', () => {
 	beforeEach(() => {
 		sendEmailMock.mockReset();
-		sendEmailMock.mockResolvedValue({ success: true, messageId: 'msg-1' });
+		sendEmailMock.mockResolvedValue({ success: true, messageId: 'msg-1', emailId: 'email-1' });
 	});
 
 	afterEach(() => {

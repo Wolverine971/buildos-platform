@@ -42,9 +42,13 @@
 		class: className = ''
 	}: Props = $props();
 
+	function getInitialValue(): string {
+		return value;
+	}
+
 	let isEditMode = $state(false);
 	let textareaElement = $state<TextareaHandle | null>(null);
-	let internalValue = $state(value);
+	let internalValue = $state(getInitialValue());
 
 	// Sync internal value when prop changes
 	$effect(() => {

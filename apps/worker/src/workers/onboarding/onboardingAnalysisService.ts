@@ -1,6 +1,5 @@
 // apps/worker/src/workers/onboarding/onboardingAnalysisService.ts
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import type { Database } from '@buildos/shared-types';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import { OnboardingAnalysisPrompt } from './prompts';
 

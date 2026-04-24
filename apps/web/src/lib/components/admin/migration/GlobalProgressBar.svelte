@@ -35,7 +35,6 @@
 	const failedPercent = $derived(
 		progress.total > 0 ? (progress.failed / progress.total) * 100 : 0
 	);
-	const pendingPercent = $derived(100 - migratedPercent - failedPercent);
 </script>
 
 <div class={twMerge('space-y-2', className)}>

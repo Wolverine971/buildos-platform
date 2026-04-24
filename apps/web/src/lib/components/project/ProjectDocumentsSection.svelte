@@ -47,7 +47,7 @@
 		initialArchived?: OntoDocument[];
 	} = $props();
 
-	let docTreeViewRef: { refresh: () => void } | null = null;
+	let docTreeViewRef = $state<{ refresh: () => void } | null>(null);
 
 	$effect(() => {
 		onTreeRefChange?.(docTreeViewRef);

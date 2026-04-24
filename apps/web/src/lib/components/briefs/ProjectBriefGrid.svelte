@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/briefs/ProjectBriefGrid.svelte -->
 <script lang="ts">
-	import { FolderOpen, Clock, Eye } from 'lucide-svelte';
+	import { FolderOpen } from 'lucide-svelte';
 	import type { ProjectDailyBrief } from '$lib/types/daily-brief';
 	import ProjectBriefModal from './ProjectBriefModal.svelte';
 	import ProjectBriefCard from './ProjectBriefCard.svelte';
@@ -23,18 +23,6 @@
 		setTimeout(() => {
 			selectedBrief = null;
 		}, 200);
-	}
-
-	function truncateText(text: string, maxLength: number): string {
-		if (text.length <= maxLength) return text;
-		return text.substring(0, maxLength) + '...';
-	}
-
-	function formatTime(dateString: string): string {
-		return new Date(dateString).toLocaleTimeString([], {
-			hour: '2-digit',
-			minute: '2-digit'
-		});
 	}
 </script>
 

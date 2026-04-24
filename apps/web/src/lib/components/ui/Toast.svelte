@@ -12,6 +12,10 @@
 
 	let { toast, ondismiss }: Props = $props();
 
+	function getInitialDuration(): number {
+		return toast.duration || 0;
+	}
+
 	// Swipe gesture state
 	let translateX = $state(0);
 	let isDragging = $state(false);
@@ -23,7 +27,7 @@
 	let progressInterval: ReturnType<typeof setInterval> | undefined;
 	let isPaused = $state(false);
 	let startTime = $state(Date.now());
-	let duration = $state(toast.duration || 0);
+	let duration = $state(getInitialDuration());
 
 	function handleDismiss() {
 		ondismiss?.(toast.id);

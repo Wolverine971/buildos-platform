@@ -74,13 +74,17 @@
 
 	let { isOpen, initialProjectId = null, onClose }: Props = $props();
 
+	function getInitialProjectId(): string | null {
+		return initialProjectId;
+	}
+
 	let isLoading = $state(false);
 	let isProjectActionRunning = $state(false);
 	let error = $state<string | null>(null);
 	let changedCount = $state(0);
 	let initialTaskCount = $state(0);
 	let wasOpen = $state(false);
-	let activeProjectId = $state<string | null>(initialProjectId);
+	let activeProjectId = $state<string | null>(getInitialProjectId());
 	let batches = $state<OverdueProjectBatch[]>([]);
 	let completedBatches = $state<CompletedBatch[]>([]);
 	let pendingTaskIds = $state(new Set<string>());

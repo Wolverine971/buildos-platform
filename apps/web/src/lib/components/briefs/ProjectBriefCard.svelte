@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/briefs/ProjectBriefCard.svelte -->
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { ExternalLink, FileText, Clock, Hash } from 'lucide-svelte';
+	import { ExternalLink, FileText, Hash } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
 	import CardBody from '$lib/components/ui/CardBody.svelte';

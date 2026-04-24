@@ -198,9 +198,8 @@
 				<LoaderCircle class="h-5 w-5 animate-spin" />
 			{:else if isCurrentlyRecording}
 				<Square class="h-5 w-5" />
-				<span
-					class="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-red-500"
-				/>
+				<span class="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-red-500"
+				></span>
 			{:else}
 				<Mic class="h-5 w-5" />
 			{/if}
@@ -241,7 +240,7 @@
 				<div
 					class="h-2 rounded-full bg-accent transition-all"
 					style={`width: ${Math.round(uploadProgress * 100)}%`}
-				/>
+				></div>
 			</div>
 			<p class="mt-1 text-xs text-muted-foreground">
 				Uploading… {Math.round(uploadProgress * 100)}%

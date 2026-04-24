@@ -1020,7 +1020,6 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			}
 		} catch (e) {
 			if (ctx.isDev) {
-				// eslint-disable-next-line no-console
 				console.error('[AgentChat] Error parsing tool arguments:', e);
 			}
 			return `Using tool: ${toolName}`;
@@ -1063,7 +1062,6 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 				return JSON.parse(argsJson) as Record<string, unknown>;
 			} catch (e) {
 				if (ctx.isDev) {
-					// eslint-disable-next-line no-console
 					console.warn('[AgentChat] Failed to parse tool args for mutation tracking', e);
 				}
 				return {};
@@ -1176,7 +1174,6 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			}
 		} catch (e) {
 			if (ctx.isDev) {
-				// eslint-disable-next-line no-console
 				console.error('[AgentChat] Error showing tool result toast:', e);
 			}
 		}

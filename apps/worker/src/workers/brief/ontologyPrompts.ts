@@ -10,7 +10,6 @@ import type {
 	CalendarBriefCounts,
 	CalendarBriefItem,
 	GoalProgress,
-	OntoRequirement,
 	OntoRisk,
 	OntoTask,
 	OntologyBriefData,
@@ -19,18 +18,6 @@ import type {
 } from './ontologyBriefTypes.js';
 import { format, parseISO } from 'date-fns';
 import { getWorkMode } from './ontologyBriefDataLoader.js';
-
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
-
-function formatMinutes(minutes: number): string {
-	const hours = Math.floor(minutes / 60);
-	const mins = minutes % 60;
-	if (hours > 0 && mins > 0) return `${hours}h ${mins}m`;
-	if (hours > 0) return `${hours}h`;
-	return `${mins}m`;
-}
 
 function formatGoalTarget(goal: GoalProgress): string | null {
 	if (!goal.targetDate) return null;

@@ -1,11 +1,8 @@
 <!-- apps/web/src/lib/components/briefs/DailyBriefModal.svelte -->
 <script lang="ts">
 	import {
-		Calendar,
-		Clock,
 		Copy,
 		Download,
-		ExternalLink,
 		CircleCheck,
 		Mail,
 		LoaderCircle,
@@ -189,7 +186,7 @@
 			setTimeout(() => {
 				copiedToClipboard = false;
 			}, 2000);
-		} catch (error) {
+		} catch {
 			toastService.error('Failed to copy to clipboard');
 		}
 	}
@@ -216,7 +213,7 @@
 			toastService.success(
 				"Email notifications enabled! You'll receive your daily briefs in your inbox."
 			);
-		} catch (error) {
+		} catch {
 			toastService.error('Failed to enable email notifications', {
 				action: {
 					label: 'Retry',
@@ -267,23 +264,6 @@
 			toastService.error(err instanceof Error ? err.message : 'Failed to start regeneration');
 		}
 	}
-
-	function getPriorityCount(content: string): number {
-		const priorityMatch = content.match(/### 🎯 Top Priorities Today\s*\n((?:- .+\n?)+)/);
-		if (priorityMatch && priorityMatch[1]) {
-			return priorityMatch[1].split('\n').filter((line) => line.trim().startsWith('-'))
-				.length;
-		}
-		return 0;
-	}
-
-	function getTaskCount(content: string): number {
-		const taskMatch = content.match(/(\d+)\s+task/i);
-		return taskMatch && taskMatch[1] ? parseInt(taskMatch[1]) : 0;
-	}
-
-	let priorityCount = $derived(displayBrief ? getPriorityCount(displayBrief.summary_content) : 0);
-	let taskCount = $derived(displayBrief ? getTaskCount(displayBrief.summary_content) : 0);
 </script>
 
 <Modal {isOpen} {onClose} title="Daily Brief" size="lg" closeOnBackdrop={true} closeOnEscape={true}>

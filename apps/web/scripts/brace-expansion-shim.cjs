@@ -21,5 +21,8 @@ try {
 		}
 	}
 } catch (error) {
+	if (error?.code === 'MODULE_NOT_FOUND' && error?.message?.includes("'brace-expansion'")) {
+		return;
+	}
 	console.warn('[brace-expansion-shim] Failed to normalize export:', error?.message ?? error);
 }

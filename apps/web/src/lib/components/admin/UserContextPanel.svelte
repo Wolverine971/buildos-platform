@@ -4,38 +4,21 @@
 		ChevronDown,
 		ChevronRight,
 		User,
-		Briefcase,
 		Activity,
-		Clock,
 		Star,
 		MessageSquare,
-		Phone,
-		Globe,
-		DollarSign,
 		Zap,
-		Target,
 		BookOpen,
-		Settings,
-		TriangleAlert,
-		Compass,
 		Copy,
 		Check,
 		Mail,
 		AlertCircle,
 		CheckCircle,
 		Eye,
-		EyeOff,
-		Send,
-		Package,
 		Sparkles,
 		Heart,
-		TrendingUp,
-		TrendingDown,
-		Minus,
-		Calendar,
-		FileText
+		TrendingDown
 	} from 'lucide-svelte';
-	import Button from '$lib/components/ui/Button.svelte';
 	import type { EmailGenerationContext } from '$lib/services/email-generation-service';
 	import { toastService } from '$lib/stores/toast.store';
 	import { createEventDispatcher } from 'svelte';
@@ -58,7 +41,6 @@
 
 	// Computed user health score and signals
 	let userHealth = $derived(computeUserHealth());
-	let engagementLevel = $derived(computeEngagementLevel());
 
 	function computeUserHealth(): {
 		score: number;
@@ -126,16 +108,6 @@
 		}
 
 		return { score: Math.max(0, Math.min(100, score)), status, signals };
-	}
-
-	function computeEngagementLevel(): 'high' | 'medium' | 'low' | 'none' {
-		const { tasks_created, agentic_sessions_count, project_count } = userContext.activity;
-		const total = tasks_created + agentic_sessions_count + project_count;
-
-		if (total > 20) return 'high';
-		if (total > 10) return 'medium';
-		if (total > 0) return 'low';
-		return 'none';
 	}
 
 	function toggleSection(section: string) {
@@ -393,7 +365,7 @@
 			const plainText = stripHtmlToText(content);
 			await navigator.clipboard.writeText(plainText);
 			toastService.success('Email copied');
-		} catch (error) {
+		} catch {
 			toastService.error('Failed to copy');
 		}
 	}

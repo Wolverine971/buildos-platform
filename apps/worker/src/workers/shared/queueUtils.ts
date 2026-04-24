@@ -1,7 +1,7 @@
 // apps/worker/src/workers/shared/queueUtils.ts
 // Utility functions for queue operations (Redis-free version)
 
-import type { Database, DailyBriefJobMetadata, QueueJobStatus } from '@buildos/shared-types';
+import type { DailyBriefJobMetadata, Database, QueueJobStatus } from '@buildos/shared-types';
 import { supabase } from '../../lib/supabase';
 
 type QueueJobUpdate = Database['public']['Tables']['queue_jobs']['Update'];

@@ -94,7 +94,7 @@ function getLocalMinutes(timezone: string): number | null {
 			return null;
 		}
 		return hours * 60 + minutes;
-	} catch (error) {
+	} catch {
 		return null;
 	}
 }
@@ -1128,9 +1128,10 @@ export async function processNotificationJobs(): Promise<void> {
 						userId: job.user_id,
 						data: job.metadata as unknown as NotificationJobMetadata,
 						attempts: job.attempts || 0,
-						updateProgress: async () => {}, // Stub - not used in direct processing
-						log: async (message: string) => {
+						updateProgress: () => Promise.resolve(), // Stub - not used in direct processing
+						log: (message: string) => {
 							jobBatchLogger.debug('Job progress update', { message });
+							return Promise.resolve();
 						}
 					};
 

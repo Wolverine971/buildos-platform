@@ -313,7 +313,7 @@ export class EmailService {
 		});
 	}
 
-	private sendLifecycleLogSink({
+	private async sendLifecycleLogSink({
 		data,
 		textBody,
 		htmlBody,
@@ -329,7 +329,7 @@ export class EmailService {
 		sendMetadata?: Record<string, any>;
 		senderType: SenderType;
 		sentAt: string;
-	}): { success: boolean; messageId: string; emailId: null } {
+	}): Promise<{ success: boolean; messageId: string; emailId: string | null }> {
 		const messageId = `lifecycle-log-sink/${trackingId || randomUUID()}`;
 		console.info('Lifecycle email log sink', {
 			messageId,
@@ -343,10 +343,46 @@ export class EmailService {
 			sentAt
 		});
 
+		const sender = getSenderByType(senderType);
+		const emailRecordId = await this.logRichEmailData({
+			recipientEmail: data.to,
+			recipientId: data.userId ?? null,
+			subject: data.subject,
+			html: htmlBody,
+			sentAt,
+			trackingEnabled: data.trackingEnabled ?? true,
+			trackingId,
+			emailId: data.emailId,
+			createdBy: data.createdBy,
+			metadata: sendMetadata,
+			sender
+		});
+
+		await this.supabase.from('email_logs').insert({
+			to_email: data.to,
+			subject: data.subject,
+			body: textBody,
+			cc: data.cc,
+			bcc: data.bcc,
+			reply_to: undefined,
+			status: 'sent',
+			sent_at: sentAt,
+			user_id: data.userId ?? null,
+			metadata: {
+				...sendMetadata,
+				message_id: messageId,
+				sender_type: senderType,
+				tracking_id: trackingId,
+				email_id: emailRecordId,
+				user_id: data.userId ?? null,
+				log_sink: true
+			}
+		});
+
 		return {
 			success: true,
 			messageId,
-			emailId: null
+			emailId: emailRecordId
 		};
 	}
 

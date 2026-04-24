@@ -8,8 +8,7 @@
 		MessageSquare,
 		Smartphone,
 		CheckCircle,
-		XCircle,
-		Clock
+		XCircle
 	} from 'lucide-svelte';
 	import type { UserNotificationContext } from '../../../routes/api/admin/users/[id]/notification-context/+server';
 

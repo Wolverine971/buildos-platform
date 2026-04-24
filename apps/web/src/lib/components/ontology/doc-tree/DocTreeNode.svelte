@@ -20,7 +20,7 @@
 	import { ChevronRight, FileText, Folder, FolderOpen, Globe, GripVertical } from 'lucide-svelte';
 	import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 	import DocTreeNode from './DocTreeNode.svelte';
-	import type { DragState, DropZone } from './useDragDrop.svelte';
+	import type { DragState } from './useDragDrop.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { buildAbsolutePublicPageUrl, copyTextToClipboard } from '$lib/utils/public-page-url';
 
@@ -182,6 +182,8 @@
 		bind:this={nodeElement}
 		data-node-id={node.id}
 		role="treeitem"
+		tabindex="-1"
+		aria-selected={isSelected}
 		oncontextmenu={handleContextMenu}
 		onmouseenter={handleMouseEnter}
 		onmousemove={handleMouseMove}

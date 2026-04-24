@@ -54,9 +54,13 @@
 	// Optional override - if not provided, will randomly select
 	let { projectId: initialProjectId }: Props = $props();
 
+	function getInitialProjectId(): string | null {
+		return initialProjectId ?? null;
+	}
+
 	// Available public projects
 	let availableProjects = $state<PublicProject[]>([]);
-	let currentProjectId = $state<string | null>(initialProjectId ?? null);
+	let currentProjectId = $state<string | null>(getInitialProjectId());
 
 	// Track which projects have been shown to avoid repeats until all are exhausted
 	let shownProjectIds = $state<Set<string>>(new Set());

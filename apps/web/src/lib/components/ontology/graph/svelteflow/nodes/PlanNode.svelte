@@ -31,7 +31,7 @@
 		border: 'border-border'
 	};
 
-	const style = stateStyles[data.state ?? 'draft'] ?? defaultStyle;
+	const style = $derived(stateStyles[data.state ?? 'draft'] ?? defaultStyle);
 </script>
 
 <div

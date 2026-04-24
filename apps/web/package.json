@@ -30,6 +30,7 @@
 		"lint": "node ./scripts/run-eslint.cjs && pnpm run guardrails:server-routes && pnpm run guardrails:onto-project-columns",
 		"lint:fix": "node ./scripts/run-eslint.cjs --fix && pnpm run guardrails:server-routes && pnpm run guardrails:onto-project-columns && pnpm run format",
 		"test": "vitest run",
+		"test:run": "vitest run",
 		"test:quiet": "vitest run --reporter=dot",
 		"test:silent": "VITEST_SILENT=true vitest run --reporter=dot || true",
 		"test:watch": "vitest",

@@ -7,13 +7,6 @@ import { WebhookEmailService } from './webhook-email-service';
 
 // Valid email recipient statuses per database constraint
 type EmailRecipientStatus = 'pending' | 'sent' | 'delivered' | 'failed' | 'bounced';
-const VALID_EMAIL_RECIPIENT_STATUSES: readonly EmailRecipientStatus[] = [
-	'pending',
-	'sent',
-	'delivered',
-	'failed',
-	'bounced'
-] as const;
 
 export interface DailyBriefResult {
 	id: string;
@@ -272,7 +265,7 @@ Manage preferences: ${this.baseUrl}/settings
 			const trackingEnabled = true; // You can make this configurable
 
 			// Prepare email body content (HTML content fragment + plain text)
-			const { htmlContent, plainText } = this.formatBriefForEmail(brief, briefDate);
+			const { htmlContent } = this.formatBriefForEmail(brief, briefDate);
 			const trackingPixel =
 				trackingEnabled && trackingId
 					? `<img src="${this.baseUrl}/api/email-tracking/${trackingId}" width="1" height="1" style="display:none;" alt="" />`

@@ -109,7 +109,7 @@
 	let showLiveModal = $state(false);
 	let actionError = $state<string | null>(null);
 	let userAnswer = $state('');
-	let userAnswerInput: HTMLTextAreaElement | null = null;
+	let userAnswerInput = $state<HTMLTextAreaElement | null>(null);
 	let userAnswerFocused = $state(false);
 	let expandedIterations = $state<Set<string>>(new Set());
 	let expandedEvents = $state<Set<string>>(new Set());
@@ -1397,14 +1397,14 @@
 			role="dialog"
 			aria-modal="true"
 			tabindex="-1"
-			onclick={() => (showLiveModal = false)}
+			onclick={(e) => {
+				if (e.target === e.currentTarget) showLiveModal = false;
+			}}
 			onkeydown={(e) => e.key === 'Escape' && (showLiveModal = false)}
 		>
 			<div
 				class="bg-card border border-border rounded-lg shadow-ink-strong tx tx-frame tx-weak wt-plate w-full max-w-3xl max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem)] overflow-auto"
 				role="document"
-				onclick={(e) => e.stopPropagation()}
-				onkeydown={(e) => e.stopPropagation()}
 			>
 				<!-- Modal Header -->
 				<div class="flex items-center justify-between px-4 py-3 border-b border-border">

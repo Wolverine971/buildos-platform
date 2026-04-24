@@ -56,7 +56,7 @@ function sanitizeLong(text: string): string {
 
 function sanitizeEntityRefText(text: string): string {
 	// Remove characters that could break entity reference parsing: [ ] |
-	return text.replace(/[\[\]|]/g, '');
+	return text.replace(/[|[\]]/g, '');
 }
 
 function formatTaskRef(task: OntoTask, timezone: string): string {

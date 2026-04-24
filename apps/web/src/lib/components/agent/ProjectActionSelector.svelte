@@ -35,7 +35,13 @@
 		onBack?: () => void;
 	}
 
-	let { projectId, projectName, onSelectAction, onSelectFocus, onBack }: Props = $props();
+	let {
+		projectId,
+		projectName,
+		onSelectAction,
+		onSelectFocus,
+		onBack: _onBack
+	}: Props = $props();
 
 	const focusTypes: Array<{
 		value: FocusEntityType;

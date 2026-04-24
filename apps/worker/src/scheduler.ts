@@ -8,7 +8,7 @@ import { supabase } from './lib/supabase';
 import { queueConfig } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
 import { queue } from './worker';
-import type { Database, DailyBriefJobMetadata } from '@buildos/shared-types';
+import type { DailyBriefJobMetadata, Database } from '@buildos/shared-types';
 import { BriefBackoffCalculator } from './lib/briefBackoffCalculator';
 import { type Alert, smsAlertsService, smsMetricsService } from '@buildos/shared-utils';
 import { resolveScheduledBriefDate } from './workers/brief/briefDateGuard';
@@ -558,7 +558,7 @@ export function calculateNextRunTime(
 				targetDate = calculateDailyRunTime(now, hours, minutes, seconds, timezone);
 				break;
 
-			case 'weekly':
+			case 'weekly': {
 				const dayOfWeek = preference.day_of_week ?? 1; // Default to Monday
 				targetDate = calculateWeeklyRunTime(
 					now,
@@ -569,6 +569,7 @@ export function calculateNextRunTime(
 					timezone
 				);
 				break;
+			}
 
 			case 'custom':
 				// For custom frequency, treat as daily for now

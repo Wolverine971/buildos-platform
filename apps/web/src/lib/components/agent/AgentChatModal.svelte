@@ -65,8 +65,6 @@
 	} from './agent-chat-session';
 	import {
 		buildSkillLoadActivityEvent,
-		extractSkillPathFromSkillLoadArgs,
-		formatSkillActivityContent,
 		upsertSkillActivityEntries
 	} from './agent-chat-skill-activity';
 	import { upsertOperationActivityEntries } from './agent-chat-operation-activity';
@@ -378,7 +376,6 @@
 	const voice = createVoiceAdapter({
 		toastError: (msg) => toastService.error(msg),
 		logWarn: (msg, err) => {
-			// eslint-disable-next-line no-console
 			console.error(msg, err);
 		}
 	});
@@ -465,7 +462,6 @@
 		hydrateSessionFromEvent: (session) => hydrateSessionFromEvent(session),
 		logWarn: (msg, err) => {
 			if (dev) {
-				// eslint-disable-next-line no-console
 				console.warn(msg, err);
 			}
 		}

@@ -1,5 +1,6 @@
 // apps/worker/src/index.ts
 import cors from 'cors';
+import type { QueueJobStatus, QueueJobType } from '@buildos/shared-types';
 import { format } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import dotenv from 'dotenv';
@@ -117,8 +118,12 @@ function isWorkerAuthorized(authHeader: string | undefined): boolean {
 	return scheme === 'Bearer' && value === token;
 }
 
+function getErrorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : String(error);
+}
+
 // Health check endpoint
-app.get('/health', async (_req, res) => {
+app.get('/health', (_req, res) => {
 	res.json({
 		status: 'healthy',
 		timestamp: new Date().toISOString(),
@@ -166,7 +171,7 @@ app.post('/classify/ontology', async (req, res) => {
 		});
 
 		return res.status(202).json({ success: true });
-	} catch (error: any) {
+	} catch (error) {
 		console.error('[Ontology Classification] Failed:', error);
 		await logWorkerError(error, {
 			userId: req.body?.userId,
@@ -183,7 +188,7 @@ app.post('/classify/ontology', async (req, res) => {
 		});
 		return res.status(500).json({
 			error: 'Failed to classify ontology entity',
-			message: error.message
+			message: getErrorMessage(error)
 		});
 	}
 });
@@ -300,7 +305,7 @@ app.post('/queue/brief', async (req, res) => {
 			scheduledFor: scheduleTime.toISOString(),
 			briefDate
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error queueing brief:', error);
 		await logWorkerError(error, {
 			userId: req.body?.userId,
@@ -318,7 +323,7 @@ app.post('/queue/brief', async (req, res) => {
 		});
 		return res.status(500).json({
 			error: 'Failed to queue brief generation',
-			message: error.message
+			message: getErrorMessage(error)
 		});
 	}
 });
@@ -373,7 +378,7 @@ app.post('/queue/onboarding', async (req, res) => {
 			success: true,
 			jobId: job.queue_job_id
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error queueing onboarding analysis:', error);
 		await logWorkerError(error, {
 			userId: req.body?.userId,
@@ -388,7 +393,7 @@ app.post('/queue/onboarding', async (req, res) => {
 		});
 		return res.status(500).json({
 			error: 'Failed to queue onboarding analysis',
-			message: error.message
+			message: getErrorMessage(error)
 		});
 	}
 });
@@ -452,7 +457,7 @@ app.post('/queue/chat/classify', async (req, res) => {
 			sessionId,
 			message: 'Chat session classification queued'
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error queueing chat classification:', error);
 		await logWorkerError(error, {
 			userId: req.body?.userId,
@@ -467,7 +472,7 @@ app.post('/queue/chat/classify', async (req, res) => {
 		});
 		return res.status(500).json({
 			error: 'Failed to queue chat classification',
-			message: error.message
+			message: getErrorMessage(error)
 		});
 	}
 });
@@ -531,7 +536,7 @@ app.post('/queue/braindump/process', async (req, res) => {
 			braindumpId,
 			message: 'Braindump processing queued'
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error queueing captured context processing:', error);
 		await logWorkerError(error, {
 			userId: req.body?.userId,
@@ -546,7 +551,7 @@ app.post('/queue/braindump/process', async (req, res) => {
 		});
 		return res.status(500).json({
 			error: 'Failed to queue captured context processing',
-			message: error.message
+			message: getErrorMessage(error)
 		});
 	}
 });
@@ -563,7 +568,7 @@ app.get('/jobs/:jobId', async (req, res) => {
 		}
 
 		return res.json(job);
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error fetching job:', error);
 		await logWorkerError(error, {
 			endpoint: '/jobs/:jobId',
@@ -577,7 +582,7 @@ app.get('/jobs/:jobId', async (req, res) => {
 		});
 		return res.status(500).json({
 			error: 'Failed to fetch job',
-			message: error.message
+			message: getErrorMessage(error)
 		});
 	}
 });
@@ -587,17 +592,19 @@ app.get('/users/:userId/jobs', async (req, res) => {
 	try {
 		const { userId } = req.params;
 		const { type, status, limit } = req.query;
+		const jobType = typeof type === 'string' ? (type as QueueJobType) : undefined;
+		const jobStatus = typeof status === 'string' ? (status as QueueJobStatus) : undefined;
 
 		const jobs = await queue.getUserJobs(userId, {
-			jobType: type as any,
-			status: status as any,
+			jobType,
+			status: jobStatus,
 			limit: limit ? parseInt(limit as string) : 10
 		});
 
 		res.json({
 			jobs
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error fetching user jobs:', error);
 		await logWorkerError(error, {
 			userId: req.params?.userId,
@@ -614,7 +621,7 @@ app.get('/users/:userId/jobs', async (req, res) => {
 		});
 		res.status(500).json({
 			error: 'Failed to fetch user jobs',
-			message: error.message
+			message: getErrorMessage(error)
 		});
 	}
 });
@@ -624,7 +631,7 @@ app.get('/queue/stats', async (_req, res) => {
 	try {
 		const stats = await queue.getStats();
 		res.json({ stats });
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error fetching queue stats:', error);
 		await logWorkerError(error, {
 			endpoint: '/queue/stats',
@@ -635,7 +642,7 @@ app.get('/queue/stats', async (_req, res) => {
 		});
 		res.status(500).json({
 			error: 'Failed to fetch queue stats',
-			message: error.message
+			message: getErrorMessage(error)
 		});
 	}
 });
@@ -663,7 +670,7 @@ app.get('/queue/stale-stats', async (req, res) => {
 					? `Found ${stats.staleCount} stale and ${stats.oldCompletedCount} old completed job(s) eligible for cleanup`
 					: 'No stale or old completed jobs found'
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error fetching stale job stats:', error);
 		await logWorkerError(error, {
 			endpoint: '/queue/stale-stats',
@@ -678,7 +685,7 @@ app.get('/queue/stale-stats', async (req, res) => {
 		});
 		res.status(500).json({
 			error: 'Failed to fetch stale job stats',
-			message: error.message
+			message: getErrorMessage(error)
 		});
 	}
 });
@@ -715,7 +722,7 @@ app.post('/queue/cleanup', async (req, res) => {
 				? `Dry run completed - would cancel ${result.staleCancelled} stale job(s), archive ${result.oldFailedCancelled} old failed job(s), and delete ${result.completedDeleted} completed job(s)`
 				: `Cleanup completed - cancelled ${result.staleCancelled} stale job(s), archived ${result.oldFailedCancelled} old failed job(s), and deleted ${result.completedDeleted} completed job(s)`
 		});
-	} catch (error: any) {
+	} catch (error) {
 		console.error('Error during manual cleanup:', error);
 		await logWorkerError(error, {
 			endpoint: '/queue/cleanup',
@@ -729,7 +736,7 @@ app.post('/queue/cleanup', async (req, res) => {
 		});
 		res.status(500).json({
 			error: 'Failed to run cleanup',
-			message: error.message
+			message: getErrorMessage(error)
 		});
 	}
 });
