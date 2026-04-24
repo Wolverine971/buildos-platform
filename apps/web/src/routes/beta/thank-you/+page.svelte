@@ -34,7 +34,7 @@
 
 	function shareOnX() {
 		const text =
-			'Just signed up for the BuildOS beta. Excited to see what they are building for AI-powered productivity 🚀';
+			'Just signed up for the BuildOS beta. Excited to see what they are building for complex creative work.';
 		const url = window.location.origin + '/beta';
 		window.open(
 			`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,

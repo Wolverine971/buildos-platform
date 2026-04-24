@@ -130,7 +130,7 @@
 	/>
 	<meta
 		name="keywords"
-		content="BuildOS blog, AI productivity, personal operating system, productivity tips, context building, daily briefs"
+		content="BuildOS blog, thinking environment, project memory, structured work, creator workflow, daily briefs"
 	/>
 	<link rel="canonical" href="https://build-os.com/blogs" />
 

@@ -31,7 +31,7 @@
 			href: 'https://x.com/build_os',
 			icon: Twitter,
 			title: '@build_os',
-			description: 'Building in public, product updates, AI productivity tips',
+			description: 'Building in public, product updates, and thinking-environment notes',
 			external: true
 		},
 		{
@@ -55,25 +55,25 @@
 
 	const actionCards = [
 		{
-			href: '/beta',
+			href: '/auth/register',
 			icon: MessageCircle,
-			title: 'Join Beta',
-			description: 'Early access to BuildOS - AI that organizes messy project context',
-			badge: 'Limited Access'
+			title: 'Start in chat',
+			description: 'Turn rough project input into structured work with memory',
+			badge: '14-day trial'
 		},
 		{
 			href: '/feedback',
 			icon: Lightbulb,
 			title: 'Give Feedback',
-			description: 'Help shape the future of AI-native productivity',
+			description: 'Help shape the thinking environment for complex work',
 			badge: 'Valued'
 		},
 		{
 			href: '/investors',
 			icon: TrendingUp,
 			title: 'Investment Info',
-			description: '$250K pre-seed - Building the LLM productivity platform',
-			badge: 'Active'
+			description: 'The BuildOS investor overview and current thesis',
+			badge: 'Open'
 		}
 	];
 </script>
@@ -107,8 +107,8 @@
 			</div>
 			<h1 class="text-4xl md:text-5xl font-bold text-foreground mb-4">Building BuildOS</h1>
 			<p class="text-xl text-muted-foreground max-w-2xl mx-auto mb-6">
-				AI that organizes messy project context into structured projects and tasks. Never
-				lose information, build context as you go.
+				A thinking environment that turns messy project context into structured projects
+				with memory.
 			</p>
 
 			<!-- Founder credibility -->
@@ -202,7 +202,7 @@
 								class="w-2 h-2 bg-accent rounded-full mr-3"
 								aria-hidden="true"
 							></div>
-							Brain dump → AI organizes automatically
+							Brain dump → structured project memory
 						</li>
 						<li class="flex items-center">
 							<div

@@ -144,7 +144,8 @@
 	const SECTION_GROUPS: SectionGroup[] = [
 		{
 			title: 'Start here',
-			description: 'The shortest path to understanding the product and the graph model.',
+			description:
+				'The shortest path to creating your first project and seeing how it works.',
 			slugs: ['getting-started', 'ontology']
 		},
 		{
@@ -162,7 +163,7 @@
 		{
 			title: 'Extend & reference',
 			description:
-				'Plug external agents into your ontology and find supporting reference material.',
+				'Connect external agents to your project context and find supporting reference material.',
 			slugs: ['connect-agents', 'reference']
 		}
 	];
@@ -209,13 +210,13 @@
 		<h1
 			class="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground tracking-tight leading-tight max-w-4xl mx-auto"
 		>
-			Start with the model. Then choose the workflow.
+			Start with a project. Learn the model when you need it.
 		</h1>
 		<p
 			class="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed max-w-2xl mx-auto"
 		>
-			Use these docs to turn messy project context into a working graph, operate on it with
-			AI, and connect outside agents when the work needs more leverage.
+			Use these docs to turn messy project context into structured work, operate on it with
+			the agent, and connect outside tools when the work needs more leverage.
 		</p>
 
 		<div
@@ -226,14 +227,14 @@
 				class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 			>
 				<Zap class="w-4 h-4" aria-hidden="true" />
-				Start here
+				Create your first project
 			</a>
 			<a
-				href="/docs/ontology"
+				href="/auth/register"
 				class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:border-accent hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 			>
-				<Layers class="w-4 h-4" aria-hidden="true" />
-				Learn the ontology
+				<ArrowRight class="w-4 h-4" aria-hidden="true" />
+				Start in chat
 			</a>
 		</div>
 	</div>

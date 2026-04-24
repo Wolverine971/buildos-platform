@@ -855,7 +855,7 @@ $function$
 "name": "claim_pending_jobs",
 "schema": "public",
 "definition": "CREATE OR REPLACE FUNCTION public.claim_pending_jobs(p_job_types text[], p_batch_size integer DEFAULT 5)
-RETURNS TABLE(id uuid, queue_job_id text, user_id uuid, job_type text, metadata jsonb, status text, priority integer, attempts integer, max_attempts integer, scheduled_for timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone, started_at timestamp with time zone, completed_at timestamp with time zone, error_message text)
+RETURNS TABLE(id uuid, queue_job_id text, user_id uuid, job_type text, metadata jsonb, status text, priority integer, attempts integer, max_attempts integer, scheduled_for timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone, started_at timestamp with time zone, completed_at timestamp with time zone, error_message text, processing_token uuid)
 LANGUAGE plpgsql
 AS $function$
 BEGIN
@@ -863,6 +863,7 @@ RETURN QUERY
 UPDATE queue_jobs
 SET
 status = 'processing',
+processing_token = gen_random_uuid(),
 started_at = NOW(),
 updated_at = NOW()
 WHERE queue_jobs.id IN (
@@ -871,7 +872,7 @@ FROM queue_jobs
 WHERE queue_jobs.status = 'pending'
 AND queue_jobs.job_type: :TEXT = ANY(p_job_types)
 AND queue_jobs.scheduled_for <= NOW()
-ORDER BY queue_jobs.priority DESC, queue_jobs.scheduled_for ASC
+ORDER BY queue_jobs.priority ASC, queue_jobs.scheduled_for ASC
 LIMIT p_batch_size
 FOR UPDATE SKIP LOCKED
 )
@@ -890,7 +891,8 @@ queue_jobs.created_at,
 queue_jobs.updated_at,
 queue_jobs.started_at,
 queue_jobs.completed_at,
-queue_jobs.error_message;
+queue_jobs.error_message,
+queue_jobs.processing_token;
 END;
 $function$
 "
@@ -979,10 +981,10 @@ $function$
 "
 },
 {
-"args": "p_job_id uuid, p_result jsonb",
+"args": "p_job_id uuid, p_result jsonb, p_processing_token uuid",
 "name": "complete_queue_job",
 "schema": "public",
-"definition": "CREATE OR REPLACE FUNCTION public.complete_queue_job(p_job_id uuid, p_result jsonb DEFAULT NULL::jsonb)
+"definition": "CREATE OR REPLACE FUNCTION public.complete_queue_job(p_job_id uuid, p_result jsonb DEFAULT NULL::jsonb, p_processing_token uuid DEFAULT NULL::uuid)
 RETURNS boolean
 LANGUAGE plpgsql
 AS $function$
@@ -994,9 +996,11 @@ SET
 status = 'completed',
 completed_at = NOW(),
 updated_at = NOW(),
+processing_token = NULL,
 result = p_result
 WHERE id = p_job_id
-AND status = 'processing';
+AND status IN ('processing', 'completed')
+AND (p_processing_token IS NULL OR processing_token = p_processing_token);
 
 GET DIAGNOSTICS v_updated = ROW_COUNT;
 RETURN v_updated > 0;
@@ -1956,10 +1960,10 @@ $function$
 "
 },
 {
-"args": "p_job_id uuid, p_error_message text, p_retry boolean",
+"args": "p_job_id uuid, p_error_message text, p_retry boolean, p_processing_token uuid",
 "name": "fail_queue_job",
 "schema": "public",
-"definition": "CREATE OR REPLACE FUNCTION public.fail_queue_job(p_job_id uuid, p_error_message text, p_retry boolean DEFAULT true)
+"definition": "CREATE OR REPLACE FUNCTION public.fail_queue_job(p_job_id uuid, p_error_message text, p_retry boolean DEFAULT true, p_processing_token uuid DEFAULT NULL::uuid)
 RETURNS boolean
 LANGUAGE plpgsql
 AS $function$
@@ -1972,7 +1976,9 @@ BEGIN
 SELECT attempts, max_attempts
 INTO v_job
 FROM queue_jobs
-WHERE id = p_job_id;
+WHERE id = p_job_id
+AND status IN ('processing', 'failed')
+AND (p_processing_token IS NULL OR processing_token = p_processing_token);
 
 IF NOT FOUND THEN
 RETURN FALSE;
@@ -1989,21 +1995,29 @@ IF p_retry AND (COALESCE(v_job.attempts, 0) + 1 < COALESCE(v_job.max_attempts,
 UPDATE queue_jobs
 SET
 status = 'pending',
+processing_token = NULL,
+started_at = NULL,
+completed_at = NULL,
 attempts = COALESCE(attempts, 0) + 1,
 error_message = p_error_message,
 updated_at = NOW(),
 scheduled_for = NOW() + (v_retry_delay || ' minutes'): :INTERVAL
-WHERE id = p_job_id;
+WHERE id = p_job_id
+AND status IN ('processing', 'failed')
+AND (p_processing_token IS NULL OR processing_token = p_processing_token);
 ELSE
 -- Final failure: mark as failed
 UPDATE queue_jobs
 SET
 status = 'failed',
+processing_token = NULL,
 attempts = COALESCE(attempts, 0) + 1,
 error_message = p_error_message,
 completed_at = NOW(),
 updated_at = NOW()
-WHERE id = p_job_id;
+WHERE id = p_job_id
+AND status IN ('processing', 'failed')
+AND (p_processing_token IS NULL OR processing_token = p_processing_token);
 END IF;
 
 GET DIAGNOSTICS v_updated = ROW_COUNT;
@@ -7140,15 +7154,49 @@ AS $function$
 DECLARE
 v_reset_count INTEGER;
 BEGIN
+WITH stalled_jobs AS (
+SELECT
+id,
+COALESCE(attempts, 0) AS current_attempts,
+COALESCE(max_attempts, 3) AS allowed_attempts
+FROM queue_jobs
+WHERE status = 'processing'
+AND GREATEST(
+COALESCE(started_at, 'epoch': :timestamptz),
+COALESCE(updated_at, 'epoch': :timestamptz)
+) < NOW() - p_stall_timeout: :INTERVAL
+FOR UPDATE SKIP LOCKED
+),
+updated_jobs AS (
 UPDATE queue_jobs
 SET
-status = 'pending',
+status = CASE
+WHEN stalled_jobs.current_attempts + 1 < stalled_jobs.allowed_attempts THEN 'pending': :queue_status
+ELSE 'failed': :queue_status
+END,
+attempts = stalled_jobs.current_attempts + 1,
+processing_token = NULL,
 started_at = NULL,
+scheduled_for = CASE
+WHEN stalled_jobs.current_attempts + 1 < stalled_jobs.allowed_attempts THEN NOW()
+ELSE queue_jobs.scheduled_for
+END,
+completed_at = CASE
+WHEN stalled_jobs.current_attempts + 1 < stalled_jobs.allowed_attempts THEN queue_jobs.completed_at
+ELSE NOW()
+END,
+error_message = CASE
+WHEN stalled_jobs.current_attempts + 1 < stalled_jobs.allowed_attempts THEN
+COALESCE(queue_jobs.error_message, 'Job stalled and was requeued')
+ELSE
+'Job stalled and exceeded max attempts'
+END,
 updated_at = NOW()
-WHERE status = 'processing'
-AND started_at < NOW() - p_stall_timeout: :INTERVAL;
-
-GET DIAGNOSTICS v_reset_count = ROW_COUNT;
+FROM stalled_jobs
+WHERE queue_jobs.id = stalled_jobs.id
+RETURNING queue_jobs.id
+)
+SELECT COUNT(\*) INTO v_reset_count FROM updated_jobs;
 
 IF v_reset_count > 0 THEN
 RAISE NOTICE 'Reset % stalled jobs', v_reset_count;

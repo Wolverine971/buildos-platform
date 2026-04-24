@@ -12,7 +12,7 @@ export async function processOnboardingAnalysisJob(job: LegacyJob<OnboardingAnal
 	console.log(`🧠 Processing onboarding analysis job ${job.id} for user ${job.data.userId}`);
 
 	try {
-		await updateJobStatus(job.id, 'processing', 'onboarding');
+		await updateJobStatus(job.id, 'processing', 'onboarding', undefined, job.processingToken);
 
 		const { userId, userContext, options } = job.data;
 
@@ -27,7 +27,7 @@ export async function processOnboardingAnalysisJob(job: LegacyJob<OnboardingAnal
 		);
 
 		// Update job status
-		await updateJobStatus(job.id, 'completed', 'onboarding');
+		await updateJobStatus(job.id, 'completed', 'onboarding', undefined, job.processingToken);
 
 		// Notify user
 		await broadcastUserEvent(userId, 'onboarding_analysis_completed', {
@@ -56,7 +56,7 @@ export async function processOnboardingAnalysisJob(job: LegacyJob<OnboardingAnal
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 		console.error(`❌ Failed to analyze onboarding for user ${job.data.userId}:`, errorMessage);
 
-		await updateJobStatus(job.id, 'failed', 'onboarding', errorMessage);
+		await updateJobStatus(job.id, 'failed', 'onboarding', errorMessage, job.processingToken);
 
 		await broadcastUserEvent(job.data.userId, 'onboarding_analysis_failed', {
 			error: errorMessage,

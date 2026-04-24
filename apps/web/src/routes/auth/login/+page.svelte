@@ -310,10 +310,10 @@
 </script>
 
 <SEOHead
-	title="Sign In - BuildOS | AI Project Collaboration"
-	description="Sign in to BuildOS to access your projects, captured context, and AI-powered productivity tools. Transform scattered thoughts into structured action."
+	title="Sign In - BuildOS"
+	description="Sign in to BuildOS to access your projects, captured context, and project memory. Transform scattered thoughts into structured action."
 	canonical="https://build-os.com/auth/login"
-	keywords="BuildOS login, sign in, project management login, AI productivity tools"
+	keywords="BuildOS login, sign in, project memory, thinking environment"
 	noindex={true}
 />
 

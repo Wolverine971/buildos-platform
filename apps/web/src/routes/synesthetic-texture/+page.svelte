@@ -66,7 +66,7 @@
 					href="/auth/register"
 					class="pressable rounded-full bg-accent px-4 py-2 text-xs font-semibold text-accent-foreground shadow-ink"
 				>
-					Sign up free
+					Start in chat
 				</a>
 			</div>
 		</div>
@@ -104,7 +104,7 @@
 						href="/auth/register"
 						class="pressable rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background shadow-ink"
 					>
-						Get started free
+						Start in chat
 					</a>
 					<a
 						class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"

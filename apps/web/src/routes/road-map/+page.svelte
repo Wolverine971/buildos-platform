@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/road-map/+page.svelte -->
 <script lang="ts">
-	import { CircleCheck, Wrench, Calendar, Sparkles, Users, MessageCircle } from 'lucide-svelte';
+	import { CircleCheck, Wrench, Calendar, Sparkles, MessageCircle } from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import {
 		DEFAULT_ORGANIZATION_ID,
@@ -14,17 +14,17 @@
 </script>
 
 <SEOHead
-	title="Roadmap - BuildOS | AI-Powered Project Management Development Timeline"
-	description="Detailed BuildOS development roadmap with monthly milestones. Track our progress building the AI co-pilot for chaotic, idea-rich minds."
+	title="Roadmap - BuildOS | Thinking Environment Development Timeline"
+	description="Detailed BuildOS development roadmap with monthly milestones. Track our progress building a thinking environment for complex work and durable project memory."
 	canonical="https://build-os.com/road-map"
-	keywords="BuildOS roadmap, AI productivity development, project management roadmap, AI assistant timeline, project context roadmap"
+	keywords="BuildOS roadmap, thinking environment development, project management roadmap, project memory roadmap, project context roadmap"
 	jsonLd={{
 		'@context': 'https://schema.org',
 		'@type': 'Article',
 		'@id': `${SITE_URL}/road-map#article`,
 		headline: 'BuildOS Development Roadmap',
 		description:
-			'Detailed monthly timeline for BuildOS development - the AI project completion partner',
+			'Detailed monthly timeline for BuildOS development - the thinking environment for complex work',
 		author: {
 			'@type': 'Organization',
 			'@id': DEFAULT_ORGANIZATION_ID,
@@ -80,8 +80,9 @@
 			>
 				<h2 class="text-lg font-semibold mb-3 text-foreground">🎯 Mission</h2>
 				<p class="text-muted-foreground">
-					Build the AI co-pilot for your chaotic, idea-rich mind. Users talk through rough
-					work → AI organizes everything → Users execute → Projects get completed.
+					Build the thinking environment for complex work. Users talk through rough input,
+					BuildOS structures the project, and the work stays connected as memory
+					compounds.
 				</p>
 			</div>
 
@@ -494,9 +495,8 @@
 						<div class="mt-4 p-4 bg-muted border border-border rounded-lg">
 							<p class="text-sm font-medium text-foreground">
 								🎯 <strong>Ultimate Vision:</strong> BuildOS becomes the operating system
-								for how humans and AI collaborate on projects. Users dump ideas, AI handles
-								all the organization, scheduling, and project management - humans focus
-								purely on execution and creativity.
+								for complex project memory. Users bring rough ideas, BuildOS preserves
+								the context, and agent-assisted workflows operate against the same structure.
 							</p>
 						</div>
 					</div>
@@ -510,17 +510,17 @@
 		<div class="max-w-4xl mx-auto text-center">
 			<h2 class="text-3xl font-bold mb-4 text-foreground">Help Shape the Future</h2>
 			<p class="text-lg text-muted-foreground mb-8">
-				Join our beta community and work directly with us to influence this roadmap. Your
-				feedback drives what we build next.
+				Start with real project context and share what should improve next. Your feedback
+				drives what we build.
 			</p>
 
 			<div class="flex flex-col sm:flex-row gap-4 justify-center">
 				<a
-					href="/beta"
+					href="/auth/register"
 					class="inline-flex items-center px-8 py-4 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors text-lg font-semibold shadow-ink pressable"
 				>
-					<Users class="w-5 h-5 mr-3" />
-					Join Beta Program
+					<Sparkles class="w-5 h-5 mr-3" />
+					Start in chat
 				</a>
 				<a
 					href="https://build-os.com/feedback"
@@ -532,7 +532,7 @@
 			</div>
 
 			<p class="text-sm text-muted-foreground mt-6">
-				Free during beta • Direct founder access • Shape product direction
+				14-day trial • Direct founder access • Shape product direction
 			</p>
 		</div>
 	</section>

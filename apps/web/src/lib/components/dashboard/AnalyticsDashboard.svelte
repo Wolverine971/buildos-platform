@@ -19,6 +19,7 @@
 	import DashboardBriefWidget from './DashboardBriefWidget.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import { getTaskStateBadgeClass } from '$lib/utils/ontology-badge-styles';
+	import { getDashboardGreeting } from '$lib/utils/dashboard-greeting';
 	import type { UserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 	import type { DailyBrief } from '$lib/types/daily-brief';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
@@ -99,6 +100,13 @@
 	let briefChatSessionId = $state<string | null>(null);
 
 	const displayName = $derived(user?.name ?? user?.email?.split('@')[0] ?? 'there');
+	const dashboardGreeting = $derived(
+		getDashboardGreeting({
+			displayName,
+			timezone: user?.timezone,
+			seed: user?.id
+		})
+	);
 
 	const overdueTasks = $derived(analytics.attention.overdueTasks);
 	const overdueProjectTaskCount = $derived(overdueProjectTaskTotal || overdueTasks);
@@ -487,9 +495,9 @@
 				class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
 			>
 				<h1
-					class="min-w-0 text-lg sm:text-2xl font-bold text-foreground tracking-tight truncate"
+					class="min-w-0 text-lg sm:text-2xl font-bold text-foreground tracking-tight leading-tight [overflow-wrap:anywhere]"
 				>
-					Hi, {displayName}
+					{dashboardGreeting}
 				</h1>
 				<div class="flex w-full items-center gap-1.5 sm:w-auto sm:justify-end sm:gap-2">
 					<Button

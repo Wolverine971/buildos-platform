@@ -77,7 +77,8 @@ export async function updateJobStatus(
 		| 'email_sent'
 		| 'chat_classification'
 		| 'process_onto_braindump',
-	errorMessage?: string
+	errorMessage?: string,
+	processingToken?: string | null
 ) {
 	// Status is now consistent - no mapping needed
 	const mappedStatus = status;
@@ -98,10 +99,13 @@ export async function updateJobStatus(
 		updateData.completed_at = new Date().toISOString();
 	}
 
-	const { error } = await supabase
-		.from('queue_jobs')
-		.update(updateData)
-		.eq('queue_job_id', queueJobId);
+	let query = supabase.from('queue_jobs').update(updateData).eq('queue_job_id', queueJobId);
+
+	if (processingToken) {
+		query = query.eq('processing_token', processingToken);
+	}
+
+	const { error } = await query;
 
 	if (error) {
 		console.error('Failed to update job status:', error);

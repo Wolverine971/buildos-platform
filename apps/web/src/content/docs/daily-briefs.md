@@ -47,7 +47,7 @@ Anything the agent creates from a brief chat — events, new tasks, document upd
 
 ## Cadence and honest pacing
 
-Briefs adapt. If you stop opening them, BuildOS dials back delivery instead of piling up more of them. You can override this any time in brief settings. You can also tune brief cadence and notification preferences through the agent in a conversation — _"send briefs every other weekday"_ is a perfectly fine thing to ask for.
+You control the cadence. If a brief channel gets noisy, turn that channel off or change the schedule in brief settings. You can also tune brief cadence and notification preferences through the agent in a conversation — _"send briefs every other weekday"_ is a perfectly fine thing to ask for.
 
 ## Next
 

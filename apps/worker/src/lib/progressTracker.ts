@@ -38,7 +38,8 @@ export class ProgressTracker {
 	async updateProgress(
 		jobId: string,
 		progress: JobProgress,
-		retryCount: number = 0
+		retryCount: number = 0,
+		processingToken?: string | null
 	): Promise<boolean> {
 		try {
 			// Validate progress data
@@ -47,7 +48,7 @@ export class ProgressTracker {
 			// Get current job metadata
 			const { data: currentJob, error: fetchError } = await supabase
 				.from('queue_jobs')
-				.select('metadata, status')
+				.select('metadata, status, processing_token')
 				.eq('id', jobId)
 				.single();
 
@@ -57,7 +58,8 @@ export class ProgressTracker {
 					jobId,
 					progress,
 					retryCount,
-					new Error(fetchError.message)
+					new Error(fetchError.message),
+					processingToken
 				);
 			}
 
@@ -74,6 +76,11 @@ export class ProgressTracker {
 				return false;
 			}
 
+			if (processingToken && currentJob.processing_token !== processingToken) {
+				console.warn(`⚠️ Skipping progress update for stale job claim ${jobId}`);
+				return false;
+			}
+
 			// Merge with existing metadata safely
 			const currentMetadata = this.safeParseMetadata(currentJob.metadata);
 			const updatedMetadata = {
@@ -83,7 +90,7 @@ export class ProgressTracker {
 			};
 
 			// Update the job with validated progress
-			const { error: updateError } = await supabase
+			let updateQuery = supabase
 				.from('queue_jobs')
 				.update({
 					metadata: updatedMetadata,
@@ -92,13 +99,20 @@ export class ProgressTracker {
 				.eq('id', jobId)
 				.eq('status', currentJob.status); // Ensure status hasn't changed
 
+			if (processingToken) {
+				updateQuery = updateQuery.eq('processing_token', processingToken);
+			}
+
+			const { error: updateError } = await updateQuery;
+
 			if (updateError) {
 				console.error(`❌ Failed to update progress for job ${jobId}:`, updateError);
 				return this.handleProgressUpdateError(
 					jobId,
 					progress,
 					retryCount,
-					new Error(updateError.message)
+					new Error(updateError.message),
+					processingToken
 				);
 			}
 
@@ -119,7 +133,8 @@ export class ProgressTracker {
 				jobId,
 				progress,
 				retryCount,
-				error instanceof Error ? error : new Error(String(error))
+				error instanceof Error ? error : new Error(String(error)),
+				processingToken
 			);
 		}
 	}
@@ -199,7 +214,8 @@ export class ProgressTracker {
 		jobId: string,
 		progress: JobProgress,
 		retryCount: number,
-		error: Error
+		error: Error,
+		processingToken?: string | null
 	): Promise<boolean> {
 		// Check if this is a temporary error worth retrying
 		const isTemporaryError = this.isTemporaryError(error);
@@ -236,7 +252,7 @@ export class ProgressTracker {
 		await new Promise((resolve) => setTimeout(resolve, delay));
 
 		// Retry the update
-		return this.updateProgress(jobId, progress, retryCount + 1);
+		return this.updateProgress(jobId, progress, retryCount + 1, processingToken);
 	}
 
 	/**
@@ -323,6 +339,10 @@ export const progressTracker = new ProgressTracker({
 /**
  * Convenience function for updating progress
  */
-export function updateJobProgress(jobId: string, progress: JobProgress): Promise<boolean> {
-	return progressTracker.updateProgress(jobId, progress);
+export function updateJobProgress(
+	jobId: string,
+	progress: JobProgress,
+	processingToken?: string | null
+): Promise<boolean> {
+	return progressTracker.updateProgress(jobId, progress, 0, processingToken);
 }

@@ -397,7 +397,7 @@
 									BuildOS
 								</div>
 								<div class="text-xs text-muted-foreground">
-									AI-first project operating system
+									Thinking environment for complex work
 								</div>
 							</div>
 						</a>
@@ -796,7 +796,7 @@
 							href="/auth/register"
 							class="px-4 py-1.5 text-xs font-bold text-accent-foreground bg-accent rounded-lg shadow-ink hover:bg-accent/90 transition-colors pressable tx tx-bloom tx-weak"
 						>
-							Sign up free
+							Start in chat
 						</a>
 					</div>
 
@@ -1074,7 +1074,7 @@
 						onclick={() => handleMenuItemClick('/auth/register')}
 						class="block px-3 py-2.5 mt-2 text-sm font-bold text-center text-accent-foreground bg-accent hover:bg-accent/90 rounded-lg shadow-ink pressable tx tx-bloom tx-weak transition-colors"
 					>
-						Sign up free
+						Start in chat
 					</a>
 				</div>
 			{/if}

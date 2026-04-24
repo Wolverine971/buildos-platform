@@ -6,9 +6,9 @@
 
 <SEOHead
 	title="Terms of Service - BuildOS | Legal Terms & Conditions"
-	description="BuildOS Terms of Service: Simple, fair legal terms for using our AI-powered productivity platform. Last updated December 2024. User agreements, content ownership, and usage guidelines."
+	description="BuildOS Terms of Service: Simple, fair legal terms for using the BuildOS thinking environment. Last updated October 2025. User agreements, content ownership, and usage guidelines."
 	canonical="https://build-os.com/terms"
-	keywords="BuildOS terms of service, user agreement, legal terms, content ownership, usage guidelines, subscription terms, AI productivity terms"
+	keywords="BuildOS terms of service, user agreement, legal terms, content ownership, usage guidelines, subscription terms"
 	author="BuildOS"
 />
 
@@ -76,7 +76,7 @@
 					</div>
 					<h3 class="font-semibold text-foreground mb-2">Subscription</h3>
 					<p class="text-sm text-muted-foreground">
-						Free now, subscription model coming soon
+						14-day trial, then monthly subscription
 					</p>
 				</div>
 			</div>
@@ -99,14 +99,14 @@
 			<section>
 				<h2 class="text-2xl font-bold text-foreground mb-4">2. Description of Service</h2>
 				<p class="text-muted-foreground mb-4">
-					BuildOS is a personal productivity platform that helps you organize your
-					thoughts, projects, and goals. The service includes:
+					BuildOS is a thinking environment that helps you turn rough project input into
+					structured work with persistent project memory. The service includes:
 				</p>
 				<ul class="space-y-2 text-muted-foreground ml-6">
 					<li>• Brain dump capture and organization</li>
 					<li>• Project and goal management</li>
 					<li>• Task tracking and prioritization</li>
-					<li>• AI-powered insights and recommendations</li>
+					<li>• AI-assisted insights and recommendations</li>
 					<li>• SMS notifications (optional, opt-in only)</li>
 					<li>• Google Calendar integration (optional)</li>
 					<li>• Data export capabilities</li>
@@ -117,20 +117,21 @@
 				<h2 class="text-2xl font-bold text-foreground mb-4">3. Pricing and Billing</h2>
 				<div class="bg-accent/10 rounded-lg p-6 mb-4">
 					<p class="text-accent-foreground font-medium font-medium mb-2">
-						Current Status: Free Access
+						Current Status: 14-Day Trial
 					</p>
 					<p class="text-muted-foreground">
-						BuildOS is currently free to use. We plan to introduce a subscription model
-						in the near future, processed through Stripe. Free tier users will be
-						limited to 3 projects when the subscription model launches.
+						BuildOS offers a 14-day trial before the monthly subscription begins. Paid
+						plans are processed through Stripe.
 					</p>
 				</div>
-				<p class="text-muted-foreground mb-4">When billing begins:</p>
+				<p class="text-muted-foreground mb-4">For paid subscriptions:</p>
 				<ul class="space-y-2 text-muted-foreground ml-6">
 					<li>• Subscriptions can be cancelled at any time</li>
 					<li>• Billing is handled securely through Stripe</li>
-					<li>• We will provide advance notice before implementing any charges</li>
-					<li>• Refund policies will be established before paid subscriptions begin</li>
+					<li>
+						• Access continues until the end of the billing period after cancellation
+					</li>
+					<li>• Refund requests are reviewed case by case</li>
 				</ul>
 			</section>
 
@@ -167,7 +168,7 @@
 						AI Processing Notice
 					</p>
 					<p class="text-muted-foreground">
-						To provide AI-powered insights, your project data, tasks, captured context,
+						To provide AI-assisted insights, your project data, tasks, captured context,
 						and onboarding responses are sent to third-party AI providers including
 						OpenAI and Anthropic. Only content necessary for organizing and enhancing
 						your productivity is processed.
@@ -380,13 +381,13 @@
 			>
 				<h3 class="text-2xl font-bold mb-4">Ready to start building?</h3>
 				<p class="opacity-90 mb-6">
-					Join BuildOS and transform how you organize your life.
+					Start with messy project input and turn it into structured work.
 				</p>
 				<a
 					href="/auth/register"
 					class="inline-flex items-center px-6 py-3 bg-card text-accent font-semibold rounded-lg hover:bg-card/90 transition-colors"
 				>
-					Get Started
+					Start in chat
 				</a>
 			</div>
 		</div>

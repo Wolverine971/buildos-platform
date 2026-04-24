@@ -83,7 +83,13 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 		// Validate job data
 		const validatedData = validateBraindumpProcessingJobData(job.data);
 
-		await updateJobStatus(job.id, 'processing', 'process_onto_braindump');
+		await updateJobStatus(
+			job.id,
+			'processing',
+			'process_onto_braindump',
+			undefined,
+			job.processingToken
+		);
 
 		// Fetch the captured context record to verify it exists and get content
 		// Note: Using type assertion until types are regenerated from migration
@@ -112,7 +118,13 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 			console.log(
 				`⏭️  Captured context ${validatedData.braindumpId} already processed, skipping`
 			);
-			await updateJobStatus(job.id, 'completed', 'process_onto_braindump');
+			await updateJobStatus(
+				job.id,
+				'completed',
+				'process_onto_braindump',
+				undefined,
+				job.processingToken
+			);
 			return { success: true, skipped: true, reason: 'already_processed' };
 		}
 
@@ -145,7 +157,13 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 				throw new Error(`Failed to update captured context: ${updateError.message}`);
 			}
 
-			await updateJobStatus(job.id, 'completed', 'process_onto_braindump');
+			await updateJobStatus(
+				job.id,
+				'completed',
+				'process_onto_braindump',
+				undefined,
+				job.processingToken
+			);
 			return {
 				success: true,
 				title: 'Quick thought',
@@ -204,7 +222,13 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 			);
 		}
 
-		await updateJobStatus(job.id, 'completed', 'process_onto_braindump');
+		await updateJobStatus(
+			job.id,
+			'completed',
+			'process_onto_braindump',
+			undefined,
+			job.processingToken
+		);
 
 		return {
 			success: true,
@@ -231,7 +255,13 @@ export async function processBraindumpProcessingJob(job: LegacyJob<BraindumpProc
 			console.error('Failed to update captured context status to failed:', updateErr);
 		}
 
-		await updateJobStatus(job.id, 'failed', 'process_onto_braindump', error.message);
+		await updateJobStatus(
+			job.id,
+			'failed',
+			'process_onto_braindump',
+			error.message,
+			job.processingToken
+		);
 		throw error;
 	}
 }

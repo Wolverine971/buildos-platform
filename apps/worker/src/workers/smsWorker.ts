@@ -55,7 +55,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 	if (!twilioClient || !smsService) {
 		const errorMessage = 'SMS service not available - Twilio credentials not configured';
 		console.error(errorMessage);
-		await updateJobStatus(job.id, 'failed', 'send_sms', errorMessage);
+		await updateJobStatus(job.id, 'failed', 'send_sms', errorMessage, job.processingToken);
 		throw new Error(errorMessage);
 	}
 
@@ -63,7 +63,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 		validatedData;
 
 	try {
-		await updateJobStatus(job.id, 'processing', 'send_sms');
+		await updateJobStatus(job.id, 'processing', 'send_sms', undefined, job.processingToken);
 
 		// Update progress
 		await job.updateProgress({
@@ -102,7 +102,13 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 						console.error('[SMS Worker] Error tracking cancelled metrics:', err)
 					);
 
-				await updateJobStatus(job.id, 'completed', 'send_sms', 'Message cancelled');
+				await updateJobStatus(
+					job.id,
+					'completed',
+					'send_sms',
+					'Message cancelled',
+					job.processingToken
+				);
 				return { success: false, reason: 'cancelled' };
 			}
 
@@ -163,7 +169,8 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 					job.id,
 					'completed',
 					'send_sms',
-					'Rescheduled due to quiet hours'
+					'Rescheduled due to quiet hours',
+					job.processingToken
 				);
 				return { success: false, reason: 'quiet_hours' };
 			}
@@ -185,7 +192,13 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 						})
 						.eq('id', scheduled_sms_id);
 
-					await updateJobStatus(job.id, 'completed', 'send_sms', 'Daily limit reached');
+					await updateJobStatus(
+						job.id,
+						'completed',
+						'send_sms',
+						'Daily limit reached',
+						job.processingToken
+					);
 					return { success: false, reason: 'daily_limit' };
 				}
 			}
@@ -212,7 +225,13 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 						})
 						.eq('id', scheduled_sms_id);
 
-					await updateJobStatus(job.id, 'completed', 'send_sms', 'Event deleted');
+					await updateJobStatus(
+						job.id,
+						'completed',
+						'send_sms',
+						'Event deleted',
+						job.processingToken
+					);
 					return { success: false, reason: 'event_deleted' };
 				}
 			}
@@ -320,7 +339,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			message: 'SMS sent successfully'
 		});
 
-		await updateJobStatus(job.id, 'completed', 'send_sms');
+		await updateJobStatus(job.id, 'completed', 'send_sms', undefined, job.processingToken);
 
 		// Notify user of successful send (optional)
 		await broadcastUserEvent(user_id, 'sms_sent', {
@@ -354,9 +373,6 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 			})
 			.eq('id', message_id);
 
-		let newAttemptCount = 0;
-		let maxAttempts = 3;
-
 		// Phase 4: Update scheduled_sms_messages on failure
 		if (scheduled_sms_id) {
 			console.log(`[SMS Worker] Updating scheduled SMS ${scheduled_sms_id} with failure`);
@@ -368,9 +384,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 				.eq('id', scheduled_sms_id)
 				.single();
 
-			// BUG FIX #2: Calculate and store values for reuse
-			newAttemptCount = (currentScheduledSms?.send_attempts ?? 0) + 1;
-			maxAttempts = currentScheduledSms?.max_send_attempts ?? 3;
+			const newAttemptCount = (currentScheduledSms?.send_attempts ?? 0) + 1;
 
 			await supabase
 				.from('scheduled_sms_messages')
@@ -390,51 +404,7 @@ export async function processSMSJob(job: LegacyJob<SMSJobData>) {
 				console.error('[SMS Worker] Error tracking failed metrics:', err)
 			);
 
-		await updateJobStatus(job.id, 'failed', 'send_sms', errorMessage);
-
-		// Check if we should retry
-		// BUG FIX #2: For scheduled SMS, we already fetched the data. Only fetch if NOT scheduled.
-		let shouldRetry = false;
-		if (scheduled_sms_id) {
-			// BUG FIX #2: Reuse values from Phase 4 instead of fetching AGAIN
-			shouldRetry = newAttemptCount < maxAttempts;
-		} else {
-			// For regular SMS messages, fetch attempt info (only this path needs the fetch)
-			const { data: smsMessage } = await supabase
-				.from('sms_messages')
-				.select('attempt_count, max_attempts')
-				.eq('id', message_id)
-				.single();
-
-			const attempts = smsMessage?.attempt_count ?? 0;
-			maxAttempts = smsMessage?.max_attempts ?? 3;
-			newAttemptCount = attempts; // For consistent naming
-			shouldRetry = Boolean(smsMessage) && attempts < maxAttempts;
-		}
-
-		if (shouldRetry) {
-			// Re-queue with exponential backoff
-			// BUG FIX #2: Use newAttemptCount we already calculated instead of fetching AGAIN
-			const delay = Math.pow(2, newAttemptCount) * 60; // minutes
-
-			// BUG FIX #5: Add dedup_key to prevent duplicate retry jobs
-			const dedupKey = scheduled_sms_id
-				? `sms-retry-${scheduled_sms_id}-attempt-${newAttemptCount + 1}`
-				: `sms-retry-${message_id}-attempt-${newAttemptCount + 1}`;
-
-			await supabase.rpc('add_queue_job', {
-				p_user_id: user_id,
-				p_job_type: 'send_sms',
-				p_metadata: validatedData as unknown as Json,
-				p_scheduled_for: new Date(Date.now() + delay * 60000).toISOString(),
-				p_priority: priority === 'urgent' ? 1 : 10,
-				p_dedup_key: dedupKey
-			});
-
-			console.log(
-				`[SMS Worker] Scheduled retry in ${delay} seconds for ${scheduled_sms_id ? 'scheduled SMS ' + scheduled_sms_id : 'sms_message ' + message_id}`
-			);
-		}
+		await updateJobStatus(job.id, 'failed', 'send_sms', errorMessage, job.processingToken);
 
 		throw error;
 	}

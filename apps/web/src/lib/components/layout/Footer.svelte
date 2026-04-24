@@ -6,7 +6,6 @@
 		Mail,
 		Shield,
 		Heart,
-		Users,
 		TrendingUp,
 		FileText,
 		BookOpen,
@@ -37,7 +36,7 @@
 			links: [
 				{ href: '/about', label: 'About', icon: Info },
 				{ href: '/pricing', label: 'Pricing', icon: DollarSign },
-				{ href: '/beta', label: 'Join Beta', icon: Users }
+				{ href: '/auth/register', label: 'Start in chat', icon: Brain }
 			]
 		},
 		{
@@ -147,8 +146,7 @@
 							</span>
 						</a>
 						<p class="text-sm text-muted-foreground max-w-xs mx-auto">
-							Transform thoughts into structured productivity with AI-powered
-							organization.
+							Turn messy thinking into structured work with persistent project memory.
 						</p>
 
 						<!-- CTA Buttons -->
@@ -160,16 +158,16 @@
 									rounded-lg transition-all shadow-ink pressable"
 							>
 								<Brain class="w-4 h-4 mr-2" />
-								Start Free
+								Start in chat
 							</a>
 							<a
-								href="/beta"
+								href="/docs"
 								class="flex-1 inline-flex items-center justify-center px-6 py-3 text-sm font-semibold tracking-tight
 									text-foreground bg-card border border-border
 									hover:bg-muted hover:border-accent rounded-lg transition-colors"
 							>
-								<Users class="w-4 h-4 mr-2" />
-								Join Beta
+								<BookOpen class="w-4 h-4 mr-2" />
+								Read docs
 							</a>
 						</div>
 					</div>
@@ -265,17 +263,16 @@
 								<span class="text-xl font-bold text-foreground">BuildOS</span>
 							</a>
 							<p class="text-sm text-muted-foreground">
-								Transform thoughts into structured productivity with AI-powered
-								organization. Capture ideas, manage projects, and stay organized
-								effortlessly.
+								Turn messy thinking into structured work with persistent project
+								memory.
 							</p>
 							<!-- CTA Buttons -->
 							<div class="flex gap-3 pt-2">
 								<a href="/auth/register">
-									<Button icon={Brain} variant="primary">Start Free</Button>
+									<Button icon={Brain} variant="primary">Start in chat</Button>
 								</a>
-								<a href="/beta">
-									<Button icon={Users} variant="outline">Join Beta</Button>
+								<a href="/docs">
+									<Button icon={BookOpen} variant="outline">Read docs</Button>
 								</a>
 							</div>
 						</div>

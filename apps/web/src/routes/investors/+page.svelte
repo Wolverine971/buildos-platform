@@ -1,6 +1,16 @@
 <!-- apps/web/src/routes/investors/+page.svelte -->
 <script lang="ts">
-	import { Brain, Zap, Target, Mail, ArrowRight, Mic, Database, TrendingUp } from 'lucide-svelte';
+	import {
+		ArrowRight,
+		BookOpen,
+		Brain,
+		GitBranch,
+		Mail,
+		Network,
+		Share2,
+		Target,
+		type Icon as IconType
+	} from 'lucide-svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import {
 		DEFAULT_ORGANIZATION_ID,
@@ -8,14 +18,66 @@
 		DEFAULT_ORGANIZATION_SOCIAL_PROFILES
 	} from '$lib/constants/seo';
 
-	let innerWidth: number;
+	type Card = {
+		title: string;
+		body: string;
+		icon: typeof IconType;
+	};
+
+	const marketShift: Card[] = [
+		{
+			title: 'Context is the bottleneck',
+			body: 'AI tools can generate, critique, and plan, but serious work still breaks when the project context is scattered across notes, docs, tasks, calendars, and chats.',
+			icon: Brain
+		},
+		{
+			title: 'Complex creators feel it first',
+			body: 'Authors, YouTubers, course creators, and founder-creators live inside long-running projects with research, drafts, decisions, assets, and recurring deadlines.',
+			icon: Target
+		},
+		{
+			title: 'Project memory becomes infrastructure',
+			body: 'As more work happens with in-app and external agents, the durable system of record matters more than the chat window itself.',
+			icon: Network
+		}
+	];
+
+	const productLoop: Card[] = [
+		{
+			title: 'Capture rough input',
+			body: 'Users start with messy notes, voice dumps, research, scripts, tasks, or project updates instead of filling out a rigid template.',
+			icon: Brain
+		},
+		{
+			title: 'Structure the project',
+			body: 'BuildOS turns that raw material into projects, tasks, documents, goals, milestones, risks, and plans that stay connected.',
+			icon: GitBranch
+		},
+		{
+			title: 'Operate with memory',
+			body: 'The agent, daily briefs, calendar tools, and external agent gateway all work against the same project graph.',
+			icon: BookOpen
+		},
+		{
+			title: 'Share public artifacts',
+			body: 'Public pages turn finished thinking, project writeups, and creator workflows into crawlable, shareable BuildOS artifacts.',
+			icon: Share2
+		}
+	];
+
+	const moatLayers = [
+		'Persistent project context that gets richer with each capture, update, brief, and agent action.',
+		'A structured ontology underneath the product: projects, tasks, plans, documents, goals, milestones, risks, assets, members, and events.',
+		'A creator-first wedge where the value is visible: a book, channel, launch, or research project becomes easier to restart.',
+		'A public-pages distribution layer where user-generated project artifacts can compound into search, social, and LLM citation surface area.'
+	];
 </script>
 
 <SEOHead
-	title="Investors - BuildOS | AI-Native Productivity Platform for the Agent Economy"
-	description="The first AI-native productivity platform built for the agent economy. Founded by DJ Wayne. Follow BuildOS development and investment opportunities."
+	title="Investors — BuildOS"
+	description="BuildOS is a thinking environment for people making complex things. The product turns rough project input into durable project memory for creators, builders, and the agent workflows around them."
 	canonical="https://build-os.com/investors"
-	keywords="BuildOS investors, AI productivity platform, agent economy, voice AI, context management, startup investment, DJ Wayne"
+	keywords="BuildOS investors, thinking environment, project memory, creator workflow, agent context, DJ Wayne"
 	jsonLd={{
 		'@context': 'https://schema.org',
 		'@type': 'Organization',
@@ -24,13 +86,13 @@
 		url: 'https://build-os.com',
 		logo: DEFAULT_ORGANIZATION_LOGO_IMAGE,
 		description:
-			'AI-native productivity platform built for the agent economy. Features voice-first design, transparent context engine, and AI-native architecture.',
+			'Thinking environment for people making complex things. BuildOS turns messy project input into structured work with durable project memory.',
 		founder: {
 			'@type': 'Person',
 			name: 'DJ Wayne',
 			jobTitle: 'Founder',
 			description:
-				'Former USMC Scout Sniper, 8 years software engineering experience, YC-backed startup background'
+				'Former USMC Scout Sniper turned software engineer building BuildOS as a founder-led product.'
 		},
 		contactPoint: {
 			'@type': 'ContactPoint',
@@ -41,428 +103,236 @@
 	}}
 />
 
-<svelte:window bind:innerWidth />
+<main class="min-h-screen bg-background text-foreground">
+	<section class="border-b border-border bg-muted atmo atmo-med rim-accent">
+		<div class="mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-16 lg:py-20">
+			<div class="max-w-4xl">
+				<p class="text-xs sm:text-sm font-semibold text-accent mb-3">Investor overview</p>
+				<h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
+					The thinking environment where complex work becomes reusable context.
+				</h1>
+				<p
+					class="mt-5 text-base sm:text-lg text-muted-foreground max-w-3xl leading-relaxed"
+				>
+					BuildOS turns rough notes, voice dumps, research, documents, tasks, and
+					stateless AI chats into structured projects with memory. The wedge is creators
+					and builders making complex things. The larger bet is that durable project
+					context becomes the coordination layer around agent-assisted work.
+				</p>
 
-<div class="min-h-screen bg-background text-foreground">
-	<!-- Hero Section -->
-	<section class="pt-20 pb-16 px-4 sm:px-6 lg:px-8">
-		<div class="max-w-4xl mx-auto text-center">
-			<div class="flex justify-center mb-6">
-				<div class="relative">
-					<video
-						autoplay
-						loop
-						muted
-						playsinline
-						class="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover bg-black shadow-ink"
+				<div class="mt-7 flex flex-col sm:flex-row gap-3">
+					<a
+						href="mailto:dj@build-os.com?subject=BuildOS Investor Conversation"
+						class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
-						<source
-							src="/onboarding-assets/animations/brain-bolt-consistent-pulse.mp4"
-							type="video/mp4"
-						/>
-					</video>
-				</div>
-			</div>
-
-			<h1
-				class="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6 leading-tight text-foreground"
-			>
-				The AI-First
-				<span class="text-accent">Productivity Platform</span>
-			</h1>
-
-			<p
-				class="text-lg md:text-xl text-muted-foreground mb-10 max-w-3xl mx-auto leading-relaxed"
-			>
-				While others retrofit AI into old systems,
-				{#if innerWidth > 600}
-					<br />
-				{/if}
-				BuildOS is being built from the ground up using AI but focusing on understanding the
-				user.
-			</p>
-
-			<div class="flex flex-col sm:flex-row gap-3 justify-center">
-				<a
-					href="#updates"
-					class="inline-flex items-center justify-center px-6 py-3 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 shadow-ink pressable transition-colors font-semibold tracking-tight"
-				>
-					<Mail class="w-5 h-5 mr-2" />
-					Get Updates
-				</a>
-				<a
-					href="mailto:dj@build-os.com?subject=BuildOS Inquiry"
-					class="inline-flex items-center justify-center px-6 py-3 border border-border bg-card text-foreground rounded-lg hover:border-accent hover:bg-accent/5 shadow-ink pressable transition-colors font-semibold tracking-tight"
-				>
-					<ArrowRight class="w-5 h-5 mr-2" />
-					Connect
-				</a>
-			</div>
-		</div>
-	</section>
-
-	<!-- The Problem & Solution -->
-	<section class="py-16 px-4 sm:px-6 lg:px-8 bg-muted tx tx-grain tx-weak">
-		<div class="max-w-6xl mx-auto">
-			<h2 class="text-3xl font-bold text-center mb-12 text-foreground">
-				Building for the AI Era
-			</h2>
-
-			<div class="grid md:grid-cols-3 gap-4 md:gap-6">
-				<div
-					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-frame tx-weak"
-				>
-					<div
-						class="w-10 h-10 bg-accent/10 rounded-lg mb-4 flex items-center justify-center"
+						<Mail class="w-4 h-4" aria-hidden="true" />
+						Contact DJ
+					</a>
+					<a
+						href="/"
+						class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:border-accent hover:bg-accent/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
-						<TrendingUp class="w-5 h-5 text-accent" />
-					</div>
-					<h3 class="text-lg font-bold mb-3 text-foreground">Large Market</h3>
-					<p class="text-sm text-muted-foreground mb-3">
-						Productivity software market ($75B+) converging with AI tools market ($800B+
-						projected by 2030).
-					</p>
-					<ul class="text-xs text-muted-foreground space-y-1.5">
-						<li>• Notion ($10B valuation, 2021)</li>
-						<li>• Linear ($1.25B valuation, 2025)</li>
-						<li>• ChatGPT (800M weekly users, Jan 2025)</li>
-					</ul>
-				</div>
-
-				<div
-					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-frame tx-weak"
-				>
-					<div
-						class="w-10 h-10 bg-info/10 rounded-lg mb-4 flex items-center justify-center"
-					>
-						<Zap class="w-5 h-5 text-info" />
-					</div>
-					<h3 class="text-lg font-bold mb-3 text-foreground">Right Timing</h3>
-					<p class="text-sm text-muted-foreground mb-3">
-						The convergence of voice AI, context management needs, and the emerging
-						agent economy creates the perfect timing.
-					</p>
-					<ul class="text-xs text-muted-foreground space-y-1.5">
-						<li>• Voice AI adoption exploding</li>
-						<li>• Context/memory becoming critical</li>
-						<li>• Agents need clear context</li>
-					</ul>
-				</div>
-
-				<div
-					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-frame tx-weak"
-				>
-					<div
-						class="w-10 h-10 bg-success/10 rounded-lg mb-4 flex items-center justify-center"
-					>
-						<Target class="w-5 h-5 text-success" />
-					</div>
-					<h3 class="text-lg font-bold mb-3 text-foreground">First Mover</h3>
-					<p class="text-sm text-muted-foreground mb-3">
-						Only productivity platform built AI-first from day one. Competitors are
-						retrofitting AI into existing systems.
-					</p>
-					<ul class="text-xs text-muted-foreground space-y-1.5">
-						<li>• Competitors retrofitting AI</li>
-						<li>• We started with an AI framework</li>
-						<li>• Early MCP adoption</li>
-					</ul>
+						See the product story
+						<ArrowRight class="w-4 h-4" aria-hidden="true" />
+					</a>
 				</div>
 			</div>
 		</div>
 	</section>
 
-	<!-- Technical Advantages -->
-	<section class="py-16 px-4 sm:px-6 lg:px-8">
-		<div class="max-w-4xl mx-auto">
-			<h2 class="text-3xl font-bold text-center mb-10 text-foreground">
-				Technical Advantages
-			</h2>
+	<section class="py-12 sm:py-14 border-b border-border">
+		<div class="mx-auto max-w-6xl px-4 sm:px-6">
+			<div class="max-w-2xl mb-7">
+				<h2 class="text-2xl sm:text-3xl font-bold tracking-tight">Why this exists now</h2>
+				<p class="mt-2 text-sm sm:text-base text-muted-foreground leading-relaxed">
+					The market does not need another generic AI app. It needs a persistent place
+					where human thinking, project structure, and agent work stay connected.
+				</p>
+			</div>
 
-			<div class="space-y-4">
-				<div
-					class="bg-card border border-accent/30 rounded-lg p-6 shadow-ink tx tx-bloom tx-weak"
-				>
-					<div class="flex items-start gap-4">
+			<div class="grid gap-4 md:grid-cols-3">
+				{#each marketShift as card}
+					{@const Icon = card.icon}
+					<article class="p-5 wt-card sp-block tx tx-frame tx-weak">
 						<div
-							class="w-10 h-10 bg-accent rounded-lg flex items-center justify-center flex-shrink-0"
+							class="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10 text-accent"
 						>
-							<Brain class="w-5 h-5 text-accent-foreground" />
+							<Icon class="w-5 h-5" aria-hidden="true" />
 						</div>
-						<div>
-							<h3 class="text-lg font-bold mb-2 text-foreground">
-								AI-Native Architecture
-							</h3>
-							<p class="text-sm text-muted-foreground mb-3">
-								While Notion, Linear, and others bolt AI onto existing systems,
-								BuildOS was designed with AI at the core. As Andrej Karpathy noted,
-								neural networks are "eating through" traditional code - BuildOS
-								embodies this shift by letting AI dynamically structure your
-								projects and context.
-							</p>
-							<p class="text-muted-foreground text-xs mb-3">
-								<a
-									href="https://youtu.be/LCEmiRjPEtQ?si=jvual-4XF0xfrif8&t=287"
-									target="_blank"
-									rel="noopener noreferrer"
-									class="hover:text-accent transition-colors"
-								>
-									Source: Andrej Karpathy - "Software in the Era of AI" →
-								</a>
-							</p>
-							<p class="text-foreground text-sm font-semibold">
-								→ This architectural advantage compounds over time and becomes
-								impossible to replicate
-							</p>
-						</div>
-					</div>
-				</div>
-
-				<div
-					class="bg-card border border-info/30 rounded-lg p-6 shadow-ink tx tx-bloom tx-weak"
-				>
-					<div class="flex items-start gap-4">
-						<div
-							class="w-10 h-10 bg-info rounded-lg flex items-center justify-center flex-shrink-0"
-						>
-							<Mic class="w-5 h-5 text-white" />
-						</div>
-						<div>
-							<h3 class="text-lg font-bold mb-2 text-foreground">
-								Voice-First Design
-							</h3>
-							<p class="text-sm text-muted-foreground mb-3">
-								Users get more value from AI through voice interaction because it
-								has less friction than writing. BuildOS is designed for natural
-								conversation - once users start talking to it, they don't stop.
-							</p>
-							<p class="text-foreground text-sm font-semibold">
-								→ Voice AI adoption is accelerating, and BuildOS is positioned to
-								capture this shift
-							</p>
-						</div>
-					</div>
-				</div>
-
-				<div
-					class="bg-card border border-success/30 rounded-lg p-6 shadow-ink tx tx-bloom tx-weak"
-				>
-					<div class="flex items-start gap-4">
-						<div
-							class="w-10 h-10 bg-success rounded-lg flex items-center justify-center flex-shrink-0"
-						>
-							<Database class="w-5 h-5 text-white" />
-						</div>
-						<div>
-							<h3 class="text-lg font-bold mb-2 text-foreground">
-								Transparent Context Engine
-							</h3>
-							<p class="text-sm text-muted-foreground mb-3">
-								Unlike ChatGPT's hidden memory, BuildOS shows users exactly what AI
-								remembers. Users edit, build upon, and control their context -
-								creating compound knowledge that improves over time. BuildOS serves
-								as the persistent checkpoint where external agents return to sync
-								context and coordinate tasks.
-							</p>
-							<p class="text-foreground text-sm font-semibold">
-								→ This becomes the control center for multi-agent workflows
-							</p>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- Development Roadmap -->
-	<section class="py-16 px-4 sm:px-6 lg:px-8 bg-muted tx tx-thread tx-weak">
-		<div class="max-w-6xl mx-auto">
-			<h2 class="text-3xl font-bold text-center mb-10 text-foreground">
-				From Tool to Platform
-			</h2>
-
-			<div class="grid md:grid-cols-3 gap-4 md:gap-6">
-				<!-- Phase 1 -->
-				<div
-					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-grain tx-weak"
-				>
-					<p
-						class="text-[0.65rem] uppercase tracking-[0.15em] text-accent font-semibold mb-2"
-					>
-						PHASE 1 • NOW - Q2 2025
-					</p>
-					<h3 class="text-lg font-bold mb-3 text-foreground">Productivity Tool</h3>
-					<p class="text-sm text-muted-foreground mb-4">
-						AI-powered organization for individuals. Brain dumps become structured
-						projects with intelligent task management.
-					</p>
-					<div class="space-y-2 text-sm">
-						<div class="flex items-center gap-2">
-							<span class="text-success">✓</span>
-							<span class="text-muted-foreground">Voice-native interface</span>
-						</div>
-						<div class="flex items-center gap-2">
-							<span class="text-success">✓</span>
-							<span class="text-muted-foreground">Context building engine</span>
-						</div>
-						<div class="flex items-center gap-2">
-							<span class="text-success">✓</span>
-							<span class="text-muted-foreground">Calendar integration</span>
-						</div>
-					</div>
-				</div>
-
-				<!-- Phase 2 -->
-				<div
-					class="bg-card rounded-lg p-6 shadow-ink-strong border-2 border-accent tx tx-pulse tx-weak"
-				>
-					<p
-						class="text-[0.65rem] uppercase tracking-[0.15em] text-info font-semibold mb-2"
-					>
-						PHASE 2 • Q3 2025
-					</p>
-					<h3 class="text-lg font-bold mb-3 text-foreground">LLM Platform</h3>
-					<p class="text-sm text-muted-foreground mb-4">
-						Become the context checkpoint for AI interactions. Users maintain their core
-						context in BuildOS while external agents sync back to update progress and
-						coordinate next steps.
-					</p>
-					<div class="space-y-2 text-sm">
-						<div class="flex items-center gap-2">
-							<div class="w-1.5 h-1.5 bg-info rounded-full"></div>
-							<span class="text-muted-foreground">MCP server integration</span>
-						</div>
-						<div class="flex items-center gap-2">
-							<div class="w-1.5 h-1.5 bg-accent rounded-full"></div>
-							<span class="text-muted-foreground">Collaboration features</span>
-						</div>
-					</div>
-				</div>
-
-				<!-- Phase 3 -->
-				<div
-					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-bloom tx-weak"
-				>
-					<p
-						class="text-[0.65rem] uppercase tracking-[0.15em] text-warning font-semibold mb-2"
-					>
-						PHASE 3 • 2026+
-					</p>
-					<h3 class="text-lg font-bold mb-3 text-foreground">Agent Operating System</h3>
-					<p class="text-sm text-muted-foreground mb-4">
-						The operating system for AI agents. BuildOS becomes the persistent memory
-						and coordination layer where multiple specialized agents checkpoint their
-						progress and share context.
-					</p>
-					<div class="space-y-2 text-sm">
-						<div class="flex items-center gap-2">
-							<div class="w-1.5 h-1.5 bg-warning rounded-full"></div>
-							<span class="text-muted-foreground">3rd party agent integrations</span>
-						</div>
-						<div class="flex items-center gap-2">
-							<div class="w-1.5 h-1.5 bg-accent rounded-full"></div>
-							<span class="text-muted-foreground">Increased tool usage</span>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- Founders -->
-	<section class="py-16 px-4 sm:px-6 lg:px-8">
-		<div class="max-w-3xl mx-auto">
-			<h2 class="text-3xl font-bold text-center mb-10 text-foreground">The Founder</h2>
-
-			<div class="flex justify-center">
-				<!-- DJ Wayne -->
-				<div
-					class="bg-card rounded-lg p-6 shadow-ink border border-border tx tx-frame tx-weak max-w-md"
-				>
-					<div class="flex justify-center mb-4">
-						<img
-							src="/s-dj-wayne-profile.webp"
-							alt="DJ Wayne - BuildOS Founder"
-							class="w-24 h-24 rounded-full object-cover shadow-ink border-2 border-border"
-							width="96"
-							height="96"
-							loading="lazy"
-						/>
-					</div>
-					<div class="text-center mb-4">
-						<p class="font-bold text-lg text-foreground">DJ Wayne</p>
-					</div>
-					<div class="space-y-1.5 text-muted-foreground text-sm">
-						<p>• Former USMC Scout Sniper</p>
-						<p>• 8 years software engineering</p>
-						<p>• YC-backed startup experience (Curri)</p>
-						<p>
-							• Serial builder: 9takes.com, thecadretraining.com,
-							tinytribeadventures.com
+						<h3 class="text-base font-semibold text-foreground">{card.title}</h3>
+						<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+							{card.body}
 						</p>
-					</div>
-					<div class="mt-4 pt-4 border-t border-border">
-						<h4 class="font-semibold text-foreground mb-2 text-sm">Why BuildOS</h4>
-						<p class="text-muted-foreground text-sm">
-							I built BuildOS because I needed it. As a power user of Claude and
-							ChatGPT managing multiple projects, I wanted a home base to stay
-							organized. The existing tools didn't work for me, so I built my own.
+					</article>
+				{/each}
+			</div>
+		</div>
+	</section>
+
+	<section class="py-12 sm:py-14 border-b border-border bg-muted tx tx-grain tx-weak">
+		<div class="mx-auto max-w-6xl px-4 sm:px-6">
+			<div class="max-w-2xl mb-7">
+				<h2 class="text-2xl sm:text-3xl font-bold tracking-tight">The product loop</h2>
+				<p class="mt-2 text-sm sm:text-base text-muted-foreground leading-relaxed">
+					BuildOS starts with a narrow user pain: people doing serious creative or builder
+					work are tired of reconstructing context every time they return.
+				</p>
+			</div>
+
+			<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+				{#each productLoop as card}
+					{@const Icon = card.icon}
+					<article class="p-5 wt-paper sp-inline bg-card">
+						<div
+							class="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-muted text-foreground"
+						>
+							<Icon class="w-4 h-4" aria-hidden="true" />
+						</div>
+						<h3 class="text-sm font-semibold text-foreground">{card.title}</h3>
+						<p class="mt-2 text-sm leading-relaxed text-muted-foreground">
+							{card.body}
 						</p>
-					</div>
+					</article>
+				{/each}
+			</div>
+		</div>
+	</section>
+
+	<section class="py-12 sm:py-14 border-b border-border">
+		<div class="mx-auto max-w-6xl px-4 sm:px-6">
+			<div class="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+				<div>
+					<p class="text-xs sm:text-sm font-semibold text-accent mb-3">
+						Strategic thesis
+					</p>
+					<h2 class="text-2xl sm:text-3xl font-bold tracking-tight">
+						Project memory is the durable layer.
+					</h2>
+					<p class="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
+						BuildOS is not trying to out-chat ChatGPT or out-document Notion. It is
+						building the persistent project environment where messy human input becomes
+						usable structure, then stays available to every workflow that needs it.
+					</p>
 				</div>
-			</div>
-		</div>
-	</section>
-
-	<!-- Updates Section -->
-	<section id="updates" class="py-16 px-4 sm:px-6 lg:px-8 bg-muted tx tx-frame tx-weak">
-		<div class="max-w-3xl mx-auto text-center">
-			<h2 class="text-3xl font-bold mb-6 text-foreground">Follow BuildOS Development</h2>
-
-			<p class="text-muted-foreground mb-8">
-				Get updates on product development, user growth, and technical milestones. No spam,
-				just progress updates from a founder building the future.
-			</p>
-
-			<div class="text-sm text-muted-foreground">
-				For business inquiries: <a
-					href="mailto:dj@build-os.com"
-					class="text-accent hover:text-accent/80 transition-colors font-semibold"
-					>dj@build-os.com</a
-				>
-			</div>
-		</div>
-	</section>
-
-	<!-- Connect -->
-	<section class="mt-8 py-16 px-4 sm:px-6 lg:px-8 bg-accent tx tx-frame tx-med">
-		<div class="max-w-3xl mx-auto text-center">
-			<h2 class="text-3xl font-bold mb-6 text-accent-foreground">Building for the AI Era</h2>
-
-			<p class="text-accent-foreground/90 mb-8">
-				Join us in building the coordination layer for AI agents. As specialized agents
-				proliferate, they need a central checkpoint for context and memory - BuildOS is
-				building that foundation.
-			</p>
-
-			<div class="space-y-4">
-				<a
-					href="mailto:dj@build-os.com?subject=BuildOS Discussion"
-					class="inline-flex items-center justify-center px-6 py-3 bg-background text-foreground rounded-lg shadow-ink pressable transition-colors font-semibold tracking-tight"
-				>
-					<Mail class="w-5 h-5 mr-2" />
-					Connect
-					<ArrowRight class="w-5 h-5 ml-2" />
-				</a>
 
 				<div
-					class="flex flex-col sm:flex-row gap-3 justify-center text-sm text-accent-foreground/80"
+					class="rounded-lg border border-border bg-card p-5 shadow-ink tx tx-thread tx-weak"
 				>
-					<span>• Investor inquiries welcome</span>
-					<span>• Strategic partnerships</span>
-					<span>• AI/productivity expertise valued</span>
+					<ul class="space-y-4">
+						{#each moatLayers as layer}
+							<li class="flex gap-3 text-sm leading-relaxed text-muted-foreground">
+								<span
+									class="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent shrink-0"
+									aria-hidden="true"
+								></span>
+								<span>{layer}</span>
+							</li>
+						{/each}
+					</ul>
 				</div>
 			</div>
 		</div>
 	</section>
-</div>
+
+	<section class="py-12 sm:py-14 border-b border-border bg-muted">
+		<div class="mx-auto max-w-6xl px-4 sm:px-6">
+			<div class="max-w-2xl mb-7">
+				<h2 class="text-2xl sm:text-3xl font-bold tracking-tight">Current state</h2>
+				<p class="mt-2 text-sm sm:text-base text-muted-foreground leading-relaxed">
+					BuildOS is live, founder-led, and still early. The product has the core surfaces
+					required for the thesis; the immediate work is activation, proof, and narrow
+					creator-led distribution.
+				</p>
+			</div>
+
+			<div class="grid gap-4 md:grid-cols-3">
+				<article class="p-5 text-center wt-paper sp-inline bg-card">
+					<div class="text-2xl sm:text-3xl font-bold text-accent mb-1">Live</div>
+					<h3 class="text-sm sm:text-base font-semibold text-foreground">
+						Product access
+					</h3>
+					<p class="mt-1 text-sm text-muted-foreground">
+						14-day trial, paid plan, docs, projects, briefs, calendar, and agent chat.
+					</p>
+				</article>
+				<article class="p-5 text-center wt-paper sp-inline bg-card">
+					<div class="text-2xl sm:text-3xl font-bold text-accent mb-1">Creator</div>
+					<h3 class="text-sm sm:text-base font-semibold text-foreground">
+						Primary wedge
+					</h3>
+					<p class="mt-1 text-sm text-muted-foreground">
+						Authors and YouTubers first; podcasters, course creators, and
+						founder-creators next.
+					</p>
+				</article>
+				<article class="p-5 text-center wt-paper sp-inline bg-card">
+					<div class="text-2xl sm:text-3xl font-bold text-accent mb-1">1</div>
+					<h3 class="text-sm sm:text-base font-semibold text-foreground">Founder</h3>
+					<p class="mt-1 text-sm text-muted-foreground">
+						Built by DJ Wayne, a former USMC Scout Sniper turned software engineer.
+					</p>
+				</article>
+			</div>
+		</div>
+	</section>
+
+	<section class="py-12 sm:py-14 border-b border-border">
+		<div class="mx-auto max-w-4xl px-4 sm:px-6">
+			<div class="grid gap-6 sm:grid-cols-[120px_1fr] sm:items-start">
+				<img
+					src="/s-dj-wayne-profile.webp"
+					alt="DJ Wayne, founder of BuildOS"
+					class="h-24 w-24 rounded-full border-2 border-border object-cover shadow-ink sm:h-28 sm:w-28"
+					width="112"
+					height="112"
+					loading="lazy"
+				/>
+				<div>
+					<p class="text-xs sm:text-sm font-semibold text-accent mb-2">Founder</p>
+					<h2 class="text-2xl sm:text-3xl font-bold tracking-tight">DJ Wayne</h2>
+					<p class="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
+						DJ is a former USMC Scout Sniper and software engineer with startup
+						experience at Curri. BuildOS came from his own operating problem: juggling
+						software work, writing, multiple projects, and AI tools while constantly
+						rebuilding context from scratch.
+					</p>
+					<p class="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
+						The founder-market fit is practical: BuildOS is what he uses to build
+						BuildOS, and the product is opinionated around the pain of complex work that
+						does not fit cleanly into a task manager or a blank document.
+					</p>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	<section class="py-12 sm:py-14 bg-accent tx tx-frame tx-med">
+		<div class="mx-auto max-w-4xl px-4 text-center sm:px-6">
+			<h2 class="text-2xl sm:text-3xl font-bold text-accent-foreground">
+				Interested in the thesis?
+			</h2>
+			<p class="mt-3 text-sm sm:text-base text-accent-foreground/90 leading-relaxed">
+				Reach out for the current investor memo, product walkthrough, or a direct
+				conversation about the BuildOS roadmap.
+			</p>
+			<div
+				class="mt-7 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3"
+			>
+				<a
+					href="mailto:dj@build-os.com?subject=BuildOS Investor Conversation"
+					class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-background px-5 py-2.5 text-sm font-semibold text-foreground shadow-ink pressable transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-accent"
+				>
+					<Mail class="w-4 h-4" aria-hidden="true" />
+					Contact DJ
+				</a>
+				<a
+					href="/docs"
+					class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-accent-foreground/30 px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-colors hover:bg-accent-foreground/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-accent"
+				>
+					Read product docs
+					<ArrowRight class="w-4 h-4" aria-hidden="true" />
+				</a>
+			</div>
+		</div>
+	</section>
+</main>

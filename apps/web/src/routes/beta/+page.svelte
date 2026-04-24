@@ -260,7 +260,7 @@
 
 			<p class="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
 				Get early access to BuildOS and help shape how it develops. Work directly with me to
-				build better AI-powered productivity.
+				build a better thinking environment for complex work.
 			</p>
 
 			{#if existingSignupStatus}
@@ -819,7 +819,8 @@
 		<div class="max-w-3xl mx-auto text-center px-4 sm:px-6 lg:px-8">
 			<h2 class="text-3xl font-bold mb-4 text-foreground">Ready to Help Build BuildOS?</h2>
 			<p class="text-lg text-muted-foreground mb-8">
-				Join the beta program and work with me to create better AI-powered productivity.
+				Join the beta program and work with me to create a better thinking environment for
+				complex work.
 			</p>
 
 			{#if !existingSignupStatus}

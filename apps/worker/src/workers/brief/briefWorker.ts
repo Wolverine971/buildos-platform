@@ -37,7 +37,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 		// Validate job data immediately to catch errors early
 		validateBriefJobData(job.data);
 
-		await updateJobStatus(job.id, 'processing', 'brief');
+		await updateJobStatus(job.id, 'processing', 'brief', undefined, job.processingToken);
 
 		// ALWAYS fetch user's timezone from users table (centralized source of truth)
 		const { data: user, error: userError } = await supabase
@@ -93,7 +93,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 				`⏭️ Skipping stale daily brief job ${job.id} for user ${job.data.userId}: ${reason}`
 			);
 			await job.log(reason);
-			await updateJobStatus(job.id, 'completed', 'brief');
+			await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
 			return;
 		}
 
@@ -186,7 +186,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 			);
 		}
 
-		await updateJobStatus(job.id, 'completed', 'brief');
+		await updateJobStatus(job.id, 'completed', 'brief', undefined, job.processingToken);
 
 		// Emit notification event for brief completion
 		try {
@@ -328,7 +328,7 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 		console.error(`❌ Failed to generate brief for user ${job.data.userId}:`, errorMessage);
 
-		await updateJobStatus(job.id, 'failed', 'brief', errorMessage);
+		await updateJobStatus(job.id, 'failed', 'brief', errorMessage, job.processingToken);
 
 		await broadcastUserEvent(job.data.userId, 'brief_failed', {
 			error: errorMessage,

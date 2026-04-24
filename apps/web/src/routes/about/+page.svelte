@@ -35,9 +35,9 @@
 
 <SEOHead
 	title="About BuildOS — Turn scattered thinking into structured work"
-	description="BuildOS is a founder-led AI productivity system that turns scattered notes, conversations, and project fragments into structured context, daily briefs, and better next actions."
+	description="BuildOS is a founder-led thinking environment that turns scattered notes, conversations, and project fragments into structured projects with memory."
 	canonical="https://build-os.com/about"
-	keywords="BuildOS story, DJ Wayne, AI productivity tool, project context, context building, productivity chaos solution, LLM integration"
+	keywords="BuildOS story, DJ Wayne, thinking environment, project memory, structured work, project context"
 	author="DJ Wayne"
 	twitterCreator="@djwayne3"
 	jsonLd={{
@@ -48,7 +48,7 @@
 		url: 'https://build-os.com',
 		logo: DEFAULT_ORGANIZATION_LOGO_IMAGE,
 		description:
-			'AI-powered productivity platform that transforms unstructured thoughts into actionable plans.',
+			'Thinking environment that turns scattered project context into structured work with memory.',
 		foundingDate: '2025-11-01',
 		founder: {
 			'@type': 'Person',
@@ -109,12 +109,12 @@
 
 				<div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
 					<a
-						href="/beta"
+						href="/auth/register"
 						class="inline-flex min-h-11 w-full sm:w-auto items-center justify-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-						aria-label="Join the BuildOS beta program"
+						aria-label="Start in chat with BuildOS"
 					>
 						<Users class="w-4 h-4" aria-hidden="true" />
-						Join the beta
+						Start in chat
 					</a>
 					<a
 						href="#founder-story"
@@ -144,7 +144,7 @@
 				</h2>
 				<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
 					The problem is not a lack of tools. It is the drag of keeping every tool,
-					thought, and AI assistant pointed at the same truth.
+					thought, and agent pointed at the same truth.
 				</p>
 			</header>
 
@@ -259,7 +259,7 @@
 						<Zap class="w-6 h-6 sm:w-7 sm:h-7 text-foreground" aria-hidden="true" />
 					</div>
 					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
-						Let AI organize it
+						Let BuildOS structure it
 					</h3>
 					<p class="text-sm text-muted-foreground">
 						Turn notes into projects, tasks, decisions, and open questions.
@@ -306,8 +306,8 @@
 					The real product is reusable context
 				</h3>
 				<p class="text-sm sm:text-base text-muted-foreground text-center max-w-2xl mx-auto">
-					BuildOS gives you the project memory you need to ask an AI assistant to iterate,
-					critique, plan, or unblock the work without explaining everything again.
+					BuildOS gives you the project memory you need to iterate, critique, plan, or
+					unblock the work without explaining everything again.
 				</p>
 			</div>
 		</div>
@@ -428,21 +428,19 @@
 					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
 						Building phase
 					</h3>
-					<p class="text-sm text-muted-foreground">Core capture and AI organization.</p>
+					<p class="text-sm text-muted-foreground">Core capture and project memory.</p>
 				</article>
 
 				<article class="p-5 text-center wt-paper sp-inline">
 					<div
 						class="text-2xl sm:text-3xl font-bold text-accent mb-1"
-						aria-label="July 2026 beta launch"
+						aria-label="Fourteen day free trial"
 					>
-						July 2026
+						14 days
 					</div>
-					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">
-						Beta launch
-					</h3>
+					<h3 class="text-sm sm:text-base font-semibold text-foreground mb-1">Trial</h3>
 					<p class="text-sm text-muted-foreground">
-						Early access for users who want to shape the product.
+						Start free and see whether the workflow fits your projects.
 					</p>
 				</article>
 
@@ -469,11 +467,11 @@
 		<div class="max-w-4xl mx-auto text-center px-4 sm:px-6">
 			<header class="mb-6">
 				<h2 id="join-heading" class="text-2xl sm:text-3xl font-bold text-foreground mb-2">
-					Help shape the beta
+					Start with the messy version
 				</h2>
 				<p class="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-					Join early if your best ideas are scattered across tools and you want AI to help
-					turn them into organized action.
+					If your best ideas are scattered across tools, bring the rough version into one
+					place and turn it into organized action.
 				</p>
 			</header>
 
@@ -482,12 +480,12 @@
 				aria-label="Action links"
 			>
 				<a
-					href="/beta"
+					href="/auth/register"
 					class="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-accent px-6 py-2.5 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-opacity hover:opacity-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-					aria-label="Join the BuildOS beta program"
+					aria-label="Start in chat with BuildOS"
 				>
 					<Users class="w-4 h-4" aria-hidden="true" />
-					Join beta
+					Start in chat
 				</a>
 				<a
 					href="/contact"

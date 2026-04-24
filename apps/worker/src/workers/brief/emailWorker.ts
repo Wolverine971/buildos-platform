@@ -32,7 +32,7 @@ export async function processEmailBriefJob(job: LegacyJob<EmailBriefJobData>): P
    → Started At: ${new Date().toISOString()}`);
 
 	try {
-		await updateJobStatus(job.id, 'processing', 'email');
+		await updateJobStatus(job.id, 'processing', 'email', undefined, job.processingToken);
 
 		const { emailId } = job.data;
 
@@ -138,7 +138,13 @@ export async function processEmailBriefJob(job: LegacyJob<EmailBriefJobData>): P
 			// Update email status to cancelled
 			await supabase.from('emails').update({ status: 'cancelled' }).eq('id', emailId);
 
-			await updateJobStatus(job.id, 'completed', 'email_cancelled');
+			await updateJobStatus(
+				job.id,
+				'completed',
+				'email_cancelled',
+				undefined,
+				job.processingToken
+			);
 			await broadcastUserEvent(userId, {
 				type: 'email_cancelled',
 				emailId,
@@ -202,7 +208,7 @@ export async function processEmailBriefJob(job: LegacyJob<EmailBriefJobData>): P
 		}
 
 		// 6. Complete job
-		await updateJobStatus(job.id, 'completed', 'email_sent');
+		await updateJobStatus(job.id, 'completed', 'email_sent', undefined, job.processingToken);
 
 		await broadcastUserEvent(userId, {
 			type: 'brief_email_sent',
@@ -241,7 +247,7 @@ export async function processEmailBriefJob(job: LegacyJob<EmailBriefJobData>): P
 				.eq('id', job.data.emailId);
 		}
 
-		await updateJobStatus(job.id, 'failed', error.message);
+		await updateJobStatus(job.id, 'failed', 'email', error.message, job.processingToken);
 
 		// Get userId from email record for notification
 		const { data: failedEmail } = await supabase

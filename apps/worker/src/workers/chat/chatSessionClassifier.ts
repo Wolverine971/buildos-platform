@@ -216,7 +216,13 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 		// Validate job data
 		const validatedData = validateChatClassificationJobData(job.data);
 
-		await updateJobStatus(job.id, 'processing', 'chat_classification');
+		await updateJobStatus(
+			job.id,
+			'processing',
+			'chat_classification',
+			undefined,
+			job.processingToken
+		);
 
 		// Fetch the chat session to verify it exists and get current state
 		const { data: session, error: sessionError } = await supabase
@@ -234,7 +240,13 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 
 		if (!session) {
 			console.log(`⏭️  Session ${validatedData.sessionId} no longer exists, skipping`);
-			await updateJobStatus(job.id, 'completed', 'chat_classification');
+			await updateJobStatus(
+				job.id,
+				'completed',
+				'chat_classification',
+				undefined,
+				job.processingToken
+			);
 			return { success: true, skipped: true, reason: 'session_not_found' };
 		}
 
@@ -290,7 +302,13 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			console.log(
 				`⏭️  Session ${validatedData.sessionId} already classified (no new messages), skipping`
 			);
-			await updateJobStatus(job.id, 'completed', 'chat_classification');
+			await updateJobStatus(
+				job.id,
+				'completed',
+				'chat_classification',
+				undefined,
+				job.processingToken
+			);
 			return { success: true, skipped: true, reason: 'already_classified' };
 		}
 
@@ -336,7 +354,13 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 				throw new Error(`Failed to update session: ${updateError.message}`);
 			}
 
-			await updateJobStatus(job.id, 'completed', 'chat_classification');
+			await updateJobStatus(
+				job.id,
+				'completed',
+				'chat_classification',
+				undefined,
+				job.processingToken
+			);
 			return {
 				success: true,
 				title,
@@ -549,7 +573,13 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 			});
 		}
 
-		await updateJobStatus(job.id, 'completed', 'chat_classification');
+		await updateJobStatus(
+			job.id,
+			'completed',
+			'chat_classification',
+			undefined,
+			job.processingToken
+		);
 
 		return {
 			success: true,
@@ -579,7 +609,13 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 				jobId: job.id
 			}
 		});
-		await updateJobStatus(job.id, 'failed', 'chat_classification', error.message);
+		await updateJobStatus(
+			job.id,
+			'failed',
+			'chat_classification',
+			error.message,
+			job.processingToken
+		);
 		throw error;
 	}
 }

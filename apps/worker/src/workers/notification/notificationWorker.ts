@@ -1127,6 +1127,7 @@ export async function processNotificationJobs(): Promise<void> {
 						id: job.queue_job_id,
 						userId: job.user_id,
 						data: job.metadata as unknown as NotificationJobMetadata,
+						processingToken: job.processing_token,
 						attempts: job.attempts || 0,
 						updateProgress: () => Promise.resolve(), // Stub - not used in direct processing
 						log: (message: string) => {
@@ -1146,10 +1147,14 @@ export async function processNotificationJobs(): Promise<void> {
 					// 2. Optimistic locking on delivery status updates
 					// 3. Idempotency in channel adapters (email message-ids, SMS deduplication)
 					// 4. Short stale job timeout to minimize retry window
-					const { error: completeError } = await supabase.rpc('complete_queue_job', {
-						p_job_id: job.id,
-						p_result: null
-					});
+					const { data: completed, error: completeError } = await supabase.rpc(
+						'complete_queue_job',
+						{
+							p_job_id: job.id,
+							p_result: null,
+							p_processing_token: job.processing_token
+						}
+					);
 
 					if (completeError) {
 						jobBatchLogger.error(
@@ -1165,6 +1170,14 @@ export async function processNotificationJobs(): Promise<void> {
 						);
 					}
 
+					if (!completed) {
+						jobBatchLogger.warn(
+							'Skipped completion because this worker no longer owns the queue job',
+							{ processingToken: job.processing_token }
+						);
+						return;
+					}
+
 					jobBatchLogger.info('Job completed successfully');
 				} catch (error: any) {
 					jobBatchLogger.error('Job processing failed', error, {
@@ -1176,11 +1189,15 @@ export async function processNotificationJobs(): Promise<void> {
 					const maxAttempts = job.max_attempts || 3;
 					const shouldRetry = currentAttempts + 1 < maxAttempts;
 
-					const { error: failError } = await supabase.rpc('fail_queue_job', {
-						p_job_id: job.id,
-						p_error_message: error.message || 'Unknown error',
-						p_retry: shouldRetry
-					});
+					const { data: failed, error: failError } = await supabase.rpc(
+						'fail_queue_job',
+						{
+							p_job_id: job.id,
+							p_error_message: error.message || 'Unknown error',
+							p_retry: shouldRetry,
+							p_processing_token: job.processing_token
+						}
+					);
 
 					if (failError) {
 						jobBatchLogger.error(
@@ -1188,16 +1205,27 @@ export async function processNotificationJobs(): Promise<void> {
 							failError
 						);
 
-						// Fallback: Direct database update
-						const { error: directUpdateError } = await supabase
+						// Fallback: Direct database update, still guarded by claim ownership.
+						let directUpdate = supabase
 							.from('queue_jobs')
 							.update({
 								status: shouldRetry ? 'pending' : 'failed',
-								error: error.message,
+								error_message: error.message,
+								processing_token: null,
 								attempts: currentAttempts + 1,
 								updated_at: new Date().toISOString()
 							})
-							.eq('id', job.id);
+							.eq('id', job.id)
+							.eq('status', 'processing');
+
+						if (job.processing_token) {
+							directUpdate = directUpdate.eq(
+								'processing_token',
+								job.processing_token
+							);
+						}
+
+						const { error: directUpdateError } = await directUpdate;
 
 						if (directUpdateError) {
 							jobBatchLogger.fatal(
@@ -1210,6 +1238,12 @@ export async function processNotificationJobs(): Promise<void> {
 								}
 							);
 						}
+					} else if (!failed) {
+						jobBatchLogger.warn(
+							'Skipped failure update because this worker no longer owns the queue job',
+							{ processingToken: job.processing_token }
+						);
+						return;
 					}
 
 					throw error;

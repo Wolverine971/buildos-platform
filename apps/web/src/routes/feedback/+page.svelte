@@ -178,9 +178,9 @@
 
 <SEOHead
 	title="Feedback - BuildOS | Share Your Thoughts & Ideas"
-	description="Help us improve BuildOS. Share your feedback, report bugs, request new features, or ask questions. Your input directly shapes our AI-native productivity platform."
+	description="Help us improve BuildOS. Share feedback, report bugs, request features, or ask questions about the thinking environment for complex work."
 	canonical="https://build-os.com/feedback"
-	keywords="BuildOS feedback, feature request, bug report, user feedback, product improvement, AI productivity feedback"
+	keywords="BuildOS feedback, feature request, bug report, user feedback, thinking environment feedback"
 />
 
 <div class="min-h-screen bg-background">
@@ -196,12 +196,12 @@
 				Your Feedback is everything
 			</h1>
 			<p class="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-				Help us build the best personal operating system by sharing your thoughts, ideas,
-				and experiences.
+				Help improve the thinking environment by sharing what worked, what broke, and where
+				your project workflow still feels scattered.
 			</p>
 			<div class="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
 				<Heart class="w-4 h-4 text-destructive" aria-hidden="true" />
-				<span>Built with love by two founders who read every message</span>
+				<span>DJ reads every message</span>
 			</div>
 		</div>
 	</div>
@@ -629,7 +629,7 @@
 				</a>
 
 				<a
-					href="/beta"
+					href="/auth/register"
 					class="bg-muted border border-border rounded-lg p-8 hover:shadow-ink transition-all duration-300 group text-left tx tx-grain tx-weak pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 				>
 					<div
@@ -637,10 +637,10 @@
 					>
 						<Users class="w-6 h-6 text-foreground" aria-hidden="true" />
 					</div>
-					<h3 class="text-xl font-bold text-foreground mb-3">Beta Community</h3>
+					<h3 class="text-xl font-bold text-foreground mb-3">Start in Chat</h3>
 					<p class="text-muted-foreground">
-						Join our beta community for ongoing discussions and collaborative feedback
-						sessions.
+						Try BuildOS directly with rough project input, then send feedback from the
+						work itself.
 					</p>
 				</a>
 			</div>

@@ -10,6 +10,7 @@ import { JobProgress, ProcessingJob } from '../../lib/supabaseQueue';
  */
 export interface LegacyJob<T> {
 	id: string;
+	processingToken?: string | null;
 	data: T & { userId: string };
 	opts: {
 		priority?: number;
@@ -49,6 +50,7 @@ export class JobAdapter<T> {
 
 		return {
 			id: this.processingJob.id,
+			processingToken: this.processingJob.processingToken ?? null,
 			data: {
 				...(this.processingJob.data as T),
 				userId: this.processingJob.userId // Ensure userId is at top level

@@ -97,18 +97,18 @@
 </script>
 
 <svelte:head>
-	<title>{data.category.name} - BuildOS Blog | AI-Native Productivity Insights</title>
+	<title>{data.category.name} - BuildOS Blog | Thinking Environment Insights</title>
 	<meta
 		name="description"
 		content="{data.category.description} - {data.posts
-			.length} articles available. Master your personal operating system with expert insights and practical guides."
+			.length} articles available. Turn messy thinking into structured work with practical guides."
 	/>
 	<meta
 		name="keywords"
-		content="{data.category.name.toLowerCase()}, BuildOS blog, AI productivity, {categoryKey.replace(
+		content="{data.category.name.toLowerCase()}, BuildOS blog, thinking environment, {categoryKey.replace(
 			'-',
 			' '
-		)}, productivity tips, personal operating system"
+		)}, project memory, structured work"
 	/>
 	<link rel="canonical" href="https://build-os.com/blogs/{categoryKey}" />
 
@@ -117,12 +117,12 @@
 	<meta property="og:url" content="https://build-os.com/blogs/{categoryKey}" />
 	<meta
 		property="og:title"
-		content="{data.category.name} - BuildOS Blog | AI-Native Productivity"
+		content="{data.category.name} - BuildOS Blog | Thinking Environment"
 	/>
 	<meta
 		property="og:description"
 		content="{data.category.description} - {data.posts
-			.length} articles to help you master your personal operating system."
+			.length} articles about turning messy thinking into structured work."
 	/>
 	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta property="og:image:secure_url" content={DEFAULT_SOCIAL_IMAGE_URL} />
@@ -143,7 +143,7 @@
 	<meta
 		name="twitter:description"
 		content="{data.category
-			.description} - Expert insights and practical guides for AI-native productivity."
+			.description} - Practical guides for structured work and durable project memory."
 	/>
 	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />

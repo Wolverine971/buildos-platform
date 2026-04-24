@@ -57,15 +57,15 @@
 </script>
 
 <SEOHead
-	title="Pricing - BuildOS | AI-Powered Productivity Plans"
-	description="Choose the BuildOS plan. Start with a 14-day free trial, then unlock unlimited AI-powered organization for $20/month."
+	title="Pricing - BuildOS | Thinking Environment for Complex Work"
+	description="Choose the BuildOS plan. Start with a 14-day free trial, then keep turning messy thinking into structured projects with memory for $20/month."
 	canonical="https://build-os.com/pricing"
-	keywords="BuildOS pricing, productivity app pricing, AI task management cost, project management pricing, AI project planning plans"
+	keywords="BuildOS pricing, thinking environment pricing, project memory, structured work, project organization"
 	jsonLd={{
 		'@context': 'https://schema.org',
 		'@type': 'Product',
 		name: 'BuildOS Pro',
-		description: 'AI-powered project organization platform with a 14-day free trial.',
+		description: 'Thinking environment for complex work with a 14-day free trial.',
 		url: `${SITE_URL}/pricing`,
 		image: DEFAULT_SOCIAL_IMAGE_OBJECT,
 		brand: {
@@ -151,7 +151,7 @@
 							BuildOS Pro
 						</h2>
 						<p class="text-muted-foreground mb-6">
-							Your personal productivity operating system
+							Your thinking environment for complex work
 						</p>
 						<div class="text-4xl font-bold text-foreground mb-2">
 							$20
@@ -175,21 +175,21 @@
 								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
 								aria-hidden="true"
 							/>
-							<span class="text-muted-foreground">AI-powered project context</span>
+							<span class="text-muted-foreground">Persistent project context</span>
 						</li>
 						<li class="flex items-center">
 							<Check
 								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
 								aria-hidden="true"
 							/>
-							<span class="text-muted-foreground">Advanced task automation</span>
+							<span class="text-muted-foreground">Structured tasks and plans</span>
 						</li>
 						<li class="flex items-center">
 							<Check
 								class="w-5 h-5 text-accent mr-3 flex-shrink-0"
 								aria-hidden="true"
 							/>
-							<span class="text-muted-foreground">Daily AI insights & briefs</span>
+							<span class="text-muted-foreground">Daily project-aware briefs</span>
 						</li>
 						<li class="flex items-center">
 							<Check
@@ -317,7 +317,9 @@
 	<!-- Final CTA -->
 	<section class="py-20 bg-accent text-accent-foreground">
 		<div class="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-			<h2 class="text-4xl font-bold mb-6">Ready to Transform Your Productivity?</h2>
+			<h2 class="text-4xl font-bold mb-6">
+				Ready to turn messy thinking into structured work?
+			</h2>
 			<p class="text-xl opacity-90 mb-12">
 				Start your 14-day free trial today. No credit card required.
 			</p>

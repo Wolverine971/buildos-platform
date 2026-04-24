@@ -17,14 +17,14 @@
 		{
 			"slug": "brain-dump",
 			"title": "Brain Dump & Voice Notes",
-			"summary": "Capture messy thinking in text or voice; BuildOS structures it into your ontology.",
+			"summary": "Capture messy thinking in text or voice; BuildOS structures it into project memory.",
 			"icon": "Brain",
 			"order": 3
 		},
 		{
 			"slug": "agentic-chat",
 			"title": "Agentic Chat",
-			"summary": "The in-app agent that reads, writes, searches, and schedules across your ontology.",
+			"summary": "The in-app agent that reads, writes, searches, and schedules across your projects.",
 			"icon": "MessageSquare",
 			"order": 4
 		},
@@ -45,7 +45,7 @@
 		{
 			"slug": "daily-briefs",
 			"title": "Daily Briefs",
-			"summary": "AI-generated briefs delivered by email, SMS, and in-app — with a chat that acts on them.",
+			"summary": "Project-aware briefs delivered by email, SMS, and in-app — with a chat that acts on them.",
 			"icon": "Mail",
 			"order": 7
 		},
@@ -59,7 +59,7 @@
 		{
 			"slug": "connect-agents",
 			"title": "Connect External Agents",
-			"summary": "Let Claude Code, OpenClaw, or a custom agent read and write to your BuildOS ontology.",
+			"summary": "Let Claude Code, OpenClaw, or a custom agent read and write to your BuildOS project context.",
 			"icon": "Plug",
 			"order": 9
 		},

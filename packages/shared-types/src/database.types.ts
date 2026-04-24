@@ -9355,6 +9355,7 @@ export type Database = {
           max_attempts: number | null
           metadata: Json | null
           priority: number | null
+          processing_token: string | null
           processed_at: string | null
           queue_job_id: string
           result: Json | null
@@ -9375,6 +9376,7 @@ export type Database = {
           max_attempts?: number | null
           metadata?: Json | null
           priority?: number | null
+          processing_token?: string | null
           processed_at?: string | null
           queue_job_id: string
           result?: Json | null
@@ -9395,6 +9397,7 @@ export type Database = {
           max_attempts?: number | null
           metadata?: Json | null
           priority?: number | null
+          processing_token?: string | null
           processed_at?: string | null
           queue_job_id?: string
           result?: Json | null
@@ -13444,6 +13447,7 @@ export type Database = {
           max_attempts: number
           metadata: Json
           priority: number
+          processing_token: string
           queue_job_id: string
           scheduled_for: string
           started_at: string
@@ -13542,7 +13546,7 @@ export type Database = {
         }
       }
       complete_queue_job: {
-        Args: { p_job_id: string; p_result?: Json }
+        Args: { p_job_id: string; p_processing_token?: string; p_result?: Json }
         Returns: boolean
       }
       complete_recurring_instance: {
@@ -13708,7 +13712,12 @@ export type Database = {
         Returns: number
       }
       fail_queue_job: {
-        Args: { p_error_message: string; p_job_id: string; p_retry?: boolean }
+        Args: {
+          p_error_message: string
+          p_job_id: string
+          p_processing_token?: string
+          p_retry?: boolean
+        }
         Returns: boolean
       }
       finalize_draft_project: {

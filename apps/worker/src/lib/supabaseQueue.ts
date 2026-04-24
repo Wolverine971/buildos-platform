@@ -5,6 +5,7 @@ import { updateJobProgress } from './progressTracker';
 import { supabase } from './supabase';
 
 type QueueJob = Database['public']['Tables']['queue_jobs']['Row'];
+type ClaimedQueueJob = QueueJob & { processing_token?: string | null };
 type JobStatus = QueueJobStatus;
 type JobType = QueueJobType;
 
@@ -26,6 +27,7 @@ export type JobProcessor<T = unknown> = (job: ProcessingJob<T>) => Promise<unkno
 
 export interface ProcessingJob<T = unknown> {
 	id: string;
+	processingToken?: string | null;
 	userId: string;
 	data: T;
 	attempts: number;
@@ -180,7 +182,7 @@ export class SupabaseQueue {
 
 			// Process jobs concurrently with proper error isolation
 			const results = await Promise.allSettled(
-				jobs.map((job) => this.processJob(job as QueueJob))
+				jobs.map((job) => this.processJob(job as ClaimedQueueJob))
 			);
 
 			// Log any failed job results for monitoring
@@ -213,13 +215,18 @@ export class SupabaseQueue {
 	/**
 	 * Process a single job with comprehensive error isolation
 	 */
-	private async processJob(job: QueueJob): Promise<void> {
+	private async processJob(job: ClaimedQueueJob): Promise<void> {
 		// Wrap the entire method to ensure no errors escape and crash other jobs
 		try {
 			const processor = this.processors.get(job.job_type as JobType);
 			if (!processor) {
 				console.error(`❌ No processor registered for job type: ${job.job_type}`);
-				await this.failJob(job.id, `No processor for job type: ${job.job_type}`, false);
+				await this.failJob(
+					job.id,
+					`No processor for job type: ${job.job_type}`,
+					false,
+					job.processing_token ?? null
+				);
 				return;
 			}
 
@@ -237,7 +244,8 @@ export class SupabaseQueue {
 				await this.failJob(
 					job.id,
 					`Unexpected processing error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-					false
+					false,
+					job.processing_token ?? null
 				);
 			} catch (failError) {
 				console.error(`❌ Failed to mark job ${job.queue_job_id} as failed:`, failError);
@@ -249,7 +257,7 @@ export class SupabaseQueue {
 	 * Execute the job processor with proper error handling
 	 */
 	private async executeJobProcessor(
-		job: QueueJob,
+		job: ClaimedQueueJob,
 		processor: JobProcessor,
 		startTime: number
 	): Promise<void> {
@@ -257,12 +265,17 @@ export class SupabaseQueue {
 			// Create processing job wrapper
 			const processingJob: ProcessingJob = {
 				id: job.queue_job_id,
+				processingToken: job.processing_token ?? null,
 				userId: job.user_id!,
 				data: job.metadata,
 				attempts: job.attempts || 0,
 
 				updateProgress: async (progress: JobProgress) => {
-					const success = await updateJobProgress(job.id, progress);
+					const success = await updateJobProgress(
+						job.id,
+						progress,
+						job.processing_token ?? null
+					);
 					if (!success) {
 						// Log the failure but don't throw - progress updates should not crash jobs
 						console.warn(
@@ -278,17 +291,38 @@ export class SupabaseQueue {
 			};
 
 			// Process the job
-			const result = await processor(processingJob);
+			const result = await this.withWorkerTimeout(
+				processor(processingJob),
+				job.queue_job_id,
+				job.job_type
+			);
 
 			// Mark as completed
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any -- RPC not in generated Supabase types
-			const { error } = await (supabase as any).rpc('complete_queue_job', {
+			const completeArgs: {
+				p_job_id: string;
+				p_result: Json;
+				p_processing_token?: string;
+			} = {
 				p_job_id: job.id,
-				p_result: result
-			});
+				p_result: (result ?? null) as Json
+			};
+			if (job.processing_token) {
+				completeArgs.p_processing_token = job.processing_token;
+			}
+			const { data: completed, error } = await supabase.rpc(
+				'complete_queue_job',
+				completeArgs
+			);
 
 			if (error) {
 				throw new Error(`Failed to mark job as completed: ${error.message}`);
+			}
+
+			if (completed !== true) {
+				console.warn(
+					`⚠️ Completion ignored for job ${job.queue_job_id}; processing token no longer owns this job`
+				);
+				return;
 			}
 
 			const duration = Date.now() - startTime;
@@ -298,25 +332,77 @@ export class SupabaseQueue {
 
 			// Determine if we should retry - use configuration instead of hardcoded value
 			const maxRetries = job.max_attempts || queueConfig.maxRetries;
-			const shouldRetry = (job.attempts || 0) < maxRetries;
+			const shouldRetry = (job.attempts || 0) + 1 < maxRetries;
 			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-			await this.failJob(job.id, errorMessage, shouldRetry);
+			const failed = await this.failJob(
+				job.id,
+				errorMessage,
+				shouldRetry,
+				job.processing_token ?? null
+			);
+			if (!failed) {
+				console.warn(
+					`⚠️ Failure ignored for job ${job.queue_job_id}; processing token no longer owns this job`
+				);
+			}
+		}
+	}
+
+	private async withWorkerTimeout<T>(
+		promise: Promise<T>,
+		queueJobId: string,
+		jobType: string
+	): Promise<T> {
+		let timeout: NodeJS.Timeout | null = null;
+		const timeoutPromise = new Promise<T>((_, reject) => {
+			timeout = setTimeout(() => {
+				reject(
+					new Error(
+						`Worker timed out after ${queueConfig.workerTimeout}ms for ${jobType} job ${queueJobId}`
+					)
+				);
+			}, queueConfig.workerTimeout);
+		});
+
+		try {
+			return await Promise.race([promise, timeoutPromise]);
+		} finally {
+			if (timeout) {
+				clearTimeout(timeout);
+			}
 		}
 	}
 
 	/**
 	 * Mark a job as failed
 	 */
-	private async failJob(jobId: string, errorMessage: string, retry: boolean): Promise<void> {
-		const { error } = await supabase.rpc('fail_queue_job', {
+	private async failJob(
+		jobId: string,
+		errorMessage: string,
+		retry: boolean,
+		processingToken?: string | null
+	): Promise<boolean> {
+		const failArgs: {
+			p_job_id: string;
+			p_error_message: string;
+			p_retry: boolean;
+			p_processing_token?: string;
+		} = {
 			p_job_id: jobId,
 			p_error_message: errorMessage,
 			p_retry: retry
-		});
+		};
+		if (processingToken) {
+			failArgs.p_processing_token = processingToken;
+		}
+		const { data, error } = await supabase.rpc('fail_queue_job', failArgs);
 
 		if (error) {
 			console.error(`❌ Failed to update job status: ${error.message}`);
+			return false;
 		}
+
+		return data === true;
 	}
 
 	/**

@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-04-24T03:45:59.836Z
+// Generated on: 2026-04-24T14:29:26.756Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -2249,6 +2249,7 @@ export type DatabaseSchema = {
 		max_attempts: number | null;
 		metadata: Json | null;
 		priority: number | null;
+		processing_token: string | null;
 		processed_at: string | null;
 		queue_job_id: string;
 		result: Json | null;

@@ -353,9 +353,9 @@
 
 <SEOHead
 	title="Sign Up - BuildOS | Start Your 14-Day Free Trial"
-	description="Create your BuildOS account and transform rough project input into shared project context. AI-powered project collaboration for ADHD minds, founders, and creators. No credit card required."
+	description="Create your BuildOS account and transform rough project input into structured projects with memory. No credit card required."
 	canonical="https://build-os.com/auth/register"
-	keywords="BuildOS sign up, free trial, AI project management, ADHD productivity, project context app"
+	keywords="BuildOS sign up, free trial, thinking environment, project memory, project context app"
 	noindex={true}
 />
 
@@ -384,7 +384,7 @@
 			</div>
 
 			<h1 class="text-3xl font-bold text-foreground mb-2">Join BuildOS</h1>
-			<p class="text-muted-foreground mb-8">Create your personal operating system</p>
+			<p class="text-muted-foreground mb-8">Start with the messy version</p>
 		</div>
 
 		<!-- Form Section -->

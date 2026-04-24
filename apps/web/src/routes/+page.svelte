@@ -298,7 +298,8 @@
 			id: data.user.id,
 			email: data.user.email,
 			name: data.user.name ?? undefined,
-			is_admin: data.user.is_admin
+			is_admin: data.user.is_admin,
+			timezone: data.user.timezone ?? undefined
 		}}
 		analytics={data.dashboard ?? createEmptyUserDashboardAnalytics()}
 		onrefresh={handleDashboardRefresh}
@@ -599,7 +600,7 @@
 						href="/auth/register"
 						class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-4"
 					>
-						Start building context now →
+						Start in chat →
 					</a>
 				</div>
 
@@ -760,9 +761,7 @@
 						class="rounded-lg border border-accent/40 bg-accent/5 shadow-ink-strong tx tx-bloom tx-weak p-4"
 					>
 						<div class="text-xs font-semibold text-accent">Option 3</div>
-						<h3 class="mt-1 text-base font-semibold text-foreground">
-							Start building context now.
-						</h3>
+						<h3 class="mt-1 text-base font-semibold text-foreground">Start in chat.</h3>
 						<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
 							Your system gets better with every conversation, note, and project
 							update. The value compounds from day one.

@@ -8,36 +8,17 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let contentComponent = $state<ComponentType | null>(null);
-	let loading = $state(true);
-	let error = $state<string | null>(null);
+	type DocContentModule = {
+		default: ComponentType;
+	};
 
-	$effect(() => {
-		const { slug } = data.doc;
-		let canceled = false;
+	const docModules = import.meta.glob('/src/content/docs/*.md', {
+		eager: true
+	}) as Record<string, DocContentModule>;
 
-		contentComponent = null;
-		error = null;
-		loading = true;
-
-		import(`../../../content/docs/${slug}.md`)
-			.then((module) => {
-				if (canceled) return;
-				contentComponent = module.default;
-			})
-			.catch(() => {
-				if (canceled) return;
-				error = 'Failed to load documentation content.';
-			})
-			.finally(() => {
-				if (canceled) return;
-				loading = false;
-			});
-
-		return () => {
-			canceled = true;
-		};
-	});
+	const contentComponent = $derived(
+		docModules[`/src/content/docs/${data.doc.slug}.md`]?.default ?? null
+	);
 </script>
 
 <SEOHead
@@ -97,19 +78,11 @@
 			prose-th:text-foreground prose-td:text-foreground/90
 			prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg"
 	>
-		{#if loading}
-			<div class="flex items-center justify-center py-12">
-				<div
-					class="animate-spin rounded-full h-6 w-6 border-2 border-accent border-t-transparent"
-				></div>
-				<span class="ml-3 text-sm text-muted-foreground">Loading…</span>
-			</div>
-		{:else if error}
+		{#if !contentComponent}
 			<div class="text-center py-12">
-				<p class="text-sm text-destructive">{error}</p>
-				<p class="text-xs text-muted-foreground mt-1">Please try refreshing.</p>
+				<p class="text-sm text-destructive">Documentation content was not found.</p>
 			</div>
-		{:else if contentComponent}
+		{:else}
 			{@const Content = contentComponent}
 			<Content />
 		{/if}

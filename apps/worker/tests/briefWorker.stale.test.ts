@@ -58,6 +58,7 @@ import type { LegacyJob } from '../src/workers/shared/jobAdapter';
 function createBriefJob(data: BriefJobData): LegacyJob<BriefJobData> {
 	return {
 		id: 'job-stale-brief',
+		processingToken: 'claim-token',
 		data: {
 			...data,
 			userId: data.userId
@@ -100,12 +101,16 @@ describe('processBriefJob stale daily brief guard', () => {
 		expect(mocks.mockUpdateJobStatus).toHaveBeenCalledWith(
 			'job-stale-brief',
 			'processing',
-			'brief'
+			'brief',
+			undefined,
+			'claim-token'
 		);
 		expect(mocks.mockUpdateJobStatus).toHaveBeenCalledWith(
 			'job-stale-brief',
 			'completed',
-			'brief'
+			'brief',
+			undefined,
+			'claim-token'
 		);
 		expect(mocks.mockGenerateOntologyDailyBrief).not.toHaveBeenCalled();
 		expect(mocks.mockBroadcastUserEvent).not.toHaveBeenCalled();
