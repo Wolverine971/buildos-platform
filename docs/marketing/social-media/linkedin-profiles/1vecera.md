@@ -49,9 +49,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                                              | Post Link                                                                 | Action | Status           | What We Said / Planned                                                       | Outcome | Source                        |
-| ---------- | ------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------- | ------ | ---------------- | ---------------------------------------------------------------------------- | ------- | ----------------------------- |
-| 2026-04-23 | Post    | Talk on personal second brain → Claude Code + 80k docs as context | https://www.linkedin.com/feed/update/urn:li:activity:7453128039711830018/ | Queued | Queued for reply | Builder question about static-context vs. context-that-compounds from use  | Pending | 2026-04-23_linkedin-warmup.md |
+| Date       | Surface | Topic                                                             | Post Link                                                                 | Action | Status           | What We Said / Planned                                                    | Outcome | Source                        |
+| ---------- | ------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------- | ------ | ---------------- | ------------------------------------------------------------------------- | ------- | ----------------------------- |
+| 2026-04-23 | Post    | Talk on personal second brain → Claude Code + 80k docs as context | https://www.linkedin.com/feed/update/urn:li:activity:7453128039711830018/ | Queued | Queued for reply | Builder question about static-context vs. context-that-compounds from use | Pending | 2026-04-23_linkedin-warmup.md |
 
 ## Open Loops
 

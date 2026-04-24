@@ -60,7 +60,12 @@
 				return 'text-muted-foreground';
 		}
 	});
-	const activityCount = $derived(block.activities.length);
+	const displayedActivities = $derived(
+		block.activities.filter(
+			(activity) => activity.activityType === 'tool_call' || activity.metadata?.skillActivity
+		)
+	);
+	const displayedActivityCount = $derived(displayedActivities.length);
 
 	// INKPRINT activity styles with semantic meanings
 	const ACTIVITY_STYLES: Record<ActivityType, { icon: string; color: string; prefix: string }> = {
@@ -139,20 +144,12 @@
 				role="log"
 				aria-label="BuildOS thinking log"
 			>
-				{#if block.activities.length === 0}
-					<div
-						class="flex items-center gap-1.5 py-1.5 text-muted-foreground"
-						role="status"
-						aria-live="polite"
+				{#if displayedActivityCount === 0}
+					<span class="sr-only" role="status" aria-live="polite"
+						>Waiting for BuildOS tool activity...</span
 					>
-						<span
-							class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600"
-							aria-hidden="true"
-						></span>
-						<span>Waiting for BuildOS activity...</span>
-					</div>
 				{:else}
-					{#each block.activities as activity (activity.id)}
+					{#each displayedActivities as activity (activity.id)}
 						{@const style = getActivityStyle(activity.activityType)}
 						<div class="py-0.5">
 							<div class="flex gap-1.5 leading-snug items-center">
@@ -191,7 +188,7 @@
 				{/if}
 			</div>
 			<!-- Expand/collapse toggle for the log height -->
-			{#if block.activities.length > 3}
+			{#if displayedActivityCount > 3}
 				<button
 					type="button"
 					onclick={toggleExpand}

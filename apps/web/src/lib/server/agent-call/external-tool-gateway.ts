@@ -1258,9 +1258,7 @@ function normalizeDocumentPosition(value: unknown, fieldName: string): number | 
 	return value;
 }
 
-function normalizeDocumentUpdateStrategy(
-	value: unknown
-): 'replace' | 'append' | 'merge_llm' {
+function normalizeDocumentUpdateStrategy(value: unknown): 'replace' | 'append' | 'merge_llm' {
 	if (value === undefined || value === null) return 'replace';
 	if (value === 'replace' || value === 'append' || value === 'merge_llm') {
 		return value;
@@ -1359,12 +1357,12 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 			? null
 			: typeof parentDocumentInput === 'string' && isValidUUID(parentDocumentInput)
 				? parentDocumentInput
-					: (() => {
-							throw new ExternalToolGatewayError(
-								'VALIDATION_ERROR',
-								'parent_document_id (or parent_id) must be a valid UUID'
-							);
-						})();
+				: (() => {
+						throw new ExternalToolGatewayError(
+							'VALIDATION_ERROR',
+							'parent_document_id (or parent_id) must be a valid UUID'
+						);
+					})();
 
 	const props = normalizeProps(args.props, 'props') ?? {};
 	const position = normalizeDocumentPosition(args.position, 'position');
@@ -1577,10 +1575,7 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 					: ''
 			: undefined;
 
-	if (
-		isAppendOrMergeUpdateStrategy(strategy) &&
-		!getDocumentUpdateContentCandidate(args)
-	) {
+	if (isAppendOrMergeUpdateStrategy(strategy) && !getDocumentUpdateContentCandidate(args)) {
 		throw new ExternalToolGatewayError(
 			'VALIDATION_ERROR',
 			`update_onto_document ${strategy} requires non-empty content.`
@@ -1595,9 +1590,10 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 			existingLoader: async () =>
 				typeof existingDocument.content === 'string'
 					? existingDocument.content
-					: typeof (existingDocument.props as Record<string, unknown> | null)?.body_markdown ===
-							  'string'
-						? ((existingDocument.props as Record<string, unknown>).body_markdown as string)
+					: typeof (existingDocument.props as Record<string, unknown> | null)
+								?.body_markdown === 'string'
+						? ((existingDocument.props as Record<string, unknown>)
+								.body_markdown as string)
 						: ''
 		});
 		assertContentWithinCap(resolvedContent, 'content');

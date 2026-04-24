@@ -9,6 +9,7 @@ import { EmailService } from '$lib/services/email-service';
 import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
 import { renderMarkdown } from '$lib/utils/markdown';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
+import { constantTimeCompare } from '$lib/utils/security';
 
 interface WebhookPayload {
 	userId: string;
@@ -30,8 +31,7 @@ interface WebhookPayload {
 function verifyWebhookSignature(payload: string, signature: string, secret: string): boolean {
 	const expectedSignature = createHmac('sha256', secret).update(payload).digest('hex');
 
-	// Timing-safe comparison
-	return signature === expectedSignature;
+	return constantTimeCompare(signature, expectedSignature);
 }
 
 /**
@@ -63,7 +63,8 @@ export const POST: RequestHandler = async ({ request }) => {
 				undefined,
 				{
 					source: request.headers.get('x-source'),
-					headers: Object.fromEntries(request.headers)
+					hasAuthorizationHeader: request.headers.has('authorization'),
+					headerCount: Array.from(request.headers.keys()).length
 				}
 			);
 			throw error(401, 'Missing webhook signature or timestamp');
@@ -124,7 +125,12 @@ export const POST: RequestHandler = async ({ request }) => {
 				'/webhooks/daily-brief-email',
 				'POST',
 				undefined,
-				{ signature, timestamp, bodyLength: rawBody.length }
+				{
+					hasSignature: true,
+					signatureLength: signature.length,
+					timestamp,
+					bodyLength: rawBody.length
+				}
 			);
 			throw error(401, 'Invalid webhook signature');
 		}
@@ -425,10 +431,6 @@ export const GET: RequestHandler = async () => {
 	return json({
 		status: 'healthy',
 		service: 'daily-brief-email-webhook',
-		timestamp: new Date().toISOString(),
-		environment: {
-			supabase_configured: !!PUBLIC_SUPABASE_URL && !!PRIVATE_SUPABASE_SERVICE_KEY,
-			webhook_secret_configured: !!PRIVATE_BUILDOS_WEBHOOK_SECRET
-		}
+		timestamp: new Date().toISOString()
 	});
 };

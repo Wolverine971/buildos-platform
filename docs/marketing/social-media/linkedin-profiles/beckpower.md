@@ -48,9 +48,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                                                  | Post Link                                                                  | Action | Status           | What We Said / Planned                                                         | Outcome | Source                        |
-| ---------- | ------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------ | ---------------- | ------------------------------------------------------------------------------ | ------- | ----------------------------- |
-| 2026-04-23 | Post    | "I run my content system almost entirely with AI" — Obsidian + Claude  | https://www.linkedin.com/feed/update/urn:li:activity:7453126915009261568/  | Queued | Queued for reply | Builder observation on what changes when context carries between sessions     | Pending | 2026-04-23_linkedin-warmup.md |
+| Date       | Surface | Topic                                                                 | Post Link                                                                 | Action | Status           | What We Said / Planned                                                    | Outcome | Source                        |
+| ---------- | ------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------ | ---------------- | ------------------------------------------------------------------------- | ------- | ----------------------------- |
+| 2026-04-23 | Post    | "I run my content system almost entirely with AI" — Obsidian + Claude | https://www.linkedin.com/feed/update/urn:li:activity:7453126915009261568/ | Queued | Queued for reply | Builder observation on what changes when context carries between sessions | Pending | 2026-04-23_linkedin-warmup.md |
 
 ## Open Loops
 

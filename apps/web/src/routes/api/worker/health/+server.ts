@@ -8,13 +8,10 @@ const HEALTH_TIMEOUT_MS = 5000;
 
 export const GET: RequestHandler = async () => {
 	if (!PUBLIC_RAILWAY_WORKER_URL) {
-		return ApiResponse.error('Worker URL not configured', HttpStatus.SERVICE_UNAVAILABLE);
+		return ApiResponse.error('Worker unavailable', HttpStatus.SERVICE_UNAVAILABLE);
 	}
 	if (!PRIVATE_RAILWAY_WORKER_TOKEN) {
-		return ApiResponse.error(
-			'Worker auth token not configured',
-			HttpStatus.SERVICE_UNAVAILABLE
-		);
+		return ApiResponse.error('Worker unavailable', HttpStatus.SERVICE_UNAVAILABLE);
 	}
 
 	try {
@@ -23,23 +20,17 @@ export const GET: RequestHandler = async () => {
 		});
 
 		if (!response.ok) {
-			return ApiResponse.error('Worker health check failed', response.status);
+			return ApiResponse.error('Worker unavailable', HttpStatus.SERVICE_UNAVAILABLE);
 		}
 
 		const payload = await response.json().catch(() => ({}));
 		const status = (payload as { status?: string } | null)?.status ?? 'ok';
 
 		return ApiResponse.success({
-			status,
-			worker: payload
+			status
 		});
 	} catch (error) {
 		console.error('[Worker Health] Failed to reach worker:', error);
-		return ApiResponse.error(
-			'Worker health check failed',
-			HttpStatus.SERVICE_UNAVAILABLE,
-			undefined,
-			error instanceof Error ? error.message : error
-		);
+		return ApiResponse.error('Worker unavailable', HttpStatus.SERVICE_UNAVAILABLE);
 	}
 };

@@ -1,6 +1,10 @@
 // apps/web/src/lib/services/calendar-webhook-check.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { CalendarWebhookService } from './calendar-webhook-service';
+import {
+	buildEncryptedCalendarTokenPatch,
+	decodeStoredCalendarTokens
+} from '$lib/server/calendar-token-crypto';
 
 // In-memory cache to prevent multiple checks for the same user within a session
 const recentlyChecked = new Map<string, number>();
@@ -54,6 +58,23 @@ export async function checkAndRegisterWebhookIfNeeded(
 			return { checked: true, registered: false };
 		}
 
+		const normalizedTokens = decodeStoredCalendarTokens(tokens);
+		if (normalizedTokens.requiresEncryptionUpgrade) {
+			void supabase
+				.from('user_calendar_tokens')
+				.update(
+					buildEncryptedCalendarTokenPatch({
+						access_token: normalizedTokens.access_token,
+						refresh_token: normalizedTokens.refresh_token
+					})
+				)
+				.eq('user_id', userId);
+		}
+
+		if (!normalizedTokens.access_token || !normalizedTokens.refresh_token) {
+			return { checked: true, registered: false };
+		}
+
 		// Check if user already has a webhook channel
 		const { data: existingChannel, error: channelError } = await supabase
 			.from('calendar_webhook_channels')
@@ -74,7 +95,9 @@ export async function checkAndRegisterWebhookIfNeeded(
 			const hasNoSyncToken = !existingChannel.sync_token;
 
 			// Check if tokens were updated after webhook creation (possible re-auth)
-			const tokenUpdateTime = tokens.updated_at ? new Date(tokens.updated_at).getTime() : 0;
+			const tokenUpdateTime = normalizedTokens.updated_at
+				? new Date(normalizedTokens.updated_at).getTime()
+				: 0;
 			const webhookCreateTime = existingChannel.created_at
 				? new Date(existingChannel.created_at).getTime()
 				: 0;

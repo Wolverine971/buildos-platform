@@ -6,6 +6,10 @@ import type { CalendarTokens } from '../../app';
 import { PRIVATE_GOOGLE_CLIENT_ID, PRIVATE_GOOGLE_CLIENT_SECRET } from '$env/static/private';
 import { randomBytes } from 'node:crypto';
 import { ErrorLoggerService } from './errorLogger.service';
+import {
+	buildEncryptedCalendarTokenPatch,
+	decodeStoredCalendarTokens
+} from '$lib/server/calendar-token-crypto';
 
 export interface CalendarStatus {
 	isConnected: boolean;
@@ -52,6 +56,44 @@ export class GoogleOAuthService {
 	constructor(supabase: SupabaseClient) {
 		this.supabase = supabase;
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
+	}
+
+	private async upgradeStoredTokensIfNeeded(
+		userId: string,
+		tokens: { access_token?: string | null; refresh_token?: string | null },
+		operation: string
+	): Promise<void> {
+		try {
+			const encryptedPatch = buildEncryptedCalendarTokenPatch({
+				...(typeof tokens.access_token === 'string'
+					? { access_token: tokens.access_token }
+					: {}),
+				...('refresh_token' in tokens
+					? { refresh_token: tokens.refresh_token ?? null }
+					: {})
+			});
+
+			const { error } = await this.supabase
+				.from('user_calendar_tokens')
+				.update(encryptedPatch)
+				.eq('user_id', userId);
+
+			if (error) {
+				throw error;
+			}
+		} catch (error) {
+			console.error('Failed to upgrade stored calendar tokens:', error);
+			await this.errorLogger.logDatabaseError(
+				error,
+				'UPDATE',
+				'user_calendar_tokens',
+				userId,
+				{
+					operation,
+					errorType: 'calendar_token_encryption_upgrade_failed'
+				}
+			);
+		}
 	}
 
 	/**
@@ -158,13 +200,22 @@ export class GoogleOAuthService {
 				return { isConnected: false };
 			}
 
-			const isConnected = !!(tokens.access_token && tokens.refresh_token);
+			const normalizedTokens = decodeStoredCalendarTokens(tokens);
+			if (normalizedTokens.requiresEncryptionUpgrade) {
+				await this.upgradeStoredTokensIfNeeded(
+					userId,
+					normalizedTokens,
+					'getCalendarStatus'
+				);
+			}
+
+			const isConnected = !!(normalizedTokens.access_token && normalizedTokens.refresh_token);
 
 			return {
 				isConnected,
-				lastSync: tokens.updated_at,
-				scope: tokens.scope,
-				google_email: tokens.google_email
+				lastSync: normalizedTokens.updated_at,
+				scope: normalizedTokens.scope,
+				google_email: normalizedTokens.google_email
 			};
 		} catch (error) {
 			console.error('Error checking calendar status:', error);
@@ -304,13 +355,20 @@ export class GoogleOAuthService {
 				return null;
 			}
 
-			const hasValidTokens = !!(tokens.access_token && tokens.refresh_token);
-			const needsRefresh = tokens.expiry_date
-				? tokens.expiry_date < Date.now() + 5 * 60 * 1000
+			const normalizedTokens = decodeStoredCalendarTokens(tokens);
+			if (normalizedTokens.requiresEncryptionUpgrade) {
+				await this.upgradeStoredTokensIfNeeded(userId, normalizedTokens, 'getTokens');
+			}
+
+			const hasValidTokens = !!(
+				normalizedTokens.access_token && normalizedTokens.refresh_token
+			);
+			const needsRefresh = normalizedTokens.expiry_date
+				? normalizedTokens.expiry_date < Date.now() + 5 * 60 * 1000
 				: false;
 
 			return {
-				...tokens,
+				...normalizedTokens,
 				hasValidTokens,
 				needsRefresh
 			};
@@ -331,11 +389,19 @@ export class GoogleOAuthService {
 	 * Update tokens in database
 	 */
 	private async updateTokens(userId: string, credentials: any): Promise<void> {
+		const encryptedPatch = buildEncryptedCalendarTokenPatch({
+			...(credentials.access_token !== undefined
+				? { access_token: credentials.access_token ?? null }
+				: {}),
+			...(credentials.refresh_token !== undefined
+				? { refresh_token: credentials.refresh_token ?? null }
+				: {})
+		});
+
 		const { error } = await this.supabase
 			.from('user_calendar_tokens')
 			.update({
-				access_token: credentials.access_token,
-				refresh_token: credentials.refresh_token || undefined,
+				...encryptedPatch,
 				expiry_date: credentials.expiry_date || null,
 				token_type: credentials.token_type || 'Bearer',
 				scope: credentials.scope || undefined,
@@ -374,7 +440,16 @@ export class GoogleOAuthService {
 				};
 			}
 
-			if (!tokens.refresh_token) {
+			const normalizedTokens = decodeStoredCalendarTokens(tokens);
+			if (normalizedTokens.requiresEncryptionUpgrade) {
+				await this.upgradeStoredTokensIfNeeded(
+					userId,
+					normalizedTokens,
+					'refreshCalendarToken'
+				);
+			}
+
+			if (!normalizedTokens.refresh_token) {
 				return {
 					success: false,
 					error: 'No refresh token available',
@@ -390,7 +465,7 @@ export class GoogleOAuthService {
 
 			// Set the refresh token
 			oauth2Client.setCredentials({
-				refresh_token: tokens.refresh_token
+				refresh_token: normalizedTokens.refresh_token
 			});
 
 			try {
@@ -401,11 +476,14 @@ export class GoogleOAuthService {
 				const { error: updateError } = await this.supabase
 					.from('user_calendar_tokens')
 					.update({
-						access_token: credentials.access_token!,
-						refresh_token: credentials.refresh_token || tokens.refresh_token,
+						...buildEncryptedCalendarTokenPatch({
+							access_token: credentials.access_token!,
+							refresh_token:
+								credentials.refresh_token || normalizedTokens.refresh_token
+						}),
 						expiry_date: credentials.expiry_date || null,
 						token_type: credentials.token_type || 'Bearer',
-						scope: credentials.scope || tokens.scope,
+						scope: credentials.scope || normalizedTokens.scope,
 						updated_at: new Date().toISOString()
 					})
 					.eq('user_id', userId);
@@ -518,8 +596,22 @@ export class GoogleOAuthService {
 				};
 			}
 
+			const normalizedTokens = decodeStoredCalendarTokens({
+				...tokens,
+				access_token: null
+			});
+			if (normalizedTokens.requiresEncryptionUpgrade) {
+				await this.upgradeStoredTokensIfNeeded(
+					userId,
+					{
+						refresh_token: normalizedTokens.refresh_token
+					},
+					'autoRefreshIfNeeded'
+				);
+			}
+
 			// Check if refresh is needed
-			if (!this.tokenNeedsRefresh(tokens.expiry_date)) {
+			if (!this.tokenNeedsRefresh(normalizedTokens.expiry_date)) {
 				return { refreshed: false }; // No refresh needed
 			}
 
@@ -689,8 +781,10 @@ export class GoogleOAuthService {
 			// Save tokens to database
 			const tokenData = {
 				user_id: userId,
-				access_token: tokens.access_token,
-				refresh_token: tokens.refresh_token || null,
+				...buildEncryptedCalendarTokenPatch({
+					access_token: tokens.access_token,
+					refresh_token: tokens.refresh_token || null
+				}),
 				expiry_date: expiryDate,
 				google_user_id: profile.id,
 				google_email: profile.email,

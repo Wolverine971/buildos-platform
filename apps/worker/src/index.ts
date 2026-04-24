@@ -119,32 +119,11 @@ function isWorkerAuthorized(authHeader: string | undefined): boolean {
 
 // Health check endpoint
 app.get('/health', async (_req, res) => {
-	try {
-		// Try to get stats with a timeout
-		const statsPromise = queue.getStats();
-		const timeoutPromise = new Promise((_, reject) =>
-			setTimeout(() => reject(new Error('Stats timeout')), 5000)
-		);
-
-		const stats = await Promise.race([statsPromise, timeoutPromise]).catch(() => null);
-
-		res.json({
-			status: 'healthy',
-			timestamp: new Date().toISOString(),
-			service: 'daily-brief-worker',
-			queue: 'supabase',
-			stats: stats || { error: 'Stats unavailable' }
-		});
-	} catch {
-		// Still return healthy even if stats fail
-		res.json({
-			status: 'healthy',
-			timestamp: new Date().toISOString(),
-			service: 'daily-brief-worker',
-			queue: 'supabase',
-			stats: { error: 'Stats unavailable' }
-		});
-	}
+	res.json({
+		status: 'healthy',
+		timestamp: new Date().toISOString(),
+		service: 'daily-brief-worker'
+	});
 });
 
 // Immediate ontology classification (fire-and-forget caller)

@@ -13,18 +13,12 @@ export const GET: RequestHandler = async () => {
 	const webhookSecretInfo = {
 		isConfigured: !!STRIPE_WEBHOOK_SECRET,
 		startsWithCorrectPrefix: STRIPE_WEBHOOK_SECRET?.startsWith('whsec_') || false,
-		length: STRIPE_WEBHOOK_SECRET?.length || 0,
-		first10Chars: STRIPE_WEBHOOK_SECRET
-			? STRIPE_WEBHOOK_SECRET.substring(0, 10) + '...'
-			: 'NOT SET',
 		environment: process.env.NODE_ENV || 'development'
 	};
 
 	console.log('Webhook Secret Configuration Check:');
 	console.log('- Is configured:', webhookSecretInfo.isConfigured);
 	console.log('- Has correct prefix (whsec_):', webhookSecretInfo.startsWithCorrectPrefix);
-	console.log('- Length:', webhookSecretInfo.length);
-	console.log('- Starts with:', webhookSecretInfo.first10Chars);
 
 	if (!webhookSecretInfo.isConfigured) {
 		console.error('⚠️ STRIPE_WEBHOOK_SECRET is not configured in environment variables!');

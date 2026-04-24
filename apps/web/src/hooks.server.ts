@@ -22,6 +22,10 @@ import {
 	shouldTrackServerResponseFailure
 } from '$lib/utils/error-observability';
 import { configureLibriRuntimeEnv } from '$lib/services/agentic-chat/tools/libri/config';
+import {
+	buildEncryptedCalendarTokenPatch,
+	decodeStoredCalendarTokens
+} from '$lib/server/calendar-token-crypto';
 // import { rateLimits } from '$lib/middleware/rate-limiter';
 
 configureLibriRuntimeEnv(() => privateEnv);
@@ -345,18 +349,33 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 				return null;
 			}
 
-			const hasValidTokens = !!(tokens.access_token && tokens.refresh_token);
-			const needsRefresh = tokens.expiry_date
-				? tokens.expiry_date < Date.now() + 5 * 60 * 1000
+			const normalizedTokens = decodeStoredCalendarTokens(tokens);
+			if (normalizedTokens.requiresEncryptionUpgrade) {
+				void event.locals.supabase
+					.from('user_calendar_tokens')
+					.update(
+						buildEncryptedCalendarTokenPatch({
+							access_token: normalizedTokens.access_token,
+							refresh_token: normalizedTokens.refresh_token
+						})
+					)
+					.eq('user_id', userId);
+			}
+
+			const hasValidTokens = !!(
+				normalizedTokens.access_token && normalizedTokens.refresh_token
+			);
+			const needsRefresh = normalizedTokens.expiry_date
+				? normalizedTokens.expiry_date < Date.now() + 5 * 60 * 1000
 				: false;
 
 			return {
-				access_token: tokens.access_token,
-				refresh_token: tokens.refresh_token,
-				expiry_date: tokens.expiry_date,
-				scope: tokens.scope,
-				updated_at: tokens.updated_at,
-				token_type: tokens.token_type,
+				access_token: normalizedTokens.access_token!,
+				refresh_token: normalizedTokens.refresh_token!,
+				expiry_date: normalizedTokens.expiry_date,
+				scope: normalizedTokens.scope,
+				updated_at: normalizedTokens.updated_at,
+				token_type: normalizedTokens.token_type,
 				hasValidTokens,
 				needsRefresh
 			};
