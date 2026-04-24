@@ -2,8 +2,10 @@
 
 import type { RequestHandler } from './$types';
 import { createLogger } from '@buildos/shared-utils';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const GET: RequestHandler = async ({ params, request, locals: { supabase } }) => {
+export const GET: RequestHandler = async ({ params, request }) => {
+	const supabase = createAdminSupabaseClient();
 	const baseLogger = createLogger('web:api:email-tracking', supabase);
 	const transparentPixel = Buffer.from(
 		'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChAGAWA0dpQAAAABJRU5ErkJggg==',

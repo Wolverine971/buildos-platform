@@ -150,7 +150,7 @@ T10 (first 30 days) ──► reddit-reply-strategy.md ──► /reddit-reply (
 **Action:**
 
 1. Reddit → create r/buildos
-2. Set description, basic rules (no spam, keep it on-topic, disclose affiliations), sidebar with link to buildos.com
+2. Set description, basic rules (no spam, keep it on-topic, disclose affiliations), sidebar with link to build-os.com
 3. Do not promote yet — wait until WS01 T12 ships and we have a surface to send people to
 
 **Effort:** 30 minutes, one-time. Can do this today.

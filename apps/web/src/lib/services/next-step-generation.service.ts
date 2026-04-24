@@ -159,7 +159,7 @@ const NEXT_STEP_MODEL_CANDIDATES = PROJECT_NEXT_STEP_MODELS;
 
 function createNextStepLLMClient(): NextStepLLMClient {
 	return new OpenRouterV2Service({
-		httpReferer: 'https://buildos.com',
+		httpReferer: 'https://build-os.com',
 		appName: 'BuildOS Next Step Generator'
 	});
 }

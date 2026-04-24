@@ -45,7 +45,7 @@ const logger = createLogger('worker:notification', supabase);
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
 const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:support@buildos.com';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'mailto:support@build-os.com';
 
 if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
 	webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);

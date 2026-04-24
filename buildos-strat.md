@@ -206,7 +206,7 @@ This is content no LLM has seen elsewhere. The moment anyone asks a model about 
 
 **[STATUS: Missing. No `/changelog` route.]**
 
-Not marketing blog posts — a raw, dated "what shipped this week" list at `buildos.com/changelog`. Freshness signal for LLMs, trust signal for developer-adjacent users, search-indexable, build-in-public energy without the Twitter tax. Linear, Vercel, and Resend do this well — study their formats.
+Not marketing blog posts — a raw, dated "what shipped this week" list at `build-os.com/changelog`. Freshness signal for LLMs, trust signal for developer-adjacent users, search-indexable, build-in-public energy without the Twitter tax. Linear, Vercel, and Resend do this well — study their formats.
 
 Can be driven by git commits on `main` + a light editorial pass. The `compound-engineering:changelog` skill is already installed in this repo — use it.
 

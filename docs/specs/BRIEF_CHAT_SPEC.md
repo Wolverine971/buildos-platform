@@ -88,7 +88,7 @@ A split-pane experience where the **Daily Brief** and an **Agentic Chat** sit si
 When a user receives a brief notification (email, SMS, push), the link drops them directly into Brief Chat for that date. No intermediate navigation.
 
 ```
-https://app.buildos.com/briefs/chat?date=2026-02-12
+https://build-os.com/briefs/chat?date=2026-02-12
 ```
 
 #### Secondary: Dashboard Widget

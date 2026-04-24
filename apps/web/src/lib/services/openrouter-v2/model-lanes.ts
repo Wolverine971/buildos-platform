@@ -172,5 +172,8 @@ export function resolveLaneReasoning(lane: ModelLane):
 	if (lane === 'tool_calling') {
 		return { exclude: true };
 	}
+	if (lane === 'json') {
+		return { effort: 'low', exclude: true };
+	}
 	return undefined;
 }

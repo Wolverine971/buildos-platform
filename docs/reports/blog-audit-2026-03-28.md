@@ -23,7 +23,7 @@
 
 - [ ] **"Build OS" vs "BuildOS" naming** — inconsistent across ~6 posts. Needs a single pass to standardize.
 - [ ] **Internal dev notes still in published files** — `anti-ai-assistant-execution-engine.md` has a massive "Blog Development Notes" section (SEO keywords, competitor positioning, content gaps). `notion-recurring-tasks-complexity.md` and `buildos-vs-chatgpt-context-that-compounds.md` also have internal notes published.
-- [ ] **CTA link chaos** — some posts link to `/auth/register`, others to `buildos.com/signup`, others to `buildos.dev`. Standardize to `/auth/register`.
+- [ ] **CTA link chaos** — some posts link to `/auth/register`, others to `build-os.com/signup`, others to `buildos.dev`. Standardize to `/auth/register`.
 - [ ] **"Chief of staff" metaphor** overused across 6+ posts. Pick one and cut the rest.
 - [ ] **Fabricated statistics** — `buildos-vs-notion-adhd-minds.md` has invented numbers ("73% of productivity time," "18x more ideas," "15 hours/month"). Credibility risk.
 - [ ] **Creator personas (authors, YouTubers) are absent** — 2026 strategy says these are the primary audience wedge, but zero blog posts feature them.
@@ -69,7 +69,7 @@ These posts are solid. Use as templates for future writing.
 ## Major Updates Needed
 
 - [ ] **BuildOS vs Notion (ADHD)** (`buildos-vs-notion-adhd-minds.md`) — Fabricated statistics throughout ("73%," "18x," "15 hours/month"). ADHD-first framing conflicts with current "thinking environment" strategy. Remove fake stats, reframe with ADHD as supporting angle not headline. Fix "early access list" CTA.
-- [ ] **Vision Deserves a Better OS** (`vision-deserves-better-operating-system.md`) — "Empire building" language is grandiose and conflicts with relief-first positioning. "Context mesh," "continuity layer," "context graph" front-loaded (strategy says hold back). Implies team features ("Collaborate with Memory") that may not exist. CTA links to `buildos.com/signup`. Tone down and align with current positioning.
+- [ ] **Vision Deserves a Better OS** (`vision-deserves-better-operating-system.md`) — "Empire building" language is grandiose and conflicts with relief-first positioning. "Context mesh," "continuity layer," "context graph" front-loaded (strategy says hold back). Implies team features ("Collaborate with Memory") that may not exist. CTA links to `build-os.com/signup`. Tone down and align with current positioning.
 - [ ] **BuildOS vs ChatGPT** (`buildos-vs-chatgpt-context-that-compounds.md`) — Never addresses Custom GPTs/Projects (huge credibility gap flagged in its own review comments). ChatGPT memory specs likely outdated. "Chief of staff" metaphor used 3x. Redundant "One More Thing" section.
 - [ ] **How BuildOS Works** (`getting-started/how-buildos-works.md`) — "Context infrastructure for the AI era" is exactly what strategy says to hold back. "9 Ways to Chat" section is feature soup. Some links go to `buildos.dev`. Founder voice is strong — preserve that, cut the jargon.
 - [ ] **Who is BuildOS For?** (`getting-started/who-is-buildos-for.md`) — Casts too wide a net (PhD students to wedding planners). Should lead with creators (authors, YouTubers) per 2026 strategy, then expand. Trim overly long lists.

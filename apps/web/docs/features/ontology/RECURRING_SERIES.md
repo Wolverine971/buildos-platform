@@ -119,7 +119,7 @@ The modal intentionally mirrors the backend RRULE builder so previews stay accur
 ### Programmatic usage
 
 ```bash
-curl -X POST https://app.buildos.com/api/onto/tasks/{taskId}/series \
+curl -X POST https://build-os.com/api/onto/tasks/{taskId}/series \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer <token>" \
   -d '{
@@ -146,7 +146,7 @@ curl -X POST https://app.buildos.com/api/onto/tasks/{taskId}/series \
 To delete:
 
 ```bash
-curl -X DELETE "https://app.buildos.com/api/onto/task-series/6671bfe9-0a45-4bb2-aa7a-2e62ac4db4ad?force=true"
+curl -X DELETE "https://build-os.com/api/onto/task-series/6671bfe9-0a45-4bb2-aa7a-2e62ac4db4ad?force=true"
 ```
 
 ---

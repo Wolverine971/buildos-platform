@@ -1841,17 +1841,17 @@ User feedback indicated desire for more control over calendar blocking, with AI 
 1. ✏️ Update homepage layout
    Duration: 1.5 hours | Priority: High
    Why: High-impact visual refresh needed for launch
-   Link: https://app.buildos.com/projects/abc/tasks/123
+   Link: https://build-os.com/projects/abc/tasks/123
 
 2. 🐛 Fix mobile responsive bugs
    Duration: 1 hour | Priority: High
    Why: Blocking launch, affects user experience
-   Link: https://app.buildos.com/projects/abc/tasks/124
+   Link: https://build-os.com/projects/abc/tasks/124
 
 3. 🎨 Design new color palette
    Duration: 45 minutes | Priority: Medium
    Why: Fits creative focus time, enhances brand
-   Link: https://app.buildos.com/projects/abc/tasks/125
+   Link: https://build-os.com/projects/abc/tasks/125
 
 ---
 Created by BuildOS Time Play
@@ -1867,17 +1867,17 @@ Created by BuildOS Time Play
 1. ✏️ Write blog post outline - Marketing Project
    Duration: 1 hour | Priority: High
    Why: High ROI content piece, fits creative morning energy
-   Link: https://app.buildos.com/projects/xyz/tasks/456
+   Link: https://build-os.com/projects/xyz/tasks/456
 
 2. 📊 Review Q4 metrics - Analytics Project
    Duration: 45 minutes | Priority: High
    Why: Time-sensitive, requires focus
-   Link: https://app.buildos.com/projects/def/tasks/789
+   Link: https://build-os.com/projects/def/tasks/789
 
 3. 🐛 Refactor authentication module - Product Project
    Duration: 2 hours | Priority: Medium
    Why: Technical debt reduction, deep work appropriate
-   Link: https://app.buildos.com/projects/ghi/tasks/101
+   Link: https://build-os.com/projects/ghi/tasks/101
 
 ---
 Created by BuildOS Time Play

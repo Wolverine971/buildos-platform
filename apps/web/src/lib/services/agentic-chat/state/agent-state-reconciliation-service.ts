@@ -24,7 +24,37 @@ import { sanitizeLogText } from '$lib/utils/logging-helpers';
 import { v4 as uuidv4 } from 'uuid';
 
 const logger = createLogger('AgentStateReconciliation');
-const AGENT_STATE_RECONCILIATION_MAX_TOKENS = 1200;
+const AGENT_STATE_RECONCILIATION_MAX_TOKENS = 2400;
+
+function serializeErrorForLog(error: unknown): Record<string, unknown> {
+	if (error instanceof Error) {
+		const extended = error as Error & {
+			status?: unknown;
+			requestId?: unknown;
+			details?: unknown;
+			code?: unknown;
+		};
+		return {
+			name: error.name,
+			message: error.message,
+			...(typeof extended.code !== 'undefined' ? { code: extended.code } : {}),
+			...(typeof extended.status !== 'undefined' ? { status: extended.status } : {}),
+			...(typeof extended.requestId !== 'undefined' ? { requestId: extended.requestId } : {}),
+			...(typeof extended.details !== 'undefined' ? { details: extended.details } : {}),
+			...(error.stack ? { stack: sanitizeLogText(error.stack, 1000) } : {})
+		};
+	}
+
+	if (error && typeof error === 'object') {
+		try {
+			return JSON.parse(JSON.stringify(error)) as Record<string, unknown>;
+		} catch {
+			return { message: String(error) };
+		}
+	}
+
+	return { message: error ? String(error) : 'Unknown error' };
+}
 
 export interface AgentStateMessageSnapshot {
 	role: 'user' | 'assistant' | 'system' | 'tool';
@@ -157,7 +187,7 @@ export class AgentStateReconciliationService {
 			}
 		} catch (error) {
 			logger.warn('Agent state reconciliation LLM call failed', {
-				error,
+				error: serializeErrorForLog(error),
 				sessionId: input.sessionId
 			});
 			if (this.errorLogger) {

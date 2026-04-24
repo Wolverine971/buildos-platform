@@ -3,8 +3,10 @@
 import { redirect } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createLogger } from '@buildos/shared-utils';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const GET: RequestHandler = async ({ params, url, locals: { supabase } }) => {
+export const GET: RequestHandler = async ({ params, url }) => {
+	const supabase = createAdminSupabaseClient();
 	const baseLogger = createLogger('web:api:email-tracking', supabase);
 	const tracking_id = params.tracking_id;
 	const destination = url.searchParams.get('url');

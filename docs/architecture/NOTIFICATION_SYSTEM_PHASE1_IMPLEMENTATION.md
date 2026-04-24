@@ -193,7 +193,7 @@ Browser push subscription data.
 # Generate with: npx web-push generate-vapid-keys
 PUBLIC_VAPID_PUBLIC_KEY=your_public_key_here
 VAPID_PRIVATE_KEY=your_private_key_here
-VAPID_SUBJECT=mailto:support@buildos.com
+VAPID_SUBJECT=mailto:support@build-os.com
 
 # Supabase (already configured)
 PUBLIC_SUPABASE_URL=your_supabase_url
@@ -230,7 +230,7 @@ PUBLIC_VAPID_PUBLIC_KEY=BN...
 ```bash
 VAPID_PUBLIC_KEY=BN...
 VAPID_PRIVATE_KEY=...
-VAPID_SUBJECT=mailto:support@buildos.com
+VAPID_SUBJECT=mailto:support@build-os.com
 ```
 
 ### 2. Run Database Migration

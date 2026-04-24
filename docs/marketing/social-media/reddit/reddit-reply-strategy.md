@@ -504,7 +504,7 @@ After the disclosure, follow with:
 
 Link hygiene when a link is appropriate:
 
-- Naked `buildos.com` or `buildos.app` (or whatever the domain is) — never a tracking URL, never a short link, never "click my profile"
+- Naked `build-os.com` (or whatever the domain is) — never a tracking URL, never a short link, never "click my profile"
 - Once per thread maximum
 - Only if the sub's rules + the specific thread permit links in promo comments
 
@@ -560,7 +560,7 @@ Concrete examples for common thread types. Bad reads as outsider-with-tool; good
 
 **Bad (AI-framed, feature tour, stealth):**
 
-> For multi-book continuity I've been using BuildOS — it's an AI-powered thinking environment that uses context engineering to automatically track all your story elements. Features include: brain dumps, agentic chat, ontology-based organization, automatic contradiction detection. It replaces Scrivener, Notion, and Aeon Timeline. Try it at buildos.com!
+> For multi-book continuity I've been using BuildOS — it's an AI-powered thinking environment that uses context engineering to automatically track all your story elements. Features include: brain dumps, agentic chat, ontology-based organization, automatic contradiction detection. It replaces Scrivener, Notion, and Aeon Timeline. Try it at build-os.com!
 
 **Why it's bad:** no founder disclosure (permaban risk even in the sanctioned thread), AI-framed (Rule 4 territory), feature dump, replaces-everything claim, no honest limitation, naked CTA.
 

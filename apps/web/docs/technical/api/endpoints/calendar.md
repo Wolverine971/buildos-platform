@@ -700,7 +700,7 @@ No request body required. Webhook URL is constructed from request URL.
 const webhookUrl = `${protocol}//${host}/webhooks/calendar-events`;
 ```
 
-Example: `https://buildos.com/webhooks/calendar-events`
+Example: `https://build-os.com/webhooks/calendar-events`
 
 #### Response (Success)
 

@@ -248,6 +248,124 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[0]?.max_tokens).toBe(1200);
 		expect(requestBodies[0]?.response_format).toEqual({ type: 'json_object' });
 	});
+
+	it('recovers a truncated JSON response when validation allows repair', async () => {
+		const fetchMock = vi.fn(
+			async () =>
+				new Response(
+					JSON.stringify({
+						id: 'chatcmpl-v2-truncated-json',
+						model: AGENT_STATE_RECONCILIATION_MODEL,
+						choices: [
+							{
+								index: 0,
+								message: {
+									role: 'assistant',
+									content: '{"ok":true,"items":['
+								},
+								finish_reason: 'length'
+							}
+						],
+						usage: {
+							prompt_tokens: 10,
+							completion_tokens: 4,
+							total_tokens: 14
+						}
+					}),
+					{
+						status: 200,
+						headers: {
+							'content-type': 'application/json'
+						}
+					}
+				)
+		);
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createService();
+		const result = await service.getJSONResponse<{ ok: boolean }>({
+			systemPrompt: 'Return valid JSON.',
+			userPrompt: 'Respond with {"ok":true}.',
+			model: AGENT_STATE_RECONCILIATION_MODEL,
+			models: [AGENT_STATE_RECONCILIATION_MODEL],
+			allowedModelIds: [AGENT_STATE_RECONCILIATION_MODEL],
+			includeDefaultModels: false,
+			validation: {
+				allowTruncatedJsonRecovery: true
+			}
+		});
+
+		expect(result).toEqual({ ok: true });
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
+
+	it('retries parse failures for a single explicit JSON model', async () => {
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+
+			const content =
+				requestBodies.length === 1 ? '{"ok":' : '{"ok":true,"retrySucceeded":true}';
+
+			return new Response(
+				JSON.stringify({
+					id: `chatcmpl-v2-json-retry-${requestBodies.length}`,
+					model: AGENT_STATE_RECONCILIATION_MODEL,
+					choices: [
+						{
+							index: 0,
+							message: {
+								role: 'assistant',
+								content
+							},
+							finish_reason: requestBodies.length === 1 ? 'length' : 'stop'
+						}
+					],
+					usage: {
+						prompt_tokens: 10,
+						completion_tokens: 4,
+						total_tokens: 14
+					}
+				}),
+				{
+					status: 200,
+					headers: {
+						'content-type': 'application/json'
+					}
+				}
+			);
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createService();
+		const result = await service.getJSONResponse<{
+			ok: boolean;
+			retrySucceeded: boolean;
+		}>({
+			systemPrompt: 'Return valid JSON.',
+			userPrompt: 'Respond with {"ok":true}.',
+			model: AGENT_STATE_RECONCILIATION_MODEL,
+			models: [AGENT_STATE_RECONCILIATION_MODEL],
+			allowedModelIds: [AGENT_STATE_RECONCILIATION_MODEL],
+			includeDefaultModels: false,
+			validation: {
+				retryOnParseError: true,
+				maxRetries: 1
+			}
+		});
+
+		expect(result).toEqual({ ok: true, retrySucceeded: true });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(requestBodies.map((body) => body.model)).toEqual([
+			AGENT_STATE_RECONCILIATION_MODEL,
+			AGENT_STATE_RECONCILIATION_MODEL
+		]);
+		expect(requestBodies[1]?.temperature).toBe(0.1);
+	});
 });
 
 describe('OpenRouterV2Service visible text filtering', () => {

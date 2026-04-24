@@ -121,7 +121,7 @@ PUBLIC_VAPID_PUBLIC_KEY=BN...your-public-key
 ```bash
 VAPID_PUBLIC_KEY=BN...your-public-key
 VAPID_PRIVATE_KEY=...your-private-key
-VAPID_SUBJECT=mailto:support@buildos.com
+VAPID_SUBJECT=mailto:support@build-os.com
 ```
 
 ### 2. Install Dependencies

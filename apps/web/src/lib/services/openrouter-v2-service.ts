@@ -6,6 +6,7 @@ import {
 	estimateResponseLength,
 	ACTIVE_EXPERIMENT_MODEL,
 	resolveModelPricingProfile,
+	repairTruncatedJSONResponse,
 	shouldFailoverToNextOpenRouterModel
 } from '@buildos/smart-llm';
 import {
@@ -17,6 +18,7 @@ import {
 	type WebSmartLLMConfig
 } from '$lib/services/smart-llm-service';
 import {
+	cleanJSONResponse,
 	extractVisibleText,
 	normalizeStreamingContent
 } from '$lib/services/smart-llm/response-parsing';
@@ -304,6 +306,53 @@ type JSONRequestWithFallbackModels<T = any> = JSONRequestOptions<T> & {
 	includeDefaultModels?: boolean;
 };
 
+function isLikelyTruncatedJSONError(error: unknown, cleaned: string): boolean {
+	if (!(error instanceof SyntaxError)) return false;
+
+	const normalizedMessage = error.message.toLowerCase();
+	if (
+		normalizedMessage.includes('unterminated string') ||
+		normalizedMessage.includes('unexpected end of json input') ||
+		normalizedMessage.includes('unexpected end of data')
+	) {
+		return true;
+	}
+
+	const positionMatch = normalizedMessage.match(/position (\d+)/);
+	if (!positionMatch?.[1]) return false;
+	const position = Number.parseInt(positionMatch[1], 10);
+	if (!Number.isFinite(position)) return false;
+
+	return cleaned.length - position <= 8;
+}
+
+function parseJSONContent<T>(
+	content: string,
+	options?: JSONRequestWithFallbackModels<T>['validation']
+): T {
+	const cleaned = cleanJSONResponse(content);
+
+	try {
+		return JSON.parse(cleaned) as T;
+	} catch (error) {
+		if (
+			options?.allowTruncatedJsonRecovery === true &&
+			isLikelyTruncatedJSONError(error, cleaned)
+		) {
+			const repaired = repairTruncatedJSONResponse(cleaned);
+			if (repaired) {
+				try {
+					return JSON.parse(repaired) as T;
+				} catch {
+					// Keep the original parse error so retry and logging paths retain the root cause.
+				}
+			}
+		}
+
+		throw error;
+	}
+}
+
 type TextRequestWithFallbackModels = TextGenerationOptions & {
 	model?: string;
 	models?: string[];
@@ -338,7 +387,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		this.client = new OpenRouterV2Client({
 			apiKey,
 			baseUrl: process.env.OPENROUTER_V2_BASE_URL || 'https://openrouter.ai/api/v1',
-			httpReferer: config?.httpReferer || 'https://buildos.com',
+			httpReferer: config?.httpReferer || 'https://build-os.com',
 			appName: config?.appName || 'BuildOS OpenRouter V2',
 			defaultTimeoutMs: this.v2DefaultTimeoutMs
 		});
@@ -529,14 +578,21 @@ export class OpenRouterV2Service extends SmartLLMService {
 			{ role: 'user', content: options.userPrompt }
 		];
 
-		const maxAttempts = Math.max(laneModels.length, 1);
+		const maxModelAttempts = Math.max(laneModels.length, 1);
+		const maxParseRetries =
+			options.validation?.retryOnParseError === true
+				? (options.validation.maxRetries ?? 2)
+				: 0;
+		const maxAttempts = maxModelAttempts + maxParseRetries;
+		let modelAttempt = 0;
+		let parseRetriesUsed = 0;
 		let lastError: Error | null = null;
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
-			const model = laneModels[attempt] || laneModels[0] || ACTIVE_EXPERIMENT_MODEL;
+			const model = laneModels[modelAttempt] || laneModels[0] || ACTIVE_EXPERIMENT_MODEL;
 			const models = [
 				model,
-				...laneModels.slice(attempt + 1).filter((entry) => entry !== model)
+				...laneModels.slice(modelAttempt + 1).filter((entry) => entry !== model)
 			];
 
 			try {
@@ -544,7 +600,10 @@ export class OpenRouterV2Service extends SmartLLMService {
 					model,
 					models,
 					messages,
-					temperature: options.temperature ?? 0.2,
+					temperature:
+						parseRetriesUsed > 0
+							? Math.min(options.temperature ?? 0.2, 0.1)
+							: (options.temperature ?? 0.2),
 					max_tokens: maxTokens,
 					response_format: { type: 'json_object' },
 					reasoning: resolveLaneReasoning('json'),
@@ -555,7 +614,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 					throw new Error('OpenRouter V2 returned empty JSON content');
 				}
 
-				const parsed = JSON.parse(content) as T;
+				const parsed = parseJSONContent<T>(content, options.validation);
 				const actualModel = response.model || model;
 				const usageCost = this.calculateUsageCost(actualModel, 'json', response.usage, [
 					model
@@ -582,7 +641,8 @@ export class OpenRouterV2Service extends SmartLLMService {
 					defaultOperationType: 'other',
 					metadata: {
 						models,
-						attempts: attempt + 1
+						attempts: attempt + 1,
+						parseRetriesUsed
 					}
 				});
 				return parsed;
@@ -590,16 +650,24 @@ export class OpenRouterV2Service extends SmartLLMService {
 				lastError = error instanceof Error ? error : new Error(String(error));
 				const shouldRetryParseError =
 					lastError instanceof SyntaxError &&
-					options.validation?.retryOnParseError === true;
-				const shouldFailoverModel =
-					lastError.message === 'OpenRouter V2 returned empty JSON content' ||
-					shouldFailoverToNextOpenRouterModel(lastError);
-				if (
-					attempt >= maxAttempts - 1 ||
-					(!shouldRetryParseError && !shouldFailoverModel)
-				) {
-					break;
+					options.validation?.retryOnParseError === true &&
+					parseRetriesUsed < maxParseRetries;
+				if (shouldRetryParseError) {
+					parseRetriesUsed++;
+					continue;
 				}
+
+				const shouldFailoverModel =
+					(lastError instanceof SyntaxError ||
+						lastError.message === 'OpenRouter V2 returned empty JSON content' ||
+						shouldFailoverToNextOpenRouterModel(lastError)) &&
+					modelAttempt < maxModelAttempts - 1;
+				if (shouldFailoverModel) {
+					modelAttempt++;
+					continue;
+				}
+
+				break;
 			}
 		}
 

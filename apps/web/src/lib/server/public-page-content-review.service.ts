@@ -431,6 +431,7 @@ function parseLlmFindings(value: unknown): PublicPageReviewFinding[] {
 }
 
 async function runLlmReview(
+	supabase: SupabaseLike,
 	document: DocumentLike,
 	assets: AssetLike[],
 	initialFindings: PublicPageReviewFinding[],
@@ -438,6 +439,7 @@ async function runLlmReview(
 ): Promise<LlmReviewResult | null> {
 	try {
 		const service = new SmartLLMService({
+			supabase,
 			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS Public Page Review'
 		});
@@ -701,7 +703,7 @@ export async function runPublicPageContentReview(
 	);
 
 	const baseFindings = dedupeFindings([...textFindings, ...imageFindings]);
-	const llmResult = await runLlmReview(document, assets, baseFindings, actorUserId);
+	const llmResult = await runLlmReview(supabase, document, assets, baseFindings, actorUserId);
 	const mergedFindings = dedupeFindings([
 		...baseFindings,
 		...(llmResult?.status === 'flagged' ? llmResult.findings : [])

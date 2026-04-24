@@ -367,7 +367,7 @@ ${dashboard.url ? `**URL**: ${dashboard.url}` : ''}
 ## Alert Channels
 
 ### Critical Alerts
-- **Email**: team@buildos.com
+- **Email**: team@build-os.com
 - **Slack**: #alerts channel
 - **Response Time**: 15 minutes
 
@@ -622,7 +622,7 @@ ${alertingMetrics
 - **Format**: Structured alert messages with context
 
 ### Email Notifications
-- **Recipients**: team@buildos.com, on-call engineer
+- **Recipients**: team@build-os.com, on-call engineer
 - **Format**: Detailed alert with links to dashboards
 - **Frequency**: Immediate for critical, daily digest for warnings
 
@@ -1123,10 +1123,10 @@ const projects = await supabase
 ### Load Testing
 \`\`\`bash
 # Using wrk for load testing
-wrk -t12 -c400 -d30s https://buildos.com/api/projects
+wrk -t12 -c400 -d30s https://build-os.com/api/projects
 
 # Using curl for API testing
-curl -w "@curl-format.txt" -o /dev/null -s https://buildos.com/api/brain-dumps
+curl -w "@curl-format.txt" -o /dev/null -s https://build-os.com/api/brain-dumps
 \`\`\`
 
 ### Monitoring Setup
@@ -1387,7 +1387,7 @@ curl -H "Authorization: Bearer $GOOGLE_ACCESS_TOKEN" \\
   "https://www.googleapis.com/calendar/v3/calendars/primary"
 
 # Check webhook status
-curl -X GET "https://buildos.com/api/webhooks/calendar/status"
+curl -X GET "https://build-os.com/api/webhooks/calendar/status"
 \`\`\`
 
 ## Sync Recovery Procedures
@@ -1426,7 +1426,7 @@ async function reregisterWebhooks(calendarId: string) {
     requestBody: {
       id: generateWebhookId(),
       type: 'web_hook',
-      address: 'https://buildos.com/api/webhooks/calendar'
+      address: 'https://build-os.com/api/webhooks/calendar'
     }
   });
 

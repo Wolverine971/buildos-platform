@@ -44,7 +44,7 @@ Add **both keys** to your worker environment:
 # Push Notification Configuration
 VAPID_PUBLIC_KEY=BN4GvR_recSC...your_public_key_here...
 VAPID_PRIVATE_KEY=p_vML5O...your_private_key_here...
-VAPID_SUBJECT=mailto:support@buildos.com
+VAPID_SUBJECT=mailto:support@build-os.com
 ```
 
 **IMPORTANT:** The `VAPID_PUBLIC_KEY` in the worker MUST match the `PUBLIC_VAPID_PUBLIC_KEY` in the web app.
@@ -183,7 +183,7 @@ Add environment variables in Railway dashboard:
 ```
 VAPID_PUBLIC_KEY=BN4GvR_recSC...
 VAPID_PRIVATE_KEY=p_vML5O...
-VAPID_SUBJECT=mailto:support@buildos.com
+VAPID_SUBJECT=mailto:support@build-os.com
 ```
 
 **Redeploy both services after adding environment variables.**

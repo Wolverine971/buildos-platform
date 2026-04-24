@@ -347,7 +347,7 @@ export async function processHomeworkJob(job: ProcessingJob<HomeworkJobMetadata>
 
 	const llm = new SmartLLMService({
 		supabase,
-		httpReferer: 'https://buildos.com',
+		httpReferer: 'https://build-os.com',
 		appName: 'BuildOS Homework Engine'
 	});
 

@@ -492,14 +492,15 @@
 		>
 			<!-- Header -->
 			<header
-				class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+				class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
 			>
 				<h1
-					class="min-w-0 text-lg sm:text-2xl font-bold text-foreground tracking-tight leading-tight [overflow-wrap:anywhere]"
+					class="min-w-0 text-lg sm:flex-1 sm:truncate sm:text-xl lg:text-2xl font-bold text-foreground tracking-tight leading-tight"
+					title={dashboardGreeting}
 				>
 					{dashboardGreeting}
 				</h1>
-				<div class="flex w-full items-center gap-1.5 sm:w-auto sm:justify-end sm:gap-2">
+				<div class="flex w-full items-center gap-1.5 sm:w-auto sm:shrink-0 sm:gap-2">
 					<Button
 						variant="primary"
 						size="sm"

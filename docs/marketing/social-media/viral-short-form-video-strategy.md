@@ -379,7 +379,7 @@ audience? Show examples/give frameworks.
 
 **Secondary:**
 
-- Link clicks (to buildos.com)
+- Link clicks (to build-os.com)
 - Profile visits
 - Follower conversion rate
 

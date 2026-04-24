@@ -1,3 +1,4 @@
+// apps/web/src/routes/history/history-display.ts
 type ChatHistorySession = {
 	title?: string | null;
 	auto_title?: string | null;
