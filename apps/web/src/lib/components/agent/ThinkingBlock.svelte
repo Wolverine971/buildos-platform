@@ -277,7 +277,7 @@
 
 	.thinking-block-compact {
 		max-width: min(100%, 28rem);
-		border-radius: 999px;
+		border-radius: 0.5rem;
 	}
 
 	.thinking-block-with-activity {

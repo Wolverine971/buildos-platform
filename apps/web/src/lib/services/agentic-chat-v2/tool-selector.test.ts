@@ -54,7 +54,7 @@ describe('selectFastChatTools', () => {
 			.map((tool) => tool.function?.name)
 			.filter(Boolean);
 
-		expect(names).toEqual(['skill_load', 'tool_search', 'tool_schema', 'create_onto_project']);
+		expect(names).toEqual(['create_onto_project']);
 	});
 
 	it('exposes larger deterministic profiles when requested explicitly', () => {

@@ -248,7 +248,7 @@ export function buildToolValidationRepairInstruction(
 			'If the skill or current context already identifies the exact op, skip tool_search. Otherwise use tool_search only when the exact op is unknown. Search for the operation you need, not workspace data. Good examples: {"capability":"overview"}, {"entity":"task","kind":"write","query":"update existing task state"}, or {"group":"onto","entity":"document","kind":"write","query":"move document in tree"}.'
 		);
 		lines.push(
-			'If the work is multi-step or easy to get wrong, load the relevant skill first. For project creation, especially in project_create context, prefer skill_load({ skill: "project_creation" }) before onto.project.create.'
+			'If the work is multi-step or easy to get wrong, load the relevant skill first. Exception: in project_create context, project creation guidance and the direct create_onto_project tool are already preloaded, so retry create_onto_project directly when the payload can be inferred.'
 		);
 		lines.push(
 			'For first-time or uncertain writes, call tool_schema({ op: "<exact op>" }) before retrying the direct tool.'

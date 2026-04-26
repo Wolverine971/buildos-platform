@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# scripts/youtube-transcript.py
+
 """Download YouTube transcript with metadata, save as markdown."""
 import argparse
 import json

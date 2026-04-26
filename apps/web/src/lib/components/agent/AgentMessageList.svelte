@@ -139,32 +139,36 @@
 						>
 							{message.content}
 						</div>
-						{#if isCollapsibleUserMessage(message)}
-							<button
-								type="button"
-								class="mt-2 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-accent transition-opacity hover:opacity-80"
-								onclick={() => toggleUserMessageExpansion(message.id)}
-								aria-expanded={isUserMessageExpanded(message.id)}
-							>
-								{isUserMessageExpanded(message.id) ? 'Less' : 'More'}
-							</button>
-						{/if}
-						<span
-							class="mt-1 block text-right text-[0.65rem] leading-none tabular-nums text-accent/60"
-						>
-							{formatTime(message.timestamp)}
-						</span>
+						<div class="message-footer mt-2">
+							{#if isCollapsibleUserMessage(message)}
+								<button
+									type="button"
+									class="message-expand-button"
+									onclick={() => toggleUserMessageExpansion(message.id)}
+									aria-expanded={isUserMessageExpanded(message.id)}
+								>
+									{isUserMessageExpanded(message.id) ? 'Less' : 'More'}
+								</button>
+							{:else}
+								<span aria-hidden="true"></span>
+							{/if}
+							<div class="message-meta">
+								<span class="message-timestamp text-accent/60">
+									{formatTime(message.timestamp)}
+								</span>
+								{#if message.metadata?.voice_note_group_id}
+									{@const groupId = message.metadata
+										.voice_note_group_id as string}
+									<VoiceNoteGroupPanel
+										{groupId}
+										voiceNotes={voiceNotesByGroupId[groupId] ?? []}
+										onDeleteNote={onDeleteVoiceNote}
+										inline
+									/>
+								{/if}
+							</div>
+						</div>
 					</div>
-					<!-- Voice notes panel (outside bubble, can take full width when expanded) -->
-					{#if message.metadata?.voice_note_group_id}
-						{@const groupId = message.metadata.voice_note_group_id as string}
-						<VoiceNoteGroupPanel
-							{groupId}
-							voiceNotes={voiceNotesByGroupId[groupId] ?? []}
-							onDeleteNote={onDeleteVoiceNote}
-							inline
-						/>
-					{/if}
 				</div>
 			{:else if message.type === 'assistant'}
 				<!-- INKPRINT assistant message with Frame texture -->
@@ -338,6 +342,41 @@
 	.user-message-content-collapsed {
 		max-height: calc(10 * 1.625em);
 		overflow: hidden;
+	}
+
+	.message-footer {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.35rem 0.75rem;
+	}
+
+	.message-expand-button {
+		flex: 0 0 auto;
+		color: hsl(var(--accent));
+		font-size: 0.65rem;
+		font-weight: 700;
+		letter-spacing: 0.15em;
+		line-height: 1;
+		text-transform: uppercase;
+		transition: opacity 160ms ease;
+	}
+
+	.message-expand-button:hover {
+		opacity: 0.8;
+	}
+
+	.message-meta {
+		display: contents;
+	}
+
+	.message-timestamp {
+		flex: 0 0 auto;
+		margin-left: auto;
+		font-size: 0.65rem;
+		font-variant-numeric: tabular-nums;
+		line-height: 1;
 	}
 
 	/* Send-confirmation microinteraction: fire-and-forget on bubble mount.

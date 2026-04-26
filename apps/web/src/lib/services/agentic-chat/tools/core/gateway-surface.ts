@@ -161,6 +161,10 @@ export function getGatewaySurfaceForContextType(
 export function getGatewaySurfaceForProfile(
 	profileName: GatewaySurfaceProfileName
 ): ChatToolDefinition[] {
+	if (profileName === 'project_create_minimal') {
+		return materializeGatewayTools([], [...PROJECT_CREATE_MINIMAL_DIRECT_TOOL_NAMES]).tools;
+	}
+
 	const names = [
 		...extractToolNamesFromDefinitions(getGatewayDiscoveryTools()),
 		...resolveGatewayDirectToolNamesForProfile(profileName)

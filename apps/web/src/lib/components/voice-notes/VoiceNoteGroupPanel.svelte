@@ -129,7 +129,9 @@
 {#snippet chipButton()}
 	<button
 		type="button"
-		class="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:border-accent/50 hover:bg-accent/5 hover:text-accent pressable"
+		class="inline-flex items-center gap-1 border font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:bg-accent/5 hover:text-accent pressable {inline
+			? 'h-5 rounded-full border-accent/20 bg-background/35 px-1.5 text-[0.62rem] leading-none tracking-normal'
+			: 'rounded-md border-border/60 bg-muted/50 px-1.5 py-0.5 text-[0.6rem] uppercase tracking-[0.1em]'}"
 		onclick={toggleExpanded}
 		aria-expanded={isExpanded}
 		aria-label={isExpanded ? 'Collapse voice notes' : 'Expand voice notes'}
@@ -216,7 +218,7 @@
 	{@render chipButton()}
 	{#if isExpanded}
 		<div
-			class="w-full self-stretch rounded-lg border border-border/50 bg-card p-2 shadow-ink tx tx-frame tx-weak"
+			class="mt-1.5 w-full basis-full self-stretch rounded-lg border border-border/50 bg-card p-2 shadow-ink tx tx-frame tx-weak"
 		>
 			{@render expandedPanel()}
 		</div>

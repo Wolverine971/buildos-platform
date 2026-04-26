@@ -7,7 +7,8 @@
 		ArrowLeft,
 		LoaderCircle,
 		AlertTriangle,
-		Download
+		Download,
+		MoreHorizontal
 	} from 'lucide-svelte';
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
 	import type { ChatContextType, ContextUsageSnapshot } from '@buildos/shared-types';
@@ -60,7 +61,12 @@
 		isExportingAudit = false
 	}: Props = $props();
 
+	let adminMenuOpen = $state(false);
+
 	const isProjectContext = $derived.by(() => selectedContextType === 'project');
+	const hasMobileAdminActions = $derived(
+		showAdminDebugActions && Boolean(adminSessionHref || onExportAudit)
+	);
 
 	// Determine project URL based on context
 	const projectUrl = $derived(projectId ? `/projects/${projectId}` : null);
@@ -233,7 +239,7 @@
 				href={adminSessionHref}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="flex h-9 sm:h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				class="hidden h-9 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:flex sm:h-7"
 				style="-webkit-tap-highlight-color: transparent;"
 				title="Open this chat session in admin audit logs"
 			>
@@ -247,7 +253,7 @@
 				type="button"
 				onclick={onExportAudit}
 				disabled={isExportingAudit}
-				class="flex h-9 sm:h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60"
+				class="hidden h-9 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 sm:flex sm:h-7"
 				style="-webkit-tap-highlight-color: transparent;"
 				title="Export this chat session as markdown"
 			>
@@ -258,6 +264,62 @@
 				{/if}
 				<span class="hidden sm:inline">Export</span>
 			</button>
+		{/if}
+
+		{#if hasMobileAdminActions}
+			<div class="relative sm:hidden">
+				<button
+					type="button"
+					onclick={() => (adminMenuOpen = !adminMenuOpen)}
+					class="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					style="-webkit-tap-highlight-color: transparent;"
+					aria-label="Open admin actions"
+					aria-haspopup="menu"
+					aria-expanded={adminMenuOpen}
+				>
+					<MoreHorizontal class="h-4 w-4" />
+				</button>
+
+				{#if adminMenuOpen}
+					<div
+						class="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-36 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-ink tx tx-frame tx-weak"
+						role="menu"
+					>
+						{#if adminSessionHref}
+							<a
+								href={adminSessionHref}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none"
+								role="menuitem"
+								onclick={() => (adminMenuOpen = false)}
+							>
+								<ExternalLink class="h-3.5 w-3.5 shrink-0" />
+								<span>Logs</span>
+							</a>
+						{/if}
+						{#if onExportAudit}
+							<button
+								type="button"
+								onclick={() => {
+									adminMenuOpen = false;
+									onExportAudit?.();
+								}}
+								disabled={isExportingAudit}
+								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+								role="menuitem"
+							>
+								{#if isExportingAudit}
+									<LoaderCircle class="h-3.5 w-3.5 shrink-0 animate-spin" />
+								{:else}
+									<Download class="h-3.5 w-3.5 shrink-0" />
+								{/if}
+								<span>Export</span>
+							</button>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		{/if}
 
 		<!-- INKPRINT close button -->

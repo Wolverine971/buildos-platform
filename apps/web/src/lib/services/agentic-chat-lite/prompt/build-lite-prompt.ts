@@ -76,6 +76,7 @@ const PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE = [
 
 const PROJECT_CREATE_WORKFLOW_LITE = [
 	'Project creation workflow:',
+	'- The project_creation workflow is preloaded here and create_onto_project is already available. Do not spend a separate round on skill_load, tool_search, or tool_schema when the user message gives enough signal to create.',
 	'- Turn a rough idea into the smallest valid project structure with a clear name, type_key, description / props, and only the entities and relationships the user actually described.',
 	'- project.type_key must start with "project.", for example project.creative.novel.',
 	'- Always include entities: [] and relationships: [] arrays even when empty.',
@@ -190,6 +191,7 @@ function buildFocusPurposeSection(
 			'Current focus:',
 			'- The user is trying to create a new BuildOS project right now.',
 			'- No existing project or focus entity exists yet; treat the user message as the source of truth for the initial project.',
+			'- Project creation guidance is already preloaded in this prompt; do not call skill_load or tool_schema before creating when the payload can be inferred.',
 			'',
 			'Use this seed for:',
 			`- ${describePurpose(focus)}`
@@ -280,8 +282,12 @@ function buildLocationLoadedContextSection(
 			content: [
 				'Project creation scope:',
 				'- This chat is in project_create mode before a project exists.',
-				'- No existing project graph or focus entity is preloaded by default.',
-				'- Use the user message as the source of truth for the new project; fetch schema guidance only if a create field is uncertain.',
+				'- The direct create_onto_project tool is preloaded as the project creation execution surface.',
+				'- Use the user message as the source of truth for the new project; call create_onto_project directly once project.name and project.type_key can be inferred.',
+				'- Minimum valid payload: project { name, type_key }, entities: [], relationships: []. Always include all three top-level fields.',
+				'- Put concrete details in project.description and project.props when the user provided them. Use snake_case prop keys.',
+				'- Add one goal only when the user stated an outcome. Add task entities only for concrete actions the user actually mentioned.',
+				'- Ask at most one clarifying question only when the project cannot be named or classified at all.',
 				data ? ['', serializeLoadedContext(data)].join('\n') : null
 			]
 				.filter(Boolean)
@@ -512,7 +518,7 @@ function buildContextInventoryRetrievalSection(
 				'Creation boundaries:',
 				'- Use the user idea and project_create mode state as the working context.',
 				'- Do not load existing workspace/project data just to begin project creation.',
-				'- Prefer the project_creation skill for multi-step creation, then call the direct create tool once the payload is ready.'
+				'- Use the preloaded project_creation workflow above, then call create_onto_project directly once the payload is ready.'
 			].join('\n')
 		});
 	}
