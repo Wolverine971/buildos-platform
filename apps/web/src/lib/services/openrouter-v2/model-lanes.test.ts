@@ -116,7 +116,7 @@ describe('resolveLaneReasoning', () => {
 		expect(resolveLaneReasoning('tool_calling')).toEqual({ exclude: true });
 	});
 
-	it('returns undefined for json lane', () => {
-		expect(resolveLaneReasoning('json')).toBeUndefined();
+	it('returns low-effort hidden reasoning for json lane', () => {
+		expect(resolveLaneReasoning('json')).toEqual({ effort: 'low', exclude: true });
 	});
 });

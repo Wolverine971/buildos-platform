@@ -492,11 +492,10 @@
 		>
 			<!-- Header -->
 			<header
-				class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+				class="flex flex-col gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-4"
 			>
 				<h1
-					class="min-w-0 text-lg sm:flex-1 sm:truncate sm:text-xl lg:text-2xl font-bold text-foreground tracking-tight leading-tight"
-					title={dashboardGreeting}
+					class="min-w-0 max-w-5xl text-lg sm:text-xl lg:text-2xl font-bold text-foreground tracking-tight leading-snug [overflow-wrap:anywhere] [text-wrap:balance]"
 				>
 					{dashboardGreeting}
 				</h1>

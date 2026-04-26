@@ -12,7 +12,7 @@
 **Connection Level:** 3rd+
 **Audience Quality:** Medium (3K followers, tech-savvy Prague/EU agentic-AI crowd)
 **Profile Created:** 2026-04-23
-**Last Reviewed:** 2026-04-23
+**Last Reviewed:** 2026-04-24
 **Last Engaged:** Never
 **Source of First Discovery:** LinkedIn content search `"second brain"` past-24h (2026-04-23)
 
@@ -52,6 +52,8 @@
 | Date       | Surface | Topic                                                             | Post Link                                                                 | Action | Status           | What We Said / Planned                                                    | Outcome | Source                        |
 | ---------- | ------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------- | ------ | ---------------- | ------------------------------------------------------------------------- | ------- | ----------------------------- |
 | 2026-04-23 | Post    | Talk on personal second brain → Claude Code + 80k docs as context | https://www.linkedin.com/feed/update/urn:li:activity:7453128039711830018/ | Queued | Queued for reply | Builder question about static-context vs. context-that-compounds from use | Pending | 2026-04-23_linkedin-warmup.md |
+| 2026-04-24 | Profile | Stale scan — top activity is "Diky za tu moznost :)" comment on Green:Code recap (1d) | N/A                                                                       | Reviewed | N/A              | Yesterday's talk post still open-loop and worth engaging on; no new English content | None    | 2026-04-24_linkedin-warmup.md |
+| 2026-04-24 | Post    | Personal second brain → Claude Code talk (carry-over from 2026-04-23)             | https://www.linkedin.com/feed/update/urn:li:activity:7453128039711830018/ | Drafted | Drafted - Pending Posting | 3 options, mention-fit 2: (1) static vs compounding context question (2) ask if talk recorded + soft BuildOS mention (3) ingestion/curation question | Pending | 2026-04-24_linkedin-replies.md |
 
 ## Open Loops
 

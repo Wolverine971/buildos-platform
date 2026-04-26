@@ -12,7 +12,7 @@
 **Connection Level:** 1st
 **Audience Quality:** High
 **Profile Created:** 2026-04-15
-**Last Reviewed:** 2026-04-23
+**Last Reviewed:** 2026-04-24
 **Last Engaged:** Never
 **Source of First Discovery:** Notifications (IRON Mike Steadman reacted to his post)
 
@@ -54,6 +54,8 @@
 | ---------- | ------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------ |
 | 2026-04-15 | Post    | VetraFi teammate spotlight — Lia Kieck                                                   | https://www.linkedin.com/feed/update/urn:li:activity:7450160258406207488/ | Drafted | Drafted - Pending Posting | Options: (1) "Army MP → 400K social → fintech. She's built credibility on both sides..." (2) "The best marketing for a veteran-focused product..." (3) "MP background + 400K..." | Pending | 2026-04-15_linkedin-replies.md |
 | 2026-04-23 | Post    | EXSUM: VeteranVC & Defense Tech Office Hours — Brian O'Connor (Darksaber Labs) spotlight | https://www.linkedin.com/feed/update/urn:li:activity:7453112422598336512/ | Queued  | Queued for reply          | Veteran founder cheerleader mode — react to Brian's background specifically (Navy SIGINT → SEAL Team 7 → founder) without making it about BuildOS                                | Pending | 2026-04-23_linkedin-warmup.md  |
+| 2026-04-24 | Profile | Stale scan — top post still yesterday's EXSUM                                           | N/A                                                                       | Reviewed | N/A                       | No new content today; yesterday's queue still unexecuted                                                                                                                          | None    | 2026-04-24_linkedin-warmup.md |
+| 2026-04-24 | Post    | EXSUM Brian O'Connor spotlight (carry-over from 2026-04-23)                              | https://www.linkedin.com/feed/update/urn:li:activity:7453112422598336512/ | Drafted | Drafted - Pending Posting | 3 options, mention-fit 0: (1) specific recognition of CT → NSW Tactical → SEAL 7 stack (2) respect for EXSUM format + Brian recognition (3) Marine-adjacent flavor + Brian's track | Pending | 2026-04-24_linkedin-replies.md |
 
 ## Open Loops
 

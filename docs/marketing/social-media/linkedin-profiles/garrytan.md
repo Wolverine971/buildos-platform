@@ -12,7 +12,7 @@
 **Connection Level:** 3rd+
 **Audience Quality:** High
 **Profile Created:** 2026-04-23
-**Last Reviewed:** 2026-04-23
+**Last Reviewed:** 2026-04-24
 **Last Engaged:** Never
 **Source of First Discovery:** LinkedIn feed / notifications (Garry Tan posted about GStack / Claude Code setup on 2026-04-23)
 
@@ -52,6 +52,7 @@
 | Date       | Surface | Topic                                            | Post Link                                                                 | Action | Status           | What We Said / Planned                                         | Outcome | Source                        |
 | ---------- | ------- | ------------------------------------------------ | ------------------------------------------------------------------------- | ------ | ---------------- | -------------------------------------------------------------- | ------- | ----------------------------- |
 | 2026-04-23 | Post    | GStack — Claude Code setup (YouTube walkthrough) | https://www.linkedin.com/feed/update/urn:li:activity:7453108170052259840/ | Queued | Queued for reply | Builder-to-builder take on Claude Code context/setup, no pitch | Pending | 2026-04-23_linkedin-warmup.md |
+| 2026-04-24 | Profile | Stale scan — GStack post now 268 rxns / 24 comments (too crowded to queue again) | N/A                                                                       | Reviewed | N/A              | Yesterday's GStack queue should be treated as past-window; skip re-queue | None    | 2026-04-24_linkedin-warmup.md |
 
 ## Open Loops
 
