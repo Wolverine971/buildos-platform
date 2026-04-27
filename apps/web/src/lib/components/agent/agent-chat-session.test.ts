@@ -7,7 +7,8 @@ import {
 	buildAgentChatSessionSnapshot,
 	deriveSessionTitle,
 	loadAgentChatSessionSnapshot,
-	prewarmAgentContext
+	prewarmAgentContext,
+	warmAgentChatStreamTransport
 } from './agent-chat-session';
 
 function makeSession(overrides: Partial<ChatSession> = {}): ChatSession {
@@ -232,6 +233,47 @@ describe('agent-chat-session helpers', () => {
 		});
 	});
 
+	it('buildAgentChatSessionSnapshot restores project overview labels with project names', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Here is the project overview.',
+					created_at: '2026-03-28T10:01:00.000Z'
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'exec-1',
+					message_id: 'assistant-1',
+					client_turn_id: 'turn-1',
+					tool_name: 'get_project_overview',
+					gateway_op: 'util.project.overview',
+					sequence_index: 1,
+					arguments: { project_id: '4cfdbed1-840a-4fe4-9751-77c7884daa70' },
+					result: {
+						project: {
+							id: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+							name: '9takes'
+						}
+					},
+					execution_time_ms: 55,
+					success: true,
+					error_message: null,
+					created_at: '2026-03-28T10:00:30.000Z'
+				}
+			] as any
+		});
+
+		expect(snapshot.messages[0]?.type).toBe('thinking_block');
+		expect((snapshot.messages[0] as any).activities[0]).toMatchObject({
+			status: 'completed',
+			content: 'Loaded project overview: "9takes" (55ms)'
+		});
+	});
+
 	it('prewarmAgentContext returns parsed session data from the v2 prewarm endpoint', async () => {
 		const fetchMock = vi.fn().mockResolvedValue({
 			ok: true,
@@ -258,8 +300,25 @@ describe('agent-chat-session helpers', () => {
 		);
 		expect(result).toEqual({
 			session: { id: 'session-2' },
-			prewarmedContext: { key: 'global:none' }
+			prewarmedContext: { key: 'global:none' },
+			preparedPrompt: null
 		});
+	});
+
+	it('warmAgentChatStreamTransport calls the stream route warmup endpoint', async () => {
+		const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+		vi.stubGlobal('fetch', fetchMock);
+
+		const result = await warmAgentChatStreamTransport();
+
+		expect(result).toBe(true);
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/agent/v2/stream?purpose=warmup',
+			expect.objectContaining({
+				method: 'GET',
+				cache: 'no-store'
+			})
+		);
 	});
 
 	it('loadAgentChatSessionSnapshot throws the backend error when session restore fails', async () => {

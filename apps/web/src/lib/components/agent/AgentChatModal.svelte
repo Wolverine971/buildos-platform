@@ -61,7 +61,8 @@
 		isProjectContext,
 		loadAgentChatSessionSnapshot,
 		normalizeSessionContextType,
-		prewarmAgentContext
+		prewarmAgentContext,
+		warmAgentChatStreamTransport
 	} from './agent-chat-session';
 	import {
 		buildSkillLoadActivityEvent,
@@ -459,6 +460,7 @@
 		getIsVoiceBusy: () => voice.isBusy,
 		getIsVoicePending: () => voice.pendingSendAfterTranscription,
 		prewarmAgentContext: (payload, options) => prewarmAgentContext(payload, options),
+		warmStreamTransport: (options) => warmAgentChatStreamTransport(options),
 		hydrateSessionFromEvent: (session) => hydrateSessionFromEvent(session),
 		logWarn: (msg, err) => {
 			if (dev) {
@@ -531,6 +533,7 @@
 
 			hydrateSessionFromEvent(warmed.session);
 			prewarm.adopt(warmed.prewarmedContext);
+			prewarm.adoptPrepared(warmed.preparedPrompt);
 
 			return warmed.session;
 		})().finally(() => {
@@ -1068,6 +1071,8 @@
 
 		initializeFromAutoInit(autoInitProject);
 	});
+
+	$effect(() => prewarm.orchestrateTransportWarmup());
 
 	$effect(() => prewarm.orchestrate());
 
@@ -1840,6 +1845,10 @@
 			const matchingPrewarmedContext = prewarm.matchingFreshContext(
 				prewarm.resolveCurrentKey()
 			);
+			const matchingPreparedPrompt = prewarm.matchingFreshPreparedPrompt(
+				prewarm.resolveCurrentKey()
+			);
+			prewarm.clearPreparedPrompt();
 
 			const response = await fetch('/api/agent/v2/stream', {
 				method: 'POST',
@@ -1858,7 +1867,8 @@
 					stream_run_id: transportStreamRunId,
 					client_turn_id: clientTurnId,
 					voiceNoteGroupId: activeVoiceNoteGroupId,
-					prewarmedContext: matchingPrewarmedContext
+					prewarmedContext: matchingPrewarmedContext,
+					preparedPromptKey: matchingPreparedPrompt?.key ?? null
 				})
 			});
 

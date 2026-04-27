@@ -29,6 +29,8 @@ export type FastAgentStreamRequest = {
 	voice_note_group_id?: string;
 	prewarmedContext?: FastChatContextCache | null;
 	prewarmed_context?: FastChatContextCache | null;
+	preparedPromptKey?: string | null;
+	prepared_prompt_key?: string | null;
 };
 
 export type FastAgentPrewarmRequest = {
@@ -37,6 +39,7 @@ export type FastAgentPrewarmRequest = {
 	entity_id?: string;
 	projectFocus?: ProjectFocus | null;
 	ensure_session?: boolean;
+	prepare_prompt?: boolean;
 };
 
 export type FastAgentCancelReason = 'user_cancelled' | 'superseded';

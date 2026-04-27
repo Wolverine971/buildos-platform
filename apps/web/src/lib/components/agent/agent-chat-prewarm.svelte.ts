@@ -16,7 +16,7 @@ import {
 	isFastChatContextCacheFresh,
 	type FastChatContextCache
 } from '$lib/services/agentic-chat-v2/context-cache';
-import { isProjectContext } from './agent-chat-session';
+import { isProjectContext, type PreparedPromptClient } from './agent-chat-session';
 import type { ChatContextType } from '@buildos/shared-types';
 
 // ---------------------------------------------------------------------------
@@ -56,7 +56,14 @@ export interface PrewarmControllerDeps {
 	): Promise<{
 		session: ChatSession | null;
 		prewarmedContext: FastChatContextCache | null;
+		preparedPrompt: PreparedPromptClient | null;
 	} | null>;
+
+	/**
+	 * Make a tiny request to the real v2 stream route so the browser/server
+	 * transport path is warm before the user clicks Send.
+	 */
+	warmStreamTransport?(options: { signal?: AbortSignal }): Promise<boolean>;
 
 	/** Called when a prewarm response returns a session payload. */
 	hydrateSessionFromEvent(session: ChatSession): void;
@@ -71,6 +78,7 @@ export interface PrewarmControllerDeps {
 
 export class PrewarmController {
 	prewarmedContext = $state<FastChatContextCache | null>(null);
+	preparedPrompt = $state<PreparedPromptClient | null>(null);
 	#lastPrewarmKey: string | null = null;
 	#deps: PrewarmControllerDeps;
 
@@ -107,6 +115,15 @@ export class PrewarmController {
 		return isFastChatContextCacheFresh(cache) ? cache : null;
 	}
 
+	matchingFreshPreparedPrompt(key: string | null | undefined): PreparedPromptClient | null {
+		if (!key) return null;
+		const prepared = this.preparedPrompt;
+		if (!prepared || prepared.cache_key !== key || !prepared.key) return null;
+		const expiresAt = Date.parse(prepared.expires_at);
+		if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return null;
+		return prepared;
+	}
+
 	/**
 	 * Adopt a prewarmed-context payload returned by a non-orchestrator
 	 * code path (e.g. the session-bootstrap flow), storing it only if
@@ -117,6 +134,32 @@ export class PrewarmController {
 		if (!cache || !isFastChatContextCacheFresh(cache)) return;
 		this.prewarmedContext = cache;
 		this.#lastPrewarmKey = cache.key;
+	}
+
+	adoptPrepared(prepared: PreparedPromptClient | null | undefined): void {
+		if (!prepared?.key || !prepared.cache_key) return;
+		const expiresAt = Date.parse(prepared.expires_at);
+		if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return;
+		this.preparedPrompt = prepared;
+		this.#lastPrewarmKey = prepared.cache_key;
+	}
+
+	/**
+	 * Body of the transport warmup `$effect`. This is intentionally separate from
+	 * prompt prewarm: it has no data side effects and is safe to abort on close.
+	 */
+	orchestrateTransportWarmup(): (() => void) | undefined {
+		if (!this.#deps.getIsBrowser() || !this.#deps.getIsOpen()) return;
+		if (!this.#deps.warmStreamTransport) return;
+
+		const controller = new AbortController();
+		void this.#deps.warmStreamTransport({ signal: controller.signal }).catch((err) => {
+			if ((err as DOMException)?.name !== 'AbortError') {
+				this.#deps.logWarn?.('[AgentChat] Stream transport warmup failed', err);
+			}
+		});
+
+		return () => controller.abort();
 	}
 
 	/**
@@ -183,6 +226,9 @@ export class PrewarmController {
 				) {
 					this.prewarmedContext = warmed.prewarmedContext;
 				}
+				if (warmed?.preparedPrompt?.cache_key === key) {
+					this.adoptPrepared(warmed.preparedPrompt);
+				}
 			} catch (err) {
 				if ((err as DOMException)?.name !== 'AbortError') {
 					this.#deps.logWarn?.('[AgentChat] Background prewarm failed', err);
@@ -199,17 +245,32 @@ export class PrewarmController {
 	 * the stored cache has gone stale.
 	 */
 	invalidateIfStale(): void {
-		if (!this.prewarmedContext) return;
 		const key = this.resolveCurrentKey();
 		const cache = this.prewarmedContext;
-		if (cache.key !== key || !isFastChatContextCacheFresh(cache)) {
+		if (cache && (cache.key !== key || !isFastChatContextCacheFresh(cache))) {
 			this.prewarmedContext = null;
 		}
+		const prepared = this.preparedPrompt;
+		if (prepared) {
+			const expiresAt = Date.parse(prepared.expires_at);
+			if (
+				prepared.cache_key !== key ||
+				!Number.isFinite(expiresAt) ||
+				expiresAt <= Date.now()
+			) {
+				this.preparedPrompt = null;
+			}
+		}
+	}
+
+	clearPreparedPrompt(): void {
+		this.preparedPrompt = null;
 	}
 
 	/** Called on modal close to clear all state. */
 	reset(): void {
 		this.prewarmedContext = null;
+		this.preparedPrompt = null;
 		this.#lastPrewarmKey = null;
 	}
 }

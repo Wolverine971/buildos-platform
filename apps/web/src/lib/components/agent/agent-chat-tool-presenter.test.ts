@@ -135,6 +135,46 @@ describe('agent-chat-tool-presenter — formatToolMessage', () => {
 		).toBe('Loading project: "Summer Campaign"');
 	});
 
+	it('formats project overview calls with the project query or resolved project name', () => {
+		const h = makeHarness();
+		const presenter = createToolPresenter(h.ctx);
+
+		expect(
+			presenter.formatToolMessage('get_project_overview', { query: '9takes' }, 'completed')
+		).toBe('Loaded project overview: "9takes"');
+
+		presenter.indexEntitiesFromToolResult({
+			data: { project: { id: 'p-9', name: '9takes' } }
+		});
+		expect(
+			presenter.formatToolMessage('get_project_overview', { project_id: 'p-9' }, 'completed')
+		).toBe('Loaded project overview: "9takes"');
+	});
+
+	it('includes project names in project-scoped searches when available', () => {
+		const h = makeHarness();
+		const presenter = createToolPresenter(h.ctx);
+		presenter.cacheEntityName('project', 'p-1', '9takes');
+
+		expect(
+			presenter.formatToolMessage(
+				'search_project',
+				{ project_id: 'p-1', query: 'pricing page' },
+				'completed'
+			)
+		).toBe('Searched 9takes: "pricing page"');
+	});
+
+	it('formats tool discovery and schema calls with their requested target', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+		expect(
+			presenter.formatToolMessage('tool_search', { query: 'project overview' }, 'completed')
+		).toBe('Searched tools: "project overview"');
+		expect(
+			presenter.formatToolMessage('tool_schema', { op: 'util.project.overview' }, 'completed')
+		).toBe('Loaded tool schema: "util.project.overview"');
+	});
+
 	it('returns "Using tool: X" on invalid JSON argument strings', () => {
 		const h = makeHarness();
 		const presenter = createToolPresenter(h.ctx);

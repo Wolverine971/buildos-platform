@@ -14,6 +14,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 
 interface TimingMetricsRow {
 	id: string;
+	turn_run_id?: string | null;
 	session_id: string | null;
 	user_id: string;
 	context_type: string | null;
@@ -35,6 +36,24 @@ interface TimingMetricsRow {
 	agent_plan_id: string | null;
 	message_length: number | null;
 	created_at: string;
+	metadata?: Record<string, unknown> | null;
+}
+
+interface ChatTurnRunTimingRow {
+	id: string;
+	cache_source: string | null;
+	request_prewarmed_context?: boolean | null;
+	prepared_prompt_hit?: boolean | null;
+	prepared_prompt_miss_reason?: string | null;
+	prepared_surface_profile?: string | null;
+	created_at?: string | null;
+}
+
+interface MetricStats {
+	p50: number;
+	p95: number;
+	p99: number;
+	count: number;
 }
 
 function calculatePercentile(sortedValues: number[], percentile: number): number {
@@ -55,6 +74,109 @@ function getValidValues(
 	getter: (row: TimingMetricsRow) => number | null | undefined
 ): number[] {
 	return rows.map(getter).filter((v): v is number => v !== null && v !== undefined && v >= 0);
+}
+
+function buildStats(values: number[]): MetricStats {
+	const sorted = values.filter((value) => value >= 0).sort((a, b) => a - b);
+	return {
+		p50: calculatePercentile(sorted, 50),
+		p95: calculatePercentile(sorted, 95),
+		p99: calculatePercentile(sorted, 99),
+		count: sorted.length
+	};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function getTimingMetadata(row: TimingMetricsRow): Record<string, unknown> {
+	return isRecord(row.metadata) ? row.metadata : {};
+}
+
+function getTimingSummary(row: TimingMetricsRow): Record<string, unknown> {
+	const metadata = getTimingMetadata(row);
+	return isRecord(metadata.timing_summary) ? metadata.timing_summary : {};
+}
+
+function resolveCacheSource(row: TimingMetricsRow, turnRun?: ChatTurnRunTimingRow): string {
+	const summary = getTimingSummary(row);
+	if (typeof summary.cache_source === 'string' && summary.cache_source.trim()) {
+		return summary.cache_source.trim();
+	}
+	const metadata = getTimingMetadata(row);
+	if (typeof metadata.cache_source === 'string' && metadata.cache_source.trim()) {
+		return metadata.cache_source.trim();
+	}
+	if (typeof turnRun?.cache_source === 'string' && turnRun.cache_source.trim()) {
+		return turnRun.cache_source.trim();
+	}
+	return 'unknown';
+}
+
+function resolvePreparedPromptRequested(
+	row: TimingMetricsRow,
+	turnRun?: ChatTurnRunTimingRow
+): boolean {
+	const metadata = getTimingMetadata(row);
+	if (metadata.prepared_prompt_requested === true) return true;
+	if (metadata.prepared_prompt_hit === true) return true;
+	if (turnRun?.prepared_prompt_hit === true) return true;
+	return resolveCacheSource(row, turnRun) === 'prepared_prompt';
+}
+
+function resolvePreparedPromptHit(row: TimingMetricsRow, turnRun?: ChatTurnRunTimingRow): boolean {
+	const metadata = getTimingMetadata(row);
+	if (metadata.prepared_prompt_hit === true) return true;
+	if (turnRun?.prepared_prompt_hit === true) return true;
+	return resolveCacheSource(row, turnRun) === 'prepared_prompt';
+}
+
+function resolvePreparedPromptMissReason(
+	row: TimingMetricsRow,
+	turnRun?: ChatTurnRunTimingRow
+): string | null {
+	const metadata = getTimingMetadata(row);
+	if (typeof metadata.prepared_prompt_miss_reason === 'string') {
+		return metadata.prepared_prompt_miss_reason;
+	}
+	if (typeof turnRun?.prepared_prompt_miss_reason === 'string') {
+		return turnRun.prepared_prompt_miss_reason;
+	}
+	return null;
+}
+
+function resolvePreparedSurfaceProfile(
+	row: TimingMetricsRow,
+	turnRun?: ChatTurnRunTimingRow
+): string | null {
+	const metadata = getTimingMetadata(row);
+	if (typeof metadata.prepared_prompt_surface_profile === 'string') {
+		return metadata.prepared_prompt_surface_profile;
+	}
+	if (typeof turnRun?.prepared_surface_profile === 'string') {
+		return turnRun.prepared_surface_profile;
+	}
+	return null;
+}
+
+function buildDistribution<T>(
+	rows: T[],
+	getter: (row: T) => string | null | undefined
+): Array<{ value: string; count: number; percent: number }> {
+	const counts = new Map<string, number>();
+	for (const row of rows) {
+		const value = getter(row)?.trim() || 'unknown';
+		counts.set(value, (counts.get(value) ?? 0) + 1);
+	}
+	const total = rows.length;
+	return Array.from(counts.entries())
+		.map(([value, count]) => ({
+			value,
+			count,
+			percent: total > 0 ? (count / total) * 100 : 0
+		}))
+		.sort((a, b) => b.count - a.count);
 }
 
 export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
@@ -80,6 +202,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const contextType = url.searchParams.get('context_type') || null;
 	const planStatus = url.searchParams.get('plan_status') || null;
 	const hasClarification = url.searchParams.get('has_clarification') || null;
+	const cacheSourceFilter = url.searchParams.get('cache_source') || null;
 
 	// Calculate time range
 	const now = new Date();
@@ -129,7 +252,46 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		if (timingError) throw timingError;
 
-		const rows = (timingRows || []) as TimingMetricsRow[];
+		const timingRowsRaw = (timingRows || []) as TimingMetricsRow[];
+		const turnRunIds = Array.from(
+			new Set(
+				timingRowsRaw
+					.map((row) => row.turn_run_id)
+					.filter((id): id is string => typeof id === 'string' && id.length > 0)
+			)
+		);
+		const turnRuns = new Map<string, ChatTurnRunTimingRow>();
+
+		if (turnRunIds.length > 0) {
+			const turnQuery = (supabase as any)
+				.from('chat_turn_runs')
+				.select(
+					'id, cache_source, request_prewarmed_context, prepared_prompt_hit, prepared_prompt_miss_reason, prepared_surface_profile, created_at'
+				)
+				.in('id', turnRunIds);
+
+			let { data: turnRows, error: turnError } = await turnQuery;
+			if (turnError) {
+				const fallback = await (supabase as any)
+					.from('chat_turn_runs')
+					.select('id, cache_source, request_prewarmed_context, created_at')
+					.in('id', turnRunIds);
+				turnRows = fallback.data;
+				turnError = fallback.error;
+			}
+			if (turnError) throw turnError;
+			for (const row of (turnRows || []) as ChatTurnRunTimingRow[]) {
+				turnRuns.set(row.id, row);
+			}
+		}
+
+		const rows =
+			cacheSourceFilter && cacheSourceFilter !== 'all'
+				? timingRowsRaw.filter((row) => {
+						const turnRun = row.turn_run_id ? turnRuns.get(row.turn_run_id) : undefined;
+						return resolveCacheSource(row, turnRun) === cacheSourceFilter;
+					})
+				: timingRowsRaw;
 
 		// ============================================
 		// Calculate Percentile Statistics
@@ -251,22 +413,117 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		};
 
 		// ============================================
+		// Cache Source / Prepared Prompt Impact
+		// ============================================
+		const cacheSourceGroups = new Map<string, TimingMetricsRow[]>();
+		rows.forEach((row) => {
+			const turnRun = row.turn_run_id ? turnRuns.get(row.turn_run_id) : undefined;
+			const cacheSource = resolveCacheSource(row, turnRun);
+			if (!cacheSourceGroups.has(cacheSource)) {
+				cacheSourceGroups.set(cacheSource, []);
+			}
+			cacheSourceGroups.get(cacheSource)!.push(row);
+		});
+
+		const freshLoadRows = cacheSourceGroups.get('fresh_load') ?? [];
+		const freshLoadTtfrP50 = buildStats(
+			getValidValues(freshLoadRows, (row) => row.time_to_first_response_ms)
+		).p50;
+		const freshLoadContextP50 = buildStats(
+			getValidValues(freshLoadRows, (row) => row.context_build_ms)
+		).p50;
+		const hasFreshLoadBaseline = freshLoadRows.length > 0;
+
+		const cacheSourcePerformance = Array.from(cacheSourceGroups.entries())
+			.map(([cache_source, sourceRows]) => {
+				const ttfr = buildStats(
+					getValidValues(sourceRows, (row) => row.time_to_first_response_ms)
+				);
+				const ttfe = buildStats(
+					getValidValues(sourceRows, (row) => row.time_to_first_event_ms)
+				);
+				const contextBuild = buildStats(
+					getValidValues(sourceRows, (row) => row.context_build_ms)
+				);
+				const toolSelection = buildStats(
+					getValidValues(sourceRows, (row) => row.tool_selection_ms)
+				);
+				return {
+					cache_source,
+					count: sourceRows.length,
+					share_percent:
+						totalRequests > 0 ? (sourceRows.length / totalRequests) * 100 : 0,
+					ttfr,
+					ttfe,
+					context_build: contextBuild,
+					tool_selection: toolSelection,
+					ttfr_gain_vs_fresh_load_ms: hasFreshLoadBaseline
+						? freshLoadTtfrP50 - ttfr.p50
+						: null,
+					context_build_gain_vs_fresh_load_ms: hasFreshLoadBaseline
+						? freshLoadContextP50 - contextBuild.p50
+						: null
+				};
+			})
+			.sort((a, b) => {
+				if (a.cache_source === 'prepared_prompt') return -1;
+				if (b.cache_source === 'prepared_prompt') return 1;
+				return b.count - a.count;
+			});
+
+		const preparedPromptRequestedRows = rows.filter((row) => {
+			const turnRun = row.turn_run_id ? turnRuns.get(row.turn_run_id) : undefined;
+			return resolvePreparedPromptRequested(row, turnRun);
+		});
+		const preparedPromptHitRows = preparedPromptRequestedRows.filter((row) => {
+			const turnRun = row.turn_run_id ? turnRuns.get(row.turn_run_id) : undefined;
+			return resolvePreparedPromptHit(row, turnRun);
+		});
+		const preparedPromptMissRows = preparedPromptRequestedRows.filter((row) => {
+			const turnRun = row.turn_run_id ? turnRuns.get(row.turn_run_id) : undefined;
+			return !resolvePreparedPromptHit(row, turnRun);
+		});
+		const preparedPrompt = {
+			requested_count: preparedPromptRequestedRows.length,
+			hit_count: preparedPromptHitRows.length,
+			miss_count: preparedPromptMissRows.length,
+			hit_rate:
+				preparedPromptRequestedRows.length > 0
+					? (preparedPromptHitRows.length / preparedPromptRequestedRows.length) * 100
+					: 0,
+			miss_reasons: buildDistribution(preparedPromptMissRows, (row) => {
+				const turnRun = row.turn_run_id ? turnRuns.get(row.turn_run_id) : undefined;
+				return resolvePreparedPromptMissReason(row, turnRun) ?? 'unknown';
+			}),
+			surface_profiles: buildDistribution(preparedPromptHitRows, (row) => {
+				const turnRun = row.turn_run_id ? turnRuns.get(row.turn_run_id) : undefined;
+				return resolvePreparedSurfaceProfile(row, turnRun) ?? 'unknown';
+			})
+		};
+
+		// ============================================
 		// Slow Sessions (top 10 by TTFR)
 		// ============================================
 		const slowSessions = rows
 			.filter((r) => r.time_to_first_response_ms !== null)
 			.sort((a, b) => (b.time_to_first_response_ms || 0) - (a.time_to_first_response_ms || 0))
 			.slice(0, 10)
-			.map((r) => ({
-				session_id: r.session_id,
-				user_id: r.user_id,
-				context_type: r.context_type,
-				ttfr_ms: r.time_to_first_response_ms,
-				ttfe_ms: r.time_to_first_event_ms,
-				plan_status: r.plan_status,
-				plan_steps: r.plan_step_count,
-				created_at: r.created_at
-			}));
+			.map((r) => {
+				const turnRun = r.turn_run_id ? turnRuns.get(r.turn_run_id) : undefined;
+				return {
+					session_id: r.session_id,
+					user_id: r.user_id,
+					context_type: r.context_type,
+					cache_source: resolveCacheSource(r, turnRun),
+					prepared_prompt_hit: resolvePreparedPromptHit(r, turnRun),
+					prepared_prompt_miss_reason: resolvePreparedPromptMissReason(r, turnRun),
+					ttfr_ms: r.time_to_first_response_ms,
+					ttfe_ms: r.time_to_first_event_ms,
+					plan_status: r.plan_status,
+					plan_steps: r.plan_step_count,
+					created_at: r.created_at
+				};
+			});
 
 		// ============================================
 		// Context Type Performance
@@ -334,6 +591,8 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 			percentiles,
 			latency_breakdown: latencyBreakdown,
 			distributions,
+			cache_source_performance: cacheSourcePerformance,
+			prepared_prompt: preparedPrompt,
 			slow_sessions: slowSessions,
 			context_type_performance: contextTypePerformance,
 			trends

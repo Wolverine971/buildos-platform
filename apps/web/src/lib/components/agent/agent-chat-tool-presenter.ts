@@ -195,6 +195,8 @@ const ENTITY_PLURAL_KEYS: Record<string, OntologyEntityKind> = {
 // ---------------------------------------------------------------------------
 
 const TOOL_ACTION_PAST_TENSE: Record<string, string> = {
+	Querying: 'Queried',
+	Resolving: 'Resolved',
 	Running: 'Ran',
 	Setting: 'Set'
 };
@@ -210,7 +212,13 @@ const TOOL_ACTION_BASE_FORM: Record<string, string> = {
 	Searching: 'search',
 	Listing: 'list',
 	Reading: 'read',
-	Setting: 'set'
+	Setting: 'set',
+	Switching: 'switch',
+	Visiting: 'visit',
+	Resolving: 'resolve',
+	Querying: 'query',
+	Tagging: 'tag',
+	Reorganizing: 'reorganize'
 };
 
 const OPERATION_VERBS: Record<string, { present: string; past: string }> = {
@@ -673,6 +681,71 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		return rangeLabel;
 	}
 
+	function firstDisplayLabel(...values: unknown[]): string | undefined {
+		for (const value of values) {
+			const label = normalizeEntityLabel(value);
+			if (label) return label;
+		}
+		return undefined;
+	}
+
+	function resolveProjectNameFromArgs(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		return resolveEntityName(
+			'project',
+			args.project_id ?? args.projectId,
+			args.project_name ?? args.projectName ?? args.project?.name
+		);
+	}
+
+	function resolveProjectTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		return (
+			resolveProjectNameFromArgs(args) ||
+			firstDisplayLabel(args.query, args.project_query, args.search, args.project?.name)
+		);
+	}
+
+	function searchTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		return firstDisplayLabel(args.query, args.search, args.q);
+	}
+
+	function projectScopedSearchAction(args: Record<string, any> | undefined): string {
+		const projectName = resolveProjectNameFromArgs(args);
+		return projectName ? `Searching ${projectName}` : 'Searching project';
+	}
+
+	function fieldInfoTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		const entityType = firstDisplayLabel(args.entity_type, args.entityType);
+		const fieldName = firstDisplayLabel(args.field_name, args.fieldName, args.field);
+		if (entityType && fieldName) return `${entityType}.${fieldName}`;
+		return entityType || fieldName;
+	}
+
+	function contactTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		return firstDisplayLabel(
+			args.display_name,
+			args.name,
+			args.query,
+			args.relationship_label,
+			args.method_type,
+			args.contact_id,
+			args.candidate_id
+		);
+	}
+
+	function linkedEntityTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		return (
+			resolveEntityName(args.entity_kind as OntologyEntityKind, args.entity_id) ||
+			resolveEntityName(args.entity_type as OntologyEntityKind, args.entity_id) ||
+			resolveEntityName(args.src_kind as OntologyEntityKind, args.src_id)
+		);
+	}
+
 	// -------------------------------------------------------------------------
 	// TOOL_DISPLAY_FORMATTERS — closure over resolveEntityName / buildEntityTarget
 	// -------------------------------------------------------------------------
@@ -687,15 +760,15 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		}),
 		search_all_projects: (args) => ({
 			action: 'Searching all projects',
-			target: args?.query || args?.search
+			target: searchTarget(args)
 		}),
 		search_buildos: (args) => ({
 			action: 'Searching all projects',
-			target: args?.query || args?.search
+			target: searchTarget(args)
 		}),
 		search_project: (args) => ({
-			action: 'Searching project',
-			target: args?.query || args?.search
+			action: projectScopedSearchAction(args),
+			target: searchTarget(args)
 		}),
 		list_onto_projects: (args) => ({
 			action: 'Listing projects',
@@ -723,7 +796,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		}),
 		search_onto_tasks: (args) => ({
 			action: 'Searching tasks',
-			target: args?.query || args?.search
+			target: searchTarget(args)
 		}),
 		get_onto_task_details: (args) => ({
 			action: 'Loading task',
@@ -795,7 +868,23 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		}),
 		search_onto_documents: (args) => ({
 			action: 'Searching documents',
-			target: args?.search || args?.query
+			target: searchTarget(args)
+		}),
+		search_onto_goals: (args) => ({
+			action: 'Searching goals',
+			target: searchTarget(args)
+		}),
+		search_onto_plans: (args) => ({
+			action: 'Searching plans',
+			target: searchTarget(args)
+		}),
+		search_onto_milestones: (args) => ({
+			action: 'Searching milestones',
+			target: searchTarget(args)
+		}),
+		search_onto_risks: (args) => ({
+			action: 'Searching risks',
+			target: searchTarget(args)
 		}),
 		get_onto_document_details: (args) => ({
 			action: 'Loading document',
@@ -811,6 +900,14 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		}),
 		create_onto_document: (args) => ({
 			action: 'Creating document',
+			target: args?.title || args?.name
+		}),
+		create_onto_milestone: (args) => ({
+			action: 'Creating milestone',
+			target: args?.title || args?.name
+		}),
+		create_onto_risk: (args) => ({
+			action: 'Creating risk',
 			target: args?.title || args?.name
 		}),
 		update_onto_document: (args) => ({
@@ -836,6 +933,18 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		delete_onto_document: (args) => ({
 			action: 'Deleting document',
 			target: resolveEntityName('document', args?.document_id)
+		}),
+		delete_onto_project: (args) => ({
+			action: 'Deleting project',
+			target: resolveEntityName('project', args?.project_id)
+		}),
+		delete_onto_milestone: (args) => ({
+			action: 'Deleting milestone',
+			target: resolveEntityName('milestone', args?.milestone_id)
+		}),
+		delete_onto_risk: (args) => ({
+			action: 'Deleting risk',
+			target: resolveEntityName('risk', args?.risk_id)
 		}),
 		list_task_documents: (args) => ({
 			action: 'Listing task documents',
@@ -875,18 +984,88 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		}),
 		get_entity_relationships: (args) => ({
 			action: 'Loading relationships',
-			target: resolveEntityName(args?.entity_kind as OntologyEntityKind, args?.entity_id)
+			target: linkedEntityTarget(args)
 		}),
 		get_linked_entities: (args) => ({
 			action: 'Loading linked entities',
-			target: resolveEntityName(args?.entity_kind as OntologyEntityKind, args?.entity_id)
+			target: linkedEntityTarget(args)
 		}),
-		get_field_info: () => ({
-			action: 'Loading field guidance'
+		get_field_info: (args) => ({
+			action: 'Loading field guidance',
+			target: fieldInfoTarget(args)
+		}),
+		get_user_profile_overview: (args) => ({
+			action: 'Loading profile overview',
+			target: firstDisplayLabel(args?.section, args?.chapter_id, args?.chapter_title)
+		}),
+		get_workspace_overview: () => ({
+			action: 'Loading workspace overview'
+		}),
+		get_project_overview: (args) => ({
+			action: 'Loading project overview',
+			target: resolveProjectTarget(args)
+		}),
+		change_chat_context: (args) => {
+			const target = firstDisplayLabel(args?.target);
+			if (target === 'global') {
+				return { action: 'Switching to workspace' };
+			}
+			return {
+				action: 'Switching to project',
+				target: resolveProjectTarget(args)
+			};
+		},
+		search_user_contacts: (args) => ({
+			action: 'Searching contacts',
+			target: contactTarget(args)
+		}),
+		upsert_user_contact: (args) => ({
+			action: 'Updating contact',
+			target: contactTarget(args)
+		}),
+		list_user_contact_candidates: (args) => ({
+			action: 'Listing contact candidates',
+			target: firstDisplayLabel(args?.status)
+		}),
+		resolve_user_contact_candidate: (args) => ({
+			action: 'Resolving contact candidate',
+			target: firstDisplayLabel(args?.action, args?.candidate_id)
+		}),
+		link_user_contact: (args) => ({
+			action: 'Linking contact',
+			target: firstDisplayLabel(args?.link_type, args?.entity_type)
+		}),
+		tool_search: (args) => ({
+			action: 'Searching tools',
+			target: firstDisplayLabel(args?.query, args?.capability, args?.entity, args?.group)
+		}),
+		tool_schema: (args) => ({
+			action: 'Loading tool schema',
+			target: firstDisplayLabel(args?.op)
 		}),
 		web_search: (args) => ({
 			action: 'Running web search',
 			target: args?.query
+		}),
+		web_visit: (args) => ({
+			action: 'Visiting web page',
+			target: firstDisplayLabel(args?.url)
+		}),
+		resolve_libri_resource: (args) => ({
+			action: 'Resolving library resource',
+			target: firstDisplayLabel(args?.query)
+		}),
+		query_libri_library: (args) => ({
+			action: 'Querying library',
+			target: firstDisplayLabel(args?.query, args?.category, args?.action)
+		}),
+		tag_onto_entity: (args) => ({
+			action: 'Tagging entity',
+			target: buildEntityTarget(
+				args?.entity_name ?? args?.title ?? args?.name,
+				args?.entity_id,
+				args?.entity_type as OntologyEntityKind
+			)
 		}),
 		get_buildos_overview: () => ({
 			action: 'Loading BuildOS overview'

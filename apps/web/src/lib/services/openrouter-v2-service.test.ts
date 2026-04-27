@@ -43,6 +43,26 @@ function createServiceWithUsageLogger(insertMock: ReturnType<typeof vi.fn>) {
 	});
 }
 
+function createServiceWithDirectFallbacks() {
+	return new OpenRouterV2Service({
+		apiKey: 'openrouter-test-key',
+		httpReferer: 'https://buildos.test',
+		appName: 'OpenRouter V2 Test',
+		moonshot: {
+			apiKey: 'moonshot-test-key',
+			apiUrl: 'https://api.moonshot.ai/v1/chat/completions'
+		},
+		openai: {
+			apiKey: 'openai-test-key',
+			apiUrl: 'https://api.openai.com/v1/chat/completions',
+			model: 'gpt-4o-mini'
+		},
+		directFallbacks: {
+			providers: ['moonshot', 'openai']
+		}
+	});
+}
+
 function createSseResponse(payloads: string[], headers?: Record<string, string>) {
 	const encoder = new TextEncoder();
 	const stream = new ReadableStream({
@@ -133,6 +153,10 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(requestBodies[0]?.models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(requestBodies[0]?.provider).toEqual({
+			allow_fallbacks: true,
+			require_parameters: true
+		});
 		expect(requestBodies[1]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
 		expect(requestBodies[1]?.models).toBeUndefined();
 	});
@@ -188,6 +212,10 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(requestBodies[0]?.response_format).toEqual({ type: 'json_object' });
 		expect(requestBodies[0]?.models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(requestBodies[0]?.provider).toEqual({
+			allow_fallbacks: true,
+			require_parameters: true
+		});
 	});
 
 	it('routes allowlisted reconciliation JSON calls to the cheaper side-route model', async () => {
@@ -365,6 +393,226 @@ describe('OpenRouterV2Service model routing', () => {
 			AGENT_STATE_RECONCILIATION_MODEL
 		]);
 		expect(requestBodies[1]?.temperature).toBe(0.1);
+	});
+
+	it('falls back to direct Moonshot for JSON when OpenRouter is unavailable', async () => {
+		const requestUrls: string[] = [];
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+			requestUrls.push(url);
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+
+			if (url.includes('openrouter.ai')) {
+				return new Response(JSON.stringify({ error: { message: 'OpenRouter outage' } }), {
+					status: 503,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			return new Response(
+				JSON.stringify({
+					id: 'moonshot-json-fallback',
+					model: 'kimi-k2.6',
+					choices: [
+						{
+							index: 0,
+							message: {
+								role: 'assistant',
+								content: '{"ok":true,"provider":"moonshot"}'
+							},
+							finish_reason: 'stop'
+						}
+					],
+					usage: {
+						prompt_tokens: 10,
+						completion_tokens: 4,
+						total_tokens: 14
+					}
+				}),
+				{
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				}
+			);
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createServiceWithDirectFallbacks();
+		const result = await service.getJSONResponse<{ ok: boolean; provider: string }>({
+			systemPrompt: 'Return valid JSON.',
+			userPrompt: 'Respond with {"ok":true}.',
+			model: DEEPSEEK_V4_FLASH_MODEL,
+			models: [DEEPSEEK_V4_FLASH_MODEL],
+			includeDefaultModels: false
+		});
+
+		expect(result).toEqual({ ok: true, provider: 'moonshot' });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(requestUrls[0]).toContain('openrouter.ai/api/v1/chat/completions');
+		expect(requestUrls[1]).toBe('https://api.moonshot.ai/v1/chat/completions');
+		expect(requestBodies[0]?.provider).toEqual({
+			allow_fallbacks: true,
+			require_parameters: true
+		});
+		expect(requestBodies[1]?.model).toBe('kimi-k2.6');
+		expect(requestBodies[1]?.temperature).toBe(1);
+		expect(requestBodies[1]?.response_format).toEqual({ type: 'json_object' });
+	});
+
+	it('falls back to direct Moonshot streaming before emitting chat output', async () => {
+		const requestUrls: string[] = [];
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+			requestUrls.push(url);
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+
+			if (url.includes('openrouter.ai')) {
+				return new Response(JSON.stringify({ error: { message: 'OpenRouter outage' } }), {
+					status: 503,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			return createSseResponse([
+				JSON.stringify({
+					id: 'moonshot-stream-fallback',
+					model: 'kimi-k2.6',
+					choices: [{ delta: { content: 'Moonshot answer' } }]
+				}),
+				JSON.stringify({
+					choices: [{ delta: {}, finish_reason: 'stop' }],
+					usage: {
+						prompt_tokens: 12,
+						completion_tokens: 3,
+						total_tokens: 15
+					}
+				}),
+				'[DONE]'
+			]);
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createServiceWithDirectFallbacks();
+		const events = [];
+		for await (const event of service.streamText({
+			messages: [{ role: 'user', content: 'hello' }],
+			tools: [
+				{
+					type: 'function',
+					function: {
+						name: 'lookup_project',
+						description: 'Lookup a project.',
+						parameters: { type: 'object', properties: {} }
+					}
+				}
+			],
+			userId: 'user_1',
+			profile: 'balanced'
+		})) {
+			events.push(event);
+		}
+
+		const text = events
+			.filter((event) => event.type === 'text')
+			.map((event) => event.content)
+			.join('');
+		const done = events.find((event) => event.type === 'done');
+
+		expect(text).toBe('Moonshot answer');
+		expect(done).toMatchObject({
+			type: 'done',
+			model: KIMI_EXPERIMENT_MODEL,
+			provider: 'moonshotai'
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		expect(requestUrls.slice(0, 2).every((url) => url.includes('openrouter.ai'))).toBe(true);
+		expect(requestUrls[2]).toBe('https://api.moonshot.ai/v1/chat/completions');
+		expect(requestBodies[0]?.provider).toEqual({
+			allow_fallbacks: true,
+			require_parameters: true
+		});
+		expect(requestBodies[2]?.model).toBe('kimi-k2.6');
+		expect(requestBodies[2]?.tools).toHaveLength(1);
+		expect(requestBodies[2]?.tool_choice).toBe('auto');
+	});
+
+	it('continues to direct OpenAI when direct Moonshot fallback is unavailable', async () => {
+		const requestUrls: string[] = [];
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+			requestUrls.push(url);
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+
+			if (url.includes('openrouter.ai')) {
+				return new Response(JSON.stringify({ error: { message: 'OpenRouter outage' } }), {
+					status: 503,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			if (url.includes('moonshot.ai')) {
+				return new Response(JSON.stringify({ error: { message: 'Moonshot outage' } }), {
+					status: 503,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			return createSseResponse([
+				JSON.stringify({
+					id: 'openai-stream-fallback',
+					model: 'gpt-4o-mini',
+					choices: [{ delta: { content: 'OpenAI answer' } }]
+				}),
+				JSON.stringify({
+					choices: [{ delta: {}, finish_reason: 'stop' }],
+					usage: {
+						prompt_tokens: 12,
+						completion_tokens: 3,
+						total_tokens: 15
+					}
+				}),
+				'[DONE]'
+			]);
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createServiceWithDirectFallbacks();
+		const events = [];
+		for await (const event of service.streamText({
+			messages: [{ role: 'user', content: 'hello' }],
+			userId: 'user_1',
+			profile: 'balanced'
+		})) {
+			events.push(event);
+		}
+
+		const text = events
+			.filter((event) => event.type === 'text')
+			.map((event) => event.content)
+			.join('');
+		const done = events.find((event) => event.type === 'done');
+
+		expect(text).toBe('OpenAI answer');
+		expect(done).toMatchObject({
+			type: 'done',
+			model: 'openai/gpt-4o-mini',
+			provider: 'openai'
+		});
+		expect(fetchMock).toHaveBeenCalledTimes(5);
+		expect(requestUrls.slice(0, 3).every((url) => url.includes('openrouter.ai'))).toBe(true);
+		expect(requestUrls[3]).toBe('https://api.moonshot.ai/v1/chat/completions');
+		expect(requestUrls[4]).toBe('https://api.openai.com/v1/chat/completions');
+		expect(requestBodies[4]?.model).toBe('gpt-4o-mini');
+		expect(requestBodies[4]?.stream_options).toEqual({ include_usage: true });
 	});
 });
 
@@ -710,6 +958,10 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(requestBodies[0]?.models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
 		expect(requestBodies[0]?.tools).toHaveLength(1);
 		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
+		expect(requestBodies[0]?.provider).toEqual({
+			allow_fallbacks: true,
+			require_parameters: true
+		});
 	});
 
 	it('logs streaming usage against the active request model and resolved provider', async () => {

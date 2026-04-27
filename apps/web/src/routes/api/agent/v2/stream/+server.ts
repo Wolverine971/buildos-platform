@@ -54,10 +54,13 @@ import {
 	loadFastChatPromptContext,
 	normalizeFastContextType,
 	composeFastChatHistory,
+	resolveFastChatSurfaceProfileForTurn,
 	selectFastChatTools,
 	streamFastChat,
-	type FastAgentStreamRequest
+	type FastAgentStreamRequest,
+	type FastChatHistoryMessage
 } from '$lib/services/agentic-chat-v2';
+import type { FastChatHistoryCompositionResult } from '$lib/services/agentic-chat-v2/history-composer';
 import {
 	buildLitePromptEnvelope,
 	LITE_PROMPT_VARIANT,
@@ -95,6 +98,14 @@ import {
 	type FastChatContextCache
 } from '$lib/services/agentic-chat-v2/context-cache';
 import {
+	getPreparedPromptSurface,
+	isPreparedPromptPrewarmEnabled,
+	parsePreparedPromptKey,
+	verifyPreparedPromptNonce,
+	type PreparedPromptCacheMissReason,
+	type PreparedPromptRow
+} from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
+import {
 	consumeTransientFastChatCancelHint,
 	resolveFastChatStreamRunId,
 	readFastChatCancelReasonFromMetadata,
@@ -107,6 +118,23 @@ const FASTCHAT_STREAM_ENDPOINT = '/api/agent/v2/stream';
 const FASTCHAT_STREAM_METHOD = 'POST';
 const FASTCHAT_CLEAN_RESPONSE_FALLBACK =
 	'I hit an issue producing a clean final response for that turn. Please try again and I can continue from the project state.';
+
+export const GET: RequestHandler = async ({ locals: { safeGetSession } }) => {
+	const { user } = await safeGetSession();
+	if (!user?.id) {
+		return ApiResponse.unauthorized();
+	}
+
+	return new Response(null, {
+		status: 204,
+		headers: {
+			'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+			Pragma: 'no-cache',
+			Expires: '0',
+			'X-BuildOS-Agent-Stream-Warmup': '1'
+		}
+	});
+};
 
 const FASTCHAT_HISTORY_LOOKBACK_MESSAGES = parsePositiveInt(
 	process.env.FASTCHAT_HISTORY_LOOKBACK_MESSAGES,
@@ -568,6 +596,141 @@ function normalizePrewarmedContextCache(raw: unknown): FastChatContextCache | nu
 						? contextRaw.data
 						: null
 		}
+	};
+}
+
+const PREPARED_HISTORY_ROLES = new Set<FastChatHistoryMessage['role']>([
+	'user',
+	'assistant',
+	'system',
+	'tool'
+]);
+
+function normalizePreparedHistoryForModel(raw: unknown): FastChatHistoryMessage[] {
+	if (!Array.isArray(raw)) return [];
+	const history: FastChatHistoryMessage[] = [];
+	for (const item of raw) {
+		if (!item || typeof item !== 'object') continue;
+		const message = item as Record<string, unknown>;
+		const role = message.role;
+		const content = message.content;
+		if (
+			typeof role !== 'string' ||
+			!PREPARED_HISTORY_ROLES.has(role as FastChatHistoryMessage['role'])
+		) {
+			continue;
+		}
+		if (typeof content !== 'string') continue;
+		const normalized: FastChatHistoryMessage = {
+			role: role as FastChatHistoryMessage['role'],
+			content
+		};
+		if (typeof message.tool_call_id === 'string') {
+			normalized.tool_call_id = message.tool_call_id;
+		}
+		history.push(normalized);
+	}
+	return history;
+}
+
+function normalizePreparedHistoryStrategy(
+	value: unknown
+): FastChatHistoryCompositionResult['strategy'] {
+	if (value === 'raw_history' || value === 'continuity_only' || value === 'compressed_history') {
+		return value;
+	}
+	return 'raw_history';
+}
+
+async function consumePreparedPrompt(params: {
+	supabase: any;
+	key: string | null;
+	userId: string;
+	sessionId: string;
+	cacheKey: string;
+	surfaceProfile: ReturnType<typeof resolveFastChatSurfaceProfileForTurn>;
+}): Promise<
+	| {
+			hit: true;
+			row: PreparedPromptRow;
+			surface: NonNullable<ReturnType<typeof getPreparedPromptSurface>>;
+			ageSeconds: number;
+	  }
+	| {
+			hit: false;
+			reason: PreparedPromptCacheMissReason;
+	  }
+> {
+	if (!params.key) {
+		return { hit: false, reason: 'missing_key' };
+	}
+	if (!isPreparedPromptPrewarmEnabled()) {
+		return { hit: false, reason: 'disabled' };
+	}
+
+	const parsed = parsePreparedPromptKey(params.key);
+	if (!parsed) {
+		return { hit: false, reason: 'bad_format' };
+	}
+
+	const { data, error } = await params.supabase
+		.from('agentic_chat_prepared_prompts')
+		.select('*')
+		.eq('id', parsed.id)
+		.maybeSingle();
+	if (error || !data) {
+		return { hit: false, reason: 'not_found' };
+	}
+
+	const row = data as PreparedPromptRow;
+	if (row.user_id !== params.userId) {
+		return { hit: false, reason: 'user_mismatch' };
+	}
+	if (!verifyPreparedPromptNonce({ nonce: parsed.nonce, nonceSha256: row.nonce_sha256 })) {
+		return { hit: false, reason: 'nonce_mismatch' };
+	}
+	if (row.consumed_at) {
+		return { hit: false, reason: 'consumed' };
+	}
+	if (Date.parse(row.expires_at) <= Date.now()) {
+		return { hit: false, reason: 'expired' };
+	}
+	if (row.session_id && row.session_id !== params.sessionId) {
+		return { hit: false, reason: 'session_mismatch' };
+	}
+	if (row.cache_key !== params.cacheKey) {
+		return { hit: false, reason: 'scope_mismatch' };
+	}
+
+	const surface = getPreparedPromptSurface(row, params.surfaceProfile);
+	if (!surface) {
+		return { hit: false, reason: 'surface_missing' };
+	}
+
+	const consumedAt = new Date().toISOString();
+	const { data: updated, error: updateError } = await params.supabase
+		.from('agentic_chat_prepared_prompts')
+		.update({ consumed_at: consumedAt, updated_at: consumedAt })
+		.eq('id', row.id)
+		.eq('user_id', params.userId)
+		.is('consumed_at', null)
+		.select('id')
+		.maybeSingle();
+	if (updateError) {
+		return { hit: false, reason: 'update_failed' };
+	}
+	if (!updated?.id) {
+		return { hit: false, reason: 'consumed' };
+	}
+
+	return {
+		hit: true,
+		row: {
+			...row,
+			consumed_at: consumedAt
+		},
+		surface,
+		ageSeconds: resolveCacheAgeSeconds(row.created_at)
 	};
 }
 
@@ -2261,6 +2424,14 @@ export const POST: RequestHandler = async ({
 	const requestPrewarmedContext = normalizePrewarmedContextCache(
 		streamRequest.prewarmedContext ?? streamRequest.prewarmed_context ?? null
 	);
+	const requestPreparedPromptKey =
+		typeof streamRequest.preparedPromptKey === 'string' &&
+		streamRequest.preparedPromptKey.trim().length > 0
+			? streamRequest.preparedPromptKey.trim()
+			: typeof streamRequest.prepared_prompt_key === 'string' &&
+				  streamRequest.prepared_prompt_key.trim().length > 0
+				? streamRequest.prepared_prompt_key.trim()
+				: null;
 
 	const initialContextType = normalizeFastContextType(streamRequest.context_type);
 	if (isDailyBriefContext(initialContextType)) {
@@ -2299,6 +2470,14 @@ export const POST: RequestHandler = async ({
 	let contextCacheSource: AgentTimingSummary['cache_source'] = 'not_requested';
 	let contextCacheAgeSecondsForTiming: number | null = null;
 	let bypassedContextCache = false;
+	let preparedPromptRequested = Boolean(requestPreparedPromptKey);
+	let preparedPromptHit = false;
+	let preparedPromptMissReason: PreparedPromptCacheMissReason | null = requestPreparedPromptKey
+		? null
+		: 'missing_key';
+	let preparedPromptId: string | null = null;
+	let preparedPromptAgeSeconds: number | null = null;
+	let preparedSurfaceProfile: string | null = null;
 	let timingMetricQueued = false;
 	let timingMetricId: string | null = null;
 	let turnRunId: string | null = null;
@@ -2510,6 +2689,12 @@ export const POST: RequestHandler = async ({
 				project_id: timingProjectId,
 				entity_id: timingEntityId,
 				request_prewarmed_context: Boolean(requestPrewarmedContext),
+				prepared_prompt_requested: preparedPromptRequested,
+				prepared_prompt_hit: preparedPromptHit,
+				prepared_prompt_miss_reason: preparedPromptMissReason,
+				prepared_prompt_id: preparedPromptId,
+				prepared_prompt_age_seconds: preparedPromptAgeSeconds,
+				prepared_prompt_surface_profile: preparedSurfaceProfile,
 				timing_summary: JSON.parse(JSON.stringify(summary)) as Json
 			}
 		});
@@ -2763,35 +2948,9 @@ export const POST: RequestHandler = async ({
 
 			const requestLastTurnContext =
 				streamRequest.lastTurnContext ?? streamRequest.last_turn_context ?? null;
-			historyLoadStartedAtMs = Date.now();
-			const history = await sessionService.loadRecentMessages(
-				session.id,
-				FASTCHAT_HISTORY_LOOKBACK_MESSAGES
-			);
-			historyLoadedAtMs = Date.now();
 			const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
 			const conversationSummary =
 				typeof session.summary === 'string' ? session.summary : null;
-			historyComposeStartedAtMs = Date.now();
-			const historyComposition = composeFastChatHistory({
-				history,
-				continuityHint,
-				sessionSummary: conversationSummary,
-				settings: {
-					compressionThresholdMessages: FASTCHAT_HISTORY_COMPRESSION_THRESHOLD_MESSAGES,
-					tailMessagesWhenCompressed: FASTCHAT_HISTORY_TAIL_MESSAGES,
-					maxSummaryChars: FASTCHAT_HISTORY_MAX_SUMMARY_CHARS,
-					maxMessageChars: FASTCHAT_HISTORY_MAX_MESSAGE_CHARS
-				}
-			});
-			historyComposedAtMs = Date.now();
-			historyStrategy = historyComposition.strategy;
-			historyCompressed = historyComposition.compressed;
-			rawHistoryCount = historyComposition.rawHistoryCount;
-			const historyForModel = historyComposition.historyForModel;
-			historyForModelCount = historyForModel.length;
-			const promptDumpTurnNumber =
-				history.reduce((count, item) => count + (item.role === 'user' ? 1 : 0), 0) + 1;
 			const sessionMetadata = (session.agent_metadata ?? {}) as Record<string, any>;
 			const recentContextShiftHint = readRecentContextShiftHint(sessionMetadata);
 			const bypassContextCacheForShiftHint = shouldBypassContextCacheForShiftHint({
@@ -2813,6 +2972,92 @@ export const POST: RequestHandler = async ({
 				});
 			}
 			bypassedContextCache = bypassContextCacheForShiftHint;
+
+			const llm = new OpenRouterV2Service({
+				supabase,
+				httpReferer: request.headers.get('referer') ?? undefined,
+				appName: 'BuildOS Agentic Chat V2'
+			});
+			const gatewayEnabled = true;
+			const toolSelectionStartedAtMs = Date.now();
+			const selectedSurfaceProfile = resolveFastChatSurfaceProfileForTurn({
+				contextType,
+				latestUserMessage: message
+			});
+			const tools = selectFastChatTools({
+				contextType,
+				surfaceProfile: selectedSurfaceProfile
+			});
+			preparedSurfaceProfile = selectedSurfaceProfile;
+			toolSelectionMs = Math.max(0, Date.now() - toolSelectionStartedAtMs);
+
+			const preparedPromptForTurn = await consumePreparedPrompt({
+				supabase,
+				key: requestPreparedPromptKey,
+				userId,
+				sessionId: session.id,
+				cacheKey,
+				surfaceProfile: selectedSurfaceProfile
+			});
+			if (!preparedPromptForTurn.hit) {
+				preparedPromptMissReason = preparedPromptForTurn.reason;
+			}
+
+			let history: FastChatHistoryMessage[] = [];
+			let historyForModel: FastChatHistoryMessage[];
+			let historyComposition: FastChatHistoryCompositionResult;
+			if (preparedPromptForTurn.hit) {
+				const nowMs = Date.now();
+				historyLoadStartedAtMs = nowMs;
+				historyLoadedAtMs = nowMs;
+				historyComposeStartedAtMs = nowMs;
+				historyForModel = normalizePreparedHistoryForModel(
+					preparedPromptForTurn.row.history_for_model
+				);
+				historyComposition = {
+					historyForModel,
+					compressed: preparedPromptForTurn.row.history_compressed === true,
+					strategy: normalizePreparedHistoryStrategy(
+						preparedPromptForTurn.row.history_strategy
+					),
+					rawHistoryCount:
+						typeof preparedPromptForTurn.row.raw_history_count === 'number'
+							? preparedPromptForTurn.row.raw_history_count
+							: historyForModel.length,
+					tailMessagesKept: historyForModel.length,
+					continuityHintUsed: false
+				};
+				historyComposedAtMs = Date.now();
+			} else {
+				historyLoadStartedAtMs = Date.now();
+				history = await sessionService.loadRecentMessages(
+					session.id,
+					FASTCHAT_HISTORY_LOOKBACK_MESSAGES
+				);
+				historyLoadedAtMs = Date.now();
+				historyComposeStartedAtMs = Date.now();
+				historyComposition = composeFastChatHistory({
+					history,
+					continuityHint,
+					sessionSummary: conversationSummary,
+					settings: {
+						compressionThresholdMessages:
+							FASTCHAT_HISTORY_COMPRESSION_THRESHOLD_MESSAGES,
+						tailMessagesWhenCompressed: FASTCHAT_HISTORY_TAIL_MESSAGES,
+						maxSummaryChars: FASTCHAT_HISTORY_MAX_SUMMARY_CHARS,
+						maxMessageChars: FASTCHAT_HISTORY_MAX_MESSAGE_CHARS
+					}
+				});
+				historyComposedAtMs = Date.now();
+				historyForModel = historyComposition.historyForModel;
+			}
+			historyStrategy = historyComposition.strategy;
+			historyCompressed = historyComposition.compressed;
+			rawHistoryCount = historyComposition.rawHistoryCount;
+			historyForModelCount = historyForModel.length;
+			const promptDumpTurnNumber =
+				historyForModel.reduce((count, item) => count + (item.role === 'user' ? 1 : 0), 0) +
+				1;
 
 			const userMessageMetadata: Record<string, Json | undefined> = {};
 			if (voiceGroupId) {
@@ -2847,15 +3092,6 @@ export const POST: RequestHandler = async ({
 					// User message persistence is already handled later in the route.
 				});
 
-			const llm = new OpenRouterV2Service({
-				supabase,
-				httpReferer: request.headers.get('referer') ?? undefined,
-				appName: 'BuildOS Agentic Chat V2'
-			});
-			const gatewayEnabled = true;
-			const toolSelectionStartedAtMs = Date.now();
-			const tools = selectFastChatTools({ contextType, latestUserMessage: message });
-			toolSelectionMs = Math.max(0, Date.now() - toolSelectionStartedAtMs);
 			turnRunId = uuidv4();
 			try {
 				const { error: turnRunError } = await supabase.from('chat_turn_runs').insert({
@@ -2997,7 +3233,76 @@ export const POST: RequestHandler = async ({
 					requestPrewarmedContext.version === FASTCHAT_CONTEXT_CACHE_VERSION &&
 					requestPrewarmedContext.key === cacheKey &&
 					isCacheFresh(requestPrewarmedContext);
-				if (
+				if (preparedPromptForTurn.hit) {
+					const preparedContext = preparedPromptForTurn.row.context_payload;
+					const preparedContextType =
+						typeof preparedContext.contextType === 'string'
+							? preparedContext.contextType
+							: typeof preparedContext.context_type === 'string'
+								? preparedContext.context_type
+								: contextType;
+					promptContext = {
+						contextType: normalizeFastContextType(
+							preparedContextType as ChatContextType
+						),
+						entityId:
+							(typeof preparedContext.entityId === 'string'
+								? preparedContext.entityId
+								: typeof preparedContext.entity_id === 'string'
+									? preparedContext.entity_id
+									: null) ?? null,
+						projectId:
+							(typeof preparedContext.projectId === 'string'
+								? preparedContext.projectId
+								: typeof preparedContext.project_id === 'string'
+									? preparedContext.project_id
+									: null) ?? null,
+						projectName:
+							typeof preparedContext.projectName === 'string'
+								? preparedContext.projectName
+								: typeof preparedContext.project_name === 'string'
+									? preparedContext.project_name
+									: null,
+						focusEntityType:
+							typeof preparedContext.focusEntityType === 'string'
+								? preparedContext.focusEntityType
+								: typeof preparedContext.focus_entity_type === 'string'
+									? preparedContext.focus_entity_type
+									: null,
+						focusEntityId:
+							typeof preparedContext.focusEntityId === 'string'
+								? preparedContext.focusEntityId
+								: typeof preparedContext.focus_entity_id === 'string'
+									? preparedContext.focus_entity_id
+									: null,
+						focusEntityName:
+							typeof preparedContext.focusEntityName === 'string'
+								? preparedContext.focusEntityName
+								: typeof preparedContext.focus_entity_name === 'string'
+									? preparedContext.focus_entity_name
+									: null,
+						data:
+							preparedContext.data && typeof preparedContext.data === 'object'
+								? (preparedContext.data as Record<string, unknown>)
+								: typeof preparedContext.data === 'string'
+									? preparedContext.data
+									: null
+					};
+					systemPrompt = preparedPromptForTurn.surface.system_prompt;
+					litePromptEnvelope = {
+						promptVariant: LITE_PROMPT_VARIANT,
+						systemPrompt,
+						sections: preparedPromptForTurn.surface.sections,
+						contextInventory: preparedPromptForTurn.surface.context_inventory,
+						toolsSummary: preparedPromptForTurn.surface.tools_summary
+					};
+					contextCacheAgeSeconds = preparedPromptForTurn.ageSeconds;
+					contextCacheSource = 'prepared_prompt';
+					preparedPromptHit = true;
+					preparedPromptMissReason = null;
+					preparedPromptId = preparedPromptForTurn.row.id;
+					preparedPromptAgeSeconds = preparedPromptForTurn.ageSeconds;
+				} else if (
 					cachedContext &&
 					!bypassContextCacheForShiftHint &&
 					cachedContext.version === FASTCHAT_CONTEXT_CACHE_VERSION &&
@@ -3080,17 +3385,23 @@ export const POST: RequestHandler = async ({
 				annotateContextMetaCacheAge(promptContext?.data, contextCacheAgeSeconds);
 				contextCacheAgeSecondsForTiming = contextCacheAgeSeconds;
 
+				if (!promptContext) {
+					throw new Error('Prepared FastChat prompt context was not resolved');
+				}
+
 				promptContext.conversationSummary = conversationSummary;
 				promptContext.entityResolutionHint =
 					buildEntityResolutionHint(requestLastTurnContext);
 
-				litePromptEnvelope = buildLitePromptEnvelope({
-					...promptContext,
-					tools,
-					productSurface: FASTCHAT_STREAM_ENDPOINT,
-					conversationPosition: `live stream turn ${streamRunId}`
-				});
-				systemPrompt = litePromptEnvelope.systemPrompt;
+				if (!systemPrompt) {
+					litePromptEnvelope = buildLitePromptEnvelope({
+						...promptContext,
+						tools,
+						productSurface: FASTCHAT_STREAM_ENDPOINT,
+						conversationPosition: `live stream turn ${streamRunId}`
+					});
+					systemPrompt = litePromptEnvelope.systemPrompt;
+				}
 
 				const usageSnapshot = buildFastContextUsageSnapshot({
 					systemPrompt,
@@ -3115,12 +3426,19 @@ export const POST: RequestHandler = async ({
 				queueTurnRunUpdate(
 					{
 						cache_source: contextCacheSource,
-						cache_age_seconds: contextCacheAgeSecondsForTiming
+						cache_age_seconds: contextCacheAgeSecondsForTiming,
+						prepared_prompt_id: preparedPromptId,
+						prepared_prompt_hit: preparedPromptHit,
+						prepared_prompt_miss_reason: preparedPromptMissReason,
+						prepared_surface_profile: preparedSurfaceProfile
 					},
 					'update_turn_run_context_cache',
 					{
 						cacheSource: contextCacheSource,
-						cacheAgeSeconds: contextCacheAgeSecondsForTiming
+						cacheAgeSeconds: contextCacheAgeSecondsForTiming,
+						preparedPromptHit,
+						preparedPromptMissReason,
+						preparedSurfaceProfile
 					}
 				);
 				if (turnRunId) {
@@ -3161,7 +3479,11 @@ export const POST: RequestHandler = async ({
 								entity_id: entityId ?? null,
 								project_focus: projectFocus ?? null,
 								prompt_variant: promptVariant,
-								voice_note_group_id: voiceGroupId ?? null
+								voice_note_group_id: voiceGroupId ?? null,
+								prepared_prompt_id: preparedPromptId,
+								prepared_prompt_hit: preparedPromptHit,
+								prepared_prompt_miss_reason: preparedPromptMissReason,
+								prepared_surface_profile: preparedSurfaceProfile
 							},
 							promptSections: buildPromptSnapshotSections({
 								...promptContext,

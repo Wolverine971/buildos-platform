@@ -175,32 +175,33 @@
 				<div
 					class="agent-resp-div clarity-zone min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 text-sm font-medium leading-relaxed text-foreground shadow-ink tx tx-frame tx-weak sm:p-4"
 				>
-					<div class="flex min-w-0 items-start gap-2 sm:gap-3">
-						<!-- INKPRINT avatar badge -->
-						<div
-							class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-foreground text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-background shadow-ink sm:h-9 sm:w-9"
-						>
-							OS
-						</div>
-						<div class="min-w-0 flex-1">
-							{#if shouldRenderAsMarkdown(message.content)}
-								<div
-									class="agent-markdown {proseClasses} overflow-x-auto break-words"
-								>
-									{@html renderMarkdown(message.content)}
-								</div>
-							{:else}
-								<div
-									class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
-								>
-									{message.content}
-								</div>
-							{/if}
-						</div>
+					<!-- BuildOS assistant avatar -->
+					<div
+						class="float-left mt-0.5 mr-3 mb-1 flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-card shadow-ink sm:h-9 sm:w-9"
+					>
+						<img
+							src="/brain-bolt.webp"
+							alt="BuildOS"
+							class="h-full w-full object-cover"
+							loading="lazy"
+						/>
 					</div>
+					{#if shouldRenderAsMarkdown(message.content)}
+						<div
+							class="agent-markdown {proseClasses} min-w-0 break-words"
+						>
+							{@html renderMarkdown(message.content)}
+						</div>
+					{:else}
+						<div
+							class="min-w-0 whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
+						>
+							{message.content}
+						</div>
+					{/if}
 					{#if message.metadata?.interrupted}
 						<div
-							class="mt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-amber-600 dark:text-amber-400"
+							class="clear-both mt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-amber-600 dark:text-amber-400"
 							role="status"
 							aria-live="polite"
 						>
@@ -208,7 +209,7 @@
 						</div>
 					{/if}
 					<span
-						class="mt-1 block text-right text-[0.65rem] leading-none tabular-nums text-muted-foreground/70"
+						class="clear-both mt-1 block text-right text-[0.65rem] leading-none tabular-nums text-muted-foreground/70"
 					>
 						{formatTime(message.timestamp)}
 					</span>

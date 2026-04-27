@@ -432,6 +432,7 @@ export interface AgentTimingSummary {
     | 'not_requested'
     | 'session_cache'
     | 'request_prewarm'
+    | 'prepared_prompt'
     | 'fresh_load'
     | 'context_build_failed';
   cache_age_seconds?: number | null;

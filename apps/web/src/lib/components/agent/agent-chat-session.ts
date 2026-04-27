@@ -12,6 +12,17 @@ import type { FastAgentPrewarmRequest } from '$lib/services/agentic-chat-v2';
 import type { FastChatContextCache } from '$lib/services/agentic-chat-v2/context-cache';
 import type { ActivityEntry, ThinkingBlockMessage, UIMessage } from './agent-chat.types';
 
+export type PreparedPromptClient = {
+	id: string;
+	key: string;
+	expires_at: string;
+	cache_key: string;
+	prompt_variant?: string;
+	default_surface_profile?: string;
+	prepared_surface_profiles?: string[];
+	system_prompt_sha256?: string;
+};
+
 type LoadedChatMessage = {
 	id: string;
 	session_id?: string;
@@ -166,6 +177,7 @@ export async function prewarmAgentContext(
 ): Promise<{
 	session: ChatSession | null;
 	prewarmedContext: FastChatContextCache | null;
+	preparedPrompt: PreparedPromptClient | null;
 } | null> {
 	try {
 		const response = await fetch('/api/agent/v2/prewarm', {
@@ -187,9 +199,11 @@ export async function prewarmAgentContext(
 
 		const session = result?.data?.session ?? null;
 		const prewarmedContext = result?.data?.prewarmed_context ?? null;
+		const preparedPrompt = result?.data?.prepared_prompt ?? null;
 		return {
 			session: session as ChatSession | null,
-			prewarmedContext: prewarmedContext as FastChatContextCache | null
+			prewarmedContext: prewarmedContext as FastChatContextCache | null,
+			preparedPrompt: preparedPrompt as PreparedPromptClient | null
 		};
 	} catch (err) {
 		if ((err as DOMException)?.name === 'AbortError') {
@@ -199,6 +213,27 @@ export async function prewarmAgentContext(
 			console.warn('[AgentChat] Prewarm failed:', err);
 		}
 		return null;
+	}
+}
+
+export async function warmAgentChatStreamTransport(
+	options: { signal?: AbortSignal } = {}
+): Promise<boolean> {
+	try {
+		const response = await fetch('/api/agent/v2/stream?purpose=warmup', {
+			method: 'GET',
+			cache: 'no-store',
+			signal: options.signal
+		});
+		return response.ok;
+	} catch (err) {
+		if ((err as DOMException)?.name === 'AbortError') {
+			throw err;
+		}
+		if (dev) {
+			console.warn('[AgentChat] Stream transport warmup failed:', err);
+		}
+		return false;
 	}
 }
 
@@ -251,6 +286,7 @@ const TOOL_TARGET_KEYS = [
 	'title',
 	'name',
 	'project_name',
+	'project_query',
 	'task_title',
 	'task_name',
 	'goal_name',
@@ -261,9 +297,12 @@ const TOOL_TARGET_KEYS = [
 	'event_title',
 	'entity_name',
 	'label',
+	'display_name',
 	'query',
 	'search',
+	'url',
 	'op',
+	'action',
 	'path',
 	'skill_path'
 ];
@@ -344,8 +383,32 @@ function restoredToolAction(source: RestoredToolActivitySource): {
 	if (toolName === 'tool_schema') {
 		return { completed: 'Loaded tool schema', failed: 'load tool schema' };
 	}
+	if (toolName === 'get_workspace_overview') {
+		return { completed: 'Loaded workspace overview', failed: 'load workspace overview' };
+	}
+	if (toolName === 'get_project_overview') {
+		return { completed: 'Loaded project overview', failed: 'load project overview' };
+	}
 	if (toolName === 'change_chat_context') {
-		return { completed: 'Changed chat context', failed: 'change chat context' };
+		return { completed: 'Switched chat context', failed: 'switch chat context' };
+	}
+	if (toolName === 'get_user_profile_overview') {
+		return { completed: 'Loaded profile overview', failed: 'load profile overview' };
+	}
+	if (toolName === 'search_user_contacts') {
+		return { completed: 'Searched contacts', failed: 'search contacts' };
+	}
+	if (toolName === 'upsert_user_contact') {
+		return { completed: 'Updated contact', failed: 'update contact' };
+	}
+	if (toolName === 'web_visit') {
+		return { completed: 'Visited web page', failed: 'visit web page' };
+	}
+	if (toolName === 'resolve_libri_resource') {
+		return { completed: 'Resolved library resource', failed: 'resolve library resource' };
+	}
+	if (toolName === 'query_libri_library') {
+		return { completed: 'Queried library', failed: 'query library' };
 	}
 	if (toolName === 'link_onto_entities') {
 		return { completed: 'Linked entities', failed: 'link entities' };

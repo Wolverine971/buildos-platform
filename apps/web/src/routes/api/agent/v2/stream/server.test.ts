@@ -8,7 +8,7 @@ vi.mock('$app/environment', () => ({
 	version: 'test'
 }));
 
-import { POST } from './+server';
+import { GET, POST } from './+server';
 
 function createQuery(result: unknown) {
 	return {
@@ -33,7 +33,31 @@ function createSupabase({ isAdmin = false } = {}) {
 	};
 }
 
-describe('POST /api/agent/v2/stream', () => {
+describe('/api/agent/v2/stream', () => {
+	it('GET warmup authenticates and returns a no-content response', async () => {
+		const safeGetSession = vi.fn().mockResolvedValue({ user: { id: 'user-1' } });
+		const response = await GET({
+			locals: {
+				safeGetSession
+			}
+		} as any);
+
+		expect(response.status).toBe(204);
+		expect(response.headers.get('Cache-Control')).toContain('no-store');
+		expect(response.headers.get('X-BuildOS-Agent-Stream-Warmup')).toBe('1');
+		expect(safeGetSession).toHaveBeenCalledTimes(1);
+	});
+
+	it('GET warmup requires an authenticated user', async () => {
+		const response = await GET({
+			locals: {
+				safeGetSession: vi.fn().mockResolvedValue({ user: null })
+			}
+		} as any);
+
+		expect(response.status).toBe(401);
+	});
+
 	it('ignores the legacy prompt_variant request field and does not consult the admin gate', async () => {
 		// Lite is the only prompt path (docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md).
 		// The legacy `prompt_variant` field is ignored silently; every session runs lite.

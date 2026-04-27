@@ -53,15 +53,6 @@ const WEEKDAY_NAMES = [
 	'Saturday'
 ] as const;
 
-const TIME_OF_DAY_LABELS: Record<DashboardTimeOfDay, string> = {
-	late_night: 'late night',
-	early_morning: 'early morning',
-	morning: 'morning',
-	midday: 'midday',
-	afternoon: 'afternoon',
-	evening: 'evening'
-};
-
 const FIXED_SPECIAL_DAYS: Record<string, string[]> = {
 	'01-01': ["New Year's Day"],
 	'02-02': ['Groundhog Day'],
@@ -102,367 +93,301 @@ const BUSINESS_MARKERS: Record<string, string[]> = {
 
 const SPECIAL_DAY_GREETING_BANKS: Record<string, GreetingTemplate[]> = {
 	"New Year's Day": [
-		(name) =>
-			`Happy New Year, ${name}. Fresh calendar smell, suspiciously ambitious tab count.`,
-		(name) => `New year, ${name}. The blank calendar is acting innocent.`
+		(name) => `Happy New Year, ${name}.`,
+		(name) => `New year, ${name}. Pick what actually matters this time.`
 	],
 	'Groundhog Day': [
-		(name) =>
-			`Happy Groundhog Day, ${name}. If the same task appears again, we call it tradition.`,
-		(name) => `Groundhog Day check-in, ${name}. Repeating patterns are now festive.`
+		(name) => `Groundhog Day, ${name}. Break the loop today.`,
+		(name) => `Groundhog Day, ${name}. Same calendar, different choices.`
 	],
 	'National Pizza Day': [
-		(name) =>
-			`Happy National Pizza Day, ${name}. Today's plan has extra focus and no pineapple discourse.`,
-		(name) => `Pizza Day, ${name}. Slice the work into triangles and pretend that was strategy.`
+		(name) => `National Pizza Day, ${name}.`,
+		(name) => `Pizza Day, ${name}. Slice the day into pieces you can finish.`
 	],
 	"Valentine's Day": [
-		(name) => `Happy Valentine's Day, ${name}. May your tasks be emotionally available.`,
-		(name) =>
-			`Valentine's Day, ${name}. Your dashboard brought tiny paper hearts for the priorities.`
+		(name) => `Happy Valentine's Day, ${name}.`,
+		(name) => `Valentine's Day, ${name}. Be kind to your future self today.`
 	],
 	'Mario Day': [
-		(name) => `Happy Mario Day, ${name}. Tiny jumps count.`,
-		(name) => `Mario Day, ${name}. Power up, then tackle one question mark block at a time.`
+		(name) => `Mar10 Day, ${name}. Small jumps count.`,
+		(name) => `Happy Mario Day, ${name}.`
 	],
 	"St. Patrick's Day": [
-		(name) =>
-			`Happy St. Patrick's Day, ${name}. May your priorities line up without making you chase them.`,
-		(name) =>
-			`St. Patrick's Day, ${name}. The plan is wearing green and pretending it was organized all along.`
+		(name) => `Happy St. Patrick's Day, ${name}.`,
+		(name) => `St. Patrick's Day, ${name}.`
 	],
 	"April Fools' Day": [
-		(name) =>
-			`Happy April Fools' Day, ${name}. The dashboard promises zero fake buttons today.`,
-		(name) =>
-			`April Fools' Day, ${name}. Your backlog says it was "just kidding" about half of that.`
+		(name) => `April Fools', ${name}. No tricks here.`,
+		(name) => `April 1st, ${name}. Ignore anything that smells like a prank.`
 	],
 	'U.S. Tax Day': [
 		(name) => `Tax Day, ${name}. Hydrate, document, survive.`,
-		(name) => `Tax Day, ${name}. Today's vibe is receipts, resolve, and one tiny win.`
+		(name) => `Tax Day, ${name}. Get it filed.`
 	],
 	'World Design Day': [
-		(name) =>
-			`Happy World Design Day, ${name}. May every weird layout reveal its true feelings.`,
-		(name) => `World Design Day, ${name}. The pixels have agreed to be reasonable. Mostly.`
+		(name) => `World Design Day, ${name}.`,
+		(name) => `Design Day, ${name}. Sweat the details that nobody else will.`
 	],
 	'Star Wars Day': [
-		(name) => `May the 4th be productive, ${name}. The backlog is not your father.`,
-		(name) => `Star Wars Day, ${name}. Use the focus. The tabs can wait.`
+		(name) => `May the 4th be with you, ${name}.`,
+		(name) => `Star Wars Day, ${name}. Trust the focus.`
 	],
 	'National Creativity Day': [
-		(name) =>
-			`Happy National Creativity Day, ${name}. The messy idea pile is officially decorative.`,
-		(name) => `Creativity Day, ${name}. Weird first drafts are wearing formal attire today.`
+		(name) => `Creativity Day, ${name}. Make something rough today.`,
+		(name) => `National Creativity Day, ${name}. The first draft is allowed to be bad.`
 	],
 	'Flag Day': [
-		(name) => `Flag Day, ${name}. Plant one tiny flag in the work and call that progress.`,
-		(name) => `Happy Flag Day, ${name}. Pick a hill, preferably a small and useful one.`
+		(name) => `Flag Day, ${name}.`,
+		(name) => `Happy Flag Day, ${name}. Plant a flag in something real.`
 	],
 	Juneteenth: [
-		(name) => `Honoring Juneteenth, ${name}. Make room for reflection and real progress today.`,
-		(name) => `Juneteenth, ${name}. A steady day for meaning, memory, and intentional work.`
+		(name) => `Juneteenth, ${name}. Make space for reflection.`,
+		(name) => `Honoring Juneteenth, ${name}.`
 	],
 	'World Productivity Day': [
-		(name) => `World Productivity Day, ${name}. Suspiciously on-brand, but we will allow it.`,
-		(name) =>
-			`Happy World Productivity Day, ${name}. One clean next step is the whole ceremony.`
+		(name) => `World Productivity Day, ${name}. On-brand, but we'll allow it.`,
+		(name) => `Productivity Day, ${name}. One clean step is enough.`
 	],
 	'World Selfie Day': [
-		(name) =>
-			`World Selfie Day, ${name}. The dashboard checked its angles and found your next step.`,
-		(name) => `Selfie Day, ${name}. Face the work, but maybe from your good side.`
+		(name) => `Selfie Day, ${name}.`,
+		(name) => `World Selfie Day, ${name}. Look at the work, then back at me.`
 	],
 	'Independence Day': [
-		(name) => `Happy Independence Day, ${name}. Free yourself from one lingering tiny task.`,
-		(name) => `Independence Day, ${name}. Big sky, small list, excellent ratio.`
+		(name) => `Happy 4th, ${name}.`,
+		(name) => `Independence Day, ${name}. Take the day if you can.`
 	],
 	'World Emoji Day': [
-		(name) => `World Emoji Day, ${name}. Every task gets one facial expression and no more.`,
-		(name) => `Emoji Day, ${name}. The plan is expressive, but still legally a plan.`
+		(name) => `World Emoji Day, ${name}.`,
+		(name) => `Emoji Day, ${name}. One face per task, max.`
 	],
 	'World Photography Day': [
-		(name) => `World Photography Day, ${name}. Focus, frame, ship the thing.`,
-		(name) => `Photography Day, ${name}. The blur is artistic until the deadline arrives.`
+		(name) => `Photography Day, ${name}. Frame, focus, ship.`,
+		(name) => `World Photography Day, ${name}.`
 	],
 	'Patriot Day': [
-		(name) => `Patriot Day, ${name}. A quieter greeting for a day that asks for remembrance.`,
-		(name) => `Today carries weight, ${name}. Keep the work steady and the attention kind.`
+		(name) => `Patriot Day, ${name}. A quieter day. Be steady.`,
+		(name) => `Today carries weight, ${name}. Keep the work intentional.`
 	],
 	'Constitution Day': [
-		(name) =>
-			`Constitution Day, ${name}. Your tasks demand due process and one clear next action.`,
-		(name) => `Constitution Day, ${name}. The plan has articles, sections, and coffee.`
+		(name) => `Constitution Day, ${name}.`,
+		(name) => `Constitution Day, ${name}. Pick one clear next action.`
 	],
 	'National Coffee Day': [
-		(name) => `National Coffee Day, ${name}. The priorities are lightly caffeinated.`,
-		(name) => `Coffee Day, ${name}. Sip first, then negotiate with the task stack.`
+		(name) => `National Coffee Day, ${name}.`,
+		(name) => `Coffee Day, ${name}. Pour first, plan second.`
 	],
 	'World Mental Health Day': [
-		(name) =>
-			`World Mental Health Day, ${name}. Gentle pace, honest priorities, no heroics required.`,
-		(name) => `Mental Health Day, ${name}. The best plan is allowed to be humane.`
+		(name) => `Mental Health Day, ${name}. Be honest about your capacity today.`,
+		(name) => `World Mental Health Day, ${name}. A gentler pace counts.`
 	],
 	Halloween: [
-		(name) => `Happy Halloween, ${name}. The overdue list is wearing a tiny cape.`,
-		(name) => `Halloween, ${name}. Spooky thought: one focused hour might fix a lot.`
+		(name) => `Happy Halloween, ${name}.`,
+		(name) => `Halloween, ${name}. The scariest thing is the overdue list.`
 	],
 	'Veterans Day': [
-		(name) => `Veterans Day, ${name}. Respectful pause, steady work, clear priorities.`,
-		(name) => `Honoring Veterans Day, ${name}. Keep the signal clean and the day intentional.`
+		(name) => `Veterans Day, ${name}. Steady work, clear priorities.`,
+		(name) => `Honoring Veterans Day, ${name}.`
 	],
 	'Christmas Day': [
-		(name) =>
-			`Merry Christmas, ${name}. May your checklist be optional and your cocoa persuasive.`,
-		(name) => `Christmas Day, ${name}. The dashboard brought a tiny bow for your priorities.`
+		(name) => `Merry Christmas, ${name}.`,
+		(name) => `Christmas Day, ${name}. The checklist can wait.`
 	],
 	"New Year's Eve": [
-		(name) => `Happy New Year's Eve, ${name}. Tie a tiny bow on the chaos.`,
-		(name) => `New Year's Eve, ${name}. Close one loop and let the rest wait in line.`
+		(name) => `New Year's Eve, ${name}. Close one loop before midnight.`,
+		(name) => `Happy New Year's Eve, ${name}.`
 	],
 	'Martin Luther King Jr. Day': [
-		(name) => `MLK Day, ${name}. Make the work worthy of the time it gets.`,
-		(name) => `Honoring MLK Day, ${name}. Choose one useful action with real weight.`
+		(name) => `MLK Day, ${name}. Make the work matter.`,
+		(name) => `Honoring MLK Day, ${name}.`
 	],
 	"Presidents' Day": [
-		(name) =>
-			`Presidents' Day, ${name}. Executive decision: one priority gets the fancy chair.`,
-		(name) => `Presidents' Day, ${name}. The agenda is in session.`
+		(name) => `Presidents' Day, ${name}.`,
+		(name) => `Presidents' Day, ${name}. One priority gets the chair today.`
 	],
 	"Mother's Day": [
-		(name) => `Happy Mother's Day, ${name}. The plan called its mother and said thank you.`,
-		(name) => `Mother's Day, ${name}. Gentle goals, warm notes, maybe fewer meetings.`
+		(name) => `Happy Mother's Day, ${name}. Did you call?`,
+		(name) => `Mother's Day, ${name}.`
 	],
 	'Memorial Day': [
-		(name) => `Memorial Day, ${name}. A slower greeting for remembrance and perspective.`,
-		(name) => `Honoring Memorial Day, ${name}. Keep the day spacious where you can.`
+		(name) => `Memorial Day, ${name}. A day for remembrance.`,
+		(name) => `Honoring Memorial Day, ${name}.`
 	],
-	"Father's Day": [
-		(name) =>
-			`Happy Father's Day, ${name}. The dashboard is pretending it knows how to hold a flashlight.`,
-		(name) => `Father's Day, ${name}. Measure twice, do one actually useful thing.`
-	],
+	"Father's Day": [(name) => `Happy Father's Day, ${name}.`, (name) => `Father's Day, ${name}.`],
 	'Labor Day': [
-		(name) => `Happy Labor Day, ${name}. Rest is a feature, not a bug.`,
-		(name) => `Labor Day, ${name}. The work can respect the worker today.`
+		(name) => `Happy Labor Day, ${name}. Rest counts as work today.`,
+		(name) => `Labor Day, ${name}. Take the break.`
 	],
 	'Columbus Day': [
-		(name) => `Monday marker, ${name}. Navigate toward one clear next step.`,
-		(name) => `Today gets a calendar footnote, ${name}. Your plan gets a clean starting line.`
+		(name) => `Hey ${name}. Pick your direction this week.`,
+		(name) => `Columbus Day, ${name}. Monday marker.`
 	],
 	Thanksgiving: [
-		(name) =>
-			`Happy Thanksgiving, ${name}. Gratitude first, leftovers later, tiny plan if needed.`,
-		(name) => `Thanksgiving, ${name}. The dashboard is thankful for short lists.`
+		(name) => `Happy Thanksgiving, ${name}.`,
+		(name) => `Thanksgiving, ${name}. Gratitude first, todo list later.`
 	],
 	'Black Friday': [
-		(name) => `Black Friday, ${name}. Your attention does not need a doorbuster deal.`,
-		(name) =>
-			`Black Friday, ${name}. Put the impulse buys in a parking lot with the impulse tasks.`
+		(name) => `Black Friday, ${name}. Your attention isn't a doorbuster.`,
+		(name) => `Black Friday, ${name}. The best deal today is fewer tabs.`
 	],
 	'National Entrepreneurs Day': [
-		(name) =>
-			`Entrepreneurs Day, ${name}. Tiny experiment, sharp question, brave little spreadsheet.`,
-		(name) =>
-			`National Entrepreneurs Day, ${name}. Build the smallest proof that refuses to be theoretical.`
+		(name) => `Entrepreneurs Day, ${name}. Build the smallest version that works.`,
+		(name) => `National Entrepreneurs Day, ${name}. Ship something rough today.`
 	],
-	'National Donut Day': [
-		(name) =>
-			`Donut Day, ${name}. The plan has a hole in the middle, but we can work with that.`,
-		(name) => `Happy Donut Day, ${name}. Round goals, sweet constraints, one next bite.`
-	],
-	Easter: [
-		(name) => `Happy Easter, ${name}. May one useful idea pop out of hiding.`,
-		(name) => `Easter, ${name}. The plan found the bright-colored next step.`
-	],
+	'National Donut Day': [(name) => `Donut Day, ${name}.`, (name) => `Happy Donut Day, ${name}.`],
+	Easter: [(name) => `Happy Easter, ${name}.`, (name) => `Easter, ${name}.`],
 	'Start of Q1 / Fiscal Year': [
-		(name) => `Welcome to Q1, ${name}. The spreadsheet has put on its optimistic shoes.`,
-		(name) => `Q1 begins, ${name}. Big ambition, tiny first step.`
+		(name) => `Q1, ${name}. Set the tone for the year.`,
+		(name) => `Welcome to Q1, ${name}.`
 	],
 	'Start of Q2': [
-		(name) =>
-			`Welcome to Q2, ${name}. Tiny quarterly ambitions, meet reality with a clipboard.`,
-		(name) => `Q2 begins, ${name}. The plan has requested a fresh marker.`
+		(name) => `Welcome to Q2, ${name}.`,
+		(name) => `Q2, ${name}. Time to course-correct.`
 	],
 	'Start of Q3': [
-		(name) =>
-			`Welcome to Q3, ${name}. Halfway through the year and still suspiciously possible.`,
-		(name) =>
-			`Q3 begins, ${name}. The calendar is wearing sunglasses and asking for priorities.`
+		(name) => `Q3, ${name}. Halfway through the year.`,
+		(name) => `Welcome to Q3, ${name}.`
 	],
 	'Start of Q4': [
-		(name) => `Welcome to Q4, ${name}. The year is entering its dramatic third act.`,
-		(name) =>
-			`Q4 begins, ${name}. Choose the few things future-you will actually thank you for.`
+		(name) => `Q4, ${name}. The year is closing fast.`,
+		(name) => `Welcome to Q4, ${name}. Pick what actually ships before December.`
 	],
 	'Q3 Estimated Tax Due': [
-		(name) => `Estimated tax day, ${name}. The finances would like a calm adult in the room.`,
-		(name) => `Q3 tax marker, ${name}. Receipts, resolve, then back to the good work.`
+		(name) => `Estimated taxes due today, ${name}.`,
+		(name) => `Q3 tax day, ${name}. Don't forget.`
 	],
 	'Extended Tax Filing Deadline': [
-		(name) =>
-			`Extended tax deadline, ${name}. May every document be exactly where it claimed to be.`,
-		(name) => `Tax extension day, ${name}. Close the loop, then close the tab.`
+		(name) => `Extended tax deadline, ${name}. File it.`,
+		(name) => `Tax extension day, ${name}. Close the loop.`
 	],
 	'First Day of Spring': [
-		(name) => `Spring is here, ${name}. The ideas are thawing and pretending they had a plan.`,
-		(name) => `First day of spring, ${name}. Fresh starts are allowed to be tiny.`
+		(name) => `First day of spring, ${name}.`,
+		(name) => `Spring's here, ${name}.`
 	],
 	'First Day of Summer': [
-		(name) => `First day of summer, ${name}. Big sun, small focused list.`,
-		(name) => `Summer starts, ${name}. Keep the plan bright and portable.`
+		(name) => `First day of summer, ${name}.`,
+		(name) => `Summer starts, ${name}.`
 	],
 	'First Day of Fall': [
-		(name) => `First day of fall, ${name}. Crisp air, crisp priorities.`,
-		(name) => `Fall begins, ${name}. The calendar put on a sweater and asked for a clean list.`
+		(name) => `First day of fall, ${name}.`,
+		(name) => `Fall's here, ${name}.`
 	],
 	'First Day of Winter': [
-		(name) => `First day of winter, ${name}. Cozy focus mode has entered the chat.`,
-		(name) => `Winter starts, ${name}. Warm drink, cold facts, clear next step.`
+		(name) => `First day of winter, ${name}.`,
+		(name) => `Winter starts, ${name}.`
 	]
 };
 
 const GENERIC_SPECIAL_DAY_GREETINGS: GreetingTemplate[] = [
-	(name, context) =>
-		`${context.primarySpecialDay} has entered the chat, ${name}. Very official, very interesting.`,
-	(name, context) =>
-		`Happy ${context.primarySpecialDay}, ${name}. The calendar wore a tiny sash today.`
+	(name, context) => `Happy ${context.primarySpecialDay}, ${name}.`,
+	(name, context) => `Hey ${name}. It's ${context.primarySpecialDay}.`
 ];
 
 const TIME_AWARE_SPECIAL_DAY_GREETINGS: GreetingTemplate[] = [
+	(name, context) => `${timeGreetingWord(context)}, ${name}. Happy ${context.primarySpecialDay}.`,
 	(name, context) =>
-		`${formatTimeOfDayLabel(context.timeOfDay)} edition, ${name}: ${context.primarySpecialDay} is on the calendar, and your context graph brought tiny confetti.`,
-	(name, context) =>
-		`${timeGreetingWord(context)}, ${name}. It is ${context.primarySpecialDay}, so the dashboard is being festive and only a little smug.`
+		`${timeGreetingWord(context)}, ${name}. ${context.primarySpecialDay}, in case you forgot.`
 ];
 
 const MONDAY_GREETINGS: GreetingTemplate[] = [
-	(name) =>
-		`Monday reporting for duty, ${name}. It brought a clipboard and questionable confidence.`,
-	(name) => `Good morning, ${name}. Monday is trying to look organized, so let's humor it.`,
-	(name) => `Hey ${name}. New week, fresh context, same charmingly ambitious brain.`,
-	(name) => `Monday mode, ${name}. Small first move, then we negotiate with the rest.`,
-	(name) => `Welcome back, ${name}. The week is still soft clay. Poke it into shape.`
+	(name) => `Monday, ${name}. Let's go.`,
+	(name) => `Hey ${name}. New week.`,
+	(name) => `Welcome back, ${name}. What matters this week?`,
+	(name) => `Monday, ${name}. Pick one real goal for the week.`,
+	(name) => `Hey ${name}. Don't let Monday set the tone with chaos.`
 ];
 
 const FRIDAY_GREETINGS: GreetingTemplate[] = [
-	(name) =>
-		`Happy Friday, ${name}. The finish line is waving from an ergonomically questionable chair.`,
-	(name) =>
-		`Friday found you, ${name}. Let's make one clean move before the weekend steals the aux cord.`,
-	(name) => `Good to see you, ${name}. Friday says the list should be short and a little smug.`,
-	(name) => `Friday mode, ${name}. Ship the tiny thing and look mysterious about it.`,
-	(name) => `Hey ${name}. The week is asking for a receipt. One useful win will do.`
+	(name) => `Friday, ${name}.`,
+	(name) => `Happy Friday, ${name}. What's left before the weekend?`,
+	(name) => `Hey ${name}. Don't start anything you can't finish today.`,
+	(name) => `Friday, ${name}. Ship one thing and call it.`,
+	(name) => `Welcome back, ${name}. Almost there.`
 ];
 
 const WEEKEND_GREETINGS: GreetingTemplate[] = [
-	(name) => `Weekend dashboard check, ${name}. Keep it light unless the muse brought snacks.`,
-	(name) => `Hey ${name}. Weekend mode means the plan must earn its spot on the couch.`,
-	(name) =>
-		`Good to see you, ${name}. The weekend list should fit in one hand and leave room for coffee.`,
-	(name) =>
-		`Weekend workbench is open, ${name}. Tiny projects only, unless inspiration gets dramatic.`,
-	(name) => `Hello ${name}. Saturday-and-Sunday energy demands fewer tabs and better snacks.`
+	(name) => `Hey ${name}. Weekend mode.`,
+	(name) => `Welcome back, ${name}. Light touch today.`,
+	(name) => `Hey ${name}. The work will wait. Mostly.`,
+	(name) => `Weekend check-in, ${name}. Capture the idea, then go live your life.`,
+	(name) => `Hello, ${name}. No pressure today.`
 ];
 
 const MIDWEEK_GREETINGS: GreetingTemplate[] = [
-	(name) => `Midweek check-in, ${name}. The plot has thickened, but the next step is still tiny.`,
-	(name) => `Hey ${name}. Wednesday is basically a bridge with email.`,
-	(name) =>
-		`Good to see you, ${name}. Midweek momentum is just yesterday's chaos wearing a belt.`,
-	(name) => `Midweek mode, ${name}. Sort the signal, spare the drama.`,
-	(name) => `Hello ${name}. The week has a middle, and somehow you are standing in it.`
+	(name) => `Wednesday, ${name}. Halfway there.`,
+	(name) => `Midweek, ${name}. Course-correct if you need to.`,
+	(name) => `Hey ${name}. Wednesday is decision day.`,
+	(name) => `Wednesday, ${name}.`,
+	(name) => `Hi ${name}. Honest check-in: are we on track this week?`
 ];
 
 const MONTH_START_GREETINGS: GreetingTemplate[] = [
-	(name) => `New month, ${name}. The calendar has reset its tiny scoreboard.`,
-	(name) => `Fresh month, ${name}. Pick a theme before the tabs pick one for you.`,
-	(name) => `Good to see you, ${name}. New month energy pairs well with one honest priority.`,
-	(name) => `Month one-liner, ${name}: fewer vague quests, more small wins.`,
-	(name) => `Welcome to a fresh page, ${name}. Try not to intimidate it immediately.`
+	(name) => `New month, ${name}.`,
+	(name) => `Fresh month, ${name}. What matters most?`,
+	(name) => `Hey ${name}. First of the month. Reset the priorities.`,
+	(name) => `Welcome to a new month, ${name}.`,
+	(name) => `New month, ${name}. Pick a theme and run with it.`
 ];
 
 const GENERAL_GREETINGS: GreetingTemplate[] = [
-	(name) => `Good to see you, ${name}. The idea kettle is whistling.`,
-	(name) => `Hey ${name}. Your dashboard brewed a small pot of momentum.`,
-	(name) => `Hello ${name}. The task pile has been lightly fluffed for readability.`,
-	(name) => `Welcome back, ${name}. The plan is standing near the door with shoes on.`,
-	(name) => `Hey ${name}. Your ideas are wearing tiny name tags today.`,
-	(name) => `Good morning, ${name}. The ambition drawer is open, but only take what fits.`,
-	(name) => `Hi ${name}. The context shelves have been dusted and are pretending to be elegant.`,
-	(name) => `Hello ${name}. Today's agenda has requested a calm voice and a firm boundary.`,
-	(name) => `Welcome back, ${name}. The next step is probably smaller than it looks.`,
-	(name) => `Hey ${name}. Your scattered thoughts have agreed to stand in a loose line.`,
-	(name) => `Good to see you, ${name}. The dashboard found your focus under a stack of almosts.`,
-	(name) => `Hi ${name}. Let's turn a vague blob into a suspiciously useful little plan.`,
-	(name) => `Hello ${name}. The work is wearing its least intimidating hat today.`,
-	(name) => `Hey ${name}. One useful next step is already doing stretches.`,
-	(name) =>
-		`Good to see you, ${name}. The day brought several tabs, but only one gets to be important.`
+	(name) => `Good to see you, ${name}.`,
+	(name) => `Welcome back, ${name}.`,
+	(name) => `Hey ${name}. What's the move today?`,
+	(name) => `Hi ${name}. The blank page is the hardest part. Start anyway.`,
+	(name) => `Hey ${name}. Don't plan more before doing anything.`,
+	(name) => `Welcome back, ${name}. The first ten minutes set the tone.`,
+	(name) => `Hi ${name}. Pick the hardest thing first.`,
+	(name) => `Hey ${name}. You don't need a perfect plan. You need a next step.`,
+	(name) => `Good to see you, ${name}. The to-do list isn't the work.`,
+	(name) => `Hey ${name}. Think on paper. Decide on the page.`,
+	(name) => `Welcome back, ${name}. What's been rattling around in your head?`,
+	(name) => `Hi ${name}. Some days it's just one thing. That's fine.`,
+	(name) => `Hey ${name}. The hard part is starting.`,
+	(name) => `Welcome back, ${name}. Pick the version of you that ships.`,
+	(name) => `Hi ${name}. Let's untangle something.`
 ];
 
 const TIME_OF_DAY_GREETINGS: Record<DashboardTimeOfDay, GreetingTemplate[]> = {
 	early_morning: [
-		(name) =>
-			`Early morning, ${name}. You have the coffee, the context, and one reasonably behaved next step.`,
-		(name) =>
-			`Rise and lightly structure, ${name}. The brain dump inbox is doing gentle stretches.`,
-		(name) =>
-			`Early start, ${name}. The daily brief is still tying its shoes, but the signal is awake.`
+		(name) => `Early morning, ${name}. Best hour for the hard stuff.`,
+		(name) => `Up early, ${name}? Use the quiet before the world starts asking.`,
+		(name) => `Early start, ${name}. Nobody else is here yet.`
 	],
 	morning: [
-		(name) =>
-			`Good morning, ${name}. Your brain-dump floor has one useful little plan peeking out.`,
-		(name) =>
-			`Morning, ${name}. The project graph is caffeinated and making suspiciously good eye contact.`,
-		(name) => `Good morning, ${name}. Your context has been sorted into tiny responsible piles.`
+		(name) => `Good morning, ${name}.`,
+		(name) => `Morning, ${name}. What's actually due today?`,
+		(name) => `Good morning, ${name}. Don't open Slack first.`
 	],
 	midday: [
-		(name) =>
-			`Midday checkpoint, ${name}. The dashboard packed a sandwich and one clean next move.`,
-		(name) =>
-			`Lunch-hour logic, ${name}. One bite-sized task beats trying to eat the whole buffet.`,
-		(name) =>
-			`Midday, ${name}. The ontology says things are connected. Brave claim, but useful.`
+		(name) => `Midday, ${name}. How's it going?`,
+		(name) => `Hey ${name}. Halfway through the day. Are we on track?`,
+		(name) => `Lunch hour, ${name}. Step away from the screen if you can.`
 	],
 	afternoon: [
-		(name) =>
-			`Afternoon, ${name}. Your focus meter is at "please be specific," which is rude but useful.`,
-		(name) =>
-			`Afternoon check-in, ${name}. Project Lens energy says follow the next thread, not all of them.`,
-		(name) => `Good afternoon, ${name}. The task pile has entered its second-act character arc.`
+		(name) => `Afternoon, ${name}.`,
+		(name) => `Afternoon slump, ${name}? Switch tasks.`,
+		(name) => `Good afternoon, ${name}. Second wind incoming.`
 	],
 	evening: [
-		(name) => `Evening, ${name}. One loop is worth closing; the rest can stop auditioning.`,
-		(name) =>
-			`Evening mode, ${name}. The daily brief is off duty, but the context graph is still gossiping.`,
-		(name) => `Good evening, ${name}. Tiny wrap-up energy beats heroic spreadsheet theater.`
+		(name) => `Evening, ${name}. Wrap up or one more push?`,
+		(name) => `Hey ${name}. Close the loop you started this morning.`,
+		(name) => `Good evening, ${name}. The work will still be here tomorrow.`
 	],
 	late_night: [
-		(name) =>
-			`Late night, ${name}. Put the scary tasks in pajama mode and capture only what matters.`,
-		(name) =>
-			`Late-night dashboard visit, ${name}. The tabs are awake, but they do not get to vote.`,
-		(name) => `After-hours check-in, ${name}. Capture the thought, spare the future brain.`
+		(name) => `Late night, ${name}. Capture it and go to sleep.`,
+		(name) => `Hey ${name}. Whatever's keeping you up, write it down.`,
+		(name) => `Past bedtime, ${name}. Tomorrow-you will thank you for sleeping.`
 	]
 };
 
 const BUILDOS_GREETINGS: GreetingTemplate[] = [
-	(name) =>
-		`Hey ${name}. Your loose brain confetti is closer to becoming something that respects gravity.`,
-	(name) =>
-		`Welcome back, ${name}. Project Lens mode: notice the next useful thread and let the rest wait.`,
-	(name) =>
-		`Hi ${name}. Your project graph has opinions today, but at least they are organized opinions.`,
-	(name) =>
-		`Good to see you, ${name}. Your ontology has connected three dots, which is plenty for a Tuesday-shaped brain.`,
-	(name) => `Hey ${name}. Keep the daily brief energy: one small, legally actionable next step.`,
-	(name) =>
-		`Hello ${name}. There is probably a task hiding inside that thought, wearing a tiny clipboard.`,
-	(name) =>
-		`Welcome back, ${name}. The context graph says everything is related, which is annoying but accurate.`,
-	(name) =>
-		`Hi ${name}. Today's brain dump residue has been composted into premium next-step soil.`
+	(name) => `Hey ${name}. What's stuck in your head? Brain dump it.`,
+	(name) => `Welcome back, ${name}. Drop the chaos, find the thread.`,
+	(name) => `Hi ${name}. Brain dump first, plan second.`,
+	(name) => `Good to see you, ${name}. Stream of consciousness is welcome here.`,
+	(name) => `Hey ${name}. Get the thoughts out. The project graph will catch up.`,
+	(name) => `Welcome back, ${name}. Messy thinking is the whole point.`,
+	(name) => `Hi ${name}. Your daily brief is upstream of the noise.`,
+	(name) => `Hey ${name}. The thoughts in your head won't sort themselves.`
 ];
 
 function normalizeDisplayName(displayName: string | null | undefined): string {
@@ -495,10 +420,6 @@ function getTimeOfDay(hour: number): DashboardTimeOfDay {
 	if (hour >= 14 && hour < 17) return 'afternoon';
 	if (hour >= 17 && hour < 21) return 'evening';
 	return 'late_night';
-}
-
-function formatTimeOfDayLabel(timeOfDay: DashboardTimeOfDay): string {
-	return TIME_OF_DAY_LABELS[timeOfDay];
 }
 
 function timeGreetingWord(context: DashboardDateContext): string {

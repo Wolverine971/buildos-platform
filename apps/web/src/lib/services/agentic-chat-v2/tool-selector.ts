@@ -3,6 +3,7 @@ import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types'
 import {
 	getGatewaySurfaceForContextType,
 	getGatewaySurfaceForProfile,
+	resolveGatewaySurfaceProfileForContextType,
 	type GatewaySurfaceProfileName
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 
@@ -14,17 +15,26 @@ export function selectFastChatTools(params: {
 	if (params.surfaceProfile) {
 		return getGatewaySurfaceForProfile(params.surfaceProfile);
 	}
-	const routedProfile = resolveSurfaceProfileForTurn(
-		params.contextType,
-		params.latestUserMessage
-	);
-	if (routedProfile) {
-		return getGatewaySurfaceForProfile(routedProfile);
-	}
+	const routedProfile = resolveFastChatSurfaceProfileForTurn({
+		contextType: params.contextType,
+		latestUserMessage: params.latestUserMessage
+	});
+	if (routedProfile) return getGatewaySurfaceForProfile(routedProfile);
 	return getGatewaySurfaceForContextType(params.contextType);
 }
 
-function resolveSurfaceProfileForTurn(
+export function resolveFastChatSurfaceProfileForTurn(params: {
+	contextType: ChatContextType;
+	latestUserMessage?: string | null;
+}): GatewaySurfaceProfileName {
+	const routedProfile = resolveProjectSurfaceProfileForTurn(
+		params.contextType,
+		params.latestUserMessage
+	);
+	return routedProfile ?? resolveGatewaySurfaceProfileForContextType(params.contextType);
+}
+
+function resolveProjectSurfaceProfileForTurn(
 	contextType: ChatContextType,
 	latestUserMessage?: string | null
 ): GatewaySurfaceProfileName | null {

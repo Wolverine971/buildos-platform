@@ -62,6 +62,7 @@ function makeCache(params: { key: string; ageMs?: number }): FastChatContextCach
 function createHarness(opts: Partial<Flags> = {}) {
 	const flags: Flags = { ...defaultFlags(), ...opts };
 	const prewarm = vi.fn().mockResolvedValue(null);
+	const warmStreamTransport = vi.fn().mockResolvedValue(true);
 	const hydrate = vi.fn();
 	const deps: PrewarmControllerDeps = {
 		getIsOpen: () => flags.isOpen,
@@ -76,10 +77,11 @@ function createHarness(opts: Partial<Flags> = {}) {
 		getIsVoiceBusy: () => flags.isVoiceBusy,
 		getIsVoicePending: () => flags.isVoicePending,
 		prewarmAgentContext: prewarm,
+		warmStreamTransport,
 		hydrateSessionFromEvent: hydrate
 	};
 	const controller = createPrewarmController(deps);
-	return { flags, controller, prewarm, hydrate, deps };
+	return { flags, controller, prewarm, warmStreamTransport, hydrate, deps };
 }
 
 describe('PrewarmController — resolveCurrentKey', () => {
@@ -189,6 +191,35 @@ describe('PrewarmController — invalidateIfStale', () => {
 		h.controller.prewarmedContext = cache;
 		h.controller.invalidateIfStale();
 		expect(h.controller.prewarmedContext).toBe(cache);
+	});
+});
+
+describe('PrewarmController — orchestrateTransportWarmup', () => {
+	it('skips when not in a browser', () => {
+		const h = createHarness({ isBrowser: false });
+		expect(h.controller.orchestrateTransportWarmup()).toBeUndefined();
+		expect(h.warmStreamTransport).not.toHaveBeenCalled();
+	});
+
+	it('skips when the modal is closed', () => {
+		const h = createHarness({ isOpen: false });
+		expect(h.controller.orchestrateTransportWarmup()).toBeUndefined();
+		expect(h.warmStreamTransport).not.toHaveBeenCalled();
+	});
+
+	it('warms the stream transport when the modal is open', () => {
+		const h = createHarness();
+		const cleanup = h.controller.orchestrateTransportWarmup();
+		expect(typeof cleanup).toBe('function');
+		expect(h.warmStreamTransport).toHaveBeenCalledTimes(1);
+	});
+
+	it('returns a cleanup that aborts the transport warmup request', () => {
+		const h = createHarness();
+		const cleanup = h.controller.orchestrateTransportWarmup();
+		cleanup!();
+		const signal = h.warmStreamTransport.mock.calls[0]?.[0]?.signal as AbortSignal;
+		expect(signal.aborted).toBe(true);
 	});
 });
 

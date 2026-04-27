@@ -2,7 +2,7 @@
 export { buildFastSystemPrompt, normalizeFastContextType } from './prompt-builder';
 export { loadFastChatPromptContext } from './context-loader';
 export { buildFastContextUsageSnapshot, estimateTokensFromText } from './context-usage';
-export { selectFastChatTools } from './tool-selector';
+export { resolveFastChatSurfaceProfileForTurn, selectFastChatTools } from './tool-selector';
 export * from './context-models';
 export { createFastChatSessionService } from './session-service';
 export { streamFastChat } from './stream-orchestrator/index';

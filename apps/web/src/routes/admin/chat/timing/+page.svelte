@@ -36,6 +36,9 @@
 		session_id: string;
 		user_id: string;
 		context_type: string | null;
+		cache_source?: string | null;
+		prepared_prompt_hit?: boolean;
+		prepared_prompt_miss_reason?: string | null;
 		ttfr_ms: number | null;
 		ttfe_ms: number | null;
 		plan_status: string | null;
@@ -56,6 +59,24 @@
 		ttfr_p95: number;
 		ttfe_p50: number;
 		ttfe_p95: number;
+	}
+
+	interface DistributionMetric {
+		value: string;
+		count: number;
+		percent: number;
+	}
+
+	interface CacheSourcePerformance {
+		cache_source: string;
+		count: number;
+		share_percent: number;
+		ttfr: PercentileStats;
+		ttfe: PercentileStats;
+		context_build: PercentileStats;
+		tool_selection: PercentileStats;
+		ttfr_gain_vs_fresh_load_ms: number | null;
+		context_build_gain_vs_fresh_load_ms: number | null;
 	}
 
 	interface TimingData {
@@ -86,6 +107,15 @@
 			ttfr: HistogramBucket[];
 			ttfe: HistogramBucket[];
 		};
+		cache_source_performance: CacheSourcePerformance[];
+		prepared_prompt: {
+			requested_count: number;
+			hit_count: number;
+			miss_count: number;
+			hit_rate: number;
+			miss_reasons: DistributionMetric[];
+			surface_profiles: DistributionMetric[];
+		};
 		slow_sessions: SlowSession[];
 		context_type_performance: ContextPerformance[];
 		trends: DailyTrend[];
@@ -100,6 +130,7 @@
 	let selectedContextType = $state<string>('all');
 	let selectedPlanStatus = $state<string>('all');
 	let hasClarification = $state<string>('all');
+	let selectedCacheSource = $state<string>('all');
 	let showFilters = $state(false);
 
 	// Load data on mount and when filters change
@@ -109,6 +140,7 @@
 		selectedContextType;
 		selectedPlanStatus;
 		hasClarification;
+		selectedCacheSource;
 		loadTimingData();
 	});
 
@@ -130,6 +162,9 @@
 			}
 			if (hasClarification !== 'all') {
 				params.append('has_clarification', hasClarification);
+			}
+			if (selectedCacheSource !== 'all') {
+				params.append('cache_source', selectedCacheSource);
 			}
 
 			const response = await fetch(`/api/admin/chat/timing?${params}`);
@@ -162,6 +197,26 @@
 
 	function formatPercent(value: number): string {
 		return `${value.toFixed(1)}%`;
+	}
+
+	function formatCacheSource(value: string | null | undefined): string {
+		if (!value) return 'Unknown';
+		return value
+			.split('_')
+			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+			.join(' ');
+	}
+
+	function formatGain(ms: number | null | undefined): string {
+		if (ms === null || ms === undefined) return '-';
+		if (Math.abs(ms) < 1) return '0ms';
+		const sign = ms > 0 ? '+' : '-';
+		return `${sign}${formatMs(Math.abs(ms))}`;
+	}
+
+	function getGainClass(ms: number | null | undefined): string {
+		if (ms === null || ms === undefined || Math.abs(ms) < 1) return 'text-muted-foreground';
+		return ms > 0 ? 'text-emerald-500' : 'text-red-500';
 	}
 
 	function formatDate(dateString: string): string {
@@ -349,6 +404,29 @@
 						<option value="no">No Clarification</option>
 					</Select>
 				</div>
+
+				<!-- Cache Source -->
+				<div>
+					<label
+						for="timing-cache-source-filter"
+						class="block text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1"
+					>
+						Cache Source
+					</label>
+					<Select
+						id="timing-cache-source-filter"
+						bind:value={selectedCacheSource}
+						onchange={(value) => (selectedCacheSource = String(value))}
+						size="md"
+					>
+						<option value="all">All Sources</option>
+						<option value="prepared_prompt">Prepared Prompt</option>
+						<option value="request_prewarm">Request Prewarm</option>
+						<option value="session_cache">Session Cache</option>
+						<option value="fresh_load">Fresh Load</option>
+						<option value="unknown">Unknown</option>
+					</Select>
+				</div>
 			</div>
 		{/if}
 	</div>
@@ -453,6 +531,196 @@
 					<Activity class="h-7 w-7 text-amber-500 shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">Required clarifying questions</div>
+			</div>
+		</div>
+
+		<!-- Prewarm Impact -->
+		<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak mb-6">
+			<div class="p-4 border-b border-border">
+				<h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
+					<Zap class="h-4 w-4 text-indigo-500" />
+					Prewarm Impact
+				</h3>
+			</div>
+
+			<div class="p-4">
+				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+					<div class="border border-border rounded-lg p-3 bg-muted/20">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
+							Prepared Requests
+						</p>
+						<p class="text-xl font-bold text-foreground mt-1">
+							{timingData.prepared_prompt.requested_count}
+						</p>
+					</div>
+					<div class="border border-border rounded-lg p-3 bg-muted/20">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
+							Prepared Hit Rate
+						</p>
+						<p class="text-xl font-bold text-emerald-500 mt-1">
+							{formatPercent(timingData.prepared_prompt.hit_rate)}
+						</p>
+					</div>
+					<div class="border border-border rounded-lg p-3 bg-muted/20">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
+							Prepared Hits
+						</p>
+						<p class="text-xl font-bold text-indigo-500 mt-1">
+							{timingData.prepared_prompt.hit_count}
+						</p>
+					</div>
+					<div class="border border-border rounded-lg p-3 bg-muted/20">
+						<p
+							class="text-xs font-medium text-muted-foreground uppercase tracking-wide"
+						>
+							Prepared Misses
+						</p>
+						<p class="text-xl font-bold text-amber-500 mt-1">
+							{timingData.prepared_prompt.miss_count}
+						</p>
+					</div>
+				</div>
+
+				{#if timingData.prepared_prompt.requested_count === 0}
+					<div class="border border-dashed border-border rounded-lg p-3 mb-4">
+						<p class="text-sm text-muted-foreground">
+							No prepared-prompt traffic in this filtered range yet.
+						</p>
+					</div>
+				{/if}
+
+				<div class="overflow-x-auto">
+					<table class="w-full text-sm">
+						<thead class="bg-muted/50">
+							<tr>
+								<th
+									class="px-3 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide"
+									>Source</th
+								>
+								<th
+									class="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide"
+									>Requests</th
+								>
+								<th
+									class="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide"
+									>TTFR p50 / p95</th
+								>
+								<th
+									class="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide"
+									>Context p50 / p95</th
+								>
+								<th
+									class="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide"
+									>TTFR Gain</th
+								>
+								<th
+									class="px-3 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide"
+									>Context Gain</th
+								>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-border">
+							{#each timingData.cache_source_performance as source}
+								<tr class="hover:bg-muted/30 transition-colors">
+									<td class="px-3 py-2">
+										<span class="font-medium text-foreground">
+											{formatCacheSource(source.cache_source)}
+										</span>
+									</td>
+									<td class="px-3 py-2 text-right">
+										<span class="text-foreground">{source.count}</span>
+										<span class="text-xs text-muted-foreground ml-1">
+											({formatPercent(source.share_percent)})
+										</span>
+									</td>
+									<td class="px-3 py-2 text-right text-foreground">
+										{formatMs(source.ttfr.p50)}
+										<span class="text-muted-foreground mx-1">/</span>
+										{formatMs(source.ttfr.p95)}
+									</td>
+									<td class="px-3 py-2 text-right text-foreground">
+										{formatMs(source.context_build.p50)}
+										<span class="text-muted-foreground mx-1">/</span>
+										{formatMs(source.context_build.p95)}
+									</td>
+									<td
+										class="px-3 py-2 text-right font-medium {getGainClass(
+											source.ttfr_gain_vs_fresh_load_ms
+										)}"
+									>
+										{formatGain(source.ttfr_gain_vs_fresh_load_ms)}
+									</td>
+									<td
+										class="px-3 py-2 text-right font-medium {getGainClass(
+											source.context_build_gain_vs_fresh_load_ms
+										)}"
+									>
+										{formatGain(source.context_build_gain_vs_fresh_load_ms)}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+
+				{#if timingData.prepared_prompt.miss_reasons.length > 0 || timingData.prepared_prompt.surface_profiles.length > 0}
+					<div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+						<div class="border border-border rounded-lg p-3">
+							<h4
+								class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2"
+							>
+								Miss Reasons
+							</h4>
+							{#if timingData.prepared_prompt.miss_reasons.length > 0}
+								<div class="space-y-2">
+									{#each timingData.prepared_prompt.miss_reasons as item}
+										<div class="flex items-center justify-between text-sm">
+											<span class="text-foreground"
+												>{formatCacheSource(item.value)}</span
+											>
+											<span class="text-muted-foreground">
+												{item.count} ({formatPercent(item.percent)})
+											</span>
+										</div>
+									{/each}
+								</div>
+							{:else}
+								<p class="text-sm text-muted-foreground">No misses recorded.</p>
+							{/if}
+						</div>
+						<div class="border border-border rounded-lg p-3">
+							<h4
+								class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2"
+							>
+								Prepared Surfaces
+							</h4>
+							{#if timingData.prepared_prompt.surface_profiles.length > 0}
+								<div class="space-y-2">
+									{#each timingData.prepared_prompt.surface_profiles as item}
+										<div class="flex items-center justify-between text-sm">
+											<span class="text-foreground"
+												>{formatCacheSource(item.value)}</span
+											>
+											<span class="text-muted-foreground">
+												{item.count} ({formatPercent(item.percent)})
+											</span>
+										</div>
+									{/each}
+								</div>
+							{:else}
+								<p class="text-sm text-muted-foreground">
+									No prepared hits recorded.
+								</p>
+							{/if}
+						</div>
+					</div>
+				{/if}
 			</div>
 		</div>
 
@@ -732,6 +1000,10 @@
 									>Context</th
 								>
 								<th
+									class="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wide"
+									>Source</th
+								>
+								<th
 									class="px-4 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wide"
 									>TTFR</th
 								>
@@ -762,6 +1034,20 @@
 									</td>
 									<td class="px-4 py-2 text-foreground capitalize">
 										{session.context_type || '-'}
+									</td>
+									<td class="px-4 py-2">
+										<span
+											class="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded"
+										>
+											{formatCacheSource(session.cache_source)}
+										</span>
+										{#if session.prepared_prompt_miss_reason}
+											<span class="text-xs text-amber-500 ml-1">
+												{formatCacheSource(
+													session.prepared_prompt_miss_reason
+												)}
+											</span>
+										{/if}
 									</td>
 									<td class="px-4 py-2 text-right">
 										<span

@@ -10,9 +10,19 @@ const { resolveSessionMock, loadPromptContextMock, mergeRpcMock } = vi.hoisted((
 vi.mock('$lib/services/agentic-chat-v2', () => ({
 	normalizeFastContextType: (value?: string) => value ?? 'global',
 	createFastChatSessionService: () => ({
-		resolveSession: resolveSessionMock
+		resolveSession: resolveSessionMock,
+		loadRecentMessages: vi.fn().mockResolvedValue([])
 	}),
-	loadFastChatPromptContext: loadPromptContextMock
+	loadFastChatPromptContext: loadPromptContextMock,
+	composeFastChatHistory: () => ({
+		historyForModel: [],
+		compressed: false,
+		strategy: 'raw_history',
+		rawHistoryCount: 0,
+		tailMessagesKept: 0,
+		continuityHintUsed: false
+	}),
+	selectFastChatTools: () => []
 }));
 
 vi.mock('$lib/services/agentic-chat-v2/context-cache', () => ({

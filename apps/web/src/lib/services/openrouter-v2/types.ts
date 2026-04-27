@@ -21,7 +21,13 @@ export type OpenRouterReasoningConfig = {
 };
 
 export type OpenRouterProviderConfig = {
+	allow_fallbacks?: boolean;
 	require_parameters?: boolean;
+	data_collection?: 'allow' | 'deny';
+	sort?: 'price' | 'throughput' | 'latency';
+	order?: string[];
+	only?: string[];
+	ignore?: string[];
 };
 
 export type OpenRouterUsage = {
