@@ -12,7 +12,7 @@
 **Connection Level:** Follower (DJ already following)
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-15
+**Last Reviewed:** 2026-04-27
 **Last Engaged:** Never
 **Source of First Discovery:** `linkedin-engagement-targets.md` (Tier 2 Context Engineering Practitioners)
 
@@ -54,6 +54,9 @@
 | 2026-04-08 | Profile | Profile seeding                      | N/A       | Reviewed | Logged | Seeded profile; queue for engagement once he posts                                                         | None    | profile-seeding-pass             |
 | 2026-04-15 | Profile | Stale scan — most recent post 6d old | N/A       | Reviewed | Logged | No fresh content today; slug correction noted (`dexterihorthy` not `dex-horthy`)                           | None    | 2026-04-15_linkedin-warmup.md    |
 | 2026-04-15 | Profile | PM stale scan — 3d repost only       | N/A       | Reviewed | Logged | No new original posts; new intel: ran "AI That Works" unconference with Vaibhav Gupta (Temporal) this week | None    | 2026-04-15_linkedin-warmup-pm.md |
+| 2026-04-24 | Profile | Event-promo post (1h) — moderating ML/AI debate "Transformers vs Post-Transformers"  | N/A | Reviewed | Logged | Skipped — event-promo too thin for substantive comment without sycophancy | None | 2026-04-24_linkedin-warmup.md |
+| 2026-04-27 | Post | "you don't hire interns/juniors so they ship features — you hire them to turn into seniors" — anti-"AI replaces juniors" thesis (1d, 204 rxns / 12 comments / 13 reposts) | https://www.linkedin.com/feed/update/urn:li:activity:7453845692587999232/ | Queued | Queued for reply | Mention fit 0 — not a BuildOS comment; builder/mentorship-experience comment from DJ's "blue collar engineering" lane (Sean at Curri, the trial-and-error path); first original engageable Horthy post since profile creation | Pending | 2026-04-27_linkedin-warmup.md |
+| 2026-04-27 | Post | "AI replaces juniors" — apprenticeship + mentorship gap | https://www.linkedin.com/feed/update/urn:li:activity:7453845692587999232/ | Drafted | Drafted - Pending Posting | 3 options, mention fit 0 (all BuildOS-free): (1) friction-as-tutor lived experience ("a senior at my last shop"); (2) apprenticeship + future-senior framing; (3) friendly nuance — open question on the upskill path. No "context engineering" parroted back. | Pending | 2026-04-27_linkedin-replies.md |
 
 ## Open Loops
 

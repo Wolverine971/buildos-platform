@@ -9,7 +9,7 @@ status: in-progress
 owner: DJ
 related_tasks: [T46, T47, T48, T49, T50, T51]
 cross_workstreams: [WS01, WS02, WS03, WS04, WS09]
-last_updated: 2026-04-17
+last_updated: 2026-04-27
 
 ---
 
@@ -155,7 +155,7 @@ Recurring. Each cluster blog (T35–T43) gets 2 TikTok scripts generated when th
 | Blog | Script 1 (30–45s) | Script 2 (60–90s) | Recorded | Posted | Cross-posted (Reels / Shorts) |
 | ---- | ----------------- | ----------------- | -------- | ------ | ----------------------------- |
 | T34  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
-| T35  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
+| T35  | 🔵                | 🔵                | ⚪       | ⚪     | ⚪                            |
 | T36  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
 | T37  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |
 | T38  | ⚪                | ⚪                | ⚪       | ⚪     | ⚪                            |

@@ -12,6 +12,7 @@
 | ------------------------------------------------------------------- | ----------------------------------------------------- | ----------- |
 | [AI Agent Content Program Plan](#ai-agent-content-program-plan)     | Master review doc for plan, path, and draft tracker   | Active      |
 | [Agentic Chat Positioning](#agentic-chat-positioning)               | Product positioning for Project Lens                  | Active      |
+| [AI Agent Skill Repo Pipeline](#ai-agent-skill-repo-pipeline)       | Core vs soft skill pipeline and artifact model        | Active      |
 | [AI Agent Capability System Plan](#ai-agent-capability-system-plan) | Scalable model for skills, tools, plugins, and stacks | Active      |
 | [AI Agent Editorial Roadmap](#ai-agent-editorial-roadmap)           | Starter path and publishing progression               | Active      |
 | [AI Agent Skills Library Plan](#ai-agent-skills-library-plan)       | Infrastructure and publishing plan                    | Active      |
@@ -49,6 +50,19 @@ Product positioning document for BuildOS's agentic chat feature (Project Lens). 
 - User-facing messaging
 
 **Related:** [Zoom Messaging Guide](/docs/marketing/brand/ZOOM_MESSAGING_GUIDE.md) | [Brand Strategy 2025](/docs/marketing/brand/BRAND_STRATEGY_2025.md)
+
+---
+
+### AI Agent Skill Repo Pipeline
+
+**File:** `AI_AGENT_SKILL_REPO_PIPELINE.md`
+
+Operating document for turning BuildOS into an agentic skills repo. Covers:
+
+- the distinction between core skills and soft/opinionated skills
+- how runtime skills, public guides, and working drafts relate
+- the active pipeline of foundation, provider, stack, and soft skills
+- the workflow for turning chats, transcripts, and practical lessons into skill/blog artifacts
 
 ---
 

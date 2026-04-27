@@ -9,7 +9,7 @@ status: in-progress
 owner: DJ
 related_tasks: [T34, T35, T36, T37, T38, T39, T40, T41, T42, T43, T44, T45]
 cross_workstreams: [WS02, WS03, WS04, WS05]
-last_updated: 2026-04-18
+last_updated: 2026-04-27
 
 ---
 
@@ -32,7 +32,7 @@ This work stream operationalizes the topic map. WS04 remains the home of the big
 | Task | Title                                                                             | Type | Wave        | Effort      | Status        | Spec                                                                                                                               |
 | ---- | --------------------------------------------------------------------------------- | ---- | ----------- | ----------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | T34  | Blog 1 — "Social Media Is Dead. What You're Using Is Interest Media." (manifesto) | W    | 2           | 1 d         | ✅ 2026-04-17 | [social-media-is-dead-interest-media.md](../../../../apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md) |
-| T35  | Blog 2 — "You Stopped Choosing What You Think About" (felt experience)            | W    | 2           | 1 d         | 🟡            | Topic map Cluster 2                                                                                                                |
+| T35  | Blog 2 — "You Stopped Choosing What You Think About" (felt experience)            | W    | 2           | 1 d         | 🔵 2026-04-27 | [you-stopped-choosing-what-you-think-about.md](../../../../apps/web/src/content/blogs/philosophy/you-stopped-choosing-what-you-think-about.md) · [kit](../../social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-kit.md) |
 | T36  | Blog 3 — "What a Thinking Environment Actually Is" (product principle)            | W    | 2           | 1 d         | ⚪            | may align with WS04 T15 framework doc — decide before drafting                                                                     |
 | T37  | Blog 4 — "The Three-Minute Morning That Fixes Your Day" (practical)               | W    | 2           | 1 d         | ⚪            | Topic map Cluster 3                                                                                                                |
 | T38  | Blog 5 — "Why Most Productivity Tools Are Feeds in Disguise" (competitive)        | W    | 2           | 1 d         | ⚪            | Topic map Cluster 3 / 7                                                                                                            |
@@ -132,7 +132,7 @@ Order isn't strict after T35 — pivot based on news cycle (if a clip-economy st
 
 Shipped 2026-04-17. Defines "interest media" with Devin Nash credit. Anchors the vocabulary for the rest of the cluster. Verify it links to `your-morning-without-the-algorithm.md` as companion.
 
-### T35 — "You Stopped Choosing What You Think About" 🟡
+### T35 — "You Stopped Choosing What You Think About" 🔵
 
 **Angle:** Felt-experience opener. Names the feelings (curiosity collapse, feed paranoia, algorithm-shaped thoughts) the reader doesn't yet have words for. **Don't** lead with BuildOS — lead with relief, close with the anti-feed frame.
 
@@ -141,6 +141,13 @@ Shipped 2026-04-17. Defines "interest media" with Devin Nash credit. Anchors the
 **Done when:** published, links to T34 + `your-morning-without-the-algorithm.md`, has `Article` JSON-LD with accurate `datePublished`, 3 social extractions drafted.
 
 **Assign to:** DJ for draft (voice-critical); `content-editor` agent for review pass.
+
+**Status (2026-04-27):**
+
+- Draft saved at [`apps/web/src/content/blogs/philosophy/you-stopped-choosing-what-you-think-about.md`](../../../../apps/web/src/content/blogs/philosophy/you-stopped-choosing-what-you-think-about.md) (2,238 words, ~11 min). Owns "chosen input" (13×). Cross-links to T34, morning-without-the-algorithm, anti-ai-assistant-execution-engine.
+- Publish kit drafted at [`docs/marketing/social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-kit.md`](../../social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-kit.md). All 5 lanes drafted (X 8-tweet thread, LinkedIn, IG carousel, 2 TikTok scripts, 3 Reddit angles).
+- WS10 T48 row for T35 → 🔵 / 🔵 (both scripts drafted; not yet recorded).
+- Open: blog publish, social posting, recordings.
 
 ### T36 — "What a Thinking Environment Actually Is" ⚪
 

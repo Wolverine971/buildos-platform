@@ -38,7 +38,8 @@
 		'product-updates': FolderOpen,
 		'case-studies': GitCompareArrows,
 		'advanced-guides': Target,
-		philosophy: Lightbulb
+		philosophy: Lightbulb,
+		'agent-skills': Brain
 	};
 
 	let categoryKey = $derived(($page.params.category ?? 'getting-started') as BlogCategory);
@@ -94,6 +95,7 @@
 	}
 
 	let jsonLdString = $derived(generateCategoryJsonLd(data.category, data.posts, categoryKey));
+	let isSkillRepo = $derived(categoryKey === 'agent-skills');
 </script>
 
 <svelte:head>
@@ -192,6 +194,16 @@
 					</p>
 				</div>
 			</div>
+			{#if isSkillRepo}
+				<div
+					class="mt-6 rounded-lg border border-border bg-background/70 p-4 text-sm text-muted-foreground"
+				>
+					<p>
+						Each skill guide includes a portable <code>SKILL.md</code> pattern,
+						recommended metadata, and operating rules an agent can use directly.
+					</p>
+				</div>
+			{/if}
 		</div>
 	</header>
 
@@ -229,6 +241,31 @@
 									<p class="text-sm text-muted-foreground mb-3 line-clamp-3">
 										{post.description}
 									</p>
+
+									{#if post.skillId || post.skillType || post.providers?.length}
+										<div
+											class="mb-3 rounded-md border border-border bg-muted/40 p-2 text-xs text-muted-foreground space-y-1.5"
+										>
+											{#if post.skillId}
+												<p>
+													<span class="font-medium text-foreground">Skill:</span>
+													<code>{post.skillId}</code>
+												</p>
+											{/if}
+											{#if post.skillType}
+												<p>
+													<span class="font-medium text-foreground">Type:</span>
+													{post.skillType}
+												</p>
+											{/if}
+											{#if post.providers?.length}
+												<p>
+													<span class="font-medium text-foreground">Providers:</span>
+													{post.providers.join(', ')}
+												</p>
+											{/if}
+										</div>
+									{/if}
 
 									{#if post.tags.length > 0}
 										<div class="flex flex-wrap gap-1 mb-3">

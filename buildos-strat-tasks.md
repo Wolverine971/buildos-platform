@@ -305,11 +305,14 @@ Parallel cluster play. **Different cadence from WS04 flagship** — 10 posts in 
 - Manifesto post; coins "interest media"; credits Devin Nash
 - Output: [`apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md`](apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md)
 
-**T35. "You Stopped Choosing What You Think About"** `[W]` · 1 d · Leverage 5 / Urgency 5 · **🟡 Ready**
+**T35. "You Stopped Choosing What You Think About"** `[W]` · 1 d · Leverage 5 / Urgency 5 · **🔵 Drafted 2026-04-27**
 
-- Felt-experience post; required vocab "chosen input," "direction of the arrow," "anti-feed"
-- Links to T34 + `your-morning-without-the-algorithm.md`
-- Due by **2026-04-27** per T44 cadence
+- Felt-experience post; owns "chosen input" (13×); required vocab "chosen input," "direction of the arrow," "anti-feed"
+- Links to T34 + `your-morning-without-the-algorithm.md` + `anti-ai-assistant-execution-engine.md`
+- Output: [`apps/web/src/content/blogs/philosophy/you-stopped-choosing-what-you-think-about.md`](apps/web/src/content/blogs/philosophy/you-stopped-choosing-what-you-think-about.md) (2,238 words, ~11 min)
+- Publish kit: [`docs/marketing/social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-kit.md`](docs/marketing/social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-kit.md) — all 5 lanes drafted (X, LinkedIn, IG, 2 TikToks, 3 Reddit)
+- WS10 T48 row: 🔵 / 🔵 (scripts drafted, not recorded)
+- Drafted on T44 due date (2026-04-27); next gate is publish + posting
 
 **T36. "What a Thinking Environment Actually Is"** `[W]` · 1 d · Leverage 5 / Urgency 4
 

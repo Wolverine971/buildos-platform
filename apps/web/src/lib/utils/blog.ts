@@ -23,6 +23,14 @@ export interface BlogPost {
 	pic?: string;
 	excerpt?: string;
 	faq?: BlogFaqItem[];
+	skillId?: string;
+	skillType?: string;
+	skillCategory?: string;
+	providers?: string[];
+	compatibleAgents?: string[];
+	stackWith?: string[];
+	skillSource?: string;
+	installHint?: string;
 }
 
 type BlogModule = {
@@ -121,6 +129,13 @@ function calculateModuleReadingTime(module: BlogModule, metadata: BlogMetadata):
 	return 5;
 }
 
+function normalizeStringArray(value: unknown): string[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+
+	const normalized = value.filter((item): item is string => typeof item === 'string');
+	return normalized.length > 0 ? normalized : undefined;
+}
+
 function buildBlogPost(
 	path: string,
 	slug: string,
@@ -164,7 +179,16 @@ function buildBlogPost(
 		tags,
 		pic: typeof metadata.pic === 'string' ? metadata.pic : undefined,
 		excerpt: typeof metadata.excerpt === 'string' ? metadata.excerpt : description,
-		faq
+		faq,
+		skillId: typeof metadata.skillId === 'string' ? metadata.skillId : undefined,
+		skillType: typeof metadata.skillType === 'string' ? metadata.skillType : undefined,
+		skillCategory:
+			typeof metadata.skillCategory === 'string' ? metadata.skillCategory : undefined,
+		providers: normalizeStringArray(metadata.providers),
+		compatibleAgents: normalizeStringArray(metadata.compatibleAgents),
+		stackWith: normalizeStringArray(metadata.stackWith),
+		skillSource: typeof metadata.skillSource === 'string' ? metadata.skillSource : undefined,
+		installHint: typeof metadata.installHint === 'string' ? metadata.installHint : undefined
 	};
 }
 
@@ -198,6 +222,12 @@ export const BLOG_CATEGORIES = {
 		name: 'Philosophy',
 		description: 'Our vision for the future of personal productivity',
 		color: 'indigo'
+	},
+	'agent-skills': {
+		name: 'Agent Skills',
+		description:
+			'Portable skill guides, definitions, and operating playbooks for AI agents.',
+		color: 'cyan'
 	}
 } as const;
 

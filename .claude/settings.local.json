@@ -3,7 +3,6 @@
     "allow": [
       "WebSearch",
       "Skill(twitter-warmup)",
-
       "Bash(cat:*)",
       "Bash(cp:*)",
       "Bash(dd:*)",
@@ -27,7 +26,6 @@
       "Bash(wc:*)",
       "Bash(xargs:*)",
       "Bash(xxd:*)",
-
       "Bash(git add:*)",
       "Bash(git checkout:*)",
       "Bash(git diff:*)",
@@ -38,7 +36,6 @@
       "Bash(git rm:*)",
       "Bash(gh api:*)",
       "Bash(gh repo:*)",
-
       "Bash(pnpm:*)",
       "Bash(pnpm add:*)",
       "Bash(pnpm build:*)",
@@ -55,7 +52,6 @@
       "Bash(pnpm tsc:*)",
       "Bash(pnpm typecheck:*)",
       "Bash(pnpm vite build:*)",
-
       "Bash(npm install:*)",
       "Bash(npm ls:*)",
       "Bash(npm pkg set:*)",
@@ -67,29 +63,24 @@
       "Bash(npx vitest:*)",
       "Bash(npx agent-browser:*)",
       "Bash(which agent-browser:*)",
-
       "Bash(claude help:*)",
       "Bash(claude install:*)",
       "Bash(claude plugin info:*)",
       "Bash(claude plugin list:*)",
       "Bash(claude skill list:*)",
-
       "Bash(convert:*)",
       "Bash(cwebp:*)",
       "Bash(magick:*)",
       "Bash(sips:*)",
       "Bash(curl:*)",
-
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm --filter=web exec:*)",
       "Bash(NODE_OPTIONS=\"--max-old-space-size=8192\" pnpm --filter=web exec svelte-check:*)",
-
       "mcp__ide__getDiagnostics",
       "mcp__perplexity__deep_research",
       "mcp__perplexity__reason",
       "mcp__perplexity__search",
       "mcp__plugin_compound-engineering_context7__query-docs",
       "mcp__plugin_compound-engineering_context7__resolve-library-id",
-
       "WebFetch(domain:build-os.com)",
       "WebFetch(domain:docs.anthropic.com)",
       "WebFetch(domain:github.com)",
@@ -107,7 +98,9 @@
       "WebFetch(domain:artificialanalysis.ai)",
       "WebFetch(domain:simonwillison.net)",
       "WebFetch(domain:stackoverflow.blog)",
-      "WebFetch(domain:every.to)"
+      "WebFetch(domain:every.to)",
+      "Bash(mkdir -p /Users/djwayne/buildos-platform/docs/marketing/anti-feed)",
+      "Bash(mkdir -p /Users/djwayne/buildos-platform/.claude/skills/draft-anti-feed-blog)"
     ],
     "deny": [],
     "ask": []

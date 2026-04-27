@@ -1,3 +1,4 @@
+# scripts/youtube-transcript.py
 #!/usr/bin/env python3
 # scripts/youtube-transcript.py
 

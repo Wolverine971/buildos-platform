@@ -292,6 +292,60 @@
 					</div>
 				{/if}
 			</div>
+
+			{#if data.post.category === 'agent-skills' &&
+				(data.post.skillId ||
+					data.post.skillType ||
+					data.post.providers?.length ||
+					data.post.compatibleAgents?.length ||
+					data.post.installHint)}
+				<div
+					class="mt-6 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground"
+				>
+					<div class="grid gap-3 sm:grid-cols-2">
+						{#if data.post.skillId}
+							<p>
+								<span class="block text-xs font-medium uppercase tracking-wide text-foreground">
+									Skill ID
+								</span>
+								<code>{data.post.skillId}</code>
+							</p>
+						{/if}
+						{#if data.post.skillType}
+							<p>
+								<span class="block text-xs font-medium uppercase tracking-wide text-foreground">
+									Type
+								</span>
+								{data.post.skillType}
+							</p>
+						{/if}
+						{#if data.post.providers?.length}
+							<p>
+								<span class="block text-xs font-medium uppercase tracking-wide text-foreground">
+									Providers
+								</span>
+								{data.post.providers.join(', ')}
+							</p>
+						{/if}
+						{#if data.post.compatibleAgents?.length}
+							<p>
+								<span class="block text-xs font-medium uppercase tracking-wide text-foreground">
+									Compatible Agents
+								</span>
+								{data.post.compatibleAgents.join(', ')}
+							</p>
+						{/if}
+					</div>
+					{#if data.post.installHint}
+						<p class="mt-3 border-t border-border pt-3">
+							<span class="block text-xs font-medium uppercase tracking-wide text-foreground">
+								Install / Copy Hint
+							</span>
+							<code>{data.post.installHint}</code>
+						</p>
+					{/if}
+				</div>
+			{/if}
 		</header>
 
 		<!-- Divider -->
