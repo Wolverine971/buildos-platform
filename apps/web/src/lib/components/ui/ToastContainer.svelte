@@ -25,17 +25,17 @@
 		fixed z-[10000]
 		flex flex-col pointer-events-none
 
-		/* Mobile: Bottom positioning with safe areas */
+		/* Mobile + landscape phones: Bottom positioning with safe areas */
 		bottom-0 left-0 right-0
 		pb-4 px-4
 		gap-2
 		items-center
 
-		/* Desktop: Top-right positioning */
-		sm:top-4 sm:right-4 sm:bottom-auto sm:left-auto
-		sm:pb-0 sm:px-0
-		sm:items-end
-		sm:gap-3
+		/* Tablet+ (md:768): Top-right positioning */
+		md:top-4 md:right-4 md:bottom-auto md:left-auto
+		md:pb-0 md:px-0
+		md:items-end
+		md:gap-3
 	"
 	style="
 		padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
@@ -51,7 +51,7 @@
 			- Use CSS to handle the responsive transition
 		-->
 		<div
-			class="pointer-events-auto w-full sm:w-auto"
+			class="pointer-events-auto w-full md:w-auto"
 			in:fly={{
 				y: 20,
 				x: 0,
@@ -73,8 +73,8 @@
 
 <!-- Mobile-specific slide-up animation override -->
 <style>
-	/* On mobile, override exit animation to slide down */
-	@media (max-width: 639px) {
+	/* On mobile + landscape phones (<md:768), override exit animation to slide down */
+	@media (max-width: 767px) {
 		div > div {
 			--exit-y: 20px;
 			--exit-x: 0;

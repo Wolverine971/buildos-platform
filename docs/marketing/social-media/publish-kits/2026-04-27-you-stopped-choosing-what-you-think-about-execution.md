@@ -6,6 +6,7 @@ owner: DJ Wayne
 related_kit: docs/marketing/social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-kit.md
 related_blog: apps/web/src/content/blogs/philosophy/you-stopped-choosing-what-you-think-about.md
 purpose: Step-by-step posting workflow + decisions for T35. Read this when you're ready to publish.
+path: docs/marketing/social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-execution.md
 ---
 
 # Execution Notes — T35 "You Stopped Choosing What You Think About"
@@ -16,17 +17,17 @@ Companion doc to the [publish kit](./2026-04-27-you-stopped-choosing-what-you-th
 
 ## 1. Cross-post sequence (the order matters)
 
-| Step | When           | Action                                    |
-| ---- | -------------- | ----------------------------------------- |
-| 1    | T-0            | Publish blog on build-os.com              |
-| 2    | T+2 hours      | Post X / Twitter thread                   |
-| 3    | T+24 hours     | Post LinkedIn                             |
-| 4    | T+48 hours     | Record + post TikTok #1 (30–45s)          |
-| 5    | T+72 hours     | Post Instagram carousel                   |
-| 6    | T+7 days       | Record + post TikTok #2 (60–90s)          |
-| 7    | First Wed      | r/podcasting Wednesday Product/Service    |
-| 8    | Within 7 days  | r/Substack OP                             |
-| 9    | Opportunistic  | r/productivity comment-only               |
+| Step | When          | Action                                 |
+| ---- | ------------- | -------------------------------------- |
+| 1    | T-0           | Publish blog on build-os.com           |
+| 2    | T+2 hours     | Post X / Twitter thread                |
+| 3    | T+24 hours    | Post LinkedIn                          |
+| 4    | T+48 hours    | Record + post TikTok #1 (30–45s)       |
+| 5    | T+72 hours    | Post Instagram carousel                |
+| 6    | T+7 days      | Record + post TikTok #2 (60–90s)       |
+| 7    | First Wed     | r/podcasting Wednesday Product/Service |
+| 8    | Within 7 days | r/Substack OP                          |
+| 9    | Opportunistic | r/productivity comment-only            |
 
 **Why this order:** the X thread Tweet 8 contains the blog URL. If you post X before the blog goes live, the link 404s.
 
@@ -75,7 +76,71 @@ Or do it manually — find this line in the kit and paste your URL:
 
 ---
 
-## 3. LinkedIn — one decision, then I post
+## 3. LinkedIn — manual posting (3 steps, ~90 seconds)
+
+> **Note:** Browser automation tools aren't loaded in this Claude Code session, so I can't drive the browser directly. You'll do the 3 steps below — total time should be under 90 seconds. When done, send me the post URL and I'll handle all status updates.
+
+### Decision: option (b) confirmed — post + first-comment link.
+
+The blog URL is already verified live (HTTP 200): `https://build-os.com/blogs/philosophy/you-stopped-choosing-what-you-think-about`.
+
+### Step 1 — Post the essay
+
+1. Open `https://www.linkedin.com/feed/`
+2. Click **Start a post**
+3. Paste the post body in the box below (everything between the `=== POST BODY ===` markers, exclusive of the markers themselves)
+4. Click **Post**
+
+```
+=== POST BODY (start) ===
+The thing you lost wasn't attention. Attention is fine. It's upstream of attention.
+
+The public internet flipped two years ago, and almost nobody named what flipped. You used to point your attention at things — books, links, friends, a search you actually typed. Now things point themselves at you, optimized to win, funded to win. The ranking model decides what you see, and importance is a product you can buy. One streamer paid $666,000 last month to flood the algorithm with 69,000 clips and reach 2.2 billion views. AI is about to make that playbook cost a few hundred dollars.
+
+The feeling shows up in three forms. Curiosity collapse: you stopped wondering, because the feed will serve you something within the hour anyway. Feed paranoia: a sane response to a feed that is, in fact, mostly synthetic. Algorithm-shaped thoughts: your inner monologue starts to sound like a successful tweet. The feed didn't just take some of your time. It edited some of your voice.
+
+The right unit of recovery isn't screen time or a digital detox. It's the chosen input — anything you read, watched, or thought about today because you pointed yourself at it. A book on the nightstand. A page in a journal. A brain dump before you open the feed. The specific surface matters less than the fact that you authored it.
+
+I built BuildOS as a thinking environment for that surface — a brain dump in, a daily brief out, the first input of your day authored by you. But the habit is the habit, with or without the tool. The anti-feed isn't an app. It's the act of choosing again.
+=== POST BODY (end) ===
+```
+
+### Step 2 — Drop the link in the first comment (within 60 seconds)
+
+1. On your just-published post, click **Comment**
+2. Paste the comment text below
+3. Click **Post**
+
+```
+=== FIRST COMMENT (start) ===
+Full piece, with a 60-second test that tells you how far gone it is for you: https://build-os.com/blogs/philosophy/you-stopped-choosing-what-you-think-about
+=== FIRST COMMENT (end) ===
+```
+
+### Step 3 — Grab the post URL and send it to me
+
+1. On your new post, click the timestamp ("now" / "1m" — top of the post, near your name)
+2. Copy the URL from your browser address bar — should look like one of these:
+    - `https://www.linkedin.com/feed/update/urn:li:activity:7XXXXXXXXXXXXXXXX/`
+    - `https://www.linkedin.com/posts/<handle>_<slug>-activity-7XXXXXXXXXXXXXXXX-XXXX/`
+3. Paste it back to me in chat
+
+When I have the URL, I'll update:
+
+- This file's status dashboard
+- The kit's status dashboard
+- The WS09 T35 task brief
+
+### Spec reminder (in case you want to tweak)
+
+- ~270 words · 5 paragraphs
+- BuildOS mentioned once (paragraph 5)
+- No hashtags, no emoji, no edits expected
+- The post is essay-shaped — meant to stand alone
+
+---
+
+## ARCHIVED — option (a) vs (b) decision (resolved 2026-04-27)
 
 ### Final post text (ready to publish, asterisks already stripped)
 
@@ -95,10 +160,10 @@ I built BuildOS as a thinking environment for that surface — a brain dump in, 
 
 ### The one decision
 
-| Option | What happens                                                       | When to pick |
-| ------ | ------------------------------------------------------------------ | ------------ |
-| **(a)** | Post standalone now. No link. The post stands alone as an essay.  | If blog isn't deployed yet, or you want LinkedIn doing its own work |
-| **(b)** | Wait for blog deploy. Post, then add a "Full piece" link in the first comment under your own post. | If blog is going live today and you want the funnel              |
+| Option  | What happens                                                                                       | When to pick                                                        |
+| ------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| **(a)** | Post standalone now. No link. The post stands alone as an essay.                                   | If blog isn't deployed yet, or you want LinkedIn doing its own work |
+| **(b)** | Wait for blog deploy. Post, then add a "Full piece" link in the first comment under your own post. | If blog is going live today and you want the funnel                 |
 
 **My read:** the LinkedIn post is essay-shaped and self-contained. (a) is the cleanest move unless the blog is going live within the hour. (b) is funnel-better but requires you to remember the comment within ~2 minutes of posting (LinkedIn's algorithm penalizes edits and late comments).
 
@@ -147,11 +212,11 @@ These are later. Don't think about them today.
 
 After each post goes live, three files need the URL:
 
-| File                                                                                           | What to update                            |
-| ---------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `docs/marketing/social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-kit.md` | Status dashboard (URL fields)             |
-| `docs/marketing/distribution/workstreams/WS09-anti-feed-cluster.md`                            | T35 task brief (status block)             |
-| `docs/marketing/distribution/workstreams/WS10-short-form-video.md`                             | T48 row for T35 (Recorded / Posted columns) |
+| File                                                                                                   | What to update                              |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------- |
+| `docs/marketing/social-media/publish-kits/2026-04-27-you-stopped-choosing-what-you-think-about-kit.md` | Status dashboard (URL fields)               |
+| `docs/marketing/distribution/workstreams/WS09-anti-feed-cluster.md`                                    | T35 task brief (status block)               |
+| `docs/marketing/distribution/workstreams/WS10-short-form-video.md`                                     | T48 row for T35 (Recorded / Posted columns) |
 
 If you'd rather just send me the URLs as you post, I'll do all three updates for you. That's the easier version.
 

@@ -29,6 +29,7 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { onDestroy } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -1340,6 +1341,11 @@
 		isOpen = false;
 		onClose?.();
 	}
+
+	onDestroy(() => {
+		clearAutosaveTimers();
+		clearDeferredDocumentLoads();
+	});
 
 	function handleModalBeforeClose(): boolean {
 		if (blockingSave || saveStatus === 'saving') {

@@ -281,6 +281,10 @@
 		dragDrop?.handleTouchEnd(e);
 	}
 
+	function handleGlobalTouchCancel() {
+		dragDrop?.handleTouchCancel();
+	}
+
 	function handleKeyDown(e: KeyboardEvent) {
 		dragDrop?.handleKeyDown(e);
 	}
@@ -552,7 +556,7 @@
 			document.addEventListener('mouseup', handleGlobalMouseUp);
 			document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
 			document.addEventListener('touchend', handleGlobalTouchEnd);
-			document.addEventListener('touchcancel', () => dragDrop?.handleTouchCancel());
+			document.addEventListener('touchcancel', handleGlobalTouchCancel);
 			document.addEventListener('keydown', handleKeyDown);
 		}
 	});
@@ -571,6 +575,7 @@
 			document.removeEventListener('mouseup', handleGlobalMouseUp);
 			document.removeEventListener('touchmove', handleGlobalTouchMove);
 			document.removeEventListener('touchend', handleGlobalTouchEnd);
+			document.removeEventListener('touchcancel', handleGlobalTouchCancel);
 			document.removeEventListener('keydown', handleKeyDown);
 		}
 	});

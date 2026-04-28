@@ -10,6 +10,7 @@
 	Inkprint design tokens. Svelte 5 runes.
 -->
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { LoaderCircle, AlertCircle, RefreshCw } from 'lucide-svelte';
 	import ComparisonToolbar from './ComparisonToolbar.svelte';
 	import UnifiedDiffView from '$lib/components/ui/UnifiedDiffView.svelte';
@@ -90,6 +91,13 @@
 	// AbortController for in-flight requests
 	let currentAbortController: AbortController | null = null;
 
+	function abortCurrentLoad() {
+		if (currentAbortController) {
+			currentAbortController.abort();
+			currentAbortController = null;
+		}
+	}
+
 	// ============================================================
 	// DERIVED
 	// ============================================================
@@ -130,6 +138,8 @@
 		}
 	});
 
+	onDestroy(abortCurrentLoad);
+
 	// Keyboard navigation
 	$effect(() => {
 		function handleKeydown(e: KeyboardEvent) {
@@ -151,9 +161,7 @@
 	// ============================================================
 	async function loadAndDiff() {
 		// Abort any in-flight requests
-		if (currentAbortController) {
-			currentAbortController.abort();
-		}
+		abortCurrentLoad();
 		const abortController = new AbortController();
 		currentAbortController = abortController;
 
@@ -221,6 +229,9 @@
 		} finally {
 			if (!abortController.signal.aborted) {
 				isLoading = false;
+			}
+			if (currentAbortController === abortController) {
+				currentAbortController = null;
 			}
 		}
 	}

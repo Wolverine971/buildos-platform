@@ -1,12 +1,29 @@
 ---
 title: "ANALYSIS — Jason Cohen on Stalled Growth (Lenny's Podcast)"
+source_type: youtube_analysis
+video_id: 8xLquwfx6p0
+url: "https://www.youtube.com/watch?v=8xLquwfx6p0"
 source_video: "https://www.youtube.com/watch?v=8xLquwfx6p0"
 source_transcript: "2026-04-27-jason-cohen-wp-engine-2-unicorns-advice.md"
 guest: Jason Cohen (WP Engine, Smart Bear, A Smart Bear blog, "Hidden Multipliers")
 host: Lenny Rachitsky
+channel: "Lenny's Podcast"
+channel_url: "https://www.youtube.com/@LennysPodcast"
 duration: "01:46:04"
 upload_date: 2026-01-25
 analyzed_date: 2026-04-27
+library_category: product-strategy
+library_status: "transcript, analysis, skill-draft"
+transcript_status: available
+analysis_status: available
+processing_status: draft_skill_created
+processed: true
+skill_candidate: true
+skill_priority: high
+skill_draft: "docs/research/youtube-library/skill-drafts/growth-diagnostics-for-stalled-products/SKILL.md"
+public_article: ""
+indexed_date: "2026-04-28"
+last_reviewed: "2026-04-28"
 tags:
   - growth
   - retention

@@ -1,3 +1,5 @@
+<!-- docs/buildos-agent-skills-structure.md -->
+
 # BuildOS Agent Skills Repository Structure
 
 This document summarizes the structure used by the AITMPL skills catalog and adapts it into a BuildOS-neutral design. The goal is to preserve compatibility with the emerging Agent Skills pattern while avoiding any Claude-specific assumptions.
@@ -192,25 +194,25 @@ Example:
 
 ```yaml
 id: development/code-reviewer
-version: "1.0.0"
+version: '1.0.0'
 author: buildos
 license: MIT
 tags:
-  - development
-  - code-review
-  - quality
+    - development
+    - code-review
+    - quality
 requires:
-  tools:
-    - python3
-  env: []
+    tools:
+        - python3
+    env: []
 permissions:
-  network: false
-  filesystem: workspace
-  shell: true
+    network: false
+    filesystem: workspace
+    shell: true
 ui:
-  display_name: Code Reviewer
-  short_description: Review diffs, PRs, and code quality.
-  default_prompt: Review this pull request for bugs, maintainability, security, and test gaps.
+    display_name: Code Reviewer
+    short_description: Review diffs, PRs, and code quality.
+    default_prompt: Review this pull request for bugs, maintainability, security, and test gaps.
 ```
 
 This separation matters:
@@ -285,9 +287,9 @@ The registry ID can include the category:
 
 ```json
 {
-  "id": "development/code-reviewer",
-  "name": "code-reviewer",
-  "category": "development"
+	"id": "development/code-reviewer",
+	"name": "code-reviewer",
+	"category": "development"
 }
 ```
 
@@ -309,18 +311,18 @@ Example registry item:
 
 ```json
 {
-  "id": "development/code-reviewer",
-  "name": "code-reviewer",
-  "category": "development",
-  "description": "Review pull requests and code changes for bugs, security issues, maintainability, and test gaps.",
-  "source": "github.com/buildos/skills/tree/main/skills/development/code-reviewer",
-  "files": [
-    "SKILL.md",
-    "buildos.yaml",
-    "scripts/pr_analyzer.py",
-    "references/code_review_checklist.md"
-  ],
-  "install": "buildos skills add development/code-reviewer"
+	"id": "development/code-reviewer",
+	"name": "code-reviewer",
+	"category": "development",
+	"description": "Review pull requests and code changes for bugs, security issues, maintainability, and test gaps.",
+	"source": "github.com/buildos/skills/tree/main/skills/development/code-reviewer",
+	"files": [
+		"SKILL.md",
+		"buildos.yaml",
+		"scripts/pr_analyzer.py",
+		"references/code_review_checklist.md"
+	],
+	"install": "buildos skills add development/code-reviewer"
 }
 ```
 
@@ -432,16 +434,16 @@ Example lockfile entry:
 
 ```json
 {
-  "id": "development/code-reviewer",
-  "source": "github.com/buildos/skills",
-  "path": "skills/development/code-reviewer",
-  "commit": "abc123",
-  "installed_at": "2026-04-27T00:00:00Z",
-  "permissions": {
-    "shell": true,
-    "network": false,
-    "filesystem": "workspace"
-  }
+	"id": "development/code-reviewer",
+	"source": "github.com/buildos/skills",
+	"path": "skills/development/code-reviewer",
+	"commit": "abc123",
+	"installed_at": "2026-04-27T00:00:00Z",
+	"permissions": {
+		"shell": true,
+		"network": false,
+		"filesystem": "workspace"
+	}
 }
 ```
 

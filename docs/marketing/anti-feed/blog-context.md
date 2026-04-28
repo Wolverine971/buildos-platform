@@ -18,6 +18,7 @@ related_docs:
 update_rule: |
     If the brand guide or topic map changes substantively, mirror the change here in the same commit.
     The annealing log section at the bottom is updated by the skill after each blog draft.
+path: docs/marketing/anti-feed/blog-context.md
 ---
 
 # Anti-Feed Blog Context
@@ -127,21 +128,21 @@ Use this verbatim or close to it. Do not substitute "AI productivity app," "AI a
 
 ### Terms to own (cluster vocabulary — repeat consistently)
 
-| Term | Usage rule |
-| --- | --- |
-| **thinking environment** | Use in every post at least once; the protagonist of the cluster |
-| **anti-feed** | Use ≥3× per post; the cluster's signature term |
-| **interest media** | Credit Devin Nash on first use per post; adopt liberally after |
-| **chosen input** | Use whenever talking about morning routines, briefs, RSS, what someone reads |
-| **direction of the arrow** | Metaphor for user-authored vs. platform-authored attention |
-| **the quiet half of the internet** | Discord, Substack, podcasts, IRL — the migrating-to half |
-| **algorithm-shaped thoughts** | The internalized shape of optimized content in your own head |
-| **curiosity collapse** | When you stop wondering about things |
-| **feed paranoia** | Quiet distrust of your own feed |
-| **manufactured virality** | The antagonist term — always pair with an alternative |
-| **synthetic public internet** | Forecast-ready language for the AI-content wave |
-| **provable thinking** | Coined; receipts for real work |
-| **context sovereignty** | Coined; ties to context-engineering positioning |
+| Term                               | Usage rule                                                                   |
+| ---------------------------------- | ---------------------------------------------------------------------------- |
+| **thinking environment**           | Use in every post at least once; the protagonist of the cluster              |
+| **anti-feed**                      | Use ≥3× per post; the cluster's signature term                               |
+| **interest media**                 | Credit Devin Nash on first use per post; adopt liberally after               |
+| **chosen input**                   | Use whenever talking about morning routines, briefs, RSS, what someone reads |
+| **direction of the arrow**         | Metaphor for user-authored vs. platform-authored attention                   |
+| **the quiet half of the internet** | Discord, Substack, podcasts, IRL — the migrating-to half                     |
+| **algorithm-shaped thoughts**      | The internalized shape of optimized content in your own head                 |
+| **curiosity collapse**             | When you stop wondering about things                                         |
+| **feed paranoia**                  | Quiet distrust of your own feed                                              |
+| **manufactured virality**          | The antagonist term — always pair with an alternative                        |
+| **synthetic public internet**      | Forecast-ready language for the AI-content wave                              |
+| **provable thinking**              | Coined; receipts for real work                                               |
+| **context sovereignty**            | Coined; ties to context-engineering positioning                              |
 
 ### Repetition rule
 
@@ -193,7 +194,7 @@ If the opening paragraph addresses "ADHD minds" or "scattered minds" or "indie h
 
 ### Why this audience
 
-The cluster is naming a felt experience (algorithm-shaped thoughts, curiosity collapse, feed paranoia). Creators feel this most acutely because their *job* is producing chosen output. They have the most to lose from a synthetic public internet, and the most language to articulate the loss when someone names it for them.
+The cluster is naming a felt experience (algorithm-shaped thoughts, curiosity collapse, feed paranoia). Creators feel this most acutely because their _job_ is producing chosen output. They have the most to lose from a synthetic public internet, and the most language to articulate the loss when someone names it for them.
 
 ---
 
@@ -201,7 +202,7 @@ The cluster is naming a felt experience (algorithm-shaped thoughts, curiosity co
 
 If any of these appear in the draft, revise before saving:
 
-1. **Leading with AI in the hook.** Opening paragraph mentions AI, LLMs, agents, or "AI-powered." Rewrite. Lead with felt experience.
+1. **Leading with AI as the protagonist in the hook.** Opening paragraphs introduce AI as a product feature or capability ("AI-powered productivity," "an AI assistant that..."). Rewrite. AI **may** appear in the opener as the _antagonist_ — the AI-driven clipping economy, the synthetic public internet, the trajectory the reader needs to brace for — when establishing stakes for an anchoring post. The line: if the reader could mistake the opener for an AI-product pitch, it fails. (Refined 2026-04-27 from T35 stakes-and-promise pattern.)
 2. **Vocabulary drift.** Post doesn't use ≥1 term from the "terms to own" table 3+ times.
 3. **Pitch creep.** BuildOS-related copy exceeds the post's role-based ceiling: ≤15% for vocabulary / positioning posts (T34, T36, T42, T43), ≤25% for anchoring / conversion-leaning posts (T35, T37, T38). If you're over the ceiling, either trim the BuildOS surface area or reclassify the post role and write a one-line note in the draft notes block.
 4. **ADHD-era framing.** Hook addresses "ADHD minds" / "scattered brains" / "indie hackers" instead of authors/YouTubers/makers.
@@ -222,7 +223,7 @@ If the post averages more than ~1 em dash per 100 words, revise. AI prose is em-
 
 ## 7. Show-don't-tell doctrine (parent thesis)
 
-The cluster sits inside BuildOS's **anti-AI marketing strategy**. Not anti-AI product — anti-AI *as the headline*. The market has shifted from "AI can do everything" to "I don't want another AI app." Hype-heavy competitors lose trust first.
+The cluster sits inside BuildOS's **anti-AI marketing strategy**. Not anti-AI product — anti-AI _as the headline_. The market has shifted from "AI can do everything" to "I don't want another AI app." Hype-heavy competitors lose trust first.
 
 ### Messaging principles
 
@@ -281,15 +282,15 @@ What we can credibly draw on. Use these to ground claims; don't invent.
 
 ### Published cluster posts (for cross-link targets and voice anchoring)
 
-| Slug | Cluster role | Use as cross-link when post is about |
-| --- | --- | --- |
-| `your-morning-without-the-algorithm.md` | Cluster opener; felt-experience + Devin receipts + BuildOS rituals | Morning routines, daily briefs, chosen input, the practice |
-| `social-media-is-dead-interest-media.md` | T34 manifesto; defines "interest media" | Manufactured virality, the antagonist, naming the category |
-| `anti-ai-assistant-execution-engine.md` | Sibling — anti-AI thesis | Context engineering vs agent engineering, AI-as-engine-not-headline |
-| `what-a-thinking-environment-actually-is.md` | T36 candidate — defines protagonist | The category itself; vs productivity tools |
-| `agentic-vrs-context-engineering.md` | Companion thesis | When extending the AI-philosophy thread |
-| `productivity-vs-busy-work.md` | Older philosophy post | When critiquing productivity theater |
-| `compound-engineering-for-your-life.md` | Older philosophy post | Compounding context, systems thinking |
+| Slug                                         | Cluster role                                                       | Use as cross-link when post is about                                |
+| -------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| `your-morning-without-the-algorithm.md`      | Cluster opener; felt-experience + Devin receipts + BuildOS rituals | Morning routines, daily briefs, chosen input, the practice          |
+| `social-media-is-dead-interest-media.md`     | T34 manifesto; defines "interest media"                            | Manufactured virality, the antagonist, naming the category          |
+| `anti-ai-assistant-execution-engine.md`      | Sibling — anti-AI thesis                                           | Context engineering vs agent engineering, AI-as-engine-not-headline |
+| `what-a-thinking-environment-actually-is.md` | T36 candidate — defines protagonist                                | The category itself; vs productivity tools                          |
+| `agentic-vrs-context-engineering.md`         | Companion thesis                                                   | When extending the AI-philosophy thread                             |
+| `productivity-vs-busy-work.md`               | Older philosophy post                                              | When critiquing productivity theater                                |
+| `compound-engineering-for-your-life.md`      | Older philosophy post                                              | Compounding context, systems thinking                               |
 
 Always check `apps/web/src/content/blogs/philosophy/` for the latest list before linking — the directory is the source of truth. Pick links by **vocabulary continuity** (does the linked post reinforce a term-to-own you're using?), not just topic adjacency.
 
@@ -299,18 +300,18 @@ Always check `apps/web/src/content/blogs/philosophy/` for the latest list before
 
 The next-up posts. Most current status lives in `docs/marketing/distribution/workstreams/WS09-anti-feed-cluster.md` (load it at run start to get live status). The ranking and angles below are stable.
 
-| Rank | Task | Title | Vocabulary anchor |
-| --- | --- | --- | --- |
-| 1 | T34 ✅ | Social Media Is Dead. What You're Using Is Interest Media. | interest media |
-| 2 | **T35** | You Stopped Choosing What You Think About | chosen input |
-| 3 | T36 | What a Thinking Environment Actually Is | thinking environment |
-| 4 | T37 | The Three-Minute Morning That Fixes Your Day | anti-feed |
-| 5 | T38 | Why Most Productivity Tools Are Feeds in Disguise | feeds in disguise |
-| 6 | T39 | The Quiet Half of the Internet | the quiet half |
-| 7 | T40 | Why AI Will Collapse the Clipping Economy by 2028 | synthetic public internet |
-| 8 | T41 | Authenticity Is the Only Moat Left | authenticity moat |
-| 9 | T42 | The Three Feelings You Don't Have Words For Yet | feed paranoia / curiosity collapse / algorithm-shaped thoughts |
-| 10 | T43 | Writing Is Thinking. Scrolling Is Receiving. | direction of the arrow |
+| Rank | Task    | Title                                                      | Vocabulary anchor                                              |
+| ---- | ------- | ---------------------------------------------------------- | -------------------------------------------------------------- |
+| 1    | T34 ✅  | Social Media Is Dead. What You're Using Is Interest Media. | interest media                                                 |
+| 2    | **T35** | You Stopped Choosing What You Think About                  | chosen input                                                   |
+| 3    | T36     | What a Thinking Environment Actually Is                    | thinking environment                                           |
+| 4    | T37     | The Three-Minute Morning That Fixes Your Day               | anti-feed                                                      |
+| 5    | T38     | Why Most Productivity Tools Are Feeds in Disguise          | feeds in disguise                                              |
+| 6    | T39     | The Quiet Half of the Internet                             | the quiet half                                                 |
+| 7    | T40     | Why AI Will Collapse the Clipping Economy by 2028          | synthetic public internet                                      |
+| 8    | T41     | Authenticity Is the Only Moat Left                         | authenticity moat                                              |
+| 9    | T42     | The Three Feelings You Don't Have Words For Yet            | feed paranoia / curiosity collapse / algorithm-shaped thoughts |
+| 10   | T43     | Writing Is Thinking. Scrolling Is Receiving.               | direction of the arrow                                         |
 
 Picking the next post:
 
@@ -352,7 +353,7 @@ changefreq: 'monthly'
 priority: '0.9'
 published: true
 tags: ['anti-feed', 'thinking-environment', '{2-4 more cluster tags}']
-readingTime: {minutes, integer}
+readingTime: { minutes, integer }
 excerpt: '{2–3 sentence excerpt; no AI-hype language; uses ≥1 term-to-own}'
 pic: '{slug-for-hero}'
 path: apps/web/src/content/blogs/philosophy/{slug}.md
@@ -371,7 +372,7 @@ path: apps/web/src/content/blogs/philosophy/{slug}.md
 ### Required cross-links inside the body
 
 - **≥2 inline links** to prior cluster posts (pick by vocabulary continuity, not just topic)
-- **1 link** to `docs/marketing/strategy/anti-feed-content-topic-map.md` for readers who want more
+- **1 inline link to the cluster opener** (`/blogs/philosophy/your-morning-without-the-algorithm`) as the "for readers who want more" anchor — that post is the public hub for the cluster. The internal topic map (`docs/marketing/strategy/anti-feed-content-topic-map.md`) is private docs and does not render publicly; reference it in the HTML-commented draft notes block for author-only context, **never in the body**.
 - **1 link** to a relevant flagship piece if WS04 has one shipped (skip if none)
 
 ### Optional draft notes (HTML comment, not rendered)
@@ -411,27 +412,27 @@ Outline must include:
 
 Write to length spec (1,200–2,000 words), in the body shape above. As you write, run inline checks:
 
-- Hook does not mention AI
+- Hook does not introduce AI as a product feature (AI-as-trajectory-antagonist is allowed in stakes setup; see §6 #1)
 - ≥1 term-to-own appears 3+ times
 - ≥1 specific external source cited
-- BuildOS section ≤15% of post
+- BuildOS section under role-based ceiling (≤15% vocabulary posts / ≤25% anchoring posts; see §6 #3)
 - Em-dash count ≤ ~1 per 100 words
 
 ### Step 4 — Frontmatter + cross-links
 
-Fill frontmatter exactly per the format. Add cross-links inside the body (≥2 to prior cluster posts, 1 to topic map). Verify each link by checking the file exists in `apps/web/src/content/blogs/philosophy/`.
+Fill frontmatter exactly per the format. Add cross-links inside the body (≥2 to prior cluster posts, 1 to the cluster opener `/blogs/philosophy/your-morning-without-the-algorithm`). Verify each link by checking the file exists in `apps/web/src/content/blogs/philosophy/`.
 
 ### Step 5 — Voice checklist (pre-publish gate)
 
 Run every item. If any fails, revise.
 
-- [ ] Opening hook does not mention AI / LLM / agent
+- [ ] Opening hook does not introduce AI as a product feature (AI-as-antagonist in stakes setup is allowed; see §6 #1)
 - [ ] Hook leads with felt experience or precise naming, not abstract claim
 - [ ] At least one term-to-own appears 3+ times in the body
 - [ ] At least one specific external source is cited (not just vibes)
-- [ ] BuildOS is named as a tool inside one section ≤15% of post; not pitched hard
+- [ ] BuildOS is named as a tool inside one section, under the role-based ceiling (≤15% vocabulary posts / ≤25% anchoring posts; see §6 #3); not pitched hard
 - [ ] At least 2 inline links to prior cluster posts
-- [ ] 1 inline link to the topic map
+- [ ] 1 inline link to the cluster opener (`/blogs/philosophy/your-morning-without-the-algorithm`) — public surface, not the docs topic map (which lives in HTML draft notes only)
 - [ ] No banned hype words ("revolutionary," "game-changer," "unlock," "transform")
 - [ ] No AI-cliché openers ("In today's fast-paced world," "It's no secret," "Let's dive in")
 - [ ] Em-dash density feels natural (not "AI-prose-y")
@@ -511,3 +512,10 @@ The skill appends a dated entry here at the end of each run (Step 7 of the draft
 - **What didn't:** Initial 1,514-word draft followed §10 BuildOS ≤15% and ≤2,000-word soft ceiling but author flagged it as "story-first, sell-never" — under-anchored to the product. Revision pushed BuildOS share to ~23% and length to 2,238 words. The §10 rule and the user's direction conflicted, and the user's direction was correct for this post type.
 - **Rule update:** §10 BuildOS-share ceiling and word-count band were calibrated for pure vocabulary posts. Cluster posts that double as conversion-leaning anchors need a wider band. Mirrored into §10 as a tiered rule: ≤15% share / ≤2,000 words for vocabulary-defining posts (T34, T36, T42, T43); ≤25% share / ≤2,500 words for anchoring posts (T35, T37, T38).
 - **New anti-pattern:** "Story-first, sell-never" — a felt-experience hook so calm it never establishes why the reader should keep reading. Fix: lead with a stakes-and-promise paragraph before the cold story open, even if it costs 150 words. Mirrored into §6 as anti-pattern #12.
+
+### 2026-04-27 — Post-T35 review (rule cleanup, no new draft)
+
+- **What worked:** First-run review caught two stale rules and the annealing-log loop closed in one pass. The convention works.
+- **What didn't:** Two rules in §10 / §11 didn't match published-cluster reality. (a) The "1 link to the topic map" rule pointed at a private docs file that can't render in published posts; both prior cluster posts only reference it in HTML-comment draft notes, and the T35 draft correctly omitted it. (b) §6 #1 ("Leading with AI in the hook") was ambiguous about AI-as-antagonist (the new stakes-and-promise opener pattern from T35) vs AI-as-product-feature.
+- **Rule update:** §6 #1 reworded to **"Leading with AI as the protagonist in the hook"** — bans AI-as-product-feature in opener; explicitly allows AI-as-antagonist in stakes setup for anchoring posts. §10 cross-link rule replaces the broken topic-map link with the cluster opener (`your-morning-without-the-algorithm`) as public hub. §11 Step 3 inline checks, Step 4 cross-link spec, and Step 5 voice checklist all mirrored. Topic-map docs file remains the author-side reference, in HTML draft notes only.
+- **New anti-pattern:** None — refinements of existing ones.

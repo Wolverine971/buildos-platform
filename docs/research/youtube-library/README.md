@@ -20,6 +20,9 @@ docs/research/youtube-library/
 +-- INDEX.md
 +-- SKILL_CANDIDATES.md
 +-- FRONTMATTER_SCHEMA.md
++-- INGESTION_FLOW.md
++-- inbox/
+|   +-- README.md
 +-- transcripts/
 |   +-- README.md
 +-- analyses/
@@ -48,12 +51,16 @@ Canonical source files under this folder should use the frontmatter schema in `F
 
 ## Conversion Flow
 
+Use `INGESTION_FLOW.md` for new YouTube URLs, raw transcripts, source bundles, and analysis notes that are not ready to become skills yet.
+
 1. Add or find a video in `INDEX.md`.
-2. Put new transcripts under `transcripts/`.
-3. Put derived analysis notes under `analyses/`.
-4. If the video can become an agent skill, add it to `SKILL_CANDIDATES.md`.
-5. Use `/youtube-to-skill` to create a public draft under `apps/web/src/content/blogs/agent-skills/`.
-6. Keep the video and creator cited in the article and in the portable skill definition when useful.
+2. Put messy or unclassified source drops under `inbox/`.
+3. Put clean transcripts under `transcripts/`.
+4. Put derived analysis notes under `analyses/`.
+5. If the video can become an agent skill, add it to `SKILL_CANDIDATES.md`.
+6. Use `/youtube-to-skill` to create a portable draft under `skill-drafts/<skill-slug>/SKILL.md`.
+7. Promote polished skills into public blog articles under `apps/web/src/content/blogs/agent-skills/`.
+8. Keep the video and creator cited in the article and in the portable skill definition when useful.
 
 ## Migration Policy
 

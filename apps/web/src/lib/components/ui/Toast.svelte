@@ -160,7 +160,7 @@
 		flex items-center gap-3 p-3
 		rounded-lg border
 		shadow-ink-strong backdrop-blur-sm
-		w-full max-w-[calc(100vw-2rem)] sm:max-w-md
+		w-full max-w-[calc(100vw-2rem)] md:max-w-md
 		{config.containerClass}
 		{config.texture}
 		transition-transform duration-150 ease-out
@@ -220,7 +220,7 @@
 			onclick={handleDismiss}
 			class="
 				flex-shrink-0
-				w-8 h-8 sm:w-7 sm:h-7
+				w-9 h-9 md:w-8 md:h-8
 				flex items-center justify-center
 				rounded-lg
 				{config.textClass}
@@ -231,7 +231,7 @@
 			"
 			aria-label="Dismiss notification"
 		>
-			<X class="w-4 h-4 sm:w-3.5 sm:h-3.5" strokeWidth={2} />
+			<X class="w-4 h-4 md:w-3.5 md:h-3.5" strokeWidth={2} />
 		</button>
 	{/if}
 
@@ -260,7 +260,7 @@
 			absolute right-1 top-1/2 -translate-y-1/2
 			w-1 h-8 rounded-full
 			bg-black/10 dark:bg-card/10
-			sm:hidden
+			md:hidden
 			{translateX > 0 ? 'opacity-0' : 'opacity-100'}
 			transition-opacity
 		"

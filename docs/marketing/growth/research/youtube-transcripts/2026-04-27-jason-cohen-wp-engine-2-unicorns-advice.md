@@ -1,12 +1,27 @@
 ---
 title: "The surprising advice from a founder who built 2 unicorns | Jason Cohen (WP Engine)"
+source_type: youtube_transcript
 video_id: 8xLquwfx6p0
 url: "https://www.youtube.com/watch?v=8xLquwfx6p0"
-channel: Lenny's Podcast
+channel: "Lenny's Podcast"
 channel_url: "https://www.youtube.com/@LennysPodcast"
 upload_date: 2026-01-25
 duration: "01:46:04"
 views: 23237
+library_category: product-strategy
+library_status: "transcript, analysis, skill-draft"
+transcript_status: available
+analysis_status: available
+processing_status: draft_skill_created
+processed: true
+skill_candidate: true
+skill_priority: high
+source_analysis: "docs/marketing/growth/research/youtube-transcripts/2026-04-27-jason-cohen-wp-engine-2-unicorns-advice-ANALYSIS.md"
+skill_draft: "docs/research/youtube-library/skill-drafts/growth-diagnostics-for-stalled-products/SKILL.md"
+public_article: ""
+indexed_date: "2026-04-28"
+last_reviewed: "2026-04-28"
+transcribed_date: "2026-04-27"
 timestamps:
   - time: "0:00"
     label: "Introduction to Jason Cohen"

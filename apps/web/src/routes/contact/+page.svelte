@@ -97,6 +97,9 @@
 					<video
 						src="/onboarding-assets/animations/brain-bolt-electric.mp4"
 						class="w-10 h-10"
+						width="40"
+						height="40"
+						preload="metadata"
 						autoplay={!prefersReducedMotion}
 						loop
 						muted

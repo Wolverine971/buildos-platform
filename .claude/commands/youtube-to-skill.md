@@ -7,6 +7,8 @@ argument-hint: "[youtube-url | transcript-file | source-files...]"
 
 Create a public BuildOS agent-skill guide from a YouTube video, transcript, long-form notes, or several source files. The output should help future agents capitalize on the operating knowledge in the source, not merely summarize it.
 
+If the user only wants to ingest, classify, or stage a source without creating a skill yet, follow `docs/research/youtube-library/INGESTION_FLOW.md` and stop before creating a skill draft.
+
 ## If Invoked Without Sources
 
 Ask for at least one source:
@@ -24,6 +26,7 @@ This command is for the public skill-repo/blog pipeline.
 
 - Default output: `apps/web/src/content/blogs/agent-skills/<skill-slug>.md`
 - Source storage for downloaded transcripts: `docs/research/youtube-library/transcripts/`
+- Raw or unclassified source staging: `docs/research/youtube-library/inbox/`
 - Source-derived skill drafts when needed: `docs/research/youtube-library/skill-drafts/<skill-slug>/SKILL.md`
 - General blog drafts when needed: `apps/web/docs/content/BLOG_DRAFT_<SLUG>.md`
 

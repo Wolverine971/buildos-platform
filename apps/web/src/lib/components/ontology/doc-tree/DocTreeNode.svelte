@@ -17,6 +17,7 @@
 	- Texture classes for states
 -->
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { ChevronRight, FileText, Folder, FolderOpen, Globe, GripVertical } from 'lucide-svelte';
 	import type { EnrichedDocTreeNode } from '$lib/types/onto-api';
 	import DocTreeNode from './DocTreeNode.svelte';
@@ -180,6 +181,8 @@
 		clearLongPress();
 	}
 
+	onDestroy(clearLongPress);
+
 	// Drag handlers - only from the drag handle
 	function handleDragHandleMouseDown(e: MouseEvent) {
 		if (!canDrag || !onDragStart || e.button !== 0) return;
@@ -281,7 +284,7 @@
 							handleChevronClick(e);
 						}
 					}}
-					class="doc-tree-chevron w-4 h-4 flex items-center justify-center rounded hover:bg-accent/10 transition-colors flex-shrink-0 cursor-pointer"
+					class="doc-tree-chevron w-6 h-6 sm:w-4 sm:h-4 -m-1 sm:m-0 flex items-center justify-center rounded hover:bg-accent/10 transition-colors flex-shrink-0 cursor-pointer touch-manipulation"
 					aria-label={isExpanded ? 'Collapse' : 'Expand'}
 				>
 					<ChevronRight

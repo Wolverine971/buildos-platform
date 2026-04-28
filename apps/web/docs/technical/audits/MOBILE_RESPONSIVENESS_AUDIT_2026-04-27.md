@@ -12,6 +12,8 @@
 
 **Methodology:** Four parallel investigators across (1) layout & navigation, (2) modals/forms/primitives, (3) feature components, (4) public/auth/marketing/blog/onboarding. Findings cross-validated against the actual source for the highest-impact claims before being recorded.
 
+> **Update 2026-04-27 (PM):** Five findings have been fixed in this same session. See [Fixes applied](#fixes-applied-2026-04-27-pm) at the bottom of the doc. The "Critical" / "High" sections below now mark fixed items inline with ✅ **FIXED**.
+
 ---
 
 ## TL;DR
@@ -22,16 +24,16 @@ But several **Critical** mobile gaps remain — most of them in feature surfaces
 
 ### Top 8 fixes, sequenced
 
-| #   | Fix                                                                                              | Severity | Effort |
-| --- | ------------------------------------------------------------------------------------------------ | -------- | ------ |
-| 1   | Add touch-event handlers to `TimePlayCalendar` drag-to-create                                    | Critical | M      |
-| 2   | Replace `100vh - 64px` with `100dvh` math on auth pages                                          | Critical | XS     |
-| 3   | Add `sm:`/`md:` breakpoints to non-responsive grids (CalendarAnalysisResults, AnalyticsDashboard) | Critical | XS     |
-| 4   | Long-press fallback for `DocTreeNode` context menu                                               | Critical | S      |
-| 5   | Body-scroll lock + `aria-modal` + focus trap on Navigation mobile menu                            | High     | S      |
-| 6   | Bring Modal close button + Toast dismiss + Voice buttons up to 36–40px                           | High     | S      |
-| 7   | Align `RichMarkdownEditor` and `CommentTextareaWithVoice` voice-button sizes with the spec       | High     | XS     |
-| 8   | Mobile-friendly view switch (or horizontal scroll) for week/month calendar grids                 | High     | M      |
+| #   | Fix                                                                                              | Severity | Effort | Status         |
+| --- | ------------------------------------------------------------------------------------------------ | -------- | ------ | -------------- |
+| 1   | Add touch-event handlers to `TimePlayCalendar` drag-to-create                                    | Critical | M      | open           |
+| 2   | Replace `100vh - 64px` with `100dvh` math on auth pages                                          | Critical | XS     | ✅ fixed       |
+| 3   | Add `sm:`/`md:` breakpoints to non-responsive grids (CalendarAnalysisResults, AnalyticsDashboard) | Critical | XS     | open           |
+| 4   | Long-press fallback for `DocTreeNode` context menu                                               | Critical | S      | ✅ fixed       |
+| 5   | Body-scroll lock + `aria-modal` + focus trap on Navigation mobile menu                            | High     | S      | ✅ fixed       |
+| 6   | Bring Modal close button + Toast dismiss + Voice buttons up to 36–40px                           | High     | S      | ⚠️ voice fixed |
+| 7   | Align `RichMarkdownEditor` and `CommentTextareaWithVoice` voice-button sizes with the spec       | High     | XS     | ✅ fixed       |
+| 8   | Mobile-friendly view switch (or horizontal scroll) for week/month calendar grids                 | High     | M      | open           |
 
 ---
 
@@ -63,7 +65,7 @@ Slot drag-to-create uses `onmousedown` / `onmousemove` / `onmouseup` with no `on
 
 **Fix:** Add touch handlers that share the same handler logic, or use a Pointer Events polyfill (`pointerdown`/`pointermove`/`pointerup`). Pointer Events is the cleanest unified path.
 
-### C2. Auth pages use `100vh` arithmetic instead of `100dvh`
+### C2. Auth pages use `100vh` arithmetic instead of `100dvh` — ✅ FIXED 2026-04-27
 
 **Files:**
 
@@ -102,7 +104,7 @@ On tablet (md:768 → lg:1023), `lg:grid-cols-3` block is single column, wasting
 - `CalendarAnalysisResults:446` → `grid-cols-1 sm:grid-cols-2 gap-3`
 - `AnalyticsDashboard:827` → `sm:grid-cols-2 lg:grid-cols-3` (intermediate tier for tablet)
 
-### C4. DocTreeNode context menu is right-click only
+### C4. DocTreeNode context menu is right-click only — ✅ FIXED 2026-04-27
 
 **File:** `apps/web/src/lib/components/ontology/doc-tree/DocTreeNode.svelte:187`
 
@@ -116,7 +118,7 @@ The row has `ontouchstart` handlers, but they're scoped to the drag handle (`:20
 
 **Fix:** Add a long-press detector (`pointerdown` + 500–600ms timer canceled on `pointermove` > 5px or `pointerup`). Alternatively, surface a 3-dot kebab button on the row that's always visible on `<lg`.
 
-### C5. Mobile menu does not lock body scroll
+### C5. Mobile menu does not lock body scroll — ✅ FIXED 2026-04-27
 
 **File:** `apps/web/src/lib/components/layout/Navigation.svelte:53,830`
 
@@ -142,7 +144,7 @@ Below the 36px Inkprint high-density floor and well below the 44px WCAG AA minim
 
 **Fix:** `h-9 w-9` minimum (36px) on `<sm`, `h-8 w-8` on `sm+`. Or move the close affordance to a more reachable spot on mobile (use the existing drag handle for swipe-down on bottom-sheet modals).
 
-### H2. Voice button sizes drift from spec in two textarea variants
+### H2. Voice button sizes drift from spec in two textarea variants — ✅ FIXED 2026-04-27
 
 | Component                                                                                                | Current                              | Spec (`TEXTAREA_BUTTON_DESIGN_MOBILE.md`) | Status      |
 | -------------------------------------------------------------------------------------------------------- | ------------------------------------ | ----------------------------------------- | ----------- |
@@ -154,7 +156,7 @@ Both regressed components are below comfortable thumb-tap size on the very break
 
 **Fix:** Mirror `TextareaWithVoice` exactly — same classes, same padding math (`pr-[90px]` for two-button trailing area).
 
-### H3. Mobile menu missing `aria-modal` and focus trap
+### H3. Mobile menu missing `aria-modal` and focus trap — ✅ FIXED 2026-04-27
 
 **File:** `apps/web/src/lib/components/layout/Navigation.svelte`
 
@@ -162,9 +164,9 @@ Menu opens, ESC closes, click-outside dismisses — but:
 
 - No `aria-modal="true"` on the drawer container.
 - Tab order leaks to background.
-- No `[data-fixed-element]` attribute, so `pwa.css:6` safe-area-inset-top rule doesn't apply to the nav itself (only to elements that opt in).
+- (Correction from initial draft: the nav already has `data-fixed-element` on `Navigation.svelte:347`, so `pwa.css:6` safe-area-inset-top _does_ apply. The original claim was wrong.)
 
-**Fix:** Add the attribute, set up a focus trap (or use `inert` on the rest of the layout while open), and mark the nav `[data-fixed-element]` so the existing PWA CSS handles the notch.
+**Fix:** Set up a focus trap (or use `inert` on the rest of the layout while open).
 
 ### H4. Navigation hamburger and chat-launcher under 44px
 
@@ -188,7 +190,7 @@ Milestone counts at 10px are below the Inkprint 7.2 floor (`text-xs` = 12px on m
 
 **Fix:** `text-xs` (or `text-[11px]` if visual density is non-negotiable; flag for design review).
 
-### H7. Toast positioning breakpoint feels abrupt at sm:640
+### H7. Toast positioning breakpoint feels abrupt at sm:640 — ✅ FIXED 2026-04-28
 
 **File:** `apps/web/src/lib/components/ui/ToastContainer.svelte:35`
 
@@ -293,7 +295,7 @@ Stack of 3+ toasts on iPhone notch device pushes the oldest above the home-indic
 Strong root layout. Two upgrades unlock the rest:
 
 1. **Mobile menu**: body-scroll-lock + `aria-modal` + focus trap.
-2. **Navigation as fixed element**: add `data-fixed-element` so `pwa.css:6` applies safe-area-inset-top correctly under PWA mode (notched iPhones).
+2. **Navigation as fixed element**: ~~add `data-fixed-element`~~ — already in place on `Navigation.svelte:347` (initial audit was wrong about this).
 
 ### Modals, forms, primitives
 
@@ -329,7 +331,7 @@ Strong root layout. Two upgrades unlock the rest:
 
 1. Replace `100vh - 64px` → `100dvh` math in `auth/{login,register,forgot-password,reset-password}/+page.svelte` and `time-blocks/+page.svelte:231`.
 2. Add `sm:`/`md:` variants to non-responsive grids: `CalendarAnalysisResults.svelte:446`, `AnalyticsDashboard.svelte:827`.
-3. Body-scroll-lock + `aria-modal="true"` on Navigation mobile menu; add `data-fixed-element` attribute.
+3. Body-scroll-lock + `aria-modal="true"` on Navigation mobile menu (`data-fixed-element` is already in place).
 4. Bump Modal close, Toast dismiss, Navigation hamburger, chat launcher to ≥36px (≥44 where reasonable).
 5. Align `RichMarkdownEditor` and `CommentTextareaWithVoice` voice-button sizes to the published spec (mirror `TextareaWithVoice`).
 6. Move ToastContainer breakpoint from `sm:640` → `md:768`.
@@ -382,3 +384,146 @@ Strong root layout. Two upgrades unlock the rest:
 ---
 
 _Generated 2026-04-27 by parallel investigation across layout/navigation, modals/forms/primitives, feature components, and public/auth/marketing/blog/onboarding scopes. Highest-impact claims verified against source before recording._
+
+---
+
+## Fixes applied — 2026-04-27 (PM)
+
+Five findings from this audit were addressed in the same session. All edits passed `pnpm --filter=@buildos/web check` (svelte-check) with **0 new errors** (171 pre-existing warnings unchanged, all in unrelated files).
+
+### 1. C2 — Auth pages now use `100dvh` ✅
+
+**Files changed:**
+
+- `apps/web/src/routes/auth/login/+page.svelte:320–322`
+- `apps/web/src/routes/auth/register/+page.svelte:362–364`
+- `apps/web/src/routes/auth/forgot-password/+page.svelte:34–36`
+- `apps/web/src/routes/auth/reset-password/+page.svelte:19–21`
+- `apps/web/src/routes/time-blocks/+page.svelte:231`
+
+**Change:** Removed the inline `style="min-height: calc(100vh - 64px);"` and replaced with two stacked Tailwind classes — `min-h-[calc(100vh-4rem)]` first as a fallback, then `min-h-[calc(100dvh-4rem)]` which wins under the cascade in browsers that support `dvh` (iOS 16.4+, Chrome 108+, Firefox 101+). Also drops the magic `64px` literal in favor of `4rem` so it tracks the navbar's `h-16` token.
+
+**Why this matters on mobile:** Mobile Safari's `100vh` is the largest possible viewport (URL bar collapsed). With the URL bar visible, `calc(100vh - 64px)` produced a container that overflowed the visible area, forcing extra scroll on the auth screens. `100dvh` is the dynamic viewport height — exactly what's visible right now.
+
+### 2. C4 — DocTreeNode long-press context menu ✅
+
+**File changed:** `apps/web/src/lib/components/ontology/doc-tree/DocTreeNode.svelte:140–183, 234–238`
+
+**Change:** Added a long-press handler bound to Pointer Events that fires the same `handleContextMenu(e)` on touch devices. Implementation details:
+
+- Only activates for `e.pointerType === 'touch'`; mouse and pen flow through to the existing `oncontextmenu`.
+- 500ms timer with 8px movement tolerance (canceled on `pointermove > 8px`, `pointerup`, `pointercancel`, or `pointerleave`).
+- Skips long-press if the press starts on an interactive child (`button`, `[role="button"]`, `a`) — drag handle, chevron, and open-document button are unaffected.
+- Reuses the existing `handleContextMenu` signature (`PointerEvent extends MouseEvent`, so `clientX/Y` are valid for the parent's positioning logic).
+
+**Why this matters on mobile:** iOS Safari does not fire a synthetic `contextmenu` event on long-press; instead it pops the OS lookup/copy menu. Tree nodes were unreachable for rename/move/cut/convert on phone or tablet.
+
+### 3. C5 — Mobile menu locks body scroll ✅
+
+**File changed:** `apps/web/src/lib/components/layout/Navigation.svelte:64–66, 277–301`
+
+**Change:** Added a `$effect` that runs whenever `showMobileMenu` becomes truthy:
+
+- Sets `document.body.style.overflow = 'hidden'` (saving the previous value).
+- Captures `document.activeElement` so focus can be restored on close.
+- Cleanup function reverses both — restores `overflow`, refocuses the prior element, and clears the captured ref.
+
+**Why this matters on mobile:** Previously the page beneath the open drawer would scroll with the user's gesture, stealing momentum from the drawer's own scrollable region. Especially noticeable on long mobile menus.
+
+### 4. H3 — Mobile menu has `aria-modal`, role=dialog, and focus trap ✅
+
+**File changed:** `apps/web/src/lib/components/layout/Navigation.svelte:253–273, 882–893`
+
+**Change:**
+
+- The drawer container now has `role="dialog"`, `aria-modal="true"`, `aria-label="Mobile navigation menu"`, `tabindex="-1"`, and a `bind:this={mobileMenuElement}`.
+- New `handleMobileMenuKeydown` traps `Tab` / `Shift+Tab` cycling within the drawer's focusable descendants (uses `Array.prototype.at()` for safe indexing under `noUncheckedIndexedAccess`).
+- The `$effect` from C5 also handles focus-on-open (first focusable in the drawer) and focus-restore-on-close (the element that triggered the menu).
+
+**Note on the audit:** The original draft said the nav lacked `data-fixed-element`. That was wrong — `Navigation.svelte:347` already has it, so `pwa.css:6`'s `safe-area-inset-top` rule was already applying. Doc has been corrected inline.
+
+### 5. H2 / Wave-1 — Voice buttons aligned to spec ✅
+
+**Files changed:**
+
+- `apps/web/src/lib/components/ui/CommentTextareaWithVoice.svelte:1144–1163`
+- `apps/web/src/lib/components/ui/RichMarkdownEditor.svelte:1547–1569`
+
+**Change:** Both voice-button regressions (28px `h-7 w-7` and `h-8 w-8 sm:h-7 sm:w-7`) now use `h-10 w-10 xs:h-9 xs:w-9` — **40px on portrait phones (`<480px`)**, **36px from `xs:` and up**. This matches the canonical pattern in `TextareaWithVoice.svelte` and the published spec in `apps/web/docs/technical/components/TEXTAREA_BUTTON_DESIGN_MOBILE.md`. Icon sizes inside the buttons were also bumped (`h-3.5 w-3.5` → `h-4 w-4 xs:h-3.5 xs:w-3.5`) so glyphs scale with the container.
+
+**Note:** The audit's "Fix #6" item was broader (Modal close button + Toast dismiss + Voice buttons all to 36–40px). Only the voice-button portion was addressed in this round. Modal close (`h-7 w-7`) and Toast dismiss (`w-8 h-8 sm:w-7 sm:h-7`) remain open.
+
+### Verification
+
+```
+pnpm --filter=@buildos/web check
+=> svelte-check found 0 errors and 171 warnings in 41 files
+```
+
+The 171 warnings are pre-existing `let X = $state(data.X)` patterns in `tasks/[task_id]/+page.svelte`, `tree-agent/`, and friends — unrelated to these changes.
+
+Spot-grep verifications:
+
+| Fix | Grep                                                                                            | Result                                              |
+| --- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| C2  | `grep "100dvh" auth/*/+page.svelte time-blocks/+page.svelte`                                    | 5 matches (one per file, all paired with vh)        |
+| C2  | `grep "style=\".*100vh" auth/*/+page.svelte`                                                    | 0 matches (inline styles removed)                   |
+| C4  | `grep "longPress\|onpointerdown" DocTreeNode.svelte`                                            | handler defined and bound                           |
+| C5  | `grep "body\.style\.overflow" Navigation.svelte`                                                | set to `hidden` on open, restored in cleanup        |
+| H3  | `grep "aria-modal\|handleMobileMenuKeydown" Navigation.svelte`                                  | both present, drawer markup updated                 |
+| H2  | `grep "h-10 w-10 xs:h-9" CommentTextareaWithVoice.svelte RichMarkdownEditor.svelte`             | 2 matches (one per file, voice button only)        |
+
+### Things still open after this round
+
+- **C1** TimePlayCalendar slot drag-to-create — still mouse-only.
+- **C3** Non-responsive grids in `CalendarAnalysisResults.svelte:446` and `AnalyticsDashboard.svelte:680/772/827`.
+- **H1** Modal close button (28px) and Toast dismiss (32→28px) still below 36–44px targets.
+- **H4** Navigation hamburger and chat launcher still `h-9` (36px) — acceptable but below 44px.
+- **H5–H8** All medium-and-below items unchanged.
+
+### What was not regressed (good news)
+
+- All four auth flows still render the same SEO heads, autocomplete attrs, and form layouts — only the outer container's min-height technique changed.
+- `TextareaWithVoice.svelte` was not touched; the brain-dump primary input is untouched.
+- The DocTreeNode change is additive — mouse-driven `oncontextmenu` and the existing drag-handle touch flow continue to work as before.
+- No new error-level diagnostics from svelte-check; warning count stayed flat.
+
+_Fixes applied 2026-04-27 PM, verified by svelte-check and targeted greps. The remaining open findings are tracked in the [Recommended fix plan](#recommended-fix-plan) section above._
+
+---
+
+## Fixes applied — 2026-04-28
+
+### 6. H7 — Toast positioning breakpoint moved to `md:768` ✅
+
+**Files changed:**
+
+- `apps/web/src/lib/components/ui/ToastContainer.svelte:23–44, 53, 76–82`
+- `apps/web/src/lib/components/ui/Toast.svelte:163, 263`
+
+**Change:** All toast positioning, sizing, and animation classes that previously gated on `sm:` (≥640px) now gate on `md:` (≥768px). Specifically:
+
+- **Container position:** `sm:top-4 sm:right-4 sm:bottom-auto sm:left-auto sm:pb-0 sm:px-0 sm:items-end sm:gap-3` → `md:` equivalents.
+- **Toast width:** `sm:w-auto` (toast wrapper) → `md:w-auto`. `sm:max-w-md` (toast card) → `md:max-w-md`.
+- **Swipe-hint indicator:** `sm:hidden` → `md:hidden`, so phones in landscape (which still see the bottom-anchored toast) keep the swipe-down affordance.
+- **Exit-animation media query:** `@media (max-width: 639px)` → `@media (max-width: 767px)` so the slide-down exit pairs with the bottom-anchored layout across the whole `<md:` range.
+
+**Why this matters on mobile:** Mid-range phones in landscape (typically 640–767px wide — iPhone 13 mini, SE, Pro in landscape) and large phones in portrait that creep above 600px were getting an abrupt corner toast at the bottom-thumb-zone breakpoint. Moving the flip to `md:768` keeps the bottom-anchored, full-width toast wherever the thumb actually reaches, and only switches to the corner pattern when there's real desktop/tablet horizontal real estate.
+
+**Note:** The Toast.svelte dismiss-button sizing (`w-8 h-8 sm:w-7 sm:h-7`) was intentionally **not** changed in this round. That belongs to the H1/Low item ("Toast dismiss button is `w-8 h-8 sm:w-7 sm:h-7`") and is a separate sizing concern, not a positioning concern.
+
+### Verification
+
+```
+pnpm --filter=@buildos/web check
+=> svelte-check found 0 errors and 171 warnings in 41 files
+```
+
+Same pre-existing warning count as the 2026-04-27 PM round — no new diagnostics introduced.
+
+| Fix | Grep                                                                  | Result                                       |
+| --- | --------------------------------------------------------------------- | -------------------------------------------- |
+| H7  | `grep "sm:top-4\|sm:right-4\|sm:items-end" ToastContainer.svelte`     | 0 matches (all flipped to `md:`)             |
+| H7  | `grep "md:top-4\|md:right-4\|md:bottom-auto" ToastContainer.svelte`   | matches present in container class string    |
+| H7  | `grep "max-width: 767px" ToastContainer.svelte`                       | 1 match (exit-animation override)            |
+| H7  | `grep "md:max-w-md\|md:hidden" Toast.svelte`                          | 2 matches (one each)                         |

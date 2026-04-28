@@ -543,7 +543,7 @@
 								<button
 									type="button"
 									onclick={attemptClose}
-									class="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable tx-button hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-red-400/50 dark:hover:text-red-400"
+									class="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable tx-button hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									aria-label="Close dialog"
 								>
 									<X class="h-4 w-4" />
@@ -637,9 +637,10 @@
 	/* ==================== Compact Drag Handle (High Density) ==================== */
 
 	.drag-handle-wrapper {
-		/* Minimal touch target: 36px (compact but functional) */
+		/* Comfortable touch target: ≥36px tall (Inkprint high-density floor) */
 		width: 100%;
-		padding: 0.375rem 0; /* 6px top/bottom = 6 + 3 + 6 = ~15px + handle */
+		min-height: 36px;
+		padding: 0.625rem 0; /* 10px top/bottom + 3px handle = ~23px content; min-height brings tap zone to ≥36px */
 		display: flex;
 		align-items: center;
 		justify-content: center;

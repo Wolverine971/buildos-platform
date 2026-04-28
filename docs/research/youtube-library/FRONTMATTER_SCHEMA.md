@@ -53,17 +53,34 @@ transcribed_date: "YYYY-MM-DD"
 
 `library_status` can combine values as comma-separated text when needed:
 
+- `intake`
 - `transcript`
 - `analysis`
 - `blog-reference`
 - `skill-draft`
 - `skill-article`
+- `link-only`
 - `related-link`
 - `product-asset`
 - `not-skill-source`
 
+`transcript_status`:
+
+- `missing`
+- `available`
+- `referenced`
+- `not_applicable`
+
+`analysis_status`:
+
+- `missing`
+- `available`
+- `needs_synthesis`
+- `not_applicable`
+
 `processing_status`:
 
+- `needs_classification`
 - `needs_transcript`
 - `transcript_available`
 - `needs_analysis`
