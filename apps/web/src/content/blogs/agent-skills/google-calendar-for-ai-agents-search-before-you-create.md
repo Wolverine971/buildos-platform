@@ -224,29 +224,29 @@ If you are maintaining a catalog, keep `SKILL.md` portable and put marketplace o
 
 ```yaml
 id: google-workspace/google-calendar
-version: "1.0.0"
+version: '1.0.0'
 author: buildos
 license: MIT
 tags:
-  - google-calendar
-  - google-workspace
-  - scheduling
-  - agent-skills
+    - google-calendar
+    - google-workspace
+    - scheduling
+    - agent-skills
 requires:
-  tools:
-    - google_calendar.list_events
-    - google_calendar.create_event
-    - google_calendar.update_event
-    - google_calendar.delete_event
-  env: []
+    tools:
+        - google_calendar.list_events
+        - google_calendar.create_event
+        - google_calendar.update_event
+        - google_calendar.delete_event
+    env: []
 permissions:
-  network: true
-  filesystem: none
-  shell: false
+    network: true
+    filesystem: none
+    shell: false
 ui:
-  display_name: Google Calendar
-  short_description: Use Google Calendar safely without duplicate events or recurrence mistakes.
-  default_prompt: Use Google Calendar to inspect, schedule, or reschedule events safely.
+    display_name: Google Calendar
+    short_description: Use Google Calendar safely without duplicate events or recurrence mistakes.
+    default_prompt: Use Google Calendar to inspect, schedule, or reschedule events safely.
 ```
 
 ## Why search before create matters

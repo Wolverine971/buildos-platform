@@ -205,6 +205,99 @@
 				}
 			}
 		},
+		"agent-skills": {
+			"metadata": {
+				"name": "Agent Skills",
+				"description": "Content related to agent skills",
+				"color": "gray"
+			},
+			"posts": {
+				"debug-the-harness-not-the-model": {
+					"title": "Debug The Harness, Not The Model: An Agent Skill From Anthropic's Claude Code Team",
+					"description": "A portable agent skill for working with frontier LLMs: when the model does something weird, ask it why, fix the harness, and strip prompt scaffolds every time a new model ships.",
+					"author": "DJ Wayne",
+					"date": "2026-04-27",
+					"lastmod": "2026-04-27",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": false,
+					"tags": [
+						"agent-skills",
+						"agent-engineering",
+						"llm",
+						"harness",
+						"evals",
+						"claude-code",
+						"buildos"
+					],
+					"readingTime": 9,
+					"excerpt": "Cat Wu, head of product for Claude Code, calls model introspection one of her most underrated techniques. This is the operating model: ask the model why it failed, fix the harness, and remove crutches every time a new model ships.",
+					"skillId": "agent-engineering/debug-the-harness-not-the-model",
+					"skillType": "soft",
+					"skillCategory": "agent-engineering",
+					"providers": ["Claude", "OpenAI", "any frontier LLM"],
+					"compatibleAgents": [
+						"BuildOS-compatible agents",
+						"Claude Code",
+						"Codex",
+						"portable Agent Skills"
+					],
+					"stackWith": ["Eval-driven product development", "Founder assistant stack"],
+					"skillSource": "docs/marketing/growth/research/youtube-transcripts/2026-04-24_PplmzlgE0kg.md",
+					"installHint": ".agents/skills/debug-the-harness-not-the-model/SKILL.md",
+					"sourceTitle": "How Anthropic's product team moves faster than anyone else | Cat Wu (Head of Product, Claude Code)",
+					"sourceCreator": "Lenny's Podcast",
+					"sourceUrl": "https://www.youtube.com/watch?v=PplmzlgE0kg",
+					"sourceChannelUrl": "https://www.youtube.com/@LennysPodcast",
+					"path": "apps/web/src/content/blogs/agent-skills/debug-the-harness-not-the-model.md",
+					"slug": "debug-the-harness-not-the-model",
+					"category": "agent-skills",
+					"filePath": "src/content/blogs/agent-skills/debug-the-harness-not-the-model.md"
+				},
+				"google-calendar-for-ai-agents-search-before-you-create": {
+					"title": "Google Calendar For AI Agents: Search Before You Create",
+					"description": "A portable Google Calendar skill for AI agents: choose scope first, search before creating events, use exact IDs for mutations, and treat recurrence as high risk.",
+					"author": "DJ Wayne",
+					"date": "2026-04-27",
+					"lastmod": "2026-04-27",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": [
+						"agent-skills",
+						"google-calendar",
+						"google-workspace",
+						"calendar",
+						"scheduling",
+						"oauth",
+						"buildos"
+					],
+					"readingTime": 8,
+					"excerpt": "Google Calendar is one of the best first integrations for AI agents, but naive agents create duplicates, mis-handle time zones, and break recurring events. This guide gives you the operating rules and a portable SKILL.md definition you can adapt.",
+					"skillId": "google-workspace/google-calendar",
+					"skillType": "provider",
+					"skillCategory": "google-workspace",
+					"providers": ["Google Calendar", "Google Workspace"],
+					"compatibleAgents": [
+						"BuildOS-compatible agents",
+						"Claude Code",
+						"Codex",
+						"portable Agent Skills"
+					],
+					"stackWith": [
+						"OAuth 2.0 for agents",
+						"Gmail for agents",
+						"Founder assistant stack"
+					],
+					"skillSource": "apps/web/src/content/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create.md",
+					"installHint": ".agents/skills/google-calendar/SKILL.md",
+					"path": "apps/web/src/content/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create.md",
+					"slug": "google-calendar-for-ai-agents-search-before-you-create",
+					"category": "agent-skills",
+					"filePath": "src/content/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create.md"
+				}
+			}
+		},
 		"case-studies": {
 			"metadata": {
 				"name": "Case Studies",
@@ -773,7 +866,7 @@
 					"filePath": "src/content/blogs/philosophy/future-of-personal-knowledge-management-interview.md"
 				},
 				"future-of-personal-knowledge-management": {
-					"title": "Personal Knowledge Management Is Broken — Here's What's Next",
+					"title": "Personal Knowledge Management Is Broken, Here's What's Next",
 					"description": "Studies suggest 80% of notes are never revisited. Most PKM is productivity theater. See what's replacing static archives with systems that turn notes into action.",
 					"author": "DJ Wayne",
 					"date": "2025-10-09",
@@ -991,6 +1084,34 @@
 					"slug": "what-a-thinking-environment-actually-is",
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/what-a-thinking-environment-actually-is.md"
+				},
+				"you-stopped-choosing-what-you-think-about": {
+					"title": "You Stopped Choosing What You Think About",
+					"description": "AI is about to make the public internet far more synthetic, far faster. The people who keep their mind intact will share one habit: a chosen-input practice and a thinking environment built around it. Here's the habit, the three feelings to watch for, and a 60-second test.",
+					"author": "DJ Wayne",
+					"date": "2026-04-27",
+					"lastmod": "2026-04-27",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": [
+						"anti-feed",
+						"thinking-environment",
+						"chosen-input",
+						"attention-economy",
+						"curiosity-collapse",
+						"feed-paranoia",
+						"algorithm-shaped-thoughts",
+						"creator-economy",
+						"build-os"
+					],
+					"readingTime": 11,
+					"excerpt": "The public internet is about to get an order of magnitude more synthetic, fast. The people who keep their minds intact through that will share one habit, organized around a thinking environment most people don't have yet. This post names the habit, names the three feelings (curiosity collapse, feed paranoia, algorithm-shaped thoughts) you have when you've stopped doing it, and ends with a 60-second test that tells you how far gone it is for you.",
+					"pic": "chosen-input-direction-of-the-arrow",
+					"path": "apps/web/src/content/blogs/philosophy/you-stopped-choosing-what-you-think-about.md",
+					"slug": "you-stopped-choosing-what-you-think-about",
+					"category": "philosophy",
+					"filePath": "src/content/blogs/philosophy/you-stopped-choosing-what-you-think-about.md"
 				},
 				"your-morning-without-the-algorithm": {
 					"title": "You're Not Choosing What You Think About Anymore",
@@ -1489,7 +1610,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-04-27T03:18:43.720Z",
-	"totalPosts": 59,
-	"totalCategories": 6
+	"generatedAt": "2026-04-28T02:57:38.986Z",
+	"totalPosts": 62,
+	"totalCategories": 7
 }

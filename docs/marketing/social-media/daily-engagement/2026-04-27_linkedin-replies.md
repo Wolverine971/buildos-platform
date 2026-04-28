@@ -11,13 +11,13 @@
 
 ## Queue Summary
 
-| #   | Author        | Topic                                                            | Profile                            | Relationship Note                                                                                            | Status  |
-| --- | ------------- | ---------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------- |
-| 1   | Alain Tovel   | ServiceNow Context Engine — context > agents                     | linkedin-profiles/alaintovel.md    | First-ever engagement. Top Voice. First-comment slot freshness — engage immediately.                         | Drafted |
-| 2   | Dexter Horthy | Anti "AI replaces juniors" — apprenticeship + mentorship gap     | linkedin-profiles/dexterihorthy.md | First-ever engagement after months of monitor-only. Tier-1 category voice. Builder/lived-experience comment. | Drafted |
-| 3   | Todd Baur     | "Got declined for investment because we're an AI company"        | linkedin-profiles/todd-baur.md     | First engagement on a 1st-conn Todd post. Founder solidarity + anti-AI-marketing parallel.                   | Drafted |
-| 4   | Jonathan Chua | DHH agent-first workflows — Lex Fridman takeaways                | linkedin-profiles/jonathan-chua.md | First engagement on a 1st-conn Jonathan post. Low-comment thread; high relative visibility.                  | Drafted |
-| 5   | Daniel Vecera | Personal second brain → Claude Code talk **(carry-over)**        | linkedin-profiles/1vecera.md       | 2026-04-24 drafts still pending. Last-shot today on Option 2 or drop angle entirely.                         | Drafted |
+| #   | Author        | Topic                                                        | Profile                            | Relationship Note                                                                                            | Status  |
+| --- | ------------- | ------------------------------------------------------------ | ---------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------- |
+| 1   | Alain Tovel   | ServiceNow Context Engine — context > agents                 | linkedin-profiles/alaintovel.md    | First-ever engagement. Top Voice. First-comment slot freshness — engage immediately.                         | Drafted |
+| 2   | Dexter Horthy | Anti "AI replaces juniors" — apprenticeship + mentorship gap | linkedin-profiles/dexterihorthy.md | First-ever engagement after months of monitor-only. Tier-1 category voice. Builder/lived-experience comment. | Drafted |
+| 3   | Todd Baur     | "Got declined for investment because we're an AI company"    | linkedin-profiles/todd-baur.md     | First engagement on a 1st-conn Todd post. Founder solidarity + anti-AI-marketing parallel.                   | Drafted |
+| 4   | Jonathan Chua | DHH agent-first workflows — Lex Fridman takeaways            | linkedin-profiles/jonathan-chua.md | First engagement on a 1st-conn Jonathan post. Low-comment thread; high relative visibility.                  | Drafted |
+| 5   | Daniel Vecera | Personal second brain → Claude Code talk **(carry-over)**    | linkedin-profiles/1vecera.md       | 2026-04-24 drafts still pending. Last-shot today on Option 2 or drop angle entirely.                         | Drafted |
 
 ---
 
@@ -247,13 +247,13 @@
 
 ## Reconciliation Needed
 
-| Author        | Post                                       | Current State             | Next Update Needed                    |
-| ------------- | ------------------------------------------ | ------------------------- | ------------------------------------- |
-| Alain Tovel   | ServiceNow Context Engine                  | Drafted - Pending Posting | Mark Posted / Skipped / Still pending |
-| Dexter Horthy | Anti "AI replaces juniors"                 | Drafted - Pending Posting | Mark Posted / Skipped / Still pending |
-| Todd Baur     | "AI company" rejection                     | Drafted - Pending Posting | Mark Posted / Skipped / Still pending |
-| Jonathan Chua | DHH agent-first / Lex Fridman              | Drafted - Pending Posting | Mark Posted / Skipped / Still pending |
-| Daniel Vecera | Second brain → Claude Code talk (carry)    | Drafted - Pending Posting | Mark Posted / Skipped / Still pending |
+| Author        | Post                                    | Current State             | Next Update Needed                    |
+| ------------- | --------------------------------------- | ------------------------- | ------------------------------------- |
+| Alain Tovel   | ServiceNow Context Engine               | Drafted - Pending Posting | Mark Posted / Skipped / Still pending |
+| Dexter Horthy | Anti "AI replaces juniors"              | Drafted - Pending Posting | Mark Posted / Skipped / Still pending |
+| Todd Baur     | "AI company" rejection                  | Drafted - Pending Posting | Mark Posted / Skipped / Still pending |
+| Jonathan Chua | DHH agent-first / Lex Fridman           | Drafted - Pending Posting | Mark Posted / Skipped / Still pending |
+| Daniel Vecera | Second brain → Claude Code talk (carry) | Drafted - Pending Posting | Mark Posted / Skipped / Still pending |
 
 **Older open loops still pending reconciliation:**
 

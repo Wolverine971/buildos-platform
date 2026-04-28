@@ -1,6 +1,6 @@
 ---
 title: 'You Stopped Choosing What You Think About'
-description: 'AI is about to make the public internet far more synthetic, far faster. The people who keep their mind intact will share one habit: a chosen-input practice and a thinking environment built around it. Here''s the habit, the three feelings to watch for, and a 60-second test.'
+description: "AI is about to make the public internet far more synthetic, far faster. The people who keep their mind intact will share one habit: a chosen-input practice and a thinking environment built around it. Here's the habit, the three feelings to watch for, and a 60-second test."
 author: 'DJ Wayne'
 date: '2026-04-27'
 lastmod: '2026-04-27'
@@ -20,7 +20,7 @@ tags:
         'build-os'
     ]
 readingTime: 11
-excerpt: 'The public internet is about to get an order of magnitude more synthetic, fast. The people who keep their minds intact through that will share one habit, organized around a thinking environment most people don''t have yet. This post names the habit, names the three feelings (curiosity collapse, feed paranoia, algorithm-shaped thoughts) you have when you''ve stopped doing it, and ends with a 60-second test that tells you how far gone it is for you.'
+excerpt: "The public internet is about to get an order of magnitude more synthetic, fast. The people who keep their minds intact through that will share one habit, organized around a thinking environment most people don't have yet. This post names the habit, names the three feelings (curiosity collapse, feed paranoia, algorithm-shaped thoughts) you have when you've stopped doing it, and ends with a 60-second test that tells you how far gone it is for you."
 pic: 'chosen-input-direction-of-the-arrow'
 path: apps/web/src/content/blogs/philosophy/you-stopped-choosing-what-you-think-about.md
 ---

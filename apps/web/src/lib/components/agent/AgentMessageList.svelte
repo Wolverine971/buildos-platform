@@ -187,9 +187,7 @@
 						/>
 					</div>
 					{#if shouldRenderAsMarkdown(message.content)}
-						<div
-							class="agent-markdown {proseClasses} min-w-0 break-words"
-						>
+						<div class="agent-markdown {proseClasses} min-w-0 break-words">
 							{@html renderMarkdown(message.content)}
 						</div>
 					{:else}

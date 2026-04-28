@@ -199,8 +199,8 @@
 					class="mt-6 rounded-lg border border-border bg-background/70 p-4 text-sm text-muted-foreground"
 				>
 					<p>
-						Each skill guide includes a portable <code>SKILL.md</code> pattern,
-						recommended metadata, and operating rules an agent can use directly.
+						Each skill guide includes a portable <code>SKILL.md</code> pattern, recommended
+						metadata, and operating rules an agent can use directly.
 					</p>
 				</div>
 			{/if}
@@ -248,19 +248,25 @@
 										>
 											{#if post.skillId}
 												<p>
-													<span class="font-medium text-foreground">Skill:</span>
+													<span class="font-medium text-foreground"
+														>Skill:</span
+													>
 													<code>{post.skillId}</code>
 												</p>
 											{/if}
 											{#if post.skillType}
 												<p>
-													<span class="font-medium text-foreground">Type:</span>
+													<span class="font-medium text-foreground"
+														>Type:</span
+													>
 													{post.skillType}
 												</p>
 											{/if}
 											{#if post.providers?.length}
 												<p>
-													<span class="font-medium text-foreground">Providers:</span>
+													<span class="font-medium text-foreground"
+														>Providers:</span
+													>
 													{post.providers.join(', ')}
 												</p>
 											{/if}

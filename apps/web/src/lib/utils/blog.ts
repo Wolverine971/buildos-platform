@@ -225,8 +225,7 @@ export const BLOG_CATEGORIES = {
 	},
 	'agent-skills': {
 		name: 'Agent Skills',
-		description:
-			'Portable skill guides, definitions, and operating playbooks for AI agents.',
+		description: 'Portable skill guides, definitions, and operating playbooks for AI agents.',
 		color: 'cyan'
 	}
 } as const;
