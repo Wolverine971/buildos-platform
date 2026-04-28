@@ -359,10 +359,9 @@
 	noindex={true}
 />
 
-<!-- Account for navbar height -->
+<!-- Account for navbar height (h-16 = 4rem). Use 100dvh so iOS Safari's dynamic toolbar doesn't push content beyond the visible viewport. min-h-[calc(100vh-...)] is kept as a fallback for browsers without dvh support. -->
 <div
-	class="flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background"
-	style="min-height: calc(100vh - 64px);"
+	class="flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-background min-h-[calc(100vh-4rem)] min-h-[calc(100dvh-4rem)]"
 >
 	<div class="max-w-md w-full space-y-8 py-12">
 		<!-- Logo/Brand Section -->

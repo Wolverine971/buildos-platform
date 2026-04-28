@@ -1545,9 +1545,10 @@
 				</div>
 
 				<!-- Right side: Voice button -->
+				<!-- Sizing matches TEXTAREA_BUTTON_DESIGN_MOBILE.md: 40px on portrait phones (<xs), 36px from xs+. -->
 				<button
 					type="button"
-					class={`flex h-8 w-8 sm:h-7 sm:w-7 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
+					class={`flex h-10 w-10 xs:h-9 xs:w-9 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
 					style="-webkit-tap-highlight-color: transparent;"
 					onclick={toggleVoiceRecording}
 					onmouseenter={handleVoiceButtonMouseEnter}
@@ -1560,10 +1561,10 @@
 					disabled={voiceButtonState.disabled}
 				>
 					{#if voiceButtonState.isLoading}
-						<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
+						<LoaderCircle class="h-4 w-4 xs:h-3.5 xs:w-3.5 animate-spin" />
 					{:else}
 						{@const VoiceIcon = voiceButtonState.icon}
-						<VoiceIcon class="h-3.5 w-3.5" />
+						<VoiceIcon class="h-4 w-4 xs:h-3.5 xs:w-3.5" />
 					{/if}
 				</button>
 			</div>

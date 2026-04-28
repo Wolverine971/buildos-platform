@@ -136,6 +136,50 @@
 		onContextMenu(e, node);
 	}
 
+	// Long-press fallback for touch: oncontextmenu does not fire reliably on iOS/Android.
+	// We listen for pointerdown on touch only, start a 500ms timer, and fire the same
+	// context-menu handler on completion. Movement > 8px or pointerup cancels.
+	const LONG_PRESS_MS = 500;
+	const LONG_PRESS_TOLERANCE_PX = 8;
+	let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+	let longPressStartX = 0;
+	let longPressStartY = 0;
+
+	function clearLongPress() {
+		if (longPressTimer) {
+			clearTimeout(longPressTimer);
+			longPressTimer = null;
+		}
+	}
+
+	function handlePointerDown(e: PointerEvent) {
+		if (e.pointerType !== 'touch') return;
+		// Don't start long-press if the user pressed an interactive child (drag handle, chevron, link).
+		const target = e.target as HTMLElement | null;
+		if (target?.closest('button, [role="button"], a')) return;
+		longPressStartX = e.clientX;
+		longPressStartY = e.clientY;
+		clearLongPress();
+		longPressTimer = setTimeout(() => {
+			longPressTimer = null;
+			// PointerEvent extends MouseEvent, so positional fields (clientX/Y) are valid for the handler.
+			handleContextMenu(e);
+		}, LONG_PRESS_MS);
+	}
+
+	function handlePointerMove(e: PointerEvent) {
+		if (e.pointerType !== 'touch' || !longPressTimer) return;
+		const dx = e.clientX - longPressStartX;
+		const dy = e.clientY - longPressStartY;
+		if (Math.hypot(dx, dy) > LONG_PRESS_TOLERANCE_PX) {
+			clearLongPress();
+		}
+	}
+
+	function handlePointerEnd() {
+		clearLongPress();
+	}
+
 	// Drag handlers - only from the drag handle
 	function handleDragHandleMouseDown(e: MouseEvent) {
 		if (!canDrag || !onDragStart || e.button !== 0) return;
@@ -187,6 +231,11 @@
 		oncontextmenu={handleContextMenu}
 		onmouseenter={handleMouseEnter}
 		onmousemove={handleMouseMove}
+		onpointerdown={handlePointerDown}
+		onpointermove={handlePointerMove}
+		onpointerup={handlePointerEnd}
+		onpointercancel={handlePointerEnd}
+		onpointerleave={handlePointerEnd}
 		class="doc-tree-node-row w-full flex items-center rounded-md transition-colors
 			{isSelected ? 'bg-accent/15 text-foreground' : 'hover:bg-accent/5 text-foreground'}
 			{isDragging ? 'opacity-40' : ''}

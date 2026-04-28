@@ -59,6 +59,11 @@
 	let showChatModal = $state(false);
 	let chatOpenedWithContext = $state<ChatContextType | null>(null);
 
+	// Mobile-menu accessibility: drawer ref for the focus trap, and the element to restore
+	// focus to when the drawer closes (the hamburger button the user came from).
+	let mobileMenuElement = $state<HTMLElement | null>(null);
+	let elementToRestoreFocus: HTMLElement | null = null;
+
 	// Hide-on-scroll: hide nav when scrolling down on mobile, show on scroll up
 	let lastScrollY = $state(0);
 	let navHidden = $state(false);
@@ -244,6 +249,52 @@
 			closeAllMenus();
 		}
 	}
+
+	// Focus trap for the mobile menu drawer. Cycles Tab/Shift+Tab inside the drawer.
+	function handleMobileMenuKeydown(e: KeyboardEvent) {
+		if (e.key !== 'Tab' || !mobileMenuElement) return;
+		const focusables = Array.from(
+			mobileMenuElement.querySelectorAll<HTMLElement>(
+				'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])'
+			)
+		).filter((el) => el.offsetParent !== null);
+		const first = focusables.at(0);
+		const last = focusables.at(-1);
+		if (!first || !last) return;
+		const active = document.activeElement;
+		if (e.shiftKey && active === first) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && active === last) {
+			e.preventDefault();
+			first.focus();
+		}
+	}
+
+	// Body scroll lock + focus management while the mobile drawer is open.
+	$effect(() => {
+		if (!browser) return;
+		if (!showMobileMenu) return;
+
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		elementToRestoreFocus = document.activeElement as HTMLElement | null;
+
+		const rafId = requestAnimationFrame(() => {
+			const first = mobileMenuElement?.querySelector<HTMLElement>(
+				'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+			);
+			first?.focus();
+		});
+
+		return () => {
+			cancelAnimationFrame(rafId);
+			document.body.style.overflow = previousOverflow;
+			// Return focus to whatever opened the menu (typically the hamburger).
+			elementToRestoreFocus?.focus?.();
+			elementToRestoreFocus = null;
+		};
+	});
 
 	function handleClickOutside(e: MouseEvent) {
 		if (!e.target) return;
@@ -828,7 +879,17 @@
 
 	<!-- Mobile menu -->
 	{#if showMobileMenu}
-		<div class="md:hidden border-t border-border bg-card animate-ink-in" data-mobile-menu>
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+		<div
+			bind:this={mobileMenuElement}
+			role="dialog"
+			aria-modal="true"
+			aria-label="Mobile navigation menu"
+			tabindex="-1"
+			onkeydown={handleMobileMenuKeydown}
+			class="md:hidden border-t border-border bg-card animate-ink-in"
+			data-mobile-menu
+		>
 			{#if user}
 				<!-- Mobile Brief Status -->
 				<div class="px-3 pt-2 pb-2">
