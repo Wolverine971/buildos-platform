@@ -11,6 +11,13 @@ path: docs/marketing/growth/research/youtube-transcripts/2026-04-21-blogging-is-
 
 # Analysis: "Blogging is DEAD, Do THIS instead." — Caleb Ulku
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Marketing And Content Skill Combos](../../../../research/youtube-library/skill-combo-indexes/MARKETING_AND_CONTENT.md): Content strategy beyond blogging; Ethical interest-media distribution; SaaS social distribution system
+- [Writing Skill Combos](../../../../research/youtube-library/skill-combo-indexes/WRITING.md): Short-form idea distillation; Source-to-skill article writing
+
 ## Core Thesis
 
 **Blogs ≠ rankings for local service businesses.** Caleb Ulku argues that "publish weekly blog content" is dead advice for local SEO. Blog posts attract out-of-state, non-converting traffic on informational queries. What actually ranks (and converts) is a **Core 30** service-hub website structure built directly from your Google Business Profile.

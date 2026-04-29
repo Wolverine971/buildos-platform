@@ -2,7 +2,7 @@
 
 # Analyses
 
-Canonical home for cleaned analysis notes derived from YouTube transcripts.
+Canonical home for cleaned analysis notes derived from YouTube transcripts, articles, podcasts, talks, or other source material that can feed BuildOS skill drafts.
 
 Use this naming pattern:
 

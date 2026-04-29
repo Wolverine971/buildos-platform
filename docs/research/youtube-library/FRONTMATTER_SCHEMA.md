@@ -7,14 +7,14 @@ Use this schema for canonical YouTube source files under `docs/research/youtube-
 Required fields:
 
 ```yaml
-title: "Video or source title"
+title: 'Video or source title'
 source_type: youtube_transcript
-video_id: "YouTube video ID"
-url: "https://www.youtube.com/watch?v=..."
-channel: "Creator or channel"
-channel_url: "https://www.youtube.com/@..."
+video_id: 'YouTube video ID'
+url: 'https://www.youtube.com/watch?v=...'
+channel: 'Creator or channel'
+channel_url: 'https://www.youtube.com/@...'
 upload_date: YYYY-MM-DD
-duration: "MM:SS"
+duration: 'MM:SS'
 views: 0
 library_category: sales-and-growth
 library_status: transcript
@@ -22,13 +22,14 @@ transcript_status: available
 analysis_status: missing
 processing_status: needs_analysis
 processed: false
+buildos_use: both
 skill_candidate: true
 skill_priority: backlog
-skill_draft: ""
-public_article: ""
-indexed_date: "YYYY-MM-DD"
-last_reviewed: "YYYY-MM-DD"
-transcribed_date: "YYYY-MM-DD"
+skill_draft: ''
+public_article: ''
+indexed_date: 'YYYY-MM-DD'
+last_reviewed: 'YYYY-MM-DD'
+transcribed_date: 'YYYY-MM-DD'
 ```
 
 ## Field Values
@@ -38,6 +39,8 @@ transcribed_date: "YYYY-MM-DD"
 - `youtube_transcript`
 - `youtube_analysis`
 - `youtube_reference`
+- `article_analysis`
+- `article_reference`
 - `product_asset`
 
 `library_category`:
@@ -48,6 +51,7 @@ transcribed_date: "YYYY-MM-DD"
 - `product-and-design`
 - `technology-and-agent-systems`
 - `writing`
+- `founder-ops-and-career`
 - `psychology-agency-and-philosophy`
 - `product-asset`
 
@@ -59,10 +63,19 @@ transcribed_date: "YYYY-MM-DD"
 - `blog-reference`
 - `skill-draft`
 - `skill-article`
+- `internal-reference`
 - `link-only`
 - `related-link`
 - `product-asset`
 - `not-skill-source`
+
+`buildos_use` distinguishes internal BuildOS material from public skill-repo material:
+
+- `internal`: useful for building, positioning, selling, fundraising, or operating BuildOS, but not a public skill candidate right now.
+- `public_skill`: primarily useful as public agent-skill material.
+- `both`: useful internally and likely useful as a public skill source.
+- `archive_reference`: useful background/reference material, but not active internal or skill work.
+- `not_applicable`: product asset, fixture, or non-research material.
 
 `transcript_status`:
 
@@ -85,8 +98,10 @@ transcribed_date: "YYYY-MM-DD"
 - `transcript_available`
 - `needs_analysis`
 - `needs_synthesis`
+- `ready_for_skill_draft`
 - `draft_skill_created`
 - `public_article_created`
+- `internal_reference`
 - `not_skill_source`
 - `archive_reference_only`
 

@@ -1,12 +1,12 @@
 ---
-title: "Navigating a Design Career with Jenny Wen | Figma at Waterloo"
+title: 'Navigating a Design Career with Jenny Wen | Figma at Waterloo'
 source_type: youtube_transcript
 video_id: OHcBPMh2ivk
-url: "https://www.youtube.com/watch?v=OHcBPMh2ivk"
+url: 'https://www.youtube.com/watch?v=OHcBPMh2ivk'
 channel: Figma at Waterloo
-channel_url: "https://www.youtube.com/@FigmaatWaterloo"
+channel_url: 'https://www.youtube.com/@FigmaatWaterloo'
 upload_date: 2024-12-20
-duration: "39:44"
+duration: '39:44'
 views: 1016
 library_category: product-and-design
 library_status: transcript
@@ -16,39 +16,47 @@ processing_status: needs_synthesis
 processed: false
 skill_candidate: true
 skill_priority: backlog
-skill_draft: ""
-public_article: ""
-indexed_date: "2026-04-28"
-last_reviewed: "2026-04-28"
+skill_draft: ''
+public_article: ''
+indexed_date: '2026-04-28'
+last_reviewed: '2026-04-28'
 description: |
-  Figma at Waterloo hosted Jenny Wen for an insightful talk about Waterloo and her design career. Originally recorded November 15, 2024, at Den 1880 in Uptown Waterloo.
-  
-  ​Jenny is the outgoing Director of Product Design at Figma, where she supports a portfolio of products including FigJam, Figma Slides, Figma Community, two new & top-secret initiatives, and User Growth. She led the design of FigJam, brought it to market, and helped grow it into a whiteboard people love. 
-  
-  ​Still, some of her proudest achievements at Waterloo were: making the UW/UX logo that’s still in use, being decorating chair for IRS and making all of E5 6th floor food-themed, and starting a few different Systems class traditions.
-  
-  ​Whether you're just starting out in design or you're already deep into your career, Jenny shares her unique path in the design world — how she built her career and found success & fulfillment through design.
-  
-  🎵 Music: Miggi from Figgi  https://soundcloud.com/miggi-from-figgi/intro-to-figma
-  
-  Follow Figma at Waterloo
-  https://instagram.com/figmaatwaterloo
-  https://twitter.com/figmaatwaterloo
-  https://lu.ma/figmaatwaterloo
-  
-  Follow Jenny
-  https://twitter.com/jenny_wen
-  
-  Figma for Edu (it's free for post-secondary students!)
-  https://figma.com/education
-  
-  Figma at Waterloo is the home of Figma at the University of Waterloo and Wilfrid Laurier University, as part of the Figma Campus Leaders program.
-transcribed_date: "2026-04-28"
+    Figma at Waterloo hosted Jenny Wen for an insightful talk about Waterloo and her design career. Originally recorded November 15, 2024, at Den 1880 in Uptown Waterloo.
+
+    ​Jenny is the outgoing Director of Product Design at Figma, where she supports a portfolio of products including FigJam, Figma Slides, Figma Community, two new & top-secret initiatives, and User Growth. She led the design of FigJam, brought it to market, and helped grow it into a whiteboard people love. 
+
+    ​Still, some of her proudest achievements at Waterloo were: making the UW/UX logo that’s still in use, being decorating chair for IRS and making all of E5 6th floor food-themed, and starting a few different Systems class traditions.
+
+    ​Whether you're just starting out in design or you're already deep into your career, Jenny shares her unique path in the design world — how she built her career and found success & fulfillment through design.
+
+    🎵 Music: Miggi from Figgi  https://soundcloud.com/miggi-from-figgi/intro-to-figma
+
+    Follow Figma at Waterloo
+    https://instagram.com/figmaatwaterloo
+    https://twitter.com/figmaatwaterloo
+    https://lu.ma/figmaatwaterloo
+
+    Follow Jenny
+    https://twitter.com/jenny_wen
+
+    Figma for Edu (it's free for post-secondary students!)
+    https://figma.com/education
+
+    Figma at Waterloo is the home of Figma at the University of Waterloo and Wilfrid Laurier University, as part of the Figma Campus Leaders program.
+transcribed_date: '2026-04-28'
+path: docs/research/youtube-library/transcripts/2026-04-28_jenny-wen_navigating-a-design-career.md
 ---
 
 # Navigating a Design Career with Jenny Wen | Figma at Waterloo
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Product And Design Skill Combos](../skill-combo-indexes/PRODUCT_AND_DESIGN.md): AI-era craft and quality moat
+
 ## Metadata
+
 - **Channel**: [Figma at Waterloo](https://www.youtube.com/@FigmaatWaterloo)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=OHcBPMh2ivk)
 - **Duration**: 39:44

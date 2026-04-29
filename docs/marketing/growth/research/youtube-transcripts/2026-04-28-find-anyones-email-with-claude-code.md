@@ -1,37 +1,54 @@
 ---
 title: "Find Anyone's Email With Claude Code"
+source_type: 'youtube_transcript'
+library_category: 'sales-and-growth'
+library_status: 'transcript, analysis'
+transcript_status: 'available'
+analysis_status: 'available'
+processing_status: 'ready_for_skill_draft'
+processed: false
+buildos_use: 'both'
+skill_candidate: true
+skill_priority: 'high'
+source_analysis: 'docs/marketing/growth/research/youtube-transcripts/2026-04-28-find-anyones-email-with-claude-code-ANALYSIS.md'
+skill_draft: ''
+public_article: ''
+indexed_date: '2026-04-28'
+last_reviewed: '2026-04-28'
 video_id: xc7o9iXDF7M
-url: "https://www.youtube.com/watch?v=xc7o9iXDF7M"
+url: 'https://www.youtube.com/watch?v=xc7o9iXDF7M'
 channel: Eric Nowoslawski
-channel_url: "https://www.youtube.com/@ericnowoslawski"
+channel_url: 'https://www.youtube.com/@ericnowoslawski'
 upload_date: 2026-04-24
-duration: "11:10"
+duration: '11:10'
 views: 4095
 description: |
-  Tools mentioned in video
-  
-  Prospeo.io
-  Leadmagic.io
-  blitz-api.ai
-  mailtester.ninja
-  Millionverifier.com
-  
-  Trigger.dev for deployment
-  Supabase for database
-  
-  Growth Engine X is an outbound agency that sends 8,000,000 emails per month on behalf of their clients. We specialize in data segmentation, AI messaging, and creative campaigns. Here's a link to our social proof deck https://gamma.app/docs/Collection-of-GEX-Social-Proof-qwtscnnuryij6yj
-  
-  If you'd like for us to launch a campaign for you for free! Fill out the application here. 
-  
-  https://tally.so/r/mRvWxd
-  
-  Get your Clay free trial here and get 3000 free credits after you upgrade your plan with my link: https://app.clay.com/signup?via=bb305b
-transcribed_date: "2026-04-28"
+    Tools mentioned in video
+
+    Prospeo.io
+    Leadmagic.io
+    blitz-api.ai
+    mailtester.ninja
+    Millionverifier.com
+
+    Trigger.dev for deployment
+    Supabase for database
+
+    Growth Engine X is an outbound agency that sends 8,000,000 emails per month on behalf of their clients. We specialize in data segmentation, AI messaging, and creative campaigns. Here's a link to our social proof deck https://gamma.app/docs/Collection-of-GEX-Social-Proof-qwtscnnuryij6yj
+
+    If you'd like for us to launch a campaign for you for free! Fill out the application here. 
+
+    https://tally.so/r/mRvWxd
+
+    Get your Clay free trial here and get 3000 free credits after you upgrade your plan with my link: https://app.clay.com/signup?via=bb305b
+transcribed_date: '2026-04-28'
+path: docs/marketing/growth/research/youtube-transcripts/2026-04-28-find-anyones-email-with-claude-code.md
 ---
 
 # Find Anyone's Email With Claude Code
 
 ## Metadata
+
 - **Channel**: [Eric Nowoslawski](https://www.youtube.com/@ericnowoslawski)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=xc7o9iXDF7M)
 - **Duration**: 11:10

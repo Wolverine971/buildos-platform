@@ -23,6 +23,12 @@ path: docs/marketing/growth/research/youtube-transcripts/2026-01-05-frankie-1000
 
 # Analysis: 1,000 Clients via "Hand-Raiser" Posts + 5-Minute Loom Videos
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Sales And Growth Skill Combos](../../../../research/youtube-library/skill-combo-indexes/SALES_AND_GROWTH.md): Local AI services sales machine
+
 > Note on title: YouTube says "SaaS clients" but the actual content is about **agency clients across dozens of niches** (roofers, plumbers, personal injury attorneys, etc.). Same playbook applies to anyone selling a service or offer.
 
 ## Core Thesis

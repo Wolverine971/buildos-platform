@@ -1,46 +1,48 @@
 ---
-title: "Notion Recurring Tasks in 60 Seconds"
+title: 'Notion Recurring Tasks in 60 Seconds'
 source_type: youtube_transcript
 video_id: yYNbf__-gx4
-url: "https://www.youtube.com/watch?v=yYNbf__-gx4"
+url: 'https://www.youtube.com/watch?v=yYNbf__-gx4'
 channel: Thomas Frank Explains
-channel_url: "https://www.youtube.com/@ThomasFrankExplains"
+channel_url: 'https://www.youtube.com/@ThomasFrankExplains'
 upload_date: 2024-12-04
-duration: "00:58"
+duration: '00:58'
 views: 53093
 library_category: marketing-and-content
-library_status: "transcript, blog-reference"
+library_status: 'transcript, blog-reference'
 transcript_status: available
 analysis_status: missing
 processing_status: archive_reference_only
 processed: true
 skill_candidate: false
 skill_priority: none
-skill_draft: ""
-public_article: "apps/web/src/content/blogs/notion-recurring-tasks-complexity.md"
-indexed_date: "2026-04-28"
-last_reviewed: "2026-04-28"
+skill_draft: ''
+public_article: 'apps/web/src/content/blogs/notion-recurring-tasks-complexity.md'
+indexed_date: '2026-04-28'
+last_reviewed: '2026-04-28'
 tags:
-  - notion
-  - notionhq
-  - notion app
-  - notion tips
-  - how to use notion
-  - notion productivity
-  - notion templates
-  - notion recurring tasks
-  - repeating tasks
-  - habit tracking
+    - notion
+    - notionhq
+    - notion app
+    - notion tips
+    - how to use notion
+    - notion productivity
+    - notion templates
+    - notion recurring tasks
+    - repeating tasks
+    - habit tracking
 description: |
-  Notion finally supports native recurring tasks. Here's how to set them up.
-  
-  Full tutorial here: https://www.youtube.com/watch?v=xYu4bFcC9v4
-transcribed_date: "2026-04-28"
+    Notion finally supports native recurring tasks. Here's how to set them up.
+
+    Full tutorial here: https://www.youtube.com/watch?v=xYu4bFcC9v4
+transcribed_date: '2026-04-28'
+path: docs/research/youtube-library/transcripts/2026-04-28_thomas-frank_notion-recurring-tasks-short.md
 ---
 
 # Notion Recurring Tasks in 60 Seconds
 
 ## Metadata
+
 - **Channel**: [Thomas Frank Explains](https://www.youtube.com/@ThomasFrankExplains)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=yYNbf__-gx4)
 - **Duration**: 00:58

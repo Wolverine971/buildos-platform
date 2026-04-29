@@ -13,6 +13,13 @@ path: docs/marketing/growth/research/youtube-transcripts/2026-04-24-lucky-saini-
 
 # Lucky Saini — 14 Lessons from Analyzing 116 Funnels ($200K–$3M/mo)
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Marketing And Content Skill Combos](../../../../research/youtube-library/skill-combo-indexes/MARKETING_AND_CONTENT.md): Funnel teardown and offer conversion
+- [Sales And Growth Skill Combos](../../../../research/youtube-library/skill-combo-indexes/SALES_AND_GROWTH.md): Offer-to-call funnel diagnosis
+
 ## TL;DR
 
 Lucky Saini analyzed 116+ funnels from coaches/consultants/info offers doing $200K–$3M/month over two years. The 2026 thesis: **flexing is dead, simple beats clever, YouTube is the printing press, results replace guarantees, and the "category of one" play is a new format in your niche.** Most of the money is made _before_ the call — through content, story sequences, and pre-call assets that pre-handle objections.

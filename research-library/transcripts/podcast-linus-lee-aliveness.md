@@ -1,5 +1,13 @@
 <!-- research-library/transcripts/podcast-linus-lee-aliveness.md -->
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Product And Design Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/PRODUCT_AND_DESIGN.md): Taste-driven toolmaking
+- [Psychology, Agency, And Philosophy Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/PSYCHOLOGY_AGENCY_AND_PHILOSOPHY.md): Designing tools that preserve agency; Taste, aliveness, and soulful AI tools
+- [Technology And Agent Systems Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/TECHNOLOGY_AND_AGENT_SYSTEMS.md): Malleable software and user agency
+
 Linus Lee: Engineering for Aliveness - LLMs, Agency, Tools for Thought, Thrive Capital |Dialectic 24
 
 https://www.youtube.com/watch?v=IaUYbNnOYUM

@@ -1,5 +1,11 @@
 <!-- research-library/transcripts/podcast-mfm-young-guy.md -->
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Sales And Growth Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/SALES_AND_GROWTH.md): Contextual outbound operating system
+
 https://www.youtube.com/watch?v=wgTOoJ_UkmQ
 
 ## Analysis: Semantic Search for Followers or Contacts

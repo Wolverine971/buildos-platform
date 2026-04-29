@@ -2,6 +2,13 @@
 
 # Tools for Thought Rocks: April 2022 - Maggie Appleton, Hunter Clarke
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Psychology, Agency, And Philosophy Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/PSYCHOLOGY_AGENCY_AND_PHILOSOPHY.md): Personal knowledge systems and file-over-app thinking
+- [Technology And Agent Systems Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/TECHNOLOGY_AND_AGENT_SYSTEMS.md): Malleable software and user agency
+
 **Source:** [YouTube](https://www.youtube.com/watch?v=t6uhvFGPUE0)
 **Host:** Tools for Thought Rocks
 **Speakers:** Maggie Appleton, Hunter Clarke

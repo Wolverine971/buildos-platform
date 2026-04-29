@@ -13,6 +13,13 @@ path: docs/marketing/growth/research/youtube-transcripts/2025-07-21-andrew-write
 
 # Analysis — "I'm Politely Begging You to Write Nonfiction"
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Psychology, Agency, And Philosophy Skill Combos](../../../../research/youtube-library/skill-combo-indexes/PSYCHOLOGY_AGENCY_AND_PHILOSOPHY.md): Constraint-driven creative systems
+- [Writing Skill Combos](../../../../research/youtube-library/skill-combo-indexes/WRITING.md): Nonfiction writing from lived conviction; Short-form idea distillation; Source-to-skill article writing
+
 **Speaker:** Andrew (Writing with Andrew / Goldfinch Media) — creative writing teacher, primary specialty in poetry, regular essayist.
 **Premise:** Creative nonfiction is the most overlooked of the "big three" genres (fiction, poetry, nonfiction). Andrew makes the case that writers should add it to their practice — and breaks down what it actually is, common objections, and what you gain from writing it.
 

@@ -32,6 +32,12 @@ path: docs/marketing/growth/research/youtube-transcripts/2026-04-24_your-average
 
 # Ultimate Social Media Marketing Guide for SaaS in 47 Minutes
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Marketing And Content Skill Combos](../../../../research/youtube-library/skill-combo-indexes/MARKETING_AND_CONTENT.md): Content strategy beyond blogging; SaaS social distribution system
+
 ## Metadata
 
 - **Channel**: Your Average Tech Bro (YATB)

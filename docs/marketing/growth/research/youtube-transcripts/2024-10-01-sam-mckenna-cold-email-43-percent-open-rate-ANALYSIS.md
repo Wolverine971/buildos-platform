@@ -19,6 +19,12 @@ path: docs/marketing/growth/research/youtube-transcripts/2024-10-01-sam-mckenna-
 
 # Sam McKenna — "Show Me You Know Me" Cold Email Method
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Sales And Growth Skill Combos](../../../../research/youtube-library/skill-combo-indexes/SALES_AND_GROWTH.md): Contextual outbound operating system
+
 > Sam McKenna built an 8-figure business (Sam Sales) on a single trademarked idea: do enough research that the prospect can tell the email was written for _them specifically_. Her stated results: **43% open rate, 20% reply rate** — vs. industry average of 6% open / 0.9% reply.
 
 ---

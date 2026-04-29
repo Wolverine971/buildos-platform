@@ -13,6 +13,12 @@ path: docs/marketing/growth/research/youtube-transcripts/2026-01-05-mitchell-kel
 
 # Mitchell Keller — "I Booked 2230+ Calls In 2025" (Analysis)
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Sales And Growth Skill Combos](../../../../research/youtube-library/skill-combo-indexes/SALES_AND_GROWTH.md): Contextual outbound operating system
+
 > Full transcript: [`2026-01-05-mitchell-keller-2230-calls-cold-email.md`](./2026-01-05-mitchell-keller-2230-calls-cold-email.md)
 
 ## Core Thesis

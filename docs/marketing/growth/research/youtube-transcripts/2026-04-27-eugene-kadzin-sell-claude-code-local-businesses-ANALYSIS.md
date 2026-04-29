@@ -9,6 +9,12 @@ path: docs/marketing/growth/research/youtube-transcripts/2026-04-27-eugene-kadzi
 
 # Analysis: How to Sell Claude Code to Local Businesses
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Sales And Growth Skill Combos](../../../../research/youtube-library/skill-combo-indexes/SALES_AND_GROWTH.md): Local AI services sales machine
+
 **Speaker:** Eugene Kadzin (founder of "1Prompt Setter," an open-source appointment setter system)
 **Audience:** Agency owners and entrepreneurs who have been learning Claude Code and want to monetize it
 **Length:** 40 minutes

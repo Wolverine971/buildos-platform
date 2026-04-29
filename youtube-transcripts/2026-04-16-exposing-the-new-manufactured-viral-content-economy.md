@@ -36,6 +36,12 @@ path: youtube-transcripts/2026-04-16-exposing-the-new-manufactured-viral-content
 
 # Exposing the New Manufactured Viral Content Economy
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Marketing And Content Skill Combos](../docs/research/youtube-library/skill-combo-indexes/MARKETING_AND_CONTENT.md): Content strategy beyond blogging; Ethical interest-media distribution; SaaS social distribution system
+
 ## Metadata
 
 - **Channel**: [Devin Nash](https://www.youtube.com/channel/UCZ1fbizRtEOC3dbiFsVUaCQ)

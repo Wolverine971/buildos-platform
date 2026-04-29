@@ -143,6 +143,12 @@ path: docs/marketing/growth/research/youtube-transcripts/2026-03-01_jenny-wen_de
 
 # The design process is dead. Here’s what’s replacing it. | Jenny Wen (head of design at Claude)
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Product And Design Skill Combos](../../../../research/youtube-library/skill-combo-indexes/PRODUCT_AND_DESIGN.md): Design-to-code workflow
+
 ## Metadata
 
 - **Channel**: [Lenny's Podcast](https://www.youtube.com/channel/UC6t1O76G0jYXOAoYCm153dA)

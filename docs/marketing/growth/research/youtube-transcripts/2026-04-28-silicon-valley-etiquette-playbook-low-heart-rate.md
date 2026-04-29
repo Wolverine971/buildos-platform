@@ -1,148 +1,165 @@
 ---
-title: "How to show up in any room with a low heart rate: Silicon Valley’s missing etiquette playbook"
+title: 'How to show up in any room with a low heart rate: Silicon Valley’s missing etiquette playbook'
+source_type: 'youtube_transcript'
+library_category: 'founder-ops-and-career'
+library_status: 'transcript, analysis'
+transcript_status: 'available'
+analysis_status: 'available'
+processing_status: 'ready_for_skill_draft'
+processed: false
+buildos_use: 'both'
+skill_candidate: true
+skill_priority: 'medium'
+source_analysis: 'docs/marketing/growth/research/youtube-transcripts/2026-04-28-silicon-valley-etiquette-playbook-low-heart-rate-ANALYSIS.md'
+skill_draft: ''
+public_article: ''
+indexed_date: '2026-04-28'
+last_reviewed: '2026-04-28'
 video_id: KtKJ3A6DWTs
-url: "https://www.youtube.com/watch?v=KtKJ3A6DWTs"
+url: 'https://www.youtube.com/watch?v=KtKJ3A6DWTs'
 channel: Lenny's Podcast
-channel_url: "https://www.youtube.com/@LennysPodcast"
+channel_url: 'https://www.youtube.com/@LennysPodcast'
 upload_date: 2026-01-15
-duration: "01:26:35"
+duration: '01:26:35'
 views: 23958
 timestamps:
-  - time: "0:00"
-    label: "Sam’s background"
-  - time: "4:18"
-    label: "The role of etiquette in business success"
-  - time: "9:30"
-    label: "Introductions and entering a room"
-  - time: "16:20"
-    label: "Engaging conversations and building relationships"
-  - time: "23:55"
-    label: "Hygiene and dress code essentials"
-  - time: "33:42"
-    label: "Dining etiquette"
-  - time: "37:15"
-    label: "Tipping etiquette"
-  - time: "41:36"
-    label: "The “B&D trick”"
-  - time: "43:05"
-    label: "Humor in social settings"
-  - time: "45:18"
-    label: "Self-deprecating humor"
-  - time: "47:42"
-    label: "Winding down conversations"
-  - time: "49:20"
-    label: "Scheduling etiquette"
-  - time: "55:23"
-    label: "Communication and email etiquette"
-  - time: "1:02:28"
-    label: "Meeting etiquette tips"
-  - time: "1:04:03"
-    label: "Virtual meeting best practices"
-  - time: "1:05:15"
-    label: "The importance of cleaning up after yourself"
-  - time: "1:05:58"
-    label: "Exiting and follow-up etiquette"
-  - time: "1:07:24"
-    label: "Final thoughts"
-  - time: "1:09:20"
-    label: "AI corner"
-  - time: "1:11:13"
-    label: "Contrarian corner"
-  - time: "1:16:25"
-    label: "Lightning round"
+    - time: '0:00'
+      label: 'Sam’s background'
+    - time: '4:18'
+      label: 'The role of etiquette in business success'
+    - time: '9:30'
+      label: 'Introductions and entering a room'
+    - time: '16:20'
+      label: 'Engaging conversations and building relationships'
+    - time: '23:55'
+      label: 'Hygiene and dress code essentials'
+    - time: '33:42'
+      label: 'Dining etiquette'
+    - time: '37:15'
+      label: 'Tipping etiquette'
+    - time: '41:36'
+      label: 'The “B&D trick”'
+    - time: '43:05'
+      label: 'Humor in social settings'
+    - time: '45:18'
+      label: 'Self-deprecating humor'
+    - time: '47:42'
+      label: 'Winding down conversations'
+    - time: '49:20'
+      label: 'Scheduling etiquette'
+    - time: '55:23'
+      label: 'Communication and email etiquette'
+    - time: '1:02:28'
+      label: 'Meeting etiquette tips'
+    - time: '1:04:03'
+      label: 'Virtual meeting best practices'
+    - time: '1:05:15'
+      label: 'The importance of cleaning up after yourself'
+    - time: '1:05:58'
+      label: 'Exiting and follow-up etiquette'
+    - time: '1:07:24'
+      label: 'Final thoughts'
+    - time: '1:09:20'
+      label: 'AI corner'
+    - time: '1:11:13'
+      label: 'Contrarian corner'
+    - time: '1:16:25'
+      label: 'Lightning round'
 description: |
-  Sam Lessin is a partner at Slow Ventures, a former VP of Product at Facebook, and a two-time founder who’s now teaching etiquette to Silicon Valley’s founders. In this unconventional episode, Sam explains why proper etiquette has become a vital skill for founders in 2026—especially as technology becomes more central to society and trust becomes harder to build. His etiquette book and courses have become surprisingly popular, teaching founders how to “show up in a room with a low heart rate” and quickly build trust.
-  
-  *We discuss:*
-  1. Why etiquette matters
-  2. Sam’s framework for showing up confidently, with a low heart rate, in any room
-  3. How to navigate introductions, small talk, meetings, and meals like a pro
-  4. Simple hacks for remembering names and handling awkward social situations
-  5. 30+ specific etiquette tips
-  
-  *Brought to you by:*
-  10Web—Vibe-coding platform as an API: https://10web.io/lenny
-  DX—The developer intelligence platform designed by leading researchers: https://getdx.com/lenny
-  WorkOS—Modern identity platform for B2B SaaS, free up to 1 million MAUs: https://workos.com/lenny
-  
-  *Episode transcript:* https://www.lennysnewsletter.com/p/silicon-valleys-missing-etiquette-playbook
-  *Archive of all Lenny's Podcast transcripts:*
-  https://www.dropbox.com/scl/fo/yxi4s2w998p1gvtpu4193/AMdNPR8AOw0lMklwtnC0TrQ?rlkey=j06x0nipoti519e0xgm23zsn9&st=ahz0fj11&dl=0
-  
-  *Where to find Sam Lessin:*
-  • X: https://x.com/lessin
-  • LinkedIn: https://www.linkedin.com/in/wlessin
-  • Website: https://www.wlessin.com
-  • Podcast: https://moreorlesspod.com
-  • Lettermeme: https://lettermeme.com/lessin
-  
-  *Where to find Lenny:*
-  • Newsletter: https://www.lennysnewsletter.com
-  • X: https://twitter.com/lennysan
-  • LinkedIn: https://www.linkedin.com/in/lennyrachitsky/
-  
-  *In this episode, we cover:*
-  (00:00) Sam’s background
-  (04:18) The role of etiquette in business success
-  (09:30) Introductions and entering a room
-  (16:20) Engaging conversations and building relationships
-  (23:55) Hygiene and dress code essentials
-  (33:42) Dining etiquette
-  (37:15) Tipping etiquette
-  (41:36) The “B&D trick”
-  (43:05) Humor in social settings
-  (45:18) Self-deprecating humor
-  (47:42) Winding down conversations
-  (49:20) Scheduling etiquette
-  (55:23) Communication and email etiquette
-  (01:02:28) Meeting etiquette tips
-  (01:04:03) Virtual meeting best practices
-  (01:05:15) The importance of cleaning up after yourself
-  (01:05:58) Exiting and follow-up etiquette
-  (01:07:24) Final thoughts
-  (01:09:20) AI corner
-  (01:11:13) Contrarian corner
-  (01:16:25) Lightning round
-  
-  *Referenced:*
-  • Y Combinator: https://www.ycombinator.com
-  • Kleiner Perkins: https://www.kleinerperkins.com
-  • “Lose Yourself” by Eminem on Spotify: https://open.spotify.com/track/7MJQ9Nfxzh8LPZ9e9u68Fq
-  • Alison Gopnik on Childhood Learning, AI as a Cultural Technology, and Rethinking Nature vs. Nurture: https://conversationswithtyler.com/episodes/alison-gopnik
-  • Garry Tan on LinkedIn: https://www.linkedin.com/in/garrytan
-  • Bain & Company: https://www.bain.com
-  • Evernote: https://evernote.com
-  • Calendly: https://calendly.com
-  • Morning Brew: https://www.morningbrew.com
-  • Cursor: https://cursor.com
-  • The rise of Cursor: The $300M ARR AI tool that engineers can’t stop using | Michael Truell (co-founder and CEO): https://www.lennysnewsletter.com/p/the-rise-of-cursor-michael-truell
-  • DigitalOcean: https://www.digitalocean.com
-  • Cloudflare: https://www.cloudflare.com
-  • SpaceX: https://www.spacex.com
-  • Marc Andreessen on X: https://x.com/pmarca
-  • Landman on Prime Video: https://www.amazon.com/Landman-Season-1/dp/B0D4D8RTMD
-  • Dave Morin on X: https://x.com/davemorin
-  
-  *Recommended books:*
-  • Modern Etiquette in Technology, Finance, Society, and at Home: A Slow Ventures Handbook: https://www.amazon.com/Modern-Etiquette-Technology-Finance-Society-ebook/dp/B0G4HSKSY5
-  • Life, the Universe and Everything: https://www.amazon.com/Universe-Everything-Hitchhikers-Guide-Galaxy-ebook/dp/B001ODEQ7A
-  • The Ancient City: A Study on the Religion, Laws, and Institutions of Greece and Rome: https://www.amazon.com/Ancient-City-Religion-Institutions-Greece/dp/0801823048
-  • Man’s Search for Meaning: https://www.amazon.com/Mans-Search-Meaning-Viktor-Frankl-ebook/dp/B009U9S6FI
-  • Area 51: An Uncensored History of America’s Top Secret Military Base: https://www.amazon.com/Area-51-Uncensored-Americas-Military-ebook/dp/B004THU68Q
-  • The Lessons of History: https://www.amazon.com/Lessons-History-Will-Durant/dp/143914995X
-  • The Fish That Ate the Whale: The Life and Times of America’s Banana King: https://www.amazon.com/Fish-That-Ate-Whale-Americas/dp/1250033314
-  • The Last Kings of Shanghai: The Rival Jewish Dynasties That Helped Create Modern China: https://www.amazon.com/Last-Kings-Shanghai-Jewish-Dynasties/dp/0735224439
-  
-  _Production and marketing by https://penname.co/._
-  _For inquiries about sponsoring the podcast, email podcast@lennyrachitsky.com._
-  
-  Lenny may be an investor in the companies discussed.
-transcribed_date: "2026-04-28"
+    Sam Lessin is a partner at Slow Ventures, a former VP of Product at Facebook, and a two-time founder who’s now teaching etiquette to Silicon Valley’s founders. In this unconventional episode, Sam explains why proper etiquette has become a vital skill for founders in 2026—especially as technology becomes more central to society and trust becomes harder to build. His etiquette book and courses have become surprisingly popular, teaching founders how to “show up in a room with a low heart rate” and quickly build trust.
+
+    *We discuss:*
+    1. Why etiquette matters
+    2. Sam’s framework for showing up confidently, with a low heart rate, in any room
+    3. How to navigate introductions, small talk, meetings, and meals like a pro
+    4. Simple hacks for remembering names and handling awkward social situations
+    5. 30+ specific etiquette tips
+
+    *Brought to you by:*
+    10Web—Vibe-coding platform as an API: https://10web.io/lenny
+    DX—The developer intelligence platform designed by leading researchers: https://getdx.com/lenny
+    WorkOS—Modern identity platform for B2B SaaS, free up to 1 million MAUs: https://workos.com/lenny
+
+    *Episode transcript:* https://www.lennysnewsletter.com/p/silicon-valleys-missing-etiquette-playbook
+    *Archive of all Lenny's Podcast transcripts:*
+    https://www.dropbox.com/scl/fo/yxi4s2w998p1gvtpu4193/AMdNPR8AOw0lMklwtnC0TrQ?rlkey=j06x0nipoti519e0xgm23zsn9&st=ahz0fj11&dl=0
+
+    *Where to find Sam Lessin:*
+    • X: https://x.com/lessin
+    • LinkedIn: https://www.linkedin.com/in/wlessin
+    • Website: https://www.wlessin.com
+    • Podcast: https://moreorlesspod.com
+    • Lettermeme: https://lettermeme.com/lessin
+
+    *Where to find Lenny:*
+    • Newsletter: https://www.lennysnewsletter.com
+    • X: https://twitter.com/lennysan
+    • LinkedIn: https://www.linkedin.com/in/lennyrachitsky/
+
+    *In this episode, we cover:*
+    (00:00) Sam’s background
+    (04:18) The role of etiquette in business success
+    (09:30) Introductions and entering a room
+    (16:20) Engaging conversations and building relationships
+    (23:55) Hygiene and dress code essentials
+    (33:42) Dining etiquette
+    (37:15) Tipping etiquette
+    (41:36) The “B&D trick”
+    (43:05) Humor in social settings
+    (45:18) Self-deprecating humor
+    (47:42) Winding down conversations
+    (49:20) Scheduling etiquette
+    (55:23) Communication and email etiquette
+    (01:02:28) Meeting etiquette tips
+    (01:04:03) Virtual meeting best practices
+    (01:05:15) The importance of cleaning up after yourself
+    (01:05:58) Exiting and follow-up etiquette
+    (01:07:24) Final thoughts
+    (01:09:20) AI corner
+    (01:11:13) Contrarian corner
+    (01:16:25) Lightning round
+
+    *Referenced:*
+    • Y Combinator: https://www.ycombinator.com
+    • Kleiner Perkins: https://www.kleinerperkins.com
+    • “Lose Yourself” by Eminem on Spotify: https://open.spotify.com/track/7MJQ9Nfxzh8LPZ9e9u68Fq
+    • Alison Gopnik on Childhood Learning, AI as a Cultural Technology, and Rethinking Nature vs. Nurture: https://conversationswithtyler.com/episodes/alison-gopnik
+    • Garry Tan on LinkedIn: https://www.linkedin.com/in/garrytan
+    • Bain & Company: https://www.bain.com
+    • Evernote: https://evernote.com
+    • Calendly: https://calendly.com
+    • Morning Brew: https://www.morningbrew.com
+    • Cursor: https://cursor.com
+    • The rise of Cursor: The $300M ARR AI tool that engineers can’t stop using | Michael Truell (co-founder and CEO): https://www.lennysnewsletter.com/p/the-rise-of-cursor-michael-truell
+    • DigitalOcean: https://www.digitalocean.com
+    • Cloudflare: https://www.cloudflare.com
+    • SpaceX: https://www.spacex.com
+    • Marc Andreessen on X: https://x.com/pmarca
+    • Landman on Prime Video: https://www.amazon.com/Landman-Season-1/dp/B0D4D8RTMD
+    • Dave Morin on X: https://x.com/davemorin
+
+    *Recommended books:*
+    • Modern Etiquette in Technology, Finance, Society, and at Home: A Slow Ventures Handbook: https://www.amazon.com/Modern-Etiquette-Technology-Finance-Society-ebook/dp/B0G4HSKSY5
+    • Life, the Universe and Everything: https://www.amazon.com/Universe-Everything-Hitchhikers-Guide-Galaxy-ebook/dp/B001ODEQ7A
+    • The Ancient City: A Study on the Religion, Laws, and Institutions of Greece and Rome: https://www.amazon.com/Ancient-City-Religion-Institutions-Greece/dp/0801823048
+    • Man’s Search for Meaning: https://www.amazon.com/Mans-Search-Meaning-Viktor-Frankl-ebook/dp/B009U9S6FI
+    • Area 51: An Uncensored History of America’s Top Secret Military Base: https://www.amazon.com/Area-51-Uncensored-Americas-Military-ebook/dp/B004THU68Q
+    • The Lessons of History: https://www.amazon.com/Lessons-History-Will-Durant/dp/143914995X
+    • The Fish That Ate the Whale: The Life and Times of America’s Banana King: https://www.amazon.com/Fish-That-Ate-Whale-Americas/dp/1250033314
+    • The Last Kings of Shanghai: The Rival Jewish Dynasties That Helped Create Modern China: https://www.amazon.com/Last-Kings-Shanghai-Jewish-Dynasties/dp/0735224439
+
+    _Production and marketing by https://penname.co/._
+    _For inquiries about sponsoring the podcast, email podcast@lennyrachitsky.com._
+
+    Lenny may be an investor in the companies discussed.
+transcribed_date: '2026-04-28'
+path: docs/marketing/growth/research/youtube-transcripts/2026-04-28-silicon-valley-etiquette-playbook-low-heart-rate.md
 ---
 
 # How to show up in any room with a low heart rate: Silicon Valley’s missing etiquette playbook
 
 ## Metadata
+
 - **Channel**: [Lenny's Podcast](https://www.youtube.com/@LennysPodcast)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=KtKJ3A6DWTs)
 - **Duration**: 01:26:35
@@ -150,6 +167,7 @@ transcribed_date: "2026-04-28"
 - **Views**: 23,958
 
 ## Timestamps
+
 - 0:00 — Sam’s background
 - 4:18 — The role of etiquette in business success
 - 9:30 — Introductions and entering a room

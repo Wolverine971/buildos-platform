@@ -1,5 +1,14 @@
 <!-- research-library/transcripts/podcast-steph-ango-obsidian.md -->
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Product And Design Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/PRODUCT_AND_DESIGN.md): Taste-driven toolmaking
+- [Psychology, Agency, And Philosophy Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/PSYCHOLOGY_AGENCY_AND_PHILOSOPHY.md): Constraint-driven creative systems; Designing tools that preserve agency; Personal knowledge systems and file-over-app thinking; Taste, aliveness, and soulful AI tools
+- [Technology And Agent Systems Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/TECHNOLOGY_AND_AGENT_SYSTEMS.md): Malleable software and user agency
+- [Writing Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/WRITING.md): Short-form idea distillation
+
 https://www.youtube.com/watch?v=TDP8qzVK5XQ
 
 Transcript of Steph Ango aka Kepano: CEO of Obsidian on Toolmaking, Design, Writing, Constraints, File over app

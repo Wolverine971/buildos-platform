@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/audits/MOBILE_RESPONSIVENESS_AUDIT_2026-04-27.md -->
+
 # Mobile Responsiveness Audit — BuildOS Web
 
 **Date:** 2026-04-27
@@ -24,16 +26,16 @@ But several **Critical** mobile gaps remain — most of them in feature surfaces
 
 ### Top 8 fixes, sequenced
 
-| #   | Fix                                                                                              | Severity | Effort | Status         |
-| --- | ------------------------------------------------------------------------------------------------ | -------- | ------ | -------------- |
-| 1   | Add touch-event handlers to `TimePlayCalendar` drag-to-create                                    | Critical | M      | open           |
-| 2   | Replace `100vh - 64px` with `100dvh` math on auth pages                                          | Critical | XS     | ✅ fixed       |
+| #   | Fix                                                                                               | Severity | Effort | Status         |
+| --- | ------------------------------------------------------------------------------------------------- | -------- | ------ | -------------- |
+| 1   | Add touch-event handlers to `TimePlayCalendar` drag-to-create                                     | Critical | M      | open           |
+| 2   | Replace `100vh - 64px` with `100dvh` math on auth pages                                           | Critical | XS     | ✅ fixed       |
 | 3   | Add `sm:`/`md:` breakpoints to non-responsive grids (CalendarAnalysisResults, AnalyticsDashboard) | Critical | XS     | open           |
-| 4   | Long-press fallback for `DocTreeNode` context menu                                               | Critical | S      | ✅ fixed       |
+| 4   | Long-press fallback for `DocTreeNode` context menu                                                | Critical | S      | ✅ fixed       |
 | 5   | Body-scroll lock + `aria-modal` + focus trap on Navigation mobile menu                            | High     | S      | ✅ fixed       |
-| 6   | Bring Modal close button + Toast dismiss + Voice buttons up to 36–40px                           | High     | S      | ⚠️ voice fixed |
-| 7   | Align `RichMarkdownEditor` and `CommentTextareaWithVoice` voice-button sizes with the spec       | High     | XS     | ✅ fixed       |
-| 8   | Mobile-friendly view switch (or horizontal scroll) for week/month calendar grids                 | High     | M      | open           |
+| 6   | Bring Modal close button + Toast dismiss + Voice buttons up to 36–40px                            | High     | S      | ⚠️ voice fixed |
+| 7   | Align `RichMarkdownEditor` and `CommentTextareaWithVoice` voice-button sizes with the spec        | High     | XS     | ✅ fixed       |
+| 8   | Mobile-friendly view switch (or horizontal scroll) for week/month calendar grids                  | High     | M      | open           |
 
 ---
 
@@ -146,11 +148,11 @@ Below the 36px Inkprint high-density floor and well below the 44px WCAG AA minim
 
 ### H2. Voice button sizes drift from spec in two textarea variants — ✅ FIXED 2026-04-27
 
-| Component                                                                                                | Current                              | Spec (`TEXTAREA_BUTTON_DESIGN_MOBILE.md`) | Status      |
-| -------------------------------------------------------------------------------------------------------- | ------------------------------------ | ----------------------------------------- | ----------- |
-| `apps/web/src/lib/components/ui/TextareaWithVoice.svelte`                                                | `h-9 w-9` mobile, padded             | 36–40px                                   | ✅ correct  |
-| `apps/web/src/lib/components/ui/CommentTextareaWithVoice.svelte:1147`                                    | `h-7 w-7` (28px)                     | 36–40px                                   | ❌ regressed |
-| `apps/web/src/lib/components/ui/RichMarkdownEditor.svelte:1345, 1362, 1550`                              | `w-8 h-8 sm:w-7 sm:h-7` (32→28)      | 36–40px                                   | ❌ regressed |
+| Component                                                                   | Current                         | Spec (`TEXTAREA_BUTTON_DESIGN_MOBILE.md`) | Status       |
+| --------------------------------------------------------------------------- | ------------------------------- | ----------------------------------------- | ------------ |
+| `apps/web/src/lib/components/ui/TextareaWithVoice.svelte`                   | `h-9 w-9` mobile, padded        | 36–40px                                   | ✅ correct   |
+| `apps/web/src/lib/components/ui/CommentTextareaWithVoice.svelte:1147`       | `h-7 w-7` (28px)                | 36–40px                                   | ❌ regressed |
+| `apps/web/src/lib/components/ui/RichMarkdownEditor.svelte:1345, 1362, 1550` | `w-8 h-8 sm:w-7 sm:h-7` (32→28) | 36–40px                                   | ❌ regressed |
 
 Both regressed components are below comfortable thumb-tap size on the very breakpoint where comfort matters most.
 
@@ -262,29 +264,29 @@ Stack of 3+ toasts on iPhone notch device pushes the oldest above the home-indic
 
 ## Low / nitpicks
 
-- **Modal close button hover color is hardcoded** (`hover:border-red-600/50`) instead of the destructive token — `Modal.svelte:546`. Cosmetic but breaks Inkprint discipline.
-- **Modal drag handle is 32×3px** (`Modal.svelte:654-656`) — usable but ergonomically lean. Consider widening the touch wrapper.
-- **Footer link sizing** (`Footer.svelte:88, 104, 107, 109`) — `text-xs` not scaled up to `sm:text-sm` on mobile. 12px is borderline; on real device, links feel cramped.
-- **Padding math in `TextareaWithVoice` is hardcoded** (`pr-[90px]`, `pr-[54px]`) instead of computed — fine today but fragile if a third button is ever added.
-- **Onboarding link hidden under md** (`Navigation.svelte:525`) — onboarding badge dot on hamburger is the only mobile cue.
-- **DocTreeNode chevron is 16×16** with `w-4 h-4` (`DocTreeNode.svelte:235`) — wrapped in a 16×16 button. Acceptable inside tap-target padding, but check on real device.
-- **Some marketing imgs missing `loading="lazy"`** — sample: `apps/web/src/routes/contact/+page.svelte:97-104` (video, no intrinsic dimensions). Note: `apps/web/src/routes/about/+page.svelte:345` _does_ have `loading="lazy"` already.
-- **`text-xs` concentration in dashboard** — many spots use `text-xs` for secondary labels; not broken, just dense on phone.
-- **Toast dismiss button is `w-8 h-8 sm:w-7 sm:h-7`** (`Toast.svelte:223`) — 32px on mobile (acceptable), 28px on desktop (oddly inverted but desktop has cursor precision).
+- **Modal close button hover color is hardcoded** (`hover:border-red-600/50`) instead of the destructive token — `Modal.svelte:546`. Cosmetic but breaks Inkprint discipline. ✅ **FIXED 2026-04-28**
+- **Modal drag handle is 32×3px** (`Modal.svelte:654-656`) — usable but ergonomically lean. Consider widening the touch wrapper. ✅ **FIXED 2026-04-28**
+- **Footer link sizing** (`Footer.svelte:88, 104, 107, 109`) — `text-xs` not scaled up to `sm:text-sm` on mobile. 12px is borderline; on real device, links feel cramped. ✅ **FIXED 2026-04-28**
+- **Padding math in `TextareaWithVoice` is hardcoded** (`pr-[90px]`, `pr-[54px]`) instead of computed — fine today but fragile if a third button is ever added. ⚪ **OBSOLETE 2026-04-28** — buttons no longer overlay the textarea (refactored to a separate flex row); zero `pr-[XXpx]` matches in current source.
+- **Onboarding link hidden under md** (`Navigation.svelte:525`) — onboarding badge dot on hamburger is the only mobile cue. ✅ **FIXED 2026-04-28** — dot upgraded to a percentage chip (`{onboardingProgress}%`).
+- **DocTreeNode chevron is 16×16** with `w-4 h-4` (`DocTreeNode.svelte:235`) — wrapped in a 16×16 button. Acceptable inside tap-target padding, but check on real device. ✅ **FIXED 2026-04-28** — tap zone bumped to 24×24 on `<sm` via negative-margin overflow (icon size unchanged).
+- **Some marketing imgs missing `loading="lazy"`** — sample: `apps/web/src/routes/contact/+page.svelte:97-104` (video, no intrinsic dimensions). Note: `apps/web/src/routes/about/+page.svelte:345` _does_ have `loading="lazy"` already. ✅ **FIXED 2026-04-28** — video now has `width`/`height` and `preload="metadata"` (the correct lazy-equivalent for `<video>`).
+- **`text-xs` concentration in dashboard** — many spots use `text-xs` for secondary labels; not broken, just dense on phone. ✅ **FIXED 2026-04-28 (partial)** — three navigational "View all" links bumped to `text-sm sm:text-xs`. Static metadata intentionally left at `text-xs`.
+- **Toast dismiss button is `w-8 h-8 sm:w-7 sm:h-7`** (`Toast.svelte:223`) — 32px on mobile (acceptable), 28px on desktop (oddly inverted but desktop has cursor precision). ✅ **FIXED 2026-04-28** — bumped to `w-9 h-9 md:w-8 md:h-8` (36 → 32px), aligned with the new toast positioning breakpoint.
 
 ---
 
 ## Cross-cutting code-smell counts (sample, not exhaustive)
 
-| Smell                                                            | Count | Sample citations                                                                                                                                                            |
-| ---------------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `100vh` math without `dvh` fallback                              | 6+    | `auth/{login,register,forgot-password,reset-password}/+page.svelte`, `time-blocks/+page.svelte:231`, `admin/ontology/graph/+page.svelte:73`                                     |
-| Fixed grid columns lacking `sm:` or `md:` variant                | 3+    | `CalendarAnalysisResults.svelte:446`, `AnalyticsDashboard.svelte:680/772/827`                                                                                                |
-| Voice / textarea action buttons drifting from spec               | 3     | `CommentTextareaWithVoice.svelte:1147`, `RichMarkdownEditor.svelte:1345/1362/1550`, plus loading-spinner state in `TextareaWithVoice.svelte` (`h-8 w-8` vs spec'd `h-10 w-10`) |
-| Drag-and-drop without touch support                              | 2     | `TimePlayCalendar.svelte:785/795/797` (slot drag), `DocTreeNode.svelte:187` (context menu)                                                                                    |
-| Click handlers on non-interactive elements                       | ~0    | Nav and footer are clean; deep feature components partially audited                                                                                                          |
-| `hover:` reveals without focus or touch fallback                 | low   | Did not find critical patterns; noted ProjectInsightRail external-link button (auxiliary, not critical)                                                                     |
-| Missing `inputmode`/`autocomplete` on auth forms                 | low   | Auth flow is well-instrumented; isolated forgot-password/reset flows reviewed and clean                                                                                     |
+| Smell                                              | Count | Sample citations                                                                                                                                                               |
+| -------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `100vh` math without `dvh` fallback                | 6+    | `auth/{login,register,forgot-password,reset-password}/+page.svelte`, `time-blocks/+page.svelte:231`, `admin/ontology/graph/+page.svelte:73`                                    |
+| Fixed grid columns lacking `sm:` or `md:` variant  | 3+    | `CalendarAnalysisResults.svelte:446`, `AnalyticsDashboard.svelte:680/772/827`                                                                                                  |
+| Voice / textarea action buttons drifting from spec | 3     | `CommentTextareaWithVoice.svelte:1147`, `RichMarkdownEditor.svelte:1345/1362/1550`, plus loading-spinner state in `TextareaWithVoice.svelte` (`h-8 w-8` vs spec'd `h-10 w-10`) |
+| Drag-and-drop without touch support                | 2     | `TimePlayCalendar.svelte:785/795/797` (slot drag), `DocTreeNode.svelte:187` (context menu)                                                                                     |
+| Click handlers on non-interactive elements         | ~0    | Nav and footer are clean; deep feature components partially audited                                                                                                            |
+| `hover:` reveals without focus or touch fallback   | low   | Did not find critical patterns; noted ProjectInsightRail external-link button (auxiliary, not critical)                                                                        |
+| Missing `inputmode`/`autocomplete` on auth forms   | low   | Auth flow is well-instrumented; isolated forgot-password/reset flows reviewed and clean                                                                                        |
 
 ---
 
@@ -370,16 +372,16 @@ Strong root layout. Two upgrades unlock the rest:
 
 ## Compliance scorecard against existing standards
 
-| Standard                                                | Compliance | Notes                                                                                          |
-| ------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------------- |
-| `MOBILE_RESPONSIVE_BEST_PRACTICES.md` modal patterns    | ✅ mostly  | Bottom-sheet pattern present; missing only the close-button sizing                             |
-| `MOBILE_RESPONSIVE_BEST_PRACTICES.md` form keyboards    | ✅         | Auth flow is exemplary; some other forms unaudited                                             |
-| `INKPRINT_DESIGN_SYSTEM.md` 7.2 type hierarchy          | ⚠️ drift   | `text-[10px]` and `text-[11px]` in MobileCommandCenter, debug panels                            |
-| `INKPRINT_DESIGN_SYSTEM.md` 8.4 surface levels          | ✅         |                                                                                                |
-| `INKPRINT_DESIGN_SYSTEM.md` 9.10 mobile back button     | ⚠️ partial | Onboarding lacks back/skip; otherwise fine                                                     |
-| `MODAL_STANDARDS.md`                                    | ⚠️ partial | Close button 28px below implied 36/44px floor                                                  |
-| `TEXTAREA_BUTTON_DESIGN_MOBILE.md`                      | ⚠️ partial | TextareaWithVoice ✅, RichMarkdownEditor ❌, CommentTextareaWithVoice ❌                          |
-| `TEXTAREA_WITH_VOICE_MOBILE_OPTIMIZATION.md`            | ✅         | Fully compliant in the brain-dump component                                                    |
+| Standard                                             | Compliance | Notes                                                                    |
+| ---------------------------------------------------- | ---------- | ------------------------------------------------------------------------ |
+| `MOBILE_RESPONSIVE_BEST_PRACTICES.md` modal patterns | ✅ mostly  | Bottom-sheet pattern present; missing only the close-button sizing       |
+| `MOBILE_RESPONSIVE_BEST_PRACTICES.md` form keyboards | ✅         | Auth flow is exemplary; some other forms unaudited                       |
+| `INKPRINT_DESIGN_SYSTEM.md` 7.2 type hierarchy       | ⚠️ drift   | `text-[10px]` and `text-[11px]` in MobileCommandCenter, debug panels     |
+| `INKPRINT_DESIGN_SYSTEM.md` 8.4 surface levels       | ✅         |                                                                          |
+| `INKPRINT_DESIGN_SYSTEM.md` 9.10 mobile back button  | ⚠️ partial | Onboarding lacks back/skip; otherwise fine                               |
+| `MODAL_STANDARDS.md`                                 | ⚠️ partial | Close button 28px below implied 36/44px floor                            |
+| `TEXTAREA_BUTTON_DESIGN_MOBILE.md`                   | ⚠️ partial | TextareaWithVoice ✅, RichMarkdownEditor ❌, CommentTextareaWithVoice ❌ |
+| `TEXTAREA_WITH_VOICE_MOBILE_OPTIMIZATION.md`         | ✅         | Fully compliant in the brain-dump component                              |
 
 ---
 
@@ -464,14 +466,14 @@ The 171 warnings are pre-existing `let X = $state(data.X)` patterns in `tasks/[t
 
 Spot-grep verifications:
 
-| Fix | Grep                                                                                            | Result                                              |
-| --- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| C2  | `grep "100dvh" auth/*/+page.svelte time-blocks/+page.svelte`                                    | 5 matches (one per file, all paired with vh)        |
-| C2  | `grep "style=\".*100vh" auth/*/+page.svelte`                                                    | 0 matches (inline styles removed)                   |
-| C4  | `grep "longPress\|onpointerdown" DocTreeNode.svelte`                                            | handler defined and bound                           |
-| C5  | `grep "body\.style\.overflow" Navigation.svelte`                                                | set to `hidden` on open, restored in cleanup        |
-| H3  | `grep "aria-modal\|handleMobileMenuKeydown" Navigation.svelte`                                  | both present, drawer markup updated                 |
-| H2  | `grep "h-10 w-10 xs:h-9" CommentTextareaWithVoice.svelte RichMarkdownEditor.svelte`             | 2 matches (one per file, voice button only)        |
+| Fix | Grep                                                                                | Result                                       |
+| --- | ----------------------------------------------------------------------------------- | -------------------------------------------- |
+| C2  | `grep "100dvh" auth/*/+page.svelte time-blocks/+page.svelte`                        | 5 matches (one per file, all paired with vh) |
+| C2  | `grep "style=\".*100vh" auth/*/+page.svelte`                                        | 0 matches (inline styles removed)            |
+| C4  | `grep "longPress\|onpointerdown" DocTreeNode.svelte`                                | handler defined and bound                    |
+| C5  | `grep "body\.style\.overflow" Navigation.svelte`                                    | set to `hidden` on open, restored in cleanup |
+| H3  | `grep "aria-modal\|handleMobileMenuKeydown" Navigation.svelte`                      | both present, drawer markup updated          |
+| H2  | `grep "h-10 w-10 xs:h-9" CommentTextareaWithVoice.svelte RichMarkdownEditor.svelte` | 2 matches (one per file, voice button only)  |
 
 ### Things still open after this round
 
@@ -521,9 +523,48 @@ pnpm --filter=@buildos/web check
 
 Same pre-existing warning count as the 2026-04-27 PM round — no new diagnostics introduced.
 
-| Fix | Grep                                                                  | Result                                       |
-| --- | --------------------------------------------------------------------- | -------------------------------------------- |
-| H7  | `grep "sm:top-4\|sm:right-4\|sm:items-end" ToastContainer.svelte`     | 0 matches (all flipped to `md:`)             |
-| H7  | `grep "md:top-4\|md:right-4\|md:bottom-auto" ToastContainer.svelte`   | matches present in container class string    |
-| H7  | `grep "max-width: 767px" ToastContainer.svelte`                       | 1 match (exit-animation override)            |
-| H7  | `grep "md:max-w-md\|md:hidden" Toast.svelte`                          | 2 matches (one each)                         |
+| Fix | Grep                                                                | Result                                    |
+| --- | ------------------------------------------------------------------- | ----------------------------------------- |
+| H7  | `grep "sm:top-4\|sm:right-4\|sm:items-end" ToastContainer.svelte`   | 0 matches (all flipped to `md:`)          |
+| H7  | `grep "md:top-4\|md:right-4\|md:bottom-auto" ToastContainer.svelte` | matches present in container class string |
+| H7  | `grep "max-width: 767px" ToastContainer.svelte`                     | 1 match (exit-animation override)         |
+| H7  | `grep "md:max-w-md\|md:hidden" Toast.svelte`                        | 2 matches (one each)                      |
+
+### 7. Low / nitpick sweep — 8 of 9 items resolved ✅
+
+**Files changed (8 total):**
+
+- `apps/web/src/lib/components/ui/Modal.svelte:546` — close-button hover from hardcoded red to destructive token (light + dark unified to `hover:border-destructive/50 hover:text-destructive`).
+- `apps/web/src/lib/components/ui/Modal.svelte:639–648` — drag-handle wrapper now uses `min-height: 36px` + `padding: 0.625rem 0` so the **tap zone** is ≥36px (Inkprint high-density floor) while the **visible bar** stays at the original 32×3px (40px on hover).
+- `apps/web/src/lib/components/layout/Footer.svelte:88, 104` — authenticated footer copyright + nav containers bumped from `text-xs` to `text-sm sm:text-xs` (14px on phone, 12px on tablet+).
+- `apps/web/src/lib/components/layout/Navigation.svelte:639–648` — mobile onboarding cue: replaced 10px ping dot with a `{onboardingProgress}%` accent chip in the same corner. Far more legible at a glance, same footprint, retains `aria-hidden="true"` (drawer entry already has its own labeling).
+- `apps/web/src/lib/components/ontology/doc-tree/DocTreeNode.svelte:287` — chevron tap zone widened to `w-6 h-6 -m-1` on `<sm` (24×24 on phones, back to 16×16 on `sm:`+). Negative margin keeps siblings aligned. Added `touch-manipulation`.
+- `apps/web/src/routes/contact/+page.svelte:97–107` — hero `<video>` now has `width="40" height="40" preload="metadata"`. (`loading="lazy"` doesn't apply to `<video>`; `preload="metadata"` is the correct lazy-equivalent, and the explicit dimensions prevent CLS.)
+- `apps/web/src/lib/components/dashboard/AnalyticsDashboard.svelte:626, 766, 917` — three navigational "View all / All projects / All chats / Recent chats" anchor links bumped to `text-sm sm:text-xs`. Static metadata at `text-xs` left intentionally (audit explicitly says "not broken, just dense").
+- `apps/web/src/lib/components/ui/Toast.svelte:223, 234` — dismiss button is now `w-9 h-9 md:w-8 md:h-8` (36px mobile, 32px desktop), icon scales `w-4 h-4 md:w-3.5 md:h-3.5`. Aligned to the new `md:` breakpoint introduced for the toast positioning fix above. Resolves the inverted-sizing weirdness called out in the audit.
+
+**Item not changed:**
+
+- `TextareaWithVoice.svelte` "padding math" nitpick is **OBSOLETE**. The audit referenced `pr-[90px]` / `pr-[54px]` overlay padding, but the component has been refactored — voice and action buttons are now in a separate flex row below the textarea (`mt-1.5 flex items-center gap-2 xs:hidden` on mobile, `xs:flex` row on desktop). `grep -rn "pr-\[" apps/web/src/lib/components/ui/{TextareaWithVoice,CommentTextareaWithVoice,RichMarkdownEditor}.svelte` returns zero matches. No fix required.
+
+### Verification (combined H7 + Low pass)
+
+```
+pnpm --filter=@buildos/web check
+=> svelte-check found 0 errors and 171 warnings in 41 files
+```
+
+Warning count unchanged from baseline.
+
+| Fix | Grep                                                                                                 | Result                         |
+| --- | ---------------------------------------------------------------------------------------------------- | ------------------------------ |
+| L1  | `grep "hover:border-red-600\|dark:hover:text-red-400" Modal.svelte`                                  | 0 matches (red tokens removed) |
+| L1  | `grep "hover:border-destructive/50" Modal.svelte`                                                    | 1 match                        |
+| L2  | `grep "min-height: 36px" Modal.svelte`                                                               | 1 match (drag-handle-wrapper)  |
+| L3  | `grep "text-sm sm:text-xs font-semibold tracking-tight" Footer.svelte`                               | 2 matches (copyright + nav)    |
+| L4  | `grep -r "pr-\[" TextareaWithVoice.svelte CommentTextareaWithVoice.svelte RichMarkdownEditor.svelte` | 0 matches (obsolete)           |
+| L5  | `grep "onboardingProgress}%" Navigation.svelte`                                                      | match present in chip          |
+| L6  | `grep "doc-tree-chevron w-6 h-6 sm:w-4" DocTreeNode.svelte`                                          | 1 match                        |
+| L7  | `grep 'preload="metadata"' contact/+page.svelte`                                                     | 1 match                        |
+| L8  | `grep -c "text-sm sm:text-xs" AnalyticsDashboard.svelte`                                             | 3 matches                      |
+| L9  | `grep "w-9 h-9 md:w-8 md:h-8\|w-4 h-4 md:w-3.5 md:h-3.5" Toast.svelte`                               | 2 matches                      |

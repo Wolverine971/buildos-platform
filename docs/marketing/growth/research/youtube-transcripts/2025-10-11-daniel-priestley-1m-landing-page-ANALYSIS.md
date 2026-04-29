@@ -13,6 +13,13 @@ path: docs/marketing/growth/research/youtube-transcripts/2025-10-11-daniel-pries
 
 # The $1 Million Landing Page — Analysis
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Marketing And Content Skill Combos](../../../../research/youtube-library/skill-combo-indexes/MARKETING_AND_CONTENT.md): Funnel teardown and offer conversion
+- [Sales And Growth Skill Combos](../../../../research/youtube-library/skill-combo-indexes/SALES_AND_GROWTH.md): Offer-to-call funnel diagnosis
+
 > **Core thesis:** "Everything is downstream from lead generation. If you can generate leads, you can solve all the other problems after that. But if you cannot generate leads, you are dead in the water."
 
 Daniel Priestley (co-founder of ScoreApp) breaks down a 3-part **online assessment / scorecard funnel** that he's used across agencies, software, education, coaching, and consulting businesses. Target conversion: **20–40% of landing-page visitors start the quiz.**

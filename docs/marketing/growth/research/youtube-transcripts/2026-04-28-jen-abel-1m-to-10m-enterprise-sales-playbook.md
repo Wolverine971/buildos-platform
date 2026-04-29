@@ -1,133 +1,150 @@
 ---
-title: "$1M to $10M: The enterprise sales playbook with Jen Abel"
+title: '$1M to $10M: The enterprise sales playbook with Jen Abel'
+source_type: 'youtube_transcript'
+library_category: 'sales-and-growth'
+library_status: 'transcript, analysis'
+transcript_status: 'available'
+analysis_status: 'available'
+processing_status: 'ready_for_skill_draft'
+processed: false
+buildos_use: 'both'
+skill_candidate: true
+skill_priority: 'medium'
+source_analysis: 'docs/marketing/growth/research/youtube-transcripts/2026-04-28-jen-abel-1m-to-10m-enterprise-sales-playbook-ANALYSIS.md'
+skill_draft: ''
+public_article: ''
+indexed_date: '2026-04-28'
+last_reviewed: '2026-04-28'
 video_id: 37fKFWdrMyA
-url: "https://www.youtube.com/watch?v=37fKFWdrMyA"
+url: 'https://www.youtube.com/watch?v=37fKFWdrMyA'
 channel: Lenny's Podcast
-channel_url: "https://www.youtube.com/@LennysPodcast"
+channel_url: 'https://www.youtube.com/@LennysPodcast'
 upload_date: 2025-11-09
-duration: "01:21:35"
+duration: '01:21:35'
 views: 51205
 timestamps:
-  - time: "0:00"
-    label: "Welcome back, Jen!"
-  - time: "4:38"
-    label: "The myth of the mid-market"
-  - time: "8:08"
-    label: "Targeting tier-one logos"
-  - time: "10:50"
-    label: "Vision-casting vs. problem-selling"
-  - time: "15:35"
-    label: "The importance of high ACVs"
-  - time: "20:45"
-    label: "Don’t play the small business game with an enterprise company"
-  - time: "25:09"
-    label: "Design partners: the double-edged sword"
-  - time: "28:11"
-    label: "Finding the right company"
-  - time: "36:55"
-    label: "Enterprise sales: the art of the deal"
-  - time: "43:21"
-    label: "The problem with channel partnerships"
-  - time: "44:41"
-    label: "Quick summary"
-  - time: "50:24"
-    label: "Hiring the right enterprise salespeople"
-  - time: "56:49"
-    label: "Structuring sales compensation"
-  - time: "1:01:01"
-    label: "Building relationships in enterprise sales"
-  - time: "1:02:07"
-    label: "The art of cold outreach"
-  - time: "1:07:31"
-    label: "Outbound tooling and AI"
-  - time: "1:14:08"
-    label: "Lightning round and final thoughts"
+    - time: '0:00'
+      label: 'Welcome back, Jen!'
+    - time: '4:38'
+      label: 'The myth of the mid-market'
+    - time: '8:08'
+      label: 'Targeting tier-one logos'
+    - time: '10:50'
+      label: 'Vision-casting vs. problem-selling'
+    - time: '15:35'
+      label: 'The importance of high ACVs'
+    - time: '20:45'
+      label: 'Don’t play the small business game with an enterprise company'
+    - time: '25:09'
+      label: 'Design partners: the double-edged sword'
+    - time: '28:11'
+      label: 'Finding the right company'
+    - time: '36:55'
+      label: 'Enterprise sales: the art of the deal'
+    - time: '43:21'
+      label: 'The problem with channel partnerships'
+    - time: '44:41'
+      label: 'Quick summary'
+    - time: '50:24'
+      label: 'Hiring the right enterprise salespeople'
+    - time: '56:49'
+      label: 'Structuring sales compensation'
+    - time: '1:01:01'
+      label: 'Building relationships in enterprise sales'
+    - time: '1:02:07'
+      label: 'The art of cold outreach'
+    - time: '1:07:31'
+      label: 'Outbound tooling and AI'
+    - time: '1:14:08'
+      label: 'Lightning round and final thoughts'
 description: |
-  Jen Abel is GM of Enterprise at State Affairs and co-founded Jellyfish, a consultancy that helps founders learn zero-to-one enterprise sales. She’s one of the smartest people I’ve ever met on learning enterprise sales, and in this follow-up to our first chat two years ago (covering the zero to $1 million ARR founder-led sales phase), we focus on the skills founders need to learn to go from $1M to $10M ARR.
-  
-  *We discuss:*
-  1. Why the “mid-market” doesn’t exist
-  2. Why tier-one logos like Stripe and Tesla counterintuitively make the best early customers
-  3. The dangers of pricing your product at $10K-$20K
-  4. Why you need to vision-cast instead of problem-solve to win enterprise deals
-  5. Why services are the fastest way to get your foot in the door with enterprises
-  6. How to find and work with design partners
-  7. When to hire your first salesperson and what profile to look for
-  
-  *Brought to you by:*
-  WorkOS—Modern identity platform for B2B SaaS, free up to 1 million MAUs: https://workos.com/lenny
-  Lovable—Build apps by simply chatting with AI: https://lovable.dev/
-  Coda—The all-in-one collaborative workspace: https://coda.io/lenny
-  
-  *Transcript:* https://www.lennysnewsletter.com/p/the-enterprise-sales-playbook-1m-to-10m-arr
-  
-  *My biggest takeaways (for paid newsletter subscribers):* https://www.lennysnewsletter.com/i/177909982/my-biggest-takeaways-from-this-conversation
-  
-  *Where to find Jen Abel:*
-  • X: https://x.com/jjen_abel
-  • LinkedIn: https://www.linkedin.com/in/earlystagesales
-  • Website: https://www.jjellyfish.com
-  
-  *Where to find Lenny:*
-  • Newsletter: https://www.lennysnewsletter.com
-  • X: https://twitter.com/lennysan
-  • LinkedIn: https://www.linkedin.com/in/lennyrachitsky/
-  
-  *In this episode, we cover:*
-  (00:00) Welcome back, Jen!
-  (04:38) The myth of the mid-market
-  (08:08) Targeting tier-one logos
-  (10:50) Vision-casting vs. problem-selling
-  (15:35) The importance of high ACVs
-  (20:45)  Don’t play the small business game with an enterprise company
-  (25:09) Design partners: the double-edged sword
-  (28:11) Finding the right company
-  (36:55) Enterprise sales: the art of the deal
-  (43:21) The problem with channel partnerships
-  (44:41) Quick summary
-  (50:24) Hiring the right enterprise salespeople
-  (56:49) Structuring sales compensation
-  (01:01:01) Building relationships in enterprise sales
-  (01:02:07) The art of cold outreach
-  (01:07:31) Outbound tooling and AI
-  (01:14:08) Lightning round and final thoughts
-  
-  *Referenced:*
-  • The ultimate guide to founder-led sales | Jen Abel (co-founder of JJELLYFISH): https://www.lennysnewsletter.com/p/master-founder-led-sales-jen-abel
-  • Mario meme: https://www.linkedin.com/pulse/missing-meme-led-me-woman-johann-van-tonder-im6df
-  • Kathy Sierra: https://en.wikipedia.org/wiki/Kathy_Sierra
-  • Cursor: https://cursor.com
-  • The rise of Cursor: The $300M ARR AI tool that engineers can’t stop using | Michael Truell (co-founder and CEO): https://www.lennysnewsletter.com/p/the-rise-of-cursor-michael-truell
-  • Justin Lawson on X: https://x.com/jjustin_lawson
-  • Stripe: https://stripe.com
-  • Building product at Stripe: craft, metrics, and customer obsession | Jeff Weinstein (Product lead): https://www.lennysnewsletter.com/p/building-product-at-stripe-jeff-weinstein
-  • He saved OpenAI, invented the “Like” button, and built Google Maps: Bret Taylor on the future of careers, coding, agents, and more: https://www.lennysnewsletter.com/p/he-saved-openai-bret-taylor
-  • OpenAI’s CPO on how AI changes must-have skills, moats, coding, startup playbooks, more | Kevin Weil (CPO at OpenAI, ex-Instagram, Twitter): https://www.lennysnewsletter.com/p/kevin-weil-open-ai
-  • Anthropic’s CPO on what comes next | Mike Krieger (co-founder of Instagram): https://www.lennysnewsletter.com/p/anthropics-cpo-heres-what-comes-next
-  • Linear: https://linear.app
-  • Linear’s secret to building beloved B2B products | Nan Yu (Head of Product): https://www.lennysnewsletter.com/p/linears-secret-to-building-beloved-b2b-products-nan-yu
-  • Gemini: https://gemini.google.com
-  • Microsoft Copilot: https://copilot.microsoft.com
-  • How Palantir built the ultimate founder factory | Nabeel S. Qureshi (founder, writer, ex-Palantir): https://www.lennysnewsletter.com/p/inside-palantir-nabeel-qureshi
-  • McKinsey & Company: https://www.mckinsey.com
-  • Deloitte: https://www.deloitte.com
-  • Accenture: https://www.accenture.com
-  • Building a world-class sales org | Jason Lemkin (SaaStr): https://www.lennysnewsletter.com/p/building-a-world-class-sales-org
-  • Peter Dedene on X: https://x.com/peterdedene
-  • Hang Huang on X: https://x.com/HH_HangHuang
-  • Hugo Alves on X: https://x.com/Ugo_alves
-  ...References continued at: https://www.lennysnewsletter.com/p/the-enterprise-sales-playbook-1m-to-10m-arr
-  
-  _Production and marketing by https://penname.co/._
-  _For inquiries about sponsoring the podcast, email podcast@lennyrachitsky.com._
-  
-  Lenny may be an investor in the companies discussed.
-transcribed_date: "2026-04-28"
+    Jen Abel is GM of Enterprise at State Affairs and co-founded Jellyfish, a consultancy that helps founders learn zero-to-one enterprise sales. She’s one of the smartest people I’ve ever met on learning enterprise sales, and in this follow-up to our first chat two years ago (covering the zero to $1 million ARR founder-led sales phase), we focus on the skills founders need to learn to go from $1M to $10M ARR.
+
+    *We discuss:*
+    1. Why the “mid-market” doesn’t exist
+    2. Why tier-one logos like Stripe and Tesla counterintuitively make the best early customers
+    3. The dangers of pricing your product at $10K-$20K
+    4. Why you need to vision-cast instead of problem-solve to win enterprise deals
+    5. Why services are the fastest way to get your foot in the door with enterprises
+    6. How to find and work with design partners
+    7. When to hire your first salesperson and what profile to look for
+
+    *Brought to you by:*
+    WorkOS—Modern identity platform for B2B SaaS, free up to 1 million MAUs: https://workos.com/lenny
+    Lovable—Build apps by simply chatting with AI: https://lovable.dev/
+    Coda—The all-in-one collaborative workspace: https://coda.io/lenny
+
+    *Transcript:* https://www.lennysnewsletter.com/p/the-enterprise-sales-playbook-1m-to-10m-arr
+
+    *My biggest takeaways (for paid newsletter subscribers):* https://www.lennysnewsletter.com/i/177909982/my-biggest-takeaways-from-this-conversation
+
+    *Where to find Jen Abel:*
+    • X: https://x.com/jjen_abel
+    • LinkedIn: https://www.linkedin.com/in/earlystagesales
+    • Website: https://www.jjellyfish.com
+
+    *Where to find Lenny:*
+    • Newsletter: https://www.lennysnewsletter.com
+    • X: https://twitter.com/lennysan
+    • LinkedIn: https://www.linkedin.com/in/lennyrachitsky/
+
+    *In this episode, we cover:*
+    (00:00) Welcome back, Jen!
+    (04:38) The myth of the mid-market
+    (08:08) Targeting tier-one logos
+    (10:50) Vision-casting vs. problem-selling
+    (15:35) The importance of high ACVs
+    (20:45)  Don’t play the small business game with an enterprise company
+    (25:09) Design partners: the double-edged sword
+    (28:11) Finding the right company
+    (36:55) Enterprise sales: the art of the deal
+    (43:21) The problem with channel partnerships
+    (44:41) Quick summary
+    (50:24) Hiring the right enterprise salespeople
+    (56:49) Structuring sales compensation
+    (01:01:01) Building relationships in enterprise sales
+    (01:02:07) The art of cold outreach
+    (01:07:31) Outbound tooling and AI
+    (01:14:08) Lightning round and final thoughts
+
+    *Referenced:*
+    • The ultimate guide to founder-led sales | Jen Abel (co-founder of JJELLYFISH): https://www.lennysnewsletter.com/p/master-founder-led-sales-jen-abel
+    • Mario meme: https://www.linkedin.com/pulse/missing-meme-led-me-woman-johann-van-tonder-im6df
+    • Kathy Sierra: https://en.wikipedia.org/wiki/Kathy_Sierra
+    • Cursor: https://cursor.com
+    • The rise of Cursor: The $300M ARR AI tool that engineers can’t stop using | Michael Truell (co-founder and CEO): https://www.lennysnewsletter.com/p/the-rise-of-cursor-michael-truell
+    • Justin Lawson on X: https://x.com/jjustin_lawson
+    • Stripe: https://stripe.com
+    • Building product at Stripe: craft, metrics, and customer obsession | Jeff Weinstein (Product lead): https://www.lennysnewsletter.com/p/building-product-at-stripe-jeff-weinstein
+    • He saved OpenAI, invented the “Like” button, and built Google Maps: Bret Taylor on the future of careers, coding, agents, and more: https://www.lennysnewsletter.com/p/he-saved-openai-bret-taylor
+    • OpenAI’s CPO on how AI changes must-have skills, moats, coding, startup playbooks, more | Kevin Weil (CPO at OpenAI, ex-Instagram, Twitter): https://www.lennysnewsletter.com/p/kevin-weil-open-ai
+    • Anthropic’s CPO on what comes next | Mike Krieger (co-founder of Instagram): https://www.lennysnewsletter.com/p/anthropics-cpo-heres-what-comes-next
+    • Linear: https://linear.app
+    • Linear’s secret to building beloved B2B products | Nan Yu (Head of Product): https://www.lennysnewsletter.com/p/linears-secret-to-building-beloved-b2b-products-nan-yu
+    • Gemini: https://gemini.google.com
+    • Microsoft Copilot: https://copilot.microsoft.com
+    • How Palantir built the ultimate founder factory | Nabeel S. Qureshi (founder, writer, ex-Palantir): https://www.lennysnewsletter.com/p/inside-palantir-nabeel-qureshi
+    • McKinsey & Company: https://www.mckinsey.com
+    • Deloitte: https://www.deloitte.com
+    • Accenture: https://www.accenture.com
+    • Building a world-class sales org | Jason Lemkin (SaaStr): https://www.lennysnewsletter.com/p/building-a-world-class-sales-org
+    • Peter Dedene on X: https://x.com/peterdedene
+    • Hang Huang on X: https://x.com/HH_HangHuang
+    • Hugo Alves on X: https://x.com/Ugo_alves
+    ...References continued at: https://www.lennysnewsletter.com/p/the-enterprise-sales-playbook-1m-to-10m-arr
+
+    _Production and marketing by https://penname.co/._
+    _For inquiries about sponsoring the podcast, email podcast@lennyrachitsky.com._
+
+    Lenny may be an investor in the companies discussed.
+transcribed_date: '2026-04-28'
+path: docs/marketing/growth/research/youtube-transcripts/2026-04-28-jen-abel-1m-to-10m-enterprise-sales-playbook.md
 ---
 
 # $1M to $10M: The enterprise sales playbook with Jen Abel
 
 ## Metadata
+
 - **Channel**: [Lenny's Podcast](https://www.youtube.com/@LennysPodcast)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=37fKFWdrMyA)
 - **Duration**: 01:21:35
@@ -135,6 +152,7 @@ transcribed_date: "2026-04-28"
 - **Views**: 51,205
 
 ## Timestamps
+
 - 0:00 — Welcome back, Jen!
 - 4:38 — The myth of the mid-market
 - 8:08 — Targeting tier-one logos

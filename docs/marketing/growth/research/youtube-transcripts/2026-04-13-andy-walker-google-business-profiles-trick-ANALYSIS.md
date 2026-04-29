@@ -14,6 +14,12 @@ path: docs/marketing/growth/research/youtube-transcripts/2026-04-13-andy-walker-
 
 # 250 Calls From a FREE Google Trick Nobody's Talking About — Analysis
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Sales And Growth Skill Combos](../../../../research/youtube-library/skill-combo-indexes/SALES_AND_GROWTH.md): Local AI services sales machine
+
 ## TL;DR
 
 Andy Walker (CEO of Stryker Digital) breaks down how his agency set up **six Google Business Profiles (GBPs) for one cleaning company**, doubling its revenue from $500K → $1M in 12 months while taking it from ~60 leads/month to ~250 inbound leads/month. The whole "trick" is to **legally** clone your local presence across the city by stacking DBAs + real offices + unique phone/URLs at locations 10–15 miles apart, then flooding each new profile with real reviews, citations, and hyper-local content.

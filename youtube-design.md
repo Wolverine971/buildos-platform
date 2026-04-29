@@ -1,5 +1,11 @@
 <!-- youtube-design.md -->
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Product And Design Skill Combos](docs/research/youtube-library/skill-combo-indexes/PRODUCT_AND_DESIGN.md): UI/UX quality review
+
 https://www.youtube.com/watch?v=EcbgbKtOELY
 
 Every UI/UX Concept Explained in Under 10 Minutes

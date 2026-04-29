@@ -8,6 +8,12 @@ path: docs/marketing/growth/research/youtube-transcripts/2025-06-07-kole-jain-7-
 
 # Analysis: 7 UI/UX Mistakes That SCREAM You're a Beginner
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Product And Design Skill Combos](../../../../research/youtube-library/skill-combo-indexes/PRODUCT_AND_DESIGN.md): Delightful product review; Design-to-code workflow; UI/UX quality review
+
 **Speaker:** Kole Jain
 **Format:** 7-minute Figma walkthrough redesigning a recipe app, mistake-by-mistake
 **Core thesis:** Beginner UIs aren't broken from lack of skill — they're broken from a small set of repeatable, fixable mistakes. Polish comes from subtraction, consistency, and respect for the user's flow, not from adding more visual flair.

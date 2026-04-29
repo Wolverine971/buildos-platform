@@ -152,11 +152,13 @@ description: |
   
   Lenny may be an investor in the companies discussed.
 transcribed_date: "2026-04-27"
+path: docs/marketing/growth/research/youtube-transcripts/2026-04-27-jason-cohen-wp-engine-2-unicorns-advice.md
 ---
 
 # The surprising advice from a founder who built 2 unicorns | Jason Cohen (WP Engine)
 
 ## Metadata
+
 - **Channel**: [Lenny's Podcast](https://www.youtube.com/@LennysPodcast)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=8xLquwfx6p0)
 - **Duration**: 01:46:04
@@ -164,6 +166,7 @@ transcribed_date: "2026-04-27"
 - **Views**: 23,237
 
 ## Timestamps
+
 - 0:00 — Introduction to Jason Cohen
 - 5:19 — Jason’s writing journey
 - 8:25 — Questions to ask when your product stops growing

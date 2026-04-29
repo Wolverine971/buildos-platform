@@ -19,6 +19,12 @@ path: docs/marketing/growth/research/youtube-transcripts/2026-04-25-jerome-creat
 
 # Creator Support: Jerome (Scratch to Scratch) — Analysis
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Marketing And Content Skill Combos](../../../../research/youtube-library/skill-combo-indexes/MARKETING_AND_CONTENT.md): Content strategy beyond blogging; Ethical interest-media distribution; SaaS social distribution system
+
 ## TL;DR
 
 Jerome posted ~1,200 videos in 2 years (long-form + 6 shorts/day) using a data-science "aggregate-everything" approach and grew to 150–200K views per video. Colin & Samir's diagnosis: he's optimizing the **quantitative** levers but ignoring the **qualitative** ones — personal story, brand identity, and a memorable phrase people can spread word-of-mouth. The fastest way from 200K → 400K isn't a better algorithm play; it's becoming a "household name" by leaning into his own journey, not just his expert lessons.

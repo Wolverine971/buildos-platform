@@ -1,5 +1,12 @@
 <!-- research-library/transcripts/podcast-geoffrey-litt-malleable-software.md -->
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Psychology, Agency, And Philosophy Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/PSYCHOLOGY_AGENCY_AND_PHILOSOPHY.md): Designing tools that preserve agency; Personal knowledge systems and file-over-app thinking
+- [Technology And Agent Systems Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/TECHNOLOGY_AND_AGENT_SYSTEMS.md): Malleable software and user agency
+
 Transcript of Geoffrey Litt - Software You Can Shape - Malleable Software, LLMs and Agency, Editing Your Tools
 
 https://www.youtube.com/watch?v=RromJIXfYyI

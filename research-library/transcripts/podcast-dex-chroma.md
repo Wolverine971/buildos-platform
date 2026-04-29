@@ -2,6 +2,12 @@
 
 # Context Engineering Episode 1 - Dex Horthy
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Technology And Agent Systems Skill Combos](../../docs/research/youtube-library/skill-combo-indexes/TECHNOLOGY_AND_AGENT_SYSTEMS.md): Context engineering for agent work; Harness engineering architecture
+
 **Source:** [YouTube](https://www.youtube.com/watch?v=BNhRnx_O95c)
 **Host:** Jeff Huber, CEO of Chroma
 **Guest:** Dex Horthy (@dexhorthy), coined "Context Engineering"

@@ -28,6 +28,12 @@ path: docs/marketing/growth/research/youtube-transcripts/2026-04-24_mitchell-kel
 
 # Building Perfect Lead Lists With Claude Code (Step by Step)
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Sales And Growth Skill Combos](../../../../research/youtube-library/skill-combo-indexes/SALES_AND_GROWTH.md): Contextual outbound operating system
+
 ## Metadata
 
 - **Channel**: Mitchell Keller (Lead Grow)

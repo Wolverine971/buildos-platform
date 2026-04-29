@@ -1,12 +1,12 @@
 ---
-title: "Everyone Who Uses This Playbook Makes $1 Million"
+title: 'Everyone Who Uses This Playbook Makes $1 Million'
 source_type: youtube_transcript
 video_id: WiTIgjYxWbE
-url: "https://www.youtube.com/watch?v=WiTIgjYxWbE"
+url: 'https://www.youtube.com/watch?v=WiTIgjYxWbE'
 channel: Daniel Priestley
-channel_url: "https://www.youtube.com/@DanielPriestley"
+channel_url: 'https://www.youtube.com/@DanielPriestley'
 upload_date: 2025-10-05
-duration: "22:06"
+duration: '22:06'
 views: 265788
 library_category: sales-and-growth
 library_status: transcript
@@ -16,74 +16,83 @@ processing_status: needs_analysis
 processed: false
 skill_candidate: true
 skill_priority: backlog
-skill_draft: ""
-public_article: ""
-indexed_date: "2026-04-28"
-last_reviewed: "2026-04-28"
+skill_draft: ''
+public_article: ''
+indexed_date: '2026-04-28'
+last_reviewed: '2026-04-28'
 tags:
-  - the diary of a ceo
-  - steven bartlett
-  - gary stevenson
-  - daniel priestley
-  - ali abdaal
-  - doac
-  - behind the diary
-  - behind the scenes
-  - how diary of a ceo gets made
-  - alex hormozi
-  - codie sanchez
-  - AI
-  - ai jobs
+    - the diary of a ceo
+    - steven bartlett
+    - gary stevenson
+    - daniel priestley
+    - ali abdaal
+    - doac
+    - behind the diary
+    - behind the scenes
+    - how diary of a ceo gets made
+    - alex hormozi
+    - codie sanchez
+    - AI
+    - ai jobs
 timestamps:
-  - time: "0:00"
-    label: "Intro"
-  - time: "0:46"
-    label: "Product with Proof"
-  - time: "3:16"
-    label: "Intellectual Property"
-  - time: "5:08"
-    label: "Attention"
-  - time: "10:36"
-    label: "Signals of Interest"
-  - time: "10:57"
-    label: "Landing Page"
-  - time: "14:39"
-    label: "Sales Conversions"
-  - time: "17:36"
-    label: "Scale Up"
-  - time: "19:54"
-    label: "Paid Promotions"
+    - time: '0:00'
+      label: 'Intro'
+    - time: '0:46'
+      label: 'Product with Proof'
+    - time: '3:16'
+      label: 'Intellectual Property'
+    - time: '5:08'
+      label: 'Attention'
+    - time: '10:36'
+      label: 'Signals of Interest'
+    - time: '10:57'
+      label: 'Landing Page'
+    - time: '14:39'
+      label: 'Sales Conversions'
+    - time: '17:36'
+      label: 'Scale Up'
+    - time: '19:54'
+      label: 'Paid Promotions'
 description: |
-  People pay me $10,000 to teach them what I know about business and entrepreneurship. I've taught them 1:1 or through my entrepreneur accelerator (Dent).
-  
-  In this video, I'm going to give you that same advice completely FREE. Nothing held back. This is my playbook on how to get rich and we're going to get very technical on the strategies which work right now.
-  
-  0:00 - Intro
-  0:46 - Product with Proof
-  03:16 - Intellectual Property
-  05:08 - Attention
-  10:36 - Signals of Interest
-  10:57 - Landing Page
-  14:39 - Sales Conversions
-  17:36 - Scale Up
-  19:54 - Paid Promotions
-  
-  Links mentioned:
-  How to Get on Top Podcasts → https://youtu.be/FW2-QA73Vuw
-  
-  Follow Me:
-  ▪️ Instagram → https://www.instagram.com/danielpriestley
-  ▪️ LinkedIn → https://www.linkedin.com/in/danielpriestley
-  ▪️ Take the KPI Assessment (free) → https://scorecard.dent.global/
-  ▪️ Free Workshop with Daniel Priestley → https://bit.ly/KPIWYT
-  ▪️ ScoreApp YouTube → @ScoreApp
-  ▪️ KPI YouTube → @KeyPersonOfInfluence​
-transcribed_date: "2026-04-28"
+    People pay me $10,000 to teach them what I know about business and entrepreneurship. I've taught them 1:1 or through my entrepreneur accelerator (Dent).
+
+    In this video, I'm going to give you that same advice completely FREE. Nothing held back. This is my playbook on how to get rich and we're going to get very technical on the strategies which work right now.
+
+    0:00 - Intro
+    0:46 - Product with Proof
+    03:16 - Intellectual Property
+    05:08 - Attention
+    10:36 - Signals of Interest
+    10:57 - Landing Page
+    14:39 - Sales Conversions
+    17:36 - Scale Up
+    19:54 - Paid Promotions
+
+    Links mentioned:
+    How to Get on Top Podcasts → https://youtu.be/FW2-QA73Vuw
+
+    Follow Me:
+    ▪️ Instagram → https://www.instagram.com/danielpriestley
+    ▪️ LinkedIn → https://www.linkedin.com/in/danielpriestley
+    ▪️ Take the KPI Assessment (free) → https://scorecard.dent.global/
+    ▪️ Free Workshop with Daniel Priestley → https://bit.ly/KPIWYT
+    ▪️ ScoreApp YouTube → @ScoreApp
+    ▪️ KPI YouTube → @KeyPersonOfInfluence​
+transcribed_date: '2026-04-28'
+path: docs/research/youtube-library/transcripts/2026-04-28_daniel-priestley_how-to-get-noticed.md
 ---
 
 # Everyone Who Uses This Playbook Makes $1 Million
 
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Marketing And Content Skill Combos](../skill-combo-indexes/MARKETING_AND_CONTENT.md): Funnel teardown and offer conversion
+- [Sales And Growth Skill Combos](../skill-combo-indexes/SALES_AND_GROWTH.md): Offer-to-call funnel diagnosis
+
 ## Metadata
+
 - **Channel**: [Daniel Priestley](https://www.youtube.com/@DanielPriestley)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=WiTIgjYxWbE)
 - **Duration**: 22:06
@@ -91,6 +100,7 @@ transcribed_date: "2026-04-28"
 - **Views**: 265,788
 
 ## Timestamps
+
 - 0:00 — Intro
 - 0:46 — Product with Proof
 - 3:16 — Intellectual Property

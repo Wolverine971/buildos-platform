@@ -8,14 +8,16 @@ The goal is to keep every useful source findable without pretending every source
 
 ## Staging Areas
 
-| Stage | Location | Purpose |
-| ----- | -------- | ------- |
-| Raw intake | `docs/research/youtube-library/inbox/` | Temporary holding area for pasted transcripts, downloaded files, URL notes, or messy source bundles that have not been normalized yet. |
-| Canonical transcripts | `docs/research/youtube-library/transcripts/` | Clean transcript files with standard frontmatter and source metadata. |
-| Canonical analyses | `docs/research/youtube-library/analyses/` | Clean analysis files that extract reusable operating lessons from one or more sources. |
-| Source index | `docs/research/youtube-library/INDEX.md` | Source of truth for every discovered video, deduped by YouTube video ID. |
-| Skill queue | `docs/research/youtube-library/SKILL_CANDIDATES.md` | Tracks which sources should become skills, need synthesis, or were intentionally archived. |
-| Skill drafts | `docs/research/youtube-library/skill-drafts/<skill-slug>/SKILL.md` | Portable skill definitions created only after a source has enough operating value. |
+| Stage                       | Location                                                           | Purpose                                                                                                                                |
+| --------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Raw intake                  | `docs/research/youtube-library/inbox/`                             | Temporary holding area for pasted transcripts, downloaded files, URL notes, or messy source bundles that have not been normalized yet. |
+| Canonical transcripts       | `docs/research/youtube-library/transcripts/`                       | Clean transcript files with standard frontmatter and source metadata.                                                                  |
+| Canonical analyses          | `docs/research/youtube-library/analyses/`                          | Clean analysis files that extract reusable operating lessons from one or more sources.                                                 |
+| Source index                | `docs/research/youtube-library/INDEX.md`                           | Source of truth for every discovered video, deduped by YouTube video ID.                                                               |
+| Internal BuildOS references | `docs/research/youtube-library/BUILDOS_INTERNAL_SOURCES.md`        | Tracks sources that should inform BuildOS product, growth, sales, fundraising, founder ops, or agent architecture work.                |
+| Skill combo indexes         | `docs/research/youtube-library/skill-combo-indexes/`               | Tracks multi-video combinations that can become stronger reusable skills than standalone sources.                                      |
+| Skill queue                 | `docs/research/youtube-library/SKILL_CANDIDATES.md`                | Tracks which sources should become skills, need synthesis, or were intentionally archived.                                             |
+| Skill drafts                | `docs/research/youtube-library/skill-drafts/<skill-slug>/SKILL.md` | Portable skill definitions created only after a source has enough operating value.                                                     |
 
 Do not put raw or unanalyzed source material directly in `skill-drafts/`.
 
@@ -35,16 +37,16 @@ For every new YouTube source:
 
 Use these statuses to keep staged sources honest:
 
-| Situation | `library_status` | `processing_status` | `processed` | Next action |
-| --------- | ---------------- | ------------------- | ----------- | ----------- |
-| URL only, no transcript | `link-only` | `needs_transcript` | `false` | Download transcript or ask for source file. |
-| Raw source dropped in `inbox/` | `intake` | `needs_classification` | `false` | Identify video ID, category, source type, and whether it needs transcript cleanup. |
-| Transcript exists, no analysis | `transcript` | `needs_analysis` | `false` | Extract operating lessons and decide skill potential. |
-| Transcript plus analysis exists, but skill direction is unclear | `transcript, analysis` | `needs_synthesis` | `false` | Combine with related sources or choose the strongest skill angle. |
-| Source is useful but not a skill | `transcript` or `analysis` | `archive_reference_only` | `true` | Keep it indexed as a reference. |
-| Source is not research material | `product-asset, not-skill-source` | `not_skill_source` | `true` | Exclude from skill queue. |
-| Source produced a portable skill | `transcript, analysis, skill-draft` | `draft_skill_created` | `true` | Link the draft skill and consider a public article. |
-| Source produced a public article | `skill-article` | `public_article_created` | `true` | Link the public article. |
+| Situation                                                       | `library_status`                    | `processing_status`      | `processed` | Next action                                                                        |
+| --------------------------------------------------------------- | ----------------------------------- | ------------------------ | ----------- | ---------------------------------------------------------------------------------- |
+| URL only, no transcript                                         | `link-only`                         | `needs_transcript`       | `false`     | Download transcript or ask for source file.                                        |
+| Raw source dropped in `inbox/`                                  | `intake`                            | `needs_classification`   | `false`     | Identify video ID, category, source type, and whether it needs transcript cleanup. |
+| Transcript exists, no analysis                                  | `transcript`                        | `needs_analysis`         | `false`     | Extract operating lessons and decide skill potential.                              |
+| Transcript plus analysis exists, but skill direction is unclear | `transcript, analysis`              | `needs_synthesis`        | `false`     | Combine with related sources or choose the strongest skill angle.                  |
+| Source is useful but not a skill                                | `transcript` or `analysis`          | `archive_reference_only` | `true`      | Keep it indexed as a reference.                                                    |
+| Source is not research material                                 | `product-asset, not-skill-source`   | `not_skill_source`       | `true`      | Exclude from skill queue.                                                          |
+| Source produced a portable skill                                | `transcript, analysis, skill-draft` | `draft_skill_created`    | `true`      | Link the draft skill and consider a public article.                                |
+| Source produced a public article                                | `skill-article`                     | `public_article_created` | `true`      | Link the public article.                                                           |
 
 `processed: true` means the source produced a durable output or an explicit archive decision. It does not mean the video was merely downloaded.
 
@@ -54,6 +56,7 @@ Classify every source on intake:
 
 - Category: sales and growth, product strategy, marketing and content, product and design, technology and agent systems, writing, psychology/agency/philosophy, product asset, or another clearly named category.
 - Source state: URL only, transcript, analysis, mixed notes, blog reference, product asset.
+- BuildOS use: `internal`, `public_skill`, `both`, `archive_reference`, or `not_applicable`.
 - Skill potential: `true`, `false`, or `needs_synthesis`.
 - Priority: `high`, `medium`, `backlog`, or `not_applicable`.
 - Likely skill type: core, provider, stack, soft.
@@ -86,5 +89,6 @@ After every intake pass, update:
 - `INDEX.md` with the video row and local source paths.
 - Source frontmatter with `processing_status`, `processed`, `skill_candidate`, and downstream output links.
 - `SKILL_CANDIDATES.md` if the source is ready, needs synthesis, or has been archived.
+- The matching `skill-combo-indexes/<CATEGORY>.md` file if the source should strengthen a multi-source workflow.
 
 If a public article is created later, update `public_article` in the source frontmatter and change `processing_status` to `public_article_created`.

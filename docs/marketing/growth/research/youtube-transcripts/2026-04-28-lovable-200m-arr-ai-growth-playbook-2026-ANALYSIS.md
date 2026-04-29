@@ -1,16 +1,45 @@
 ---
-title: "ANALYSIS — The new AI growth playbook for 2026 | How Lovable hit $200M ARR in one year"
-source_video: 2026-04-28-lovable-200m-arr-ai-growth-playbook-2026.md
-source_url: "https://www.youtube.com/watch?v=6qAB6aUMIeA"
+title: 'ANALYSIS — The new AI growth playbook for 2026 | How Lovable hit $200M ARR in one year'
+source_type: 'youtube_analysis'
+video_id: '6qAB6aUMIeA'
+url: 'https://www.youtube.com/watch?v=6qAB6aUMIeA'
+source_video: 'https://www.youtube.com/watch?v=6qAB6aUMIeA'
+source_transcript: 'docs/marketing/growth/research/youtube-transcripts/2026-04-28-lovable-200m-arr-ai-growth-playbook-2026.md'
+channel: "Lenny's Podcast"
+channel_url: 'https://www.youtube.com/@LennysPodcast'
+upload_date: '2025-12-18'
+duration: '01:31:55'
+views: '59577'
+library_category: 'sales-and-growth'
+library_status: 'transcript, analysis'
+transcript_status: 'available'
+analysis_status: 'available'
+processing_status: 'needs_synthesis'
+processed: false
+buildos_use: 'both'
+skill_candidate: true
+skill_priority: 'high'
+skill_draft: ''
+public_article: ''
+indexed_date: '2026-04-28'
+last_reviewed: '2026-04-28'
+source_url: 'https://www.youtube.com/watch?v=6qAB6aUMIeA'
 speakers:
-  - Elena Verna (Head of Growth, Lovable; ex-Dropbox, Miro, SurveyMonkey, Netlify, Amplitude)
-  - Lenny Rachitsky (Host, Lenny's Podcast)
+    - Elena Verna (Head of Growth, Lovable; ex-Dropbox, Miro, SurveyMonkey, Netlify, Amplitude)
+    - Lenny Rachitsky (Host, Lenny's Podcast)
 date_recorded: 2025-12-18
 date_analyzed: 2026-04-28
-duration: "01:31:55"
+path: docs/marketing/growth/research/youtube-transcripts/2026-04-28-lovable-200m-arr-ai-growth-playbook-2026-ANALYSIS.md
 ---
 
 # Analysis — Lovable's AI Growth Playbook (Elena Verna on Lenny's Podcast)
+
+## Skill Combo Links
+
+This source contributes to these multi-source skill combo indexes:
+
+- [Product Strategy Skill Combos](../../../../research/youtube-library/skill-combo-indexes/PRODUCT_STRATEGY.md): Stalled-growth diagnosis and recovery; Trial, activation, and resurrection design
+- [Sales And Growth Skill Combos](../../../../research/youtube-library/skill-combo-indexes/SALES_AND_GROWTH.md): AI-native product growth operations
 
 ## TL;DR
 
@@ -183,24 +212,30 @@ The core mantra: **Minimum Lovable Product (MLP), not MVP.** Wow moment, not aha
 ## Section 4 — Frameworks and language to steal
 
 ### Race-car growth model
+
 Constant shipping = oil/lubrication. Tier-1 launches = turbo boosts. Big launches create step-function PMF changes; daily shipping keeps the machine running.
 
 ### John Cutler's software-evolution stages
+
 1. **Capabilities** ("what's possible?") — vibe coding is here right now
 2. **Value** ("how do I get value out of this?")
 3. **Scale** ("which areas of my life/work does this enter?")
 
 ### Elena's growth-spend reframe
+
 Old equation: AI inference cost → margin pressure → gate behind paywall.
 New equation: AI inference cost → marketing spend → reach more pioneers → word of mouth.
 
 ### "Average intelligence" framing
+
 "AI is average intelligence. It gets the platform up. I add human creativity on top to get to the next level." — anti-hype, replicable framing for talking about AI internally.
 
 ### MLP > MVP
+
 Minimum Lovable Product replaces Minimum Viable Product. Cost-of-build is so low that lovability is now the floor, not viability.
 
 ### Painted door → Lovable prototype
+
 Old painted-door tests = static landing pages. New: vibe-coded interactive prototype in a day, real user feedback by end of day.
 
 ---

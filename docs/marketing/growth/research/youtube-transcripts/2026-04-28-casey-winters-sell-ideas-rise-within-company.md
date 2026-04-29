@@ -1,98 +1,115 @@
 ---
-title: "How to sell your ideas and rise within your company | Casey Winters, Eventbrite"
+title: 'How to sell your ideas and rise within your company | Casey Winters, Eventbrite'
+source_type: 'youtube_transcript'
+library_category: 'founder-ops-and-career'
+library_status: 'transcript, analysis'
+transcript_status: 'available'
+analysis_status: 'available'
+processing_status: 'ready_for_skill_draft'
+processed: false
+buildos_use: 'both'
+skill_candidate: true
+skill_priority: 'medium'
+source_analysis: 'docs/marketing/growth/research/youtube-transcripts/2026-04-28-casey-winters-sell-ideas-rise-within-company-ANALYSIS.md'
+skill_draft: ''
+public_article: ''
+indexed_date: '2026-04-28'
+last_reviewed: '2026-04-28'
 video_id: 6XMUDEYf2OE
-url: "https://www.youtube.com/watch?v=6XMUDEYf2OE"
+url: 'https://www.youtube.com/watch?v=6XMUDEYf2OE'
 channel: Lenny's Podcast
-channel_url: "https://www.youtube.com/@LennysPodcast"
+channel_url: 'https://www.youtube.com/@LennysPodcast'
 upload_date: 2022-07-21
-duration: "55:08"
+duration: '55:08'
 views: 15367
 timestamps:
-  - time: "0:00"
-    label: "What to expect in this episode with Casey Winters"
-  - time: "3:23"
-    label: "An overview of Casey’s career"
-  - time: "6:21"
-    label: "A look into the most-fulfilling and challenging roles Casey has energized"
-  - time: "6:53"
-    label: "Communicating upward"
-  - time: "11:21"
-    label: "How to derisk meetings"
-  - time: "13:56"
-    label: "Are you properly preparing for your meetings?"
-  - time: "19:12"
-    label: "Striving for perceived simplicity"
-  - time: "24:25"
-    label: "Justifying non-sexy product improvements"
-  - time: "27:50"
-    label: "Protecting what you’ve built vs continuously scaling"
-  - time: "31:06"
-    label: "The downfall of functional ops roles"
-  - time: "35:24"
-    label: "The CPO role: what it is and how to get there"
-  - time: "40:47"
-    label: "The spectrum of product people"
-  - time: "45:14"
-    label: "How to level up your skills"
-  - time: "47:04"
-    label: "New growth trends, tactics, and strategies"
-  - time: "50:35"
-    label: "Casey’s two stages of growth: kindle strategies and fire strategies"
-  - time: "51:54"
-    label: "Under appreciated growth strategies"
-  - time: "54:05"
-    label: "Where to find Casey"
+    - time: '0:00'
+      label: 'What to expect in this episode with Casey Winters'
+    - time: '3:23'
+      label: 'An overview of Casey’s career'
+    - time: '6:21'
+      label: 'A look into the most-fulfilling and challenging roles Casey has energized'
+    - time: '6:53'
+      label: 'Communicating upward'
+    - time: '11:21'
+      label: 'How to derisk meetings'
+    - time: '13:56'
+      label: 'Are you properly preparing for your meetings?'
+    - time: '19:12'
+      label: 'Striving for perceived simplicity'
+    - time: '24:25'
+      label: 'Justifying non-sexy product improvements'
+    - time: '27:50'
+      label: 'Protecting what you’ve built vs continuously scaling'
+    - time: '31:06'
+      label: 'The downfall of functional ops roles'
+    - time: '35:24'
+      label: 'The CPO role: what it is and how to get there'
+    - time: '40:47'
+      label: 'The spectrum of product people'
+    - time: '45:14'
+      label: 'How to level up your skills'
+    - time: '47:04'
+      label: 'New growth trends, tactics, and strategies'
+    - time: '50:35'
+      label: 'Casey’s two stages of growth: kindle strategies and fire strategies'
+    - time: '51:54'
+      label: 'Under appreciated growth strategies'
+    - time: '54:05'
+      label: 'Where to find Casey'
 description: |
-  The people who rise fastest in product know how to sell their ideas to customers, and also to their coworkers. Casey Winters, the Chief Product Officer at Eventbrite (previously at Grubhub, Pinterest, and advisor to dozens of companies) shares what it takes to be successful as you rise in the ranks within product. In this episode we’ll talk about how to land presentations, how to win over executives with strategic communication, the skill sets that are most in demand in product, and new growth trends. Join us.
-  
-  Find the full transcript here: https://www.podpage.com/lennys-podcast/how-to-sell-your-ideas-and-rise-within-your-company-casey-winters-eventbrite/#transcript
-  
-  —
-   Thank you to our wonderful sponsors for making this episode possible: 
-  
-  • Coda: http://coda.io/lenny 
-  • Mixpanel: https://mixpanel.com/startups
-  • Whimsical: https://whimsical.com/lenny 
-  
-  — 
-  Where to find Casey Winters: 
-  
-  • Twitter: https://twitter.com/onecaseman
-  • LinkedIn: https://www.linkedin.com/in/caseywinters/
-  
-  — 
-  Where to find Lenny: 
-  
-  • Newsletter: https://www.lennysnewsletter.com
-  • Twitter: https://twitter.com/lennysan 
-  • LinkedIn: https://www.linkedin.com/in/lennyrachitsky/ 
-  
-  — 
-  In this episode, we cover: 
-  
-  [00:00] What to expect in this episode with Casey Winters 
-  [03:23] An overview of Casey’s career  
-  [06:21] A look into the most-fulfilling and challenging roles Casey has energized 
-  [06:53] Communicating upward
-  [11:21] How to derisk meetings
-  [13:56] Are you properly preparing for your meetings?
-  [19:12] Striving for perceived simplicity 
-  [24:25] Justifying non-sexy product improvements 
-  [27:50] Protecting what you’ve built vs continuously scaling 
-  [31:06] The downfall of functional ops roles
-  [35:24] The CPO role: what it is and how to get there
-  [40:47] The spectrum of product people
-  [45:14] How to level up your skills
-  [47:04] New growth trends, tactics, and strategies 
-  [50:35] Casey’s two stages of growth: kindle strategies and fire strategies
-  [51:54] Under appreciated growth strategies 
-  [54:05] Where to find Casey
-transcribed_date: "2026-04-28"
+    The people who rise fastest in product know how to sell their ideas to customers, and also to their coworkers. Casey Winters, the Chief Product Officer at Eventbrite (previously at Grubhub, Pinterest, and advisor to dozens of companies) shares what it takes to be successful as you rise in the ranks within product. In this episode we’ll talk about how to land presentations, how to win over executives with strategic communication, the skill sets that are most in demand in product, and new growth trends. Join us.
+
+    Find the full transcript here: https://www.podpage.com/lennys-podcast/how-to-sell-your-ideas-and-rise-within-your-company-casey-winters-eventbrite/#transcript
+
+    —
+     Thank you to our wonderful sponsors for making this episode possible: 
+
+    • Coda: http://coda.io/lenny 
+    • Mixpanel: https://mixpanel.com/startups
+    • Whimsical: https://whimsical.com/lenny 
+
+    — 
+    Where to find Casey Winters: 
+
+    • Twitter: https://twitter.com/onecaseman
+    • LinkedIn: https://www.linkedin.com/in/caseywinters/
+
+    — 
+    Where to find Lenny: 
+
+    • Newsletter: https://www.lennysnewsletter.com
+    • Twitter: https://twitter.com/lennysan 
+    • LinkedIn: https://www.linkedin.com/in/lennyrachitsky/ 
+
+    — 
+    In this episode, we cover: 
+
+    [00:00] What to expect in this episode with Casey Winters 
+    [03:23] An overview of Casey’s career  
+    [06:21] A look into the most-fulfilling and challenging roles Casey has energized 
+    [06:53] Communicating upward
+    [11:21] How to derisk meetings
+    [13:56] Are you properly preparing for your meetings?
+    [19:12] Striving for perceived simplicity 
+    [24:25] Justifying non-sexy product improvements 
+    [27:50] Protecting what you’ve built vs continuously scaling 
+    [31:06] The downfall of functional ops roles
+    [35:24] The CPO role: what it is and how to get there
+    [40:47] The spectrum of product people
+    [45:14] How to level up your skills
+    [47:04] New growth trends, tactics, and strategies 
+    [50:35] Casey’s two stages of growth: kindle strategies and fire strategies
+    [51:54] Under appreciated growth strategies 
+    [54:05] Where to find Casey
+transcribed_date: '2026-04-28'
+path: docs/marketing/growth/research/youtube-transcripts/2026-04-28-casey-winters-sell-ideas-rise-within-company.md
 ---
 
 # How to sell your ideas and rise within your company | Casey Winters, Eventbrite
 
 ## Metadata
+
 - **Channel**: [Lenny's Podcast](https://www.youtube.com/@LennysPodcast)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=6XMUDEYf2OE)
 - **Duration**: 55:08
@@ -100,6 +117,7 @@ transcribed_date: "2026-04-28"
 - **Views**: 15,367
 
 ## Timestamps
+
 - 0:00 — What to expect in this episode with Casey Winters
 - 3:23 — An overview of Casey’s career
 - 6:21 — A look into the most-fulfilling and challenging roles Casey has energized
