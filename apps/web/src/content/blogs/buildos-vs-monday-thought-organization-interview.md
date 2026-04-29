@@ -237,3 +237,25 @@ The blog draft already exists with embedded research questions (marked with `<!-
 **Call to action**: What should readers do after reading? Try BuildOS? Ask questions? Take quiz?
 
 **Link strategy**: Link to relevant BuildOS docs, Monday.com website (fair linking), related comparison blogs.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 0/10 (not a blog)
+RECOMMENDATION: KILL (move to docs/marketing/internal-scaffolding/ if anyone still wants the question list, otherwise delete)
+PURPOSE: Internal blog-interview scaffolding. A 46-question prompt list intended to extract content for a Monday.com comparison post. Never meant to ship.
+READER VALUE: Zero — it is questions, not answers. A user landing here gets a meta-document about a future blog.
+VOICE FIT: N/A — no voice exists yet. The framing ("ADHD-first positioning," "use cases over features") is also the OLD ADHD-led positioning, not the 2026 anti-AI / thinking-environment line.
+PLACEMENT: Wrong on every axis. Filename ends in "-interview.md", lives in /blogs/ root, has no frontmatter, leaks `<!-- Q# -->` markup, and the implied output blog `buildos-vs-monday-thought-organization.md` does not even exist in the same folder.
+
+ISSUES:
+
+- File is publicly routable as a blog if the SvelteKit content loader doesn't filter on extension/frontmatter — confirm the loader excludes files starting with `_` or lacking frontmatter.
+- No `published` flag, no `draft` flag, no `path:` line — opposite of the conventions used in real blogs.
+- Strategy is stale: leans on "ADHD-first" and assumes the old ADHD wedge.
+  GAPS:
+- The actual Monday.com comparison blog this scaffolding was meant to feed has never been written/published. So either commit to writing it, or kill the scaffolding.
+  DUPLICATES/OVERLAP: Same shape as buildos-vs-obsidian-knowledge-management-interview.md (both are interview scaffolds). The Obsidian one at least has a finished partner blog. This one is orphaned scaffolding.
+  NOTES: CRITICAL FINDING CONFIRMED — `-interview.md` files are internal scaffolding lists of questions, NOT blogs. Should never have been committed to /content/blogs/. Move to docs/marketing/ or delete.
+  -->

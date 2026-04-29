@@ -397,3 +397,40 @@ Your context compounds every day you use it. Every day you wait is context you d
 **Finally abandon the graveyard. Start building context that compounds.**
 
 [**Get started free →**](/auth/register)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 4.5/10
+RECOMMENDATION: REWRITE (the in-file TODO already calls for this)
+TYPE: competitor-comparison
+PURPOSE: Argue Notion's flexibility is paralyzing for ADHD users; position BuildOS as zero-friction alternative.
+READER VALUE: Mixed. The core argument (flexibility taxes executive function) is real and resonant. But the post is the most marketing-pornographic piece in the folder — bold/italic stacks, "kryptonite", "revolution", "first movers", "the conversation is shifting". It reads like 2022 ADHD-Twitter content, not the literary founder voice on display in the Obsidian post.
+HONESTY: Multiple problems.
+- "_It's like having an executive assistant who lives in my brain_" — BuildOS user who struggles with organization. Anonymous unattributable quote.
+- "_Other tools require me to be at my best. BuildOS works when I'm at my worst._" - Creative director. Unsourced.
+- "_I forgot what it felt like to just... create._" - Startup founder. Unsourced.
+- "_My Notion took 3 months to set up. BuildOS took 3 minutes._" - UX designer. Unsourced.
+- "_I've captured more ideas this week than the past year combined._" - Content creator. Unsourced.
+- "_It's the first tool that doesn't make me feel broken._" - Developer who struggled with organization. Unsourced.
+- "Every ADHD creative we've surveyed tells the same story" — there is no documented survey.
+- "Our early users report capturing dramatically more ideas than with traditional tools" — no metric, no source.
+- "Research shows ADHD minds have a 5-second window to capture thoughts" — no citation; the claim is dubious as stated.
+This is the most clearly fabricated-feeling document in the folder. Six unattributed quotes from anonymous personas presented as testimonials = the dishonesty problem the audit was designed to surface.
+VOICE FIT: Bad. Lead-with-AI ("AI handles everything else"), bro-tone ("Your move", "The conversation is shifting"), productivity-porn cadence. Direct conflict with anti-AI positioning and founder-direct voice. The current 2026 strategy specifically demotes ADHD from headline-level positioning (per the in-file TODO).
+ISSUES:
+- Six fabricated-as-real testimonials.
+- Unsourced statistics ("5-second window", "Hours that should go to creating").
+- "We didn't build BuildOS to compete with Notion. We built it because people struggling with organization were drowning in complexity" — savior-marketing voice.
+- "This is what Notion should have been" — punching down at competitor; conflicts with the "steel-man competitors" pattern in the Obsidian/Monday/ChatGPT posts.
+- Stale Notion AI claims (TODO acknowledges).
+- Title "Which is Better for ADHD Minds?" narrows audience away from current creator-first positioning.
+- The "Notion AI is more capable than it used to be" patch reads like a defensive fix, not integrated argument.
+GAPS:
+- No real ADHD user. Six anonymous quotes that may all be the same fabricated voice.
+- No mention of how BuildOS actually serves ADHD users mechanically beyond brain dump (e.g., daily brief, calendar boundaries).
+- No acknowledgment that ADHD is a clinical diagnosis and casual claims about it can be irresponsible.
+DUPLICATES/OVERLAP: GOALS→PLANS→TASKS→DOCUMENTS diagram (also in chatgpt + monday posts). Project-Lens-zoom feature description (also in /philosophy/anti-ai-assistant-execution-engine.md). The "Notion graveyard" / "abandoned templates" trope appears in productivity-tips folder peers. ADHD-positioning conflicts with the broader thinking-environment-creator-strategy.md.
+NOTES: This post should either be killed or rewritten from scratch in the Obsidian-post voice. As-is, it's the worst dishonesty risk in the folder — the unattributed testimonials are the kind of thing a competent journalist could expose. Also, ADHD as a marketing wedge is being deprecated per current strategy docs. Strong candidate for KILL if a Notion comparison can be done in the buildos-vs-obsidian voice instead.
+-->

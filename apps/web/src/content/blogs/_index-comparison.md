@@ -217,3 +217,19 @@ path: apps/web/src/content/blogs/_index-comparison.md
 ---
 
 _This index serves as the strategic foundation for BuildOS comparison content, ensuring each piece serves both SEO and community building while maintaining authentic, honest positioning against competitors._
+
+---
+
+<!--
+AUDIT 2026-04-29
+TYPE: internal-strategy-doc-misplaced
+RECOMMENDATION: MOVE_TO_DOCS_MARKETING (specifically docs/marketing/social-media/ or docs/marketing/strategy/blog-content-plans/)
+PURPOSE: Internal content-planning doc — a list of comparison-blog ideas, target audiences, key messages, and competitor-monitoring guidance. Not a blog.
+ISSUES:
+- STALE vs current 2026 anti-AI / thinking-environment positioning. Repeats the OLD ADHD-first wedge ("Notion vs ADHD Minds," "ADHD-first positioning," "Which competitor poses the biggest threat to BuildOS's ADHD-first positioning?") — that lens has been superseded by the thinking-environment-creator-strategy.
+- Key messages are hype-flavored ("AI advantages without falling into AI hype"), but the 2026 doctrine is to NOT lead with AI at all.
+- Lists "BuildOS vs AI Agent Hype" as a planned topic — that already shipped as anti-ai-assistant-execution-engine.md, so the inventory is out of date.
+- Lives in /content/blogs/ where the SvelteKit content loader may try to render it as a blog (file does not start with `_`-only-skipped pattern unless explicitly filtered). Verify exclusion.
+- Has frontmatter (`title`, `category: 'Comparison'`) so it could leak into RSS, sitemaps, or category pages.
+NOTES: This is genuinely useful planning material for whoever runs the comparison-blog content pipeline. It just doesn't belong in a content directory served to readers. Move to docs/marketing/strategy/blog-content-plans/_index-comparison.md and rewrite the priorities against the 2026 anti-AI doctrine before using it for new posts.
+-->

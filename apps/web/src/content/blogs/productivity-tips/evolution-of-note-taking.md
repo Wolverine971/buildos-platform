@@ -256,3 +256,26 @@ BuildOS is free for 14 days. No credit card required. Brain dump something that'
 Notes become documents. Documents connect to goals. Everything compounds over time.
 
 [Start your free trial](/auth/register)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 7/10
+RECOMMENDATION: LIGHT_EDIT
+PURPOSE: Walk readers from GTD/Zettelkasten/bullet journal through Notion/Obsidian/Roam to "thinking environment" as the next step. Lands BuildOS as the action-oriented evolution.
+READER VALUE: Yes — solid history-of-notes lit review, honest steel-mans of competitors, clear thesis ("collection to action"). Reader leaves with both context and a concrete pitch.
+VOICE FIT: Decent. The "thinking environment" framing aligns with current positioning. The opening "GTD, Notion, Obsidian. Maybe even a bullet journal phase." has good founder voice. The internal TODO comment block at the top of the body (after frontmatter) is sloppy.
+ISSUES:
+- Has an unresolved <!-- BLOG TODO --> block (lines 29–50) sitting in the published body. It says pricing was already updated to $20 — verify and remove the comment block.
+
+- The comparison table at the bottom feels generic productivity-listicle (the strategy doc explicitly warns against productivity-porn). The "If You..." rows ("Hate organizing", "Use AI daily") are weak.
+- "Project Lens: Navigate by Zoom Level" section is the third place this same pitch appears in the folder. Tighten or link out.
+- Three-trends section ("Voice AI is exploding...") is the closest thing to "in today's fast-paced world" filler in the post. Consider cutting or making concrete.
+- "We use BuildOS to build BuildOS" is great voice — keep, but expand into one example.
+  GAPS:
+- No example brain dump → output. The Obsidian competitor post has this; this one tells, doesn't show.
+- Doesn't acknowledge that BuildOS is also "another note app" from the user's perspective. The Obsidian comparison post handles this honestly; this one waves it off.
+  DUPLICATES/OVERLAP: Heavy. Project Lens pitch overlaps with context-engineering-101.md and task-management-best-practices.md. Obsidian section overlaps with /buildos-vs-obsidian-knowledge-management.md (which is more literary and steel-manned). The hierarchical "Goals → Plans → Tasks → Documents" diagram appears in at least four blogs.
+  NOTES: Remove the BLOG TODO comment block from the body. Consider folding the Notion/Obsidian/Roam steel-mans into individual comparison blogs (Obsidian one already exists) and keeping this as the higher-level "history of capture" piece.
+  -->

@@ -199,3 +199,25 @@ That's the whole mechanic. The structure isn't there because you built it. It's 
 ---
 
 _Your vision deserves better infrastructure than a pile of tabs. [Start building →](/auth/register)_
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 6/10
+RECOMMENDATION: LIGHT_EDIT and MOVE_TO_philosophy/
+PURPOSE: Pitch BuildOS as infrastructure for ambitious builders whose work exceeds working memory. Reframes the problem from "you need to organize" to "your vision needs continuity."
+READER VALUE: Moderate. The "Curse of the Visionary" section and the 3 AM breakthrough opener land. The middle ("This Is What BuildOS Is For") gets too declarative — long lists of "you deserve" without mechanism.
+VOICE FIT: Mostly aligned with 2026 positioning ("thinking environment for people making complex things" is literally in the body — strong). But voice slips into manifesto-grandiose mode in places ("conducting an orchestra of intentions," "infrastructure worthy of what you're trying to make"). The anti-AI exemplar is more grounded.
+PLACEMENT: Frontmatter says `category: 'Philosophy'` — should live in /blogs/philosophy/, not /blogs/ root. Move it.
+ISSUES:
+- Two endings — the first "BuildOS is a thinking environment for people making complex things." closer is followed by a duplicate "Who this actually serves / The core loop" coda that feels stitched on. Consolidate or cut the second tail.
+- Repetitive structural pattern ("Stop X / Start Y" appears 6 times in a row near the end — too much).
+- No external citations or research grounding. The anti-AI exemplar uses HBR + NBER — this one could too (working-memory limits, context-switching cost research, attention residue).
+- Word "ambition" appears 5+ times; risks becoming hollow.
+- No concrete vignette like the Tuesday-morning one in the Obsidian comparison.
+GAPS:
+- Could cite Sophie Leroy on attention residue, or Cal Newport on context switching, to ground the "rebuilding mental model" claim in research.
+DUPLICATES/OVERLAP: Heavy thematic overlap with anti-ai-assistant-execution-engine.md (context preservation, "thinking environment"). The two posts work as a pair — anti-AI is the philosophy, this is the audience-targeting version. Cross-link them.
+NOTES: This is the closest thing to a "for founders" landing-page essay in the catalog. Move to /philosophy/, trim the second coda, add one piece of research, and it's a 9.
+-->

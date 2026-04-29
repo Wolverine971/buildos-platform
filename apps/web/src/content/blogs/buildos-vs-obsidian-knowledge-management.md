@@ -154,3 +154,26 @@ If what you see feels like your work, pre-assembled — you'll know. [Try BuildO
 ---
 
 _I build BuildOS. I also keep an Obsidian vault. This article is me thinking out loud about when each one earns its place — and it started, like most of my thinking, as a brain dump. [Tell me what you're building](mailto:dj@build-os.com) if you want me to think about it next to you._
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 9/10
+RECOMMENDATION: LIGHT_EDIT (flip `draft: true` to `draft: false` and publish; consider MOVE_TO_comparison/ folder)
+PURPOSE: BuildOS vs Obsidian comparison through the lens of "the tool asks something of you" — Obsidian asks for librarianship, BuildOS asks you to talk. Steel-mans Obsidian, lands the difference on a Tuesday morning.
+READER VALUE: High. Concrete Tuesday-morning vignette, real "Day 1 / Day 30 / Day 90" mechanic for "project memory that compounds," honest hybrid recommendation, founder voice ("I keep an Obsidian vault"). The "voice in, structure out" section is a sharp differentiator.
+VOICE FIT: Excellent. Literary, founder-direct, anti-AI in approach (the word "AI" barely appears; the mechanic is talked about as "the system"). Matches the anti-ai-assistant-execution-engine.md voice exemplar.
+PLACEMENT: WRONG. This is a Comparison-category blog sitting at /blogs/ root. Should live in a /blogs/comparison/ folder alongside other versus posts (notion-recurring-tasks-complexity.md is in the same boat). Currently no comparison folder exists — create one or move both into case-studies/.
+ISSUES:
+- `draft: true` despite being publish-ready — likely just forgotten. Flip it.
+- Frontmatter uses `publishDate` while many others use `date` + `lastmod`. Standardize across blogs.
+- No `lastmod` field, so lastmod date won't update on edits.
+- `pic:` field missing (anti-ai-assistant-execution-engine has one).
+- "There is no neutral tool. Every tool asks something of you." is a great line — could be lifted into the description/excerpt.
+GAPS:
+- No callout to other comparison posts (Notion, Monday). Could cross-link.
+- No real user case (only the writer/Maya vignette is hypothetical) — a single sentence from a real BuildOS-and-Obsidian user would push this to 10/10.
+DUPLICATES/OVERLAP: Replaces the scaffolding in buildos-vs-obsidian-knowledge-management-interview.md. The scaffolding can be deleted now.
+NOTES: This is one of the strongest blogs in the catalog and should be the template for future comparison content. Voice-and-structure pair (this + notion-recurring-tasks-complexity) is the right model.
+-->

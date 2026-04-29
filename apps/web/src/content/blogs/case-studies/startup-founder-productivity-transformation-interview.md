@@ -232,3 +232,26 @@ path: apps/web/src/content/blogs/case-studies/startup-founder-productivity-trans
 **Credibility**: Founder audience is skeptical. Need real metrics, real outcomes, real founder voice.
 
 **Differentiation**: Why BuildOS for founders vs. Notion/Asana/Linear? The daily brief across projects + brain dump for founder thinking is unique value.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 2/10 (as a blog post — but it isn't one)
+RECOMMENDATION: UNPUBLISH_AND_FINISH (already unpublished; either kill or move out of /content/blogs)
+TYPE: other (internal interview scaffolding, not a blog)
+PURPOSE: Internal planning doc for a never-written startup-founder case study.
+READER VALUE: None for public readers. Possibly useful as a brief if DJ ever interviews a real founder using BuildOS.
+HONESTY: The doc invents specific outcomes ("Raised Series A", "Shipped 3 major features", "Hired 5 key team members", "10x user growth") in the outline before any interview. These are fabricated targets posed as discovered findings. Doc explicitly asks "Real founder or composite?" — never answered.
+VOICE FIT: N/A. Planned tone "Fast-paced, high-stakes, empathetic to founder overwhelm" trends toward indie-hacker-Twitter voice rather than the founder-literary voice in the Obsidian post.
+ISSUES:
+- Wrong location.
+- Fabricated outcomes built into the outline.
+- Anchors an empty stub.
+- The "5 competing priorities" framing is generic startup-blog cliche.
+GAPS:
+- No real founder interview.
+- DJ Wayne IS a real founder using BuildOS — the most honest version of this would be a first-person founder-uses-own-tool piece, not a fictional third-party founder.
+DUPLICATES/OVERLAP: Pairs with startup-founder-productivity-transformation.md. Audience overlaps with Indie Founder content in the strategy doc, but isn't tied to it.
+NOTES: The interesting move here is to flip the format. Instead of "Sarah, founder of SaaS startup, raised her Series A using BuildOS", write "How I run BuildOS while building BuildOS" — first person, real, no testimonial games. The bones of this brief could be repurposed for that. Otherwise: kill.
+-->

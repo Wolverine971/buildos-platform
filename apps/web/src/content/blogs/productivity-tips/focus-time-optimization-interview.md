@@ -377,3 +377,22 @@ Examples for different situations:
 - Phases help structure multi-day focus projects
 
 **Success metric**: If readers finish this blog and immediately schedule one protected focus block this week, it's working.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 2/10
+RECOMMENDATION: KILL
+PURPOSE: Internal interview/research scaffolding for an unwritten Focus Time Optimization blog. 50 unanswered questions.
+READER VALUE: Zero. Not reader content. Internal planning doc.
+VOICE FIT: N/A — scaffolding. Notable: heavily ADHD-focused, which the marketing strategy is actively reconciling away from ("ADHD-heavy, being reconciled with thinking-environment positioning"). Whoever drafts the actual post needs to weigh whether ADHD remains a primary axis or becomes a sub-section.
+ISSUES:
+- frontmatter `published: false` good. But still in the published-content folder.
+- 50 questions is overkill for a 2,000-word blog. Half are redundant.
+- Generic "deep work / focus is a competitive advantage" framing — Cal Newport residue.
+GAPS:
+- The actual post.
+DUPLICATES/OVERLAP: Pairs with focus-time-optimization.md stub. Heavy topical overlap with calendar-integration-workflow-interview.md (focus blocks, energy mapping, calendar-based protection — all repeated).
+NOTES: Confirms scaffolding pattern. Same disposition as the other interview docs — kill, or move out of /src/content/blogs/.
+-->

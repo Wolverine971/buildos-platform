@@ -354,3 +354,22 @@ Stop: spending hours on “productivity theater” - perfect tagging, elaborate 
 32. **How can teams start adopting these principles today?**
 
 Teams can start by adopting “brain dump rituals.” Instead of waiting for polished reports, encourage everyone to capture raw thoughts in one shared system. Then, layer AI on top to clean, cluster, and surface action items. The shift is from meeting-first alignment to knowledge-first alignment. Teams that practice this today will be light years ahead when AI systems mature.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 1/10
+RECOMMENDATION: KILL
+PURPOSE: Internal interview/scaffolding doc — list of questions plus DJ's pasted raw answers, used as source material for the published future-of-personal-knowledge-management.md sibling.
+READER VALUE: Zero for a public reader. This is unedited Q&A scaffolding masquerading as a blog. Confirms the interview-pair pattern: title says "Blog Guide", excerpt says "Internal planning document for blog post creation."
+VOICE FIT: N/A — not a real blog post.
+ISSUES:
+- Frontmatter explicitly says published:false, priority:0.1, tags:['planning','outline','internal'] — clearly internal, but it sits in the published-content folder.
+- 357 lines of interview questions, raw author answers, and writing notes shipped in the content directory.
+- Risk: if any sitemap or build step bypasses the published flag, this leaks publicly.
+GAPS:
+- N/A.
+DUPLICATES/OVERLAP: Source scaffolding for future-of-personal-knowledge-management.md.
+NOTES: KILL. Move to /docs/marketing/drafts/ or delete entirely. Do not let interview scaffolding live in src/content/blogs.
+-->

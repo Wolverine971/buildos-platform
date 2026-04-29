@@ -390,3 +390,27 @@ path: apps/web/src/content/blogs/advanced-guides/power-user-automation-technique
 **Linked resources**: Heavy linking to other guides, documentation, community resources.
 
 **Actionable checklist**: Readers should finish with clear next steps to improve their usage.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 2/10
+RECOMMENDATION: KILL
+PURPOSE: Interview-question scaffolding for an unwritten "Power User Automation Techniques" blog. Targets "experienced BuildOS users, productivity enthusiasts, automation lovers, people who want to 'master' their tools."
+READER VALUE: Zero — it's question scaffolding.
+VOICE FIT: ACTIVELY BAD. The framing is exactly the productivity-porn voice the brand guide rejects: "insider secrets being revealed", "Make power users feel elite", "you're using 20% of BuildOS's capabilities", "pull back the curtain on expert usage", "Power User Toolkit". This is LinkedIn-bro energy in long form.
+ACCURACY: Mixed/aspirational. The outline assumes "API-Based Automations", "Webhook-based notifications", "custom scripts", "Zapier/Make integrations", "Browser Extensions", "Keyboard shortcuts" reference, "automation builder guide" — most of these surfaces don't exist. No public API, no webhooks, no published shortcut reference, no extensions.
+ISSUES:
+- "20% / 80%" framing is a recycled productivity trope and is empirically untrue for a small product.
+- 57+ questions covering everything from team coordination to AI prompt engineering to productivity metrics — wildly over-scoped.
+- Promises measurable productivity data ("Do you have data on power user productivity improvements?") that doesn't exist.
+- Imagines a "power user community" / forums / Discord that aren't shipped.
+- Zapier/Make integration assumed without product reality.
+- Tone notes literally direct: "Make power users feel elite" — opposite of brand voice.
+- "Tier 1/2/3" structure is consultant-deck thinking, not founder-essay.
+GAPS:
+- The real "advanced usage" story is much smaller and much more honest: morning brief habit, voice brain dump on walks, calendar two-way sync, copying project context into ChatGPT for a specific task. That's one short essay, not a 3,500-word toolkit.
+DUPLICATES/OVERLAP: api-integration-workflows-interview.md (Zapier/automation overlap), advanced-task-dependency-management-interview.md (phase-management overlap), custom-context-field-mastery-interview.md (context-engineering overlap). This file is essentially a duplicate framing umbrella over the other three.
+NOTES: Kill outright. The "power user" frame is incompatible with BuildOS's anti-AI / thinking-environment positioning, and the assumed feature surface doesn't exist.
+-->

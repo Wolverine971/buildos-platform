@@ -30,6 +30,7 @@ Do not use this skill when the user only needs a single article draft with no st
 
 ## Strategy Workflow
 
+0. **Pick the content game first.** Five games run on social media simultaneously: Mainstream Fame (#1), Category Fame (#2), Intuitive Products (#3), Explanatory Products (#4), Authority Building (#5). Games #1 and #2 monetize via the media layer (you are the product); games #3, #4, #5 monetize off-platform via the offering layer. Pure virality is correct for #1 and #2; for #3, #4, #5 it actively poisons the next several pieces. Tag every channel — and ideally every piece — with its game before the rest of this workflow runs. For game-specific publishing tactics, defer to `algorithm-aware-publishing` (Pillar 0).
 1. **Name the audience identity.** Who is this for, and what do they believe about themselves?
 2. **Name the desired emotion.** What should the audience feel after consuming it: relief, urgency, capability, trust, ambition, recognition, anger, hope?
 3. **Name the action.** What should they do next: call, subscribe, try, buy, share, save, reply, take a quiz, or change behavior?
@@ -83,4 +84,4 @@ Return:
 
 ## Source Attribution
 
-Distilled from Caleb Ulku's [Blogging is Dead, Do This Instead](https://www.youtube.com/watch?v=EIFXxiunKoE), Creator Support's [He Posted 1,200 Videos in 2 Years and Missed the Whole Point](https://www.youtube.com/watch?v=EO5aIpt1t3Y), Your Average Tech Bro's [Ultimate Social Media Marketing Guide for SaaS](https://www.youtube.com/watch?v=fBTs-RID8Bg), and Devin Nash's [Exposing the New Manufactured Viral Content Economy](https://www.youtube.com/watch?v=-5lqJF5BTvo).
+Distilled from Caleb Ulku's [Blogging is Dead, Do This Instead](https://www.youtube.com/watch?v=EIFXxiunKoE), Creator Support's [He Posted 1,200 Videos in 2 Years and Missed the Whole Point](https://www.youtube.com/watch?v=EO5aIpt1t3Y), Your Average Tech Bro's [Ultimate Social Media Marketing Guide for SaaS](https://www.youtube.com/watch?v=fBTs-RID8Bg), Devin Nash's [Exposing the New Manufactured Viral Content Economy](https://www.youtube.com/watch?v=-5lqJF5BTvo), and Oren John's [The Art of Yapping](https://www.youtube.com/watch?v=CS0A4hJfcy4) (talk-to-camera scripting and short-form video craft).

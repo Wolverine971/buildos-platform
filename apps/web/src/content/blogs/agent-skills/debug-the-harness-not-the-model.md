@@ -261,3 +261,24 @@ Without this skill, agent teams tend to fail in the same handful of ways.
 - The "ten great evals over hundreds" guidance appears at 55:00 ("Why building evals is underappreciated").
 - The 95%-isn't-an-automation rule is at 1:09:18 ("Why 95% automation isn't good enough").
 - The system-prompt audit ritual is at 1:02 in the same segment.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 8/10
+RECOMMENDATION: LIGHT_EDIT (flip `published: false` to true if intent is to ship, OR clearly mark draft and finish; consider audience fit)
+PURPOSE: Distill an agent-engineering skill (model introspection + new-model audit) from a Cat Wu / Lenny's Podcast appearance into a portable SKILL.md that BuildOS users can drop into .agents/skills/.
+READER VALUE: High for the narrow technical audience of LLM product builders. The mapping table (model says X → fix goes here), the new-model audit ritual, and the BuildOS brain-dump example are all genuinely useful.
+VOICE FIT: Strong founder-engineering voice. Unclear whether this audience (LLM agent builders) is the BuildOS target reader (founders, creators, polymaths "making complex things"). It might be — the founder-assistant-stack framing fits — but it reads as a fairly different reader than the rest of the catalog.
+PLACEMENT: /blogs/agent-skills/ is the right folder IF agent-skills is a real content pillar. Right now there are only 2 files there, no `_index-agent-skills.md` strategy doc, and the folder isn't mentioned in the marketing strategy. The folder needs a thesis or it should be merged into /philosophy/ or /technical/.
+ISSUES:
+- `published: false` — needs a decision. The companion file (google-calendar) is published.
+- Frontmatter has rich custom fields (`skillId`, `skillType`, `skillCategory`, `providers`, `compatibleAgents`, `stackWith`, `installHint`, etc.) that no other blog uses. If these power a real "agent skills marketplace" surface, document it. If they don't, they're noise.
+- The skill is high quality but the post format is hybrid: half blog, half SKILL.md spec. Decide which it is — readers will skim, builders will copy.
+- No cross-link to anti-ai-assistant-execution-engine.md (which is the philosophical parent) or to the Google Calendar agent-skill (its sibling).
+GAPS:
+- No "what is BuildOS doing in this space" framing for a non-engineer reader. A founder landing here needs a one-paragraph "why does a productivity tool ship agent skills?"
+DUPLICATES/OVERLAP: Conceptual overlap with anti-AI manifesto (context engineering vs agent engineering). Should reference it explicitly.
+NOTES: The agent-skills folder needs an editorial thesis: are these published guides for outside engineers, or BuildOS internal docs that happen to live in /blogs/? Pick one. If the goal is SEO + thought-leadership for "agent skills" as a category, you need 5-10 of these and a hub page; with only 2 files, it reads like a half-built section.
+-->

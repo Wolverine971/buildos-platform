@@ -100,7 +100,11 @@
       "WebFetch(domain:stackoverflow.blog)",
       "WebFetch(domain:every.to)",
       "Bash(mkdir -p /Users/djwayne/buildos-platform/docs/marketing/anti-feed)",
-      "Bash(mkdir -p /Users/djwayne/buildos-platform/.claude/skills/draft-anti-feed-blog)"
+      "Bash(mkdir -p /Users/djwayne/buildos-platform/.claude/skills/draft-anti-feed-blog)",
+      "Bash(mkdir -p /tmp/yt-trans)",
+      "Read(//tmp/**)",
+      "Bash(rm -f *)",
+      "Bash(yt-dlp --skip-download --write-auto-sub --sub-format vtt --sub-lang en --output \"%\\(id\\)s\" \"https://www.youtube.com/watch?v=xHsXfmHaBUo\")"
     ],
     "deny": [],
     "ask": []

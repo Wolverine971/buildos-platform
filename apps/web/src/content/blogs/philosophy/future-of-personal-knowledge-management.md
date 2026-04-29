@@ -221,3 +221,26 @@ The question isn't whether this future is coming. It's whether you're ready to t
 ---
 
 _DJ Wayne is the founder of BuildOS, a thinking environment that turns messy thinking into structured work. He believes the best productivity systems are the ones you actually use._
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 6/10
+RECOMMENDATION: LIGHT_EDIT
+PURPOSE: Manifesto-style PKM critique. Argues 80% of notes are never reread, that strategic forgetting beats infinite storage, and pitches BuildOS as action-oriented PKM. For PKM-curious readers (Notion/Obsidian/Roam refugees).
+READER VALUE: Decent. The "strategic forgetting" angle is genuinely contrarian and quotable. The 80% statistic is sourced as "studies suggest" with no citation — weakens the strongest claim.
+VOICE FIT: Mostly fits. Personal anecdotes (text-yourself, screenshot-yourself) feel real. But the post still leans on AI-positive framing in places ("AI-powered shift", "AI changes this equation") that reads slightly hype-y for the 2026 anti-AI marketing posture.
+ISSUES:
+- "Studies suggest 80% of notes are never looked at after the first week" — repeated three times, no source link. This is the entire hook; needs a citation or a softer hedge.
+- Heavy ADHD/neurodiversity callouts conflict with the current 2026 thinking-environment-creator-strategy pivot (which is moving away from ADHD-first positioning per CLAUDE.md notes).
+- "Cognitive layers" section is speculative 5/10-year prediction with no grounding — dates the post quickly.
+- Generic productivity-blog cadence in the "Start Doing / Stop Doing / Choose Tools With" section.
+- Lastmod 2025-10-09 — 6 months stale; predates the interest-media / anti-feed cluster, so it's positioned in the older 2025 frame.
+GAPS:
+- No reference to the interest-media or thinking-environment vocabulary that took over the blog in April 2026. This post should know about its newer siblings.
+- Doesn't cite the actual research it leans on. The "Mem and Vectal" name-checks are stale (Mem is essentially dead; Vectal is niche).
+- Concrete BuildOS tie-in is thin — the brain dump is mentioned but never demonstrated with a real example like in your-morning-without-the-algorithm.
+DUPLICATES/OVERLAP: Overlaps thematically with what-a-thinking-environment-actually-is.md (PKM lineage), buildos-vs-obsidian-knowledge-management.md (manual-vs-emergent organization), and information-architecture-principles.md (also drafted around the PKM theme).
+NOTES: Worth keeping as a top-of-funnel PKM post. Light edit: source the 80% stat (or hedge), trim the ADHD-heavy framing, add cross-links to the 2026 thinking-environment cluster, and update lastmod.
+-->

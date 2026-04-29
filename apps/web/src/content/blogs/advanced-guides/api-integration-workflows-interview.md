@@ -295,3 +295,25 @@ path: apps/web/src/content/blogs/advanced-guides/api-integration-workflows-inter
 **Support**: Clearly indicate where to get help (docs, community, support).
 
 **Key differentiator**: Show how BuildOS API enables workflows that aren't possible in the UI alone.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 1/10
+RECOMMENDATION: KILL
+PURPOSE: Internal scaffolding for a planned "API Integration Workflows" blog targeting developers, technical founders, automation enthusiasts.
+READER VALUE: None as a published artifact, and the entire premise is broken.
+VOICE FIT: N/A scaffolding, but the framing ("BuildOS isn't a walled garden. Use our API...") would be a falsehood if shipped.
+ACCURACY: SERIOUS PROBLEM. BuildOS does NOT expose a public/developer API today. Verified: apps/web/src/routes/api/* are session-authenticated app endpoints (locals.supabase, RLS-bound). /api/public/ contains marketing-page endpoints (authors, pages, projects display) — not a developer surface. There is no API key system, no OAuth client registration, no rate-limit infrastructure for third-party callers, no SDK, no docs, no Zapier/Make integration. The outline assumes all of these.
+ISSUES:
+- Outline is built on a non-existent product surface ("BuildOS API philosophy", "rate limits", "OAuth", "client libraries", "webhook patterns", "API marketplace").
+- Strategically off-brand: "automation enthusiasts" / "BuildOS isn't a walled garden" pulls toward dev-tool / Zapier-adjacent category, opposite of "thinking environment" positioning.
+- Anti-AI strategy collision: outline pitches "automate your unique workflows" — BuildOS's stated thesis is the opposite (AI that helps you see, not auto-execute).
+- Even if a partner API ships later, this outline (50 questions covering everything from GraphQL to bidirectional sync to integration marketplaces) is wildly out of scope for solo-founder reality.
+- Frontmatter title "Blog Guide: API Integration Workflows" leaks internal naming.
+GAPS:
+- A real "integrations" story exists today: Google Calendar two-way sync, brain-dump-as-export-to-LLM (the context-compiler pattern from the anti-AI exemplar), email/SMS notification surfaces. None are referenced.
+DUPLICATES/OVERLAP: api-integration-workflows.md (its empty twin); partial overlap with power-user-automation-techniques-interview.md (Zapier section).
+NOTES: This isn't an editing job — it's a category mistake. Recommend KILL outright. If integrations need a blog, it should be a single honest piece on "BuildOS as a context compiler for the AI tools you already use," not an API guide.
+-->

@@ -153,4 +153,4 @@ The path:
 
 - **"After 1000+ Interviews, I Only Ask This One Question"** (n0FbbVfBw4o) — the interview question that surfaces switching triggers.
 - **"How to Make Customers Switch to Your Product"** (Av-G_d5sPWA) — the four customer forces that flesh out a switching trigger.
-- **"Why Talking to Users is Bad for Startups"** (iWHNt1_aIec) — interview _paying customers_, not users, when extracting triggers.
+- **"Why Talking to Users is Bad for Startups"** (iWHNt1*aIec) — interview \_paying customers*, not users, when extracting triggers.

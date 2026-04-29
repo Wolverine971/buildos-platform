@@ -331,3 +331,23 @@ Should we include specific examples for:
 **Success metrics**: If readers finish this blog and immediately schedule their top 3 tasks on their calendar, it's working.
 
 **Practical focus**: This should be the most tactical, step-by-step blog in the philosophy series. Heavy on "do this" rather than "think about this."
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 2/10
+RECOMMENDATION: KILL
+PURPOSE: Internal interview/research scaffolding for an unwritten Calendar Integration Workflow blog. 45 unanswered questions for the author to fill in.
+READER VALUE: Zero. This is not reader-facing content. It is a planning doc sitting in a published-content folder.
+VOICE FIT: N/A — it's scaffolding, not voice. But the planning language ("AI-assisted scheduling", "intelligent task scheduling") trends toward exactly the AI-hype framing the anti-AI strategy avoids. If this ever became a blog, it would need a full reframe away from "AI does the scheduling for you" toward "thinking environment + calendar = your work meets time."
+ISSUES:
+- frontmatter `published: false` and `tags: [planning, outline, internal]` confirm it's internal — but it lives in src/content/blogs alongside published posts. Confusing surface area.
+- Title literally starts with "Blog Guide:" — guarantees it's a draft.
+- Heavy reliance on AI buzzwords ("intelligent", "AI-assisted", "AI proposes") in the planning frame.
+- 45 questions overlap heavily with focus-time and phase-based interview docs.
+GAPS:
+- The actual blog. None of the answers exist.
+DUPLICATES/OVERLAP: Pairs with calendar-integration-workflow.md (the empty stub). Topical overlap with focus-time-optimization-interview.md and phase-based-project-execution-interview.md (calendar/scheduling questions repeated).
+NOTES: Confirms the interview-pair scaffolding pattern. These should not live in /src/content/blogs/. Move to /docs/marketing/drafts/ or delete.
+-->

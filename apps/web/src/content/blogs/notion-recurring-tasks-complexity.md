@@ -349,3 +349,25 @@ That's what we're building at BuildOS.
 Come see the difference.
 
 [**Start your free trial →**](/auth/register)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 5/10 (and the existing BLOG TODO at the top of the file already flags it)
+RECOMMENDATION: REWRITE — the file's own internal TODO (2026-03-30) says it overstates Notion's recurring-task limitations, which Notion's database automations now handle. The premise of the post has eroded.
+PURPOSE: Show that creating a recurring task in Notion historically required 5 properties + nested formulas + manual updates, while BuildOS does it in one sentence. Use Thomas Frank's tutorial as proof.
+READER VALUE: The simplicity argument still lands, but the post repeatedly implies Notion "cannot" automate this. Notion can, just clumsily. Readers who arrive here in 2026 and Google fact-check the claim will bounce.
+VOICE FIT: Mixed. Voice is sharper and more "marketer" than the anti-AI exemplar — heavy bolding, "existential dread: 0" punchlines, three "What BuildOS Users Say" testimonials that read fabricated ("Former Notion power user," "Overwhelmed entrepreneur," "Product manager who switched"). Those quotes need to be either real or cut.
+PLACEMENT: Should live in a /blogs/comparison/ folder, not at root. Same problem as the Obsidian comparison.
+ISSUES:
+- Internal TODO from 2026-03-30 marked "Priority: Highest" still unaddressed 30 days later.
+- Three "user" testimonials at the end appear invented. Either real attribution or kill them — fabricated testimonials are a serious credibility failure for an anti-AI/relief brand.
+- Repeated framing "Notion Way" / "BuildOS Way" reads like a 2023 comparison blog, not the literary 2026 voice.
+- "AI does:" feature list explicitly says "AI" and "intelligent" — directly violates the anti-AI-marketing rule (lead with relief, not AI).
+- The post is also longer than it needs to be; the 5-property argument lands by the second header.
+GAPS:
+- Missing the broader frame: "recurring tasks should not feel like system design" applies to dozens of tools, not just Notion. Could become a stronger evergreen post.
+DUPLICATES/OVERLAP: Thematic overlap with vision-deserves-better-operating-system.md ("stop shrinking your ambition to fit your tools") and with the philosophy/anti-AI manifesto. Recurring tasks story could become a single section in a broader Notion comparison.
+NOTES: REWRITE per the existing internal TODO. Strip fabricated testimonials, drop the "AI does" feature list, make it honest against current Notion automations, and reframe around setup-friction-cost rather than "Notion can't do this."
+-->

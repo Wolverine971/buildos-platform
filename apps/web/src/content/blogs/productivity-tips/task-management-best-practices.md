@@ -268,3 +268,28 @@ That's the payoff for building context instead of just checking boxes.
 The goal isn't more tasks completed. It's the right tasks, at the right time, in service of what actually matters to you.
 
 [Get started →](/)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 6/10
+RECOMMENDATION: LIGHT_EDIT
+PURPOSE: Comprehensive guide to task management within BuildOS — task writing, sizing, energy matching, calendar blocking, Project Lens, recovery patterns.
+READER VALUE: Decent. Lots of usable advice. But it's long (~2,000 words), and the advice is 70% generic productivity wisdom (Two-Minute Rule, batching, weekly review structure) and 30% BuildOS-specific. A reader who already does any task management has heard most of this.
+VOICE FIT: Mostly OK but slips into productivity-listicle voice in places ("Techniques That Actually Work", "Measuring What Matters"). The sharper, more literary founder voice from the Obsidian comparison or the anti-AI post is mostly absent. No specific founder anecdotes, no concrete examples from DJ's own work — feels like a competent generalist wrote it.
+ISSUES:
+- Uses ❌/✅ emoji in the body (lines ~54-60). User instructions explicitly say "Only use emojis if the user explicitly requests it." Violation.
+- "Match Tasks to Energy" / weekly architecture (Monday=planning, Tue-Thu=deep work, Fri=comms) is borrowed Cal-Newport-adjacent advice — not BuildOS-distinctive.
+- "Two-Minute Rule" is GTD-classic. Either credit Allen or cut.
+- CTA `[Get started →](/)` goes to homepage; other posts use /auth/register. Inconsistent.
+- `lastmod: '2025-12-31'` — verify this is intentional; pre-dates current date by ~4 months.
+- Talks about "AI" only in the Project Lens / scheduling sections — fine, but doesn't connect to the broader anti-AI / context-engineering thesis.
+GAPS:
+- No example task taken from start (brain dump) → finished (calendar block + completion). The mechanic is described but never demonstrated.
+- No discussion of how tasks emerge from brain dumps (the actual BuildOS killer flow).
+- No screenshots or product mockups — pure text.
+- Doesn't address the bias: people don't fail at task management because they lack technique. They fail because the task list lies about capacity. Calendar reality-check section gestures at this but doesn't land it hard.
+DUPLICATES/OVERLAP: Project Lens section overlaps with context-engineering-101.md and evolution-of-note-taking.md. Calendar Integration section duplicates content that calendar-integration-workflow.md was supposed to cover. "Goals → Plans → Tasks → Documents" hierarchy appears here and in 3+ other posts.
+NOTES: Strip the emojis. Add at least one concrete first-person example. Pick a side: either this is the canonical "task management in BuildOS" post (and Calendar/Focus stubs link in here), or it's a specific deep-dive (and the Calendar/Focus posts go elsewhere).
+-->

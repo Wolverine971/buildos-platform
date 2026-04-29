@@ -187,3 +187,21 @@ That's the difference between an AI that promises everything and a system that a
 **Stop letting AI promise to do everything. Start building context that makes you more capable.**
 
 [Try BuildOS →](/auth/register)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 9/10
+RECOMMENDATION: KEEP_AS_IS
+PURPOSE: Anti-AI manifesto post. Argues context engineering beats agent engineering for shipping. For founders/builders deciding whether AI tools actually help.
+READER VALUE: Yes. Real 2026 HBR + NBER + IEEE citations, sharp anti-hype framing, concrete product examples. The "What BuildOS Is Not" section is rare honesty.
+VOICE FIT: Excellent. Lead with relief, not AI. Steel-mans the agent pitch then dismantles it. Names mechanism (context compounds). This is the anti-AI doctrine in published form.
+ISSUES:
+- Section 6 "Time Blocker" is thin compared to others; could be cut or expanded.
+- Lists 6 features in body, which inches toward feature-marketing vs. philosophy. Acceptable because the framing carries it.
+GAPS:
+- Could cite a real shipped-by-a-user case to ground the abstraction further (currently only the hypothetical Monday-morning founder vignette).
+DUPLICATES/OVERLAP: Heavy thematic overlap with agentic-vrs-context-engineering.md (same context-vs-agent thesis, but this version is the upgraded 2026 rewrite). The older file should probably be killed or merged into this.
+NOTES: Frontmatter is healthy (published:true, lastmod 2026-03-28, real readingTime). This is the gold standard the rest of the folder should be measured against.
+-->

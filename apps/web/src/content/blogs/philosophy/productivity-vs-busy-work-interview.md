@@ -281,3 +281,22 @@ Should we include:
 - Workflow optimization obsession
 
 **The uncomfortable truth**: Real work often feels unpleasant and produces anxiety. Busy work feels good. Learning to recognize and tolerate the discomfort of real work is essential.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 1/10
+RECOMMENDATION: KILL
+PURPOSE: Internal interview/outline scaffolding for productivity-vs-busy-work.md (which is an empty stub).
+READER VALUE: Zero. Scaffolding.
+VOICE FIT: N/A. Topic ("productivity vs busy work") fits adjacent to anti-feed/thinking-environment but the framing is generic productivity-blog territory.
+ISSUES:
+- Same scaffolding pattern as the other -interview.md files: published:false, priority:0.1, tags:['planning','outline','internal'].
+- 284 lines of internal questions and writing notes in the published-content folder.
+- Topic title is generic SEO bait ("productivity vs busy work") — not on-brand for the 2026 voice.
+GAPS:
+- N/A.
+DUPLICATES/OVERLAP: Source scaffolding for productivity-vs-busy-work.md (empty stub).
+NOTES: KILL. If the topic is worth writing in the 2026 frame, rewrite it as "Why Productivity Tools Don't Work for Complex Thinking" or fold the best beats into what-a-thinking-environment-actually-is.md.
+-->

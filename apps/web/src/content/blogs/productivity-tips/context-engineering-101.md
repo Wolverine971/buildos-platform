@@ -240,3 +240,26 @@ The people who master context engineering will have exponentially more leverage 
 Stop crafting prompts. Start building context. Every brain dump, every task, every document makes your AI smarter about your work.
 
 [Start building context](/)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 7/10
+RECOMMENDATION: LIGHT_EDIT
+PURPOSE: Pitch the shift from prompt engineering to context engineering, position BuildOS as context infrastructure. Aimed at AI power users / founders.
+READER VALUE: Yes — clear thesis, real citations (Karpathy, Lütke, MCP timeline), concrete BuildOS mapping. Reader leaves with a usable mental model.
+VOICE FIT: Mostly aligned with thinking-environment positioning. BUT this is the one philosophy post that LEADS with AI ("the way we work with AI is fundamentally changing"). That's a direct contradiction of the anti-AI marketing strategy ("Do NOT lead with AI. Lead with relief."). It's also a calculated exception — context engineering is the BuildOS "anti-AI assistant" thesis, so AI framing is the medium AND the message. Readable as a positioning post for AI-native readers. Should probably be cross-tagged into philosophy/, not productivity-tips.
+ISSUES:
+- Title says "101" but it's not a beginner post. Beginners won't have repetitive-prompt habits to audit.
+- Section "Three Critical Mistakes" is a generic listicle interruption in an otherwise literary post.
+- "Audit your repetitive prompts" CTA is good but unattached to a tool/template.
+- Gartner quote ("context engineering is in, prompt engineering is out") is a marketing-deck quote, not a research finding. Soften or cite directly.
+- MCP section is now ~16 months old; verify all the dates are still accurate as of 2026-04 (they look right but worth a pass).
+- CTA `[Start building context](/)` links to homepage — should go to /auth/register like the other anti-AI post.
+GAPS:
+- No example of a real BuildOS export → ChatGPT/Claude flow with screenshots or actual prompt text. The post claims this is the killer feature; show it.
+- No counterpoint on when context engineering is overkill (one-off questions still benefit from raw prompting).
+DUPLICATES/OVERLAP: Heavy thematic overlap with /philosophy/anti-ai-assistant-execution-engine.md (also pitches context engineering). The two should be reconciled — this one is the "what is context engineering" post, philosophy/anti-ai is the "why BuildOS won't act for you" post. Cross-link them. Project Lens table also appears (in a slightly different form) in evolution-of-note-taking.md and task-management-best-practices.md.
+NOTES: Wrong folder. Belongs in /philosophy/, not /productivity-tips/. Move when convenient.
+-->

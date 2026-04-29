@@ -2,6 +2,8 @@
 
 # Product Strategy Skill Combos
 
+Related gap audit: [PRODUCT_STRATEGY_GAP_AUDIT.md](./PRODUCT_STRATEGY_GAP_AUDIT.md)
+
 ## Combo Candidates
 
 | Unified Skill                               | Stacked Sources                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Workflow Created                                                                                                                                           | Readiness       | Next Action                                                                                                             |

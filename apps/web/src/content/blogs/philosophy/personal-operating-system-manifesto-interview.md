@@ -249,3 +249,22 @@ path: apps/web/src/content/blogs/philosophy/personal-operating-system-manifesto-
 **Risk to avoid**: Don't sound like vaporware or empty promises. Ground the vision in real implementation (BuildOS exists and works). Show that this is happening now, not just a future dream.
 
 **Connection to product**: Use BuildOS as proof of concept, but make the vision bigger than any single product. This is about a category, not just a vendor.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 1/10
+RECOMMENDATION: KILL
+PURPOSE: Internal interview/outline scaffolding for the personal-operating-system-manifesto.md post (which was also never written). Lists 39 interview questions in the manifesto-essay style.
+READER VALUE: Zero. Scaffolding.
+VOICE FIT: N/A. The "personal operating system" framing is stale and doesn't match 2026 positioning ("thinking environment" replaced it).
+ISSUES:
+- Frontmatter is confused: title says "Blog Guide: Personal Operating System Manifesto" with published:false and tags:['planning','outline','internal'].
+- 252 lines of scaffolding sitting in src/content/blogs/philosophy/.
+- Whole "personal OS" category framing has been superseded by the thinking-environment positioning per CLAUDE.md and the WS09 anti-feed cluster.
+GAPS:
+- N/A.
+DUPLICATES/OVERLAP: Source scaffolding for personal-operating-system-manifesto.md (which itself was repurposed into a thinking-environment manifesto stub).
+NOTES: KILL. The category this post was meant to anchor (personal OS) has been replaced by "thinking environment" — keeping the scaffolding around just risks confusion.
+-->

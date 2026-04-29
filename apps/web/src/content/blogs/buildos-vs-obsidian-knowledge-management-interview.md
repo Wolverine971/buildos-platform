@@ -291,3 +291,25 @@ The blog draft already exists with embedded research questions (marked with `<!-
 **Link strategy**: Link to Obsidian respectfully, PKM resources, BuildOS docs, other comparison blogs.
 
 **SEO considerations**: This will rank for "Obsidian alternative", "second brain tools", "PKM software" - make it comprehensive.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 0/10 (not a blog)
+RECOMMENDATION: KILL (move to docs/marketing/internal-scaffolding/ if the question list is still useful for v2; otherwise delete — the partner blog buildos-vs-obsidian-knowledge-management.md was already rewritten without needing this)
+PURPOSE: Internal scaffolding — 62 interview questions to flesh out the Obsidian comparison post. Never meant to ship.
+READER VALUE: Zero. A reader landing here gets meta-questions about a blog instead of the blog.
+VOICE FIT: N/A. The output positioning embedded here ("curator vs. achiever," "AI-Powered Organization vs. manual networks") is shallower than the actual finished blog, which uses the better "linking by hand vs project memory that compounds" framing.
+PLACEMENT: Wrong on every axis. Lives in /blogs/ root, no frontmatter, raw `<!-- Q# -->` markup, "-interview" suffix.
+
+ISSUES:
+
+- Same content-loader risk as the Monday version — must confirm loader excludes this from published routes.
+- No frontmatter, no draft flag.
+- The actual Obsidian comparison post (buildos-vs-obsidian-knowledge-management.md) has already shipped, so this scaffold is OBSOLETE.
+  GAPS:
+- N/A — the partner blog exists.
+  DUPLICATES/OVERLAP: Made obsolete by buildos-vs-obsidian-knowledge-management.md.
+  NOTES: CRITICAL FINDING CONFIRMED. `-interview.md` files are internal scaffolding lists of questions, NOT blogs. Move out of /content/blogs/ immediately.
+  -->

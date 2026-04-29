@@ -187,3 +187,26 @@ ChatGPT is incredibly powerful. But it starts from zero every time. BuildOS buil
 The best time to start was yesterday. The second best time is now. Every day you wait is context you don't have.
 
 Simple. Flexible. Built for how your brain actually works. And it gets better the more you use it.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 6/10
+RECOMMENDATION: LIGHT_EDIT
+PURPOSE: Top-level "what is BuildOS / how does it work" doc. Founder origin + explanation of the brain dump → context → Project Lens → daily brief loop. Likely entry point for cold visitors.
+READER VALUE: Decent. The "Why I Built BuildOS" intro is genuine and short. The four building blocks (Goals/Plans/Tasks/Documents) and the 9-modes claim ground it. But the middle drifts into bullet lists that don't show, they tell.
+VOICE FIT: Mixed. Personal first-person founder section is on-voice. The middle ("This is where it gets powerful," "this isn't just organization—it's context that compounds") slides into marketing-speak. The closing "Every day you wait is context you don't have" is borderline pressure-tactic — same line appears in who-is-buildos-for.md.
+FRESHNESS: 9 chat modes claim should be verified. Code shows Project Audit and Project Forecast exist as named modes — this is real, not fictional. The bullet list of modes (Project Chat, Project Audit, Project Forecast, Entity Focus, Global Chat, "and more...") matches the agentic-chat-v2 architecture.
+ISSUES:
+- Closing line "Every day you wait is context you don't have" is a hype/FOMO close that conflicts with the lead-with-relief positioning.
+- "Like having an executive assistant who's been with you for years" — repeats from daily-brief-guide, both lean on the same magic-assistant trope.
+- "ChatGPT is incredibly powerful. But it starts from zero every time." — same beat as anti-ai-assistant-execution-engine.md but stated as a tagline rather than steel-manned. The exemplar does it better.
+- HTML img figure block is brittle in markdown rendering and adds visual weight without much info.
+- date 2025-12-17, lastmod 2025-12-31 — hasn't been refreshed in 4 months even though product evolved.
+GAPS:
+- Doesn't link to first-project-setup or brain-dump guide despite being the natural funnel start.
+- No explicit "first 5 minutes" path — reader is left without a concrete next step beyond a generic CTA.
+DUPLICATES/OVERLAP: High. Overlaps with under-the-hood.md (Goals/Plans/Tasks/Documents), daily-brief-guide.md (daily briefs section), and effective-brain-dumping.md (brain dump section). This is the "hub" page so some overlap is expected, but it should be the orchestrator that links out, not a digest.
+NOTES: Has a decent founder origin paragraph that could be excerpted into a more personal piece. The "9 ways to chat" line is sticky if the product really does have nine — a follow-up post listing all nine with use cases would be high value.
+-->

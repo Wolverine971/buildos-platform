@@ -300,3 +300,19 @@ path: apps/web/src/content/blogs/_index-entrepreneurship.md
 ---
 
 _This entrepreneurship content strategy positions DJ as an authentic, experience-based thought leader who challenges conventional startup wisdom while providing practical frameworks for sustainable business building._
+
+---
+
+<!--
+AUDIT 2026-04-29
+TYPE: internal-strategy-doc-misplaced
+RECOMMENDATION: MOVE_TO_DOCS_MARKETING (likely docs/marketing/strategy/blog-content-plans/) — and significantly trim
+PURPOSE: Internal planning doc listing 80+ entrepreneurship content ideas across founder-journey, military leadership, neurodivergent entrepreneurship, fundraising, anti-hustle.
+ISSUES:
+- Wildly STALE. Heavy lean on "ADHD-first positioning," "neurodivergent entrepreneur," "ADHD founder" framing. The 2026 anti-AI strategy specifically pivots away from ADHD-led positioning toward thinking-environment-for-creators (authors + YouTubers).
+- Recommends "Building in Public with ADHD" and "The Anti-Hustle Startup" as cornerstones — these may still ship but should be reconciled against the current creator wedge before more energy goes into them.
+- No /entrepreneurship/ folder currently exists in the blog catalog; the entire planning doc has zero published output mapped to it, suggesting this strategy has been dormant.
+- File could leak into the rendered blog catalog if SvelteKit content loader doesn't filter by `_` prefix.
+- Frontmatter is loose and identifies as a blog (title, publishDate, draft:true) but content is purely a strategy outline.
+NOTES: At 300 lines this is the heaviest of the 5 indexes and the most stale. Should be ruthlessly compressed against the current 2026 strategy: which 5 entrepreneurship posts will actually ship in the next 90 days, and which support the creator/thinking-environment wedge? Move out of /content/blogs/ either way.
+-->

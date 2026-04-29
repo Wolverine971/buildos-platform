@@ -99,7 +99,7 @@ The thing that makes harness engineering more than "agent engineering rebranded"
 **You can RL a model for a specific harness.**
 
 - Codex's `apply_patch` tool uses a git-patch-like syntax. GPT-OSS 12B can call `apply_patch` cleanly because it was RL'd against it.
-- Claude Code's `Edit` tool uses old_string/new_string. Cloud models are RL'd against _that_.
+- Claude Code's `Edit` tool uses old*string/new_string. Cloud models are RL'd against \_that*.
 - Try to swap them: cloud models in Codex's harness are "complete trash." The weights are dedicated to specific tool shapes.
 
 > _"If you own the harness AND you own the model, you have alpha — you can divert the model to prefer that harness."_ — Dexter

@@ -58,21 +58,30 @@
 		promoteTaskDocument,
 		type TaskWorkspaceDocument
 	} from '$lib/services/ontology/task-document.service';
-	import type { Component } from 'svelte';
+	import { untrack, type Component } from 'svelte';
 
 	// ============================================================
 	// PROPS & DATA
 	// ============================================================
 	let { data }: { data: PageData } = $props();
 
-	// Core data from server
-	let project = $state(data.project);
-	let task = $state(data.task);
-	let plans = $state(data.plans || []);
-	let goals = $state(data.goals || []);
-	let documents = $state(data.documents || []);
-	let milestones = $state(data.milestones || []);
-	let projectTasks = $state(data.tasks || []);
+	// Server data with local refresh overrides. The derived values keep route data reactive
+	// when SvelteKit reuses this component for another task route.
+	let projectOverride = $state<PageData['project'] | null>(null);
+	let taskOverride = $state<PageData['task'] | null>(null);
+	let plansOverride = $state<PageData['plans'] | null>(null);
+	let goalsOverride = $state<PageData['goals'] | null>(null);
+	let documentsOverride = $state<PageData['documents'] | null>(null);
+	let milestonesOverride = $state<PageData['milestones'] | null>(null);
+	let projectTasksOverride = $state<PageData['tasks'] | null>(null);
+
+	const project = $derived(projectOverride ?? data.project);
+	const task = $derived(taskOverride ?? data.task);
+	const plans = $derived(plansOverride ?? data.plans ?? []);
+	const goals = $derived(goalsOverride ?? data.goals ?? []);
+	const documents = $derived(documentsOverride ?? data.documents ?? []);
+	const milestones = $derived(milestonesOverride ?? data.milestones ?? []);
+	const projectTasks = $derived(projectTasksOverride ?? data.tasks ?? []);
 
 	// Form fields
 	let title = $state('');
@@ -109,6 +118,7 @@
 	let selectedWorkspaceDocId = $state<string | null>(null);
 	let workspaceDocContent = $state('');
 	let workspaceDocSaving = $state(false);
+	let workspaceLoadToken = 0;
 
 	// Auto-save state
 	let autoSaveTimeout = $state<ReturnType<typeof setTimeout> | null>(null);
@@ -148,6 +158,67 @@
 	let PlanEditModalComponent = $state<Component<any, any> | null>(null);
 	let MilestoneEditModalComponent = $state<Component<any, any> | null>(null);
 
+	let lastRouteDataKey = $state('');
+
+	function getRouteDataKey(routeData: PageData): string {
+		return `${routeData.project?.id ?? ''}:${routeData.task?.id ?? ''}`;
+	}
+
+	function clearAutoSaveTimer() {
+		if (autoSaveTimeout) {
+			clearTimeout(autoSaveTimeout);
+			autoSaveTimeout = null;
+		}
+	}
+
+	function resetRouteDataOverrides() {
+		projectOverride = null;
+		taskOverride = null;
+		plansOverride = null;
+		goalsOverride = null;
+		documentsOverride = null;
+		milestonesOverride = null;
+		projectTasksOverride = null;
+	}
+
+	function resetWorkspaceState() {
+		workspaceLoadToken += 1;
+		workspaceDocuments = [];
+		workspaceLoading = false;
+		workspaceInitialized = false;
+		selectedWorkspaceDocId = null;
+		workspaceDocContent = '';
+		workspaceDocSaving = false;
+		hasUnsavedChanges = false;
+		lastSavedContent = '';
+		clearAutoSaveTimer();
+	}
+
+	function resetModalState() {
+		showDeleteConfirm = false;
+		showDocumentModal = false;
+		showGoalModal = false;
+		showPlanModal = false;
+		showTaskModal = false;
+		showMilestoneModal = false;
+		showMobileContextSheet = false;
+		activeDocumentId = null;
+		selectedGoalId = null;
+		selectedPlanId = null;
+		selectedTaskId = null;
+		selectedMilestoneId = null;
+	}
+
+	function resetRouteScopedState() {
+		error = '';
+		isSaving = false;
+		isDeleting = false;
+		dataRefreshing = false;
+		initialLoaded = false;
+		resetWorkspaceState();
+		resetModalState();
+	}
+
 	// ============================================================
 	// DERIVED STATE
 	// ============================================================
@@ -171,6 +242,17 @@
 	// ============================================================
 	// INITIALIZATION
 	// ============================================================
+
+	$effect(() => {
+		const nextRouteDataKey = getRouteDataKey(data);
+		if (nextRouteDataKey === lastRouteDataKey) return;
+
+		lastRouteDataKey = nextRouteDataKey;
+		untrack(() => {
+			resetRouteDataOverrides();
+			resetRouteScopedState();
+		});
+	});
 
 	$effect(() => {
 		if (task) {
@@ -329,23 +411,34 @@
 	}
 
 	async function loadWorkspaceDocuments() {
-		if (!task?.id) return;
+		const taskId = task?.id;
+		if (!taskId) return;
+
+		const loadToken = ++workspaceLoadToken;
 		try {
 			workspaceLoading = true;
-			const result = await fetchTaskDocuments(task.id);
-			workspaceDocuments = result.documents ?? [];
+			const result = await fetchTaskDocuments(taskId);
+			if (loadToken !== workspaceLoadToken || task?.id !== taskId) return;
 
-			const firstDoc = connectedDocuments[0];
+			const nextWorkspaceDocuments = result.documents ?? [];
+			workspaceDocuments = nextWorkspaceDocuments;
+
+			const firstDoc = nextWorkspaceDocuments.find(
+				(item) => item.edge?.props?.role !== 'scratch'
+			);
 			if (!selectedWorkspaceDocId && firstDoc) {
 				selectWorkspaceDocument(firstDoc.document.id);
 			}
 
 			workspaceInitialized = true;
 		} catch (err) {
+			if (loadToken !== workspaceLoadToken || task?.id !== taskId) return;
 			const message = err instanceof Error ? err.message : 'Failed to load documents';
 			toastService.error(message);
 		} finally {
-			workspaceLoading = false;
+			if (loadToken === workspaceLoadToken && task?.id === taskId) {
+				workspaceLoading = false;
+			}
 		}
 	}
 
@@ -476,14 +569,20 @@
 	}
 
 	async function refreshData() {
-		if (!project?.id || !task?.id) return;
+		const projectId = project?.id;
+		const taskId = task?.id;
+		if (!projectId || !taskId) return;
+
+		const refreshRouteDataKey = getRouteDataKey(data);
 		dataRefreshing = true;
 
 		try {
 			const [projectResponse, taskResponse] = await Promise.all([
-				fetch(`/api/onto/projects/${project.id}`),
-				fetch(`/api/onto/tasks/${task.id}/full`)
+				fetch(`/api/onto/projects/${projectId}`),
+				fetch(`/api/onto/tasks/${taskId}/full`)
 			]);
+
+			if (refreshRouteDataKey !== getRouteDataKey(data)) return;
 
 			if (projectResponse.ok && taskResponse.ok) {
 				const [projectData, taskData] = await Promise.all([
@@ -491,19 +590,24 @@
 					taskResponse.json()
 				]);
 
-				project = projectData.data?.project || project;
-				task = taskData.data?.task || task;
-				plans = projectData.data?.plans || [];
-				goals = projectData.data?.goals || [];
-				documents = projectData.data?.documents || [];
-				milestones = projectData.data?.milestones || [];
-				projectTasks = projectData.data?.tasks || [];
+				if (refreshRouteDataKey !== getRouteDataKey(data)) return;
+
+				projectOverride = projectData.data?.project || project;
+				taskOverride = taskData.data?.task || task;
+				plansOverride = projectData.data?.plans || [];
+				goalsOverride = projectData.data?.goals || [];
+				documentsOverride = projectData.data?.documents || [];
+				milestonesOverride = projectData.data?.milestones || [];
+				projectTasksOverride = projectData.data?.tasks || [];
 			}
 		} catch (err) {
+			if (refreshRouteDataKey !== getRouteDataKey(data)) return;
 			console.error('Failed to refresh data:', err);
 			toastService.error('Failed to refresh data');
 		} finally {
-			dataRefreshing = false;
+			if (refreshRouteDataKey === getRouteDataKey(data)) {
+				dataRefreshing = false;
+			}
 		}
 	}
 

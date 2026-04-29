@@ -287,3 +287,26 @@ If you've made it this far, you're definitely our people.
 ---
 
 _Ready to stop making lists about making lists? [Try BuildOS free](/auth/register) and start building context that compounds. Every day you wait is context you don't have._
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 4/10
+RECOMMENDATION: REWRITE
+PURPOSE: A "who is this for" page that wants to be funny + inclusive and end with a serious explanation of why BuildOS works for each segment.
+READER VALUE: Low for serious evaluators. Mid for casual landing-page browsers. The bullet-list humor ("People who've explained their startup to their dog") will land for some readers and feel like a wall of memes to others. The serious second half ("Why BuildOS Actually Works") is where the real content lives but it's buried under ~200 lines of jokes.
+VOICE FIT: Conflicted. The 2026 positioning is "thinking environment for people making complex things" with a primary wedge of authors and YouTubers. This page is the OPPOSITE — it's a 60+ segment grab-bag where the message is "everyone." That dilutes positioning. The ADHD section is also flagged in marketing strategy as something being reconciled away from.
+FRESHNESS: Most of the structural claims (Goals → Plans → Tasks → Documents, Project Lens, brain dumps, daily briefs) are accurate. The product still does these things.
+ISSUES:
+- "(and increasingly unhinged) list" framing in the description sets a tone that's at odds with the literary, founder-direct exemplar voice.
+- "BuildOS hits different for ADHD minds" section reproduces the ADHD-heavy positioning that the strategy doc explicitly says is being reconciled.
+- The "Why BuildOS Actually Works" segments are the real value but are squeezed into 5 paragraphs after a 200-line list.
+- "Every day you wait is context you don't have" — same FOMO close used in how-buildos-works.md. Cut from both.
+- "If you've made it this far, you're definitely our people" is a bonding move that contradicts the more focused positioning the brand is moving toward.
+GAPS:
+- Authors and YouTubers are buried in the "Writers & Wordsmiths" and "Content Creators" sections rather than positioned as the primary wedge. Out of step with the 2026 strategy.
+- No actual qualifier for who this is NOT for. Saying "everyone" is the same as saying "no one."
+DUPLICATES/OVERLAP: The "Why BuildOS Actually Works" subsections at the bottom rehash material that's better covered in how-buildos-works.md and under-the-hood.md.
+NOTES: This is the page most exposed to the anti-AI / thinking-environment positioning shift. As-is it reads as 2024-vintage positioning. Either rewrite to lead with the creators wedge and trim the gag list, or kill and replace with a tighter "is this for me?" page.
+-->

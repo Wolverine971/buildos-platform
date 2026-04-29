@@ -368,3 +368,25 @@ Stop shuffling tickets. Start managing thinking. The clarity compounds.
 ---
 
 _What's the biggest context gap in your current workflow? Where does project thinking go to die on your team? [I'd love to hear about it](mailto:dj@build-os.com) — I'm always curious how this shows up on different teams._
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 8/10
+RECOMMENDATION: KEEP_AS_IS
+PURPOSE: Long-form thesis post for tech PMs — Shape Up appetites, decision logs, impact mapping — positioned as the "manage thinking, not tickets" frame. Targets engineering org leaders.
+READER VALUE: High. Real research citations (HBR app-toggling, Gloria Mark, Shopify strangler fig, Marty Cagan, UserVoice Shape Up adoption, Spotify ADRs). Three concrete scenarios that read like they came from real PM experience. Adoption arc (Week 1–4) is honest about discomfort. FAQ at top is well-written and SEO-useful.
+VOICE FIT: Strong fit with the literary, founder-direct style of the Obsidian post. "PM software provides psychological comfort for organizations unwilling to do the hard work of creating clarity" is exactly the voice the strategy doc calls for. The "But My Team Won't Write Things Down" section is best-in-class — anticipates objections and answers them concretely.
+ISSUES:
+- Doesn't lead with AI (good!) but also barely mentions BuildOS until the "Note on AI" section near the end — almost too restrained. Could end with a sharper BuildOS-specific scenario without breaking voice.
+- Long (~5,500 words by my count, frontmatter says readingTime: 15). Audience is right for this length, but a TL;DR or pull-quote would help.
+- "AI is good at organizing information. It is not good at deciding what matters." is the perfect anti-AI line and should probably be a tweet/LinkedIn pull, not buried in a closing aside.
+- `category: 'Productivity'` in frontmatter — should this be 'Project Management' or 'For PMs'? "Productivity" is generic and undersells the targeting.
+- The post is filed in /productivity-tips/ but it's targeted at tech PMs. Consider /guides/ or /for-pms/ if such a folder exists, or accept that productivity-tips is the catch-all.
+GAPS:
+- No worked example of using BuildOS specifically as the "context architecture" the post argues for. It says "tool-agnostic" — true and honorable — but BuildOS readers will want to see the bridge.
+- Doesn't reference brain dump → impact map mechanic, which is the obvious BuildOS angle.
+DUPLICATES/OVERLAP: None in this folder — this is the only PM-targeted post. The "context fragmentation across tools" framing has minor overlap with anti-AI / Obsidian posts but the angle (team workflow, not personal capture) is distinct.
+NOTES: This is the best post in the folder. Use it as the bar. SEO frontmatter (FAQ, keywords, slug, seo block) is also the most complete in the folder — other posts could borrow the structure.
+-->

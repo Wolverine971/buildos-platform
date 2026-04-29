@@ -257,3 +257,25 @@ path: apps/web/src/content/blogs/case-studies/remote-team-coordination-success-i
 **Multiple perspectives**: If possible, include quotes from team leader + individual contributors to show different viewpoints.
 
 **Practical workflows**: Heavy focus on "here's how we do it" so other teams can copy patterns.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 1/10 (as a blog post — but it isn't one)
+RECOMMENDATION: KILL
+TYPE: other (internal interview scaffolding, not a blog)
+PURPOSE: Internal planning doc for a never-written remote-team case study.
+READER VALUE: None.
+HONESTY: The doc invents specific results ("50% reduction in meetings", "3x faster onboarding", "Zero dropped handoffs", "Team grew from 5 to 15") in the outline section before any interview happened. These are fabricated targets, and if shipped, would be fabricated metrics.
+VOICE FIT: N/A. Doc tone is "Collaborative, practical, solution-oriented" — but the planned topic (remote team coordination, distributed teams, async collaboration) is FUNDAMENTALLY misaligned with current BuildOS strategy. BuildOS is a SOLO/individual thinking environment. The buildos-vs-monday post explicitly says "BuildOS is not a team coordination tool. There are no shared boards, no workload views across team members, no dependency chains between people."
+ISSUES:
+- Strategic mismatch — BuildOS is not a team-coordination product.
+- Fabricated metrics in the outline.
+- Wrong location.
+- Anchors an empty stub.
+GAPS:
+- N/A — this case study should not exist at all in current product positioning.
+DUPLICATES/OVERLAP: Pairs with remote-team-coordination-success.md (empty stub). Conceptually contradicts buildos-vs-monday-thought-organization.md (which correctly positions BuildOS as solo-not-team).
+NOTES: KILL outright. Even if BuildOS later adds team features, this brief is so generic ("daily briefs replace standup meetings") that it adds no real signal. The "remote team coordination" angle is not part of any current marketing strategy doc.
+-->

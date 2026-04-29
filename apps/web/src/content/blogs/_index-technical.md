@@ -306,3 +306,20 @@ path: apps/web/src/content/blogs/_index-technical.md
 ---
 
 _This technical content strategy establishes BuildOS as a source of practical, production-tested engineering insights while contributing valuable patterns back to the broader technical community._
+
+---
+
+<!--
+AUDIT 2026-04-29
+TYPE: internal-strategy-doc-misplaced
+RECOMMENDATION: MOVE_TO_DOCS_MARKETING (docs/marketing/strategy/blog-content-plans/) — and reconcile with the new agent-skills folder
+PURPOSE: Internal plan for technical-pillar content: LLM integration, Svelte 5 migration, calendar integration, MCP-enhanced dev workflows, performance optimization.
+ISSUES:
+- Largely orthogonal to current 2026 anti-AI MARKETING positioning — but technical content is allowed to be different from marketing content. The audience here is engineers, not founders/creators. So "still aligned" is the wrong question; "still wanted" is.
+- References many BuildOS-internal documents: `/docs/design/LLM_TESTING_FLOW_DESIGN.md`, `/docs/design/SVELTE_4_TO_5_MIGRATION.md`, `/docs/architecture/CALENDAR_WEBHOOK_FLOW.md`. Verify those still exist.
+- The "Calendar Integration Deep Dive" planned content overlaps directly with the new agent-skills/google-calendar post — those need to be reconciled (one becomes the technical deep-dive, the other the agent-builder skill).
+- "AI-Enhanced Development Workflow / MCP integration" could fold into the agent-skills folder.
+- Inventory broken: lists no published posts; the /technical/ folder content is unmapped.
+- Same loader-leak risk.
+NOTES: Most strategically out-of-step of the indexes given that an actual /agent-skills/ folder now exists with a different editorial pattern (portable SKILL.md format). Either retire this index in favor of /agent-skills/, or merge — but having both is confusing. Move to docs.
+-->

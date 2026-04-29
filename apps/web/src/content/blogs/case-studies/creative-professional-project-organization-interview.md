@@ -186,3 +186,26 @@ path: apps/web/src/content/blogs/case-studies/creative-professional-project-orga
 **Relatability**: Many creatives struggle with same issues - this should feel like "this is my story too."
 
 **Practical value**: Show concrete workflow patterns creatives can adopt immediately.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 2/10 (as a blog post — but it isn't one)
+RECOMMENDATION: UNPUBLISH_AND_FINISH (already unpublished; either kill or move out of /content/blogs)
+TYPE: other (internal interview scaffolding, not a blog)
+PURPOSE: Internal planning doc — outline + 50 interview questions for a freelance-creative case study that was never written.
+READER VALUE: None for public readers. Useful as a brief if the founder ever interviews a real designer/writer/videographer using BuildOS.
+HONESTY: The doc explicitly asks "Real person or composite persona?" — that question never got answered. The planned post would have invented metrics ("client capacity 2x", "Revenue impact?", "dream project they landed?") for a fictional creative.
+VOICE FIT: N/A. Planned tone is "Relatable, inspiring, honest about creative chaos" — drifts toward Medium-essay productivity blog, not the literary, founder-direct voice the brand actually uses.
+ISSUES:
+- Wrong location (lives in /content/blogs/case-studies/ alongside published content).
+- Title prefix "Blog Guide:" suggests internal nature but would still render publicly if published flag flipped.
+- Anchors a never-written paired stub.
+- Invokes feature names ("custom context fields", "phase-based") that may or may not match current product reality.
+GAPS:
+- No real interview ever conducted.
+- No "illustrative scenario" framing as fallback.
+DUPLICATES/OVERLAP: Pairs with creative-professional-project-organization.md (empty stub). Thematically overlaps with the strong creator/author/YouTuber audience the new strategy doc names — but a real one targeting that audience doesn't exist yet.
+NOTES: If kept, move to /docs/marketing/blog-briefs/. Otherwise kill. The "freelance creative" archetype is too broad anyway — the strategy now points at specific creator wedges (novelist, indie YouTuber, illustrator-with-deadlines), not "creative professional" generically.
+-->

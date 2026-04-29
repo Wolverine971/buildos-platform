@@ -294,3 +294,27 @@ Every day you use ChatGPT without project context, you're paying the explanation
 Your data is yours — everything you put into BuildOS stays accessible and exportable.
 
 [**Get started free →**](/auth/register)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 7/10
+RECOMMENDATION: LIGHT_EDIT (TODO already in file flags this; do the rewrite)
+TYPE: competitor-comparison
+PURPOSE: Position BuildOS against ChatGPT's memory/Projects features. Argue context structure beats accumulating preferences.
+READER VALUE: Strong. The "explanation tax" framing is sharp, the head-to-head table is clear, and the closing "Day 1 vs Day 100" line lands. The "context compounds" thesis is the same one carrying the philosophy/anti-ai post.
+HONESTY: Mostly clean — claims are about product shape, not user testimonials. No fabricated personas. But the in-file BLOG TODO (dated 2026-03-30) admits the ChatGPT-Projects/memory section is already behind current OpenAI capabilities. Reading as defensive vs. current = mild credibility risk.
+VOICE FIT: Mostly aligned. Lead-with-relief structure works. "ChatGPT is incredible" steel-man is good faith. A few "explanation tax" / "context that compounds" repetitions trend toward marketing-cadence rather than literary founder voice — the Obsidian post is more sophisticated as a model.
+ISSUES:
+- Stale ChatGPT capability claims (per the in-file TODO).
+- TODO lives at top of post, would render in published HTML if not stripped — confirm renderer strips HTML comments.
+- A few rhetorical italics ("And that blind spot might be costing you hours every week") veer toward landing-page voice.
+- "_15 minutes of typing out the state of three different projects..._" example is a hypothetical, not a real user — fine, but the post never says "imagine" or "for example", which slightly blurs the line.
+GAPS:
+- No mention of ChatGPT memory cap, sharing, or Custom GPTs in 2026 form.
+- Missing: a paragraph on why most readers should use both, framed as workflow not concession.
+- No real-user grounding (no user has said "I switched and it worked"). Acceptable for a comparison piece, but a single illustrative sentence flagged as illustrative would help.
+DUPLICATES/OVERLAP: The "context compounds" mechanic and the GOALS→PLANS→TASKS→DOCUMENTS diagram appear verbatim in buildos-vs-monday-thought-organization.md and buildos-vs-notion-adhd-minds.md. The same diagram in three posts is fine for SEO but suggests a shared partial that could be DRY'd. The thesis itself overlaps heavily with /philosophy/anti-ai-assistant-execution-engine.md (the master version).
+NOTES: This is the strongest piece in the case-studies folder by a wide margin. Belongs alongside the buildos-vs-obsidian and buildos-vs-monday posts in a /comparisons/ folder, not /case-studies/. Folder mismatch is real.
+-->

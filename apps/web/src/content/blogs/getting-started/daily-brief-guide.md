@@ -188,3 +188,24 @@ Start with one week. Read the brief each morning, follow a suggestion or two, do
 Your daily brief is only as smart as your context. Start building today—every brain dump, every task, every document makes tomorrow's brief sharper.
 
 [Get your first daily brief →](/)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 8/10
+RECOMMENDATION: LIGHT_EDIT
+PURPOSE: Onboarding doc for daily briefs. Explains what the brief is, how to set it up, how to use it, and how it gets smarter via brain dumps. Targets new users in their first week.
+READER VALUE: Genuinely useful. The mocked-up brief example is concrete, the setup steps map to actual Settings paths, and the "morning routine" gives 3 clean steps. The Project Lens integration section ties it back to the rest of the system.
+VOICE FIT: Mostly good. Has a few "feels almost magical" / "executive assistant who actually knows your work" lines that lean into hype rather than relief. Otherwise founder-direct and specific.
+FRESHNESS: Daily briefs do exist as a real feature (apps/web/src/lib/services/dailyBrief, /api/daily-briefs route, scheduler in worker). SMS delivery, email, in-app all confirmed. Settings path "Settings > Notifications > Daily Briefs" should be spot-checked against current UI.
+ISSUES:
+- "AI does the overnight work" framing in excerpt slightly leads with AI; could be reframed as "your context, organized for the morning."
+- The mocked brief is from "Tuesday, March 18" with no year — fine, but feels frozen.
+- "executive assistant who's been with you for years" is the kind of magic-AI claim the anti-AI doctrine wants to avoid.
+GAPS:
+- Doesn't explain what to do if the brief never arrives (delivery failures, timezone bugs, brief generation skipped). Troubleshooting is thin.
+- Doesn't link to brain-dumping post even though it leans on that loop heavily.
+DUPLICATES/OVERLAP: Heavy thematic overlap with how-buildos-works.md (daily brief section) and under-the-hood.md (compounding context). Acceptable here because this is the dedicated guide.
+NOTES: Frontmatter healthy: published:true, lastmod 2026-04-16, real readingTime. One of the better files in the folder.
+-->

@@ -209,3 +209,21 @@ path: apps/web/src/content/blogs/product-updates/build-os-beta-launch-interview.
 **Set expectations**: Don't overpromise. Beta means evolving.
 
 **Vision-driven**: Help people understand the big picture, not just features.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: N/A (internal scaffolding)
+RECOMMENDATION: KILL
+PURPOSE: Internal blog-planning outline. Interview questions and section outline for a future "Beta Launch" announcement post that was never finished. Frontmatter explicitly says published:false, tags ["planning","outline","internal"], excerpt "Internal planning document".
+READER VALUE: Zero for end users. This is scaffolding, not content.
+VOICE FIT: N/A — not for readers.
+FRESHNESS: Beta launched in 2025. The associated published post (build-os-beta-launch.md) is also unfinished. The "beta" framing itself is now stale — by 2026-04 BuildOS is no longer in pre-launch positioning.
+ISSUES:
+- Should not live in /content/blogs/. This is a planning artifact that belongs in /docs/marketing/.
+- Risk that it gets picked up by a content lister or sitemap if published flag ever gets flipped accidentally.
+GAPS: N/A
+DUPLICATES/OVERLAP: Pairs with build-os-beta-launch.md (the unfinished public-facing version).
+NOTES: Confirms the audit hypothesis that -interview.md files are internal scaffolding lists of questions and outlines, NOT published blogs. Kill or move out of /content/blogs/.
+-->

@@ -175,3 +175,21 @@ path: apps/web/src/content/blogs/product-updates/calendar-integration-announceme
 **Quick wins**: Give users immediate value from day one
 
 **Positioning**: This isn't just sync - it's intelligent time management
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: N/A (internal scaffolding)
+RECOMMENDATION: KILL
+PURPOSE: Internal blog-planning outline for a calendar-integration announcement that was never finished. Frontmatter: published:false, tags ["planning","outline","internal"].
+READER VALUE: Zero for end users.
+VOICE FIT: N/A.
+FRESHNESS: Calendar integration is REAL and live (apps/web/src/lib/services/calendar-service.ts, calendar-webhook-service.ts, /api/calendar route, project-calendar.service). It's been live for many months. So an "announcement" framed as new in 2026 would be dishonest.
+ISSUES:
+- Should live in /docs/marketing/ if anywhere, not in /content/blogs/.
+- The "announcement" framing is stale even if the post were finished.
+GAPS: N/A
+DUPLICATES/OVERLAP: Pairs with calendar-integration-announcement.md (also unfinished). productivity-tips/calendar-integration-workflow-interview.md also covers calendar integration.
+NOTES: Confirms the -interview.md = internal scaffolding hypothesis. Kill or move.
+-->

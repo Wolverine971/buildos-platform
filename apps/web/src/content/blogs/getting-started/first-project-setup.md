@@ -137,3 +137,23 @@ Start with something concrete: that side project you've been meaning to organize
 ---
 
 _Ready? [Open BuildOS](/) and describe your next project._
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 8/10
+RECOMMENDATION: KEEP_AS_IS
+PURPOSE: Onboarding. How to create the first project via the Start-a-Project chat mode. For users who just signed up.
+READER VALUE: High. Walks through actual UI ("How would you like to work today?" with the four modes, welcome screen for first-timers). Two real examples (Spanish goal vs wedding planning) earn the "more detail in, more structure out" line. Common Questions section answers the things new users actually ask.
+VOICE FIT: Good. Founder-direct, no AI hype. "Just say it. Type naturally, like you're explaining your idea to a smart friend." matches the exemplars. No "magic AI" claims.
+FRESHNESS: Mostly aligns. "Start a Project" mode and "Brain Dump" mode both exist (apps/web/src/lib/services/agentic-chat-v2 confirms chat modes). The four-option mode picker should be spot-checked against current UI. lastmod 2026-03-24 is recent.
+ISSUES:
+- "Plans group related tasks into phases" — mixes Plans and phases in a way that may confuse users who later read under-the-hood.md, where Plans and Milestones are distinct concepts.
+- Mentions chat reference to brain dumps as separate ("They're complementary") — true but the boundary may have moved as the chat unified.
+GAPS:
+- Doesn't show what happens if you describe something that's NOT a project (e.g., a task or random thought) — does the system push back, or create a thin project anyway?
+- No screenshots; relies entirely on prose.
+DUPLICATES/OVERLAP: Some overlap with effective-brain-dumping.md (parsing) and how-buildos-works.md (brain dump section). Lighter than expected — this one focuses on the chat-based path; brain-dumping focuses on the dump-based path. The split is defensible.
+NOTES: Healthy frontmatter. Short (5min read), focused, doesn't oversell. One of the strongest onboarding pages.
+-->

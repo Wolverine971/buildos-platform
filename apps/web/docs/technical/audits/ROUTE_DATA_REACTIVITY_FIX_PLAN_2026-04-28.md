@@ -13,14 +13,19 @@ The audit found two Svelte 5 route-data risks:
 
 SvelteKit can reuse a route component instance when route params change or data is invalidated. `$state(data...)` initializers only run once, so reused instances can show stale project/task data unless the component explicitly handles incoming `data` changes.
 
-## Recommendation
+## Status
 
-Fix the task detail page first. It has a smaller state surface and should use a route-keyed sync effect.
+- Task detail page: fixed on 2026-04-28. It now uses derived route data with local refresh overrides, resets route-scoped workspace/modal state when the project/task key changes, and guards async workspace/refresh updates from stale route responses.
+- Project page: still outstanding.
+
+## Completed Task Page Strategy
+
+The task detail page had the smaller state surface and was fixed first.
 
 For `projects/[id]/tasks/[task_id]/+page.svelte`:
 
-1. Add a `lastRouteDataKey` state value based on `data.project.id` and `data.task.id`.
-2. Add a `$effect` that reads the new key and, only when it changes, replaces:
+1. Add a route key based on `data.project.id` and `data.task.id`.
+2. Keep route-owned values reactive by deriving them from `data` unless a local refresh override exists:
     - `project`
     - `task`
     - `plans`
@@ -34,29 +39,23 @@ For `projects/[id]/tasks/[task_id]/+page.svelte`:
     - workspace loaded state and selected workspace document
     - autosave timer and unsaved workspace content
 4. Preserve view preferences and panel expansion state unless the UX intentionally wants a full reset.
+5. Guard async workspace and refresh responses so a stale response cannot repopulate the page after route navigation.
 
-Suggested shape:
+Implemented shape:
 
 ```ts
-let lastRouteDataKey = $state('');
+const project = $derived(projectOverride ?? data.project);
+const task = $derived(taskOverride ?? data.task);
 
 $effect(() => {
 	const nextKey = `${data.project?.id ?? ''}:${data.task?.id ?? ''}`;
 	if (nextKey === lastRouteDataKey) return;
 	lastRouteDataKey = nextKey;
 
-	project = data.project;
-	task = data.task;
-	plans = data.plans || [];
-	goals = data.goals || [];
-	documents = data.documents || [];
-	milestones = data.milestones || [];
-	projectTasks = data.tasks || [];
-
-	error = '';
-	showDeleteConfirm = false;
-	clearAutosaveTimer();
-	resetWorkspaceState();
+	untrack(() => {
+		resetRouteDataOverrides();
+		resetRouteScopedState();
+	});
 });
 ```
 

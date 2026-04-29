@@ -281,3 +281,20 @@ path: apps/web/src/content/blogs/_index-productivity.md
 ---
 
 _This index provides a comprehensive foundation for productivity content that serves both individual practitioners and the broader BuildOS community, emphasizing practical frameworks over productivity theater._
+
+---
+
+<!--
+AUDIT 2026-04-29
+TYPE: internal-strategy-doc-misplaced
+RECOMMENDATION: MOVE_TO_DOCS_MARKETING
+PURPOSE: Internal content plan for productivity-pillar blogs. Lists ADHD-first content, framework posts, anti-productivity-culture posts, voice/AI content, industry-specific angles.
+ISSUES:
+- HEAVILY STALE on positioning. The "ADHD & Neurodivergent Productivity" cluster is treated as the top content priority; 2026 strategy moved this to a secondary lens behind thinking-environment-for-creators.
+- Quote "Your ADHD Brain Isn't Broken — Your Productivity Tools Are" is exactly the old wedge.
+- References documents at /docs/marketing/customer-lingo-adhd.md, /docs/marketing/user-segments/ — verify they still exist and represent current strategy.
+- Lists "Voice-First Productivity" and "Context Engineering vs Prompt Engineering" — both still on-thesis, but the voice-first angle has not been written yet.
+- Inventory broken: claims the productivity pillar has 3 published posts, but the /productivity-tips/ folder has many more.
+- Same loader-leak risk.
+NOTES: Trim ruthlessly. Most of the framework-heavy ideas here ("Context Switching Crisis," "Energy-Based Productivity," "Voice-First Productivity") are still good — they need rewriting against the 2026 anti-AI doctrine, not the ADHD-first lens. Move out of /content/blogs/.
+-->

@@ -17,3 +17,23 @@ path: apps/web/src/content/blogs/productivity-tips/focus-time-optimization.md
 # Focus Time Optimization
 
 _Content coming soon..._
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 0/10
+RECOMMENDATION: UNPUBLISH_AND_FINISH
+PURPOSE: Should be a blog on protecting deep work / focus time. Currently a 1-line stub.
+READER VALUE: None.
+VOICE FIT: N/A — empty body. Frontmatter is generic deep-work language ("Protecting Your Deep Work", "attention management") with no thinking-environment hook.
+ISSUES:
+- Stub body, real frontmatter. Same problem as calendar-integration-workflow.md.
+- `priority: 0.8` and `readingTime: 9` are aspirational lies for a 1-line file.
+- Tags are 100% generic productivity ("focus, deep-work, time-management, attention, optimization") — no project-memory or thinking-environment hooks.
+GAPS:
+- Everything.
+- Specific BuildOS angle: calendar-aware focus blocks, daily-brief-as-focus-aid, brain-dump-as-recovery-from-broken-focus, restart cost as a focus tax.
+DUPLICATES/OVERLAP: Pairs with focus-time-optimization-interview.md. Topical adjacency with calendar-integration-workflow.md and the focus blocks discussion in task-management-best-practices.md.
+NOTES: Same disposition as calendar-integration-workflow.md — kill or finish. Right now it's a placeholder with SEO weight.
+-->

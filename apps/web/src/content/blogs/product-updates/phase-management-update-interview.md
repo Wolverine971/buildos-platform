@@ -181,3 +181,22 @@ path: apps/web/src/content/blogs/product-updates/phase-management-update-intervi
 **Concrete examples**: For each strategy, show 2-3 real project examples.
 
 **Power user angle**: This is sophisticated project management made accessible.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: N/A (internal scaffolding)
+RECOMMENDATION: KILL
+PURPOSE: Internal outline for a phase-management announcement covering three phase-generation strategies (phases-only / schedule-in-phases / calendar-optimized).
+READER VALUE: Zero.
+VOICE FIT: N/A.
+FRESHNESS: STALE / FICTIONAL. The strategy names "phases-only / schedule-in-phases / calendar-optimized" appear ONLY in blog files (this one, productivity-tips/phase-based-project-execution-interview.md, productivity-tips/calendar-integration-workflow-interview.md, BLOG_CONTENT_STRATEGY.md) — they do NOT appear anywhere in the apps/web source code. Either the feature was renamed, removed, or never built as described. Cannot publish content that names features that don't exist.
+ISSUES:
+- Three-strategy taxonomy is unverified in product code.
+- Outline assumes "previous limitation: one way to generate phases" — a backstory that may not match the current product.
+- Phases / Plans terminology is ambiguous across other blog posts (under-the-hood.md treats Plans as phase-equivalent; this post treats Phases as a separate concept). Reconcile.
+GAPS: N/A — but the underlying claim that there are three phase strategies needs verification before any related post can be published.
+DUPLICATES/OVERLAP: Pairs with phase-management-update.md and productivity-tips/phase-based-project-execution* files.
+NOTES: Critical signal — this scaffold contains feature names that don't appear in code. Confirms that some product-updates content is at risk of describing a fictional product. Kill the scaffold.
+-->

@@ -193,3 +193,24 @@ That is the shift. Engineers figured it out for code. BuildOS brings it to every
 Every brain dump, every task, every Project Lens conversation makes your system permanently smarter about your work. Other tools make you productive today. BuildOS makes you productive tomorrow, and each day after.
 
 [Start compounding →](/)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 7/10
+RECOMMENDATION: LIGHT_EDIT
+PURPOSE: Maps Kieran Klaassen's "compounding engineering" five principles from code reviews onto BuildOS workflows. For productivity readers + Every.to-adjacent audience.
+READER VALUE: Yes. Strong external citation (Klaassen's Every piece), concrete five-principles structure, useful timeline table showing what compounding looks like over 12 months.
+VOICE FIT: Mostly good. Concrete examples, founder voice, no AI-bro hype. The CLAUDE.md anecdote anchors it in real engineering practice. Slight risk of being too on-the-nose with "compounding" repeated as a slogan.
+ISSUES:
+- Heavy reliance on a single source (Klaassen) — feels like a riff on his post rather than a stand-alone argument. If his piece moves or 404s, this becomes orphaned.
+- "Project Lens" / "Project Audit mode" terminology may be drifting from current product surface — verify still accurate.
+- Section 3 ("Orchestrate in Parallel") stretches the analogy thin — running 5 Claude instances does not actually map cleanly to multi-project life management; the metaphor is forced.
+- The 12-month timeline table is speculative ("you will see") — dangerous if real users hit month 6 and don't have that experience. Soften to "what compounding can look like".
+GAPS:
+- No tie to 2026 thinking-environment / anti-feed positioning. This blog still lives in the older "compounding context" frame; doesn't reference interest media or the chosen-input vocabulary.
+- No real user receipt. The Klaassen piece has team-level metrics; this post has none of its own.
+DUPLICATES/OVERLAP: Overlaps with anti-ai-assistant-execution-engine.md ("context compounds" is shared mechanism) and what-a-thinking-environment-actually-is.md (property #2 "context persistence"). Less overlap than agentic-vrs because the framing is engineering-borrowed rather than philosophical.
+NOTES: Useful as a bridge post for engineering-curious readers. Light edit: tighten Principle 3, soften the timeline table, add one cross-link to thinking-environment post. Date 2026-02-08 is fine; don't update lastmod aggressively unless edits are real.
+-->

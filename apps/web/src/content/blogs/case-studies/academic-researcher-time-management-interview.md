@@ -333,3 +333,26 @@ Should this be:
 **Respect intellectual work**: Don't over-simplify research. BuildOS supports deep thinking, doesn't replace it.
 
 **Key differentiator**: Unlike generic task managers, BuildOS handles the unique complexity of research projects (long-term, iterative, knowledge-heavy, multiple simultaneous).
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 2/10 (as a blog post — but it isn't one)
+RECOMMENDATION: UNPUBLISH_AND_FINISH (already unpublished; either kill or move out of /content/blogs)
+TYPE: other (internal interview scaffolding, not a blog)
+PURPOSE: Internal planning doc — outline + 50+ interview questions for an academic-researcher case study that was never written.
+READER VALUE: None for public readers. Useful only as a writing brief for the founder.
+HONESTY: The doc itself is honest ("persona/real person?", "Real user or composite?"). But it reveals the planned post would have invented metrics ("Published 3 papers vs. 1 in previous year", "Number of publications, Grant success rate, Time saved on admin") for a fictional persona. That intent is the problem.
+VOICE FIT: N/A (not a blog). The planned tone ("Narrative, empathetic, inspiring") drifts toward inspirational-business-blog, which fights the anti-AI / founder-direct voice exemplified in /philosophy/anti-ai-assistant-execution-engine.md.
+ISSUES:
+- Lives in /content/blogs/case-studies/ alongside published posts. Wrong location.
+- frontmatter has title "Blog Guide:" which would render publicly if published flag flipped. Mislabeled.
+- Anchors a never-written paired stub (academic-researcher-time-management.md).
+- Contains the central "Real person or composite persona?" question with no answer — meaning the planned post had no real subject, which is exactly the dishonesty risk for an early-stage product.
+GAPS:
+- No actual interview ever conducted. No source human.
+- No alternative path proposed (e.g., "illustrative scenario" framing).
+DUPLICATES/OVERLAP: Pairs with academic-researcher-time-management.md (empty stub). Also overlaps thematically with what a real "dissertation writer" or "PhD finishing thesis" case study would cover — but a real one doesn't exist yet.
+NOTES: Move all four -interview.md files to /docs/marketing/blog-briefs/ or kill them. They should not live in /content/blogs/.
+-->

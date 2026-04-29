@@ -254,3 +254,27 @@ Your projects get rich context. Project Lens delivers that context through scope
 **Stop teaching AI new capabilities. Start giving it the right context.**
 
 [Try BuildOS →](/auth/register)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 5/10
+RECOMMENDATION: MERGE_WITH_anti-ai-assistant-execution-engine.md
+PURPOSE: 2025-era explainer of context engineering vs agent engineering, pitched at AI-curious productivity readers.
+READER VALUE: Marginal. Reader gets the framework but in abstract terms with no real-world citations. The newer anti-ai-assistant-execution-engine.md does the same job better with HBR/NBER receipts.
+VOICE FIT: Off. Heavy AI-buzzword soup ("AI-architecture", "future-of-ai", "agentic engineering"), bullet-list-heavy, smart-em-dashes used for typographic decoration ("- Look, it can browse the web!"). LinkedIn-flavored cadence in places. Smart curly apostrophes (’) suggest pasted from somewhere else and never normalized.
+ISSUES:
+- Date 2025-08-12; lastmod 2025-12-31 — already stale relative to the 2026 rewrite that sits next to it.
+- ASCII flowchart in monospace block ("Gather → Filter → Apply → Evaluate → Update") is design-system-hostile and reads like an internal whiteboard.
+- Still uses old vocabulary ("Project Lens", "scoped conversation") that doesn't match the 2026 thinking-environment positioning.
+- Tag soup: 12 tags, several near-duplicates ("AI-agents", "AI-systems", "AI-productivity", "AI-architecture").
+- Internal link to /blog/first-project-setup and /blog/how-buildos-works — verify those still exist.
+- Bare table comparing scoped-conversation actions to context-engineering principles is filler; it just restates the prose.
+GAPS:
+- No citations. The newer sibling cites Harvard Business Review, NBER, IEEE Spectrum. This one has none.
+- No concrete failure case ("an agent that schedules without context creates chaos") — claims are abstract.
+- No tie to current 2026 anti-feed / thinking-environment framing.
+DUPLICATES/OVERLAP: Direct duplicate of anti-ai-assistant-execution-engine.md thesis. Also overlaps with what-a-thinking-environment-actually-is.md (property #1 "direction of the arrow") and compound-engineering-for-your-life.md (context compounding).
+NOTES: The strongest move is to KILL this file and 301 to anti-ai-assistant-execution-engine.md, OR cannibalize the "Static vs Dynamic Context" section into the newer post and delete the rest. Keeping both is dilution.
+-->

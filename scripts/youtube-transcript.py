@@ -5,13 +5,19 @@
 """Download YouTube transcript with metadata, save as markdown."""
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 from datetime import date
 from pathlib import Path
 
-from youtube_transcript_api import YouTubeTranscriptApi
+try:
+    from youtube_transcript_api import YouTubeTranscriptApi
+    _YT_API_AVAILABLE = True
+except Exception:
+    _YT_API_AVAILABLE = False
 
 
 def extract_video_id(url_or_id: str) -> str:
@@ -31,10 +37,87 @@ def fetch_metadata(video_id: str) -> dict:
     return json.loads(out.stdout)
 
 
+_VTT_TS_RE = re.compile(r"^(\d{2}):(\d{2}):(\d{2})\.(\d{3})\s+-->\s+(\d{2}):(\d{2}):(\d{2})\.(\d{3})")
+
+
+def _vtt_ts_to_seconds(h: str, m: str, s: str, ms: str) -> float:
+    return int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000.0
+
+
+def _parse_vtt(vtt_text: str) -> list[dict]:
+    """Parse a VTT auto-caption file into [{text, start, duration}] segments.
+
+    Auto-captioned VTT files repeat each line as it appears word-by-word in
+    the rolling display. We dedupe by collapsing consecutive identical lines
+    and keeping the first occurrence's timestamp.
+    """
+    segments: list[dict] = []
+    current_start: float | None = None
+    current_end: float | None = None
+    seen_lines: set[str] = set()
+    for raw in vtt_text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("WEBVTT") or line.startswith("Kind:") or line.startswith("Language:") or line.startswith("NOTE"):
+            continue
+        m = _VTT_TS_RE.match(line)
+        if m:
+            current_start = _vtt_ts_to_seconds(m.group(1), m.group(2), m.group(3), m.group(4))
+            current_end = _vtt_ts_to_seconds(m.group(5), m.group(6), m.group(7), m.group(8))
+            continue
+        # Strip inline timing tags like <00:00:01.000><c>word</c>
+        cleaned = re.sub(r"<[^>]+>", "", line).strip()
+        if not cleaned or cleaned in seen_lines:
+            continue
+        seen_lines.add(cleaned)
+        seg_start = current_start if current_start is not None else 0.0
+        seg_dur = (current_end - current_start) if current_start is not None and current_end is not None else 0.0
+        segments.append({"text": cleaned, "start": seg_start, "duration": seg_dur})
+    return segments
+
+
+def fetch_transcript_via_ytdlp(video_id: str) -> list[dict]:
+    with tempfile.TemporaryDirectory() as tmp:
+        cmd = [
+            "yt-dlp",
+            "--skip-download",
+            "--write-auto-sub",
+            "--write-sub",
+            "--sub-format", "vtt",
+            "--sub-lang", "en.*,en",
+            "--no-warnings",
+            "--output", os.path.join(tmp, "%(id)s.%(ext)s"),
+            f"https://www.youtube.com/watch?v={video_id}",
+        ]
+        subprocess.run(cmd, capture_output=True, text=True, check=True)
+        candidates = sorted(Path(tmp).glob(f"{video_id}*.vtt"))
+        if not candidates:
+            raise RuntimeError(f"yt-dlp did not produce a VTT file for {video_id}")
+        # Prefer manual `.en.vtt`, then any `.en*.vtt`, then any vtt
+        chosen = None
+        for c in candidates:
+            if c.name.endswith(".en.vtt"):
+                chosen = c
+                break
+        if chosen is None:
+            for c in candidates:
+                if ".en" in c.name:
+                    chosen = c
+                    break
+        if chosen is None:
+            chosen = candidates[0]
+        vtt_text = chosen.read_text(encoding="utf-8", errors="replace")
+        return _parse_vtt(vtt_text)
+
+
 def fetch_transcript(video_id: str) -> list[dict]:
-    api = YouTubeTranscriptApi()
-    fetched = api.fetch(video_id)
-    return [{"text": s.text, "start": s.start, "duration": s.duration} for s in fetched]
+    if _YT_API_AVAILABLE:
+        try:
+            api = YouTubeTranscriptApi()
+            fetched = api.fetch(video_id)
+            return [{"text": s.text, "start": s.start, "duration": s.duration} for s in fetched]
+        except Exception as exc:
+            print(f"[youtube-transcript-api] fell back to yt-dlp: {exc!r}", file=sys.stderr)
+    return fetch_transcript_via_ytdlp(video_id)
 
 
 def fmt_duration(secs: int) -> str:

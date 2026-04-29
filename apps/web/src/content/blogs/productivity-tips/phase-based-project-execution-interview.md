@@ -430,3 +430,22 @@ Should we include detailed examples for:
 - Brain dump blog (how phases emerge from brain dumps)
 - Calendar integration blog (how phases map to time)
 - Focus time blog (working on one phase at a time)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 2/10
+RECOMMENDATION: KILL
+PURPOSE: Internal interview/research scaffolding for an unwritten Phase-Based Project Execution blog. 50 unanswered questions.
+READER VALUE: Zero. Internal scaffolding.
+VOICE FIT: N/A. Planning language is "AI generates phases" / "AI proposes" — leans into AI-doer framing the strategy avoids. The actual post would need to reframe phases as "BuildOS proposes a phase structure you review and adjust" rather than "AI plans your project."
+ISSUES:
+- 50 questions, many duplicative.
+- "Three Generation Strategies" frame (phases-only / schedule-in-phases / calendar-optimized) is internal product language; needs translation for readers.
+- Conflates phases-as-cognitive-bridge (good thesis) with phases-as-AI-feature (product pitch). The actual blog would need to pick one frame.
+GAPS:
+- The actual post.
+DUPLICATES/OVERLAP: Pairs with phase-based-project-execution.md stub. Concept overlap with task-management-best-practices.md (which already discusses Project → Phase → Task hierarchy).
+NOTES: Same scaffolding disposition. Of the three interview pairs, this is the highest-value if actually written, because phase-generation is a unique BuildOS mechanic with no obvious competitor parallel. Worth finishing rather than killing — but kill the interview doc once the real post exists.
+-->

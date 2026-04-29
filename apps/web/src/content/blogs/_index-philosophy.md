@@ -322,3 +322,19 @@ path: apps/web/src/content/blogs/_index-philosophy.md
 ---
 
 _This philosophical content strategy positions BuildOS and DJ Wayne as thoughtful contributors to important conversations about the future of human-AI collaboration, work, and technology, while maintaining practical grounding in real product development experience._
+
+---
+
+<!--
+AUDIT 2026-04-29
+TYPE: internal-strategy-doc-misplaced
+RECOMMENDATION: MOVE_TO_DOCS_MARKETING (docs/marketing/strategy/blog-content-plans/)
+PURPOSE: Internal planning doc for the philosophy content pillar. Catalogs 100+ philosophical content ideas grouped under amplification thesis, anti-productivity theater, cognitive load, energy-based work, etc.
+ISSUES:
+- PARTIALLY ALIGNED with 2026 strategy. "Context over capability," "amplification vs automation," and "cognitive load" themes are still on-thesis — the anti-AI manifesto blog already executes against this index.
+- Still references ADHD-first / neurodivergent productivity as a content pillar; partially superseded by the creator-thinking-environment frame.
+- "The Authenticity Imperative" and "Building in Public Philosophy" remain marketing-strategy-era concepts that may not fit a 2026 anti-AI editorial voice.
+- Inventory is OUT OF DATE — only 2 of the planned posts are listed as existing, but the actual /philosophy/ folder holds many more files.
+- Same content-loader leak risk as siblings.
+NOTES: This is the most strategically valuable of the 5 indexes because the philosophy pillar is genuinely working (anti-AI manifesto is the gold-standard post). Move to docs, then rewrite as a forward-looking philosophy roadmap that maps to the actual /philosophy/ folder inventory.
+-->

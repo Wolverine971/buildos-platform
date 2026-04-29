@@ -178,3 +178,21 @@ path: apps/web/src/content/blogs/product-updates/dynamic-context-feature-intervi
 **Progressive disclosure**: Start simple, grow complex. Don't overwhelm.
 
 **The "memory" angle**: Position as project memory that gets better over time.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: N/A (internal scaffolding)
+RECOMMENDATION: KILL
+PURPOSE: Internal outline for a "dynamic context" feature announcement that was never finished. Frontmatter explicitly internal.
+READER VALUE: Zero.
+VOICE FIT: N/A.
+FRESHNESS: "Dynamic context" / props on entities are real (under-the-hood.md confirms props are live). But the FEATURE NAME "Dynamic Context" doesn't appear to be a user-facing brand anymore — props/facets are how the feature is described internally. Announcing a "dynamic context feature" by name is fictional positioning.
+ISSUES:
+- Marketing name "Dynamic Context Feature" was never adopted in product UI as far as can be confirmed.
+- The "project memory" angle has been absorbed into the broader "thinking environment" positioning. Re-announcing it as a discrete feature is the wrong shape.
+GAPS: N/A
+DUPLICATES/OVERLAP: Pairs with dynamic-context-feature.md.
+NOTES: Kill. The substance of this idea ("projects that remember") is better served by the buildos-vs-obsidian piece, which makes the same point more powerfully without inventing a feature name.
+-->

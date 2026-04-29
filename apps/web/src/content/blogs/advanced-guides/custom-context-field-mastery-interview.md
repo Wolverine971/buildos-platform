@@ -343,3 +343,26 @@ path: apps/web/src/content/blogs/advanced-guides/custom-context-field-mastery-in
 **Progressive disclosure**: Start simple (basic context), then show advanced techniques. Don't overwhelm.
 
 **Connection to brain dump**: Show how context naturally emerges from brain dumps and gets refined over time.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 3/10
+RECOMMENDATION: UNPUBLISH_AND_FINISH
+PURPOSE: Interview-question scaffolding for an unwritten post on custom context fields, targeted at consultants/power users frustrated by rigid task fields.
+READER VALUE: Zero as a reader artifact — it's a question list, not content.
+VOICE FIT: N/A as scaffolding. The framing here is closer to BuildOS's actual positioning than the API/dependency outlines — "context fields are your project memory" lines up with "project memory that compounds" from the Obsidian comparison exemplar. Salvageable angle.
+ACCURACY: Mixed. "Custom context fields" needs verification: BuildOS projects do have a context field and the brain-dump pipeline writes structured context, but a user-defined-schema "custom context field" feature (templates, inheritance, automation rules, context API) as described in the outline is aspirational. Outline keeps hedging "if BuildOS supports" — author isn't sure either.
+ISSUES:
+- Outline conflates real behavior (project context generated from brain dumps) with imagined behavior (templates, inheritance, automation rules, "context field API").
+- Title "Custom Context Field Mastery" sounds like an Asana/Notion property tutorial — drifts toward CRM category.
+- 45 interview questions for a 2000-2500-word target is over-scoped.
+- Tone descriptors ("empowering", "elite", "insider knowledge") flag productivity-porn voice that the brand explicitly avoids.
+- Frontmatter "Blog Guide:" prefix leaks internal naming.
+GAPS:
+- The real story is the one in the Obsidian exemplar: context compounds because you keep talking to the same project, not because you build a property schema. Outline misses this — frames context as a configuration task.
+- No mention of project-level context as the AI's prompt fuel for the next brain dump's parsing — that's the actual mechanic.
+DUPLICATES/OVERLAP: custom-context-field-mastery.md (its empty twin); partial overlap with power-user-automation-techniques-interview.md "Context building for better AI" section.
+NOTES: Salvageable as a single honest essay titled something like "Why your project knows what 'the flashback' means" — but kill the property-schema framing and the 45-question scaffolding entirely.
+-->

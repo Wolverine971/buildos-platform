@@ -292,3 +292,25 @@ That's what's under the hood.
 Start with a brain dump. Watch structure emerge from your thoughts. See how goals connect to milestones connect to plans connect to tasks.
 
 [Try the connected approach →](/)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 8/10
+RECOMMENDATION: LIGHT_EDIT
+PURPOSE: Technical/architectural deep-dive. Explains the Goals/Milestones/Plans/Tasks/Risks/Documents ontology, props, facets, states, and Project Lens mechanics. For users who want to understand the model.
+READER VALUE: Genuinely useful for the audience this is intended for. The "you don't need all of it / structure emerges" sections are honest and earned. State tables, facets, props examples, and the zoom-level table give concrete grounding most BuildOS docs lack.
+VOICE FIT: Good. Founder-direct, no AI hype. "BuildOS isn't trying to be a project management dictator" lands. The "tasks mean future work" philosophy is a real product opinion stated clearly.
+FRESHNESS: Mostly aligns with code. onto_milestones table exists in DB. Props and facets are real. State tables look plausible — should be spot-checked against database enums (project_state, task_state, etc.). 1-minute Project Lens cache claim should be verified against context-cache.ts.
+ISSUES:
+- Long (10min reading time, ~295 lines). Some sections could be compressed.
+- "Fast pattern matching for immediate responsiveness, with optional AI refinement in the background" is a vague technical claim that should either be made specific or cut.
+- The "Built-in Facets" list (context: personal/client/commercial/open source/nonprofit) is concrete enough that it should be confirmed against the actual facet enum.
+- Mentions Risks repeatedly as a first-class entity — confirm whether risks are surfaced in current UI or were planned-but-deferred.
+GAPS:
+- Doesn't explain how relationships are stored or queried at any depth — "everything connects" is asserted but the mechanism is glossed.
+- No mention of how this differs from a graph DB or how it handles cross-project links.
+DUPLICATES/OVERLAP: Heavy structural overlap with how-buildos-works.md (the hierarchy diagram appears in both with slight differences — Goals/Plans/Tasks/Documents vs Goals/Milestones/Plans/Tasks/Documents). The two files disagree on whether Milestones are a top-level concept. Reconcile.
+NOTES: Date 2025-12-17, lastmod 2026-04-16 — most recent refresh in folder. Strong piece. The "You don't need all of it" message is the right register for the audience.
+-->

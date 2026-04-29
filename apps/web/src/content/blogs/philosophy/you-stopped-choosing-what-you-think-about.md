@@ -169,3 +169,22 @@ Do this once a week for a month and watch the ratio move. Most people find the C
 The chosen input isn't a productivity hack. It isn't a morning routine. It's how you stay a person whose thoughts are recognizably their own in an interest media era that doesn't really want you to.
 
 The anti-feed isn't an app. It's the act of choosing again.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 8/10
+RECOMMENDATION: KEEP_AS_IS
+PURPOSE: Vocabulary post for the WS09 anti-feed cluster (T35). Names three feelings — curiosity collapse, feed paranoia, algorithm-shaped thoughts — and introduces "chosen input" as the unit of recovery. Ends with a 60-second self-test.
+READER VALUE: High. The three named feelings are sticky and mirror real subjective experience. The 60-second C/S test is a free, no-product action a reader can take immediately. Closes with "the anti-feed isn't an app, it's the act of choosing again" — strong category-building line.
+VOICE FIT: Excellent. Felt-experience opener, no AI hype, soft BuildOS CTA, founder-direct. The "Roth IRA at 22" analogy lands. Light on receipts because the sibling post owns the numbers angle (deliberate cluster division).
+ISSUES:
+- In-body draft-notes HTML comment (lines 28-62) — same scaffolding-leak problem as the other recent cluster posts. Strip before final.
+- "1,610 clippers, $666K/month" cite is referenced inline ("as the manifesto post in this cluster lays out") but the receipt is in a sibling — minor friction for a reader landing here cold.
+- "Algorithm-shaped thoughts" section makes a personal claim ("within about two weeks of doing it consistently, the tweet-cadence drops out of my head") that is not falsifiable. Brief enough to land as honest first-person; not a real issue, just flagging.
+GAPS:
+- The 60-second test could be more discoverable (currently buried 80% of the way down). Consider a callout box.
+DUPLICATES/OVERLAP: By design pairs with your-morning-without-the-algorithm.md (felt-experience sibling), social-media-is-dead-interest-media.md (vocabulary), and what-a-thinking-environment-actually-is.md (definition). Slight overlap with the C/S audit logic in your-morning-without-the-algorithm but the framing is distinct enough.
+NOTES: Strip the in-body draft notes. Otherwise this is the strongest top-of-funnel post in the cluster — high enough emotional resonance to land with cold readers.
+-->

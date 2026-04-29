@@ -367,3 +367,27 @@ Master this skill, and everything else becomes more effective.
 Your first brain dump will be rough. That's the point. Start now, refine later.
 
 [Create your first brain dump →](/auth/register)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 6/10
+RECOMMENDATION: REWRITE
+PURPOSE: Onboarding guide for brain dumping. Wants to teach users what to dump, how the parser works, and how to refine via Project Lens.
+READER VALUE: Mixed. The two long worked examples (meditation app, household reorganization) are good — they show the messiness the parser is supposed to handle. But the middle is heavy on bullet-list abstraction ("emotional context," "context clues," "pattern recognition") and doesn't show what BuildOS actually does with those inputs.
+VOICE FIT: Weak. Reads like generic productivity advice with BuildOS branding sprinkled on top. "Building rich context" / "intelligence layer" / "compounding context" all show up but don't carry the founder-direct, anti-AI tone the exemplars set.
+FRESHNESS: Brain dump is a real and central primitive. The Goals → Plans → Tasks → Documents hierarchy matches under-the-hood.md and the data model. The "20-45 minutes" / "set a timer for 20 minutes" framing feels contrived — most users won't do that and the product doesn't require it.
+ISSUES:
+- Prescribes a 20-45 minute timed session as the canonical brain dump. Voice-first, 30-second car-memo brain dumps are a major real use case and are absent.
+- "Dynamic Context Generation" with example fields (technical_architecture, deployment_timeline, artistic_vision) reads as speculative — needs verification that these prop types actually emerge.
+- "BuildOS doesn't just create a text file. It's feeding an intelligent system that..." is the bullet-soup AI-pitch the anti-AI doctrine wants to avoid.
+- Table at the end ("First / Fifth / Twentieth — Generic / Personalized / partner") oversells day-1 vs day-100 with no real numbers.
+- Long. ~370 lines. Most users will bounce before the worked examples.
+GAPS:
+- Voice-first brain dumping (the actual differentiator) is mentioned once in passing and not shown.
+- No example of a 30-second messy brain dump that becomes useful structure — the obsidian-vs-buildos exemplar nails this and this post doesn't.
+- No "what NOT to brain dump" — the post implies more is always better.
+DUPLICATES/OVERLAP: Overlaps heavily with how-buildos-works.md (brain dump section), first-project-setup.md (which now also covers parsing), and under-the-hood.md (Goals/Plans/Tasks/Documents).
+NOTES: Old (date 2025-06-28, lastmod 2025-12-31) and not refreshed. Most-quoted page in onboarding but voice no longer matches 2026 positioning. Strong rewrite candidate using the obsidian-vs-buildos voice as the model.
+-->

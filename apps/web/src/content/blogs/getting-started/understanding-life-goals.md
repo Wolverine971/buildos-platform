@@ -250,3 +250,25 @@ Start by clarifying your 3-5 most important life goals, then let BuildOS structu
 Your goals deserve more than a list. Define your 3-5 life goals today and let BuildOS structure the context around them.
 
 [Start with your first goal →](/)
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 5/10
+RECOMMENDATION: REWRITE
+PURPOSE: Wants to teach the goals-vs-projects distinction and how BuildOS surfaces alignment automatically. Half onboarding, half soft-philosophy.
+READER VALUE: Mid. The three misalignment traps (all-projects-no-goals / all-goals-no-projects / disconnected) are crisp and useful. But the bulk of the post is generic "life goals" advice (Career / Health / Creative Expression / Financial Security) that any productivity blog could publish. Doesn't show BuildOS doing anything that requires BuildOS.
+VOICE FIT: Weak. "You're winning battles without knowing which war you're fighting" / "Your North Star" / "The 90-Day Sprint" / "The Portfolio Approach" — this is self-help-conference voice, not founder-direct. Anti-AI thinking-environment positioning is barely visible.
+FRESHNESS: Goals are a real entity (life_goals appears in user-context types). The Goals → Plans → Tasks → Documents alignment claim is consistent with the model. Project Lens "zoom into a goal" mechanics are real. So the claims hold up — the problem is voice and shape, not facts.
+ISSUES:
+- Title "Goals vs Projects: Why Most Productivity Systems Get This Wrong" is a clickbait title that the post doesn't deliver on. It doesn't actually critique any other system.
+- "Career & Professional Development / Health & Wellness / Financial Security" examples are generic and could be lifted from any planner blog.
+- Repeats the day-1/day-100 trope and "executive assistant"-adjacent language that's worn out across the folder.
+- Claims "BuildOS solves alignment through structured context" but doesn't actually show a worked example of alignment in action — just a hierarchy diagram.
+GAPS:
+- No founder voice or specific project example. The novel/wedding/Spanish examples in first-project-setup.md are way more concrete than anything here.
+- Doesn't address the actual hard question: when should something be a goal vs a project vs a milestone? The taxonomy gets asserted, not earned.
+DUPLICATES/OVERLAP: Significant overlap with under-the-hood.md (Goals → Plans → Tasks → Documents) and how-buildos-works.md (same hierarchy). The misalignment-traps section is the only piece that's not redundant.
+NOTES: Frontmatter says published:true, lastmod 2026-01-24. Title slug is `understanding-life-goals` but title is now "Goals vs Projects" — internal mismatch. Could be salvaged by stripping the generic life-goals content and turning it into a sharp 600-word piece on the goals-vs-projects distinction with a real BuildOS example.
+-->

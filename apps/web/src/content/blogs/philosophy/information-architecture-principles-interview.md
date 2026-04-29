@@ -223,3 +223,22 @@ path: apps/web/src/content/blogs/philosophy/information-architecture-principles-
 **Reader takeaway**: Readers should understand why their productivity tools feel hard to use (IA root causes) and have concrete principles to evaluate and improve their systems.
 
 **Connection to BuildOS**: Use BuildOS as case study, but make principles tool-agnostic. This is thought leadership, not just a product pitch.
+
+---
+
+<!--
+AUDIT 2026-04-29
+QUALITY: 1/10
+RECOMMENDATION: KILL
+PURPOSE: Internal interview/outline scaffolding for the (also-incomplete) information-architecture-principles.md post. Lists 36 interview questions plus structural notes.
+READER VALUE: Zero for a public reader. Pure scaffolding.
+VOICE FIT: N/A.
+ISSUES:
+- Frontmatter says published:false, priority:0.1, tags:['planning','outline','internal'] — confirmed scaffolding pattern.
+- Sits in src/content/blogs alongside the empty stub it was meant to seed. Worse, the stub was never actually written.
+- 226 lines of internal interview questions in the published-content folder.
+GAPS:
+- N/A.
+DUPLICATES/OVERLAP: Source scaffolding for information-architecture-principles.md.
+NOTES: KILL. The companion stub was never finished; this scaffolding has no remaining purpose.
+-->
