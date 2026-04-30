@@ -31,5 +31,9 @@ export function isLibriIntegrationEnabled(source: EnvLike = getRuntimeEnv()): bo
 }
 
 export function isLibriToolName(toolName: string): boolean {
-	return toolName === 'resolve_libri_resource' || toolName === 'query_libri_library';
+	return (
+		toolName === 'resolve_libri_resource' ||
+		toolName === 'query_libri_library' ||
+		/^libri_[a-z0-9_]+$/.test(toolName)
+	);
 }

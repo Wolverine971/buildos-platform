@@ -41,6 +41,95 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	{
 		type: 'function',
 		function: {
+			name: 'libri_overview',
+			description:
+				'Return the Libri domain/capability overview from the cached Libri manifest, including stable domain ids such as books, people, and youtube_videos.',
+			parameters: {
+				type: 'object',
+				properties: {
+					refresh: {
+						type: 'boolean',
+						description: 'Force a Libri manifest refresh before returning the overview.'
+					},
+					includeDomains: {
+						type: 'boolean',
+						description: 'Include compact domain summaries. Defaults to true.'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'libri_search_capabilities',
+			description:
+				'Search validated Libri capabilities by domain and query. Returns canonical ops and materialized direct tool names; use the direct Libri tool after it is loaded in the next model pass.',
+			parameters: {
+				type: 'object',
+				properties: {
+					domain: {
+						type: 'string',
+						description:
+							'Optional Libri domain filter such as books, people, or youtube_videos.'
+					},
+					query: {
+						type: 'string',
+						description:
+							'Natural-language operation search, e.g. "upload transcript analysis".'
+					},
+					resource: {
+						type: 'string',
+						description: 'Optional specific resource family such as video.import.'
+					},
+					kind: {
+						type: 'string',
+						enum: ['read', 'write'],
+						description: 'Optional read/write filter.'
+					},
+					limit: {
+						type: 'integer',
+						description: 'Maximum number of matching operations to return.'
+					},
+					refresh: {
+						type: 'boolean',
+						description: 'Force a Libri manifest refresh before searching.'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'libri_get_capability_schema',
+			description:
+				'Return the exact schema for one Libri op and materialize its direct tool for the next model pass.',
+			parameters: {
+				type: 'object',
+				properties: {
+					op: {
+						type: 'string',
+						minLength: 1,
+						description:
+							'Canonical Libri op or direct tool name, e.g. libri.video.import.preview.'
+					},
+					includeExamples: {
+						type: 'boolean',
+						description: 'Include examples when Libri provides them.'
+					},
+					refresh: {
+						type: 'boolean',
+						description: 'Force a Libri manifest refresh before loading the schema.'
+					}
+				},
+				required: ['op']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
 			name: 'tool_search',
 			description:
 				'Discover candidate BuildOS tools on demand. Use this only when the exact op is still unknown after context and skill guidance. Search for the operation you need, not workspace data.',

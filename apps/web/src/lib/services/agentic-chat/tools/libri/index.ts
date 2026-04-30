@@ -14,5 +14,23 @@ export type {
 	LibriResponseDepth,
 	QueryLibriLibraryArgs,
 	ResolveLibriResourceArgs,
-	ResolveLibriToolStatus
+	ResolveLibriToolStatus,
+	LibriOverviewArgs,
+	LibriSearchCapabilitiesArgs,
+	LibriGetCapabilitySchemaArgs,
+	LibriManifestOperation,
+	ValidatedLibriManifest
 } from './types';
+
+export {
+	executeDynamicLibriTool,
+	getCachedLibriManifest,
+	getCachedLibriOperation,
+	getCachedLibriOperationByToolName,
+	getValidatedLibriManifest,
+	libriGetCapabilitySchema,
+	libriOverview,
+	libriSearchCapabilities,
+	resetLibriManifestCache,
+	resolveDynamicLibriToolDefinition
+} from './manifest';

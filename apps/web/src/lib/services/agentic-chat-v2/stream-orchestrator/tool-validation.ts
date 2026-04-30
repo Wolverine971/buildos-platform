@@ -3,6 +3,10 @@ import type { ChatToolCall, ChatToolDefinition } from '@buildos/shared-types';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import {
+	getCachedLibriOperation,
+	getCachedLibriOperationByToolName
+} from '$lib/services/agentic-chat/tools/libri';
+import {
 	normalizeProjectCreateArgs,
 	validateProjectCreateArgs
 } from '$lib/services/agentic-chat/tools/core/project-create-args';
@@ -130,7 +134,8 @@ export function validateToolCalls(
 			}
 		}
 
-		const normalizedOp = registry.byToolName[toolName]?.op;
+		const normalizedOp =
+			registry.byToolName[toolName]?.op ?? getCachedLibriOperationByToolName(toolName)?.op;
 		if (normalizedOp) {
 			validateDirectOpArgs(normalizedOp, args, errors, validationContext);
 		}
@@ -271,7 +276,9 @@ function applyExactOpDiscoveryExecutionGuards(
 	for (const record of records) {
 		if (!record.op) continue;
 		const entry = registry.ops[record.op];
-		if (!entry || entry.kind !== 'write') continue;
+		const libriOperation = getCachedLibriOperation(record.op);
+		const kind = entry?.kind ?? libriOperation?.kind;
+		if (kind !== 'write') continue;
 		const discoveryTools = discoveryToolsByOp.get(record.op);
 		if (!discoveryTools || discoveryTools.size === 0) continue;
 
@@ -288,7 +295,7 @@ function extractExactGatewayDiscoveryOp(
 	args: Record<string, any>,
 	registry: ReturnType<typeof getToolRegistry>
 ): string | null {
-	if (toolName !== 'tool_schema') {
+	if (toolName !== 'tool_schema' && toolName !== 'libri_get_capability_schema') {
 		return null;
 	}
 
@@ -299,7 +306,8 @@ function extractExactGatewayDiscoveryOp(
 	}
 
 	const normalized = normalizeGatewayOpName(rawReference.trim());
-	return registry.ops[normalized] ? normalized : null;
+	if (registry.ops[normalized]) return normalized;
+	return getCachedLibriOperation(rawReference.trim())?.op ?? null;
 }
 
 function validateDirectOpArgs(

@@ -105,3 +105,84 @@ export interface LibriLibraryQueryToolResult {
 		fetched_at?: string;
 	};
 }
+
+export type LibriManifestOperationKind = 'read' | 'write';
+
+export interface LibriManifestOperation {
+	op: string;
+	toolName: string;
+	domain: string;
+	resource?: string;
+	kind: LibriManifestOperationKind;
+	method: 'GET' | 'POST';
+	path: string;
+	description: string;
+	requiredScopes: string[];
+	requiresIdempotencyKey?: boolean;
+	idempotency?: {
+		header?: string;
+		recommendedKeyFields?: string[];
+	};
+	inputSchema: Record<string, any>;
+	outputSchema?: Record<string, any>;
+	examples?: unknown[];
+	safety: {
+		modelVisible?: boolean;
+		adminOnly?: boolean;
+		allowDirectToolMaterialization?: boolean;
+		allowGenericBridgeExecution?: boolean;
+	};
+	sequenceId?: string;
+}
+
+export interface LibriManifestDomain {
+	id: string;
+	label: string;
+	description: string;
+	resources?: Record<string, unknown>;
+	operations: LibriManifestOperation[];
+	sequences?: Record<
+		string,
+		{
+			id?: string;
+			description?: string;
+			steps?: Array<{
+				op?: string;
+				purpose?: string;
+				requiresPreviousSuccess?: string;
+			}>;
+		}
+	>;
+}
+
+export interface ValidatedLibriManifest {
+	version: string;
+	manifestVersion: string;
+	generatedAt?: string;
+	fetchedAt: string;
+	stale: boolean;
+	domains: Record<string, LibriManifestDomain>;
+	operations: Record<string, LibriManifestOperation>;
+	byToolName: Record<string, LibriManifestOperation>;
+	warnings: string[];
+}
+
+export interface LibriOverviewArgs {
+	refresh?: boolean;
+	includeDomains?: boolean;
+}
+
+export interface LibriSearchCapabilitiesArgs {
+	domain?: string;
+	query?: string;
+	resource?: string;
+	kind?: LibriManifestOperationKind;
+	limit?: number;
+	refresh?: boolean;
+}
+
+export interface LibriGetCapabilitySchemaArgs {
+	op: string;
+	includeExamples?: boolean;
+	refresh?: boolean;
+}

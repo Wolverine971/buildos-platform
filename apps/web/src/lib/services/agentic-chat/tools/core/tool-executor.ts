@@ -42,9 +42,10 @@ import {
 
 import type { WebSearchArgs } from '$lib/services/agentic-chat/tools/websearch';
 import type { WebVisitArgs } from '$lib/services/agentic-chat/tools/webvisit';
-import type {
-	QueryLibriLibraryArgs,
-	ResolveLibriResourceArgs
+import {
+	getCachedLibriOperationByToolName,
+	type QueryLibriLibraryArgs,
+	type ResolveLibriResourceArgs
 } from '$lib/services/agentic-chat/tools/libri';
 
 const logger = createLogger('ChatToolExecutor');
@@ -256,6 +257,10 @@ export class ChatToolExecutor {
 	// ============================================
 
 	private async dispatchTool(toolName: string, args: any): Promise<any> {
+		if (getCachedLibriOperationByToolName(toolName)) {
+			return this.externalExecutor.executeDynamicLibriTool(toolName, args);
+		}
+
 		switch (toolName) {
 			// ==================
 			// UTILITY TOOLS

@@ -2,6 +2,7 @@
 
 export type WebVisitMode = 'auto' | 'reader' | 'raw';
 export type WebVisitContentFormat = 'text' | 'markdown';
+export type WebVisitExtractionStrategy = 'raw' | 'article' | 'main' | 'body' | 'html';
 
 export interface WebVisitArgs {
 	url: string;
@@ -23,6 +24,14 @@ export interface WebVisitLink {
 
 export type WebVisitParser = 'reader' | 'raw' | 'text';
 
+export interface WebVisitStructuredDataItem {
+	type?: string | string[];
+	name?: string;
+	url?: string;
+	description?: string;
+	[key: string]: unknown;
+}
+
 export interface WebVisitFetchPayload {
 	url: string;
 	final_url: string;
@@ -32,6 +41,7 @@ export interface WebVisitFetchPayload {
 	text: string;
 	trimmed_html?: string;
 	meta?: Record<string, string>;
+	structured_data?: WebVisitStructuredDataItem[];
 	canonical_url?: string;
 	links?: WebVisitLink[];
 	message: string;
@@ -41,6 +51,7 @@ export interface WebVisitFetchPayload {
 		bytes: number;
 		fetch_ms: number;
 		parser: WebVisitParser;
+		extraction_strategy?: WebVisitExtractionStrategy;
 		html_chars?: number;
 	};
 }
@@ -58,6 +69,7 @@ export interface WebVisitResultPayload {
 	truncated: boolean;
 	links?: WebVisitLink[];
 	meta?: Record<string, string>;
+	structured_data?: WebVisitStructuredDataItem[];
 	visit_id?: string;
 	stored?: boolean;
 	message: string;
@@ -67,6 +79,7 @@ export interface WebVisitResultPayload {
 		bytes: number;
 		fetch_ms: number;
 		parser: WebVisitParser;
+		extraction_strategy?: WebVisitExtractionStrategy;
 		html_chars?: number;
 		markdown_chars?: number;
 		llm_model?: string;

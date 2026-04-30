@@ -27,6 +27,7 @@ import {
 	queryLibriLibrary,
 	resolveLibriResource
 } from '$lib/services/agentic-chat/tools/libri/client';
+import { executeDynamicLibriTool } from '$lib/services/agentic-chat/tools/libri';
 import {
 	buildExcerpt,
 	clampMaxChars,
@@ -81,6 +82,15 @@ export class ExternalExecutor extends BaseExecutor {
 		return queryLibriLibrary(args, {
 			fetchFn: this.fetchFn,
 			sessionId: this.sessionId
+		});
+	}
+
+	async executeDynamicLibriTool(
+		toolName: string,
+		args: Record<string, any>
+	): Promise<Record<string, unknown>> {
+		return executeDynamicLibriTool(toolName, args, {
+			fetchFn: this.fetchFn
 		});
 	}
 

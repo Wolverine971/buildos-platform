@@ -38,6 +38,11 @@ import {
 	validateProjectCreateArgs
 } from '../tools/core/project-create-args';
 import { loadSkill } from '../tools/skills/skill-load';
+import {
+	libriGetCapabilitySchema,
+	libriOverview,
+	libriSearchCapabilities
+} from '../tools/libri';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { dev } from '$app/environment';
 import { createLogger } from '$lib/utils/logger';
@@ -50,7 +55,14 @@ import {
 } from '../shared/update-value-validation';
 
 const logger = createLogger('ToolExecutionService');
-const GATEWAY_TOOL_NAMES = new Set(['skill_load', 'tool_search', 'tool_schema']);
+const GATEWAY_TOOL_NAMES = new Set([
+	'skill_load',
+	'tool_search',
+	'tool_schema',
+	'libri_overview',
+	'libri_search_capabilities',
+	'libri_get_capability_schema'
+]);
 
 /**
  * Tool execution options
@@ -690,6 +702,50 @@ export class ToolExecutionService implements BaseService {
 				include_examples: args.include_examples !== false,
 				include_schema: args.include_schema !== false
 			});
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'libri_overview') {
+			const result = await libriOverview(
+				{
+					refresh: args.refresh === true,
+					includeDomains: args.includeDomains !== false
+				},
+				{ fetchFn: fetch }
+			);
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'libri_search_capabilities') {
+			const result = await libriSearchCapabilities(
+				{
+					domain: typeof args.domain === 'string' ? args.domain : undefined,
+					query: typeof args.query === 'string' ? args.query : undefined,
+					resource: typeof args.resource === 'string' ? args.resource : undefined,
+					kind: args.kind === 'read' || args.kind === 'write' ? args.kind : undefined,
+					limit: typeof args.limit === 'number' ? args.limit : undefined,
+					refresh: args.refresh === true
+				},
+				{ fetchFn: fetch }
+			);
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'libri_get_capability_schema') {
+			const op =
+				typeof args.op === 'string'
+					? args.op
+					: typeof args.path === 'string'
+						? args.path
+						: '';
+			const result = await libriGetCapabilitySchema(
+				{
+					op,
+					includeExamples: args.includeExamples !== false,
+					refresh: args.refresh === true
+				},
+				{ fetchFn: fetch }
+			);
 			return { success: true, data: result, toolName, toolCallId: 'gateway' };
 		}
 

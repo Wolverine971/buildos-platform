@@ -4,10 +4,21 @@ import {
 	extractToolNamesFromDefinitions,
 	extractTools
 } from '$lib/services/agentic-chat/tools/core/tools.config';
-import { isLibriIntegrationEnabled, isLibriToolName } from '$lib/services/agentic-chat/tools/libri';
+import {
+	isLibriIntegrationEnabled,
+	isLibriToolName,
+	resolveDynamicLibriToolDefinition
+} from '$lib/services/agentic-chat/tools/libri';
 import { GATEWAY_TOOL_DEFINITIONS } from './definitions/gateway';
 
-const GATEWAY_DISCOVERY_TOOL_NAMES = ['skill_load', 'tool_search', 'tool_schema'] as const;
+const GATEWAY_DISCOVERY_TOOL_NAMES = [
+	'skill_load',
+	'libri_overview',
+	'libri_search_capabilities',
+	'libri_get_capability_schema',
+	'tool_search',
+	'tool_schema'
+] as const;
 
 export const GATEWAY_SURFACE_PROFILE_NAMES = [
 	'global_basic',
@@ -102,7 +113,11 @@ const GATEWAY_TOOL_DEFINITION_MAP = new Map(
 
 function resolveGatewayToolDefinition(name: string): ChatToolDefinition | undefined {
 	if (!isGatewayToolEnabled(name)) return undefined;
-	return GATEWAY_TOOL_DEFINITION_MAP.get(name) ?? extractTools([name])[0];
+	return (
+		GATEWAY_TOOL_DEFINITION_MAP.get(name) ??
+		extractTools([name])[0] ??
+		resolveDynamicLibriToolDefinition(name)
+	);
 }
 
 function isGatewayToolEnabled(name: string): boolean {

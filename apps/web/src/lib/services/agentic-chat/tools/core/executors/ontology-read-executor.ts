@@ -80,7 +80,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 		}
 
 		const actorId = await this.getActorId();
-		return query.eq('created_by', actorId);
+		const summaries = await fetchProjectSummaries(this.supabase as any, actorId);
+		const readableProjectIds = summaries
+			.map((project) => (typeof project.id === 'string' ? project.id : null))
+			.filter((id): id is string => Boolean(id));
+
+		if (readableProjectIds.length === 0) {
+			return query.eq('project_id', '00000000-0000-0000-0000-000000000000');
+		}
+
+		return query.in('project_id', readableProjectIds);
 	}
 
 	private static readonly MAX_MARKDOWN_HEADERS = 40;
