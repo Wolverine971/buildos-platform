@@ -11,6 +11,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { resolveUsageLogCostBreakdown } from '$lib/services/admin/llm-usage-costs';
 import { resolveBillableTokenTotal } from '$lib/services/admin/chat-session-metrics';
 
@@ -53,6 +54,9 @@ const asNumber = (value: unknown): number => {
 
 const toIsoOrNow = (value: string | null | undefined): string => value ?? new Date().toISOString();
 
+const normalizeSearchForFilter = (value: string): string =>
+	value.replace(/[%*,()]/g, ' ').replace(/\s+/g, ' ').trim();
+
 const buildTitle = (session: {
 	title?: string | null;
 	auto_title?: string | null;
@@ -88,7 +92,7 @@ const parseToolTraceCountFromMetadata = (metadata: unknown): number => {
 	return Array.isArray(trace) ? trace.length : 0;
 };
 
-export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ url, locals: { safeGetSession } }) => {
 	const { user } = await safeGetSession();
 	if (!user?.id) {
 		return ApiResponse.unauthorized();
@@ -101,7 +105,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const timeframe = url.searchParams.get('timeframe') || '7d';
 	const status = url.searchParams.get('status');
 	const contextType = url.searchParams.get('context_type');
-	const search = url.searchParams.get('search')?.trim();
+	const search = normalizeSearchForFilter(url.searchParams.get('search')?.trim() ?? '');
 	const sortOrder = url.searchParams.get('sort_order') === 'asc' ? 'asc' : 'desc';
 	const page = parsePositiveInt(url.searchParams.get('page'), 1);
 	const limit = Math.min(parsePositiveInt(url.searchParams.get('limit'), 20), 100);
@@ -113,7 +117,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const sortBy = allowedDbSortFields.has(requestedSort) ? requestedSort : 'updated_at';
 
 	try {
-		let query = supabase
+		const adminSupabase = createAdminSupabaseClient();
+
+		let query = adminSupabase
 			.from('chat_sessions')
 			.select(
 				`
@@ -172,15 +178,15 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 				{ data: toolRows, error: toolError },
 				{ data: usageRows, error: usageError }
 			] = await Promise.all([
-				supabase
+				adminSupabase
 					.from('chat_messages')
 					.select('session_id, total_tokens, error_message, role, metadata')
 					.in('session_id', sessionIds),
-				supabase
+				adminSupabase
 					.from('chat_tool_executions')
 					.select('session_id, success, created_at')
 					.in('session_id', sessionIds),
-				supabase
+				adminSupabase
 					.from('llm_usage_logs')
 					.select(
 						'chat_session_id, model_requested, model_used, prompt_tokens, completion_tokens, input_cost_usd, output_cost_usd, total_tokens, total_cost_usd, openrouter_usage_cost_usd, status, error_message, metadata'

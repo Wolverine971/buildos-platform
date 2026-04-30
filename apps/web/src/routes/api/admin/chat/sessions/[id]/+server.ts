@@ -12,6 +12,7 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { buildSessionDetailPayload } from './session-detail-payload';
 import { loadPromptEvalResultsForTurnRuns } from '$lib/services/agentic-chat-v2/prompt-eval-runner';
 
@@ -22,7 +23,7 @@ const isOptionalTableMissing = (error: unknown): boolean => {
 	return typeof maybe.message === 'string' && /does not exist/i.test(maybe.message);
 };
 
-export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetSession } }) => {
+export const GET: RequestHandler = async ({ params, locals: { safeGetSession } }) => {
 	const sessionId = params.id;
 	const { user } = await safeGetSession();
 
@@ -35,7 +36,9 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 	}
 
 	try {
-		const { data: sessionRow, error: sessionError } = await supabase
+		const adminSupabase = createAdminSupabaseClient();
+
+		const { data: sessionRow, error: sessionError } = await adminSupabase
 			.from('chat_sessions')
 			.select(
 				`
@@ -75,7 +78,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 			{ data: promptSnapshotRows, error: promptSnapshotError },
 			{ data: turnEventRows, error: turnEventError }
 		] = await Promise.all([
-			supabase
+			adminSupabase
 				.from('chat_messages')
 				.select(
 					`
@@ -102,7 +105,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				.eq('session_id', sessionId)
 				.order('created_at', { ascending: true })
 				.limit(1000),
-			supabase
+			adminSupabase
 				.from('chat_tool_executions')
 				.select(
 					`
@@ -130,7 +133,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				.eq('session_id', sessionId)
 				.order('created_at', { ascending: true })
 				.limit(2000),
-			supabase
+			adminSupabase
 				.from('llm_usage_logs')
 				.select(
 					`
@@ -163,7 +166,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				.eq('chat_session_id', sessionId)
 				.order('created_at', { ascending: true })
 				.limit(2000),
-			supabase
+			adminSupabase
 				.from('chat_operations')
 				.select(
 					`
@@ -185,14 +188,14 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				.eq('chat_session_id', sessionId)
 				.order('created_at', { ascending: true })
 				.limit(1000),
-			supabase
+			adminSupabase
 				.from('timing_metrics')
 				.select('*')
 				.eq('session_id', sessionId)
 				.order('created_at', { ascending: false })
 				.limit(1)
 				.maybeSingle(),
-			supabase
+			adminSupabase
 				.from('chat_turn_runs')
 				.select(
 					`
@@ -235,7 +238,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				.eq('session_id', sessionId)
 				.order('started_at', { ascending: true })
 				.limit(500),
-			supabase
+			adminSupabase
 				.from('chat_prompt_snapshots')
 				.select(
 					`
@@ -262,7 +265,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 				.eq('session_id', sessionId)
 				.order('created_at', { ascending: true })
 				.limit(500),
-			supabase
+			adminSupabase
 				.from('chat_turn_events')
 				.select(
 					`
@@ -292,7 +295,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		if (turnEventError && !isOptionalTableMissing(turnEventError)) throw turnEventError;
 		const turnRunIds = (turnRunRows ?? []).map((row) => row.id);
 		const { evalRuns, assertions } = await loadPromptEvalResultsForTurnRuns(
-			supabase,
+			adminSupabase,
 			turnRunIds
 		);
 

@@ -247,6 +247,7 @@ Stack Charles Hudson + Jerry Colonna + Matt Mochary + founder mental-health sour
 | `hard-conversations-for-founders`      | Sheila Heen, Kim Scott, Matt Mochary, Lara Hogan               | Prep feedback, firing, disagreement, repair, and expectation-reset conversations.                                  |
 | `enterprise-deal-room-navigation`      | Peter Kazanjy, Jason Lemkin, John McMahon, Mark Roberge        | Diagnose enterprise deals by champion, economic buyer, process, procurement, legal, and close plan.                |
 | `solo-founder-endurance-system`        | Jerry Colonna, Matt Mochary, Brad Feld, Michael Gervais        | Maintain founder stamina through energy audits, advisor systems, peer support, and bad-day rules.                  |
+| `solo-founder-operating-system` *(added 2026-04-29)* | Justin Welsh, DHH/37signals, Tyler Denk *(now stacked)* + Matt Mochary, Claire Hughes Johnson *(still to add)* | Design daily/weekly cadence and content stack of a one-person business — three-day workweek, atomic content, 30-min daily engagement, no-paid-acquisition default. Burnout-prevention as an operating constraint, not an afterthought. **Status: ready-to-draft from current stack.** |
 
 ## Recommended Next Research Pull
 

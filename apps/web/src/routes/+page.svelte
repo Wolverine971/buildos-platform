@@ -26,6 +26,7 @@
 		SITE_URL
 	} from '$lib/constants/seo';
 	import AnalyticsDashboard from '$lib/components/dashboard/AnalyticsDashboard.svelte';
+	import PublicProjectView from '$lib/components/landing/public-project-preview/PublicProjectView.svelte';
 	import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 	import { serializeJsonLd } from '$lib/utils/json-ld';
 	// Canonical data model icons (consistent with InsightPanels on /projects/[id])
@@ -40,11 +41,6 @@
 	} from 'lucide-svelte';
 
 	let { data } = $props();
-
-	let ExampleProjectGraphComponent = $state<any>(null);
-	let exampleGraphTarget = $state<HTMLElement | null>(null);
-	let exampleGraphLoading = $state(false);
-	const featuredPublicExampleProjectId = '44444444-4444-4444-4444-444444444444';
 
 	const creatorProjectExamples = [
 		{
@@ -151,20 +147,6 @@
 		await invalidateAll();
 	}
 
-	async function loadExampleProjectGraph() {
-		if (ExampleProjectGraphComponent || exampleGraphLoading) return;
-		exampleGraphLoading = true;
-
-		try {
-			const module = await import('$lib/components/landing/ExampleProjectGraph.svelte');
-			ExampleProjectGraphComponent = module.default;
-		} catch (error) {
-			console.error('[Landing] Failed to load example project graph:', error);
-		} finally {
-			exampleGraphLoading = false;
-		}
-	}
-
 	// Handle any messages on mount
 	onMount(() => {
 		const message = page.url.searchParams.get('message');
@@ -185,30 +167,6 @@
 		}
 	});
 
-	onMount(() => {
-		if (isAuthenticated) return;
-
-		if (!('IntersectionObserver' in window)) {
-			loadExampleProjectGraph();
-			return;
-		}
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries.some((entry) => entry.isIntersecting)) {
-					observer.disconnect();
-					loadExampleProjectGraph();
-				}
-			},
-			{ rootMargin: '200px 0px' }
-		);
-
-		if (exampleGraphTarget) {
-			observer.observe(exampleGraphTarget);
-		}
-
-		return () => observer.disconnect();
-	});
 </script>
 
 <svelte:head>
@@ -407,6 +365,9 @@
 				</div>
 			</div>
 		</section>
+
+		<!-- example project preview (read-only embed of a real public project) -->
+		<PublicProjectView />
 
 		<!-- how it works -->
 		<section id="how" class="border-b border-border">
@@ -650,23 +611,6 @@
 				</div>
 			</div>
 		</section>
-
-		<!-- Example Project Graph -->
-		<div bind:this={exampleGraphTarget}>
-			{#if ExampleProjectGraphComponent}
-				<ExampleProjectGraphComponent projectId={featuredPublicExampleProjectId} />
-			{:else}
-				<section id="example" class="border-t border-border bg-muted">
-					<div class="mx-auto max-w-6xl px-4 py-6">
-						<div
-							class="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground"
-						>
-							Loading example project graph...
-						</div>
-					</div>
-				</section>
-			{/if}
-		</div>
 
 		{#if data.featuredBlogPosts?.length}
 			<section class="border-b border-border">
