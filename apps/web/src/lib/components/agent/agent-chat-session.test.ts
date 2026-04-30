@@ -104,10 +104,9 @@ describe('agent-chat-session helpers', () => {
 		expect(snapshot.selectedContextLabel).toBe('Website refresh thread');
 		expect(snapshot.selectedEntityId).toBe('project-1');
 		expect(snapshot.projectFocus).toEqual(focus);
-		expect(snapshot.messages).toHaveLength(3);
+		expect(snapshot.messages).toHaveLength(2);
 		expect(snapshot.messages[0]?.type).toBe('activity');
 		expect(snapshot.messages[1]?.id).toBe('assistant-1');
-		expect(snapshot.messages[2]?.role).toBe('system');
 		expect(snapshot.voiceNotesByGroupId['group-1']?.map((note) => note.id)).toEqual([
 			'note-1',
 			'note-2'
@@ -152,7 +151,6 @@ describe('agent-chat-session helpers', () => {
 		expect(snapshot.messages.map((message) => message.type)).toEqual([
 			'user',
 			'thinking_block',
-			'assistant',
 			'assistant'
 		]);
 		const block = snapshot.messages[1];
@@ -163,6 +161,35 @@ describe('agent-chat-session helpers', () => {
 			status: 'completed',
 			content: 'Created task: "Fix restored chat tool calls" (184ms)'
 		});
+	});
+
+	it('buildAgentChatSessionSnapshot exposes active turn runs for restore polling', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: 'Continue the forecast.',
+					created_at: '2026-03-28T10:00:00.000Z'
+				}
+			] as any,
+			turnRuns: [
+				{
+					id: 'turn-run-1',
+					session_id: 'session-1',
+					stream_run_id: 'stream-1',
+					status: 'running',
+					request_message: 'Continue the forecast.',
+					started_at: '2026-03-28T10:00:00.000Z'
+				}
+			]
+		});
+
+		expect(snapshot.activeTurnRun?.id).toBe('turn-run-1');
+		expect(snapshot.turnRuns).toHaveLength(1);
+		expect(snapshot.messages.map((message) => message.type)).toEqual(['user', 'activity']);
+		expect(snapshot.messages[1]?.content).toContain('still finishing');
 	});
 
 	it('buildAgentChatSessionSnapshot dedupes tool executions matched by both message and turn id', () => {

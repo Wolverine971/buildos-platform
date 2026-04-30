@@ -360,6 +360,7 @@
 
 	// Actionable Insight agent identifier (used for agent-to-agent bridge)
 	const RESEARCH_AGENT_ID = 'actionable_insight_agent';
+	const ACTIVE_TURN_SESSION_REFRESH_MS = 2000;
 
 	let agentToAgentMode = $state(false);
 	let agentToAgentStep = $state<AgentToAgentStep | null>(null);
@@ -388,6 +389,8 @@
 	let lastLoadedSessionId = $state<string | null>(null);
 	let sessionLoadRequestId = 0;
 	let sessionLoadController: AbortController | null = null;
+	let sessionRefreshTimeout: ReturnType<typeof setTimeout> | null = null;
+	let activeRestoredTurnRunId = $state<string | null>(null);
 	let sessionBootstrapRequestId = 0;
 	let sessionBootstrapController: AbortController | null = null;
 	let sessionBootstrapPromise: Promise<ChatSession | null> | null = null;
@@ -477,6 +480,23 @@
 		}
 		sessionBootstrapPromise = null;
 		isPreparingSession = false;
+	}
+
+	function clearSessionRefreshTimeout() {
+		if (!sessionRefreshTimeout) return;
+		clearTimeout(sessionRefreshTimeout);
+		sessionRefreshTimeout = null;
+	}
+
+	function scheduleActiveTurnSessionRefresh(sessionId: string) {
+		clearSessionRefreshTimeout();
+		if (!browser || !isOpen) return;
+
+		sessionRefreshTimeout = setTimeout(() => {
+			sessionRefreshTimeout = null;
+			if (!isOpen) return;
+			void loadChatSession(sessionId, { backgroundRefresh: true });
+		}, ACTIVE_TURN_SESSION_REFRESH_MS);
 	}
 
 	function buildSessionBootstrapTarget(
@@ -610,6 +630,7 @@
 		agentToAgentMode ||
 			!selectedContextType ||
 			isSessionBusy ||
+			activeRestoredTurnRunId !== null ||
 			(!inputValue.trim() && !voice.isRecording) || // Allow send if recording (will get transcribed text)
 			(isStreaming && !isTouchDevice) ||
 			voice.isInitializing ||
@@ -652,6 +673,8 @@
 		agentTurnsRemaining = 5;
 		// Reset session resumption state
 		sessionLoadError = null;
+		activeRestoredTurnRunId = null;
+		clearSessionRefreshTimeout();
 
 		if (!preserveContext) {
 			selectedContextType = null;
@@ -1006,6 +1029,8 @@
 				showProjectActionSelector = false;
 				prewarm.reset();
 				cancelSessionBootstrap();
+				clearSessionRefreshTimeout();
+				activeRestoredTurnRunId = null;
 				if (sessionLoadController) {
 					sessionLoadController.abort();
 					sessionLoadController = null;
@@ -1134,7 +1159,11 @@
 	});
 
 	// Load a chat session and restore its messages for resumption
-	async function loadChatSession(sessionId: string) {
+	async function loadChatSession(
+		sessionId: string,
+		options: { backgroundRefresh?: boolean } = {}
+	) {
+		const backgroundRefresh = options.backgroundRefresh === true;
 		sessionLoadRequestId += 1;
 		const requestId = sessionLoadRequestId;
 		cancelSessionBootstrap();
@@ -1144,13 +1173,18 @@
 		const controller = new AbortController();
 		sessionLoadController = controller;
 
-		isLoadingSession = true;
+		if (!backgroundRefresh) {
+			isLoadingSession = true;
+			clearSessionRefreshTimeout();
+		}
 		sessionLoadError = null;
-		// Immediately hide context selection when loading a session to prevent flash
-		showContextSelection = false;
-		showProjectActionSelector = false;
-		// Clear any prior session state to avoid bleed-through while loading
-		resetConversation({ preserveContext: false });
+		if (!backgroundRefresh) {
+			// Immediately hide context selection when loading a session to prevent flash
+			showContextSelection = false;
+			showProjectActionSelector = false;
+			// Clear any prior session state to avoid bleed-through while loading
+			resetConversation({ preserveContext: false });
+		}
 
 		try {
 			const snapshot = await loadAgentChatSessionSnapshot(sessionId, {
@@ -1161,6 +1195,7 @@
 				return;
 			}
 
+			const nextActiveTurnRun = snapshot.activeTurnRun ?? null;
 			currentSession = snapshot.session;
 			lastLoadedSessionId = sessionId;
 			contextUsage = null;
@@ -1171,6 +1206,14 @@
 			projectFocus = snapshot.projectFocus;
 			messages = snapshot.messages;
 			voice.hydrateNotesByGroupId(snapshot.voiceNotesByGroupId);
+			activeRestoredTurnRunId = nextActiveTurnRun?.id ?? null;
+			if (nextActiveTurnRun) {
+				currentActivity = 'BuildOS is still finishing the latest response...';
+				scheduleActiveTurnSessionRefresh(sessionId);
+			} else {
+				clearSessionRefreshTimeout();
+				currentActivity = '';
+			}
 		} catch (err: any) {
 			if (controller.signal.aborted || requestId !== sessionLoadRequestId) {
 				return;
@@ -1607,8 +1650,10 @@
 		finalizeSession('close');
 		voice.stop();
 		cancelSessionBootstrap();
+		clearSessionRefreshTimeout();
+		activeRestoredTurnRunId = null;
 		if (currentStreamController && isStreaming) {
-			void handleStopGeneration('user_cancelled');
+			detachActiveStream();
 		} else if (currentStreamController) {
 			currentStreamController.abort();
 			currentStreamController = null;
@@ -1732,6 +1777,10 @@
 		}
 		if (isLoadingSession) {
 			error = 'Wait for the existing session to finish loading.';
+			return;
+		}
+		if (activeRestoredTurnRunId) {
+			error = 'BuildOS is still finishing the latest response.';
 			return;
 		}
 
@@ -2297,6 +2346,34 @@
 		]);
 	}
 
+	function detachActiveStream() {
+		if (!currentStreamController) return;
+
+		const runId = activeStreamRunId;
+		const streamController = currentStreamController;
+
+		flushAssistantText();
+		finalizeClientStreamTiming(runId, 'aborted');
+		activeStreamRunId = activeStreamRunId + 1;
+		activeTransportStreamRunId = null;
+		activeClientTurnId = null;
+
+		try {
+			streamController.abort();
+		} catch (abortError) {
+			if (dev) {
+				console.debug('Stream detach failed (already closed)', abortError);
+			}
+		}
+
+		if (currentStreamController === streamController) {
+			currentStreamController = null;
+		}
+		finalizeAssistantMessage();
+		isStreaming = false;
+		currentActivity = '';
+	}
+
 	async function handleStopGeneration(
 		reason: 'user_cancelled' | 'superseded' | 'error' = 'user_cancelled',
 		options: { awaitCancelHint?: boolean } = {}
@@ -2444,10 +2521,11 @@
 			sessionLoadController = null;
 		}
 		cancelSessionBootstrap();
+		clearSessionRefreshTimeout();
 		finalizeSession('destroy');
 		voice.stop();
 		if (currentStreamController && isStreaming) {
-			void handleStopGeneration('user_cancelled');
+			detachActiveStream();
 		} else if (currentStreamController) {
 			currentStreamController.abort();
 			currentStreamController = null;

@@ -54,15 +54,34 @@ describe('GET /api/chat/sessions/[id]', () => {
 				created_at: '2026-03-28T10:00:30.000Z'
 			}
 		];
+		const turnRuns = [
+			{
+				id: 'turn-run-1',
+				session_id: 'session-1',
+				user_id: 'user-1',
+				stream_run_id: 'stream-1',
+				client_turn_id: 'turn-1',
+				status: 'completed',
+				finished_reason: 'stop',
+				request_message: 'Create a task.',
+				assistant_message_id: 'assistant-1',
+				started_at: '2026-03-28T10:00:00.000Z',
+				finished_at: '2026-03-28T10:01:00.000Z',
+				created_at: '2026-03-28T10:00:00.000Z',
+				updated_at: '2026-03-28T10:01:00.000Z'
+			}
+		];
 
 		const sessionQuery = createQuery({ data: session, error: null });
 		const messagesQuery = createQuery({ data: messages, error: null });
 		const toolExecutionsQuery = createQuery({ data: toolExecutions, error: null });
+		const turnRunsQuery = createQuery({ data: turnRuns, error: null });
 		const supabase = {
 			from: vi.fn((table: string) => {
 				if (table === 'chat_sessions') return sessionQuery;
 				if (table === 'chat_messages') return messagesQuery;
 				if (table === 'chat_tool_executions') return toolExecutionsQuery;
+				if (table === 'chat_turn_runs') return turnRunsQuery;
 				throw new Error(`Unexpected table ${table}`);
 			})
 		};
@@ -80,7 +99,11 @@ describe('GET /api/chat/sessions/[id]', () => {
 		const payload = await response.json();
 		expect(payload.data.messages).toEqual(messages);
 		expect(payload.data.toolExecutions).toEqual(toolExecutions);
+		expect(payload.data.turnRuns).toEqual(turnRuns);
 		expect(supabase.from).toHaveBeenCalledWith('chat_tool_executions');
+		expect(supabase.from).toHaveBeenCalledWith('chat_turn_runs');
 		expect(toolExecutionsQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
+		expect(turnRunsQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
+		expect(turnRunsQuery.eq).toHaveBeenCalledWith('user_id', 'user-1');
 	});
 });

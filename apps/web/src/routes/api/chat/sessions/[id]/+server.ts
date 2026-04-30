@@ -89,6 +89,20 @@ export const GET: RequestHandler = async ({
 		return ApiResponse.databaseError(toolExecutionsError);
 	}
 
+	const { data: turnRuns, error: turnRunsError } = await supabase
+		.from('chat_turn_runs')
+		.select(
+			'id, session_id, user_id, stream_run_id, client_turn_id, status, finished_reason, request_message, assistant_message_id, started_at, finished_at, created_at, updated_at'
+		)
+		.eq('session_id', sessionId)
+		.eq('user_id', user.id)
+		.order('started_at', { ascending: false })
+		.limit(5);
+
+	if (turnRunsError) {
+		return ApiResponse.databaseError(turnRunsError);
+	}
+
 	let voiceNotes: any[] = [];
 	let voiceNoteGroups: any[] = [];
 
@@ -139,6 +153,7 @@ export const GET: RequestHandler = async ({
 		session,
 		messages: messages || [],
 		toolExecutions: toolExecutions || [],
+		turnRuns: turnRuns || [],
 		voiceNoteGroups,
 		voiceNotes,
 		truncated

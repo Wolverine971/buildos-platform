@@ -357,7 +357,83 @@ soul vs slop AI tool design checklist
 | `delightful-product-review` (no new sources)            | already-stacked Nesrine + Dylan + Kole Jain                                                    | Draft today; add B2B-SaaS worked examples post-draft.                                                                                                          |
 | `ui-ux-quality-review` (extend)                         | add Refactoring UI canon + small accessibility wedge + Inkprint cross-link                     | Keep the core Kole Jain checklist; add a "next-level" section for type/color/density and a hand-off to `accessibility-and-inclusive-ui-review`.                |
 
+## Status Update — Supplementary Pull (Round 2) Completed 2026-04-30
+
+The supplementary pull recommended below was partially completed on 2026-04-30. **3 new consolidated analyses + 7 new transcripts/articles** landed, addressing gaps #3, #6, and #7. Specifically:
+
+**Round 2 sources captured:**
+
+- ✅ Nathan Curtis "Tokens in Design Systems" (full essay, 10 architecture+implementation tips) — anchors gap #3
+- ✅ Nathan Curtis "Naming Tokens in Design Systems" (full essay, 4-level taxonomy) — anchors gap #3
+- ✅ Brad Frost atomic-design summary (canon-grounded; original 2013 essay + book copyright-protected; 2024 SmashingConf talk yt-dlp rate-limited) — supports gap #3
+- ✅ Don Norman signifier/affordance essay summaries (JND.org canon, copyright-protected so summary-level) — anchors gap #7
+- ✅ Alan Cooper "Defending Personas" (full essay) — anchors gap #7
+- ✅ Steve Krug "Don't Make Me Think" canon summary — anchors gap #6
+- ✅ Erika Hall "Just Enough Research" canon summary — anchors gap #6
+
+**3 new flagship analyses written 2026-04-30:**
+
+- ✅ `design-systems-canon_frost-curtis-kravets_analysis.md` (580 lines) — backs `design-system-architecture-review` skill
+- ✅ `ia-ixd-fundamentals_norman-cooper_analysis.md` (525 lines) — backs `information-architecture-and-interaction-fundamentals` skill
+- ✅ `usability-research-canon_krug-hall_analysis.md` (536 lines) — backs `usability-evaluation-and-quick-research` skill
+
+**3 new combos promoted to `ready-to-draft`:**
+
+- ✅ `design-system-architecture-review` (was `needs-research`)
+- ✅ `information-architecture-and-interaction-fundamentals` (was `needs-research`)
+- ✅ `usability-evaluation-and-quick-research` (was `needs-research`)
+
+**Source-coverage caveats:**
+
+- yt-dlp YouTube rate-limit (HTTP 429) persisted on 2026-04-30; canonical talk videos for Frost (`W-h1FtNYim4`, `-3Pji_frbII`), Krug (`35gq5GjIAvU`), Hall (`PpQKr2jhA_8`), Wathan (`17OBlxY2C_0`) could not be transcribed. Retry once limit clears.
+- Norman JND.org essays and Krug/Hall books are copyright-protected; WebFetch refused full reproduction. Analyses are canon-grounded (DOET, _Emotional Design_, _About Face_, _Don't Make Me Think_, _Just Enough Research_) and source-honest about the gap.
+- Una Kravets has no single canonical design-tokens essay surfaced; her recent posts (contrast-color, border-shape, scroll-state, css-mixins) are listed as the modern-CSS layer above Curtis's static taxonomy.
+
+**Still open:**
+
+- Gap #8 (Taste-driven toolmaking agent contract) — combo now has 7 sources but agent-behavior contract is still undefined. No movement this round.
+- The standalone `ai-ui-slop-detector-and-rewrite` proposal — its core ideas are now embedded in `visual-craft-fundamentals`; standalone version remains optional.
+- Re-pull of yt-dlp-blocked video transcripts when rate-limit clears.
+
+## Status Update — Primary Pull Completed 2026-04-29
+
+The Refactoring UI / accessibility / calm-software pull recommended below was executed on 2026-04-29. **8 new analyses + 16 new transcripts/articles** landed, **5 new skills were drafted**, and the combo index was updated. Specifically:
+
+**Primary pull (completed):**
+
+- ✅ Steve Schoger Refactoring UI (CSS Day 2019) — anchors gap #1
+- ✅ Erik Kennedy 7 Rules for Creating Gorgeous UI (Part 1 + Part 2 essays) — supports gap #1 + the AI-slop detector framework (gap #4)
+- ✅ Heydon Pickering Inclusive Components (Smashing TV + companion talk) — anchors gap #2
+- ✅ Sara Soueidan Applied Accessibility — supports gap #2 with the per-screen audit complement
+- ✅ Karri Saarinen / Linear (5 sources consolidated: Lenny's pod, Config 2025, Conversations on Quality, Figma 10 Rules, "Why is quality so rare?" essay) — anchors gap #5 + repaired gap #3 partially
+- ✅ Werner Jainek / Cultured Code Things — supports gap #5
+- ✅ Jason Fried & DHH calm-company canon (Knowledge Project + REWORK calm-company tag) — supports gap #5
+- ✅ John Maeda Laws of Simplicity (TED talk) — philosophical anchor for gap #5
+
+**5 skills drafted (2026-04-29):**
+
+- ✅ `visual-craft-fundamentals` (operator complement to `ui-ux-quality-review`; closes gap #1 and powers gap #4)
+- ✅ `accessibility-and-inclusive-ui-review` (closes gap #2; backs the BuildOS `accessibility-auditor` agent)
+- ✅ `calm-software-design-review` (closes gap #5; the on-brand counterweight to `delightful-product-review`)
+- ✅ `ai-era-craft-and-quality-moat` (strategy-playbook layer; promoted from `needs-synthesis` once Saarinen + Schoger landed)
+- ✅ `delightful-product-review` (originally `ready-to-draft` from the audit; drafted with explicit "use `calm-software-design-review` instead for BuildOS" framing)
+
+**Three orphan transcripts integrated 2026-04-29:**
+
+- ✅ Ryo Lu / Dialectic — Designing Living Tools and Creating Soulful Things with AI → added to `taste-driven-toolmaking`
+- ✅ Ryo Lu / Dive Club — Designing the Future of Cursor → added to `taste-driven-toolmaking` and `design-to-code-workflow`
+- Jenny Wen / Navigating a Design Career — kept in INDEX as `needs-synthesis`; lower operating value than the design-process-dead transcript already in `ai-era-craft-and-quality-moat`
+
+**Still open:**
+
+- Gap #3 (Design systems / tokens / Brad Frost / Nathan Curtis / Una Kravets) — partially served by Schoger but not deeply; the `design-system-architecture-review` combo proposal remains `needs-research`.
+- Gap #6 (Usability testing / Steve Krug / Erika Hall / Jakob Nielsen) — the `usability-evaluation-and-quick-research` combo proposal remains `needs-research`. Supplementary pull on 2026-04-29 attempted Frost / Krug / Wathan / Hall / Comeau but YouTube rate-limited (HTTP 429); only Don Norman's affordances/signifiers essay summary was captured via WebFetch.
+- Gap #7 (Information architecture / Don Norman / Alan Cooper) — Norman essay summary captured but no full talks pulled; the `information-architecture-and-interaction-fundamentals` combo remains `needs-research`.
+- Gap #8 (Taste-driven toolmaking agent contract) — the combo now has 7 sources (Ryo Lu × 3, Linus Lee, Steph Ango, Jainek, Field) but the agent-behavior contract is still undefined. Recommend either sharpening into `tool-design-soul-vs-slop-review` or absorbing into Psychology/Agency index.
+
 ## Recommended Next Research Pull
+
+> **Original pull recommendation — completed; preserved here for record.** See "Status Update" above for the post-pull state. The supplementary pull is now the new priority below.
 
 Start with **Refactoring UI canon (Adam Wathan + Steve Schoger) + accessibility canon (Heydon Pickering + Sara Soueidan) + a calm-software pull (Linear blog + Cultured Code + 37signals)**.
 
@@ -378,16 +454,38 @@ Target first sources:
 
 After this pull, second priority is **design-systems canon (Brad Frost + Nathan Curtis + Una Kravets)** — to unlock `design-system-architecture-review` and back the existing Inkprint system. Third priority is **usability/IA canon (Steve Krug + Erika Hall + Don Norman + Alan Cooper)** — the foundational layer that makes every other skill in this index trustworthy.
 
+### Active Recommended Next Pull (post-2026-04-29 status)
+
+The original pull is done. The next priority pull is:
+
+1. **Brad Frost** — _Atomic Design_ talk (Event Apart Austin 2015 video `W-h1FtNYim4`) + _Is Atomic Design Dead?_ (SmashingConf NY 2024 video `-3Pji_frbII`).
+2. **Nathan Curtis (EightShapes)** — design-tokens-and-contribution-models writing.
+3. **Una Kravets** — design tokens / container queries / Chrome talks.
+4. **Steve Krug** — _Don't Make Me Think_ / Voices That Matter 2010 (video `35gq5GjIAvU`).
+5. **Erika Hall** — _Just Enough Research_ (BayCHI 2019 video `PpQKr2jhA_8`).
+6. **Don Norman** — beyond the JND.org essay summary already captured: a substantive talk on signifiers/affordances. (No clearly canonical single talk surfaced in initial discovery; recommend a deeper search or fall back to _The Design of Everyday Things_ book chapters.)
+7. **Alan Cooper** — _About Face_ talks; archetypes-vs-personas distinction.
+
+The supplementary attempt on 2026-04-29 hit a YouTube IP rate-limit (HTTP 429) before any of these landed. Retry once rate-limit clears (typically a few hours to a day).
+
 ## Draft Readiness
 
-`ready-to-draft` for `delightful-product-review`. The Nesrine Changuel analysis alone is deep enough to draft a defensible skill today, and Dylan and Kole Jain provide complementary craft and atomic-fix layers. The first draft does not need to wait for any new research pull.
+> **Updated 2026-04-29 to reflect skills drafted in the primary pull.** Original assessments preserved as commentary where relevant.
 
-`ready-to-draft` for an **extended** `ui-ux-quality-review`. The current draft can be extended with Refactoring UI cross-references after gap 1 is filled, but the existing version is already shippable; treat the extension as a v2.
+`already-drafted` for `delightful-product-review` — drafted 2026-04-29 at `skill-drafts/delightful-product-review/SKILL.md`. Honest about being the wrong tool for BuildOS itself; explicitly points users to `calm-software-design-review` for productivity-under-load contexts.
 
-`needs-research` for `ai-era-craft-and-quality-moat` and `design-to-code-workflow`. Both combos are over-anchored on CEO/founder thesis material and under-anchored on operator how-to content. They should not be drafted until at least the Refactoring UI canon pull lands; otherwise both will collapse into "shipped fast, made it pretty, vibes."
+`already-drafted` for `ui-ux-quality-review` v1 (existing). The DesignSpo extension is also already-drafted as of 2026-04-29 (Foundational Rules section added). The Refactoring UI canon now lives in the new sibling skill `visual-craft-fundamentals` rather than as a v2 extension.
 
-`needs-synthesis` for `taste-driven-toolmaking` even after research. The combo's core problem is not source coverage — it is that the agent contract is undefined. Either sharpen it into `tool-design-soul-vs-slop-review` or absorb it into the Psychology/Agency index.
+`already-drafted` for `visual-craft-fundamentals` — drafted 2026-04-29 at `skill-drafts/visual-craft-fundamentals/SKILL.md`. Closes gap #1 and serves gap #4 via the explicit "AI slop detector" pattern catalog.
 
-`needs-research` for the proposed new combos: `accessibility-and-inclusive-ui-review`, `design-system-architecture-review`, `calm-software-design-review`, `usability-evaluation-and-quick-research`, `information-architecture-and-interaction-fundamentals`, and `ai-ui-slop-detector-and-rewrite`. Each is a real gap, but the index does not yet have the source material to back any of them. Start with the recommended pull above.
+`already-drafted` for `accessibility-and-inclusive-ui-review` — drafted 2026-04-29 at `skill-drafts/accessibility-and-inclusive-ui-review/SKILL.md`. Closes gap #2. Joint backbone (Pickering component canon + Soueidan per-screen audit) for the BuildOS `accessibility-auditor` agent.
 
-`already-drafted` for `ui-ux-quality-review` v1. Continue to ship and iterate; do not block on extension work.
+`already-drafted` for `calm-software-design-review` — drafted 2026-04-29 at `skill-drafts/calm-software-design-review/SKILL.md`. Closes gap #5. The flagship BuildOS-on-brand skill; wedges calm vs delight on user _arrival state_ (cognitively loaded vs under-stimulated).
+
+`already-drafted` for `ai-era-craft-and-quality-moat` — drafted 2026-04-29 at `skill-drafts/ai-era-craft-and-quality-moat/SKILL.md`. Strategy-playbook spirit (not a per-screen audit). Promoted from `needs-research` once Saarinen and Schoger backed the CEO thesis layer with operator-canon material.
+
+`needs-synthesis` for `design-to-code-workflow`. Now has 6 sources (Ryo Lu Peter Yang + Ryo Lu Dive Club + Jenny Wen design-process-dead + Kole Jain + Schoger + Boundary harness panel) but still needs a synthesis pass before drafting. The agent behavior contract is the open question: is this "reviewing a Cursor-generated PR for taste fidelity" or "running plan-mode-then-build" or "auditing an Inkprint primitive after AI generation"?
+
+`needs-synthesis` for `taste-driven-toolmaking`. Source coverage is now substantial (7 sources after orphan-integration on 2026-04-29: Ryo Lu × 3, Linus Lee, Steph Ango, Jainek, Field) but the gap audit's gap #8 still applies — agent contract is undefined. Recommend sharpening into `tool-design-soul-vs-slop-review` with a checklist contract or absorbing into the Psychology/Agency index.
+
+`needs-research` for the still-open combo proposals: ~~`design-system-architecture-review`~~, ~~`usability-evaluation-and-quick-research`~~, ~~`information-architecture-and-interaction-fundamentals`~~ — **all three promoted to `ready-to-draft` on 2026-04-30 with the Round 2 supplementary pull.** Remaining: `ai-ui-slop-detector-and-rewrite` (the standalone variant — its core ideas are already embedded in `visual-craft-fundamentals`). The yt-dlp-blocked re-pull (Frost / Krug / Hall canonical talks) is the active next research action whenever the YouTube rate limit clears.

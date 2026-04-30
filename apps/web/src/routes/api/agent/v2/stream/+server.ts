@@ -176,6 +176,16 @@ const FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED = parseBooleanFlag(
 	process.env.FASTCHAT_ENABLE_AUTONOMOUS_RECOVERY,
 	false
 );
+const FASTCHAT_DETACHED_TURN_MAX_DURATION_MS = parsePositiveInt(
+	process.env.FASTCHAT_DETACHED_TURN_MAX_DURATION_MS,
+	285000
+);
+const FASTCHAT_CANCEL_WATCH_INTERVAL_MS = parsePositiveInt(
+	process.env.FASTCHAT_CANCEL_WATCH_INTERVAL_MS,
+	750
+);
+
+type FastChatTurnAbortReason = FastChatCancelReason | 'timeout';
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
 	if (!value) return fallback;
@@ -221,6 +231,13 @@ function isAbortLikeError(error: unknown): boolean {
 		message.includes('stream closed') ||
 		message.includes('cancelled')
 	);
+}
+
+function isUniqueViolationError(error: unknown): boolean {
+	if (!error || typeof error !== 'object') return false;
+	const maybeError = error as { code?: string; message?: string };
+	const message = maybeError.message?.toLowerCase() ?? '';
+	return maybeError.code === '23505' || message.includes('duplicate key');
 }
 
 async function parseRequest(request: Request): Promise<FastAgentStreamRequest> {
@@ -300,6 +317,61 @@ async function resolveInterruptedReason(params: {
 	if (sessionRetry) return sessionRetry;
 
 	return 'disconnect';
+}
+
+function startFastChatCancelWatcher(params: {
+	supabase: any;
+	userId: string;
+	sessionId: string;
+	streamRunId: string;
+	intervalMs: number;
+	signal: AbortSignal;
+	onCancel: (reason: FastChatCancelReason) => void;
+}): () => void {
+	let stopped = false;
+	let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+	const clearTimer = () => {
+		if (!timeoutId) return;
+		clearTimeout(timeoutId);
+		timeoutId = null;
+	};
+
+	const schedule = () => {
+		if (stopped || params.signal.aborted) return;
+		clearTimer();
+		timeoutId = setTimeout(check, Math.max(250, params.intervalMs));
+	};
+
+	const check = async () => {
+		if (stopped || params.signal.aborted) return;
+		try {
+			const reason = await readCancelReasonFromSessionMetadata({
+				supabase: params.supabase,
+				userId: params.userId,
+				sessionId: params.sessionId,
+				streamRunId: params.streamRunId
+			});
+			if (reason) {
+				params.onCancel(reason);
+				return;
+			}
+		} catch (error) {
+			logger.warn('Failed to poll FastChat cancel state', {
+				error,
+				sessionId: params.sessionId,
+				streamRunId: params.streamRunId
+			});
+		}
+		schedule();
+	};
+
+	schedule();
+
+	return () => {
+		stopped = true;
+		clearTimer();
+	};
 }
 
 async function checkProjectAccessFallback(
@@ -2442,6 +2514,16 @@ export const POST: RequestHandler = async ({
 	}
 
 	const agentStream = SSEResponse.createChatStream();
+	const turnAbortController = new AbortController();
+	let turnAbortReason: FastChatTurnAbortReason | null = null;
+	const abortTurn = (reason: FastChatTurnAbortReason): void => {
+		if (turnAbortController.signal.aborted) return;
+		turnAbortReason = reason;
+		turnAbortController.abort(new Error(`FastChat turn aborted: ${reason}`));
+	};
+	const turnTimeoutId = setTimeout(() => {
+		abortTurn('timeout');
+	}, FASTCHAT_DETACHED_TURN_MAX_DURATION_MS);
 	const timingEntityId =
 		streamRequest.entity_id?.trim() || streamRequest.projectFocus?.projectId || null;
 	let timingContextType: ChatContextType = initialContextType;
@@ -2490,6 +2572,7 @@ export const POST: RequestHandler = async ({
 	let firstCanonicalOp: string | null = null;
 	let firstOpSequence: number | null = null;
 	let validationFailureCount = 0;
+	let streamDetached = false;
 
 	const toIsoString = (value: number | null): string | null =>
 		typeof value === 'number' ? new Date(value).toISOString() : null;
@@ -2733,18 +2816,32 @@ export const POST: RequestHandler = async ({
 			projectId?: string;
 			metadata?: Record<string, unknown>;
 		}
-	): Promise<void> => {
+	): Promise<boolean> => {
+		if (streamDetached) {
+			return false;
+		}
+
 		try {
 			await agentStream.sendMessage(payload);
 			markStreamEventSent(payload.type);
+			return true;
 		} catch (error) {
+			streamDetached = true;
+			logger.info('FastChat stream detached; continuing turn execution', {
+				type: payload.type,
+				streamRunId
+			});
 			logFastChatError({
 				error,
 				operationType: errorContext.operationType,
 				projectId: errorContext.projectId,
-				metadata: errorContext.metadata
+				metadata: {
+					...(errorContext.metadata ?? {}),
+					streamDetached: true,
+					streamRunId
+				}
 			});
-			throw error;
+			return false;
 		}
 	};
 	const sendTimedMessageDetached = (
@@ -2793,6 +2890,7 @@ export const POST: RequestHandler = async ({
 				: typeof streamRequest.voice_note_group_id === 'string'
 					? streamRequest.voice_note_group_id
 					: undefined;
+		let stopCancelWatcher: (() => void) | null = null;
 
 		try {
 			if (isDailyBriefContext(contextType)) {
@@ -2946,6 +3044,99 @@ export const POST: RequestHandler = async ({
 				}
 			);
 
+			stopCancelWatcher = startFastChatCancelWatcher({
+				supabase,
+				userId,
+				sessionId: session.id,
+				streamRunId,
+				intervalMs: FASTCHAT_CANCEL_WATCH_INTERVAL_MS,
+				signal: turnAbortController.signal,
+				onCancel: abortTurn
+			});
+
+			const { data: activeTurnRows, error: activeTurnError } = await supabase
+				.from('chat_turn_runs')
+				.select('id, stream_run_id, client_turn_id, started_at, request_message')
+				.eq('session_id', session.id)
+				.eq('user_id', userId)
+				.eq('status', 'running')
+				.order('started_at', { ascending: false })
+				.limit(1);
+
+			if (activeTurnError) {
+				logFastChatError({
+					error: activeTurnError,
+					operationType: 'fastchat_active_turn_lookup',
+					projectId: projectIdForLogs,
+					metadata: {
+						sessionId: session.id,
+						contextType,
+						entityId
+					}
+				});
+			}
+
+			const activeTurn = Array.isArray(activeTurnRows) ? activeTurnRows[0] : null;
+			if (activeTurn) {
+				const activeStartedAtMs =
+					typeof activeTurn.started_at === 'string'
+						? Date.parse(activeTurn.started_at)
+						: Number.NaN;
+				const activeTurnAgeMs = Number.isFinite(activeStartedAtMs)
+					? Math.max(0, Date.now() - activeStartedAtMs)
+					: 0;
+
+				if (activeTurnAgeMs < FASTCHAT_DETACHED_TURN_MAX_DURATION_MS) {
+					await sendTimedMessage(
+						{
+							type: 'error',
+							error: 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.'
+						},
+						{
+							operationType: 'fastchat_stream_emit_error',
+							projectId: projectIdForLogs,
+							metadata: {
+								sessionId: session.id,
+								contextType,
+								activeTurnRunId: activeTurn.id,
+								activeStreamRunId: activeTurn.stream_run_id
+							}
+						}
+					);
+					doneEmittedAtMs = Date.now();
+					await sendTimedMessage(
+						{
+							type: 'done',
+							usage: { total_tokens: 0 },
+							finished_reason: 'active_turn_running'
+						},
+						{
+							operationType: 'fastchat_stream_emit_done',
+							projectId: projectIdForLogs,
+							metadata: {
+								sessionId: session.id,
+								contextType,
+								activeTurnRunId: activeTurn.id,
+								activeStreamRunId: activeTurn.stream_run_id
+							}
+						}
+					);
+					stopCancelWatcher?.();
+					stopCancelWatcher = null;
+					return;
+				}
+
+				void supabase
+					.from('chat_turn_runs')
+					.update({
+						status: 'cancelled',
+						finished_reason: 'stale_running_turn',
+						finished_at: new Date().toISOString()
+					})
+					.eq('id', activeTurn.id)
+					.eq('user_id', userId);
+			}
+
 			const requestLastTurnContext =
 				streamRequest.lastTurnContext ?? streamRequest.last_turn_context ?? null;
 			const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
@@ -3093,6 +3284,7 @@ export const POST: RequestHandler = async ({
 				});
 
 			turnRunId = uuidv4();
+			let turnRunInsertError: unknown = null;
 			try {
 				const { error: turnRunError } = await supabase.from('chat_turn_runs').insert({
 					id: turnRunId,
@@ -3115,30 +3307,70 @@ export const POST: RequestHandler = async ({
 					started_at: new Date(requestStartedAtMs).toISOString()
 				});
 				if (turnRunError) {
-					turnRunId = null;
-					logFastChatError({
-						error: turnRunError,
-						operationType: 'fastchat_turn_run_insert',
-						projectId: projectIdForLogs,
-						metadata: {
-							sessionId: session.id,
-							contextType,
-							entityId
-						}
-					});
+					turnRunInsertError = turnRunError;
 				}
 			} catch (error) {
+				turnRunInsertError = error;
+			}
+			if (turnRunInsertError) {
+				const failedTurnRunId = turnRunId;
+				const activeTurnConflict = isUniqueViolationError(turnRunInsertError);
 				turnRunId = null;
 				logFastChatError({
-					error,
+					error: turnRunInsertError,
 					operationType: 'fastchat_turn_run_insert',
 					projectId: projectIdForLogs,
 					metadata: {
 						sessionId: session.id,
+						turnRunId: failedTurnRunId,
 						contextType,
-						entityId
+						entityId,
+						activeTurnConflict
 					}
 				});
+				await sendTimedMessage(
+					{
+						type: 'error',
+						error: activeTurnConflict
+							? 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.'
+							: 'BuildOS could not start this response. Please try again.'
+					},
+					{
+						operationType: 'fastchat_stream_emit_error',
+						projectId: projectIdForLogs,
+						metadata: {
+							sessionId: session.id,
+							contextType,
+							entityId,
+							reason: activeTurnConflict
+								? 'active_turn_conflict'
+								: 'turn_run_insert_failed'
+						}
+					}
+				);
+				doneEmittedAtMs = Date.now();
+				const failedReason = activeTurnConflict
+					? 'active_turn_running'
+					: 'turn_run_insert_failed';
+				await sendTimedMessage(
+					{
+						type: 'done',
+						usage: { total_tokens: 0 },
+						finished_reason: failedReason
+					},
+					{
+						operationType: 'fastchat_stream_emit_done',
+						projectId: projectIdForLogs,
+						metadata: {
+							sessionId: session.id,
+							contextType,
+							entityId,
+							reason: failedReason
+						}
+					}
+				);
+				queueTimingMetric(failedReason);
+				return;
 			}
 			const toolsRequiringProjectId = getToolsRequiringProjectId(tools);
 			let effectiveContextType: ChatContextType = contextType;
@@ -3601,7 +3833,7 @@ export const POST: RequestHandler = async ({
 				clientTurnId,
 				history: historyForModel,
 				message,
-				signal: request.signal,
+				signal: turnAbortController.signal,
 				systemPrompt,
 				maxToolRounds: Math.max(1, gatewayRoundCap),
 				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
@@ -3640,7 +3872,7 @@ export const POST: RequestHandler = async ({
 								toolCall,
 								serviceContext,
 								availableToolsForExecution,
-								{ abortSignal: request.signal }
+								{ abortSignal: turnAbortController.signal }
 							);
 							const durationMs =
 								typeof result.metadata?.durationMs === 'number' &&
@@ -3937,7 +4169,7 @@ export const POST: RequestHandler = async ({
 							}
 						);
 					} catch (error) {
-						if (!request.signal.aborted) {
+						if (!turnAbortController.signal.aborted) {
 							logger.warn('Failed to emit text delta', {
 								error,
 								sessionId: session.id
@@ -4008,20 +4240,24 @@ export const POST: RequestHandler = async ({
 			});
 
 			const isCancelledTurn =
-				cancelled === true || finishedReason === 'cancelled' || request.signal.aborted;
+				cancelled === true ||
+				finishedReason === 'cancelled' ||
+				turnAbortController.signal.aborted;
 			const assistantContent = resolvePersistableAssistantContent({
 				finalAssistantText,
 				assistantText,
 				fallback: null
 			});
 			if (isCancelledTurn) {
-				const interruptedReason = await resolveInterruptedReason({
-					supabase,
-					userId,
-					sessionId: session.id,
-					streamRunId: streamRunId ?? undefined,
-					requestAborted: request.signal.aborted
-				});
+				const interruptedReason =
+					turnAbortReason ??
+					(await resolveInterruptedReason({
+						supabase,
+						userId,
+						sessionId: session.id,
+						streamRunId: streamRunId ?? undefined,
+						requestAborted: turnAbortController.signal.aborted
+					}));
 				let interruptedMessage = null;
 				if (assistantContent && assistantContent.length > 0) {
 					assistantPersistStartedAtMs = Date.now();
@@ -4074,7 +4310,7 @@ export const POST: RequestHandler = async ({
 				});
 
 				finalizationStartedAtMs = Date.now();
-				if (!request.signal.aborted) {
+				if (!streamDetached) {
 					const cancelledLastTurnContext = buildLastTurnContext({
 						assistantText: assistantContent ?? '',
 						userMessage: message,
@@ -4404,13 +4640,14 @@ export const POST: RequestHandler = async ({
 				'completed'
 			);
 		} catch (error) {
-			if (request.signal.aborted || isAbortLikeError(error)) {
+			if (turnAbortController.signal.aborted || isAbortLikeError(error)) {
+				const interruptedReason = turnAbortReason ?? 'cancelled';
 				doneEmittedAtMs = doneEmittedAtMs ?? Date.now();
-				queueTimingMetric('cancelled');
+				queueTimingMetric(interruptedReason);
 				await persistTurnRunFinalState(
 					{
 						status: 'cancelled',
-						finished_reason: 'cancelled',
+						finished_reason: interruptedReason,
 						validation_failure_count: validationFailureCount,
 						first_lane: deriveFirstLane({
 							firstHelpPath,
@@ -4534,6 +4771,11 @@ export const POST: RequestHandler = async ({
 				'failed'
 			);
 		} finally {
+			clearTimeout(turnTimeoutId);
+			stopCancelWatcher?.();
+			if (streamDetached) {
+				return;
+			}
 			try {
 				await agentStream.close();
 			} catch (error) {

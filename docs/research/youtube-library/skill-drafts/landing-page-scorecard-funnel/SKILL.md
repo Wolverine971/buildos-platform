@@ -19,24 +19,46 @@ Use this skill when an agent needs to turn a landing page into a qualified lead-
 
 Do not use this skill for a simple product homepage, a blog CTA, or a survey with no conversion path.
 
+## Mode Selection (Run This First)
+
+Two modes of this skill exist. Pick one before drafting.
+
+- **Standalone scorecard.** Use when the buyer already feels the pain (info-product, coaching, fitness, services with self-evident category). The hook can name the frustration directly. The assessment carries most of the conversion work.
+- **Setup-layered scorecard.** Use when the buyer needs the category framed before they will engage with an assessment. Common for B2B SaaS, considered-purchase tools, and any product where "why pick us over the alternatives" is non-obvious. Wrap the scorecard in a Setup → Follow-Through positioning layer (see _Setup Layer_ below).
+
+Diagnostic: if the audience can answer "yes, I have this problem and I want to solve it" before they hit your page, use standalone. If they need to be taught how to evaluate the category first, use the setup-layered mode.
+
+## Setup Layer (For B2B / Considered Purchases)
+
+When in setup-layered mode, the page above the assessment runs a four-part positioning structure before the scorecard appears:
+
+1. **Market Insight.** The unique perspective on how the category is changing or how the problem actually works. Not about your product. Frames how a smart buyer should think.
+2. **Alternative Solutions Analysis.** Pros and cons of every current approach (including doing nothing). Name the alternatives explicitly. Honesty about trade-offs builds credibility.
+3. **Perfect-World Scenario.** Description of an ideal solution, vendor-independent. This is where the buyer aligns with the value criteria you'll be measured on.
+4. **Then the Scorecard.** Once the buyer is aligned with the worldview, the assessment becomes "let me see how I score against the ideal we just defined." Conversion rises because the scorecard is no longer the first ask.
+
+Setup work usually lives in the page above the scorecard CTA, in a long-form essay that links to the scorecard, or in the email sequence that drives traffic to the scorecard. It does not have to live inside the scorecard page itself — but the buyer must encounter it before they take the assessment.
+
 ## Funnel Model
 
-1. Landing page sells the assessment.
-2. Questionnaire captures contact info, best-practice answers, and qualification signals.
-3. Dynamic results page gives a score, insights, and a tailored next step.
-4. Follow-up uses answers to route leads instead of blasting everyone the same offer.
+1. _(Setup-layered mode only)_ Setup positioning page primes the buyer.
+2. Landing page sells the assessment.
+3. Questionnaire captures contact info, best-practice answers, and qualification signals.
+4. Dynamic results page gives a score, insights, and a tailored next step.
+5. Follow-up uses answers to route leads instead of blasting everyone the same offer.
 
 ## Landing Page Structure
 
 Build five sections in order:
 
-1. **Hook.** Use either a frustration hook or a readiness hook.
-    - Frustration: "Frustrated that [outcome] is not happening even though you [do reasonable action]?"
-    - Readiness: "Are you ready to [aspirational outcome]?"
+1. **Hook.** Pick one of three forms based on buyer state:
+    - **Frustration hook** (standalone mode, buyer feels the pain): "Frustrated that [outcome] is not happening even though you [do reasonable action]?"
+    - **Readiness hook** (standalone mode, aspirational): "Are you ready to [aspirational outcome]?"
+    - **Market Insight hook** (setup-layered mode, B2B / considered): "Here's what's changed about [category] — and what that means for how you should evaluate [solution type]." Used when the buyer needs the worldview shift before they will accept the frustration framing. Pair with the Setup layer above.
 2. **Assessment promise.** State how many questions, what they will discover, and what they will know afterward.
-3. **Value proposition.** Name the three areas the assessment will measure and improve.
+3. **Differentiated-value proposition.** Name the three areas the assessment will measure and improve — and frame each one against the _alternatives the buyer already knows_. The question the value prop answers is not "what does this measure" but "why should I take this assessment instead of the other ones, the free articles, or just hiring a consultant?" In B2B, every "value proposition" line should imply a comparison.
 4. **Credibility.** Explain who created the assessment, what experience it is based on, and what evidence supports the categories.
-5. **CTA.** Stack action, time cost, price, and payoff: start the quiz, takes about 3 minutes, free, immediate recommendations.
+5. **CTA.** Stack action, time cost, price, and payoff: start the quiz, takes about 3 minutes, free, immediate recommendations. **Do not stack scarcity or FOMO** ("only 100 spots," "closing tonight"). FOMO produces buyers who feel manipulated and churn — the opt-in posture is what makes the scorecard's downstream segmentation worth running.
 
 ## Questionnaire Design
 
@@ -86,13 +108,18 @@ Route leads:
 - Do not route every respondent to the same CTA.
 - Do not call the results personalized if the page ignores the answers.
 - Do not hide the payoff behind vague "learn more" language.
+- **Do not use FOMO, scarcity, or urgency stunts in the CTA.** Manufactured urgency converts on the first taking but breaks the trust the segmentation step depends on. The scorecard's value comes from honest qualification; FOMO contradicts that posture.
+- **Do not skip the Setup layer for B2B / considered purchases.** A scorecard that opens with a frustration hook on a buyer who hasn't accepted the category framing yet bounces hard. Either prime the buyer with the four-part Setup beforehand or use a Market Insight hook in mode-aware fashion.
+- **Do not write feature-list value propositions.** The Value Proposition section names the three measured areas in terms that imply a comparison to alternatives, not in terms that recite the product's capabilities.
 
 ## Output
 
 Return:
 
-- hook options
-- three measured areas
+- **Mode** — standalone or setup-layered, with rationale.
+- _(Setup-layered only)_ — Market Insight statement, named alternatives with trade-offs, perfect-world scenario.
+- hook options _(by mode: frustration / readiness / market-insight)_
+- three measured areas, each framed against the alternatives the buyer already considers
 - 15-question outline
 - scoring model
 - lead segment rules
@@ -102,4 +129,9 @@ Return:
 
 ## Source Attribution
 
-Distilled from Daniel Priestley's [The $1 Million Landing Page](https://www.youtube.com/watch?v=az1Zh-FNSno), with local transcript and analysis in `docs/marketing/growth/research/youtube-transcripts/2025-10-11-daniel-priestley-1m-landing-page.md`.
+Distilled from two sources at different layers of the funnel:
+
+- **Funnel mechanics layer:** Daniel Priestley's [The $1 Million Landing Page](https://www.youtube.com/watch?v=az1Zh-FNSno) — the five-section landing page, 15-question structure with three buckets, dynamic results page, and segmentation rules. Local analysis: `docs/marketing/growth/research/youtube-transcripts/2025-10-11-daniel-priestley-1m-landing-page-ANALYSIS.md`.
+- **Positioning layer (setup-layered mode):** April Dunford's Sales Pitch framework on [Lenny's Podcast](https://www.youtube.com/watch?v=-VqmFI9vY7w) — the Setup → Follow-Through structure (market insight + alternatives + perfect-world scenario → differentiated value + proof + ask), the differentiated-value framing of value propositions, and the anti-FOMO posture. Local analysis: `docs/marketing/growth/research/youtube-transcripts/2026-04-29-april-dunford-sales-pitch-framework-ANALYSIS.md`.
+
+Priestley supplies the _what to build_ (the assessment funnel itself); Dunford supplies the _what to write at each stage_ and the _whether to wrap it in a Setup layer_ — particularly for B2B and considered purchases where the scorecard alone is insufficient because the buyer hasn't yet accepted the category frame.

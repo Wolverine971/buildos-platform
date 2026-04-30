@@ -35,10 +35,27 @@ type LoadedChatMessage = {
 	tool_call_id?: string;
 };
 
+export type LoadedChatTurnRun = {
+	id: string;
+	session_id?: string;
+	user_id?: string;
+	stream_run_id?: string | null;
+	client_turn_id?: string | null;
+	status?: string | null;
+	finished_reason?: string | null;
+	request_message?: string | null;
+	assistant_message_id?: string | null;
+	started_at?: string | null;
+	finished_at?: string | null;
+	created_at?: string | null;
+	updated_at?: string | null;
+};
+
 type LoadedChatSessionPayload = {
 	session: ChatSession;
 	messages?: LoadedChatMessage[];
 	toolExecutions?: LoadedChatToolExecution[];
+	turnRuns?: LoadedChatTurnRun[];
 	truncated?: boolean;
 	voiceNotes?: VoiceNote[];
 };
@@ -85,6 +102,8 @@ export interface AgentChatSessionSnapshot {
 	projectFocus: ProjectFocus | null;
 	messages: UIMessage[];
 	voiceNotesByGroupId: Record<string, VoiceNote[]>;
+	turnRuns: LoadedChatTurnRun[];
+	activeTurnRun: LoadedChatTurnRun | null;
 }
 
 const DEFAULT_CHAT_SESSION_TITLES = [
@@ -711,9 +730,11 @@ export function buildAgentChatSessionSnapshot(
 		session,
 		messages: loadedMessages,
 		toolExecutions,
+		turnRuns: loadedTurnRuns = [],
 		truncated,
 		voiceNotes = []
 	} = payload;
+	const turnRuns = Array.isArray(loadedTurnRuns) ? loadedTurnRuns : [];
 	const contextType = normalizeSessionContextType(session.context_type);
 	const selectedEntityId = session.entity_id || undefined;
 	const selectedContextLabel = deriveSessionTitle(session) || 'Resumed Chat';
@@ -731,6 +752,7 @@ export function buildAgentChatSessionSnapshot(
 	}
 
 	let messages = mapLoadedMessagesToUI(loadedMessages, toolExecutions);
+	const activeTurnRun = turnRuns.find((run) => run.status === 'running') ?? null;
 
 	if (truncated) {
 		const truncationNote: UIMessage = {
@@ -744,16 +766,32 @@ export function buildAgentChatSessionSnapshot(
 		messages = [truncationNote, ...messages];
 	}
 
-	const welcomeMessage: UIMessage = {
-		id: crypto.randomUUID(),
-		type: 'assistant',
-		role: 'system' as ChatRole,
-		content: session.summary
-			? `Resuming your conversation. Here's where we left off:\n\n**Summary:** ${session.summary}\n\nHow can I help you continue?`
-			: "Welcome back! I've restored your previous conversation. How can I help you continue?",
-		timestamp: new Date(),
-		created_at: new Date().toISOString()
-	};
+	if (activeTurnRun) {
+		const activeTurnNote: UIMessage = {
+			id: `active-turn-${activeTurnRun.id}`,
+			type: 'activity',
+			role: 'system' as ChatRole,
+			content:
+				'BuildOS is still finishing the latest response. This view will refresh shortly.',
+			timestamp: new Date(),
+			created_at: new Date().toISOString()
+		};
+		messages = [...messages, activeTurnNote];
+	}
+
+	if (messages.length === 0) {
+		const welcomeMessage: UIMessage = {
+			id: crypto.randomUUID(),
+			type: 'assistant',
+			role: 'system' as ChatRole,
+			content: session.summary
+				? `Resuming your conversation. Here's where we left off:\n\n**Summary:** ${session.summary}\n\nHow can I help you continue?`
+				: "Welcome back! I've restored your previous conversation. How can I help you continue?",
+			timestamp: new Date(),
+			created_at: new Date().toISOString()
+		};
+		messages = [...messages, welcomeMessage];
+	}
 
 	return {
 		session,
@@ -761,8 +799,10 @@ export function buildAgentChatSessionSnapshot(
 		selectedEntityId: metadataFocus?.projectId || projectFocus?.projectId || selectedEntityId,
 		selectedContextLabel,
 		projectFocus,
-		messages: [...messages, welcomeMessage],
-		voiceNotesByGroupId: groupVoiceNotesByGroupId(voiceNotes)
+		messages,
+		voiceNotesByGroupId: groupVoiceNotesByGroupId(voiceNotes),
+		turnRuns,
+		activeTurnRun
 	};
 }
 
