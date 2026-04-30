@@ -1,22 +1,23 @@
 ---
 name: going-viral
 description: Help a founder or creator design content that travels — across TikTok, Instagram, Twitter/X, and LinkedIn — using verified 2025/2026 algorithm signals, six tested hook archetypes, an expectations-vs-reality script structure, a six-checkpoint viewer-psychology gate, and a status-game distribution model. Use when planning a piece of content, auditing why a post died, picking a hero platform, designing a campaign, or turning a raw idea into a publishable script. Defers platform-specific deep dives (algorithm signals, format winners, hook templates) to `references/{tiktok,instagram,twitter,linkedin}.md`. Holds the seven tensions between manufactured virality vs. ideas that compound — refuses rage-bait tactics in BuildOS-tagged work and flags them elsewhere.
+path: docs/research/youtube-library/skill-drafts/going-viral/SKILL.md
 ---
 
 # Going Viral — How Ideas Travel
 
-This skill turns "how do I go viral" into a structured workflow grounded in published algorithm research, practitioner playbooks, and the psychology of why content spreads. The public-facing name is *Going Viral* because that's the search term humans use; the substance is *ideas that travel* — distinctive points of view that earn attention without becoming algorithm-captured slop.
+This skill turns "how do I go viral" into a structured workflow grounded in published algorithm research, practitioner playbooks, and the psychology of why content spreads. The public-facing name is _Going Viral_ because that's the search term humans use; the substance is _ideas that travel_ — distinctive points of view that earn attention without becoming algorithm-captured slop.
 
 ## How this fits with sibling skills
 
 Going-viral is the **integration layer**. Four sibling Kallaway-derived skills cover the cross-platform mechanics in depth; this skill orchestrates them and adds platform-specific deep dives.
 
-| Sibling skill | What it covers | Load when... |
-|---|---|---|
-| `hook-craft-short-form/SKILL.md` | Six hook archetypes, sentence-level hook craft, 4-mistake diagnostic | Polishing a hook line-by-line |
-| `story-driven-content-craft/SKILL.md` | Six storytelling moves (dance/rhythm/tone/direction/lens/hook), dopamine ladders, 7 mistakes | Structuring narrative arc; turning a topic into a story |
-| `viral-video-script-structure/SKILL.md` | 5-step skeleton + 6-phase live process; expectations-vs-reality gate | Drafting a full short-form or long-form video script |
-| `algorithm-aware-publishing/SKILL.md` | 4 pillars: pick-the-game, matching loop, quality gate, dual audit (Kane + BuildOS) | Strategic publishing decisions across a 3–6 month window |
+| Sibling skill                           | What it covers                                                                               | Load when...                                             |
+| --------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `hook-craft-short-form/SKILL.md`        | Six hook archetypes, sentence-level hook craft, 4-mistake diagnostic                         | Polishing a hook line-by-line                            |
+| `story-driven-content-craft/SKILL.md`   | Six storytelling moves (dance/rhythm/tone/direction/lens/hook), dopamine ladders, 7 mistakes | Structuring narrative arc; turning a topic into a story  |
+| `viral-video-script-structure/SKILL.md` | 5-step skeleton + 6-phase live process; expectations-vs-reality gate                         | Drafting a full short-form or long-form video script     |
+| `algorithm-aware-publishing/SKILL.md`   | 4 pillars: pick-the-game, matching loop, quality gate, dual audit (Kane + BuildOS)           | Strategic publishing decisions across a 3–6 month window |
 
 **This skill (`going-viral`) adds:**
 
@@ -61,15 +62,15 @@ When two principles conflict, name the tension and pick deliberately. Do not pre
 
 ## Core principles (cross-platform)
 
-1. **Distribution is downstream of audience clarity.** Pick one avatar + one narrow topic band and stay there for 30–50 posts before expanding. Mixed-topic accounts confuse the matching layer and poison subsequent posts. (Kallaway *Social Algorithms*; Kallaway *Misunderstood*.)
-2. **Reality must beat expectations.** The title sets a contract; every beat after must raise reality above it. Meeting expectations is losing. (Kallaway *Killer Script*.)
-3. **Hooks are a slot-fill alignment problem, not a creative problem.** Visual + spoken + text + audio must agree on the same key visual in the first 3–5 seconds. Misalignment causes comprehension loss before curiosity forms. (Kallaway *100 Viral Hooks*.)
-4. **The viewer is on a six-checkpoint gauntlet.** Painpoint Acceptance → Sprint to Trust → Plan of Attack → Likeability → Harness Attention → Drive Action. Miss any gate and they bounce. (Kallaway *18 Psychology Tricks*.)
-5. **Don't put your best point first.** 2-1-3-4 ordering trains the brain that value is ascending; viewers stay for what's next. Lead with the second-best, peak with the best, then descend. (Kallaway *Killer Script*.)
-6. **Comments are not the goal. Substantive engagement is.** Real conviction generates real engagement. Comment-bait via manufactured contrarianism extracts short-term signal but corrupts the next posts' targeting. (Kallaway *Social Algorithms* + BuildOS anti-feed thesis.)
+1. **Distribution is downstream of audience clarity.** Pick one avatar + one narrow topic band and stay there for 30–50 posts before expanding. Mixed-topic accounts confuse the matching layer and poison subsequent posts. (Kallaway _Social Algorithms_; Kallaway _Misunderstood_.)
+2. **Reality must beat expectations.** The title sets a contract; every beat after must raise reality above it. Meeting expectations is losing. (Kallaway _Killer Script_.)
+3. **Hooks are a slot-fill alignment problem, not a creative problem.** Visual + spoken + text + audio must agree on the same key visual in the first 3–5 seconds. Misalignment causes comprehension loss before curiosity forms. (Kallaway _100 Viral Hooks_.)
+4. **The viewer is on a six-checkpoint gauntlet.** Painpoint Acceptance → Sprint to Trust → Plan of Attack → Likeability → Harness Attention → Drive Action. Miss any gate and they bounce. (Kallaway _18 Psychology Tricks_.)
+5. **Don't put your best point first.** 2-1-3-4 ordering trains the brain that value is ascending; viewers stay for what's next. Lead with the second-best, peak with the best, then descend. (Kallaway _Killer Script_.)
+6. **Comments are not the goal. Substantive engagement is.** Real conviction generates real engagement. Comment-bait via manufactured contrarianism extracts short-term signal but corrupts the next posts' targeting. (Kallaway _Social Algorithms_ + BuildOS anti-feed thesis.)
 7. **Status games drive sharing.** Berger's STEPPS (Social Currency, Triggers, Emotion, Public, Practical Value, Stories) and Eugene Wei's "Status as a Service" both converge: people share what makes them look good or look correct. Practical Value + Social Currency is the cleanest combo for non-rage-bait creators.
-8. **Treat platforms as islands, not an ecosystem.** Native execution per platform; world-building (visual + verbal cohesion) for cross-platform recognition; rented → owned for actual conversion. Never force "watch the full version on YouTube" cross-platform CTAs — they nuke reach. (Kallaway *Misunderstood*.)
-9. **Value does not accrue at the media layer.** AdSense and brand deals are scraps. Use media to manufacture attention, route it to owned products / services / community. The right number of monetizable creators on any platform is small by design. (Kallaway *Misunderstood*.)
+8. **Treat platforms as islands, not an ecosystem.** Native execution per platform; world-building (visual + verbal cohesion) for cross-platform recognition; rented → owned for actual conversion. Never force "watch the full version on YouTube" cross-platform CTAs — they nuke reach. (Kallaway _Misunderstood_.)
+9. **Value does not accrue at the media layer.** AdSense and brand deals are scraps. Use media to manufacture attention, route it to owned products / services / community. The right number of monetizable creators on any platform is small by design. (Kallaway _Misunderstood_.)
 10. **Viral ≠ healthy.** A 10M-view hit that lands outside the avatar is worse than a 200K-view hit inside it — the broad hit corrupts your next-video targeting. Refuse off-target ideas even when they look juicy.
 
 ## The going-viral workflow
@@ -89,7 +90,7 @@ If you can't fill all four blanks, do not proceed. The piece is not ready.
 
 ### Step 1 — Pick the hero platform
 
-If the founder doesn't already have a hero platform: ask **where do their existing customers spend the most time?** Then **where do they themselves learn the most about their space?** Pick one. Add email. Six months minimum before adding a second platform. (Kallaway *Misunderstood*.)
+If the founder doesn't already have a hero platform: ask **where do their existing customers spend the most time?** Then **where do they themselves learn the most about their space?** Pick one. Add email. Six months minimum before adding a second platform. (Kallaway _Misunderstood_.)
 
 Default starting recommendations (calibrate to actual audience):
 
@@ -108,25 +109,25 @@ Force these answers in writing:
 
 - One sentence: what is this account about?
 - The 3–5 keywords the algorithm should associate with this account
-- The 3 keywords the algorithm should *never* associate with this account (the off-niche temptations)
+- The 3 keywords the algorithm should _never_ associate with this account (the off-niche temptations)
 - Audit the last 20 posts: do they reinforce the topic, or scatter it?
 
 Refuse "viral-looking" ideas that resonate with the wrong audience. Each off-target hit costs you the next several posts' targeting precision.
 
 ### Step 3 — Pick the hook archetype
 
-Six archetypes, from Kallaway's *100 Viral Hooks*. Pick from the **available visual**, not from the topic. Any topic can be expressed via any archetype.
+Six archetypes, from Kallaway's _100 Viral Hooks_. Pick from the **available visual**, not from the topic. Any topic can be expressed via any archetype.
 
-| Archetype | Contrast spine | Best when you have... | Risk if misused |
-|---|---|---|---|
-| **Fortune Teller** | Present → future | A real forward-looking claim + future-feeling visual | Empty trend-chasing |
-| **Experimenter** | Old method → new method, shown live | Live demo b-roll, a real test | Clout demos with no real result |
-| **Teacher** | Failing at X → here's how to win at X | Hard-won lesson, slides, talking head | Becomes a lecture, kills retention |
-| **Magician** | Layer/modifier — uses visual or verbal stun | Atypical visuals, signature objects, visual pacifiers | Spectacle without payoff |
-| **Investigator** | Don't know → now you know | A genuine "secret" or under-noticed insight | Condescension if secret is well-known |
-| **Contrarian** | Conventional wisdom → opposite belief | A real opposing POV with proof | Becomes a hot-takes account |
+| Archetype          | Contrast spine                              | Best when you have...                                 | Risk if misused                       |
+| ------------------ | ------------------------------------------- | ----------------------------------------------------- | ------------------------------------- |
+| **Fortune Teller** | Present → future                            | A real forward-looking claim + future-feeling visual  | Empty trend-chasing                   |
+| **Experimenter**   | Old method → new method, shown live         | Live demo b-roll, a real test                         | Clout demos with no real result       |
+| **Teacher**        | Failing at X → here's how to win at X       | Hard-won lesson, slides, talking head                 | Becomes a lecture, kills retention    |
+| **Magician**       | Layer/modifier — uses visual or verbal stun | Atypical visuals, signature objects, visual pacifiers | Spectacle without payoff              |
+| **Investigator**   | Don't know → now you know                   | A genuine "secret" or under-noticed insight           | Condescension if secret is well-known |
+| **Contrarian**     | Conventional wisdom → opposite belief       | A real opposing POV with proof                        | Becomes a hot-takes account           |
 
-For BuildOS-tagged content, the natural archetypes are **Contrarian** (anti-AI, anti-feed POV pieces), **Investigator** (under-noticed observation, manufactured-viral critique, model behavior), and **Teacher** (context engineering, agent skills, founder operating lessons). Use Experimenter for product demos. Use Fortune Teller sparingly and only when there's a real prediction. Use Magician as a *modifier* on top of one of the other five — never standalone.
+For BuildOS-tagged content, the natural archetypes are **Contrarian** (anti-AI, anti-feed POV pieces), **Investigator** (under-noticed observation, manufactured-viral critique, model behavior), and **Teacher** (context engineering, agent skills, founder operating lessons). Use Experimenter for product demos. Use Fortune Teller sparingly and only when there's a real prediction. Use Magician as a _modifier_ on top of one of the other five — never standalone.
 
 ### Step 4 — Write the script (or post)
 
@@ -171,7 +172,7 @@ For short-form (TikTok / Reels / Shorts), compress the 5-part intro to the first
 
 ### Step 5 — Run the six-pass storytelling check
 
-Before shipping any draft, force these passes (Kallaway *Master Storyteller*):
+Before shipping any draft, force these passes (Kallaway _Master Storyteller_):
 
 1. **Dance pass** — Outline beats. Replace every "and then" with "but" or "therefore." Confirm 3–4 conflict loops in the first 30 seconds (or first 200 words for written content).
 2. **Rhythm pass** — One sentence per line. Inspect right-edge jaggedness. Mix short, medium, and one long crescendo per section. Read aloud (or TTS).
@@ -182,16 +183,16 @@ Before shipping any draft, force these passes (Kallaway *Master Storyteller*):
 
 ### Step 6 — Run the six-checkpoint viewer-psychology gate
 
-A pre-publish gate (Kallaway *18 Psychology Tricks*). Each checkpoint must pass:
+A pre-publish gate (Kallaway _18 Psychology Tricks_). Each checkpoint must pass:
 
-| Checkpoint | What | Pass condition |
-|---|---|---|
-| 1. Painpoint Acceptance | Viewer admits the problem applies | Pain named in their language; one-step-adjacent reframe |
-| 2. Sprint to Trust | Viewer believes you can solve it | At least one of: testimonial, self-proof, social proof, gap-crossing evidence, common ground, studio quality |
-| 3. Plan of Attack | Viewer sees a structured, differentiated path | Common belief stated, contrarian alternative stated, path teased |
-| 4. Likeability | Viewer wants *you* specifically | Conversational tone, named reader, authentic register |
-| 5. Harness Attention | Viewer stays for the body | Rehooks every 60–90s; varied rhythm; front-loaded value |
-| 6. Drive Action | Viewer subscribes / shares / buys | Recap + single CTA, not a stack |
+| Checkpoint              | What                                          | Pass condition                                                                                               |
+| ----------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 1. Painpoint Acceptance | Viewer admits the problem applies             | Pain named in their language; one-step-adjacent reframe                                                      |
+| 2. Sprint to Trust      | Viewer believes you can solve it              | At least one of: testimonial, self-proof, social proof, gap-crossing evidence, common ground, studio quality |
+| 3. Plan of Attack       | Viewer sees a structured, differentiated path | Common belief stated, contrarian alternative stated, path teased                                             |
+| 4. Likeability          | Viewer wants _you_ specifically               | Conversational tone, named reader, authentic register                                                        |
+| 5. Harness Attention    | Viewer stays for the body                     | Rehooks every 60–90s; varied rhythm; front-loaded value                                                      |
+| 6. Drive Action         | Viewer subscribes / shares / buys             | Recap + single CTA, not a stack                                                                              |
 
 If any gate fails, the piece flops. Fix in order. Don't optimize gate 5 if gate 1 is broken.
 
@@ -261,22 +262,22 @@ When using this skill to plan a piece of content, return:
 
 The cross-platform mechanics layer of this skill is distilled from **Kane Kallaway's** marketing channel:
 
-- *I Studied 100 Viral Hooks, These 6 Will Make You Go Viral* — hook archetype catalog
-- *How To Become A Master Storyteller* — six-pass storytelling check (dance, rhythm, tone, direction, lens, hook)
-- *How To Write A Killer Script That Keeps Viewers Hooked* — expectations-vs-reality + 5-part intro + 2-1-3-4 body + Fortune Cookie outro + native CTA embeds
-- *18 Psychology Tricks to Get Viewers Addicted to Your Videos* — six-checkpoint viewer gate + I/you ratio + trust hierarchy + tactic-by-tactic ethics filter
-- *How Social Media Algorithms Actually Work (And How to Beat Them)* — matching loop + sample-200 + four-attribute filter + tier scaling
-- *Social Media Isn't Hard. It's Misunderstood.* — three-layer content stack (platform / media / offering) + on-target virality + islands not ecosystem + hero-platform decision filter
-- *Hooks Impossible to Skip*, *Irresistible Hooks*, *6 Words Hook*, *Storytelling Genius / Dopamine Ladders*, *7 Storytelling Mistakes*, *Viral TikTok Script Walkthrough*, *5 Content Games* — sentence-level hook craft, retention curves, anti-patterns
+- _I Studied 100 Viral Hooks, These 6 Will Make You Go Viral_ — hook archetype catalog
+- _How To Become A Master Storyteller_ — six-pass storytelling check (dance, rhythm, tone, direction, lens, hook)
+- _How To Write A Killer Script That Keeps Viewers Hooked_ — expectations-vs-reality + 5-part intro + 2-1-3-4 body + Fortune Cookie outro + native CTA embeds
+- _18 Psychology Tricks to Get Viewers Addicted to Your Videos_ — six-checkpoint viewer gate + I/you ratio + trust hierarchy + tactic-by-tactic ethics filter
+- _How Social Media Algorithms Actually Work (And How to Beat Them)_ — matching loop + sample-200 + four-attribute filter + tier scaling
+- _Social Media Isn't Hard. It's Misunderstood._ — three-layer content stack (platform / media / offering) + on-target virality + islands not ecosystem + hero-platform decision filter
+- _Hooks Impossible to Skip_, _Irresistible Hooks_, _6 Words Hook_, _Storytelling Genius / Dopamine Ladders_, _7 Storytelling Mistakes_, _Viral TikTok Script Walkthrough_, _5 Content Games_ — sentence-level hook craft, retention curves, anti-patterns
 
 Counterweight / contrarian voice:
 
-- **Devin Nash** — *Exposing the Manufactured Viral Content Economy* (the rage-bait economy critique that prevents this skill from collapsing into hook-engineering for hook-engineering's sake)
+- **Devin Nash** — _Exposing the Manufactured Viral Content Economy_ (the rage-bait economy critique that prevents this skill from collapsing into hook-engineering for hook-engineering's sake)
 
 Theoretical psychology spine:
 
-- **Eugene Wei** — *Status as a Service* + *TikTok and the Sorting Hat* (status games as the engine; interest-graph theory)
-- **Jonah Berger** — STEPPS (*Contagious*) — Social Currency / Triggers / Emotion / Public / Practical Value / Stories
+- **Eugene Wei** — _Status as a Service_ + _TikTok and the Sorting Hat_ (status games as the engine; interest-graph theory)
+- **Jonah Berger** — STEPPS (_Contagious_) — Social Currency / Triggers / Emotion / Public / Practical Value / Stories
 
 Platform-native voices (in `references/`):
 
@@ -287,9 +288,9 @@ Platform-native voices (in `references/`):
 
 Cross-link with existing BuildOS skills:
 
-- `content-strategy-beyond-blogging` — adjacent skill that decides *what to publish where* at the macro level. This skill (`going-viral`) operates at the per-piece level. Use the content-strategy skill for system-level decisions; use this skill for individual-post execution.
-- `nonfiction-writing-from-lived-conviction` — sources the *what* (lived experience, hard-won opinions, contrarian observations); this skill structures the *how* (hook, story, retention, distribution).
-- BuildOS *interest-media manifesto* and *morning-without-the-algorithm* essays — the diagnosis this skill must execute inside without becoming part of the synthetic-content wave.
+- `content-strategy-beyond-blogging` — adjacent skill that decides _what to publish where_ at the macro level. This skill (`going-viral`) operates at the per-piece level. Use the content-strategy skill for system-level decisions; use this skill for individual-post execution.
+- `nonfiction-writing-from-lived-conviction` — sources the _what_ (lived experience, hard-won opinions, contrarian observations); this skill structures the _how_ (hook, story, retention, distribution).
+- BuildOS _interest-media manifesto_ and _morning-without-the-algorithm_ essays — the diagnosis this skill must execute inside without becoming part of the synthetic-content wave.
 
 ## Internal status
 

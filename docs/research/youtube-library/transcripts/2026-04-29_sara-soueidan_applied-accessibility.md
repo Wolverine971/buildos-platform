@@ -1,107 +1,109 @@
 ---
-title: "Applied Accessibility: Practical Tips for Building More Accessible Front-Ends by Sara Soueidan"
+title: 'Applied Accessibility: Practical Tips for Building More Accessible Front-Ends by Sara Soueidan'
 video_id: are7ZZgA86I
-url: "https://www.youtube.com/watch?v=are7ZZgA86I"
+url: 'https://www.youtube.com/watch?v=are7ZZgA86I'
 channel: Codegram
-channel_url: "https://www.youtube.com/@Codegram"
+channel_url: 'https://www.youtube.com/@Codegram'
 upload_date: 2019-09-05
-duration: "01:12:01"
+duration: '01:12:01'
 views: 5614
 timestamps:
-  - time: "0:00"
-    label: "Introduction"
-  - time: "2:30"
-    label: "Semantic Markup"
-  - time: "3:48"
-    label: "The Rotor"
-  - time: "5:00"
-    label: "Using Headings Landmarks"
-  - time: "11:38"
-    label: "Semantic Headings"
-  - time: "12:38"
-    label: "Simple Example"
-  - time: "13:28"
-    label: "Basic Structure"
-  - time: "14:35"
-    label: "Adding Titles"
-  - time: "18:58"
-    label: "Marking up Headings"
-  - time: "20:15"
-    label: "Using Headings and Landmarks"
-  - time: "20:42"
-    label: "Main Takeaways"
-  - time: "22:02"
-    label: "The Accessibility Tree"
-  - time: "23:41"
-    label: "Native HTML Elements"
-  - time: "24:13"
-    label: "Accessibility Tree"
-  - time: "24:59"
-    label: "Accessibility Tools"
-  - time: "25:31"
-    label: "Live Coding"
-  - time: "30:15"
-    label: "Icon Buttons"
-  - time: "30:29"
-    label: "Modal Overlays"
-  - time: "32:53"
-    label: "Hiding Content"
-  - time: "33:12"
-    label: "Visibility"
-  - time: "33:32"
-    label: "Hidden"
-  - time: "34:20"
-    label: "Aria Hidden"
-  - time: "34:48"
-    label: "Focusable False"
-  - time: "36:37"
-    label: "Icon Button"
-  - time: "37:06"
-    label: "Menu Button"
-  - time: "37:21"
-    label: "Using AriaLabel"
-  - time: "38:19"
-    label: "Using AriaLabelBy"
-  - time: "40:17"
-    label: "AccessibilityTree"
-  - time: "41:09"
-    label: "Data Visualizations"
-  - time: "41:44"
-    label: "SVG"
-  - time: "43:44"
-    label: "SVG Accessibility Support"
-  - time: "44:22"
-    label: "Khan Academy"
-  - time: "45:24"
-    label: "Embedding Techniques"
-  - time: "50:42"
-    label: "Takeaways"
-  - time: "51:50"
-    label: "Focus Tiles"
-  - time: "54:36"
-    label: "Focus Visible"
-  - time: "56:06"
-    label: "Focus Visible with Buttons"
-  - time: "57:02"
-    label: "Focus Visible with Polyfill"
-  - time: "58:40"
-    label: "Focus Tiles Dont Need to Be Ugly"
-  - time: "59:33"
-    label: "Focus Tiles and Hover Styles"
+    - time: '0:00'
+      label: 'Introduction'
+    - time: '2:30'
+      label: 'Semantic Markup'
+    - time: '3:48'
+      label: 'The Rotor'
+    - time: '5:00'
+      label: 'Using Headings Landmarks'
+    - time: '11:38'
+      label: 'Semantic Headings'
+    - time: '12:38'
+      label: 'Simple Example'
+    - time: '13:28'
+      label: 'Basic Structure'
+    - time: '14:35'
+      label: 'Adding Titles'
+    - time: '18:58'
+      label: 'Marking up Headings'
+    - time: '20:15'
+      label: 'Using Headings and Landmarks'
+    - time: '20:42'
+      label: 'Main Takeaways'
+    - time: '22:02'
+      label: 'The Accessibility Tree'
+    - time: '23:41'
+      label: 'Native HTML Elements'
+    - time: '24:13'
+      label: 'Accessibility Tree'
+    - time: '24:59'
+      label: 'Accessibility Tools'
+    - time: '25:31'
+      label: 'Live Coding'
+    - time: '30:15'
+      label: 'Icon Buttons'
+    - time: '30:29'
+      label: 'Modal Overlays'
+    - time: '32:53'
+      label: 'Hiding Content'
+    - time: '33:12'
+      label: 'Visibility'
+    - time: '33:32'
+      label: 'Hidden'
+    - time: '34:20'
+      label: 'Aria Hidden'
+    - time: '34:48'
+      label: 'Focusable False'
+    - time: '36:37'
+      label: 'Icon Button'
+    - time: '37:06'
+      label: 'Menu Button'
+    - time: '37:21'
+      label: 'Using AriaLabel'
+    - time: '38:19'
+      label: 'Using AriaLabelBy'
+    - time: '40:17'
+      label: 'AccessibilityTree'
+    - time: '41:09'
+      label: 'Data Visualizations'
+    - time: '41:44'
+      label: 'SVG'
+    - time: '43:44'
+      label: 'SVG Accessibility Support'
+    - time: '44:22'
+      label: 'Khan Academy'
+    - time: '45:24'
+      label: 'Embedding Techniques'
+    - time: '50:42'
+      label: 'Takeaways'
+    - time: '51:50'
+      label: 'Focus Tiles'
+    - time: '54:36'
+      label: 'Focus Visible'
+    - time: '56:06'
+      label: 'Focus Visible with Buttons'
+    - time: '57:02'
+      label: 'Focus Visible with Polyfill'
+    - time: '58:40'
+      label: 'Focus Tiles Dont Need to Be Ugly'
+    - time: '59:33'
+      label: 'Focus Tiles and Hover Styles'
 description: |
-  This talk is a practical one, chock-full of tips for creating more accessible front-end foundations. If writing HTML, CSS, SVG and JavaScript is part of your job, then this talk is for you.
-  
-  In this session — a series of macro case studies from real client projects — Sara shares some frustrations, many lessons learned, and a lot of practical tips and tricks for building accessible front-end foundations that you can take and apply in your own projects right away.
-  
-  Full Stack Fest is a conference held by Codegram. We've been running development conferences since 2012 with a goal in mind: Inspiring our audience by putting together the best speakers & talks at a privileged location in the beautiful Barcelona area.
-  
-  Head over to https://conferences.codegram.com/​ to see an overview of all our conferences and their content. Visit https://www.codegram.com/blog/​ to learn more from our team on related topics.
-transcribed_date: "2026-04-29"
+    This talk is a practical one, chock-full of tips for creating more accessible front-end foundations. If writing HTML, CSS, SVG and JavaScript is part of your job, then this talk is for you.
+
+    In this session — a series of macro case studies from real client projects — Sara shares some frustrations, many lessons learned, and a lot of practical tips and tricks for building accessible front-end foundations that you can take and apply in your own projects right away.
+
+    Full Stack Fest is a conference held by Codegram. We've been running development conferences since 2012 with a goal in mind: Inspiring our audience by putting together the best speakers & talks at a privileged location in the beautiful Barcelona area.
+
+    Head over to https://conferences.codegram.com/​ to see an overview of all our conferences and their content. Visit https://www.codegram.com/blog/​ to learn more from our team on related topics.
+transcribed_date: '2026-04-29'
+path: docs/research/youtube-library/transcripts/2026-04-29_sara-soueidan_applied-accessibility.md
 ---
 
 # Applied Accessibility: Practical Tips for Building More Accessible Front-Ends by Sara Soueidan
 
 ## Metadata
+
 - **Channel**: [Codegram](https://www.youtube.com/@Codegram)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=are7ZZgA86I)
 - **Duration**: 01:12:01
@@ -109,6 +111,7 @@ transcribed_date: "2026-04-29"
 - **Views**: 5,614
 
 ## Timestamps
+
 - 0:00 — Introduction
 - 2:30 — Semantic Markup
 - 3:48 — The Rotor

@@ -2,7 +2,7 @@
 
 # LinkedIn — Going Viral Reference
 
-Read this file when working on LinkedIn specifically. The cross-platform `SKILL.md` covers the universal layer. This file covers what's *different* on LinkedIn — which in 2025/2026 means a fundamentally rebuilt ranking system, dwell-time-over-engagement-velocity, a four-step content algorithm post creators must navigate, and a counterintuitive video-deprioritization that flips most "go viral" advice on its head.
+Read this file when working on LinkedIn specifically. The cross-platform `SKILL.md` covers the universal layer. This file covers what's _different_ on LinkedIn — which in 2025/2026 means a fundamentally rebuilt ranking system, dwell-time-over-engagement-velocity, a four-step content algorithm post creators must navigate, and a counterintuitive video-deprioritization that flips most "go viral" advice on its head.
 
 ## Read me first
 
@@ -46,7 +46,7 @@ Counterintuitive: **video is currently de-prioritized vs. text + photo posts** f
 
 ## Hala Taha's four-step content algorithm
 
-From *The 4-Step Formula to Go Viral on LinkedIn (2025 Masterclass)* — the structural map every post must navigate.
+From _The 4-Step Formula to Go Viral on LinkedIn (2025 Masterclass)_ — the structural map every post must navigate.
 
 ### Step 1 — Spam check
 
@@ -91,7 +91,7 @@ Lara Acosta grew from 0 to 300K+ followers on LinkedIn in ~2 years using a story
 
 **The first line is your YouTube thumbnail.** LinkedIn shows the first 1–2 lines (about 8–10 words on mobile) before the "...see more" cutoff. That's the entire hook. Make it:
 
-- Punchy and indicative of the topic (echoes Kallaway *Master Storyteller*)
+- Punchy and indicative of the topic (echoes Kallaway _Master Storyteller_)
 - Emotionally evocative — curiosity, frustration, surprise, or contrarian opening
 - Mobile-optimized — 8–10 words, not a full sentence
 
@@ -142,7 +142,7 @@ This is Kallaway's killer-script compressed for LinkedIn's 8-paragraph display o
 
 ## Richard van der Blom — what the data actually says
 
-Richard van der Blom's *Algorithm Insights Report 2025/2026* (analyzed 1.8M LinkedIn posts):
+Richard van der Blom's _Algorithm Insights Report 2025/2026_ (analyzed 1.8M LinkedIn posts):
 
 **Confirmed signal weights:**
 
@@ -229,11 +229,11 @@ Don't use LinkedIn for top-of-funnel attention only. Use it as the trust-buildin
 
 ## Source attribution
 
-- 2025/2026 algorithm reality: Richard van der Blom *Algorithm Insights Report 2025* + DowSocial + Agorapulse + Hootsuite + Geisheker analyses (April 2026)
+- 2025/2026 algorithm reality: Richard van der Blom _Algorithm Insights Report 2025_ + DowSocial + Agorapulse + Hootsuite + Geisheker analyses (April 2026)
 - 360Brew foundation model details: van der Blom report + multiple LI algorithm researchers
-- Hala Taha 4-step formula: *The 4-Step Formula to Go Viral on LinkedIn (2025 Masterclass)* on Marketing Against The Grain (April 15, 2025) + HubSpot blog summary — TODO: full transcript pending
+- Hala Taha 4-step formula: _The 4-Step Formula to Go Viral on LinkedIn (2025 Masterclass)_ on Marketing Against The Grain (April 15, 2025) + HubSpot blog summary — TODO: full transcript pending
 - Lara Acosta SLAY framework + storytelling-first growth: Creator Science #241 + Alpha Girl podcast — TODO: full transcript pending YouTube rate-limit clear
 - Justin Welsh atomic posts + LinkedIn OS: Creator Science #109 + #170 returns — TODO: transcripts pending
-- Killer-script structure: Kallaway *Killer Script* analysis (`docs/research/youtube-library/analyses/2026-04-29_kallaway_killer-script_analysis.md`)
-- Six-checkpoint psychology: Kallaway *18 Psychology Tricks* analysis
-- Audience-matching discipline: Kallaway *Misunderstood* + *Social Algorithms* analyses
+- Killer-script structure: Kallaway _Killer Script_ analysis (`docs/research/youtube-library/analyses/2026-04-29_kallaway_killer-script_analysis.md`)
+- Six-checkpoint psychology: Kallaway _18 Psychology Tricks_ analysis
+- Audience-matching discipline: Kallaway _Misunderstood_ + _Social Algorithms_ analyses

@@ -64,15 +64,15 @@ Kennedy's claim is the single most important sentence in this entire source stac
 
 ## TL;DR Rules Table
 
-| #   | Rule                                  | One-line fix                                                                                                                                                              |
-| --- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Light comes from the sky              | Tops of elements are lighter; bottoms are darker. Buttons get a subtle shadow below + a slightly brighter top edge. Inset = inputs, sliders, checkboxes. Outset = buttons, cards, dropdowns, popups. |
-| 2   | Black and white first                 | Build the screen in grayscale before any color. Then add ONE accent color. Think in HSB (Hue, Saturation, Brightness), not hex. Use a single hue and modulate S/B for variety.                       |
-| 3   | Double your whitespace                | Treat whitespace as default; remove it intentionally. Menu items: vertical space ≈ 2× text height. List title to underline ≈ 15px. Between sections ≈ 25px. Top-nav text ≈ 20% of bar height.        |
-| 4   | Learn methods of overlaying text on images | Pick a method by image: Method 0 (raw text), Method 1 (35% black overlay on whole image), Method 2 (text-in-a-box), Method 3 (blur), Method 4 (floor fade), Bonus (Scrim — radial gradient).    |
-| 5   | Make text pop — and un-pop            | Page titles use all up-pop. Everything else: combine up-pop (large, bold, high-contrast) WITH down-pop (thin, low-contrast). Never up-pop on its own except titles.                                  |
-| 6   | Use only good fonts                   | Free defaults: Satoshi, Metropolis, Source Sans (with -1% letter-spacing), Figtree. Premium via Adobe Fonts: Proxima Nova, Adelle Sans, DIN, Freight Text. Filter Google Fonts; don't browse it raw. |
-| 7   | Steal like an artist                  | Mimic before inventing. Sources ranked: Dribbble (highest quality) → Layers → Mobbin (300k+ mobile screens, filterable by pattern). Named designers to study: Jamie Syke, Balkan Brothers, Cosmin Capitanu, Elegant Seagulls. |
+| #   | Rule                                       | One-line fix                                                                                                                                                                                                                  |
+| --- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Light comes from the sky                   | Tops of elements are lighter; bottoms are darker. Buttons get a subtle shadow below + a slightly brighter top edge. Inset = inputs, sliders, checkboxes. Outset = buttons, cards, dropdowns, popups.                          |
+| 2   | Black and white first                      | Build the screen in grayscale before any color. Then add ONE accent color. Think in HSB (Hue, Saturation, Brightness), not hex. Use a single hue and modulate S/B for variety.                                                |
+| 3   | Double your whitespace                     | Treat whitespace as default; remove it intentionally. Menu items: vertical space ≈ 2× text height. List title to underline ≈ 15px. Between sections ≈ 25px. Top-nav text ≈ 20% of bar height.                                 |
+| 4   | Learn methods of overlaying text on images | Pick a method by image: Method 0 (raw text), Method 1 (35% black overlay on whole image), Method 2 (text-in-a-box), Method 3 (blur), Method 4 (floor fade), Bonus (Scrim — radial gradient).                                  |
+| 5   | Make text pop — and un-pop                 | Page titles use all up-pop. Everything else: combine up-pop (large, bold, high-contrast) WITH down-pop (thin, low-contrast). Never up-pop on its own except titles.                                                           |
+| 6   | Use only good fonts                        | Free defaults: Satoshi, Metropolis, Source Sans (with -1% letter-spacing), Figtree. Premium via Adobe Fonts: Proxima Nova, Adelle Sans, DIN, Freight Text. Filter Google Fonts; don't browse it raw.                          |
+| 7   | Steal like an artist                       | Mimic before inventing. Sources ranked: Dribbble (highest quality) → Layers → Mobbin (300k+ mobile screens, filterable by pattern). Named designers to study: Jamie Syke, Balkan Brothers, Cosmin Capitanu, Elegant Seagulls. |
 
 ## Operating Lessons
 
@@ -93,6 +93,7 @@ Kennedy's claim is the single most important sentence in this entire source stac
 **Numerical/named technique — "flatty design":** Flat design (post-2014) removed all shadow. Complete removal hurt usability. The current discipline is "flatty" — minimalist surfaces with subtle shadows where information is conveyed. **Higher surfaces are brighter** because they catch more sunlight; this is how you communicate elevation without heavy drop shadows.
 
 **Do-not-do warnings:**
+
 - Don't put light underneath an element. Bottom-up illumination reads as unsettling — uncanny valley for UI.
 - Don't strip ALL shadow in the name of flat design; users lose pressed/unpressed and elevated/recessed information.
 - Don't apply the same shadow recipe to inputs as to buttons. Inputs are inset; the inner shadow goes IN, not below.
@@ -102,12 +103,14 @@ Kennedy's claim is the single most important sentence in this entire source stac
 **Direct application:** The first pass of every screen is grayscale-only. Text, backgrounds, buttons, icons, dividers — all gray. **Color is the most complex visual variable**, so you defer it until layout, spacing, hierarchy, and structure are right. If a screen looks bad in black-and-white, color cannot fix it.
 
 **Color application sequence** (ordered, do not skip):
+
 1. Complete the design in pure grayscale.
 2. Add a **single accent color** — one hue only.
 3. If you must, advance to two colors, OR multiple saturation/brightness levels of one hue.
 4. Stop. The instinct to add a third color is wrong.
 
 **HSB color system** (named technique — this is operator-grade):
+
 - Stop thinking in **RGB hex codes**. They don't map to perception.
 - Think in **HSB (Hue, Saturation, Brightness)**. This aligns with how the eye reads color.
 - For a single-hue palette: lock the Hue, vary Saturation and Brightness to derive darks, lights, backgrounds, accents, and eye-catchers — all from one hue. The whole palette stays harmonious automatically because the H value never changes.
@@ -117,6 +120,7 @@ Kennedy's claim is the single most important sentence in this entire source stac
 **Quotable:** "Using multiple colors from one or two base hues is the most reliable way to accentuate and neutralize elements without making the design messy."
 
 **Do-not-do warnings:**
+
 - Don't pick three accent colors of equal saturation. The eye can't decide what to look at.
 - Don't reach for a CSS palette generator before you've designed the gray version.
 - Don't think in hex. Use HSB sliders (or `hsl()` in CSS) so you can move along S and B without breaking H.
@@ -135,6 +139,7 @@ Kennedy's claim is the single most important sentence in this entire source stac
 **The HTML default problem (named):** Unstyled HTML produces small fonts, minimal line-spacing, edge-to-edge content. This is the visual default the developer brain reaches for. The fix is mental: **whitespace is the default, content is the exception** — not the other way around.
 
 **Hierarchy of spacing** (apply at all three levels):
+
 1. Between lines of text (line-height).
 2. Between individual elements (padding, margin).
 3. Between element groupings (section gaps).
@@ -142,6 +147,7 @@ Kennedy's claim is the single most important sentence in this entire source stac
 If only one level has generous spacing, the screen still looks crowded.
 
 **Do-not-do warnings:**
+
 - Don't fill empty space because it "looks empty." Empty space is the design.
 - Don't size top-nav text or icons to fill the bar. Aim for ~20% occupation.
 - Don't apply spacing only between sections; if line-height and padding are tight, the macro-spacing won't read.
@@ -165,6 +171,7 @@ If only one level has generous spacing, the screen still looks crowded.
 **Bonus method — Scrim.** An **elliptical gradient** transitioning from translucent black at the center to transparent black at the edges, positioned behind white text. Kennedy calls this **"probably the most subtle way of reliably overlaying text on images."** This is the move that separates good UI from confident UI — it darkens only where the text is, leaving the rest of the photo untouched.
 
 **Do-not-do warnings:**
+
 - Don't ship Method 0 to production unless every image variant has been tested for contrast. One light photo breaks the screen.
 - Don't use multiple methods on the same surface (a 35% overlay AND a blur AND a text shadow); the photo dies under the treatment.
 - Don't put colored overlays on photographs unless the brand color demands it. Black is the safe default.
@@ -174,6 +181,7 @@ If only one level has generous spacing, the screen still looks crowded.
 **Direct application:** The non-obvious move in this rule is "un-pop." Most amateur designers only know how to make text MORE visible. Kennedy's claim is that **every emphasized element needs both up-pop AND down-pop properties simultaneously**. A title that is simultaneously huge, bold, capitalized, and high-contrast is exhausting. A title that is huge AND bold but in a slightly faded gray reads as confident.
 
 **Available styling tools** (the levers you have):
+
 - Size (larger / smaller)
 - Color (high-contrast / low-contrast; bright = attention, muted = recede)
 - Font weight (bold / thin)
@@ -183,19 +191,22 @@ If only one level has generous spacing, the screen still looks crowded.
 - Margins (more space = more importance)
 
 **Tools NOT to use:**
+
 - **Underlining** — implies a link, breaks navigation expectations.
 - **Text background color** — looks like a highlighted form field or a button.
 - **Strikethrough** — semantic meaning (deleted, completed).
 
 **Up-pop / down-pop framework (named):**
+
 - **Up-pop properties:** big, bold, capitalized, high-contrast, bright color.
 - **Down-pop properties:** small, low-contrast, thin weight, muted color.
 
-**The load-bearing rule:** *"Page titles are the only element to style all-out up-pop. For everything else, you need up-pop and down-pop."* An emphasized non-title element should use **more up-pop styles than down-pop**, but **both must be present**.
+**The load-bearing rule:** _"Page titles are the only element to style all-out up-pop. For everything else, you need up-pop and down-pop."_ An emphasized non-title element should use **more up-pop styles than down-pop**, but **both must be present**.
 
 **Named example — Blu Homes:** large numbers (up-pop: size) paired with "very light font-weight and lower-contrast color" (down-pop: weight + contrast). The number reads as the hero, but the weight keeps it from screaming.
 
 **Selected and hovered states:** Changing size, case, or weight on hover causes layout shift. Avoid. Acceptable hover/selected moves:
+
 - Text color change.
 - Background color shift.
 - Shadow appearance/change.
@@ -204,6 +215,7 @@ If only one level has generous spacing, the screen still looks crowded.
 **Hover strategy (named):** "Turn white elements colored, or turn colored elements white, but darken the background behind them."
 
 **Do-not-do warnings:**
+
 - Don't stack three up-pop properties on every emphasized element. Pick one or two; balance with down-pop.
 - Don't use underline for emphasis — users will try to click.
 - Don't change font size or weight on hover; the row will jump.
@@ -224,18 +236,21 @@ If only one level has generous spacing, the screen still looks crowded.
 4. **Figtree** (designed by Kennedy himself). "Clean-yet-casual" with rounded, playful features but staying neutral enough for UI. Best for: filling the gap when you want approachable but not cute.
 
 **Premium fonts via Adobe Fonts** (Creative Cloud subscribers):
+
 - **Proxima Nova** — the workhorse of mid-2010s SaaS.
 - **Adelle Sans** — humanist sans with personality.
 - **DIN** — German engineering serious.
 - **Freight Text** — premium serif for editorial moments.
 
 **Sourcing strategy:**
+
 - **Google Fonts** — largest free library, but **requires aggressive filtering**. Don't browse it raw; bring a target.
 - **FontShare** (Indian Type Foundry) — lesser-known, high quality, free for commercial use.
 - **Adobe Fonts** — premium catalog if you have Creative Cloud.
 - Kennedy's "Good Fonts Table" — 100+ curated fonts with category and usage notes (subscriber resource).
 
 **Do-not-do warnings:**
+
 - Don't browse Google Fonts hoping inspiration strikes. You will pick something bad. Filter first.
 - Don't pair a display font with another display font. Pair a display font with a clean body sans-serif.
 - Don't reach for Comic Sans / Papyrus / any font with strong personality unless the project genuinely calls for it (a clown brand, a hand-drawn project).
@@ -245,11 +260,12 @@ If only one level has generous spacing, the screen still looks crowded.
 
 **Direct application:** This is Kennedy's anti-mystical move. **Imitation is the curriculum.** Designers who reach gorgeous UI got there by parroting good designers until they had absorbed the moves, then finding their own style. The skill of mimicry IS the skill of design.
 
-**Quotable:** *"Every artist should be a parrot until they're good at mimicking the best. Then go find your own style."*
+**Quotable:** _"Every artist should be a parrot until they're good at mimicking the best. Then go find your own style."_
 
 **Resources, ranked:**
 
 **1. Dribbble** — invitation-only design showcase. **"Bar-none the highest quality of UI work online."** Recommended designers to study (these are operator-grade picks):
+
 - **Jamie Syke** — "Posting new UI basically all the time" with consistent quality. Volume + craft.
 - **Balkan Brothers** — exceptional color and gradient work. They keep flat design relevant.
 - **Elegant Seagulls** — alternatives to standard Bootstrap grids. Useful when you're tired of the same 12-column move.
@@ -260,9 +276,10 @@ If only one level has generous spacing, the screen still looks crowded.
 **3. Mobbin** — directory of **300,000+ mobile app screenshots, filterable by UX pattern or interface element** (login pages, profiles, search results, settings, onboarding). This is the killer research tool: when you need to design a "create new project" screen, you don't sketch — you filter Mobbin for "create flows" and study fifty real ones.
 
 **Do-not-do warnings:**
+
 - Don't try to invent a new pattern. The screen has been solved. Find good versions and copy.
 - Don't browse Pinterest as your design research. The signal-to-noise ratio is wrong.
-- Don't copy a screen wholesale (that's plagiarism); copy the *moves* — spacing, hierarchy, color choices, type pairings.
+- Don't copy a screen wholesale (that's plagiarism); copy the _moves_ — spacing, hierarchy, color choices, type pairings.
 
 ## Cross-Cutting Principles (What's Distinct About Kennedy)
 
@@ -278,7 +295,7 @@ A few things separate this source from the existing PRODUCT_AND_DESIGN stack (Ko
 
 5. **"Steal like an artist" is anti-mystical pedagogy.** Most design content frames craft as taste. Kennedy frames craft as imitation curriculum + named techniques. This is the right framing for a non-designer founder.
 
-6. **No accessibility, no IA, no information density.** This is the limit (see Critical Analysis below). Kennedy is great on visual surface; he is silent on whether the screen is the *right* screen.
+6. **No accessibility, no IA, no information density.** This is the limit (see Critical Analysis below). Kennedy is great on visual surface; he is silent on whether the screen is the _right_ screen.
 
 ## Quotables
 
@@ -295,18 +312,21 @@ A few things separate this source from the existing PRODUCT_AND_DESIGN stack (Ko
 When auditing a BuildOS screen with Kennedy's rules, walk this checklist top to bottom:
 
 **Light & Surface (Rule 1):**
+
 - [ ] Are buttons unmistakably outset (subtle shadow below, slightly brighter top)?
 - [ ] Are inputs / sliders / unchecked checkboxes unmistakably inset?
 - [ ] Are pressed/active states darker (as if a hand blocked the light)?
 - [ ] Is any element lit from below? (Fail if yes.)
 
 **Color (Rule 2):**
+
 - [ ] Did the screen exist in grayscale before color was added?
 - [ ] Is there ONE accent color? (Or single-hue with S/B variations.)
 - [ ] Are tokens defined in HSB / HSL — not raw hex?
 - [ ] Is any element using a third unrelated hue? (Suspect.)
 
 **Whitespace (Rule 3):**
+
 - [ ] Menu items: vertical space ≥ 2× text height?
 - [ ] List title to underline: ~15px (clears cap height)?
 - [ ] Between sections: ~25px or more?
@@ -314,12 +334,14 @@ When auditing a BuildOS screen with Kennedy's rules, walk this checklist top to 
 - [ ] Whitespace exists at all three levels (line, element, group)?
 
 **Text on Images (Rule 4 — marketing/blog):**
+
 - [ ] Method picked deliberately (Method 1 / 2 / 3 / 4 / Scrim) and not Method 0?
 - [ ] Method 1 overlay: ~35% black?
 - [ ] Method 4 floor fade: gradient at bottom only, not whole image?
 - [ ] Scrim used for hero text on photography (most subtle)?
 
 **Up-pop / Down-pop (Rule 5):**
+
 - [ ] Page title: full up-pop (the only element allowed this).
 - [ ] Every other emphasized element: up-pop AND down-pop both present?
 - [ ] Hover state changes color/background/shadow — NOT size or weight?
@@ -327,11 +349,13 @@ When auditing a BuildOS screen with Kennedy's rules, walk this checklist top to 
 - [ ] No text-background-color for emphasis (looks like a button)?
 
 **Type (Rule 6):**
+
 - [ ] Is the body font on the "good list" or comparable (Satoshi, Metropolis, Source Sans, Figtree, Inter, Geist, Proxima Nova, Adelle Sans)?
 - [ ] Is letter-spacing tuned (-1% for Source Sans; tightened on display sizes)?
 - [ ] Is a display font being misused for body? (Fail.)
 
 **Imitation (Rule 7):**
+
 - [ ] Has the screen been compared to 5+ similar screens on Mobbin / Dribbble before shipping?
 - [ ] Is the layout doing something genuinely novel, or is it borrowing from a vetted pattern?
 
@@ -354,16 +378,16 @@ Apply Kennedy's rules to the existing Inkprint design system:
 The two highest-value BuildOS surfaces, audited rule by rule:
 
 1. **Daily Brief (consumer-grade reading surface).**
-   - Apply **Method 4 floor-fade** if any hero photography exists (rare in product UI, but the same gradient logic applies to long card hovers).
-   - The brief headline should be **large + bolder + slightly muted contrast** (up-pop on size + weight, down-pop on color). This is Kennedy's Blu Homes pattern.
-   - The body of the brief: thinner weight, ~1.5× line-height (DesignSpo cross-link), comfortable horizontal margins. Whitespace at all three levels — between lines, between paragraphs, between sections.
-   - "Generate Brief" / "Send Notification" CTAs: outset buttons with subtle shadows below + slightly brighter top edges. Pressed state darker.
+    - Apply **Method 4 floor-fade** if any hero photography exists (rare in product UI, but the same gradient logic applies to long card hovers).
+    - The brief headline should be **large + bolder + slightly muted contrast** (up-pop on size + weight, down-pop on color). This is Kennedy's Blu Homes pattern.
+    - The body of the brief: thinner weight, ~1.5× line-height (DesignSpo cross-link), comfortable horizontal margins. Whitespace at all three levels — between lines, between paragraphs, between sections.
+    - "Generate Brief" / "Send Notification" CTAs: outset buttons with subtle shadows below + slightly brighter top edges. Pressed state darker.
 
 2. **Brain-Dump screen.**
-   - Input field is **inset** — inner shadow, no drop shadow, slight darkening of the top edge to imply depth.
-   - Submit button is **outset** — confidently raised with bottom shadow.
-   - Use grayscale + ONE BuildOS accent for emphasis (the "send" or "process" state). Resist multi-colored status indicators.
-   - Whitespace around the input field should be generous — at least 2× the text height of any nearby element. Cramped brain-dump UI feels stressful, which is exactly the wrong vibe.
+    - Input field is **inset** — inner shadow, no drop shadow, slight darkening of the top edge to imply depth.
+    - Submit button is **outset** — confidently raised with bottom shadow.
+    - Use grayscale + ONE BuildOS accent for emphasis (the "send" or "process" state). Resist multi-colored status indicators.
+    - Whitespace around the input field should be generous — at least 2× the text height of any nearby element. Cramped brain-dump UI feels stressful, which is exactly the wrong vibe.
 
 ### C. Marketing Pages
 
@@ -415,6 +439,6 @@ Kennedy's seven rules are the most operator-grade visual-craft canon in this ent
 
 6. **Dribbble bias.** Kennedy's "steal like an artist" canon is heavily Dribbble-anchored. Dribbble is a portfolio platform — it optimizes for static beauty over usability. A founder mimicking Dribbble pages risks shipping screens that are visually striking but interactionally broken. **Mobbin is the better recommendation Kennedy himself gives** (filterable real-app screenshots). Lean Mobbin-heavier than Dribbble-heavier when applying Rule 7 to BuildOS.
 
-7. **2014 update, 2024 refresh — but still pre-AI-era.** The essay does not address AI-generated UI patterns, which is the dominant slop problem of 2026. Kennedy's framework is the right *tool* to fight AI slop (see "AI-Generated Component Review" above), but he doesn't apply it that way himself. That synthesis is BuildOS's job.
+7. **2014 update, 2024 refresh — but still pre-AI-era.** The essay does not address AI-generated UI patterns, which is the dominant slop problem of 2026. Kennedy's framework is the right _tool_ to fight AI slop (see "AI-Generated Component Review" above), but he doesn't apply it that way himself. That synthesis is BuildOS's job.
 
-**Bottom line:** Kennedy is the right operator-grade source for *every visual surface* in BuildOS, the strongest single source for the proposed `visual-craft-fundamentals` skill, and the load-bearing reference for the proposed `ai-ui-slop-detector-and-rewrite` skill. He is not sufficient on his own. Pair with Refactoring UI (Wathan/Schoger), accessibility canon (gap #2), and IA fundamentals (gap #7) for a complete review framework.
+**Bottom line:** Kennedy is the right operator-grade source for _every visual surface_ in BuildOS, the strongest single source for the proposed `visual-craft-fundamentals` skill, and the load-bearing reference for the proposed `ai-ui-slop-detector-and-rewrite` skill. He is not sufficient on his own. Pair with Refactoring UI (Wathan/Schoger), accessibility canon (gap #2), and IA fundamentals (gap #7) for a complete review framework.

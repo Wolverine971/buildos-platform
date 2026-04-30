@@ -12,6 +12,7 @@
 
 import { BaseExecutor } from './base-executor';
 import { buildSearchFilter } from '$lib/utils/api-helpers';
+import { fetchProjectSummaries } from '$lib/services/ontology/ontology-projects.service';
 import type {
 	ExecutorContext,
 	ListOntoProjectsArgs,
@@ -64,6 +65,22 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 	constructor(context: ExecutorContext) {
 		super(context);
+	}
+
+	private async scopeEntityQueryToReadableProject(
+		query: any,
+		projectId?: string | null
+	): Promise<any> {
+		const normalizedProjectId =
+			typeof projectId === 'string' && projectId.trim().length > 0 ? projectId.trim() : null;
+
+		if (normalizedProjectId) {
+			await this.assertProjectAccess(normalizedProjectId, 'read');
+			return query.eq('project_id', normalizedProjectId);
+		}
+
+		const actorId = await this.getActorId();
+		return query.eq('created_by', actorId);
 	}
 
 	private static readonly MAX_MARKDOWN_HEADERS = 40;
@@ -313,6 +330,41 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return `${trimmed.slice(0, OntologyReadExecutor.MAX_HEADING_TEXT_LENGTH - 3)}...`;
 	}
 
+	private async loadAccessibleProjectSummaries(): Promise<any[]> {
+		const actorId = await this.getActorId();
+		const summaries = await fetchProjectSummaries(this.supabase as any, actorId);
+		return summaries
+			.map((project) => ({
+				id: project.id,
+				name: project.name,
+				description: project.description,
+				type_key: project.type_key,
+				state_key: project.state_key,
+				props: project.props,
+				facet_context: project.facet_context,
+				facet_scale: project.facet_scale,
+				facet_stage: project.facet_stage,
+				created_at: project.created_at,
+				updated_at: project.updated_at,
+				access_role: project.access_role,
+				access_level: project.access_level,
+				is_shared: project.is_shared,
+				task_count: project.task_count,
+				goal_count: project.goal_count,
+				plan_count: project.plan_count,
+				document_count: project.document_count,
+				next_step_short: project.next_step_short,
+				next_step_long: project.next_step_long,
+				next_step_source: project.next_step_source,
+				next_step_updated_at: project.next_step_updated_at
+			}))
+			.sort((a, b) => {
+				const aTime = Date.parse(a.updated_at ?? a.created_at ?? '');
+				const bTime = Date.parse(b.updated_at ?? b.created_at ?? '');
+				return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+			});
+	}
+
 	// ============================================
 	// LIST OPERATIONS
 	// ============================================
@@ -322,47 +374,23 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const actorId = await this.getActorId();
-		let query = this.supabase
-			.from('onto_projects')
-			.select(
-				`
-				id,
-				name,
-				description,
-				type_key,
-				state_key,
-				props,
-				facet_context,
-				facet_scale,
-				facet_stage,
-				created_at,
-				updated_at
-			`,
-				{ count: 'exact' }
-			)
-			.eq('created_by', actorId)
-			.order('updated_at', { ascending: false });
-
+		let projects = await this.loadAccessibleProjectSummaries();
 		const normalizedState = this.normalizeProjectState(args.state_key);
 		if (normalizedState) {
-			query = query.eq('state_key', normalizedState);
+			projects = projects.filter((project) => project.state_key === normalizedState);
 		}
 
 		if (args.type_key) {
-			query = query.eq('type_key', args.type_key);
+			projects = projects.filter((project) => project.type_key === args.type_key);
 		}
 
 		const limit = Math.min(args.limit ?? 20, 50);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
+		const limited = projects.slice(0, limit);
 
 		return {
-			projects: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} ontology projects. Use get_onto_project_details for full context.`
+			projects: limited,
+			total: projects.length,
+			message: `Found ${limited.length} ontology projects. Use get_onto_project_details for full context.`
 		};
 	}
 
@@ -371,7 +399,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const actorId = await this.getActorId();
 		let query = this.supabase
 			.from('onto_tasks')
 			.select(
@@ -391,14 +418,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 			`,
 				{ count: 'exact' }
 			)
-			.eq('created_by', actorId)
 			.is('deleted_at', null) // Exclude soft-deleted tasks
 			.order('updated_at', { ascending: false });
 
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
+		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		const normalizedState = this.normalizeTaskState(args.state_key);
 		if (normalizedState) {
@@ -434,21 +457,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const actorId = await this.getActorId();
 		let query = this.supabase
 			.from('onto_goals')
 			.select(
 				'id, project_id, name, type_key, description, target_date, state_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.eq('created_by', actorId)
 			.is('deleted_at', null) // Exclude soft-deleted goals
 			.order('created_at', { ascending: false });
 
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
+		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		const limit = Math.min(args.limit ?? 20, 50);
 		query = query.limit(limit);
@@ -468,7 +486,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const actorId = await this.getActorId();
 		let query = this.supabase
 			.from('onto_plans')
 			.select(
@@ -477,14 +494,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 					count: 'exact'
 				}
 			)
-			.eq('created_by', actorId)
 			.is('deleted_at', null) // Exclude soft-deleted plans
 			.order('updated_at', { ascending: false });
 
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
+		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		const limit = Math.min(args.limit ?? 20, 50);
 		query = query.limit(limit);
@@ -504,7 +517,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const actorId = await this.getActorId();
 		let query = this.supabase
 			.from('onto_documents')
 			.select(
@@ -513,14 +525,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 					count: 'exact'
 				}
 			)
-			.eq('created_by', actorId)
 			.is('deleted_at', null) // Exclude soft-deleted documents
 			.order('updated_at', { ascending: false });
 
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
+		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		if (args.type_key) {
 			query = query.eq('type_key', args.type_key);
@@ -549,21 +557,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const actorId = await this.getActorId();
 		let query = this.supabase
 			.from('onto_milestones')
 			.select(
 				'id, project_id, title, due_at, state_key, description, type_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.eq('created_by', actorId)
 			.is('deleted_at', null)
 			.order('due_at', { ascending: true, nullsFirst: true });
 
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
+		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		if (args.state_key) {
 			query = query.eq('state_key', args.state_key);
@@ -587,21 +590,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total: number;
 		message: string;
 	}> {
-		const actorId = await this.getActorId();
 		let query = this.supabase
 			.from('onto_risks')
 			.select(
 				'id, project_id, title, impact, probability, state_key, content, type_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.eq('created_by', actorId)
 			.is('deleted_at', null)
 			.order('updated_at', { ascending: false });
 
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
+		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		if (args.state_key) {
 			query = query.eq('state_key', args.state_key);
@@ -658,48 +656,29 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_projects');
 		}
 
-		const actorId = await this.getActorId();
-		const likePattern = `%${searchTerm}%`;
-
-		let query = this.supabase
-			.from('onto_projects')
-			.select(
-				`
-				id,
-				name,
-				description,
-				type_key,
-				state_key,
-				facet_context,
-				facet_scale,
-				facet_stage,
-				created_at,
-				updated_at
-			`,
-				{ count: 'exact' }
-			)
-			.eq('created_by', actorId)
-			.order('updated_at', { ascending: false })
-			.or(`name.ilike.${likePattern},description.ilike.${likePattern}`);
+		const normalizedSearch = searchTerm.toLowerCase();
+		let projects = (await this.loadAccessibleProjectSummaries()).filter((project) => {
+			const name = typeof project.name === 'string' ? project.name.toLowerCase() : '';
+			const description =
+				typeof project.description === 'string' ? project.description.toLowerCase() : '';
+			return name.includes(normalizedSearch) || description.includes(normalizedSearch);
+		});
 
 		if (args.state_key) {
-			query = query.eq('state_key', args.state_key);
+			projects = projects.filter((project) => project.state_key === args.state_key);
 		}
 
 		if (args.type_key) {
-			query = query.eq('type_key', args.type_key);
+			projects = projects.filter((project) => project.type_key === args.type_key);
 		}
 
 		const limit = Math.min(args.limit ?? 10, 30);
-		query = query.limit(limit);
-
-		const { data, count, error } = await query;
-		if (error) throw error;
+		const limited = projects.slice(0, limit);
 
 		return {
-			projects: data ?? [],
-			total: count ?? data?.length ?? 0,
-			message: `Found ${data?.length ?? 0} projects matching "${searchTerm}".`
+			projects: limited,
+			total: projects.length,
+			message: `Found ${limited.length} projects matching "${searchTerm}".`
 		};
 	}
 
@@ -713,7 +692,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_tasks');
 		}
 
-		const actorId = await this.getActorId();
 		const searchFilter = this.buildMultiTermSearchFilter(searchTerm, ['title', 'description']);
 		if (!searchFilter) {
 			throw new Error('Search term is required for search_onto_tasks');
@@ -738,15 +716,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 			`,
 				{ count: 'exact' }
 			)
-			.eq('created_by', actorId)
 			.is('deleted_at', null) // Exclude soft-deleted tasks
 			.order('updated_at', { ascending: false })
 			.or(searchFilter);
 
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
+		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		const normalizedState = this.normalizeTaskState(args.state_key);
 		if (normalizedState) {
@@ -787,7 +761,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_goals');
 		}
 
-		const actorId = await this.getActorId();
 		const likePattern = `%${searchTerm}%`;
 
 		let query = this.supabase
@@ -796,15 +769,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 				'id, project_id, name, type_key, description, target_date, state_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.eq('created_by', actorId)
 			.is('deleted_at', null)
 			.order('updated_at', { ascending: false })
 			.or(`name.ilike.${likePattern},description.ilike.${likePattern}`);
 
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
+		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		const limit = Math.min(args.limit ?? 20, 50);
 		query = query.limit(limit);
@@ -829,7 +798,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_plans');
 		}
 
-		const actorId = await this.getActorId();
 		const likePattern = `%${searchTerm}%`;
 
 		let query = this.supabase
@@ -838,15 +806,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 				'id, project_id, name, state_key, type_key, description, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.eq('created_by', actorId)
 			.is('deleted_at', null)
 			.order('updated_at', { ascending: false })
 			.or(`name.ilike.${likePattern},description.ilike.${likePattern}`);
 
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
+		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		const limit = Math.min(args.limit ?? 20, 50);
 		query = query.limit(limit);
@@ -871,7 +835,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_documents');
 		}
 
-		const actorId = await this.getActorId();
 		const likePattern = `%${searchTerm}%`;
 
 		let query = this.supabase
@@ -882,15 +845,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 					count: 'exact'
 				}
 			)
-			.eq('created_by', actorId)
 			.is('deleted_at', null) // Exclude soft-deleted documents
 			.order('updated_at', { ascending: false })
 			.ilike('title', likePattern);
 
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
+		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		if (args.type_key) {
 			query = query.eq('type_key', args.type_key);
@@ -924,7 +883,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_milestones');
 		}
 
-		const actorId = await this.getActorId();
 		const likePattern = `%${searchTerm}%`;
 
 		let query = this.supabase
@@ -933,15 +891,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 				'id, project_id, title, due_at, state_key, description, type_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.eq('created_by', actorId)
 			.is('deleted_at', null)
 			.order('due_at', { ascending: true, nullsFirst: true })
 			.or(`title.ilike.${likePattern},description.ilike.${likePattern}`);
 
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
+		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		if (args.state_key) {
 			query = query.eq('state_key', args.state_key);
@@ -970,7 +924,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_risks');
 		}
 
-		const actorId = await this.getActorId();
 		const likePattern = `%${searchTerm}%`;
 
 		let query = this.supabase
@@ -979,15 +932,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 				'id, project_id, title, impact, probability, state_key, content, type_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.eq('created_by', actorId)
 			.is('deleted_at', null)
 			.order('updated_at', { ascending: false })
 			.or(`title.ilike.${likePattern},content.ilike.${likePattern}`);
 
-		if (args.project_id) {
-			await this.assertProjectOwnership(args.project_id, actorId);
-			query = query.eq('project_id', args.project_id);
-		}
+		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		if (args.state_key) {
 			query = query.eq('state_key', args.state_key);
@@ -1219,8 +1168,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('project_id is required for get_document_tree');
 		}
 
-		const actorId = await this.getActorId();
-		await this.assertProjectOwnership(args.project_id, actorId);
+		await this.assertProjectAccess(args.project_id, 'read');
 
 		const includeDocuments = args.include_documents === true;
 		const includeContent = includeDocuments && args.include_content === true;
@@ -1273,7 +1221,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('document_id is required for get_document_path');
 		}
 
-		const actorId = await this.getActorId();
 		let projectId = args.project_id;
 		let fallbackTitle: string | undefined;
 
@@ -1291,7 +1238,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Document has no project association');
 		}
 
-		await this.assertProjectOwnership(projectId, actorId);
+		await this.assertProjectAccess(projectId, 'read');
 
 		// Get the document tree (structure-only)
 		const treeData = await this.apiRequest(

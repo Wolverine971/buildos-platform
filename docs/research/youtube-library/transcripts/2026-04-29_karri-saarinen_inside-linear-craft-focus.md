@@ -1,159 +1,161 @@
 ---
-title: "Inside Linear: Building with taste, craft, and focus | Karri Saarinen (co-founder, designer, CEO)"
+title: 'Inside Linear: Building with taste, craft, and focus | Karri Saarinen (co-founder, designer, CEO)'
 video_id: 4muxFVZ4XfM
-url: "https://www.youtube.com/watch?v=4muxFVZ4XfM"
+url: 'https://www.youtube.com/watch?v=4muxFVZ4XfM'
 channel: Lenny's Podcast
-channel_url: "https://www.youtube.com/@LennysPodcast"
+channel_url: 'https://www.youtube.com/@LennysPodcast'
 upload_date: 2023-10-08
-duration: "01:39:49"
+duration: '01:39:49'
 views: 41245
 timestamps:
-  - time: "0:00"
-    label: "Karri’s background"
-  - time: "4:25"
-    label: "Overview of Linear"
-  - time: "6:43"
-    label: "Linear’s design process and its focus on quality"
-  - time: "12:25"
-    label: "Building a craft-oriented company"
-  - time: "16:41"
-    label: "Product management at Linear"
-  - time: "18:37"
-    label: "Strategies for launching a startup without a dedicated PM"
-  - time: "21:16"
-    label: "How Linear assists PMs in their roles"
-  - time: "23:46"
-    label: "Linear’s potential expansion in PM roles"
-  - time: "24:58"
-    label: "The importance of design"
-  - time: "29:08"
-    label: "Utilizing design and brand as distinct competitive advantages"
-  - time: "30:48"
-    label: "The importance of authenticity in branding and messaging"
-  - time: "33:08"
-    label: "How design reviews are conducted at Linear"
-  - time: "38:34"
-    label: "The Linear method for modern software development"
-  - time: "40:07"
-    label: "Why productivity software should be opinionated"
-  - time: "41:23"
-    label: "Why Linear created “cycles” and how it works"
-  - time: "43:27"
-    label: "Why Linear doesn’t have metric-based goals"
-  - time: "45:07"
-    label: "How a business can thrive without metrics, PMs, and A/B testing"
-  - time: "48:04"
-    label: "A customer-focused approach to building product"
-  - time: "50:02"
-    label: "Adapting strategies for diverse products and domains"
-  - time: "53:05"
-    label: "Three techniques Karri uses to maintain focus"
-  - time: "56:47"
-    label: "Linear’s hiring practices"
-  - time: "1:02:10"
-    label: "Paid work trials"
-  - time: "1:04:31"
-    label: "How to determine a candidate’s “product sense”"
-  - time: "1:08:21"
-    label: "Linear’s growth journey and milestones"
-  - time: "1:14:18"
-    label: "How pricing strategies were initially introduced at Linear"
-  - time: "1:16:18"
-    label: "Linear’s journey to finding product-market fit"
-  - time: "1:21:44"
-    label: "The importance of online presence and authenticity in business"
-  - time: "1:24:59"
-    label: "Insight into the corporate culture at Linear"
-  - time: "1:28:29"
-    label: "Lessons learned during Karri’s transition from IC to CEO"
-  - time: "1:30:21"
-    label: "Sneak peek into the upcoming “asks” feature at Linear"
-  - time: "1:32:04"
-    label: "Lightning round"
+    - time: '0:00'
+      label: 'Karri’s background'
+    - time: '4:25'
+      label: 'Overview of Linear'
+    - time: '6:43'
+      label: 'Linear’s design process and its focus on quality'
+    - time: '12:25'
+      label: 'Building a craft-oriented company'
+    - time: '16:41'
+      label: 'Product management at Linear'
+    - time: '18:37'
+      label: 'Strategies for launching a startup without a dedicated PM'
+    - time: '21:16'
+      label: 'How Linear assists PMs in their roles'
+    - time: '23:46'
+      label: 'Linear’s potential expansion in PM roles'
+    - time: '24:58'
+      label: 'The importance of design'
+    - time: '29:08'
+      label: 'Utilizing design and brand as distinct competitive advantages'
+    - time: '30:48'
+      label: 'The importance of authenticity in branding and messaging'
+    - time: '33:08'
+      label: 'How design reviews are conducted at Linear'
+    - time: '38:34'
+      label: 'The Linear method for modern software development'
+    - time: '40:07'
+      label: 'Why productivity software should be opinionated'
+    - time: '41:23'
+      label: 'Why Linear created “cycles” and how it works'
+    - time: '43:27'
+      label: 'Why Linear doesn’t have metric-based goals'
+    - time: '45:07'
+      label: 'How a business can thrive without metrics, PMs, and A/B testing'
+    - time: '48:04'
+      label: 'A customer-focused approach to building product'
+    - time: '50:02'
+      label: 'Adapting strategies for diverse products and domains'
+    - time: '53:05'
+      label: 'Three techniques Karri uses to maintain focus'
+    - time: '56:47'
+      label: 'Linear’s hiring practices'
+    - time: '1:02:10'
+      label: 'Paid work trials'
+    - time: '1:04:31'
+      label: 'How to determine a candidate’s “product sense”'
+    - time: '1:08:21'
+      label: 'Linear’s growth journey and milestones'
+    - time: '1:14:18'
+      label: 'How pricing strategies were initially introduced at Linear'
+    - time: '1:16:18'
+      label: 'Linear’s journey to finding product-market fit'
+    - time: '1:21:44'
+      label: 'The importance of online presence and authenticity in business'
+    - time: '1:24:59'
+      label: 'Insight into the corporate culture at Linear'
+    - time: '1:28:29'
+      label: 'Lessons learned during Karri’s transition from IC to CEO'
+    - time: '1:30:21'
+      label: 'Sneak peek into the upcoming “asks” feature at Linear'
+    - time: '1:32:04'
+      label: 'Lightning round'
 description: |
-  Karri Saarinen is the co-founder and CEO of Linear, an issue-tracking tool that has quickly become the fastest-growing and most beloved in the world. Before Linear, Karri was the principal designer and co-creator of design systems at Airbnb and the founding designer at Coinbase. In today’s episode, he shares:
-  • How to prioritize craft in product development
-  • The Linear method for modern software development
-  • How Linear operates with only one PM
-  • Why every product needs good design in 2023
-  • Strategies for staying focused amid distractions
-  • Linear’s unique hiring strategies
-  • Sneak peek of a soon-to-be-released Linear feature
-  
-  —
-  
-  Brought to you by Mercury—the powerful and intuitive way for ambitious companies to bank: https://mercury.com/ | Composer—the AI-powered trading platform: https://www.composer.trade/?utm_source=lenny&utm_medium=podcast&utm_campaign=10-8-23 | Pendo—The all-in-one platform for product-led companies building breakthrough digital experiences: https://www.pendo.io/lenny
-  
-  Find the full transcript at: https://www.lennysnewsletter.com/p/inside-linear-building-with-taste
-  
-  Where to find Karri Saarinen:
-  • X: https://twitter.com/karrisaarinen
-  • LinkedIn: https://www.linkedin.com/in/karrisaarinen/
-  • Website: https://karrisaarinen.com/
-  
-  Where to find Lenny:
-  • Newsletter: https://www.lennysnewsletter.com
-  • X: https://twitter.com/lennysan
-  • LinkedIn: https://www.linkedin.com/in/lennyrachitsky/
-  
-  In this episode, we cover:
-  (00:00) Karri’s background
-  (04:25) Overview of Linear
-  (06:43) Linear’s design process and its focus on quality
-  (12:25) Building a craft-oriented company
-  (16:41) Product management at Linear
-  (18:37) Strategies for launching a startup without a dedicated PM
-  (21:16) How Linear assists PMs in their roles
-  (23:46) Linear’s potential expansion in PM roles
-  (24:58) The importance of design 
-  (29:08) Utilizing design and brand as distinct competitive advantages
-  (30:48) The importance of authenticity in branding and messaging
-  (33:08) How design reviews are conducted at Linear
-  (38:34) The Linear method for modern software development 
-  (40:07) Why productivity software should be opinionated
-  (41:23) Why Linear created “cycles” and how it works
-  (43:27) Why Linear doesn’t have metric-based goals
-  (45:07) How a business can thrive without metrics, PMs, and A/B testing
-  (48:04) A customer-focused approach to building product
-  (50:02) Adapting strategies for diverse products and domains
-  (53:05) Three techniques Karri uses to maintain focus
-  (56:47) Linear’s hiring practices 
-  (1:02:10) Paid work trials 
-  (1:04:31) How to determine a candidate’s “product sense” 
-  (1:08:21) Linear’s growth journey and milestones
-  (1:14:18) How pricing strategies were initially introduced at Linear
-  (1:16:18) Linear’s journey to finding product-market fit
-  (1:21:44) The importance of online presence and authenticity in business
-  (1:24:59) Insight into the corporate culture at Linear
-  (1:28:29) Lessons learned during Karri’s transition from IC to CEO
-  (1:30:21) Sneak peek into the upcoming “asks” feature at Linear
-  (1:32:04) Lightning round
-  
-  
-  Referenced:
-  • Linear: https://linear.app/
-  • Vercel: https://vercel.com/
-  • Nan Yu on LinkedIn: https://www.linkedin.com/in/thenanyu/
-  • The Linear method: https://linear.app/method
-  • How Ramp builds product: https://www.lennysnewsletter.com/p/how-ramp-builds-product
-  • Lessons from scaling Ramp | Sri Batchu (Ramp, Instacart, Opendoor): https://www.lennyspodcast.com/lessons-from-scaling-ramp-sri-batchu-ramp-instacart-opendoor/
-  • Eric Yuan on LinkedIn: https://www.linkedin.com/in/ericsyuan/
-  • The Timeless Way of Building: https://www.amazon.com/Timeless-Way-Building-Christopher-Alexander/dp/0195024028
-  • Zen and the Art of Motorcycle Maintenance: https://www.amazon.com/Zen-Art-Motorcycle-Maintenance-Inquiry/dp/0060839872/
-  • John Wick: Chapter 4: https://www.imdb.com/title/tt10366206/
-  • Silo on AppleTV+: https://tv.apple.com/us/show/silo/umc.cmc.3yksgc857px0k0rqe5zd4jice
-  • Philips Hue lights: https://www.philips-hue.com/en-us
-  • Finnish salmon soup recipe: https://jernejkitchen.com/recipes/finnish-salmon-soup-lohikeitto
-  
-  Production and marketing by https://penname.co/. For inquiries about sponsoring the podcast, email podcast@lennyrachitsky.com.
-  
-  Lenny may be an investor in the companies discussed.
-transcribed_date: "2026-04-29"
+    Karri Saarinen is the co-founder and CEO of Linear, an issue-tracking tool that has quickly become the fastest-growing and most beloved in the world. Before Linear, Karri was the principal designer and co-creator of design systems at Airbnb and the founding designer at Coinbase. In today’s episode, he shares:
+    • How to prioritize craft in product development
+    • The Linear method for modern software development
+    • How Linear operates with only one PM
+    • Why every product needs good design in 2023
+    • Strategies for staying focused amid distractions
+    • Linear’s unique hiring strategies
+    • Sneak peek of a soon-to-be-released Linear feature
+
+    —
+
+    Brought to you by Mercury—the powerful and intuitive way for ambitious companies to bank: https://mercury.com/ | Composer—the AI-powered trading platform: https://www.composer.trade/?utm_source=lenny&utm_medium=podcast&utm_campaign=10-8-23 | Pendo—The all-in-one platform for product-led companies building breakthrough digital experiences: https://www.pendo.io/lenny
+
+    Find the full transcript at: https://www.lennysnewsletter.com/p/inside-linear-building-with-taste
+
+    Where to find Karri Saarinen:
+    • X: https://twitter.com/karrisaarinen
+    • LinkedIn: https://www.linkedin.com/in/karrisaarinen/
+    • Website: https://karrisaarinen.com/
+
+    Where to find Lenny:
+    • Newsletter: https://www.lennysnewsletter.com
+    • X: https://twitter.com/lennysan
+    • LinkedIn: https://www.linkedin.com/in/lennyrachitsky/
+
+    In this episode, we cover:
+    (00:00) Karri’s background
+    (04:25) Overview of Linear
+    (06:43) Linear’s design process and its focus on quality
+    (12:25) Building a craft-oriented company
+    (16:41) Product management at Linear
+    (18:37) Strategies for launching a startup without a dedicated PM
+    (21:16) How Linear assists PMs in their roles
+    (23:46) Linear’s potential expansion in PM roles
+    (24:58) The importance of design 
+    (29:08) Utilizing design and brand as distinct competitive advantages
+    (30:48) The importance of authenticity in branding and messaging
+    (33:08) How design reviews are conducted at Linear
+    (38:34) The Linear method for modern software development 
+    (40:07) Why productivity software should be opinionated
+    (41:23) Why Linear created “cycles” and how it works
+    (43:27) Why Linear doesn’t have metric-based goals
+    (45:07) How a business can thrive without metrics, PMs, and A/B testing
+    (48:04) A customer-focused approach to building product
+    (50:02) Adapting strategies for diverse products and domains
+    (53:05) Three techniques Karri uses to maintain focus
+    (56:47) Linear’s hiring practices 
+    (1:02:10) Paid work trials 
+    (1:04:31) How to determine a candidate’s “product sense” 
+    (1:08:21) Linear’s growth journey and milestones
+    (1:14:18) How pricing strategies were initially introduced at Linear
+    (1:16:18) Linear’s journey to finding product-market fit
+    (1:21:44) The importance of online presence and authenticity in business
+    (1:24:59) Insight into the corporate culture at Linear
+    (1:28:29) Lessons learned during Karri’s transition from IC to CEO
+    (1:30:21) Sneak peek into the upcoming “asks” feature at Linear
+    (1:32:04) Lightning round
+
+
+    Referenced:
+    • Linear: https://linear.app/
+    • Vercel: https://vercel.com/
+    • Nan Yu on LinkedIn: https://www.linkedin.com/in/thenanyu/
+    • The Linear method: https://linear.app/method
+    • How Ramp builds product: https://www.lennysnewsletter.com/p/how-ramp-builds-product
+    • Lessons from scaling Ramp | Sri Batchu (Ramp, Instacart, Opendoor): https://www.lennyspodcast.com/lessons-from-scaling-ramp-sri-batchu-ramp-instacart-opendoor/
+    • Eric Yuan on LinkedIn: https://www.linkedin.com/in/ericsyuan/
+    • The Timeless Way of Building: https://www.amazon.com/Timeless-Way-Building-Christopher-Alexander/dp/0195024028
+    • Zen and the Art of Motorcycle Maintenance: https://www.amazon.com/Zen-Art-Motorcycle-Maintenance-Inquiry/dp/0060839872/
+    • John Wick: Chapter 4: https://www.imdb.com/title/tt10366206/
+    • Silo on AppleTV+: https://tv.apple.com/us/show/silo/umc.cmc.3yksgc857px0k0rqe5zd4jice
+    • Philips Hue lights: https://www.philips-hue.com/en-us
+    • Finnish salmon soup recipe: https://jernejkitchen.com/recipes/finnish-salmon-soup-lohikeitto
+
+    Production and marketing by https://penname.co/. For inquiries about sponsoring the podcast, email podcast@lennyrachitsky.com.
+
+    Lenny may be an investor in the companies discussed.
+transcribed_date: '2026-04-29'
+path: docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_inside-linear-craft-focus.md
 ---
 
 # Inside Linear: Building with taste, craft, and focus | Karri Saarinen (co-founder, designer, CEO)
 
 ## Metadata
+
 - **Channel**: [Lenny's Podcast](https://www.youtube.com/@LennysPodcast)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=4muxFVZ4XfM)
 - **Duration**: 01:39:49
@@ -161,6 +163,7 @@ transcribed_date: "2026-04-29"
 - **Views**: 41,245
 
 ## Timestamps
+
 - 0:00 — Karri’s background
 - 4:25 — Overview of Linear
 - 6:43 — Linear’s design process and its focus on quality

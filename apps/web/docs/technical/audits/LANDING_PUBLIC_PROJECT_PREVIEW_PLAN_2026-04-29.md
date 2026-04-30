@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/audits/LANDING_PUBLIC_PROJECT_PREVIEW_PLAN_2026-04-29.md -->
+
 # Landing Public Project Preview — Implementation Plan
 
 **Created:** 2026-04-29
@@ -16,19 +18,20 @@ This is the strongest possible "show, don't tell" — the actual product, with r
 
 ## Decisions captured
 
-| Decision | Choice |
-|----------|--------|
-| Where it lives | Embedded on the unauthenticated landing page (replaces current `ExampleProjectGraph` section) |
-| How visitors switch projects | **Dropdown showing all 6 projects by name** (not the current shuffle button) |
-| Component reuse | **Build new presentational components**. Do NOT try to share the authenticated `ProjectHeaderCard` / `ProjectInsightRail` / `ProjectDocumentsSection` — too much edit/auth coupling. |
-| Data source | Existing `/api/public/projects` and `/api/public/projects/[id]/graph` — no new API routes for Phase 1 |
-| Phasing | Phase 1: landing embed only. Phase 2 (later): standalone `/examples/[id]` shareable URLs. |
+| Decision                     | Choice                                                                                                                                                                               |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Where it lives               | Embedded on the unauthenticated landing page (replaces current `ExampleProjectGraph` section)                                                                                        |
+| How visitors switch projects | **Dropdown showing all 6 projects by name** (not the current shuffle button)                                                                                                         |
+| Component reuse              | **Build new presentational components**. Do NOT try to share the authenticated `ProjectHeaderCard` / `ProjectInsightRail` / `ProjectDocumentsSection` — too much edit/auth coupling. |
+| Data source                  | Existing `/api/public/projects` and `/api/public/projects/[id]/graph` — no new API routes for Phase 1                                                                                |
+| Phasing                      | Phase 1: landing embed only. Phase 2 (later): standalone `/examples/[id]` shareable URLs.                                                                                            |
 
 ## Phasing
 
 ### Phase 1 — Landing embed (this PR)
 
 Ship a new `PublicProjectView.svelte` that:
+
 - Loads the list of 6 public projects on mount
 - Renders a project-page lookalike for the first/selected one
 - Lets the visitor pick a different project from a dropdown
@@ -78,12 +81,14 @@ src/lib/components/landing/
 ```
 
 **Reused upstream:**
+
 - `OntologyGraph` (the cytoscape graph engine — already used)
 - `NodeDetailsPanel` (read-only — already used)
 - `ProjectIcon` (no auth coupling — safe to reuse)
 - Lucide icons (Target, Flag, Calendar, ListChecks, FileText, AlertTriangle, Scale)
 
 **Not reused (forked visually instead):**
+
 - `ProjectHeaderCard` — has back button, menu, NextStepDisplay (auth-coupled)
 - `ProjectInsightRail` — 600 lines, edit-coupled
 - `ProjectDocumentsSection` — uses `DocTreeView` which calls auth APIs
@@ -139,17 +144,17 @@ Mobile: stacks vertically. Docs and Insight Rail collapse to single column under
 
 ## File-by-file changes
 
-| File | Change |
-|------|--------|
-| `apps/web/src/lib/components/landing/public-project-preview/PublicProjectView.svelte` | NEW |
-| `apps/web/src/lib/components/landing/public-project-preview/PublicProjectHeader.svelte` | NEW |
-| `apps/web/src/lib/components/landing/public-project-preview/PublicProjectStatsRow.svelte` | NEW |
-| `apps/web/src/lib/components/landing/public-project-preview/PublicProjectDocsList.svelte` | NEW |
-| `apps/web/src/lib/components/landing/public-project-preview/PublicProjectInsightRail.svelte` | NEW |
-| `apps/web/src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte` | NEW |
-| `apps/web/src/lib/components/landing/public-project-preview/lib/public-project-types.ts` | NEW |
-| `apps/web/src/lib/components/landing/ExampleProjectGraph.svelte` | DELETE |
-| `apps/web/src/routes/+page.svelte` | EDIT — remove `ExampleProjectGraph` lazy-load wiring; mount `PublicProjectView` directly under the Hero (or keep current position; see below); ensure `#example` id is on the new section |
+| File                                                                                         | Change                                                                                                                                                                                    |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/web/src/lib/components/landing/public-project-preview/PublicProjectView.svelte`        | NEW                                                                                                                                                                                       |
+| `apps/web/src/lib/components/landing/public-project-preview/PublicProjectHeader.svelte`      | NEW                                                                                                                                                                                       |
+| `apps/web/src/lib/components/landing/public-project-preview/PublicProjectStatsRow.svelte`    | NEW                                                                                                                                                                                       |
+| `apps/web/src/lib/components/landing/public-project-preview/PublicProjectDocsList.svelte`    | NEW                                                                                                                                                                                       |
+| `apps/web/src/lib/components/landing/public-project-preview/PublicProjectInsightRail.svelte` | NEW                                                                                                                                                                                       |
+| `apps/web/src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte`  | NEW                                                                                                                                                                                       |
+| `apps/web/src/lib/components/landing/public-project-preview/lib/public-project-types.ts`     | NEW                                                                                                                                                                                       |
+| `apps/web/src/lib/components/landing/ExampleProjectGraph.svelte`                             | DELETE                                                                                                                                                                                    |
+| `apps/web/src/routes/+page.svelte`                                                           | EDIT — remove `ExampleProjectGraph` lazy-load wiring; mount `PublicProjectView` directly under the Hero (or keep current position; see below); ensure `#example` id is on the new section |
 
 ## Section position on the landing
 

@@ -23,6 +23,7 @@ import type {
 	LinkedEntityKind,
 	LoadLinkedEntitiesOptions
 } from '$lib/types/linked-entity-context.types';
+import { fetchProjectSummaries } from '$lib/services/ontology/ontology-projects.service';
 
 type ProjectRow = Database['public']['Tables']['onto_projects']['Row'];
 type ElementType = Exclude<OntologyEntityType, 'project'>;
@@ -1150,38 +1151,40 @@ export class OntologyContextLoader {
 		const actorId = this.requireActorId();
 		console.log('[OntologyLoader] Loading global context');
 
-		// Get recent projects
-		const { data: projects, error: projectError } = await this.supabase
-			.from('onto_projects')
-			.select(
-				'id, name, state_key, type_key, description, next_step_short, next_step_long, start_at, end_at, facet_context, facet_scale, facet_stage, updated_at'
-			)
-			.eq('created_by', actorId)
-			.limit(50)
-			.order('created_at', { ascending: false });
-
-		if (projectError) {
-			console.error('[OntologyLoader] Failed to load projects:', projectError);
-		}
-
-		// Get total counts
-		const { count: totalProjects } = await this.supabase
-			.from('onto_projects')
-			.select('*', { count: 'exact', head: true })
-			.eq('created_by', actorId);
+		const projectSummaries = await fetchProjectSummaries(this.supabase as any, actorId);
+		const projects = projectSummaries.slice(0, 50).map((project) => ({
+			id: project.id,
+			name: project.name,
+			state_key: project.state_key,
+			type_key: project.type_key,
+			description: project.description,
+			next_step_short: project.next_step_short,
+			next_step_long: project.next_step_long,
+			start_at: null,
+			end_at: null,
+			facet_context: project.facet_context,
+			facet_scale: project.facet_scale,
+			facet_stage: project.facet_stage,
+			updated_at: project.updated_at,
+			access_role: project.access_role,
+			access_level: project.access_level,
+			is_shared: project.is_shared
+		}));
 
 		// Get entity type counts
-		const entityCounts = await this.getGlobalEntityCounts();
+		const entityCounts = await this.getGlobalEntityCounts(
+			projectSummaries.map((project) => project.id)
+		);
 
 		return {
 			type: 'global',
 			entities: {
-				projects: (projects || []) as any
+				projects: projects as any
 			},
 			metadata: {
 				entity_count: entityCounts,
 				last_updated: new Date().toISOString(),
-				total_projects: totalProjects || 0,
+				total_projects: projectSummaries.length,
 				available_entity_types: [
 					'project',
 					'task',
@@ -1192,7 +1195,7 @@ export class OntologyContextLoader {
 					'risk',
 					'requirement'
 				],
-				recent_project_ids: (projects || []).map((project) => project.id)
+				recent_project_ids: projects.map((project) => project.id)
 			}
 		};
 	}
@@ -1201,7 +1204,7 @@ export class OntologyContextLoader {
 	 * Load project-specific context with relationships
 	 */
 	async loadProjectContext(projectId: string): Promise<OntologyContext> {
-		await this.assertProjectOwnership(projectId);
+		await this.assertProjectAccess(projectId, 'read');
 		console.log('[OntologyLoader] Loading project context for:', projectId);
 
 		// Check cache first
@@ -1288,7 +1291,7 @@ export class OntologyContextLoader {
 		elementId: string,
 		options: { includeDocumentTree?: boolean } = {}
 	): Promise<OntologyContext> {
-		await this.assertEntityOwnership(elementId);
+		await this.assertEntityAccess(elementId, 'read');
 		console.log('[OntologyLoader] Loading element context:', elementType, elementId);
 
 		// Load the element
@@ -1373,8 +1376,8 @@ export class OntologyContextLoader {
 		elementType: 'task' | 'goal' | 'plan' | 'document' | 'milestone' | 'risk' | 'requirement',
 		elementId: string
 	): Promise<OntologyContext> {
-		await this.assertProjectOwnership(projectId);
-		await this.assertEntityOwnership(elementId);
+		await this.assertProjectAccess(projectId, 'read');
+		await this.assertEntityAccess(elementId, 'read');
 		console.log('[OntologyLoader] Loading combined context', {
 			projectId,
 			elementType,
@@ -1456,7 +1459,7 @@ export class OntologyContextLoader {
 		entityName: string,
 		options: LoadLinkedEntitiesOptions = {}
 	): Promise<EntityLinkedContext> {
-		await this.assertEntityOwnership(entityId);
+		await this.assertEntityAccess(entityId, 'read');
 		const {
 			maxPerType = 3,
 			includeDescriptions = false,
@@ -1721,16 +1724,13 @@ export class OntologyContextLoader {
 		id: string
 	): Promise<ElementRowMap[T] | null> {
 		const table = OntologyContextLoader.ELEMENT_TABLE_MAP[type];
-		const actorId = this.actorId;
 
 		try {
 			// Use type assertion to work around complex Supabase type inference
-			let query = (this.supabase.from(table) as any).select('*').eq('id', id);
-			if (actorId) {
-				query = query.eq('created_by', actorId);
-			}
-
-			const { data, error } = await query.single();
+			const { data, error } = await (this.supabase.from(table) as any)
+				.select('*')
+				.eq('id', id)
+				.single();
 
 			if (error) {
 				console.error(`[OntologyLoader] Failed to load ${type}:`, error);
@@ -1776,14 +1776,15 @@ export class OntologyContextLoader {
 		};
 	}
 
-	private async assertProjectOwnership(projectId: string): Promise<void> {
-		const actorId = this.requireActorId();
-		const { data, error } = await this.supabase
-			.from('onto_projects')
-			.select('id')
-			.eq('id', projectId)
-			.eq('created_by', actorId)
-			.maybeSingle();
+	private async assertProjectAccess(
+		projectId: string,
+		requiredAccess: 'read' | 'write' | 'admin' = 'read'
+	): Promise<void> {
+		this.requireActorId();
+		const { data, error } = await this.supabase.rpc('current_actor_has_project_access', {
+			p_project_id: projectId,
+			p_required_access: requiredAccess
+		});
 
 		if (error) {
 			throw error;
@@ -1794,20 +1795,23 @@ export class OntologyContextLoader {
 		}
 	}
 
-	private async assertEntityOwnership(entityId: string): Promise<void> {
+	private async assertEntityAccess(
+		entityId: string,
+		requiredAccess: 'read' | 'write' | 'admin' = 'read'
+	): Promise<void> {
 		const actorId = this.requireActorId();
 
 		const { data: project, error: projectError } = await this.supabase
 			.from('onto_projects')
 			.select('id')
 			.eq('id', entityId)
-			.eq('created_by', actorId)
 			.maybeSingle();
 
 		if (projectError) {
 			throw projectError;
 		}
-		if (project) {
+		if (project?.id) {
+			await this.assertProjectAccess(project.id, requiredAccess);
 			return;
 		}
 
@@ -1836,16 +1840,12 @@ export class OntologyContextLoader {
 				continue;
 			}
 
-			if ((data as any).created_by && (data as any).created_by !== actorId) {
-				throw new Error('Entity not found or access denied');
-			}
-
-			if ((data as any).created_by === actorId) {
+			if ((data as any).project_id) {
+				await this.assertProjectAccess((data as any).project_id, requiredAccess);
 				return;
 			}
 
-			if ((data as any).project_id) {
-				await this.assertProjectOwnership((data as any).project_id);
+			if ((data as any).created_by === actorId) {
 				return;
 			}
 		}
@@ -1957,12 +1957,15 @@ export class OntologyContextLoader {
 	/**
 	 * Get global entity counts
 	 */
-	private async getGlobalEntityCounts(): Promise<Record<string, number>> {
-		const actorId = this.requireActorId();
+	private async getGlobalEntityCounts(projectIds: string[]): Promise<Record<string, number>> {
 		const counts: Record<string, number> = {};
 
+		counts.project = projectIds.length;
+		if (projectIds.length === 0) {
+			return counts;
+		}
+
 		const tableMappings: Array<{ table: keyof Database['public']['Tables']; key: string }> = [
-			{ table: 'onto_projects', key: 'project' },
 			{ table: 'onto_tasks', key: 'task' },
 			{ table: 'onto_goals', key: 'goal' },
 			{ table: 'onto_plans', key: 'plan' },
@@ -1977,7 +1980,7 @@ export class OntologyContextLoader {
 				// Use type assertion to work around complex Supabase type inference
 				const { count } = await (this.supabase.from(table) as any)
 					.select('*', { count: 'exact', head: true })
-					.eq('created_by', actorId);
+					.in('project_id', projectIds);
 				counts[key] = count || 0;
 			} catch (error) {
 				console.error('[OntologyLoader] Failed to count entities', { table, error });

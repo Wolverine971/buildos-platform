@@ -1,79 +1,81 @@
 ---
 title: "147. Jason Fried: It Doesn't Have to Be Crazy at Work"
 video_id: JZlADBe6X2c
-url: "https://www.youtube.com/watch?v=JZlADBe6X2c"
+url: 'https://www.youtube.com/watch?v=JZlADBe6X2c'
 channel: 📚 David Kadavy, author
-channel_url: "https://www.youtube.com/@kadavy"
+channel_url: 'https://www.youtube.com/@kadavy'
 upload_date: 2018-10-11
-duration: "57:28"
+duration: '57:28'
 views: 1739
 tags:
-  - 37signals
-  - basecamp
-  - deadlines
-  - dhh
-  - itdoesnthavetobecrazyatwork
-  - jasonfried
-  - workplacedrama
+    - 37signals
+    - basecamp
+    - deadlines
+    - dhh
+    - itdoesnthavetobecrazyatwork
+    - jasonfried
+    - workplacedrama
 timestamps:
-  - time: "0:00"
-    label: "<Untitled Chapter 1>"
-  - time: "8:06"
-    label: "It Does Not Have To Be Crazy at Work"
-  - time: "15:14"
-    label: "Motivation To Write a Book"
-  - time: "17:17"
-    label: "Office Hours"
-  - time: "27:37"
-    label: "Recurring Events to the Basecamp Schedule"
-  - time: "36:12"
-    label: "The Mayo Clinic Guide for Stress-Free Living"
-  - time: "36:28"
-    label: "Laissez-Faire Approach To Work"
-  - time: "40:36"
-    label: "Writing Proposals"
-  - time: "45:33"
-    label: "Negative Visualization"
-  - time: "47:41"
-    label: "Understanding Your Worth"
-  - time: "47:44"
-    label: "Negative Visualization"
-  - time: "54:38"
-    label: "Hill Charts"
+    - time: '0:00'
+      label: '<Untitled Chapter 1>'
+    - time: '8:06'
+      label: 'It Does Not Have To Be Crazy at Work'
+    - time: '15:14'
+      label: 'Motivation To Write a Book'
+    - time: '17:17'
+      label: 'Office Hours'
+    - time: '27:37'
+      label: 'Recurring Events to the Basecamp Schedule'
+    - time: '36:12'
+      label: 'The Mayo Clinic Guide for Stress-Free Living'
+    - time: '36:28'
+      label: 'Laissez-Faire Approach To Work'
+    - time: '40:36'
+      label: 'Writing Proposals'
+    - time: '45:33'
+      label: 'Negative Visualization'
+    - time: '47:41'
+      label: 'Understanding Your Worth'
+    - time: '47:44'
+      label: 'Negative Visualization'
+    - time: '54:38'
+      label: 'Hill Charts'
 description: |
-  You hear it all of the time. Maybe you even say it yourself: It's "crazy" at work. There are unrealistic deadlines, demanding bosses, and wall-to-wall meetings.
-  
-   Jason Fried (@jasonfried) believes it doesn't have to be that way. In fact, he'll tell you why in his new book, called It Doesn't Have to Be Crazy at Work.
-  
-   Jason needs no introduction for many of you, but for everyone else: Jason is the CEO of Basecamp, which is simple yet powerful project management software. Basecamp the software has a long history of staying simple even when it doesn't make intuitive sense. Basecamp the company, with Jason at the helm, has a long history of espousing sensible work practices, even when they don't make intuitive sense.
-  
-   We'll talk about:
-  
-    What's the difference between deadlines, and "dreadlines?" How can this simple distinction help you stay in control of your projects? How does Jason and his company struggle with it being "crazy" at work, and what do they do about it? Hear about their fascinating "uphill/downhill" tactic for deciding when to quit a project that just won't end. Hear specific ways to handle clients that make it "crazy" at work. Jason will tell you exactly what to say, and guide you through a real-life scenario using the stoic technique of "negative visualization."  Jason was the very first guest on Love Your Work, three years ago. I'm thrilled to have him back.
-  
-   Image credit: Michael Berger
-  
-   Love Your Work is now fully listener-supported! Patreon supporters are now covering ALL production costs for Love Your Work! Join our wonderful Patreon backers at patreon.com/kadavy.
-  
-   Free Creative Productivity Toolbox I quadrupled my creative productivity. Sign up and I'll send you the tools I count on: kadavy.net/tools
-  
-   Feedback? Questions? Comments? I love to hear anything and everything from you. Leave a review on Apple Podcasts, Tweet at me @kadavy, or email me david@kadavy.net.
-  
-   &nbsp;
-  
-   &nbsp;
-  
-   Sponsors
-  
-   http://gusto.com/loveyourwork  http://earthclassmail.com http://babbel.com
-  
-   Show notes:&nbsp;http://kadavy.net/blog/posts/jason-fried-podcast-2/
-transcribed_date: "2026-04-29"
+    You hear it all of the time. Maybe you even say it yourself: It's "crazy" at work. There are unrealistic deadlines, demanding bosses, and wall-to-wall meetings.
+
+     Jason Fried (@jasonfried) believes it doesn't have to be that way. In fact, he'll tell you why in his new book, called It Doesn't Have to Be Crazy at Work.
+
+     Jason needs no introduction for many of you, but for everyone else: Jason is the CEO of Basecamp, which is simple yet powerful project management software. Basecamp the software has a long history of staying simple even when it doesn't make intuitive sense. Basecamp the company, with Jason at the helm, has a long history of espousing sensible work practices, even when they don't make intuitive sense.
+
+     We'll talk about:
+
+      What's the difference between deadlines, and "dreadlines?" How can this simple distinction help you stay in control of your projects? How does Jason and his company struggle with it being "crazy" at work, and what do they do about it? Hear about their fascinating "uphill/downhill" tactic for deciding when to quit a project that just won't end. Hear specific ways to handle clients that make it "crazy" at work. Jason will tell you exactly what to say, and guide you through a real-life scenario using the stoic technique of "negative visualization."  Jason was the very first guest on Love Your Work, three years ago. I'm thrilled to have him back.
+
+     Image credit: Michael Berger
+
+     Love Your Work is now fully listener-supported! Patreon supporters are now covering ALL production costs for Love Your Work! Join our wonderful Patreon backers at patreon.com/kadavy.
+
+     Free Creative Productivity Toolbox I quadrupled my creative productivity. Sign up and I'll send you the tools I count on: kadavy.net/tools
+
+     Feedback? Questions? Comments? I love to hear anything and everything from you. Leave a review on Apple Podcasts, Tweet at me @kadavy, or email me david@kadavy.net.
+
+     &nbsp;
+
+     &nbsp;
+
+     Sponsors
+
+     http://gusto.com/loveyourwork  http://earthclassmail.com http://babbel.com
+
+     Show notes:&nbsp;http://kadavy.net/blog/posts/jason-fried-podcast-2/
+transcribed_date: '2026-04-29'
+path: docs/research/youtube-library/transcripts/2026-04-29_jason-fried_doesnt-have-to-be-crazy-knowledge-project.md
 ---
 
 # 147. Jason Fried: It Doesn't Have to Be Crazy at Work
 
 ## Metadata
+
 - **Channel**: [📚 David Kadavy, author](https://www.youtube.com/@kadavy)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=JZlADBe6X2c)
 - **Duration**: 57:28
@@ -81,6 +83,7 @@ transcribed_date: "2026-04-29"
 - **Views**: 1,739
 
 ## Timestamps
+
 - 0:00 — <Untitled Chapter 1>
 - 8:06 — It Does Not Have To Be Crazy at Work
 - 15:14 — Motivation To Write a Book

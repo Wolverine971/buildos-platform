@@ -18,6 +18,7 @@ public_article: ''
 indexed_date: '2026-04-29'
 last_reviewed: '2026-04-29'
 transcribed_date: '2026-04-29'
+path: docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_10-rules-figma-blog.md
 ---
 
 # Karri Saarinen's 10 Rules for Crafting Products That Stand Out

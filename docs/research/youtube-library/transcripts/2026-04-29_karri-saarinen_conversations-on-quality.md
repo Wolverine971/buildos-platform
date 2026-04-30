@@ -1,39 +1,41 @@
 ---
-title: "Karri Saarinen (Linear) – Conversations on Quality (Episode 02)"
+title: 'Karri Saarinen (Linear) – Conversations on Quality (Episode 02)'
 video_id: R1bwdtQL5uU
-url: "https://www.youtube.com/watch?v=R1bwdtQL5uU"
+url: 'https://www.youtube.com/watch?v=R1bwdtQL5uU'
 channel: Linear
-channel_url: "https://www.youtube.com/@linear"
+channel_url: 'https://www.youtube.com/@linear'
 upload_date: 2024-10-13
-duration: "15:24"
+duration: '15:24'
 views: 11232
 timestamps:
-  - time: "0:00"
-    label: "Intro"
-  - time: "0:32"
-    label: "How did your values come to be"
-  - time: "3:53"
-    label: "What is your intuition"
-  - time: "6:17"
-    label: "Who is it for"
+    - time: '0:00'
+      label: 'Intro'
+    - time: '0:32'
+      label: 'How did your values come to be'
+    - time: '3:53'
+      label: 'What is your intuition'
+    - time: '6:17'
+      label: 'Who is it for'
 description: |
-  Linear CEO Karri Saarinen shares the values and principles that guide the team in maintaining a strong commitment to quality.
-  
-  ---
-  
-  About "Conversations on Quality":
-  What is quality? It seems hard to describe and even harder to measure, but you can feel it when it’s there. You know it when you experience it.
-  This is a series of conversations with those who seek to create products of this undefinable quality. And an attempt to answer the central question: How do things of quality get built?
-  
-  ---
-  
-  Watch all episodes: https://linear.app/quality
-transcribed_date: "2026-04-29"
+    Linear CEO Karri Saarinen shares the values and principles that guide the team in maintaining a strong commitment to quality.
+
+    ---
+
+    About "Conversations on Quality":
+    What is quality? It seems hard to describe and even harder to measure, but you can feel it when it’s there. You know it when you experience it.
+    This is a series of conversations with those who seek to create products of this undefinable quality. And an attempt to answer the central question: How do things of quality get built?
+
+    ---
+
+    Watch all episodes: https://linear.app/quality
+transcribed_date: '2026-04-29'
+path: docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_conversations-on-quality.md
 ---
 
 # Karri Saarinen (Linear) – Conversations on Quality (Episode 02)
 
 ## Metadata
+
 - **Channel**: [Linear](https://www.youtube.com/@linear)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=R1bwdtQL5uU)
 - **Duration**: 15:24
@@ -41,6 +43,7 @@ transcribed_date: "2026-04-29"
 - **Views**: 11,232
 
 ## Timestamps
+
 - 0:00 — Intro
 - 0:32 — How did your values come to be
 - 3:53 — What is your intuition

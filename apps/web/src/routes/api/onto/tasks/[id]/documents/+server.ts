@@ -39,7 +39,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.badRequest('Task ID is required');
 		}
 
-		const access = await ensureTaskAccess(locals, taskId, session.user.id);
+		const access = await ensureTaskAccess(locals, taskId, session.user.id, 'read');
 
 		if ('error' in access) {
 			return access.error;
@@ -168,7 +168,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.badRequest('Invalid request body');
 		}
 
-		const access = await ensureTaskAccess(locals, taskId, session.user.id);
+		const access = await ensureTaskAccess(locals, taskId, session.user.id, 'write');
 
 		if ('error' in access) {
 			return access.error;

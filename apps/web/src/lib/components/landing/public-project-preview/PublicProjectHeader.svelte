@@ -36,7 +36,9 @@
 			<h3 class="text-lg sm:text-xl font-semibold text-foreground leading-tight">
 				{project.name}
 			</h3>
-			<div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-xs text-muted-foreground">
+			<div
+				class="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1 text-xs text-muted-foreground"
+			>
 				{#if commander}
 					<span>Led by {commander}</span>
 				{/if}

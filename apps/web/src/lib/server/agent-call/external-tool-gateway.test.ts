@@ -1,6 +1,6 @@
 // apps/web/src/lib/server/agent-call/external-tool-gateway.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { BUILDOS_AGENT_READ_OPS } from '@buildos/shared-types';
+import { BUILDOS_AGENT_READ_OPS, BUILDOS_AGENT_WRITE_OPS } from '@buildos/shared-types';
 
 const ensureActorIdMock = vi.fn();
 const fetchProjectSummariesMock = vi.fn();
@@ -11,6 +11,15 @@ const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
 const addDocumentToTreeMock = vi.fn();
 const createOrMergeDocumentVersionMock = vi.fn();
+const calendarExecutorMocks = vi.hoisted(() => ({
+	listCalendarEvents: vi.fn(),
+	getCalendarEventDetails: vi.fn(),
+	createCalendarEvent: vi.fn(),
+	updateCalendarEvent: vi.fn(),
+	deleteCalendarEvent: vi.fn(),
+	getProjectCalendar: vi.fn(),
+	setProjectCalendar: vi.fn()
+}));
 
 vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
 	ensureActorId: ensureActorIdMock,
@@ -51,6 +60,18 @@ vi.mock('$lib/services/ontology/versioning.service', () => ({
 		type_key: typeof document.type_key === 'string' ? document.type_key : null,
 		project_id: typeof document.project_id === 'string' ? document.project_id : null
 	})
+}));
+
+vi.mock('$lib/services/agentic-chat/tools/core/executors/calendar-executor', () => ({
+	CalendarExecutor: class CalendarExecutor {
+		listCalendarEvents = calendarExecutorMocks.listCalendarEvents;
+		getCalendarEventDetails = calendarExecutorMocks.getCalendarEventDetails;
+		createCalendarEvent = calendarExecutorMocks.createCalendarEvent;
+		updateCalendarEvent = calendarExecutorMocks.updateCalendarEvent;
+		deleteCalendarEvent = calendarExecutorMocks.deleteCalendarEvent;
+		getProjectCalendar = calendarExecutorMocks.getProjectCalendar;
+		setProjectCalendar = calendarExecutorMocks.setProjectCalendar;
+	}
 }));
 
 type DocumentRow = {
@@ -657,10 +678,247 @@ describe('external tool gateway', () => {
 				'search_onto_documents',
 				'get_onto_document_details',
 				'search_ontology',
+				'list_calendar_events',
+				'get_calendar_event_details',
+				'get_project_calendar',
 				'create_onto_task'
 			])
 		);
 		expect(tools.map((tool) => tool.name)).not.toContain('update_onto_task');
+	});
+
+	it('exposes schemas for every supported external op in the granted scope', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const scope = {
+			mode: 'read_write' as const,
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS, ...BUILDOS_AGENT_WRITE_OPS]
+		};
+
+		for (const op of scope.allowed_ops) {
+			const result = await executeBuildosAgentGatewayTool({
+				admin: createAdminMock({
+					documents: [],
+					tasks: [],
+					toolExecutions: [],
+					nextTaskId: 1,
+					nextToolExecutionId: 1
+				}),
+				userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+				scope,
+				toolName: 'tool_schema',
+				arguments: { op, include_schema: true }
+			});
+
+			expect(result, `missing external gateway schema for ${op}`).toMatchObject({
+				type: 'tool_schema',
+				op
+			});
+		}
+	});
+
+	it('hides write tools for read-only external callers even when write ops are present', async () => {
+		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
+
+		const tools = getBuildosAgentGatewayTools({
+			mode: 'read_only',
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS, ...BUILDOS_AGENT_WRITE_OPS]
+		});
+		const toolNames = tools.map((tool) => tool.name);
+
+		expect(toolNames).toEqual(
+			expect.arrayContaining([
+				'list_onto_goals',
+				'search_onto_plans',
+				'get_onto_project_graph',
+				'get_document_tree',
+				'list_task_documents',
+				'get_linked_entities',
+				'list_calendar_events'
+			])
+		);
+		expect(toolNames).not.toEqual(
+			expect.arrayContaining([
+				'create_onto_goal',
+				'update_onto_plan',
+				'create_task_document',
+				'move_document_in_tree',
+				'link_onto_entities',
+				'unlink_onto_edge',
+				'create_calendar_event'
+			])
+		);
+	});
+
+	it('returns newly exposed ontology tools through scoped tool_search', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const scope = {
+			mode: 'read_write' as const,
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS, ...BUILDOS_AGENT_WRITE_OPS]
+		};
+		const admin = createAdminMock({
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		});
+
+		const writeResult = await executeBuildosAgentGatewayTool({
+			admin,
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope,
+			toolName: 'tool_search',
+			arguments: { query: 'link entities', group: 'onto', kind: 'write', limit: 8 }
+		});
+		const readResult = await executeBuildosAgentGatewayTool({
+			admin,
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope,
+			toolName: 'tool_search',
+			arguments: {
+				query: 'document tree task documents',
+				group: 'onto',
+				kind: 'read',
+				limit: 8
+			}
+		});
+
+		expect(writeResult).toMatchObject({
+			type: 'tool_search_results',
+			matches: expect.arrayContaining([
+				expect.objectContaining({
+					op: 'onto.edge.link',
+					tool_name: 'link_onto_entities'
+				})
+			])
+		});
+		expect(readResult).toMatchObject({
+			type: 'tool_search_results',
+			matches: expect.arrayContaining([
+				expect.objectContaining({
+					op: 'onto.document.tree.get',
+					tool_name: 'get_document_tree'
+				}),
+				expect.objectContaining({
+					op: 'onto.task.docs.list',
+					tool_name: 'list_task_documents'
+				})
+			])
+		});
+	});
+
+	it('exposes scoped calendar write tools with external write safeguards', async () => {
+		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
+
+		const tools = getBuildosAgentGatewayTools({
+			mode: 'read_write',
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'cal.event.create']
+		});
+		const createEventTool = tools.find((tool) => tool.name === 'create_calendar_event');
+
+		expect(tools.map((tool) => tool.name)).toEqual(
+			expect.arrayContaining(['create_calendar_event'])
+		);
+		expect(createEventTool?.inputSchema).toMatchObject({
+			properties: {
+				idempotency_key: expect.any(Object),
+				dry_run: expect.any(Object)
+			}
+		});
+	});
+
+	it('requires external calendar event reads to be project scoped', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock({
+				documents: [],
+				tasks: [],
+				toolExecutions: [],
+				nextTaskId: 1,
+				nextToolExecutionId: 1
+			}),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope: { mode: 'read_only', allowed_ops: [...BUILDOS_AGENT_READ_OPS] },
+			toolName: 'list_calendar_events',
+			arguments: {
+				timeMin: '2026-05-01T00:00:00.000Z',
+				timeMax: '2026-05-02T00:00:00.000Z'
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'cal.event.list',
+			ok: false,
+			error: {
+				code: 'FORBIDDEN',
+				message: 'External calendar access must include project_id'
+			}
+		});
+		expect(calendarExecutorMocks.listCalendarEvents).not.toHaveBeenCalled();
+	});
+
+	it('creates a project-scoped calendar event through a direct tool', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+		calendarExecutorMocks.createCalendarEvent.mockResolvedValueOnce({
+			event: {
+				id: '88888888-8888-8888-8888-888888888888',
+				project_id: '44444444-4444-4444-4444-444444444444',
+				title: 'Launch review'
+			},
+			sync: { success: true }
+		});
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'cal.event.create']
+			},
+			toolName: 'create_calendar_event',
+			arguments: {
+				project_id: '44444444-4444-4444-4444-444444444444',
+				title: 'Launch review',
+				start_at: '2026-05-01T18:00:00.000Z',
+				idempotency_key: 'event-create-1'
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'cal.event.create',
+			ok: true,
+			result: {
+				event: {
+					id: '88888888-8888-8888-8888-888888888888',
+					title: 'Launch review'
+				}
+			}
+		});
+		expect(calendarExecutorMocks.createCalendarEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				project_id: '44444444-4444-4444-4444-444444444444',
+				calendar_scope: 'project',
+				title: 'Launch review'
+			})
+		);
+		expect(state.toolExecutions).toHaveLength(1);
+		expect(state.toolExecutions[0]).toMatchObject({
+			op: 'cal.event.create',
+			status: 'succeeded',
+			entity_kind: 'event',
+			entity_id: '88888888-8888-8888-8888-888888888888'
+		});
 	});
 
 	it('returns only discovery helpers when no scoped direct ops are available', async () => {

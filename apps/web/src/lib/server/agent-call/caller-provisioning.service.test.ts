@@ -28,6 +28,8 @@ vi.mock('./caller-auth', () => ({
 type State = {
 	callerRows: ExternalAgentCallerRecord[];
 	bootstrapRows: AgentCallBootstrapLinkRecord[];
+	sessionRows?: Array<Record<string, unknown>>;
+	executionRows?: Array<Record<string, unknown>>;
 };
 
 class ExternalAgentCallersQueryBuilderMock {
@@ -237,6 +239,55 @@ class AgentCallBootstrapLinksQueryBuilderMock {
 	}
 }
 
+class AgentCallUsageQueryBuilderMock {
+	private filters = new Map<string, unknown>();
+	private inFilters = new Map<string, unknown[]>();
+	private rowLimit: number | null = null;
+
+	constructor(private readonly rows: Array<Record<string, unknown>>) {}
+
+	select() {
+		return this;
+	}
+
+	eq(field: string, value: unknown) {
+		this.filters.set(field, value);
+		return this;
+	}
+
+	in(field: string, values: unknown[]) {
+		this.inFilters.set(field, values);
+		return this;
+	}
+
+	order() {
+		return this;
+	}
+
+	limit(value: number) {
+		this.rowLimit = value;
+		return this;
+	}
+
+	then(resolve: (value: { data: unknown[]; error: null }) => unknown) {
+		let rows = this.rows.filter((row) =>
+			Array.from(this.filters.entries()).every(([field, value]) => row[field] === value)
+		);
+
+		rows = rows.filter((row) =>
+			Array.from(this.inFilters.entries()).every(([field, values]) =>
+				values.includes(row[field])
+			)
+		);
+
+		if (this.rowLimit !== null) {
+			rows = rows.slice(0, this.rowLimit);
+		}
+
+		return Promise.resolve(resolve({ data: rows, error: null }));
+	}
+}
+
 function createAdminMock(state: State) {
 	return {
 		from: vi.fn((table: string) => {
@@ -246,6 +297,14 @@ function createAdminMock(state: State) {
 
 			if (table === 'agent_call_bootstrap_links') {
 				return new AgentCallBootstrapLinksQueryBuilderMock(state);
+			}
+
+			if (table === 'agent_call_sessions') {
+				return new AgentCallUsageQueryBuilderMock(state.sessionRows ?? []);
+			}
+
+			if (table === 'agent_call_tool_executions') {
+				return new AgentCallUsageQueryBuilderMock(state.executionRows ?? []);
 			}
 
 			throw new Error(`Unexpected table ${table}`);
@@ -423,6 +482,97 @@ describe('CallerProvisioningService', () => {
 			}
 		]);
 		expect(JSON.stringify(response)).not.toContain('bearer_token');
+	});
+
+	it('includes usage summaries and recent write activity for callers', async () => {
+		const state: State = {
+			callerRows: [
+				{
+					id: '11111111-1111-1111-1111-111111111111',
+					user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+					provider: 'openclaw',
+					caller_key: 'openclaw:workspace:test',
+					token_prefix: 'boca_123456',
+					token_hash: 'hashed-token',
+					status: 'trusted',
+					policy: {},
+					metadata: {},
+					last_used_at: '2026-04-28T00:05:00.000Z',
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:00:00.000Z'
+				}
+			],
+			bootstrapRows: [],
+			sessionRows: [
+				{
+					id: '22222222-2222-2222-2222-222222222222',
+					user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+					external_agent_caller_id: '11111111-1111-1111-1111-111111111111',
+					status: 'active',
+					started_at: new Date().toISOString(),
+					ended_at: null,
+					updated_at: new Date().toISOString()
+				}
+			],
+			executionRows: [
+				{
+					id: '33333333-3333-3333-3333-333333333333',
+					agent_call_session_id: '22222222-2222-2222-2222-222222222222',
+					external_agent_caller_id: '11111111-1111-1111-1111-111111111111',
+					user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+					op: 'onto.task.create',
+					status: 'succeeded',
+					args: {
+						project_id: '44444444-4444-4444-4444-444444444444',
+						title: 'Draft launch plan'
+					},
+					response_payload: {
+						result: {
+							task: {
+								id: '55555555-5555-5555-5555-555555555555',
+								project_id: '44444444-4444-4444-4444-444444444444',
+								project_name: 'Project One',
+								title: 'Draft launch plan'
+							}
+						}
+					},
+					error_payload: null,
+					entity_kind: 'task',
+					entity_id: '55555555-5555-5555-5555-555555555555',
+					started_at: new Date().toISOString(),
+					completed_at: new Date().toISOString(),
+					created_at: new Date().toISOString(),
+					updated_at: new Date().toISOString()
+				}
+			]
+		};
+		const { CallerProvisioningService } = await import('./caller-provisioning.service');
+		const service = new CallerProvisioningService(createAdminMock(state));
+
+		const response = await service.listForUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+
+		expect(response.callers[0]?.usage).toMatchObject({
+			total_session_count: 1,
+			total_write_count: 1,
+			successful_write_count: 1,
+			project_count: 1
+		});
+		expect(response.callers[0]?.usage?.recent_activity[0]).toMatchObject({
+			op: 'onto.task.create',
+			action: 'created',
+			status: 'succeeded',
+			project_name: 'Project One',
+			entity_kind: 'task',
+			entity_title: 'Draft launch plan'
+		});
+		expect(
+			response.callers[0]?.usage?.trends.find((trend) => trend.period === 'day')
+		).toMatchObject({
+			session_count: 1,
+			write_count: 1,
+			successful_write_count: 1,
+			project_count: 1
+		});
 	});
 
 	it('marks stored caller project scopes that are no longer visible to the user', async () => {

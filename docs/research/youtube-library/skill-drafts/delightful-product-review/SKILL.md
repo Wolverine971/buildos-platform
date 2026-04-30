@@ -6,9 +6,9 @@ path: docs/research/youtube-library/skill-drafts/delightful-product-review/SKILL
 
 # Delightful Product Review
 
-Use this skill to audit a feature, screen, flow, or roadmap for **delight** — defined as joy + surprise produced when a product solves a functional need *and* honors an emotional need at the same time. The skill operationalizes Nesrine Changuel's framework (4-step Delight Model, Three Pillars, Delight Grid, Delight Checklist, 50-40-10 roadmap rule) and pairs it with Dylan Field's "craft is the moat" thesis and Kole Jain's atomic UI craft moves.
+Use this skill to audit a feature, screen, flow, or roadmap for **delight** — defined as joy + surprise produced when a product solves a functional need _and_ honors an emotional need at the same time. The skill operationalizes Nesrine Changuel's framework (4-step Delight Model, Three Pillars, Delight Grid, Delight Checklist, 50-40-10 roadmap rule) and pairs it with Dylan Field's "craft is the moat" thesis and Kole Jain's atomic UI craft moves.
 
-This skill is **opinionated and category-specific**. Delight is the right lens for entertainment, social, consumer, and crowded-B2B products where emotion differentiates. It is the *wrong* lens for productivity tools used under cognitive load — those need calm, not surprise. Be honest about that boundary; do not import delight patterns into a calm-software product just because the framework is fun to apply.
+This skill is **opinionated and category-specific**. Delight is the right lens for entertainment, social, consumer, and crowded-B2B products where emotion differentiates. It is the _wrong_ lens for productivity tools used under cognitive load — those need calm, not surprise. Be honest about that boundary; do not import delight patterns into a calm-software product just because the framework is fun to apply.
 
 ## When to Use
 
@@ -35,27 +35,27 @@ A 4-step pipeline backed by three operating pillars and a roadmap-balance rule.
 - **4 steps:** identify motivators → convert to opportunities → place candidates on the delight grid → validate with the delight checklist.
 - **3 pillars:** remove friction at valley moments, anticipate needs the user has not articulated, exceed expectations beyond what was asked.
 - **50-40-10 ratio:** 50% pure functionality, 40% deep delight (functional + emotional fused), 10% surface delight (pure emotional).
-- **The goal is *deep delight*** — features that solve a real functional problem *and* honor an emotional need with the same surface. Surface delight (confetti, recaps) is a small slice. Pure functionality is the floor.
+- **The goal is _deep delight_** — features that solve a real functional problem _and_ honor an emotional need with the same surface. Surface delight (confetti, recaps) is a small slice. Pure functionality is the floor.
 
 ## Foundational Principles
 
 - **Delight = joy + surprise** (Plutchik's wheel of emotion). Both halves must be present. Joy without surprise is mere satisfaction; surprise without joy is shock.
 - **Functional motivators + emotional motivators must both be honored.** A perfectly functional product that ignores emotion loses to a slightly-less-functional product that does not.
-- **Move from delight *vs.* functionality to delight *in* functionality.** The framing "should we polish or ship features?" is a false dichotomy. Deep delight collapses it.
-- **Surface delight without underlying value is *anti-delight*.** Confetti for routine actions, animations that delay critical paths, and aesthetics layered on a broken funnel actively erode trust.
+- **Move from delight _vs._ functionality to delight _in_ functionality.** The framing "should we polish or ship features?" is a false dichotomy. Deep delight collapses it.
+- **Surface delight without underlying value is _anti-delight_.** Confetti for routine actions, animations that delay critical paths, and aesthetics layered on a broken funnel actively erode trust.
 - **Habituation kills delight features that don't keep evolving.** First use = wow, fifth use = wallpaper. Plan a continuous-innovation cadence (Google Meet's background sequence: blur → static → video → immersive → AI-generated).
-- **Inclusion considerations come *before* celebration features.** What's joyful for one user is painful for another. The Apple gesture-reactions-during-therapy story and the Deliveroo Mother's Day fake-call notification are the canonical failure modes — both shipped *because* inclusion was treated as a polish step instead of a gate.
+- **Inclusion considerations come _before_ celebration features.** What's joyful for one user is painful for another. The Apple gesture-reactions-during-therapy story and the Deliveroo Mother's Day fake-call notification are the canonical failure modes — both shipped _because_ inclusion was treated as a polish step instead of a gate.
 - **B2H — business-to-human.** As long as humans use the product, emotion is load-bearing. The "B2B is exempt from delight" claim only holds in green-field markets; once a competitor honors the emotional need, the older product loses.
 - **Craft is the moat (Dylan Field).** AI lowers the floor of "shipping working software." That raises the value of taste and judgment. "Good enough is mediocre" — delight is one expression of craft, not garnish on top of it.
 
 ## Step 1 — Identify Motivators
 
-Most teams segment by demographic (who they are) or behavioral (what they do). Add a third axis — **motivational segmentation** (*why* they use the product).
+Most teams segment by demographic (who they are) or behavioral (what they do). Add a third axis — **motivational segmentation** (_why_ they use the product).
 
-- **Functional motivators** — what they're trying to *do*. Examples: book a flight, find a song, capture a thought before losing it, schedule a meeting.
-- **Personal emotional motivators** — how they want to *feel* while using the product. Examples: feel less lonely, feel productive, feel secure, feel nostalgic, feel in control, feel relief, feel proud.
-- **Social emotional motivators** — how they want others to *see them* while using the product. Examples: appear cool, appear competent, appear connected, appear thoughtful. Spotify Wrapped is the textbook example — the share-out *is* the product.
-- **Demotivator inversion** — when emotional motivators are hard to articulate, ask for *frustrations* instead. Frustrations are easier to verbalize. Invert and you have the emotional design brief. (Google Meet during COVID couldn't get clean emotional motivators; they got three demotivators — *bored*, *low interaction*, *Zoom fatigue* — and inverted them into reactions, self-view minimize, and immersive backgrounds.)
+- **Functional motivators** — what they're trying to _do_. Examples: book a flight, find a song, capture a thought before losing it, schedule a meeting.
+- **Personal emotional motivators** — how they want to _feel_ while using the product. Examples: feel less lonely, feel productive, feel secure, feel nostalgic, feel in control, feel relief, feel proud.
+- **Social emotional motivators** — how they want others to _see them_ while using the product. Examples: appear cool, appear competent, appear connected, appear thoughtful. Spotify Wrapped is the textbook example — the share-out _is_ the product.
+- **Demotivator inversion** — when emotional motivators are hard to articulate, ask for _frustrations_ instead. Frustrations are easier to verbalize. Invert and you have the emotional design brief. (Google Meet during COVID couldn't get clean emotional motivators; they got three demotivators — _bored_, _low interaction_, _Zoom fatigue_ — and inverted them into reactions, self-view minimize, and immersive backgrounds.)
 
 **Concrete motivator template:**
 
@@ -75,7 +75,7 @@ Demotivators (what frustrates them, even if they can't name what they want):
 
 ## Step 2 — Convert Motivators to Opportunities
 
-Translate the motivator list into an opportunity space — *not* a feature list. The shift that matters: think in terms of **honoring needs**, not just **solving problems**. "How might we…" works fine; framework is not load-bearing here. The discipline is staying in opportunity-space long enough to consider non-obvious solutions before locking into a feature.
+Translate the motivator list into an opportunity space — _not_ a feature list. The shift that matters: think in terms of **honoring needs**, not just **solving problems**. "How might we…" works fine; framework is not load-bearing here. The discipline is staying in opportunity-space long enough to consider non-obvious solutions before locking into a feature.
 
 - For each motivator, write at least one opportunity statement.
 - Cross-reference: does the same opportunity appear under multiple motivators? Those are deep-delight candidates.
@@ -86,15 +86,15 @@ Translate the motivator list into an opportunity space — *not* a feature list.
 
 A 2-axis matrix (functional motivators × emotional motivators). Place every candidate solution on it. Output is three categories.
 
-| Type                | Solves Functional? | Solves Emotional? | Examples                                                                                |
-| ------------------- | ------------------ | ----------------- | --------------------------------------------------------------------------------------- |
-| **Low Delight**     | Yes                | No                | Faster search, performance fixes, mobile parity, calendar conflict detection            |
-| **Surface Delight** | No                 | Yes               | Spotify Wrapped, Apple Watch birthday balloons, Airbnb Superhost confetti, easter eggs  |
+| Type                | Solves Functional? | Solves Emotional? | Examples                                                                                    |
+| ------------------- | ------------------ | ----------------- | ------------------------------------------------------------------------------------------- |
+| **Low Delight**     | Yes                | No                | Faster search, performance fixes, mobile parity, calendar conflict detection                |
+| **Surface Delight** | No                 | Yes               | Spotify Wrapped, Apple Watch birthday balloons, Airbnb Superhost confetti, easter eggs      |
 | **Deep Delight**    | Yes                | Yes               | Spotify Discover Weekly, Chrome Inactive Tabs, Google Meet self-view minimize, Revolut eSIM |
 
 - **Goal = deep delight.** Force-rank candidates here before sprint planning.
 - **Surface delight should be ~10% of roadmap.** Rare and intentional. If your roadmap is dominated by surface-delight ideas, the upstream emotional motivator work is incomplete.
-- **Low delight is half the work.** The framework does not tell you to skip functional reliability — it tells you not to *stop* there.
+- **Low delight is half the work.** The framework does not tell you to skip functional reliability — it tells you not to _stop_ there.
 
 ## Step 4 — The Delight Checklist (Pre-Ship Validation Gate)
 
@@ -102,8 +102,8 @@ Before shipping any candidate flagged as delight, every box must be checked:
 
 - **User impact** — does it move a user metric we believe in? (Retention, activation, NPS, qualitative recall.)
 - **Business impact** — is it tied to a business goal, not a vibe? Delight is not an aesthetic excuse.
-- **Feasibility** — can we ship and *maintain* it? Every delight feature has support cost, performance cost, accessibility cost.
-- **Familiarity** — are we surprising too much? Pure novelty fails. Discover Weekly's launch metric *dropped* when engineers fixed the "bug" that injected familiar tracks; the buggy version was reinstated. Surprise interleaved with familiarity is delight; pure surprise is shock.
+- **Feasibility** — can we ship and _maintain_ it? Every delight feature has support cost, performance cost, accessibility cost.
+- **Familiarity** — are we surprising too much? Pure novelty fails. Discover Weekly's launch metric _dropped_ when engineers fixed the "bug" that injected familiar tracks; the buggy version was reinstated. Surprise interleaved with familiarity is delight; pure surprise is shock.
 - **Inclusion** — what's joyful for one user is painful for another. Audit edge cases hard: bereavement, mental-health context, cultural sensitivity, accessibility, neurodiversity. (See Anti-Delight Failure Modes below.)
 - **Maintainability of surprise** — is there a continuous-innovation plan? Surprise decays. Without an iteration cadence, the feature becomes invisible within weeks.
 
@@ -113,7 +113,7 @@ Every delightful feature satisfies at least one. Use these during ideation and a
 
 ### Pillar 1 — Remove Friction (Valley Moments)
 
-Identify **valley moments** — points in the user journey where emotional state is at its lowest (anxious, stressed, frustrated, embarrassed). The pillar is *not* "make the happy path smoother"; it's "rescue the user from the valley."
+Identify **valley moments** — points in the user journey where emotional state is at its lowest (anxious, stressed, frustrated, embarrassed). The pillar is _not_ "make the happy path smoother"; it's "rescue the user from the valley."
 
 - **Uber refund example.** Driver canceled, user grabbed a taxi, ignored the app. Uber auto-assigned a new driver who arrived, waited, charged a no-show. User expected to write an essay to support; instead, the app offered a 2-click refund flow. Valley moment → rescue.
 - **Buffer refund-the-inactive example.** Buffer noticed ~2% of paying users hadn't logged in for months. They emailed: "We noticed you're not using our product. Want a refund?" Some took it (revenue lost). Many wrote back saying the integrity made them stay. **Trust is delight on a long timescale.**
@@ -151,12 +151,12 @@ Audit the roadmap (quarterly or per-release) against this ratio:
 3. Sum the engineering-effort estimates per category.
 4. Compare against 50/40/10. Flag deviations.
 5. **Common diagnoses:**
-   - *Over 60% functionality* — team is in foundation-fix mode (often correct for early-stage; framework target is for steady-state).
-   - *Under 30% deep delight* — root cause of "we're a tool, not a product people love."
-   - *Over 15% surface delight* — playing aesthetic games while functional gaps lose users.
-   - *Zero surface delight* — risk of habituation; users have no shareable moments.
+    - _Over 60% functionality_ — team is in foundation-fix mode (often correct for early-stage; framework target is for steady-state).
+    - _Under 30% deep delight_ — root cause of "we're a tool, not a product people love."
+    - _Over 15% surface delight_ — playing aesthetic games while functional gaps lose users.
+    - _Zero surface delight_ — risk of habituation; users have no shareable moments.
 
-**Caveats:** the 50-40-10 ratio is *guidance*, not data-derived. For early-stage products with broken fundamentals, 70-25-5 (or higher functionality) is often correct. The ratio is a planning gut-check, not a sacred number.
+**Caveats:** the 50-40-10 ratio is _guidance_, not data-derived. For early-stage products with broken fundamentals, 70-25-5 (or higher functionality) is often correct. The ratio is a planning gut-check, not a sacred number.
 
 ## Concrete Delight Pattern Catalog
 
@@ -190,10 +190,10 @@ The ways "delight" features actively destroy trust. Reject any candidate that pa
 When pitching delight investment to a leader who pushes back with "we have features to ship":
 
 - **Don't try to convince.** Trying to convince frames you as a threat to existing priorities. "It's a lost battle."
-- **Distinguish perception from perspective.** *Perception* = how you see delight (a strategy). *Perspective* = how they see delight (a luxury, a cherry on top). Don't argue your perception; adopt their perspective and link delight to *their* goals.
-- **Ask the proud-users question** — *"Do you think your users are proud to use this product? Proud enough to recommend it to their most discerning peer?"* Routes to the same destination without using the word "delight." If the answer is no, the conversation is now about word-of-mouth and retention — both languages skeptical leaders speak.
+- **Distinguish perception from perspective.** _Perception_ = how you see delight (a strategy). _Perspective_ = how they see delight (a luxury, a cherry on top). Don't argue your perception; adopt their perspective and link delight to _their_ goals.
+- **Ask the proud-users question** — _"Do you think your users are proud to use this product? Proud enough to recommend it to their most discerning peer?"_ Routes to the same destination without using the word "delight." If the answer is no, the conversation is now about word-of-mouth and retention — both languages skeptical leaders speak.
 - **Reframe in their goals' language.** If the leader cares about retention, frame delight as habituation prevention. If they care about CAC, frame it as referral leverage. If they care about competitive positioning, frame it as the moat.
-- **The musician/curator startup case** — founder rejected delight in favor of strategy/OKRs. Nesrine asked the proud-users question. He returned two weeks later saying the *entire* strategy needed to pivot to making users feel proud — because that was what would unlock word of mouth.
+- **The musician/curator startup case** — founder rejected delight in favor of strategy/OKRs. Nesrine asked the proud-users question. He returned two weeks later saying the _entire_ strategy needed to pivot to making users feel proud — because that was what would unlock word of mouth.
 
 ## Output Format
 
@@ -223,33 +223,33 @@ For each issue, give:
 - Do not skip the maintainability-of-surprise step. A delight feature without an iteration plan becomes wallpaper within weeks.
 - Do not apply this skill to productivity-under-stress tools. Use `calm-software-design-review` for thinking environments, brain-dump tools, focus tools, calendars, dashboards, and anything used under cognitive load.
 - Do not confuse delight with reliability. A delightful animation does not fix a broken funnel. Functional reliability is the floor, not a competing investment.
-- Do not let "delight" become an excuse to avoid hard tradeoffs. If everything is delight, prioritization gets harder. Sometimes the most delightful move is *removing* a feature.
+- Do not let "delight" become an excuse to avoid hard tradeoffs. If everything is delight, prioritization gets harder. Sometimes the most delightful move is _removing_ a feature.
 
 ## Comparison: Delight School vs. Calm School
 
 Both are valid — applied to different categories. Be honest about which one your product belongs to.
 
-| Dimension              | Delight School (Changuel, Spotify, Lovable, Airbnb, Revolut) | Calm School (Saarinen, Jainek, Fried, Maeda, Things 3, Linear)  |
-| ---------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------- |
-| Core primitive         | Joy + surprise                                               | Reduction of stimulation                                         |
-| Emotional motivator    | Excite, recognize, surprise                                  | Soothe, hold, get out of the way                                 |
-| Surface delight        | ~10% of roadmap, intentional                                 | Near-zero; ornament reads as noise                               |
-| Habituation strategy   | Iterate to refresh surprise                                  | Iterate to remove friction; habituation is the feature           |
-| Context fit            | Entertainment, social, B2C consumer, crowded-B2B differentiator | Productivity-under-load, mental-health-adjacent, focus tools, ADHD/burnout-aware tools |
-| Failure mode if misapplied | Reads as bland or commodity                              | Reads as overstimulating, condescending, or shame-inducing       |
-| Test                   | "Are users proud to share this?"                             | "Does this help the user think clearly when they're already overwhelmed?" |
-| Anchor question        | "What would a human-to-human version of this feel like?"     | "What would the calmest possible version of this feel like?"     |
-| BuildOS positioning    | Wrong school                                                 | Right school                                                     |
+| Dimension                  | Delight School (Changuel, Spotify, Lovable, Airbnb, Revolut)    | Calm School (Saarinen, Jainek, Fried, Maeda, Things 3, Linear)                         |
+| -------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| Core primitive             | Joy + surprise                                                  | Reduction of stimulation                                                               |
+| Emotional motivator        | Excite, recognize, surprise                                     | Soothe, hold, get out of the way                                                       |
+| Surface delight            | ~10% of roadmap, intentional                                    | Near-zero; ornament reads as noise                                                     |
+| Habituation strategy       | Iterate to refresh surprise                                     | Iterate to remove friction; habituation is the feature                                 |
+| Context fit                | Entertainment, social, B2C consumer, crowded-B2B differentiator | Productivity-under-load, mental-health-adjacent, focus tools, ADHD/burnout-aware tools |
+| Failure mode if misapplied | Reads as bland or commodity                                     | Reads as overstimulating, condescending, or shame-inducing                             |
+| Test                       | "Are users proud to share this?"                                | "Does this help the user think clearly when they're already overwhelmed?"              |
+| Anchor question            | "What would a human-to-human version of this feel like?"        | "What would the calmest possible version of this feel like?"                           |
+| BuildOS positioning        | Wrong school                                                    | Right school                                                                           |
 
 The schools are not enemies. Spotify needs delight; Linear needs calm. Airbnb needs delight; a grief journaling app needs calm. The mistake is applying the wrong primitive to your category — not picking the wrong school.
 
-**Honest BuildOS note:** BuildOS sits in the calm school. Users come to BuildOS in cognitive overload; surprise reads as noise. This skill is more useful for *recognizing* when a delight pattern is being misapplied to BuildOS than for applying delight to BuildOS. The genuinely useful exports from this framework for calm-school products are: the demotivator-inversion technique, the inclusion checklist, the valley-moments audit (Pillar 1), and the proud-users question. Leave the rest in the delight school.
+**Honest BuildOS note:** BuildOS sits in the calm school. Users come to BuildOS in cognitive overload; surprise reads as noise. This skill is more useful for _recognizing_ when a delight pattern is being misapplied to BuildOS than for applying delight to BuildOS. The genuinely useful exports from this framework for calm-school products are: the demotivator-inversion technique, the inclusion checklist, the valley-moments audit (Pillar 1), and the proud-users question. Leave the rest in the delight school.
 
 ## Source Attribution
 
 Distilled from:
 
-- **Nesrine Changuel — primary source.** [A 4-step framework for building delightful products](https://www.youtube.com/watch?v=tX6nwT1Bsuo) on Lenny's Podcast. Author of *Product Delight*. Ex-Google "Delight PM" (Chrome, Meet), Spotify, Skype. Source for the Delight Model, Three Pillars, Delight Grid, Delight Checklist, 50-40-10 rule, demotivator inversion, anti-delight failure modes, and buy-in tactic. Local analysis: `docs/marketing/growth/research/youtube-transcripts/2026-04-28-nesrine-changuel-4-step-delightful-products-framework-ANALYSIS.md`.
+- **Nesrine Changuel — primary source.** [A 4-step framework for building delightful products](https://www.youtube.com/watch?v=tX6nwT1Bsuo) on Lenny's Podcast. Author of _Product Delight_. Ex-Google "Delight PM" (Chrome, Meet), Spotify, Skype. Source for the Delight Model, Three Pillars, Delight Grid, Delight Checklist, 50-40-10 rule, demotivator inversion, anti-delight failure modes, and buy-in tactic. Local analysis: `docs/marketing/growth/research/youtube-transcripts/2026-04-28-nesrine-changuel-4-step-delightful-products-framework-ANALYSIS.md`.
 - **Dylan Field (Figma CEO) — supporting source.** [On Design, Craft & Quality as the New Moat](https://www.youtube.com/watch?v=WyJV6VwEGA8) on Lenny's Podcast. Source for "good enough is mediocre," craft as the AI-era differentiator, time-to-value discipline, and the blockers-team pattern. Local analysis: `docs/marketing/growth/research/youtube-transcripts/2026-04-28-dylan-field-figma-ceo-design-craft-moat-ANALYSIS.md`.
 - **Kole Jain — supporting source.** [7 UI/UX mistakes that scream you're a beginner](https://www.youtube.com/watch?v=AH_ugxmLeUM). Source for atomic UI craft moves (interactive feedback as a delight surface, save → badge dot pattern, click states as the bare minimum of "the system heard you"). Local analysis: `docs/marketing/growth/research/youtube-transcripts/2025-06-07-kole-jain-7-ui-ux-mistakes-beginner-ANALYSIS.md`.
 

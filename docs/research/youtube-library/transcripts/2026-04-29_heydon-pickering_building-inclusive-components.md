@@ -1,31 +1,33 @@
 ---
 title: "'Building Inclusive Components' with Heydon Pickering"
 video_id: C7uX6uvHnlQ
-url: "https://www.youtube.com/watch?v=C7uX6uvHnlQ"
+url: 'https://www.youtube.com/watch?v=C7uX6uvHnlQ'
 channel: Smashing Magazine
-channel_url: "https://www.youtube.com/@SmashingMagazineVideos"
+channel_url: 'https://www.youtube.com/@SmashingMagazineVideos'
 upload_date: 2019-11-07
-duration: "01:49:55"
+duration: '01:49:55'
 views: 2587
 timestamps:
-  - time: "0:00"
-    label: "<Untitled Chapter 1>"
-  - time: "24:45"
-    label: "Design systems"
-  - time: "25:35"
-    label: "Interaction design"
-  - time: "25:57"
-    label: "Pattern libraries"
-  - time: "59:38"
-    label: "Adopt an inclusive mindset as you code"
+    - time: '0:00'
+      label: '<Untitled Chapter 1>'
+    - time: '24:45'
+      label: 'Design systems'
+    - time: '25:35'
+      label: 'Interaction design'
+    - time: '25:57'
+      label: 'Pattern libraries'
+    - time: '59:38'
+      label: 'Adopt an inclusive mindset as you code'
 description: |
-  In this live session, Heydon Pickering will look into the relationship between accessibility and design systems, and introduce his brand new book, published with yours truly: "Inclusive Components" (https://www.smashingmagazine.com/printed-books/inclusive-components/). During the session, Heydon will explore how to create an accessible accordion using progressive enhancement, and answer your questions about inclusive design.
-transcribed_date: "2026-04-29"
+    In this live session, Heydon Pickering will look into the relationship between accessibility and design systems, and introduce his brand new book, published with yours truly: "Inclusive Components" (https://www.smashingmagazine.com/printed-books/inclusive-components/). During the session, Heydon will explore how to create an accessible accordion using progressive enhancement, and answer your questions about inclusive design.
+transcribed_date: '2026-04-29'
+path: docs/research/youtube-library/transcripts/2026-04-29_heydon-pickering_building-inclusive-components.md
 ---
 
 # "Building Inclusive Components" with Heydon Pickering
 
 ## Metadata
+
 - **Channel**: [Smashing Magazine](https://www.youtube.com/@SmashingMagazineVideos)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=C7uX6uvHnlQ)
 - **Duration**: 01:49:55
@@ -33,6 +35,7 @@ transcribed_date: "2026-04-29"
 - **Views**: 2,587
 
 ## Timestamps
+
 - 0:00 — <Untitled Chapter 1>
 - 24:45 — Design systems
 - 25:35 — Interaction design

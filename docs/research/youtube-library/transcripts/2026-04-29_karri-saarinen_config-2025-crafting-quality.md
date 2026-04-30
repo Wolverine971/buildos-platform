@@ -1,78 +1,80 @@
 ---
-title: "Config 2025: Crafting quality that endures (Karri Saarinen, Co-founder & CEO, Linear) | Figma"
+title: 'Config 2025: Crafting quality that endures (Karri Saarinen, Co-founder & CEO, Linear) | Figma'
 video_id: pCil7YNhNCU
-url: "https://www.youtube.com/watch?v=pCil7YNhNCU"
+url: 'https://www.youtube.com/watch?v=pCil7YNhNCU'
 channel: Figma
-channel_url: "https://www.youtube.com/@Figma"
+channel_url: 'https://www.youtube.com/@Figma'
 upload_date: 2025-05-12
-duration: "20:03"
+duration: '20:03'
 views: 30962
 tags:
-  - figma
-  - design
-  - product design
-  - tips
-  - tricks
-  - UI design
-  - ux design
-  - app design
-  - figma design
-  - design for figma
-  - FigJam tutorial
-  - prototyping
-  - collaboration
-  - UX tutorial
-  - Design tips
-  - Figma tutorial
-  - Config
-  - design system
-  - tutorial
-  - Karri Saarinen
+    - figma
+    - design
+    - product design
+    - tips
+    - tricks
+    - UI design
+    - ux design
+    - app design
+    - figma design
+    - design for figma
+    - FigJam tutorial
+    - prototyping
+    - collaboration
+    - UX tutorial
+    - Design tips
+    - Figma tutorial
+    - Config
+    - design system
+    - tutorial
+    - Karri Saarinen
 timestamps:
-  - time: "0:00"
-    label: "Intro"
-  - time: "0:50"
-    label: "What is craft"
-  - time: "3:35"
-    label: "The cycle of craft"
-  - time: "6:40"
-    label: "Quality"
-  - time: "8:10"
-    label: "The process of quality"
-  - time: "9:02"
-    label: "Why is quality so rare"
-  - time: "9:51"
-    label: "Linears strategy"
-  - time: "11:22"
-    label: "Why quality helps"
-  - time: "13:53"
-    label: "Working with best companies"
-  - time: "14:24"
-    label: "Organic Tweet"
-  - time: "15:10"
-    label: "Principles"
-  - time: "16:47"
-    label: "Summary"
-  - time: "17:29"
-    label: "Cycles of technology"
-  - time: "18:28"
-    label: "Quality is a choice"
-  - time: "19:00"
-    label: "The right thing to do"
-  - time: "19:33"
-    label: "Conclusion"
+    - time: '0:00'
+      label: 'Intro'
+    - time: '0:50'
+      label: 'What is craft'
+    - time: '3:35'
+      label: 'The cycle of craft'
+    - time: '6:40'
+      label: 'Quality'
+    - time: '8:10'
+      label: 'The process of quality'
+    - time: '9:02'
+      label: 'Why is quality so rare'
+    - time: '9:51'
+      label: 'Linears strategy'
+    - time: '11:22'
+      label: 'Why quality helps'
+    - time: '13:53'
+      label: 'Working with best companies'
+    - time: '14:24'
+      label: 'Organic Tweet'
+    - time: '15:10'
+      label: 'Principles'
+    - time: '16:47'
+      label: 'Summary'
+    - time: '17:29'
+      label: 'Cycles of technology'
+    - time: '18:28'
+      label: 'Quality is a choice'
+    - time: '19:00'
+      label: 'The right thing to do'
+    - time: '19:33'
+      label: 'Conclusion'
 description: |
-  Config 2025: Figma's conference for people who build products
-  
-  When we build tools, we shape environments that will in turn shape us—and at Linear, Karri Saarinen has championed quality as the foundation, not an afterthought. In this talk, he'll share lessons from Linear's journey of prioritizing craft over process: the tools and approaches that elevate creativity, the challenges of maintaining quality at scale, and how designers can implement these principles regardless of their current environment. For those who find their vision constrained, Karri offers a compelling alternative: designers aren't just craftspeople but potential founders, capable of building the tools that future generations will thank us for.
-  
-  Featuring: Karri Saarinen, Co-founder & CEO, Linear
-transcribed_date: "2026-04-29"
+    Config 2025: Figma's conference for people who build products
+
+    When we build tools, we shape environments that will in turn shape us—and at Linear, Karri Saarinen has championed quality as the foundation, not an afterthought. In this talk, he'll share lessons from Linear's journey of prioritizing craft over process: the tools and approaches that elevate creativity, the challenges of maintaining quality at scale, and how designers can implement these principles regardless of their current environment. For those who find their vision constrained, Karri offers a compelling alternative: designers aren't just craftspeople but potential founders, capable of building the tools that future generations will thank us for.
+
+    Featuring: Karri Saarinen, Co-founder & CEO, Linear
+transcribed_date: '2026-04-29'
+path: docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_config-2025-crafting-quality.md
 ---
 
 # Config 2025: Crafting quality that endures (Karri Saarinen, Co-founder & CEO, Linear) | Figma
 
 ## Metadata
+
 - **Channel**: [Figma](https://www.youtube.com/@Figma)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=pCil7YNhNCU)
 - **Duration**: 20:03
@@ -80,6 +82,7 @@ transcribed_date: "2026-04-29"
 - **Views**: 30,962
 
 ## Timestamps
+
 - 0:00 — Intro
 - 0:50 — What is craft
 - 3:35 — The cycle of craft

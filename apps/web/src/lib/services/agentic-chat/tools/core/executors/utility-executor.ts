@@ -1045,7 +1045,7 @@ export class UtilityExecutor extends BaseExecutor {
 		relationships: any[];
 		message: string;
 	}> {
-		await this.assertEntityOwnership(args.entity_id);
+		await this.assertEntityAccess(args.entity_id, 'read');
 		const direction = args.direction ?? 'both';
 		const relationships: any[] = [];
 
@@ -1104,7 +1104,7 @@ export class UtilityExecutor extends BaseExecutor {
 		message: string;
 	}> {
 		const actorId = await this.getActorId();
-		await this.assertEntityOwnership(args.entity_id);
+		await this.assertEntityAccess(args.entity_id, 'read');
 
 		// Get entity name for context
 		const entityName = await this.getEntityDisplayName(args.entity_id, args.entity_kind);

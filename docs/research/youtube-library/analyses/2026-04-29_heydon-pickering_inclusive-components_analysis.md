@@ -49,12 +49,12 @@ This is the source backbone for the BuildOS `accessibility-auditor` agent (curre
 ## Source
 
 - **Talk title:** "Inclusive Components" / "Building Inclusive Components"
-- **Speaker:** Heydon Pickering (author of *Apps For All*, *Inclusive Design Patterns*, *Inclusive Components*; co-author of *Inclusive Design Principles*; design-system consultant for the BBC, Bulb, and others; *Every Layout* with Andy Bell)
+- **Speaker:** Heydon Pickering (author of _Apps For All_, _Inclusive Design Patterns_, _Inclusive Components_; co-author of _Inclusive Design Principles_; design-system consultant for the BBC, Bulb, and others; _Every Layout_ with Andy Bell)
 - **Channel:** [Smashing Magazine](https://www.youtube.com/@SmashingMagazineVideos)
 - **Recordings:**
     - https://www.youtube.com/watch?v=jw7bRnFbwAI — Smashing TV, 01:26:16, 2019-11-18
     - https://www.youtube.com/watch?v=C7uX6uvHnlQ — alt cut, 01:49:55, 2019-11-07
-- **Companion text:** *Inclusive Components* (Smashing Magazine book); the public blog at inclusive-components.design is the same canon
+- **Companion text:** _Inclusive Components_ (Smashing Magazine book); the public blog at inclusive-components.design is the same canon
 
 The two recordings are essentially the same talk delivered twice; this analysis treats them as one source and supplements with Heydon's wider, well-known patterns from the book that the talk references but doesn't unpack.
 
@@ -64,38 +64,38 @@ Accessibility is not a checklist applied at the end of a project — it is a str
 
 1. **You don't make interfaces accessible. You make accessible interfaces.** Accessibility belongs inside the act of designing and building each component, not in a remediation pass after launch. As soon as you frame the work as "I shipped X, now make X accessible," it is already too late and very expensive.
 
-2. **Design systems propagate accessibility — for good or ill.** A component built once, badly, becomes badly inaccessible everywhere it is reused. The same leverage works in reverse: a component built once, well, makes the entire product accessible by default. The relationship between accessibility and design systems is therefore *the* leverage point, not an afterthought.
+2. **Design systems propagate accessibility — for good or ill.** A component built once, badly, becomes badly inaccessible everywhere it is reused. The same leverage works in reverse: a component built once, well, makes the entire product accessible by default. The relationship between accessibility and design systems is therefore _the_ leverage point, not an afterthought.
 
-3. **Accessibility is a gradient, not a binary.** "It's not either accessible or not accessible. It's *more* accessible or *less* accessible." Inclusion bends; you push it toward inclusion or away from it with every decision. The job is to anticipate where each component could fail for someone — keyboard user, screen-reader user, low-power-device user, cognitively overloaded user, low-vision user — and to fix it at the component level before the failure can propagate.
+3. **Accessibility is a gradient, not a binary.** "It's not either accessible or not accessible. It's _more_ accessible or _less_ accessible." Inclusion bends; you push it toward inclusion or away from it with every decision. The job is to anticipate where each component could fail for someone — keyboard user, screen-reader user, low-power-device user, cognitively overloaded user, low-vision user — and to fix it at the component level before the failure can propagate.
 
-The corollary that Heydon hammers: lean on **semantic HTML** first, **progressive enhancement** second, and reach for ARIA only as a last resort. Most accessibility failures happen when developers reach for ARIA roles to paper over the wrong base element. The WebAIM survey he cites is brutal: the more ARIA on a page, the *less* accessible it tends to be.
+The corollary that Heydon hammers: lean on **semantic HTML** first, **progressive enhancement** second, and reach for ARIA only as a last resort. Most accessibility failures happen when developers reach for ARIA roles to paper over the wrong base element. The WebAIM survey he cites is brutal: the more ARIA on a page, the _less_ accessible it tends to be.
 
 ## TL;DR Rules Table — Component Patterns
 
-The talk spends most of its concrete time on the **collapsible / accordion**, but Heydon explicitly references the larger *Inclusive Components* catalogue (collapsibles, tabs, content sliders, dialogs, theme switches, to-do lists, notifications, cards, tables, menus, toggles). The fixes below combine what he says in the talk with the canonical fixes from the book that the talk points at.
+The talk spends most of its concrete time on the **collapsible / accordion**, but Heydon explicitly references the larger _Inclusive Components_ catalogue (collapsibles, tabs, content sliders, dialogs, theme switches, to-do lists, notifications, cards, tables, menus, toggles). The fixes below combine what he says in the talk with the canonical fixes from the book that the talk points at.
 
-| #   | Component                       | Most important accessible-pattern fix                                                                                                                                                                                                                                          |
-| --- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Collapsible / disclosure        | Wrap a real `<button>` *inside* the heading (not the heading inside the button). Toggle `aria-expanded="true|false"` on the button. Style off the state attribute, not a class. JS enhances; without JS the content is just visible.                                          |
-| 2   | Accordion (group of collapsibles) | Same rules as collapsible. Each section is its own headed disclosure. Don't add roving-tab-order keyboard logic — let Tab move through the buttons naturally.                                                                                                                |
-| 3   | Tabs                            | Prefer an accordion. If you must use tabs: progressively enhance from a same-page table-of-contents (`<a href="#section-id">`) into `role="tablist"` / `role="tab"` / `role="tabpanel"`. Implement arrow-key navigation between tabs, `Home`/`End` to jump, manual activation. |
-| 4   | Modal / dialog                  | Move focus into the dialog when it opens; trap focus inside; restore focus to the trigger when it closes. Announce contents (label the dialog with `aria-labelledby`). `<dialog>` element is preferred where supported.                                                        |
-| 5   | Toggle button (on/off)          | Use a `<button>` with `aria-pressed="true|false"`. Don't use a checkbox styled as a switch unless the surrounding semantics genuinely match a form control.                                                                                                                    |
-| 6   | Cards                           | Don't make the whole card a link (destroys text selection, multi-link semantics). Use a real `<a>` on the title and a "pseudo-link" via CSS `::before` to extend the click target.                                                                                              |
-| 7   | Tables                          | Use real `<table><thead><tbody>` with `<th scope="col|row">`. Do not turn tables into `display: block` lists for "responsiveness" — you destroy the semantic relationship between cells and headers.                                                                            |
-| 8   | Notifications / live regions    | Use `aria-live="polite"` for non-urgent updates, `aria-live="assertive"` only for genuinely urgent ones. Avoid abusing `role="alert"` for routine status messages.                                                                                                              |
-| 9   | Menus / dropdowns               | If it's a list of links → it's a `<nav>` with a `<ul>`, not `role="menu"`. `role="menu"` is for application-style menus with arrow-key keyboard model. Most "dropdown menus" are navigation, not menus.                                                                         |
-| 10  | Content slider / carousel       | Native horizontal scroll with `overflow-x: auto`. Use `IntersectionObserver` to mark off-screen items invisible to screen readers (e.g. `inert` / `aria-hidden`) so AT users have a comparable experience. Don't reinvent scroll with JS-only buttons.                          |
-| 11  | Tooltip vs toggletip            | Tooltip = hover/focus reveal of supplementary info, never essential. Toggletip = click-revealed pop-up with `role="status"` so the contents are announced. Don't conflate them.                                                                                                |
-| 12  | Theme switch (light/dark)       | Honor `prefers-color-scheme`. Switch via custom properties, not duplicated stylesheets. The simplest "invert" theme can be a CSS filter; an actual designed dark theme should use token-level light/dark pairs.                                                                |
-| 13  | Form inputs                     | Real `<label>` always, never placeholder-as-label. Box-shaped inputs with the label in the standard top position. Don't reinvent the floating-label "Material" input — Heydon's whole rant about Google's UX research catching up to instinct lives here.                       |
-| 14  | Headings                        | Exactly one `<h1>` per page. Numbered `<h2>`–`<h6>` thereafter. Browsers still don't implement the HTML5 outline algorithm, so do *not* rely on nested `<section><h1>`. Compute heading level explicitly (e.g. via React Context — see his "Heading Levels in Design Systems"). |
-| 15  | Icons                           | Inline `<svg>` with `stroke="currentColor"` so it inherits text color and respects `prefers-color-scheme` and Windows High Contrast Mode automatically.                                                                                                                        |
-| 16  | Focus indicators                | Always visible by default. Use `:focus-visible` to keep mouse users from seeing a giant outline on click while keyboard users still get one. Add a transparent `outline` so Windows High Contrast Mode can repaint it as a visible box.                                         |
-| 17  | Reduced motion                  | Respect `prefers-reduced-motion`. Strip non-essential transitions/animations. (His drum-machine work and *Every Layout* both lean on this.)                                                                                                                                    |
-| 18  | Single-page-app view changes    | When a "page" changes without a real navigation, move focus to the new view's heading and update the document title so screen readers announce the change. Otherwise the SPA is silently broken for AT users.                                                                  |
-| 19  | Skip links                      | First focusable element on the page. Visible on focus. Targets the main landmark. Don't bury it.                                                                                                                                                                                |
-| 20  | Buttons vs links                | Button = changes state in place. Link = navigates somewhere. Heydon's collapsible Q&A specifically: a button is the right choice when the disclosed content is the *next* element in source order; a link is right when you're truly jumping someplace.                       |
+| #   | Component                         | Most important accessible-pattern fix                                                                                                                                                                                                                                           |
+| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Collapsible / disclosure          | Wrap a real `<button>` _inside_ the heading (not the heading inside the button). Toggle `aria-expanded="true                                                                                                                                                                    | false"` on the button. Style off the state attribute, not a class. JS enhances; without JS the content is just visible.                        |
+| 2   | Accordion (group of collapsibles) | Same rules as collapsible. Each section is its own headed disclosure. Don't add roving-tab-order keyboard logic — let Tab move through the buttons naturally.                                                                                                                   |
+| 3   | Tabs                              | Prefer an accordion. If you must use tabs: progressively enhance from a same-page table-of-contents (`<a href="#section-id">`) into `role="tablist"` / `role="tab"` / `role="tabpanel"`. Implement arrow-key navigation between tabs, `Home`/`End` to jump, manual activation.  |
+| 4   | Modal / dialog                    | Move focus into the dialog when it opens; trap focus inside; restore focus to the trigger when it closes. Announce contents (label the dialog with `aria-labelledby`). `<dialog>` element is preferred where supported.                                                         |
+| 5   | Toggle button (on/off)            | Use a `<button>` with `aria-pressed="true                                                                                                                                                                                                                                       | false"`. Don't use a checkbox styled as a switch unless the surrounding semantics genuinely match a form control.                              |
+| 6   | Cards                             | Don't make the whole card a link (destroys text selection, multi-link semantics). Use a real `<a>` on the title and a "pseudo-link" via CSS `::before` to extend the click target.                                                                                              |
+| 7   | Tables                            | Use real `<table><thead><tbody>` with `<th scope="col                                                                                                                                                                                                                           | row">`. Do not turn tables into `display: block` lists for "responsiveness" — you destroy the semantic relationship between cells and headers. |
+| 8   | Notifications / live regions      | Use `aria-live="polite"` for non-urgent updates, `aria-live="assertive"` only for genuinely urgent ones. Avoid abusing `role="alert"` for routine status messages.                                                                                                              |
+| 9   | Menus / dropdowns                 | If it's a list of links → it's a `<nav>` with a `<ul>`, not `role="menu"`. `role="menu"` is for application-style menus with arrow-key keyboard model. Most "dropdown menus" are navigation, not menus.                                                                         |
+| 10  | Content slider / carousel         | Native horizontal scroll with `overflow-x: auto`. Use `IntersectionObserver` to mark off-screen items invisible to screen readers (e.g. `inert` / `aria-hidden`) so AT users have a comparable experience. Don't reinvent scroll with JS-only buttons.                          |
+| 11  | Tooltip vs toggletip              | Tooltip = hover/focus reveal of supplementary info, never essential. Toggletip = click-revealed pop-up with `role="status"` so the contents are announced. Don't conflate them.                                                                                                 |
+| 12  | Theme switch (light/dark)         | Honor `prefers-color-scheme`. Switch via custom properties, not duplicated stylesheets. The simplest "invert" theme can be a CSS filter; an actual designed dark theme should use token-level light/dark pairs.                                                                 |
+| 13  | Form inputs                       | Real `<label>` always, never placeholder-as-label. Box-shaped inputs with the label in the standard top position. Don't reinvent the floating-label "Material" input — Heydon's whole rant about Google's UX research catching up to instinct lives here.                       |
+| 14  | Headings                          | Exactly one `<h1>` per page. Numbered `<h2>`–`<h6>` thereafter. Browsers still don't implement the HTML5 outline algorithm, so do _not_ rely on nested `<section><h1>`. Compute heading level explicitly (e.g. via React Context — see his "Heading Levels in Design Systems"). |
+| 15  | Icons                             | Inline `<svg>` with `stroke="currentColor"` so it inherits text color and respects `prefers-color-scheme` and Windows High Contrast Mode automatically.                                                                                                                         |
+| 16  | Focus indicators                  | Always visible by default. Use `:focus-visible` to keep mouse users from seeing a giant outline on click while keyboard users still get one. Add a transparent `outline` so Windows High Contrast Mode can repaint it as a visible box.                                         |
+| 17  | Reduced motion                    | Respect `prefers-reduced-motion`. Strip non-essential transitions/animations. (His drum-machine work and _Every Layout_ both lean on this.)                                                                                                                                     |
+| 18  | Single-page-app view changes      | When a "page" changes without a real navigation, move focus to the new view's heading and update the document title so screen readers announce the change. Otherwise the SPA is silently broken for AT users.                                                                   |
+| 19  | Skip links                        | First focusable element on the page. Visible on focus. Targets the main landmark. Don't bury it.                                                                                                                                                                                |
+| 20  | Buttons vs links                  | Button = changes state in place. Link = navigates somewhere. Heydon's collapsible Q&A specifically: a button is the right choice when the disclosed content is the _next_ element in source order; a link is right when you're truly jumping someplace.                         |
 
 ## Operating Lessons
 
@@ -108,9 +108,9 @@ Heydon's order of precedence is non-negotiable:
 3. **JavaScript to enhance.** JS turns the static structure into the interactive component. If JS fails, you've lost interactivity but not the content.
 4. **ARIA only where HTML cannot already express the semantics.** "If you're reaching for `role="button"` you should be using a `<button>`."
 
-His worked example: a collapsible should ship from the server as a heading + paragraph. The JS then runs `wrapContent()` and `buttonifyHeading()` to insert a real `<button>` (with the heading text moved into it) inside the `<h2>`. If the JS toggle function fails, you don't end up with a broken button — you end up with the content visible by default, which is *better* than a non-working component.
+His worked example: a collapsible should ship from the server as a heading + paragraph. The JS then runs `wrapContent()` and `buttonifyHeading()` to insert a real `<button>` (with the heading text moved into it) inside the `<h2>`. If the JS toggle function fails, you don't end up with a broken button — you end up with the content visible by default, which is _better_ than a non-working component.
 
-> "If I did the markup on the server such that it already included the buttons but then JavaScript didn't run, we'd get something *worse* than if we hadn't tried to make it a collapsible at all."
+> "If I did the markup on the server such that it already included the buttons but then JavaScript didn't run, we'd get something _worse_ than if we hadn't tried to make it a collapsible at all."
 
 The ARIA-is-last-resort rule has a specific failure mode: people put `role="button"` on a heading or `<div>`. That makes a screen reader call it a button — but it isn't keyboard-focusable, doesn't fire on `Enter`/`Space`, and (worse) destroys the underlying heading semantic. Screen-reader users who navigate by heading (the `2` key in JAWS/NVDA) lose that landmark. The fix is always: **use the right element, then augment it with state-only ARIA** like `aria-expanded`, `aria-pressed`, `aria-controls`, `aria-current`.
 
@@ -121,7 +121,7 @@ Heydon's heuristic for any new component: walk through the native elements and a
 Headings deserve special care because they are still broken in 2019 (and largely still broken in 2026):
 
 - **The HTML5 outline algorithm was never implemented by browsers.** Tim Berners-Lee proposed it; vendors didn't ship it.
-- Therefore nesting `<section><h1>` and expecting it to compute as h2/h3/h4 *does not work*. Screen readers see a flat sea of h1s — useless for navigation.
+- Therefore nesting `<section><h1>` and expecting it to compute as h2/h3/h4 _does not work_. Screen readers see a flat sea of h1s — useless for navigation.
 - The fix in component frameworks: compute heading level explicitly. Heydon recommends React Context (the Sophie Alpert pattern) to know what depth you're at and render the right `<h2>`/`<h3>`/`<h4>`. His "Heading Levels in Design Systems" post on Medium is the reference.
 
 ### 3. The Inclusive Design Principles (his co-authored framework)
@@ -143,7 +143,7 @@ WCAG tells you criteria. The Inclusive Design Principles tell you posture. WCAG 
 #### Collapsible / accordion (worked example in the talk)
 
 - Server-rendered as heading + paragraph.
-- JS enhancement wraps the heading text in a `<button>` placed *inside* the heading.
+- JS enhancement wraps the heading text in a `<button>` placed _inside_ the heading.
 - The button gets `aria-expanded="false|true"` toggled on click.
 - CSS uses an attribute selector (`[aria-expanded="true"]`) — not a class — to drive the open/closed visuals. This is a deliberate fail-safe: if the visual works, the state must be set; if you styled off a class, you could ship a broken `aria-expanded`.
 - Iconography (plus/minus or chevron) is inline SVG with `stroke="currentColor"` so it inherits theme color.
@@ -170,7 +170,7 @@ WCAG tells you criteria. The Inclusive Design Principles tell you posture. WCAG 
 
 #### Toggle (on/off switch)
 
-- `<button aria-pressed="true|false">` with the label describing the *thing* being toggled, not the current state. ("Mute" stays "Mute"; the pressed state communicates whether it's currently muted.)
+- `<button aria-pressed="true|false">` with the label describing the _thing_ being toggled, not the current state. ("Mute" stays "Mute"; the pressed state communicates whether it's currently muted.)
 
 #### Cards
 
@@ -202,18 +202,18 @@ Anywhere a "page-like" change happens without a real page navigation, the develo
 - **Modal closes** → focus back to the trigger.
 - **SPA route change** → focus to the new view's heading, update `document.title`, optionally announce via a live region.
 - **Form submission with inline error** → focus the first invalid field (or the error summary) so the user is taken to the problem.
-- **Inline content insertion** (e.g. expand an accordion that was scrolled past) → consider whether to scroll-into-view *and* whether focus should move.
+- **Inline content insertion** (e.g. expand an accordion that was scrolled past) → consider whether to scroll-into-view _and_ whether focus should move.
 
 Heydon's rule: when JS is what makes something happen, JS is what tells the browser (and through it the screen reader) that something happened.
 
 ### 6. Screen-reader behavior expectations
 
-What a developer should *expect* a screen reader to do:
+What a developer should _expect_ a screen reader to do:
 
 - **Re-cache the DOM** as JS mutates it. This is why `aria-expanded` flipping is announced — the SR sees the new attribute on the element it's reading.
 - **Announce focused elements** when focus moves. So programmatic `element.focus()` is the "say this now" call.
 - **Read live regions** when their content changes (with `aria-live` or implicit roles).
-- **Navigate by landmarks, headings, links, form fields, buttons.** This is why each of those needs to actually *be* the right element — heading-key navigation is the screen-reader user's table of contents.
+- **Navigate by landmarks, headings, links, form fields, buttons.** This is why each of those needs to actually _be_ the right element — heading-key navigation is the screen-reader user's table of contents.
 - **NOT** read everything in source order linearly — they jump. So the page must be navigable by structure, not by reading from the top.
 
 ### 7. Keyboard navigation patterns
@@ -227,7 +227,7 @@ Native keyboard model, in roughly the order Heydon expects them:
 - **Escape** — closes dialogs, popovers, menus.
 - **Home / End** — first/last in lists, tablists, comboboxes.
 
-The composite-widget rule: inside a tablist or menu, only one item is in the tab order at a time (`tabindex="0"` on the active, `tabindex="-1"` on the rest). Arrow keys move focus *within* the widget. Tab takes you *out* of it. This is the WAI-ARIA "roving tabindex" pattern.
+The composite-widget rule: inside a tablist or menu, only one item is in the tab order at a time (`tabindex="0"` on the active, `tabindex="-1"` on the rest). Arrow keys move focus _within_ the widget. Tab takes you _out_ of it. This is the WAI-ARIA "roving tabindex" pattern.
 
 ### 8. Reduced motion
 
@@ -242,13 +242,13 @@ Functional motion (a focus indicator, a state change indicator) can stay, but sh
 
 ### 9. Affordance and high-contrast mode
 
-The transparent-outline trick is one of Heydon's tightest practical tips. Windows High Contrast Mode (now Forced Colors) strips backgrounds and shadows. Buttons that relied on a fill+shadow combination dissolve into bare text — losing their *affordance* (they no longer look pressable).
+The transparent-outline trick is one of Heydon's tightest practical tips. Windows High Contrast Mode (now Forced Colors) strips backgrounds and shadows. Buttons that relied on a fill+shadow combination dissolve into bare text — losing their _affordance_ (they no longer look pressable).
 
 The fix: every button gets `outline: 2px solid transparent; outline-offset: 2px;`. In normal mode you don't see it. In High Contrast Mode, the system repaints `transparent` as a visible color — and now the button has a visible boundary. Same trick is required on focus indicators that previously relied on a filled background.
 
 ### 10. Failure modes (Heydon's catalogue of "don't do this")
 
-- **`role="button"` on a `<div>`** — does *not* make it focusable, does *not* make it activate on `Enter`/`Space`, does erase whatever semantic the original element had.
+- **`role="button"` on a `<div>`** — does _not_ make it focusable, does _not_ make it activate on `Enter`/`Space`, does erase whatever semantic the original element had.
 - **Heading turned into a button** — destroys heading-key navigation.
 - **Click handlers on non-interactive elements** — `<div onClick>` is invisible to keyboard and screen-reader users.
 - **Whole-card link** — kills text selection and link list navigation.
@@ -265,13 +265,13 @@ The fix: every button gets `outline: 2px solid transparent; outline-offset: 2px;
 
 ### 11. The relationship between design systems and accessibility
 
-This is the subtitle of Heydon's whole career arc, and the through-line of *Inclusive Components*.
+This is the subtitle of Heydon's whole career arc, and the through-line of _Inclusive Components_.
 
 A design system is:
 
 - **A leverage multiplier.** The component you build once gets used a thousand times.
 - **A vector for both quality and dysfunction.** "If you create a rubbish component in the first place, you'll be propagating badness everywhere."
-- **The right unit of accessibility work.** WCAG criteria are abstract (perceivable, operable, understandable, robust); components are concrete. People build *things*, not criteria. He explicitly tried to write *Inclusive Design Patterns* organized by criterion (keyboard, screen reader, language, etc.) and got writer's block — because that's not how anyone actually works.
+- **The right unit of accessibility work.** WCAG criteria are abstract (perceivable, operable, understandable, robust); components are concrete. People build _things_, not criteria. He explicitly tried to write _Inclusive Design Patterns_ organized by criterion (keyboard, screen reader, language, etc.) and got writer's block — because that's not how anyone actually works.
 - **The forcing function.** Once accessibility lives inside the component, it can't be skipped. A team can't "forget" to make the date picker accessible if the only date picker in the system is already accessible.
 
 The corollary: **the design system is the agent's primary surface area.** Auditing one screen catches one screen's problems. Auditing the design-system primitives that screen is built from catches every screen built on those primitives, forever.
@@ -291,7 +291,7 @@ The corollary: **the design system is the agent's primary surface area.** Auditi
 
 > "You don't make interfaces accessible. You make accessible interfaces. Because I'm a designer and that's how I want other people to work."
 
-> "Accessibility is not a binary thing. It's not either accessible or not accessible. It's *more* accessible or *less* accessible."
+> "Accessibility is not a binary thing. It's not either accessible or not accessible. It's _more_ accessible or _less_ accessible."
 
 > "If you're reaching for `role="button"` you should be using a button."
 
@@ -356,7 +356,7 @@ When auditing a BuildOS screen for inclusive components, walk this list:
 **Visual & motion**
 
 - [ ] Color contrast ≥ 4.5:1 for body text, 3:1 for large text — both in light and dark mode.
-- [ ] Color is not the *only* way information is conveyed.
+- [ ] Color is not the _only_ way information is conveyed.
 - [ ] `prefers-reduced-motion` strips decorative animation.
 - [ ] `prefers-color-scheme` respected.
 - [ ] Text scales to 200% zoom without horizontal scroll on the main content.
@@ -374,9 +374,9 @@ This is the source backbone the `accessibility-auditor` currently lacks. Concret
 
 - **Inputs:** a route, page, or component in the BuildOS web app.
 - **Process:** walk the Practical Checklist above, but organized around component primitives first (audit Inkprint primitives in isolation), then screen-level composition (audit the route).
-- **Reference canon:** Heydon's *Inclusive Components* book + the Inclusive Design Principles + WAI-ARIA Authoring Practices (with caveats). When patterns conflict with WAI-ARIA APG, prefer the Heydon variant — APG has documented bugs.
+- **Reference canon:** Heydon's _Inclusive Components_ book + the Inclusive Design Principles + WAI-ARIA Authoring Practices (with caveats). When patterns conflict with WAI-ARIA APG, prefer the Heydon variant — APG has documented bugs.
 - **Output shape:** issues grouped by **component primitive** (so the fix propagates), not by screen. A finding like "`<Dialog>` doesn't move focus to the heading on open" should fix every dialog in the app, not the one screen the auditor was looking at.
-- **Severity model:** not pass/fail. Use Heydon's gradient — *more inclusive* / *less inclusive* — and rank fixes by leverage (primitive-level fixes outrank one-off page fixes).
+- **Severity model:** not pass/fail. Use Heydon's gradient — _more inclusive_ / _less inclusive_ — and rank fixes by leverage (primitive-level fixes outrank one-off page fixes).
 - **Failure-mode library:** seed the agent with Heydon's failure-mode catalogue (section 10 above) so it can name the specific anti-pattern when it spots one (`role="button"` on `<div>`, whole-card link, float-label input, etc.).
 
 ### B. Inkprint primitives
@@ -419,19 +419,19 @@ Heydon's canon is shaped by 2015–2019 web — server-rendered HTML, jQuery-sty
 Heydon's "render meaningful content from the server first, then JS enhances" model is tension-y with a SvelteKit SPA-style route that hydrates from a JSON payload. The mitigation:
 
 - **SSR everything that can be SSR'd.** Don't render skeletons; render the real headings, paragraphs, and content shapes server-side, then hydrate.
-- **Treat every reactive runes-driven state change as the equivalent of a JS-mutated DOM.** Screen readers will see the change because they re-cache; but *focus does not move on its own*. Wherever `$effect` causes a content change that the user did, manually move focus.
+- **Treat every reactive runes-driven state change as the equivalent of a JS-mutated DOM.** Screen readers will see the change because they re-cache; but _focus does not move on its own_. Wherever `$effect` causes a content change that the user did, manually move focus.
 - **Route-change hooks must do the SPA work.** SvelteKit's `afterNavigate` hook is the right place to move focus to `<main>` and update the title — without it, every internal link is a silent navigation for AT users. This is the single biggest accidental SPA accessibility regression in the BuildOS app.
 
 ### 2. Custom components beyond his catalogue
 
-*Inclusive Components* covers ~12 patterns. Real BuildOS UI has dozens that aren't in the book: ontology trees, project graph views, drag-and-drop kanban, calendar week views, SMS conversation surfaces, agentic chat threads, voice-recording UI, brain-dump processing visualizations.
+_Inclusive Components_ covers ~12 patterns. Real BuildOS UI has dozens that aren't in the book: ontology trees, project graph views, drag-and-drop kanban, calendar week views, SMS conversation surfaces, agentic chat threads, voice-recording UI, brain-dump processing visualizations.
 
-These need first-principles work using Heydon's *posture* rather than his catalogue:
+These need first-principles work using Heydon's _posture_ rather than his catalogue:
 
 - **Reduce to a known primitive where possible.** A "drag-and-drop kanban" is structurally a list of lists; the keyboard model can be `Move up/down/left/right` via buttons or arrow keys, with the visual drag as enhancement.
 - **Provide an alternative interaction.** Drag-and-drop must always have a non-drag fallback (buttons, keyboard, menu).
 - **Don't invent new ARIA roles.** If you can't find an existing role that fits, the component is probably the wrong abstraction — break it down further.
-- **Test with a real screen reader and a real keyboard, not axe-core.** Static analysis catches a fraction of the issues. Heydon's career is built on *using* the tools, not running linters.
+- **Test with a real screen reader and a real keyboard, not axe-core.** Static analysis catches a fraction of the issues. Heydon's career is built on _using_ the tools, not running linters.
 
 ### 3. AI-generated UIs
 
@@ -442,7 +442,7 @@ The implication for BuildOS, which has agentic chat producing surfaces:
 - **Constrain the generative space to known primitives.** Don't let an agent output arbitrary HTML/JSX; let it select from Inkprint primitives. Each primitive is already accessible, so the composition is too.
 - **The "design system as accessibility leverage" point doubles for AI UIs.** If the agent can only emit accessible building blocks, it can only build accessible compositions.
 - **Static checks at generation time.** Run an axe-core pass on agent-generated DOM before showing it; don't rely on post-hoc review.
-- **Heydon's deeper warning applies hardest here:** "Everything that exists should be accessible, but not everything should exist." An agent that fluently generates *yet another carousel* is not progress.
+- **Heydon's deeper warning applies hardest here:** "Everything that exists should be accessible, but not everything should exist." An agent that fluently generates _yet another carousel_ is not progress.
 
 ### 4. The "trust your instincts" rule cuts against research-led teams
 
@@ -450,8 +450,8 @@ Heydon repeatedly says rely on convention and instinct over over-research (the M
 
 ### 5. The talk underspecifies the agent layer
 
-Heydon's framework is for *humans designing components*. It does not directly answer: how should an *agent* audit a screen? The Practical Checklist above is my translation of his framework into agent-executable form. The translation is imperfect — agents will catch the structural patterns (missing `<label>`, wrong heading order) but miss the judgment calls (does this dialog *need* to be a dialog?). The `accessibility-auditor` agent should always end with "human review recommended for: …" and surface the judgment-call items rather than assert pass/fail on them.
+Heydon's framework is for _humans designing components_. It does not directly answer: how should an _agent_ audit a screen? The Practical Checklist above is my translation of his framework into agent-executable form. The translation is imperfect — agents will catch the structural patterns (missing `<label>`, wrong heading order) but miss the judgment calls (does this dialog _need_ to be a dialog?). The `accessibility-auditor` agent should always end with "human review recommended for: …" and surface the judgment-call items rather than assert pass/fail on them.
 
 ---
 
-**Bottom line.** Heydon's *Inclusive Components* is the right backbone for BuildOS's accessibility work because it organizes around the same unit of work BuildOS already organizes around — the component primitive in a design system. Wire his catalogue into Inkprint, wire his failure-mode list into the `accessibility-auditor` agent, and the leverage compounds: fix once, fix everywhere.
+**Bottom line.** Heydon's _Inclusive Components_ is the right backbone for BuildOS's accessibility work because it organizes around the same unit of work BuildOS already organizes around — the component primitive in a design system. Wire his catalogue into Inkprint, wire his failure-mode list into the `accessibility-auditor` agent, and the leverage compounds: fix once, fix everywhere.

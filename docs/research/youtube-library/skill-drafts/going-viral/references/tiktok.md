@@ -41,9 +41,9 @@ The cross-platform `SKILL.md` covers the six hook archetypes. On TikTok, the add
 
 - "I really do think you have one second to hook someone, especially on Shorts."
 - Three-step formula: **shock → intrigue → satisfy**
-  - **Shock** — break the scroll with an unexpected visual or claim
-  - **Intrigue** — open the curiosity loop within 2–3 seconds
-  - **Satisfy** — close the loop within the video; payoff lands before they swipe
+    - **Shock** — break the scroll with an unexpected visual or claim
+    - **Intrigue** — open the curiosity loop within 2–3 seconds
+    - **Satisfy** — close the loop within the video; payoff lands before they swipe
 
 > **TODO:** Pull Jenny Hoyos's specific shock/intrigue/satisfy templates and her 5-step process from the Colin & Samir interview transcript once YouTube rate-limit clears (URL: https://www.youtube.com/watch?v=As7abwNhG7Y) and from her My First Million appearance (https://www.youtube.com/watch?v=ZpjGGbrcC8E).
 
@@ -55,7 +55,7 @@ How viewers actually consume the first 5 seconds of a vertical video:
 2. **Ears parse the spoken hook** (~500–2000ms)
 3. **Eyes return to the visual** seeking confirmation of what they just heard (~2000–3500ms)
 
-> "Our eyes process 10 to 100 times more information per second than our ears — speed of light versus speed of sound." (Kallaway *100 Viral Hooks*)
+> "Our eyes process 10 to 100 times more information per second than our ears — speed of light versus speed of sound." (Kallaway _100 Viral Hooks_)
 
 **Therefore:** the **key visual** is load-bearing, not the words. Words exist to set up and confirm the visual. If your topic doesn't have a strong key visual, **kill the video**. (Kallaway is explicit about this — manufacture the visual or don't make the video.)
 
@@ -70,14 +70,14 @@ The four hook components (must all agree on the same key visual):
 
 ## Hook archetype mapping for TikTok
 
-| Archetype | TikTok-flavored example |
-|---|---|
-| **Fortune Teller** | "This is the future of [X]" — over a never-before-seen demo |
-| **Experimenter** | "Watch what happens when I [X]" — live demo on screen |
-| **Teacher** | "Three things you can learn from [Y]" — talking head with cuts |
-| **Magician** | "Yo check this out" — visual stun (signature object, jump-cut, neon) layered on top of one of the other 5 |
-| **Investigator** | "This is a secret [X] you've probably never heard about" — reveal-paced |
-| **Contrarian** | "Everyone says [X] but they're wrong because [Y]" — straight to camera |
+| Archetype          | TikTok-flavored example                                                                                   |
+| ------------------ | --------------------------------------------------------------------------------------------------------- |
+| **Fortune Teller** | "This is the future of [X]" — over a never-before-seen demo                                               |
+| **Experimenter**   | "Watch what happens when I [X]" — live demo on screen                                                     |
+| **Teacher**        | "Three things you can learn from [Y]" — talking head with cuts                                            |
+| **Magician**       | "Yo check this out" — visual stun (signature object, jump-cut, neon) layered on top of one of the other 5 |
+| **Investigator**   | "This is a secret [X] you've probably never heard about" — reveal-paced                                   |
+| **Contrarian**     | "Everyone says [X] but they're wrong because [Y]" — straight to camera                                    |
 
 For BuildOS-attributed founder content on TikTok, the natural archetypes are **Investigator** (anti-feed observations, model-behavior critiques), **Contrarian** (anti-AI marketing POV pieces), and **Teacher** (context engineering frameworks). Use Experimenter for product demos. Pair Magician (a visual signature — typing in BuildOS, walking, whiteboarding, working on a real project) on top of any of the above to compensate for limited b-roll.
 
@@ -121,13 +121,14 @@ Beyond the hook, retention is the entire game. Three rules:
 
 **2. Insert retention beats every 3–5 seconds.** A retention beat = a small surprise (visual cut, audio change, on-screen text reveal, escalation, callback). The brain re-engages on each beat.
 
-**3. Open the next loop before closing the current one.** "I tried [X], but then [unexpected thing happened], so I had to..." — the "but/therefore" structure (South Park / Kallaway *Master Storyteller*) chains loops.
+**3. Open the next loop before closing the current one.** "I tried [X], but then [unexpected thing happened], so I had to..." — the "but/therefore" structure (South Park / Kallaway _Master Storyteller_) chains loops.
 
 ## Sibling platforms
 
 **YouTube Shorts:** ~95% identical mechanics. Shorts ranks completion rate even more aggressively than TikTok. The Shorts shelf surfaces videos to subscribers more than TikTok surfaces to followers, so subscriber-cohort signals matter slightly more on Shorts. Otherwise, treat as a TikTok sibling — Jenny Hoyos's playbook works on both.
 
 **Instagram Reels:** see `references/instagram.md` for the full breakdown. Key divergences:
+
 - Mosseri's Jan 2025 ranking: watch time + likes-per-reach + DM shares (DM shares NOT a primary TikTok signal)
 - Trial reels feature (TikTok has no equivalent)
 - Carousel + photo posts compete with Reels in the feed (TikTok is video-only)
@@ -144,7 +145,7 @@ Beyond the hook, retention is the entire game. Three rules:
 - **Hooks that need context.** If the viewer can't parse the topic in one second without prior knowledge of you, you lose.
 - **Saving the strongest visual for after the hook.** Key visual must be in the first 1 second on TikTok (3 seconds max for bigger creators with established audience).
 - **Pure trending-sound chases.** Audience-match collapses; the next 5 videos suffer.
-- **Generic CTAs in the outro** ("Like and subscribe for more"). Native CTAs (Kallaway *Killer Script*) embed in the body — pain raised, resource gives the solve.
+- **Generic CTAs in the outro** ("Like and subscribe for more"). Native CTAs (Kallaway _Killer Script_) embed in the body — pain raised, resource gives the solve.
 
 ## When this is the wrong platform
 
@@ -159,9 +160,9 @@ Beyond the hook, retention is the entire game. Three rules:
 - 2025/2026 TikTok algorithm reality: Buffer, OpusClip, SocialRescue, ToolsBear, FiveBBC algorithm guides (April 2026)
 - TikTok Creator Portal 2025 specifications (9:16, native vs. studio polish): cited via PostEverywhere and Buffer analyses
 - One-second hook doctrine + shock-intrigue-satisfy: Jenny Hoyos via Colin & Samir interview ([video](https://www.youtube.com/watch?v=As7abwNhG7Y)), Creator Science #167, My First Million ([video](https://www.youtube.com/watch?v=ZpjGGbrcC8E)) — TODO: deeper extraction once transcripts download
-- Visual → audio → visual sandwich + 4-component alignment: Kallaway *100 Viral Hooks* analysis (`docs/research/youtube-library/analyses/2026-04-29_kallaway_100-viral-hooks_analysis.md`)
-- Hook archetype catalog: Kallaway *100 Viral Hooks* analysis
-- Killer-script compression: Kallaway *Killer Script* + *Viral TikTok Script Walkthrough* analyses
+- Visual → audio → visual sandwich + 4-component alignment: Kallaway _100 Viral Hooks_ analysis (`docs/research/youtube-library/analyses/2026-04-29_kallaway_100-viral-hooks_analysis.md`)
+- Hook archetype catalog: Kallaway _100 Viral Hooks_ analysis
+- Killer-script compression: Kallaway _Killer Script_ + _Viral TikTok Script Walkthrough_ analyses
 - Retention beats + cut-between-angles: MrBeast on Colin & Samir ([video](https://www.youtube.com/watch?v=9IQ_ldV9z_A)) — TODO: full transcript pending
-- Hook craft sentence-level: Kallaway *Irresistible Hooks*, *Hooks Impossible to Skip*, *6 Words Hook* analyses
+- Hook craft sentence-level: Kallaway _Irresistible Hooks_, _Hooks Impossible to Skip_, _6 Words Hook_ analyses
 - Brendan Kane Hook Point + 3-second world framing: ([video](https://www.youtube.com/watch?v=pGXiK8b7d-E)) — TODO: full transcript pending

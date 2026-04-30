@@ -1,26 +1,28 @@
 ---
-title: "Werner Jainek - Cultured Code"
+title: 'Werner Jainek - Cultured Code'
 video_id: XpI4sQybnm0
-url: "https://www.youtube.com/watch?v=XpI4sQybnm0"
+url: 'https://www.youtube.com/watch?v=XpI4sQybnm0'
 channel: Apple's Blog
-channel_url: "https://www.youtube.com/@fanboyapple"
+channel_url: 'https://www.youtube.com/@fanboyapple'
 upload_date: 2009-04-17
-duration: "03:14"
+duration: '03:14'
 views: 1920
 tags:
-  - apple
-  - wwdc09
-  - cultured
-  - code
-  - us
-  - 20090416
-  - 640x360
-transcribed_date: "2026-04-29"
+    - apple
+    - wwdc09
+    - cultured
+    - code
+    - us
+    - 20090416
+    - 640x360
+transcribed_date: '2026-04-29'
+path: docs/research/youtube-library/transcripts/2026-04-29_werner-jainek_cultured-code-things.md
 ---
 
 # Werner Jainek - Cultured Code
 
 ## Metadata
+
 - **Channel**: [Apple's Blog](https://www.youtube.com/@fanboyapple)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=XpI4sQybnm0)
 - **Duration**: 03:14

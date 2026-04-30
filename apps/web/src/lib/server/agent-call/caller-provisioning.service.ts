@@ -2,11 +2,17 @@
 import { randomBytes } from 'crypto';
 import { isValidUUID } from '@buildos/shared-types';
 import type {
+	AgentCallSessionRecord,
 	BuildosAgentCallerListResponse,
 	BuildosAgentCallerProvisionRequest,
 	BuildosAgentCallerProvisionResponse,
 	BuildosAgentCallerRevokeResponse,
 	BuildosAgentCallerSummary,
+	BuildosAgentCallerUsageSummary,
+	BuildosAgentUsageAction,
+	BuildosAgentUsageEvent,
+	BuildosAgentUsagePeriod,
+	BuildosAgentUsageTrend,
 	ExternalAgentCallerRecord
 } from '@buildos/shared-types';
 import {
@@ -143,7 +149,8 @@ function generateBearerToken(): { token: string; tokenPrefix: string } {
 
 function mapCallerSummary(
 	record: ExternalAgentCallerRecord,
-	visibleProjectIds?: Set<string>
+	visibleProjectIds?: Set<string>,
+	usage?: BuildosAgentCallerUsageSummary
 ): BuildosAgentCallerSummary {
 	const scopeMode = extractScopeModeFromPolicy(record.policy);
 	const allowedOps = extractAllowedOpsFromPolicy(record.policy, scopeMode);
@@ -176,8 +183,331 @@ function mapCallerSummary(
 		metadata: record.metadata ?? {},
 		last_used_at: record.last_used_at,
 		created_at: record.created_at,
-		updated_at: record.updated_at
+		updated_at: record.updated_at,
+		...(usage ? { usage } : {})
 	};
+}
+
+type AgentCallToolExecutionUsageRow = {
+	id: string;
+	agent_call_session_id: string;
+	external_agent_caller_id: string;
+	user_id: string;
+	op: string;
+	status: 'pending' | 'succeeded' | 'failed';
+	args: Record<string, unknown>;
+	response_payload: Record<string, unknown> | null;
+	error_payload: Record<string, unknown> | null;
+	entity_kind: string | null;
+	entity_id: string | null;
+	started_at: string;
+	completed_at: string | null;
+	created_at: string;
+	updated_at: string;
+};
+
+type UsageAccumulator = {
+	callerId: string;
+	lastActivityAt: string | null;
+	lastWriteAt: string | null;
+	totalSessionCount: number;
+	totalWriteCount: number;
+	successfulWriteCount: number;
+	failedWriteCount: number;
+	projectIds: Set<string>;
+	recentActivity: BuildosAgentUsageEvent[];
+	trends: Map<BuildosAgentUsagePeriod, BuildosAgentUsageTrend & { projectIds: Set<string> }>;
+};
+
+const USAGE_PERIODS: Array<{ period: BuildosAgentUsagePeriod; ms: number }> = [
+	{ period: 'day', ms: 24 * 60 * 60 * 1000 },
+	{ period: 'week', ms: 7 * 24 * 60 * 60 * 1000 },
+	{ period: 'month', ms: 30 * 24 * 60 * 60 * 1000 }
+];
+
+function createUsageAccumulator(caller: ExternalAgentCallerRecord): UsageAccumulator {
+	return {
+		callerId: caller.id,
+		lastActivityAt: caller.last_used_at,
+		lastWriteAt: null,
+		totalSessionCount: 0,
+		totalWriteCount: 0,
+		successfulWriteCount: 0,
+		failedWriteCount: 0,
+		projectIds: new Set<string>(),
+		recentActivity: [],
+		trends: new Map(
+			USAGE_PERIODS.map(({ period }) => [
+				period,
+				{
+					period,
+					session_count: 0,
+					write_count: 0,
+					successful_write_count: 0,
+					failed_write_count: 0,
+					project_count: 0,
+					projectIds: new Set<string>()
+				}
+			])
+		)
+	};
+}
+
+function finalizeUsageAccumulator(accumulator: UsageAccumulator): BuildosAgentCallerUsageSummary {
+	return {
+		last_activity_at: accumulator.lastActivityAt,
+		last_write_at: accumulator.lastWriteAt,
+		total_session_count: accumulator.totalSessionCount,
+		total_write_count: accumulator.totalWriteCount,
+		successful_write_count: accumulator.successfulWriteCount,
+		failed_write_count: accumulator.failedWriteCount,
+		project_count: accumulator.projectIds.size,
+		trends: USAGE_PERIODS.map(({ period }) => {
+			const trend = accumulator.trends.get(period);
+			return {
+				period,
+				session_count: trend?.session_count ?? 0,
+				write_count: trend?.write_count ?? 0,
+				successful_write_count: trend?.successful_write_count ?? 0,
+				failed_write_count: trend?.failed_write_count ?? 0,
+				project_count: trend?.projectIds.size ?? 0
+			};
+		}),
+		recent_activity: accumulator.recentActivity
+			.sort((a, b) => Date.parse(b.occurred_at) - Date.parse(a.occurred_at))
+			.slice(0, 5)
+	};
+}
+
+function touchTimestamp(
+	current: string | null,
+	candidate: string | null | undefined
+): string | null {
+	if (!candidate) return current;
+	if (!current) return candidate;
+	return Date.parse(candidate) > Date.parse(current) ? candidate : current;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return null;
+	}
+	return value as Record<string, unknown>;
+}
+
+function asText(value: unknown): string | null {
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function truncateSummaryText(value: string, maxLength = 80): string {
+	return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}...`;
+}
+
+function entityKindFromOp(op: string): string | null {
+	const parts = op.split('.');
+	if (parts[0] === 'onto' && parts[1]) return parts[1];
+	if (parts[0] === 'cal' && parts[1] === 'event') return 'event';
+	if (parts[0] === 'cal' && parts[1] === 'project') return 'calendar';
+	return null;
+}
+
+function actionFromExecution(execution: AgentCallToolExecutionUsageRow): BuildosAgentUsageAction {
+	if (execution.status !== 'succeeded') return 'attempted';
+	if (execution.op.endsWith('.create')) return 'created';
+	if (execution.op.endsWith('.update') || execution.op.endsWith('.set')) return 'updated';
+	if (execution.op.endsWith('.delete')) return 'deleted';
+	return 'used';
+}
+
+function actionVerbForAttempt(op: string): string {
+	if (op.endsWith('.create')) return 'create';
+	if (op.endsWith('.update') || op.endsWith('.set')) return 'update';
+	if (op.endsWith('.delete')) return 'delete';
+	return 'use';
+}
+
+function displayEntityKind(kind: string | null): string {
+	if (!kind) return 'item';
+	if (kind === 'calendar') return 'project calendar';
+	return kind.replace(/_/g, ' ');
+}
+
+function extractExecutionResult(
+	execution: AgentCallToolExecutionUsageRow
+): Record<string, unknown> {
+	const responsePayload = asRecord(execution.response_payload);
+	const result = asRecord(responsePayload?.result);
+	return result ?? {};
+}
+
+function extractEntityRecord(params: {
+	execution: AgentCallToolExecutionUsageRow;
+	entityKind: string | null;
+	result: Record<string, unknown>;
+}): Record<string, unknown> | null {
+	const candidates = [
+		params.entityKind,
+		'task',
+		'document',
+		'project',
+		'goal',
+		'plan',
+		'milestone',
+		'risk',
+		'event',
+		'calendar'
+	].filter((value): value is string => Boolean(value));
+
+	for (const key of candidates) {
+		const record = asRecord(params.result[key]);
+		if (record) return record;
+	}
+
+	return null;
+}
+
+function extractErrorMessage(execution: AgentCallToolExecutionUsageRow): string | null {
+	const errorPayload = asRecord(execution.error_payload);
+	const responseError = asRecord(asRecord(execution.response_payload)?.error);
+	return (
+		asText(errorPayload?.message) ??
+		asText(errorPayload?.error) ??
+		asText(errorPayload?.code) ??
+		asText(responseError?.message) ??
+		null
+	);
+}
+
+function extractProjectMeta(params: {
+	args: Record<string, unknown>;
+	result: Record<string, unknown>;
+	entity: Record<string, unknown> | null;
+	projectNameById: Map<string, string>;
+}): { projectId: string | null; projectName: string | null } {
+	const projectRecord = asRecord(params.result.project);
+	const projectId =
+		asText(params.entity?.project_id) ??
+		asText(projectRecord?.id) ??
+		asText(params.result.project_id) ??
+		asText(params.args.project_id) ??
+		asText(params.args.projectId) ??
+		null;
+	const projectName =
+		asText(params.entity?.project_name) ??
+		asText(projectRecord?.name) ??
+		asText(params.result.project_name) ??
+		(projectId ? (params.projectNameById.get(projectId) ?? null) : null);
+
+	return { projectId, projectName };
+}
+
+function buildUsageEvent(
+	execution: AgentCallToolExecutionUsageRow,
+	projectNameById: Map<string, string>
+): BuildosAgentUsageEvent {
+	const result = extractExecutionResult(execution);
+	const entityKind = execution.entity_kind ?? entityKindFromOp(execution.op);
+	const entity = extractEntityRecord({ execution, entityKind, result });
+	const entityTitle =
+		asText(entity?.title) ??
+		asText(entity?.name) ??
+		asText(result.title) ??
+		asText(execution.args?.title) ??
+		asText(execution.args?.name) ??
+		null;
+	const entityId = execution.entity_id ?? asText(entity?.id);
+	const { projectId, projectName } = extractProjectMeta({
+		args: execution.args ?? {},
+		result,
+		entity,
+		projectNameById
+	});
+	const action = actionFromExecution(execution);
+	const kindLabel = displayEntityKind(entityKind);
+	const titleSuffix = entityTitle ? ` "${truncateSummaryText(entityTitle, 72)}"` : '';
+	const projectSuffix = projectName ? ` in ${projectName}` : '';
+	const errorMessage = extractErrorMessage(execution);
+	const summary =
+		action === 'attempted'
+			? `Tried to ${actionVerbForAttempt(execution.op)} ${kindLabel}${titleSuffix}${projectSuffix}${errorMessage ? `: ${errorMessage}` : ''}`
+			: `${action.charAt(0).toUpperCase()}${action.slice(1)} ${kindLabel}${titleSuffix}${projectSuffix}`;
+
+	return {
+		id: execution.id,
+		occurred_at: execution.completed_at ?? execution.created_at,
+		op: execution.op,
+		action,
+		status: execution.status,
+		summary,
+		project_id: projectId,
+		project_name: projectName,
+		entity_kind: entityKind,
+		entity_id: entityId,
+		entity_title: entityTitle,
+		error_message: errorMessage
+	};
+}
+
+function addSessionToUsage(
+	accumulator: UsageAccumulator,
+	session: Pick<AgentCallSessionRecord, 'started_at' | 'updated_at'>
+): void {
+	const timestamp = session.started_at;
+	const timestampMs = Date.parse(timestamp);
+	const now = Date.now();
+	accumulator.totalSessionCount += 1;
+	accumulator.lastActivityAt = touchTimestamp(
+		accumulator.lastActivityAt,
+		session.updated_at ?? timestamp
+	);
+
+	for (const { period, ms } of USAGE_PERIODS) {
+		if (Number.isNaN(timestampMs) || now - timestampMs > ms) continue;
+		const trend = accumulator.trends.get(period);
+		if (trend) {
+			trend.session_count += 1;
+		}
+	}
+}
+
+function addExecutionToUsage(
+	accumulator: UsageAccumulator,
+	execution: AgentCallToolExecutionUsageRow,
+	projectNameById: Map<string, string>
+): void {
+	const event = buildUsageEvent(execution, projectNameById);
+	const timestampMs = Date.parse(event.occurred_at);
+	const now = Date.now();
+	accumulator.totalWriteCount += 1;
+	accumulator.lastWriteAt = touchTimestamp(accumulator.lastWriteAt, event.occurred_at);
+	accumulator.lastActivityAt = touchTimestamp(accumulator.lastActivityAt, event.occurred_at);
+
+	if (event.status === 'succeeded') {
+		accumulator.successfulWriteCount += 1;
+	} else if (event.status === 'failed') {
+		accumulator.failedWriteCount += 1;
+	}
+
+	if (event.project_id) {
+		accumulator.projectIds.add(event.project_id);
+	}
+
+	accumulator.recentActivity.push(event);
+
+	for (const { period, ms } of USAGE_PERIODS) {
+		if (Number.isNaN(timestampMs) || now - timestampMs > ms) continue;
+		const trend = accumulator.trends.get(period);
+		if (!trend) continue;
+		trend.write_count += 1;
+		if (event.status === 'succeeded') {
+			trend.successful_write_count += 1;
+		} else if (event.status === 'failed') {
+			trend.failed_write_count += 1;
+		}
+		if (event.project_id) {
+			trend.projectIds.add(event.project_id);
+		}
+	}
 }
 
 export class CallerProvisioningError extends Error {
@@ -301,6 +631,9 @@ export class CallerProvisioningService {
 		const buildosAgent = await ensureUserBuildosAgent(this.admin, userId);
 		const visibleProjects = await this.loadVisibleProjects(userId);
 		const visibleProjectIds = new Set(visibleProjects.map((project) => project.id));
+		const visibleProjectNames = new Map(
+			visibleProjects.map((project) => [project.id, project.name])
+		);
 		const { data, error } = await this.admin
 			.from('external_agent_callers')
 			.select('*')
@@ -315,14 +648,21 @@ export class CallerProvisioningService {
 			);
 		}
 
+		const callerRecords = (data ?? []) as ExternalAgentCallerRecord[];
+		const usageByCallerId = await this.loadUsageForCallers(
+			userId,
+			callerRecords,
+			visibleProjectNames
+		);
+
 		return {
 			buildos_agent: {
 				id: buildosAgent.id,
 				handle: buildosAgent.agent_handle,
 				status: buildosAgent.status
 			},
-			callers: ((data ?? []) as ExternalAgentCallerRecord[]).map((caller) =>
-				mapCallerSummary(caller, visibleProjectIds)
+			callers: callerRecords.map((caller) =>
+				mapCallerSummary(caller, visibleProjectIds, usageByCallerId.get(caller.id))
 			),
 			available_projects: visibleProjects.map((project) => ({
 				id: project.id,
@@ -411,5 +751,78 @@ export class CallerProvisioningService {
 	private async loadVisibleProjects(userId: string) {
 		const actorId = await ensureActorId(this.admin, userId);
 		return fetchProjectSummaries(this.admin, actorId);
+	}
+
+	private async loadUsageForCallers(
+		userId: string,
+		callers: ExternalAgentCallerRecord[],
+		projectNameById: Map<string, string>
+	): Promise<Map<string, BuildosAgentCallerUsageSummary>> {
+		const usageByCallerId = new Map<string, UsageAccumulator>(
+			callers.map((caller) => [caller.id, createUsageAccumulator(caller)])
+		);
+		const callerIds = callers.map((caller) => caller.id);
+
+		if (callerIds.length === 0) {
+			return new Map();
+		}
+
+		const [sessionsResult, executionsResult] = await Promise.all([
+			this.admin
+				.from('agent_call_sessions')
+				.select('id, external_agent_caller_id, status, started_at, ended_at, updated_at')
+				.eq('user_id', userId)
+				.in('external_agent_caller_id', callerIds)
+				.order('started_at', { ascending: false })
+				.limit(500),
+			this.admin
+				.from('agent_call_tool_executions')
+				.select(
+					'id, agent_call_session_id, external_agent_caller_id, user_id, op, status, args, response_payload, error_payload, entity_kind, entity_id, started_at, completed_at, created_at, updated_at'
+				)
+				.eq('user_id', userId)
+				.in('external_agent_caller_id', callerIds)
+				.order('created_at', { ascending: false })
+				.limit(500)
+		]);
+
+		if (sessionsResult.error) {
+			console.warn('[CallerProvisioningService] Failed to load agent call sessions usage', {
+				userId,
+				error: sessionsResult.error
+			});
+		} else {
+			for (const session of (sessionsResult.data ?? []) as Array<
+				Pick<
+					AgentCallSessionRecord,
+					'external_agent_caller_id' | 'started_at' | 'updated_at'
+				>
+			>) {
+				const accumulator = usageByCallerId.get(session.external_agent_caller_id);
+				if (!accumulator) continue;
+				addSessionToUsage(accumulator, session);
+			}
+		}
+
+		if (executionsResult.error) {
+			console.warn('[CallerProvisioningService] Failed to load agent tool usage', {
+				userId,
+				error: executionsResult.error
+			});
+		} else {
+			for (const execution of (executionsResult.data ??
+				[]) as AgentCallToolExecutionUsageRow[]) {
+				const accumulator = usageByCallerId.get(execution.external_agent_caller_id);
+				if (!accumulator) continue;
+				addExecutionToUsage(accumulator, execution, projectNameById);
+			}
+		}
+
+		return new Map(
+			Array.from(usageByCallerId.entries()).map(([callerId, accumulator]) => [
+				callerId,
+				finalizeUsageAccumulator(accumulator)
+			])
+		);
 	}
 }

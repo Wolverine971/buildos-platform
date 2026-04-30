@@ -51,7 +51,8 @@ export interface GoalReverseContext {
 export async function loadGoalReverseContext(
 	supabase: SupabaseClient<Database>,
 	userId: string,
-	goalId: string
+	goalId: string,
+	requiredAccess: 'read' | 'write' | 'admin' = 'read'
 ): Promise<GoalReverseContext> {
 	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
 		p_user_id: userId
@@ -94,7 +95,20 @@ export async function loadGoalReverseContext(
 		throw new GoalReverseContextError('PROJECT_NOT_FOUND');
 	}
 
-	if (projectRow.created_by !== actorId) {
+	const { data: hasAccess, error: accessError } = await supabase.rpc(
+		'current_actor_has_project_access',
+		{
+			p_project_id: projectRow.id,
+			p_required_access: requiredAccess
+		}
+	);
+
+	if (accessError) {
+		console.error('[Goal Reverse] Failed to check project access:', accessError);
+		throw new GoalReverseContextError('CONTEXT_LOAD_FAILED');
+	}
+
+	if (!hasAccess) {
 		throw new GoalReverseContextError('FORBIDDEN');
 	}
 

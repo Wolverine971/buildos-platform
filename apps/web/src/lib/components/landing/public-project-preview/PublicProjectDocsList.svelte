@@ -45,7 +45,9 @@
 >
 	<header class="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/40">
 		<div class="flex items-center gap-2">
-			<div class="h-7 w-7 rounded-md bg-sky-500/10 border border-sky-500/20 flex items-center justify-center">
+			<div
+				class="h-7 w-7 rounded-md bg-sky-500/10 border border-sky-500/20 flex items-center justify-center"
+			>
 				<FileText class="w-3.5 h-3.5 text-sky-500" />
 			</div>
 			<div>
@@ -81,7 +83,9 @@
 								</span>
 							</div>
 							{#if snippet}
-								<p class="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2">
+								<p
+									class="mt-1 text-xs text-muted-foreground leading-relaxed line-clamp-2"
+								>
 									{snippet}
 								</p>
 							{/if}

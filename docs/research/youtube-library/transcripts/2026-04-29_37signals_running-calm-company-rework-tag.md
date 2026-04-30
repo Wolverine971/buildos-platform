@@ -18,6 +18,7 @@ public_article: ''
 indexed_date: '2026-04-29'
 last_reviewed: '2026-04-29'
 transcribed_date: '2026-04-29'
+path: docs/research/youtube-library/transcripts/2026-04-29_37signals_running-calm-company-rework-tag.md
 ---
 
 # REWORK Podcast — Running a Calm Company

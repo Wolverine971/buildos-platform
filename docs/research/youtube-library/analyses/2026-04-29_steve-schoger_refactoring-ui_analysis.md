@@ -65,37 +65,37 @@ Polish is not talent — it is **tactics**. A non-designer can take a Bootstrap-
 
 ## TL;DR Rules Table
 
-| #   | Rule                                                | Concrete fix                                                                                         |
-| --- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| 1   | Steal colors and fonts                              | Land-Book, SiteInspire, Dribbble color picker; Tailwind defaults; sample colors from shots you like  |
-| 2   | Use a constrained palette                           | 9–10 shades per single hue (Tailwind-style). Avoid "40 unique text colors and 50 unique backgrounds" |
-| 3   | Hero text needs consistent contrast                 | Add semi-transparent overlay, desaturate + multiply blend a brand color, or pick a negative-space photo |
-| 4   | Don't use grey text on colored backgrounds          | Sample the background, raise saturation/lightness — make text **closer to background**, not grey    |
-| 5   | Use perceived brightness, not lightness             | Rotate hue toward the nearest bright hue (e.g. blue → cyan) instead of dragging lightness            |
-| 6   | Start with too much whitespace, then remove         | Inverse of "add until it stops looking bad" — overshoot, dial back                                   |
-| 7   | Input length should suggest expected content        | A date field should be ~half the size of an address field; make affordances literal                  |
-| 8   | Inputs need 40–48px height                          | Total height = font size + padding. Generous targets read as designed, not default                   |
-| 9   | Off-white inputs on white panels                    | Subtle background creates distinction without a heavy border — fine line "not too much, not disabled" |
-| 10  | Replace browser default form controls               | Custom radios, checkboxes, and select chevrons. Default Safari controls scream "unstyled"             |
-| 11  | Balance weight and contrast                         | Solid icons next to text look heavy → soften icon color so weight perceives as equal                  |
-| 12  | Yellow/green CTAs need dark text, not white         | Invert: dark text on bright background. Saturate the dark text toward the background hue             |
-| 13  | Use multiple shadow levels for z-axis               | Small (buttons/inputs) → medium (dropdowns) → large (panels) → x-large (modals)                      |
-| 14  | Shadows have two parts                              | Tight ambient shadow (small offset, small blur) + soft direct shadow (larger offset, larger blur)    |
-| 15  | Higher elevation → subtler ambient + negative spread | The further the object floats, the more its body covers the direct light                             |
-| 16  | Use color to convey depth                           | Lighter = closer, darker = further. Push tables back with off-white backgrounds                      |
-| 17  | Use fewer borders                                   | Replace borders with: zebra striping, light-grey background blocks, off-white alternates, spacing    |
-| 18  | Headings are labels, not headlines                  | Small, bold, **uppercase**, softer color. Don't let table headers steal attention from data          |
-| 19  | Think outside the database                          | Combine columns, drop redundant labels (1295 with $ is obviously a price), enrich with images        |
-| 20  | Right-align numbers, use tabular figures            | `font-feature-settings: 'tnum'` for column alignment without monospace                               |
-| 21  | Buttons: alternative to outline = soft solid        | Solid background **based on the text color** with low alpha — cleaner than ghost buttons             |
-| 22  | Cards don't need explicit "View" buttons            | Whole card is the affordance (Airbnb, YouTube). Save the click target visual real estate              |
-| 23  | Crop images to fixed aspect ratio                   | `background-size: cover` on a fixed container — defeats messy aspect-ratio mismatch                  |
-| 24  | Use color-coded pills/badges for state              | Soft-tint background + dark text (better contrast than white-on-red)                                 |
-| 25  | Alternate page-section backgrounds                  | Solid color blocks per section beat one big white scroll. Marketing-page pattern                     |
-| 26  | Greys are not pure grey                             | Saturate with blue (cool) or yellow/brown (warm). Bump saturation on the lightest/darkest shades     |
-| 27  | Match grey temperature to brand color               | Cool brand → cool greys. Warm brand → warm greys. Or invert intentionally (Basecamp)                 |
-| 28  | Pick fonts the way you pick colors                  | DevTools-inspect sites you like → look up the foundry → buy the bundle. Don't only browse Google Fonts |
-| 29  | System fonts in product, custom fonts on marketing  | App = San Francisco / system stack. Marketing site = custom personality                              |
+| #   | Rule                                                 | Concrete fix                                                                                            |
+| --- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 1   | Steal colors and fonts                               | Land-Book, SiteInspire, Dribbble color picker; Tailwind defaults; sample colors from shots you like     |
+| 2   | Use a constrained palette                            | 9–10 shades per single hue (Tailwind-style). Avoid "40 unique text colors and 50 unique backgrounds"    |
+| 3   | Hero text needs consistent contrast                  | Add semi-transparent overlay, desaturate + multiply blend a brand color, or pick a negative-space photo |
+| 4   | Don't use grey text on colored backgrounds           | Sample the background, raise saturation/lightness — make text **closer to background**, not grey        |
+| 5   | Use perceived brightness, not lightness              | Rotate hue toward the nearest bright hue (e.g. blue → cyan) instead of dragging lightness               |
+| 6   | Start with too much whitespace, then remove          | Inverse of "add until it stops looking bad" — overshoot, dial back                                      |
+| 7   | Input length should suggest expected content         | A date field should be ~half the size of an address field; make affordances literal                     |
+| 8   | Inputs need 40–48px height                           | Total height = font size + padding. Generous targets read as designed, not default                      |
+| 9   | Off-white inputs on white panels                     | Subtle background creates distinction without a heavy border — fine line "not too much, not disabled"   |
+| 10  | Replace browser default form controls                | Custom radios, checkboxes, and select chevrons. Default Safari controls scream "unstyled"               |
+| 11  | Balance weight and contrast                          | Solid icons next to text look heavy → soften icon color so weight perceives as equal                    |
+| 12  | Yellow/green CTAs need dark text, not white          | Invert: dark text on bright background. Saturate the dark text toward the background hue                |
+| 13  | Use multiple shadow levels for z-axis                | Small (buttons/inputs) → medium (dropdowns) → large (panels) → x-large (modals)                         |
+| 14  | Shadows have two parts                               | Tight ambient shadow (small offset, small blur) + soft direct shadow (larger offset, larger blur)       |
+| 15  | Higher elevation → subtler ambient + negative spread | The further the object floats, the more its body covers the direct light                                |
+| 16  | Use color to convey depth                            | Lighter = closer, darker = further. Push tables back with off-white backgrounds                         |
+| 17  | Use fewer borders                                    | Replace borders with: zebra striping, light-grey background blocks, off-white alternates, spacing       |
+| 18  | Headings are labels, not headlines                   | Small, bold, **uppercase**, softer color. Don't let table headers steal attention from data             |
+| 19  | Think outside the database                           | Combine columns, drop redundant labels (1295 with $ is obviously a price), enrich with images           |
+| 20  | Right-align numbers, use tabular figures             | `font-feature-settings: 'tnum'` for column alignment without monospace                                  |
+| 21  | Buttons: alternative to outline = soft solid         | Solid background **based on the text color** with low alpha — cleaner than ghost buttons                |
+| 22  | Cards don't need explicit "View" buttons             | Whole card is the affordance (Airbnb, YouTube). Save the click target visual real estate                |
+| 23  | Crop images to fixed aspect ratio                    | `background-size: cover` on a fixed container — defeats messy aspect-ratio mismatch                     |
+| 24  | Use color-coded pills/badges for state               | Soft-tint background + dark text (better contrast than white-on-red)                                    |
+| 25  | Alternate page-section backgrounds                   | Solid color blocks per section beat one big white scroll. Marketing-page pattern                        |
+| 26  | Greys are not pure grey                              | Saturate with blue (cool) or yellow/brown (warm). Bump saturation on the lightest/darkest shades        |
+| 27  | Match grey temperature to brand color                | Cool brand → cool greys. Warm brand → warm greys. Or invert intentionally (Basecamp)                    |
+| 28  | Pick fonts the way you pick colors                   | DevTools-inspect sites you like → look up the foundry → buy the bundle. Don't only browse Google Fonts  |
+| 29  | System fonts in product, custom fonts on marketing   | App = San Francisco / system stack. Marketing site = custom personality                                 |
 
 ## Operating Lessons
 
@@ -462,14 +462,14 @@ Pair Schoger with Ryo Lu's "AI knows Shadcn well; your job is to paint over it" 
 
 ### Take, leave, and extend
 
-| Take                                                              | Leave                                                  | Extend with                                                              |
-| ----------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------------------------ |
-| Two-part shadows                                                  | "Use system fonts in product"                          | Josh Comeau on dark mode shadows                                         |
-| Hue rotation for perceived brightness                             | "WCAG can be a Q&A afterthought"                       | WCAG 2.2 AA + Sara Soueidan accessible color                             |
-| Constrained palette + 9-shade scales                              | "CSS blend modes have limited browser support"         | Modern CSS color-mix(), oklch                                            |
-| Start-with-too-much-whitespace heuristic                          | "Always replace borders" (overcorrection in 2026)      | Erik Kennedy on density tuning                                           |
-| Off-white inputs / panels for depth without borders               | —                                                      | shadcn theming patterns                                                  |
-| "Think outside the database"                                      | —                                                      | Don Norman on affordance + Alan Cooper on archetypes                     |
-| Soft-solid secondary buttons derived from text color              | —                                                      | Radix headless primitives + Inkprint button tokens                       |
-| Card-as-clickable-affordance                                      | —                                                      | Apple HIG on touch targets + accessibility focus state                   |
-| Inverse-whitespace algorithm                                      | —                                                      | Calm-software canon (Linear, Things, 37signals) for restraint discipline |
+| Take                                                 | Leave                                             | Extend with                                                              |
+| ---------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------ |
+| Two-part shadows                                     | "Use system fonts in product"                     | Josh Comeau on dark mode shadows                                         |
+| Hue rotation for perceived brightness                | "WCAG can be a Q&A afterthought"                  | WCAG 2.2 AA + Sara Soueidan accessible color                             |
+| Constrained palette + 9-shade scales                 | "CSS blend modes have limited browser support"    | Modern CSS color-mix(), oklch                                            |
+| Start-with-too-much-whitespace heuristic             | "Always replace borders" (overcorrection in 2026) | Erik Kennedy on density tuning                                           |
+| Off-white inputs / panels for depth without borders  | —                                                 | shadcn theming patterns                                                  |
+| "Think outside the database"                         | —                                                 | Don Norman on affordance + Alan Cooper on archetypes                     |
+| Soft-solid secondary buttons derived from text color | —                                                 | Radix headless primitives + Inkprint button tokens                       |
+| Card-as-clickable-affordance                         | —                                                 | Apple HIG on touch targets + accessibility focus state                   |
+| Inverse-whitespace algorithm                         | —                                                 | Calm-software canon (Linear, Things, 37signals) for restraint discipline |

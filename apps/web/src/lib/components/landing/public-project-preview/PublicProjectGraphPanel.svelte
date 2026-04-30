@@ -92,9 +92,13 @@
 <section
 	class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak overflow-hidden"
 >
-	<header class="flex items-center justify-between gap-2 px-4 py-3 border-b border-border bg-muted/40">
+	<header
+		class="flex items-center justify-between gap-2 px-4 py-3 border-b border-border bg-muted/40"
+	>
 		<div class="flex items-center gap-2">
-			<div class="h-7 w-7 rounded-md bg-accent/10 border border-accent/20 flex items-center justify-center">
+			<div
+				class="h-7 w-7 rounded-md bg-accent/10 border border-accent/20 flex items-center justify-center"
+			>
 				<GitBranch class="w-3.5 h-3.5 text-accent" />
 			</div>
 			<div>
@@ -229,9 +233,7 @@
 			</button>
 
 			{#if mobileDetailsExpanded}
-				<div
-					class="max-h-[300px] overflow-y-auto border-t border-border animate-ink-in"
-				>
+				<div class="max-h-[300px] overflow-y-auto border-t border-border animate-ink-in">
 					<NodeDetailsPanelComponent
 						node={selectedNode}
 						onClose={handleCloseDetails}

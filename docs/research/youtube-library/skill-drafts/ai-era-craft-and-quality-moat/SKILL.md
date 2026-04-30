@@ -121,24 +121,24 @@ Delegate aggressively to AI on these. Save human judgment for the ladder above.
 When reviewing a feature, screen, or release, run this five-question filter. The answers determine the craft-investment posture.
 
 1. **Is this a competitive surface — a place users compare us to alternatives?**
-   - Yes → high-craft layer required. AI baseline is a liability.
-   - No → AI baseline acceptable; manual polish optional.
+    - Yes → high-craft layer required. AI baseline is a liability.
+    - No → AI baseline acceptable; manual polish optional.
 
 2. **Is this a first-impression surface — onboarding, landing, brain-dump confirmation, first-day experience?**
-   - Yes → invest disproportionately. The first 30 seconds determine whether the user comes back.
-   - No → prioritize against later surfaces.
+    - Yes → invest disproportionately. The first 30 seconds determine whether the user comes back.
+    - No → prioritize against later surfaces.
 
 3. **Is this an internal admin / low-traffic surface?**
-   - Yes → AI-generated baseline is the right answer. Ship it, move on.
-   - No → escalate to question 4.
+    - Yes → AI-generated baseline is the right answer. Ship it, move on.
+    - No → escalate to question 4.
 
 4. **Does this surface involve user data, trust, money, or privacy?**
-   - Yes → no AI shortcuts. Every state, every error, every confirmation deserves human judgment.
-   - No → use the priority ladder.
+    - Yes → no AI shortcuts. Every state, every error, every confirmation deserves human judgment.
+    - No → use the priority ladder.
 
 5. **Is this surface a candidate for evaluation by users with the highest taste in the category?**
-   - Yes → it _will_ be screenshot-shared. Assume it gets evaluated alongside Linear, Things, Granola. Craft accordingly.
-   - No → standard ladder.
+    - Yes → it _will_ be screenshot-shared. Assume it gets evaluated alongside Linear, Things, Granola. Craft accordingly.
+    - No → standard ladder.
 
 The trap this filter prevents: spending equal craft effort on a billing settings page and the brain-dump flow. They are not equal. The framework forces you to name which is which.
 
@@ -185,10 +185,10 @@ Name these by name in roadmap meetings and pre-launch reviews. They're the speci
 
 Where does your product sit, and where do you want it to sit?
 
-|                       | Low Speed                                     | High Speed                                                          |
-| --------------------- | --------------------------------------------- | ------------------------------------------------------------------- |
-| **High Craft**        | Product moat (Linear, Things, Apple, Granola) | Premium price + small team (Cursor, Linear early, Granola, Stripe) |
-| **Low Craft**         | Dying — no advantage on either axis            | Commoditizes; AI-output baseline; race to the bottom                |
+|                | Low Speed                                     | High Speed                                                         |
+| -------------- | --------------------------------------------- | ------------------------------------------------------------------ |
+| **High Craft** | Product moat (Linear, Things, Apple, Granola) | Premium price + small team (Cursor, Linear early, Granola, Stripe) |
+| **Low Craft**  | Dying — no advantage on either axis           | Commoditizes; AI-output baseline; race to the bottom               |
 
 - **High craft + low speed → product moat.** The Linear / Things 3 / Apple posture. Slow shipping creates anticipation; quality creates word-of-mouth. Sustainable for retention businesses with switching inertia.
 - **High craft + high speed → premium pricing, small team.** The Cursor / Granola / Linear-early posture. Possible only with senior generalists who don't need handoffs. Field's "product builder" team is built for this quadrant.
@@ -201,17 +201,17 @@ The strategic move: pick a quadrant deliberately. Most teams drift toward "low c
 
 Four leaders, four independent vantage points, one consensus.
 
-| Claim                                                  | Saarinen | Field | Wen | Lu  |
-| ------------------------------------------------------ | -------- | ----- | --- | --- |
-| Craft is the moat in the AI era                        | Yes      | Yes   | Yes | Yes |
-| Hire for taste + judgment, not for skills + output     | Yes      | Yes   | Yes | Yes |
-| Roles merge into "product builder"                     | Yes      | Yes   | Yes | Yes |
-| Generic AI output ≠ shipped product                    | Yes      | Yes   | Yes | Yes |
-| Founder-led design at the start scales                 | Yes      | Yes   | —   | Yes |
-| Small teams of generalists beat large teams of specialists | Yes  | Yes   | Yes | Yes |
-| The traditional "discover → mock → iterate" is obsolete | Partial | Yes   | Yes | Yes |
-| Prototype-in-code beats static mocks                   | —        | Yes   | Yes | Yes |
-| Refuse to outsource judgment                           | Yes      | Yes   | Yes | Yes |
+| Claim                                                      | Saarinen | Field | Wen | Lu  |
+| ---------------------------------------------------------- | -------- | ----- | --- | --- |
+| Craft is the moat in the AI era                            | Yes      | Yes   | Yes | Yes |
+| Hire for taste + judgment, not for skills + output         | Yes      | Yes   | Yes | Yes |
+| Roles merge into "product builder"                         | Yes      | Yes   | Yes | Yes |
+| Generic AI output ≠ shipped product                        | Yes      | Yes   | Yes | Yes |
+| Founder-led design at the start scales                     | Yes      | Yes   | —   | Yes |
+| Small teams of generalists beat large teams of specialists | Yes      | Yes   | Yes | Yes |
+| The traditional "discover → mock → iterate" is obsolete    | Partial  | Yes   | Yes | Yes |
+| Prototype-in-code beats static mocks                       | —        | Yes   | Yes | Yes |
+| Refuse to outsource judgment                               | Yes      | Yes   | Yes | Yes |
 
 The four diverge on tactics — Saarinen avoids A/B tests, Field uses evals; Saarinen rejects metric-driven feature goals, Field optimizes time-to-value with telemetry — but they converge on the strategic frame. _Whether_ to bet on craft is settled. _How_ to operate craft is the variable.
 
@@ -219,15 +219,15 @@ The four diverge on tactics — Saarinen avoids A/B tests, Field uses evals; Saa
 
 Both schools are valid; they apply to different categories and audience postures. Naming both lets you pick.
 
-| Dimension              | Craft Moat (Saarinen / Field)                                | Delight Moat (Changuel)                                         |
-| ---------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------- |
-| Quality target         | "Feels right" — door test; perception of judgment            | Joy + surprise; emotion at the heart of the experience           |
-| Where it shines        | B2B power-user retention; trust-driven categories            | Crowded B2C / B2H categories; emotional differentiation needed   |
-| What it forbids        | Engagement features unrelated to the main quest              | Inhumane delight (Mother's Day call notification, etc.)          |
-| Roadmap discipline     | Reduce scope; opinionated defaults; main quest only          | 50-40-10 split (functional / deep delight / surface delight)     |
-| Audience emotion       | Calm, trust, focus; respect for the user's time              | Joy, surprise, belonging                                          |
-| AI posture             | Refuse to outsource judgment; AI as scaffolding only         | Use AI to maintain habituation-fighting cadence (Meet backgrounds) |
-| BuildOS fit            | Strong — anti-feed positioning maps 1:1                      | Weak — would push BuildOS toward confetti                         |
+| Dimension          | Craft Moat (Saarinen / Field)                        | Delight Moat (Changuel)                                            |
+| ------------------ | ---------------------------------------------------- | ------------------------------------------------------------------ |
+| Quality target     | "Feels right" — door test; perception of judgment    | Joy + surprise; emotion at the heart of the experience             |
+| Where it shines    | B2B power-user retention; trust-driven categories    | Crowded B2C / B2H categories; emotional differentiation needed     |
+| What it forbids    | Engagement features unrelated to the main quest      | Inhumane delight (Mother's Day call notification, etc.)            |
+| Roadmap discipline | Reduce scope; opinionated defaults; main quest only  | 50-40-10 split (functional / deep delight / surface delight)       |
+| Audience emotion   | Calm, trust, focus; respect for the user's time      | Joy, surprise, belonging                                           |
+| AI posture         | Refuse to outsource judgment; AI as scaffolding only | Use AI to maintain habituation-fighting cadence (Meet backgrounds) |
+| BuildOS fit        | Strong — anti-feed positioning maps 1:1              | Weak — would push BuildOS toward confetti                          |
 
 The two schools share the same parent: _both_ argue against feature-count-as-strategy. They differ on what fills the gap. For BuildOS, the craft-moat school is the right parent.
 
@@ -245,17 +245,17 @@ The marketing implication: stop hedging the audience. BuildOS is not "a producti
 
 Apply the priority ladder concretely:
 
-| Surface                              | Posture          | Reasoning                                                                |
-| ------------------------------------ | ---------------- | ------------------------------------------------------------------------ |
-| Brain-dump entry + processing        | High-craft       | Competitive surface; first-impression; the thing the brand promises      |
-| Daily brief                          | High-craft       | Competitive surface; the user's daily moment of value                    |
-| Project structuring / context        | High-craft       | The proof of intelligence; users compare against ChatGPT/Notion          |
-| Agentic chat                         | High-craft       | The new surface where taste in AI shows                                  |
-| Calendar sync                        | Hybrid           | Functional surface; AI baseline + manual polish on conflict UX           |
-| Settings / billing                   | AI-baseline      | Internal admin; ship competently and move on                             |
-| Onboarding                           | High-craft       | First-impression surface; disproportionate investment                    |
-| Error states across the product      | High-craft       | Voice + trust signal; cannot be left to AI                               |
-| Marketing site                       | High-craft       | Competitive surface; users compare against Linear, Granola, Things       |
+| Surface                         | Posture     | Reasoning                                                           |
+| ------------------------------- | ----------- | ------------------------------------------------------------------- |
+| Brain-dump entry + processing   | High-craft  | Competitive surface; first-impression; the thing the brand promises |
+| Daily brief                     | High-craft  | Competitive surface; the user's daily moment of value               |
+| Project structuring / context   | High-craft  | The proof of intelligence; users compare against ChatGPT/Notion     |
+| Agentic chat                    | High-craft  | The new surface where taste in AI shows                             |
+| Calendar sync                   | Hybrid      | Functional surface; AI baseline + manual polish on conflict UX      |
+| Settings / billing              | AI-baseline | Internal admin; ship competently and move on                        |
+| Onboarding                      | High-craft  | First-impression surface; disproportionate investment               |
+| Error states across the product | High-craft  | Voice + trust signal; cannot be left to AI                          |
+| Marketing site                  | High-craft  | Competitive surface; users compare against Linear, Granola, Things  |
 
 The trap: spreading craft effort uniformly. The right move: invest disproportionately in the brain-dump → brief → structure pipeline; ship billing/settings at AI-baseline.
 

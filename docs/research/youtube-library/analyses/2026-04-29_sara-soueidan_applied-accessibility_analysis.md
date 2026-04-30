@@ -70,41 +70,41 @@ She frames the work in three planes that the talk circles back to repeatedly:
 
 ## TL;DR Rules Table
 
-| #   | Rule                                                                  | Concrete guideline                                                                                                                            |
-| --- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Semantic HTML before everything                                       | Use the element that describes the content. `<button>` for buttons, `<nav>` for nav, `<main>` for main, `<h1>`–`<h6>` for headings.           |
-| 2   | Use HTML5 landmarks; do not skip them                                 | `<header> <nav> <main> <aside> <footer>`. ~80% of screen-reader users navigate by regions (WebAIM survey).                                    |
-| 3   | Provide a heading for every landmarked region                         | If the design has no visible heading for the main content, add a screen-reader-only `<h1>`. Reference it from `<main>` via `aria-labelledby`. |
-| 4   | Follow heading order; never skip levels                               | Heading levels reflect document structure, not visual size. A small heading is still an `<h1>` if it titles the main section.                 |
-| 5   | A `<div role="button" tabindex="0">` is never as good as a `<button>` | You will rebuild Enter/Space activation, focus order, and accessibility-tree role — badly. Use the native element.                            |
+| #   | Rule                                                                  | Concrete guideline                                                                                                                                       |
+| --- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Semantic HTML before everything                                       | Use the element that describes the content. `<button>` for buttons, `<nav>` for nav, `<main>` for main, `<h1>`–`<h6>` for headings.                      |
+| 2   | Use HTML5 landmarks; do not skip them                                 | `<header> <nav> <main> <aside> <footer>`. ~80% of screen-reader users navigate by regions (WebAIM survey).                                               |
+| 3   | Provide a heading for every landmarked region                         | If the design has no visible heading for the main content, add a screen-reader-only `<h1>`. Reference it from `<main>` via `aria-labelledby`.            |
+| 4   | Follow heading order; never skip levels                               | Heading levels reflect document structure, not visual size. A small heading is still an `<h1>` if it titles the main section.                            |
+| 5   | A `<div role="button" tabindex="0">` is never as good as a `<button>` | You will rebuild Enter/Space activation, focus order, and accessibility-tree role — badly. Use the native element.                                       |
 | 6   | ARIA is a last resort                                                 | "Aria is not there to add functionality to elements. It's only used to add semantic parity with HTML." Adding `role="button"` does not make it a button. |
-| 7   | Inspect the accessibility tree                                        | Chrome DevTools → Accessibility tab. Every interactive element should have a meaningful name and role.                                        |
-| 8   | Hide visually OR from assistive tech, never accidentally both         | Pick the right hiding technique for the job (see hiding-techniques table below).                                                              |
-| 9   | Icon buttons need an accessible name                                  | Use a visually hidden text label, `aria-label`, or `aria-labelledby`. Hide the SVG with `aria-hidden="true"` and `focusable="false"`.         |
-| 10  | Never remove focus indicators                                         | A visible focus state is a WCAG requirement. If you remove the default, you must replace it with something at least as visible.               |
-| 11  | Use `:focus-visible` (with a polyfill) for keyboard-only focus rings  | Show focus on keyboard tabbing, not on mouse click. Use the `focus-visible` polyfill until browser support catches up.                        |
-| 12  | Match focus contrast to the design — but never fall below visible     | Focus rings can be on-brand. They cannot be invisible. Hover and focus styles do not need to match — focus should be more prominent.          |
-| 13  | Hide interactive controls so they remain explorable by touch          | Position absolute + opacity 0, sized 1×1, layered on top of the visual replacement. Never `display:none` or off-canvas.                       |
-| 14  | Use `<object>` for charts you want to make accessible                 | Provides built-in fallback content slot. Add `role="img"`, `aria-label` for the title, `aria-describedby` for the data description.           |
-| 15  | Always provide an alternative text view of charts                     | SVG accessibility support is "highly inconsistent." Don't rely on ARIA-roled SVG alone. Pair the chart with a description or table.           |
-| 16  | Use modal dialogs sparingly; never roll your own                      | "There is no such thing as an accessible CSS-only modal overlay." Use a tested implementation (Soueidan recommends Scott O'Hara's).           |
-| 17  | Use `tabindex="-1"` to remove things from the tab order               | Especially `<object>`/iframe-like embeds that trap focus. Never use positive `tabindex` values — they break the natural tab order.            |
-| 18  | `<svg focusable="false">` to prevent IE/legacy double tab stops       | Older IE/Edge made `<svg>` elements focusable by default. Set `focusable="false"` to keep tab order clean.                                    |
-| 19  | Test with the Rotor (or NVDA/JAWS equivalents)                        | If your headings list is empty, your landmarks are missing, or your icon button announces "group," your structure is broken.                  |
-| 20  | Test with the keyboard                                                | Tab through every screen. If you can't reach a control, or you can't see where you are, the screen is not accessible.                         |
+| 7   | Inspect the accessibility tree                                        | Chrome DevTools → Accessibility tab. Every interactive element should have a meaningful name and role.                                                   |
+| 8   | Hide visually OR from assistive tech, never accidentally both         | Pick the right hiding technique for the job (see hiding-techniques table below).                                                                         |
+| 9   | Icon buttons need an accessible name                                  | Use a visually hidden text label, `aria-label`, or `aria-labelledby`. Hide the SVG with `aria-hidden="true"` and `focusable="false"`.                    |
+| 10  | Never remove focus indicators                                         | A visible focus state is a WCAG requirement. If you remove the default, you must replace it with something at least as visible.                          |
+| 11  | Use `:focus-visible` (with a polyfill) for keyboard-only focus rings  | Show focus on keyboard tabbing, not on mouse click. Use the `focus-visible` polyfill until browser support catches up.                                   |
+| 12  | Match focus contrast to the design — but never fall below visible     | Focus rings can be on-brand. They cannot be invisible. Hover and focus styles do not need to match — focus should be more prominent.                     |
+| 13  | Hide interactive controls so they remain explorable by touch          | Position absolute + opacity 0, sized 1×1, layered on top of the visual replacement. Never `display:none` or off-canvas.                                  |
+| 14  | Use `<object>` for charts you want to make accessible                 | Provides built-in fallback content slot. Add `role="img"`, `aria-label` for the title, `aria-describedby` for the data description.                      |
+| 15  | Always provide an alternative text view of charts                     | SVG accessibility support is "highly inconsistent." Don't rely on ARIA-roled SVG alone. Pair the chart with a description or table.                      |
+| 16  | Use modal dialogs sparingly; never roll your own                      | "There is no such thing as an accessible CSS-only modal overlay." Use a tested implementation (Soueidan recommends Scott O'Hara's).                      |
+| 17  | Use `tabindex="-1"` to remove things from the tab order               | Especially `<object>`/iframe-like embeds that trap focus. Never use positive `tabindex` values — they break the natural tab order.                       |
+| 18  | `<svg focusable="false">` to prevent IE/legacy double tab stops       | Older IE/Edge made `<svg>` elements focusable by default. Set `focusable="false"` to keep tab order clean.                                               |
+| 19  | Test with the Rotor (or NVDA/JAWS equivalents)                        | If your headings list is empty, your landmarks are missing, or your icon button announces "group," your structure is broken.                             |
+| 20  | Test with the keyboard                                                | Tab through every screen. If you can't reach a control, or you can't see where you are, the screen is not accessible.                                    |
 
 ### Hiding-techniques table (Soueidan's full taxonomy)
 
-| Technique                             | Hidden visually? | Hidden from assistive tech? | When to use                                                                              |
-| ------------------------------------- | ---------------- | --------------------------- | ---------------------------------------------------------------------------------------- |
-| `display: none`                       | Yes              | Yes                         | Element should not exist for any user. Removed from DOM and a11y tree.                   |
-| `visibility: hidden`                  | Yes              | Yes                         | Same as `display:none` for a11y; preserves layout space.                                 |
-| `hidden` attribute (HTML5)            | Yes              | Yes                         | Equivalent of `display:none`. Useful when CSS is disabled (reader mode, Pocket, Safari Reader). |
-| `aria-hidden="true"`                  | No               | Yes                         | Hide decorative or duplicative content from screen readers. Common on icon SVGs inside labelled buttons. |
-| `focusable="false"` (on SVG)          | No               | No                          | Removes the SVG from keyboard tab order in legacy IE/Edge. Pair with `aria-hidden`.      |
-| `.sr-only` (clip + 1×1 + absolute)    | Yes              | No                          | Provide names/labels for screen-reader users only — headings, icon-button labels.        |
-| `tabindex="-1"`                       | No               | No                          | Removes from the tab order; still scriptable focusable via `.focus()`.                   |
-| `position:absolute; opacity:0; w/h:1px` (with overlay) | Yes | No                          | Hide native `<input>` while keeping it explorable by touch. Layer it on top of the visual replacement. |
+| Technique                                              | Hidden visually? | Hidden from assistive tech? | When to use                                                                                              |
+| ------------------------------------------------------ | ---------------- | --------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `display: none`                                        | Yes              | Yes                         | Element should not exist for any user. Removed from DOM and a11y tree.                                   |
+| `visibility: hidden`                                   | Yes              | Yes                         | Same as `display:none` for a11y; preserves layout space.                                                 |
+| `hidden` attribute (HTML5)                             | Yes              | Yes                         | Equivalent of `display:none`. Useful when CSS is disabled (reader mode, Pocket, Safari Reader).          |
+| `aria-hidden="true"`                                   | No               | Yes                         | Hide decorative or duplicative content from screen readers. Common on icon SVGs inside labelled buttons. |
+| `focusable="false"` (on SVG)                           | No               | No                          | Removes the SVG from keyboard tab order in legacy IE/Edge. Pair with `aria-hidden`.                      |
+| `.sr-only` (clip + 1×1 + absolute)                     | Yes              | No                          | Provide names/labels for screen-reader users only — headings, icon-button labels.                        |
+| `tabindex="-1"`                                        | No               | No                          | Removes from the tab order; still scriptable focusable via `.focus()`.                                   |
+| `position:absolute; opacity:0; w/h:1px` (with overlay) | Yes              | No                          | Hide native `<input>` while keeping it explorable by touch. Layer it on top of the visual replacement.   |
 
 ## Operating Lessons
 
@@ -186,19 +186,32 @@ The full focus playbook:
 
     ```css
     /* All focus gets the default style as a baseline */
-    button:focus { outline: 2px solid orange; }
+    button:focus {
+    	outline: 2px solid orange;
+    }
     /* Browsers that support :focus-visible undo it for non-keyboard focus */
-    button:focus:not(:focus-visible) { outline: none; }
+    button:focus:not(:focus-visible) {
+    	outline: none;
+    }
     /* And get a richer style for keyboard focus only */
-    button:focus-visible { outline: 3px solid orange; box-shadow: 0 0 0 4px rgba(255,165,0,.3); }
+    button:focus-visible {
+    	outline: 3px solid orange;
+    	box-shadow: 0 0 0 4px rgba(255, 165, 0, 0.3);
+    }
     ```
 
 5. **Polyfill version uses a class:**
 
     ```css
-    button:focus { outline: 2px solid orange; }
-    button:focus:not(.focus-visible) { outline: none; }
-    button.focus-visible { outline: 3px solid orange; }
+    button:focus {
+    	outline: 2px solid orange;
+    }
+    button:focus:not(.focus-visible) {
+    	outline: none;
+    }
+    button.focus-visible {
+    	outline: 3px solid orange;
+    }
     ```
 
     Soueidan flags a real-world bug she hit: defining both `:focus-visible` and `.focus-visible` in the same rule causes browsers without native support to ignore the entire declaration block, breaking the polyfill. **Separate the two declarations.**
@@ -244,14 +257,18 @@ The accessibility scaffolding she layered on:
 Final markup pattern:
 
 ```html
-<object data="chart.svg" role="img" tabindex="-1"
-        aria-label="Math usage in Long Beach"
-        aria-describedby="chart-desc">
-  <!-- visible only if the SVG fails to load -->
-  Math usage in Long Beach: 14,000 students used Khan Academy in 2018, up from 9,000 in 2017…
+<object
+	data="chart.svg"
+	role="img"
+	tabindex="-1"
+	aria-label="Math usage in Long Beach"
+	aria-describedby="chart-desc"
+>
+	<!-- visible only if the SVG fails to load -->
+	Math usage in Long Beach: 14,000 students used Khan Academy in 2018, up from 9,000 in 2017…
 </object>
 <p id="chart-desc" class="sr-only">
-  14,000 students used Khan Academy in 2018, up from 9,000 in 2017…
+	14,000 students used Khan Academy in 2018, up from 9,000 in 2017…
 </p>
 ```
 
@@ -268,15 +285,15 @@ Soueidan dedicates a whole section to this because the wrong choice is the most 
 
     ```css
     .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
+    	position: absolute;
+    	width: 1px;
+    	height: 1px;
+    	padding: 0;
+    	margin: -1px;
+    	overflow: hidden;
+    	clip: rect(0, 0, 0, 0);
+    	white-space: nowrap;
+    	border: 0;
     }
     ```
 
@@ -351,11 +368,13 @@ The same rule applies to **any interactive element you visually replace**: file 
 A reviewer-grade walkthrough an agent or developer should run on every screen before shipping. The **Soueidan front-end version** — pair with the Heydon Pickering "component canon" view to cover both screen audits and component primitives.
 
 **Document structure**
+
 - [ ] Page has a `<main>` with at least one heading; every landmark (`<header>`, `<nav>`, `<aside>`, `<footer>`) is semantic, not a generic wrapper.
 - [ ] Heading order descends without skipping; levels reflect document structure, not visual size.
 - [ ] Visually-absent region headings are provided via `.sr-only` and wired with `aria-labelledby`.
 
 **Interactive elements**
+
 - [ ] Every clickable thing is a `<button>` or `<a>`, not a `<div>` with handlers.
 - [ ] Every form input has a `<label>` (or `aria-labelledby`); icon-only buttons have an accessible name.
 - [ ] Decorative SVGs have `aria-hidden="true"` and `focusable="false"`.
@@ -363,11 +382,13 @@ A reviewer-grade walkthrough an agent or developer should run on every screen be
 - [ ] No positive `tabindex` values anywhere.
 
 **Focus management**
+
 - [ ] Tab visits every interactive element in a sensible order with a clearly visible indicator in both light and dark modes.
 - [ ] `:focus-visible` is used so focus rings appear on keyboard but not on mouse click; focus contrast ≥ 3:1 (WCAG 2.4.11).
 - [ ] Modals: focus moves in on open, traps inside, Escape closes, focus restores to the trigger.
 
 **Color, contrast, hidden content, dynamic content, media, testing**
+
 - [ ] Contrast: body text ≥ 4.5:1 (WCAG AA); large text + UI components + focus indicators ≥ 3:1. Verify with WebAIM contrast checker, axe, Stark, Polypane.
 - [ ] Each hidden element uses the technique matching intent; no interactive control is off-canvas or shrunk so small it can't be touched; native inputs are layered on top of their visual replacements.
 - [ ] Async updates use `aria-live="polite"`; loading/save/error states are announced; errors are associated via `aria-describedby` + `aria-invalid="true"`.
@@ -407,7 +428,7 @@ Inkprint should encode these rules as token-level decisions so individual compon
 These screens are the highest concentration of interactive controls in BuildOS. The Soueidan rules to apply:
 
 - Every input has a visible `<label>` (or a visually hidden one wired via `for`/`id`).
-- Required fields use `aria-required="true"` AND a visible "*" or "required" label.
+- Required fields use `aria-required="true"` AND a visible "\*" or "required" label.
 - Error states use `aria-invalid="true"` AND associate the error message via `aria-describedby` so the screen reader announces the error when focus enters the field.
 - Success/save announcements use a polite live region — when "Brain dump saved" appears, it should be announced to assistive tech.
 - Multi-step flows (project create → tasks → context) should announce step transitions; focus should move to the new step's heading when the step changes.

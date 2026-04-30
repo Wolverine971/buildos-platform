@@ -456,13 +456,13 @@ These three remain the highest-leverage next research pull.
 
 Several of the 2026-04-29 sources cross over into other category indexes. Tracked here so the trail is complete:
 
-| Source                               | Also Stacked Into                                                                                                               |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| April Dunford                        | [PRODUCT_STRATEGY: Positioning for crowded categories](./PRODUCT_STRATEGY.md) (new combo, ready-to-draft)<br>[SALES_AND_GROWTH: Offer-to-call funnel diagnosis](./SALES_AND_GROWTH.md) (existing combo, advanced to ready-to-draft) |
-| Marty Neumeier                       | [PRODUCT_STRATEGY: Positioning for crowded categories](./PRODUCT_STRATEGY.md) (new combo)<br>[PRODUCT_STRATEGY: Category and strategic narrative](./PRODUCT_STRATEGY.md) (new combo, needs-synthesis) |
-| Mike Cessario                        | [PRODUCT_STRATEGY: Positioning for crowded categories](./PRODUCT_STRATEGY.md) and [Category and strategic narrative](./PRODUCT_STRATEGY.md) |
-| DHH / 37signals                      | [PRODUCT_STRATEGY: Category and strategic narrative](./PRODUCT_STRATEGY.md) (new combo)<br>[FOUNDER_OPS_AND_CAREER: Solo founder operating system](./FOUNDER_OPS_AND_CAREER.md) (new combo, ready-to-draft) |
-| Justin Welsh                         | [FOUNDER_OPS_AND_CAREER: Solo founder operating system](./FOUNDER_OPS_AND_CAREER.md) (new combo)                                |
-| Tyler Denk                           | [FOUNDER_OPS_AND_CAREER: Solo founder operating system](./FOUNDER_OPS_AND_CAREER.md) (new combo)                                |
+| Source          | Also Stacked Into                                                                                                                                                                                                                   |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| April Dunford   | [PRODUCT_STRATEGY: Positioning for crowded categories](./PRODUCT_STRATEGY.md) (new combo, ready-to-draft)<br>[SALES_AND_GROWTH: Offer-to-call funnel diagnosis](./SALES_AND_GROWTH.md) (existing combo, advanced to ready-to-draft) |
+| Marty Neumeier  | [PRODUCT_STRATEGY: Positioning for crowded categories](./PRODUCT_STRATEGY.md) (new combo)<br>[PRODUCT_STRATEGY: Category and strategic narrative](./PRODUCT_STRATEGY.md) (new combo, needs-synthesis)                               |
+| Mike Cessario   | [PRODUCT_STRATEGY: Positioning for crowded categories](./PRODUCT_STRATEGY.md) and [Category and strategic narrative](./PRODUCT_STRATEGY.md)                                                                                         |
+| DHH / 37signals | [PRODUCT_STRATEGY: Category and strategic narrative](./PRODUCT_STRATEGY.md) (new combo)<br>[FOUNDER_OPS_AND_CAREER: Solo founder operating system](./FOUNDER_OPS_AND_CAREER.md) (new combo, ready-to-draft)                         |
+| Justin Welsh    | [FOUNDER_OPS_AND_CAREER: Solo founder operating system](./FOUNDER_OPS_AND_CAREER.md) (new combo)                                                                                                                                    |
+| Tyler Denk      | [FOUNDER_OPS_AND_CAREER: Solo founder operating system](./FOUNDER_OPS_AND_CAREER.md) (new combo)                                                                                                                                    |
 
 The [PRODUCT_STRATEGY_GAP_AUDIT](./PRODUCT_STRATEGY_GAP_AUDIT.md) and [FOUNDER_OPS_AND_CAREER_GAP_AUDIT](./FOUNDER_OPS_AND_CAREER_GAP_AUDIT.md) have been updated to reflect these cross-index placements.

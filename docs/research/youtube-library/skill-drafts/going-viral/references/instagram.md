@@ -2,7 +2,7 @@
 
 # Instagram — Going Viral Reference
 
-Read this file when working on Instagram specifically. The cross-platform `SKILL.md` covers the universal layer; `references/tiktok.md` covers most short-form vertical mechanics that apply to Reels too. **This file covers what's *different* on Instagram in 2025/2026** — three new ranking signals confirmed by Mosseri, the trial-reels feature, the December 2025 "raw real human content" priority shift, and the Reels-vs-carousel format trade-off that has no equivalent on TikTok.
+Read this file when working on Instagram specifically. The cross-platform `SKILL.md` covers the universal layer; `references/tiktok.md` covers most short-form vertical mechanics that apply to Reels too. **This file covers what's _different_ on Instagram in 2025/2026** — three new ranking signals confirmed by Mosseri, the trial-reels feature, the December 2025 "raw real human content" priority shift, and the Reels-vs-carousel format trade-off that has no equivalent on TikTok.
 
 ## Read me first
 
@@ -60,11 +60,11 @@ Both surfaces use the same primary signals; DM shares are what tip a post into u
 
 ## Brock Johnson's three-strategy framework
 
-From *How to grow on Instagram in 2025* (Creator Science #243), Brock Johnson's three core strategies:
+From _How to grow on Instagram in 2025_ (Creator Science #243), Brock Johnson's three core strategies:
 
 **1. Niche down.**
 
-Specificity turns casual scrollers into loyal, paying super-fans. The "audience matching" discipline (Kallaway *Misunderstood*) is even more decisive on Instagram in 2025 because the multi-algorithm setup punishes off-niche posts in subsequent distribution.
+Specificity turns casual scrollers into loyal, paying super-fans. The "audience matching" discipline (Kallaway _Misunderstood_) is even more decisive on Instagram in 2025 because the multi-algorithm setup punishes off-niche posts in subsequent distribution.
 
 Brock's hook-time math: he reportedly spends **80% of his time, energy, and effort on the hook** — the first sentence or two of the video — because the hook is absolutely everything in short-form content. (Echoes Kallaway: "the hook is the 80/20 of short-form video.")
 
@@ -96,16 +96,16 @@ Mosseri's framing: 2026 will prioritize content that reads as "raw, real, human"
 
 **Strategic implication:** if a creator's workflow involves AI scripting or AI image generation, the 2026 algorithm shift may invert their past performance. Lean into founder-voice authenticity, scrappy founder-shot footage, and human imperfection.
 
-> **TODO:** Pull Mosseri's *Secrets of the Algorithm* full interview content from ([video](https://www.youtube.com/watch?v=96iwtsFbvpg)) once YouTube rate-limit clears.
+> **TODO:** Pull Mosseri's _Secrets of the Algorithm_ full interview content from ([video](https://www.youtube.com/watch?v=96iwtsFbvpg)) once YouTube rate-limit clears.
 
 ## Reels vs. carousels — when to choose what
 
-| Format | Best for | Hook physics | Engagement weight |
-|---|---|---|---|
-| **Reels (vertical video, 15–60s)** | Personality, storytelling, demos, humor, motion-heavy ideas | First 3 seconds critical; visual sandwich applies | Watch time + DM shares + likes-per-reach |
-| **Carousels (1:1 multi-slide images)** | Frameworks, education, before/after, deep dives | Slide 1 is the hook (4–6 word title-card) | Saves + shares + dwell time per slide |
-| **Single image** | Aesthetics, branded statement, photo journalism | Image as standalone composition | Likes + saves; lower reach ceiling |
-| **Stories** | Behind-the-scenes, polls, link drops, casual community | First frame is the hook | Replies + DMs (highest signal); 24-hour window |
+| Format                                 | Best for                                                    | Hook physics                                      | Engagement weight                              |
+| -------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------- | ---------------------------------------------- |
+| **Reels (vertical video, 15–60s)**     | Personality, storytelling, demos, humor, motion-heavy ideas | First 3 seconds critical; visual sandwich applies | Watch time + DM shares + likes-per-reach       |
+| **Carousels (1:1 multi-slide images)** | Frameworks, education, before/after, deep dives             | Slide 1 is the hook (4–6 word title-card)         | Saves + shares + dwell time per slide          |
+| **Single image**                       | Aesthetics, branded statement, photo journalism             | Image as standalone composition                   | Likes + saves; lower reach ceiling             |
+| **Stories**                            | Behind-the-scenes, polls, link drops, casual community      | First frame is the hook                           | Replies + DMs (highest signal); 24-hour window |
 
 **Decision rule:**
 
@@ -195,8 +195,8 @@ For BuildOS founder content specifically:
 - Brock Johnson three strategies (niche down + hyper-consistency + trial reels) + 80% on hook: Creator Science #243 ([video](https://www.youtube.com/watch?v=N1ozk6TTdwU)) — TODO: full transcript pending YouTube rate-limit
 - Adam Mosseri direct interview: ([video](https://www.youtube.com/watch?v=96iwtsFbvpg)) — TODO: full transcript pending
 - Brock Johnson on Mosseri direct: ([video](https://www.youtube.com/watch?v=-Qi9-ZT1_GE)) — TODO: full transcript pending
-- Hook archetype catalog: Kallaway *100 Viral Hooks* analysis
-- Visual → audio → visual sandwich: Kallaway *100 Viral Hooks* analysis
-- Killer-script structure: Kallaway *Killer Script* analysis
-- Audience-matching discipline: Kallaway *Misunderstood* + *Social Algorithms* analyses
-- Six-checkpoint psychology gate: Kallaway *18 Psychology Tricks* analysis
+- Hook archetype catalog: Kallaway _100 Viral Hooks_ analysis
+- Visual → audio → visual sandwich: Kallaway _100 Viral Hooks_ analysis
+- Killer-script structure: Kallaway _Killer Script_ analysis
+- Audience-matching discipline: Kallaway _Misunderstood_ + _Social Algorithms_ analyses
+- Six-checkpoint psychology gate: Kallaway _18 Psychology Tricks_ analysis

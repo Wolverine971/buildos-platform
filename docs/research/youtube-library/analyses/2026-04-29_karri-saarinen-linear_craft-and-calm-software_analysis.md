@@ -4,39 +4,39 @@ source_type: youtube_analysis
 video_id: '4muxFVZ4XfM'
 url: 'https://www.youtube.com/watch?v=4muxFVZ4XfM'
 additional_video_ids:
-  - 'pCil7YNhNCU'
-  - 'R1bwdtQL5uU'
+    - 'pCil7YNhNCU'
+    - 'R1bwdtQL5uU'
 sources:
-  - role: primary
-    type: youtube
-    title: "Inside Linear: Building with taste, craft, and focus | Karri Saarinen (co-founder, designer, CEO)"
-    channel: "Lenny's Podcast"
-    url: 'https://www.youtube.com/watch?v=4muxFVZ4XfM'
-    transcript: 'docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_inside-linear-craft-focus.md'
-  - role: keynote
-    type: youtube
-    title: "Config 2025: Crafting quality that endures (Karri Saarinen, Linear)"
-    channel: 'Figma'
-    url: 'https://www.youtube.com/watch?v=pCil7YNhNCU'
-    transcript: 'docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_config-2025-crafting-quality.md'
-  - role: values
-    type: youtube
-    title: 'Karri Saarinen (Linear) – Conversations on Quality (Episode 02)'
-    channel: 'Linear'
-    url: 'https://www.youtube.com/watch?v=R1bwdtQL5uU'
-    transcript: 'docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_conversations-on-quality.md'
-  - role: tenets
-    type: article
-    title: "Karri Saarinen's 10 Rules for Crafting Products That Stand Out"
-    publication: Figma Blog
-    url: 'https://www.figma.com/blog/karri-saarinens-10-rules-for-crafting-products-that-stand-out/'
-    transcript: 'docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_10-rules-figma-blog.md'
-  - role: essay
-    type: article
-    title: 'Why is Quality So Rare?'
-    publication: Linear (linear.app/now)
-    url: 'https://linear.app/now/why-is-quality-so-rare'
-    transcript: 'docs/research/youtube-library/transcripts/2026-04-29_linear_why-is-quality-so-rare.md'
+    - role: primary
+      type: youtube
+      title: 'Inside Linear: Building with taste, craft, and focus | Karri Saarinen (co-founder, designer, CEO)'
+      channel: "Lenny's Podcast"
+      url: 'https://www.youtube.com/watch?v=4muxFVZ4XfM'
+      transcript: 'docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_inside-linear-craft-focus.md'
+    - role: keynote
+      type: youtube
+      title: 'Config 2025: Crafting quality that endures (Karri Saarinen, Linear)'
+      channel: 'Figma'
+      url: 'https://www.youtube.com/watch?v=pCil7YNhNCU'
+      transcript: 'docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_config-2025-crafting-quality.md'
+    - role: values
+      type: youtube
+      title: 'Karri Saarinen (Linear) – Conversations on Quality (Episode 02)'
+      channel: 'Linear'
+      url: 'https://www.youtube.com/watch?v=R1bwdtQL5uU'
+      transcript: 'docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_conversations-on-quality.md'
+    - role: tenets
+      type: article
+      title: "Karri Saarinen's 10 Rules for Crafting Products That Stand Out"
+      publication: Figma Blog
+      url: 'https://www.figma.com/blog/karri-saarinens-10-rules-for-crafting-products-that-stand-out/'
+      transcript: 'docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_10-rules-figma-blog.md'
+    - role: essay
+      type: article
+      title: 'Why is Quality So Rare?'
+      publication: Linear (linear.app/now)
+      url: 'https://linear.app/now/why-is-quality-so-rare'
+      transcript: 'docs/research/youtube-library/transcripts/2026-04-29_linear_why-is-quality-so-rare.md'
 channel: "Lenny's Podcast / Figma / Linear"
 analyzed_date: '2026-04-29'
 analyzed_by: Claude (Opus 4.7, 1M ctx)
@@ -56,16 +56,17 @@ indexed_date: '2026-04-29'
 last_reviewed: '2026-04-29'
 transcribed_date: '2026-04-29'
 tags:
-  - calm-software
-  - craft
-  - quality
-  - opinionated-design
-  - design-leadership
-  - linear
-  - karri-saarinen
-  - anti-feed
-  - buildos-positioning
-  - product-and-design
+    - calm-software
+    - craft
+    - quality
+    - opinionated-design
+    - design-leadership
+    - linear
+    - karri-saarinen
+    - anti-feed
+    - buildos-positioning
+    - product-and-design
+path: docs/research/youtube-library/analyses/2026-04-29_karri-saarinen-linear_craft-and-calm-software_analysis.md
 ---
 
 # Karri Saarinen / Linear — Craft, Quality, And Calm Software (Consolidated Analysis)
@@ -82,13 +83,13 @@ tags:
 
 ## Source Stack
 
-| Role     | Source                                                            | Format         | Notes                                                                                                                       |
-| -------- | ----------------------------------------------------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| Primary  | _Inside Linear_ (Lenny's Podcast, 2023, ~100 min, 4muxFVZ4XfM)    | YouTube        | The deepest single source. Operating model end-to-end: design reviews, cycles, no-PM, no-A/B, hiring, growth.               |
-| Keynote  | _Crafting quality that endures_ (Config 2025, ~20 min, pCil7YNhNCU) | YouTube        | Saarinen's strongest public statement of the calm-software / craft-cycle thesis. Includes the Calkins 1927 reference.       |
-| Values   | _Conversations on Quality, Ep. 02_ (Linear, ~15 min, R1bwdtQL5uU) | YouTube        | The Linear values doc, told as a story: trust, intuition, customer focus, purpose-built, quality, inspire.                  |
-| Tenets   | _10 Rules for Crafting Products That Stand Out_ (Figma blog)      | Article        | The most condensed list of operating rules — the "10 rules" all five sources point at from different angles.                |
-| Essay    | _Why is Quality So Rare?_ (linear.app/now)                        | Article        | The published essay version of the Config talk — the craft cycle, the AI shift, the framework, the choice.                  |
+| Role    | Source                                                              | Format  | Notes                                                                                                                 |
+| ------- | ------------------------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| Primary | _Inside Linear_ (Lenny's Podcast, 2023, ~100 min, 4muxFVZ4XfM)      | YouTube | The deepest single source. Operating model end-to-end: design reviews, cycles, no-PM, no-A/B, hiring, growth.         |
+| Keynote | _Crafting quality that endures_ (Config 2025, ~20 min, pCil7YNhNCU) | YouTube | Saarinen's strongest public statement of the calm-software / craft-cycle thesis. Includes the Calkins 1927 reference. |
+| Values  | _Conversations on Quality, Ep. 02_ (Linear, ~15 min, R1bwdtQL5uU)   | YouTube | The Linear values doc, told as a story: trust, intuition, customer focus, purpose-built, quality, inspire.            |
+| Tenets  | _10 Rules for Crafting Products That Stand Out_ (Figma blog)        | Article | The most condensed list of operating rules — the "10 rules" all five sources point at from different angles.          |
+| Essay   | _Why is Quality So Rare?_ (linear.app/now)                          | Article | The published essay version of the Config talk — the craft cycle, the AI shift, the framework, the choice.            |
 
 This is a **flagship calm-software source**. It is the canonical operator-side anchor for the [Product And Design gap audit's gap #5](../skill-combo-indexes/PRODUCT_AND_DESIGN_GAP_AUDIT.md) (calm software as a counter-school to delight) and for the BuildOS anti-feed / "thinking environment for people making complex things" positioning.
 
@@ -566,19 +567,19 @@ Linear is a single-product company. Field operates a multi-surface platform. Saa
 
 ## Comparison Table — Saarinen vs. Changuel vs. Field
 
-| Dimension              | Saarinen / Linear (Calm + Craft)                                            | Changuel (Delight)                                                                  | Field / Figma (Craft Moat)                                                                            |
-| ---------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Quality target         | "Feels right" — quality without a name; door-test perception                | Joy + surprise; emotion at the heart of the experience                              | "Good enough is mediocre" — judgment and taste as differentiators in the AI era                       |
-| Design tradeoff        | Restraint and reduced scope; remove what doesn't serve the main quest       | Add functional + emotional motivators; 50-40-10 roadmap split                       | Speed + craft via interop; round-trip prompt + hand-tweak                                             |
-| Audience emotion       | Calm, trust, focus; respect for the user's time and attention               | Joy, surprise, belonging; emotional connection and shareability (Wrapped, FigJam)    | Confidence, identification with craft; "you joined a team that cares"                                 |
-| Prioritization rule    | Main quest vs. side quest; reduce scope; opinionated default over option    | Delight grid + checklist (impact, feasibility, familiarity, inclusion, maintainable) | Time-to-value; blockers team; "follow the workflow" expansion playbook                                |
-| Success metric         | Qualitative — "Linear in organic conversations about quality"; retention    | Delight checklist passes; emotional resonance; surprise renewed via cadence         | Adoption velocity; first-moment-of-magic optimization; design-as-leadership across roles              |
-| Use of A/B tests       | None. Avoid. Data is a crutch.                                              | Light. Demotivator interviews + qualitative; quantitative for habituation refresh    | Yes — but with evals, adversarial QA, and willingness to pull (Make Design → First Draft)             |
-| Team structure         | Small (<50), no handoffs, no specialized PMs, rotation, paid work trial     | PM-led, "delight champion" role, cross-functional with research                     | Multi-product platform; "product builders" merging roles; flatter org                                 |
-| Where it shines        | B2B power-user retention products; trust-driven; high-craft customer base   | Crowded categories where emotional connection differentiates; B2C and B2H           | AI-era multi-surface platforms; design-led companies; expansion businesses                            |
-| Where it breaks        | B2C consumer apps; low-switching-cost categories; markets without craft buyers | Calm-by-design products; productivity tools where confetti destroys trust          | Single-product startups before product-market fit; teams without senior taste                         |
-| Anti-pattern it forbids | Engagement features unrelated to the main quest                            | Non-inclusive delight (Mother's Day call notification, therapy-fireworks)            | Mis-named AI features that imply finality; shipping without evals                                     |
-| BuildOS fit            | Strong — anti-feed positioning maps 1:1                                    | Weak — would push BuildOS toward confetti and engagement                            | Medium — useful for AI feature design; less useful for restraint discipline                            |
+| Dimension               | Saarinen / Linear (Calm + Craft)                                               | Changuel (Delight)                                                                   | Field / Figma (Craft Moat)                                                                |
+| ----------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Quality target          | "Feels right" — quality without a name; door-test perception                   | Joy + surprise; emotion at the heart of the experience                               | "Good enough is mediocre" — judgment and taste as differentiators in the AI era           |
+| Design tradeoff         | Restraint and reduced scope; remove what doesn't serve the main quest          | Add functional + emotional motivators; 50-40-10 roadmap split                        | Speed + craft via interop; round-trip prompt + hand-tweak                                 |
+| Audience emotion        | Calm, trust, focus; respect for the user's time and attention                  | Joy, surprise, belonging; emotional connection and shareability (Wrapped, FigJam)    | Confidence, identification with craft; "you joined a team that cares"                     |
+| Prioritization rule     | Main quest vs. side quest; reduce scope; opinionated default over option       | Delight grid + checklist (impact, feasibility, familiarity, inclusion, maintainable) | Time-to-value; blockers team; "follow the workflow" expansion playbook                    |
+| Success metric          | Qualitative — "Linear in organic conversations about quality"; retention       | Delight checklist passes; emotional resonance; surprise renewed via cadence          | Adoption velocity; first-moment-of-magic optimization; design-as-leadership across roles  |
+| Use of A/B tests        | None. Avoid. Data is a crutch.                                                 | Light. Demotivator interviews + qualitative; quantitative for habituation refresh    | Yes — but with evals, adversarial QA, and willingness to pull (Make Design → First Draft) |
+| Team structure          | Small (<50), no handoffs, no specialized PMs, rotation, paid work trial        | PM-led, "delight champion" role, cross-functional with research                      | Multi-product platform; "product builders" merging roles; flatter org                     |
+| Where it shines         | B2B power-user retention products; trust-driven; high-craft customer base      | Crowded categories where emotional connection differentiates; B2C and B2H            | AI-era multi-surface platforms; design-led companies; expansion businesses                |
+| Where it breaks         | B2C consumer apps; low-switching-cost categories; markets without craft buyers | Calm-by-design products; productivity tools where confetti destroys trust            | Single-product startups before product-market fit; teams without senior taste             |
+| Anti-pattern it forbids | Engagement features unrelated to the main quest                                | Non-inclusive delight (Mother's Day call notification, therapy-fireworks)            | Mis-named AI features that imply finality; shipping without evals                         |
+| BuildOS fit             | Strong — anti-feed positioning maps 1:1                                        | Weak — would push BuildOS toward confetti and engagement                             | Medium — useful for AI feature design; less useful for restraint discipline               |
 
 ---
 

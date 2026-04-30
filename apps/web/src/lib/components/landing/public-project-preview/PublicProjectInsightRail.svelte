@@ -153,7 +153,10 @@
 				</button>
 
 				{#if isOpen}
-					<div class="border-t border-border bg-background/40" transition:slide={{ duration: 150 }}>
+					<div
+						class="border-t border-border bg-background/40"
+						transition:slide={{ duration: 150 }}
+					>
 						{#if stack.items.length === 0}
 							<p class="px-4 py-3 text-xs text-muted-foreground italic">
 								None in this example.

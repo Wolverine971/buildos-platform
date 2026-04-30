@@ -2,7 +2,7 @@
 
 # Twitter / X — Going Viral Reference
 
-Read this file when working on Twitter / X specifically. The cross-platform `SKILL.md` covers the universal layer (hook archetypes, killer-script skeleton, six-checkpoint gate). This file covers what's *different* on X and the practitioners who understand its physics.
+Read this file when working on Twitter / X specifically. The cross-platform `SKILL.md` covers the universal layer (hook archetypes, killer-script skeleton, six-checkpoint gate). This file covers what's _different_ on X and the practitioners who understand its physics.
 
 ## Read me first
 
@@ -46,17 +46,17 @@ Not 2019. Verify against current sources before publishing.
 
 Five units of work, each with its own physics:
 
-| Unit | When to use | Hook architecture | Length |
-|---|---|---|---|
-| **Single tweet** | Aphorism, observation, hot take, status update | One sentence, surprise on the verb | ≤280 chars |
-| **Thread** | Teaching, narrative arc, framework, case study | T1 = 5-part intro compressed; T2-N = Value Loops with rehooks | 5–25 tweets |
-| **Atomic essay** | Deep idea compressed | Image-formatted text post (screenshot of writing) | 1 image + 1 caption |
-| **Build-in-public update** | Revenue, milestone, scrappy demo, lesson | Specific number / artifact in T1; transparency over polish | 1–3 tweets |
-| **Quote-with-take** | React to news, add POV | Acknowledgment + sharp angle | 1 tweet |
+| Unit                       | When to use                                    | Hook architecture                                             | Length              |
+| -------------------------- | ---------------------------------------------- | ------------------------------------------------------------- | ------------------- |
+| **Single tweet**           | Aphorism, observation, hot take, status update | One sentence, surprise on the verb                            | ≤280 chars          |
+| **Thread**                 | Teaching, narrative arc, framework, case study | T1 = 5-part intro compressed; T2-N = Value Loops with rehooks | 5–25 tweets         |
+| **Atomic essay**           | Deep idea compressed                           | Image-formatted text post (screenshot of writing)             | 1 image + 1 caption |
+| **Build-in-public update** | Revenue, milestone, scrappy demo, lesson       | Specific number / artifact in T1; transparency over polish    | 1–3 tweets          |
+| **Quote-with-take**        | React to news, add POV                         | Acknowledgment + sharp angle                                  | 1 tweet             |
 
 ## Hook patterns that work on X
 
-X hooks are sentences, not videos. The slot-fill problem still applies (Kallaway *100 Viral Hooks*) — pick the archetype, write the contrast — but compressed to one line.
+X hooks are sentences, not videos. The slot-fill problem still applies (Kallaway _100 Viral Hooks_) — pick the archetype, write the contrast — but compressed to one line.
 
 **Six archetypes, X-flavored:**
 
@@ -76,7 +76,7 @@ X hooks are sentences, not videos. The slot-fill problem still applies (Kallaway
 
 ## Threads — Sahil Bloom's system
 
-Sahil Bloom went from ~0 to 1M followers writing 225 threads over 26 months. Three structural patterns from his work (extract; verified via *How I Write* with David Perell):
+Sahil Bloom went from ~0 to 1M followers writing 225 threads over 26 months. Three structural patterns from his work (extract; verified via _How I Write_ with David Perell):
 
 **1. Thread as a single argument, not a list.**
 
@@ -116,7 +116,7 @@ Justin Welsh has been writing daily on LinkedIn since 2018 and brought the same 
 
 **3. The post is an essay compressed.** Welsh's atomic essays follow a mini-killer-script structure: one-line hook → 2–3 lines of common belief / contrarian take → 4–6 lines of body (often a list of 3) → one-line close.
 
-**Cross-platform note:** Welsh atomizes one idea across LI / X / email. Each platform gets a *native* version, not the same post pasted three times. The LinkedIn version is longer and uses line breaks; the X version compresses to ~280 chars; the email version uses the post as a section inside a longer letter.
+**Cross-platform note:** Welsh atomizes one idea across LI / X / email. Each platform gets a _native_ version, not the same post pasted three times. The LinkedIn version is longer and uses line breaks; the X version compresses to ~280 chars; the email version uses the post as a section inside a longer letter.
 
 > **TODO:** Pull Welsh's specific structural patterns from the Creator Science #109 transcript once YouTube rate-limit clears.
 
@@ -150,14 +150,14 @@ Replies are weighted ~150x likes. The reply game is half the X game.
 
 ## Threading vs single tweet — decision rule
 
-| Have | Use |
-|---|---|
-| One sharp aphorism with a surprising verb | Single tweet |
-| One claim + 5–8 supporting points + an argument arc | Thread (8–12 tweets) |
-| One image of compressed prose | Atomic essay (image post) |
-| One number / milestone | Build-in-public single tweet with the number front |
-| One news event + your angle | Quote-tweet with reply chain |
-| Multi-paragraph thinking that's still loose | Don't post yet — write it as a blog first, then atomize |
+| Have                                                | Use                                                     |
+| --------------------------------------------------- | ------------------------------------------------------- |
+| One sharp aphorism with a surprising verb           | Single tweet                                            |
+| One claim + 5–8 supporting points + an argument arc | Thread (8–12 tweets)                                    |
+| One image of compressed prose                       | Atomic essay (image post)                               |
+| One number / milestone                              | Build-in-public single tweet with the number front      |
+| One news event + your angle                         | Quote-tweet with reply chain                            |
+| Multi-paragraph thinking that's still loose         | Don't post yet — write it as a blog first, then atomize |
 
 If in doubt: **single tweet > thread.** Threads are graveyard fodder when T1 doesn't land. Single tweets compound — Naval's evergreen tweets still drive traffic 5 years later.
 
@@ -184,9 +184,9 @@ If in doubt: **single tweet > thread.** Threads are graveyard fodder when T1 doe
 
 - 2025/2026 algorithm reality: Sprout Social, Tweet Archivist, Hashmeta, SocialPilot algorithm reports (April 2026)
 - October 2025 Grok rerank announcement: verified via multiple algorithm-research sources
-- Sahil Bloom thread system: *How I Write* podcast with David Perell ([video](https://www.youtube.com/watch?v=f-s22uCixMw)) — TODO: deeper extraction once transcript downloads
-- Naval Ravikant aphorism architecture: *Joe Rogan Experience #1309* ([video](https://www.youtube.com/watch?v=3qHkcs3kG44)) — TODO: deeper extraction
+- Sahil Bloom thread system: _How I Write_ podcast with David Perell ([video](https://www.youtube.com/watch?v=f-s22uCixMw)) — TODO: deeper extraction once transcript downloads
+- Naval Ravikant aphorism architecture: _Joe Rogan Experience #1309_ ([video](https://www.youtube.com/watch?v=3qHkcs3kG44)) — TODO: deeper extraction
 - Justin Welsh atomic posts: Creator Science #109 — TODO: transcript pending
-- Pieter Levels build-in-public: *Lex Fridman Podcast #440* ([video](https://www.youtube.com/watch?v=oFtjKbXKqbg)) — extracted via WebFetch of `lexfridman.com/pieter-levels-transcript/`
-- Hook archetype catalog: Kallaway *100 Viral Hooks* analysis (`docs/research/youtube-library/analyses/2026-04-29_kallaway_100-viral-hooks_analysis.md`)
-- Killer-script structure: Kallaway *Killer Script* analysis (`...kallaway_killer-script_analysis.md`)
+- Pieter Levels build-in-public: _Lex Fridman Podcast #440_ ([video](https://www.youtube.com/watch?v=oFtjKbXKqbg)) — extracted via WebFetch of `lexfridman.com/pieter-levels-transcript/`
+- Hook archetype catalog: Kallaway _100 Viral Hooks_ analysis (`docs/research/youtube-library/analyses/2026-04-29_kallaway_100-viral-hooks_analysis.md`)
+- Killer-script structure: Kallaway _Killer Script_ analysis (`...kallaway_killer-script_analysis.md`)

@@ -38,7 +38,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.badRequest('Task ID and Document ID are required');
 		}
 
-		const access = await ensureTaskAccess(locals, taskId, session.user.id);
+		const access = await ensureTaskAccess(locals, taskId, session.user.id, 'write');
 
 		if ('error' in access) {
 			return access.error;

@@ -185,18 +185,18 @@ When reviewing a roadmap, hiring plan, or team operating model — not just the 
 
 Maeda is the philosophical anchor; these laws are the rubric. For every surface under review, walk the laws in order.
 
-| #   | Law           | Sub-rule                                            | Operational question for this surface                                                                                |
-| --- | ------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| 1   | **Reduce**    | **SHE** — Shrink, Hide, Embody                      | What can shrink? What can hide behind disclosure? What must be _embodied_ (given quality, weight, finish) so the residual doesn't read as cheap? |
-| 2   | **Organize**  | **SLIP** — Sort, Label, Integrate, Prioritize       | Are remaining elements sorted by user-meaningful axis, labeled in user vocabulary, deduplicated, and ranked by primacy? |
-| 3   | **Time**      | Reduce wait, mask wait, make wait pleasant          | Where can optimistic UI, skeleton state, or pre-fetching cut perceived wait? Time-to-first-meaningful-render?         |
-| 4   | **Learn**     | Teach what cannot be removed                        | What inherent complexity remains? Is it taught (tooltip, empty state, onboarding step) or hidden in a way that confuses later? |
-| 5   | **Differences** | Contrast makes simple feel simple                 | Is there contrast between this surface and adjacent ones? If everything is equally minimal, is the calm legible at all? |
-| 6   | **Context**   | The periphery is not peripheral                     | Is whitespace, framing, transition, empty state treated as primary, or as leftover? Cut them and the figure stops working. |
-| 7   | **Emotion**   | More emotions are better than fewer                 | Has this been stripped to sterility? Where is the warmth, voice, or detail that makes this _this_ product?            |
-| 8   | **Trust**     | Defaults must be trustworthy because users won't read | Are the defaults opinionated and good? Is undo / export / inspect available so the user can recover when defaults are wrong? |
-| 9   | **Failure**   | Some things can never be made simple                | What inherent complexity is essential to the product's value? Frame it honestly; do not pretend it isn't there.       |
-| 10  | **The One**   | Subtract the obvious; add the meaningful            | What's _obvious_ (generic, in every competitor) — subtract. What's _meaningful_ (specific to this product) — sharpen. |
+| #   | Law             | Sub-rule                                              | Operational question for this surface                                                                                                            |
+| --- | --------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Reduce**      | **SHE** — Shrink, Hide, Embody                        | What can shrink? What can hide behind disclosure? What must be _embodied_ (given quality, weight, finish) so the residual doesn't read as cheap? |
+| 2   | **Organize**    | **SLIP** — Sort, Label, Integrate, Prioritize         | Are remaining elements sorted by user-meaningful axis, labeled in user vocabulary, deduplicated, and ranked by primacy?                          |
+| 3   | **Time**        | Reduce wait, mask wait, make wait pleasant            | Where can optimistic UI, skeleton state, or pre-fetching cut perceived wait? Time-to-first-meaningful-render?                                    |
+| 4   | **Learn**       | Teach what cannot be removed                          | What inherent complexity remains? Is it taught (tooltip, empty state, onboarding step) or hidden in a way that confuses later?                   |
+| 5   | **Differences** | Contrast makes simple feel simple                     | Is there contrast between this surface and adjacent ones? If everything is equally minimal, is the calm legible at all?                          |
+| 6   | **Context**     | The periphery is not peripheral                       | Is whitespace, framing, transition, empty state treated as primary, or as leftover? Cut them and the figure stops working.                       |
+| 7   | **Emotion**     | More emotions are better than fewer                   | Has this been stripped to sterility? Where is the warmth, voice, or detail that makes this _this_ product?                                       |
+| 8   | **Trust**       | Defaults must be trustworthy because users won't read | Are the defaults opinionated and good? Is undo / export / inspect available so the user can recover when defaults are wrong?                     |
+| 9   | **Failure**     | Some things can never be made simple                  | What inherent complexity is essential to the product's value? Frame it honestly; do not pretend it isn't there.                                  |
+| 10  | **The One**     | Subtract the obvious; add the meaningful              | What's _obvious_ (generic, in every competitor) — subtract. What's _meaningful_ (specific to this product) — sharpen.                            |
 
 **Three Keys** also applied: **Away** (state moved out of view is recoverable, not gone), **Open** (system is inspectable — view raw, see why, export anywhere), **Power** (use does not deplete the user's attention or energy over time).
 
@@ -281,19 +281,19 @@ Then a roll-up:
 
 ## Calm School vs Delight School — Comparison
 
-| Dimension              | Calm School (Saarinen / Jainek / Fried / Maeda)                              | Delight School (Changuel / Lovable / Cheng)                                  |
-| ---------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Goal                   | Restraint, focus, trust, the tool that disappears                            | Joy, surprise, anticipation, emotional connection                            |
-| Audience emotion       | Already loaded — under stress, time pressure, cognitive load                 | Under-stimulated — bored, ready to be charmed                                |
-| Roadmap balance        | Main quest only; default-no on side quests                                   | 50% functional / 40% deep delight / 10% surface delight                      |
-| Defaults               | Opinionated, strong, unconfigurable in the front door                        | Personalized, anticipated, surprise-shaped                                   |
-| Notifications          | Off by default; opt-in; meaningful only                                      | On by default; engagement-shaped; re-engagement allowed                      |
-| Celebrations           | Earned only — Superhost not Duolingo                                         | Confetti for valley-moment rescues and milestone moments                     |
-| Engagement metrics     | Company-level retention; never per-feature                                   | Per-feature engagement; valley-rescue scores; surprise renewal cadence       |
-| Quality target         | "Feels right" — door-test, disappearance test, craft-beyond-spec             | Joy + emotional resonance; delight grid pass; demotivator inversion          |
-| Where it shines        | B2B power-user retention; productivity tools; thinking environments          | B2C entertainment; social; creative tools; under-stimulation categories      |
-| Where it fails         | When applied without bias-to-ship — stagnation; calm-as-aesthetic            | When applied to loaded audiences — confetti during stress destroys trust     |
-| BuildOS fit            | **Strong** — anti-feed positioning maps 1:1                                  | **Weak** — would push BuildOS toward confetti and engagement manufacturing   |
+| Dimension          | Calm School (Saarinen / Jainek / Fried / Maeda)                     | Delight School (Changuel / Lovable / Cheng)                                |
+| ------------------ | ------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| Goal               | Restraint, focus, trust, the tool that disappears                   | Joy, surprise, anticipation, emotional connection                          |
+| Audience emotion   | Already loaded — under stress, time pressure, cognitive load        | Under-stimulated — bored, ready to be charmed                              |
+| Roadmap balance    | Main quest only; default-no on side quests                          | 50% functional / 40% deep delight / 10% surface delight                    |
+| Defaults           | Opinionated, strong, unconfigurable in the front door               | Personalized, anticipated, surprise-shaped                                 |
+| Notifications      | Off by default; opt-in; meaningful only                             | On by default; engagement-shaped; re-engagement allowed                    |
+| Celebrations       | Earned only — Superhost not Duolingo                                | Confetti for valley-moment rescues and milestone moments                   |
+| Engagement metrics | Company-level retention; never per-feature                          | Per-feature engagement; valley-rescue scores; surprise renewal cadence     |
+| Quality target     | "Feels right" — door-test, disappearance test, craft-beyond-spec    | Joy + emotional resonance; delight grid pass; demotivator inversion        |
+| Where it shines    | B2B power-user retention; productivity tools; thinking environments | B2C entertainment; social; creative tools; under-stimulation categories    |
+| Where it fails     | When applied without bias-to-ship — stagnation; calm-as-aesthetic   | When applied to loaded audiences — confetti during stress destroys trust   |
+| BuildOS fit        | **Strong** — anti-feed positioning maps 1:1                         | **Weak** — would push BuildOS toward confetti and engagement manufacturing |
 
 ## Cross-Linked Skills
 

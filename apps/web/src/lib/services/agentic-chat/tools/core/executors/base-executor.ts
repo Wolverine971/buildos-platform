@@ -6,7 +6,7 @@
  * - Authentication and authorization
  * - API request handling
  * - Error normalization
- * - Ownership assertions
+ * - Access assertions
  * - Search term preparation
  */
 
@@ -28,7 +28,7 @@ const logger = createLogger('BaseExecutor');
  * - Admin Supabase client management
  * - Auth header generation
  * - API request helper with error handling
- * - Ownership assertions for projects and entities
+ * - Access assertions for projects and entities
  * - Search term sanitization
  */
 export class BaseExecutor {
@@ -193,7 +193,7 @@ export class BaseExecutor {
 	}
 
 	// ============================================
-	// OWNERSHIP ASSERTIONS
+	// ACCESS ASSERTIONS
 	// ============================================
 
 	/**
@@ -219,68 +219,54 @@ export class BaseExecutor {
 	}
 
 	/**
-	 * Assert that the current user owns the specified project.
+	 * Assert that the current user can access the project containing an entity.
 	 *
-	 * @param projectId - Project ID to check
-	 * @param actorId - Optional pre-resolved actor ID
-	 * @throws Error if project not found or access denied
+	 * Project-scoped entities are authorized through project membership so shared
+	 * project collaborators can use agent tools with the same access level as the UI.
 	 */
-	protected async assertProjectOwnership(projectId: string, actorId?: string): Promise<void> {
-		const owner = actorId ?? (await this.getActorId());
-		const { data, error } = await this.supabase
-			.from('onto_projects')
-			.select('id')
-			.eq('id', projectId)
-			.eq('created_by', owner)
-			.maybeSingle();
-
-		if (error) throw error;
-		if (!data) {
-			throw new Error('Project not found or access denied');
-		}
-	}
-
-	/**
-	 * Assert that the current user owns the specified entity.
-	 * Checks projects first, then searches through entity tables.
-	 *
-	 * @param entityId - Entity ID to check
-	 * @throws Error if entity not found or access denied
-	 */
-	protected async assertEntityOwnership(entityId: string): Promise<void> {
-		const actorId = await this.getActorId();
-
-		// Check if it's a project
+	protected async assertEntityAccess(
+		entityId: string,
+		requiredAccess: 'read' | 'write' | 'admin' = 'read'
+	): Promise<void> {
 		const { data: project, error: projectError } = await this.supabase
 			.from('onto_projects')
 			.select('id')
 			.eq('id', entityId)
-			.eq('created_by', actorId)
 			.maybeSingle();
 
 		if (projectError) throw projectError;
-		if (project) return;
+		if (project?.id) {
+			await this.assertProjectAccess(project.id, requiredAccess);
+			return;
+		}
 
-		// Check other entity tables
+		const actorId = await this.getActorId();
 		const tables = [
 			'onto_tasks',
 			'onto_plans',
 			'onto_goals',
 			'onto_documents',
 			'onto_milestones',
-			'onto_risks'
+			'onto_risks',
+			'onto_requirements'
 		];
 
 		for (const table of tables) {
 			const { data, error } = await this.supabase
 				.from(table)
-				.select('project_id')
+				.select('project_id, created_by')
 				.eq('id', entityId)
 				.maybeSingle();
 
 			if (error) throw error;
-			if (data?.project_id) {
-				await this.assertProjectOwnership(data.project_id, actorId);
+			if (!data) continue;
+
+			if (data.project_id) {
+				await this.assertProjectAccess(data.project_id, requiredAccess);
+				return;
+			}
+
+			if (data.created_by === actorId) {
 				return;
 			}
 		}

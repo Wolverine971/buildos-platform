@@ -37,28 +37,28 @@ Do not use this skill for hook craft (defer to `hook-craft-short-form`), narrati
 
 ## The Four Pillars
 
-Run them in this order. Pillar 0 is the strategic decision *above* the matching loop — skip it and you optimise the wrong system.
+Run them in this order. Pillar 0 is the strategic decision _above_ the matching loop — skip it and you optimise the wrong system.
 
 ### Pillar 0: Pick Your Content Game (strategic decision before any tactics)
 
-Five different content games run on social media simultaneously. Each has different rules, different objectives, different ways to win. **The #1 reason businesses waste months on content is using the wrong game's playbook.** Pure virality is correct for Games 1 and 2. For Games 3, 4, 5, an off-target viral hit *poisons* the next several videos.
+Five different content games run on social media simultaneously. Each has different rules, different objectives, different ways to win. **The #1 reason businesses waste months on content is using the wrong game's playbook.** Pure virality is correct for Games 1 and 2. For Games 3, 4, 5, an off-target viral hit _poisons_ the next several videos.
 
-| Game | Name                  | Examples                          | Goal                          | Monetization                                  |
-| ---- | --------------------- | --------------------------------- | ----------------------------- | --------------------------------------------- |
-| 1    | Mainstream Fame       | Mr. Beast, Charli D'Amelio        | Max total views               | Ad revenue + broad brand deals (media layer)  |
-| 2    | Category Fame         | Dad Social, Cleo Abram            | Max views in a niche          | Niche brand deals + sponsorships (media layer) |
-| 3    | Intuitive Products    | Clothing brands, CPG              | Build a world around product  | Vibes / lifestyle-fit purchases               |
-| 4    | Explanatory Products  | AG1, Meta Ray-Ban glasses         | Educate the buyer             | Education-driven purchases                    |
-| 5    | Authority Building    | Consultants, coaches, info products | Build deep trust + expertise | Off-platform conversion (leads / clients)     |
+| Game | Name                 | Examples                            | Goal                         | Monetization                                   |
+| ---- | -------------------- | ----------------------------------- | ---------------------------- | ---------------------------------------------- |
+| 1    | Mainstream Fame      | Mr. Beast, Charli D'Amelio          | Max total views              | Ad revenue + broad brand deals (media layer)   |
+| 2    | Category Fame        | Dad Social, Cleo Abram              | Max views in a niche         | Niche brand deals + sponsorships (media layer) |
+| 3    | Intuitive Products   | Clothing brands, CPG                | Build a world around product | Vibes / lifestyle-fit purchases                |
+| 4    | Explanatory Products | AG1, Meta Ray-Ban glasses           | Educate the buyer            | Education-driven purchases                     |
+| 5    | Authority Building   | Consultants, coaches, info products | Build deep trust + expertise | Off-platform conversion (leads / clients)      |
 
 **Quick diagnostic:**
 
-| If you sell…                                                | Play game…                |
-| ----------------------------------------------------------- | ------------------------- |
-| Services, coaching, consulting, info products               | Game #5                   |
-| Commodity consumer product                                  | Game #3                   |
-| Differentiated product needing explanation before purchase  | Game #4                   |
-| No offer yet but want a targeted audience                   | Start #2 → shift to #5    |
+| If you sell…                                               | Play game…             |
+| ---------------------------------------------------------- | ---------------------- |
+| Services, coaching, consulting, info products              | Game #5                |
+| Commodity consumer product                                 | Game #3                |
+| Differentiated product needing explanation before purchase | Game #4                |
+| No offer yet but want a targeted audience                  | Start #2 → shift to #5 |
 
 **The Trust Formula (Game #5 specifically):**
 
@@ -70,7 +70,7 @@ Multiplicative. Zero on any axis = zero trust accumulated. A long video with low
 
 For Game #5 the unit of measurement is **trust accumulation**, not views. View count is vanity for off-platform-monetizing creators. Cohort-level trust signals (returning-viewer minutes, comment specificity, off-platform conversion rate) are the real channel-health metric.
 
-**The Off-Target Cost Heuristic:** when evaluating an idea that *would* go viral but to the wrong audience —
+**The Off-Target Cost Heuristic:** when evaluating an idea that _would_ go viral but to the wrong audience —
 
 ```
 Estimated upside = (off-target views × ~0% conversion) ≈ 0 leads
@@ -127,11 +127,11 @@ These four attributes produce engagement signals as a byproduct of quality, rath
 
 For **Game #5 pieces specifically**, sharpen the four-attribute filter into the **Trust Formula** — multiplicative scoring on a 1–5 scale per axis:
 
-| Axis             | 1                     | 3                          | 5                                     |
-| ---------------- | --------------------- | -------------------------- | ------------------------------------- |
-| Minutes Watched  | <30s avg              | ~50% completion            | Re-watches + binge-throughs           |
-| Relevance        | Wrong audience        | Adjacent audience          | Direct buyer avatar                   |
-| Usefulness       | Inspirational only    | Theoretical insight        | Walk-away tactic that produces result |
+| Axis            | 1                  | 3                   | 5                                     |
+| --------------- | ------------------ | ------------------- | ------------------------------------- |
+| Minutes Watched | <30s avg           | ~50% completion     | Re-watches + binge-throughs           |
+| Relevance       | Wrong audience     | Adjacent audience   | Direct buyer avatar                   |
+| Usefulness      | Inspirational only | Theoretical insight | Walk-away tactic that produces result |
 
 Multiply the three. Below ~30/125 → the piece is leaking trust, not building it. Don't ship.
 

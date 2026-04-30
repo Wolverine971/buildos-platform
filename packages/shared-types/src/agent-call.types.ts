@@ -14,20 +14,43 @@ export const BUILDOS_AGENT_READ_OPS = [
 	'onto.project.list',
 	'onto.project.search',
 	'onto.project.get',
+	'onto.project.graph.get',
 	'onto.task.list',
 	'onto.task.search',
 	'onto.task.get',
+	'onto.task.docs.list',
 	'onto.document.list',
 	'onto.document.search',
 	'onto.document.get',
-	'onto.search'
+	'onto.document.tree.get',
+	'onto.document.path.get',
+	'onto.goal.list',
+	'onto.goal.search',
+	'onto.goal.get',
+	'onto.plan.list',
+	'onto.plan.search',
+	'onto.plan.get',
+	'onto.milestone.list',
+	'onto.milestone.search',
+	'onto.milestone.get',
+	'onto.risk.list',
+	'onto.risk.search',
+	'onto.risk.get',
+	'onto.entity.relationships.get',
+	'onto.entity.links.get',
+	'onto.search',
+	'cal.event.list',
+	'cal.event.get',
+	'cal.project.get'
 ] as const;
 
 export const BUILDOS_AGENT_WRITE_OPS = [
 	'onto.task.create',
 	'onto.task.update',
+	'onto.task.docs.create_or_attach',
 	'onto.document.create',
 	'onto.document.update',
+	'onto.document.tree.move',
 	'onto.project.create',
 	'onto.project.update',
 	'onto.goal.create',
@@ -37,7 +60,13 @@ export const BUILDOS_AGENT_WRITE_OPS = [
 	'onto.milestone.create',
 	'onto.milestone.update',
 	'onto.risk.create',
-	'onto.risk.update'
+	'onto.risk.update',
+	'onto.edge.link',
+	'onto.edge.unlink',
+	'cal.event.create',
+	'cal.event.update',
+	'cal.event.delete',
+	'cal.project.set'
 ] as const;
 
 export const BUILDOS_AGENT_SUPPORTED_OPS = [
@@ -202,6 +231,7 @@ export interface BuildosAgentCallerSummary {
 	last_used_at: string | null;
 	created_at: string;
 	updated_at: string;
+	usage?: BuildosAgentCallerUsageSummary;
 }
 
 export interface BuildosAgentIdentitySummary {
@@ -214,6 +244,50 @@ export interface BuildosAgentAvailableProject {
 	id: string;
 	name: string;
 	description: string | null;
+}
+
+export type BuildosAgentUsagePeriod = 'day' | 'week' | 'month';
+export type BuildosAgentUsageAction =
+	| 'created'
+	| 'updated'
+	| 'deleted'
+	| 'attempted'
+	| 'used';
+
+export interface BuildosAgentUsageTrend {
+	period: BuildosAgentUsagePeriod;
+	session_count: number;
+	write_count: number;
+	successful_write_count: number;
+	failed_write_count: number;
+	project_count: number;
+}
+
+export interface BuildosAgentUsageEvent {
+	id: string;
+	occurred_at: string;
+	op: string;
+	action: BuildosAgentUsageAction;
+	status: 'succeeded' | 'failed' | 'pending';
+	summary: string;
+	project_id?: string | null;
+	project_name?: string | null;
+	entity_kind?: string | null;
+	entity_id?: string | null;
+	entity_title?: string | null;
+	error_message?: string | null;
+}
+
+export interface BuildosAgentCallerUsageSummary {
+	last_activity_at: string | null;
+	last_write_at: string | null;
+	total_session_count: number;
+	total_write_count: number;
+	successful_write_count: number;
+	failed_write_count: number;
+	project_count: number;
+	trends: BuildosAgentUsageTrend[];
+	recent_activity: BuildosAgentUsageEvent[];
 }
 
 export interface BuildosAgentCallerBootstrapSummary {

@@ -166,7 +166,6 @@
 			replaceState(url.toString(), {});
 		}
 	});
-
 </script>
 
 <svelte:head>

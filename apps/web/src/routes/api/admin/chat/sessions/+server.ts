@@ -55,7 +55,10 @@ const asNumber = (value: unknown): number => {
 const toIsoOrNow = (value: string | null | undefined): string => value ?? new Date().toISOString();
 
 const normalizeSearchForFilter = (value: string): string =>
-	value.replace(/[%*,()]/g, ' ').replace(/\s+/g, ' ').trim();
+	value
+		.replace(/[%*,()]/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
 
 const buildTitle = (session: {
 	title?: string | null;

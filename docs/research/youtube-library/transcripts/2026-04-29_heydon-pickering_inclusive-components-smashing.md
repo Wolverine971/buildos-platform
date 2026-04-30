@@ -1,29 +1,31 @@
 ---
-title: "Smashing TV: Inclusive Components with Heydon Pickering (Nov 7th 2019)"
+title: 'Smashing TV: Inclusive Components with Heydon Pickering (Nov 7th 2019)'
 video_id: jw7bRnFbwAI
-url: "https://www.youtube.com/watch?v=jw7bRnFbwAI"
+url: 'https://www.youtube.com/watch?v=jw7bRnFbwAI'
 channel: Smashing Magazine
-channel_url: "https://www.youtube.com/@SmashingMagazineVideos"
+channel_url: 'https://www.youtube.com/@SmashingMagazineVideos'
 upload_date: 2019-11-18
-duration: "01:26:16"
+duration: '01:26:16'
 views: 790
 timestamps:
-  - time: "0:00"
-    label: "<Untitled Chapter 1>"
-  - time: "39:55"
-    label: "Inclusive Design Principles"
-  - time: "42:18"
-    label: "There's no right/wrong"
-  - time: "43:02"
-    label: "Use your instincts"
+    - time: '0:00'
+      label: '<Untitled Chapter 1>'
+    - time: '39:55'
+      label: 'Inclusive Design Principles'
+    - time: '42:18'
+      label: "There's no right/wrong"
+    - time: '43:02'
+      label: 'Use your instincts'
 description: |
-  Heydon will talk about the relationship between accessibility and design systems, and introduce his book: Inclusive Components. During the session, he will explore how to create an accessible accordion using progressive enhancement, and answer your questions about inclusive interaction design.
-transcribed_date: "2026-04-29"
+    Heydon will talk about the relationship between accessibility and design systems, and introduce his book: Inclusive Components. During the session, he will explore how to create an accessible accordion using progressive enhancement, and answer your questions about inclusive interaction design.
+transcribed_date: '2026-04-29'
+path: docs/research/youtube-library/transcripts/2026-04-29_heydon-pickering_inclusive-components-smashing.md
 ---
 
 # Smashing TV: Inclusive Components with Heydon Pickering (Nov 7th 2019)
 
 ## Metadata
+
 - **Channel**: [Smashing Magazine](https://www.youtube.com/@SmashingMagazineVideos)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=jw7bRnFbwAI)
 - **Duration**: 01:26:16
@@ -31,6 +33,7 @@ transcribed_date: "2026-04-29"
 - **Views**: 790
 
 ## Timestamps
+
 - 0:00 — <Untitled Chapter 1>
 - 39:55 — Inclusive Design Principles
 - 42:18 — There's no right/wrong

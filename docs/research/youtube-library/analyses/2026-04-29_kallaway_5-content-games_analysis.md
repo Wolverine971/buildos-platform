@@ -1,6 +1,7 @@
 <!-- docs/research/youtube-library/analyses/2026-04-29_kallaway_5-content-games_analysis.md -->
 
 ---
+
 title: "Short Form Growth System — Day 1: The 5 Content Games"
 source_type: "article_analysis"
 url: ""
@@ -22,12 +23,14 @@ public_article: ""
 indexed_date: "2026-04-29"
 last_reviewed: "2026-04-29"
 tags:
-  - content-strategy
-  - business-model-fit
-  - on-target-virality
-  - authority-building
-  - explanatory-product
-  - trust-formula
+
+- content-strategy
+- business-model-fit
+- on-target-virality
+- authority-building
+- explanatory-product
+- trust-formula
+
 ---
 
 # Kallaway — The 5 Content Games (Short Form Growth System Day 1)
@@ -46,42 +49,47 @@ tags:
 
 Pair partners:
 
-- Kallaway "Social Media Misunderstood" (`h_yQswsXwhY`) — the matching-loop mental model that this taxonomy sits *above*.
+- Kallaway "Social Media Misunderstood" (`h_yQswsXwhY`) — the matching-loop mental model that this taxonomy sits _above_.
 - Kallaway "Social Algorithms" (`8cQidXgtGmU`) — provides the four-attribute engagement filter that the Trust Formula here refines.
 
 ## Core Thesis
 
 Five completely different content games run on social media simultaneously. Each has different rules, different objectives, different ways to win. **The #1 reason business owners waste months on content is using the wrong game's playbook for their business model.**
 
-Pure virality is the right strategy only for Games 1 and 2 (media games — you *are* the product). For Games 3, 4, and 5 (product / authority games), pure virality is a trap: an off-target viral hit *actively poisons* the next several videos by confusing the matching algorithm.
+Pure virality is the right strategy only for Games 1 and 2 (media games — you _are_ the product). For Games 3, 4, and 5 (product / authority games), pure virality is a trap: an off-target viral hit _actively poisons_ the next several videos by confusing the matching algorithm.
 
 The strategic decision precedes every tactical decision: **which game are you playing?**
 
 ## The Five Games
 
 ### Game #1 — Mainstream Fame
+
 - **Examples:** Mr. Beast, Charli D'Amelio.
 - **Goal:** Max total views.
 - **Monetization:** Ad revenue + broad brand deals (media layer).
 - **Product:** You are the product.
 
 ### Game #2 — Category Fame
+
 - **Examples:** Dad Social, Cleo Abram.
 - **Goal:** Max views within a niche.
 - **Monetization:** Niche brand deals + sponsorships (media layer).
 - **Product:** You are the product.
 
 ### Game #3 — Intuitive Products
+
 - **Examples:** Clothing brands, CPG.
 - **Goal:** Build a world around the product.
 - **Monetization:** Purchases driven by vibes / lifestyle fit (brand awareness + conversion).
 
 ### Game #4 — Explanatory Products
+
 - **Examples:** AG1, Meta Ray-Ban glasses.
 - **Goal:** Educate the buyer on why they need the product.
 - **Monetization:** Purchase from educational exposure + some vibes (brand awareness + education + conversion).
 
 ### Game #5 — Authority Building
+
 - **Examples:** Consultants, coaches, agencies, info products.
 - **Goal:** Build deep trust and expertise.
 - **Monetization:** Convert viewers into leads and clients off-platform (authority + conversion).
@@ -95,7 +103,7 @@ Trust = Minutes Watched × Relevance × Usefulness
 ```
 
 - **Minutes Watched** — the more time someone spends consuming your content, the more they trust you.
-- **Relevance** — the content must be about something a *potential buyer* cares about.
+- **Relevance** — the content must be about something a _potential buyer_ cares about.
 - **Usefulness** — the viewer must be able to walk away and apply what you taught to get the result you promised.
 
 This is a **multiplicative** formula. Zero on any axis = zero trust accumulated. A long video with low usefulness builds nothing. A useful video to the wrong audience builds nothing. The matching loop is necessary; usefulness is the closer.
@@ -112,7 +120,7 @@ Most business owners watch Mr. Beast and copy the strategy without copying the g
 2. Use a Game #1 strategy (max virality, max TAM, max entertainment).
 3. Sometimes get lucky and stumble into a viral banger.
 4. Get zero leads from it.
-5. Find their next several on-target videos perform *worse* than baseline because the algorithm now has a blended fit score from the off-target hit.
+5. Find their next several on-target videos perform _worse_ than baseline because the algorithm now has a blended fit score from the off-target hit.
 
 Kallaway's own confession: his Ironman video hit **46M views in 5 days** and produced **zero customers**. Ego full, bank account empty.
 
@@ -120,12 +128,12 @@ Kallaway's own confession: his Ironman video hit **46M views in 5 days** and pro
 
 ## The Quick Diagnostic
 
-| If you sell…                                                       | Play game…                |
-| ------------------------------------------------------------------ | ------------------------- |
-| Services, coaching, consulting, info products                      | Game #5                   |
-| Commodity consumer product                                         | Game #3                   |
-| Differentiated product needing explanation before purchase         | Game #4                   |
-| No offer yet but want to build a targeted audience                 | Start #2 → shift to #5    |
+| If you sell…                                               | Play game…             |
+| ---------------------------------------------------------- | ---------------------- |
+| Services, coaching, consulting, info products              | Game #5                |
+| Commodity consumer product                                 | Game #3                |
+| Differentiated product needing explanation before purchase | Game #4                |
+| No offer yet but want to build a targeted audience         | Start #2 → shift to #5 |
 
 ## BuildOS Classification
 
@@ -226,17 +234,17 @@ Agent behavior:
 
 For every Game #5 piece, score 1–5 on each axis:
 
-| Axis             | 1                     | 3                          | 5                                     |
-| ---------------- | --------------------- | -------------------------- | ------------------------------------- |
-| Minutes Watched  | <30s avg              | ~50% completion            | Re-watches + binge-throughs           |
-| Relevance        | Wrong audience        | Adjacent audience          | Direct buyer avatar                   |
-| Usefulness       | Inspirational only    | Theoretical insight        | Walk-away tactic that produces result |
+| Axis            | 1                  | 3                   | 5                                     |
+| --------------- | ------------------ | ------------------- | ------------------------------------- |
+| Minutes Watched | <30s avg           | ~50% completion     | Re-watches + binge-throughs           |
+| Relevance       | Wrong audience     | Adjacent audience   | Direct buyer avatar                   |
+| Usefulness      | Inspirational only | Theoretical insight | Walk-away tactic that produces result |
 
 Multiply scores. Below ~30 (out of 125) = the piece is leaking trust, not building it. Don't ship.
 
 ### The Off-Target Cost Heuristic
 
-When evaluating an idea that *would* go viral but to the wrong audience:
+When evaluating an idea that _would_ go viral but to the wrong audience:
 
 ```
 Estimated upside = (off-target views × ~0% conversion) ≈ 0 leads
@@ -274,7 +282,7 @@ Decision: refuse the off-target idea unless the algorithmic cost is explicitly j
 
 This source is the **strategic decision layer** that sits above:
 
-- **Kallaway "Social Media Misunderstood" (`h_yQswsXwhY`)** — That source explains *how* the matching loop works. This source explains *which matching loop you should be playing in the first place*. The two stack: pick the game (this source), then run the matching loop (Misunderstood) for that game.
+- **Kallaway "Social Media Misunderstood" (`h_yQswsXwhY`)** — That source explains _how_ the matching loop works. This source explains _which matching loop you should be playing in the first place_. The two stack: pick the game (this source), then run the matching loop (Misunderstood) for that game.
 - **Kallaway "Social Algorithms" (`8cQidXgtGmU`)** — The four-attribute engagement filter (relevance / non-obvious / absorbable / implementable) is approximately the Trust Formula expanded. The Trust Formula compresses three axes (Minutes / Relevance / Usefulness) where Social Algorithms uses four. They are compatible; the Trust Formula is sharper for Game #5 specifically.
 - **Kallaway "18 Psychology Tricks" (`g_6TIu7zHDw`)** — The 6-checkpoint stage gate (Painpoint Acceptance → Trust → Plan → Likeability → Attention → Action) is the in-piece execution layer for any Game #5 video. The Trust Formula here measures whether that execution succeeded.
 
@@ -298,9 +306,9 @@ This is the cleanest BuildOS-aligned strategic framework Kane has produced. Spec
 ## Open Questions / Gaps
 
 - **What does Day 0's "Lego Bricks" framework contain?** The series references it as the master framework. Worth requesting from Kallaway or capturing if a future email mentions it.
-- **What are the "6 Idea Pipes" coming in Day 2?** This will likely fill a gap in `viral-video-script-structure` (the Source Intake phase currently has minimal structure for *where ideas come from*).
+- **What are the "6 Idea Pipes" coming in Day 2?** This will likely fill a gap in `viral-video-script-structure` (the Source Intake phase currently has minimal structure for _where ideas come from_).
 - **How does the game ratio work for BuildOS specifically?** 3:1 #5:#4 is a guess. Worth instrumenting and testing.
-- **Where does the BuildOS interest-media manifesto sit in the taxonomy?** It's clearly Game #5, but it also makes a *meta* argument about the game itself being rigged. Is "game-critique" a sub-game?
+- **Where does the BuildOS interest-media manifesto sit in the taxonomy?** It's clearly Game #5, but it also makes a _meta_ argument about the game itself being rigged. Is "game-critique" a sub-game?
 - **Does Game #4 have its own Trust Formula?** Kane only formalises the formula for Game #5. Game #4 likely needs Education × Differentiation × Friction-Reduction or similar — would need a separate source.
 - **How does this taxonomy interact with paid distribution?** Devin Nash's manufactured-virality work argues the real game underneath is paid. The 5-games taxonomy is organic-only. The full picture probably needs both.
 - **Is there a Game #6 for B2B-specific content?** Game #5 is framed for consultants / coaches / info products. B2B SaaS founder content (BuildOS) might be a sub-variant of #5 or a hybrid that doesn't fit cleanly.

@@ -19,6 +19,7 @@ public_article: ''
 indexed_date: '2026-04-29'
 last_reviewed: '2026-04-29'
 transcribed_date: '2026-04-29'
+path: docs/research/youtube-library/transcripts/2026-04-29_erik-kennedy_7-rules-gorgeous-ui-part-2.md
 ---
 
 # 7 Rules for Creating Gorgeous UI — Part 2

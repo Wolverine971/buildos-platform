@@ -95,16 +95,16 @@ Walk this list top-to-bottom on every screen reviewed. Cite WCAG criteria for ea
 
 ### Hiding Techniques (the 4-by-2 matrix — pick the right one)
 
-| Technique                                              | Hidden visually? | Hidden from a11y tree? | When to use                                                        |
-| ------------------------------------------------------ | ---------------- | ---------------------- | ------------------------------------------------------------------ |
-| `display: none`                                        | Yes              | Yes                    | Element should not exist for any user                              |
-| `visibility: hidden`                                   | Yes              | Yes                    | Same as `display:none`; preserves layout space                     |
-| `hidden` attribute (HTML5)                             | Yes              | Yes                    | Equivalent to `display:none`; survives CSS-disabled (Reader mode)  |
-| `aria-hidden="true"`                                   | No               | Yes                    | Decorative or duplicative content (icon SVGs inside labeled buttons) |
-| `inert`                                                | No (but inactive) | No (but unreachable) | Background content while a modal is open                           |
-| `.sr-only` (clip + 1×1 + absolute)                     | Yes              | No                     | Screen-reader-only labels, headings, instructions                  |
-| `tabindex="-1"`                                        | No               | No                     | Removes from tab order; still scriptable-focusable                 |
-| `position:absolute; opacity:0; w/h:1px` + visual overlay | Yes            | No                     | Hide native `<input>` while keeping it touch-explorable            |
+| Technique                                                | Hidden visually?  | Hidden from a11y tree? | When to use                                                          |
+| -------------------------------------------------------- | ----------------- | ---------------------- | -------------------------------------------------------------------- |
+| `display: none`                                          | Yes               | Yes                    | Element should not exist for any user                                |
+| `visibility: hidden`                                     | Yes               | Yes                    | Same as `display:none`; preserves layout space                       |
+| `hidden` attribute (HTML5)                               | Yes               | Yes                    | Equivalent to `display:none`; survives CSS-disabled (Reader mode)    |
+| `aria-hidden="true"`                                     | No                | Yes                    | Decorative or duplicative content (icon SVGs inside labeled buttons) |
+| `inert`                                                  | No (but inactive) | No (but unreachable)   | Background content while a modal is open                             |
+| `.sr-only` (clip + 1×1 + absolute)                       | Yes               | No                     | Screen-reader-only labels, headings, instructions                    |
+| `tabindex="-1"`                                          | No                | No                     | Removes from tab order; still scriptable-focusable                   |
+| `position:absolute; opacity:0; w/h:1px` + visual overlay | Yes               | No                     | Hide native `<input>` while keeping it touch-explorable              |
 
 - [ ] Each hidden element uses the technique that matches intent
 - [ ] No interactive control hidden off-canvas (`left:-9999px`) or shrunk to invisibility — kills explore-by-touch on mobile screen readers
@@ -137,7 +137,7 @@ Walk this list top-to-bottom on every screen reviewed. Cite WCAG criteria for ea
 - [ ] Every input has a `<label>` element with `for`/`id` association (or `aria-labelledby` to a visible label) (WCAG 1.3.1, 3.3.2 Labels or Instructions)
 - [ ] Labels are top-aligned, not floating-label (Material-style); the field is a real box, not a bare line
 - [ ] Placeholder is never the only label — it disappears on type
-- [ ] Required fields marked with both visible "*" or "required" AND `aria-required="true"`
+- [ ] Required fields marked with both visible "\*" or "required" AND `aria-required="true"`
 - [ ] Error messages associated with fields via `aria-describedby` (WCAG 3.3.1 Error Identification)
 - [ ] `aria-invalid="true"` on fields in error
 - [ ] Validation errors announced via a live region or focus moves to the error summary
@@ -357,7 +357,7 @@ Return findings grouped by category. For each finding include: WCAG criterion + 
 
 This skill is the source backbone for the BuildOS `accessibility-auditor` agent and is distilled from two primary sources:
 
-- **Heydon Pickering — _Inclusive Components_** (Smashing TV, 2019). Author of *Apps For All*, *Inclusive Design Patterns*, *Inclusive Components*; co-author of the [Inclusive Design Principles](https://inclusivedesignprinciples.org/); design-system consultant for the BBC, Bulb, and others. Provides the per-component canon and the failure-mode catalogue.
+- **Heydon Pickering — _Inclusive Components_** (Smashing TV, 2019). Author of _Apps For All_, _Inclusive Design Patterns_, _Inclusive Components_; co-author of the [Inclusive Design Principles](https://inclusivedesignprinciples.org/); design-system consultant for the BBC, Bulb, and others. Provides the per-component canon and the failure-mode catalogue.
     - YouTube: https://www.youtube.com/watch?v=jw7bRnFbwAI (Smashing TV, 2019-11-18)
     - Local analysis: `docs/research/youtube-library/analyses/2026-04-29_heydon-pickering_inclusive-components_analysis.md`
 - **Sara Soueidan — _Applied Accessibility: Practical Tips for Building More Accessible Front-Ends_** (Codegram / Full Stack Fest, 2019). Independent front-end UI engineer; widely cited accessibility writer. Provides the per-screen audit, the hiding-techniques taxonomy, and WCAG criteria mapping.

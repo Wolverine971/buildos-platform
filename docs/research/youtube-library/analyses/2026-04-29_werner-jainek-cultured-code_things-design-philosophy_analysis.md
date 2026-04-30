@@ -56,16 +56,16 @@ Cultured Code's Things treats personal productivity software as a quiet, deeply 
 
 ## TL;DR Rules Table
 
-| # | Principle | Operating rule |
-| --- | --- | --- |
-| 1 | The app should disappear during use | Strip UI chrome until only the user's content remains visible. Animations, palette, and typography exist to fade, not to perform. |
-| 2 | A conversation with oneself | Design for one private user, not a team coordination protocol. Default to personal, not collaborative. |
-| 3 | Do not over-organize | More hierarchy = harder to find tasks. Things ships only Projects + Areas. No folders, no subfolders, no nested projects. |
-| 4 | Polish is never finished | "Constantly improve... never think of it as being finished." Polish is a permanent operating posture, not a launch milestone. |
-| 5 | Reach Apple's level of Excellency | Treat Apple's first-party apps as the floor for animation, interaction, and craft — then add an "extra level of polish and thought." |
-| 6 | Customers value craft, even at a price | Things was the most-sold paid task manager in the App Store despite competing with free alternatives. Polish is the moat. |
-| 7 | Listen, then return to the drawing board | When users said task entry wasn't quick enough in v1.0, Cultured Code went back and re-debugged core animation performance. Listen → re-design, not listen → ship more features. |
-| 8 | Small team, deliberate scope | 12 people, 8 countries. Calm software does not require scaling to 100 engineers. |
+| #   | Principle                                | Operating rule                                                                                                                                                                   |
+| --- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | The app should disappear during use      | Strip UI chrome until only the user's content remains visible. Animations, palette, and typography exist to fade, not to perform.                                                |
+| 2   | A conversation with oneself              | Design for one private user, not a team coordination protocol. Default to personal, not collaborative.                                                                           |
+| 3   | Do not over-organize                     | More hierarchy = harder to find tasks. Things ships only Projects + Areas. No folders, no subfolders, no nested projects.                                                        |
+| 4   | Polish is never finished                 | "Constantly improve... never think of it as being finished." Polish is a permanent operating posture, not a launch milestone.                                                    |
+| 5   | Reach Apple's level of Excellency        | Treat Apple's first-party apps as the floor for animation, interaction, and craft — then add an "extra level of polish and thought."                                             |
+| 6   | Customers value craft, even at a price   | Things was the most-sold paid task manager in the App Store despite competing with free alternatives. Polish is the moat.                                                        |
+| 7   | Listen, then return to the drawing board | When users said task entry wasn't quick enough in v1.0, Cultured Code went back and re-debugged core animation performance. Listen → re-design, not listen → ship more features. |
+| 8   | Small team, deliberate scope             | 12 people, 8 countries. Calm software does not require scaling to 100 engineers.                                                                                                 |
 
 ## Operating Lessons
 
@@ -75,7 +75,7 @@ Cultured Code's Things treats personal productivity software as a quiet, deeply 
 
 The operational consequence of this principle is that every UI element either earns its presence by being load-bearing for the user's content, or it gets stripped. This is what produces the Apple-style polish, the calm color palette, and the absence of dashboards-of-dashboards that bloat most productivity apps. The animation work Jainek describes (debugging core animation performance with color-blended-layers in Instruments — green = unblended/fast, red = blended/slow) is in service of this same goal: animation that is invisibly smooth lets the app fade; animation that stutters announces itself.
 
-For BuildOS this means: every chrome element on the brain-dump surface, the daily-brief view, and the project page should be auditable against the question *"does removing this make the user's content harder to find, or easier?"* If easier, remove it.
+For BuildOS this means: every chrome element on the brain-dump surface, the daily-brief view, and the project page should be auditable against the question _"does removing this make the user's content harder to find, or easier?"_ If easier, remove it.
 
 ### 2. A conversation with oneself
 
@@ -83,7 +83,7 @@ For BuildOS this means: every chrome element on the brain-dump surface, the dail
 
 This single quote is the most strategically valuable line in the entire source set. It reframes a productivity app away from the dominant 2020s positioning (team coordination platform, AI assistant, second brain marketplace) and back to a private, intimate artifact. The user is not a team member completing tickets; the user is a person thinking with a tool that listens.
 
-This metaphor maps almost 1:1 onto BuildOS's anti-feed positioning. Brain-dump is *literally* a conversation with oneself — a stream-of-consciousness write that gets structured back to you. Daily brief is the same: the system reflecting your own commitments back at you in a form you can act on.
+This metaphor maps almost 1:1 onto BuildOS's anti-feed positioning. Brain-dump is _literally_ a conversation with oneself — a stream-of-consciousness write that gets structured back to you. Daily brief is the same: the system reflecting your own commitments back at you in a form you can act on.
 
 ### 3. Do not over-organize
 
@@ -103,7 +103,7 @@ This is one of the most deliberate negative-feature decisions in modern producti
 
 Polish is not a launch checklist. It is a permanent operating posture. The claim Jainek is making — backed up by Things being the top-grossing paid task manager despite countless free alternatives — is that **craft is the moat**. Not features. Not network effects. Not pricing. Polish.
 
-Note the framing: Apple is the *floor*, not the ceiling. The goal is to add an "extra level" beyond what Apple already ships. This is high-bar taste-driven toolmaking and it is rare.
+Note the framing: Apple is the _floor_, not the ceiling. The goal is to add an "extra level" beyond what Apple already ships. This is high-bar taste-driven toolmaking and it is rare.
 
 ### 5. Calm software at 12 people across 8 countries
 
@@ -143,7 +143,7 @@ When reviewing a BuildOS surface (brain-dump, daily brief, project page, chat), 
 - **Conversation-with-self test:** Does this surface feel like a private artifact, or a coordination tool? If it leans coordination, ask whether that's the right framing for this user moment.
 - **Over-organization test:** How many levels of hierarchy does the user have to navigate to find a task? If the answer is >2, you have probably over-organized.
 - **Apple-floor test:** Compare animation, interaction polish, and visual restraint to Apple's first-party apps (Notes, Reminders, Calendar). Are we at that floor? Below it? Above it?
-- **Negative-feature test:** What did we deliberately *not* ship on this surface? If the answer is "everything we could think of, we shipped," you have a feature accumulation problem.
+- **Negative-feature test:** What did we deliberately _not_ ship on this surface? If the answer is "everything we could think of, we shipped," you have a feature accumulation problem.
 - **Listen-then-redesign test:** When users complain about a surface, is the team reflexively adding features, or going back to debug the existing surface?
 
 ## Application to BuildOS
@@ -164,7 +164,7 @@ Concrete audit: open the current daily-brief view and list every visual element.
 
 BuildOS will be pulled toward folders, sub-projects, nested tags, custom views, and shared workspaces. The Cultured Code precedent — Things ships only Projects + Areas, no folders, fifteen years in, and they're the top paid task manager in the App Store — gives us air cover to say no. Every feature request should be evaluated against "does this make the user's tasks easier to find, or just easier to file?"
 
-We should maintain an explicit `deliberate non-features` doc in `docs/marketing/anti-feed/` or `apps/web/docs/technical/architecture/` that names what BuildOS deliberately does *not* ship and why.
+We should maintain an explicit `deliberate non-features` doc in `docs/marketing/anti-feed/` or `apps/web/docs/technical/architecture/` that names what BuildOS deliberately does _not_ ship and why.
 
 ### 4. Polish as moat, not feature velocity as moat
 
@@ -184,7 +184,7 @@ For BuildOS as a small team, Cultured Code is a more useful comparison company t
 
 **"Do not over-organize" can become "do not enable real workflows."** The Things model works for personal task management. It would not work as the only organizing model for, say, a software engineering team's bug tracker, where nested categories and sub-tasks are load-bearing. BuildOS sits somewhere between personal tool and lightweight project context — we have to decide case-by-case where Cultured Code's restraint applies and where it under-serves the user. The principle is correct; the failure mode is over-applying it.
 
-**Polish-as-moat is not a positioning strategy, it's a craft commitment.** Polish doesn't tell you who BuildOS is *for* or what category it's in. It's a quality bar. We still need the anti-feed / thinking-environment positioning to do the categorical work; Cultured Code just tells us how high to set the craft bar inside that category.
+**Polish-as-moat is not a positioning strategy, it's a craft commitment.** Polish doesn't tell you who BuildOS is _for_ or what category it's in. It's a quality bar. We still need the anti-feed / thinking-environment positioning to do the categorical work; Cultured Code just tells us how high to set the craft bar inside that category.
 
 **The 2009 clip pre-dates the Things 3 redesign.** Things 3 (released 2017) is the version that crystallized the modern Cultured Code philosophy. Our primary source pre-dates that by 8 years. We are extrapolating modern philosophy onto early-Jainek statements; this is reasonable given the about-page corroboration but worth acknowledging.
 

@@ -74,8 +74,7 @@
 			}
 		} catch (err) {
 			console.error('[PublicProjectView] Failed to load projects:', err);
-			listError =
-				err instanceof Error ? err.message : 'Failed to load example projects';
+			listError = err instanceof Error ? err.message : 'Failed to load example projects';
 		} finally {
 			isLoadingList = false;
 		}
@@ -85,9 +84,7 @@
 		isLoadingProject = true;
 		projectError = null;
 		try {
-			const response = await fetch(
-				`/api/public/projects/${projectId}/graph?viewMode=full`
-			);
+			const response = await fetch(`/api/public/projects/${projectId}/graph?viewMode=full`);
 			const payload = await response.json();
 			if (!response.ok) {
 				throw new Error(
@@ -101,8 +98,7 @@
 			};
 		} catch (err) {
 			console.error('[PublicProjectView] Failed to load project graph:', err);
-			projectError =
-				err instanceof Error ? err.message : 'Failed to load example project';
+			projectError = err instanceof Error ? err.message : 'Failed to load example project';
 			fullData = null;
 		} finally {
 			isLoadingProject = false;
@@ -129,7 +125,9 @@
 				class="absolute -top-3 right-4 sm:right-6 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border-2 border-dashed border-border bg-background shadow-ink"
 			>
 				<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-				<span class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground font-semibold">
+				<span
+					class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground font-semibold"
+				>
 					Read-only example
 				</span>
 			</div>
@@ -152,7 +150,9 @@
 							See what a real BuildOS project looks like.
 						</h2>
 						<p class="text-sm text-muted-foreground max-w-2xl">
-							This is the same view a logged-in user gets — header, documents, goals, plans, tasks, and the project graph — rendered from a real public project. Pick a different example below.
+							This is the same view a logged-in user gets — header, documents, goals,
+							plans, tasks, and the project graph — rendered from a real public
+							project. Pick a different example below.
 						</p>
 					</div>
 
@@ -180,57 +180,59 @@
 			</div>
 
 			{#if listError}
-			<div
-				class="rounded-lg border border-border bg-card shadow-ink tx tx-static tx-weak p-6 text-center"
-			>
-				<p class="text-sm text-muted-foreground">{listError}</p>
-				<button
-					type="button"
-					onclick={loadProjectList}
-					class="mt-3 px-4 py-2 text-xs font-medium rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 transition shadow-ink pressable"
+				<div
+					class="rounded-lg border border-border bg-card shadow-ink tx tx-static tx-weak p-6 text-center"
 				>
-					Try again
-				</button>
-			</div>
-		{:else if isLoadingList && !fullData}
-			<div
-				class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-12 flex items-center justify-center"
-			>
-				<div class="flex items-center gap-2 text-sm text-muted-foreground">
-					<LoaderCircle class="w-5 h-5 animate-spin" />
-					<span>Loading example project…</span>
+					<p class="text-sm text-muted-foreground">{listError}</p>
+					<button
+						type="button"
+						onclick={loadProjectList}
+						class="mt-3 px-4 py-2 text-xs font-medium rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 transition shadow-ink pressable"
+					>
+						Try again
+					</button>
 				</div>
-			</div>
-		{:else if projectError}
-			<div
-				class="rounded-lg border border-border bg-card shadow-ink tx tx-static tx-weak p-6 text-center space-y-3"
-			>
-				<p class="text-sm text-muted-foreground">{projectError}</p>
-				<button
-					type="button"
-					onclick={() =>
-						currentProjectId ? loadProjectData(currentProjectId) : loadProjectList()}
-					class="px-4 py-2 text-xs font-medium rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 transition shadow-ink pressable"
+			{:else if isLoadingList && !fullData}
+				<div
+					class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-12 flex items-center justify-center"
 				>
-					Try again
-				</button>
-			</div>
-		{:else if fullData}
-			<PublicProjectHeader project={fullData.project} />
-
-			<PublicProjectStatsRow stats={fullData.stats} />
-
-			<div class="grid lg:grid-cols-5 gap-3 sm:gap-4">
-				<div class="lg:col-span-3">
-					<PublicProjectDocsList documents={fullData.source.documents ?? []} />
+					<div class="flex items-center gap-2 text-sm text-muted-foreground">
+						<LoaderCircle class="w-5 h-5 animate-spin" />
+						<span>Loading example project…</span>
+					</div>
 				</div>
-				<div class="lg:col-span-2">
-					<PublicProjectInsightRail source={fullData.source} />
+			{:else if projectError}
+				<div
+					class="rounded-lg border border-border bg-card shadow-ink tx tx-static tx-weak p-6 text-center space-y-3"
+				>
+					<p class="text-sm text-muted-foreground">{projectError}</p>
+					<button
+						type="button"
+						onclick={() =>
+							currentProjectId
+								? loadProjectData(currentProjectId)
+								: loadProjectList()}
+						class="px-4 py-2 text-xs font-medium rounded-lg bg-accent text-accent-foreground hover:bg-accent/90 transition shadow-ink pressable"
+					>
+						Try again
+					</button>
 				</div>
-			</div>
+			{:else if fullData}
+				<PublicProjectHeader project={fullData.project} />
 
-			<PublicProjectGraphPanel source={fullData.source} isLoading={isLoadingProject} />
-		{/if}
+				<PublicProjectStatsRow stats={fullData.stats} />
+
+				<div class="grid lg:grid-cols-5 gap-3 sm:gap-4">
+					<div class="lg:col-span-3">
+						<PublicProjectDocsList documents={fullData.source.documents ?? []} />
+					</div>
+					<div class="lg:col-span-2">
+						<PublicProjectInsightRail source={fullData.source} />
+					</div>
+				</div>
+
+				<PublicProjectGraphPanel source={fullData.source} isLoading={isLoadingProject} />
+			{/if}
 		</div>
 	</div>
 </section>

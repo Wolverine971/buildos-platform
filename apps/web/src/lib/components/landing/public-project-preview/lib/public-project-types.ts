@@ -7,10 +7,7 @@
  * - GET /api/public/projects/[id]/graph
  */
 
-import type {
-	GraphSourceData,
-	GraphStats
-} from '$lib/components/ontology/graph/lib/graph.types';
+import type { GraphSourceData, GraphStats } from '$lib/components/ontology/graph/lib/graph.types';
 
 export interface PublicProjectSummary {
 	id: string;
@@ -76,7 +73,6 @@ export function formatTimelineYearRange(
 	if (!start || !end) return '';
 	const startDate = new Date(start);
 	const endDate = new Date(end);
-	const fmt = (d: Date) =>
-		d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+	const fmt = (d: Date) => d.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
 	return `${fmt(startDate)} - ${fmt(endDate)}`;
 }

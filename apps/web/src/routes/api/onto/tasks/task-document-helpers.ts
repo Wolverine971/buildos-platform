@@ -6,6 +6,7 @@ import { isValidUUID } from '$lib/utils/operations/validation-utils';
 export const TASK_DOCUMENT_REL = 'task_has_document';
 
 type Locals = App.Locals;
+type ProjectAccessLevel = 'read' | 'write' | 'admin';
 
 export type TaskAccessResult =
 	| {
@@ -25,7 +26,8 @@ export type TaskAccessResult =
 export async function ensureTaskAccess(
 	locals: Locals,
 	taskId: string,
-	userId: string
+	userId: string,
+	requiredAccess: ProjectAccessLevel = 'read'
 ): Promise<TaskAccessResult> {
 	if (!isValidUUID(taskId)) {
 		return { error: ApiResponse.badRequest('Invalid task_id: expected UUID') };
@@ -72,7 +74,22 @@ export async function ensureTaskAccess(
 		return { error: ApiResponse.notFound('Task') };
 	}
 
-	if (task.project.created_by !== actorId) {
+	const { data: hasAccess, error: accessError } = await supabase.rpc(
+		'current_actor_has_project_access',
+		{
+			p_project_id: task.project.id,
+			p_required_access: requiredAccess
+		}
+	);
+
+	if (accessError) {
+		console.error('[TaskDoc API] Failed to check project access:', accessError);
+		return {
+			error: ApiResponse.internalError(accessError, 'Failed to check project access')
+		};
+	}
+
+	if (!hasAccess) {
 		return { error: ApiResponse.forbidden('You do not have access to this task') };
 	}
 

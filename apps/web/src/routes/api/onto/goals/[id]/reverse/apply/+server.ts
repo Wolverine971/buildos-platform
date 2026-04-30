@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const supabase = locals.supabase;
 
 	try {
-		const context = await loadGoalReverseContext(supabase, user.id, goalId);
+		const context = await loadGoalReverseContext(supabase, user.id, goalId, 'write');
 
 		const sanitizedMilestones = sanitizeMilestones(milestonesInput);
 

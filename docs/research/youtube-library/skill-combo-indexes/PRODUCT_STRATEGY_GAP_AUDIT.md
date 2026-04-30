@@ -355,7 +355,7 @@ After this pull, second priority is **Marty Cagan + Teresa Torres** (to unlock `
 
 `ready-to-draft` for `positioning-for-crowded-categories`. **Updated 2026-04-29:** April Dunford + Marty Neumeier + Mike Cessario + Ash Maurya all stacked. The combo is now in the [PRODUCT_STRATEGY index](./PRODUCT_STRATEGY.md). Andy Raskin + Geoffrey Moore would still strengthen it; not blocking.
 
-`needs-synthesis` for `category-and-strategic-narrative`. **Updated 2026-04-29:** Neumeier + DHH/37signals + Cessario + Mafia Offer stacked, but the canonical category-design literature (*Play Bigger* / Lochhead, Mike Maples *Pattern Breakers*) is still missing. Pull one of those before drafting.
+`needs-synthesis` for `category-and-strategic-narrative`. **Updated 2026-04-29:** Neumeier + DHH/37signals + Cessario + Mafia Offer stacked, but the canonical category-design literature (_Play Bigger_ / Lochhead, Mike Maples _Pattern Breakers_) is still missing. Pull one of those before drafting.
 
 `needs-research` for the still-missing combos: `product-strategy-doc-author` (Will Lawrence, Ravi Mehta, Marty Cagan), `product-discovery-and-prioritization-cadence` (Marty Cagan, Teresa Torres, Ryan Singer), `pricing-and-packaging-design` (Madhavan Ramanujam, Patrick Campbell, Kyle Poyar). None have been pulled yet.
 
@@ -372,4 +372,4 @@ The 2026-04-29 marketing-focused research pull added sources that cross over int
 - [Mike Cessario Liquid Death anti-marketing](../../../marketing/growth/research/youtube-transcripts/2026-04-29-mike-cessario-liquid-death-anti-marketing-ANALYSIS.md) — brand-as-entertainment, "fuck that" anti-positioning move, acquisition-resistant brand design. Stacked into both new combos.
 - [DHH 37signals calm-company marketing](../../../marketing/growth/research/youtube-transcripts/2026-04-29-dhh-37signals-calm-company-marketing-ANALYSIS.md) — calm-company as category-design example; opinionated launches; bootstrapping as brand asset. Stacked into `Category and strategic narrative`.
 
-**Net effect on this audit:** Section 2 (Positioning As A Distinct Discipline) now has source coverage; combo can be drafted today. Section 7 (Strategy Under Uncertainty And Category Creation) has partial coverage; one *Play Bigger* / *Pattern Breakers* analysis would close it.
+**Net effect on this audit:** Section 2 (Positioning As A Distinct Discipline) now has source coverage; combo can be drafted today. Section 7 (Strategy Under Uncertainty And Category Creation) has partial coverage; one _Play Bigger_ / _Pattern Breakers_ analysis would close it.
