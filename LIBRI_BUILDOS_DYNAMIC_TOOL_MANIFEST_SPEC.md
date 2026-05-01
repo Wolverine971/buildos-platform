@@ -1,3 +1,5 @@
+<!-- LIBRI_BUILDOS_DYNAMIC_TOOL_MANIFEST_SPEC.md -->
+
 # Libri -> BuildOS Dynamic Tool Manifest Spec
 
 Status: proposed Libri contract
@@ -48,29 +50,29 @@ Cache-Control: private, max-age=300
 
 ```json
 {
-  "version": "v1",
-  "manifestVersion": "libri-capabilities/2026-04-30",
-  "generatedAt": "2026-04-30T12:00:00.000Z",
-  "domains": {
-    "books": {
-      "label": "Books",
-      "description": "Books, chapters, authorship, categories, summaries, and analysis.",
-      "resources": {},
-      "operations": []
-    },
-    "people": {
-      "label": "People",
-      "description": "Authors, creators, thinkers, and public figures.",
-      "resources": {},
-      "operations": []
-    },
-    "youtube_videos": {
-      "label": "YouTube Videos",
-      "description": "Video records, transcripts, analysis, ingestion jobs, and imports.",
-      "resources": {},
-      "operations": []
-    }
-  }
+	"version": "v1",
+	"manifestVersion": "libri-capabilities/2026-04-30",
+	"generatedAt": "2026-04-30T12:00:00.000Z",
+	"domains": {
+		"books": {
+			"label": "Books",
+			"description": "Books, chapters, authorship, categories, summaries, and analysis.",
+			"resources": {},
+			"operations": []
+		},
+		"people": {
+			"label": "People",
+			"description": "Authors, creators, thinkers, and public figures.",
+			"resources": {},
+			"operations": []
+		},
+		"youtube_videos": {
+			"label": "YouTube Videos",
+			"description": "Video records, transcripts, analysis, ingestion jobs, and imports.",
+			"resources": {},
+			"operations": []
+		}
+	}
 }
 ```
 
@@ -89,25 +91,25 @@ definition and route execution safely.
 
 ```json
 {
-  "op": "libri.video.import.preview",
-  "toolName": "libri_video_import_preview",
-  "domain": "youtube_videos",
-  "resource": "video.import",
-  "kind": "write",
-  "method": "POST",
-  "path": "/api/v1/ingestion/videos/preview",
-  "description": "Validate a YouTube transcript and analysis payload before queueing ingestion.",
-  "requiredScopes": ["queue:ingestion"],
-  "requiresIdempotencyKey": false,
-  "inputSchema": {},
-  "outputSchema": {},
-  "examples": [],
-  "safety": {
-    "modelVisible": true,
-    "adminOnly": false,
-    "allowDirectToolMaterialization": true,
-    "allowGenericBridgeExecution": false
-  }
+	"op": "libri.video.import.preview",
+	"toolName": "libri_video_import_preview",
+	"domain": "youtube_videos",
+	"resource": "video.import",
+	"kind": "write",
+	"method": "POST",
+	"path": "/api/v1/ingestion/videos/preview",
+	"description": "Validate a YouTube transcript and analysis payload before queueing ingestion.",
+	"requiredScopes": ["queue:ingestion"],
+	"requiresIdempotencyKey": false,
+	"inputSchema": {},
+	"outputSchema": {},
+	"examples": [],
+	"safety": {
+		"modelVisible": true,
+		"adminOnly": false,
+		"allowDirectToolMaterialization": true,
+		"allowGenericBridgeExecution": false
+	}
 }
 ```
 
@@ -168,103 +170,103 @@ Recommended `preview` operation:
 
 ```json
 {
-  "op": "libri.video.import.preview",
-  "toolName": "libri_video_import_preview",
-  "domain": "youtube_videos",
-  "resource": "video.import",
-  "kind": "write",
-  "method": "POST",
-  "path": "/api/v1/ingestion/videos/preview",
-  "description": "Validate a YouTube transcript and analysis payload before queueing ingestion.",
-  "requiredScopes": ["queue:ingestion"],
-  "requiresIdempotencyKey": false,
-  "inputSchema": {
-    "type": "object",
-    "additionalProperties": false,
-    "properties": {
-      "url": {
-        "type": "string",
-        "description": "YouTube video URL."
-      },
-      "youtubeVideoId": {
-        "type": "string",
-        "description": "Optional YouTube video id when already known."
-      },
-      "videoTitle": {
-        "type": "string",
-        "description": "Optional video title."
-      },
-      "channelTitle": {
-        "type": "string",
-        "description": "Optional channel or creator name."
-      },
-      "youtubeChannelId": {
-        "type": "string",
-        "description": "Optional YouTube channel id."
-      },
-      "transcriptText": {
-        "type": "string",
-        "description": "Local transcript text to validate."
-      },
-      "rawDetailsText": {
-        "type": "string",
-        "description": "Optional raw source notes or analysis details to attach to the import."
-      },
-      "previewOnly": {
-        "type": "boolean",
-        "description": "Whether Libri should only preview validation. Defaults to true for preview."
-      },
-      "analysis": {
-        "type": "object",
-        "description": "Optional analysis payload.",
-        "additionalProperties": false,
-        "properties": {
-          "summary": {
-            "type": "string"
-          },
-          "topics": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "extensions": {
-            "type": "object",
-            "description": "Flexible analysis extensions from BuildOS or an agent.",
-            "additionalProperties": true
-          }
-        }
-      },
-      "project_id": {
-        "type": "string",
-        "description": "Optional BuildOS project id for provenance."
-      }
-    },
-    "required": ["transcriptText"]
-  },
-  "outputSchema": {
-    "type": "object",
-    "properties": {
-      "preview": {
-        "type": "object",
-        "properties": {
-          "status": { "type": "string" },
-          "ok": { "type": "boolean" },
-          "canCreateImport": { "type": "boolean" },
-          "issues": {
-            "type": "array",
-            "items": { "type": "object" }
-          }
-        }
-      }
-    }
-  },
-  "safety": {
-    "modelVisible": true,
-    "adminOnly": false,
-    "allowDirectToolMaterialization": true,
-    "allowGenericBridgeExecution": false
-  }
+	"op": "libri.video.import.preview",
+	"toolName": "libri_video_import_preview",
+	"domain": "youtube_videos",
+	"resource": "video.import",
+	"kind": "write",
+	"method": "POST",
+	"path": "/api/v1/ingestion/videos/preview",
+	"description": "Validate a YouTube transcript and analysis payload before queueing ingestion.",
+	"requiredScopes": ["queue:ingestion"],
+	"requiresIdempotencyKey": false,
+	"inputSchema": {
+		"type": "object",
+		"additionalProperties": false,
+		"properties": {
+			"url": {
+				"type": "string",
+				"description": "YouTube video URL."
+			},
+			"youtubeVideoId": {
+				"type": "string",
+				"description": "Optional YouTube video id when already known."
+			},
+			"videoTitle": {
+				"type": "string",
+				"description": "Optional video title."
+			},
+			"channelTitle": {
+				"type": "string",
+				"description": "Optional channel or creator name."
+			},
+			"youtubeChannelId": {
+				"type": "string",
+				"description": "Optional YouTube channel id."
+			},
+			"transcriptText": {
+				"type": "string",
+				"description": "Local transcript text to validate."
+			},
+			"rawDetailsText": {
+				"type": "string",
+				"description": "Optional raw source notes or analysis details to attach to the import."
+			},
+			"previewOnly": {
+				"type": "boolean",
+				"description": "Whether Libri should only preview validation. Defaults to true for preview."
+			},
+			"analysis": {
+				"type": "object",
+				"description": "Optional analysis payload.",
+				"additionalProperties": false,
+				"properties": {
+					"summary": {
+						"type": "string"
+					},
+					"topics": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"extensions": {
+						"type": "object",
+						"description": "Flexible analysis extensions from BuildOS or an agent.",
+						"additionalProperties": true
+					}
+				}
+			},
+			"project_id": {
+				"type": "string",
+				"description": "Optional BuildOS project id for provenance."
+			}
+		},
+		"required": ["transcriptText"]
+	},
+	"outputSchema": {
+		"type": "object",
+		"properties": {
+			"preview": {
+				"type": "object",
+				"properties": {
+					"status": { "type": "string" },
+					"ok": { "type": "boolean" },
+					"canCreateImport": { "type": "boolean" },
+					"issues": {
+						"type": "array",
+						"items": { "type": "object" }
+					}
+				}
+			}
+		}
+	},
+	"safety": {
+		"modelVisible": true,
+		"adminOnly": false,
+		"allowDirectToolMaterialization": true,
+		"allowGenericBridgeExecution": false
+	}
 }
 ```
 
@@ -278,43 +280,43 @@ Recommended `create` operation:
 
 ```json
 {
-  "op": "libri.video.import.create",
-  "toolName": "libri_video_import_create",
-  "domain": "youtube_videos",
-  "resource": "video.import",
-  "kind": "write",
-  "method": "POST",
-  "path": "/api/v1/ingestion/videos",
-  "description": "Queue a YouTube transcript and analysis import after preview validation.",
-  "requiredScopes": ["queue:ingestion"],
-  "requiresIdempotencyKey": true,
-  "idempotency": {
-    "header": "Idempotency-Key",
-    "recommendedKeyFields": ["url", "youtubeVideoId", "transcriptText"]
-  },
-  "inputSchema": {
-    "type": "object",
-    "additionalProperties": false,
-    "properties": {
-      "url": { "type": "string" },
-      "youtubeVideoId": { "type": "string" },
-      "videoTitle": { "type": "string" },
-      "channelTitle": { "type": "string" },
-      "youtubeChannelId": { "type": "string" },
-      "transcriptText": { "type": "string" },
-      "rawDetailsText": { "type": "string" },
-      "createImport": { "type": "boolean" },
-      "analysis": { "type": "object", "additionalProperties": true },
-      "project_id": { "type": "string" }
-    },
-    "required": ["transcriptText"]
-  },
-  "safety": {
-    "modelVisible": true,
-    "adminOnly": false,
-    "allowDirectToolMaterialization": true,
-    "allowGenericBridgeExecution": false
-  }
+	"op": "libri.video.import.create",
+	"toolName": "libri_video_import_create",
+	"domain": "youtube_videos",
+	"resource": "video.import",
+	"kind": "write",
+	"method": "POST",
+	"path": "/api/v1/ingestion/videos",
+	"description": "Queue a YouTube transcript and analysis import after preview validation.",
+	"requiredScopes": ["queue:ingestion"],
+	"requiresIdempotencyKey": true,
+	"idempotency": {
+		"header": "Idempotency-Key",
+		"recommendedKeyFields": ["url", "youtubeVideoId", "transcriptText"]
+	},
+	"inputSchema": {
+		"type": "object",
+		"additionalProperties": false,
+		"properties": {
+			"url": { "type": "string" },
+			"youtubeVideoId": { "type": "string" },
+			"videoTitle": { "type": "string" },
+			"channelTitle": { "type": "string" },
+			"youtubeChannelId": { "type": "string" },
+			"transcriptText": { "type": "string" },
+			"rawDetailsText": { "type": "string" },
+			"createImport": { "type": "boolean" },
+			"analysis": { "type": "object", "additionalProperties": true },
+			"project_id": { "type": "string" }
+		},
+		"required": ["transcriptText"]
+	},
+	"safety": {
+		"modelVisible": true,
+		"adminOnly": false,
+		"allowDirectToolMaterialization": true,
+		"allowGenericBridgeExecution": false
+	}
 }
 ```
 
@@ -325,20 +327,20 @@ to return both direct tools from one capability search.
 
 ```json
 {
-  "sequence": {
-    "id": "youtube_video_import",
-    "steps": [
-      {
-        "op": "libri.video.import.preview",
-        "purpose": "Validate payload before queueing."
-      },
-      {
-        "op": "libri.video.import.create",
-        "purpose": "Queue import after preview succeeds.",
-        "requiresPreviousSuccess": "libri.video.import.preview"
-      }
-    ]
-  }
+	"sequence": {
+		"id": "youtube_video_import",
+		"steps": [
+			{
+				"op": "libri.video.import.preview",
+				"purpose": "Validate payload before queueing."
+			},
+			{
+				"op": "libri.video.import.create",
+				"purpose": "Queue import after preview succeeds.",
+				"requiresPreviousSuccess": "libri.video.import.preview"
+			}
+		]
+	}
 }
 ```
 

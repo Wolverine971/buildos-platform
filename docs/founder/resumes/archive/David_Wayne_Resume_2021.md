@@ -1,7 +1,9 @@
+<!-- docs/founder/resumes/archive/David_Wayne_Resume_2021.md -->
+
 Personal Statement:
 I am a USMC veteran turned software engineer who likes solving hard problems, making things efficient and working in teams.
 
-Technical Skills: 
+Technical Skills:
 Front-end: Vue, VueX, Angular, NGRX, AngularJS, TypeScript, jQuery, ES6 JavaScript, HTML, CSS, SASS/SCSS, Bootstrap, AJAX, Axios, Nuxt
 Middle-Tier/ Backend: Node, Express, GraphQL, C#, Java, MVC Framework, ASP.NET, .NetCore, Python, Socket.io, SQL, MongoDB, Elasticsearch/Kibana, Redis
 Other/ Random: Git, Gulp, WebPack, TFS, Jest (Unit Testing), 508 Compliance/ Accessibility, JAWS (Screen Reader), AWS
@@ -24,7 +26,7 @@ Improved analyst workflows by creating tools for documenting classifications and
 Improved frontend performance across the application by streamlining API calls through caching and memoization techniques
 MetroStar Systems | Software Engineer | April 2018 – August 2019
 Census Bureau- Center for Enterprise Dissemination Services and Consumer Innovation
-Rearchitected an AngularJS code base into VueJS for the CEDSCI project to make the Census data readily available through a single search bar similar to Google. 
+Rearchitected an AngularJS code base into VueJS for the CEDSCI project to make the Census data readily available through a single search bar similar to Google.
 Collaborated with other developers to make a Vue.js proof of concept demonstrating improvements in performance, organization and scalability. Presented the business case to stake holders, created design plans and followed through with rebuilding the code base.
 Created a search bar which handled Elasticsearch data and was responsive and 508 compliant.
 Led multiple demos of new features to stake holders.
@@ -33,7 +35,7 @@ Cue Application Project
 Created a student management tool for instructors using AngularJS, C# and SQL that supported notifications using SignalR. Also created a Slack promo code plugin.
 Led an ‘Intro to Web Development’ Meetup where attendees worked towards creating a blog
 Youth Mentoring Connection Project
-Created a Single Page Application for managing company operations using Agile processes. 
+Created a Single Page Application for managing company operations using Agile processes.
 Other
 US Marine Corps, 2012-2017- Scout Sniper Team Leader
 Secret Security Clearance - Valid until 2021

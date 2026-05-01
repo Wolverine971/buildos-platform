@@ -159,6 +159,9 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 	if (normalizedToolName === 'get_document_tree') {
 		return compactDocumentTreeGatewayPayload(payload);
 	}
+	if (normalizedToolName === 'web_visit' || normalizedToolName === 'util.web.visit') {
+		return compactWebVisitPayload(payload);
+	}
 	if (
 		normalizedToolName === 'list_onto_documents' ||
 		normalizedToolName === 'search_onto_documents'
@@ -166,6 +169,152 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 		return compactDocumentCollectionGatewayPayload(payload);
 	}
 	return applyToolPayloadSizeGuard(payload);
+}
+
+function compactWebVisitPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return payload;
+	}
+
+	const record = payload as Record<string, any>;
+	const info = record.info && typeof record.info === 'object' ? record.info : {};
+	const structuredData = Array.isArray(record.structured_data)
+		? record.structured_data.slice(0, 20).map(compactStructuredDataItem)
+		: undefined;
+	const links = Array.isArray(record.links)
+		? record.links.slice(0, 10).map((link: any) => ({
+				url: typeof link?.url === 'string' ? link.url : null,
+				text: toTextPreview(link?.text, 120)
+			}))
+		: undefined;
+
+	return applyToolPayloadSizeGuard({
+		url: record.url,
+		final_url: record.final_url,
+		status_code: record.status_code,
+		content_type: record.content_type,
+		title: record.title,
+		canonical_url: record.canonical_url,
+		content_format: record.content_format,
+		excerpt: toTextPreview(record.excerpt, 500),
+		content: toTextPreview(record.content, 3500),
+		truncated: record.truncated,
+		structured_data: structuredData,
+		structured_data_count: Array.isArray(record.structured_data)
+			? record.structured_data.length
+			: 0,
+		links,
+		meta:
+			record.meta && typeof record.meta === 'object' && !Array.isArray(record.meta)
+				? compactRecord(record.meta, 12, 220)
+				: undefined,
+		message: record.message,
+		info: {
+			fetched_at: info.fetched_at,
+			mode: info.mode,
+			parser: info.parser,
+			extraction_strategy: info.extraction_strategy,
+			fetch_ms: info.fetch_ms,
+			bytes: info.bytes,
+			html_chars: info.html_chars,
+			markdown_chars: info.markdown_chars,
+			cache_hit: info.cache_hit
+		}
+	});
+}
+
+function compactRecord(
+	value: Record<string, any>,
+	maxKeys: number,
+	maxStringLength: number
+): Record<string, unknown> {
+	const output: Record<string, unknown> = {};
+	for (const [key, raw] of Object.entries(value).slice(0, maxKeys)) {
+		if (typeof raw === 'string') {
+			output[key] = toTextPreview(raw, maxStringLength);
+		} else if (raw === null || typeof raw === 'number' || typeof raw === 'boolean') {
+			output[key] = raw;
+		}
+	}
+	return output;
+}
+
+function compactStructuredDataItem(item: unknown): unknown {
+	if (!item || typeof item !== 'object' || Array.isArray(item)) {
+		return item;
+	}
+
+	const record = item as Record<string, any>;
+	return {
+		type: record.type,
+		name: toTextPreview(record.name, 220),
+		startDate: record.startDate,
+		endDate: record.endDate,
+		eventStatus: record.eventStatus,
+		eventAttendanceMode: record.eventAttendanceMode,
+		location: compactStructuredDataPlace(record.location),
+		offers: compactStructuredDataOffers(record.offers),
+		organizer: compactStructuredDataThing(record.organizer),
+		url: record.url,
+		description: toTextPreview(record.description, 500)
+	};
+}
+
+function compactStructuredDataThing(value: unknown): unknown {
+	if (typeof value === 'string') return toTextPreview(value, 180);
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+	const record = value as Record<string, any>;
+	return {
+		type: record.type,
+		name: toTextPreview(record.name, 180),
+		url: record.url
+	};
+}
+
+function compactStructuredDataPlace(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return value.slice(0, 4).map(compactStructuredDataPlace);
+	}
+	if (typeof value === 'string') return toTextPreview(value, 220);
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+	const record = value as Record<string, any>;
+	return {
+		type: record.type,
+		name: toTextPreview(record.name, 220),
+		address: compactStructuredDataAddress(record.address),
+		url: record.url
+	};
+}
+
+function compactStructuredDataAddress(value: unknown): unknown {
+	if (typeof value === 'string') return toTextPreview(value, 220);
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return value;
+	const record = value as Record<string, any>;
+	return {
+		streetAddress: record.streetAddress,
+		addressLocality: record.addressLocality,
+		addressRegion: record.addressRegion,
+		postalCode: record.postalCode,
+		addressCountry: record.addressCountry
+	};
+}
+
+function compactStructuredDataOffers(value: unknown): unknown {
+	const offers = Array.isArray(value) ? value : value ? [value] : [];
+	if (offers.length === 0) return undefined;
+	return offers.slice(0, 6).map((offer) => {
+		if (!offer || typeof offer !== 'object' || Array.isArray(offer)) return offer;
+		const record = offer as Record<string, any>;
+		return {
+			type: record.type,
+			name: toTextPreview(record.name, 140),
+			price: record.price,
+			priceCurrency: record.priceCurrency,
+			availability: record.availability,
+			validFrom: record.validFrom,
+			url: record.url
+		};
+	});
 }
 
 function compactDocumentTreeGatewayPayload(payload: unknown): unknown {

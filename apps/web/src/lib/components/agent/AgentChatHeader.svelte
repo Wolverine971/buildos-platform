@@ -10,6 +10,7 @@
 		Download,
 		MoreHorizontal
 	} from 'lucide-svelte';
+	import { dev } from '$app/environment';
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
 	import type { ChatContextType, ContextUsageSnapshot } from '@buildos/shared-types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -72,7 +73,7 @@
 	const projectUrl = $derived(projectId ? `/projects/${projectId}` : null);
 
 	const contextUsageCounter = $derived.by(() => {
-		if (!contextUsage) {
+		if (!dev || !contextUsage) {
 			return null;
 		}
 

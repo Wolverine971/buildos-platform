@@ -12827,6 +12827,7 @@ export type Database = {
           meta: Json | null
           normalized_url: string
           status_code: number
+          structured_data: Json | null
           title: string | null
           updated_at: string
           url: string
@@ -12854,6 +12855,7 @@ export type Database = {
           meta?: Json | null
           normalized_url: string
           status_code: number
+          structured_data?: Json | null
           title?: string | null
           updated_at?: string
           url: string
@@ -12881,6 +12883,7 @@ export type Database = {
           meta?: Json | null
           normalized_url?: string
           status_code?: number
+          structured_data?: Json | null
           title?: string | null
           updated_at?: string
           url?: string

@@ -72,7 +72,8 @@ export type ToolExecutionErrorType =
 	| 'tool_not_loaded'
 	| 'validation_error'
 	| 'execution_error'
-	| 'timeout';
+	| 'timeout'
+	| 'cancelled';
 
 /**
  * Tool execution specific result

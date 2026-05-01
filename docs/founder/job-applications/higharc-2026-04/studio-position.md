@@ -1,4 +1,4 @@
-<!-- hiarch-studio-position.md -->
+<!-- docs/founder/job-applications/higharc-2026-04/studio-position.md -->
 
 Higharc
 Sr. Software Engineer, Studio

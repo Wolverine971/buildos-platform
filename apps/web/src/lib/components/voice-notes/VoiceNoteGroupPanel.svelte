@@ -129,14 +129,14 @@
 {#snippet chipButton()}
 	<button
 		type="button"
-		class="inline-flex items-center gap-1 border font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:bg-accent/5 hover:text-accent pressable {inline
-			? 'h-5 rounded-full border-accent/20 bg-background/35 px-1.5 text-[0.62rem] leading-none tracking-normal'
-			: 'rounded-md border-border/60 bg-muted/50 px-1.5 py-0.5 text-[0.6rem] uppercase tracking-[0.1em]'}"
+		class="inline-flex items-center border font-semibold text-muted-foreground transition-colors hover:border-accent/50 hover:bg-accent/5 hover:text-accent pressable {inline
+			? 'h-4 gap-0.5 rounded-full border-accent/20 bg-background/35 px-1.5 text-[0.6rem] leading-none tracking-normal'
+			: 'gap-1 rounded-md border-border/60 bg-muted/50 px-1.5 py-0.5 text-[0.6rem] uppercase tracking-[0.1em]'}"
 		onclick={toggleExpanded}
 		aria-expanded={isExpanded}
 		aria-label={isExpanded ? 'Collapse voice notes' : 'Expand voice notes'}
 	>
-		<Mic class="h-2.5 w-2.5" />
+		<Mic class={inline ? 'h-2 w-2' : 'h-2.5 w-2.5'} />
 		{#if voiceNotes.length > 0}
 			<span class="tabular-nums">{voiceNotes.length}</span>
 			<span class={inline ? 'hidden xs:inline' : ''}>·</span>
@@ -147,9 +147,9 @@
 			<span>...</span>
 		{/if}
 		{#if isExpanded}
-			<ChevronUp class="h-2.5 w-2.5" />
+			<ChevronUp class={inline ? 'h-2 w-2' : 'h-2.5 w-2.5'} />
 		{:else}
-			<ChevronDown class="h-2.5 w-2.5" />
+			<ChevronDown class={inline ? 'h-2 w-2' : 'h-2.5 w-2.5'} />
 		{/if}
 	</button>
 {/snippet}

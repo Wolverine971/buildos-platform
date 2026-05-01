@@ -1,10 +1,20 @@
 // apps/web/src/lib/services/agentic-chat/tools/webvisit/parser.ts
 import sanitizeHtml from 'sanitize-html';
-import type { WebVisitLink, WebVisitParser } from './types';
+import type {
+	WebVisitExtractionStrategy,
+	WebVisitLink,
+	WebVisitParser,
+	WebVisitStructuredDataItem
+} from './types';
 
 const STRIP_BLOCK_TAGS = ['script', 'style', 'noscript', 'svg', 'canvas', 'iframe', 'form'];
 const NOISE_TAGS = ['header', 'footer', 'nav', 'aside'];
 const DEFAULT_MAX_LINKS = 20;
+const MAX_STRUCTURED_DATA_ITEMS = 40;
+const MAX_STRUCTURED_ARRAY_ITEMS = 30;
+const MAX_STRUCTURED_OBJECT_KEYS = 50;
+const MAX_STRUCTURED_DEPTH = 6;
+const MAX_STRUCTURED_STRING_CHARS = 4000;
 const META_ALLOWED_KEYS = new Set([
 	'description',
 	'author',
@@ -39,6 +49,7 @@ const MARKDOWN_ALLOWED_TAGS = [
 	'em',
 	'b',
 	'i',
+	'time',
 	'br',
 	'hr'
 ];
@@ -61,31 +72,71 @@ function stripTagBlocks(html: string, tags: string[]): string {
 	return output;
 }
 
-function extractLargestBlock(html: string, tag: string): string | null {
+type HtmlBlock = {
+	html: string;
+	textLength: number;
+};
+
+type SelectedHtml = {
+	html: string;
+	strategy: WebVisitExtractionStrategy;
+};
+
+function extractBlocks(html: string, tag: string): HtmlBlock[] {
 	const regex = new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'gi');
-	let best: string | null = null;
+	const blocks: HtmlBlock[] = [];
 	let match: RegExpExecArray | null;
 	while ((match = regex.exec(html))) {
 		const candidate = match[1] ?? '';
 		if (!candidate) continue;
-		if (!best || candidate.length > best.length) {
-			best = candidate;
-		}
+		blocks.push({
+			html: candidate,
+			textLength: stripTags(candidate).length
+		});
 	}
-	return best;
+	return blocks.sort((a, b) => b.textLength - a.textLength);
 }
 
-function extractMainHtml(html: string): string {
-	const article = extractLargestBlock(html, 'article');
-	if (article) return article;
+function extractLargestBlock(html: string, tag: string): HtmlBlock | null {
+	return extractBlocks(html, tag)[0] ?? null;
+}
 
+function countTags(html: string, tag: string): number {
+	const regex = new RegExp(`<${tag}\\b`, 'gi');
+	return html.match(regex)?.length ?? 0;
+}
+
+function selectReaderHtml(html: string): SelectedHtml {
 	const main = extractLargestBlock(html, 'main');
-	if (main) return main;
+	const articles = extractBlocks(html, 'article').filter((block) => block.textLength > 0);
+
+	if (main && main.textLength > 0) {
+		const articlesInsideMain = countTags(main.html, 'article');
+		const singleArticle = articles.length === 1 ? articles[0] : null;
+		if (
+			singleArticle &&
+			articlesInsideMain <= 1 &&
+			singleArticle.textLength >= 400 &&
+			singleArticle.textLength >= main.textLength * 0.55
+		) {
+			return { html: singleArticle.html, strategy: 'article' };
+		}
+		return { html: main.html, strategy: 'main' };
+	}
+
+	if (articles.length === 1) {
+		const article = articles[0];
+		if (article) {
+			return { html: article.html, strategy: 'article' };
+		}
+	}
 
 	const body = extractLargestBlock(html, 'body');
-	if (body) return body;
+	if (body && body.textLength > 0) {
+		return { html: body.html, strategy: 'body' };
+	}
 
-	return html;
+	return { html, strategy: 'html' };
 }
 
 function decodeHtmlEntities(text: string): string {
@@ -127,6 +178,119 @@ function parseTagAttributes(tag: string): Record<string, string> {
 		attrs[rawName] = decodeHtmlEntities(value.trim());
 	}
 	return attrs;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function cleanJsonLdText(raw: string): string {
+	return raw
+		.trim()
+		.replace(/^<!--\s*/, '')
+		.replace(/\s*-->$/, '')
+		.trim();
+}
+
+function collectJsonLdItems(value: unknown): unknown[] {
+	if (Array.isArray(value)) {
+		return value.flatMap((item) => collectJsonLdItems(item));
+	}
+
+	if (!isPlainRecord(value)) {
+		return [];
+	}
+
+	const graph = value['@graph'];
+	if (Array.isArray(graph)) {
+		const graphItems = graph.flatMap((item) => collectJsonLdItems(item));
+		const wrapper = { ...value };
+		delete wrapper['@graph'];
+		if (isStructuredDataCandidate(wrapper)) {
+			return [wrapper, ...graphItems];
+		}
+		return graphItems;
+	}
+
+	return [value];
+}
+
+function normalizeStructuredDataKey(key: string): string | null {
+	if (!key || key === '@context') return null;
+	if (key === '@type') return 'type';
+	if (key === '@id') return 'id';
+	if (key === '__proto__' || key === 'prototype' || key === 'constructor') return null;
+	return key;
+}
+
+function sanitizeStructuredDataValue(value: unknown, depth = 0): unknown {
+	if (value === null) return null;
+	if (typeof value === 'string') {
+		const cleaned = normalizeWhitespace(decodeHtmlEntities(value));
+		return cleaned.length > MAX_STRUCTURED_STRING_CHARS
+			? `${cleaned.slice(0, MAX_STRUCTURED_STRING_CHARS)}...`
+			: cleaned;
+	}
+	if (typeof value === 'number') {
+		return Number.isFinite(value) ? value : undefined;
+	}
+	if (typeof value === 'boolean') {
+		return value;
+	}
+	if (depth >= MAX_STRUCTURED_DEPTH) {
+		return undefined;
+	}
+	if (Array.isArray(value)) {
+		const items = value
+			.slice(0, MAX_STRUCTURED_ARRAY_ITEMS)
+			.map((item) => sanitizeStructuredDataValue(item, depth + 1))
+			.filter((item) => item !== undefined);
+		return items.length > 0 ? items : undefined;
+	}
+	if (!isPlainRecord(value)) {
+		return undefined;
+	}
+
+	const output: Record<string, unknown> = {};
+	for (const [rawKey, rawValue] of Object.entries(value).slice(0, MAX_STRUCTURED_OBJECT_KEYS)) {
+		const key = normalizeStructuredDataKey(rawKey);
+		if (!key) continue;
+		const sanitized = sanitizeStructuredDataValue(rawValue, depth + 1);
+		if (sanitized !== undefined) {
+			output[key] = sanitized;
+		}
+	}
+
+	return Object.keys(output).length > 0 ? output : undefined;
+}
+
+function isStructuredDataCandidate(value: unknown): boolean {
+	if (!isPlainRecord(value)) return false;
+	return Boolean(
+		value['@type'] ??
+			value.type ??
+			value.name ??
+			value.url ??
+			value.startDate ??
+			value.itemListElement
+	);
+}
+
+function stringifyStructuredDataIdentity(value: WebVisitStructuredDataItem): string {
+	const type = Array.isArray(value.type) ? value.type.join(',') : (value.type ?? '');
+	const name = typeof value.name === 'string' ? value.name : '';
+	const url = typeof value.url === 'string' ? value.url : '';
+	const startDate =
+		typeof (value as Record<string, unknown>).startDate === 'string'
+			? ((value as Record<string, unknown>).startDate as string)
+			: '';
+	const identity = `${type}|${name}|${url}|${startDate}`;
+	if (identity !== '|||') return identity;
+	try {
+		return JSON.stringify(value).slice(0, 500);
+	} catch {
+		return '';
+	}
 }
 
 function normalizeUrlAttribute(value: string, baseUrl: string): string | undefined {
@@ -278,6 +442,46 @@ function extractLinks(
 	return links;
 }
 
+export function extractStructuredData(html: string): WebVisitStructuredDataItem[] {
+	const items: WebVisitStructuredDataItem[] = [];
+	const seen = new Set<string>();
+	const scriptRegex = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+	let match: RegExpExecArray | null;
+
+	while ((match = scriptRegex.exec(html))) {
+		const attrs = parseTagAttributes(match[1] ?? '');
+		const type = attrs.type?.trim().toLowerCase().replace(/\s+/g, '');
+		if (!type?.startsWith('application/ld+json')) continue;
+
+		const rawJson = cleanJsonLdText(match[2] ?? '');
+		if (!rawJson) continue;
+
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(rawJson);
+		} catch {
+			continue;
+		}
+
+		for (const rawItem of collectJsonLdItems(parsed)) {
+			if (!isStructuredDataCandidate(rawItem)) continue;
+			const sanitized = sanitizeStructuredDataValue(rawItem);
+			if (!isPlainRecord(sanitized)) continue;
+
+			const item = sanitized as WebVisitStructuredDataItem;
+			const identity = stringifyStructuredDataIdentity(item);
+			if (identity && seen.has(identity)) continue;
+			seen.add(identity);
+			items.push(item);
+			if (items.length >= MAX_STRUCTURED_DATA_ITEMS) {
+				return items;
+			}
+		}
+	}
+
+	return items;
+}
+
 export function parseHtmlToText(
 	html: string,
 	options: {
@@ -286,7 +490,13 @@ export function parseHtmlToText(
 		baseUrl: string;
 		maxLinks?: number;
 	}
-): { title?: string; content: string; links?: WebVisitLink[]; parser: WebVisitParser } {
+): {
+	title?: string;
+	content: string;
+	links?: WebVisitLink[];
+	parser: WebVisitParser;
+	extraction_strategy: WebVisitExtractionStrategy;
+} {
 	let stripped = stripTagBlocks(html, STRIP_BLOCK_TAGS);
 	if (options.mode === 'reader') {
 		stripped = stripTagBlocks(stripped, NOISE_TAGS);
@@ -295,8 +505,11 @@ export function parseHtmlToText(
 
 	let parser: WebVisitParser = options.mode === 'reader' ? 'reader' : 'raw';
 	let contentSource = stripped;
+	let extractionStrategy: WebVisitExtractionStrategy = options.mode === 'reader' ? 'html' : 'raw';
 	if (options.mode === 'reader') {
-		contentSource = extractMainHtml(stripped);
+		const selected = selectReaderHtml(stripped);
+		contentSource = selected.html;
+		extractionStrategy = selected.strategy;
 	}
 
 	let content = htmlToText(contentSource);
@@ -305,6 +518,7 @@ export function parseHtmlToText(
 		if (fallback) {
 			content = fallback;
 			parser = 'raw';
+			extractionStrategy = 'raw';
 		}
 	}
 
@@ -312,7 +526,7 @@ export function parseHtmlToText(
 		? extractLinks(contentSource, options.baseUrl, options.maxLinks)
 		: undefined;
 
-	return { title, content, links, parser };
+	return { title, content, links, parser, extraction_strategy: extractionStrategy };
 }
 
 export function extractPageMetadata(
@@ -367,7 +581,12 @@ export function prepareHtmlForMarkdown(
 		mode: 'reader' | 'raw';
 		baseUrl: string;
 	}
-): { title?: string; html: string; parser: WebVisitParser } {
+): {
+	title?: string;
+	html: string;
+	parser: WebVisitParser;
+	extraction_strategy: WebVisitExtractionStrategy;
+} {
 	let stripped = stripTagBlocks(html, STRIP_BLOCK_TAGS);
 	if (options.mode === 'reader') {
 		stripped = stripTagBlocks(stripped, NOISE_TAGS);
@@ -376,19 +595,22 @@ export function prepareHtmlForMarkdown(
 
 	let parser: WebVisitParser = options.mode === 'reader' ? 'reader' : 'raw';
 	let contentSource = stripped;
+	let extractionStrategy: WebVisitExtractionStrategy = options.mode === 'reader' ? 'html' : 'raw';
 	if (options.mode === 'reader') {
-		contentSource = extractMainHtml(stripped);
+		const selected = selectReaderHtml(stripped);
+		contentSource = selected.html;
+		extractionStrategy = selected.strategy;
 	}
 
 	const sanitized = sanitizeHtmlForMarkdown(contentSource, options.baseUrl).trim();
 	if (!sanitized && options.mode === 'reader') {
 		const fallback = sanitizeHtmlForMarkdown(stripped, options.baseUrl).trim();
 		if (fallback) {
-			return { title, html: fallback, parser: 'raw' };
+			return { title, html: fallback, parser: 'raw', extraction_strategy: 'raw' };
 		}
 	}
 
-	return { title, html: sanitized, parser };
+	return { title, html: sanitized, parser, extraction_strategy: extractionStrategy };
 }
 
 export function normalizePlainText(text: string): string {

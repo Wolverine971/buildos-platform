@@ -53,6 +53,17 @@ describe('round analysis helpers', () => {
 		});
 	});
 
+	it('treats web visits as read-like operations for repeated-read detection', () => {
+		const pattern = buildRoundToolPattern([
+			createToolCall('web_visit', { url: 'https://example.com/classes' })
+		]);
+
+		expect(pattern).toEqual({
+			readOps: ['util.web.visit'],
+			hasWriteOps: false
+		});
+	});
+
 	it('aggregates required-field failures from validation issues', () => {
 		const toolCall = createToolCall('update_onto_task', {});
 		const issues: ToolValidationIssue[] = [

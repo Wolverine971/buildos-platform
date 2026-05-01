@@ -1,4 +1,4 @@
-<!-- David_Wayne_Resume.md -->
+<!-- docs/founder/resumes/David_Wayne_Resume.md -->
 
 # David Wayne
 

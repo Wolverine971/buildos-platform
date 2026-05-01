@@ -180,13 +180,15 @@ export function isReadLikeOperation(name: string): boolean {
 		normalized === 'tool_search' ||
 		normalized === 'tool_schema' ||
 		normalized === 'skill_load' ||
+		normalized === 'web_visit' ||
 		normalized.startsWith('get_') ||
 		normalized.startsWith('list_') ||
 		normalized.startsWith('search_') ||
 		normalized.startsWith('find_') ||
 		normalized.endsWith('.get') ||
 		normalized.endsWith('.list') ||
-		normalized.endsWith('.search')
+		normalized.endsWith('.search') ||
+		normalized.endsWith('.visit')
 	);
 }
 

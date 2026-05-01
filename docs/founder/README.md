@@ -1,3 +1,5 @@
+<!-- docs/founder/README.md -->
+
 # Founder
 
 DJ's personal career & founder-profile material. Distinct from `docs/marketing/` (BuildOS marketing/voice) and `docs/business/` (BuildOS business strategy). This folder holds personal artifacts: resumes, job applications, and any future founder-bio / personal-positioning material.
@@ -35,9 +37,9 @@ docs/founder/
 
 ## Active applications
 
-| Date    | Company  | Role(s)                                | Recruiter                         | Status   |
-| ------- | -------- | -------------------------------------- | --------------------------------- | -------- |
-| 2026-04 | Higharc  | Studio (primary), Integrations (alt)   | Recruiter, name TBD               | Drafting |
+| Date    | Company | Role(s)                              | Recruiter           | Status   |
+| ------- | ------- | ------------------------------------ | ------------------- | -------- |
+| 2026-04 | Higharc | Studio (primary), Integrations (alt) | Recruiter, name TBD | Drafting |
 
 ## Positioning notes (current)
 

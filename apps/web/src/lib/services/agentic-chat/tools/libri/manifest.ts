@@ -86,9 +86,7 @@ function readStringArray(value: unknown): string[] {
 	if (!Array.isArray(value)) return [];
 	return Array.from(
 		new Set(
-			value
-				.map((item) => readString(item))
-				.filter((item): item is string => Boolean(item))
+			value.map((item) => readString(item)).filter((item): item is string => Boolean(item))
 		)
 	);
 }
@@ -102,7 +100,9 @@ function schemaSize(schema: unknown): number {
 }
 
 function toToolParameterSchema(schema: Record<string, any>): ToolParameterSchema {
-	const properties = isRecord(schema.properties) ? (schema.properties as Record<string, any>) : {};
+	const properties = isRecord(schema.properties)
+		? (schema.properties as Record<string, any>)
+		: {};
 	const required = readStringArray(schema.required);
 	const parameters = {
 		...schema,
@@ -371,7 +371,11 @@ export async function getValidatedLibriManifest(
 ): Promise<ValidatedLibriManifest | Record<string, unknown>> {
 	const now = options.now?.() ?? new Date();
 	const nowMs = now.getTime();
-	if (!options.refresh && cachedManifest && nowMs - cachedManifest.fetchedAtMs <= MANIFEST_TTL_MS) {
+	if (
+		!options.refresh &&
+		cachedManifest &&
+		nowMs - cachedManifest.fetchedAtMs <= MANIFEST_TTL_MS
+	) {
 		return cachedManifest.manifest;
 	}
 
@@ -416,7 +420,10 @@ export async function getValidatedLibriManifest(
 				return { ...cachedManifest.manifest, stale: true };
 			}
 			return errorResult({
-				code: response.status === 401 || response.status === 403 ? 'LIBRI_AUTH_FAILED' : 'LIBRI_SCHEMA_FAILED',
+				code:
+					response.status === 401 || response.status === 403
+						? 'LIBRI_AUTH_FAILED'
+						: 'LIBRI_SCHEMA_FAILED',
 				message,
 				httpStatus: response.status
 			});
@@ -427,7 +434,8 @@ export async function getValidatedLibriManifest(
 		return manifest;
 	} catch (error) {
 		const isAbort =
-			error instanceof Error && (error.name === 'AbortError' || error.message === 'AbortError');
+			error instanceof Error &&
+			(error.name === 'AbortError' || error.message === 'AbortError');
 		if (cachedManifest && nowMs - cachedManifest.fetchedAtMs <= MANIFEST_STALE_MS) {
 			return { ...cachedManifest.manifest, stale: true };
 		}
@@ -435,7 +443,10 @@ export async function getValidatedLibriManifest(
 			code: isAbort ? 'LIBRI_TIMEOUT' : 'LIBRI_NETWORK_ERROR',
 			message: isAbort
 				? 'Libri manifest request timed out.'
-				: redactSecret(error instanceof Error ? error.message : String(error), config.apiKey)
+				: redactSecret(
+						error instanceof Error ? error.message : String(error),
+						config.apiKey
+					)
 		});
 	} finally {
 		clearTimeout(timeout);
@@ -524,7 +535,9 @@ function collectSequenceToolNames(
 	const matchedOps = new Set(matches.map((operation) => operation.op));
 	const toolNames = new Set<string>();
 	const domains = domainId
-		? [manifest.domains[domainId]].filter((domain): domain is LibriManifestDomain => Boolean(domain))
+		? [manifest.domains[domainId]].filter((domain): domain is LibriManifestDomain =>
+				Boolean(domain)
+			)
 		: Object.values(manifest.domains);
 	for (const domain of domains) {
 		const sequences = domain.sequences ?? {};
@@ -632,7 +645,9 @@ export async function libriGetCapabilitySchema(
 	};
 }
 
-export function resolveDynamicLibriToolDefinition(toolName: string): ChatToolDefinition | undefined {
+export function resolveDynamicLibriToolDefinition(
+	toolName: string
+): ChatToolDefinition | undefined {
 	const operation = cachedManifest?.manifest.byToolName[toolName];
 	if (!operation) return undefined;
 	return {
@@ -652,7 +667,10 @@ export function getCachedLibriOperationByToolName(
 }
 
 export function getCachedLibriOperation(reference: string): LibriManifestOperation | undefined {
-	return cachedManifest?.manifest.operations[reference] ?? cachedManifest?.manifest.byToolName[reference];
+	return (
+		cachedManifest?.manifest.operations[reference] ??
+		cachedManifest?.manifest.byToolName[reference]
+	);
 }
 
 function validateDirectArgs(
@@ -683,12 +701,15 @@ function validateDirectArgs(
 		if (!expectedType) continue;
 		const actualType = Array.isArray(value) ? 'array' : typeof value;
 		if (expectedType !== actualType) {
-			errors.push(`Invalid type for parameter ${key}: expected ${expectedType}, got ${actualType}`);
+			errors.push(
+				`Invalid type for parameter ${key}: expected ${expectedType}, got ${actualType}`
+			);
 		}
 	}
 
 	if (operation.resource === 'video.import' || operation.op.startsWith('libri.video.import.')) {
-		const transcript = typeof args.transcriptText === 'string' ? args.transcriptText.trim() : '';
+		const transcript =
+			typeof args.transcriptText === 'string' ? args.transcriptText.trim() : '';
 		const url = typeof args.url === 'string' ? args.url.trim() : '';
 		const youtubeVideoId =
 			typeof args.youtubeVideoId === 'string' ? args.youtubeVideoId.trim() : '';
@@ -835,12 +856,16 @@ export async function executeDynamicLibriTool(
 		};
 	} catch (error) {
 		const isAbort =
-			error instanceof Error && (error.name === 'AbortError' || error.message === 'AbortError');
+			error instanceof Error &&
+			(error.name === 'AbortError' || error.message === 'AbortError');
 		return errorResult({
 			code: isAbort ? 'LIBRI_TIMEOUT' : 'LIBRI_NETWORK_ERROR',
 			message: isAbort
 				? 'Libri operation timed out.'
-				: redactSecret(error instanceof Error ? error.message : String(error), config.apiKey),
+				: redactSecret(
+						error instanceof Error ? error.message : String(error),
+						config.apiKey
+					),
 			op: operation.op,
 			toolName: operation.toolName,
 			manifestVersion: manifest.manifestVersion

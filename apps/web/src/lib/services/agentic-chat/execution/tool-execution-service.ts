@@ -38,11 +38,7 @@ import {
 	validateProjectCreateArgs
 } from '../tools/core/project-create-args';
 import { loadSkill } from '../tools/skills/skill-load';
-import {
-	libriGetCapabilitySchema,
-	libriOverview,
-	libriSearchCapabilities
-} from '../tools/libri';
+import { libriGetCapabilitySchema, libriOverview, libriSearchCapabilities } from '../tools/libri';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { dev } from '$app/environment';
 import { createLogger } from '$lib/utils/logger';
@@ -63,6 +59,12 @@ const GATEWAY_TOOL_NAMES = new Set([
 	'libri_search_capabilities',
 	'libri_get_capability_schema'
 ]);
+
+function isToolCancellationResult(result: ToolExecutionResult): boolean {
+	if (result.errorType === 'cancelled') return true;
+	const message = typeof result.error === 'string' ? result.error.trim().toLowerCase() : '';
+	return message === 'operation cancelled' || message === 'operation canceled';
+}
 
 /**
  * Tool execution options
@@ -227,7 +229,7 @@ export class ToolExecutionService implements BaseService {
 					});
 				}
 			}
-			if (!result.success) {
+			if (!result.success && !isToolCancellationResult(result)) {
 				this.logToolError(result, context, toolName, {
 					virtual: Boolean(virtualHandler),
 					args: parsedArgs,
@@ -410,6 +412,7 @@ export class ToolExecutionService implements BaseService {
 			return finalizeResult({
 				success: false,
 				error: 'Operation cancelled',
+				errorType: 'cancelled',
 				toolName,
 				toolCallId: toolCall.id
 			});
@@ -521,6 +524,7 @@ export class ToolExecutionService implements BaseService {
 				return finalizeResult({
 					success: false,
 					error: 'Operation cancelled',
+					errorType: 'cancelled',
 					toolName,
 					toolCallId: toolCall.id
 				});
@@ -638,6 +642,7 @@ export class ToolExecutionService implements BaseService {
 				results.push({
 					success: false,
 					error: 'Operation cancelled',
+					errorType: 'cancelled',
 					toolName: this.resolveToolCall(toolCall).name ?? 'unknown',
 					toolCallId: toolCall.id
 				});

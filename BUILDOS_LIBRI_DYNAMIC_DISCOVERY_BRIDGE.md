@@ -1,3 +1,5 @@
+<!-- BUILDOS_LIBRI_DYNAMIC_DISCOVERY_BRIDGE.md -->
+
 # BuildOS <> Libri Dynamic Discovery Bridge
 
 Status: proposed implementation handoff
@@ -266,8 +268,8 @@ Inputs:
 
 ```json
 {
-  "refresh": false,
-  "includeDomains": true
+	"refresh": false,
+	"includeDomains": true
 }
 ```
 
@@ -283,11 +285,11 @@ Inputs:
 
 ```json
 {
-  "domain": "youtube_videos",
-  "query": "upload youtube transcript analysis",
-  "resource": "video.import",
-  "kind": "write",
-  "limit": 5
+	"domain": "youtube_videos",
+	"query": "upload youtube transcript analysis",
+	"resource": "video.import",
+	"kind": "write",
+	"limit": 5
 }
 ```
 
@@ -295,20 +297,20 @@ Expected result shape:
 
 ```json
 {
-  "type": "libri_capability_search_results",
-  "domain": "youtube_videos",
-  "manifestVersion": "libri-capabilities/2026-04-30",
-  "matches": [
-    {
-      "op": "libri.video.import.preview",
-      "tool_name": "libri_video_import_preview",
-      "kind": "write",
-      "resource": "video.import",
-      "description": "Validate a transcript and analysis payload before queueing."
-    }
-  ],
-  "materialized_tools": ["libri_video_import_preview", "libri_video_import_create"],
-  "next_step": "Use the direct Libri tool after it is loaded in the next model pass."
+	"type": "libri_capability_search_results",
+	"domain": "youtube_videos",
+	"manifestVersion": "libri-capabilities/2026-04-30",
+	"matches": [
+		{
+			"op": "libri.video.import.preview",
+			"tool_name": "libri_video_import_preview",
+			"kind": "write",
+			"resource": "video.import",
+			"description": "Validate a transcript and analysis payload before queueing."
+		}
+	],
+	"materialized_tools": ["libri_video_import_preview", "libri_video_import_create"],
+	"next_step": "Use the direct Libri tool after it is loaded in the next model pass."
 }
 ```
 
@@ -323,8 +325,8 @@ Inputs:
 
 ```json
 {
-  "op": "libri.video.import.preview",
-  "includeExamples": true
+	"op": "libri.video.import.preview",
+	"includeExamples": true
 }
 ```
 
@@ -332,12 +334,12 @@ Expected result shape:
 
 ```json
 {
-  "type": "libri_capability_schema",
-  "op": "libri.video.import.preview",
-  "tool_name": "libri_video_import_preview",
-  "callable_tool": "libri_video_import_preview",
-  "schema": {},
-  "materialized_tools": ["libri_video_import_preview"]
+	"type": "libri_capability_schema",
+	"op": "libri.video.import.preview",
+	"tool_name": "libri_video_import_preview",
+	"callable_tool": "libri_video_import_preview",
+	"schema": {},
+	"materialized_tools": ["libri_video_import_preview"]
 }
 ```
 
@@ -370,42 +372,42 @@ Recommended operation shape:
 
 ```json
 {
-  "version": "v1",
-  "manifestVersion": "libri-capabilities/2026-04-30",
-  "domains": {
-    "youtube_videos": {
-      "label": "YouTube Videos",
-      "description": "Video records, transcripts, analysis, ingestion jobs, and imports.",
-      "resources": {
-        "video.import": {
-          "description": "Upload or queue YouTube video ingestion."
-        }
-      },
-      "operations": [
-        {
-          "op": "libri.video.import.preview",
-          "toolName": "libri_video_import_preview",
-          "domain": "youtube_videos",
-          "method": "POST",
-          "path": "/api/v1/ingestion/videos/preview",
-          "kind": "write",
-          "resource": "video.import",
-          "description": "Validate a local transcript and analysis payload before queueing.",
-          "requiredScopes": ["queue:ingestion"],
-          "requiresIdempotencyKey": false,
-          "inputSchema": {},
-          "outputSchema": {},
-          "examples": [],
-          "safety": {
-            "modelVisible": true,
-            "adminOnly": false,
-            "allowDirectToolMaterialization": true,
-            "allowGenericBridgeExecution": false
-          }
-        }
-      ]
-    }
-  }
+	"version": "v1",
+	"manifestVersion": "libri-capabilities/2026-04-30",
+	"domains": {
+		"youtube_videos": {
+			"label": "YouTube Videos",
+			"description": "Video records, transcripts, analysis, ingestion jobs, and imports.",
+			"resources": {
+				"video.import": {
+					"description": "Upload or queue YouTube video ingestion."
+				}
+			},
+			"operations": [
+				{
+					"op": "libri.video.import.preview",
+					"toolName": "libri_video_import_preview",
+					"domain": "youtube_videos",
+					"method": "POST",
+					"path": "/api/v1/ingestion/videos/preview",
+					"kind": "write",
+					"resource": "video.import",
+					"description": "Validate a local transcript and analysis payload before queueing.",
+					"requiredScopes": ["queue:ingestion"],
+					"requiresIdempotencyKey": false,
+					"inputSchema": {},
+					"outputSchema": {},
+					"examples": [],
+					"safety": {
+						"modelVisible": true,
+						"adminOnly": false,
+						"allowDirectToolMaterialization": true,
+						"allowGenericBridgeExecution": false
+					}
+				}
+			]
+		}
+	}
 }
 ```
 
@@ -456,10 +458,10 @@ Minimum validation:
 - Operation must set `safety.allowDirectToolMaterialization: true` before
   BuildOS exposes it as a model-facing direct tool.
 - Block sensitive operations from the model surface:
-  - `auth/token-exchange`
-  - admin analytics
-  - key creation/deletion
-  - internal librarian/admin actions unless explicitly designed for agent use
+    - `auth/token-exchange`
+    - admin analytics
+    - key creation/deletion
+    - internal librarian/admin actions unless explicitly designed for agent use
 - For writes, require an idempotency strategy unless the manifest explicitly
   marks idempotency as unnecessary.
 - Validate tool arguments against the operation's input schema before making
@@ -501,8 +503,8 @@ BuildOS flow:
    `"youtube transcript analysis upload"` and `domain: "youtube_videos"`.
 3. BuildOS searches the cached Libri manifest and returns matching ops plus
    `materialized_tools`:
-   - `libri.video.import.preview` -> `libri_video_import_preview`
-   - `libri.video.import.create` -> `libri_video_import_create`
+    - `libri.video.import.preview` -> `libri_video_import_preview`
+    - `libri.video.import.create` -> `libri_video_import_create`
 4. BuildOS materializes the direct tool definitions from the validated manifest.
 5. Next model pass prepares the transcript and analysis payload and calls
    `libri_video_import_preview`.

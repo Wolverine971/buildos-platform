@@ -139,7 +139,7 @@
 						>
 							{message.content}
 						</div>
-						<div class="message-footer mt-2">
+						<div class="message-footer mt-1">
 							{#if isCollapsibleUserMessage(message)}
 								<button
 									type="button"
@@ -348,7 +348,7 @@
 		flex-wrap: wrap;
 		align-items: center;
 		justify-content: space-between;
-		gap: 0.35rem 0.75rem;
+		gap: 0.25rem 0.5rem;
 	}
 
 	.message-expand-button {

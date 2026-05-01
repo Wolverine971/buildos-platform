@@ -64,6 +64,164 @@ function sanitizeMetadata(metadata?: Record<string, unknown>): Record<string, un
 	return { value: sanitized };
 }
 
+type RecentChatMessageRow = Pick<
+	ChatMessage,
+	'id' | 'role' | 'content' | 'metadata' | 'created_at'
+>;
+
+export type InterruptedToolExecutionSummaryRow = {
+	message_id: string | null;
+	tool_name: string;
+	gateway_op: string | null;
+	sequence_index: number | null;
+	success: boolean;
+	error_message: string | null;
+	arguments: Json;
+	result: Json | null;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isInterruptedAssistantMessage(message: RecentChatMessageRow): boolean {
+	if (message.role !== 'assistant' || !isRecord(message.metadata)) return false;
+	const metadata = message.metadata;
+	return (
+		metadata.interrupted === true ||
+		metadata.finished_reason === 'cancelled' ||
+		typeof metadata.interrupted_reason === 'string'
+	);
+}
+
+function previewText(value: unknown, maxLength: number): string | null {
+	if (typeof value !== 'string') return null;
+	const normalized = value.replace(/\s+/g, ' ').trim();
+	if (!normalized) return null;
+	if (normalized.length <= maxLength) return normalized;
+	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
+}
+
+function stringifyPreview(value: unknown, maxLength: number): string | null {
+	const text = typeof value === 'string' ? value : JSON.stringify(value);
+	return previewText(text, maxLength);
+}
+
+function summarizeStructuredData(value: unknown): string | null {
+	if (!Array.isArray(value) || value.length === 0) return null;
+	const summaries = value.slice(0, 6).map((item) => {
+		if (!isRecord(item)) return null;
+		const type = Array.isArray(item.type)
+			? item.type.join('/')
+			: typeof item.type === 'string'
+				? item.type
+				: undefined;
+		const name = typeof item.name === 'string' ? item.name : undefined;
+		const startDate = typeof item.startDate === 'string' ? item.startDate : undefined;
+		const status = typeof item.eventStatus === 'string' ? item.eventStatus : undefined;
+		const offers = Array.isArray(item.offers) ? item.offers : item.offers ? [item.offers] : [];
+		const availability = offers
+			.map((offer) =>
+				isRecord(offer) && typeof offer.availability === 'string'
+					? offer.availability
+					: null
+			)
+			.find(Boolean);
+		const parts = [type, name, startDate, status, availability].filter(Boolean);
+		return parts.length > 0 ? parts.join(' | ') : null;
+	});
+	const compact = summaries.filter((item): item is string => Boolean(item));
+	return compact.length > 0 ? compact.join('; ') : null;
+}
+
+function summarizeWebVisitResult(result: Record<string, unknown>): string {
+	const title = previewText(result.title, 160);
+	const finalUrl = previewText(result.final_url ?? result.url, 220);
+	const statusCode = typeof result.status_code === 'number' ? result.status_code : undefined;
+	const structured = summarizeStructuredData(result.structured_data);
+	const content = previewText(result.content, 900) ?? previewText(result.excerpt, 500);
+	const parts = [
+		title ? `title="${title}"` : null,
+		finalUrl ? `url=${finalUrl}` : null,
+		statusCode ? `status=${statusCode}` : null,
+		structured ? `structured_data=${structured}` : null,
+		content ? `content="${content}"` : null
+	].filter(Boolean);
+	return parts.join('; ');
+}
+
+function summarizeWebSearchResult(result: Record<string, unknown>): string {
+	const query = previewText(result.query, 180);
+	const results = Array.isArray(result.results) ? result.results : [];
+	const resultTitles = results
+		.slice(0, 5)
+		.map((entry) =>
+			isRecord(entry)
+				? previewText(entry.title ?? entry.url ?? entry.content, 180)
+				: previewText(entry, 180)
+		)
+		.filter((entry): entry is string => Boolean(entry));
+	const parts = [query ? `query="${query}"` : null];
+	if (resultTitles.length > 0) {
+		parts.push(`results=${resultTitles.join(' | ')}`);
+	}
+	return parts.filter(Boolean).join('; ');
+}
+
+function summarizeInterruptedToolResult(row: InterruptedToolExecutionSummaryRow): string | null {
+	if (!row.success || !row.result) return null;
+	const op = row.gateway_op ?? row.tool_name;
+	if (isRecord(row.result)) {
+		if (row.tool_name === 'web_visit' || op === 'util.web.visit') {
+			return summarizeWebVisitResult(row.result);
+		}
+		if (row.tool_name === 'web_search' || op === 'util.web.search') {
+			return summarizeWebSearchResult(row.result);
+		}
+		const message = previewText(row.result.message, 280);
+		if (message) return message;
+	}
+	return stringifyPreview(row.result, 700);
+}
+
+export function buildInterruptedToolHistorySummary(
+	executions: InterruptedToolExecutionSummaryRow[]
+): string | null {
+	if (!Array.isArray(executions) || executions.length === 0) return null;
+	const sorted = executions
+		.slice()
+		.sort((a, b) => (a.sequence_index ?? 0) - (b.sequence_index ?? 0));
+	const completed = sorted
+		.map((row) => {
+			const summary = summarizeInterruptedToolResult(row);
+			if (!summary) return null;
+			const op = row.gateway_op ?? row.tool_name;
+			return `- ${op}: ${summary}`;
+		})
+		.filter((line): line is string => Boolean(line))
+		.slice(0, 6);
+	const failures = sorted
+		.filter((row) => !row.success && row.error_message)
+		.map((row) => {
+			const op = row.gateway_op ?? row.tool_name;
+			const error = previewText(row.error_message, 140);
+			return error ? `${op}: ${error}` : null;
+		})
+		.filter((line): line is string => Boolean(line))
+		.slice(0, 4);
+
+	if (completed.length === 0 && failures.length === 0) return null;
+
+	const lines = ['Previous interrupted assistant turn tool results:'];
+	if (completed.length > 0) {
+		lines.push(...completed);
+	}
+	if (failures.length > 0) {
+		lines.push(`Interrupted or failed calls: ${failures.join('; ')}`);
+	}
+	return previewText(lines.join('\n'), 3000);
+}
+
 export function createFastChatSessionService(
 	supabase: SupabaseClient<Database>,
 	options: FastChatSessionServiceOptions = {}
@@ -253,7 +411,7 @@ export function createFastChatSessionService(
 	): Promise<FastChatHistoryMessage[]> {
 		const { data, error } = await supabase
 			.from('chat_messages')
-			.select('role, content, metadata, created_at')
+			.select('id, role, content, metadata, created_at')
 			.eq('session_id', sessionId)
 			.order('created_at', { ascending: false })
 			.limit(limit);
@@ -274,15 +432,71 @@ export function createFastChatSessionService(
 		}
 
 		const allowedRoles = new Set(['user', 'assistant', 'system']);
-
-		return data
+		const orderedMessages = data
 			.slice()
 			.reverse()
-			.filter((msg) => allowedRoles.has(msg.role))
-			.map((msg) => ({
-				role: msg.role as FastChatHistoryMessage['role'],
-				content: msg.content
-			}));
+			.filter((msg): msg is RecentChatMessageRow => allowedRoles.has(msg.role));
+		const interruptedMessageIds = orderedMessages
+			.filter(isInterruptedAssistantMessage)
+			.map((msg) => msg.id)
+			.filter((id): id is string => Boolean(id));
+		const executionsByMessageId = new Map<string, InterruptedToolExecutionSummaryRow[]>();
+
+		if (interruptedMessageIds.length > 0) {
+			const { data: executionRows, error: executionError } = await supabase
+				.from('chat_tool_executions')
+				.select(
+					'message_id, tool_name, gateway_op, sequence_index, success, error_message, arguments, result'
+				)
+				.in('message_id', interruptedMessageIds)
+				.order('sequence_index', { ascending: true });
+
+			if (executionError) {
+				logger.warn('Failed to load interrupted chat tool history', {
+					error: executionError,
+					sessionId
+				});
+				logFastChatSessionError({
+					error: executionError,
+					operationType: 'fastchat_interrupted_tool_history_load',
+					tableName: 'chat_tool_executions',
+					recordId: sessionId,
+					metadata: {
+						sessionId,
+						messageIds: interruptedMessageIds,
+						limit
+					}
+				});
+			} else {
+				for (const row of executionRows ?? []) {
+					if (!row.message_id) continue;
+					const existing = executionsByMessageId.get(row.message_id) ?? [];
+					existing.push(row as InterruptedToolExecutionSummaryRow);
+					executionsByMessageId.set(row.message_id, existing);
+				}
+			}
+		}
+
+		return orderedMessages.flatMap((msg) => {
+			const historyMessages: FastChatHistoryMessage[] = [
+				{
+					role: msg.role as FastChatHistoryMessage['role'],
+					content: msg.content
+				}
+			];
+			if (isInterruptedAssistantMessage(msg)) {
+				const summary = buildInterruptedToolHistorySummary(
+					executionsByMessageId.get(msg.id) ?? []
+				);
+				if (summary) {
+					historyMessages.push({
+						role: 'system',
+						content: summary
+					});
+				}
+			}
+			return historyMessages;
+		});
 	}
 
 	async function persistMessage(params: PersistMessageParams): Promise<ChatMessage | null> {

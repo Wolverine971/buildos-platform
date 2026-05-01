@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/private';
 import { fetchUrl } from './url-client';
 import {
 	extractPageMetadata,
+	extractStructuredData,
 	normalizePlainText,
 	parseHtmlToText,
 	prepareHtmlForMarkdown
@@ -98,14 +99,17 @@ export async function performWebVisit(
 	let resolvedMode = mode;
 	let trimmedHtml: string | undefined;
 	let meta: Record<string, string> | undefined;
+	let structuredData: WebVisitFetchPayload['structured_data'];
 	let canonicalUrl: string | undefined;
 	let htmlChars: number | undefined;
+	let extractionStrategy: WebVisitFetchPayload['info']['extraction_strategy'];
 
 	if (isHtml) {
 		resolvedMode = mode === 'auto' ? 'reader' : mode;
 		const metadata = extractPageMetadata(response.body, response.finalUrl);
 		meta = metadata.meta;
 		canonicalUrl = metadata.canonical_url;
+		structuredData = extractStructuredData(response.body);
 		const parsed = parseHtmlToText(response.body, {
 			mode: resolvedMode === 'raw' ? 'raw' : 'reader',
 			includeLinks,
@@ -115,6 +119,7 @@ export async function performWebVisit(
 		title = metadata.title ?? parsed.title;
 		links = parsed.links;
 		parser = parsed.parser;
+		extractionStrategy = parsed.extraction_strategy;
 		const prepared = prepareHtmlForMarkdown(response.body, {
 			mode: resolvedMode === 'raw' ? 'raw' : 'reader',
 			baseUrl: response.finalUrl
@@ -125,10 +130,12 @@ export async function performWebVisit(
 		if (!title && prepared.title) {
 			title = prepared.title;
 		}
+		extractionStrategy = prepared.extraction_strategy ?? extractionStrategy;
 	} else if (isTextContentType(contentType)) {
 		resolvedMode = 'raw';
 		text = normalizePlainText(response.body);
 		parser = 'text';
+		extractionStrategy = 'raw';
 	} else {
 		throw new Error(`Unsupported content type: ${contentType ?? 'unknown'}.`);
 	}
@@ -142,6 +149,7 @@ export async function performWebVisit(
 		text,
 		trimmed_html: trimmedHtml,
 		meta,
+		structured_data: structuredData && structuredData.length > 0 ? structuredData : undefined,
 		canonical_url: canonicalUrl,
 		links: includeLinks ? links : undefined,
 		message: `Web visit content fetched from "${response.finalUrl}".`,
@@ -151,6 +159,7 @@ export async function performWebVisit(
 			bytes: response.bytes,
 			fetch_ms: response.fetchMs,
 			parser,
+			extraction_strategy: extractionStrategy,
 			html_chars: htmlChars
 		}
 	};

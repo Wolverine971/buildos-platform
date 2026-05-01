@@ -164,7 +164,9 @@ afterEach(() => {
 describe('Libri dynamic manifest bridge', () => {
 	it('searches a domain manifest and materializes direct Libri tools', async () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
-		const fetchFn = vi.fn(async () => jsonResponse(youtubeManifest())) as unknown as typeof fetch;
+		const fetchFn = vi.fn(async () =>
+			jsonResponse(youtubeManifest())
+		) as unknown as typeof fetch;
 
 		const result = await libriSearchCapabilities(
 			{
@@ -200,7 +202,9 @@ describe('Libri dynamic manifest bridge', () => {
 
 	it('validates YouTube import args before calling Libri', async () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
-		const fetchFn = vi.fn(async () => jsonResponse(youtubeManifest())) as unknown as typeof fetch;
+		const fetchFn = vi.fn(async () =>
+			jsonResponse(youtubeManifest())
+		) as unknown as typeof fetch;
 		await libriSearchCapabilities(
 			{ domain: 'youtube_videos', query: 'upload transcript', kind: 'write' },
 			{ fetchFn, env: configuredEnv() }

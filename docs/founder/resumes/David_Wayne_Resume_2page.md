@@ -1,3 +1,4 @@
+<!-- docs/founder/resumes/David_Wayne_Resume_2page.md -->
 <!-- David_Wayne_Resume_2page.md, light-touch trim of David_Wayne_Resume.md, targeting 2 pages -->
 
 # David Wayne

@@ -10,6 +10,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import type { Json } from '@buildos/shared-types';
 import { env } from '$env/dynamic/private';
 import { BaseExecutor } from './base-executor';
 import {
@@ -48,6 +49,13 @@ function parseNumber(value: string | undefined, fallback: number): number {
 	if (!value) return fallback;
 	const parsed = Number.parseInt(value, 10);
 	return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function structuredDataForStorage(
+	structuredData: WebVisitFetchPayload['structured_data']
+): Json | null {
+	if (!structuredData || structuredData.length === 0) return null;
+	return structuredData as unknown as Json;
 }
 
 /**
@@ -111,11 +119,7 @@ export class ExternalExecutor extends BaseExecutor {
 		}
 
 		const fetched = await performWebVisit(args, this.fetchFn);
-		const responseContent = await this.convertToMarkdownIfNeeded(
-			fetched,
-			outputFormat,
-			persist
-		);
+		const responseContent = await this.convertToMarkdownIfNeeded(fetched, outputFormat);
 
 		const trimmedOutput = responseContent.content.trim();
 		const truncated = trimmedOutput.length > maxChars;
@@ -136,6 +140,7 @@ export class ExternalExecutor extends BaseExecutor {
 			truncated,
 			links: fetched.links,
 			meta: fetched.meta,
+			structured_data: fetched.structured_data,
 			visit_id: stored?.id,
 			stored: stored?.stored ?? false,
 			message: fetched.message,
@@ -183,8 +188,7 @@ export class ExternalExecutor extends BaseExecutor {
 
 	private async convertToMarkdownIfNeeded(
 		fetched: WebVisitFetchPayload,
-		outputFormat: WebVisitContentFormat,
-		shouldPersist: boolean
+		outputFormat: WebVisitContentFormat
 	): Promise<{
 		content: string;
 		format: WebVisitContentFormat;
@@ -197,8 +201,7 @@ export class ExternalExecutor extends BaseExecutor {
 		llmTotalTokens?: number;
 		errorMessage?: string;
 	}> {
-		const shouldConvert =
-			Boolean(fetched.trimmed_html) && (outputFormat === 'markdown' || shouldPersist);
+		const shouldConvert = Boolean(fetched.trimmed_html) && outputFormat === 'markdown';
 		if (!shouldConvert || !this.llmService) {
 			return {
 				content: fetched.text,
@@ -298,6 +301,7 @@ export class ExternalExecutor extends BaseExecutor {
 					'content_type',
 					'title',
 					'meta',
+					'structured_data',
 					'markdown',
 					'bytes',
 					'last_llm_model',
@@ -347,6 +351,9 @@ export class ExternalExecutor extends BaseExecutor {
 			truncated,
 			links: undefined,
 			meta: (data.meta as Record<string, string>) ?? undefined,
+			structured_data: Array.isArray(data.structured_data)
+				? (data.structured_data as WebVisitResultPayload['structured_data'])
+				: undefined,
 			visit_id: data.id,
 			stored: true,
 			message: `Web visit content loaded from cache for "${data.final_url ?? data.url ?? url}".`,
@@ -412,6 +419,7 @@ export class ExternalExecutor extends BaseExecutor {
 						content_type: fetched.content_type ?? null,
 						title: fetched.title ?? null,
 						meta: fetched.meta ?? null,
+						structured_data: structuredDataForStorage(fetched.structured_data),
 						markdown,
 						excerpt: excerpt ?? null,
 						content_hash: contentHash ?? null,
@@ -445,6 +453,7 @@ export class ExternalExecutor extends BaseExecutor {
 					content_type: fetched.content_type ?? null,
 					title: fetched.title ?? null,
 					meta: fetched.meta ?? null,
+					structured_data: structuredDataForStorage(fetched.structured_data),
 					markdown,
 					excerpt: excerpt ?? null,
 					content_hash: contentHash ?? null,
