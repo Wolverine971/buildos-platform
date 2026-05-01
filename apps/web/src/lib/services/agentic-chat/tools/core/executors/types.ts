@@ -43,6 +43,7 @@ export interface ToolExecutionOutput<T = any> {
 export interface ListOntoTasksArgs {
 	project_id?: string;
 	state_key?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
@@ -52,22 +53,26 @@ export interface SearchOntoTasksArgs {
 	search?: string;
 	project_id?: string;
 	state_key?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
 export interface ListOntoGoalsArgs {
 	project_id?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
 export interface ListOntoPlansArgs {
 	project_id?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
 export interface ListOntoProjectsArgs {
 	state_key?: string;
 	type_key?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
@@ -77,6 +82,7 @@ export interface SearchOntoProjectsArgs {
 	search?: string;
 	state_key?: string;
 	type_key?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
@@ -84,12 +90,14 @@ export interface ListOntoDocumentsArgs {
 	project_id?: string;
 	type_key?: string;
 	state_key?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
 export interface ListOntoMilestonesArgs {
 	project_id?: string;
 	state_key?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
@@ -97,6 +105,7 @@ export interface ListOntoRisksArgs {
 	project_id?: string;
 	state_key?: string;
 	impact?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
@@ -107,6 +116,7 @@ export interface SearchOntoDocumentsArgs {
 	project_id?: string;
 	type_key?: string;
 	state_key?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
@@ -115,6 +125,7 @@ export interface SearchOntoGoalsArgs {
 	/** @deprecated Legacy alias. Use query. */
 	search?: string;
 	project_id?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
@@ -123,6 +134,7 @@ export interface SearchOntoPlansArgs {
 	/** @deprecated Legacy alias. Use query. */
 	search?: string;
 	project_id?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
@@ -132,6 +144,7 @@ export interface SearchOntoMilestonesArgs {
 	search?: string;
 	project_id?: string;
 	state_key?: string;
+	archived?: boolean;
 	limit?: number;
 }
 
@@ -142,6 +155,7 @@ export interface SearchOntoRisksArgs {
 	project_id?: string;
 	state_key?: string;
 	impact?: string;
+	archived?: boolean;
 	limit?: number;
 }
 

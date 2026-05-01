@@ -147,49 +147,49 @@ const CORE_ENTITY_CONFIG: Record<
 		idArg: 'project_id',
 		resultKey: 'project',
 		displayField: 'name',
-		select: 'id, name, description, type_key, state_key, props, start_at, end_at, created_at, updated_at, deleted_at'
+		select: 'id, name, description, type_key, state_key, props, start_at, end_at, created_by, created_at, updated_at, archived_at, deleted_at'
 	},
 	task: {
 		table: 'onto_tasks',
 		idArg: 'task_id',
 		resultKey: 'task',
 		displayField: 'title',
-		select: 'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, deleted_at'
+		select: 'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at, deleted_at'
 	},
 	document: {
 		table: 'onto_documents',
 		idArg: 'document_id',
 		resultKey: 'document',
 		displayField: 'title',
-		select: 'id, project_id, title, description, type_key, state_key, content, props, children, created_at, updated_at, deleted_at'
+		select: 'id, project_id, title, description, type_key, state_key, content, props, children, created_at, updated_at, archived_at, deleted_at'
 	},
 	goal: {
 		table: 'onto_goals',
 		idArg: 'goal_id',
 		resultKey: 'goal',
 		displayField: 'name',
-		select: 'id, project_id, name, goal, description, type_key, state_key, target_date, completed_at, props, created_at, updated_at, deleted_at'
+		select: 'id, project_id, name, goal, description, type_key, state_key, target_date, completed_at, props, created_at, updated_at, archived_at, deleted_at'
 	},
 	plan: {
 		table: 'onto_plans',
 		idArg: 'plan_id',
 		resultKey: 'plan',
 		displayField: 'name',
-		select: 'id, project_id, name, description, plan, type_key, state_key, props, created_at, updated_at, deleted_at'
+		select: 'id, project_id, name, description, plan, type_key, state_key, props, created_at, updated_at, archived_at, deleted_at'
 	},
 	milestone: {
 		table: 'onto_milestones',
 		idArg: 'milestone_id',
 		resultKey: 'milestone',
 		displayField: 'title',
-		select: 'id, project_id, title, milestone, description, type_key, state_key, due_at, props, created_at, updated_at, deleted_at'
+		select: 'id, project_id, title, milestone, description, type_key, state_key, due_at, props, created_at, updated_at, archived_at, deleted_at'
 	},
 	risk: {
 		table: 'onto_risks',
 		idArg: 'risk_id',
 		resultKey: 'risk',
 		displayField: 'title',
-		select: 'id, project_id, title, impact, probability, state_key, content, type_key, props, mitigated_at, created_at, updated_at, deleted_at'
+		select: 'id, project_id, title, impact, probability, state_key, content, type_key, props, mitigated_at, created_at, updated_at, archived_at, deleted_at'
 	}
 };
 
@@ -206,6 +206,16 @@ const LINK_ENTITY_TABLES: Record<ExternalLinkEntityKind, string> = {
 	metric: 'onto_metrics',
 	source: 'onto_sources'
 };
+
+const ARCHIVABLE_ENTITY_KINDS = new Set<ExternalLinkEntityKind>([
+	'project',
+	'task',
+	'document',
+	'goal',
+	'plan',
+	'milestone',
+	'risk'
+]);
 
 class ExternalToolGatewayError extends Error {
 	constructor(
@@ -356,6 +366,11 @@ const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<st
 				type: 'string',
 				description: `Optional state update. Valid: ${DOCUMENT_STATES.join(', ')}.`
 			},
+			archived: {
+				type: 'boolean',
+				description:
+					'Archive or restore the document. true sets archived_at; false clears archived_at.'
+			},
 			update_strategy: {
 				type: 'string',
 				enum: ['replace', 'append', 'merge_llm'],
@@ -398,6 +413,11 @@ const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<st
 				type: 'string',
 				description: 'Optional state update: todo, in_progress, blocked, or done.'
 			},
+			archived: {
+				type: 'boolean',
+				description:
+					'Archive or restore the task. true sets archived_at; false clears archived_at.'
+			},
 			priority: {
 				type: ['number', 'null'],
 				description: 'Optional priority from 1-5. Use null to clear.'
@@ -418,6 +438,63 @@ const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<st
 		required: ['task_id']
 	}
 };
+
+const EXTERNAL_ARCHIVABLE_UPDATE_OPS = new Set<BuildosAgentAllowedOp>([
+	'onto.project.update',
+	'onto.goal.update',
+	'onto.plan.update',
+	'onto.milestone.update',
+	'onto.risk.update'
+]);
+
+const EXTERNAL_ARCHIVABLE_READ_OPS = new Set<BuildosAgentAllowedOp>([
+	'onto.task.list',
+	'onto.task.search',
+	'onto.task.get',
+	'onto.document.list',
+	'onto.document.search',
+	'onto.document.get',
+	'onto.goal.list',
+	'onto.goal.search',
+	'onto.goal.get',
+	'onto.plan.list',
+	'onto.plan.search',
+	'onto.plan.get',
+	'onto.milestone.list',
+	'onto.milestone.search',
+	'onto.milestone.get',
+	'onto.risk.list',
+	'onto.risk.search',
+	'onto.risk.get',
+	'onto.search'
+]);
+
+function withExternalArchiveUpdateParameter(
+	op: BuildosAgentAllowedOp,
+	schema: Record<string, unknown>
+): Record<string, unknown> {
+	if (!EXTERNAL_ARCHIVABLE_UPDATE_OPS.has(op) && !EXTERNAL_ARCHIVABLE_READ_OPS.has(op)) {
+		return schema;
+	}
+	const properties =
+		schema.properties &&
+		typeof schema.properties === 'object' &&
+		!Array.isArray(schema.properties)
+			? (schema.properties as Record<string, unknown>)
+			: {};
+	return {
+		...schema,
+		properties: {
+			...properties,
+			archived: {
+				type: 'boolean',
+				description: EXTERNAL_ARCHIVABLE_UPDATE_OPS.has(op)
+					? 'Archive or restore the entity. true sets archived_at; false clears archived_at.'
+					: 'When true, return archived records only. Omitted or false returns active records only.'
+			}
+		}
+	};
+}
 
 const EXTERNAL_OP_HANDLERS: Record<
 	BuildosAgentAllowedOp,
@@ -686,6 +763,78 @@ function assertVisibleEntityProject(
 	return project;
 }
 
+async function resolveArchivedProjectAccessContext(
+	context: ToolExecutionContext,
+	entity: Record<string, unknown>
+): Promise<OntologyProjectSummary | null> {
+	const actorId = await ensureActorId(context.admin, context.userId);
+	const createdBy = typeof entity.created_by === 'string' ? entity.created_by : null;
+	let accessRole: OntologyProjectSummary['access_role'] = createdBy === actorId ? 'owner' : null;
+	let accessLevel: OntologyProjectSummary['access_level'] =
+		createdBy === actorId ? 'admin' : null;
+
+	if (!accessLevel) {
+		const { data: member, error } = await context.admin
+			.from('onto_project_members')
+			.select('role_key, access')
+			.eq('project_id', String(entity.id))
+			.eq('actor_id', actorId)
+			.is('removed_at', null)
+			.maybeSingle();
+		if (error) {
+			throw new ExternalToolGatewayError(
+				'INTERNAL',
+				error.message || 'Failed to load project membership'
+			);
+		}
+		if (!member) return null;
+		accessRole =
+			member.role_key === 'owner' ||
+			member.role_key === 'editor' ||
+			member.role_key === 'viewer'
+				? member.role_key
+				: null;
+		accessLevel =
+			member.access === 'read' || member.access === 'write' || member.access === 'admin'
+				? member.access
+				: null;
+	}
+
+	return {
+		id: String(entity.id),
+		name: typeof entity.name === 'string' ? entity.name : 'Archived project',
+		description: typeof entity.description === 'string' ? entity.description : null,
+		icon_svg: null,
+		icon_concept: null,
+		icon_generated_at: null,
+		icon_generation_source: null,
+		icon_generation_prompt: null,
+		type_key: typeof entity.type_key === 'string' ? entity.type_key : 'project.default',
+		state_key: entity.state_key as OntologyProjectSummary['state_key'],
+		props:
+			entity.props && typeof entity.props === 'object' && !Array.isArray(entity.props)
+				? (entity.props as OntologyProjectSummary['props'])
+				: {},
+		facet_context: null,
+		facet_scale: null,
+		facet_stage: null,
+		created_at: typeof entity.created_at === 'string' ? entity.created_at : '',
+		updated_at: typeof entity.updated_at === 'string' ? entity.updated_at : '',
+		task_count: 0,
+		goal_count: 0,
+		plan_count: 0,
+		document_count: 0,
+		owner_actor_id: createdBy ?? actorId,
+		access_role: accessRole,
+		access_level: accessLevel,
+		is_shared: createdBy !== actorId,
+		next_step_short: null,
+		next_step_long: null,
+		next_step_source: null,
+		next_step_updated_at: null
+	};
+}
+
 function buildRegistryVersion(opNames: string[]): string {
 	const internalRegistry = getToolRegistry();
 	return `${internalRegistry.version}/external/${opNames.join(',')}`;
@@ -797,6 +946,41 @@ function normalizeRiskImpactFilter(value: unknown): string | undefined {
 		);
 	}
 	return impact;
+}
+
+function normalizeArchivedBoolean(value: unknown, fieldName = 'archived'): boolean | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+	if (typeof value === 'boolean') return value;
+	if (typeof value === 'string') {
+		const normalized = value.trim().toLowerCase();
+		if (normalized === 'true') return true;
+		if (normalized === 'false') return false;
+	}
+	throw new ExternalToolGatewayError('VALIDATION_ERROR', `${fieldName} must be a boolean`);
+}
+
+function normalizeArchivedReadFilter(value: unknown): boolean {
+	return normalizeArchivedBoolean(value) ?? false;
+}
+
+function applyArchivedFilter<
+	T extends { is: (...args: any[]) => any; not: (...args: any[]) => any }
+>(query: T, archived: boolean): T {
+	return archived
+		? (query.not('archived_at', 'is', null) as T)
+		: (query.is('archived_at', null) as T);
+}
+
+function applyArchivedReadFilter<
+	T extends { is: (...args: any[]) => any; not: (...args: any[]) => any }
+>(query: T, args: Record<string, unknown>): T {
+	return applyArchivedFilter(query, normalizeArchivedReadFilter(args.archived));
+}
+
+function normalizeArchivedUpdate(value: unknown): string | null | undefined {
+	const archived = normalizeArchivedBoolean(value);
+	if (archived === undefined) return undefined;
+	return archived ? new Date().toISOString() : null;
 }
 
 function normalizeRelationshipDirection(value: unknown): 'outgoing' | 'incoming' | 'both' {
@@ -919,14 +1103,17 @@ async function loadEntityForAccess(
 	context: ToolExecutionContext,
 	kind: ExternalLinkEntityKind,
 	id: unknown,
-	access: 'read' | 'write'
+	access: 'read' | 'write',
+	options: { archived?: boolean; includeArchived?: boolean } = {}
 ): Promise<EntityAccessResult> {
 	const entityId = assertValidId(id, `${kind}_id`);
 	const table = LINK_ENTITY_TABLES[kind];
 	const visible = await loadVisibleProjects(context);
 
 	let query = context.admin.from(table).select('*').eq('id', entityId);
-	if (kind !== 'metric' && kind !== 'source') {
+	if (ARCHIVABLE_ENTITY_KINDS.has(kind) && !options.includeArchived) {
+		query = applyArchivedFilter(query, options.archived ?? false);
+	} else if (kind !== 'metric' && kind !== 'source' && !ARCHIVABLE_ENTITY_KINDS.has(kind)) {
 		query = query.is('deleted_at', null);
 	}
 
@@ -941,7 +1128,15 @@ async function loadEntityForAccess(
 
 	const entity = data as Record<string, unknown>;
 	const projectId = kind === 'project' ? entityId : entity.project_id;
-	const project = assertVisibleEntityProject(visible.projectMap, projectId);
+	let project: OntologyProjectSummary | null = null;
+	try {
+		project = assertVisibleEntityProject(visible.projectMap, projectId);
+	} catch (error) {
+		if (kind === 'project' && options.includeArchived) {
+			project = await resolveArchivedProjectAccessContext(context, entity);
+		}
+		if (!project) throw error;
+	}
 	if (access === 'write') {
 		assertProjectWriteAccess(project);
 	}
@@ -958,9 +1153,10 @@ async function loadCoreEntityForAccess(
 	context: ToolExecutionContext,
 	kind: ExternalEntityKind,
 	id: unknown,
-	access: 'read' | 'write'
+	access: 'read' | 'write',
+	options: { archived?: boolean; includeArchived?: boolean } = {}
 ): Promise<EntityAccessResult> {
-	return loadEntityForAccess(context, kind, id, access);
+	return loadEntityForAccess(context, kind, id, access, options);
 }
 
 function resolveEntityProjectId(access: EntityAccessResult): string {
@@ -1187,7 +1383,7 @@ async function assertTaskCalendarProjectAccess(
 		.from('onto_tasks')
 		.select('id, project_id')
 		.eq('id', taskId)
-		.is('deleted_at', null)
+		.is('archived_at', null)
 		.maybeSingle();
 
 	if (error) {
@@ -1880,13 +2076,13 @@ async function listTasks(context: ToolExecutionContext, args: Record<string, unk
 	let query = context.admin
 		.from('onto_tasks')
 		.select(
-			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, updated_at',
+			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, archived_at, updated_at',
 			{ count: 'exact' }
 		)
 		.in('project_id', projectIds)
-		.is('deleted_at', null)
 		.order('updated_at', { ascending: false })
 		.range(offset, offset + limit - 1);
+	query = applyArchivedReadFilter(query, args);
 
 	if (stateKey) {
 		query = query.eq('state_key', stateKey);
@@ -1927,18 +2123,19 @@ async function getTask(context: ToolExecutionContext, args: Record<string, unkno
 		throw new ExternalToolGatewayError('NOT_FOUND', 'Task not found');
 	}
 
-	const { data, error } = await context.admin
+	let query = context.admin
 		.from('onto_tasks')
 		.select(
-			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at'
+			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at'
 		)
 		.eq('id', taskId)
 		.in(
 			'project_id',
 			visible.projects.map((project) => project.id)
-		)
-		.is('deleted_at', null)
-		.maybeSingle();
+		);
+	query = applyArchivedReadFilter(query, args);
+
+	const { data, error } = await query.maybeSingle();
 
 	if (error) {
 		throw new ExternalToolGatewayError('INTERNAL', error.message || 'Failed to load task');
@@ -2037,12 +2234,12 @@ async function listCoreEntities(
 		.from(config.table)
 		.select(config.select, { count: 'exact' })
 		.in('project_id', projectIds)
-		.is('deleted_at', null)
 		.order(kind === 'milestone' ? 'due_at' : 'updated_at', {
 			ascending: kind === 'milestone',
 			...(kind === 'milestone' ? { nullsFirst: true } : {})
 		})
 		.range(offset, offset + limit - 1);
+	query = applyArchivedReadFilter(query, args);
 
 	if (stateKey) {
 		query = query.eq('state_key', stateKey);
@@ -2077,7 +2274,9 @@ async function getCoreEntity(
 ) {
 	const config = CORE_ENTITY_CONFIG[kind];
 	const entityId = args[config.idArg];
-	const access = await loadCoreEntityForAccess(context, kind, entityId, 'read');
+	const access = await loadCoreEntityForAccess(context, kind, entityId, 'read', {
+		archived: normalizeArchivedReadFilter(args.archived)
+	});
 	return {
 		[config.resultKey]: serializeExternalEntity(kind, access.entity, access.project.name)
 	};
@@ -2174,18 +2373,22 @@ async function updateTask(context: ToolExecutionContext, args: Record<string, un
 		throw new ExternalToolGatewayError('NOT_FOUND', 'Task not found');
 	}
 
-	const { data: existingTask, error: existingTaskError } = await context.admin
+	const archivedAtUpdate = normalizeArchivedUpdate(args.archived);
+	let existingTaskQuery = context.admin
 		.from('onto_tasks')
 		.select(
-			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at'
+			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at'
 		)
 		.eq('id', taskId)
 		.in(
 			'project_id',
 			visible.projects.map((project) => project.id)
-		)
-		.is('deleted_at', null)
-		.maybeSingle();
+		);
+	if (archivedAtUpdate !== null) {
+		existingTaskQuery = existingTaskQuery.is('archived_at', null);
+	}
+
+	const { data: existingTask, error: existingTaskError } = await existingTaskQuery.maybeSingle();
 
 	if (existingTaskError) {
 		throw new ExternalToolGatewayError(
@@ -2275,6 +2478,11 @@ async function updateTask(context: ToolExecutionContext, args: Record<string, un
 		changedFieldCount += 1;
 	}
 
+	if (archivedAtUpdate !== undefined) {
+		updateData.archived_at = archivedAtUpdate;
+		changedFieldCount += 1;
+	}
+
 	if (changedFieldCount === 0) {
 		throw new ExternalToolGatewayError(
 			'VALIDATION_ERROR',
@@ -2287,7 +2495,7 @@ async function updateTask(context: ToolExecutionContext, args: Record<string, un
 		.update(updateData)
 		.eq('id', taskId)
 		.select(
-			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at'
+			'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at'
 		)
 		.single();
 
@@ -2575,16 +2783,21 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		throw new ExternalToolGatewayError('NOT_FOUND', 'Document not found');
 	}
 
-	const { data: existingDocument, error: existingError } = await context.admin
+	const archivedAtUpdate = normalizeArchivedUpdate(args.archived);
+	let existingDocumentQuery = context.admin
 		.from('onto_documents')
 		.select('*')
 		.eq('id', documentId)
 		.in(
 			'project_id',
 			visible.projects.map((project) => project.id)
-		)
-		.is('deleted_at', null)
-		.maybeSingle();
+		);
+	if (archivedAtUpdate !== null) {
+		existingDocumentQuery = existingDocumentQuery.is('archived_at', null);
+	}
+
+	const { data: existingDocument, error: existingError } =
+		await existingDocumentQuery.maybeSingle();
 
 	if (existingError) {
 		throw new ExternalToolGatewayError(
@@ -2649,6 +2862,11 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 			);
 		}
 		updateData.state_key = normalizedState;
+		changedFieldCount += 1;
+	}
+
+	if (archivedAtUpdate !== undefined) {
+		updateData.archived_at = archivedAtUpdate;
 		changedFieldCount += 1;
 	}
 
@@ -2838,7 +3056,10 @@ async function createProject(context: ToolExecutionContext, args: Record<string,
 }
 
 async function updateProject(context: ToolExecutionContext, args: Record<string, unknown>) {
-	const access = await loadCoreEntityForAccess(context, 'project', args.project_id, 'write');
+	const archivedAtUpdate = normalizeArchivedUpdate(args.archived);
+	const access = await loadCoreEntityForAccess(context, 'project', args.project_id, 'write', {
+		includeArchived: archivedAtUpdate === null
+	});
 	const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
 	let changed = 0;
 
@@ -2871,6 +3092,10 @@ async function updateProject(context: ToolExecutionContext, args: Record<string,
 			...((access.entity.props as Record<string, unknown> | null) ?? {}),
 			...(normalizeProps(args.props, 'props') ?? {})
 		};
+		changed += 1;
+	}
+	if (archivedAtUpdate !== undefined) {
+		updateData.archived_at = archivedAtUpdate;
 		changed += 1;
 	}
 
@@ -3383,8 +3608,14 @@ async function updateCoreEntity(
 	buildUpdateData: (existing: Record<string, unknown>) => Record<string, unknown>
 ) {
 	const config = CORE_ENTITY_CONFIG[kind];
-	const access = await loadCoreEntityForAccess(context, kind, args[config.idArg], 'write');
+	const archivedAtUpdate = normalizeArchivedUpdate(args.archived);
+	const access = await loadCoreEntityForAccess(context, kind, args[config.idArg], 'write', {
+		includeArchived: archivedAtUpdate === null
+	});
 	const updateData = buildUpdateData(access.entity);
+	if (archivedAtUpdate !== undefined) {
+		updateData.archived_at = archivedAtUpdate;
+	}
 	const meaningfulKeys = Object.keys(updateData);
 	if (meaningfulKeys.length === 0) {
 		throw new ExternalToolGatewayError(
@@ -3781,7 +4012,7 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 		.select('id, project_id')
 		.eq('id', documentId)
 		.eq('project_id', project.id)
-		.is('deleted_at', null)
+		.is('archived_at', null)
 		.maybeSingle();
 
 	if (documentError) {
@@ -3804,7 +4035,7 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 			.select('id')
 			.eq('id', newParentId)
 			.eq('project_id', project.id)
-			.is('deleted_at', null)
+			.is('archived_at', null)
 			.maybeSingle();
 		if (parentError) {
 			throw new ExternalToolGatewayError(
@@ -3861,13 +4092,16 @@ async function listDocuments(context: ToolExecutionContext, args: Record<string,
 
 	let query = context.admin
 		.from('onto_documents')
-		.select('id, project_id, title, description, type_key, state_key, created_at, updated_at', {
-			count: 'exact'
-		})
+		.select(
+			'id, project_id, title, description, type_key, state_key, archived_at, created_at, updated_at',
+			{
+				count: 'exact'
+			}
+		)
 		.in('project_id', projectIds)
-		.is('deleted_at', null)
 		.order('updated_at', { ascending: false })
 		.range(offset, offset + limit - 1);
+	query = applyArchivedReadFilter(query, args);
 
 	if (typeKey) {
 		query = query.eq('type_key', typeKey);
@@ -3916,18 +4150,19 @@ async function getDocument(context: ToolExecutionContext, args: Record<string, u
 		throw new ExternalToolGatewayError('NOT_FOUND', 'Document not found');
 	}
 
-	const { data, error } = await context.admin
+	let query = context.admin
 		.from('onto_documents')
 		.select(
-			'id, project_id, title, description, type_key, content, state_key, created_at, updated_at'
+			'id, project_id, title, description, type_key, content, state_key, archived_at, created_at, updated_at'
 		)
 		.eq('id', documentId)
 		.in(
 			'project_id',
 			visible.projects.map((project) => project.id)
-		)
-		.is('deleted_at', null)
-		.maybeSingle();
+		);
+	query = applyArchivedReadFilter(query, args);
+
+	const { data, error } = await query.maybeSingle();
 
 	if (error) {
 		throw new ExternalToolGatewayError('INTERNAL', error.message || 'Failed to load document');
@@ -4006,7 +4241,7 @@ async function getDocumentPath(context: ToolExecutionContext, args: Record<strin
 			.select('id, project_id, title')
 			.eq('id', documentId)
 			.in('project_id', projectIds)
-			.is('deleted_at', null)
+			.is('archived_at', null)
 			.maybeSingle();
 
 		if (error) {
@@ -4078,7 +4313,7 @@ async function listTaskDocuments(context: ToolExecutionContext, args: Record<str
 		.select('*')
 		.in('id', documentIds)
 		.eq('project_id', taskAccess.project.id)
-		.is('deleted_at', null);
+		.is('archived_at', null);
 
 	if (documentError) {
 		throw new ExternalToolGatewayError(
@@ -4433,42 +4668,42 @@ const SEARCH_CONFIG: Record<
 > = {
 	task: {
 		table: 'onto_tasks',
-		select: 'id, project_id, title, description, type_key, state_key, updated_at',
+		select: 'id, project_id, title, description, type_key, state_key, archived_at, updated_at',
 		searchFields: ['title', 'description'],
 		titleField: 'title',
 		snippetField: 'description'
 	},
 	plan: {
 		table: 'onto_plans',
-		select: 'id, project_id, name, description, type_key, state_key, updated_at',
+		select: 'id, project_id, name, description, type_key, state_key, archived_at, updated_at',
 		searchFields: ['name', 'description'],
 		titleField: 'name',
 		snippetField: 'description'
 	},
 	goal: {
 		table: 'onto_goals',
-		select: 'id, project_id, name, description, type_key, state_key, updated_at',
+		select: 'id, project_id, name, description, type_key, state_key, archived_at, updated_at',
 		searchFields: ['name', 'description'],
 		titleField: 'name',
 		snippetField: 'description'
 	},
 	document: {
 		table: 'onto_documents',
-		select: 'id, project_id, title, description, content, type_key, state_key, updated_at',
+		select: 'id, project_id, title, description, content, type_key, state_key, archived_at, updated_at',
 		searchFields: ['title', 'content', 'description'],
 		titleField: 'title',
 		snippetField: 'content'
 	},
 	milestone: {
 		table: 'onto_milestones',
-		select: 'id, project_id, title, description, type_key, state_key, due_at, updated_at',
+		select: 'id, project_id, title, description, type_key, state_key, due_at, archived_at, updated_at',
 		searchFields: ['title', 'description'],
 		titleField: 'title',
 		snippetField: 'description'
 	},
 	risk: {
 		table: 'onto_risks',
-		select: 'id, project_id, title, content, impact, type_key, state_key, updated_at',
+		select: 'id, project_id, title, content, impact, type_key, state_key, archived_at, updated_at',
 		searchFields: ['title', 'content'],
 		titleField: 'title',
 		snippetField: 'content'
@@ -4540,10 +4775,10 @@ async function searchEntityKind(params: {
 		.from(config.table)
 		.select(config.select, { count: 'exact' })
 		.in('project_id', projectIds)
-		.is('deleted_at', null)
 		.or(buildSearchFilter(query, config.searchFields))
 		.order('updated_at', { ascending: false })
 		.range(offset, offset + limit - 1);
+	dbQuery = applyArchivedReadFilter(dbQuery, args);
 
 	if (stateKey) {
 		dbQuery = dbQuery.eq('state_key', stateKey);
@@ -4584,6 +4819,7 @@ async function searchEntityKind(params: {
 			snippet,
 			type_key: item.type_key,
 			state_key: item.state_key,
+			archived_at: item.archived_at ?? null,
 			...(kind === 'milestone' ? { due_at: item.due_at } : {}),
 			...(kind === 'risk' ? { impact: item.impact } : {}),
 			updated_at: item.updated_at
@@ -4607,9 +4843,12 @@ function buildExternalGatewayRegistry(scope: AgentCallScope): ExternalGatewayReg
 		const entry = internalRegistry.ops[op];
 		const handler = EXTERNAL_OP_HANDLERS[op];
 		if (!entry || !handler) continue;
+		const parametersSchema =
+			EXTERNAL_WRITE_OP_SCHEMAS[op] ??
+			withExternalArchiveUpdateParameter(op, entry.parameters_schema);
 		ops[op] = {
 			...entry,
-			parameters_schema: EXTERNAL_WRITE_OP_SCHEMAS[op] ?? entry.parameters_schema,
+			parameters_schema: parametersSchema,
 			required_scope_mode: isWriteOp(op) ? 'read_write' : 'read_only',
 			handler
 		};

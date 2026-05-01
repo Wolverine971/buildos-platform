@@ -5971,6 +5971,7 @@ export type Database = {
       }
       onto_documents: {
         Row: {
+          archived_at: string | null
           children: Json | null
           content: string | null
           created_at: string
@@ -5987,6 +5988,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           children?: Json | null
           content?: string | null
           created_at?: string
@@ -6003,6 +6005,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           children?: Json | null
           content?: string | null
           created_at?: string
@@ -6326,6 +6329,7 @@ export type Database = {
       }
       onto_goals: {
         Row: {
+          archived_at: string | null
           completed_at: string | null
           created_at: string
           created_by: string
@@ -6343,6 +6347,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           completed_at?: string | null
           created_at?: string
           created_by: string
@@ -6360,6 +6365,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string
@@ -6509,6 +6515,7 @@ export type Database = {
       }
       onto_milestones: {
         Row: {
+          archived_at: string | null
           completed_at: string | null
           created_at: string
           created_by: string
@@ -6526,6 +6533,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           completed_at?: string | null
           created_at?: string
           created_by: string
@@ -6543,6 +6551,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string
@@ -6601,6 +6610,7 @@ export type Database = {
       }
       onto_plans: {
         Row: {
+          archived_at: string | null
           created_at: string
           created_by: string
           deleted_at: string | null
@@ -6619,6 +6629,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           created_by: string
           deleted_at?: string | null
@@ -6637,6 +6648,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           created_by?: string
           deleted_at?: string | null
@@ -7040,6 +7052,7 @@ export type Database = {
       }
       onto_projects: {
         Row: {
+          archived_at: string | null
           created_at: string
           created_by: string
           deleted_at: string | null
@@ -7070,6 +7083,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           created_at?: string
           created_by: string
           deleted_at?: string | null
@@ -7100,6 +7114,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           created_at?: string
           created_by?: string
           deleted_at?: string | null
@@ -7524,6 +7539,7 @@ export type Database = {
       }
       onto_risks: {
         Row: {
+          archived_at: string | null
           content: string | null
           created_at: string
           created_by: string
@@ -7541,6 +7557,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           content?: string | null
           created_at?: string
           created_by: string
@@ -7558,6 +7575,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           content?: string | null
           created_at?: string
           created_by?: string
@@ -7728,6 +7746,7 @@ export type Database = {
       }
       onto_tasks: {
         Row: {
+          archived_at: string | null
           completed_at: string | null
           created_at: string
           created_by: string
@@ -7747,6 +7766,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
           completed_at?: string | null
           created_at?: string
           created_by: string
@@ -7766,6 +7786,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string

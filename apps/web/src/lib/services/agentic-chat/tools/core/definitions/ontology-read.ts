@@ -8,6 +8,13 @@
 
 import type { ChatToolDefinition } from '@buildos/shared-types';
 
+const ARCHIVED_FILTER_PARAMETER = {
+	type: 'boolean',
+	default: false,
+	description:
+		'When true, return archived records only. Omitted or false returns active records only.'
+};
+
 export const ONTOLOGY_READ_TOOLS: ChatToolDefinition[] = [
 	// ============================================
 	// LIST TOOLS
@@ -34,6 +41,7 @@ Use this for queries about ontology tasks, plans with tasks, or project task lis
 						type: 'string',
 						description: 'Filter by task type key'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,
@@ -71,6 +79,7 @@ Use for queries about project goals or strategic objectives.`,
 						type: 'string',
 						description: 'Filter by goal type key'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,
@@ -109,6 +118,7 @@ Use get_onto_document_details when full document content is needed.`,
 						description:
 							'Filter by document state (draft, in_review, ready, published, archived)'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,
@@ -146,6 +156,7 @@ Use for project timelines, checkpoints, or delivery milestones.`,
 						type: 'string',
 						description: 'Filter by milestone type key'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,
@@ -187,6 +198,7 @@ Use for risk reviews, mitigation planning, or status updates.`,
 						type: 'string',
 						description: 'Filter by risk type key'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,
@@ -224,6 +236,7 @@ Use for queries about execution plans or workflows.`,
 						type: 'string',
 						description: 'Filter by plan type key'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,
@@ -257,6 +270,7 @@ Use for discovering available projects or getting project overviews.`,
 						type: 'string',
 						description: 'Filter by project type'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,
@@ -413,6 +427,7 @@ Use when the user references a task by name or description but the project is un
 						type: 'string',
 						description: 'Filter by task type key'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,
@@ -451,6 +466,7 @@ Use when the user references a task by name or description but the project is un
 						type: 'string',
 						description: 'Filter by type_key classification'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 12,
@@ -494,6 +510,7 @@ Use get_onto_document_details when full document content is needed.`,
 						description:
 							'Filter by document state (draft, in_review, ready, published, archived)'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,
@@ -536,6 +553,7 @@ Use get_onto_document_details when full document content is needed.`,
 						type: 'string',
 						description: 'Filter by goal type key'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,
@@ -578,6 +596,7 @@ Use get_onto_document_details when full document content is needed.`,
 						type: 'string',
 						description: 'Filter by plan type key'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,
@@ -621,6 +640,7 @@ Use get_onto_document_details when full document content is needed.`,
 						type: 'string',
 						description: 'Filter by milestone type key'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,
@@ -668,6 +688,7 @@ Use get_onto_document_details when full document content is needed.`,
 						type: 'string',
 						description: 'Filter by risk type key'
 					},
+					archived: ARCHIVED_FILTER_PARAMETER,
 					limit: {
 						type: 'number',
 						default: 20,

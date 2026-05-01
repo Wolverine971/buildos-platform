@@ -1,0 +1,323 @@
+lineage_version: 0.1
+updated: 2026-05-01
+
+root_skill:
+  id: landing-page-scorecard-funnel
+  name: Landing Page Scorecard Funnel
+  path: docs/research/youtube-library/skill-drafts/landing-page-scorecard-funnel/SKILL.md
+  status: draft
+  summary: Design an assessment-driven landing page that converts visitors into qualified, segmented leads.
+
+sources:
+  - id: source.daniel-priestley.1m-landing-page
+    type: youtube_analysis
+    title: The $1 Million Landing Page
+    creator: Daniel Priestley
+    url: https://www.youtube.com/watch?v=az1Zh-FNSno
+    local_path: docs/marketing/growth/research/youtube-transcripts/2025-10-11-daniel-priestley-1m-landing-page-ANALYSIS.md
+    source_role: primary
+    used_for:
+      - funnel architecture
+      - landing page section order
+      - questionnaire structure
+      - dynamic results page
+      - lead segmentation
+
+  - id: source.april-dunford.sales-pitch-framework
+    type: youtube_analysis
+    title: April Dunford Sales Pitch Framework
+    creator: April Dunford via Lenny's Podcast
+    url: https://www.youtube.com/watch?v=-VqmFI9vY7w
+    local_path: docs/marketing/growth/research/youtube-transcripts/2026-04-29-april-dunford-sales-pitch-framework-ANALYSIS.md
+    source_role: primary
+    used_for:
+      - setup-layered mode
+      - market insight
+      - alternatives analysis
+      - perfect-world scenario
+      - differentiated value
+      - anti-FOMO guardrail
+
+candidate_v2_sources:
+  - id: source.lucky-saini.funnel-teardown
+    title: 1,000 Hours of Studying the Best Marketing Funnels in 42 Minutes
+    creator: Lucky Saini
+    url: https://www.youtube.com/watch?v=LB4RrQ7CLW8
+    local_path: docs/marketing/growth/research/youtube-transcripts/2026-04-24-lucky-saini-1000-hours-marketing-funnels-ANALYSIS.md
+    possible_use: Add traffic, trust-building, proof distribution, and simple-call-funnel primitives.
+  - id: source.ash-maurya.mafia-offer
+    title: You Are Still Sleeping On The Mafia Offer
+    creator: Ash Maurya
+    url: https://www.youtube.com/watch?v=Pd200AbI0y0
+    local_path: docs/marketing/growth/research/youtube-transcripts/2026-04-28-ash-maurya-mafia-offer-ANALYSIS.md
+    possible_use: Add offer story structure, market-shift framing, status-quo villain, and pricing-anchor primitives.
+
+nodes:
+  - id: skill.landing-page-scorecard-funnel
+    type: skill
+    name: Landing Page Scorecard Funnel
+    summary: Build a scorecard funnel that sells the assessment, captures intent signals, and routes leads to the right next step.
+
+  - id: primitive.scorecard-funnel-architecture
+    type: primitive_skill
+    name: Scorecard Funnel Architecture
+    summary: Treat the landing page, questionnaire, dynamic results page, and follow-up path as one conversion system.
+
+  - id: primitive.mode-selection
+    type: primitive_skill
+    name: Mode Selection
+    summary: Decide whether a scorecard can stand alone or needs a setup layer before the assessment.
+
+  - id: primitive.assessment-promise-copy
+    type: primitive_skill
+    name: Assessment Promise Copy
+    summary: Write hooks, subheads, and CTA copy that sell the value, time cost, and payoff of taking the assessment.
+
+  - id: primitive.setup-layer-positioning
+    type: primitive_skill
+    name: Setup Layer Positioning
+    summary: Frame market insight, current alternatives, and the perfect-world scenario before asking a considered buyer to engage.
+
+  - id: primitive.alternatives-aware-value-prop
+    type: primitive_skill
+    name: Alternatives-Aware Value Proposition
+    summary: Define the three measured areas by showing why this assessment is better than the alternatives the buyer already considers.
+
+  - id: primitive.questionnaire-signal-design
+    type: primitive_skill
+    name: Questionnaire Signal Design
+    summary: Design contact capture, best-practice questions, and qualification questions that produce both value and sales signals.
+
+  - id: primitive.dynamic-results-personalization
+    type: primitive_skill
+    name: Dynamic Results Personalization
+    summary: Turn answers into a score, tailored insights, and a next step that visibly reflects the respondent's inputs.
+
+  - id: primitive.lead-segment-routing
+    type: primitive_skill
+    name: Lead Segment Routing
+    summary: Route high-fit, middle-fit, and low-fit leads to different offers instead of sending everyone to the same CTA.
+
+  - id: primitive.credibility-and-trust
+    type: primitive_skill
+    name: Credibility And Trust
+    summary: Use creator background, evidence, proof, and honest trade-offs to make the assessment believable without manipulation.
+
+  - id: guardrail.no-fomo
+    type: guardrail
+    name: No FOMO CTA
+    summary: Avoid scarcity, urgency, and pressure tactics because they damage trust and downstream qualification quality.
+
+  - id: guardrail.no-generic-results
+    type: guardrail
+    name: No Generic Results Page
+    summary: Do not claim personalization if the results page ignores the respondent's answers.
+
+source_claims:
+  - id: claim.priestley.assessment-funnel-three-part-system
+    source_id: source.daniel-priestley.1m-landing-page
+    summary: "A high-converting scorecard funnel has three connected parts: landing page, questionnaire, and dynamic results page."
+    used_for:
+      - primitive.scorecard-funnel-architecture
+
+  - id: claim.priestley.landing-page-five-sections
+    source_id: source.daniel-priestley.1m-landing-page
+    summary: The landing page should move through hook, assessment promise, value proposition, credibility, and CTA.
+    used_for:
+      - primitive.assessment-promise-copy
+      - primitive.credibility-and-trust
+
+  - id: claim.priestley.cta-stack
+    source_id: source.daniel-priestley.1m-landing-page
+    summary: The CTA should stack the action, time cost, free price, and immediate payoff.
+    used_for:
+      - primitive.assessment-promise-copy
+
+  - id: claim.priestley.questionnaire-buckets
+    source_id: source.daniel-priestley.1m-landing-page
+    summary: Use 15 questions across contact capture, best-practice scoring, and five qualification questions.
+    used_for:
+      - primitive.questionnaire-signal-design
+
+  - id: claim.priestley.dynamic-results-and-routing
+    source_id: source.daniel-priestley.1m-landing-page
+    summary: The results page should reveal a score, provide tailored insights, and route respondents by fit.
+    used_for:
+      - primitive.dynamic-results-personalization
+      - primitive.lead-segment-routing
+
+  - id: claim.dunford.setup-before-product
+    source_id: source.april-dunford.sales-pitch-framework
+    summary: Considered buyers need market context, alternatives, and a perfect-world scenario before the product or ask.
+    used_for:
+      - primitive.setup-layer-positioning
+      - primitive.mode-selection
+
+  - id: claim.dunford.differentiated-value
+    source_id: source.april-dunford.sales-pitch-framework
+    summary: Differentiated value answers why the buyer should pick this option over the alternatives.
+    used_for:
+      - primitive.alternatives-aware-value-prop
+
+  - id: claim.dunford.anti-fomo
+    source_id: source.april-dunford.sales-pitch-framework
+    summary: FOMO-driven sales pressure should be avoided because it creates manipulated buyers and churn.
+    used_for:
+      - primitive.credibility-and-trust
+      - guardrail.no-fomo
+
+edges:
+  - from: skill.landing-page-scorecard-funnel
+    to: primitive.scorecard-funnel-architecture
+    type: composed_of
+    confidence: 0.95
+    rationale: The root skill is primarily a conversion system made from landing page, quiz, result page, and routing mechanics.
+
+  - from: skill.landing-page-scorecard-funnel
+    to: primitive.mode-selection
+    type: composed_of
+    confidence: 0.9
+    rationale: The skill must decide whether the assessment can stand alone or needs buyer worldview setup first.
+
+  - from: skill.landing-page-scorecard-funnel
+    to: primitive.assessment-promise-copy
+    type: composed_of
+    confidence: 0.95
+    rationale: The page exists to sell the assessment rather than the full product.
+
+  - from: skill.landing-page-scorecard-funnel
+    to: primitive.setup-layer-positioning
+    type: composed_of
+    confidence: 0.85
+    rationale: Setup-layered mode is required for B2B and considered purchases.
+
+  - from: skill.landing-page-scorecard-funnel
+    to: primitive.alternatives-aware-value-prop
+    type: composed_of
+    confidence: 0.9
+    rationale: The measured areas must explain why this assessment is worth taking over known alternatives.
+
+  - from: skill.landing-page-scorecard-funnel
+    to: primitive.questionnaire-signal-design
+    type: composed_of
+    confidence: 0.95
+    rationale: The assessment's questions produce both user insight and qualification data.
+
+  - from: skill.landing-page-scorecard-funnel
+    to: primitive.dynamic-results-personalization
+    type: composed_of
+    confidence: 0.95
+    rationale: The respondent must see the payoff immediately after answering.
+
+  - from: skill.landing-page-scorecard-funnel
+    to: primitive.lead-segment-routing
+    type: composed_of
+    confidence: 0.95
+    rationale: Segmentation is what makes the funnel more valuable than generic email capture.
+
+  - from: skill.landing-page-scorecard-funnel
+    to: primitive.credibility-and-trust
+    type: composed_of
+    confidence: 0.9
+    rationale: The page needs evidence and honest posture before asking for contact information.
+
+  - from: primitive.mode-selection
+    to: primitive.setup-layer-positioning
+    type: depends_on
+    confidence: 0.8
+    rationale: Setup-layered mode is the operational consequence of the positioning primitive.
+
+  - from: primitive.setup-layer-positioning
+    to: claim.dunford.setup-before-product
+    type: cites
+    confidence: 0.95
+    rationale: Dunford supplies the market insight, alternatives, and perfect-world structure.
+
+  - from: primitive.alternatives-aware-value-prop
+    to: claim.dunford.differentiated-value
+    type: cites
+    confidence: 0.95
+    rationale: Dunford supplies the comparison-based value framing.
+
+  - from: primitive.scorecard-funnel-architecture
+    to: claim.priestley.assessment-funnel-three-part-system
+    type: cites
+    confidence: 0.95
+    rationale: Priestley supplies the core scorecard funnel architecture.
+
+  - from: primitive.assessment-promise-copy
+    to: claim.priestley.landing-page-five-sections
+    type: cites
+    confidence: 0.95
+    rationale: Priestley supplies the page section order.
+
+  - from: primitive.assessment-promise-copy
+    to: claim.priestley.cta-stack
+    type: cites
+    confidence: 0.95
+    rationale: Priestley supplies the CTA formula.
+
+  - from: primitive.questionnaire-signal-design
+    to: claim.priestley.questionnaire-buckets
+    type: cites
+    confidence: 0.95
+    rationale: Priestley supplies the 15-question structure.
+
+  - from: primitive.dynamic-results-personalization
+    to: claim.priestley.dynamic-results-and-routing
+    type: cites
+    confidence: 0.95
+    rationale: Priestley supplies the dynamic results page model.
+
+  - from: primitive.lead-segment-routing
+    to: claim.priestley.dynamic-results-and-routing
+    type: cites
+    confidence: 0.95
+    rationale: Priestley supplies high-fit, middle-fit, and low-fit routing.
+
+  - from: guardrail.no-fomo
+    to: claim.dunford.anti-fomo
+    type: cites
+    confidence: 0.95
+    rationale: Dunford supplies the anti-FOMO trust rationale.
+
+operational_map:
+  outputs:
+    mode:
+      primitives:
+        - primitive.mode-selection
+        - primitive.setup-layer-positioning
+      source_claims:
+        - claim.dunford.setup-before-product
+    hook_options:
+      primitives:
+        - primitive.assessment-promise-copy
+        - primitive.setup-layer-positioning
+      source_claims:
+        - claim.priestley.landing-page-five-sections
+        - claim.dunford.setup-before-product
+    measured_areas:
+      primitives:
+        - primitive.alternatives-aware-value-prop
+      source_claims:
+        - claim.dunford.differentiated-value
+    questionnaire_outline:
+      primitives:
+        - primitive.questionnaire-signal-design
+      source_claims:
+        - claim.priestley.questionnaire-buckets
+    results_page_outline:
+      primitives:
+        - primitive.dynamic-results-personalization
+      source_claims:
+        - claim.priestley.dynamic-results-and-routing
+    next_step_routing:
+      primitives:
+        - primitive.lead-segment-routing
+      source_claims:
+        - claim.priestley.dynamic-results-and-routing
+
+open_questions:
+  - Should Lucky Saini's funnel trust-building material become a sibling primitive or a v2 extension of credibility-and-trust?
+  - Should Ash Maurya's Mafia Offer structure become an upstream offer-design skill that this scorecard skill depends on?
+  - Should BuildOS store primitives as standalone skill manifests once two or more skills reuse the same primitive?

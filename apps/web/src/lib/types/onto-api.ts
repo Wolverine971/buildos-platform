@@ -81,6 +81,7 @@ export interface OntoProject {
 	created_by: string;
 	created_at: string;
 	updated_at: string;
+	archived_at?: string | null;
 }
 
 /**
@@ -103,6 +104,7 @@ export interface OntoTask {
 	start_at?: string | null;
 	completed_at?: string | null;
 	due_at?: string | null;
+	archived_at?: string | null;
 	deleted_at?: string | null;
 }
 
@@ -123,6 +125,7 @@ export interface OntoGoal {
 	created_at: string;
 	updated_at?: string;
 	completed_at?: string | null;
+	archived_at?: string | null;
 	deleted_at?: string | null;
 }
 
@@ -141,6 +144,7 @@ export interface OntoPlan {
 	created_by: string;
 	created_at: string;
 	updated_at: string;
+	archived_at?: string | null;
 	deleted_at?: string | null;
 }
 
@@ -179,6 +183,7 @@ export interface OntoDocument {
 	created_by: string;
 	created_at: string;
 	updated_at: string;
+	archived_at?: string | null;
 	deleted_at?: string | null;
 }
 
@@ -222,6 +227,7 @@ export interface OntoRisk {
 	created_at: string;
 	updated_at?: string;
 	mitigated_at?: string | null;
+	archived_at?: string | null;
 	deleted_at?: string | null;
 }
 
@@ -241,6 +247,7 @@ export interface OntoMilestone {
 	created_at: string;
 	updated_at?: string;
 	completed_at?: string | null;
+	archived_at?: string | null;
 	deleted_at?: string | null;
 }
 

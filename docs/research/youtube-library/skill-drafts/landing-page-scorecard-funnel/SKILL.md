@@ -8,6 +8,24 @@ path: docs/research/youtube-library/skill-drafts/landing-page-scorecard-funnel/S
 
 Use this skill when an agent needs to turn a landing page into a qualified lead-generation funnel. The page should sell the assessment, not the entire product. The assessment gives value first, then routes each lead to the right next step.
 
+## Skill Composition (Experimental Lineage)
+
+This is a combo skill. Its structured lineage draft lives in `docs/research/youtube-library/skill-drafts/landing-page-scorecard-funnel/lineage.yaml` and follows `docs/research/youtube-library/SKILL_LINEAGE_SCHEMA.md`.
+
+Primitive skills currently composing this skill:
+
+| Primitive | Job | Primary source layer |
+| --- | --- | --- |
+| Scorecard funnel architecture | Connect landing page, questionnaire, results page, and follow-up into one conversion system. | Priestley |
+| Mode selection | Decide whether the scorecard can stand alone or needs a setup layer first. | Priestley + Dunford synthesis |
+| Assessment promise copy | Sell the assessment with hook, question count, time cost, free price, and immediate payoff. | Priestley |
+| Setup layer positioning | Prime considered buyers with market insight, alternatives, and a perfect-world scenario. | Dunford |
+| Alternatives-aware value proposition | Frame the three measured areas against the other options the buyer already considers. | Dunford |
+| Questionnaire signal design | Capture contact data, score-driving answers, and qualification signals. | Priestley |
+| Dynamic results personalization | Convert answers into score, tailored insights, and a visible payoff. | Priestley |
+| Lead segment routing | Route high-fit, middle-fit, and low-fit leads to different next steps. | Priestley |
+| Credibility and trust | Use evidence, creator background, and honest trade-offs without FOMO. | Priestley + Dunford |
+
 ## When to Use
 
 - Build an online assessment or diagnostic quiz
@@ -129,7 +147,7 @@ Return:
 
 ## Source Attribution
 
-Distilled from two sources at different layers of the funnel:
+Distilled from two sources at different layers of the funnel. Claim-level source mapping is captured in `lineage.yaml`.
 
 - **Funnel mechanics layer:** Daniel Priestley's [The $1 Million Landing Page](https://www.youtube.com/watch?v=az1Zh-FNSno) — the five-section landing page, 15-question structure with three buckets, dynamic results page, and segmentation rules. Local analysis: `docs/marketing/growth/research/youtube-transcripts/2025-10-11-daniel-priestley-1m-landing-page-ANALYSIS.md`.
 - **Positioning layer (setup-layered mode):** April Dunford's Sales Pitch framework on [Lenny's Podcast](https://www.youtube.com/watch?v=-VqmFI9vY7w) — the Setup → Follow-Through structure (market insight + alternatives + perfect-world scenario → differentiated value + proof + ask), the differentiated-value framing of value propositions, and the anti-FOMO posture. Local analysis: `docs/marketing/growth/research/youtube-transcripts/2026-04-29-april-dunford-sales-pitch-framework-ANALYSIS.md`.

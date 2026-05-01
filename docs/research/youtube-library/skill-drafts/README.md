@@ -11,7 +11,12 @@ Draft skills should usually use this package shape:
 ```txt
 <skill-slug>/
 +-- SKILL.md
++-- lineage.yaml  # optional, experimental source/composition map
 ```
+
+Use `lineage.yaml` when a skill combines multiple sources or when its subskills
+should be reusable elsewhere. The current draft schema lives at
+`docs/research/youtube-library/SKILL_LINEAGE_SCHEMA.md`.
 
 Once the skill is ready for the public repo, move the final article draft into:
 

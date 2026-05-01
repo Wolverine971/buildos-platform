@@ -85,6 +85,7 @@ type DocumentRow = {
 	props: Record<string, unknown> | null;
 	created_at: string;
 	updated_at: string;
+	archived_at?: string | null;
 	deleted_at: string | null;
 	created_by?: string | null;
 	children?: Record<string, unknown> | null;
@@ -105,6 +106,7 @@ type TaskRow = {
 	props: Record<string, unknown> | null;
 	created_at: string;
 	updated_at: string;
+	archived_at?: string | null;
 	deleted_at: string | null;
 	created_by?: string | null;
 };
@@ -122,6 +124,7 @@ class OntoDocumentsQueryBuilderMock {
 	private idFilter: string | null = null;
 	private projectIdsFilter: string[] | null = null;
 	private deletedAtFilterApplied = false;
+	private archivedAtFilter: 'active' | 'archived' | null = null;
 	private insertPayload: Record<string, unknown> | null = null;
 	private updatePayload: Record<string, unknown> | null = null;
 
@@ -169,6 +172,17 @@ class OntoDocumentsQueryBuilderMock {
 		if (field === 'deleted_at' && value === null) {
 			this.deletedAtFilterApplied = true;
 		}
+		if (field === 'archived_at' && value === null) {
+			this.archivedAtFilter = 'active';
+		}
+
+		return this;
+	}
+
+	not(field: string, operator: string, value: unknown) {
+		if (field === 'archived_at' && operator === 'is' && value === null) {
+			this.archivedAtFilter = 'archived';
+		}
 
 		return this;
 	}
@@ -183,6 +197,12 @@ class OntoDocumentsQueryBuilderMock {
 		}
 
 		if (this.deletedAtFilterApplied && row.deleted_at !== null) {
+			return false;
+		}
+		if (this.archivedAtFilter === 'active' && row.archived_at != null) {
+			return false;
+		}
+		if (this.archivedAtFilter === 'archived' && row.archived_at == null) {
 			return false;
 		}
 
@@ -201,6 +221,7 @@ class OntoDocumentsQueryBuilderMock {
 			props: row.props,
 			created_at: row.created_at,
 			updated_at: row.updated_at,
+			archived_at: row.archived_at ?? null,
 			deleted_at: row.deleted_at,
 			created_by: row.created_by ?? null,
 			children: row.children ?? null,
@@ -242,6 +263,7 @@ class OntoDocumentsQueryBuilderMock {
 						: {},
 				created_at: '2026-04-28T00:00:00.000Z',
 				updated_at: '2026-04-28T00:00:00.000Z',
+				archived_at: null,
 				deleted_at: null,
 				created_by:
 					typeof this.insertPayload.created_by === 'string'
@@ -282,6 +304,7 @@ class OntoTasksQueryBuilderMock {
 	private idFilter: string | null = null;
 	private projectIdsFilter: string[] | null = null;
 	private deletedAtFilterApplied = false;
+	private archivedAtFilter: 'active' | 'archived' | null = null;
 	private insertPayload: Record<string, unknown> | null = null;
 	private updatePayload: Record<string, unknown> | null = null;
 
@@ -329,6 +352,17 @@ class OntoTasksQueryBuilderMock {
 		if (field === 'deleted_at' && value === null) {
 			this.deletedAtFilterApplied = true;
 		}
+		if (field === 'archived_at' && value === null) {
+			this.archivedAtFilter = 'active';
+		}
+
+		return this;
+	}
+
+	not(field: string, operator: string, value: unknown) {
+		if (field === 'archived_at' && operator === 'is' && value === null) {
+			this.archivedAtFilter = 'archived';
+		}
 
 		return this;
 	}
@@ -343,6 +377,12 @@ class OntoTasksQueryBuilderMock {
 		}
 
 		if (this.deletedAtFilterApplied && row.deleted_at !== null) {
+			return false;
+		}
+		if (this.archivedAtFilter === 'active' && row.archived_at != null) {
+			return false;
+		}
+		if (this.archivedAtFilter === 'archived' && row.archived_at == null) {
 			return false;
 		}
 
@@ -387,6 +427,7 @@ class OntoTasksQueryBuilderMock {
 				props: ((this.insertPayload.props ?? {}) as Record<string, unknown>) ?? {},
 				created_at: '2026-04-28T00:00:00.000Z',
 				updated_at: '2026-04-28T00:00:00.000Z',
+				archived_at: null,
 				deleted_at: null,
 				created_by:
 					typeof this.insertPayload.created_by === 'string'
@@ -964,6 +1005,90 @@ describe('external tool gateway', () => {
 				name: 'list_onto_tasks'
 			}
 		});
+	});
+
+	it('archives and restores tasks through the update operation', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [],
+			tasks: [
+				{
+					id: '77777777-7777-7777-7777-777777777777',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					title: 'Archive me',
+					description: null,
+					type_key: 'task.default',
+					state_key: 'todo',
+					priority: 3,
+					start_at: null,
+					due_at: null,
+					completed_at: null,
+					props: {},
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:00:00.000Z',
+					archived_at: null,
+					deleted_at: null,
+					created_by: 'actor-1'
+				}
+			],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+		const admin = createAdminMock(state);
+		const baseParams = {
+			admin,
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write' as const,
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.task.update' as const]
+			},
+			toolName: 'update_onto_task'
+		};
+
+		const archiveResult = await executeBuildosAgentGatewayTool({
+			...baseParams,
+			arguments: {
+				task_id: '77777777-7777-7777-7777-777777777777',
+				archived: true
+			}
+		});
+
+		expect(archiveResult).toMatchObject({
+			op: 'onto.task.update',
+			ok: true,
+			result: {
+				task: {
+					id: '77777777-7777-7777-7777-777777777777',
+					archived_at: expect.any(String)
+				}
+			}
+		});
+		expect(state.tasks[0]?.archived_at).toEqual(expect.any(String));
+
+		const restoreResult = await executeBuildosAgentGatewayTool({
+			...baseParams,
+			arguments: {
+				task_id: '77777777-7777-7777-7777-777777777777',
+				archived: false
+			}
+		});
+
+		expect(restoreResult).toMatchObject({
+			op: 'onto.task.update',
+			ok: true,
+			result: {
+				task: {
+					id: '77777777-7777-7777-7777-777777777777',
+					archived_at: null
+				}
+			}
+		});
+		expect(state.tasks[0]?.archived_at).toBeNull();
+		expect(state.toolExecutions.map((row) => row.status)).toEqual(['succeeded', 'succeeded']);
 	});
 
 	it('returns real project totals with pagination metadata', async () => {

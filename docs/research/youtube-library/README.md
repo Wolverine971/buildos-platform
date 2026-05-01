@@ -22,6 +22,7 @@ docs/research/youtube-library/
 +-- SKILL_CANDIDATES.md
 +-- BUILDOS_INTERNAL_SOURCES.md
 +-- FRONTMATTER_SCHEMA.md
++-- SKILL_LINEAGE_SCHEMA.md
 +-- INGESTION_FLOW.md
 +-- skill-combo-indexes/
 |   +-- README.md
@@ -49,6 +50,8 @@ Use `BUILDOS_INTERNAL_SOURCES.md` for videos that should inform BuildOS product,
 
 Use `skill-combo-indexes/` when a video is not strong enough to become a standalone skill but can strengthen a multi-source workflow.
 
+Use `SKILL_LINEAGE_SCHEMA.md` and skill-local `lineage.yaml` files when a draft skill combines multiple primitive skills, sources, claims, guardrails, or output artifacts.
+
 Use `gap-audits/` for `/skill-gap-audit` outputs when the target is a standalone skill, public blog, runtime skill, or source file without a natural sibling audit location. Category-level combo audits should usually live beside their combo index in `skill-combo-indexes/`.
 
 ## Status Terms
@@ -72,8 +75,9 @@ Use `INGESTION_FLOW.md` for new YouTube URLs, raw transcripts, source bundles, a
 5. If the video can become an agent skill, add it to `SKILL_CANDIDATES.md`.
 6. Use `/skill-gap-audit` when a skill or combo needs a blind-spot review before drafting.
 7. Use `/youtube-to-skill` to create a portable draft under `skill-drafts/<skill-slug>/SKILL.md`.
-8. Promote polished skills into public blog articles under `apps/web/src/content/blogs/agent-skills/`.
-9. Keep the video and creator cited in the article and in the portable skill definition when useful.
+8. For multi-source or reusable combo skills, add `skill-drafts/<skill-slug>/lineage.yaml`.
+9. Promote polished skills into public blog articles under `apps/web/src/content/blogs/agent-skills/`.
+10. Keep the video and creator cited in the article and in the portable skill definition when useful.
 
 ## Migration Policy
 

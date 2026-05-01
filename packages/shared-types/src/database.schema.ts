@@ -1433,6 +1433,7 @@ export type DatabaseSchema = {
 		storage_uri: string;
 	};
 	onto_documents: {
+		archived_at: string | null;
 		children: Json | null;
 		content: string | null;
 		created_at: string;
@@ -1525,6 +1526,7 @@ export type DatabaseSchema = {
 		value: string;
 	};
 	onto_goals: {
+		archived_at: string | null;
 		completed_at: string | null;
 		created_at: string;
 		created_by: string;
@@ -1569,6 +1571,7 @@ export type DatabaseSchema = {
 		unit: string;
 	};
 	onto_milestones: {
+		archived_at: string | null;
 		completed_at: string | null;
 		created_at: string;
 		created_by: string;
@@ -1595,6 +1598,7 @@ export type DatabaseSchema = {
 		role_key: string | null;
 	};
 	onto_plans: {
+		archived_at: string | null;
 		created_at: string;
 		created_by: string;
 		deleted_at: string | null;
@@ -1690,6 +1694,7 @@ export type DatabaseSchema = {
 		version: number;
 	};
 	onto_projects: {
+		archived_at: string | null;
 		created_at: string;
 		created_by: string;
 		deleted_at: string | null;
@@ -1804,6 +1809,7 @@ export type DatabaseSchema = {
 		updated_at: string | null;
 	};
 	onto_risks: {
+		archived_at: string | null;
 		content: string | null;
 		created_at: string;
 		created_by: string;
@@ -1848,6 +1854,7 @@ export type DatabaseSchema = {
 		task_id: string;
 	};
 	onto_tasks: {
+		archived_at: string | null;
 		completed_at: string | null;
 		created_at: string;
 		created_by: string;

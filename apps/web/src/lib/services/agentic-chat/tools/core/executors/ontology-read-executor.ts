@@ -92,6 +92,12 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return query.in('project_id', readableProjectIds);
 	}
 
+	private applyArchivedReadFilter(query: any, args: { archived?: boolean }): any {
+		return args.archived === true
+			? query.not('archived_at', 'is', null)
+			: query.is('archived_at', null);
+	}
+
 	private static readonly MAX_MARKDOWN_HEADERS = 40;
 	private static readonly MAX_HEADING_TEXT_LENGTH = 140;
 
@@ -427,9 +433,9 @@ export class OntologyReadExecutor extends BaseExecutor {
 			`,
 				{ count: 'exact' }
 			)
-			.is('deleted_at', null) // Exclude soft-deleted tasks
 			.order('updated_at', { ascending: false });
 
+		query = this.applyArchivedReadFilter(query, args);
 		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		const normalizedState = this.normalizeTaskState(args.state_key);
@@ -472,9 +478,9 @@ export class OntologyReadExecutor extends BaseExecutor {
 				'id, project_id, name, type_key, description, target_date, state_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.is('deleted_at', null) // Exclude soft-deleted goals
 			.order('created_at', { ascending: false });
 
+		query = this.applyArchivedReadFilter(query, args);
 		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		const limit = Math.min(args.limit ?? 20, 50);
@@ -503,9 +509,9 @@ export class OntologyReadExecutor extends BaseExecutor {
 					count: 'exact'
 				}
 			)
-			.is('deleted_at', null) // Exclude soft-deleted plans
 			.order('updated_at', { ascending: false });
 
+		query = this.applyArchivedReadFilter(query, args);
 		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		const limit = Math.min(args.limit ?? 20, 50);
@@ -534,9 +540,9 @@ export class OntologyReadExecutor extends BaseExecutor {
 					count: 'exact'
 				}
 			)
-			.is('deleted_at', null) // Exclude soft-deleted documents
 			.order('updated_at', { ascending: false });
 
+		query = this.applyArchivedReadFilter(query, args);
 		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		if (args.type_key) {
@@ -572,9 +578,9 @@ export class OntologyReadExecutor extends BaseExecutor {
 				'id, project_id, title, due_at, state_key, description, type_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.is('deleted_at', null)
 			.order('due_at', { ascending: true, nullsFirst: true });
 
+		query = this.applyArchivedReadFilter(query, args);
 		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		if (args.state_key) {
@@ -605,9 +611,9 @@ export class OntologyReadExecutor extends BaseExecutor {
 				'id, project_id, title, impact, probability, state_key, content, type_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.is('deleted_at', null)
 			.order('updated_at', { ascending: false });
 
+		query = this.applyArchivedReadFilter(query, args);
 		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		if (args.state_key) {
@@ -725,10 +731,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 			`,
 				{ count: 'exact' }
 			)
-			.is('deleted_at', null) // Exclude soft-deleted tasks
 			.order('updated_at', { ascending: false })
 			.or(searchFilter);
 
+		query = this.applyArchivedReadFilter(query, args);
 		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		const normalizedState = this.normalizeTaskState(args.state_key);
@@ -778,10 +784,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 				'id, project_id, name, type_key, description, target_date, state_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.is('deleted_at', null)
 			.order('updated_at', { ascending: false })
 			.or(`name.ilike.${likePattern},description.ilike.${likePattern}`);
 
+		query = this.applyArchivedReadFilter(query, args);
 		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		const limit = Math.min(args.limit ?? 20, 50);
@@ -815,10 +821,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 				'id, project_id, name, state_key, type_key, description, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.is('deleted_at', null)
 			.order('updated_at', { ascending: false })
 			.or(`name.ilike.${likePattern},description.ilike.${likePattern}`);
 
+		query = this.applyArchivedReadFilter(query, args);
 		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		const limit = Math.min(args.limit ?? 20, 50);
@@ -854,10 +860,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 					count: 'exact'
 				}
 			)
-			.is('deleted_at', null) // Exclude soft-deleted documents
 			.order('updated_at', { ascending: false })
 			.ilike('title', likePattern);
 
+		query = this.applyArchivedReadFilter(query, args);
 		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		if (args.type_key) {
@@ -900,10 +906,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 				'id, project_id, title, due_at, state_key, description, type_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.is('deleted_at', null)
 			.order('due_at', { ascending: true, nullsFirst: true })
 			.or(`title.ilike.${likePattern},description.ilike.${likePattern}`);
 
+		query = this.applyArchivedReadFilter(query, args);
 		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		if (args.state_key) {
@@ -941,10 +947,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 				'id, project_id, title, impact, probability, state_key, content, type_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.is('deleted_at', null)
 			.order('updated_at', { ascending: false })
 			.or(`title.ilike.${likePattern},content.ilike.${likePattern}`);
 
+		query = this.applyArchivedReadFilter(query, args);
 		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
 
 		if (args.state_key) {

@@ -311,11 +311,11 @@ export async function fetchProjectSummaries(
 					? `created_by.eq.${actorId},id.in.(${Array.from(memberProjectIds).join(',')})`
 					: `created_by.eq.${actorId}`
 			)
-			.is('deleted_at', null) // Exclude soft-deleted projects
-			.is('onto_tasks.deleted_at', null)
-			.is('onto_goals.deleted_at', null)
-			.is('onto_plans.deleted_at', null)
-			.is('onto_documents.deleted_at', null)
+			.is('archived_at', null)
+			.is('onto_tasks.archived_at', null)
+			.is('onto_goals.archived_at', null)
+			.is('onto_plans.archived_at', null)
+			.is('onto_documents.archived_at', null)
 			.order('created_at', { ascending: false })
 	);
 
@@ -334,7 +334,7 @@ export async function fetchProjectSummaries(
 				.from(table)
 				.select('project_id, updated_at, created_at')
 				.in('project_id', projectIds)
-				.is('deleted_at', null)
+				.is('archived_at', null)
 				.order('updated_at', { ascending: false })
 				.order('created_at', { ascending: false })
 		);
@@ -502,8 +502,8 @@ export async function fetchProjectSelectorSummaries(
 				onto_tasks(count)
 			`
 			)
-			.is('deleted_at', null)
-			.is('onto_tasks.deleted_at', null)
+			.is('archived_at', null)
+			.is('onto_tasks.archived_at', null)
 			.order('updated_at', { ascending: false })
 			.limit(normalizedLimit);
 
