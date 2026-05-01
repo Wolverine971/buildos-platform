@@ -30,11 +30,20 @@ Use this for queries about ontology tasks, plans with tasks, or project task lis
 						type: 'string',
 						description: 'Filter by state (todo, in_progress, blocked, done)'
 					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by task type key'
+					},
 					limit: {
 						type: 'number',
 						default: 20,
 						maximum: 50,
 						description: 'Maximum tasks to return'
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -54,10 +63,23 @@ Use for queries about project goals or strategic objectives.`,
 						type: 'string',
 						description: 'Filter goals by project ID'
 					},
+					state_key: {
+						type: 'string',
+						description: 'Filter by goal state (draft, active, achieved, abandoned)'
+					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by goal type key'
+					},
 					limit: {
 						type: 'number',
-						default: 10,
-						maximum: 30
+						default: 20,
+						maximum: 50
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -92,6 +114,11 @@ Use get_onto_document_details when full document content is needed.`,
 						default: 20,
 						maximum: 50,
 						description: 'Maximum number of documents to return'
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -115,11 +142,20 @@ Use for project timelines, checkpoints, or delivery milestones.`,
 						description:
 							'Filter by milestone state (pending, in_progress, completed, missed)'
 					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by milestone type key'
+					},
 					limit: {
 						type: 'number',
 						default: 20,
 						maximum: 50,
 						description: 'Maximum number of milestones to return'
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -147,11 +183,20 @@ Use for risk reviews, mitigation planning, or status updates.`,
 						type: 'string',
 						description: 'Filter by impact level (low, medium, high, critical)'
 					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by risk type key'
+					},
 					limit: {
 						type: 'number',
 						default: 20,
 						maximum: 50,
 						description: 'Maximum number of risks to return'
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -171,10 +216,23 @@ Use for queries about execution plans or workflows.`,
 						type: 'string',
 						description: 'Filter plans by project ID'
 					},
+					state_key: {
+						type: 'string',
+						description: 'Filter by plan state (draft, active, completed)'
+					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by plan type key'
+					},
 					limit: {
 						type: 'number',
-						default: 10,
-						maximum: 20
+						default: 20,
+						maximum: 50
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -201,8 +259,13 @@ Use for discovering available projects or getting project overviews.`,
 					},
 					limit: {
 						type: 'number',
-						default: 10,
-						maximum: 30
+						default: 20,
+						maximum: 50
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				}
 			}
@@ -346,11 +409,20 @@ Use when the user references a task by name or description but the project is un
 						type: 'string',
 						description: 'Filter by state (todo, in_progress, blocked, done)'
 					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by task type key'
+					},
 					limit: {
 						type: 'number',
 						default: 20,
 						maximum: 50,
 						description: 'Maximum number of search results'
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -381,9 +453,14 @@ Use when the user references a task by name or description but the project is un
 					},
 					limit: {
 						type: 'number',
-						default: 10,
-						maximum: 30,
+						default: 12,
+						maximum: 50,
 						description: 'Maximum search matches to return'
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -422,6 +499,11 @@ Use get_onto_document_details when full document content is needed.`,
 						default: 20,
 						maximum: 50,
 						description: 'Maximum number of search results'
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -446,11 +528,24 @@ Use get_onto_document_details when full document content is needed.`,
 						type: 'string',
 						description: 'Optional project filter to limit matches'
 					},
+					state_key: {
+						type: 'string',
+						description: 'Filter by goal state (draft, active, achieved, abandoned)'
+					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by goal type key'
+					},
 					limit: {
 						type: 'number',
 						default: 20,
 						maximum: 50,
 						description: 'Maximum number of search results'
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -475,11 +570,24 @@ Use get_onto_document_details when full document content is needed.`,
 						type: 'string',
 						description: 'Optional project filter to limit matches'
 					},
+					state_key: {
+						type: 'string',
+						description: 'Filter by plan state (draft, active, completed)'
+					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by plan type key'
+					},
 					limit: {
 						type: 'number',
 						default: 20,
 						maximum: 50,
 						description: 'Maximum number of search results'
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -509,11 +617,20 @@ Use get_onto_document_details when full document content is needed.`,
 						description:
 							'Filter by milestone state (pending, in_progress, completed, missed)'
 					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by milestone type key'
+					},
 					limit: {
 						type: 'number',
 						default: 20,
 						maximum: 50,
 						description: 'Maximum number of search results'
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -547,11 +664,20 @@ Use get_onto_document_details when full document content is needed.`,
 						type: 'string',
 						description: 'Filter by impact level (low, medium, high, critical)'
 					},
+					type_key: {
+						type: 'string',
+						description: 'Filter by risk type key'
+					},
 					limit: {
 						type: 'number',
 						default: 20,
 						maximum: 50,
 						description: 'Maximum number of search results'
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']
@@ -581,17 +707,7 @@ Use only when older instructions specifically mention search_ontology.`,
 						description: 'Optional entity type filters',
 						items: {
 							type: 'string',
-							enum: [
-								'project',
-								'task',
-								'goal',
-								'plan',
-								'milestone',
-								'document',
-								'risk',
-								'requirement',
-								'image'
-							]
+							enum: ['task', 'goal', 'plan', 'milestone', 'document', 'risk']
 						}
 					},
 					limit: {
@@ -599,6 +715,11 @@ Use only when older instructions specifically mention search_ontology.`,
 						default: 20,
 						maximum: 50,
 						description: 'Maximum number of results (capped at 50)'
+					},
+					offset: {
+						type: 'number',
+						default: 0,
+						description: 'Zero-based pagination offset'
 					}
 				},
 				required: ['query']

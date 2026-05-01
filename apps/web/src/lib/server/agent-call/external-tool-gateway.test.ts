@@ -88,6 +88,7 @@ type DocumentRow = {
 	deleted_at: string | null;
 	created_by?: string | null;
 	children?: Record<string, unknown> | null;
+	search_vector?: unknown;
 };
 
 type TaskRow = {
@@ -202,7 +203,8 @@ class OntoDocumentsQueryBuilderMock {
 			updated_at: row.updated_at,
 			deleted_at: row.deleted_at,
 			created_by: row.created_by ?? null,
-			children: row.children ?? null
+			children: row.children ?? null,
+			...(row.search_vector === undefined ? {} : { search_vector: row.search_vector })
 		};
 	}
 
@@ -964,6 +966,244 @@ describe('external tool gateway', () => {
 		});
 	});
 
+	it('returns real project totals with pagination metadata', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		fetchProjectSummariesMock.mockResolvedValueOnce([
+			{
+				id: '44444444-4444-4444-4444-444444444444',
+				name: 'Alpha Project',
+				description: 'Main workspace',
+				type_key: 'project.internal',
+				state_key: 'active',
+				updated_at: '2026-04-28T00:00:00.000Z',
+				task_count: 7,
+				goal_count: 1,
+				plan_count: 2,
+				document_count: 4,
+				owner_actor_id: 'actor-owner-1',
+				access_role: 'owner',
+				access_level: 'write'
+			},
+			{
+				id: '55555555-5555-5555-5555-555555555555',
+				name: 'Beta Project',
+				description: 'Second workspace',
+				type_key: 'project.internal',
+				state_key: 'active',
+				updated_at: '2026-04-29T00:00:00.000Z',
+				task_count: 1,
+				goal_count: 0,
+				plan_count: 0,
+				document_count: 0,
+				owner_actor_id: 'actor-owner-1',
+				access_role: 'owner',
+				access_level: 'write'
+			},
+			{
+				id: '66666666-6666-6666-6666-666666666666',
+				name: 'Gamma Project',
+				description: 'Third workspace',
+				type_key: 'project.internal',
+				state_key: 'planning',
+				updated_at: '2026-04-30T00:00:00.000Z',
+				task_count: 0,
+				goal_count: 0,
+				plan_count: 0,
+				document_count: 0,
+				owner_actor_id: 'actor-owner-1',
+				access_role: 'owner',
+				access_level: 'write'
+			}
+		]);
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock({
+				documents: [],
+				tasks: [],
+				toolExecutions: [],
+				nextTaskId: 1,
+				nextToolExecutionId: 1
+			}),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope: { mode: 'read_only', allowed_ops: [...BUILDOS_AGENT_READ_OPS] },
+			toolName: 'list_onto_projects',
+			arguments: { limit: 1, offset: 1 }
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.project.list',
+			ok: true,
+			result: {
+				projects: [{ name: 'Beta Project' }],
+				total: 3,
+				pagination: {
+					offset: 1,
+					limit: 1,
+					returned: 1,
+					total_available: 3,
+					has_more: true,
+					next_offset: 2
+				}
+			}
+		});
+	});
+
+	it('uses canonical search response shape and project filters', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		fetchProjectSummariesMock.mockResolvedValueOnce([
+			{
+				id: '44444444-4444-4444-4444-444444444444',
+				name: 'Launch Project',
+				description: 'Active launch',
+				type_key: 'project.internal',
+				state_key: 'active',
+				updated_at: '2026-04-28T00:00:00.000Z',
+				task_count: 7,
+				goal_count: 1,
+				plan_count: 2,
+				document_count: 4,
+				owner_actor_id: 'actor-owner-1',
+				access_role: 'owner',
+				access_level: 'write'
+			},
+			{
+				id: '55555555-5555-5555-5555-555555555555',
+				name: 'Launch Archive',
+				description: 'Completed launch',
+				type_key: 'project.internal',
+				state_key: 'completed',
+				updated_at: '2026-04-29T00:00:00.000Z',
+				task_count: 1,
+				goal_count: 0,
+				plan_count: 0,
+				document_count: 0,
+				owner_actor_id: 'actor-owner-1',
+				access_role: 'owner',
+				access_level: 'write'
+			}
+		]);
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock({
+				documents: [],
+				tasks: [],
+				toolExecutions: [],
+				nextTaskId: 1,
+				nextToolExecutionId: 1
+			}),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope: { mode: 'read_only', allowed_ops: [...BUILDOS_AGENT_READ_OPS] },
+			toolName: 'search_onto_projects',
+			arguments: { query: 'launch', state_key: 'active' }
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.project.search',
+			ok: true,
+			result: {
+				query: 'launch',
+				total: 1,
+				projects: [{ name: 'Launch Project' }],
+				results: [{ type: 'project', title: 'Launch Project' }],
+				pagination: {
+					offset: 0,
+					returned: 1,
+					total_available: 1,
+					has_more: false,
+					next_offset: null
+				}
+			}
+		});
+	});
+
+	it('rejects invalid task state filters before querying enum columns', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const admin = createAdminMock({
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		});
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin,
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope: { mode: 'read_only', allowed_ops: [...BUILDOS_AGENT_READ_OPS] },
+			toolName: 'list_onto_tasks',
+			arguments: { state_key: 'bogus_state' }
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.task.list',
+			ok: false,
+			error: {
+				code: 'VALIDATION_ERROR',
+				message: 'state_key must be one of: todo, in_progress, blocked, done'
+			}
+		});
+		expect(admin.from).not.toHaveBeenCalledWith('onto_tasks');
+	});
+
+	it('rejects invalid relationship direction values', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock({
+				documents: [],
+				tasks: [],
+				toolExecutions: [],
+				nextTaskId: 1,
+				nextToolExecutionId: 1
+			}),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope: { mode: 'read_only', allowed_ops: [...BUILDOS_AGENT_READ_OPS] },
+			toolName: 'get_entity_relationships',
+			arguments: {
+				entity_id: '44444444-4444-4444-4444-444444444444',
+				direction: 'invalid'
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.entity.relationships.get',
+			ok: false,
+			error: {
+				code: 'VALIDATION_ERROR',
+				message: 'direction must be one of: outgoing, incoming, both'
+			}
+		});
+	});
+
+	it('returns calendar nulls as a named calendar field', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		calendarExecutorMocks.getProjectCalendar.mockResolvedValueOnce(null);
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock({
+				documents: [],
+				tasks: [],
+				toolExecutions: [],
+				nextTaskId: 1,
+				nextToolExecutionId: 1
+			}),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope: { mode: 'read_only', allowed_ops: [...BUILDOS_AGENT_READ_OPS] },
+			toolName: 'get_project_calendar',
+			arguments: {
+				project_id: '44444444-4444-4444-4444-444444444444'
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'cal.project.get',
+			ok: true,
+			result: {
+				calendar: null
+			}
+		});
+	});
+
 	it('returns FORBIDDEN for direct write tools outside the granted scope', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
 
@@ -1259,6 +1499,64 @@ describe('external tool gateway', () => {
 		});
 		expect(createOrMergeDocumentVersionMock).toHaveBeenCalledTimes(1);
 		expect(state.toolExecutions[0]?.status).toBe('succeeded');
+	});
+
+	it('strips internal search vectors and normalizes document children in write responses', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [
+				{
+					id: '55555555-5555-5555-5555-555555555555',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					title: 'Existing doc',
+					description: 'Doc summary',
+					type_key: 'document.context.project',
+					content: '# Existing',
+					state_key: 'draft',
+					props: { body_markdown: '# Existing', origin: 'external_agent' },
+					children: { children: [] },
+					search_vector: "'exist':1A",
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:00:00.000Z',
+					deleted_at: null,
+					created_by: 'actor-1'
+				}
+			],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.document.update']
+			},
+			toolName: 'update_onto_document',
+			arguments: {
+				document_id: '55555555-5555-5555-5555-555555555555',
+				title: 'Existing doc updated'
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.document.update',
+			ok: true,
+			result: {
+				document: {
+					id: '55555555-5555-5555-5555-555555555555',
+					title: 'Existing doc updated',
+					children: []
+				}
+			}
+		});
+		expect((result.result as any).document).not.toHaveProperty('search_vector');
 	});
 
 	it('rejects append document updates without content on the external gateway', async () => {

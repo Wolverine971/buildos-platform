@@ -59,6 +59,7 @@ import {
 	MILESTONE_STATES,
 	PLAN_STATES,
 	PROJECT_STATES,
+	TASK_STATES,
 	RISK_STATES,
 	isValidTypeKey
 } from '$lib/types/onto';
@@ -483,6 +484,136 @@ function clampLimit(value: unknown, fallback: number, min = 1, max = 50): number
 	return Math.min(max, Math.max(min, Math.floor(value)));
 }
 
+function normalizeOffset(value: unknown, fallback = 0): number {
+	if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+	return Math.min(5000, Math.max(0, Math.floor(value)));
+}
+
+function buildPaginationForRows(
+	offset: number,
+	limit: number,
+	totalAvailable: number,
+	returned: number
+) {
+	const nextOffset = offset + limit < totalAvailable ? offset + limit : null;
+	return {
+		offset,
+		limit,
+		returned,
+		total_available: totalAvailable,
+		has_more: nextOffset !== null,
+		next_offset: nextOffset
+	};
+}
+
+function normalizeDocumentChildren(value: unknown): Array<Record<string, unknown>> {
+	if (Array.isArray(value)) {
+		return value.filter(
+			(child): child is Record<string, unknown> =>
+				Boolean(child) && typeof child === 'object' && !Array.isArray(child)
+		);
+	}
+
+	if (value && typeof value === 'object' && !Array.isArray(value)) {
+		const children = (value as Record<string, unknown>).children;
+		return normalizeDocumentChildren(children);
+	}
+
+	return [];
+}
+
+function stripInternalEntityFields(row: Record<string, unknown>): Record<string, unknown> {
+	const { search_vector: _searchVector, ...rest } = row;
+	return rest;
+}
+
+function serializeExternalEntity(
+	kind: ExternalLinkEntityKind,
+	row: Record<string, unknown>,
+	projectName?: string | null
+): Record<string, unknown> {
+	const serialized = stripInternalEntityFields(row);
+	if (kind === 'document' && Object.prototype.hasOwnProperty.call(serialized, 'children')) {
+		serialized.children = normalizeDocumentChildren(serialized.children);
+	}
+	if (projectName !== undefined) {
+		serialized.project_name = projectName;
+	}
+	return serialized;
+}
+
+function serializeDocumentMap(
+	documents: Record<string, unknown>
+): Record<string, Record<string, unknown>> {
+	return Object.fromEntries(
+		Object.entries(documents).map(([id, document]) => [
+			id,
+			document && typeof document === 'object' && !Array.isArray(document)
+				? serializeExternalEntity('document', document as Record<string, unknown>)
+				: document
+		])
+	) as Record<string, Record<string, unknown>>;
+}
+
+function serializeDocumentTree(tree: Record<string, unknown>): Record<string, unknown> {
+	const documents =
+		tree.documents && typeof tree.documents === 'object' && !Array.isArray(tree.documents)
+			? serializeDocumentMap(tree.documents as Record<string, unknown>)
+			: {};
+	const serializeDocumentArray = (value: unknown) =>
+		Array.isArray(value)
+			? value
+					.filter(
+						(document): document is Record<string, unknown> =>
+							Boolean(document) &&
+							typeof document === 'object' &&
+							!Array.isArray(document)
+					)
+					.map((document) => serializeExternalEntity('document', document))
+			: [];
+
+	return {
+		...tree,
+		documents,
+		unlinked: serializeDocumentArray(tree.unlinked),
+		archived: serializeDocumentArray(tree.archived)
+	};
+}
+
+function serializeProjectGraphData(graph: Record<string, unknown>): Record<string, unknown> {
+	const arrayKinds: Record<string, ExternalLinkEntityKind> = {
+		plans: 'plan',
+		tasks: 'task',
+		goals: 'goal',
+		milestones: 'milestone',
+		documents: 'document',
+		risks: 'risk',
+		requirements: 'requirement',
+		metrics: 'metric',
+		sources: 'source'
+	};
+	const serialized: Record<string, unknown> = { ...graph };
+	if (graph.project && typeof graph.project === 'object' && !Array.isArray(graph.project)) {
+		serialized.project = serializeExternalEntity(
+			'project',
+			graph.project as Record<string, unknown>
+		);
+	}
+
+	for (const [key, kind] of Object.entries(arrayKinds)) {
+		const value = graph[key];
+		if (!Array.isArray(value)) continue;
+		serialized[key] = value
+			.filter(
+				(row): row is Record<string, unknown> =>
+					Boolean(row) && typeof row === 'object' && !Array.isArray(row)
+			)
+			.map((row) => serializeExternalEntity(kind, row));
+	}
+
+	return serialized;
+}
+
 function normalizeMaxChars(value: unknown, fallback = 20000): number {
 	if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
 	return Math.min(50000, Math.max(500, Math.floor(value)));
@@ -602,6 +733,88 @@ function normalizeProjectState(value: unknown, fieldName = 'state_key'): string 
 		);
 	}
 	return state;
+}
+
+const ENTITY_STATE_VALUES: Record<ExternalEntityKind, readonly string[]> = {
+	project: PROJECT_STATES,
+	task: TASK_STATES,
+	document: DOCUMENT_STATES,
+	goal: GOAL_STATES,
+	plan: PLAN_STATES,
+	milestone: MILESTONE_STATES,
+	risk: RISK_STATES
+};
+
+function normalizeEntityStateFilter(
+	value: unknown,
+	kind: ExternalEntityKind,
+	fieldName = 'state_key'
+): string | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+
+	if (kind === 'task') {
+		const state = normalizeTaskStateInput(value);
+		if (state) return state;
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`${fieldName} must be one of: ${TASK_STATES.join(', ')}`
+		);
+	}
+
+	if (kind === 'document') {
+		const state = normalizeDocumentStateInput(value);
+		if (state) return state;
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`${fieldName} must be one of: ${DOCUMENT_STATES.join(', ')}`
+		);
+	}
+
+	if (kind === 'project') {
+		return normalizeProjectState(value, fieldName);
+	}
+
+	return normalizeStateValue(value, fieldName, ENTITY_STATE_VALUES[kind]);
+}
+
+function normalizeEntityTypeFilter(value: unknown, kind?: ExternalEntityKind): string | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+	const typeKey = requireTrimmedString(value, 'type_key');
+	if (!typeKey) return undefined;
+	void kind;
+	return typeKey;
+}
+
+function normalizeRiskImpactFilter(value: unknown): string | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+	const impact = requireTrimmedString(value, 'impact') ?? '';
+	if (!['low', 'medium', 'high', 'critical'].includes(impact)) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'impact must be one of: low, medium, high, critical'
+		);
+	}
+	return impact;
+}
+
+function normalizeRelationshipDirection(value: unknown): 'outgoing' | 'incoming' | 'both' {
+	if (value === undefined || value === null || value === '') {
+		return 'both';
+	}
+	if (typeof value !== 'string') {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'direction must be one of: outgoing, incoming, both'
+		);
+	}
+	const normalized = value.trim().toLowerCase();
+	if (normalized === 'out' || normalized === 'outgoing') return 'outgoing';
+	if (normalized === 'in' || normalized === 'incoming') return 'incoming';
+	if (normalized === 'both') return 'both';
+	throw new ExternalToolGatewayError(
+		'VALIDATION_ERROR',
+		'direction must be one of: outgoing, incoming, both'
+	);
 }
 
 function normalizeStateValue<const T extends readonly string[]>(
@@ -820,18 +1033,24 @@ function normalizePriority(
 		if (options?.allowNull) {
 			return null;
 		}
-		throw new ExternalToolGatewayError('VALIDATION_ERROR', `${fieldName} must be a number`);
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`${fieldName} must be a number from 1 to 5`
+		);
 	}
 
 	if (typeof value !== 'number' || !Number.isFinite(value)) {
-		throw new ExternalToolGatewayError('VALIDATION_ERROR', `${fieldName} must be a number`);
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			`${fieldName} must be a number from 1 to 5`
+		);
 	}
 
 	const normalized = Math.floor(value);
 	if (normalized < 1 || normalized > 5) {
 		throw new ExternalToolGatewayError(
 			'VALIDATION_ERROR',
-			`${fieldName} must be between 1 and 5`
+			`${fieldName} must be a number from 1 to 5`
 		);
 	}
 
@@ -1426,9 +1645,13 @@ async function deleteCalendarEvent(context: ToolExecutionContext, args: Record<s
 
 async function getProjectCalendar(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const scopedArgs = await resolveExternalCalendarProjectArgs(context, args, 'read');
-	return runCalendarTool(context, scopedArgs, (executor, toolArgs) =>
+	const result = await runCalendarTool(context, scopedArgs, (executor, toolArgs) =>
 		executor.getProjectCalendar(toolArgs as any)
 	);
+	return Object.keys(result).length === 1 &&
+		Object.prototype.hasOwnProperty.call(result, 'result')
+		? { calendar: result.result ?? null }
+		: { calendar: result };
 }
 
 async function setProjectCalendar(context: ToolExecutionContext, args: Record<string, unknown>) {
@@ -1440,34 +1663,33 @@ async function setProjectCalendar(context: ToolExecutionContext, args: Record<st
 
 async function listProjects(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const visible = await loadVisibleProjects(context);
-	const requestedState =
-		typeof args.state_key === 'string' && args.state_key.trim() ? args.state_key.trim() : null;
-	const requestedType =
-		typeof args.type_key === 'string' && args.type_key.trim() ? args.type_key.trim() : null;
+	const requestedState = normalizeEntityStateFilter(args.state_key, 'project');
+	const requestedType = normalizeEntityTypeFilter(args.type_key, 'project');
 	const limit = clampLimit(args.limit, 20, 1, 50);
+	const offset = normalizeOffset(args.offset);
 
-	const projects = visible.projects
+	const filteredProjects = visible.projects
 		.filter((project) => (requestedState ? project.state_key === requestedState : true))
-		.filter((project) => (requestedType ? project.type_key === requestedType : true))
-		.slice(0, limit)
-		.map((project) => ({
-			id: project.id,
-			name: project.name,
-			description: project.description,
-			type_key: project.type_key,
-			state_key: project.state_key,
-			updated_at: project.updated_at,
-			task_count: project.task_count,
-			goal_count: project.goal_count,
-			plan_count: project.plan_count,
-			document_count: project.document_count,
-			access_role: project.access_role,
-			access_level: project.access_level
-		}));
+		.filter((project) => (requestedType ? project.type_key === requestedType : true));
+	const projects = filteredProjects.slice(offset, offset + limit).map((project) => ({
+		id: project.id,
+		name: project.name,
+		description: project.description,
+		type_key: project.type_key,
+		state_key: project.state_key,
+		updated_at: project.updated_at,
+		task_count: project.task_count,
+		goal_count: project.goal_count,
+		plan_count: project.plan_count,
+		document_count: project.document_count,
+		access_role: project.access_role,
+		access_level: project.access_level
+	}));
 
 	return {
 		projects,
-		total: projects.length
+		total: filteredProjects.length,
+		pagination: buildPaginationForRows(offset, limit, filteredProjects.length, projects.length)
 	};
 }
 
@@ -1477,28 +1699,39 @@ async function searchProjects(context: ToolExecutionContext, args: Record<string
 		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'query is required');
 	}
 
-	const limit = clampLimit(args.limit, 12, 1, 20);
+	const limit = clampLimit(args.limit, 12, 1, 50);
+	const offset = normalizeOffset(args.offset);
+	const requestedState = normalizeEntityStateFilter(args.state_key, 'project');
+	const requestedType = normalizeEntityTypeFilter(args.type_key, 'project');
 	const visible = await loadVisibleProjects(context);
 
-	const results = visible.projects
+	const filteredProjects = visible.projects
 		.filter((project) => {
 			const haystack = `${project.name} ${project.description ?? ''}`.toLowerCase();
 			return haystack.includes(query);
 		})
-		.slice(0, limit)
-		.map((project) => ({
-			id: project.id,
-			name: project.name,
-			description: project.description,
-			type_key: project.type_key,
-			state_key: project.state_key,
-			updated_at: project.updated_at
-		}));
+		.filter((project) => (requestedState ? project.state_key === requestedState : true))
+		.filter((project) => (requestedType ? project.type_key === requestedType : true));
+	const results = filteredProjects.slice(offset, offset + limit).map((project) => ({
+		type: 'project',
+		id: project.id,
+		project_id: project.id,
+		project_name: project.name,
+		title: project.name,
+		snippet: project.description ?? null,
+		name: project.name,
+		description: project.description,
+		type_key: project.type_key,
+		state_key: project.state_key,
+		updated_at: project.updated_at
+	}));
 
 	return {
 		query,
 		projects: results,
-		total: results.length
+		results,
+		total: filteredProjects.length,
+		pagination: buildPaginationForRows(offset, limit, filteredProjects.length, results.length)
 	};
 }
 
@@ -1541,6 +1774,9 @@ async function getProject(context: ToolExecutionContext, args: Record<string, un
 async function listTasks(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const visible = await loadVisibleProjects(context);
 	const limit = clampLimit(args.limit, 20, 1, 50);
+	const offset = normalizeOffset(args.offset);
+	const stateKey = normalizeEntityStateFilter(args.state_key, 'task');
+	const typeKey = normalizeEntityTypeFilter(args.type_key, 'task');
 	let projectIds = visible.projects.map((project) => project.id);
 
 	if (args.project_id !== undefined) {
@@ -1549,7 +1785,11 @@ async function listTasks(context: ToolExecutionContext, args: Record<string, unk
 	}
 
 	if (projectIds.length === 0) {
-		return { tasks: [], total: 0 };
+		return {
+			tasks: [],
+			total: 0,
+			pagination: buildPaginationForRows(offset, limit, 0, 0)
+		};
 	}
 
 	let query = context.admin
@@ -1561,10 +1801,13 @@ async function listTasks(context: ToolExecutionContext, args: Record<string, unk
 		.in('project_id', projectIds)
 		.is('deleted_at', null)
 		.order('updated_at', { ascending: false })
-		.limit(limit);
+		.range(offset, offset + limit - 1);
 
-	if (typeof args.state_key === 'string' && args.state_key.trim()) {
-		query = query.eq('state_key', args.state_key.trim());
+	if (stateKey) {
+		query = query.eq('state_key', stateKey);
+	}
+	if (typeKey) {
+		query = query.eq('type_key', typeKey);
 	}
 
 	const { data, error, count } = await query;
@@ -1579,7 +1822,8 @@ async function listTasks(context: ToolExecutionContext, args: Record<string, unk
 
 	return {
 		tasks,
-		total: count ?? tasks.length
+		total: count ?? tasks.length,
+		pagination: buildPaginationForRows(offset, limit, count ?? tasks.length, tasks.length)
 	};
 }
 
@@ -1684,6 +1928,10 @@ async function listCoreEntities(
 ) {
 	const visible = await loadVisibleProjects(context);
 	const limit = clampLimit(args.limit, 20, 1, 50);
+	const offset = normalizeOffset(args.offset);
+	const stateKey = normalizeEntityStateFilter(args.state_key, kind);
+	const typeKey = normalizeEntityTypeFilter(args.type_key, kind);
+	const impact = kind === 'risk' ? normalizeRiskImpactFilter(args.impact) : undefined;
 	let projectIds = getProjectIdsForVisibleContext(visible);
 
 	if (args.project_id !== undefined) {
@@ -1692,7 +1940,11 @@ async function listCoreEntities(
 	}
 
 	if (projectIds.length === 0) {
-		return { [`${kind}s`]: [], total: 0 };
+		return {
+			[`${kind}s`]: [],
+			total: 0,
+			pagination: buildPaginationForRows(offset, limit, 0, 0)
+		};
 	}
 
 	const config = CORE_ENTITY_CONFIG[kind];
@@ -1705,13 +1957,16 @@ async function listCoreEntities(
 			ascending: kind === 'milestone',
 			...(kind === 'milestone' ? { nullsFirst: true } : {})
 		})
-		.limit(limit);
+		.range(offset, offset + limit - 1);
 
-	if (typeof args.state_key === 'string' && args.state_key.trim()) {
-		query = query.eq('state_key', args.state_key.trim());
+	if (stateKey) {
+		query = query.eq('state_key', stateKey);
 	}
-	if (kind === 'risk' && typeof args.impact === 'string' && args.impact.trim()) {
-		query = query.eq('impact', args.impact.trim());
+	if (typeKey) {
+		query = query.eq('type_key', typeKey);
+	}
+	if (kind === 'risk' && impact) {
+		query = query.eq('impact', impact);
 	}
 
 	const { data, error, count } = await query;
@@ -1725,7 +1980,8 @@ async function listCoreEntities(
 
 	return {
 		[`${kind}s`]: rows,
-		total: count ?? rows.length
+		total: count ?? rows.length,
+		pagination: buildPaginationForRows(offset, limit, count ?? rows.length, rows.length)
 	};
 }
 
@@ -1738,10 +1994,7 @@ async function getCoreEntity(
 	const entityId = args[config.idArg];
 	const access = await loadCoreEntityForAccess(context, kind, entityId, 'read');
 	return {
-		[config.resultKey]: {
-			...access.entity,
-			project_name: access.project.name
-		}
+		[config.resultKey]: serializeExternalEntity(kind, access.entity, access.project.name)
 	};
 }
 
@@ -2216,10 +2469,11 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 	);
 
 	return {
-		document: {
-			...data,
-			project_name: project.name
-		},
+		document: serializeExternalEntity(
+			'document',
+			data as Record<string, unknown>,
+			project.name
+		),
 		structure,
 		structure_error: structureError
 	};
@@ -2415,10 +2669,7 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 	);
 
 	return {
-		document: {
-			...data,
-			project_name: project.name
-		}
+		document: serializeExternalEntity('document', data as Record<string, unknown>, project.name)
 	};
 }
 
@@ -2636,10 +2887,7 @@ async function createGoal(context: ToolExecutionContext, args: Record<string, un
 	);
 
 	return {
-		goal: {
-			...data,
-			project_name: project.name
-		},
+		goal: serializeExternalEntity('goal', data as Record<string, unknown>, project.name),
 		message: `Created ontology goal "${data.name ?? 'Goal'}".`
 	};
 }
@@ -2750,10 +2998,7 @@ async function createPlan(context: ToolExecutionContext, args: Record<string, un
 	);
 
 	return {
-		plan: {
-			...data,
-			project_name: project.name
-		},
+		plan: serializeExternalEntity('plan', data as Record<string, unknown>, project.name),
 		message: `Created ontology plan "${data.name ?? 'Plan'}".`
 	};
 }
@@ -2861,10 +3106,11 @@ async function createMilestone(context: ToolExecutionContext, args: Record<strin
 	);
 
 	return {
-		milestone: {
-			...data,
-			project_name: project.name
-		},
+		milestone: serializeExternalEntity(
+			'milestone',
+			data as Record<string, unknown>,
+			project.name
+		),
 		message: `Created ontology milestone "${data.title ?? 'Milestone'}".`
 	};
 }
@@ -2966,10 +3212,7 @@ async function createRisk(context: ToolExecutionContext, args: Record<string, un
 	);
 
 	return {
-		risk: {
-			...data,
-			project_name: project.name
-		},
+		risk: serializeExternalEntity('risk', data as Record<string, unknown>, project.name),
 		message: `Created ontology risk "${data.title ?? 'Risk'}".`
 	};
 }
@@ -3092,10 +3335,11 @@ async function updateCoreEntity(
 	);
 
 	return {
-		[config.resultKey]: {
-			...data,
-			project_name: access.project.name
-		},
+		[config.resultKey]: serializeExternalEntity(
+			kind,
+			data as Record<string, unknown>,
+			access.project.name
+		),
 		message: `Updated ontology ${kind} "${data[config.displayField] ?? access.entity.id}".`
 	};
 }
@@ -3436,7 +3680,7 @@ async function createTaskDocument(context: ToolExecutionContext, args: Record<st
 	);
 
 	return {
-		document,
+		document: serializeExternalEntity('document', document, taskAccess.project.name),
 		edge: edgeResult.edge,
 		message: `Linked document "${document.title ?? 'Document'}" to task.`
 	};
@@ -3512,6 +3756,9 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 async function listDocuments(context: ToolExecutionContext, args: Record<string, unknown>) {
 	const visible = await loadVisibleProjects(context);
 	const limit = clampLimit(args.limit, 20, 1, 50);
+	const offset = normalizeOffset(args.offset);
+	const typeKey = normalizeEntityTypeFilter(args.type_key, 'document');
+	const stateKey = normalizeEntityStateFilter(args.state_key, 'document');
 	let projectIds = visible.projects.map((project) => project.id);
 
 	if (args.project_id !== undefined) {
@@ -3520,7 +3767,11 @@ async function listDocuments(context: ToolExecutionContext, args: Record<string,
 	}
 
 	if (projectIds.length === 0) {
-		return { documents: [], total: 0 };
+		return {
+			documents: [],
+			total: 0,
+			pagination: buildPaginationForRows(offset, limit, 0, 0)
+		};
 	}
 
 	let query = context.admin
@@ -3531,14 +3782,14 @@ async function listDocuments(context: ToolExecutionContext, args: Record<string,
 		.in('project_id', projectIds)
 		.is('deleted_at', null)
 		.order('updated_at', { ascending: false })
-		.limit(limit);
+		.range(offset, offset + limit - 1);
 
-	if (typeof args.type_key === 'string' && args.type_key.trim()) {
-		query = query.eq('type_key', args.type_key.trim());
+	if (typeKey) {
+		query = query.eq('type_key', typeKey);
 	}
 
-	if (typeof args.state_key === 'string' && args.state_key.trim()) {
-		query = query.eq('state_key', args.state_key.trim());
+	if (stateKey) {
+		query = query.eq('state_key', stateKey);
 	}
 
 	const { data, error, count } = await query;
@@ -3553,7 +3804,13 @@ async function listDocuments(context: ToolExecutionContext, args: Record<string,
 
 	return {
 		documents,
-		total: count ?? documents.length
+		total: count ?? documents.length,
+		pagination: buildPaginationForRows(
+			offset,
+			limit,
+			count ?? documents.length,
+			documents.length
+		)
 	};
 }
 
@@ -3616,7 +3873,7 @@ async function getProjectGraph(context: ToolExecutionContext, args: Record<strin
 	});
 
 	return {
-		graph,
+		graph: serializeProjectGraphData(graph as unknown as Record<string, unknown>),
 		metadata: {
 			projectId: project.id,
 			queryPattern: 'project-graph-loader',
@@ -3643,7 +3900,7 @@ async function getDocumentTree(context: ToolExecutionContext, args: Record<strin
 		);
 
 	return {
-		...tree,
+		...serializeDocumentTree(tree as unknown as Record<string, unknown>),
 		message: `Document tree loaded with ${countNodes(tree.structure.root)} nodes.`
 	};
 }
@@ -3754,7 +4011,16 @@ async function listTaskDocuments(context: ToolExecutionContext, args: Record<str
 	const combined = edgeRows
 		.map((edge) => {
 			const document = documentMap.get(String(edge.dst_id));
-			return document ? { document, edge } : null;
+			return document
+				? {
+						document: serializeExternalEntity(
+							'document',
+							document,
+							taskAccess.project.name
+						),
+						edge
+					}
+				: null;
 		})
 		.filter(
 			(item): item is { document: Record<string, unknown>; edge: Record<string, unknown> } =>
@@ -3818,11 +4084,8 @@ async function getEntityRelationships(
 	context: ToolExecutionContext,
 	args: Record<string, unknown>
 ) {
+	const direction = normalizeRelationshipDirection(args.direction);
 	const entity = await resolveVisibleEntityById(context, args.entity_id, 'read');
-	const direction =
-		args.direction === 'outgoing' || args.direction === 'incoming' || args.direction === 'both'
-			? args.direction
-			: 'both';
 	const relationships: Array<Record<string, unknown>> = [];
 
 	if (direction === 'outgoing' || direction === 'both') {
@@ -3939,7 +4202,7 @@ async function getLinkedEntities(context: ToolExecutionContext, args: Record<str
 				const row = rowsById.get(ref.id);
 				if (!row) return null;
 				return {
-					...row,
+					...serializeExternalEntity(kind as ExternalLinkEntityKind, row),
 					edge_id: ref.edge.id,
 					edge_rel: ref.edge.rel,
 					edge_direction: ref.edge.direction
@@ -3988,7 +4251,8 @@ async function searchEntitiesByType(
 		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'query is required');
 	}
 
-	const limit = clampLimit(args.limit, 12, 1, 20);
+	const limit = clampLimit(args.limit, 12, 1, 50);
+	const offset = normalizeOffset(args.offset);
 	const visible = await loadVisibleProjects(context);
 	let projectIds = visible.projects.map((project) => project.id);
 
@@ -3998,7 +4262,12 @@ async function searchEntitiesByType(
 	}
 
 	if (projectIds.length === 0) {
-		return { query, results: [] };
+		return {
+			query,
+			results: [],
+			total: 0,
+			pagination: buildPaginationForRows(offset, limit, 0, 0)
+		};
 	}
 
 	const requestedTypes = Array.isArray(args.types)
@@ -4012,184 +4281,233 @@ async function searchEntitiesByType(
 		: allowedTypes;
 	const activeTypes = requestedTypes.length > 0 ? requestedTypes : allowedTypes;
 
-	const taskFilter = activeTypes.includes('task')
-		? buildSearchFilter(query, ['title', 'description'])
-		: null;
-	const planFilter = activeTypes.includes('plan')
-		? buildSearchFilter(query, ['name', 'description'])
-		: null;
-	const goalFilter = activeTypes.includes('goal')
-		? buildSearchFilter(query, ['name', 'description'])
-		: null;
-	const documentFilter = activeTypes.includes('document')
-		? buildSearchFilter(query, ['title', 'content', 'description'])
-		: null;
-	const milestoneFilter = activeTypes.includes('milestone')
-		? buildSearchFilter(query, ['title', 'description'])
-		: null;
-	const riskFilter = activeTypes.includes('risk')
-		? buildSearchFilter(query, ['title', 'content'])
-		: null;
-	const perTypeLimit = Math.max(
-		2,
-		Math.min(8, Math.ceil(limit / Math.max(1, activeTypes.length)))
-	);
-
-	const [tasks, plans, goals, documents, milestones, risks] = await Promise.all([
-		taskFilter
-			? context.admin
-					.from('onto_tasks')
-					.select('id, project_id, title, description, state_key, updated_at')
-					.in('project_id', projectIds)
-					.is('deleted_at', null)
-					.or(taskFilter)
-					.order('updated_at', { ascending: false })
-					.limit(perTypeLimit)
-			: Promise.resolve({ data: [], error: null }),
-		planFilter
-			? context.admin
-					.from('onto_plans')
-					.select('id, project_id, name, description, state_key, updated_at')
-					.in('project_id', projectIds)
-					.is('deleted_at', null)
-					.or(planFilter)
-					.order('updated_at', { ascending: false })
-					.limit(perTypeLimit)
-			: Promise.resolve({ data: [], error: null }),
-		goalFilter
-			? context.admin
-					.from('onto_goals')
-					.select('id, project_id, name, description, state_key, updated_at')
-					.in('project_id', projectIds)
-					.is('deleted_at', null)
-					.or(goalFilter)
-					.order('updated_at', { ascending: false })
-					.limit(perTypeLimit)
-			: Promise.resolve({ data: [], error: null }),
-		documentFilter
-			? context.admin
-					.from('onto_documents')
-					.select('id, project_id, title, description, content, state_key, updated_at')
-					.in('project_id', projectIds)
-					.is('deleted_at', null)
-					.or(documentFilter)
-					.order('updated_at', { ascending: false })
-					.limit(perTypeLimit)
-			: Promise.resolve({ data: [], error: null }),
-		milestoneFilter
-			? context.admin
-					.from('onto_milestones')
-					.select('id, project_id, title, description, state_key, due_at, updated_at')
-					.in('project_id', projectIds)
-					.is('deleted_at', null)
-					.or(milestoneFilter)
-					.order('updated_at', { ascending: false })
-					.limit(perTypeLimit)
-			: Promise.resolve({ data: [], error: null }),
-		riskFilter
-			? context.admin
-					.from('onto_risks')
-					.select('id, project_id, title, content, impact, state_key, updated_at')
-					.in('project_id', projectIds)
-					.is('deleted_at', null)
-					.or(riskFilter)
-					.order('updated_at', { ascending: false })
-					.limit(perTypeLimit)
-			: Promise.resolve({ data: [], error: null })
-	]);
-
-	for (const result of [tasks, plans, goals, documents, milestones, risks]) {
-		if (result.error) {
-			throw new ExternalToolGatewayError(
-				'INTERNAL',
-				result.error.message || 'Failed to search ontology'
-			);
-		}
+	if (activeTypes.length === 1) {
+		const result = await searchEntityKind({
+			context,
+			args,
+			kind: activeTypes[0]!,
+			query,
+			projectIds,
+			projectMap: visible.projectMap,
+			offset,
+			limit,
+			strictFilters: true
+		});
+		return {
+			query,
+			results: result.results,
+			total: result.total,
+			pagination: buildPaginationForRows(offset, limit, result.total, result.results.length)
+		};
 	}
 
-	const results = [
-		...((tasks.data ?? []) as Array<Record<string, unknown>>).map((item) => ({
-			type: 'task',
-			id: item.id,
-			project_id: item.project_id,
-			project_name: visible.projectMap.get(String(item.project_id))?.name ?? null,
-			title: item.title,
-			snippet: item.description ?? null,
-			state_key: item.state_key,
-			updated_at: item.updated_at
-		})),
-		...((plans.data ?? []) as Array<Record<string, unknown>>).map((item) => ({
-			type: 'plan',
-			id: item.id,
-			project_id: item.project_id,
-			project_name: visible.projectMap.get(String(item.project_id))?.name ?? null,
-			title: item.name,
-			snippet: item.description ?? null,
-			state_key: item.state_key,
-			updated_at: item.updated_at
-		})),
-		...((goals.data ?? []) as Array<Record<string, unknown>>).map((item) => ({
-			type: 'goal',
-			id: item.id,
-			project_id: item.project_id,
-			project_name: visible.projectMap.get(String(item.project_id))?.name ?? null,
-			title: item.name,
-			snippet: item.description ?? null,
-			state_key: item.state_key,
-			updated_at: item.updated_at
-		})),
-		...((documents.data ?? []) as Array<Record<string, unknown>>).map((item) => ({
-			type: 'document',
-			id: item.id,
-			project_id: item.project_id,
-			project_name: visible.projectMap.get(String(item.project_id))?.name ?? null,
-			title: item.title,
-			snippet: truncateText(
-				typeof item.content === 'string'
-					? item.content.replace(/\s+/g, ' ').trim()
-					: typeof item.description === 'string'
-						? item.description
-						: '',
-				220
-			).content,
-			state_key: item.state_key,
-			updated_at: item.updated_at
-		})),
-		...((milestones.data ?? []) as Array<Record<string, unknown>>).map((item) => ({
-			type: 'milestone',
-			id: item.id,
-			project_id: item.project_id,
-			project_name: visible.projectMap.get(String(item.project_id))?.name ?? null,
-			title: item.title,
-			snippet: item.description ?? null,
-			state_key: item.state_key,
-			due_at: item.due_at,
-			updated_at: item.updated_at
-		})),
-		...((risks.data ?? []) as Array<Record<string, unknown>>).map((item) => ({
-			type: 'risk',
-			id: item.id,
-			project_id: item.project_id,
-			project_name: visible.projectMap.get(String(item.project_id))?.name ?? null,
-			title: item.title,
-			snippet:
-				typeof item.content === 'string'
-					? truncateText(item.content.replace(/\s+/g, ' ').trim(), 220).content
-					: null,
-			state_key: item.state_key,
-			impact: item.impact,
-			updated_at: item.updated_at
-		}))
-	]
+	const fetchLimit = offset + limit;
+	const perKindResults = await Promise.all(
+		activeTypes.map((kind) =>
+			searchEntityKind({
+				context,
+				args,
+				kind,
+				query,
+				projectIds,
+				projectMap: visible.projectMap,
+				offset: 0,
+				limit: fetchLimit,
+				strictFilters: false
+			})
+		)
+	);
+	const total = perKindResults.reduce((sum, result) => sum + result.total, 0);
+	const merged = perKindResults
+		.flatMap((result) => result.results)
 		.sort(
 			(a, b) =>
 				Date.parse(String(b.updated_at ?? '')) - Date.parse(String(a.updated_at ?? ''))
-		)
-		.slice(0, limit);
+		);
+	const results = merged.slice(offset, offset + limit);
 
 	return {
 		query,
-		results
+		results,
+		total,
+		pagination: buildPaginationForRows(offset, limit, total, results.length)
+	};
+}
+
+type SearchKind = 'task' | 'plan' | 'goal' | 'document' | 'milestone' | 'risk';
+
+const SEARCH_CONFIG: Record<
+	SearchKind,
+	{
+		table: string;
+		select: string;
+		searchFields: string[];
+		titleField: 'title' | 'name';
+		snippetField?: 'description' | 'content';
+	}
+> = {
+	task: {
+		table: 'onto_tasks',
+		select: 'id, project_id, title, description, type_key, state_key, updated_at',
+		searchFields: ['title', 'description'],
+		titleField: 'title',
+		snippetField: 'description'
+	},
+	plan: {
+		table: 'onto_plans',
+		select: 'id, project_id, name, description, type_key, state_key, updated_at',
+		searchFields: ['name', 'description'],
+		titleField: 'name',
+		snippetField: 'description'
+	},
+	goal: {
+		table: 'onto_goals',
+		select: 'id, project_id, name, description, type_key, state_key, updated_at',
+		searchFields: ['name', 'description'],
+		titleField: 'name',
+		snippetField: 'description'
+	},
+	document: {
+		table: 'onto_documents',
+		select: 'id, project_id, title, description, content, type_key, state_key, updated_at',
+		searchFields: ['title', 'content', 'description'],
+		titleField: 'title',
+		snippetField: 'content'
+	},
+	milestone: {
+		table: 'onto_milestones',
+		select: 'id, project_id, title, description, type_key, state_key, due_at, updated_at',
+		searchFields: ['title', 'description'],
+		titleField: 'title',
+		snippetField: 'description'
+	},
+	risk: {
+		table: 'onto_risks',
+		select: 'id, project_id, title, content, impact, type_key, state_key, updated_at',
+		searchFields: ['title', 'content'],
+		titleField: 'title',
+		snippetField: 'content'
+	}
+};
+
+function normalizeSearchStateFilter(
+	value: unknown,
+	kind: SearchKind,
+	strict: boolean
+): string | null | undefined {
+	try {
+		return normalizeEntityStateFilter(value, kind);
+	} catch (error) {
+		if (strict) throw error;
+		return null;
+	}
+}
+
+function normalizeSearchTypeFilter(
+	value: unknown,
+	kind: SearchKind,
+	strict: boolean
+): string | null | undefined {
+	try {
+		return normalizeEntityTypeFilter(value, kind);
+	} catch (error) {
+		if (strict) throw error;
+		return null;
+	}
+}
+
+async function searchEntityKind(params: {
+	context: ToolExecutionContext;
+	args: Record<string, unknown>;
+	kind: SearchKind;
+	query: string;
+	projectIds: string[];
+	projectMap: Map<string, OntologyProjectSummary>;
+	offset: number;
+	limit: number;
+	strictFilters: boolean;
+}): Promise<{ results: Array<Record<string, unknown>>; total: number }> {
+	const { context, args, kind, query, projectIds, projectMap, offset, limit, strictFilters } =
+		params;
+	const config = SEARCH_CONFIG[kind];
+	const stateKey = normalizeSearchStateFilter(args.state_key, kind, strictFilters);
+	const typeKey = normalizeSearchTypeFilter(args.type_key, kind, strictFilters);
+	const impact =
+		kind === 'risk'
+			? (() => {
+					try {
+						return normalizeRiskImpactFilter(args.impact);
+					} catch (error) {
+						if (strictFilters) throw error;
+						return null;
+					}
+				})()
+			: undefined;
+
+	if (stateKey === null || typeKey === null || impact === null) {
+		return { results: [], total: 0 };
+	}
+	if (args.impact !== undefined && kind !== 'risk' && strictFilters) {
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'impact only applies to risks');
+	}
+
+	let dbQuery = context.admin
+		.from(config.table)
+		.select(config.select, { count: 'exact' })
+		.in('project_id', projectIds)
+		.is('deleted_at', null)
+		.or(buildSearchFilter(query, config.searchFields))
+		.order('updated_at', { ascending: false })
+		.range(offset, offset + limit - 1);
+
+	if (stateKey) {
+		dbQuery = dbQuery.eq('state_key', stateKey);
+	}
+	if (typeKey) {
+		dbQuery = dbQuery.eq('type_key', typeKey);
+	}
+	if (kind === 'risk' && impact) {
+		dbQuery = dbQuery.eq('impact', impact);
+	}
+
+	const { data, error, count } = await dbQuery;
+	if (error) {
+		throw new ExternalToolGatewayError(
+			'INTERNAL',
+			error.message || `Failed to search ${kind}s`
+		);
+	}
+
+	const results = ((data ?? []) as Array<Record<string, unknown>>).map((item) => {
+		const title = item[config.titleField] ?? null;
+		const snippetSource =
+			config.snippetField === 'content'
+				? typeof item.content === 'string'
+					? item.content.replace(/\s+/g, ' ').trim()
+					: typeof item.description === 'string'
+						? item.description
+						: ''
+				: item[config.snippetField ?? 'description'];
+		const snippet =
+			typeof snippetSource === 'string' ? truncateText(snippetSource, 220).content : null;
+		return {
+			type: kind,
+			id: item.id,
+			project_id: item.project_id,
+			project_name: projectMap.get(String(item.project_id))?.name ?? null,
+			title,
+			snippet,
+			type_key: item.type_key,
+			state_key: item.state_key,
+			...(kind === 'milestone' ? { due_at: item.due_at } : {}),
+			...(kind === 'risk' ? { impact: item.impact } : {}),
+			updated_at: item.updated_at
+		};
+	});
+
+	return {
+		results,
+		total: count ?? results.length
 	};
 }
 
