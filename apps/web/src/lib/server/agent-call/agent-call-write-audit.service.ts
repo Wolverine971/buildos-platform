@@ -332,6 +332,86 @@ export async function recordWriteExecutionFailure(params: {
 	});
 }
 
+export async function recordToolExecutionSuccess(params: {
+	admin: any;
+	callSessionId?: string;
+	callerId?: string;
+	userId: string;
+	op: string;
+	args: Record<string, unknown>;
+	responsePayload?: Record<string, unknown>;
+	entityKind?: string;
+	entityId?: string;
+	startedAt?: string;
+}): Promise<void> {
+	if (!params.callSessionId || !params.callerId) {
+		return;
+	}
+
+	const completedAt = new Date().toISOString();
+	const startedAt = params.startedAt ?? completedAt;
+	const { error } = await params.admin.from('agent_call_tool_executions').insert({
+		agent_call_session_id: params.callSessionId,
+		external_agent_caller_id: params.callerId,
+		user_id: params.userId,
+		op: params.op,
+		idempotency_key: null,
+		status: 'succeeded',
+		args: params.args,
+		response_payload: params.responsePayload ?? null,
+		error_payload: null,
+		entity_kind: params.entityKind ?? null,
+		entity_id: params.entityId ?? null,
+		started_at: startedAt,
+		completed_at: completedAt,
+		updated_at: completedAt
+	});
+
+	if (error) {
+		throw new Error(error.message || 'Failed to record tool execution');
+	}
+}
+
+export async function recordToolExecutionFailure(params: {
+	admin: any;
+	callSessionId?: string;
+	callerId?: string;
+	userId: string;
+	op: string;
+	args: Record<string, unknown>;
+	errorPayload: Record<string, unknown>;
+	entityKind?: string;
+	entityId?: string;
+	startedAt?: string;
+}): Promise<void> {
+	if (!params.callSessionId || !params.callerId) {
+		return;
+	}
+
+	const completedAt = new Date().toISOString();
+	const startedAt = params.startedAt ?? completedAt;
+	const { error } = await params.admin.from('agent_call_tool_executions').insert({
+		agent_call_session_id: params.callSessionId,
+		external_agent_caller_id: params.callerId,
+		user_id: params.userId,
+		op: params.op,
+		idempotency_key: null,
+		status: 'failed',
+		args: params.args,
+		response_payload: null,
+		error_payload: params.errorPayload,
+		entity_kind: params.entityKind ?? null,
+		entity_id: params.entityId ?? null,
+		started_at: startedAt,
+		completed_at: completedAt,
+		updated_at: completedAt
+	});
+
+	if (error) {
+		throw new Error(error.message || 'Failed to record tool execution failure');
+	}
+}
+
 async function logAgentWriteSecurityEvent(
 	admin: any,
 	params: {

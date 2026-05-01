@@ -32,6 +32,8 @@ import {
 import {
 	AgentCallWritePendingError,
 	AgentCallWriteReplayError,
+	recordToolExecutionFailure,
+	recordToolExecutionSuccess,
 	recordWriteExecutionFailure,
 	recordWriteExecutionSuccess,
 	reserveWriteExecution
@@ -1395,6 +1397,89 @@ function extractWriteEntityMeta(params: {
 	}
 
 	return {};
+}
+
+function compactRecordForAudit(value: unknown): Record<string, unknown> | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return null;
+	}
+
+	const record = value as Record<string, unknown>;
+	const compact: Record<string, unknown> = {};
+
+	for (const key of ['id', 'project_id', 'project_name', 'title', 'name']) {
+		const entry = record[key];
+		if (typeof entry === 'string' && entry.trim()) {
+			compact[key] = entry;
+		}
+	}
+
+	return Object.keys(compact).length > 0 ? compact : null;
+}
+
+function entityKindFromGatewayOp(op: string): string | null {
+	const parts = op.split('.');
+	if (parts[0] === 'onto' && parts[1]) return parts[1];
+	if (parts[0] === 'cal' && parts[1] === 'event') return 'event';
+	if (parts[0] === 'cal' && parts[1] === 'project') return 'calendar';
+	return null;
+}
+
+function buildToolExecutionAuditPayload(params: {
+	response: Record<string, unknown>;
+	canonicalOp: BuildosAgentAllowedOp;
+	result: Record<string, unknown>;
+}): {
+	responsePayload: Record<string, unknown>;
+	entityKind?: string;
+	entityId?: string;
+} {
+	const entityMeta = extractWriteEntityMeta({
+		op: params.canonicalOp,
+		result: params.result
+	});
+	const entityKind = entityMeta.entityKind ?? entityKindFromGatewayOp(params.canonicalOp);
+	const responseMeta =
+		params.response.meta &&
+		typeof params.response.meta === 'object' &&
+		!Array.isArray(params.response.meta)
+			? (params.response.meta as Record<string, unknown>)
+			: null;
+	const resultSummary: Record<string, unknown> = {};
+
+	if (entityKind) {
+		const compactEntity = compactRecordForAudit(params.result[entityKind]);
+		if (compactEntity) {
+			resultSummary[entityKind] = compactEntity;
+		}
+	}
+
+	const compactProject = compactRecordForAudit(params.result.project);
+	if (compactProject) {
+		resultSummary.project = compactProject;
+	}
+
+	for (const countKey of ['total', 'count']) {
+		const value = params.result[countKey];
+		if (typeof value === 'number' && Number.isFinite(value)) {
+			resultSummary[countKey] = value;
+		}
+	}
+
+	if (Array.isArray(params.result.results)) {
+		resultSummary.result_count = params.result.results.length;
+	}
+
+	return {
+		responsePayload: {
+			op: params.response.op ?? params.canonicalOp,
+			ok: params.response.ok === true,
+			result: resultSummary,
+			...(responseMeta ? { meta: responseMeta } : {})
+		},
+		...(entityKind ? { entityKind } : {}),
+		...(entityMeta.entityId ? { entityId: entityMeta.entityId } : {})
+	};
 }
 
 function buildGatewayResponseMeta(params: {
@@ -4851,6 +4936,8 @@ async function executeGatewayOp(params: {
 		}
 	}
 
+	const executionStartedAt = new Date().toISOString();
+
 	try {
 		const result = await entry.handler(
 			{
@@ -4891,6 +4978,28 @@ async function executeGatewayOp(params: {
 					'[External Tool Gateway] Failed to record write success:',
 					auditError
 				);
+			}
+		} else if (!isWriteOp(canonicalOp)) {
+			const auditPayload = buildToolExecutionAuditPayload({
+				response,
+				canonicalOp: canonicalOp as BuildosAgentAllowedOp,
+				result
+			});
+			try {
+				await recordToolExecutionSuccess({
+					admin: params.admin,
+					callSessionId: params.callSessionId,
+					callerId: params.callerId,
+					userId: params.userId,
+					op: canonicalOp,
+					args: opArgs,
+					responsePayload: auditPayload.responsePayload,
+					entityKind: auditPayload.entityKind,
+					entityId: auditPayload.entityId,
+					startedAt: executionStartedAt
+				});
+			} catch (auditError) {
+				console.error('[External Tool Gateway] Failed to record tool success:', auditError);
 			}
 		}
 
@@ -4947,6 +5056,22 @@ async function executeGatewayOp(params: {
 					'[External Tool Gateway] Failed to record write failure:',
 					auditError
 				);
+			}
+		} else if (!isWriteOp(canonicalOp)) {
+			try {
+				await recordToolExecutionFailure({
+					admin: params.admin,
+					callSessionId: params.callSessionId,
+					callerId: params.callerId,
+					userId: params.userId,
+					op: canonicalOp,
+					args: opArgs,
+					errorPayload: response.error,
+					entityKind: entityKindFromGatewayOp(canonicalOp) ?? undefined,
+					startedAt: executionStartedAt
+				});
+			} catch (auditError) {
+				console.error('[External Tool Gateway] Failed to record tool failure:', auditError);
 			}
 		}
 

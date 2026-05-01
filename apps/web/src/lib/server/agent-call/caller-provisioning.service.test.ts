@@ -30,6 +30,7 @@ type State = {
 	bootstrapRows: AgentCallBootstrapLinkRecord[];
 	sessionRows?: Array<Record<string, unknown>>;
 	executionRows?: Array<Record<string, unknown>>;
+	securityEventRows?: Array<Record<string, unknown>>;
 };
 
 class ExternalAgentCallersQueryBuilderMock {
@@ -116,6 +117,18 @@ class ExternalAgentCallersQueryBuilderMock {
 	}
 
 	maybeSingle() {
+		if (this.action === 'select') {
+			const row =
+				this.state.callerRows.find((entry) =>
+					Array.from(this.filters.entries()).every(
+						([field, value]) =>
+							entry[field as keyof ExternalAgentCallerRecord] === value
+					)
+				) ?? null;
+
+			return Promise.resolve({ data: row, error: null });
+		}
+
 		if (this.action === 'update' && this.updatePayload) {
 			const existingIndex = this.state.callerRows.findIndex((row) =>
 				Array.from(this.filters.entries()).every(
@@ -242,6 +255,7 @@ class AgentCallBootstrapLinksQueryBuilderMock {
 class AgentCallUsageQueryBuilderMock {
 	private filters = new Map<string, unknown>();
 	private inFilters = new Map<string, unknown[]>();
+	private gteFilters = new Map<string, string>();
 	private rowLimit: number | null = null;
 
 	constructor(private readonly rows: Array<Record<string, unknown>>) {}
@@ -257,6 +271,11 @@ class AgentCallUsageQueryBuilderMock {
 
 	in(field: string, values: unknown[]) {
 		this.inFilters.set(field, values);
+		return this;
+	}
+
+	gte(field: string, value: string) {
+		this.gteFilters.set(field, value);
 		return this;
 	}
 
@@ -278,6 +297,13 @@ class AgentCallUsageQueryBuilderMock {
 			Array.from(this.inFilters.entries()).every(([field, values]) =>
 				values.includes(row[field])
 			)
+		);
+
+		rows = rows.filter((row) =>
+			Array.from(this.gteFilters.entries()).every(([field, value]) => {
+				const candidate = row[field];
+				return typeof candidate === 'string' && candidate >= value;
+			})
 		);
 
 		if (this.rowLimit !== null) {
@@ -305,6 +331,10 @@ function createAdminMock(state: State) {
 
 			if (table === 'agent_call_tool_executions') {
 				return new AgentCallUsageQueryBuilderMock(state.executionRows ?? []);
+			}
+
+			if (table === 'security_events') {
+				return new AgentCallUsageQueryBuilderMock(state.securityEventRows ?? []);
 			}
 
 			throw new Error(`Unexpected table ${table}`);
@@ -572,6 +602,145 @@ describe('CallerProvisioningService', () => {
 			write_count: 1,
 			successful_write_count: 1,
 			project_count: 1
+		});
+	});
+
+	it('returns detailed usage analytics for a caller', async () => {
+		const now = new Date().toISOString();
+		const state: State = {
+			callerRows: [
+				{
+					id: '11111111-1111-1111-1111-111111111111',
+					user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+					provider: 'openclaw',
+					caller_key: 'openclaw:workspace:test',
+					token_prefix: 'boca_123456',
+					token_hash: 'hashed-token',
+					status: 'trusted',
+					policy: {},
+					metadata: { installation_name: 'Research Agent' },
+					last_used_at: now,
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:00:00.000Z'
+				}
+			],
+			bootstrapRows: [],
+			sessionRows: [
+				{
+					id: '22222222-2222-2222-2222-222222222222',
+					user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+					external_agent_caller_id: '11111111-1111-1111-1111-111111111111',
+					status: 'ended',
+					requested_scope: { mode: 'read_write' },
+					granted_scope: { mode: 'read_write' },
+					rejection_reason: null,
+					started_at: now,
+					ended_at: now,
+					updated_at: now
+				}
+			],
+			executionRows: [
+				{
+					id: '33333333-3333-3333-3333-333333333333',
+					agent_call_session_id: '22222222-2222-2222-2222-222222222222',
+					external_agent_caller_id: '11111111-1111-1111-1111-111111111111',
+					user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+					op: 'onto.task.get',
+					status: 'succeeded',
+					args: { task_id: '55555555-5555-5555-5555-555555555555' },
+					response_payload: {
+						result: {
+							task: {
+								id: '55555555-5555-5555-5555-555555555555',
+								project_id: '44444444-4444-4444-4444-444444444444',
+								project_name: 'Project One',
+								title: 'Draft launch plan'
+							}
+						}
+					},
+					error_payload: null,
+					entity_kind: 'task',
+					entity_id: '55555555-5555-5555-5555-555555555555',
+					started_at: now,
+					completed_at: now,
+					created_at: now,
+					updated_at: now
+				},
+				{
+					id: '66666666-6666-6666-6666-666666666666',
+					agent_call_session_id: '22222222-2222-2222-2222-222222222222',
+					external_agent_caller_id: '11111111-1111-1111-1111-111111111111',
+					user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+					op: 'onto.task.update',
+					status: 'failed',
+					args: {
+						project_id: '44444444-4444-4444-4444-444444444444',
+						task_id: '55555555-5555-5555-5555-555555555555',
+						title: 'Draft launch plan'
+					},
+					response_payload: null,
+					error_payload: { message: 'Task is outside scope' },
+					entity_kind: 'task',
+					entity_id: '55555555-5555-5555-5555-555555555555',
+					started_at: now,
+					completed_at: now,
+					created_at: now,
+					updated_at: now
+				}
+			],
+			securityEventRows: [
+				{
+					id: '77777777-7777-7777-7777-777777777777',
+					created_at: now,
+					event_type: 'agent.tool.denied',
+					outcome: 'denied',
+					severity: 'medium',
+					reason: 'op_outside_granted_scope',
+					session_id: '22222222-2222-2222-2222-222222222222',
+					target_type: null,
+					target_id: null,
+					external_agent_caller_id: '11111111-1111-1111-1111-111111111111',
+					metadata: { op: 'onto.document.update' }
+				}
+			]
+		};
+		const { CallerProvisioningService } = await import('./caller-provisioning.service');
+		const service = new CallerProvisioningService(createAdminMock(state));
+
+		const response = await service.getUsageDetailForUser(
+			'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			'11111111-1111-1111-1111-111111111111',
+			{ range: '30d' }
+		);
+
+		expect(response.caller.metadata.installation_name).toBe('Research Agent');
+		expect(response.totals).toMatchObject({
+			session_count: 1,
+			tool_call_count: 2,
+			write_count: 1,
+			successful_tool_call_count: 1,
+			failed_tool_call_count: 1,
+			failed_write_count: 1,
+			denied_count: 1,
+			error_count: 2,
+			project_count: 1
+		});
+		expect(response.operation_breakdown[0]).toMatchObject({
+			tool_call_count: 1
+		});
+		expect(response.project_breakdown[0]).toMatchObject({
+			project_id: '44444444-4444-4444-4444-444444444444',
+			project_name: 'Project One',
+			tool_call_count: 2
+		});
+		expect(response.sessions[0]).toMatchObject({
+			tool_call_count: 2,
+			write_count: 1,
+			failed_tool_call_count: 1
+		});
+		expect(response.security_events[0]).toMatchObject({
+			event_type: 'agent.tool.denied',
+			op: 'onto.document.update'
 		});
 	});
 

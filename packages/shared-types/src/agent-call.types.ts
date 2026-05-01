@@ -257,7 +257,10 @@ export type BuildosAgentUsageAction =
 export interface BuildosAgentUsageTrend {
 	period: BuildosAgentUsagePeriod;
 	session_count: number;
+	tool_call_count?: number;
 	write_count: number;
+	successful_tool_call_count?: number;
+	failed_tool_call_count?: number;
 	successful_write_count: number;
 	failed_write_count: number;
 	project_count: number;
@@ -282,12 +285,119 @@ export interface BuildosAgentCallerUsageSummary {
 	last_activity_at: string | null;
 	last_write_at: string | null;
 	total_session_count: number;
+	total_tool_call_count?: number;
 	total_write_count: number;
+	successful_tool_call_count?: number;
+	failed_tool_call_count?: number;
 	successful_write_count: number;
 	failed_write_count: number;
 	project_count: number;
 	trends: BuildosAgentUsageTrend[];
 	recent_activity: BuildosAgentUsageEvent[];
+}
+
+export type BuildosAgentUsageRangeKey = '7d' | '30d' | '90d';
+
+export interface BuildosAgentUsageRange {
+	key: BuildosAgentUsageRangeKey;
+	days: number;
+	start_at: string;
+	end_at: string;
+}
+
+export interface BuildosAgentUsageTotals {
+	session_count: number;
+	active_session_count: number;
+	ended_session_count: number;
+	rejected_session_count: number;
+	tool_call_count: number;
+	successful_tool_call_count: number;
+	failed_tool_call_count: number;
+	write_count: number;
+	successful_write_count: number;
+	failed_write_count: number;
+	error_count: number;
+	denied_count: number;
+	auth_failure_count: number;
+	project_count: number;
+	avg_session_duration_ms: number | null;
+	avg_tool_latency_ms: number | null;
+	last_activity_at: string | null;
+	last_error_at: string | null;
+}
+
+export interface BuildosAgentUsageTimeBucket {
+	date: string;
+	session_count: number;
+	tool_call_count: number;
+	write_count: number;
+	successful_tool_call_count: number;
+	failed_tool_call_count: number;
+	successful_write_count: number;
+	failed_write_count: number;
+	error_count: number;
+	denied_count: number;
+}
+
+export interface BuildosAgentOperationBreakdown {
+	op: string;
+	tool_call_count: number;
+	write_count: number;
+	successful_count: number;
+	failed_count: number;
+	failure_rate: number;
+	last_used_at: string | null;
+}
+
+export interface BuildosAgentProjectBreakdown {
+	project_id: string | null;
+	project_name: string | null;
+	tool_call_count: number;
+	write_count: number;
+	successful_count: number;
+	failed_count: number;
+	last_activity_at: string | null;
+}
+
+export interface BuildosAgentUsageSession {
+	id: string;
+	status: AgentCallSessionStatus;
+	started_at: string;
+	ended_at: string | null;
+	updated_at: string;
+	duration_ms: number | null;
+	requested_scope_mode: BuildosAgentScopeMode | null;
+	granted_scope_mode: BuildosAgentScopeMode | null;
+	write_count: number;
+	tool_call_count: number;
+	failed_tool_call_count: number;
+	rejection_reason: string | null;
+}
+
+export interface BuildosAgentSecurityEventSummary {
+	id: string;
+	created_at: string;
+	event_type: string;
+	outcome: 'success' | 'failure' | 'blocked' | 'allowed' | 'denied' | 'info';
+	severity: 'info' | 'low' | 'medium' | 'high' | 'critical';
+	reason: string | null;
+	session_id: string | null;
+	target_type: string | null;
+	target_id: string | null;
+	op: string | null;
+	message: string;
+}
+
+export interface BuildosAgentCallerUsageDetailResponse {
+	caller: BuildosAgentCallerSummary;
+	range: BuildosAgentUsageRange;
+	totals: BuildosAgentUsageTotals;
+	time_series: BuildosAgentUsageTimeBucket[];
+	operation_breakdown: BuildosAgentOperationBreakdown[];
+	project_breakdown: BuildosAgentProjectBreakdown[];
+	sessions: BuildosAgentUsageSession[];
+	events: BuildosAgentUsageEvent[];
+	security_events: BuildosAgentSecurityEventSummary[];
 }
 
 export interface BuildosAgentCallerBootstrapSummary {

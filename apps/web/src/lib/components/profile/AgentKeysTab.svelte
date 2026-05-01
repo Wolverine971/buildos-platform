@@ -2,9 +2,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
+	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import {
 		Activity,
+		BarChart3,
 		ChevronDown,
 		CircleCheck,
 		Copy,
@@ -916,11 +918,15 @@
 		].filter(Boolean);
 		return parts.join(' | ');
 	}
+
+	function openUsageDetail(caller: BuildosAgentCallerSummary) {
+		goto(`/profile/agent-keys/${caller.id}`);
+	}
 </script>
 
-<div class="space-y-4 sm:space-y-5">
+<div class="min-w-0 space-y-4 overflow-x-hidden sm:space-y-5">
 	<!-- Tab Header -->
-	<div class="flex items-start gap-3">
+	<div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
 		<div
 			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
 		>
@@ -932,7 +938,7 @@
 				Manage API keys for external agents (like OpenClaw) to access your BuildOS data.
 			</p>
 		</div>
-		<div class="flex items-center gap-2 flex-shrink-0">
+		<div class="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
 			<Button
 				variant="outline"
 				size="sm"
@@ -970,7 +976,9 @@
 	{/if}
 
 	<!-- Registered Callers -->
-	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
+	<div
+		class="tx tx-frame tx-weak min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-ink"
+	>
 		<div
 			class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border"
 		>
@@ -1006,12 +1014,14 @@
 					</p>
 				</div>
 			{:else}
-				<div class="space-y-2">
+				<div class="min-w-0 space-y-2">
 					{#each callers as caller (caller.id)}
-						<details class="group rounded-lg border border-border bg-muted/30">
+						<details
+							class="group min-w-0 overflow-hidden rounded-lg border border-border bg-muted/30"
+						>
 							<summary class="list-none cursor-pointer p-3 sm:p-4">
 								<div
-									class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+									class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 								>
 									<div class="flex min-w-0 items-start gap-2.5">
 										<ChevronDown
@@ -1019,7 +1029,9 @@
 										/>
 										<div class="min-w-0 space-y-1.5">
 											<div class="flex flex-wrap items-center gap-2">
-												<h4 class="text-sm font-semibold text-foreground">
+												<h4
+													class="min-w-0 max-w-full break-words text-sm font-semibold text-foreground"
+												>
 													{installationDisplayName(caller)}
 												</h4>
 												<Badge variant={statusVariant(caller.status)}>
@@ -1042,7 +1054,9 @@
 											</div>
 										</div>
 									</div>
-									<div class="flex flex-wrap gap-1.5 sm:justify-end">
+									<div
+										class="flex min-w-0 flex-wrap gap-1.5 sm:max-w-[48%] sm:justify-end"
+									>
 										<Badge variant="info" size="sm">
 											{recentSessionCount(caller, 'week')} sessions / 7d
 										</Badge>
@@ -1080,6 +1094,14 @@
 									<Button
 										variant="outline"
 										size="sm"
+										icon={BarChart3}
+										onclick={() => openUsageDetail(caller)}
+									>
+										Usage
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
 										icon={Copy}
 										loading={rotatingCallerId === caller.id}
 										disabled={saving ||
@@ -1114,22 +1136,24 @@
 									{/if}
 								</div>
 
-								<div class="grid gap-4 lg:grid-cols-2">
-									<div class="space-y-2 text-xs text-muted-foreground">
+								<div
+									class="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+								>
+									<div class="min-w-0 space-y-2 text-xs text-muted-foreground">
 										<div
 											class="text-xs uppercase tracking-wider text-muted-foreground"
 										>
 											Key Details
 										</div>
-										<p>
+										<p class="min-w-0">
 											<span class="font-medium text-foreground"
 												>Caller key:</span
 											>
-											<code>{caller.caller_key}</code>
+											<code class="break-all">{caller.caller_key}</code>
 										</p>
-										<p>
+										<p class="min-w-0">
 											<span class="font-medium text-foreground">Prefix:</span>
-											<code>{caller.token_prefix}</code>
+											<code class="break-all">{caller.token_prefix}</code>
 											<span class="ml-1 text-muted-foreground">
 												secret shown only on generate or rotate
 											</span>
@@ -1146,18 +1170,18 @@
 										</p>
 									</div>
 
-									<div class="space-y-2">
+									<div class="min-w-0 space-y-2">
 										<div
 											class="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground"
 										>
 											<Activity class="h-3.5 w-3.5" />
 											Usage
 										</div>
-										<div class="grid grid-cols-3 gap-2">
+										<div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
 											{#each USAGE_PERIODS as period (period)}
 												{@const trend = usageTrend(caller, period)}
 												<div
-													class="rounded-md border border-border bg-card/70 p-2"
+													class="min-w-0 rounded-md border border-border bg-card/70 p-2"
 												>
 													<div
 														class="text-xs font-semibold text-foreground"
@@ -1192,10 +1216,10 @@
 										Recent Activity
 									</div>
 									{#if caller.usage?.recent_activity?.length}
-										<div class="space-y-2">
+										<div class="min-w-0 space-y-2">
 											{#each caller.usage.recent_activity as event (event.id)}
 												<div
-													class="rounded-md border border-border bg-card/70 px-3 py-2"
+													class="min-w-0 rounded-md border border-border bg-card/70 px-3 py-2"
 												>
 													<div
 														class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
@@ -1207,7 +1231,7 @@
 																{event.summary}
 															</p>
 															<p
-																class="text-xs text-muted-foreground"
+																class="break-words text-xs text-muted-foreground"
 															>
 																{eventMetaLabel(event)}
 															</p>
