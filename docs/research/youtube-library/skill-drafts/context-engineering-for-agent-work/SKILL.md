@@ -129,4 +129,4 @@ Return:
 
 ## Source Attribution
 
-Distilled from Chroma's [Context Engineering Episode 1 with Dex Horthy](https://www.youtube.com/watch?v=BNhRnx_O95c) and the existing BuildOS agent-skill article [Debug the Harness, Not the Model](../../../../../apps/web/src/content/blogs/agent-skills/debug-the-harness-not-the-model.md), based on Cat Wu's Lenny's Podcast interview.
+Distilled from Chroma's [Context Engineering Episode 1 with Dex Horthy](https://www.youtube.com/watch?v=BNhRnx_O95c) and the existing BuildOS advanced-guide article [Debug the Harness, Not the Model](../../../../../apps/web/src/content/blogs/advanced-guides/debug-the-harness-not-the-model.md), based on Cat Wu's Lenny's Podcast interview.

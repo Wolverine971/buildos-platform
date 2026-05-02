@@ -210,7 +210,8 @@ function buildBlogPost(
 		lineagePeople: normalizeStringArray(metadata.lineagePeople),
 		lineageSources: normalizeLineageSources(metadata.lineageSources),
 		sourceTitle: typeof metadata.sourceTitle === 'string' ? metadata.sourceTitle : undefined,
-		sourceCreator: typeof metadata.sourceCreator === 'string' ? metadata.sourceCreator : undefined,
+		sourceCreator:
+			typeof metadata.sourceCreator === 'string' ? metadata.sourceCreator : undefined,
 		sourceUrl: typeof metadata.sourceUrl === 'string' ? metadata.sourceUrl : undefined,
 		sourceChannelUrl:
 			typeof metadata.sourceChannelUrl === 'string' ? metadata.sourceChannelUrl : undefined

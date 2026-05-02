@@ -6,6 +6,7 @@ skill_type: combo
 categories:
     - marketing-and-content
     - writing
+lineage: lineage.yaml
 path: docs/research/youtube-library/skill-drafts/story-driven-content-craft/SKILL.md
 ---
 

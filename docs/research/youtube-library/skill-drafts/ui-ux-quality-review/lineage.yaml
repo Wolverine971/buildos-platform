@@ -1,0 +1,417 @@
+# docs/research/youtube-library/skill-drafts/ui-ux-quality-review/lineage.yaml
+lineage_version: 0.1
+updated: 2026-05-02
+
+root_skill:
+    id: ui-ux-quality-review
+    name: UI/UX Quality Review
+    path: docs/research/youtube-library/skill-drafts/ui-ux-quality-review/SKILL.md
+    status: draft
+    summary: Review product screens for flow, hierarchy, spacing, consistency, feedback, data clarity, responsive fit, and appropriate delight.
+
+sources:
+    - id: source.kole-jain.beginner-ui-ux-mistakes
+      type: youtube_analysis
+      title: 7 UI/UX mistakes that scream you're a beginner
+      creator: Kole Jain
+      url: https://www.youtube.com/watch?v=AH_ugxmLeUM
+      local_path: docs/marketing/growth/research/youtube-transcripts/2025-06-07-kole-jain-7-ui-ux-mistakes-beginner-ANALYSIS.md
+      source_role: primary
+      used_for:
+          - beginner mistake taxonomy
+          - flow before polish
+          - missing states
+          - component consistency
+
+    - id: source.kole-jain.every-ui-ux-concept
+      type: youtube_notes
+      title: Every UI/UX Concept Explained in Under 10 Minutes
+      creator: Kole Jain
+      url: https://www.youtube.com/watch?v=EcbgbKtOELY
+      local_path: youtube-design.md
+      source_role: supporting
+      used_for:
+          - broad UI/UX concept map
+          - icons and labels
+          - feedback states
+          - charts and data display
+
+    - id: source.designspo.visual-hierarchy
+      type: youtube_analysis
+      title: The Complete Guide To Visual Hierarchy
+      creator: DesignSpo
+      url: https://www.youtube.com/watch?v=kK1TOpI948o
+      local_path: docs/research/youtube-library/analyses/2026-04-29_designspo-visual-hierarchy_analysis.md
+      source_role: primary
+      used_for:
+          - hierarchy ranking
+          - contrast lever order
+          - cohesion rule
+          - composition patterns
+
+    - id: source.designspo.typography
+      type: youtube_analysis
+      title: The ULTIMATE Guide To Typography For Beginners
+      creator: DesignSpo
+      url: https://www.youtube.com/watch?v=AXpxZMRM1EY
+      local_path: docs/research/youtube-library/analyses/2026-04-29_designspo-typography_analysis.md
+      source_role: primary
+      used_for:
+          - typography roles
+          - line-height rules
+          - letter-spacing rules
+          - typeface category matching
+
+    - id: source.designspo.color-theory
+      type: youtube_analysis
+      title: The ULTIMATE Color Theory Guide For Beginners
+      creator: DesignSpo
+      url: https://www.youtube.com/watch?v=tKCORDK0IZU
+      local_path: docs/research/youtube-library/analyses/2026-04-29_designspo-color-theory_analysis.md
+      source_role: primary
+      used_for:
+          - 60/30/10 color proportion
+          - HSB selection
+          - warm/cool focus behavior
+          - dark-mode saturation
+
+    - id: source.designspo.golden-rule-web-design
+      type: youtube_analysis
+      title: The Golden Rule Of Web Design
+      creator: DesignSpo
+      url: https://www.youtube.com/watch?v=CASPWJUsHPM
+      local_path: docs/research/youtube-library/analyses/2026-04-29_designspo-golden-rule-web-design_analysis.md
+      source_role: primary
+      used_for:
+          - 4-pixel system
+          - spacing scale
+          - type scale
+          - container math
+
+    - id: source.nesrine-changuel.delightful-products
+      type: youtube_analysis
+      title: A 4-step framework for building delightful products
+      creator: Nesrine Changuel via Lenny's Podcast
+      url: https://www.youtube.com/watch?v=tX6nwT1Bsuo
+      local_path: docs/marketing/growth/research/youtube-transcripts/2026-04-28-nesrine-changuel-4-step-delightful-products-framework-ANALYSIS.md
+      source_role: primary
+      used_for:
+          - delight pillars
+          - delight grid
+          - anti-delight checks
+          - demotivator inversion
+
+candidate_v2_sources:
+    - id: skill.visual-craft-fundamentals
+      title: Visual Craft Fundamentals
+      creator: BuildOS YouTube Library
+      local_path: docs/research/youtube-library/skill-drafts/visual-craft-fundamentals/SKILL.md
+      possible_use: Add deeper operator-grade craft rules after the first quality review pass.
+    - id: skill.accessibility-and-inclusive-ui-review
+      title: Accessibility And Inclusive UI Review
+      creator: BuildOS YouTube Library
+      local_path: docs/research/youtube-library/skill-drafts/accessibility-and-inclusive-ui-review/SKILL.md
+      possible_use: Pair with this skill when WCAG, semantics, keyboard support, and screen-reader behavior need dedicated coverage.
+    - id: skill.marketing-site-design-review
+      title: Marketing-Site Design Review
+      creator: BuildOS YouTube Library
+      local_path: docs/research/youtube-library/skill-drafts/marketing-site-design-review/SKILL.md
+      possible_use: Fork the product-screen rubric into section-level landing page and marketing page review.
+
+nodes:
+    - id: skill.ui-ux-quality-review
+      type: skill
+      name: UI/UX Quality Review
+      summary: Produce prioritized UI findings grouped by flow, hierarchy, spacing, consistency, noise, affordances, feedback, data display, and responsive risk.
+
+    - id: primitive.flow-and-states-review
+      type: primitive_skill
+      name: Flow And States Review
+      summary: Verify the user can complete the job and recover through empty, loading, error, skip, search, and no-result states.
+
+    - id: primitive.visual-hierarchy-ranking
+      type: primitive_skill
+      name: Visual Hierarchy Ranking
+      summary: Rank the first, second, and third most important screen elements before changing style.
+
+    - id: primitive.spacing-and-layout-system
+      type: primitive_skill
+      name: Spacing And Layout System
+      summary: Audit gaps, padding, type sizes, and container widths against a consistent 4-pixel-derived scale.
+
+    - id: primitive.typography-system-review
+      type: primitive_skill
+      name: Typography System Review
+      summary: Review type roles, line height, letter spacing, contrast, and typeface choice for readable hierarchy.
+
+    - id: primitive.color-and-contrast-review
+      type: primitive_skill
+      name: Color And Contrast Review
+      summary: Check color proportions, semantic color use, contrast, dark-mode saturation, and palette balance.
+
+    - id: primitive.component-consistency-review
+      type: primitive_skill
+      name: Component Consistency Review
+      summary: Find ad hoc repeated elements and normalize shared component values across same-type UI.
+
+    - id: primitive.feedback-and-affordance-review
+      type: primitive_skill
+      name: Feedback And Affordance Review
+      summary: Check hover, active, focus, disabled, loading, success, error, saved, icon, label, tooltip, and microinteraction behavior.
+
+    - id: primitive.responsive-fit-review
+      type: primitive_skill
+      name: Responsive Fit Review
+      summary: Verify text, controls, repeated items, and charts fit on mobile and desktop without overlap.
+
+    - id: primitive.delight-and-anti-delight-audit
+      type: primitive_skill
+      name: Delight And Anti-Delight Audit
+      summary: Identify valley moments, useful delight, surface-only decoration, and inclusion risks.
+
+    - id: guardrail.no-decoration-first
+      type: guardrail
+      name: No Decoration First
+      summary: Do not recommend decorative gradients, cards, shadows, or effects before flow, hierarchy, and clarity are fixed.
+
+    - id: guardrail.no-off-scale-values
+      type: guardrail
+      name: No Off-Scale Values
+      summary: Reject arbitrary spacing and font-size values that do not belong to the chosen system.
+
+    - id: output.prioritized-ui-findings
+      type: output_artifact
+      name: Prioritized UI Findings
+      summary: Findings grouped by review category with what is wrong, why it matters, specific fix, and priority.
+
+source_claims:
+    - id: claim.kole.beginner.flow-before-pixels
+      source_id: source.kole-jain.beginner-ui-ux-mistakes
+      summary: UI quality should begin with whether the user can complete and recover from the flow, not visual decoration.
+      used_for:
+          - primitive.flow-and-states-review
+          - guardrail.no-decoration-first
+
+    - id: claim.kole.beginner.consistency-and-states
+      source_id: source.kole-jain.beginner-ui-ux-mistakes
+      summary: Beginner-looking interfaces often miss states, consistent components, icon discipline, and clear feedback.
+      used_for:
+          - primitive.component-consistency-review
+          - primitive.feedback-and-affordance-review
+
+    - id: claim.kole.concepts.interface-coverage
+      source_id: source.kole-jain.every-ui-ux-concept
+      summary: A practical UI review needs broad coverage across affordances, feedback, data presentation, and interaction concepts.
+      used_for:
+          - primitive.feedback-and-affordance-review
+          - output.prioritized-ui-findings
+
+    - id: claim.designspo.hierarchy.rank-before-style
+      source_id: source.designspo.visual-hierarchy
+      summary: Visual hierarchy starts by ranking importance before selecting size, color, imagery, or other contrast levers.
+      used_for:
+          - primitive.visual-hierarchy-ranking
+
+    - id: claim.designspo.hierarchy.cohesion
+      source_id: source.designspo.visual-hierarchy
+      summary: Same-type components should share values so changes in hierarchy are intentional rather than accidental.
+      used_for:
+          - primitive.component-consistency-review
+
+    - id: claim.designspo.typography.roles-and-line-height
+      source_id: source.designspo.typography
+      summary: Type quality depends on defined roles and line-height or letter-spacing choices matched to text size and use.
+      used_for:
+          - primitive.typography-system-review
+
+    - id: claim.designspo.color.proportion-and-context
+      source_id: source.designspo.color-theory
+      summary: Color should be selected by medium and context, proportioned intentionally, and used for meaning rather than pop psychology.
+      used_for:
+          - primitive.color-and-contrast-review
+
+    - id: claim.designspo.golden-rule.four-pixel-system
+      source_id: source.designspo.golden-rule-web-design
+      summary: Spacing, padding, gaps, widths, and font sizes should derive from a consistent 4-pixel mathematical system.
+      used_for:
+          - primitive.spacing-and-layout-system
+          - guardrail.no-off-scale-values
+
+    - id: claim.nesrine.delight.three-pillars
+      source_id: source.nesrine-changuel.delightful-products
+      summary: Delight work should remove friction, anticipate needs, or exceed expectations after functional reliability is addressed.
+      used_for:
+          - primitive.delight-and-anti-delight-audit
+
+    - id: claim.nesrine.delight.anti-delight
+      source_id: source.nesrine-changuel.delightful-products
+      summary: Celebrations, emotional mimicry, and gamification can become anti-delight when user context or inclusion risk is ignored.
+      used_for:
+          - primitive.delight-and-anti-delight-audit
+          - guardrail.no-decoration-first
+
+edges:
+    - from: skill.ui-ux-quality-review
+      to: primitive.flow-and-states-review
+      type: composed_of
+      confidence: 0.95
+      rationale: Flow and states are the first review pass and prevent decorative fixes from masking broken UX.
+
+    - from: skill.ui-ux-quality-review
+      to: primitive.visual-hierarchy-ranking
+      type: composed_of
+      confidence: 0.95
+      rationale: Hierarchy is the main organizing primitive for screen clarity.
+
+    - from: skill.ui-ux-quality-review
+      to: primitive.spacing-and-layout-system
+      type: composed_of
+      confidence: 0.9
+      rationale: Spacing and layout math are core quantitative checks in the skill.
+
+    - from: skill.ui-ux-quality-review
+      to: primitive.typography-system-review
+      type: composed_of
+      confidence: 0.9
+      rationale: Typography roles and readability are central to the foundational rules.
+
+    - from: skill.ui-ux-quality-review
+      to: primitive.color-and-contrast-review
+      type: composed_of
+      confidence: 0.85
+      rationale: Color and contrast affect hierarchy, meaning, accessibility-adjacent readability, and visual noise.
+
+    - from: skill.ui-ux-quality-review
+      to: primitive.component-consistency-review
+      type: composed_of
+      confidence: 0.9
+      rationale: Consistency is one of the repeated review categories and a common amateur UI failure mode.
+
+    - from: skill.ui-ux-quality-review
+      to: primitive.feedback-and-affordance-review
+      type: composed_of
+      confidence: 0.9
+      rationale: The skill explicitly checks icons, labels, feedback states, and microinteractions.
+
+    - from: skill.ui-ux-quality-review
+      to: primitive.responsive-fit-review
+      type: composed_of
+      confidence: 0.85
+      rationale: The review requires mobile and desktop fit checks to catch overlap and cramped layouts.
+
+    - from: skill.ui-ux-quality-review
+      to: primitive.delight-and-anti-delight-audit
+      type: composed_of
+      confidence: 0.8
+      rationale: Delight is an optional final pass after foundational quality is handled.
+
+    - from: primitive.flow-and-states-review
+      to: claim.kole.beginner.flow-before-pixels
+      type: cites
+      confidence: 0.9
+      rationale: Kole Jain supplies the flow-before-polish operating order.
+
+    - from: primitive.component-consistency-review
+      to: claim.kole.beginner.consistency-and-states
+      type: cites
+      confidence: 0.85
+      rationale: The beginner mistakes source names component and state consistency as visible quality gaps.
+
+    - from: primitive.feedback-and-affordance-review
+      to: claim.kole.concepts.interface-coverage
+      type: cites
+      confidence: 0.75
+      rationale: The broad concept map supports coverage across affordances and feedback.
+
+    - from: primitive.visual-hierarchy-ranking
+      to: claim.designspo.hierarchy.rank-before-style
+      type: cites
+      confidence: 0.95
+      rationale: The hierarchy primitive directly operationalizes rank-before-style.
+
+    - from: primitive.component-consistency-review
+      to: claim.designspo.hierarchy.cohesion
+      type: cites
+      confidence: 0.85
+      rationale: Cohesion explains why same-type components need shared values.
+
+    - from: primitive.typography-system-review
+      to: claim.designspo.typography.roles-and-line-height
+      type: cites
+      confidence: 0.95
+      rationale: Typography roles, line height, and letter spacing are sourced from this claim.
+
+    - from: primitive.color-and-contrast-review
+      to: claim.designspo.color.proportion-and-context
+      type: cites
+      confidence: 0.9
+      rationale: Color selection and proportion rules are sourced from DesignSpo's color theory layer.
+
+    - from: primitive.spacing-and-layout-system
+      to: claim.designspo.golden-rule.four-pixel-system
+      type: cites
+      confidence: 0.95
+      rationale: The 4-pixel system is the primary spacing and layout source claim.
+
+    - from: primitive.delight-and-anti-delight-audit
+      to: claim.nesrine.delight.three-pillars
+      type: cites
+      confidence: 0.9
+      rationale: The optional delight pass uses the three pillars as its triage model.
+
+    - from: primitive.delight-and-anti-delight-audit
+      to: claim.nesrine.delight.anti-delight
+      type: cites
+      confidence: 0.9
+      rationale: The anti-delight checks prevent surface delight from creating harm or mistrust.
+
+    - from: guardrail.no-decoration-first
+      to: claim.kole.beginner.flow-before-pixels
+      type: cites
+      confidence: 0.85
+      rationale: The skill should not use decoration to hide unresolved flow and clarity problems.
+
+    - from: guardrail.no-off-scale-values
+      to: claim.designspo.golden-rule.four-pixel-system
+      type: cites
+      confidence: 0.95
+      rationale: Off-scale values conflict with the mathematical system.
+
+    - from: primitive.flow-and-states-review
+      to: output.prioritized-ui-findings
+      type: operationalizes
+      confidence: 0.9
+      rationale: Flow and state issues appear as the first group in the final findings.
+
+    - from: primitive.visual-hierarchy-ranking
+      to: output.prioritized-ui-findings
+      type: operationalizes
+      confidence: 0.9
+      rationale: Hierarchy and content clarity are required finding categories.
+
+    - from: primitive.delight-and-anti-delight-audit
+      to: output.prioritized-ui-findings
+      type: operationalizes
+      confidence: 0.75
+      rationale: Delight findings append only after foundational review categories are complete.
+
+operational_map:
+    review_order:
+        - flow and missing states
+        - hierarchy and content clarity
+        - spacing and layout
+        - consistency and components
+        - visual noise
+        - icons and affordances
+        - interaction feedback
+        - charts and data display
+        - mobile and responsive risk
+        - delight and anti-delight final pass
+    public_article_focus:
+        - Publish as an agent-readable UI review rubric with human-readable source lineage.
+        - Keep accessibility as a sibling skill rather than claiming full WCAG coverage.
+        - Avoid local analysis paths in public copy.
+
+open_questions:
+    - Should charts and data visualization become a separate primitive with its own source stack?
+    - Should the delight pass remain optional here or move into the dedicated delightful-product-review skill after public feedback?

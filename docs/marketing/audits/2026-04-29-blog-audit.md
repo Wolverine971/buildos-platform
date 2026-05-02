@@ -47,7 +47,7 @@ These are the bar. Everything else gets measured against them.
 6. `philosophy/you-stopped-choosing-what-you-think-about.md` — 8/10.
 7. `talking-listening-productivity-phases.md` — 8/10. Should move to `/philosophy/`. Currently `published: false`, ready to ship.
 8. `agent-skills/google-calendar-for-ai-agents-search-before-you-create.md` — 8/10. Original technical thinking, distinctive voice.
-9. `agent-skills/debug-the-harness-not-the-model.md` — 8/10.
+9. `advanced-guides/debug-the-harness-not-the-model.md` — 8/10. Moved out of agent skills because it is a regular blog/framework article, not a portable skill.
 10. `case-studies/buildos-vs-monday-thought-organization.md` — 7.5/10. Solid comparison; needs voice tightening.
 11. `case-studies/buildos-vs-chatgpt-context-that-compounds.md` — 7/10.
 12. `productivity-tips/tech-project-managers-guide.md` — 8/10. The PM-guide post that proves the productivity-tips folder _can_ be good when given a real audience.

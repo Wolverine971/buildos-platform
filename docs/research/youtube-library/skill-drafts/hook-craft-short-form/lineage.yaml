@@ -1,0 +1,319 @@
+# docs/research/youtube-library/skill-drafts/hook-craft-short-form/lineage.yaml
+lineage_version: 0.1
+updated: 2026-05-02
+
+root_skill:
+    id: hook-craft-short-form
+    name: Hook Craft For Short-Form
+    path: docs/research/youtube-library/skill-drafts/hook-craft-short-form/SKILL.md
+    status: draft
+    summary: Draft, audit, and rewrite opening hooks that earn attention without losing topic clarity or payoff coherence.
+
+sources:
+    - id: source.kallaway.irresistible-hooks
+      type: youtube_analysis
+      title: How to Create Irresistible Hooks (and blow up your content)
+      creator: Kallaway
+      url: https://www.youtube.com/watch?v=LmXpbP7dD48
+      local_path: docs/research/youtube-library/analyses/2026-04-29_kallaway_irresistible-hooks_analysis.md
+      source_role: primary
+      used_for:
+          - three-beat hook structure
+          - lean mechanisms
+          - visual hook priority
+          - lead-with-pain rule
+
+    - id: source.kallaway.hooks-impossible-to-skip
+      type: youtube_analysis
+      title: Give me 15 mins, and I'll make your hooks impossible to skip
+      creator: Kallaway
+      url: https://www.youtube.com/watch?v=2byPP_9F0-Q
+      local_path: docs/research/youtube-library/analyses/2026-04-29_kallaway_hooks-impossible-to-skip_analysis.md
+      source_role: primary
+      used_for:
+          - topic clarity
+          - on-target curiosity
+          - four-mistake diagnostic
+          - ambiguity test
+          - clarity rewrite prompt
+
+    - id: source.kallaway.100-viral-hooks
+      type: youtube_analysis
+      title: I Studied 100 Viral Hooks, These 6 Will Make You Go Viral
+      creator: Kallaway
+      url: https://www.youtube.com/watch?v=xnOe8aA9Pmw
+      local_path: docs/research/youtube-library/analyses/2026-04-29_kallaway_100-viral-hooks_analysis.md
+      source_role: primary
+      used_for:
+          - hook archetype catalog
+          - visual-audio-visual sandwich
+          - key-visual selection
+          - four-signal alignment
+
+    - id: source.kallaway.6-words-hook
+      type: youtube_analysis
+      title: The ONLY 6 Words You Need to Hook ANY Viewer
+      creator: Kallaway
+      url: https://www.youtube.com/watch?v=S9FlxFv9dxg
+      local_path: docs/research/youtube-library/analyses/2026-04-29_kallaway_6-words-hook_analysis.md
+      source_role: primary
+      used_for:
+          - six-slot grammar
+          - slot-collapse patterns
+          - copy-work drill
+          - audit mode
+
+candidate_v2_sources:
+    - id: skill.content-strategy-beyond-blogging
+      title: Content Strategy Beyond Blogging
+      creator: BuildOS YouTube Library
+      local_path: docs/research/youtube-library/skill-drafts/content-strategy-beyond-blogging/SKILL.md
+      possible_use: Add topic selection and distribution-system context above individual hook drafting.
+    - id: skill.viral-video-script-structure
+      title: Viral Video Script Structure
+      creator: BuildOS YouTube Library
+      local_path: docs/research/youtube-library/skill-drafts/viral-video-script-structure/SKILL.md
+      possible_use: Connect hook selection to body structure, retention beats, and payoff design.
+
+nodes:
+    - id: skill.hook-craft-short-form
+      type: skill
+      name: Hook Craft For Short-Form
+      summary: Produce a hook bundle with archetype, slot map, three beats, visual/text/audio cues, diagnostics, variants, and payoff check.
+
+    - id: primitive.hook-archetype-selection
+      type: primitive_skill
+      name: Hook Archetype Selection
+      summary: Pick a strategic hook shape from the available visual and contrast, not from a blank topic prompt.
+
+    - id: primitive.six-slot-grammar
+      type: primitive_skill
+      name: Six-Slot Grammar
+      summary: Fill subject, action, objective, contrast, proof, and time slots before chasing clever wording.
+
+    - id: primitive.three-beat-structure
+      type: primitive_skill
+      name: Three-Beat Hook Structure
+      summary: Shape the opener as context lean, scroll-stop interjection, and contrarian snapback.
+
+    - id: primitive.four-mistake-diagnostic
+      type: primitive_skill
+      name: Four-Mistake Diagnostic
+      summary: Audit delay, confusion, irrelevance, and disinterest in order before shipping.
+
+    - id: primitive.visual-text-audio-alignment
+      type: primitive_skill
+      name: Visual Text Audio Alignment
+      summary: Make the spoken hook, key visual, text overlay, and audio cue point at the same opt-in promise.
+
+    - id: primitive.variant-log-and-payoff-check
+      type: primitive_skill
+      name: Variant Log And Payoff Check
+      summary: Produce multiple hook variants and record whether the body actually pays off the promise.
+
+    - id: guardrail.no-empty-snapback
+      type: guardrail
+      name: No Empty Snapback
+      summary: Reject clever contrasts that the body cannot substantiate.
+
+    - id: guardrail.no-blank-llm-hooks
+      type: guardrail
+      name: No Blank LLM Hooks
+      summary: Use LLMs to clarify seeded hooks, not to invent hooks from an empty prompt.
+
+    - id: output.hook-bundle
+      type: output_artifact
+      name: Hook Bundle
+      summary: The required deliverable containing archetype, slot map, beats, spoken hook, overlay, visual, audio, diagnostics, variants, and payoff note.
+
+source_claims:
+    - id: claim.kallaway.irresistible.three-beat
+      source_id: source.kallaway.irresistible-hooks
+      summary: Strong hooks can be structured as a context lean, a scroll-stop interjection, and a contrarian snapback.
+      used_for:
+          - primitive.three-beat-structure
+
+    - id: claim.kallaway.irresistible.visual-load-bearing
+      source_id: source.kallaway.irresistible-hooks
+      summary: Visual hooks carry disproportionate attention weight, so spoken copy should support the key visual.
+      used_for:
+          - primitive.visual-text-audio-alignment
+          - primitive.hook-archetype-selection
+
+    - id: claim.kallaway.impossible.two-variable-test
+      source_id: source.kallaway.hooks-impossible-to-skip
+      summary: A hook must pass topic clarity and on-target curiosity before it is worth polishing.
+      used_for:
+          - primitive.four-mistake-diagnostic
+          - output.hook-bundle
+
+    - id: claim.kallaway.impossible.four-mistakes
+      source_id: source.kallaway.hooks-impossible-to-skip
+      summary: Delay, confusion, irrelevance, and disinterest are the four primary hook failure modes.
+      used_for:
+          - primitive.four-mistake-diagnostic
+
+    - id: claim.kallaway.impossible.clarity-rewrite
+      source_id: source.kallaway.hooks-impossible-to-skip
+      summary: LLM rewriting is useful for preserving meaning while lowering reading level and removing ambiguity.
+      used_for:
+          - guardrail.no-blank-llm-hooks
+
+    - id: claim.kallaway.100-viral-hooks.six-archetypes
+      source_id: source.kallaway.100-viral-hooks
+      summary: Six repeatable hook archetypes can describe the major strategic shapes of short-form openings.
+      used_for:
+          - primitive.hook-archetype-selection
+
+    - id: claim.kallaway.100-viral-hooks.sandwich
+      source_id: source.kallaway.100-viral-hooks
+      summary: Viewers scan visual context, parse the spoken hook, then return to the visual for confirmation.
+      used_for:
+          - primitive.visual-text-audio-alignment
+
+    - id: claim.kallaway.6-words.slot-grammar
+      source_id: source.kallaway.6-words-hook
+      summary: 'Hooks can be audited through six structural slots: subject, action, objective, contrast, proof, and time.'
+      used_for:
+          - primitive.six-slot-grammar
+
+    - id: claim.kallaway.6-words.copy-work
+      source_id: source.kallaway.6-words-hook
+      summary: Copy-work and slot tagging make hook craft a repeatable audit process instead of blank-page ideation.
+      used_for:
+          - primitive.variant-log-and-payoff-check
+          - guardrail.no-blank-llm-hooks
+
+edges:
+    - from: skill.hook-craft-short-form
+      to: primitive.hook-archetype-selection
+      type: composed_of
+      confidence: 0.95
+      rationale: The skill begins by selecting the strategic contrast shape from available visual material.
+
+    - from: skill.hook-craft-short-form
+      to: primitive.six-slot-grammar
+      type: composed_of
+      confidence: 0.95
+      rationale: The slot grammar supplies the structural skeleton for generated and audited hooks.
+
+    - from: skill.hook-craft-short-form
+      to: primitive.three-beat-structure
+      type: composed_of
+      confidence: 0.9
+      rationale: The sentence-level mechanics are represented by the three-beat structure.
+
+    - from: skill.hook-craft-short-form
+      to: primitive.four-mistake-diagnostic
+      type: composed_of
+      confidence: 0.95
+      rationale: The skill refuses to ship until the opener passes the diagnostic sequence.
+
+    - from: skill.hook-craft-short-form
+      to: primitive.visual-text-audio-alignment
+      type: composed_of
+      confidence: 0.9
+      rationale: The output must include visual, text, and audio cues, not just spoken copy.
+
+    - from: skill.hook-craft-short-form
+      to: primitive.variant-log-and-payoff-check
+      type: composed_of
+      confidence: 0.9
+      rationale: The skill outputs multiple variants and logs payoff coherence after selection.
+
+    - from: primitive.hook-archetype-selection
+      to: claim.kallaway.100-viral-hooks.six-archetypes
+      type: cites
+      confidence: 0.95
+      rationale: The archetype catalog comes directly from this source layer.
+
+    - from: primitive.hook-archetype-selection
+      to: claim.kallaway.irresistible.visual-load-bearing
+      type: cites
+      confidence: 0.85
+      rationale: The archetype should be selected from the available visual, not topic text alone.
+
+    - from: primitive.six-slot-grammar
+      to: claim.kallaway.6-words.slot-grammar
+      type: cites
+      confidence: 0.95
+      rationale: The six-slot structure is the primitive's direct source claim.
+
+    - from: primitive.three-beat-structure
+      to: claim.kallaway.irresistible.three-beat
+      type: cites
+      confidence: 0.95
+      rationale: The context lean, scroll-stop, and snapback structure comes from this source layer.
+
+    - from: primitive.four-mistake-diagnostic
+      to: claim.kallaway.impossible.four-mistakes
+      type: cites
+      confidence: 0.95
+      rationale: The diagnostic pass names and orders the four mistake modes.
+
+    - from: primitive.four-mistake-diagnostic
+      to: claim.kallaway.impossible.two-variable-test
+      type: cites
+      confidence: 0.9
+      rationale: The final diagnostic requires topic clarity and on-target curiosity.
+
+    - from: primitive.visual-text-audio-alignment
+      to: claim.kallaway.100-viral-hooks.sandwich
+      type: cites
+      confidence: 0.95
+      rationale: The comprehension sandwich explains why all four signals need to align.
+
+    - from: primitive.variant-log-and-payoff-check
+      to: claim.kallaway.6-words.copy-work
+      type: cites
+      confidence: 0.8
+      rationale: Variant logging extends the copy-work posture into reusable founder voice memory.
+
+    - from: guardrail.no-empty-snapback
+      to: primitive.three-beat-structure
+      type: depends_on
+      confidence: 0.85
+      rationale: The snapback is only valid if the body can substantiate it.
+
+    - from: guardrail.no-blank-llm-hooks
+      to: claim.kallaway.impossible.clarity-rewrite
+      type: cites
+      confidence: 0.8
+      rationale: The source supports LLM use as a clarity rewrite step, not as blank hook invention.
+
+    - from: primitive.hook-archetype-selection
+      to: output.hook-bundle
+      type: operationalizes
+      confidence: 0.9
+      rationale: The selected archetype is the first field in the hook bundle.
+
+    - from: primitive.six-slot-grammar
+      to: output.hook-bundle
+      type: operationalizes
+      confidence: 0.9
+      rationale: The slot map is a required output field.
+
+    - from: primitive.four-mistake-diagnostic
+      to: output.hook-bundle
+      type: operationalizes
+      confidence: 0.95
+      rationale: The bundle must report each diagnostic pass before shipping.
+
+operational_map:
+    generation_order:
+        - inventory visual
+        - choose archetype
+        - fill six-slot grammar
+        - lay out three beats
+        - align spoken visual text audio
+        - run four-mistake diagnostic
+        - generate variants
+        - record payoff coherence
+    public_article_focus:
+        - Make hook craft reusable for agents and founders.
+        - Keep Kallaway as the cited source lineage.
+        - Avoid local analysis paths in public copy.
+
+open_questions:
+    - Should future versions split blog/text hooks from short-form video hooks after the first publishing pass?
+    - Should post-publish performance logging become a separate evaluation skill shared across content skills?

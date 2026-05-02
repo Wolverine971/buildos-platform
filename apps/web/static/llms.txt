@@ -31,6 +31,9 @@
 - [Agent Skills](https://build-os.com/blogs/agent-skills): Portable skill guides, definitions, operating playbooks, and source lineages for AI agents
 - [Google Calendar For AI Agents: Search Before You Create](https://build-os.com/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create): Calendar operating rules for agent-safe reads, creates, updates, recurrence handling, and duplicate prevention
 - [Landing Page Scorecard Funnel](https://build-os.com/blogs/agent-skills/landing-page-scorecard-funnel): Source-lineaged skill for designing assessment-driven landing pages, questionnaires, dynamic results, and lead routing
+- [Hook Craft For Short-Form](https://build-os.com/blogs/agent-skills/hook-craft-short-form): Source-lineaged skill for drafting, auditing, and rewriting hooks across video, social, email, and pitch openers
+- [Story-Driven Content Craft](https://build-os.com/blogs/agent-skills/story-driven-content-craft): Source-lineaged skill for structuring nonfiction essays, video scripts, social posts, and founder narratives that hold attention
+- [UI/UX Quality Review](https://build-os.com/blogs/agent-skills/ui-ux-quality-review): Source-lineaged skill for reviewing product screens, landing pages, dashboards, and mobile flows for practical interface quality
 
 ## Philosophy
 
@@ -52,9 +55,13 @@
 - [Task Management Best Practices](https://build-os.com/blogs/productivity-tips/task-management-best-practices): How BuildOS approaches task management differently
 - [The Evolution of Note-Taking](https://build-os.com/blogs/productivity-tips/evolution-of-note-taking): From notebooks to AI-powered thought organization
 
+## Advanced Guides
+
+- [Debug The Harness, Not The Model](https://build-os.com/blogs/advanced-guides/debug-the-harness-not-the-model): LLM product debugging loop for model introspection, harness fixes, eval capture, and new-model prompt audits
+- [Troubleshooting Common Issues](https://build-os.com/blogs/advanced-guides/troubleshooting-common-issues): Solutions for frequent problems
+
 ## Optional
 
-- [Troubleshooting Common Issues](https://build-os.com/blogs/advanced-guides/troubleshooting-common-issues): Solutions for frequent problems
 - [Contact](https://build-os.com/contact): Get in touch with the BuildOS team
 - [Privacy Policy](https://build-os.com/privacy): Data privacy and handling policies
 - [Terms of Service](https://build-os.com/terms): Terms and conditions

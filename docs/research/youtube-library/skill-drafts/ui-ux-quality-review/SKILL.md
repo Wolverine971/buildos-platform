@@ -5,6 +5,7 @@ description: Review app screens, landing pages, and product UI for beginner mist
 skill_type: combo
 categories:
     - product-and-design
+lineage: lineage.yaml
 path: docs/research/youtube-library/skill-drafts/ui-ux-quality-review/SKILL.md
 ---
 

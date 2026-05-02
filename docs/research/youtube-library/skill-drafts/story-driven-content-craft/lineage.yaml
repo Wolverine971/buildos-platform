@@ -1,0 +1,309 @@
+# docs/research/youtube-library/skill-drafts/story-driven-content-craft/lineage.yaml
+lineage_version: 0.1
+updated: 2026-05-02
+
+root_skill:
+    id: story-driven-content-craft
+    name: Story-Driven Content Craft
+    path: docs/research/youtube-library/skill-drafts/story-driven-content-craft/SKILL.md
+    status: draft
+    summary: Structure nonfiction content as nested curiosity loops with stronger rhythm, lens, payoff, and retention craft.
+
+sources:
+    - id: source.kallaway.master-storyteller
+      type: youtube_analysis
+      title: How To Become A Master Storyteller
+      creator: Kallaway
+      url: https://www.youtube.com/watch?v=t5Z-Q1bg1tU
+      local_path: docs/research/youtube-library/analyses/2026-04-29_kallaway_master-storyteller_analysis.md
+      source_role: primary
+      used_for:
+          - six craft moves
+          - but-therefore beat structure
+          - rhythm pass
+          - ending-first workflow
+          - lens selection
+
+    - id: source.kallaway.storytelling-genius
+      type: youtube_analysis
+      title: How to Become a Storytelling Genius (Dopamine Ladders)
+      creator: Kallaway
+      url: https://www.youtube.com/watch?v=jtmstMt4WLc
+      local_path: docs/research/youtube-library/analyses/2026-04-29_kallaway_storytelling-genius-dopamine-ladders_analysis.md
+      source_role: primary
+      used_for:
+          - dopamine ladder
+          - curiosity loop mechanics
+          - validation and non-obvious payoff
+          - channel-level affection and revelation
+
+    - id: source.kallaway.7-storytelling-mistakes
+      type: youtube_analysis
+      title: 7 Storytelling Mistakes That Are KILLING Small Creators
+      creator: Kallaway
+      url: https://www.youtube.com/watch?v=wgXGimZvDa4
+      local_path: docs/research/youtube-library/analyses/2026-04-29_kallaway_7-storytelling-mistakes_analysis.md
+      source_role: primary
+      used_for:
+          - seven-mistake reject pass
+          - Kallaway story arc
+          - rebuy mechanics
+          - villain framing
+          - atomic shareability
+
+candidate_v2_sources:
+    - id: skill.nonfiction-writing-from-lived-conviction
+      title: Nonfiction Writing From Lived Conviction
+      creator: BuildOS YouTube Library
+      local_path: docs/research/youtube-library/skill-drafts/nonfiction-writing-from-lived-conviction/SKILL.md
+      possible_use: Strengthen the upstream inquiry, lived-experience, and contradiction extraction before story craft begins.
+    - id: skill.hook-craft-short-form
+      title: Hook Craft For Short-Form
+      creator: BuildOS YouTube Library
+      local_path: docs/research/youtube-library/skill-drafts/hook-craft-short-form/SKILL.md
+      possible_use: Delegate final hook polish to a more specialized hook skill.
+    - id: skill.content-strategy-beyond-blogging
+      title: Content Strategy Beyond Blogging
+      creator: BuildOS YouTube Library
+      local_path: docs/research/youtube-library/skill-drafts/content-strategy-beyond-blogging/SKILL.md
+      possible_use: Connect story craft to upstream intent-to-format and distribution strategy.
+
+nodes:
+    - id: skill.story-driven-content-craft
+      type: skill
+      name: Story-Driven Content Craft
+      summary: Produce or audit nonfiction pieces through lens, ending, beat outline, dopamine ladder, rhythm, and reject-pass diagnostics.
+
+    - id: primitive.dopamine-ladder-diagnostic
+      type: primitive_skill
+      name: Dopamine Ladder Diagnostic
+      summary: Walk stimulation, captivation, anticipation, validation, affection, and revelation to find the first broken rung.
+
+    - id: primitive.but-therefore-beat-structure
+      type: primitive_skill
+      name: But Therefore Beat Structure
+      summary: Replace additive outlines with conflict and consequence transitions.
+
+    - id: primitive.rhythm-and-tone-pass
+      type: primitive_skill
+      name: Rhythm And Tone Pass
+      summary: Vary sentence length, read aloud, and rewrite broadcast voice into direct address.
+
+    - id: primitive.ending-first-direction
+      type: primitive_skill
+      name: Ending-First Direction
+      summary: Write the last line before drafting so the piece has a memorable landing.
+
+    - id: primitive.lens-selection
+      type: primitive_skill
+      name: Lens Selection
+      summary: Pick a non-obvious, founder-specific lens instead of generic topic coverage.
+
+    - id: primitive.rebuy-loop-map
+      type: primitive_skill
+      name: Rebuy Loop Map
+      summary: After each payoff, open the next real question so the viewer repeatedly re-decides to stay.
+
+    - id: primitive.seven-mistake-reject-pass
+      type: primitive_skill
+      name: Seven-Mistake Reject Pass
+      summary: Filter traditional arcs, W-stack errors, missing rebuys, missing villains, weak rooting interest, low shareability, and absent visuals.
+
+    - id: guardrail.no-manufactured-rebuy-stakes
+      type: guardrail
+      name: No Manufactured Rebuy Stakes
+      summary: Curiosity loops must come from real stakes the body can defend, not fake cliffhangers.
+
+    - id: guardrail.no-tier-one-lens
+      type: guardrail
+      name: No Tier One Lens
+      summary: Reject saturated descriptive coverage unless a non-obvious proof or founder-specific angle is attached.
+
+    - id: output.story-craft-bundle
+      type: output_artifact
+      name: Story Craft Bundle
+      summary: The required deliverable containing inquiry, lens, last line, first line, beat outline, intensity curve, rebuy map, audience map, villain, visual brief, rhythm audit, and reject pass.
+
+source_claims:
+    - id: claim.master-storyteller.but-therefore
+      source_id: source.kallaway.master-storyteller
+      summary: Strong narrative beats connect through conflict and consequence instead of "and then" accumulation.
+      used_for:
+          - primitive.but-therefore-beat-structure
+
+    - id: claim.master-storyteller.rhythm-tone-direction-lens
+      source_id: source.kallaway.master-storyteller
+      summary: Story craft improves through rhythm, direct tone, ending-first direction, non-obvious lens, and visual hook decisions.
+      used_for:
+          - primitive.rhythm-and-tone-pass
+          - primitive.ending-first-direction
+          - primitive.lens-selection
+
+    - id: claim.storytelling-genius.dopamine-ladder
+      source_id: source.kallaway.storytelling-genius
+      summary: Viewers climb a six-rung ladder from stimulation to revelation; skipped rungs collapse retention.
+      used_for:
+          - primitive.dopamine-ladder-diagnostic
+
+    - id: claim.storytelling-genius.validation
+      source_id: source.kallaway.storytelling-genius
+      summary: Curiosity pays off only when validation is non-obvious and worth the anticipation it created.
+      used_for:
+          - primitive.rebuy-loop-map
+          - guardrail.no-manufactured-rebuy-stakes
+
+    - id: claim.storytelling-mistakes.kallaway-arc
+      source_id: source.kallaway.7-storytelling-mistakes
+      summary: Internet-native stories should start high, spike early, release, and re-peak instead of relying on a slow traditional arc.
+      used_for:
+          - primitive.rebuy-loop-map
+          - primitive.seven-mistake-reject-pass
+
+    - id: claim.storytelling-mistakes.w-stack-villain-shareability
+      source_id: source.kallaway.7-storytelling-mistakes
+      summary: The reject pass catches W-order mistakes, missing villains, missing rooting interest, weak atomic shareability, and absent visuals.
+      used_for:
+          - primitive.seven-mistake-reject-pass
+
+edges:
+    - from: skill.story-driven-content-craft
+      to: primitive.dopamine-ladder-diagnostic
+      type: composed_of
+      confidence: 0.9
+      rationale: The skill diagnoses retention by walking the ladder in order.
+
+    - from: skill.story-driven-content-craft
+      to: primitive.but-therefore-beat-structure
+      type: composed_of
+      confidence: 0.9
+      rationale: Beat structure is the core outline construction method.
+
+    - from: skill.story-driven-content-craft
+      to: primitive.rhythm-and-tone-pass
+      type: composed_of
+      confidence: 0.85
+      rationale: Rhythm and tone are explicit rewrite passes after structure is clean.
+
+    - from: skill.story-driven-content-craft
+      to: primitive.ending-first-direction
+      type: composed_of
+      confidence: 0.85
+      rationale: The last line guides the piece's direction and payoff.
+
+    - from: skill.story-driven-content-craft
+      to: primitive.lens-selection
+      type: composed_of
+      confidence: 0.9
+      rationale: Non-obvious lens selection prevents generic topic coverage.
+
+    - from: skill.story-driven-content-craft
+      to: primitive.rebuy-loop-map
+      type: composed_of
+      confidence: 0.9
+      rationale: Rebuys are how the piece earns repeated attention decisions.
+
+    - from: skill.story-driven-content-craft
+      to: primitive.seven-mistake-reject-pass
+      type: composed_of
+      confidence: 0.95
+      rationale: The seven mistakes form the final QA pass.
+
+    - from: primitive.but-therefore-beat-structure
+      to: claim.master-storyteller.but-therefore
+      type: cites
+      confidence: 0.95
+      rationale: The primitive directly operationalizes the but/therefore rule.
+
+    - from: primitive.rhythm-and-tone-pass
+      to: claim.master-storyteller.rhythm-tone-direction-lens
+      type: cites
+      confidence: 0.9
+      rationale: Rhythm and tone are part of the source's six craft moves.
+
+    - from: primitive.ending-first-direction
+      to: claim.master-storyteller.rhythm-tone-direction-lens
+      type: cites
+      confidence: 0.9
+      rationale: Ending-first direction is one of the craft moves.
+
+    - from: primitive.lens-selection
+      to: claim.master-storyteller.rhythm-tone-direction-lens
+      type: cites
+      confidence: 0.9
+      rationale: The lens primitive is sourced from the craft-move layer.
+
+    - from: primitive.dopamine-ladder-diagnostic
+      to: claim.storytelling-genius.dopamine-ladder
+      type: cites
+      confidence: 0.95
+      rationale: The diagnostic sequence comes from the dopamine ladder model.
+
+    - from: primitive.rebuy-loop-map
+      to: claim.storytelling-genius.validation
+      type: cites
+      confidence: 0.85
+      rationale: Rebuys must resolve with non-obvious validation before opening the next loop.
+
+    - from: primitive.rebuy-loop-map
+      to: claim.storytelling-mistakes.kallaway-arc
+      type: cites
+      confidence: 0.9
+      rationale: The internet-native arc demands repeated re-peaks.
+
+    - from: primitive.seven-mistake-reject-pass
+      to: claim.storytelling-mistakes.w-stack-villain-shareability
+      type: cites
+      confidence: 0.95
+      rationale: The reject pass is built from these named failure modes.
+
+    - from: guardrail.no-manufactured-rebuy-stakes
+      to: claim.storytelling-genius.validation
+      type: cites
+      confidence: 0.8
+      rationale: Fake curiosity loops fail when validation is not real.
+
+    - from: guardrail.no-tier-one-lens
+      to: primitive.lens-selection
+      type: depends_on
+      confidence: 0.85
+      rationale: The lens primitive rejects saturated coverage unless proof makes it distinctive.
+
+    - from: primitive.dopamine-ladder-diagnostic
+      to: output.story-craft-bundle
+      type: operationalizes
+      confidence: 0.9
+      rationale: The bundle reports the ladder diagnostic.
+
+    - from: primitive.rebuy-loop-map
+      to: output.story-craft-bundle
+      type: operationalizes
+      confidence: 0.9
+      rationale: The bundle includes a rebuy map and intensity curve.
+
+    - from: primitive.seven-mistake-reject-pass
+      to: output.story-craft-bundle
+      type: operationalizes
+      confidence: 0.95
+      rationale: The bundle includes every reject-pass result.
+
+operational_map:
+    generation_order:
+        - source inquiry
+        - generate lenses
+        - write last line
+        - outline beats with but/therefore
+        - map intensity curve
+        - stack rebuys
+        - define audience and villain
+        - pair beats with visuals
+        - draft with rhythm and tone passes
+        - write hook last
+        - run seven-mistake reject pass
+    public_article_focus:
+        - Make story craft useful for agents rewriting essays, scripts, and founder narratives.
+        - Cite Kallaway as the source lineage.
+        - Link conceptually to hook craft without duplicating hook-specific mechanics.
+
+open_questions:
+    - Should long-form essays and short-form scripts split into separate output modes after publishing?
+    - Should dopamine-ladder diagnostics become a shared evaluation primitive for video and blog content skills?

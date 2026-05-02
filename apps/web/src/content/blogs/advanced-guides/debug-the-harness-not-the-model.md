@@ -1,32 +1,25 @@
 ---
-title: "Debug The Harness, Not The Model: An Agent Skill From Anthropic's Claude Code Team"
-description: 'A portable agent skill for working with frontier LLMs: when the model does something weird, ask it why, fix the harness, and strip prompt scaffolds every time a new model ships.'
+title: 'Debug The Harness, Not The Model'
+description: 'When an LLM agent behaves unexpectedly, ask the model why, fix the surrounding harness, and trim stale prompt scaffolding after every model upgrade.'
 author: 'DJ Wayne'
 date: '2026-04-27'
-lastmod: '2026-04-27'
+lastmod: '2026-05-02'
 changefreq: 'monthly'
 priority: '0.8'
-published: false
-tags: ['agent-skills', 'agent-engineering', 'llm', 'harness', 'evals', 'claude-code', 'buildos']
-readingTime: 9
+published: true
+tags: ['agent-engineering', 'llm', 'harness', 'evals', 'claude-code', 'buildos']
+readingTime: 6
 excerpt: 'Cat Wu, head of product for Claude Code, calls model introspection one of her most underrated techniques. This is the operating model: ask the model why it failed, fix the harness, and remove crutches every time a new model ships.'
-skillId: 'agent-engineering/debug-the-harness-not-the-model'
-skillType: 'soft'
-skillCategory: 'agent-engineering'
-providers: ['Claude', 'OpenAI', 'any frontier LLM']
-compatibleAgents: ['BuildOS-compatible agents', 'Claude Code', 'Codex', 'portable Agent Skills']
-stackWith: ['Eval-driven product development', 'Founder assistant stack']
-skillSource: 'docs/marketing/growth/research/youtube-transcripts/2026-04-24_PplmzlgE0kg.md'
 sourceTitle: "How Anthropic's product team moves faster than anyone else | Cat Wu (Head of Product, Claude Code)"
 sourceCreator: "Lenny's Podcast"
 sourceUrl: 'https://www.youtube.com/watch?v=PplmzlgE0kg'
 sourceChannelUrl: 'https://www.youtube.com/@LennysPodcast'
-path: apps/web/src/content/blogs/agent-skills/debug-the-harness-not-the-model.md
+path: apps/web/src/content/blogs/advanced-guides/debug-the-harness-not-the-model.md
 ---
 
 Most teams treat agent failures the same way they treat code bugs: stare at the trace, guess at a fix, push a patch. With LLM-powered products, that loop is almost always wrong. The model already knows more about what it just did than your stack trace does. You just have to ask it.
 
-This skill is built around one of the more underrated techniques used inside Anthropic's Claude Code team: when the model does something unexpected, ask the model to introspect on its own behavior, and use the answer to fix the harness around it.
+This debugging loop is built around one of the more underrated techniques used inside Anthropic's Claude Code team: when the model does something unexpected, ask the model to introspect on its own behavior, and use the answer to fix the harness around it.
 
 It pairs with a second habit you should adopt the moment a new model ships: read your entire system prompt and delete every line the smarter model no longer needs.
 
@@ -34,13 +27,13 @@ Both habits push in the same direction. Stop trying to out-guess the model. Trea
 
 ## Source Attribution
 
-This skill was distilled from [How Anthropic's product team moves faster than anyone else | Cat Wu (Head of Product, Claude Code)](https://www.youtube.com/watch?v=PplmzlgE0kg) on [Lenny's Podcast](https://www.youtube.com/@LennysPodcast).
+This post was distilled from [How Anthropic's product team moves faster than anyone else | Cat Wu (Head of Product, Claude Code)](https://www.youtube.com/watch?v=PplmzlgE0kg) on [Lenny's Podcast](https://www.youtube.com/@LennysPodcast).
 
 The technique appears around the 51-minute mark, when Cat describes it as one of the things she does most often when a model behaves in an unexpected way, and again at the 60-minute mark when she walks through how the team rereads the entire system prompt every time a new model ships.
 
-## What This Skill Is For
+## When To Use This Loop
 
-Use this skill when you build, maintain, or debug a product that runs on a frontier LLM and you have any kind of harness around it: a system prompt, sub-agents, tool definitions, retrieval pipeline, or skill files.
+Use this loop when you build, maintain, or debug a product that runs on a frontier LLM and you have any kind of harness around it: a system prompt, sub-agents, tool definitions, retrieval pipeline, or skill files.
 
 **Trigger phrases**
 
@@ -81,7 +74,7 @@ Cat describes a classic case: the agent makes a frontend change, runs tests, but
 
 The second habit is the long-lived counterpart. System prompts grow over time. Each crutch you add was reasonable when you added it. Smarter models stop needing those crutches. If you never strip them, your prompt becomes a museum of fixes for problems you no longer have, and it costs tokens, attention, and clarity every single call.
 
-## The Skill In Three Steps
+## The Loop In Three Steps
 
 ### 1. When something looks wrong, ask the model why
 
@@ -127,113 +120,9 @@ The Claude Code team treats this audit as a release-day ritual, not a "when we h
 
 A good rule of thumb: if a smarter model already does the thing naturally, scaffolding for it doesn't help and often hurts. The to-do-list pattern Claude Code added for early models became unnecessary by Opus 4. The team kept it as a UX surface but stopped requiring it in the prompt.
 
-## The Portable Skill Definition
-
-Copy this into `.agents/skills/debug-the-harness-not-the-model/SKILL.md` and adapt to your stack.
-
-```markdown
----
-name: debug-the-harness-not-the-model
-description: When an LLM-powered agent behaves unexpectedly, ask the model to introspect, route the fix to the right layer (prompt, tools, sub-agent, capability), and on every model upgrade strip prompt scaffolds the smarter model no longer needs. Use when an agent regresses, picks the wrong tool, skips a step, or after upgrading to a new model.
----
-
-# Debug The Harness, Not The Model
-
-You are working on or with an LLM-powered product. When the agent behaves unexpectedly, treat its own explanation as primary debugging evidence.
-
-## When To Use This Skill
-
-Trigger this skill when:
-
-- An agent skipped a step, ran the wrong tool, or produced a bad answer that you can reproduce.
-- A previously-working flow regressed.
-- You upgraded the underlying model in the last 7 days.
-- Your system prompt has grown to over 1,500 tokens and you have not audited it recently.
-- A user complained about a specific failure and you have the conversation.
-
-Do not trigger this skill when:
-
-- You are debugging deterministic non-LLM code. Read the trace.
-- The product has never worked end to end once. Build a baseline first.
-- You believe the failure is a capability gap and no prompt change will fix it.
-
-## Core Workflow
-
-### Step 1 — Ask the model why
-
-In the failing conversation, ask the model directly:
-
-- "Walk me through your reasoning for the last decision."
-- "What in the system prompt or tools made you choose that path?"
-- "If one specific instruction or tool misled you, which one?"
-
-Collect the explanation. If vague, push for a verbatim quote of the misleading instruction.
-
-### Step 2 — Route the fix
-
-Map the model's answer to the correct layer:
-
-- Misleading instruction → system prompt edit.
-- Wrong or missing tool → tool definition, description, or availability.
-- Delegated work that wasn't verified → sub-agent contract or final-verification step.
-- Ambiguous user prompt → user prompt template or a clarifying-question step.
-- "I genuinely don't know how" → capability gap; do not patch, log it.
-
-### Step 3 — Capture the failure as an eval
-
-Add a small eval that reproduces the failure. Aim for ten great evals total, not a hundred mediocre ones. Treat each new failure as a chance to grow the set.
-
-## The New-Model Audit
-
-Every time you upgrade the model:
-
-1. Read the entire system prompt top to bottom.
-2. For every paragraph, ask whether the smarter model still needs this reminder.
-3. Delete or shorten anything labeled with "remember to", "always", "never", "don't forget" that the new model already follows on its own.
-4. Run the eval set. If something regresses, restore the most relevant scaffold. If nothing regresses, ship the lighter prompt.
-
-## Decision Heuristics
-
-- Prefer one introspection question over five guesses.
-- Prefer deletion over addition when working on a long-lived prompt.
-- Trust verbatim citations of the prompt over vague self-justifications.
-- Treat the to-do-list crutch as the canonical example: scaffolding that helped Sonnet 4 may hurt Opus 4.6.
-- A 95%-reliable automation is not an automation. Push to 100% by capturing the last 5% as evals and prompt fixes.
-
-## Stop Conditions
-
-Stop and ask a human if:
-
-- Two introspection rounds give contradictory answers.
-- The model explicitly says it lacks a capability that you cannot give it.
-- A prompt edit fixes the eval but breaks two other evals.
-- The fix would require you to ship customer data into the system prompt.
-
-## Examples
-
-### Example 1 — Skipped frontend verification
-
-The agent makes a frontend change, runs unit tests, reports done. The UI is broken.
-
-Ask: "Why did you skip opening the UI to verify the change?" Model says: "I delegated UI verification to the verifier sub-agent, and I didn't check whether it ran." Fix: tighten the sub-agent contract — verifier must report a checked status, primary agent must not report done without it.
-
-### Example 2 — Model invents a tool
-
-The agent describes calling a tool you don't have. Ask: "Where did you see that tool?" Model says: "The system prompt mentioned `search_repo` in the example, so I assumed it existed." Fix: remove the example or make it real.
-
-### Example 3 — Model upgrade audit
-
-You move from Sonnet 4 to Opus 4.6. Read the prompt. Delete the paragraph that says "before answering, write a step-by-step plan in a to-do list". Re-run evals. Plan-quality eval is unchanged; latency drops 12%; ship.
-
-## References
-
-- Source: [How Anthropic's product team moves faster than anyone else | Cat Wu (Head of Product, Claude Code)](https://www.youtube.com/watch?v=PplmzlgE0kg) — Lenny's Podcast.
-- Companion skill: eval-driven development; ten great evals beat a hundred mediocre ones.
-```
-
 ## How To Use It In BuildOS
 
-BuildOS runs an agentic-chat surface, a brain-dump pipeline, daily briefs, and a project ontology — every one of those is a harness around a frontier model. This skill is how we keep them honest as models change underneath us.
+BuildOS runs an agentic-chat surface, a brain-dump pipeline, daily briefs, and a project ontology — every one of those is a harness around a frontier model. This debugging loop is how we keep them honest as models change underneath us.
 
 A practical example: when the brain-dump processor stopped extracting tasks for a particular kind of stream-of-consciousness input, the right move was not to rewrite the extraction prompt from scratch. It was to ask the model in the failing session what made it skip those candidates. The answer pointed at one bullet in the system prompt that, with the newer model, was being read as an exclusion rule rather than a guideline. One-line edit. Eval added.
 
@@ -241,7 +130,7 @@ You can apply the same loop to your own BuildOS workspace if you wire your agent
 
 ## Failure Modes
 
-Without this skill, agent teams tend to fail in the same handful of ways.
+Without this loop, agent teams tend to fail in the same handful of ways.
 
 **They argue with the trace.** They look at the model output, decide what they think went wrong, and patch the prompt. They never check whether their theory matches the model's actual reasoning. Half the time it doesn't.
 
@@ -260,24 +149,3 @@ Without this skill, agent teams tend to fail in the same handful of ways.
 - The "ten great evals over hundreds" guidance appears at 55:00 ("Why building evals is underappreciated").
 - The 95%-isn't-an-automation rule is at 1:09:18 ("Why 95% automation isn't good enough").
 - The system-prompt audit ritual is at 1:02 in the same segment.
-
----
-
-<!--
-AUDIT 2026-04-29
-QUALITY: 8/10
-RECOMMENDATION: LIGHT_EDIT (flip `published: false` to true if intent is to ship, OR clearly mark draft and finish; consider audience fit)
-PURPOSE: Distill an agent-engineering skill (model introspection + new-model audit) from a Cat Wu / Lenny's Podcast appearance into a portable SKILL.md that BuildOS users can drop into .agents/skills/.
-READER VALUE: High for the narrow technical audience of LLM product builders. The mapping table (model says X → fix goes here), the new-model audit ritual, and the BuildOS brain-dump example are all genuinely useful.
-VOICE FIT: Strong founder-engineering voice. Unclear whether this audience (LLM agent builders) is the BuildOS target reader (founders, creators, polymaths "making complex things"). It might be — the founder-assistant-stack framing fits — but it reads as a fairly different reader than the rest of the catalog.
-PLACEMENT: /blogs/agent-skills/ is the right folder IF agent-skills is a real content pillar. Right now there are only 2 files there, no `_index-agent-skills.md` strategy doc, and the folder isn't mentioned in the marketing strategy. The folder needs a thesis or it should be merged into /philosophy/ or /technical/.
-ISSUES:
-- `published: false` — needs a decision. The companion file (google-calendar) is published.
-- Frontmatter has rich custom fields (`skillId`, `skillType`, `skillCategory`, `providers`, `compatibleAgents`, `stackWith`, `installHint`, etc.) that no other blog uses. If these power a real "agent skills marketplace" surface, document it. If they don't, they're noise.
-- The skill is high quality but the post format is hybrid: half blog, half SKILL.md spec. Decide which it is — readers will skim, builders will copy.
-- No cross-link to anti-ai-assistant-execution-engine.md (which is the philosophical parent) or to the Google Calendar agent-skill (its sibling).
-GAPS:
-- No "what is BuildOS doing in this space" framing for a non-engineer reader. A founder landing here needs a one-paragraph "why does a productivity tool ship agent skills?"
-DUPLICATES/OVERLAP: Conceptual overlap with anti-AI manifesto (context engineering vs agent engineering). Should reference it explicitly.
-NOTES: The agent-skills folder needs an editorial thesis: are these published guides for outside engineers, or BuildOS internal docs that happen to live in /blogs/? Pick one. If the goal is SEO + thought-leadership for "agent skills" as a category, you need 5-10 of these and a hub page; with only 2 files, it reads like a half-built section.
--->
