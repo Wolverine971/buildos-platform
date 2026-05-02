@@ -12,7 +12,9 @@
 		CircleHelp,
 		Info,
 		DollarSign,
-		MessageSquare
+		MessageSquare,
+		Map,
+		Sparkles
 	} from 'lucide-svelte';
 	import LinkedinIcon from 'lucide-svelte/icons/linkedin';
 	import XIcon from 'lucide-svelte/icons/twitter';
@@ -36,6 +38,8 @@
 			links: [
 				{ href: '/about', label: 'About', icon: Info },
 				{ href: '/pricing', label: 'Pricing', icon: DollarSign },
+				{ href: '/road-map', label: 'Roadmap', icon: Map },
+				{ href: '/beta', label: 'Join beta', icon: Sparkles },
 				{ href: '/auth/register', label: 'Start in chat', icon: Brain }
 			]
 		},

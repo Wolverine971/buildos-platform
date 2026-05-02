@@ -2,7 +2,7 @@
 layout: docs
 title: Daily Briefs
 slug: daily-briefs
-summary: Short, project-aware briefs delivered where you already are — with a chat that can act on them.
+summary: Short, project-aware briefs delivered by email, SMS, push, and in-app — with an agentic chat that can act on what the brief surfaces, right from the message.
 icon: Mail
 order: 7
 lastUpdated: 2026-04-17

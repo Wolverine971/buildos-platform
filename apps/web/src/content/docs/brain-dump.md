@@ -2,7 +2,7 @@
 layout: docs
 title: Brain Dump & Voice Notes
 slug: brain-dump
-summary: Talk through the messy version of your work. BuildOS turns it into structured projects with memory.
+summary: Talk or type through the messy version of your work. BuildOS turns rough notes and voice dumps into structured projects with durable context and memory.
 icon: Brain
 order: 3
 lastUpdated: 2026-04-17

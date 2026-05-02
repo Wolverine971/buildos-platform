@@ -2,7 +2,7 @@
 layout: docs
 title: Agentic Chat
 slug: agentic-chat
-summary: A collaborator that knows your projects — can audit, forecast, plan, schedule, and write back into the graph.
+summary: An in-app collaborator that already knows your BuildOS projects. Audit context, forecast deadlines, plan work, schedule tasks, and write back into the graph.
 icon: MessageSquare
 order: 4
 lastUpdated: 2026-04-17

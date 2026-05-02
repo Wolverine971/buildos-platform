@@ -2,7 +2,7 @@
 layout: docs
 title: Calendar & Time Blocks
 slug: calendar
-summary: Turn tasks into scheduled work with Google Calendar, and let the agent own your scheduling loop.
+summary: Turn BuildOS tasks into scheduled time blocks on Google Calendar, and let the agent own the rescheduling loop when plans, energy, or deadlines shift.
 icon: Calendar
 order: 6
 lastUpdated: 2026-04-17

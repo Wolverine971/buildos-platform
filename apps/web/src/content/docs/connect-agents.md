@@ -2,7 +2,7 @@
 layout: docs
 title: Connect External Agents
 slug: connect-agents
-summary: Let Claude Code, OpenClaw, or a custom agent work in your BuildOS projects — with scopes you control.
+summary: Connect Claude Code, OpenClaw, or a custom external agent to read and write BuildOS project context, with per-project scopes and audit trails you control.
 icon: Plug
 order: 9
 lastUpdated: 2026-04-18

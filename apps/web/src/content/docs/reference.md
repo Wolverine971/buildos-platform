@@ -2,7 +2,7 @@
 layout: docs
 title: Reference & Help
 slug: reference
-summary: FAQ, contact, feedback, and other places to go when the docs don't cover it.
+summary: FAQ, contact, feedback, support channels, and other places to go when the rest of the BuildOS docs don't cover what you're looking for.
 icon: BookOpen
 order: 10
 lastUpdated: 2026-04-17

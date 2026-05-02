@@ -35,7 +35,7 @@ lineagePath: 'docs/research/youtube-library/skill-drafts/landing-page-scorecard-
 lineagePeople:
     - 'Daniel Priestley'
     - 'April Dunford'
-    - "Lenny's Podcast"
+    - 'Lenny Rachitsky'
 lineageStats:
     sources: 2
     primitives: 9
@@ -45,6 +45,9 @@ lineageStats:
 lineageSources:
     - title: 'The $1 Million Landing Page'
       creator: 'Daniel Priestley'
+      creatorType: 'Person'
+      channelName: 'Daniel Priestley'
+      sourceType: 'youtube_video'
       url: 'https://www.youtube.com/watch?v=az1Zh-FNSno'
       type: 'youtube_analysis'
       sourceRole: 'primary'
@@ -56,7 +59,11 @@ lineageSources:
           - 'dynamic results page'
           - 'lead segmentation'
     - title: 'April Dunford Sales Pitch Framework'
-      creator: "April Dunford via Lenny's Podcast"
+      creator: 'April Dunford'
+      creatorType: 'Person'
+      channelName: "Lenny's Podcast"
+      channelUrl: 'https://www.youtube.com/@LennysPodcast'
+      sourceType: 'youtube_video'
       url: 'https://www.youtube.com/watch?v=-VqmFI9vY7w'
       type: 'youtube_analysis'
       sourceRole: 'primary'

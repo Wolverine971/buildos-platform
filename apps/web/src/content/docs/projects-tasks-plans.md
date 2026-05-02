@@ -2,7 +2,7 @@
 layout: docs
 title: Projects, Tasks & Plans
 slug: projects-tasks-plans
-summary: Organize work into connected projects — tasks, plans, documents, goals, and the people involved.
+summary: Organize complex work into connected projects with tasks, plans, documents, goals, risks, and the people involved — without losing the thread between them.
 icon: FolderOpen
 order: 5
 lastUpdated: 2026-04-17

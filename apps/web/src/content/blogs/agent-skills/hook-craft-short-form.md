@@ -33,7 +33,7 @@ stackWith:
 skillSource: 'docs/research/youtube-library/skill-drafts/hook-craft-short-form/SKILL.md'
 lineagePath: 'docs/research/youtube-library/skill-drafts/hook-craft-short-form/lineage.yaml'
 lineagePeople:
-    - 'Kallaway'
+    - 'Kane Kallaway'
 lineageStats:
     sources: 4
     primitives: 6
@@ -42,16 +42,36 @@ lineageStats:
     candidateV2Sources: 2
 lineageSources:
     - title: 'How to Create Irresistible Hooks (and blow up your content)'
-      creator: 'Kallaway'
+      creator: 'Kane Kallaway'
+      creatorType: 'Person'
+      creatorUrl: 'https://www.youtube.com/@kallawaymarketing'
+      channelName: 'Kallaway'
+      channelUrl: 'https://www.youtube.com/@kallawaymarketing'
+      sourceType: 'youtube_video'
       url: 'https://www.youtube.com/watch?v=LmXpbP7dD48'
     - title: "Give me 15 mins, and I'll make your hooks impossible to skip"
-      creator: 'Kallaway'
+      creator: 'Kane Kallaway'
+      creatorType: 'Person'
+      creatorUrl: 'https://www.youtube.com/@kallawaymarketing'
+      channelName: 'Kallaway'
+      channelUrl: 'https://www.youtube.com/@kallawaymarketing'
+      sourceType: 'youtube_video'
       url: 'https://www.youtube.com/watch?v=2byPP_9F0-Q'
     - title: 'I Studied 100 Viral Hooks, These 6 Will Make You Go Viral'
-      creator: 'Kallaway'
+      creator: 'Kane Kallaway'
+      creatorType: 'Person'
+      creatorUrl: 'https://www.youtube.com/@kallawaymarketing'
+      channelName: 'Kallaway'
+      channelUrl: 'https://www.youtube.com/@kallawaymarketing'
+      sourceType: 'youtube_video'
       url: 'https://www.youtube.com/watch?v=xnOe8aA9Pmw'
     - title: 'The ONLY 6 Words You Need to Hook ANY Viewer'
-      creator: 'Kallaway'
+      creator: 'Kane Kallaway'
+      creatorType: 'Person'
+      creatorUrl: 'https://www.youtube.com/@kallawaymarketing'
+      channelName: 'Kallaway'
+      channelUrl: 'https://www.youtube.com/@kallawaymarketing'
+      sourceType: 'youtube_video'
       url: 'https://www.youtube.com/watch?v=S9FlxFv9dxg'
 path: apps/web/src/content/blogs/agent-skills/hook-craft-short-form.md
 ---

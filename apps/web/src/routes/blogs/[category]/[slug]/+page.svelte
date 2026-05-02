@@ -17,7 +17,7 @@
 	} from '$lib/constants/seo';
 	import type { PageData } from './$types';
 	import { ArrowLeft, Calendar, Clock, History, Tag } from 'lucide-svelte';
-	import { formatBlogDate, parseBlogDate } from '$lib/utils/blog';
+	import { formatBlogDate, parseBlogDate, type BlogLineageSource } from '$lib/utils/blog';
 	import { serializeJsonLd } from '$lib/utils/json-ld';
 
 	let { data }: { data: PageData } = $props();
@@ -36,7 +36,168 @@
 	const lineageSources = $derived(data.post.lineageSources ?? []);
 	const lineagePeople = $derived(data.post.lineagePeople ?? []);
 
+	type JsonLdNode = Record<string, unknown>;
+
+	function isYoutubeUrl(url?: string) {
+		return Boolean(url && (url.includes('youtube.com') || url.includes('youtu.be')));
+	}
+
+	function getLineageSourceId(source: BlogLineageSource, index: number) {
+		return source.url ? `${source.url}#source` : `${articleUrl}#source-${index + 1}`;
+	}
+
+	function getLineageCreatorId(source: BlogLineageSource, index: number) {
+		if (
+			source.creator &&
+			source.channelName &&
+			source.creatorType === 'Organization' &&
+			source.creator === source.channelName &&
+			source.creatorUrl === source.channelUrl
+		) {
+			return getLineageChannelId(source, index);
+		}
+
+		return source.creatorUrl
+			? `${source.creatorUrl}#creator`
+			: `${articleUrl}#source-creator-${index + 1}`;
+	}
+
+	function getLineageChannelId(source: BlogLineageSource, index: number) {
+		return source.channelUrl
+			? `${source.channelUrl}#channel`
+			: `${articleUrl}#source-channel-${index + 1}`;
+	}
+
+	function getLineageChannels(sources: BlogLineageSource[]) {
+		const channels = new Map<string, { name: string; url?: string }>();
+
+		for (const source of sources) {
+			const name = source.channelName;
+			if (!name) continue;
+
+			const key = source.channelUrl ?? name;
+			if (!channels.has(key)) {
+				channels.set(key, { name, url: source.channelUrl });
+			}
+		}
+
+		return [...channels.values()];
+	}
+
+	function buildLineageGraph(sources: BlogLineageSource[], people: string[]) {
+		const nodesById = new Map<string, JsonLdNode>();
+		const sourceRefs: JsonLdNode[] = [];
+		const mentionRefs: JsonLdNode[] = [];
+		const peopleByName = new Map<string, string>();
+
+		const getPersonKey = (name: string) =>
+			name
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, ' ')
+				.trim();
+
+		for (const [index, source] of sources.entries()) {
+			const sourceId = getLineageSourceId(source, index);
+			const creatorId = source.creator ? getLineageCreatorId(source, index) : null;
+			const channelId = source.channelName ? getLineageChannelId(source, index) : null;
+			const sourceType =
+				source.sourceType === 'youtube_video' || isYoutubeUrl(source.url)
+					? 'VideoObject'
+					: 'CreativeWork';
+
+			if (source.creator && creatorId) {
+				nodesById.set(creatorId, {
+					'@type': source.creatorType ?? 'Person',
+					'@id': creatorId,
+					name: source.creator,
+					url: source.creatorUrl,
+					sameAs: source.creatorUrl ? [source.creatorUrl] : undefined
+				});
+				mentionRefs.push({ '@id': creatorId });
+
+				if ((source.creatorType ?? 'Person') === 'Person') {
+					peopleByName.set(getPersonKey(source.creator), creatorId);
+				}
+			}
+
+			if (source.channelName && channelId) {
+				nodesById.set(channelId, {
+					'@type': 'Organization',
+					'@id': channelId,
+					name: source.channelName,
+					url: source.channelUrl,
+					sameAs: source.channelUrl ? [source.channelUrl] : undefined
+				});
+				mentionRefs.push({ '@id': channelId });
+			}
+
+			const sourceNode: JsonLdNode = {
+				'@type': sourceType,
+				'@id': sourceId,
+				name: source.title,
+				url: source.url,
+				creator: creatorId ? { '@id': creatorId } : source.creator,
+				publisher: channelId ? { '@id': channelId } : undefined,
+				isPartOf: channelId ? { '@id': channelId } : undefined
+			};
+
+			nodesById.set(sourceId, sourceNode);
+			sourceRefs.push({ '@id': sourceId });
+		}
+
+		for (const person of people) {
+			const personKey = getPersonKey(person);
+			const existingPersonId = peopleByName.get(personKey);
+
+			if (existingPersonId) {
+				mentionRefs.push({ '@id': existingPersonId });
+				continue;
+			}
+
+			const personId = `${articleUrl}#mentioned-${person
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/^-|-$/g, '')}`;
+			if (!nodesById.has(personId)) {
+				nodesById.set(personId, {
+					'@type': 'Person',
+					'@id': personId,
+					name: person
+				});
+			}
+			peopleByName.set(personKey, personId);
+			mentionRefs.push({ '@id': personId });
+		}
+
+		const uniqueMentionRefs = [
+			...new Map(mentionRefs.map((ref) => [String(ref['@id']), ref])).values()
+		];
+
+		return {
+			nodes: [...nodesById.values()],
+			sourceRefs,
+			mentionRefs: uniqueMentionRefs
+		};
+	}
+
+	const lineageChannels = $derived(getLineageChannels(lineageSources));
+
 	const jsonLd = $derived.by(() => {
+		const primarySource: BlogLineageSource | null = data.post.sourceTitle
+			? {
+					title: data.post.sourceTitle,
+					creator: data.post.sourceCreator,
+					creatorType: 'Organization',
+					url: data.post.sourceUrl,
+					sourceType: isYoutubeUrl(data.post.sourceUrl)
+						? 'youtube_video'
+						: 'creative_work',
+					channelName: data.post.sourceCreator,
+					channelUrl: data.post.sourceChannelUrl
+				}
+			: null;
+		const citationSources = primarySource ? [...lineageSources, primarySource] : lineageSources;
+		const lineageGraph = buildLineageGraph(citationSources, lineagePeople);
 		const graphItems: Record<string, unknown>[] = [
 			{
 				'@type': 'BlogPosting',
@@ -68,20 +229,8 @@
 				keywords: data.post.tags.join(', '),
 				wordCount: data.post.readingTime * 200,
 				timeRequired: `PT${data.post.readingTime}M`,
-				citation: lineageSources.length
-					? lineageSources.map((source) => ({
-							'@type': 'CreativeWork',
-							name: source.title,
-							url: source.url,
-							creator: source.creator
-						}))
-					: undefined,
-				mentions: lineagePeople.length
-					? lineagePeople.map((person) => ({
-							'@type': 'Person',
-							name: person
-						}))
-					: undefined,
+				citation: lineageGraph.sourceRefs.length ? lineageGraph.sourceRefs : undefined,
+				mentions: lineageGraph.mentionRefs.length ? lineageGraph.mentionRefs : undefined,
 				articleSection: categoryDisplayName,
 				inLanguage: 'en-US',
 				copyrightYear: publishedDate?.getFullYear(),
@@ -123,6 +272,8 @@
 				]
 			}
 		];
+
+		graphItems.push(...lineageGraph.nodes);
 
 		if (data.post.faq?.length) {
 			graphItems.push({
@@ -290,6 +441,26 @@
 							{lineagePeople.join(', ')}
 						</p>
 					{/if}
+					{#if lineageChannels.length}
+						<p class="mt-2 text-xs">
+							<span class="font-medium text-foreground">YouTube channels:</span>
+							{#each lineageChannels as channel, index}
+								{#if index > 0}<span>, </span>{/if}
+								{#if channel.url}
+									<a
+										href={channel.url}
+										class="text-accent hover:underline"
+										target="_blank"
+										rel="noreferrer"
+									>
+										{channel.name}
+									</a>
+								{:else}
+									<span>{channel.name}</span>
+								{/if}
+							{/each}
+						</p>
+					{/if}
 					{#if lineageSources.length}
 						<ul class="mt-2 space-y-1.5 text-xs">
 							{#each lineageSources as source}
@@ -308,6 +479,21 @@
 									{/if}
 									{#if source.creator}
 										<span> by {source.creator}</span>
+									{/if}
+									{#if source.channelName && source.channelName !== source.creator}
+										<span> on </span>
+										{#if source.channelUrl}
+											<a
+												href={source.channelUrl}
+												class="text-accent hover:underline"
+												target="_blank"
+												rel="noreferrer"
+											>
+												{source.channelName}
+											</a>
+										{:else}
+											<span>{source.channelName}</span>
+										{/if}
 									{/if}
 								</li>
 							{/each}

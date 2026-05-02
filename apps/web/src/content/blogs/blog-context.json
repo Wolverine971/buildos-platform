@@ -318,7 +318,7 @@
 					],
 					"skillSource": "docs/research/youtube-library/skill-drafts/hook-craft-short-form/SKILL.md",
 					"lineagePath": "docs/research/youtube-library/skill-drafts/hook-craft-short-form/lineage.yaml",
-					"lineagePeople": ["Kallaway"],
+					"lineagePeople": ["Kane Kallaway"],
 					"lineageStats": {
 						"sources": 4,
 						"primitives": 6,
@@ -329,22 +329,42 @@
 					"lineageSources": [
 						{
 							"title": "How to Create Irresistible Hooks (and blow up your content)",
-							"creator": "Kallaway",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=LmXpbP7dD48"
 						},
 						{
 							"title": "Give me 15 mins, and I'll make your hooks impossible to skip",
-							"creator": "Kallaway",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=2byPP_9F0-Q"
 						},
 						{
 							"title": "I Studied 100 Viral Hooks, These 6 Will Make You Go Viral",
-							"creator": "Kallaway",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=xnOe8aA9Pmw"
 						},
 						{
 							"title": "The ONLY 6 Words You Need to Hook ANY Viewer",
-							"creator": "Kallaway",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=S9FlxFv9dxg"
 						}
 					],
@@ -390,7 +410,7 @@
 					],
 					"skillSource": "docs/research/youtube-library/skill-drafts/landing-page-scorecard-funnel/SKILL.md",
 					"lineagePath": "docs/research/youtube-library/skill-drafts/landing-page-scorecard-funnel/lineage.yaml",
-					"lineagePeople": ["Daniel Priestley", "April Dunford", "Lenny's Podcast"],
+					"lineagePeople": ["Daniel Priestley", "April Dunford", "Lenny Rachitsky"],
 					"lineageStats": {
 						"sources": 2,
 						"primitives": 9,
@@ -402,6 +422,9 @@
 						{
 							"title": "The $1 Million Landing Page",
 							"creator": "Daniel Priestley",
+							"creatorType": "Person",
+							"channelName": "Daniel Priestley",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=az1Zh-FNSno",
 							"type": "youtube_analysis",
 							"sourceRole": "primary",
@@ -416,7 +439,11 @@
 						},
 						{
 							"title": "April Dunford Sales Pitch Framework",
-							"creator": "April Dunford via Lenny's Podcast",
+							"creator": "April Dunford",
+							"creatorType": "Person",
+							"channelName": "Lenny's Podcast",
+							"channelUrl": "https://www.youtube.com/@LennysPodcast",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=-VqmFI9vY7w",
 							"type": "youtube_analysis",
 							"sourceRole": "primary",
@@ -473,7 +500,7 @@
 					],
 					"skillSource": "docs/research/youtube-library/skill-drafts/story-driven-content-craft/SKILL.md",
 					"lineagePath": "docs/research/youtube-library/skill-drafts/story-driven-content-craft/lineage.yaml",
-					"lineagePeople": ["Kallaway"],
+					"lineagePeople": ["Kane Kallaway"],
 					"lineageStats": {
 						"sources": 3,
 						"primitives": 7,
@@ -484,17 +511,32 @@
 					"lineageSources": [
 						{
 							"title": "How To Become A Master Storyteller",
-							"creator": "Kallaway",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=t5Z-Q1bg1tU"
 						},
 						{
 							"title": "How to Become a Storytelling Genius (Dopamine Ladders)",
-							"creator": "Kallaway",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=jtmstMt4WLc"
 						},
 						{
 							"title": "7 Storytelling Mistakes That Are KILLING Small Creators",
-							"creator": "Kallaway",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=wgXGimZvDa4"
 						}
 					],
@@ -541,12 +583,7 @@
 					],
 					"skillSource": "docs/research/youtube-library/skill-drafts/ui-ux-quality-review/SKILL.md",
 					"lineagePath": "docs/research/youtube-library/skill-drafts/ui-ux-quality-review/lineage.yaml",
-					"lineagePeople": [
-						"Kole Jain",
-						"DesignSpo",
-						"Nesrine Changuel",
-						"Lenny's Podcast"
-					],
+					"lineagePeople": ["Kole Jain", "Nesrine Changuel", "Lenny Rachitsky"],
 					"lineageStats": {
 						"sources": 7,
 						"primitives": 9,
@@ -558,36 +595,70 @@
 						{
 							"title": "7 UI/UX mistakes that scream you're a beginner",
 							"creator": "Kole Jain",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@KoleJain",
+							"channelName": "Kole Jain",
+							"channelUrl": "https://www.youtube.com/@KoleJain",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=AH_ugxmLeUM"
 						},
 						{
 							"title": "Every UI/UX Concept Explained in Under 10 Minutes",
 							"creator": "Kole Jain",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@KoleJain",
+							"channelName": "Kole Jain",
+							"channelUrl": "https://www.youtube.com/@KoleJain",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=EcbgbKtOELY"
 						},
 						{
 							"title": "The Complete Guide To Visual Hierarchy",
 							"creator": "DesignSpo",
+							"creatorType": "Organization",
+							"creatorUrl": "https://www.youtube.com/@DesignSpo",
+							"channelName": "DesignSpo",
+							"channelUrl": "https://www.youtube.com/@DesignSpo",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=kK1TOpI948o"
 						},
 						{
 							"title": "The ULTIMATE Guide To Typography For Beginners",
 							"creator": "DesignSpo",
+							"creatorType": "Organization",
+							"creatorUrl": "https://www.youtube.com/@DesignSpo",
+							"channelName": "DesignSpo",
+							"channelUrl": "https://www.youtube.com/@DesignSpo",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=AXpxZMRM1EY"
 						},
 						{
 							"title": "The ULTIMATE Color Theory Guide For Beginners",
 							"creator": "DesignSpo",
+							"creatorType": "Organization",
+							"creatorUrl": "https://www.youtube.com/@DesignSpo",
+							"channelName": "DesignSpo",
+							"channelUrl": "https://www.youtube.com/@DesignSpo",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=tKCORDK0IZU"
 						},
 						{
 							"title": "The Golden Rule Of Web Design",
 							"creator": "DesignSpo",
+							"creatorType": "Organization",
+							"creatorUrl": "https://www.youtube.com/@DesignSpo",
+							"channelName": "DesignSpo",
+							"channelUrl": "https://www.youtube.com/@DesignSpo",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=CASPWJUsHPM"
 						},
 						{
 							"title": "A 4-step framework for building delightful products",
-							"creator": "Nesrine Changuel via Lenny's Podcast",
+							"creator": "Nesrine Changuel",
+							"creatorType": "Person",
+							"channelName": "Lenny's Podcast",
+							"channelUrl": "https://www.youtube.com/@LennysPodcast",
+							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=tX6nwT1Bsuo"
 						}
 					],
@@ -1910,7 +1981,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-05-02T03:37:15.232Z",
+	"generatedAt": "2026-05-02T04:35:16.268Z",
 	"totalPosts": 66,
 	"totalCategories": 7
 }

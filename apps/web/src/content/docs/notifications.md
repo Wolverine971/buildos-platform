@@ -2,7 +2,7 @@
 layout: docs
 title: Notifications
 slug: notifications
-summary: In-app, push, email, and SMS — routed per event, all visible in one activity log.
+summary: In-app, push, email, and SMS notifications routed per event type and per channel, with delivery preferences and one unified activity log you can audit.
 icon: Bell
 order: 8
 lastUpdated: 2026-04-17

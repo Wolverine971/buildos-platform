@@ -33,7 +33,7 @@ stackWith:
 skillSource: 'docs/research/youtube-library/skill-drafts/story-driven-content-craft/SKILL.md'
 lineagePath: 'docs/research/youtube-library/skill-drafts/story-driven-content-craft/lineage.yaml'
 lineagePeople:
-    - 'Kallaway'
+    - 'Kane Kallaway'
 lineageStats:
     sources: 3
     primitives: 7
@@ -42,13 +42,28 @@ lineageStats:
     candidateV2Sources: 3
 lineageSources:
     - title: 'How To Become A Master Storyteller'
-      creator: 'Kallaway'
+      creator: 'Kane Kallaway'
+      creatorType: 'Person'
+      creatorUrl: 'https://www.youtube.com/@kallawaymarketing'
+      channelName: 'Kallaway'
+      channelUrl: 'https://www.youtube.com/@kallawaymarketing'
+      sourceType: 'youtube_video'
       url: 'https://www.youtube.com/watch?v=t5Z-Q1bg1tU'
     - title: 'How to Become a Storytelling Genius (Dopamine Ladders)'
-      creator: 'Kallaway'
+      creator: 'Kane Kallaway'
+      creatorType: 'Person'
+      creatorUrl: 'https://www.youtube.com/@kallawaymarketing'
+      channelName: 'Kallaway'
+      channelUrl: 'https://www.youtube.com/@kallawaymarketing'
+      sourceType: 'youtube_video'
       url: 'https://www.youtube.com/watch?v=jtmstMt4WLc'
     - title: '7 Storytelling Mistakes That Are KILLING Small Creators'
-      creator: 'Kallaway'
+      creator: 'Kane Kallaway'
+      creatorType: 'Person'
+      creatorUrl: 'https://www.youtube.com/@kallawaymarketing'
+      channelName: 'Kallaway'
+      channelUrl: 'https://www.youtube.com/@kallawaymarketing'
+      sourceType: 'youtube_video'
       url: 'https://www.youtube.com/watch?v=wgXGimZvDa4'
 path: apps/web/src/content/blogs/agent-skills/story-driven-content-craft.md
 ---

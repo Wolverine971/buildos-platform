@@ -10,7 +10,12 @@ export interface BlogFaqItem {
 export interface BlogLineageSource {
 	title: string;
 	creator?: string;
+	creatorType?: 'Person' | 'Organization';
+	creatorUrl?: string;
 	url?: string;
+	sourceType?: string;
+	channelName?: string;
+	channelUrl?: string;
 }
 
 export interface BlogPost {
@@ -149,7 +154,30 @@ function normalizeLineageSource(value: unknown): BlogLineageSource | null {
 	return {
 		title: candidate.title,
 		creator: typeof candidate.creator === 'string' ? candidate.creator : undefined,
-		url: typeof candidate.url === 'string' ? candidate.url : undefined
+		creatorType:
+			candidate.creatorType === 'Organization' || candidate.creatorType === 'Person'
+				? candidate.creatorType
+				: undefined,
+		creatorUrl: typeof candidate.creatorUrl === 'string' ? candidate.creatorUrl : undefined,
+		url: typeof candidate.url === 'string' ? candidate.url : undefined,
+		sourceType:
+			typeof candidate.sourceType === 'string'
+				? candidate.sourceType
+				: typeof candidate.type === 'string'
+					? candidate.type
+					: undefined,
+		channelName:
+			typeof candidate.channelName === 'string'
+				? candidate.channelName
+				: typeof candidate.channel === 'string'
+					? candidate.channel
+					: undefined,
+		channelUrl:
+			typeof candidate.channelUrl === 'string'
+				? candidate.channelUrl
+				: typeof candidate.channel_url === 'string'
+					? candidate.channel_url
+					: undefined
 	};
 }
 

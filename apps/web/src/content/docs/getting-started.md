@@ -2,7 +2,7 @@
 layout: docs
 title: Getting Started
 slug: getting-started
-summary: Your first ten minutes in BuildOS — sign up, talk through a project, and see the pieces fit together.
+summary: Your first ten minutes in BuildOS. Sign up, brain dump your first project, accept the structured plan, and see how tasks, context, and goals fit together.
 icon: Zap
 order: 1
 lastUpdated: 2026-04-17

@@ -2,7 +2,7 @@
 layout: docs
 title: The BuildOS Ontology
 slug: ontology
-summary: Projects, tasks, plans, documents, goals — the connected graph behind everything in BuildOS.
+summary: Projects, tasks, plans, documents, goals, and people — the connected graph behind everything in BuildOS, and how it makes your context legible to agents.
 icon: Layers
 order: 2
 lastUpdated: 2026-04-17
