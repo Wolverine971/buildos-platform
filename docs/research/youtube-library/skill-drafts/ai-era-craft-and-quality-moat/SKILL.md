@@ -1,6 +1,11 @@
 ---
-name: ai-era-craft-and-quality-moat
+skill_id: ai-era-craft-and-quality-moat
+name: AI-Era Craft And Quality Moat
 description: Decide where craft still matters when AI makes shipping working code cheap. Apply when prioritizing quality investments, evaluating "good enough vs. excellent" tradeoffs, defending craft hires against AI-substitution arguments, defining a quality north star, or building a moat in a category where everyone now ships fast. Use to back product strategy, hiring rubrics, and roadmap arbitration — not as a per-screen audit (use `visual-craft-fundamentals`, `ui-ux-quality-review`, or `calm-software-design-review` for that).
+skill_type: combo
+categories:
+    - product-and-design
+    - product-strategy
 path: docs/research/youtube-library/skill-drafts/ai-era-craft-and-quality-moat/SKILL.md
 ---
 

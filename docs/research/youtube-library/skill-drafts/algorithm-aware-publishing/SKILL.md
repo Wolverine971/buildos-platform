@@ -1,6 +1,10 @@
 ---
-name: algorithm-aware-publishing
+skill_id: algorithm-aware-publishing
+name: Algorithm-Aware Publishing
 description: Plan and audit publishing decisions on interest-media platforms with full awareness of the matching loop, viewer psychology, and BuildOS's anti-feed brand stance. Use when picking a hero platform, narrowing a topic, scoring whether to publish a specific piece, deciding what to keep / modify / reject from creator-economy tactics, or running a dual audit (algorithm-clean AND brand-coherent) on a draft.
+skill_type: combo
+categories:
+    - marketing-and-content
 path: docs/research/youtube-library/skill-drafts/algorithm-aware-publishing/SKILL.md
 ---
 

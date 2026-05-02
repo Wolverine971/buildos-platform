@@ -1,6 +1,10 @@
 ---
-name: viral-video-script-structure
+skill_id: viral-video-script-structure
+name: Viral Video Script Structure
 description: Write or audit short-form and long-form video scripts using a fixed packaging → outline → intro → body → outro skeleton with a 2-1-3-4 body order, value loops, rehooks, native CTAs, and a live middle-first / hook-last process for 60-90s videos. Use for TikTok / Reels / Shorts / vertical YouTube / long-form YouTube / demo videos / launch videos / pitch openers — wherever a script needs to keep viewers hooked end to end.
+skill_type: combo
+categories:
+    - marketing-and-content
 path: docs/research/youtube-library/skill-drafts/viral-video-script-structure/SKILL.md
 ---
 

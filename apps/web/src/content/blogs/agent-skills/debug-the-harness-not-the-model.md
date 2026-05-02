@@ -17,7 +17,6 @@ providers: ['Claude', 'OpenAI', 'any frontier LLM']
 compatibleAgents: ['BuildOS-compatible agents', 'Claude Code', 'Codex', 'portable Agent Skills']
 stackWith: ['Eval-driven product development', 'Founder assistant stack']
 skillSource: 'docs/marketing/growth/research/youtube-transcripts/2026-04-24_PplmzlgE0kg.md'
-installHint: '.agents/skills/debug-the-harness-not-the-model/SKILL.md'
 sourceTitle: "How Anthropic's product team moves faster than anyone else | Cat Wu (Head of Product, Claude Code)"
 sourceCreator: "Lenny's Podcast"
 sourceUrl: 'https://www.youtube.com/watch?v=PplmzlgE0kg'

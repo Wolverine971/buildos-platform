@@ -1,6 +1,11 @@
 ---
-name: lead-list-research-with-claude-code
+skill_id: lead-list-research-with-claude-code
+name: Lead List Research With Claude Code
 description: Build and refine B2B lead lists with an AI agent in the loop. Use when sourcing accounts, defining an ICP, scoring prospect fit, finding personas, enriching contacts, or turning a messy market into a qualified outbound list.
+skill_type: combo
+categories:
+    - sales-and-growth
+    - technology-and-agent-systems
 path: docs/research/youtube-library/skill-drafts/lead-list-research-with-claude-code/SKILL.md
 ---
 

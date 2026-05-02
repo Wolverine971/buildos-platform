@@ -23,6 +23,7 @@ docs/research/youtube-library/
 +-- BUILDOS_INTERNAL_SOURCES.md
 +-- FRONTMATTER_SCHEMA.md
 +-- SKILL_LINEAGE_SCHEMA.md
++-- SKILL_LINEAGE_HANDOFF.md
 +-- INGESTION_FLOW.md
 +-- skill-combo-indexes/
 |   +-- README.md
@@ -51,6 +52,8 @@ Use `BUILDOS_INTERNAL_SOURCES.md` for videos that should inform BuildOS product,
 Use `skill-combo-indexes/` when a video is not strong enough to become a standalone skill but can strengthen a multi-source workflow.
 
 Use `SKILL_LINEAGE_SCHEMA.md` and skill-local `lineage.yaml` files when a draft skill combines multiple primitive skills, sources, claims, guardrails, or output artifacts.
+
+Use `SKILL_LINEAGE_HANDOFF.md` to brief another agent on why lineage exists, what has already been implemented, and how to continue the work.
 
 Use `gap-audits/` for `/skill-gap-audit` outputs when the target is a standalone skill, public blog, runtime skill, or source file without a natural sibling audit location. Category-level combo audits should usually live beside their combo index in `skill-combo-indexes/`.
 

@@ -1,6 +1,10 @@
 ---
-name: calm-software-design-review
+skill_id: calm-software-design-review
+name: Calm Software Design Review
 description: Audit a screen, feature, or roadmap for restraint instead of delight. Covers motion budget, surface count, attention cost, opinionated defaults, "subtract the obvious / add the meaningful," "tools should disappear during use," and the calm-company operating practices (no streaks, no engagement manufacturing, no urgency dark patterns). Use as the on-brand counterweight to `delightful-product-review` for productivity tools, thinking environments, and any product where users come under cognitive load — not under-stimulation.
+skill_type: combo
+categories:
+    - product-and-design
 path: docs/research/youtube-library/skill-drafts/calm-software-design-review/SKILL.md
 ---
 

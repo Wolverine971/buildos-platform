@@ -1,6 +1,10 @@
 ---
-name: ui-ux-quality-review
+skill_id: ui-ux-quality-review
+name: UI/UX Quality Review
 description: Review app screens, landing pages, and product UI for beginner mistakes, missing states, visual hierarchy, spacing, consistency, icons, feedback, charts, and mobile polish. Use when auditing or improving interface quality.
+skill_type: combo
+categories:
+    - product-and-design
 path: docs/research/youtube-library/skill-drafts/ui-ux-quality-review/SKILL.md
 ---
 

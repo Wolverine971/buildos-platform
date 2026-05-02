@@ -26,6 +26,12 @@
 - [Help](https://build-os.com/help): Support and documentation hub
 - [Blog](https://build-os.com/blogs): All articles organized by category
 
+## Agent Skills
+
+- [Agent Skills](https://build-os.com/blogs/agent-skills): Portable skill guides, definitions, operating playbooks, and source lineages for AI agents
+- [Google Calendar For AI Agents: Search Before You Create](https://build-os.com/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create): Calendar operating rules for agent-safe reads, creates, updates, recurrence handling, and duplicate prevention
+- [Landing Page Scorecard Funnel](https://build-os.com/blogs/agent-skills/landing-page-scorecard-funnel): Source-lineaged skill for designing assessment-driven landing pages, questionnaires, dynamic results, and lead routing
+
 ## Philosophy
 
 - [Your Vision Deserves a Better Operating System](https://build-os.com/blogs/vision-deserves-better-operating-system): Founding philosophy—why existing tools fail ambitious thinkers

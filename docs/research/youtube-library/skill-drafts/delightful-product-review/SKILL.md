@@ -1,6 +1,11 @@
 ---
-name: delightful-product-review
+skill_id: delightful-product-review
+name: Delightful Product Review
 description: Audit a feature, screen, or roadmap for delight (joy + surprise) using Nesrine Changuel's framework — motivators (functional + emotional), opportunities, the delight grid (low / surface / deep), the delight checklist, the 50-40-10 roadmap balance, and the three pillars (remove friction, anticipate needs, exceed expectations). Use for B2C and under-stimulation products. NOT for productivity tools used under cognitive load — use `calm-software-design-review` instead.
+skill_type: combo
+categories:
+    - product-and-design
+    - product-strategy
 path: docs/research/youtube-library/skill-drafts/delightful-product-review/SKILL.md
 ---
 

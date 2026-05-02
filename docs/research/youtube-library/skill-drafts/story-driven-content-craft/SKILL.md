@@ -1,6 +1,11 @@
 ---
-name: story-driven-content-craft
+skill_id: story-driven-content-craft
+name: Story-Driven Content Craft
 description: Structure non-fiction content as a sequence of curiosity loops with varied rhythm, conversational tone, written ending-first, on a non-obvious lens, with a visual hook. Use when drafting or rewriting blog posts, video scripts, social posts, founder essays, or pitch narratives where structural craft (not idea generation) is the bottleneck.
+skill_type: combo
+categories:
+    - marketing-and-content
+    - writing
 path: docs/research/youtube-library/skill-drafts/story-driven-content-craft/SKILL.md
 ---
 

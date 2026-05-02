@@ -1,6 +1,10 @@
 ---
-name: cold-email-contextual-outbound
+skill_id: cold-email-contextual-outbound
+name: Cold Email Contextual Outbound
 description: Write and test cold email that proves context, respects the buyer, and routes replies quickly. Use when creating outbound email campaigns, testing offers, writing personalized openers, handling objections, or designing reply-to-call workflows.
+skill_type: combo
+categories:
+    - sales-and-growth
 path: docs/research/youtube-library/skill-drafts/cold-email-contextual-outbound/SKILL.md
 ---
 

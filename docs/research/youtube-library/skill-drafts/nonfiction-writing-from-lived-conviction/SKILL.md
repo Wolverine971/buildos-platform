@@ -1,6 +1,10 @@
 ---
-name: nonfiction-writing-from-lived-conviction
+skill_id: nonfiction-writing-from-lived-conviction
+name: Nonfiction Writing From Lived Conviction
 description: Help write creative nonfiction essays that show a mind at work on real experience. Use when drafting personal essays, reflective nonfiction, voice-driven blog posts, hermit-crab essays, braided essays, or opinionated essays grounded in lived reality.
+skill_type: combo
+categories:
+    - writing
 path: docs/research/youtube-library/skill-drafts/nonfiction-writing-from-lived-conviction/SKILL.md
 ---
 

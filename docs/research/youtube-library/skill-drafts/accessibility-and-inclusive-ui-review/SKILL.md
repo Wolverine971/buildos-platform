@@ -1,6 +1,10 @@
 ---
-name: accessibility-and-inclusive-ui-review
+skill_id: accessibility-and-inclusive-ui-review
+name: Accessibility And Inclusive UI Review
 description: Audit a screen, component, or design-system primitive for accessibility per WCAG 2.2 AA. Covers semantic HTML first, ARIA-as-last-resort, focus management, keyboard navigation, screen-reader semantics, hiding-techniques taxonomy, reduced motion, and the 12+ canonical component patterns (toggle, dialog, accordion, tabs, tables, menu, notifications, forms). Use to back the BuildOS `accessibility-auditor` agent and to audit any user-facing screen before ship.
+skill_type: combo
+categories:
+    - product-and-design
 path: docs/research/youtube-library/skill-drafts/accessibility-and-inclusive-ui-review/SKILL.md
 ---
 

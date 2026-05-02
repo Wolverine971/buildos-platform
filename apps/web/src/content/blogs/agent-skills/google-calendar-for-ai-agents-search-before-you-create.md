@@ -26,7 +26,6 @@ providers: ['Google Calendar', 'Google Workspace']
 compatibleAgents: ['BuildOS-compatible agents', 'Claude Code', 'Codex', 'portable Agent Skills']
 stackWith: ['OAuth 2.0 for agents', 'Gmail for agents', 'Founder assistant stack']
 skillSource: 'apps/web/src/content/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create.md'
-installHint: '.agents/skills/google-calendar/SKILL.md'
 path: apps/web/src/content/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create.md
 ---
 

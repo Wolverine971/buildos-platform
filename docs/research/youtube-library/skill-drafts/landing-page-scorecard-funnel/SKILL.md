@@ -1,6 +1,12 @@
 ---
-name: landing-page-scorecard-funnel
+skill_id: landing-page-scorecard-funnel
+name: Landing Page Scorecard Funnel
 description: Design an assessment-driven landing page that converts visitors into qualified, segmented leads. Use when creating quizzes, scorecards, diagnostic funnels, lead magnets, or dynamic results pages for consulting, coaching, SaaS, education, agencies, or services.
+skill_type: combo
+categories:
+    - marketing-and-content
+    - sales-and-growth
+lineage: lineage.yaml
 path: docs/research/youtube-library/skill-drafts/landing-page-scorecard-funnel/SKILL.md
 ---
 

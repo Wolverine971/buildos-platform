@@ -16,16 +16,11 @@
 		SITE_NAME
 	} from '$lib/constants/seo';
 	import type { PageData } from './$types';
-	import type { ComponentType } from 'svelte';
 	import { ArrowLeft, Calendar, Clock, History, Tag } from 'lucide-svelte';
 	import { formatBlogDate, parseBlogDate } from '$lib/utils/blog';
 	import { serializeJsonLd } from '$lib/utils/json-ld';
 
 	let { data }: { data: PageData } = $props();
-
-	let contentComponent = $state<ComponentType | null>(null);
-	let loading = $state(true);
-	let error = $state<string | null>(null);
 
 	const publishedDate = $derived(parseBlogDate(data.post.date));
 	const formattedDate = $derived(formatBlogDate(data.post.date, 'MMMM dd, yyyy'));
@@ -38,6 +33,8 @@
 	);
 
 	const articleUrl = $derived(`${SITE_URL}/blogs/${data.post.category}/${data.post.slug}`);
+	const lineageSources = $derived(data.post.lineageSources ?? []);
+	const lineagePeople = $derived(data.post.lineagePeople ?? []);
 
 	const jsonLd = $derived.by(() => {
 		const graphItems: Record<string, unknown>[] = [
@@ -71,6 +68,20 @@
 				keywords: data.post.tags.join(', '),
 				wordCount: data.post.readingTime * 200,
 				timeRequired: `PT${data.post.readingTime}M`,
+				citation: lineageSources.length
+					? lineageSources.map((source) => ({
+							'@type': 'CreativeWork',
+							name: source.title,
+							url: source.url,
+							creator: source.creator
+						}))
+					: undefined,
+				mentions: lineagePeople.length
+					? lineagePeople.map((person) => ({
+							'@type': 'Person',
+							name: person
+						}))
+					: undefined,
 				articleSection: categoryDisplayName,
 				inLanguage: 'en-US',
 				copyrightYear: publishedDate?.getFullYear(),
@@ -131,33 +142,6 @@
 		return {
 			'@context': 'https://schema.org',
 			'@graph': graphItems
-		};
-	});
-
-	$effect(() => {
-		const { category, slug } = data.post;
-		let canceled = false;
-
-		contentComponent = null;
-		error = null;
-		loading = true;
-
-		import(`../../../../content/blogs/${category}/${slug}.md`)
-			.then((module) => {
-				if (canceled) return;
-				contentComponent = module.default;
-			})
-			.catch(() => {
-				if (canceled) return;
-				error = 'Failed to load blog content';
-			})
-			.finally(() => {
-				if (canceled) return;
-				loading = false;
-			});
-
-		return () => {
-			canceled = true;
 		};
 	});
 </script>
@@ -293,61 +277,41 @@
 				{/if}
 			</div>
 
-			{#if data.post.category === 'agent-skills' && (data.post.skillId || data.post.skillType || data.post.providers?.length || data.post.compatibleAgents?.length || data.post.installHint)}
+			{#if data.post.category === 'agent-skills' && (lineageSources.length || lineagePeople.length)}
 				<div
 					class="mt-6 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground"
 				>
-					<div class="grid gap-3 sm:grid-cols-2">
-						{#if data.post.skillId}
-							<p>
-								<span
-									class="block text-xs font-medium uppercase tracking-wide text-foreground"
-								>
-									Skill ID
-								</span>
-								<code>{data.post.skillId}</code>
-							</p>
-						{/if}
-						{#if data.post.skillType}
-							<p>
-								<span
-									class="block text-xs font-medium uppercase tracking-wide text-foreground"
-								>
-									Type
-								</span>
-								{data.post.skillType}
-							</p>
-						{/if}
-						{#if data.post.providers?.length}
-							<p>
-								<span
-									class="block text-xs font-medium uppercase tracking-wide text-foreground"
-								>
-									Providers
-								</span>
-								{data.post.providers.join(', ')}
-							</p>
-						{/if}
-						{#if data.post.compatibleAgents?.length}
-							<p>
-								<span
-									class="block text-xs font-medium uppercase tracking-wide text-foreground"
-								>
-									Compatible Agents
-								</span>
-								{data.post.compatibleAgents.join(', ')}
-							</p>
-						{/if}
-					</div>
-					{#if data.post.installHint}
-						<p class="mt-3 border-t border-border pt-3">
-							<span
-								class="block text-xs font-medium uppercase tracking-wide text-foreground"
-							>
-								Install / Copy Hint
-							</span>
-							<code>{data.post.installHint}</code>
+					<span class="block text-xs font-medium uppercase tracking-wide text-foreground">
+						Source Lineage
+					</span>
+					{#if lineagePeople.length}
+						<p class="mt-2 text-xs">
+							<span class="font-medium text-foreground">People referenced:</span>
+							{lineagePeople.join(', ')}
 						</p>
+					{/if}
+					{#if lineageSources.length}
+						<ul class="mt-2 space-y-1.5 text-xs">
+							{#each lineageSources as source}
+								<li>
+									{#if source.url}
+										<a
+											href={source.url}
+											class="text-accent hover:underline"
+											target="_blank"
+											rel="noreferrer"
+										>
+											{source.title}
+										</a>
+									{:else}
+										<span class="text-foreground">{source.title}</span>
+									{/if}
+									{#if source.creator}
+										<span> by {source.creator}</span>
+									{/if}
+								</li>
+							{/each}
+						</ul>
 					{/if}
 				</div>
 			{/if}
@@ -373,23 +337,8 @@
 				prose-th:text-foreground prose-td:text-foreground/90
 				prose-h1:text-2xl prose-h2:text-xl prose-h3:text-lg"
 			>
-				{#if loading}
-					<div class="flex items-center justify-center py-12">
-						<div
-							class="animate-spin rounded-full h-6 w-6 border-2 border-accent border-t-transparent"
-						></div>
-						<span class="ml-3 text-sm text-muted-foreground">Loading...</span>
-					</div>
-				{:else if error}
-					<div class="text-center py-12">
-						<p class="text-sm text-destructive">{error}</p>
-						<p class="text-xs text-muted-foreground mt-1">
-							Please try refreshing the page.
-						</p>
-					</div>
-				{:else if contentComponent}
-					{@const MarkdownContent = contentComponent}
-					<MarkdownContent />
+				{#if data.contentHtml}
+					{@html data.contentHtml}
 				{:else}
 					<div class="text-center py-12">
 						<p class="text-sm text-muted-foreground">Content not available.</p>

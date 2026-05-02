@@ -1,6 +1,10 @@
 ---
-name: context-engineering-for-agent-work
+skill_id: context-engineering-for-agent-work
+name: Context Engineering For Agent Work
 description: Design dense, task-relevant context for AI agents instead of stuffing everything into prompts. Use when building agent harnesses, selecting context, reducing prompt bloat, stage-gating workflows, structuring markdown/frontmatter data, or debugging context quality.
+skill_type: combo
+categories:
+    - technology-and-agent-systems
 path: docs/research/youtube-library/skill-drafts/context-engineering-for-agent-work/SKILL.md
 ---
 

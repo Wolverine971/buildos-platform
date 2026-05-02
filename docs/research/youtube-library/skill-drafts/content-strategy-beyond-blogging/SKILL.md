@@ -1,6 +1,10 @@
 ---
-name: content-strategy-beyond-blogging
+skill_id: content-strategy-beyond-blogging
+name: Content Strategy Beyond Blogging
 description: Build content strategy around intent, identity, distribution, and durable point of view instead of generic blog volume. Use when planning content for SaaS, creators, local services, founder-led brands, or agent-assisted publishing systems.
+skill_type: combo
+categories:
+    - marketing-and-content
 path: docs/research/youtube-library/skill-drafts/content-strategy-beyond-blogging/SKILL.md
 ---
 

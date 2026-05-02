@@ -1,6 +1,10 @@
 ---
-name: visual-craft-fundamentals
+skill_id: visual-craft-fundamentals
+name: Visual Craft Fundamentals
 description: Take a UI from "not amateur" to "actually looks excellent" by applying operator-canon visual-craft techniques (two-part shadows, hue-rotation over lightness, up-pop / down-pop, HSB single-hue palettes, double-your-whitespace, named font pairings). Use as the level-up companion to `ui-ux-quality-review` and as the corrective lens for AI-generated UI from v0 / Lovable / Cursor.
+skill_type: combo
+categories:
+    - product-and-design
 path: docs/research/youtube-library/skill-drafts/visual-craft-fundamentals/SKILL.md
 ---
 

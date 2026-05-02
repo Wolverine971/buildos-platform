@@ -29,8 +29,25 @@ skill-drafts/<skill-slug>/
 +-- lineage.yaml
 ```
 
-`SKILL.md` remains the agent-facing playbook. `lineage.yaml` is the structured
-source and composition map.
+`SKILL.md` remains the agent-facing playbook. Its frontmatter should include a
+stable `skill_id` that matches `<skill-slug>` and a human-readable `name`.
+`lineage.yaml` is the structured source and composition map.
+
+Minimal skill frontmatter:
+
+```yaml
+---
+skill_id: landing-page-scorecard-funnel
+name: Landing Page Scorecard Funnel
+description: Design an assessment-driven landing page that converts visitors into qualified, segmented leads.
+skill_type: combo
+categories:
+    - marketing-and-content
+    - sales-and-growth
+lineage: lineage.yaml
+path: docs/research/youtube-library/skill-drafts/landing-page-scorecard-funnel/SKILL.md
+---
+```
 
 ## Node Types
 

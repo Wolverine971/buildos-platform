@@ -7,6 +7,12 @@ export interface BlogFaqItem {
 	a: string;
 }
 
+export interface BlogLineageSource {
+	title: string;
+	creator?: string;
+	url?: string;
+}
+
 export interface BlogPost {
 	slug: string;
 	category: string;
@@ -23,14 +29,12 @@ export interface BlogPost {
 	pic?: string;
 	excerpt?: string;
 	faq?: BlogFaqItem[];
-	skillId?: string;
-	skillType?: string;
-	skillCategory?: string;
-	providers?: string[];
-	compatibleAgents?: string[];
-	stackWith?: string[];
-	skillSource?: string;
-	installHint?: string;
+	lineagePeople?: string[];
+	lineageSources?: BlogLineageSource[];
+	sourceTitle?: string;
+	sourceCreator?: string;
+	sourceUrl?: string;
+	sourceChannelUrl?: string;
 }
 
 type BlogModule = {
@@ -136,6 +140,29 @@ function normalizeStringArray(value: unknown): string[] | undefined {
 	return normalized.length > 0 ? normalized : undefined;
 }
 
+function normalizeLineageSource(value: unknown): BlogLineageSource | null {
+	if (typeof value !== 'object' || value === null) return null;
+
+	const candidate = value as Record<string, unknown>;
+	if (typeof candidate.title !== 'string') return null;
+
+	return {
+		title: candidate.title,
+		creator: typeof candidate.creator === 'string' ? candidate.creator : undefined,
+		url: typeof candidate.url === 'string' ? candidate.url : undefined
+	};
+}
+
+function normalizeLineageSources(value: unknown): BlogLineageSource[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+
+	const normalized = value
+		.map((item) => normalizeLineageSource(item))
+		.filter((item): item is BlogLineageSource => item !== null);
+
+	return normalized.length > 0 ? normalized : undefined;
+}
+
 function buildBlogPost(
 	path: string,
 	slug: string,
@@ -180,15 +207,13 @@ function buildBlogPost(
 		pic: typeof metadata.pic === 'string' ? metadata.pic : undefined,
 		excerpt: typeof metadata.excerpt === 'string' ? metadata.excerpt : description,
 		faq,
-		skillId: typeof metadata.skillId === 'string' ? metadata.skillId : undefined,
-		skillType: typeof metadata.skillType === 'string' ? metadata.skillType : undefined,
-		skillCategory:
-			typeof metadata.skillCategory === 'string' ? metadata.skillCategory : undefined,
-		providers: normalizeStringArray(metadata.providers),
-		compatibleAgents: normalizeStringArray(metadata.compatibleAgents),
-		stackWith: normalizeStringArray(metadata.stackWith),
-		skillSource: typeof metadata.skillSource === 'string' ? metadata.skillSource : undefined,
-		installHint: typeof metadata.installHint === 'string' ? metadata.installHint : undefined
+		lineagePeople: normalizeStringArray(metadata.lineagePeople),
+		lineageSources: normalizeLineageSources(metadata.lineageSources),
+		sourceTitle: typeof metadata.sourceTitle === 'string' ? metadata.sourceTitle : undefined,
+		sourceCreator: typeof metadata.sourceCreator === 'string' ? metadata.sourceCreator : undefined,
+		sourceUrl: typeof metadata.sourceUrl === 'string' ? metadata.sourceUrl : undefined,
+		sourceChannelUrl:
+			typeof metadata.sourceChannelUrl === 'string' ? metadata.sourceChannelUrl : undefined
 	};
 }
 

@@ -1,6 +1,11 @@
 ---
-name: hook-craft-short-form
+skill_id: hook-craft-short-form
+name: Hook Craft For Short-Form
 description: Draft, audit, and rewrite hooks for short-form video, blog leads, social posts, demo openers, and pitch slide 1. Use when an agent needs to produce or evaluate the first 1–5 seconds of any piece of founder, creator, or SaaS content where opt-in is the bottleneck.
+skill_type: combo
+categories:
+    - marketing-and-content
+    - writing
 path: docs/research/youtube-library/skill-drafts/hook-craft-short-form/SKILL.md
 ---
 

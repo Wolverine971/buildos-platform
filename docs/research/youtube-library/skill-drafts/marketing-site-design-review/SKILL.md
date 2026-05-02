@@ -1,6 +1,11 @@
 ---
-name: marketing-site-design-review
+skill_id: marketing-site-design-review
+name: Marketing Site Design Review
 description: Review a marketing or landing page section by section against pro-vs-amateur heuristics, layout rules, typography and color guardrails, and a 4-pixel mathematical system. Use when auditing a homepage, landing page, pricing page, or product page for conversion-grade design quality.
+skill_type: combo
+categories:
+    - marketing-and-content
+    - product-and-design
 path: docs/research/youtube-library/skill-drafts/marketing-site-design-review/SKILL.md
 ---
 

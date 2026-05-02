@@ -1,6 +1,10 @@
 ---
-name: going-viral
+skill_id: going-viral
+name: Going Viral
 description: Help a founder or creator design content that travels — across TikTok, Instagram, Twitter/X, and LinkedIn — using verified 2025/2026 algorithm signals, six tested hook archetypes, an expectations-vs-reality script structure, a six-checkpoint viewer-psychology gate, and a status-game distribution model. Use when planning a piece of content, auditing why a post died, picking a hero platform, designing a campaign, or turning a raw idea into a publishable script. Defers platform-specific deep dives (algorithm signals, format winners, hook templates) to `references/{tiktok,instagram,twitter,linkedin}.md`. Holds the seven tensions between manufactured virality vs. ideas that compound — refuses rage-bait tactics in BuildOS-tagged work and flags them elsewhere.
+skill_type: combo
+categories:
+    - marketing-and-content
 path: docs/research/youtube-library/skill-drafts/going-viral/SKILL.md
 ---
 

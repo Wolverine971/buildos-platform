@@ -1,6 +1,11 @@
 ---
-name: growth-diagnostics-for-stalled-products
+skill_id: growth-diagnostics-for-stalled-products
+name: Growth Diagnostics For Stalled Products
 description: Diagnose stalled SaaS or product growth with an ordered retention, pricing, expansion, channel, and strategic-growth framework. Use when a founder, PM, marketer, or agent needs to find the highest-leverage growth constraint before proposing tactics.
+skill_type: combo
+categories:
+    - product-strategy
+    - sales-and-growth
 path: docs/research/youtube-library/skill-drafts/growth-diagnostics-for-stalled-products/SKILL.md
 ---
 

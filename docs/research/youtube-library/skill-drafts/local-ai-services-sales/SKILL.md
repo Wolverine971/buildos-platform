@@ -1,6 +1,10 @@
 ---
-name: local-ai-services-sales
+skill_id: local-ai-services-sales
+name: Local AI Services Sales
 description: Package and sell AI-assisted services to local businesses by leading with business outcomes, not AI tooling. Use when designing offers for reviews, lead reactivation, appointment setting, local SEO, messy CRM cleanup, personalized SMS, or async Loom-based sales.
+skill_type: combo
+categories:
+    - sales-and-growth
 path: docs/research/youtube-library/skill-drafts/local-ai-services-sales/SKILL.md
 ---
 
