@@ -131,7 +131,7 @@
 					// Label styling
 					label: 'data(displayLabel)' as any,
 					'font-size': 'data(fontSize)' as any,
-					'font-family': 'system-ui, sans-serif',
+					'font-family': 'system-ui, -apple-system, "Inter", sans-serif',
 					'font-weight': 'data(fontWeight)' as any,
 					'text-valign': 'data(labelValign)' as any,
 					'text-halign': 'center',
@@ -222,13 +222,15 @@
 					'z-index': 999
 				}
 			},
-			// Selected state - accent colors, strong highlight
+			// Selected state - keep state fill, add accent border + soft halo
 			{
 				selector: 'node:selected',
 				style: {
-					'background-color': isDark ? '#431407' : '#fff7ed',
 					'border-color': accent,
 					'border-width': 4,
+					'overlay-color': accent,
+					'overlay-opacity': 0.12,
+					'overlay-padding': 6,
 					'z-index': 1000
 				}
 			},
@@ -482,7 +484,10 @@
 	});
 </script>
 
-<div bind:this={container} class="graph-container w-full h-full bg-background"></div>
+<div
+	bind:this={container}
+	class="graph-container w-full h-full bg-background tx tx-grid tx-weak"
+></div>
 
 <style>
 	.graph-container {
@@ -491,5 +496,10 @@
 		user-select: none;
 		-webkit-overflow-scrolling: touch;
 		overscroll-behavior: contain;
+	}
+	/* Ensure Cytoscape canvases sit above the tx-grid texture pseudo-element */
+	.graph-container :global(canvas) {
+		position: relative;
+		z-index: 2;
 	}
 </style>

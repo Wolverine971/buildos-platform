@@ -64,41 +64,41 @@ lineage_version: 0.1
 updated: YYYY-MM-DD
 
 root_skill:
-  id: skill-slug
-  name: Human Name
-  path: docs/.../SKILL.md
-  status: draft
+    id: skill-slug
+    name: Human Name
+    path: docs/.../SKILL.md
+    status: draft
 
 nodes:
-  - id: primitive.example
-    type: primitive_skill
-    name: Example Primitive
-    summary: What this primitive helps the agent do.
+    - id: primitive.example
+      type: primitive_skill
+      name: Example Primitive
+      summary: What this primitive helps the agent do.
 
 sources:
-  - id: source.example
-    type: youtube_analysis
-    title: Source title
-    creator: Source creator
-    url: https://example.com
-    local_path: docs/.../source.md
+    - id: source.example
+      type: youtube_analysis
+      title: Source title
+      creator: Source creator
+      url: https://example.com
+      local_path: docs/.../source.md
 
 source_claims:
-  - id: claim.example
-    source_id: source.example
-    summary: The specific claim or framework element used by the skill.
-    used_for:
-      - primitive.example
+    - id: claim.example
+      source_id: source.example
+      summary: The specific claim or framework element used by the skill.
+      used_for:
+          - primitive.example
 
 edges:
-  - from: skill-slug
-    to: primitive.example
-    type: composed_of
-    rationale: Why this primitive belongs in the skill.
-  - from: primitive.example
-    to: claim.example
-    type: cites
-    rationale: What the source claim contributes.
+    - from: skill-slug
+      to: primitive.example
+      type: composed_of
+      rationale: Why this primitive belongs in the skill.
+    - from: primitive.example
+      to: claim.example
+      type: cites
+      rationale: What the source claim contributes.
 ```
 
 ## Authoring Rules

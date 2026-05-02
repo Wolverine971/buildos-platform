@@ -14,17 +14,17 @@ This is a combo skill. Its structured lineage draft lives in `docs/research/yout
 
 Primitive skills currently composing this skill:
 
-| Primitive | Job | Primary source layer |
-| --- | --- | --- |
-| Scorecard funnel architecture | Connect landing page, questionnaire, results page, and follow-up into one conversion system. | Priestley |
-| Mode selection | Decide whether the scorecard can stand alone or needs a setup layer first. | Priestley + Dunford synthesis |
-| Assessment promise copy | Sell the assessment with hook, question count, time cost, free price, and immediate payoff. | Priestley |
-| Setup layer positioning | Prime considered buyers with market insight, alternatives, and a perfect-world scenario. | Dunford |
-| Alternatives-aware value proposition | Frame the three measured areas against the other options the buyer already considers. | Dunford |
-| Questionnaire signal design | Capture contact data, score-driving answers, and qualification signals. | Priestley |
-| Dynamic results personalization | Convert answers into score, tailored insights, and a visible payoff. | Priestley |
-| Lead segment routing | Route high-fit, middle-fit, and low-fit leads to different next steps. | Priestley |
-| Credibility and trust | Use evidence, creator background, and honest trade-offs without FOMO. | Priestley + Dunford |
+| Primitive                            | Job                                                                                          | Primary source layer          |
+| ------------------------------------ | -------------------------------------------------------------------------------------------- | ----------------------------- |
+| Scorecard funnel architecture        | Connect landing page, questionnaire, results page, and follow-up into one conversion system. | Priestley                     |
+| Mode selection                       | Decide whether the scorecard can stand alone or needs a setup layer first.                   | Priestley + Dunford synthesis |
+| Assessment promise copy              | Sell the assessment with hook, question count, time cost, free price, and immediate payoff.  | Priestley                     |
+| Setup layer positioning              | Prime considered buyers with market insight, alternatives, and a perfect-world scenario.     | Dunford                       |
+| Alternatives-aware value proposition | Frame the three measured areas against the other options the buyer already considers.        | Dunford                       |
+| Questionnaire signal design          | Capture contact data, score-driving answers, and qualification signals.                      | Priestley                     |
+| Dynamic results personalization      | Convert answers into score, tailored insights, and a visible payoff.                         | Priestley                     |
+| Lead segment routing                 | Route high-fit, middle-fit, and low-fit leads to different next steps.                       | Priestley                     |
+| Credibility and trust                | Use evidence, creator background, and honest trade-offs without FOMO.                        | Priestley + Dunford           |
 
 ## When to Use
 

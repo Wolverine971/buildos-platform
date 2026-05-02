@@ -190,7 +190,7 @@
 						'border-width': 3,
 						label: 'data(label)',
 						'font-size': 10,
-						'font-family': 'system-ui, sans-serif',
+						'font-family': 'system-ui, -apple-system, "Inter", sans-serif',
 						'text-wrap': 'wrap',
 						'text-max-width': '110px',
 						color: '#0f172a', // Semantic: text-foreground
@@ -288,7 +288,10 @@
 	{/if}
 
 	<!-- Graph Container -->
-	<div bind:this={container} class="tree-agent-graph flex-1 w-full bg-background"></div>
+	<div
+		bind:this={container}
+		class="tree-agent-graph flex-1 w-full bg-background tx tx-grid tx-weak"
+	></div>
 </div>
 
 <style>
@@ -296,5 +299,10 @@
 		touch-action: pan-x pan-y pinch-zoom;
 		-webkit-user-select: none;
 		user-select: none;
+	}
+	/* Cytoscape canvases must sit above the tx-grid texture pseudo-element */
+	.tree-agent-graph :global(canvas) {
+		position: relative;
+		z-index: 2;
 	}
 </style>

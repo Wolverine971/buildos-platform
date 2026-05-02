@@ -4,17 +4,10 @@
 	import {
 		Search,
 		Download,
-		FolderKanban,
-		ListChecks,
-		Calendar,
-		Target,
-		Flag,
-		FileText,
 		ChevronDown,
 		ChevronRight,
 		Maximize2,
-		SlidersHorizontal,
-		AlertTriangle
+		SlidersHorizontal
 	} from 'lucide-svelte';
 	import type { GraphStats, OntologyGraphInstance, ViewMode } from './lib/graph.types';
 	import {
@@ -166,15 +159,29 @@
 		}
 	];
 
-	// Node legend items with colors matching the graph
-	const nodeLegend = [
-		{ icon: FolderKanban, label: 'Project', color: 'text-emerald-500' },
-		{ icon: ListChecks, label: 'Task', color: 'text-muted-foreground' },
-		{ icon: Calendar, label: 'Plan', color: 'text-indigo-500' },
-		{ icon: Target, label: 'Goal', color: 'text-amber-500' },
-		{ icon: Flag, label: 'Milestone', color: 'text-emerald-500' },
-		{ icon: FileText, label: 'Document', color: 'text-blue-500' },
-		{ icon: AlertTriangle, label: 'Risk', color: 'text-red-500' }
+	// Node legend items — shapes mirror what Cytoscape renders on the canvas.
+	// Each `shape` matches a small inline SVG below; fills/strokes pull from the
+	// same palette as graph.service.ts so the legend reads as a key, not a guess.
+	const nodeLegend: Array<{
+		shape: 'roundRect' | 'star' | 'ellipse' | 'planRect' | 'triangle' | 'rectangle' | 'octagon';
+		label: string;
+		fill: string;
+		stroke: string;
+	}> = [
+		{ shape: 'roundRect', label: 'Project', fill: '#f8fafc', stroke: '#475569' },
+		{ shape: 'star', label: 'Goal', fill: '#fef3c7', stroke: '#d97706' },
+		{ shape: 'ellipse', label: 'Task', fill: '#f1f5f9', stroke: '#64748b' },
+		{ shape: 'planRect', label: 'Plan', fill: '#e0e7ff', stroke: '#6366f1' },
+		{ shape: 'triangle', label: 'Milestone', fill: '#d1fae5', stroke: '#059669' },
+		{ shape: 'rectangle', label: 'Document', fill: '#e0f2fe', stroke: '#0284c7' },
+		{ shape: 'octagon', label: 'Risk', fill: '#fee2e2', stroke: '#dc2626' }
+	];
+
+	// Lifecycle (border-style) legend — mirrors graph.service.ts state border rules
+	const lifecycleLegend: Array<{ style: 'dotted' | 'dashed' | 'solid'; label: string }> = [
+		{ style: 'dotted', label: 'Draft' },
+		{ style: 'dashed', label: 'Plan / Review' },
+		{ style: 'solid', label: 'Committed' }
 	];
 
 	// Edge legend items
@@ -184,7 +191,7 @@
 		{ color: 'bg-orange-500', label: 'Depends' },
 		{ color: 'bg-emerald-500', label: 'Milestone' },
 		{ color: 'bg-blue-500', label: 'Document' },
-		{ color: 'bg-zinc-400 border-t border-dotted border-zinc-400', label: 'Project FK' }
+		{ color: 'bg-zinc-400 border-t border-dotted border-zinc-400', label: 'Project link' }
 	];
 
 	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -395,12 +402,6 @@
 					<div
 						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"
 					>
-						<span class="text-lg font-bold text-foreground">{stats.totalOutputs}</span>
-						<span class="text-muted-foreground">Outputs</span>
-					</div>
-					<div
-						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"
-					>
 						<span class="text-lg font-bold text-foreground">{stats.totalDocuments}</span
 						>
 						<span class="text-muted-foreground">Documents</span>
@@ -414,20 +415,12 @@
 						<span class="text-red-600/70 dark:text-red-400/70">Risks</span>
 					</div>
 					<div
-						class="flex flex-col items-center p-2 rounded-lg bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/50"
-					>
-						<span class="text-lg font-bold text-violet-600 dark:text-violet-400"
-							>{stats.totalDecisions ?? 0}</span
-						>
-						<span class="text-violet-600/70 dark:text-violet-400/70">Decisions</span>
-					</div>
-					<div
 						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"
 					>
 						<span class="text-lg font-bold text-foreground"
 							>{stats.totalInferredEdges ?? 0}</span
 						>
-						<span class="text-muted-foreground">FK links</span>
+						<span class="text-muted-foreground">Project links</span>
 					</div>
 				</div>
 			{/if}
@@ -682,13 +675,120 @@
 
 			{#if legendExpanded}
 				<div class="space-y-2 animate-ink-in">
-					<!-- Node Types -->
-					<div class="grid grid-cols-4 gap-1">
+					<!-- Node Types — shapes mirror the canvas -->
+					<div class="grid grid-cols-4 gap-x-2 gap-y-1.5">
 						{#each nodeLegend as item}
-							{@const Icon = item.icon}
-							<div class="flex items-center gap-1 text-[0.6rem]" title={item.label}>
-								<Icon class="w-3 h-3 {item.color} flex-shrink-0" />
+							<div class="flex items-center gap-1.5 text-[0.6rem]" title={item.label}>
+								<svg
+									viewBox="0 0 18 14"
+									class="w-4 h-3 flex-shrink-0"
+									aria-hidden="true"
+								>
+									{#if item.shape === 'roundRect'}
+										<rect
+											x="1.5"
+											y="2"
+											width="15"
+											height="10"
+											rx="2"
+											fill={item.fill}
+											stroke={item.stroke}
+											stroke-width="1.5"
+										/>
+									{:else if item.shape === 'star'}
+										<polygon
+											points="9,1.5 11,5.5 15.5,6 12,9 13,13.5 9,11 5,13.5 6,9 2.5,6 7,5.5"
+											fill={item.fill}
+											stroke={item.stroke}
+											stroke-width="1"
+										/>
+									{:else if item.shape === 'ellipse'}
+										<ellipse
+											cx="9"
+											cy="7"
+											rx="6.5"
+											ry="4.5"
+											fill={item.fill}
+											stroke={item.stroke}
+											stroke-width="1.25"
+										/>
+									{:else if item.shape === 'planRect'}
+										<rect
+											x="1.5"
+											y="2"
+											width="15"
+											height="10"
+											rx="2"
+											fill={item.fill}
+											stroke={item.stroke}
+											stroke-width="1.25"
+											stroke-dasharray="2.2 1.6"
+										/>
+									{:else if item.shape === 'triangle'}
+										<polygon
+											points="9,1.5 16,12.5 2,12.5"
+											fill={item.fill}
+											stroke={item.stroke}
+											stroke-width="1.25"
+											stroke-linejoin="round"
+										/>
+									{:else if item.shape === 'rectangle'}
+										<rect
+											x="3"
+											y="1.5"
+											width="12"
+											height="11"
+											fill={item.fill}
+											stroke={item.stroke}
+											stroke-width="1.25"
+										/>
+									{:else if item.shape === 'octagon'}
+										<polygon
+											points="6,1.5 12,1.5 16.5,5.5 16.5,8.5 12,12.5 6,12.5 1.5,8.5 1.5,5.5"
+											fill={item.fill}
+											stroke={item.stroke}
+											stroke-width="1.25"
+											stroke-linejoin="round"
+										/>
+									{/if}
+								</svg>
 								<span class="text-muted-foreground truncate">{item.label}</span>
+							</div>
+						{/each}
+					</div>
+
+					<!-- Lifecycle (border style) — what dotted/dashed/solid means on the canvas -->
+					<div class="flex flex-wrap gap-x-3 gap-y-1 pt-1 border-t border-border/50">
+						<span
+							class="text-[0.58rem] uppercase tracking-wider text-muted-foreground/80 self-center"
+						>
+							Lifecycle
+						</span>
+						{#each lifecycleLegend as item}
+							<div class="flex items-center gap-1.5 text-[0.6rem]">
+								<svg
+									viewBox="0 0 18 6"
+									class="w-4 h-1.5 flex-shrink-0"
+									aria-hidden="true"
+								>
+									<rect
+										x="1"
+										y="1"
+										width="16"
+										height="4"
+										rx="1"
+										fill="none"
+										stroke="currentColor"
+										class="text-muted-foreground"
+										stroke-width="1.25"
+										stroke-dasharray={item.style === 'dotted'
+											? '0.8 1.4'
+											: item.style === 'dashed'
+												? '2 1.4'
+												: 'none'}
+									/>
+								</svg>
+								<span class="text-muted-foreground">{item.label}</span>
 							</div>
 						{/each}
 					</div>
