@@ -11,7 +11,7 @@
 **Relationship Status:** Active
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-08
+**Last Reviewed:** 2026-05-03
 **Last Engaged:** 2026-04-04 (via @build.os)
 **Source of First Discovery:** `instagram-engagement-targets.md` plus recurring appearance in daily warmups
 
@@ -47,13 +47,14 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                    | Post Link                                | Action    | Status                   | What We Said / Planned                                | Outcome              | Source                         |
-| ---------- | ------- | ---------------------------------------- | ---------------------------------------- | --------- | ------------------------ | ----------------------------------------------------- | -------------------- | ------------------------------ |
-| 2026-03-22 | Profile | Stale grid (most recent March 11)        | N/A                                      | Reviewed  | Logged                   | No fresh content                                      | No engagement        | 2026-03-22_instagram-warmup.md |
-| 2026-03-27 | Post    | "Too Busy For Selfcare" Reel             | https://www.instagram.com/p/DWZGel_CEtK/ | Queued    | No posting confirmation  | Systems-as-self-care reframe                          | Unknown              | 2026-03-27_instagram-warmup.md |
-| 2026-04-04 | Post    | "Lies I Believed: Selfcare Edition"      | https://www.instagram.com/p/DWrH-1yAnfT/ | Commented | Posted via @build.os     | Founder burnout + running-on-empty angle              | 1 like by 2026-04-05 | 2026-04-04_instagram-warmup.md |
-| 2026-04-05 | Post    | Same "Lies I Believed" follow-up check   | https://www.instagram.com/p/DWrH-1yAnfT/ | Reviewed  | Logged                   | Comment received 1 like, engagement confirmed landing | Reinforced           | 2026-04-05_instagram-warmup.md |
-| 2026-04-11 | Post    | "Lies I Believed: Three" self-care buddy | https://www.instagram.com/p/DW9Jg6wgQMW/ | Queued    | Pending /instagram-reply | Solo founder self-care, building alongside others     | Pending              | 2026-04-11_instagram-warmup.md |
+| Date       | Surface | Topic                                    | Post Link                                | Action    | Status                   | What We Said / Planned                                                                                                                                    | Outcome              | Source                         |
+| ---------- | ------- | ---------------------------------------- | ---------------------------------------- | --------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- | ------------------------------ |
+| 2026-03-22 | Profile | Stale grid (most recent March 11)        | N/A                                      | Reviewed  | Logged                   | No fresh content                                                                                                                                          | No engagement        | 2026-03-22_instagram-warmup.md |
+| 2026-03-27 | Post    | "Too Busy For Selfcare" Reel             | https://www.instagram.com/p/DWZGel_CEtK/ | Queued    | No posting confirmation  | Systems-as-self-care reframe                                                                                                                              | Unknown              | 2026-03-27_instagram-warmup.md |
+| 2026-04-04 | Post    | "Lies I Believed: Selfcare Edition"      | https://www.instagram.com/p/DWrH-1yAnfT/ | Commented | Posted via @build.os     | Founder burnout + running-on-empty angle                                                                                                                  | 1 like by 2026-04-05 | 2026-04-04_instagram-warmup.md |
+| 2026-04-05 | Post    | Same "Lies I Believed" follow-up check   | https://www.instagram.com/p/DWrH-1yAnfT/ | Reviewed  | Logged                   | Comment received 1 like, engagement confirmed landing                                                                                                     | Reinforced           | 2026-04-05_instagram-warmup.md |
+| 2026-04-11 | Post    | "Lies I Believed: Three" self-care buddy | https://www.instagram.com/p/DW9Jg6wgQMW/ | Queued    | Pending /instagram-reply | Solo founder self-care, building alongside others                                                                                                         | Pending              | 2026-04-11_instagram-warmup.md |
+| 2026-05-03 | Reel    | "Over capacity" / pushed past limits     | https://www.instagram.com/p/DXxFCzTjb9s/ | Queued    | Pending /instagram-reply | Founder version of overworking past capacity — the "I'll just do this one more thing" loop and what actually pulls you back. No tool plug. Mention fit 0. | Pending              | 2026-05-03_instagram-warmup.md |
 
 ## Open Loops
 

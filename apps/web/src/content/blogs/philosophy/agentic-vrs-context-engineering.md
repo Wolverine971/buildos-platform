@@ -1,6 +1,6 @@
 ---
-title: 'Why Context Engineering Will Matter More Than Agentic Engineering'
-description: 'As AI agents gain more capabilities, the real differentiator becomes context engineering: the art of providing the right knowledge at the right time. See how Project Lens puts this into practice.'
+title: 'Why Context Engineering Beats Agentic Engineering'
+description: 'As AI agents gain more capability, the real differentiator becomes context engineering — providing the right knowledge at the right time. How Project Lens does it.'
 author: 'DJ Wayne'
 date: '2025-08-12'
 lastmod: '2025-12-31'

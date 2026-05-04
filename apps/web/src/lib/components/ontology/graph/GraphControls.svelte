@@ -163,13 +163,20 @@
 	// Each `shape` matches a small inline SVG below; fills/strokes pull from the
 	// same palette as graph.service.ts so the legend reads as a key, not a guess.
 	const nodeLegend: Array<{
-		shape: 'roundRect' | 'star' | 'ellipse' | 'planRect' | 'triangle' | 'rectangle' | 'octagon';
+		shape:
+			| 'roundRect'
+			| 'target'
+			| 'ellipse'
+			| 'planRect'
+			| 'triangle'
+			| 'rectangle'
+			| 'octagon';
 		label: string;
 		fill: string;
 		stroke: string;
 	}> = [
 		{ shape: 'roundRect', label: 'Project', fill: '#f8fafc', stroke: '#475569' },
-		{ shape: 'star', label: 'Goal', fill: '#fef3c7', stroke: '#d97706' },
+		{ shape: 'target', label: 'Goal', fill: '#fef3c7', stroke: '#d97706' },
 		{ shape: 'ellipse', label: 'Task', fill: '#f1f5f9', stroke: '#64748b' },
 		{ shape: 'planRect', label: 'Plan', fill: '#e0e7ff', stroke: '#6366f1' },
 		{ shape: 'triangle', label: 'Milestone', fill: '#d1fae5', stroke: '#059669' },
@@ -188,7 +195,7 @@
 	const edgeLegend = [
 		{ color: 'bg-muted-foreground', label: 'Hierarchy' },
 		{ color: 'bg-amber-500', label: 'Goals' },
-		{ color: 'bg-orange-500', label: 'Depends' },
+		{ color: 'bg-violet-500', label: 'Depends' },
 		{ color: 'bg-emerald-500', label: 'Milestone' },
 		{ color: 'bg-blue-500', label: 'Document' },
 		{ color: 'bg-zinc-400 border-t border-dotted border-zinc-400', label: 'Project link' }
@@ -695,12 +702,29 @@
 											stroke={item.stroke}
 											stroke-width="1.5"
 										/>
-									{:else if item.shape === 'star'}
-										<polygon
-											points="9,1.5 11,5.5 15.5,6 12,9 13,13.5 9,11 5,13.5 6,9 2.5,6 7,5.5"
+									{:else if item.shape === 'target'}
+										<circle
+											cx="9"
+											cy="7"
+											r="6"
 											fill={item.fill}
 											stroke={item.stroke}
+											stroke-width="1.25"
+										/>
+										<circle
+											cx="9"
+											cy="7"
+											r="3.5"
+											fill="none"
+											stroke={item.stroke}
 											stroke-width="1"
+										/>
+										<circle
+											cx="9"
+											cy="7"
+											r="1"
+											fill={item.stroke}
+											stroke="none"
 										/>
 									{:else if item.shape === 'ellipse'}
 										<ellipse

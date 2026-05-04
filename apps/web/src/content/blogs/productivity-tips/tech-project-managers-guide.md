@@ -1,6 +1,6 @@
 ---
-title: 'Stop Managing Tickets, Start Managing Thinking: A Workflow Architecture for Tech PMs'
-description: 'Why your projects are failing between tools — and the workflow patterns that actually fix it. A practical guide for tech project managers drowning in context fragmentation.'
+title: 'Stop Managing Tickets, Start Managing Thinking'
+description: 'Why projects fail between tools — and the workflow patterns that fix it. A practical guide for tech PMs drowning in context fragmentation.'
 slug: 'tech-pm-workflow-architecture'
 author: 'DJ Wayne'
 date: '2026-03-28'

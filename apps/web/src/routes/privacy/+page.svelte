@@ -6,7 +6,7 @@
 
 <SEOHead
 	title="Privacy Policy - BuildOS | Data Protection & User Privacy"
-	description="BuildOS privacy policy: Learn how we protect your data, handle project context securely, and respect your privacy. GDPR compliant, data encrypted, you own your content."
+	description="BuildOS privacy policy: how we protect your data, handle project context securely, and respect your privacy. GDPR compliant, encrypted, you own your content."
 	canonical="https://build-os.com/privacy"
 	keywords="BuildOS privacy policy, data protection, GDPR compliance, user privacy, project context security, data encryption, privacy rights"
 	author="BuildOS"

@@ -40,7 +40,7 @@ Not every task needs a time block. The split lets you plan honestly and only sch
 
 ## Time Blocks
 
-[`/time-blocks`](/time-blocks) is a calendar-style planning surface with analytics on how focus time is spent. It's currently rolling out behind a feature flag — if you don't see it and want in, let us know on [feedback](/feedback).
+`/time-blocks` (visible once you're signed in) is a calendar-style planning surface with analytics on how focus time is spent. It's currently rolling out behind a feature flag — if you don't see it and want in, let us know on [feedback](/feedback).
 
 ## The agent and your calendar
 

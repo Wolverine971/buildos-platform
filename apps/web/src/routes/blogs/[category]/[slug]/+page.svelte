@@ -42,6 +42,53 @@
 		return Boolean(url && (url.includes('youtube.com') || url.includes('youtu.be')));
 	}
 
+	function getYoutubeVideoId(url?: string): string | null {
+		if (!url) return null;
+		try {
+			const parsed = new URL(url);
+			const host = parsed.hostname.replace(/^www\./, '');
+			if (host === 'youtu.be') {
+				const id = parsed.pathname.slice(1).split('/')[0] ?? '';
+				return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
+			}
+			if (
+				host === 'youtube.com' ||
+				host === 'm.youtube.com' ||
+				host === 'youtube-nocookie.com'
+			) {
+				const v = parsed.searchParams.get('v');
+				if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
+				const embedMatch = parsed.pathname.match(
+					/^\/(?:embed|shorts|v)\/([a-zA-Z0-9_-]{11})/
+				);
+				if (embedMatch) return embedMatch[1] ?? null;
+			}
+			return null;
+		} catch {
+			return null;
+		}
+	}
+
+	function getYoutubeStartSeconds(url?: string): number | null {
+		if (!url) return null;
+		try {
+			const parsed = new URL(url);
+			const raw = parsed.searchParams.get('t') ?? parsed.searchParams.get('start');
+			if (!raw) return null;
+			if (/^\d+$/.test(raw)) return Number.parseInt(raw, 10);
+			const match = raw.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/);
+			if (!match) return null;
+			const [, h, m, s] = match;
+			const seconds =
+				(Number.parseInt(h ?? '0', 10) || 0) * 3600 +
+				(Number.parseInt(m ?? '0', 10) || 0) * 60 +
+				(Number.parseInt(s ?? '0', 10) || 0);
+			return seconds > 0 ? seconds : null;
+		} catch {
+			return null;
+		}
+	}
+
 	function getLineageSourceId(source: BlogLineageSource, index: number) {
 		return source.url ? `${source.url}#source` : `${articleUrl}#source-${index + 1}`;
 	}
@@ -181,6 +228,25 @@
 	}
 
 	const lineageChannels = $derived(getLineageChannels(lineageSources));
+
+	const featuredYoutubeUrl = $derived.by(() => {
+		if (getYoutubeVideoId(data.post.sourceUrl)) return data.post.sourceUrl;
+		const fromLineage = lineageSources.find((source) => getYoutubeVideoId(source.url) !== null);
+		return fromLineage?.url;
+	});
+	const featuredYoutubeId = $derived(getYoutubeVideoId(featuredYoutubeUrl));
+	const featuredYoutubeStart = $derived(getYoutubeStartSeconds(featuredYoutubeUrl));
+	const featuredYoutubeTitle = $derived(
+		data.post.sourceTitle ||
+			lineageSources.find((source) => source.url === featuredYoutubeUrl)?.title ||
+			'YouTube video'
+	);
+	const featuredYoutubeEmbedSrc = $derived.by(() => {
+		if (!featuredYoutubeId) return null;
+		const params = new URLSearchParams({ rel: '0', modestbranding: '1' });
+		if (featuredYoutubeStart) params.set('start', String(featuredYoutubeStart));
+		return `https://www.youtube-nocookie.com/embed/${featuredYoutubeId}?${params.toString()}`;
+	});
 
 	const jsonLd = $derived.by(() => {
 		const primarySource: BlogLineageSource | null = data.post.sourceTitle
@@ -508,6 +574,25 @@
 
 		<!-- Content -->
 		<article class="py-8 sm:py-10">
+			{#if featuredYoutubeEmbedSrc}
+				<div class="mb-6 sm:mb-8">
+					<div
+						class="relative w-full overflow-hidden rounded-lg border border-border shadow-ink"
+						style="aspect-ratio: 16 / 9;"
+					>
+						<iframe
+							src={featuredYoutubeEmbedSrc}
+							title={featuredYoutubeTitle}
+							class="absolute inset-0 h-full w-full"
+							loading="lazy"
+							frameborder="0"
+							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+							referrerpolicy="strict-origin-when-cross-origin"
+							allowfullscreen
+						></iframe>
+					</div>
+				</div>
+			{/if}
 			<div
 				class="prose prose-neutral max-w-none
 				prose-headings:text-foreground prose-headings:tracking-tight

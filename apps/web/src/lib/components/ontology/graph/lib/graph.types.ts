@@ -72,6 +72,8 @@ export interface CytoscapeNode {
 		height?: number;
 		size: number;
 		shape: string;
+		/** Optional data URI painted as Cytoscape `background-image` (currently used for the Target icon on goals). */
+		iconImage?: string;
 		fontSize?: number;
 		fontWeight?: number;
 		labelValign?: 'top' | 'center' | 'bottom';

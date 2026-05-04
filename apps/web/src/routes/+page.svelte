@@ -26,7 +26,6 @@
 		SITE_URL
 	} from '$lib/constants/seo';
 	import AnalyticsDashboard from '$lib/components/dashboard/AnalyticsDashboard.svelte';
-	import PublicProjectView from '$lib/components/landing/public-project-preview/PublicProjectView.svelte';
 	import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 	import { serializeJsonLd } from '$lib/utils/json-ld';
 	// Canonical data model icons (consistent with InsightPanels on /projects/[id])
@@ -141,6 +140,43 @@
 	});
 
 	let isAuthenticated = $derived(!!data?.user);
+
+	// Lazy-loaded landing-only component. Defers ~5 sub-components and 2 fetch
+	// calls until the viewer scrolls near the preview, keeping initial paint light.
+	let PublicProjectView = $state<any>(null);
+	let publicProjectLoadFailed = $state(false);
+	let publicProjectAnchor = $state<HTMLDivElement | null>(null);
+
+	$effect(() => {
+		if (isAuthenticated || !publicProjectAnchor || PublicProjectView) return;
+		if (typeof IntersectionObserver === 'undefined') {
+			loadPublicProjectView();
+			return;
+		}
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries.some((entry) => entry.isIntersecting)) {
+					observer.disconnect();
+					loadPublicProjectView();
+				}
+			},
+			{ rootMargin: '400px 0px' }
+		);
+		observer.observe(publicProjectAnchor);
+		return () => observer.disconnect();
+	});
+
+	async function loadPublicProjectView() {
+		try {
+			const module = await import(
+				'$lib/components/landing/public-project-preview/PublicProjectView.svelte'
+			);
+			PublicProjectView = module.default;
+		} catch (err) {
+			console.error('[Landing] Failed to load PublicProjectView:', err);
+			publicProjectLoadFailed = true;
+		}
+	}
 
 	// Reload data when needed
 	async function handleDashboardRefresh() {
@@ -366,7 +402,32 @@
 		</section>
 
 		<!-- example project preview (read-only embed of a real public project) -->
-		<PublicProjectView />
+		<!-- Lazy-loaded: heavy component + 2 API calls deferred until user scrolls near. -->
+		<div bind:this={publicProjectAnchor} class="min-h-[600px] sm:min-h-[720px]">
+			{#if PublicProjectView}
+				<PublicProjectView />
+			{:else if publicProjectLoadFailed}
+				<section class="mx-auto max-w-6xl px-4 py-8 sm:py-10 text-sm text-muted-foreground">
+					Couldn't load the example project preview. Refresh to try again.
+				</section>
+			{:else}
+				<section
+					aria-busy="true"
+					aria-label="Loading example project preview"
+					class="mx-auto max-w-6xl px-4 py-8 sm:py-10"
+				>
+					<div
+						class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak min-h-[520px] sm:min-h-[640px] flex items-center justify-center"
+					>
+						<span
+							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
+						>
+							Example project loads as you scroll
+						</span>
+					</div>
+				</section>
+			{/if}
+		</div>
 
 		<!-- how it works -->
 		<section id="how" class="border-b border-border">

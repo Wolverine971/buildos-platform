@@ -1,6 +1,6 @@
 ---
 title: 'You Stopped Choosing What You Think About'
-description: "AI is about to make the public internet far more synthetic, far faster. The people who keep their mind intact will share one habit: a chosen-input practice and a thinking environment built around it. Here's the habit, the three feelings to watch for, and a 60-second test."
+description: 'AI is about to make the public internet far more synthetic. The people who keep their mind intact will share one habit: a chosen-input practice and a thinking environment.'
 author: 'DJ Wayne'
 date: '2026-04-27'
 lastmod: '2026-04-27'

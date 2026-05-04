@@ -168,6 +168,29 @@
 					'border-style': 'dashed'
 				}
 			},
+			// Projects get a permanent stamp-like halo and slightly heavier presence —
+			// the closest Cytoscape can come to wt-card / tx-frame "frame" weight.
+			{
+				selector: 'node[type = "project"]',
+				style: {
+					'underlay-color': isDark ? '#e2e8f0' : '#0f172a',
+					'underlay-opacity': 0.08,
+					'underlay-padding': 5
+				}
+			},
+			// Goals carry the Lucide Target SVG painted as background-image,
+			// keeping the icon consistent with the legend, NodeDetailsPanel, and Inkprint.
+			{
+				selector: 'node[type = "goal"]',
+				style: {
+					'background-image': 'data(iconImage)' as any,
+					'background-fit': 'contain',
+					'background-image-opacity': 1,
+					'background-clip': 'node',
+					'background-width': '70%',
+					'background-height': '70%'
+				}
+			},
 			// Blocked state - thick red border, attention-grabbing
 			{
 				selector: 'node[state = "blocked"]',

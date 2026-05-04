@@ -126,6 +126,66 @@ const STATIC_URLS: SitemapUrl[] = [
 		lastmod: '2026-03-27',
 		changefreq: 'weekly',
 		priority: '0.7'
+	},
+	{
+		loc: `${BASE_URL}/docs/getting-started`,
+		lastmod: '2026-04-17',
+		changefreq: 'monthly',
+		priority: '0.8'
+	},
+	{
+		loc: `${BASE_URL}/docs/ontology`,
+		lastmod: '2026-04-17',
+		changefreq: 'monthly',
+		priority: '0.8'
+	},
+	{
+		loc: `${BASE_URL}/docs/brain-dump`,
+		lastmod: '2026-04-17',
+		changefreq: 'monthly',
+		priority: '0.8'
+	},
+	{
+		loc: `${BASE_URL}/docs/agentic-chat`,
+		lastmod: '2026-04-17',
+		changefreq: 'monthly',
+		priority: '0.8'
+	},
+	{
+		loc: `${BASE_URL}/docs/projects-tasks-plans`,
+		lastmod: '2026-04-17',
+		changefreq: 'monthly',
+		priority: '0.8'
+	},
+	{
+		loc: `${BASE_URL}/docs/calendar`,
+		lastmod: '2026-04-17',
+		changefreq: 'monthly',
+		priority: '0.8'
+	},
+	{
+		loc: `${BASE_URL}/docs/daily-briefs`,
+		lastmod: '2026-04-17',
+		changefreq: 'monthly',
+		priority: '0.8'
+	},
+	{
+		loc: `${BASE_URL}/docs/notifications`,
+		lastmod: '2026-04-17',
+		changefreq: 'monthly',
+		priority: '0.8'
+	},
+	{
+		loc: `${BASE_URL}/docs/connect-agents`,
+		lastmod: '2026-04-18',
+		changefreq: 'monthly',
+		priority: '0.8'
+	},
+	{
+		loc: `${BASE_URL}/docs/reference`,
+		lastmod: '2026-04-17',
+		changefreq: 'monthly',
+		priority: '0.7'
 	}
 ];
 

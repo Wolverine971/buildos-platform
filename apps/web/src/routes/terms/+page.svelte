@@ -6,7 +6,7 @@
 
 <SEOHead
 	title="Terms of Service - BuildOS | Legal Terms & Conditions"
-	description="BuildOS Terms of Service: Simple, fair legal terms for using the BuildOS thinking environment. Last updated October 2025. User agreements, content ownership, and usage guidelines."
+	description="BuildOS Terms of Service: simple, fair terms for using the BuildOS thinking environment. User agreements, content ownership, and usage guidelines."
 	canonical="https://build-os.com/terms"
 	keywords="BuildOS terms of service, user agreement, legal terms, content ownership, usage guidelines, subscription terms"
 	author="BuildOS"

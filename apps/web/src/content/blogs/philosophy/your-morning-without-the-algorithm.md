@@ -1,6 +1,6 @@
 ---
 title: "You're Not Choosing What You Think About Anymore"
-description: 'The clipping economy broke the public internet. A thinking environment is the only way back to your own mind — a brain dump as the anti-feed, a daily brief as your morning without the algorithm.'
+description: 'The clipping economy broke the public internet. A thinking environment is the way back: brain dump as anti-feed, daily brief as your morning without the algorithm.'
 author: 'DJ Wayne'
 date: '2026-04-16'
 lastmod: '2026-04-16'

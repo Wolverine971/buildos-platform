@@ -547,10 +547,10 @@
 				},
 				"ui-ux-quality-review": {
 					"title": "UI/UX Quality Review: An Agent Skill For Product Interface Audits",
-					"description": "A source-lineaged agent skill for reviewing product screens, landing pages, dashboards, and mobile flows for flow, hierarchy, spacing, consistency, feedback, and responsive polish.",
+					"description": "A source-lineaged agent skill for reviewing product screens, landing pages, dashboards, and mobile flows. Each principle ships in two layers: human-readable principle + agent-checkable rules with thresholds and named patterns.",
 					"author": "DJ Wayne",
 					"date": "2026-05-02",
-					"lastmod": "2026-05-02",
+					"lastmod": "2026-05-03",
 					"changefreq": "monthly",
 					"priority": "0.9",
 					"published": true,
@@ -563,8 +563,8 @@
 						"product-and-design",
 						"buildos"
 					],
-					"readingTime": 10,
-					"excerpt": "A practical UI/UX review skill for agents: check flow before pixels, rank hierarchy before styling, enforce spacing and type systems, then add delight only when the foundation works.",
+					"readingTime": 18,
+					"excerpt": "A practical UI/UX review skill for agents and humans. Each principle has a human view and an agent view: the principle on top, then the checkable rules and thresholds an agent runs against the screen.",
 					"skillId": "product-and-design/ui-ux-quality-review",
 					"skillType": "combo",
 					"skillCategory": "product-and-design",
@@ -576,9 +576,9 @@
 						"portable Agent Skills"
 					],
 					"stackWith": [
-						"marketing-site-design-review",
-						"visual-craft-fundamentals",
 						"accessibility-and-inclusive-ui-review",
+						"visual-craft-fundamentals",
+						"marketing-site-design-review",
 						"delightful-product-review"
 					],
 					"skillSource": "docs/research/youtube-library/skill-drafts/ui-ux-quality-review/SKILL.md",
@@ -587,7 +587,7 @@
 					"lineageStats": {
 						"sources": 7,
 						"primitives": 9,
-						"sourceClaims": 10,
+						"sourceClaims": 9,
 						"edges": 24,
 						"candidateV2Sources": 3
 					},
@@ -738,7 +738,7 @@
 					"filePath": "src/content/blogs/case-studies/buildos-vs-chatgpt-context-that-compounds.md"
 				},
 				"buildos-vs-monday-thought-organization": {
-					"title": "Monday.com vs BuildOS: Project Execution vs Thought Organization",
+					"title": "BuildOS vs Monday.com: Thought vs Execution",
 					"description": "Monday.com manages projects brilliantly. But it assumes you already know what to build. Here's what happens before tasks hit the board.",
 					"slug": "buildos-vs-monday-thought-organization",
 					"author": "DJ Wayne",
@@ -940,7 +940,7 @@
 			},
 			"posts": {
 				"daily-brief-guide": {
-					"title": "Using Daily Briefs: Start the Day Knowing What Actually Matters",
+					"title": "Using Daily Briefs to Start the Day With Clarity",
 					"description": "Most mornings start buried in a task list or staring at a blank page. A BuildOS daily brief starts with context — what you worked on, what's due, and why it matters today. Here's how to use them well.",
 					"author": "DJ Wayne",
 					"date": "2025-06-26",
@@ -967,8 +967,8 @@
 					"filePath": "src/content/blogs/getting-started/daily-brief-guide.md"
 				},
 				"effective-brain-dumping": {
-					"title": "Brain Dumping That Actually Works: From Chaos to Compounding Context",
-					"description": "Your brain dump doesn't have to become another abandoned note. Here's how BuildOS transforms scattered thoughts into goals, plans, and tasks that actually connect.",
+					"title": "Brain Dumps That Actually Work: From Chaos to Context",
+					"description": "Your brain dump doesn't have to become another abandoned note. How BuildOS turns scattered thoughts into goals, plans, and tasks that connect.",
 					"author": "DJ Wayne",
 					"date": "2025-06-28",
 					"lastmod": "2025-12-31",
@@ -985,7 +985,7 @@
 						"zoom"
 					],
 					"readingTime": 8,
-					"excerpt": "Your brain dump doesn't have to become another abandoned note. Here's how BuildOS transforms scattered thoughts into goals, plans, and tasks that actually connect.",
+					"excerpt": "Your brain dump doesn't have to become another abandoned note. How BuildOS turns scattered thoughts into goals, plans, and tasks that connect.",
 					"pic": "brain-dumping-guide",
 					"path": "apps/web/src/content/blogs/getting-started/effective-brain-dumping.md",
 					"slug": "effective-brain-dumping",
@@ -1042,7 +1042,7 @@
 				},
 				"under-the-hood": {
 					"title": "Under the Hood: How BuildOS Organizes Your Thoughts",
-					"description": "A peek behind the curtain at how BuildOS connects your work — a rich context architecture where goals, milestones, plans, tasks, and documents stay connected as one evolving system.",
+					"description": "A peek behind the curtain at the BuildOS context architecture — where goals, milestones, plans, tasks, and documents stay connected as one evolving system.",
 					"author": "DJ Wayne",
 					"date": "2025-12-17",
 					"lastmod": "2026-04-16",
@@ -1069,8 +1069,8 @@
 					"filePath": "src/content/blogs/getting-started/under-the-hood.md"
 				},
 				"understanding-life-goals": {
-					"title": "Goals vs Projects: Why Most Productivity Systems Get This Wrong",
-					"description": "Learn how goals sit at the top of BuildOS connected structure—linking to plans, tasks, and documents. Discover how strategic alignment becomes automatic when context is structured.",
+					"title": "Goals vs Projects: Where Productivity Systems Fail",
+					"description": "Goals sit at the top of the BuildOS graph — linking to plans, tasks, and documents. Strategic alignment becomes automatic when context is structured.",
 					"author": "DJ Wayne",
 					"date": "2025-06-27",
 					"lastmod": "2026-01-24",
@@ -1124,8 +1124,8 @@
 			},
 			"posts": {
 				"agentic-vrs-context-engineering": {
-					"title": "Why Context Engineering Will Matter More Than Agentic Engineering",
-					"description": "As AI agents gain more capabilities, the real differentiator becomes context engineering: the art of providing the right knowledge at the right time. See how Project Lens puts this into practice.",
+					"title": "Why Context Engineering Beats Agentic Engineering",
+					"description": "As AI agents gain more capability, the real differentiator becomes context engineering — providing the right knowledge at the right time. How Project Lens does it.",
 					"author": "DJ Wayne",
 					"date": "2025-08-12",
 					"lastmod": "2025-12-31",
@@ -1188,8 +1188,8 @@
 					"filePath": "src/content/blogs/philosophy/anti-ai-assistant-execution-engine.md"
 				},
 				"compound-engineering-for-your-life": {
-					"title": "Compound Engineering for Your Life: Why Every Brain Dump Makes You Smarter",
-					"description": "Software engineers discovered that AI gets permanently smarter from every code review and bug fix. BuildOS applies the same principle to your life — brain dumps, daily briefs, and Project Lens all compound over time.",
+					"title": "Compound Engineering: Every Brain Dump Compounds",
+					"description": "Engineers found AI gets permanently smarter from every code review and bug fix. BuildOS applies the same principle to your life — brain dumps and briefs compound.",
 					"author": "DJ Wayne",
 					"date": "2026-02-08",
 					"lastmod": "2026-02-08",
@@ -1211,7 +1211,7 @@
 						"systems-thinking"
 					],
 					"readingTime": 10,
-					"excerpt": "Software engineers discovered that AI gets permanently smarter from every code review and bug fix. BuildOS applies the same principle to your life — brain dumps, daily briefs, and Project Lens all compound over time.",
+					"excerpt": "Engineers found AI gets permanently smarter from every code review and bug fix. BuildOS applies the same principle to your life — brain dumps and briefs compound.",
 					"pic": "compound-engineering-life",
 					"path": "apps/web/src/content/blogs/philosophy/compound-engineering-for-your-life.md",
 					"slug": "compound-engineering-for-your-life",
@@ -1398,7 +1398,7 @@
 				},
 				"social-media-is-dead-interest-media": {
 					"title": "Social Media Is Dead. What You're Using Is Interest Media.",
-					"description": "The word \"social media\" stopped being accurate years ago. What replaced it is something we don't have a name for yet — except one: interest media. A manifesto on the category shift, and what it means for your mind.",
+					"description": "\"Social media\" stopped being accurate years ago. What replaced it is interest media — a manifesto on the category shift, and what it means for your mind.",
 					"author": "DJ Wayne",
 					"date": "2026-04-17",
 					"lastmod": "2026-04-17",
@@ -1428,7 +1428,7 @@
 				},
 				"what-a-thinking-environment-actually-is": {
 					"title": "What a Thinking Environment Actually Is",
-					"description": "Not a productivity tool. Not a note app. Not an AI assistant. A thinking environment is a specific category with specific properties — the surface where you author your own mind. Here's a precise definition and the five properties that define the category.",
+					"description": "Not a productivity tool. Not a note app. Not an AI assistant. A thinking environment is the surface where you author your own mind — defined by five properties.",
 					"author": "DJ Wayne",
 					"date": "2026-04-18",
 					"lastmod": "2026-04-18",
@@ -1458,7 +1458,7 @@
 				},
 				"you-stopped-choosing-what-you-think-about": {
 					"title": "You Stopped Choosing What You Think About",
-					"description": "AI is about to make the public internet far more synthetic, far faster. The people who keep their mind intact will share one habit: a chosen-input practice and a thinking environment built around it. Here's the habit, the three feelings to watch for, and a 60-second test.",
+					"description": "AI is about to make the public internet far more synthetic. The people who keep their mind intact will share one habit: a chosen-input practice and a thinking environment.",
 					"author": "DJ Wayne",
 					"date": "2026-04-27",
 					"lastmod": "2026-04-27",
@@ -1486,7 +1486,7 @@
 				},
 				"your-morning-without-the-algorithm": {
 					"title": "You're Not Choosing What You Think About Anymore",
-					"description": "The clipping economy broke the public internet. A thinking environment is the only way back to your own mind — a brain dump as the anti-feed, a daily brief as your morning without the algorithm.",
+					"description": "The clipping economy broke the public internet. A thinking environment is the way back: brain dump as anti-feed, daily brief as your morning without the algorithm.",
 					"author": "DJ Wayne",
 					"date": "2026-04-16",
 					"lastmod": "2026-04-16",
@@ -1747,7 +1747,7 @@
 				},
 				"context-engineering-101": {
 					"title": "Prompt Engineering is Out. Context Engineering is In.",
-					"description": "The way you work with AI is changing. Prompt engineering was about crafting one-off asks. Context engineering is about building persistent systems the model can reason over. Here's how BuildOS puts it into practice.",
+					"description": "Prompt engineering crafts one-off asks. Context engineering builds persistent systems the model can reason over. Here's how BuildOS puts it into practice.",
 					"author": "DJ Wayne",
 					"date": "2025-08-05",
 					"lastmod": "2026-04-16",
@@ -1779,7 +1779,7 @@
 				},
 				"evolution-of-note-taking": {
 					"title": "The Evolution of Note-Taking: From Collection to Action",
-					"description": "GTD, Notion, AI-powered notes — each generation promised a better filing cabinet. The actual inflection is the move from collecting ideas to making them move. Here's why BuildOS holds up where the others stall.",
+					"description": "GTD, Notion, AI-powered notes — each promised a better filing cabinet. The real shift is from collecting ideas to making them move. Here's why BuildOS holds up.",
 					"author": "DJ Wayne",
 					"date": "2025-07-08",
 					"lastmod": "2026-04-16",
@@ -1894,7 +1894,7 @@
 				},
 				"task-management-best-practices": {
 					"title": "Task Management Best Practices: Beyond To-Do Lists",
-					"description": "Learn how to manage tasks within BuildOS rich context system—where tasks connect to goals, plans, and documents. Master advanced techniques plus how to zoom into any task with Project Lens.",
+					"description": "Manage tasks inside the BuildOS context graph — where tasks connect to goals, plans, and documents. Plus how to zoom into any task with Project Lens.",
 					"author": "DJ Wayne",
 					"date": "2025-06-28",
 					"lastmod": "2025-12-31",
@@ -1920,8 +1920,8 @@
 					"filePath": "src/content/blogs/productivity-tips/task-management-best-practices.md"
 				},
 				"tech-project-managers-guide": {
-					"title": "Stop Managing Tickets, Start Managing Thinking: A Workflow Architecture for Tech PMs",
-					"description": "Why your projects are failing between tools — and the workflow patterns that actually fix it. A practical guide for tech project managers drowning in context fragmentation.",
+					"title": "Stop Managing Tickets, Start Managing Thinking",
+					"description": "Why projects fail between tools — and the workflow patterns that fix it. A practical guide for tech PMs drowning in context fragmentation.",
 					"slug": "tech-project-managers-guide",
 					"author": "DJ Wayne",
 					"date": "2026-03-28",
@@ -1979,9 +1979,668 @@
 					"filePath": "src/content/blogs/productivity-tips/tech-project-managers-guide.md"
 				}
 			}
+		},
+		"source-analyses": {
+			"metadata": {
+				"name": "Source Analyses",
+				"description": "Content related to source analyses",
+				"color": "gray"
+			},
+			"posts": {
+				"april-dunford-sales-pitch-framework": {
+					"title": "The Sales Pitch Framework: Lessons from April Dunford",
+					"description": "A deep read of April Dunford on Lenny's Podcast — the two-part Setup → Follow-Through structure, differentiated value, why the setup eliminates most objections, and why FOMO marketing produces churning buyers.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"positioning",
+						"sales-pitch",
+						"differentiated-value",
+						"perfect-fit-customer",
+						"anti-positioning",
+						"sales-and-growth",
+						"product-strategy",
+						"marketing-and-content"
+					],
+					"readingTime": 11,
+					"excerpt": "A sales pitch is not a product expo. It's a two-part story — The Setup (market context, alternatives, perfect-world scenario) and The Follow-Through (introduction, differentiated value, proof, objections, ask) — designed to align the prospect with your worldview before you ever describe what you sell.",
+					"sourceTitle": "A step-by-step guide to crafting a sales pitch that wins (April Dunford)",
+					"sourceCreator": "April Dunford",
+					"sourceUrl": "https://www.youtube.com/watch?v=-VqmFI9vY7w",
+					"sourceChannelUrl": "https://www.youtube.com/@LennysPodcast",
+					"lineagePeople": ["April Dunford", "Lenny Rachitsky"],
+					"lineageSources": [
+						{
+							"title": "A step-by-step guide to crafting a sales pitch that wins",
+							"creator": "April Dunford",
+							"creatorType": "Person",
+							"channelName": "Lenny's Podcast",
+							"channelUrl": "https://www.youtube.com/@LennysPodcast",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=-VqmFI9vY7w"
+						}
+					],
+					"relatedSkills": ["landing-page-scorecard-funnel"],
+					"path": "apps/web/src/content/blogs/source-analyses/april-dunford-sales-pitch-framework.md",
+					"slug": "april-dunford-sales-pitch-framework",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/april-dunford-sales-pitch-framework.md"
+				},
+				"daniel-priestley-1m-landing-page": {
+					"title": "The $1 Million Landing Page: Lessons from Daniel Priestley",
+					"description": "A deep read of Daniel Priestley's \"$1 Million Landing Page\" — the 3-part scorecard funnel (landing page sells the assessment, 15-question quiz in 3 buckets, dynamic results page), the Big 5 qualifying questions, and the 20–40% conversion benchmark.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"lead-generation",
+						"landing-page",
+						"scorecard",
+						"assessment-funnel",
+						"conversion",
+						"sales-and-growth",
+						"marketing-and-content"
+					],
+					"readingTime": 11,
+					"excerpt": "Sell the assessment, not the product. The whole landing page is for one click — start the quiz. A 5-section landing page + 15 questions in 3 buckets + a dynamic results page produces a qualified, segmented sales pipeline with intent data baked in. Target: 20–40% of visitors start the quiz.",
+					"sourceTitle": "The $1 Million Landing Page",
+					"sourceCreator": "Daniel Priestley",
+					"sourceUrl": "https://www.youtube.com/watch?v=az1Zh-FNSno",
+					"sourceChannelUrl": "https://www.youtube.com/@DanielPriestley",
+					"lineagePeople": ["Daniel Priestley"],
+					"lineageSources": [
+						{
+							"title": "The $1 Million Landing Page",
+							"creator": "Daniel Priestley",
+							"creatorType": "Person",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=az1Zh-FNSno"
+						}
+					],
+					"relatedSkills": ["landing-page-scorecard-funnel"],
+					"path": "apps/web/src/content/blogs/source-analyses/daniel-priestley-1m-landing-page.md",
+					"slug": "daniel-priestley-1m-landing-page",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/daniel-priestley-1m-landing-page.md"
+				},
+				"designspo-color-theory": {
+					"title": "Color Theory: Lessons from DesignSpo",
+					"description": "A deep read of DesignSpo's \"ULTIMATE Color Theory Guide\" — the right model for the medium, the 60/30/10 rule, why complementary palettes clash, and the five guidelines that replace pop-psychology color rules.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"color-theory",
+						"color-palette",
+						"color-models",
+						"accessibility",
+						"ui-design",
+						"web-design",
+						"product-and-design"
+					],
+					"readingTime": 16,
+					"excerpt": "Reject pop-psychology color rules. Color is personal, contextual, connotative, relational, and cultural. Pick the right model for the medium (CMYK / RGB / HSB), build palettes through structured frameworks, and proportion them with 60/30/10 — not by guessing what feels premium.",
+					"sourceTitle": "The ULTIMATE Color Theory Guide For Beginners",
+					"sourceCreator": "DesignSpo",
+					"sourceUrl": "https://www.youtube.com/watch?v=tKCORDK0IZU",
+					"sourceChannelUrl": "https://www.youtube.com/@DesignSpo",
+					"lineagePeople": ["DesignSpo"],
+					"lineageSources": [
+						{
+							"title": "The ULTIMATE Color Theory Guide For Beginners",
+							"creator": "DesignSpo",
+							"creatorType": "Organization",
+							"creatorUrl": "https://www.youtube.com/@DesignSpo",
+							"channelName": "DesignSpo",
+							"channelUrl": "https://www.youtube.com/@DesignSpo",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=tKCORDK0IZU"
+						}
+					],
+					"relatedSkills": ["ui-ux-quality-review"],
+					"path": "apps/web/src/content/blogs/source-analyses/designspo-color-theory.md",
+					"slug": "designspo-color-theory",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/designspo-color-theory.md"
+				},
+				"designspo-golden-rule-web-design": {
+					"title": "The 4-Pixel Rule: Lessons from DesignSpo's Golden Rule of Web Design",
+					"description": "A deep read of DesignSpo's \"Golden Rule Of Web Design\" — the mathematical system behind professional-feeling layouts. Every spacing, padding, gap, container width, and font size is a multiple of 4.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"web-design",
+						"spacing",
+						"typography",
+						"mathematical-system",
+						"4-pixel-rule",
+						"design-system",
+						"product-and-design"
+					],
+					"readingTime": 9,
+					"excerpt": "Amateur sites look amateur because spacing and typography use random values. Pro sites look pro because every dimension is a multiple of a single base unit. The 4-pixel rule is the load-bearing primitive — everything else (color, motion, copy) sits on top of it.",
+					"sourceTitle": "The Golden Rule Of Web Design (and why you're breaking it)",
+					"sourceCreator": "DesignSpo",
+					"sourceUrl": "https://www.youtube.com/watch?v=CASPWJUsHPM",
+					"sourceChannelUrl": "https://www.youtube.com/@DesignSpo",
+					"lineagePeople": ["DesignSpo"],
+					"lineageSources": [
+						{
+							"title": "The Golden Rule Of Web Design",
+							"creator": "DesignSpo",
+							"creatorType": "Organization",
+							"creatorUrl": "https://www.youtube.com/@DesignSpo",
+							"channelName": "DesignSpo",
+							"channelUrl": "https://www.youtube.com/@DesignSpo",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=CASPWJUsHPM"
+						}
+					],
+					"relatedSkills": ["ui-ux-quality-review"],
+					"path": "apps/web/src/content/blogs/source-analyses/designspo-golden-rule-web-design.md",
+					"slug": "designspo-golden-rule-web-design",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/designspo-golden-rule-web-design.md"
+				},
+				"designspo-typography": {
+					"title": "Typography Fundamentals: Lessons from DesignSpo",
+					"description": "A deep read of DesignSpo's \"ULTIMATE Guide To Typography For Beginners\" — typeface as tone of voice, the ten controllable variables, and how to build a real type system instead of styling case-by-case.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"typography",
+						"type-system",
+						"font-pairing",
+						"hierarchy",
+						"web-design",
+						"product-and-design"
+					],
+					"readingTime": 18,
+					"excerpt": "Text commands the most visual attention in any design. A typeface is a tone of voice; ten controllable variables (size, weight, line-height, letter-spacing, kerning, contrast, alignment, etc.) determine whether the result is legible or not. A real type system replaces ad-hoc decisions with four roles and a grid.",
+					"sourceTitle": "The ULTIMATE Guide To Typography For Beginners",
+					"sourceCreator": "DesignSpo",
+					"sourceUrl": "https://www.youtube.com/watch?v=AXpxZMRM1EY",
+					"sourceChannelUrl": "https://www.youtube.com/@DesignSpo",
+					"lineagePeople": ["DesignSpo"],
+					"lineageSources": [
+						{
+							"title": "The ULTIMATE Guide To Typography For Beginners",
+							"creator": "DesignSpo",
+							"creatorType": "Organization",
+							"creatorUrl": "https://www.youtube.com/@DesignSpo",
+							"channelName": "DesignSpo",
+							"channelUrl": "https://www.youtube.com/@DesignSpo",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=AXpxZMRM1EY"
+						}
+					],
+					"relatedSkills": ["ui-ux-quality-review"],
+					"path": "apps/web/src/content/blogs/source-analyses/designspo-typography.md",
+					"slug": "designspo-typography",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/designspo-typography.md"
+				},
+				"designspo-visual-hierarchy": {
+					"title": "Visual Hierarchy: Lessons from DesignSpo",
+					"description": "A deep read of DesignSpo's \"The Complete Guide To Visual Hierarchy\" — contrast, uniformity, composition, and the 10 levers designers can pull to lead the viewer's eye.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"visual-hierarchy",
+						"contrast",
+						"uniformity",
+						"composition",
+						"ui-design",
+						"web-design",
+						"product-and-design"
+					],
+					"readingTime": 13,
+					"excerpt": "Hierarchy is a ranking decision, not a styling decision. Decide what should be seen first, second, third — then apply contrast levers in rank order. Most of the design must be uniform; primacy is scarce.",
+					"sourceTitle": "The Complete Guide To Visual Hierarchy",
+					"sourceCreator": "DesignSpo",
+					"sourceUrl": "https://www.youtube.com/watch?v=kK1TOpI948o",
+					"sourceChannelUrl": "https://www.youtube.com/@DesignSpo",
+					"lineagePeople": ["DesignSpo"],
+					"lineageSources": [
+						{
+							"title": "The Complete Guide To Visual Hierarchy",
+							"creator": "DesignSpo",
+							"creatorType": "Organization",
+							"creatorUrl": "https://www.youtube.com/@DesignSpo",
+							"channelName": "DesignSpo",
+							"channelUrl": "https://www.youtube.com/@DesignSpo",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=kK1TOpI948o"
+						}
+					],
+					"relatedSkills": ["ui-ux-quality-review"],
+					"path": "apps/web/src/content/blogs/source-analyses/designspo-visual-hierarchy.md",
+					"slug": "designspo-visual-hierarchy",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/designspo-visual-hierarchy.md"
+				},
+				"kallaway-100-viral-hooks": {
+					"title": "The 6 Hook Archetypes: Lessons from Kane Kallaway",
+					"description": "A deep read of Kallaway's \"I Studied 100 Viral Hooks, These 6 Will Make You Go Viral\" — the six archetypes (Fortune Teller, Experimenter, Teacher, Magician, Investigator, Contrarian), the four-component alignment, and the visual → audio → visual sandwich.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"hooks",
+						"hook-archetypes",
+						"short-form-video",
+						"content-craft",
+						"viral-patterns",
+						"marketing-and-content"
+					],
+					"readingTime": 18,
+					"excerpt": "All winning hooks open a curiosity loop by creating contrast between A (what the viewer believes) and B (what the video introduces). Across thousands of videos, the patterns reduce to six archetypes. Pick the archetype downstream of what visual you actually have — never from the topic.",
+					"sourceTitle": "I Studied 100 Viral Hooks, These 6 Will Make You Go Viral",
+					"sourceCreator": "Kane Kallaway",
+					"sourceUrl": "https://www.youtube.com/watch?v=xnOe8aA9Pmw",
+					"sourceChannelUrl": "https://www.youtube.com/@kallawaymarketing",
+					"lineagePeople": ["Kane Kallaway"],
+					"lineageSources": [
+						{
+							"title": "I Studied 100 Viral Hooks, These 6 Will Make You Go Viral",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=xnOe8aA9Pmw"
+						}
+					],
+					"relatedSkills": ["hook-craft-short-form"],
+					"path": "apps/web/src/content/blogs/source-analyses/kallaway-100-viral-hooks.md",
+					"slug": "kallaway-100-viral-hooks",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/kallaway-100-viral-hooks.md"
+				},
+				"kallaway-6-words-hook": {
+					"title": "The 6 Words Every Hook Needs: Lessons from Kane Kallaway",
+					"description": "A deep read of Kallaway's \"The ONLY 6 Words You Need to Hook ANY Viewer\" — the six structural slots (Subject, Action, Objective, Contrast, Proof, Time), how they collapse, and the copy-work drill that makes the formula subconscious.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"hooks",
+						"hook-formulas",
+						"short-form-video",
+						"content-craft",
+						"minimum-viable-hook",
+						"marketing-and-content"
+					],
+					"readingTime": 14,
+					"excerpt": "A hook does not require a clever formula or strong writing. It requires six structural slots — four mandatory (Subject, Action, Objective, Contrast) and two optional (Proof, Time). Stop trying to \"write better\" and start stacking power-word chunks in the right order.",
+					"sourceTitle": "The ONLY 6 Words You Need to Hook ANY Viewer",
+					"sourceCreator": "Kane Kallaway",
+					"sourceUrl": "https://www.youtube.com/watch?v=S9FlxFv9dxg",
+					"sourceChannelUrl": "https://www.youtube.com/@kallawaymarketing",
+					"lineagePeople": ["Kane Kallaway"],
+					"lineageSources": [
+						{
+							"title": "The ONLY 6 Words You Need to Hook ANY Viewer",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=S9FlxFv9dxg"
+						}
+					],
+					"relatedSkills": ["hook-craft-short-form"],
+					"path": "apps/web/src/content/blogs/source-analyses/kallaway-6-words-hook.md",
+					"slug": "kallaway-6-words-hook",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/kallaway-6-words-hook.md"
+				},
+				"kallaway-7-storytelling-mistakes": {
+					"title": "7 Storytelling Mistakes: Lessons from Kane Kallaway",
+					"description": "A deep read of Kallaway's \"7 Storytelling Mistakes That Are KILLING Small Creators\" — the rolling peak/release arc that replaces the bell curve, the W-stack reorder, the rebuy mechanic, villain framing, and atomic shareability.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"storytelling",
+						"anti-patterns",
+						"failure-modes",
+						"small-creator",
+						"narrative-craft",
+						"marketing-and-content"
+					],
+					"readingTime": 13,
+					"excerpt": "Time compression has rewired audience attention. The traditional bell-curve story arc was built for captive audiences. On the internet, viewers re-decide every few seconds whether to keep watching. Modern storytelling is a rolling sequence of peaks and releases — and the seven mistakes here are the ways small creators still tell stories as if their viewer were trapped in a movie theater.",
+					"sourceTitle": "7 Storytelling Mistakes That Are KILLING Small Creators",
+					"sourceCreator": "Kane Kallaway",
+					"sourceUrl": "https://www.youtube.com/watch?v=wgXGimZvDa4",
+					"sourceChannelUrl": "https://www.youtube.com/@kallawaymarketing",
+					"lineagePeople": ["Kane Kallaway"],
+					"lineageSources": [
+						{
+							"title": "7 Storytelling Mistakes That Are KILLING Small Creators",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=wgXGimZvDa4"
+						}
+					],
+					"relatedSkills": ["story-driven-content-craft"],
+					"path": "apps/web/src/content/blogs/source-analyses/kallaway-7-storytelling-mistakes.md",
+					"slug": "kallaway-7-storytelling-mistakes",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/kallaway-7-storytelling-mistakes.md"
+				},
+				"kallaway-hooks-impossible-to-skip": {
+					"title": "Hooks Impossible to Skip: Lessons from Kane Kallaway",
+					"description": "A deep read of Kallaway's \"Give me 15 mins, and I'll make your hooks impossible to skip\" — the four-mistake diagnostic (Delay / Confusion / Irrelevance / Disinterest), the A vs B contrast formula, and a verbatim AI clarity-rewrite prompt.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"hooks",
+						"short-form-video",
+						"content-craft",
+						"retention",
+						"rewrite-passes",
+						"curiosity-loop",
+						"contrast",
+						"marketing-and-content"
+					],
+					"readingTime": 14,
+					"excerpt": "A hook has exactly one job: get the viewer to opt in and stay. Every failed hook fails because it commits one or more of four mistakes — Delay, Confusion, Irrelevance, Disinterest. Fixing hooks is not a creative-writing problem; it's a checklist of subtractive rewrites against those four failure modes.",
+					"sourceTitle": "Give me 15 mins, and I'll make your hooks impossible to skip",
+					"sourceCreator": "Kane Kallaway",
+					"sourceUrl": "https://www.youtube.com/watch?v=2byPP_9F0-Q",
+					"sourceChannelUrl": "https://www.youtube.com/@kallawaymarketing",
+					"lineagePeople": ["Kane Kallaway"],
+					"lineageSources": [
+						{
+							"title": "Give me 15 mins, and I'll make your hooks impossible to skip",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=2byPP_9F0-Q"
+						}
+					],
+					"relatedSkills": ["hook-craft-short-form"],
+					"path": "apps/web/src/content/blogs/source-analyses/kallaway-hooks-impossible-to-skip.md",
+					"slug": "kallaway-hooks-impossible-to-skip",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/kallaway-hooks-impossible-to-skip.md"
+				},
+				"kallaway-irresistible-hooks": {
+					"title": "Irresistible Hooks: Lessons from Kane Kallaway",
+					"description": "A deep read of Kallaway's \"How to Create Irresistible Hooks\" — the three-beat formula (context lean → scroll-stop interjection → contrarian snapback), the four lean mechanisms, visual hooks, lead with pain, and cult-hopping.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"hooks",
+						"short-form-video",
+						"content-craft",
+						"retention",
+						"curiosity-loop",
+						"visual-hooks",
+						"marketing-and-content"
+					],
+					"readingTime": 14,
+					"excerpt": "Don't memorize hook lists. Master the psychology of the curiosity loop and run a repeatable three-step formula: Context Lean → Scroll-Stop Interjection → Contrarian Snapback. The hook's job is to make the viewer feel that the next sentence is the only sentence they could possibly want to hear.",
+					"sourceTitle": "How to Create Irresistible Hooks (and blow up your content)",
+					"sourceCreator": "Kane Kallaway",
+					"sourceUrl": "https://www.youtube.com/watch?v=LmXpbP7dD48",
+					"sourceChannelUrl": "https://www.youtube.com/@kallawaymarketing",
+					"lineagePeople": ["Kane Kallaway"],
+					"lineageSources": [
+						{
+							"title": "How to Create Irresistible Hooks (and blow up your content)",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=LmXpbP7dD48"
+						}
+					],
+					"relatedSkills": ["hook-craft-short-form"],
+					"path": "apps/web/src/content/blogs/source-analyses/kallaway-irresistible-hooks.md",
+					"slug": "kallaway-irresistible-hooks",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/kallaway-irresistible-hooks.md"
+				},
+				"kallaway-master-storyteller": {
+					"title": "How to Become a Master Storyteller: Lessons from Kane Kallaway",
+					"description": "A deep read of Kallaway's \"How To Become A Master Storyteller\" — the six craft moves: dance (but/therefore), rhythm (Gary Provost), tone (one close friend), direction (write the ending first), lens (category-of-one), and hook (show while you tell).",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"storytelling",
+						"rhythm",
+						"tone",
+						"story-lenses",
+						"narrative-craft",
+						"short-form-video",
+						"marketing-and-content"
+					],
+					"readingTime": 13,
+					"excerpt": "Storytelling is a learnable stack of six craft moves, not a personality trait. Stories perform when they alternate context and conflict, pace through varied sentence rhythm, hold attention via conversational tone, are written end-first, get differentiated through unique story lenses, and open with visual hooks that show before they tell.",
+					"sourceTitle": "How To Become A Master Storyteller",
+					"sourceCreator": "Kane Kallaway",
+					"sourceUrl": "https://www.youtube.com/watch?v=t5Z-Q1bg1tU",
+					"sourceChannelUrl": "https://www.youtube.com/@kallawaymarketing",
+					"lineagePeople": ["Kane Kallaway"],
+					"lineageSources": [
+						{
+							"title": "How To Become A Master Storyteller",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=t5Z-Q1bg1tU"
+						}
+					],
+					"relatedSkills": ["story-driven-content-craft"],
+					"path": "apps/web/src/content/blogs/source-analyses/kallaway-master-storyteller.md",
+					"slug": "kallaway-master-storyteller",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/kallaway-master-storyteller.md"
+				},
+				"kallaway-storytelling-genius-dopamine-ladders": {
+					"title": "The Dopamine Ladder: Kane Kallaway on Storytelling Genius",
+					"description": "A deep read of Kallaway's \"How to Become a Storytelling Genius (Dopamine Ladders)\" — six rungs from pre-cognitive stimulation to Pavlovian revelation, the curiosity-anticipation-validation cycle, and why faceless content caps out at rung 4.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"storytelling",
+						"dopamine-ladders",
+						"retention",
+						"narrative-structure",
+						"short-form-video",
+						"viewer-psychology",
+						"marketing-and-content"
+					],
+					"readingTime": 16,
+					"excerpt": "A viewer's attention is not won in a single hook. It is won across six escalating dopamine releases — Stimulation, Captivation, Anticipation, Validation, Affection, Revelation — that move from raw visual stimulation up to a Pavlovian bond with the creator.",
+					"sourceTitle": "How to Become a Storytelling Genius (Dopamine Ladders)",
+					"sourceCreator": "Kane Kallaway",
+					"sourceUrl": "https://www.youtube.com/watch?v=jtmstMt4WLc",
+					"sourceChannelUrl": "https://www.youtube.com/@kallawaymarketing",
+					"lineagePeople": ["Kane Kallaway"],
+					"lineageSources": [
+						{
+							"title": "How to Become a Storytelling Genius (Dopamine Ladders)",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=jtmstMt4WLc"
+						}
+					],
+					"relatedSkills": ["story-driven-content-craft"],
+					"path": "apps/web/src/content/blogs/source-analyses/kallaway-storytelling-genius-dopamine-ladders.md",
+					"slug": "kallaway-storytelling-genius-dopamine-ladders",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/kallaway-storytelling-genius-dopamine-ladders.md"
+				},
+				"kole-jain-7-ui-ux-mistakes-beginner": {
+					"title": "7 UI/UX Mistakes That Scream Beginner: Lessons from Kole Jain",
+					"description": "A deep read of Kole Jain's \"7 UI/UX mistakes that SCREAM you're a beginner\" — flow before pixels, the three-step shadow recipe, the 10px corner-radius standard, and why subtraction beats addition.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"ui-ux",
+						"design-mistakes",
+						"beginner-mistakes",
+						"product-and-design",
+						"figma"
+					],
+					"readingTime": 11,
+					"excerpt": "Beginner UIs aren't broken from lack of skill — they're broken from a small set of repeatable, fixable mistakes. Polish comes from subtraction, consistency, and respect for the user's flow, not from adding more visual flair.",
+					"sourceTitle": "7 UI/UX mistakes that SCREAM you're a beginner",
+					"sourceCreator": "Kole Jain",
+					"sourceUrl": "https://www.youtube.com/watch?v=AH_ugxmLeUM",
+					"sourceChannelUrl": "https://www.youtube.com/@KoleJain",
+					"lineagePeople": ["Kole Jain"],
+					"lineageSources": [
+						{
+							"title": "7 UI/UX mistakes that scream you're a beginner",
+							"creator": "Kole Jain",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@KoleJain",
+							"channelName": "Kole Jain",
+							"channelUrl": "https://www.youtube.com/@KoleJain",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=AH_ugxmLeUM"
+						}
+					],
+					"relatedSkills": ["ui-ux-quality-review"],
+					"path": "apps/web/src/content/blogs/source-analyses/kole-jain-7-ui-ux-mistakes-beginner.md",
+					"slug": "kole-jain-7-ui-ux-mistakes-beginner",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/kole-jain-7-ui-ux-mistakes-beginner.md"
+				},
+				"nesrine-changuel-delightful-products-framework": {
+					"title": "Building Delightful Products: Nesrine Changuel's 4-Step Framework",
+					"description": "A deep read of Nesrine Changuel on Lenny's Podcast — the 4-step Delight Model, the three pillars (remove friction, anticipate needs, exceed expectations), the 50/40/10 roadmap rule, and why anti-delight destroys trust faster than no delight.",
+					"author": "DJ Wayne",
+					"date": "2026-05-04",
+					"lastmod": "2026-05-04",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"delight",
+						"product-craft",
+						"emotional-design",
+						"retention",
+						"frameworks",
+						"product-and-design"
+					],
+					"readingTime": 22,
+					"excerpt": "Delight is a strategy, not confetti. A product that solves a functional need AND honors an emotional need at the same time — that's deep delight, and it's the differentiator in any crowded category. The framework: motivators → opportunities → delight grid → checklist.",
+					"sourceTitle": "A 4-step framework for building delightful products",
+					"sourceCreator": "Nesrine Changuel",
+					"sourceUrl": "https://www.youtube.com/watch?v=tX6nwT1Bsuo",
+					"sourceChannelUrl": "https://www.youtube.com/@LennysPodcast",
+					"lineagePeople": ["Nesrine Changuel", "Lenny Rachitsky"],
+					"lineageSources": [
+						{
+							"title": "A 4-step framework for building delightful products",
+							"creator": "Nesrine Changuel",
+							"creatorType": "Person",
+							"channelName": "Lenny's Podcast",
+							"channelUrl": "https://www.youtube.com/@LennysPodcast",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=tX6nwT1Bsuo"
+						}
+					],
+					"relatedSkills": ["ui-ux-quality-review"],
+					"path": "apps/web/src/content/blogs/source-analyses/nesrine-changuel-delightful-products-framework.md",
+					"slug": "nesrine-changuel-delightful-products-framework",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/nesrine-changuel-delightful-products-framework.md"
+				}
+			}
 		}
 	},
-	"generatedAt": "2026-05-02T04:35:16.268Z",
-	"totalPosts": 66,
-	"totalCategories": 7
+	"generatedAt": "2026-05-04T12:21:00.810Z",
+	"totalPosts": 81,
+	"totalCategories": 8
 }

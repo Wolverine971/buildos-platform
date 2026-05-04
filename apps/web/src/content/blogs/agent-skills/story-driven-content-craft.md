@@ -223,4 +223,10 @@ This skill is distilled from three Kallaway source layers.
 - [How to Become a Storytelling Genius (Dopamine Ladders)](https://www.youtube.com/watch?v=jtmstMt4WLc) supplies the dopamine ladder, curiosity mechanics, validation requirement, and channel-level distinction between one piece and accumulated trust.
 - [7 Storytelling Mistakes That Are KILLING Small Creators](https://www.youtube.com/watch?v=wgXGimZvDa4) supplies the internet-native story arc, W-stack reorder, rebuy mechanic, villain framing, rooting interest, atomic shareability test, and visual picture rule.
 
-The lineage file for the agent-readable draft maps these claims into primitive skills, guardrails, output artifacts, and source-claim edges.
+### Deep-read source analyses
+
+Each source video is also published as a standalone deep-read post:
+
+- [How to Become a Master Storyteller: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-master-storyteller) — the six craft moves: dance (but/therefore), rhythm (Gary Provost), tone (one close friend), direction (write the ending first), lens (category-of-one), hook (show while you tell).
+- [The Dopamine Ladder: Kane Kallaway on Storytelling Genius](/blogs/source-analyses/kallaway-storytelling-genius-dopamine-ladders) — the six rungs (Stimulation, Captivation, Anticipation, Validation, Affection, Revelation); the curiosity-anticipation-validation cycle; why faceless content caps at rung 4.
+- [7 Storytelling Mistakes: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-7-storytelling-mistakes) — the rolling peak/release arc that replaces the bell curve, the W-stack reorder, the rebuy mechanic, villain framing, atomic shareability.

@@ -1,6 +1,6 @@
 ---
 title: 'What a Thinking Environment Actually Is'
-description: "Not a productivity tool. Not a note app. Not an AI assistant. A thinking environment is a specific category with specific properties — the surface where you author your own mind. Here's a precise definition and the five properties that define the category."
+description: 'Not a productivity tool. Not a note app. Not an AI assistant. A thinking environment is the surface where you author your own mind — defined by five properties.'
 author: 'DJ Wayne'
 date: '2026-04-18'
 lastmod: '2026-04-18'

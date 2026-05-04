@@ -1,5 +1,5 @@
 ---
-title: 'Monday.com vs BuildOS: Project Execution vs Thought Organization'
+title: 'BuildOS vs Monday.com: Thought vs Execution'
 description: "Monday.com manages projects brilliantly. But it assumes you already know what to build. Here's what happens before tasks hit the board."
 slug: 'buildos-vs-monday-thought-organization'
 author: 'DJ Wayne'

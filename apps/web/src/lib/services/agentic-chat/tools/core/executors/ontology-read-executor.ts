@@ -93,9 +93,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 	}
 
 	private applyArchivedReadFilter(query: any, args: { archived?: boolean }): any {
+		const withoutDeleted = query.is('deleted_at', null);
 		return args.archived === true
-			? query.not('archived_at', 'is', null)
-			: query.is('archived_at', null);
+			? withoutDeleted.not('archived_at', 'is', null)
+			: withoutDeleted.is('archived_at', null);
 	}
 
 	private static readonly MAX_MARKDOWN_HEADERS = 40;

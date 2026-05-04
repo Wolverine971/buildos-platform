@@ -13,7 +13,7 @@ Notifications in BuildOS are multi-channel and per-event configurable. The goal 
 
 ## Channels
 
-- **In-app.** Always on. The [Notifications Center](/notifications) is the activity log.
+- **In-app.** Always on. The Notifications Center at `/notifications` (visible once you're signed in) is the activity log.
 - **Push.** Browser and mobile web push.
 - **Email.** Delivered to the address on your account.
 - **SMS.** Opt in from profile preferences.
@@ -30,7 +30,7 @@ Configure routing from the Notifications Center or profile preferences.
 
 ## The activity log
 
-[`/notifications`](/notifications) is the single place to see every notification you've received, across every channel, in chronological order. Use it to audit what went out, replay something you missed, or turn off a channel that's gotten noisy.
+`/notifications` (visible once you're signed in) is the single place to see every notification you've received, across every channel, in chronological order. Use it to audit what went out, replay something you missed, or turn off a channel that's gotten noisy.
 
 ## Next
 

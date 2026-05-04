@@ -966,9 +966,10 @@ function normalizeArchivedReadFilter(value: unknown): boolean {
 function applyArchivedFilter<
 	T extends { is: (...args: any[]) => any; not: (...args: any[]) => any }
 >(query: T, archived: boolean): T {
+	const withoutDeleted = query.is('deleted_at', null) as T;
 	return archived
-		? (query.not('archived_at', 'is', null) as T)
-		: (query.is('archived_at', null) as T);
+		? (withoutDeleted.not('archived_at', 'is', null) as T)
+		: (withoutDeleted.is('archived_at', null) as T);
 }
 
 function applyArchivedReadFilter<

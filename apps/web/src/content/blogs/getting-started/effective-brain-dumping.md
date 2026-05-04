@@ -1,6 +1,6 @@
 ---
-title: 'Brain Dumping That Actually Works: From Chaos to Compounding Context'
-description: "Your brain dump doesn't have to become another abandoned note. Here's how BuildOS transforms scattered thoughts into goals, plans, and tasks that actually connect."
+title: 'Brain Dumps That Actually Work: From Chaos to Context'
+description: "Your brain dump doesn't have to become another abandoned note. How BuildOS turns scattered thoughts into goals, plans, and tasks that connect."
 author: 'DJ Wayne'
 date: '2025-06-28'
 lastmod: '2025-12-31'
@@ -18,7 +18,7 @@ tags:
         'zoom'
     ]
 readingTime: 8
-excerpt: "Your brain dump doesn't have to become another abandoned note. Here's how BuildOS transforms scattered thoughts into goals, plans, and tasks that actually connect."
+excerpt: "Your brain dump doesn't have to become another abandoned note. How BuildOS turns scattered thoughts into goals, plans, and tasks that connect."
 pic: 'brain-dumping-guide'
 path: apps/web/src/content/blogs/getting-started/effective-brain-dumping.md
 ---

@@ -16,7 +16,7 @@ Nothing gets written without your approval. Every planned change is previewed; y
 ## Two paths in
 
 - **Brain Dump.** The full capture flow. Best when you've got a lot to say — a new project, a long update, a research-heavy session. It can create or update an entire project, its plan, tasks, and context document in one pass.
-- **Voice Notes.** A lighter-weight surface at [`/voice-notes`](/voice-notes). Record a thought, get a transcript, and send it to a brain dump only if you want the structuring. Use it when you just need to offload something before it disappears.
+- **Voice Notes.** A lighter-weight surface at `/voice-notes` (visible once you're signed in). Record a thought, get a transcript, and send it to a brain dump only if you want the structuring. Use it when you just need to offload something before it disappears.
 
 Both end in the same place: structured entities in your project graph.
 

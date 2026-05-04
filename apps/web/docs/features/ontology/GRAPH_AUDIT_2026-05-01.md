@@ -121,3 +121,29 @@ There is no easy fix without leaving Cytoscape. SvelteFlow renders custom Svelte
 - **Issue #6** — Inkprint texture on nodes themselves. Fundamental Cytoscape limit; only solvable by completing the SvelteFlow renderer.
 - **Library toggle on `/admin/ontology/graph`** — gate behind dev flag or commit to one library?
 - **Draft-state dotted border on 26 px task ellipses** — wants visual review at common zoom levels.
+
+### 2026-05-03 — Second pass
+
+DJ direction: subtle frame fill for projects, switch goals to the Target icon for consistency, fix the orange collision, hide the library toggle behind a dev flag. Skip Issue #6 for now.
+
+**Shipped this pass:**
+
+- ✅ **Issue #3 — Project "stamp" presence.**
+    - Border bumped from 3 px → 4 px (`graph.service.ts` `NODE_STYLE_CONFIG.project`).
+    - Default-state projects (state `draft` / `pending` / unknown) now use the project entity base color (`#f8fafc` / `#1e293b`) instead of falling through to generic slate-100. Mirrors the pattern goals/plans/documents already use.
+    - New always-on Cytoscape `underlay-color` + `underlay-opacity 0.08` + `underlay-padding 5` rule on `node[type = "project"]` (`OntologyGraph.svelte`). Closest Cytoscape can come to `tx-frame` / `wt-card` weight — projects now read as stamped against the tx-grid canvas rather than vanishing into it.
+- ✅ **Issue #4 — Goal carries the Target icon.**
+    - Shape changed from `star` → `ellipse` (44 × 44).
+    - New `buildTargetIconDataUri()` helper in `graph.service.ts` emits a Lucide Target SVG (concentric circles) with stroke matching the node's border colour.
+    - `goalsToNodes` writes the URI into `data.iconImage`; `CytoscapeNode` type updated.
+    - New `node[type = "goal"]` Cytoscape style paints it as `background-image` at 70 % node size, leaving the state-driven fill visible as a colored ring around the icon.
+    - Legend SVG updated from star polygon → concentric circles; `nodeLegend.shape` literal renamed `star` → `target`.
+- ✅ **Issue #5 — Accent collision resolved.** Dependency edge colour moved from orange (`#ea580c`/`#fb923c`) to violet (`#7c3aed`/`#a78bfa`) in `GRAPH_COLORS.edges.dependency`. Edge legend swatch flipped from `bg-orange-500` → `bg-violet-500`. Selection orange now stops blending with depends-on edges.
+- ✅ **Library toggle dev-flagged.** `/admin/ontology/graph/+page.svelte` now imports `dev` from `$app/environment` and wraps the Cytoscape / Svelte Flow / G6 selector in `{#if dev}`. Production users see only the stable Cytoscape graph; experiments stay available locally.
+
+`pnpm exec svelte-check` → 0 errors across `OntologyGraph.svelte`, `GraphControls.svelte`, `graph.service.ts`, `graph.types.ts`, `TreeAgentGraph.svelte`, `routes/admin/ontology/graph/+page.svelte`.
+
+**Still open (intentionally deferred):**
+
+- **Issue #6** — Inkprint textures on nodes themselves. Cytoscape can't render CSS textures on shapes; only path is finishing the SvelteFlow renderer. Parked.
+- **Draft-state dotted border on small task ellipses.** Worth a manual zoom test in browser before deciding to thicken the stroke.

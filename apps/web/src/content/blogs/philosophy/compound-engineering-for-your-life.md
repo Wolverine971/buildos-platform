@@ -1,6 +1,6 @@
 ---
-title: 'Compound Engineering for Your Life: Why Every Brain Dump Makes You Smarter'
-description: 'Software engineers discovered that AI gets permanently smarter from every code review and bug fix. BuildOS applies the same principle to your life — brain dumps, daily briefs, and Project Lens all compound over time.'
+title: 'Compound Engineering: Every Brain Dump Compounds'
+description: 'Engineers found AI gets permanently smarter from every code review and bug fix. BuildOS applies the same principle to your life — brain dumps and briefs compound.'
 author: 'DJ Wayne'
 date: '2026-02-08'
 lastmod: '2026-02-08'
@@ -23,7 +23,7 @@ tags:
         'systems-thinking'
     ]
 readingTime: 10
-excerpt: 'Software engineers discovered that AI gets permanently smarter from every code review and bug fix. BuildOS applies the same principle to your life — brain dumps, daily briefs, and Project Lens all compound over time.'
+excerpt: 'Engineers found AI gets permanently smarter from every code review and bug fix. BuildOS applies the same principle to your life — brain dumps and briefs compound.'
 pic: 'compound-engineering-life'
 path: apps/web/src/content/blogs/philosophy/compound-engineering-for-your-life.md
 ---

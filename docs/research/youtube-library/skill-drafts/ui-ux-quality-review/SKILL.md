@@ -1,7 +1,7 @@
 ---
 skill_id: ui-ux-quality-review
 name: UI/UX Quality Review
-description: Review app screens, landing pages, and product UI for beginner mistakes, missing states, visual hierarchy, spacing, consistency, icons, feedback, charts, and mobile polish. Use when auditing or improving interface quality.
+description: Review product screens, landing pages, dashboards, and mobile flows for flow, hierarchy, spacing, consistency, feedback, and responsive polish. Each principle ships in two layers — human-readable principle plus agent-checkable rules with thresholds and named patterns.
 skill_type: combo
 categories:
     - product-and-design
@@ -11,177 +11,356 @@ path: docs/research/youtube-library/skill-drafts/ui-ux-quality-review/SKILL.md
 
 # UI UX Quality Review
 
-Use this skill to help an agent review a UI for practical quality issues. The review should focus on flow, clarity, consistency, feedback, and communication before decorative polish.
+A practical review skill for agents and humans auditing product screens, landing pages, dashboards, and mobile flows.
 
-## When to Use
+The discipline this skill enforces is **sequencing**: don't ask whether the interface is pretty until you've answered whether the user can complete the job, whether the screen has a visible hierarchy, whether components behave consistently, and whether the UI responds to user action.
 
-- Review a product screen, landing page, dashboard, or mobile flow
-- Diagnose why a UI feels amateur or cluttered
-- Improve visual hierarchy, spacing, typography, color, icons, or interaction states
-- Audit charts and data visualization
-- Give design feedback to a developer or founder
-- Turn a rough wireframe into a more polished screen
+Each principle in this skill ships in two layers:
 
-Do not use this skill for full brand strategy, visual identity exploration, or accessibility audits that require WCAG-specific testing. Use a dedicated accessibility process for that.
+- **Principle (human view)** — the readable guideline, in plain language.
+- **Agent checks** — the same principle expressed as concrete, threshold-bearing rules an agent can execute against a screen.
 
-## Review Order
+This dual structure lets a human read the skill as a design manual and an agent run it as a checklist.
 
-1. **Flow before pixels.** Check whether the user can complete the job, escape, skip, search, recover from errors, and handle empty or loading states.
-2. **Hierarchy.** Identify the most important thing on screen. Make size, position, weight, color, imagery, and spacing agree with that priority.
-3. **Spacing.** Look for cramped groups, inconsistent padding, and mobile layouts that need more breathing room.
-4. **Consistency.** Reuse component patterns, radius, spacing, icon style, and button treatment for the same job.
-5. **Visual noise.** Remove effects, strokes, arrows, gradients, shadows, and decorations that do not communicate.
-6. **Icons and labels.** Use one icon family within a region. Add labels or tooltips for ambiguous icons.
-7. **Feedback.** Check hover, active, focus, disabled, loading, success, error, warning, and saved states.
-8. **Charts.** Prefer readable axes and honest data communication over portfolio aesthetics.
-9. **Responsive fit.** Verify text, controls, and repeated items fit on mobile and desktop without overlap.
+## When To Use
 
-## Practical Heuristics
+- Review a product screen, landing page, dashboard, or mobile flow for practical quality issues.
+- Diagnose why a UI feels amateur, cluttered, or hard to trust.
+- Improve visual hierarchy, spacing, typography, color, icons, or interaction states.
+- Audit charts and data visualization.
+- Give design feedback to a developer or founder.
+- Turn a rough wireframe into a more polished screen.
+- Review AI-generated UI from v0, Lovable, Cursor, or Bolt before it ships.
 
-- Plan flows on paper before designing screens.
-- Every onboarding or setup flow needs skip, other, no-result, and recovery paths where relevant.
-- Mobile needs more whitespace than most beginners expect.
-- Use one primary font unless the design system says otherwise.
-- Use color for meaning: success, warning, danger, focus, trust, selection, or category.
-- In dark mode, create depth with surface contrast, not harsh borders or black shadows.
-- If the shadow is the first thing noticed, it is too strong.
-- Icons should generally match the text line height around them.
-- Every user action needs a visible response.
-- Microinteractions should confirm an action, not decorate the page at random.
+## Skill Composition
 
-## Foundational Rules (Quantitative Guardrails)
+| Primitive ID                     | Job                                                                                | Primary source layer          |
+| -------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------- |
+| `flow-and-states-review`         | Check completion, recovery, empty, loading, error, skip, search, no-result states. | Kole Jain                     |
+| `visual-hierarchy-ranking`       | Decide first/second/third in primacy before styling.                               | DesignSpo hierarchy           |
+| `spacing-and-layout-system`      | Audit gaps, padding, type sizes, container widths against the 4-pixel scale.       | DesignSpo golden rule         |
+| `typography-system-review`       | Review type roles, line height, letter spacing, contrast, face choice.             | DesignSpo typography          |
+| `color-and-contrast-review`      | Check proportions, semantics, contrast, dark-mode saturation, palette balance.     | DesignSpo color theory        |
+| `component-consistency-review`   | Normalize same-type components and remove accidental variation.                    | Kole Jain + DesignSpo         |
+| `feedback-and-affordance-review` | Check states, icons, labels, tooltips, microinteractions.                          | Kole Jain                     |
+| `responsive-fit-review`          | Verify controls, text, repeated items, charts fit on mobile and desktop.           | Kole Jain + BuildOS synthesis |
+| `delight-and-anti-delight-audit` | Identify valley moments, useful delight, surface-only decoration, inclusion risk.  | Nesrine Changuel              |
 
-These are concrete, checkable rules. Run them as a numerical pass after the qualitative review.
+Primitive IDs match `lineage.yaml` so findings can cite the underlying source claim.
 
-### Hierarchy
+## Preflight
 
-- **Rank before style.** Decide what is 1st, 2nd, 3rd in primacy _before_ picking sizes, fonts, or colors. Hierarchy is a ranking decision, not a styling decision.
-- **One primary, a few secondary, the rest uniform.** If everything is loud, nothing stands out. Most of the screen must look the same.
-- **Contrast lever order** (use levers earlier in the list before adding more): motion, task-relevant info, white space, faces, color, size, weight, imagery, extra elements, deliberate misalignment. Beginners reach for color/size and skip the higher-ranked levers.
-- **Cohesion rule.** Same-type components share _every_ value: image size, font, weight, line height, border, radius, padding. Change one, change them all.
-- **Composition pattern** matches scan path: Z-pattern for minimalist hero or poster, F-pattern for text-heavy pages, top-to-bottom for cards and lists.
+Run preflight before producing findings. Same shape for humans and agents — different inputs.
 
-### Typography
+### For humans
 
-- **Line height is inversely proportional to font size.** Big headline ~1.0×, body ~1.5×. The browser default 125% is calibrated to be okay everywhere and great nowhere — override it.
-- **Letter spacing is also inversely proportional.** Tighten headlines 1–2px; loosen small text. Bold buttons need extra letter spacing so letters do not squish.
-- **Use rem, not px**, on the web so user zoom does not break layout. 1rem = 16px default.
-- **One hierarchy with four roles**: headings (2–3 levels, not all 6), paragraphs, buttons, labels. Set the largest heading first, then derive smaller / thinner / more-spaced. New screens assemble like Lego — never invent new styles.
-- **Match typeface category to brand voice.** Serif = traditional/editorial, sans-serif = modern/neutral, display = personality (headlines only, never body), script = elegant (rarely), mono = technical.
-- **Body text contrast ≥ 4.5:1** (WebAIM). Aim for 7:1 for primary content where possible.
+Have the following ready before running this review:
 
-### Color
+- The screen, flow, or page you're reviewing — preferably a live URL or an interactive prototype, not just a static PNG.
+- Both **light and dark mode** captured if the product supports both.
+- The screen at **mobile (375px), tablet (768px), and desktop (1280px)** widths, plus any breakpoint the design specifies.
+- The **interactive states** for the major elements: hover, focus, active, disabled, loading, error, success, empty.
+- The **happy path** clearly identified — what is the user trying to accomplish on this screen?
+- The **edge paths** at least named — skip, cancel, error, no-results, recovery.
+- Any **design tokens or system** the team is working from (Inkprint, Tailwind, internal DS) so findings can be expressed in tokens, not arbitrary values.
 
-- **Pick the model for the medium.** RGB/A for digital, CMYK for print, **HSB for human-friendly selection.** Reason in HSB, ship in hex/RGB. Never type raw hex when picking.
-- **60/30/10 proportion rule.** 60% dominant (sets tone), 30% secondary (supports), 10% accent (CTAs and focal points only).
-- **Reject pop-psychology color rules** ("blue = trust"). Color reads through context, connotation, relationship, and culture — verify all five before committing.
-- **Warm advances, cool recedes.** Use warm hues for focal points and danger; cool hues as ground state.
-- **Complementary palettes never split 50/50** — they clash. Use majority + small accent, or step down to split-complementary for CTA pop without eye strain.
-- **Dark-mode accents drop ~10–15% saturation** vs. light mode. Screens are additive emitters; saturated colors fatigue the eye against dark backgrounds.
+### For agents
 
-### The 4-Pixel Rule (Mathematical System)
+Before producing findings, capture or confirm:
 
-- **Every spacing, padding, gap, container width, and font size is a multiple of 4px.**
-- **Spacing scale (closed set):** 4, 8, 12, 16, 24, 32, 48, 64, 96. No 13px, no 27px, no "looks about right."
-- **Type scale (closed set):** 16, 20, 24, 28, 32, 40, 48, 64.
-- **Spacing assigned by relatedness:**
-    - 4px = inside a composite element (icon + label)
-    - 8px = list-item internal gap
-    - 16px = inside a component
-    - 24px = between components
-    - 32px = between page sections
-- **Container width is derived, not chosen.** `max-width = (column × count) + (gutter × (count − 1))`. If the math feels arbitrary, the design is.
+- Screenshots at the breakpoints listed above for both color modes.
+- All defined interactive states for primary CTAs, inputs, and links.
+- The DOM/computed-styles snapshot for typography, spacing, and color tokens (when source is available).
+- The user task on this surface (one sentence). If unclear, surface the ambiguity and ask before reviewing.
+- The closest matching primitive ID per finding, drawn from `lineage.yaml`.
+- Confidence floor: if a finding can't be evidenced with a specific component, class, region, or coordinate, do not include it.
 
-## Common Fixes
+## Review (in order)
 
-- Replace generic "Home" title tags or labels with task-specific text.
-- Add a clear first action to empty states.
-- Convert repeated ad hoc elements into one component style.
-- Standardize button sizes, radius, and icon placement.
-- Remove decorative arrows when gestures or layout already imply movement.
-- Add focus and error states to inputs.
-- Add a saved-state indicator somewhere outside the clicked control if the state matters globally.
-- Add axes and labels to charts even if the chart becomes less trendy.
+The review is sequential. Each step lists the **principle** (human view) followed by **agent checks** (the same principle as runnable rules).
 
-## Delight Layer (Optional Final Pass)
+### 1. Flow & states
 
-Run this layer after the foundational and section-level review. It does not invent delight; it audits whether any delight already in the design holds up, and whether obvious valley moments are rescued.
+**Principle.** Check whether the user can complete the job before fixing pixels. Every non-happy path needs a defined behavior — skip, search, recover, empty, loading, error. Sketch flows on paper before designing screens; users feel missing edges instantly.
 
-### The Three-Pillar Audit
+> _"These are things you will miss if you don't plan out your flow, but users, they'll feel it instantly."_ — Kole Jain
 
-Walk the user journey. For each surface, ask which pillar it serves — or whether it serves none.
+**Agent checks**
 
-- **Pillar 1: Remove friction.** Identify _valley moments_ — points where the user's emotional state is at its lowest (errors, cancellation, refunds, account deletion, lost work, support requests). Anti-delight defaults: hostile cancel flows, multi-step refund forms, generic error pages. _"Just making it easy to do something you expect to be really hard is delightful."_
-- **Pillar 2: Anticipate needs.** A surface only honors needs if the user has to ask. To anticipate, the product surfaces something the user did not request but recognizes as theirs the moment they see it. Default: only honoring.
-- **Pillar 3: Exceed expectations.** Once a need is anticipated, deliver more than asked. Default: deliver exactly what was asked, no surplus.
+- Every onboarding/setup screen has: skip path, "other" or search escape, no-result fallback, error recovery.
+- Every interactive element has at least one of `:hover`, `:focus`, `:active`, `:disabled`, loading, success, error states defined in styles.
+- Every async action ≥ 200ms has a loading indicator (spinner, skeleton, or progress bar — pick one pattern per surface).
+- Every state-change action (save, submit, delete) has a system-wide visible feedback. Example: save → fill the icon AND drop a badge dot on the related tab.
+- Empty states are not just "no items." They include: illustration or icon, first-action CTA, helper text explaining how to populate.
+- Error messages name what went wrong AND what the user can do next. "Something went wrong" alone is a finding.
+- Cite primitive ID `flow-and-states-review` on findings in this section.
 
-### Delight Grid Triage
+### 2. Visual hierarchy
 
-Place each delight-flagged feature in the design on this grid:
+**Principle.** Rank before style. Decide what is first, second, and third in primacy before picking sizes, fonts, or colors. Hierarchy is a ranking decision, not a styling decision. Most of the screen must be uniform — primacy is scarce.
 
-| Type            | Solves Functional? | Solves Emotional? | Verdict                                                                                                    |
-| --------------- | ------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------- |
-| Low Delight     | Yes                | No                | Default. Most of the product. Fine.                                                                        |
-| Surface Delight | No                 | Yes               | Confetti, animations, celebrations. Allow only when the underlying moment has weight. Cap at ~10% of work. |
-| Deep Delight    | Yes                | Yes               | The goal. Same feature does the job _and_ honors the emotion.                                              |
+> _"Hierarchy is not the decision of what's essential in the design, but simply what visitors should see first, second, third."_ — DesignSpo
 
-**Roadmap sanity check (50/40/10):** the body of work should be ~50% pure functionality, ~40% deep delight, ~10% surface delight. If a review keeps surfacing surface-only "delighters," something upstream is broken.
+**Agent checks**
 
-### Delight Checklist (Pre-Ship)
+- Exactly one primary element per surface; flag if 3+ elements compete for primacy.
+- **Contrast levers in rank order — use earlier levers before later ones**:
+    1. Motion
+    2. Task-relevant information (the thing the user actually wants)
+    3. White space (focal point via breathing room)
+    4. Humans / faces (only when contextually relevant to the offer)
+    5. Color
+    6. Size
+    7. Weight
+    8. Imagery
+    9. Extra elements (tags like "best value", borders, badges)
+    10. Deliberate misalignment
+- Flag designs that lead with #5–#6 (color/size) and skip #1–#4.
+- **Composition matches scan path**: F-pattern for text-heavy pages; Z-pattern for minimalist hero or poster; top-to-bottom for cards and lists.
+- **Cohesion rule**: same-type components share every value — image size, font, weight, line height, border, radius, padding. Change one, change them all.
+- Stock human/face imagery is allowed only when the person is performing the task the product solves.
+- Motion is bounded: once the user is looking, motion minimizes or stops. Flag persistent looping animations.
+- Cite primitive ID `visual-hierarchy-ranking` on findings.
 
-Before signing off on any delight-flagged feature, every box must be checked:
+### 3. Spacing & layout
 
-- **User impact:** does it move a user metric we believe in?
-- **Business impact:** is it tied to a business goal, not a vibe?
-- **Feasibility:** can we ship and maintain it?
-- **Familiarity:** is there enough of what users already know? Pure novelty fails — Discover Weekly's "bug" was injecting familiar tracks; that's what users actually wanted.
-- **Inclusion:** what's joyful for one user is painful for another. Audit edge cases hard: bereavement, mental health context, cultural sensitivity, accessibility. (See anti-delight checklist below.)
-- **Maintainability of surprise:** is there a continuous-innovation plan? Surprise decays — first use wow, fifth use wallpaper. Without iteration, the feature becomes invisible.
+**Principle.** Use a 4-pixel-derived system. Every spacing value, padding, gap, container width, and font size is a multiple of 4. The closed scale is the system. Mobile needs more whitespace than desktop, not less.
 
-### Anti-Delight Checks
+**Agent checks**
 
-Reject any delighter that fails these:
+- **Closed spacing scale (no exceptions)**: 4, 8, 12, 16, 24, 32, 48, 64, 96. Reject 13px, 27px, "looks about right."
+- **Spacing assigned by relatedness**:
+    - 4px inside a composite element (icon + label)
+    - 8px inside list items
+    - 16px inside a component
+    - 24px between components
+    - 32px+ between sections
+- **Mobile padding ≥ 1.25× equivalent desktop padding**.
+- **Touch targets ≥ 44px (iOS HIG) or 48dp (Android Material)**.
+- Whitespace at all three levels: line-height, element padding/margin, section gaps. One level alone is not enough.
+- Container widths derived: `max-width = (column × count) + (gutter × (count − 1))`.
+- Off-grid placement allowed as a deliberate hierarchy lever (#10) but flag if it looks accidental.
+- Cite primitive ID `spacing-and-layout-system` on findings.
 
-- **Default-on celebrations** in unknown contexts. An OS-level animation that fires during a therapy session is not delightful. Surfaces should ship celebration _toggleable_, not default-on.
-- **Mother's Day–type pushes.** Anything that mimics a personal interaction (missed call from "Mom") for users whose context is unknown is a trust-destroyer for the minority who get hurt — and one bad press cycle erases the gain for everyone else.
-- **Gamification that punishes lapses** (streak loss, shaming dashboards). High inclusion risk in productivity, ADHD, burnout, mental-health adjacent surfaces. Use Airbnb Superhost as the model (status that recognizes effort), not Duolingo streaks (status that punishes drop-off).
-- **Surface delight without the moment.** Confetti is fine when the moment underneath has real weight (re-qualifying as Superhost). Confetti for completing a generic task is noise.
-- **"Delight" as feature-gating excuse.** If a leader can shut down delight work because the product is fundamentally broken, the leader is right. Functional reliability comes first.
+### 4. Typography
 
-### Demotivator Inversion (When the Skill Has to Diagnose)
+**Principle.** One hierarchy with four roles: headings, paragraphs, buttons, labels. Don't trust browser defaults. Set line-height and letter-spacing per role and per size.
 
-When the design clearly tries to delight but feels off and you cannot articulate why, ask the inverse question. Do not ask _"what would feel joyful here?"_ Ask _"what would frustrate, embarrass, or exhaust the user here?"_ Frustrations are easier to articulate than aspirations. Invert the demotivator and you have the emotional design brief.
+**Agent checks**
 
-### Output: Delight Findings
+- One primary font in product UI. Pair with display only on marketing surfaces.
+- **Type scale (closed set)**: 16, 20, 24, 28, 32, 40, 48, 64.
+- **Headings**: 2–3 levels max. Set the largest first, derive smaller / thinner / more-spaced.
+- **Line-height inversely proportional to size**: ~1.0× for big headlines, ~1.5× for body. Override the browser default 125%.
+- **Letter-spacing inversely proportional to size**: tighten display sizes (48+) by ~−1% (-0.01em); body default; small text loosens; bold buttons get extra tracking.
+- Use **rem on the web**. 1rem = 16px default.
+- **Body text contrast ≥ 4.5:1 (WebAIM AA)**. Aim for 7:1.
+- **Typeface category matches voice**: serif = traditional/editorial; sans-serif = modern/neutral; display = headlines only; script = rarely; mono = technical.
+- Headings as labels, not headlines, in tables: small, bold, uppercase, softer color.
+- Cite primitive ID `typography-system-review` on findings.
 
-Append to the main review:
+### 5. Color & contrast
 
-- Valley moments identified, with rescue assessment for each (covered / partial / missing).
-- Delight grid placement of every delight-flagged feature.
-- Delight checklist failures (which boxes are unchecked, per feature).
-- Anti-delight risks (specific surfaces flagged + recommended mitigations).
-- Habituation risk (which features will become wallpaper without an iteration plan).
+**Principle.** Reason in HSB, ship in hex. Pick by hue/saturation/brightness; don't type raw hex when picking. Use color for meaning. Maintain 60/30/10 proportions.
 
-## Output Format
+**Agent checks**
 
-Return findings grouped by:
+- **Pick the model for the medium**: RGB/A for digital, CMYK for print, **HSB for selection**.
+- **60/30/10 proportion rule**: 60% dominant, 30% secondary, 10% accent (CTAs and focal points only).
+- **Body text contrast ≥ 4.5:1 (WebAIM)**. Test text over Inkprint texture overlays — `tx-bloom`, `tx-grain` can degrade real contrast.
+- **Complementary palettes never split 50/50** — they clash.
+- **Dark-mode accents drop ~10–15% saturation vs. light mode**.
+- **Warm advances, cool recedes**.
+- **"Lighter" colored text uses hue rotation, not lightness.** Drag picker toward top-left in HSB, same hue. Do not use `text-gray-400` on a colored background.
+- **Greys are not pure grey.** Saturate cool for cool brands, warm for warm brands. Bump saturation at lightest and darkest extremes.
+- Reject pop-psychology shortcuts ("blue = trust").
+- Each semantic role (success, warning, danger, focus, selection, category) maps to ≤ 1 color per surface.
+- Cite primitive ID `color-and-contrast-review` on findings.
 
-- flow and missing states
-- hierarchy and content clarity
-- spacing and layout
-- consistency and components
-- visual noise
-- icons and affordances
-- interaction feedback
-- charts and data display
-- mobile and responsive risk
+### 6. Component consistency (cohesion)
 
-For each issue, give:
+**Principle.** Same-type components share every value. Change one, change them all.
 
-- what is wrong
-- why it matters
-- specific fix
-- priority: high, medium, or low
+**Agent checks**
+
+- Same-type components have identical: image/icon size, font, weight, line-height, border, radius, padding, height.
+- **Corner-radius standard**: pick one radius for the whole system (often 10px for small components; 8–12px for inputs/cards). Mixing scales on the same screen is a tell.
+- Same-purpose buttons (back, cancel, skip) match in size, radius, and style. Different prompting text only.
+- Variation between rows of the same kind is intentional, not accidental.
+- Use the system's reusability primitives: styles for colors, variables for measurements, components for UI elements.
+- Cite primitive ID `component-consistency-review` on findings.
+
+### 7. Visual noise (subtraction first)
+
+**Principle.** Subtraction beats addition. Most fixes remove weight: gradients, decorative shadows, redundant arrows, cosmetic strokes.
+
+**Agent checks**
+
+- **Gradients**: same color family only. Default = no gradient.
+- **Three-step shadow recipe** (in order):
+    1. Shadow color = **light gray**, not pure black.
+    2. **Increase blur ≥ 8px**.
+    3. Or **remove the shadow** entirely.
+- Shadow opacity ≤ 0.15 on most elements.
+- Decorative arrows next to swipeable carousels = remove.
+- Borders that aren't doing real work = remove or dim heavily.
+- Reject "AI gradients" — `bg-gradient-to-r from-blue-500 to-purple-500` distant-hue blends.
+
+### 8. Icons & affordances
+
+**Principle.** One icon library per region. Match line height. Label ambiguous icons.
+
+**Agent checks**
+
+- One library per region — no Heroicons + Lucide + Phosphor mixed.
+- Icons next to text match the text's line-height around them.
+- Solid icons softened in color so perceived weight matches the label.
+- **Universal icons** (house, bookmark, user, search) — no label needed.
+- **Ambiguous icons** — tooltip required, or pair with a text label.
+- Mixed icon styles okay only when visually separate (different region, different purpose).
+- Replace browser-default form controls — radios, checkboxes, select chevrons.
+
+### 9. Feedback & states
+
+**Principle.** Every user action needs a visible response. Feedback closes the action-result loop.
+
+**Agent checks**
+
+- Every interactive element has hover / focus / active / disabled states defined.
+- Click → at least a fraction-of-a-second visual change.
+- Async actions ≥ 200ms = loading spinner or skeleton.
+- State-change actions propagate system-wide.
+- **No layout shift on hover/selected**: don't change size, weight, or case. Acceptable: text color, background, shadow, slight transform.
+- Cite primitive ID `feedback-and-affordance-review` on findings.
+
+### 10. Charts & data clarity
+
+**Principle.** Function over Dribbble aesthetic. Show the axis. One bar per data point.
+
+**Agent checks**
+
+- Vertical axis labels visible. Reject "no axis."
+- Bar tops flat, not rounded, when reading the value matters.
+- One bar per data point. Reject 16 bars for 7 days of the week.
+- No portfolio-style decorative gradients on data series.
+- Headings as labels, not headlines, in dense data tables.
+- Y-axis starts at zero unless explicitly truncating with a clear marker.
+- Color coding has a legend reachable in the first scan.
+
+### 11. Responsive fit
+
+**Principle.** Verify text, controls, repeated items, and charts fit on mobile and desktop without overlap or clipping.
+
+**Agent checks**
+
+- Capture screens at **mobile (375px), tablet (768px), desktop (1280px)** plus design-specified breakpoints.
+- Text wraps; doesn't overflow or clip.
+- Touch targets ≥ 44px on mobile.
+- Repeated lists/cards stack vertically on mobile, grid on desktop.
+- Charts re-flow or scroll horizontally on mobile.
+- Mobile padding > desktop padding.
+- No horizontal scroll on mobile unless explicitly intended.
+- Cite primitive ID `responsive-fit-review` on findings.
+
+### 12. Delight & anti-delight (optional final pass)
+
+**Principle.** Run only after foundational review. Delight does not rescue broken flow. Use the three pillars: remove friction at valley moments, anticipate needs, exceed expectations after needs are anticipated.
+
+**Agent checks — three-pillar audit**
+
+- **Pillar 1 — Remove friction.** Identify _valley moments_: errors, cancellation, refunds, account deletion, lost work, support requests.
+- **Pillar 2 — Anticipate needs.** Surface something the user did not request but recognizes as theirs.
+- **Pillar 3 — Exceed expectations.** Once a need is anticipated, deliver more than asked.
+
+**Agent checks — delight grid placement**
+
+| Type            | Solves Functional? | Solves Emotional? | Verdict                                                        |
+| --------------- | ------------------ | ----------------- | -------------------------------------------------------------- |
+| Low Delight     | Yes                | No                | Default. Most of the product. Fine.                            |
+| Surface Delight | No                 | Yes               | Allow only when the underlying moment has weight. Cap at ~10%. |
+| Deep Delight    | Yes                | Yes               | The goal.                                                      |
+
+**Agent checks — roadmap balance (50/40/10)**
+
+~50% pure functionality, ~40% deep delight, ~10% surface delight. If a review keeps surfacing surface-only delighters, something upstream is broken.
+
+**Agent checks — pre-ship checklist**
+
+User impact / business impact / feasibility / familiarity / inclusion / maintainability of surprise. Every box must be checked.
+
+**Agent checks — anti-delight rejections**
+
+- Default-on celebrations in unknown contexts.
+- Pseudo-personal pushes (missed call from "Mom") for unknown user contexts.
+- Streak-loss / shaming gamification in productivity, ADHD, burnout, mental-health adjacent surfaces.
+- Surface delight without the moment.
+- "Delight" as a feature-gating excuse for a broken product.
+
+**Demotivator inversion** (when delight feels off): ask "what would frustrate, embarrass, or exhaust the user here?" Invert the demotivator, get the brief.
+
+**Habituation risk**: surprise decays — first-use wow, fifth-use wallpaper. Every delight feature needs a continuous-iteration plan or it becomes invisible.
+
+Cite primitive ID `delight-and-anti-delight-audit` on findings.
+
+## AI-Generated UI Smoke Test
+
+Reviewing AI-generated UI from v0 / Lovable / Cursor / Bolt is the most common modern use of this skill. Detect these fingerprints first:
+
+| AI-slop pattern                                              | Why it reads as slop                          | Corrective move                                                        |
+| ------------------------------------------------------------ | --------------------------------------------- | ---------------------------------------------------------------------- |
+| `rounded-2xl` + `shadow-md` + `border` stacked on every card | Triple belt-and-suspenders                    | Pick one.                                                              |
+| `text-gray-400` / `text-slate-500` on every muted element    | Pure grey on colored backgrounds reads dull   | Replace with a lighter S/B variant of the brand hue.                   |
+| `shadow-md` everywhere, no elevation distinction             | No two-part decomposition                     | Define an elevation ladder.                                            |
+| `bg-gradient-to-r from-blue-500 to-purple-500`               | "AI gradient" — distant hues blended          | Rotate hue across a single family or remove.                           |
+| Inter, Inter, Inter                                          | Single biggest fingerprint of AI-generated UI | Swap to Satoshi / Metropolis / Figtree, or pair with display headline. |
+| Default `p-4` / `gap-4` / `space-y-4` everywhere             | Tight Tailwind defaults                       | Double the spacing values.                                             |
+| Outline buttons everywhere                                   | Ghost buttons feel weightless                 | Soft-solid based on text color at low alpha.                           |
+| Borders separating every form field, table row, card section | Borders as the only hierarchy lever           | Replace with zebra striping, off-white blocks, or spacing.             |
+
+For deeper AI-slop coverage and corrective tokens, hand off to `visual-craft-fundamentals`.
+
+## Output Schema
+
+Every finding follows this canonical shape:
+
+```
+Domain: <flow | hierarchy | spacing | typography | color | consistency | noise | icons | feedback | charts | responsive | delight>
+Finding: <named principle violated, e.g., "Closed-scale spacing violated">
+Evidence: <specific component, class string, region, or coordinate>
+Severity: <high | medium | low>
+Fix: <concrete tokens or named technique>
+Source claim: <lineage primitive ID>
+Delegated: <optional sibling skill if the fix is out of scope>
+```
+
+A finding without **Evidence** is not a finding. A finding without **Severity** is not actionable.
+
+### Severity rubric
+
+- **high** — blocks task completion, breaks accessibility floor (body text contrast < 4.5:1), or creates inclusion risk.
+- **medium** — degrades polish or readability significantly; consistency drift; off-scale spacing.
+- **low** — stylistic preference, minor decorative noise.
+
+### Stop conditions
+
+- At least one finding per applicable category (or category explicitly marked "no issues").
+- Top 3 high-severity fixes ranked by impact.
+- All findings carry evidence and severity.
+- Out-of-scope concerns tagged `Delegated:` to a sibling skill rather than dropped.
+
+## Stack With (Workflow)
+
+`stackWith` is workflow, not just metadata. Default chain:
+
+1. **`ui-ux-quality-review`** (this skill) — foundational pass.
+2. **`accessibility-and-inclusive-ui-review`** — when WCAG 2.2 AA, semantics, keyboard, screen-reader behavior matter.
+3. **`visual-craft-fundamentals`** — level-up pass: two-part shadows, hue rotation, single-hue palettes, up-pop/down-pop, named text-on-image methods. Corrective lens for AI-generated UI.
+4. **`marketing-site-design-review`** — section-by-section landing-page review.
+5. **`delightful-product-review`** — full delight rubric when foundational + craft are clean.
+
+**Handoff outputs.** Findings tagged `Delegated: <sibling-skill>` route to the appropriate sibling. Each sibling consumes the canonical schema directly.
+
+**Default order**: 1 → 2 → 3 → 4 → 5. Skip 2 if accessibility is out of scope. Skip 4 unless the surface is a marketing page. Skip 5 unless foundational + craft passes are clean.
 
 ## Guardrails
 
@@ -190,16 +369,31 @@ For each issue, give:
 - Do not remove labels from unfamiliar icon-only controls without adding tooltips.
 - Do not make every element the same visual weight.
 - Do not assume desktop spacing works on mobile.
-- Do not allow off-scale spacing or font-size values (anything that is not a multiple of 4px).
-- Do not trust the browser default 125% line-height — set explicit line-height per role.
+- Do not allow off-scale spacing or font-size values.
+- Do not trust the browser default 125% line-height.
 - Do not split a complementary color palette 50/50.
-- Do not pick color by typing hex values; pick in HSB and ship the hex.
-- Do not "make everything important" by stacking contrast levers — primacy is scarce.
+- Do not pick color by typing hex values.
+- Do not stack contrast levers to make everything important.
+- Do not return findings without evidence.
+- Do not assign severity without referencing the rubric.
 
-## Source Attribution
+## Sources
 
-Distilled from:
+### Human-facing source attribution
 
-- Kole Jain — [7 UI/UX mistakes that scream you're a beginner](https://www.youtube.com/watch?v=AH_ugxmLeUM), [Every UI/UX Concept Explained in Under 10 Minutes](https://www.youtube.com/watch?v=EcbgbKtOELY). Local notes in `docs/marketing/growth/research/youtube-transcripts/` and `youtube-design.md`.
-- DesignSpo — [The Complete Guide To Visual Hierarchy](https://www.youtube.com/watch?v=kK1TOpI948o), [The ULTIMATE Guide To Typography For Beginners](https://www.youtube.com/watch?v=AXpxZMRM1EY), [The ULTIMATE Color Theory Guide For Beginners](https://www.youtube.com/watch?v=tKCORDK0IZU), [The Golden Rule Of Web Design](https://www.youtube.com/watch?v=CASPWJUsHPM). Analyses in `docs/research/youtube-library/analyses/` (`2026-04-29_designspo-visual-hierarchy_analysis.md`, `2026-04-29_designspo-typography_analysis.md`, `2026-04-29_designspo-color-theory_analysis.md`, `2026-04-29_designspo-golden-rule-web-design_analysis.md`).
-- Nesrine Changuel — [A 4-step framework for building delightful products](https://www.youtube.com/watch?v=tX6nwT1Bsuo) on Lenny's Podcast. Analysis at `docs/marketing/growth/research/youtube-transcripts/2026-04-28-nesrine-changuel-4-step-delightful-products-framework-ANALYSIS.md`. Source for the Three Pillars, Delight Grid, Delight Checklist, 50/40/10 rule, anti-delight checks, and demotivator inversion.
+- **Kole Jain** — [7 UI/UX mistakes that scream you're a beginner](https://www.youtube.com/watch?v=AH_ugxmLeUM); [Every UI/UX Concept Explained in Under 10 Minutes](https://www.youtube.com/watch?v=EcbgbKtOELY).
+- **DesignSpo** — [Visual Hierarchy](https://www.youtube.com/watch?v=kK1TOpI948o); [Typography](https://www.youtube.com/watch?v=AXpxZMRM1EY); [Color Theory](https://www.youtube.com/watch?v=tKCORDK0IZU); [The Golden Rule Of Web Design](https://www.youtube.com/watch?v=CASPWJUsHPM).
+- **Nesrine Changuel** on [Lenny's Podcast](https://www.youtube.com/@LennysPodcast) — [A 4-step framework for building delightful products](https://www.youtube.com/watch?v=tX6nwT1Bsuo).
+
+### Agent-facing deep-dive references
+
+- Visual hierarchy / contrast levers / scan-pattern → `docs/research/youtube-library/analyses/2026-04-29_designspo-visual-hierarchy_analysis.md`
+- Typography / line-height / letter-spacing → `docs/research/youtube-library/analyses/2026-04-29_designspo-typography_analysis.md`
+- Color contrast / palette / dark-mode → `docs/research/youtube-library/analyses/2026-04-29_designspo-color-theory_analysis.md`
+- 4-pixel system / spacing math / container width → `docs/research/youtube-library/analyses/2026-04-29_designspo-golden-rule-web-design_analysis.md`
+- Beginner-tell taxonomy / shadow recipe / 10px radius / save→badge-dot → `docs/marketing/growth/research/youtube-transcripts/2025-06-07-kole-jain-7-ui-ux-mistakes-beginner-ANALYSIS.md`
+- Delight pillars / inclusion risk / habituation → `docs/marketing/growth/research/youtube-transcripts/2026-04-28-nesrine-changuel-4-step-delightful-products-framework-ANALYSIS.md`
+- Lineage source claims and primitive IDs → `docs/research/youtube-library/skill-drafts/ui-ux-quality-review/lineage.yaml`
+- WebAIM contrast checker → https://webaim.org/resources/contrastchecker/
+
+Source captures dated 2026-04-27 to 2026-04-29.

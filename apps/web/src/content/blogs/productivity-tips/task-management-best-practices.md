@@ -1,6 +1,6 @@
 ---
 title: 'Task Management Best Practices: Beyond To-Do Lists'
-description: 'Learn how to manage tasks within BuildOS rich context system—where tasks connect to goals, plans, and documents. Master advanced techniques plus how to zoom into any task with Project Lens.'
+description: 'Manage tasks inside the BuildOS context graph — where tasks connect to goals, plans, and documents. Plus how to zoom into any task with Project Lens.'
 author: 'DJ Wayne'
 date: '2025-06-28'
 lastmod: '2025-12-31'

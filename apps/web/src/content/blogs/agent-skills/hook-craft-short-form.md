@@ -248,4 +248,11 @@ This skill is distilled from four Kallaway source layers.
 - [I Studied 100 Viral Hooks, These 6 Will Make You Go Viral](https://www.youtube.com/watch?v=xnOe8aA9Pmw) supplies the six archetypes, four-signal alignment, visual-to-audio-to-visual sandwich, and key-visual rule.
 - [The ONLY 6 Words You Need to Hook ANY Viewer](https://www.youtube.com/watch?v=S9FlxFv9dxg) supplies the six-slot grammar, copy-work drill, slot-collapse patterns, and audit-first posture.
 
-The lineage file for the agent-readable draft maps these claims into primitive skills, guardrails, output artifacts, and source-claim edges.
+### Deep-read source analyses
+
+Each source video is also published as a standalone deep-read post:
+
+- [Irresistible Hooks: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-irresistible-hooks) — the three-beat formula (lean → stop → snapback), the four lean mechanisms, visual hooks, lead with pain, cult-hopping.
+- [Hooks Impossible to Skip: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-hooks-impossible-to-skip) — the four-mistake diagnostic (Delay / Confusion / Irrelevance / Disinterest), the A vs B contrast formula, before/after rewrite pairs.
+- [The 6 Hook Archetypes: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-100-viral-hooks) — Fortune Teller, Experimenter, Teacher, Magician, Investigator, Contrarian; the four-component alignment; visual → audio → visual sandwich.
+- [The 6 Words Every Hook Needs: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-6-words-hook) — Subject, Action, Objective, Contrast, Proof, Time; slot collapse patterns; the copy-work drill.

@@ -168,7 +168,8 @@ export const GRAPH_COLORS: {
 	edges: {
 		hierarchical: { light: '#94a3b8', dark: '#64748b' },
 		goalSupport: { light: '#d97706', dark: '#fbbf24' },
-		dependency: { light: '#ea580c', dark: '#fb923c' },
+		// Dependency uses violet so it does not collide with the accent/selection orange.
+		dependency: { light: '#7c3aed', dark: '#a78bfa' },
 		blocking: { light: '#dc2626', dark: '#f87171' },
 		temporal: { light: '#059669', dark: '#34d399' },
 		knowledge: { light: '#0284c7', dark: '#38bdf8' }
@@ -211,13 +212,18 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		labelMaxWidth: 66,
 		labelMaxLines: 2,
 		labelMaxCharsPerLine: 13,
-		borderWidth: 3,
+		// 4px frame + Cytoscape underlay halo (see OntologyGraph.svelte) gives projects
+		// "stamped" presence against the tx-grid canvas — closest analog to wt-card weight.
+		borderWidth: 4,
 		borderStyle: 'solid'
 	},
 	goal: {
-		shape: 'star',
-		baseWidth: 38,
-		baseHeight: 38,
+		// Ellipse + Lucide Target SVG painted as background-image (see goalsToNodes below)
+		// keeps Goals visually consistent with the Target icon used everywhere else
+		// (NodeDetailsPanel, legend, Inkprint canonical icon table).
+		shape: 'ellipse',
+		baseWidth: 44,
+		baseHeight: 44,
 		fontSize: 9,
 		fontWeight: 600,
 		labelValign: 'bottom',
@@ -334,6 +340,25 @@ const SCALE_MULTIPLIERS: Record<string, number> = {
 
 const FALLBACK_LABEL = 'Untitled';
 const LABEL_OVERFLOW_MARKER = '...';
+
+/**
+ * Inline Lucide Target SVG as a data URI. Painted onto goal nodes as
+ * `background-image` so Goals carry the same icon used in NodeDetailsPanel,
+ * the legend, and the Inkprint canonical icon table.
+ */
+function buildTargetIconDataUri(stroke: string): string {
+	const encoded = encodeURIComponent(stroke);
+	return (
+		"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' " +
+		"fill='none' stroke='" +
+		encoded +
+		"' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" +
+		"<circle cx='12' cy='12' r='10'/>" +
+		"<circle cx='12' cy='12' r='6'/>" +
+		"<circle cx='12' cy='12' r='2'/>" +
+		'</svg>'
+	);
+}
 
 // ============================================================
 // HELPER FUNCTIONS
@@ -504,10 +529,17 @@ function getLabelVisualData(label: string | null | undefined, config: NodeStyleC
 export class OntologyGraphService {
 	static projectsToNodes(projects: OntoProject[], isDark = false): CytoscapeNode[] {
 		const config = NODE_STYLE_CONFIG.project;
+		const projectBase = isDark ? GRAPH_COLORS.project.dark : GRAPH_COLORS.project.light;
 
 		return projects.map((project) => {
 			const state = normalizeState(project.state_key);
-			const colors = getStateColors(state, isDark);
+			// Default-state projects ("draft" / "pending" / unknown) read as Projects, not
+			// generic gray drafts — fall back to the project entity base, mirroring how
+			// goals/plans/documents already handle their default states.
+			const colors =
+				state === 'draft' || state === 'pending'
+					? projectBase
+					: getStateColors(state, isDark);
 			const scale = project.facet_scale ?? 'medium';
 			const multiplier = SCALE_MULTIPLIERS[scale] ?? 1.0;
 			const labelVisual = getLabelVisualData(project.name, config);
@@ -562,6 +594,10 @@ export class OntologyGraphService {
 				colors = getStateColors('deferred', isDark);
 			}
 
+			// Target icon stroke matches the node border so the icon reads as
+			// "this goal" rather than a foreign UI element.
+			const iconImage = buildTargetIconDataUri(colors.border);
+
 			return {
 				data: {
 					id: goal.id,
@@ -581,6 +617,7 @@ export class OntologyGraphService {
 					height: config.baseHeight,
 					size: config.baseWidth,
 					shape: config.shape,
+					iconImage,
 					fontSize: config.fontSize,
 					fontWeight: config.fontWeight ?? 400,
 					labelValign: config.labelValign,

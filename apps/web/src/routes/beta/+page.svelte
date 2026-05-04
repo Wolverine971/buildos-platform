@@ -223,7 +223,7 @@
 
 <SEOHead
 	title="BuildOS Beta — Thinking Environment for Complex Creative Work"
-	description="Early access to BuildOS. Turn rough notes, voice dumps, and scattered research into structured projects with memory. Built for authors, YouTubers, and other creators making complex things."
+	description="Early access to BuildOS. Turn rough notes, voice dumps, and research into structured projects with memory. Built for authors, YouTubers, and creators."
 	canonical="https://build-os.com/beta"
 	keywords="BuildOS beta, thinking environment, project memory, creator workflow, author workflow, YouTube workflow, structured work"
 />

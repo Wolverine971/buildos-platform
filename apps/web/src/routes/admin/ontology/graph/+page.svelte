@@ -1,6 +1,7 @@
 <!-- apps/web/src/routes/admin/ontology/graph/+page.svelte -->
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { dev } from '$app/environment';
 	import { Workflow, Network, Zap } from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import OntologyGraph from '$lib/components/ontology/graph/OntologyGraph.svelte';
@@ -19,6 +20,8 @@
 	let viewMode = $state<ViewMode>('projects'); // Default to Projects & Entities
 	let graphLibrary = $state<'cytoscape' | 'svelteflow' | 'g6'>('cytoscape');
 
+	// SvelteFlow + G6 are experimental — most controls are disabled. Only expose
+	// the toggle in dev so production users see a single, stable graph.
 	const libraryOptions = [
 		{ value: 'cytoscape', label: 'Cytoscape', icon: Workflow, description: 'Stable' },
 		{ value: 'svelteflow', label: 'Svelte Flow', icon: Network, description: 'Native' },
@@ -39,33 +42,35 @@
 		backHref="/admin"
 	/>
 
-	<!-- Graph Library Selector -->
-	<div class="mt-4 mb-2">
-		<div class="inline-flex rounded-lg border border-border bg-card p-1 shadow-ink">
-			{#each libraryOptions as option}
-				{@const Icon = option.icon}
-				<button
-					type="button"
-					class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition pressable
+	<!-- Graph Library Selector — dev-only; experimental libs are not user-ready. -->
+	{#if dev}
+		<div class="mt-4 mb-2">
+			<div class="inline-flex rounded-lg border border-border bg-card p-1 shadow-ink">
+				{#each libraryOptions as option}
+					{@const Icon = option.icon}
+					<button
+						type="button"
+						class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition pressable
 						{graphLibrary === option.value
-						? 'bg-accent text-accent-foreground shadow-ink'
-						: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
-					onclick={() => (graphLibrary = option.value)}
-				>
-					<Icon class="w-3.5 h-3.5" />
-					<span>{option.label}</span>
-					<span
-						class="hidden sm:inline text-[0.65rem] px-1.5 py-0.5 rounded-full
-							{graphLibrary === option.value
-							? 'bg-accent-foreground/20 text-accent-foreground'
-							: 'bg-muted text-muted-foreground'}"
+							? 'bg-accent text-accent-foreground shadow-ink'
+							: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
+						onclick={() => (graphLibrary = option.value)}
 					>
-						{option.description}
-					</span>
-				</button>
-			{/each}
+						<Icon class="w-3.5 h-3.5" />
+						<span>{option.label}</span>
+						<span
+							class="hidden sm:inline text-[0.65rem] px-1.5 py-0.5 rounded-full
+							{graphLibrary === option.value
+								? 'bg-accent-foreground/20 text-accent-foreground'
+								: 'bg-muted text-muted-foreground'}"
+						>
+							{option.description}
+						</span>
+					</button>
+				{/each}
+			</div>
 		</div>
-	</div>
+	{/if}
 
 	<div class="flex flex-col gap-4 mt-4">
 		<!-- Graph Container -->

@@ -281,6 +281,12 @@ export const BLOG_CATEGORIES = {
 		name: 'Agent Skills',
 		description: 'Portable skill guides, definitions, and operating playbooks for AI agents.',
 		color: 'cyan'
+	},
+	'source-analyses': {
+		name: 'Source Analyses',
+		description:
+			'Deep reads of the videos, talks, and writing that inform BuildOS agent skills and design philosophy.',
+		color: 'amber'
 	}
 } as const;
 

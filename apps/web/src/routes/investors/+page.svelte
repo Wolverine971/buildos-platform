@@ -75,7 +75,7 @@
 
 <SEOHead
 	title="Investors — BuildOS"
-	description="BuildOS is a thinking environment for people making complex things. The product turns rough project input into durable project memory for creators, builders, and the agent workflows around them."
+	description="BuildOS is a thinking environment for people making complex things — turning rough project input into durable memory for creators, builders, and their agents."
 	canonical="https://build-os.com/investors"
 	keywords="BuildOS investors, thinking environment, project memory, creator workflow, agent context, DJ Wayne"
 	jsonLd={{

@@ -1,6 +1,6 @@
 ---
-title: 'Goals vs Projects: Why Most Productivity Systems Get This Wrong'
-description: 'Learn how goals sit at the top of BuildOS connected structure—linking to plans, tasks, and documents. Discover how strategic alignment becomes automatic when context is structured.'
+title: 'Goals vs Projects: Where Productivity Systems Fail'
+description: 'Goals sit at the top of the BuildOS graph — linking to plans, tasks, and documents. Strategic alignment becomes automatic when context is structured.'
 author: 'DJ Wayne'
 date: '2025-06-27'
 lastmod: '2026-01-24'

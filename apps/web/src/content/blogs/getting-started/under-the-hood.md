@@ -1,6 +1,6 @@
 ---
 title: 'Under the Hood: How BuildOS Organizes Your Thoughts'
-description: 'A peek behind the curtain at how BuildOS connects your work — a rich context architecture where goals, milestones, plans, tasks, and documents stay connected as one evolving system.'
+description: 'A peek behind the curtain at the BuildOS context architecture — where goals, milestones, plans, tasks, and documents stay connected as one evolving system.'
 author: 'DJ Wayne'
 date: '2025-12-17'
 lastmod: '2026-04-16'

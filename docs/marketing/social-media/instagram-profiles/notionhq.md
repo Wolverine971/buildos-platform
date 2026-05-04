@@ -11,7 +11,7 @@
 **Relationship Status:** Monitor only
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-08
+**Last Reviewed:** 2026-05-03
 **Last Engaged:** Never (mine commenters, not Notion directly)
 **Source of First Discovery:** `instagram-engagement-targets.md`
 
@@ -47,11 +47,12 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                       | Post Link                                | Action   | Status     | What We Said / Planned                            | Outcome                 | Source                         |
-| ---------- | ------- | --------------------------- | ---------------------------------------- | -------- | ---------- | ------------------------------------------------- | ----------------------- | ------------------------------ |
-| 2026-03-22 | Profile | Office tour + AI ads Reel   | N/A                                      | Reviewed | Logged     | Noted 443K, AI workspace bio, no engagement       | Competitor intel logged | 2026-03-22_instagram-warmup.md |
-| 2026-03-27 | Post    | Notion 3.4 AI update launch | https://www.instagram.com/p/DWXAfUCCGG6/ | Queued   | No posting | Watering hole — reply to commenters, not the post | Unknown                 | 2026-03-27_instagram-warmup.md |
-| 2026-03-29 | Profile | 3.4 launch carryover        | https://www.instagram.com/p/DWXAfUCCGG6/ | Reviewed | Logged     | Steady engagement, no pushback in comments        | Competitor intel logged | 2026-03-29_instagram-warmup.md |
+| Date       | Surface | Topic                                      | Post Link                                | Action   | Status                   | What We Said / Planned                                                                                                                                                                                                                                                                                                                           | Outcome                 | Source                         |
+| ---------- | ------- | ------------------------------------------ | ---------------------------------------- | -------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- | ------------------------------ |
+| 2026-03-22 | Profile | Office tour + AI ads Reel                  | N/A                                      | Reviewed | Logged                   | Noted 443K, AI workspace bio, no engagement                                                                                                                                                                                                                                                                                                      | Competitor intel logged | 2026-03-22_instagram-warmup.md |
+| 2026-03-27 | Post    | Notion 3.4 AI update launch                | https://www.instagram.com/p/DWXAfUCCGG6/ | Queued   | No posting               | Watering hole — reply to commenters, not the post                                                                                                                                                                                                                                                                                                | Unknown                 | 2026-03-27_instagram-warmup.md |
+| 2026-03-29 | Profile | 3.4 launch carryover                       | https://www.instagram.com/p/DWXAfUCCGG6/ | Reviewed | Logged                   | Steady engagement, no pushback in comments                                                                                                                                                                                                                                                                                                       | Competitor intel logged | 2026-03-29_instagram-warmup.md |
+| 2026-05-03 | Post    | Plan Mode launch (agent plan-then-approve) | https://www.instagram.com/p/DXffODED3nB/ | Queued   | Pending /instagram-reply | Watering-hole pass — reply to commenters like @opsdeck (5d) on "trust exercise vs review process" and to billing-frustrated commenters. Do NOT engage @notionhq directly. Strong competitor intel: Notion is now leading with "plan → approve → execute" agent UX, which overlaps directly with BuildOS agentic chat positioning. Mention fit 0. | Pending                 | 2026-05-03_instagram-warmup.md |
 
 ## Open Loops
 

@@ -227,3 +227,10 @@ This skill is distilled from two source layers.
 - **Positioning layer:** April Dunford's sales pitch framework on [Lenny's Podcast](https://www.youtube.com/watch?v=-VqmFI9vY7w), which supplies the Setup -> Follow-Through structure, differentiated-value framing, and anti-FOMO posture.
 
 Priestley supplies the assessment funnel mechanics. Dunford supplies the positioning layer and the decision rule for when the scorecard needs setup before the ask.
+
+### Deep-read source analyses
+
+Each source video is also published as a standalone deep-read post:
+
+- [The $1 Million Landing Page: Lessons from Daniel Priestley](/blogs/source-analyses/daniel-priestley-1m-landing-page) — the 3-part scorecard funnel, the 5-section landing page, the 15-question / Big-5 questionnaire, the dynamic results page, the 20–40% conversion benchmark.
+- [The Sales Pitch Framework: Lessons from April Dunford](/blogs/source-analyses/april-dunford-sales-pitch-framework) — the two-part Setup → Follow-Through structure, differentiated value, why the setup eliminates most objections, the trade-off concept, why FOMO marketing produces churning buyers.

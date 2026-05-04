@@ -1,6 +1,6 @@
 ---
 title: "Social Media Is Dead. What You're Using Is Interest Media."
-description: 'The word "social media" stopped being accurate years ago. What replaced it is something we don''t have a name for yet — except one: interest media. A manifesto on the category shift, and what it means for your mind.'
+description: '"Social media" stopped being accurate years ago. What replaced it is interest media — a manifesto on the category shift, and what it means for your mind.'
 author: 'DJ Wayne'
 date: '2026-04-17'
 lastmod: '2026-04-17'

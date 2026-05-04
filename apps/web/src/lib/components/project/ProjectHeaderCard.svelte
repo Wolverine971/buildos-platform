@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/project/ProjectHeaderCard.svelte -->
 <script lang="ts">
-	import { ArrowLeft, MoreHorizontal } from 'lucide-svelte';
+	import { ArrowLeftRight, ArrowLeft, MoreHorizontal } from 'lucide-svelte';
 	import NextStepDisplay from '$lib/components/project/NextStepDisplay.svelte';
 	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
 	import type { Project } from '$lib/types/onto';
@@ -24,13 +24,20 @@
 		right: number;
 	};
 
+	type ViewToggle = {
+		label: string;
+		href: string;
+		title?: string;
+	};
+
 	let {
 		project,
 		showMobileMenu,
 		onBack,
 		onOpenMenu,
 		onEntityClick,
-		onNextStepGenerated
+		onNextStepGenerated,
+		viewToggle
 	}: {
 		project: HeaderProject;
 		showMobileMenu: boolean;
@@ -38,6 +45,8 @@
 		onOpenMenu: (position: MenuPosition) => void;
 		onEntityClick: (ref: EntityReference) => void;
 		onNextStepGenerated: () => void | Promise<void>;
+		/** Optional toggle link rendered next to the menu button (e.g. "Classic view"). */
+		viewToggle?: ViewToggle;
 	} = $props();
 
 	function handleOpenMenu(event: MouseEvent) {
@@ -88,6 +97,24 @@
 			</div>
 
 			<div class="flex items-center gap-1.5 shrink-0">
+				{#if viewToggle}
+					<a
+						href={viewToggle.href}
+						title={viewToggle.title ?? viewToggle.label}
+						class="hidden sm:inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/60 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-border hover:bg-muted/40 transition-colors pressable"
+					>
+						<ArrowLeftRight class="w-3 h-3" />
+						{viewToggle.label}
+					</a>
+					<a
+						href={viewToggle.href}
+						title={viewToggle.title ?? viewToggle.label}
+						aria-label={viewToggle.title ?? viewToggle.label}
+						class="sm:hidden p-1.5 rounded-lg hover:bg-muted transition-colors pressable text-muted-foreground"
+					>
+						<ArrowLeftRight class="w-4 h-4" />
+					</a>
+				{/if}
 				<button
 					onclick={handleOpenMenu}
 					class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable"

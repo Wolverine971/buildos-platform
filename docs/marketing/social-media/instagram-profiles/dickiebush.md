@@ -11,7 +11,7 @@
 **Relationship Status:** Prospect
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-08
+**Last Reviewed:** 2026-05-03
 **Last Engaged:** Never
 **Source of First Discovery:** `instagram-engagement-targets.md` plus backfill from daily engagement logs
 
@@ -46,12 +46,13 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                   | Post Link                                | Action | Status                  | What We Said / Planned                                   | Outcome | Source                         |
-| ---------- | ------- | ----------------------- | ---------------------------------------- | ------ | ----------------------- | -------------------------------------------------------- | ------- | ------------------------------ |
-| 2026-03-23 | Post    | Bezos favorite book     | https://www.instagram.com/p/DWM3ZK8keQJ/ | Queued | No posting confirmation | Connect one lesson to solo-founder risk and reflection   | Unknown | 2026-03-23_instagram-warmup.md |
-| 2026-03-24 | Post    | 7 questions for mentors | https://www.instagram.com/p/DWPHqNtlVVp/ | Queued | No posting confirmation | "What can I skip?" as the highest-leverage question      | Unknown | 2026-03-24_instagram-warmup.md |
-| 2026-03-27 | Post    | Atomic essays           | https://www.instagram.com/p/DWZvZz8Ebfx/ | Queued | No posting confirmation | Writing as structured brain dump / one idea at a time    | Unknown | 2026-03-27_instagram-warmup.md |
-| 2026-03-29 | Post    | Writing tech stack      | https://www.instagram.com/p/DWcNT6aDQFS/ | Queued | No posting confirmation | Morning brain dump and anti-Notion-procrastination angle | Unknown | 2026-03-29_instagram-warmup.md |
+| Date       | Surface | Topic                                                     | Post Link                                | Action | Status                   | What We Said / Planned                                                                                                                                                                             | Outcome | Source                         |
+| ---------- | ------- | --------------------------------------------------------- | ---------------------------------------- | ------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------ |
+| 2026-03-23 | Post    | Bezos favorite book                                       | https://www.instagram.com/p/DWM3ZK8keQJ/ | Queued | No posting confirmation  | Connect one lesson to solo-founder risk and reflection                                                                                                                                             | Unknown | 2026-03-23_instagram-warmup.md |
+| 2026-03-24 | Post    | 7 questions for mentors                                   | https://www.instagram.com/p/DWPHqNtlVVp/ | Queued | No posting confirmation  | "What can I skip?" as the highest-leverage question                                                                                                                                                | Unknown | 2026-03-24_instagram-warmup.md |
+| 2026-03-27 | Post    | Atomic essays                                             | https://www.instagram.com/p/DWZvZz8Ebfx/ | Queued | No posting confirmation  | Writing as structured brain dump / one idea at a time                                                                                                                                              | Unknown | 2026-03-27_instagram-warmup.md |
+| 2026-03-29 | Post    | Writing tech stack                                        | https://www.instagram.com/p/DWcNT6aDQFS/ | Queued | No posting confirmation  | Morning brain dump and anti-Notion-procrastination angle                                                                                                                                           | Unknown | 2026-03-29_instagram-warmup.md |
+| 2026-05-03 | Post    | "If you're not using AI 12 hours a day…" tweet screenshot | https://www.instagram.com/p/DX2VIUzDbip/ | Queued | Pending /instagram-reply | Peer-builder agreement with concrete daily-AI use (Claude Code/Codex), and the 3am "I could be doing this better" feeling. Mention fit 1 — soft thinking-environment language ok, no product link. | Pending | 2026-05-03_instagram-warmup.md |
 
 ## Open Loops
 

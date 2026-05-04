@@ -40,17 +40,17 @@
 
 ## Priority Summary
 
-| #             | Account | Topic | Age | Comments | Opp Type | Mention Fit | Score | Profile | Queue |
-| ------------- | ------- | ----- | --- | -------- | -------- | ----------- | ----- | ------- | ----- |
-| _Blocked..._  |         |       |     |          |          |             |       |         |       |
+| #            | Account | Topic | Age | Comments | Opp Type | Mention Fit | Score | Profile | Queue |
+| ------------ | ------- | ----- | --- | -------- | -------- | ----------- | ----- | ------- | ----- |
+| _Blocked..._ |         |       |     |          |          |             |       |         |       |
 
 ---
 
 ## Reply Queue
 
-| #             | Account | Topic | Post Link | Opp Type | Strategic Role | Mention Fit | Profile | Reply Angle |
-| ------------- | ------- | ----- | --------- | -------- | -------------- | ----------- | ------- | ----------- |
-| _Blocked..._  |         |       |           |          |                |             |         |             |
+| #            | Account | Topic | Post Link | Opp Type | Strategic Role | Mention Fit | Profile | Reply Angle |
+| ------------ | ------- | ----- | --------- | -------- | -------------- | ----------- | ------- | ----------- |
+| _Blocked..._ |         |       |           |          |                |             |         |             |
 
 ---
 
@@ -83,6 +83,6 @@ _Blocked — login required._
 
 ## Relationship Memory Updates
 
-| Account | Profile | Update |
-| ------- | ------- | ------ |
+| Account | Profile | Update                                       |
+| ------- | ------- | -------------------------------------------- |
 | —       | —       | No live touchpoints — scan blocked at login. |
