@@ -4,6 +4,10 @@ import type { Database } from '@buildos/shared-types';
 import { dev } from '$app/environment';
 import { PUBLIC_APP_URL } from '$env/static/public';
 import { EmailService } from '$lib/services/email-service';
+import {
+	applyEmailCopyOverride,
+	buildEmailCopyTokens
+} from '$lib/server/email-sequence-copy-overrides';
 import { buildWelcomeEmailContent } from './welcome-sequence.content';
 import {
 	BUILDOS_WELCOME_SEQUENCE_KEY,
@@ -815,6 +819,25 @@ export class WelcomeSequenceService {
 		};
 	}
 
+	private async applyWelcomeCopyOverride(
+		content: ReturnType<typeof buildWelcomeEmailContent>,
+		state: WelcomeSequenceProductState
+	): Promise<ReturnType<typeof buildWelcomeEmailContent>> {
+		return (await applyEmailCopyOverride(this.supabase, {
+			sequenceKey: BUILDOS_WELCOME_SEQUENCE_KEY,
+			stepKey: content.step,
+			variantKey: content.branchKey,
+			content,
+			tokens: buildEmailCopyTokens({
+				name: state.name,
+				email: state.email,
+				baseUrl: this.baseUrl,
+				ctaLabel: content.ctaLabel,
+				ctaUrl: content.ctaUrl
+			})
+		})) as ReturnType<typeof buildWelcomeEmailContent>;
+	}
+
 	private async sendQueueStep(
 		enrollment: EmailSequenceEnrollment,
 		progress: WelcomeSequenceProgress,
@@ -823,7 +846,10 @@ export class WelcomeSequenceService {
 		branchKey: string,
 		now: Date
 	): Promise<{ emailId: string | null; metadata: Record<string, unknown> }> {
-		const content = buildWelcomeEmailContent(step, progress, state, this.baseUrl);
+		const content = await this.applyWelcomeCopyOverride(
+			buildWelcomeEmailContent(step, progress, state, this.baseUrl),
+			state
+		);
 		const metadata = this.buildQueueEventMetadata(enrollment, step, state, branchKey, {
 			category: 'welcome_sequence',
 			campaign: 'welcome-sequence',
@@ -1586,7 +1612,10 @@ export class WelcomeSequenceService {
 			return false;
 		}
 
-		const content = buildWelcomeEmailContent(step, progress, state, this.baseUrl);
+		const content = await this.applyWelcomeCopyOverride(
+			buildWelcomeEmailContent(step, progress, state, this.baseUrl),
+			state
+		);
 		const sentField = stepTimestampField(step, 'sent');
 		const metadata = {
 			category: 'welcome_sequence',

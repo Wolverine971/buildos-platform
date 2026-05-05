@@ -194,6 +194,18 @@ function createMockSupabase(state: MockState) {
 				return new MembersQueryBuilderMock(state);
 			}
 
+			if (table === 'email_sequence_copy_overrides') {
+				return {
+					select() {
+						return this;
+					},
+					eq() {
+						return this;
+					},
+					maybeSingle: async () => ({ data: null, error: null })
+				};
+			}
+
 			throw new Error(`Unexpected table ${table}`);
 		})
 	};
@@ -298,7 +310,13 @@ describe('RetargetingPilotService', () => {
 
 	it('sends Touch 1 through EmailService and updates member state', async () => {
 		const member = createMember();
-		const metricRows = [createMetricRow()];
+		const metricRows = [
+			{
+				...createMetricRow(),
+				id: undefined,
+				member_id: member.id
+			} as unknown as RetargetingPilotMetricRow
+		];
 		const state: MockState = {
 			frozenMembers: [],
 			members: {

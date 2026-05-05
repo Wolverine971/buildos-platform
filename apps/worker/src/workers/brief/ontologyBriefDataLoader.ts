@@ -167,7 +167,7 @@ function getCalendarSourceLabel(source: CalendarBriefSource): CalendarBriefSourc
 		case 'google_legacy':
 			return 'Google Calendar (legacy sync)';
 		case 'google_unconfirmed':
-			return 'Google link (unconfirmed)';
+			return 'Google Calendar (unconfirmed)';
 		case 'sync_issue':
 			return 'Google sync issue';
 		case 'internal':
@@ -657,6 +657,7 @@ function normalizeOntologyCalendarEvent(
 	row: OntoCalendarEventRow,
 	userId: string,
 	projectNameMap: Map<string, string>,
+	taskProjectMap: Map<string, { projectId: string; projectName: string }>,
 	timezone: string
 ): CalendarBriefItem | null {
 	if (!row.start_at || row.deleted_at || row.state_key === 'cancelled') {
@@ -665,6 +666,8 @@ function normalizeOntologyCalendarEvent(
 
 	const kind = resolveOntologyEventKind(row);
 	const taskId = resolveOntologyEventTaskId(row);
+	const taskProject = taskId ? (taskProjectMap.get(taskId) ?? null) : null;
+	const projectId = row.project_id ?? taskProject?.projectId ?? null;
 	const itemType = kind !== 'event' || taskId ? 'task' : 'event';
 	const source = resolveOntologyEventSource(row, userId);
 
@@ -675,8 +678,10 @@ function normalizeOntologyCalendarEvent(
 		endAt: row.end_at,
 		allDay: row.all_day,
 		timezone: row.timezone,
-		projectId: row.project_id,
-		projectName: row.project_id ? (projectNameMap.get(row.project_id) ?? null) : null,
+		projectId,
+		projectName: projectId
+			? (projectNameMap.get(projectId) ?? taskProject?.projectName ?? null)
+			: null,
 		taskId,
 		eventId: row.id,
 		itemType,
@@ -2095,7 +2100,15 @@ export class OntologyBriefDataLoader {
 		);
 
 		const ontologyItems = eventRows
-			.map((row) => normalizeOntologyCalendarEvent(row, userId, projectNameMap, timezone))
+			.map((row) =>
+				normalizeOntologyCalendarEvent(
+					row,
+					userId,
+					projectNameMap,
+					taskProjectMap,
+					timezone
+				)
+			)
 			.filter((item): item is CalendarBriefItem => item !== null);
 
 		const { data: legacyRows, error: legacyError } = await this.supabase

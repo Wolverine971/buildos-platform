@@ -9,6 +9,7 @@
 		CreditCard,
 		Users,
 		MessageSquare,
+		Mail,
 		Sparkles,
 		GitBranch,
 		Workflow,
@@ -78,6 +79,12 @@
 					href: '/admin/feedback',
 					icon: MessageSquare,
 					description: 'Voice of the customer'
+				},
+				{
+					title: 'Email Sequences',
+					href: '/admin/email-sequences',
+					icon: Mail,
+					description: 'Copy, recipients & timing'
 				},
 				{
 					title: 'Beta Program',

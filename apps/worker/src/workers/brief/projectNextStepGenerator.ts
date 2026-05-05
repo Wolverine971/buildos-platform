@@ -24,6 +24,14 @@ interface GenerateOptions {
 	userId: string;
 	briefDate: string; // yyyy-MM-dd (user timezone)
 	timezone: string;
+	maxProjects?: number;
+	concurrency?: number;
+	perProjectTimeoutMs?: number;
+	onProgress?: (progress: {
+		completed: number;
+		total: number;
+		projectId: string;
+	}) => Promise<void> | void;
 }
 
 const SYSTEM_PROMPT = `You are a BuildOS project coach. Create the single best "next step" for the project using the provided context.
@@ -41,6 +49,23 @@ Output JSON ONLY:
   "nextStepLong": "2-4 sentences, <=600 chars with reasoning + references"
 }
 If data is sparse, suggest the most impactful planning/clarification action. Never return null values.`;
+
+const DEFAULT_MAX_PROJECTS_PER_BRIEF = 8;
+const DEFAULT_CONCURRENCY = 3;
+const DEFAULT_PER_PROJECT_TIMEOUT_MS = 20_000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+	let timeout: NodeJS.Timeout | null = null;
+	const timeoutPromise = new Promise<T>((_, reject) => {
+		timeout = setTimeout(() => {
+			reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+		}, timeoutMs);
+	});
+
+	return Promise.race([promise, timeoutPromise]).finally(() => {
+		if (timeout) clearTimeout(timeout);
+	});
+}
 
 function sanitizeShort(text: string): string {
 	if (!text) return '';
@@ -215,22 +240,26 @@ async function generateNextStepForProject(
 	});
 
 	try {
-		const response = await llmService.getJSONResponse<{
-			nextStepShort: string;
-			nextStepLong: string;
-		}>({
-			systemPrompt: SYSTEM_PROMPT,
-			userPrompt: prompt,
-			userId: options.userId,
-			profile: 'fast',
-			temperature: 0.35,
-			operationType: 'daily_brief_project_next_step',
-			projectId: project.project.id,
-			validation: {
-				retryOnParseError: true,
-				maxRetries: 1
-			}
-		});
+		const response = await withTimeout(
+			llmService.getJSONResponse<{
+				nextStepShort: string;
+				nextStepLong: string;
+			}>({
+				systemPrompt: SYSTEM_PROMPT,
+				userPrompt: prompt,
+				userId: options.userId,
+				profile: 'fast',
+				temperature: 0.35,
+				operationType: 'daily_brief_project_next_step',
+				projectId: project.project.id,
+				validation: {
+					retryOnParseError: true,
+					maxRetries: 1
+				}
+			}),
+			options.perProjectTimeoutMs ?? DEFAULT_PER_PROJECT_TIMEOUT_MS,
+			`Project next step for ${project.project.id}`
+		);
 
 		const nextStepShort = sanitizeShort(response.nextStepShort);
 		const nextStepLong = sanitizeLong(response.nextStepLong);
@@ -271,29 +300,82 @@ async function generateNextStepForProject(
 	}
 }
 
+function getNextStepPriority(project: OntoProjectWithRelations, options: GenerateOptions): number {
+	const categories = categorizeTasks(project.tasks, options.briefDate, options.timezone);
+	const goalsAtRisk = Array.from(project.goalProgress.values()).filter(
+		(goal) => goal.status === 'at_risk' || goal.status === 'behind'
+	).length;
+	const recentlyUpdatedProject = project.project.updated_at
+		? parseISO(project.project.updated_at).getTime()
+		: 0;
+	const recencyBoost = Number.isFinite(recentlyUpdatedProject)
+		? Math.min(2, recentlyUpdatedProject / 10_000_000_000_000)
+		: 0;
+
+	return (
+		categories.todaysTasks.length * 6 +
+		categories.overdueTasks.length * 5 +
+		categories.blockedTasks.length * 4 +
+		goalsAtRisk * 4 +
+		categories.upcomingTasks.length * 2 +
+		categories.recentlyUpdated.length +
+		recencyBoost
+	);
+}
+
 export async function generateProjectNextStepsForBrief(
 	projects: OntoProjectWithRelations[],
 	options: GenerateOptions
-): Promise<{ results: NextStepResult[]; failed: number }> {
+): Promise<{ results: NextStepResult[]; failed: number; skipped: number }> {
 	const results: NextStepResult[] = [];
 	let failed = 0;
 
-	// Sort projects from oldest to newest so the most recent project is updated last
-	const sortedProjects = [...projects].sort((a, b) => {
-		const aCreated = a.project.created_at ? parseISO(a.project.created_at).getTime() : 0;
-		const bCreated = b.project.created_at ? parseISO(b.project.created_at).getTime() : 0;
-		return aCreated - bCreated; // Ascending order: oldest first
-	});
+	const maxProjects = Math.max(0, options.maxProjects ?? DEFAULT_MAX_PROJECTS_PER_BRIEF);
+	const concurrency = Math.max(1, options.concurrency ?? DEFAULT_CONCURRENCY);
 
-	for (const project of sortedProjects) {
-		const goals = Array.from(project.goalProgress.values());
-		const result = await generateNextStepForProject(project, goals, options);
-		if (result) {
-			results.push(result);
-		} else {
-			failed += 1;
-		}
+	const sortedProjects = [...projects].sort((a, b) => {
+		const priorityDelta = getNextStepPriority(b, options) - getNextStepPriority(a, options);
+		if (priorityDelta !== 0) return priorityDelta;
+
+		const aUpdated = a.project.updated_at ? parseISO(a.project.updated_at).getTime() : 0;
+		const bUpdated = b.project.updated_at ? parseISO(b.project.updated_at).getTime() : 0;
+		return bUpdated - aUpdated;
+	});
+	const projectsToProcess = sortedProjects.slice(0, maxProjects);
+	const skipped = Math.max(0, sortedProjects.length - projectsToProcess.length);
+	const total = projectsToProcess.length;
+
+	if (total === 0) {
+		return { results, failed, skipped };
 	}
 
-	return { results, failed };
+	let nextIndex = 0;
+	let completed = 0;
+
+	const runWorker = async () => {
+		while (nextIndex < total) {
+			const project = projectsToProcess[nextIndex];
+			nextIndex += 1;
+			if (!project) continue;
+
+			const goals = Array.from(project.goalProgress.values());
+			const result = await generateNextStepForProject(project, goals, options);
+			if (result) {
+				results.push(result);
+			} else {
+				failed += 1;
+			}
+
+			completed += 1;
+			await options.onProgress?.({
+				completed,
+				total,
+				projectId: project.project.id
+			});
+		}
+	};
+
+	await Promise.all(Array.from({ length: Math.min(concurrency, total) }, () => runWorker()));
+
+	return { results, failed, skipped };
 }

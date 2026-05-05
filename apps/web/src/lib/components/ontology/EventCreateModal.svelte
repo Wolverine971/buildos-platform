@@ -21,11 +21,12 @@
 	interface Props {
 		projectId: string;
 		tasks: Task[];
+		initialTaskId?: string;
 		onClose: () => void;
 		onCreated?: (eventId: string) => void;
 	}
 
-	let { projectId, tasks, onClose, onCreated }: Props = $props();
+	let { projectId, tasks, initialTaskId = '', onClose, onCreated }: Props = $props();
 
 	let title = $state('');
 	let description = $state('');
@@ -33,9 +34,16 @@
 	let startAt = $state('');
 	let endAt = $state('');
 	let linkedTaskId = $state('');
+	let hasAppliedInitialTaskId = $state(false);
 	let syncToCalendar = $state(true);
 	let isSaving = $state(false);
 	let error = $state('');
+
+	$effect(() => {
+		if (hasAppliedInitialTaskId) return;
+		linkedTaskId = initialTaskId;
+		hasAppliedInitialTaskId = true;
+	});
 
 	function parseDateTimeFromInput(value: string): string | null {
 		if (!value) return null;

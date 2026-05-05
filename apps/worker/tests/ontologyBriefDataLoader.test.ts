@@ -581,7 +581,7 @@ describe('calendar brief selection', () => {
 					id: 'unconfirmed-google',
 					eventId: 'event-unconfirmed',
 					source: 'google_unconfirmed',
-					sourceLabel: 'Google link (unconfirmed)',
+					sourceLabel: 'Google Calendar (unconfirmed)',
 					googleEventId: 'google-3',
 					startAt: '2025-12-18T16:00:00.000Z'
 				})

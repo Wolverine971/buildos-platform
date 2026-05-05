@@ -6,8 +6,13 @@ import { PUBLIC_APP_URL } from '$env/static/public';
 import { EmailService } from '$lib/services/email-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import {
+	applyEmailCopyOverride,
+	buildEmailCopyTokens
+} from '$lib/server/email-sequence-copy-overrides';
+import {
 	buildRetargetingEmailContent,
 	listRetargetingStepCandidates,
+	RETARGETING_EMAIL_SEQUENCE_KEY,
 	RETARGETING_DEFAULT_BATCH_SIZE,
 	RETARGETING_DEFAULT_CAMPAIGN_ID,
 	RETARGETING_DEFAULT_CONVERSION_WINDOW_DAYS,
@@ -62,6 +67,87 @@ function stepSentField(
 		case 'touch_3':
 			return 'touch_3_sent_at';
 	}
+}
+
+function normalizeMetricRow(
+	row: Record<string, unknown>,
+	index: number
+): RetargetingPilotMetricRow {
+	const memberId =
+		typeof row.id === 'string'
+			? row.id
+			: typeof row.member_id === 'string'
+				? row.member_id
+				: '';
+	const nowIso = new Date().toISOString();
+
+	return {
+		id: memberId,
+		member_id: typeof row.member_id === 'string' ? row.member_id : memberId,
+		campaign_id: String(row.campaign_id ?? RETARGETING_DEFAULT_CAMPAIGN_ID),
+		cohort_id: String(row.cohort_id ?? ''),
+		user_id: String(row.user_id ?? ''),
+		email: String(row.email ?? ''),
+		name: typeof row.name === 'string' ? row.name : null,
+		cohort_frozen_at: String(row.cohort_frozen_at ?? nowIso),
+		cohort_size: Number(row.cohort_size ?? 0),
+		prioritized_rank: Number(row.prioritized_rank ?? index + 1),
+		pilot_segment: String(row.pilot_segment ?? 'tried_briefly_then_disappeared'),
+		holdout: row.holdout === true,
+		batch_id: typeof row.batch_id === 'string' ? row.batch_id : null,
+		variant: typeof row.variant === 'string' ? row.variant : RETARGETING_DEFAULT_VARIANT,
+		conversion_window_days: Number(
+			row.conversion_window_days ?? RETARGETING_DEFAULT_CONVERSION_WINDOW_DAYS
+		),
+		first_activity_at: typeof row.first_activity_at === 'string' ? row.first_activity_at : null,
+		last_meaningful_activity_at:
+			typeof row.last_meaningful_activity_at === 'string'
+				? row.last_meaningful_activity_at
+				: null,
+		lifetime_activity_count: Number(row.lifetime_activity_count ?? 0),
+		first_14d_activity_count: Number(row.first_14d_activity_count ?? 0),
+		last_outbound_email_at:
+			typeof row.last_outbound_email_at === 'string' ? row.last_outbound_email_at : null,
+		last_seen_at: typeof row.last_seen_at === 'string' ? row.last_seen_at : null,
+		touch_1_sent_at: typeof row.touch_1_sent_at === 'string' ? row.touch_1_sent_at : null,
+		touch_2_sent_at: typeof row.touch_2_sent_at === 'string' ? row.touch_2_sent_at : null,
+		touch_3_sent_at: typeof row.touch_3_sent_at === 'string' ? row.touch_3_sent_at : null,
+		reply_status:
+			row.reply_status === 'replied' ||
+			row.reply_status === 'positive_reply' ||
+			row.reply_status === 'negative_reply' ||
+			row.reply_status === 'do_not_contact'
+				? row.reply_status
+				: 'none',
+		reply_recorded_at: typeof row.reply_recorded_at === 'string' ? row.reply_recorded_at : null,
+		manual_stop: row.manual_stop === true,
+		manual_stop_at: typeof row.manual_stop_at === 'string' ? row.manual_stop_at : null,
+		manual_stop_reason:
+			typeof row.manual_stop_reason === 'string' ? row.manual_stop_reason : null,
+		notes: typeof row.notes === 'string' ? row.notes : null,
+		created_at: String(row.created_at ?? nowIso),
+		updated_at: String(row.updated_at ?? nowIso),
+		first_send_at: typeof row.first_send_at === 'string' ? row.first_send_at : null,
+		last_send_at: typeof row.last_send_at === 'string' ? row.last_send_at : null,
+		touch_1_opened: row.touch_1_opened === true,
+		touch_1_clicked: row.touch_1_clicked === true,
+		any_open: row.any_open === true,
+		any_click: row.any_click === true,
+		anchor_at: String(row.anchor_at ?? row.cohort_frozen_at ?? nowIso),
+		first_post_send_activity_at:
+			typeof row.first_post_send_activity_at === 'string'
+				? row.first_post_send_activity_at
+				: null,
+		first_post_send_action_at:
+			typeof row.first_post_send_action_at === 'string'
+				? row.first_post_send_action_at
+				: null,
+		return_session_at: typeof row.return_session_at === 'string' ? row.return_session_at : null,
+		first_action_at: typeof row.first_action_at === 'string' ? row.first_action_at : null,
+		active_days_30d: Number(row.active_days_30d ?? 0),
+		attributed_step: typeof row.attributed_step === 'string' ? row.attributed_step : null,
+		attribution_type: String(row.attribution_type ?? 'organic')
+	};
 }
 
 export class RetargetingPilotService {
@@ -188,7 +274,9 @@ export class RetargetingPilotService {
 			throw new Error(`Failed to load retargeting metrics: ${error.message}`);
 		}
 
-		return (data as RetargetingPilotMetricRow[] | null) || [];
+		return (
+			((data as Record<string, unknown>[] | null) || []) as Record<string, unknown>[]
+		).map((row, index) => normalizeMetricRow(row, index));
 	}
 
 	async getOutcomeReport(options: { campaignId?: string; cohortId: string }) {
@@ -254,7 +342,7 @@ export class RetargetingPilotService {
 					throw new Error('batch_id is required to send retargeting email');
 				}
 
-				const content = buildRetargetingEmailContent({
+				let content = buildRetargetingEmailContent({
 					baseUrl: this.baseUrl,
 					campaignId,
 					cohortId: input.cohortId,
@@ -264,6 +352,25 @@ export class RetargetingPilotService {
 					variant: input.variant ?? member.variant ?? RETARGETING_DEFAULT_VARIANT,
 					demoUrl: input.demoUrl
 				});
+				content = (await applyEmailCopyOverride(this.supabase, {
+					sequenceKey: RETARGETING_EMAIL_SEQUENCE_KEY,
+					stepKey: input.step,
+					variantKey: content.variant,
+					content: {
+						...content,
+						ctaLabel: content.primaryCtaUrl ? 'Open BuildOS' : null,
+						ctaUrl: content.primaryCtaUrl
+					},
+					tokens: buildEmailCopyTokens({
+						name: member.name,
+						email: member.email,
+						baseUrl: this.baseUrl,
+						ctaLabel: content.primaryCtaUrl ? 'Open BuildOS' : null,
+						ctaUrl: content.primaryCtaUrl,
+						appUrl: content.primaryCtaUrl,
+						demoUrl: content.secondaryCtaUrl
+					})
+				})) as typeof content;
 				const nowIso = new Date().toISOString();
 				const sendResult = await this.emailService.sendEmail({
 					to: member.email,

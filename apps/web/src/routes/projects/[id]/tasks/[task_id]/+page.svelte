@@ -74,6 +74,7 @@
 	let documentsOverride = $state<PageData['documents'] | null>(null);
 	let milestonesOverride = $state<PageData['milestones'] | null>(null);
 	let projectTasksOverride = $state<PageData['tasks'] | null>(null);
+	let eventsOverride = $state<PageData['events'] | null>(null);
 
 	const project = $derived(projectOverride ?? data.project);
 	const task = $derived(taskOverride ?? data.task);
@@ -82,6 +83,7 @@
 	const documents = $derived(documentsOverride ?? data.documents ?? []);
 	const milestones = $derived(milestonesOverride ?? data.milestones ?? []);
 	const projectTasks = $derived(projectTasksOverride ?? data.tasks ?? []);
+	const events = $derived(eventsOverride ?? data.events ?? []);
 
 	// Form fields
 	let title = $state('');
@@ -133,6 +135,7 @@
 		documents: false,
 		milestones: false,
 		tasks: false,
+		events: true,
 		connectedDocs: false,
 		linkedEntities: false
 	});
@@ -151,12 +154,16 @@
 	let selectedTaskId = $state<string | null>(null);
 	let showMilestoneModal = $state(false);
 	let selectedMilestoneId = $state<string | null>(null);
+	let showEventCreateModal = $state(false);
+	let selectedEventId = $state<string | null>(null);
 
 	// Lazy-loaded modal components
 	let DocumentModalComponent = $state<Component<any, any> | null>(null);
 	let GoalEditModalComponent = $state<Component<any, any> | null>(null);
 	let PlanEditModalComponent = $state<Component<any, any> | null>(null);
 	let MilestoneEditModalComponent = $state<Component<any, any> | null>(null);
+	let EventCreateModalComponent = $state<Component<any, any> | null>(null);
+	let EventEditModalComponent = $state<Component<any, any> | null>(null);
 
 	let lastRouteDataKey = $state('');
 
@@ -179,6 +186,7 @@
 		documentsOverride = null;
 		milestonesOverride = null;
 		projectTasksOverride = null;
+		eventsOverride = null;
 	}
 
 	function resetWorkspaceState() {
@@ -201,12 +209,14 @@
 		showPlanModal = false;
 		showTaskModal = false;
 		showMilestoneModal = false;
+		showEventCreateModal = false;
 		showMobileContextSheet = false;
 		activeDocumentId = null;
 		selectedGoalId = null;
 		selectedPlanId = null;
 		selectedTaskId = null;
 		selectedMilestoneId = null;
+		selectedEventId = null;
 	}
 
 	function resetRouteScopedState() {
@@ -235,6 +245,10 @@
 	const otherTasks = $derived.by(() =>
 		projectTasks.filter((t: any) => t.id !== task?.id).slice(0, 10)
 	);
+	const eventTasksForCreate = $derived.by(() => {
+		if (!task) return projectTasks;
+		return [task, ...projectTasks.filter((t: any) => t.id !== task.id)];
+	});
 
 	const taskVisuals = $derived(getTaskVisuals(stateKey));
 	const TaskIcon = $derived(taskVisuals.icon);
@@ -369,6 +383,34 @@
 			day: 'numeric',
 			year: 'numeric'
 		});
+	}
+
+	function formatEventDate(event: { start_at?: string | null; all_day?: boolean }) {
+		if (!event.start_at) return 'Date not set';
+		const parsed = new Date(event.start_at);
+		if (Number.isNaN(parsed.getTime())) return 'Date not set';
+		return parsed.toLocaleDateString(undefined, {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric',
+			year: 'numeric'
+		});
+	}
+
+	function filterTaskEvents(
+		projectEvents: any[],
+		linkedEntities: { events?: Array<{ id?: string }> } | null | undefined,
+		taskId: string
+	) {
+		const linkedEventIds = new Set(
+			(linkedEntities?.events ?? []).map((linkedEvent) => linkedEvent.id)
+		);
+
+		return projectEvents.filter(
+			(event) =>
+				(event?.owner_entity_type === 'task' && event?.owner_entity_id === taskId) ||
+				linkedEventIds.has(event?.id)
+		);
 	}
 
 	function togglePanel(key: string) {
@@ -577,17 +619,24 @@
 		dataRefreshing = true;
 
 		try {
-			const [projectResponse, taskResponse] = await Promise.all([
-				fetch(`/api/onto/projects/${projectId}`),
-				fetch(`/api/onto/tasks/${taskId}/full`)
-			]);
+			const [projectResponse, taskResponse, eventsResponse, linkedResponse] =
+				await Promise.all([
+					fetch(`/api/onto/projects/${projectId}`),
+					fetch(`/api/onto/tasks/${taskId}/full`),
+					fetch(`/api/onto/projects/${projectId}/events?limit=1000`),
+					fetch(
+						`/api/onto/edges/linked?sourceId=${taskId}&sourceKind=task&projectId=${projectId}&includeAvailable=false`
+					)
+				]);
 
 			if (refreshRouteDataKey !== getRouteDataKey(data)) return;
 
 			if (projectResponse.ok && taskResponse.ok) {
-				const [projectData, taskData] = await Promise.all([
+				const [projectData, taskData, eventsData, linkedData] = await Promise.all([
 					projectResponse.json(),
-					taskResponse.json()
+					taskResponse.json(),
+					eventsResponse.ok ? eventsResponse.json() : Promise.resolve(null),
+					linkedResponse.ok ? linkedResponse.json() : Promise.resolve(null)
 				]);
 
 				if (refreshRouteDataKey !== getRouteDataKey(data)) return;
@@ -599,6 +648,11 @@
 				documentsOverride = projectData.data?.documents || [];
 				milestonesOverride = projectData.data?.milestones || [];
 				projectTasksOverride = projectData.data?.tasks || [];
+				eventsOverride = filterTaskEvents(
+					eventsData?.data?.events || [],
+					linkedData?.data?.linkedEntities,
+					taskId
+				);
 			}
 		} catch (err) {
 			if (refreshRouteDataKey !== getRouteDataKey(data)) return;
@@ -643,6 +697,20 @@
 		}
 	}
 
+	async function loadEventCreateModal() {
+		if (!EventCreateModalComponent) {
+			const mod = await import('$lib/components/ontology/EventCreateModal.svelte');
+			EventCreateModalComponent = mod.default;
+		}
+	}
+
+	async function loadEventEditModal() {
+		if (!EventEditModalComponent) {
+			const mod = await import('$lib/components/ontology/EventEditModal.svelte');
+			EventEditModalComponent = mod.default;
+		}
+	}
+
 	async function openDocumentModal(id: string | null = null) {
 		await loadDocumentModal();
 		activeDocumentId = id;
@@ -672,18 +740,45 @@
 		showMilestoneModal = true;
 	}
 
+	async function openEventCreateModal() {
+		await loadEventCreateModal();
+		showEventCreateModal = true;
+	}
+
+	async function openEventModal(id: string) {
+		await loadEventEditModal();
+		selectedEventId = id;
+	}
+
 	function handleModalClose() {
 		showDocumentModal = false;
 		showGoalModal = false;
 		showPlanModal = false;
 		showTaskModal = false;
 		showMilestoneModal = false;
+		showEventCreateModal = false;
 		activeDocumentId = null;
 		selectedGoalId = null;
 		selectedPlanId = null;
 		selectedTaskId = null;
 		selectedMilestoneId = null;
+		selectedEventId = null;
 		refreshData();
+	}
+
+	function closeEventModals() {
+		showEventCreateModal = false;
+		selectedEventId = null;
+	}
+
+	function handleEventChanged() {
+		closeEventModals();
+		refreshData();
+	}
+
+	function handleEventCreated() {
+		toastService.success('Event created');
+		handleEventChanged();
 	}
 
 	function handleDocumentSaved() {
@@ -706,6 +801,9 @@
 				break;
 			case 'milestone':
 				openMilestoneModal(id);
+				break;
+			case 'event':
+				openEventModal(id);
 				break;
 			default:
 				console.log(`No modal handler for entity kind: ${kind}`);
@@ -1344,6 +1442,104 @@
 					Project Context
 				</p>
 
+				<!-- Events Panel -->
+				<section
+					class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+				>
+					<button
+						onclick={() => togglePanel('events')}
+						class="w-full flex items-center justify-between gap-2 px-2.5 py-2 text-left hover:bg-muted/50 transition-colors pressable"
+					>
+						<div class="flex items-center gap-2">
+							<div
+								class="w-6 h-6 rounded-md bg-warning/10 flex items-center justify-center"
+							>
+								<Calendar class="w-3 h-3 text-warning" />
+							</div>
+							<span class="text-xs font-semibold text-foreground">Events</span>
+							<span class="text-[10px] text-muted-foreground">({events.length})</span>
+						</div>
+						<div class="flex items-center gap-1">
+							<span
+								role="button"
+								tabindex="0"
+								onclick={(e) => {
+									e.stopPropagation();
+									openEventCreateModal();
+								}}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										e.stopPropagation();
+										openEventCreateModal();
+									}
+								}}
+								class="p-1 rounded hover:bg-muted transition-colors cursor-pointer pressable"
+								title="Add event"
+							>
+								<Plus class="w-3 h-3 text-muted-foreground" />
+							</span>
+							<ChevronDown
+								class="w-3.5 h-3.5 text-muted-foreground transition-transform duration-[120ms] {expandedPanels.events
+									? 'rotate-180'
+									: ''}"
+							/>
+						</div>
+					</button>
+					{#if expandedPanels.events}
+						<div class="border-t border-border max-h-40 overflow-y-auto">
+							{#if events.length > 0}
+								<ul class="divide-y divide-border/80">
+									{#each events.slice(0, 8) as taskEvent}
+										<li>
+											<button
+												type="button"
+												onclick={() => openEventModal(taskEvent.id)}
+												class="w-full flex items-start gap-2 px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable"
+											>
+												<Calendar
+													class="w-3 h-3 text-warning shrink-0 mt-0.5"
+												/>
+												<div class="min-w-0 flex-1">
+													<span
+														class="text-xs text-foreground truncate block"
+														>{taskEvent.title || 'Untitled event'}</span
+													>
+													<span
+														class="text-[10px] text-muted-foreground truncate block"
+													>
+														{formatEventDate(taskEvent)}
+													</span>
+												</div>
+											</button>
+										</li>
+									{/each}
+								</ul>
+								{#if events.length > 8}
+									<div
+										class="px-2.5 py-1.5 text-[10px] text-muted-foreground border-t border-border"
+									>
+										+{events.length - 8} more
+									</div>
+								{/if}
+							{:else}
+								<div class="px-2.5 py-3 text-center">
+									<p class="text-[10px] text-muted-foreground mb-1.5">
+										No events yet
+									</p>
+									<button
+										type="button"
+										onclick={openEventCreateModal}
+										class="text-xs text-accent hover:text-accent/80 font-medium pressable"
+									>
+										Schedule Event
+									</button>
+								</div>
+							{/if}
+						</div>
+					{/if}
+				</section>
+
 				<!-- Goals Panel -->
 				{#if goals.length > 0}
 					<section
@@ -1700,8 +1896,30 @@
 	/>
 {/if}
 
+<!-- Event Create Modal (Lazy Loaded) -->
+{#if showEventCreateModal && EventCreateModalComponent && project?.id && task?.id}
+	<EventCreateModalComponent
+		projectId={project.id}
+		tasks={eventTasksForCreate}
+		initialTaskId={task.id}
+		onClose={closeEventModals}
+		onCreated={handleEventCreated}
+	/>
+{/if}
+
+<!-- Event Edit Modal (Lazy Loaded) -->
+{#if selectedEventId && EventEditModalComponent && project?.id}
+	<EventEditModalComponent
+		eventId={selectedEventId}
+		projectId={project.id}
+		onClose={closeEventModals}
+		onUpdated={handleEventChanged}
+		onDeleted={handleEventChanged}
+	/>
+{/if}
+
 <!-- Mobile Project Context Floating Button -->
-{#if goals.length > 0 || plans.length > 0 || documents.length > 0 || otherTasks.length > 0}
+{#if goals.length > 0 || plans.length > 0 || documents.length > 0 || otherTasks.length > 0 || events.length > 0}
 	<button
 		type="button"
 		onclick={() => (showMobileContextSheet = true)}
@@ -1747,6 +1965,53 @@
 		</div>
 
 		<div class="flex-1 overflow-y-auto p-3 space-y-2">
+			{#if events.length > 0}
+				<div
+					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
+				>
+					<div class="flex items-center gap-2 px-3 py-2 border-b border-border/50">
+						<div
+							class="w-6 h-6 rounded-md bg-warning/10 flex items-center justify-center"
+						>
+							<Calendar class="w-3 h-3 text-warning" />
+						</div>
+						<span class="text-xs font-semibold text-foreground">Events</span>
+						<span class="text-[10px] text-muted-foreground">({events.length})</span>
+					</div>
+					<ul class="divide-y divide-border/50 max-h-40 overflow-y-auto">
+						{#each events.slice(0, 10) as taskEvent}
+							<li>
+								<button
+									type="button"
+									onclick={() => {
+										showMobileContextSheet = false;
+										openEventModal(taskEvent.id);
+									}}
+									class="w-full flex items-start gap-2 px-3 py-2 text-left hover:bg-accent/5 transition-colors pressable"
+								>
+									<Calendar class="w-3 h-3 text-warning shrink-0 mt-0.5" />
+									<div class="min-w-0 flex-1">
+										<span class="text-xs text-foreground truncate block"
+											>{taskEvent.title || 'Untitled event'}</span
+										>
+										<span class="text-[10px] text-muted-foreground">
+											{formatEventDate(taskEvent)}
+										</span>
+									</div>
+								</button>
+							</li>
+						{/each}
+					</ul>
+					{#if events.length > 10}
+						<div
+							class="px-3 py-1.5 text-[10px] text-muted-foreground border-t border-border/50"
+						>
+							+{events.length - 10} more
+						</div>
+					{/if}
+				</div>
+			{/if}
+
 			{#if goals.length > 0}
 				<div
 					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"

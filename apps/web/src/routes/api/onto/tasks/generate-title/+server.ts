@@ -39,9 +39,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	if (description.length < DESCRIPTION_MIN) {
-		return ApiResponse.badRequest(
-			`description must be at least ${DESCRIPTION_MIN} characters`
-		);
+		return ApiResponse.badRequest(`description must be at least ${DESCRIPTION_MIN} characters`);
 	}
 	if (description.length > DESCRIPTION_MAX) {
 		description = description.slice(0, DESCRIPTION_MAX);

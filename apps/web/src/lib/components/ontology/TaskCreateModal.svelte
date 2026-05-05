@@ -7,7 +7,14 @@
 	- API Endpoint: /apps/web/src/routes/api/onto/tasks/create/+server.ts
 -->
 <script lang="ts">
-	import { ChevronRight, Save, CheckSquare, ListChecks, Sparkles, LoaderCircle } from 'lucide-svelte';
+	import {
+		ChevronRight,
+		Save,
+		CheckSquare,
+		ListChecks,
+		Sparkles,
+		LoaderCircle
+	} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -152,8 +159,7 @@
 			}
 		} catch (err) {
 			console.error('Error generating task title:', err);
-			titleGenerationError =
-				err instanceof Error ? err.message : 'Failed to generate title';
+			titleGenerationError = err instanceof Error ? err.message : 'Failed to generate title';
 		} finally {
 			isGeneratingTitle = false;
 		}

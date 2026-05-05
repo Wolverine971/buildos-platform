@@ -363,6 +363,14 @@ export class BriefClientService {
 				if (jobStatus.status === 'completed') {
 					await this.handleGenerationComplete(userId, briefDate);
 				} else if (jobStatus.status === 'failed' || jobStatus.status === 'cancelled') {
+					const recoveredCompletedBrief = await this.tryCompleteFromBrief(
+						userId,
+						briefDate
+					);
+					if (recoveredCompletedBrief) {
+						return;
+					}
+
 					this.handleGenerationError(
 						new Error(jobStatus.error_message || `Generation ${jobStatus.status}`)
 					);
@@ -428,6 +436,27 @@ export class BriefClientService {
 		} catch (error) {
 			console.error('Error polling job status:', error);
 			throw error;
+		}
+	}
+
+	private static async tryCompleteFromBrief(userId: string, briefDate: string): Promise<boolean> {
+		try {
+			const response = await fetch(
+				`/api/daily-briefs/status?date=${briefDate}&userId=${userId}`
+			);
+			if (!response.ok) return false;
+
+			const payload = await response.json().catch(() => null);
+			const brief = payload?.data?.brief;
+			if (brief?.generation_status !== 'completed') {
+				return false;
+			}
+
+			await this.handleGenerationComplete(userId, briefDate);
+			return true;
+		} catch (error) {
+			console.warn('Unable to recover completed brief after terminal job status:', error);
+			return false;
 		}
 	}
 
@@ -513,12 +542,6 @@ export class BriefClientService {
 				},
 				'railway',
 				100
-			);
-			unifiedBriefGenerationStore.updateProgress(
-				projectBriefsData.briefs.length,
-				projectBriefsData.briefs.length,
-				'Project briefs loaded',
-				'railway'
 			);
 		}
 	}

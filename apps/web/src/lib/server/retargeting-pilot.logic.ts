@@ -8,6 +8,7 @@ export const RETARGETING_DEFAULT_HOLDOUT_USERS_IF_SMALL = 10;
 export const RETARGETING_DEFAULT_HOLDOUT_PCT_IF_LARGE = 0.1;
 export const RETARGETING_DEFAULT_VARIANT = 'A';
 export const RETARGETING_UTM_CAMPAIGN = 'buildos-reactivation-founder-pilot';
+export const RETARGETING_EMAIL_SEQUENCE_KEY = 'buildos_reactivation_founder_pilot';
 
 export const RETARGETING_STEPS = ['touch_1', 'touch_2', 'touch_3'] as const;
 export const RETARGETING_REPLY_STATUSES = [
@@ -57,6 +58,7 @@ export interface RetargetingPilotMemberRow {
 }
 
 export interface RetargetingPilotMetricRow extends RetargetingPilotMemberRow {
+	member_id?: string;
 	first_send_at: string | null;
 	last_send_at: string | null;
 	touch_1_opened: boolean;

@@ -22,9 +22,8 @@ import {
 	OntologyReengagementPrompt
 } from './ontologyPrompts.js';
 import { generateProjectNextStepsForBrief } from './projectNextStepGenerator.js';
+import { formatCalendarSection, formatProjectCalendarItems } from './calendarBriefFormatting.js';
 import type {
-	CalendarBriefItem,
-	CalendarBriefSection,
 	GoalProgress,
 	OntoTask,
 	OntologyBriefData,
@@ -61,6 +60,7 @@ interface ProjectBriefLLMResponse {
 }
 
 const PROJECT_BRIEF_MODELS = [DEEPSEEK_V4_FLASH_MODEL, ACTIVE_EXPERIMENT_MODEL] as const;
+const BRIEF_ENTITY_RECORDING_TIMEOUT_MS = 5_000;
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -75,6 +75,19 @@ function getDateInTimezone(timestamp: string | Date, timezone: string): string {
 function formatDate(dateStr: string): string {
 	const date = parseISO(dateStr + 'T00:00:00');
 	return format(date, 'MMM d, yyyy');
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+	let timeout: NodeJS.Timeout | null = null;
+	const timeoutPromise = new Promise<T>((_, reject) => {
+		timeout = setTimeout(() => {
+			reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+		}, timeoutMs);
+	});
+
+	return Promise.race([promise, timeoutPromise]).finally(() => {
+		if (timeout) clearTimeout(timeout);
+	});
 }
 
 function formatGoalTargetSummary(goal: GoalProgress): string | null {
@@ -131,102 +144,6 @@ function formatActivityEntry(entry: ProjectActivityEntry): string {
 	const entityType = formatActivityEntityType(entry.entityType || 'item');
 	const label = entry.entityLabel ? ` "${entry.entityLabel}"` : '';
 	return `${actor} ${action} ${entityType}${label}`;
-}
-
-function formatCalendarKindLabel(item: CalendarBriefItem): string | null {
-	if (item.itemType !== 'task') return null;
-	switch (item.itemKind) {
-		case 'range':
-			return 'Task block';
-		case 'start':
-			return 'Task start';
-		case 'due':
-			return 'Task due';
-		case 'event':
-			return 'Task event';
-	}
-}
-
-function formatCalendarBriefItem(item: CalendarBriefItem, includeDate: boolean): string {
-	const timeLabel = includeDate ? `${item.displayDate}, ${item.displayTime}` : item.displayTime;
-	const kindLabel = formatCalendarKindLabel(item);
-	const syncFreshnessLabel = item.syncFreshness === 'stale' ? 'stale sync' : null;
-	const details = [item.sourceLabel, syncFreshnessLabel, kindLabel, item.projectName].filter(
-		Boolean
-	);
-	const detailSuffix = details.length > 0 ? ` - ${details.join(' / ')}` : '';
-	return `- ${timeLabel} - ${item.title}${detailSuffix}`;
-}
-
-function formatCalendarCounts(section: CalendarBriefSection, scope: 'today' | 'upcoming'): string {
-	const counts = section.counts[scope];
-	if (counts.total === 0) return '0 items';
-
-	const pieces: string[] = [`${counts.total} item${counts.total === 1 ? '' : 's'}`];
-	if (counts.google > 0) {
-		pieces.push(`${counts.google} Google`);
-	}
-	if (counts.unconfirmedGoogle > 0) {
-		pieces.push(`${counts.unconfirmedGoogle} unconfirmed Google`);
-	}
-	if (counts.internal > 0) {
-		pieces.push(`${counts.internal} internal`);
-	}
-	if (counts.syncIssue > 0) {
-		pieces.push(`${counts.syncIssue} sync issue${counts.syncIssue === 1 ? '' : 's'}`);
-	}
-	if (counts.staleGoogle > 0) {
-		pieces.push(`${counts.staleGoogle} stale Google`);
-	}
-	return pieces.join(' / ');
-}
-
-function formatCalendarSection(calendar: CalendarBriefSection): string {
-	let section = `## Calendar\n\n`;
-
-	if (calendar.todayTotal === 0 && calendar.upcomingTotal === 0) {
-		section += `No calendar items today or in the next 7 days.\n\n`;
-		return section;
-	}
-
-	section += `**Today:** ${formatCalendarCounts(calendar, 'today')}\n`;
-	if (calendar.upcomingTotal > 0) {
-		section += `**Upcoming:** ${formatCalendarCounts(calendar, 'upcoming')}\n`;
-	}
-	section += '\n';
-
-	if (calendar.today.length > 0) {
-		section += `### Today\n`;
-		for (const item of calendar.today) {
-			section += `${formatCalendarBriefItem(item, false)}\n`;
-		}
-		if (calendar.hiddenTodayCount > 0) {
-			section += `- ... and ${calendar.hiddenTodayCount} more today\n`;
-		}
-		section += '\n';
-	} else {
-		section += `### Today\nNo calendar items today.\n\n`;
-	}
-
-	if (calendar.upcoming.length > 0) {
-		section += `### Upcoming\n`;
-		for (const item of calendar.upcoming) {
-			section += `${formatCalendarBriefItem(item, true)}\n`;
-		}
-		if (calendar.hiddenUpcomingCount > 0) {
-			section += `- ... and ${calendar.hiddenUpcomingCount} more upcoming\n`;
-		}
-		section += '\n';
-	}
-
-	return section;
-}
-
-function formatProjectCalendarItems(items: CalendarBriefItem[], includeDate: boolean): string {
-	return items
-		.slice(0, 5)
-		.map((item) => formatCalendarBriefItem(item, includeDate))
-		.join('\n');
 }
 
 function formatRecentChangeEntry(change: ProjectRecentChange): string {
@@ -986,15 +903,26 @@ export async function generateOntologyDailyBrief(
 			jobId
 		);
 
-		const { results: nextStepResults, failed: nextStepFailed } =
-			await generateProjectNextStepsForBrief(projectsData, {
-				userId,
-				briefDate: briefDateInUserTz,
-				timezone: userTimezone
-			});
+		const {
+			results: nextStepResults,
+			failed: nextStepFailed,
+			skipped: nextStepSkipped
+		} = await generateProjectNextStepsForBrief(projectsData, {
+			userId,
+			briefDate: briefDateInUserTz,
+			timezone: userTimezone,
+			onProgress: async ({ completed, total }) => {
+				const progress = 18 + Math.round((completed / Math.max(1, total)) * 6);
+				await updateProgress(
+					dailyBrief.id,
+					{ step: 'generating_project_next_steps', progress },
+					jobId
+				);
+			}
+		});
 
 		console.log(
-			`[OntologyBrief] Generated project next steps (${nextStepResults.length}/${projectsData.length}); failed: ${nextStepFailed}`
+			`[OntologyBrief] Generated project next steps (${nextStepResults.length}/${projectsData.length}); failed: ${nextStepFailed}; skipped: ${nextStepSkipped}`
 		);
 
 		// Step 3: Prepare brief data
@@ -1289,8 +1217,19 @@ export async function generateOntologyDailyBrief(
 			throw new Error(`Failed to update ontology daily brief: ${updateError.message}`);
 		}
 
-		// Step 9: Record entity references for analytics
-		await recordBriefEntities(dailyBrief.id, briefData);
+		// Step 9: Record entity references for analytics. This should never block
+		// the completed brief from being returned to the UI.
+		try {
+			await withTimeout(
+				recordBriefEntities(dailyBrief.id, briefData),
+				BRIEF_ENTITY_RECORDING_TIMEOUT_MS,
+				'Recording brief entity references'
+			);
+		} catch (entityError) {
+			console.warn('[OntologyBrief] Brief entity recording skipped:', entityError);
+		}
+
+		await updateProgress(dailyBrief.id, { step: 'completed', progress: 100 }, jobId);
 
 		console.log(`[OntologyBrief] Successfully generated brief for user ${userId}`);
 

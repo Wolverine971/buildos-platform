@@ -13,6 +13,18 @@
 import type { PageServerLoad } from './$types';
 import { error } from '@sveltejs/kit';
 
+function filterTaskEvents(events: any[], linkedEntities: any, taskId: string) {
+	const linkedEventIds = new Set(
+		(linkedEntities?.events ?? []).map((linkedEvent: { id?: string }) => linkedEvent.id)
+	);
+
+	return events.filter(
+		(event) =>
+			(event?.owner_entity_type === 'task' && event?.owner_entity_id === taskId) ||
+			linkedEventIds.has(event?.id)
+	);
+}
+
 export const load: PageServerLoad = async ({ params, fetch }) => {
 	const { id: projectId, task_id: taskId } = params;
 
@@ -20,10 +32,15 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 		throw error(400, 'Project ID and Task ID required');
 	}
 
-	// Fetch project data and task data in parallel
-	const [projectResponse, taskResponse] = await Promise.all([
+	// Fetch project, task, and project events in parallel. Events are filtered
+	// below to include both task-owned events and graph-linked task events.
+	const [projectResponse, taskResponse, eventsResponse, linkedResponse] = await Promise.all([
 		fetch(`/api/onto/projects/${projectId}`),
-		fetch(`/api/onto/tasks/${taskId}/full`)
+		fetch(`/api/onto/tasks/${taskId}/full`),
+		fetch(`/api/onto/projects/${projectId}/events?limit=1000`),
+		fetch(
+			`/api/onto/edges/linked?sourceId=${taskId}&sourceKind=task&projectId=${projectId}&includeAvailable=false`
+		)
 	]);
 
 	if (!projectResponse.ok) {
@@ -44,6 +61,8 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 		projectResponse.json(),
 		taskResponse.json()
 	]);
+	const eventsData = eventsResponse.ok ? await eventsResponse.json() : null;
+	const linkedData = linkedResponse.ok ? await linkedResponse.json() : null;
 
 	// Verify task belongs to this project
 	const task = taskData.data?.task;
@@ -63,6 +82,11 @@ export const load: PageServerLoad = async ({ params, fetch }) => {
 		documents: projectData.data?.documents || [],
 		milestones: projectData.data?.milestones || [],
 		tasks: projectData.data?.tasks || [],
-		risks: projectData.data?.risks || []
+		risks: projectData.data?.risks || [],
+		events: filterTaskEvents(
+			eventsData?.data?.events || [],
+			linkedData?.data?.linkedEntities,
+			taskId
+		)
 	};
 };

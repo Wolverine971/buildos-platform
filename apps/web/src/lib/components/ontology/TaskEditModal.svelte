@@ -422,8 +422,7 @@
 			}
 		} catch (err) {
 			console.error('Error generating task title:', err);
-			titleGenerationError =
-				err instanceof Error ? err.message : 'Failed to generate title';
+			titleGenerationError = err instanceof Error ? err.message : 'Failed to generate title';
 		} finally {
 			isGeneratingTitle = false;
 		}
@@ -886,7 +885,9 @@
 										/>
 										<div class="min-h-0 sm:min-h-5 flex items-start">
 											{#if !title.trim() && error}
-												<p class="text-sm text-destructive mt-2">Required</p>
+												<p class="text-sm text-destructive mt-2">
+													Required
+												</p>
 											{:else if titleGenerationError}
 												<p class="text-sm text-destructive mt-2">
 													{titleGenerationError}
