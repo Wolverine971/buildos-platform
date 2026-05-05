@@ -67,16 +67,26 @@ export class OntologyReadExecutor extends BaseExecutor {
 		super(context);
 	}
 
+	/**
+	 * Apply project-scope filters to a Postgrest query.
+	 *
+	 * The result is wrapped in `{ q }` because Postgrest builders are thenables
+	 * (their `.then()` triggers the HTTP request). Returning the builder directly
+	 * from an `async` function would let JavaScript's Promise resolution adopt the
+	 * thenable, executing the query and yielding `{ data, error }` to the caller —
+	 * then any subsequent `.limit()` / `.eq()` chain would explode with
+	 * `t.limit is not a function`. The wrapper prevents that adoption.
+	 */
 	private async scopeEntityQueryToReadableProject(
 		query: any,
 		projectId?: string | null
-	): Promise<any> {
+	): Promise<{ q: any }> {
 		const normalizedProjectId =
 			typeof projectId === 'string' && projectId.trim().length > 0 ? projectId.trim() : null;
 
 		if (normalizedProjectId) {
 			await this.assertProjectAccess(normalizedProjectId, 'read');
-			return query.eq('project_id', normalizedProjectId);
+			return { q: query.eq('project_id', normalizedProjectId) };
 		}
 
 		const actorId = await this.getActorId();
@@ -86,10 +96,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.filter((id): id is string => Boolean(id));
 
 		if (readableProjectIds.length === 0) {
-			return query.eq('project_id', '00000000-0000-0000-0000-000000000000');
+			return { q: query.eq('project_id', '00000000-0000-0000-0000-000000000000') };
 		}
 
-		return query.in('project_id', readableProjectIds);
+		return { q: query.in('project_id', readableProjectIds) };
 	}
 
 	private applyArchivedReadFilter(query: any, args: { archived?: boolean }): any {
@@ -437,7 +447,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.order('updated_at', { ascending: false });
 
 		query = this.applyArchivedReadFilter(query, args);
-		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
+		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
 
 		const normalizedState = this.normalizeTaskState(args.state_key);
 		if (normalizedState) {
@@ -482,7 +492,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.order('created_at', { ascending: false });
 
 		query = this.applyArchivedReadFilter(query, args);
-		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
+		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
 
 		const limit = Math.min(args.limit ?? 20, 50);
 		query = query.limit(limit);
@@ -513,7 +523,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.order('updated_at', { ascending: false });
 
 		query = this.applyArchivedReadFilter(query, args);
-		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
+		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
 
 		const limit = Math.min(args.limit ?? 20, 50);
 		query = query.limit(limit);
@@ -544,7 +554,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.order('updated_at', { ascending: false });
 
 		query = this.applyArchivedReadFilter(query, args);
-		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
+		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
 
 		if (args.type_key) {
 			query = query.eq('type_key', args.type_key);
@@ -582,7 +592,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.order('due_at', { ascending: true, nullsFirst: true });
 
 		query = this.applyArchivedReadFilter(query, args);
-		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
+		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
 
 		if (args.state_key) {
 			query = query.eq('state_key', args.state_key);
@@ -615,7 +625,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.order('updated_at', { ascending: false });
 
 		query = this.applyArchivedReadFilter(query, args);
-		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
+		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
 
 		if (args.state_key) {
 			query = query.eq('state_key', args.state_key);
@@ -736,7 +746,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.or(searchFilter);
 
 		query = this.applyArchivedReadFilter(query, args);
-		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
+		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
 
 		const normalizedState = this.normalizeTaskState(args.state_key);
 		if (normalizedState) {
@@ -789,7 +799,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.or(`name.ilike.${likePattern},description.ilike.${likePattern}`);
 
 		query = this.applyArchivedReadFilter(query, args);
-		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
+		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
 
 		const limit = Math.min(args.limit ?? 20, 50);
 		query = query.limit(limit);
@@ -826,7 +836,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.or(`name.ilike.${likePattern},description.ilike.${likePattern}`);
 
 		query = this.applyArchivedReadFilter(query, args);
-		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
+		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
 
 		const limit = Math.min(args.limit ?? 20, 50);
 		query = query.limit(limit);
@@ -865,7 +875,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.ilike('title', likePattern);
 
 		query = this.applyArchivedReadFilter(query, args);
-		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
+		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
 
 		if (args.type_key) {
 			query = query.eq('type_key', args.type_key);
@@ -911,7 +921,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.or(`title.ilike.${likePattern},description.ilike.${likePattern}`);
 
 		query = this.applyArchivedReadFilter(query, args);
-		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
+		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
 
 		if (args.state_key) {
 			query = query.eq('state_key', args.state_key);
@@ -952,7 +962,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.or(`title.ilike.${likePattern},content.ilike.${likePattern}`);
 
 		query = this.applyArchivedReadFilter(query, args);
-		query = await this.scopeEntityQueryToReadableProject(query, args.project_id);
+		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
 
 		if (args.state_key) {
 			query = query.eq('state_key', args.state_key);

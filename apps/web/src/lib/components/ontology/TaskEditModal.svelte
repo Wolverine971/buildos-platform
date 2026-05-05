@@ -23,6 +23,8 @@
 	import {
 		Save,
 		Loader,
+		LoaderCircle,
+		Sparkles,
 		Trash2,
 		ListChecks,
 		X,
@@ -128,6 +130,8 @@
 	let isLoading = $state(true);
 	let isSaving = $state(false);
 	let isDeleting = $state(false);
+	let isGeneratingTitle = $state(false);
+	let titleGenerationError = $state('');
 	let error = $state('');
 	let showDeleteConfirm = $state(false);
 	let hasCalendarLink = $state(false);
@@ -391,6 +395,37 @@
 		} catch (error) {
 			console.warn('Failed to format datetime for input:', date, error);
 			return '';
+		}
+	}
+
+	async function generateTitle(): Promise<void> {
+		const desc = description.trim();
+		if (!desc || isGeneratingTitle) return;
+
+		isGeneratingTitle = true;
+		titleGenerationError = '';
+		try {
+			const response = await fetch('/api/onto/tasks/generate-title', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ description: desc })
+			});
+			const result = await response.json();
+			if (!response.ok) {
+				throw new Error(result?.error || 'Failed to generate title');
+			}
+			const generated = result?.data?.title;
+			if (typeof generated === 'string' && generated.trim()) {
+				title = generated.trim();
+			} else {
+				throw new Error('Empty title returned');
+			}
+		} catch (err) {
+			console.error('Error generating task title:', err);
+			titleGenerationError =
+				err instanceof Error ? err.message : 'Failed to generate title';
+		} finally {
+			isGeneratingTitle = false;
 		}
 	}
 
@@ -812,14 +847,33 @@
 									</div>
 								</CardHeader>
 								<CardBody class="space-y-4">
-									<FormField
-										label="Title"
-										labelFor="title"
-										required={true}
-										uppercase={false}
-										showOptional={false}
-										error={!title.trim() && error ? 'Required' : ''}
-									>
+									<div class="space-y-2">
+										<div class="flex items-end justify-between gap-2 mb-2">
+											<label
+												for="title"
+												class="block text-sm font-semibold text-foreground"
+											>
+												Title
+												<span class="text-destructive ml-0.5">*</span>
+											</label>
+											<button
+												type="button"
+												onclick={generateTitle}
+												disabled={isSaving ||
+													isGeneratingTitle ||
+													!description.trim()}
+												class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border bg-card text-xs font-medium text-muted-foreground shadow-ink transition-all pressable hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-muted-foreground tx tx-grain tx-weak"
+												aria-label="Auto-generate title from description"
+											>
+												{#if isGeneratingTitle}
+													<LoaderCircle class="w-3 h-3 animate-spin" />
+													<span>Generating…</span>
+												{:else}
+													<Sparkles class="w-3 h-3" />
+													<span>Auto-generate</span>
+												{/if}
+											</button>
+										</div>
 										<TextInput
 											id="title"
 											bind:value={title}
@@ -827,10 +881,19 @@
 											enterkeyhint="next"
 											placeholder="Task title..."
 											required={true}
-											disabled={isSaving}
+											disabled={isSaving || isGeneratingTitle}
 											error={!title.trim() && error ? true : false}
 										/>
-									</FormField>
+										<div class="min-h-0 sm:min-h-5 flex items-start">
+											{#if !title.trim() && error}
+												<p class="text-sm text-destructive mt-2">Required</p>
+											{:else if titleGenerationError}
+												<p class="text-sm text-destructive mt-2">
+													{titleGenerationError}
+												</p>
+											{/if}
+										</div>
+									</div>
 
 									<FormField
 										label="Description"

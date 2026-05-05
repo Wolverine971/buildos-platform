@@ -7,7 +7,7 @@
 	- API Endpoint: /apps/web/src/routes/api/onto/tasks/create/+server.ts
 -->
 <script lang="ts">
-	import { ChevronRight, Save, CheckSquare, ListChecks } from 'lucide-svelte';
+	import { ChevronRight, Save, CheckSquare, ListChecks, Sparkles, LoaderCircle } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -98,6 +98,8 @@
 	let isSaving = $state(false);
 	let error = $state('');
 	let slideDirection = $state<1 | -1>(1);
+	let isGeneratingTitle = $state(false);
+	let titleGenerationError = $state('');
 
 	// Form fields
 	let title = $state('');
@@ -124,6 +126,37 @@
 		stateKey = 'todo';
 		slideDirection = 1;
 		showTemplateSelection = false;
+	}
+
+	async function generateTitle(): Promise<void> {
+		const desc = description.trim();
+		if (!desc || isGeneratingTitle) return;
+
+		isGeneratingTitle = true;
+		titleGenerationError = '';
+		try {
+			const response = await fetch('/api/onto/tasks/generate-title', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ description: desc })
+			});
+			const result = await response.json();
+			if (!response.ok) {
+				throw new Error(result?.error || 'Failed to generate title');
+			}
+			const generated = result?.data?.title;
+			if (typeof generated === 'string' && generated.trim()) {
+				title = generated.trim();
+			} else {
+				throw new Error('Empty title returned');
+			}
+		} catch (err) {
+			console.error('Error generating task title:', err);
+			titleGenerationError =
+				err instanceof Error ? err.message : 'Failed to generate title';
+		} finally {
+			isGeneratingTitle = false;
+		}
 	}
 
 	function parseDateTimeFromInput(value: string): string | null {
@@ -206,6 +239,8 @@
 		dueAt = '';
 		assigneeActorIds = [];
 		error = '';
+		titleGenerationError = '';
+		isGeneratingTitle = false;
 	}
 
 	function handleClose() {
@@ -384,31 +419,11 @@
 									</div>
 								{/if}
 
-								<!-- Task Title -->
-								<FormField
-									label="Task Title"
-									labelFor="title"
-									required={true}
-									error={!title.trim() && error ? 'Task title is required' : ''}
-								>
-									<TextInput
-										id="title"
-										bind:value={title}
-										placeholder="Enter task title..."
-										inputmode="text"
-										enterkeyhint="next"
-										required={true}
-										disabled={isSaving}
-										error={!title.trim() && error ? true : false}
-										size="md"
-									/>
-								</FormField>
-
-								<!-- Description -->
+								<!-- Description (shown first to enable title auto-generation) -->
 								<FormField
 									label="Description"
 									labelFor="description"
-									hint="Provide additional context about this task"
+									hint="Describe what needs to be done — you can auto-generate the title from this"
 								>
 									<Textarea
 										id="description"
@@ -420,6 +435,58 @@
 										size="md"
 									/>
 								</FormField>
+
+								<!-- Task Title with auto-generate -->
+								<div class="space-y-2">
+									<div class="flex items-end justify-between gap-2 mb-2">
+										<label
+											for="title"
+											class="block text-sm font-semibold uppercase tracking-wider text-foreground"
+										>
+											Task Title
+											<span class="text-destructive ml-0.5">*</span>
+										</label>
+										<button
+											type="button"
+											onclick={generateTitle}
+											disabled={isSaving ||
+												isGeneratingTitle ||
+												!description.trim()}
+											class="inline-flex items-center gap-1.5 px-2 py-1 rounded border border-border bg-card text-xs font-medium text-muted-foreground shadow-ink transition-all pressable hover:border-accent hover:text-accent disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:text-muted-foreground tx tx-grain tx-weak"
+											aria-label="Auto-generate title from description"
+										>
+											{#if isGeneratingTitle}
+												<LoaderCircle class="w-3 h-3 animate-spin" />
+												<span>Generating…</span>
+											{:else}
+												<Sparkles class="w-3 h-3" />
+												<span>Auto-generate</span>
+											{/if}
+										</button>
+									</div>
+									<TextInput
+										id="title"
+										bind:value={title}
+										placeholder="Enter task title or auto-generate from description..."
+										inputmode="text"
+										enterkeyhint="next"
+										required={true}
+										disabled={isSaving || isGeneratingTitle}
+										error={!title.trim() && error ? true : false}
+										size="md"
+									/>
+									<div class="min-h-0 sm:min-h-5 flex items-start">
+										{#if !title.trim() && error}
+											<p class="text-sm text-destructive mt-2">
+												Task title is required
+											</p>
+										{:else if titleGenerationError}
+											<p class="text-sm text-destructive mt-2">
+												{titleGenerationError}
+											</p>
+										{/if}
+									</div>
+								</div>
 
 								<FormField
 									label="Assignees"

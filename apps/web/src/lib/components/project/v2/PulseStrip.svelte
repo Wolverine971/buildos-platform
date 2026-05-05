@@ -294,7 +294,7 @@
 					<History class="w-3.5 h-3.5 text-muted-foreground" />
 				</div>
 				<div>
-					<p class="text-xs sm:text-sm font-semibold text-foreground">Recently done</p>
+					<p class="text-xs sm:text-sm font-semibold text-foreground">Recent activity</p>
 					<p class="text-[10px] sm:text-xs text-muted-foreground">
 						What's moved in the last few days
 					</p>
