@@ -530,7 +530,9 @@ ${unsubscribeUrl}`;
 	private isLifecycleEmail(metadata?: Record<string, any>): boolean {
 		return (
 			metadata?.campaign_type === 'lifecycle' ||
+			metadata?.campaign_type === 'retargeting' ||
 			metadata?.category === 'welcome_sequence' ||
+			metadata?.category === 'retargeting_pilot' ||
 			metadata?.campaign === 'welcome-sequence'
 		);
 	}

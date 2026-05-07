@@ -33,7 +33,6 @@ import {
 	RETARGETING_DEFAULT_VARIANT,
 	RETARGETING_EMAIL_SEQUENCE_KEY,
 	RETARGETING_STEPS,
-	type RetargetingPilotMetricRow,
 	type RetargetingPilotStep,
 	type RetargetingVariant
 } from '$lib/server/retargeting-pilot.logic';
@@ -64,17 +63,36 @@ type CopyOption = {
 };
 
 type RecipientRow = {
+	id: string;
 	sequenceKey: SequenceKey;
+	memberId: string | null;
 	email: string;
 	name: string | null;
 	userId: string;
 	status: string;
+	stageLabel: string;
 	stepKey: string | null;
 	variantKey: string | null;
 	nextSendAt: string | null;
+	scheduledFor: string | null;
 	dueLabel: string;
 	batchId: string | null;
 	reason: string;
+	sentCount: number;
+	openCount: number;
+	clickCount: number;
+	returnedAt: string | null;
+	firstActionAt: string | null;
+	lastActivityAt: string | null;
+	holdout: boolean;
+	manualStop: boolean;
+	replyStatus: string | null;
+	touch1SentAt: string | null;
+	touch2SentAt: string | null;
+	touch3SentAt: string | null;
+	anyOpen: boolean;
+	anyClick: boolean;
+	pendingSendId: string | null;
 };
 
 type RetargetingCohortOption = {
@@ -99,6 +117,24 @@ type WelcomeEnrollmentRow = {
 	metadata: Record<string, unknown> | null;
 	created_at: string;
 	updated_at: string;
+};
+
+type WelcomeSequenceEventRow = {
+	enrollment_id: string | null;
+	user_id: string | null;
+	event_type: string;
+	step_number: number | null;
+	step_key: string | null;
+	branch_key: string | null;
+	email_id: string | null;
+	created_at: string;
+};
+
+type EmailTrackingEventRow = {
+	email_id: string;
+	event_type: string;
+	created_at: string | null;
+	timestamp: string | null;
 };
 
 type WelcomeSequenceRow = {
@@ -512,11 +548,46 @@ function stepForWelcomeNumber(stepNumber: number | null): WelcomeSequenceStep | 
 	return WELCOME_SEQUENCE_STEPS[stepNumber - 1] ?? null;
 }
 
-function buildWelcomeRecipients(enrollments: WelcomeEnrollmentRow[]): RecipientRow[] {
+function buildWelcomeRecipients(
+	enrollments: WelcomeEnrollmentRow[],
+	events: WelcomeSequenceEventRow[] = [],
+	trackingEvents: EmailTrackingEventRow[] = []
+): RecipientRow[] {
+	const eventsByEnrollment = new Map<string, WelcomeSequenceEventRow[]>();
+	for (const event of events) {
+		if (!event.enrollment_id) {
+			continue;
+		}
+		eventsByEnrollment.set(event.enrollment_id, [
+			...(eventsByEnrollment.get(event.enrollment_id) ?? []),
+			event
+		]);
+	}
+	const trackingByEmail = new Map<string, EmailTrackingEventRow[]>();
+	for (const event of trackingEvents) {
+		trackingByEmail.set(event.email_id, [
+			...(trackingByEmail.get(event.email_id) ?? []),
+			event
+		]);
+	}
+
 	return enrollments
-		.filter((row) => row.next_step_number != null)
 		.map((row) => {
 			const step = stepForWelcomeNumber(row.next_step_number);
+			const rowEvents = eventsByEnrollment.get(row.id) ?? [];
+			const sentEvents = rowEvents.filter((event) => event.event_type === 'sent');
+			const sentEmailIds = new Set(
+				sentEvents.map((event) => event.email_id).filter((id): id is string => Boolean(id))
+			);
+			const rowTrackingEvents = Array.from(sentEmailIds).flatMap(
+				(emailId) => trackingByEmail.get(emailId) ?? []
+			);
+			const openCount = rowTrackingEvents.filter(
+				(event) => event.event_type === 'opened'
+			).length;
+			const clickCount = rowTrackingEvents.filter(
+				(event) => event.event_type === 'clicked'
+			).length;
 			const branchKey =
 				typeof row.metadata?.branch_key === 'string'
 					? row.metadata.branch_key
@@ -525,21 +596,44 @@ function buildWelcomeRecipients(enrollments: WelcomeEnrollmentRow[]): RecipientR
 						: null;
 
 			return {
+				id: row.id,
 				sequenceKey: BUILDOS_WELCOME_SEQUENCE_KEY as SequenceKey,
+				memberId: null,
 				email: row.recipient_email,
 				name: null,
 				userId: row.user_id,
 				status: row.status,
+				stageLabel: step
+					? `Next ${WELCOME_STEP_COPY_META[step].stepLabel}`
+					: row.status === 'completed'
+						? 'Completed'
+						: row.status,
 				stepKey: step,
 				variantKey: branchKey,
 				nextSendAt: row.next_send_at,
+				scheduledFor: row.next_send_at,
 				dueLabel: row.next_send_at ? 'Scheduled' : 'No schedule',
 				batchId: null,
 				reason:
 					branchKey ??
 					(step
 						? 'Branch is computed at send time from current user state.'
-						: 'No next step.')
+						: 'No next step.'),
+				sentCount: sentEvents.length || Math.max(0, row.current_step_number),
+				openCount,
+				clickCount,
+				returnedAt: null,
+				firstActionAt: null,
+				lastActivityAt: row.last_sent_at,
+				holdout: false,
+				manualStop: false,
+				replyStatus: null,
+				touch1SentAt: null,
+				touch2SentAt: null,
+				touch3SentAt: null,
+				anyOpen: false,
+				anyClick: false,
+				pendingSendId: null
 			};
 		})
 		.sort((left, right) => {
@@ -551,73 +645,6 @@ function buildWelcomeRecipients(enrollments: WelcomeEnrollmentRow[]): RecipientR
 				: Number.POSITIVE_INFINITY;
 			return leftTime - rightTime;
 		});
-}
-
-function addHours(iso: string, hours: number): string | null {
-	const parsed = Date.parse(iso);
-	if (Number.isNaN(parsed)) {
-		return null;
-	}
-
-	return new Date(parsed + hours * 60 * 60 * 1000).toISOString();
-}
-
-function buildRetargetingRecipient(row: RetargetingPilotMetricRow, now: Date): RecipientRow | null {
-	if (row.holdout || row.manual_stop || row.reply_status !== 'none') {
-		return null;
-	}
-
-	if (!row.touch_1_sent_at) {
-		return {
-			sequenceKey: RETARGETING_EMAIL_SEQUENCE_KEY,
-			email: row.email,
-			name: row.name,
-			userId: row.user_id,
-			status: 'ready',
-			stepKey: 'touch_1',
-			variantKey: row.variant || RETARGETING_DEFAULT_VARIANT,
-			nextSendAt: null,
-			dueLabel: 'Manual send now',
-			batchId: row.batch_id,
-			reason: 'Unsent non-holdout member.'
-		};
-	}
-
-	if (!row.touch_2_sent_at && !row.first_post_send_activity_at) {
-		const dueAt = addHours(row.touch_1_sent_at, 72);
-		return {
-			sequenceKey: RETARGETING_EMAIL_SEQUENCE_KEY,
-			email: row.email,
-			name: row.name,
-			userId: row.user_id,
-			status: dueAt && Date.parse(dueAt) <= now.getTime() ? 'ready' : 'waiting',
-			stepKey: 'touch_2',
-			variantKey: row.variant || RETARGETING_DEFAULT_VARIANT,
-			nextSendAt: dueAt,
-			dueLabel: '72h after Touch 1',
-			batchId: row.batch_id,
-			reason: 'Touch 1 sent and no tracked post-send activity.'
-		};
-	}
-
-	if (!row.touch_3_sent_at && !row.first_post_send_action_at && (row.any_open || row.any_click)) {
-		const dueAt = addHours(row.touch_1_sent_at, 24 * 7);
-		return {
-			sequenceKey: RETARGETING_EMAIL_SEQUENCE_KEY,
-			email: row.email,
-			name: row.name,
-			userId: row.user_id,
-			status: dueAt && Date.parse(dueAt) <= now.getTime() ? 'ready' : 'waiting',
-			stepKey: 'touch_3',
-			variantKey: row.variant || RETARGETING_DEFAULT_VARIANT,
-			nextSendAt: dueAt,
-			dueLabel: '7d after Touch 1',
-			batchId: row.batch_id,
-			reason: 'Opened or clicked but no tracked product action.'
-		};
-	}
-
-	return null;
 }
 
 function summarizeCohorts(rows: RetargetingMemberRow[]): RetargetingCohortOption[] {
@@ -704,10 +731,39 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 					'id, user_id, recipient_email, status, current_step_number, next_step_number, next_send_at, last_sent_at, metadata, created_at, updated_at'
 				)
 				.eq('sequence_id', welcomeSequence.id)
-				.in('status', ['active', 'paused', 'processing', 'errored'])
+				.in('status', ['active', 'paused', 'processing', 'errored', 'completed', 'exited'])
 				.order('next_send_at', { ascending: true, nullsFirst: false })
 				.limit(250)
 		: { data: [] };
+	const welcomeEnrollments = (welcomeEnrollmentsData || []) as WelcomeEnrollmentRow[];
+	const welcomeEnrollmentIds = welcomeEnrollments.map((row) => row.id);
+	const { data: welcomeEventData } =
+		welcomeSequence?.id && welcomeEnrollmentIds.length > 0
+			? await adminSupabase
+					.from('email_sequence_events')
+					.select(
+						'enrollment_id, user_id, event_type, step_number, step_key, branch_key, email_id, created_at'
+					)
+					.eq('sequence_id', welcomeSequence.id)
+					.in('enrollment_id', welcomeEnrollmentIds)
+					.order('created_at', { ascending: false })
+					.limit(5000)
+			: { data: [] };
+	const welcomeEvents = (welcomeEventData || []) as WelcomeSequenceEventRow[];
+	const welcomeEmailIds = Array.from(
+		new Set(
+			welcomeEvents.map((event) => event.email_id).filter((id): id is string => Boolean(id))
+		)
+	);
+	const { data: welcomeTrackingData } =
+		welcomeEmailIds.length > 0
+			? await adminSupabase
+					.from('email_tracking_events')
+					.select('email_id, event_type, created_at, timestamp')
+					.in('email_id', welcomeEmailIds)
+					.limit(10000)
+			: { data: [] };
+	const welcomeTrackingEvents = (welcomeTrackingData || []) as EmailTrackingEventRow[];
 
 	const { data: retargetingMemberData } = await (adminSupabase as any)
 		.from('retargeting_founder_pilot_members')
@@ -723,30 +779,21 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 		url.searchParams.get('cohort_id')?.trim() || cohortOptions[0]?.cohortId || 'founder-pilot';
 	const selectedBatchId = url.searchParams.get('batch_id')?.trim() || '';
 
-	let retargetingMetricRows: RetargetingPilotMetricRow[] = [];
+	let retargetingRecipients: RecipientRow[] = [];
 	let retargetingError: string | null = null;
 	if (cohortOptions.length > 0) {
 		try {
 			const service = new RetargetingPilotService(adminSupabase);
-			retargetingMetricRows = await service.getMetricRows({
+			retargetingRecipients = (await service.getMemberOperationalRows({
 				campaignId: selectedCampaignId,
-				cohortId: selectedCohortId
-			});
+				cohortId: selectedCohortId,
+				batchId: selectedBatchId || null
+			})) as RecipientRow[];
 		} catch (error) {
 			retargetingError =
 				error instanceof Error ? error.message : 'Failed to load retargeting members';
 		}
 	}
-
-	const retargetingRecipients = retargetingMetricRows
-		.filter((row) => !selectedBatchId || row.batch_id === selectedBatchId)
-		.map((row) => buildRetargetingRecipient(row, new Date()))
-		.filter((row): row is RecipientRow => Boolean(row))
-		.sort((left, right) => {
-			const leftTime = left.nextSendAt ? Date.parse(left.nextSendAt) : 0;
-			const rightTime = right.nextSendAt ? Date.parse(right.nextSendAt) : 0;
-			return leftTime - rightTime;
-		});
 
 	const welcomeCopyOptions = buildWelcomeCopyOptions(baseUrl, welcomeOverrides);
 	const reactivationCopyOptions = buildRetargetingCopyOptions(
@@ -777,7 +824,9 @@ export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supa
 		welcome: {
 			copyOptions: welcomeCopyOptions,
 			recipients: buildWelcomeRecipients(
-				(welcomeEnrollmentsData || []) as WelcomeEnrollmentRow[]
+				welcomeEnrollments,
+				welcomeEvents,
+				welcomeTrackingEvents
 			)
 		},
 		reactivation: {
