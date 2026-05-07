@@ -5,11 +5,17 @@
 **Handle:** @handle
 **Display Name:** [Name or brand]
 **Profile URL:** https://www.instagram.com/handle/
+**Canonical Person ID:** [canonical-id / Not created]
 **Category:** [ADHD / Productivity / Solo Founder / AI / PKM / Competitor / Other]
+**Lane:** [Solo / PKM / AI / Course / Author / Freelance / WateringHole / ADHD]
+**Lead Class:** [direct_user / audience_multiplier / research_lead / proof_lead / competitor_intel / watering_hole]
 **Tier:** [1/2/3]
 **Strategic Role:** [Core target / Peer / Watering hole / Adjacent builder / Competitor / Monitor only]
 **Relationship Status:** [Prospect / Warm / Active / Monitor only]
 **Audience Quality:** [High / Medium / Low]
+**Ladder Stage:** [stage_0_discovered / stage_1_reviewed / stage_2_queued / stage_3_commented_once / stage_4_visible_presence / stage_5_dm_ready / stage_6_dm_sent / stage_7_activated / stage_-1_cold_or_skip]
+**Next Best Action:** [action]
+**Earliest Next Touch:** [YYYY-MM-DD / Now / Unknown]
 **Profile Created:** YYYY-MM-DD
 **Last Reviewed:** YYYY-MM-DD
 **Last Engaged:** [YYYY-MM-DD / Never]
@@ -49,6 +55,12 @@
 | Date       | Surface | Topic   | Post Link | Action   | Status | What We Said / Planned | Outcome    | Source       |
 | ---------- | ------- | ------- | --------- | -------- | ------ | ---------------------- | ---------- | ------------ |
 | YYYY-MM-DD | Post    | [topic] | [URL]     | Reviewed | Logged | [brief note]           | [none yet] | [warmup doc] |
+
+## Ledger Links
+
+- **Comment log rows:** [links or search hints]
+- **Discovery candidate row:** [active / monitor / skip / none]
+- **Person node:** [path or not created]
 
 ## Open Loops
 

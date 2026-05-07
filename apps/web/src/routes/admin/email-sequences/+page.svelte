@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/admin/email-sequences/+page.svelte -->
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/stores';
 	import {
 		Activity,
@@ -160,6 +160,9 @@
 	let activityError = $state<string | null>(null);
 	let activityData = $state<any>(null);
 	let activeActivityRecipient = $state<RecipientRow | null>(null);
+	let cohortLoading = $state(false);
+	let cohortError = $state<string | null>(null);
+	let cohortMessage = $state<string | null>(null);
 	const modalCopy = $derived.by(() => {
 		const key = activeCopyKey ?? selectedCopyParam;
 		if (!key) {
@@ -415,6 +418,53 @@
 		activityError = null;
 	}
 
+	async function buildDormantAudience(): Promise<void> {
+		cohortLoading = true;
+		cohortError = null;
+		cohortMessage = null;
+
+		try {
+			const cohortId =
+				data.reactivation?.selectedCohortId ||
+				`reactivation-${new Date().toISOString().slice(0, 10)}`;
+			const campaignId = data.reactivation?.selectedCampaignId;
+			const response = await fetch('/api/admin/retargeting/cohorts', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					campaign_id: campaignId,
+					cohort_id: cohortId,
+					batch_size: 25,
+					replace_existing: false
+				})
+			});
+			const payload = await response.json();
+			if (!response.ok || !payload.success) {
+				throw new Error(
+					payload.error || payload.message || 'Failed to build dormant audience'
+				);
+			}
+
+			const counts = payload.data?.counts;
+			cohortMessage = `Built dormant audience with ${counts?.total ?? 0} people (${counts?.sendable ?? 0} sendable).`;
+			const url = new URL($page.url);
+			url.searchParams.set('sequence', 'buildos_reactivation_founder_pilot');
+			if (campaignId) {
+				url.searchParams.set('campaign_id', campaignId);
+			}
+			url.searchParams.set('cohort_id', cohortId);
+			await goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
+			await invalidateAll();
+		} catch (error) {
+			cohortError =
+				error instanceof Error ? error.message : 'Failed to build dormant audience';
+		} finally {
+			cohortLoading = false;
+		}
+	}
+
 	function statusClasses(status: string): string {
 		if (status === 'override' || status === 'ready' || status === 'active') {
 			return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
@@ -504,6 +554,11 @@
 						name="cohort_id"
 						class="h-10 rounded-md border border-border bg-background px-3 text-sm"
 					>
+						{#if (data.reactivation?.cohortOptions ?? []).length === 0}
+							<option value={data.reactivation?.selectedCohortId ?? 'founder-pilot'}>
+								{data.reactivation?.selectedCohortId ?? 'founder-pilot'} (not built yet)
+							</option>
+						{/if}
 						{#each data.reactivation?.cohortOptions ?? [] as cohort}
 							<option
 								value={cohort.cohortId}
@@ -554,6 +609,49 @@
 					class="mt-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
 				>
 					{data.reactivation.error}
+				</div>
+			{/if}
+
+			{#if (data.reactivation?.cohortOptions ?? []).length === 0}
+				<div class="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-4">
+					<div class="flex flex-wrap items-start justify-between gap-4">
+						<div>
+							<p class="text-sm font-semibold text-foreground">
+								No dormant reactivation audience has been built yet.
+							</p>
+							<p class="mt-1 max-w-3xl text-sm text-muted-foreground">
+								This page needs a frozen dormant-user cohort before it can show
+								people, compute their next touch, or queue reactivation emails.
+							</p>
+						</div>
+						<button
+							type="button"
+							disabled={cohortLoading}
+							onclick={buildDormantAudience}
+							class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							{#if cohortLoading}
+								<Loader2 class="h-4 w-4 animate-spin" />
+							{:else}
+								<Users class="h-4 w-4" />
+							{/if}
+							Build Dormant Audience
+						</button>
+					</div>
+				</div>
+			{/if}
+
+			{#if cohortError}
+				<div
+					class="mt-4 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+				>
+					{cohortError}
+				</div>
+			{:else if cohortMessage}
+				<div
+					class="mt-4 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-800"
+				>
+					{cohortMessage}
 				</div>
 			{/if}
 		</AdminCard>
@@ -950,7 +1048,12 @@
 									: 6}
 								class="px-4 py-8 text-center text-sm text-muted-foreground"
 							>
-								No people found for this selection.
+								{#if selectedSequenceKey === 'buildos_reactivation_founder_pilot' && (data.reactivation?.cohortOptions ?? []).length === 0}
+									Build a dormant audience above to pull in reactivation
+									candidates.
+								{:else}
+									No people found for this selection.
+								{/if}
 							</td>
 						</tr>
 					{/each}

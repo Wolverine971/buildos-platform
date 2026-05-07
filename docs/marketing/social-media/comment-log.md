@@ -1,0 +1,69 @@
+<!-- docs/marketing/social-media/comment-log.md -->
+
+# Social Comment And Touchpoint Log
+
+This is the cross-run ledger for relationship-building activity.
+
+Warmup docs decide what is worth engaging with. Reply docs draft the words. This file closes the loop by recording what actually happened and what reaction came back.
+
+Use this for Instagram first. Other platforms can reuse the same format later.
+
+## Status Values
+
+- `Queued` - selected for engagement, not drafted yet
+- `Drafted` - reply drafted, not confirmed posted
+- `Posted` - comment or reply was actually posted
+- `Skipped` - deliberately not posted
+- `Reacted` - target liked, replied, followed, or otherwise responded
+- `DM Sent` - private message sent
+- `Converted` - signup, call, collaboration, or other conversion happened
+
+## Touchpoint Ledger
+
+| Date       | Platform  | Account              | Person ID   | Lane         | Lead Class          | Surface        | Post URL                                                     | Action           | Status  | Comment / Message                                                                                                                                                                                                                | Ladder Before          | Ladder After           | Reaction Within 7d | Source                                                   |
+| ---------- | --------- | -------------------- | ----------- | ------------ | ------------------- | -------------- | ------------------------------------------------------------ | ---------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ---------------------- | ------------------ | -------------------------------------------------------- |
+| 2026-05-06 | instagram | @danidonovan         | Not created | ADHD         | competitor_intel    | Post           | https://www.instagram.com/p/DX9vrczjVZO/                     | Comment          | Drafted | Pending selection from 3 options                                                                                                                                                                                                 | stage_1_reviewed       | stage_2_queued         | Pending            | daily-engagement/2026-05-06_instagram-replies-pm.md      |
+| 2026-05-06 | instagram | @dickiebush          | Not created | Solo         | audience_multiplier | Post           | https://www.instagram.com/dickiebush/p/DX91y0piFMX/          | Comment          | Drafted | Pending selection from 3 options                                                                                                                                                                                                 | stage_2_queued         | stage_2_queued         | Pending            | daily-engagement/2026-05-06_instagram-replies-pm.md      |
+| 2026-05-06 | instagram | @the_mini_adhd_coach | Not created | ADHD         | watering_hole       | Post           | https://www.instagram.com/the_mini_adhd_coach/p/DX-Dk67itXk/ | Comment          | Drafted | Pending selection from 3 options                                                                                                                                                                                                 | stage_2_queued         | stage_2_queued         | Pending            | daily-engagement/2026-05-06_instagram-replies-pm.md      |
+| 2026-05-06 | instagram | @howtoadhd           | Not created | ADHD         | watering_hole       | Post           | https://www.instagram.com/howtoadhd/p/DX961mfGaOq/           | Comment          | Drafted | Pending selection from 3 options                                                                                                                                                                                                 | stage_3_commented_once | stage_3_commented_once | Pending            | daily-engagement/2026-05-06_instagram-replies-pm.md      |
+| 2026-05-06 | instagram | @adhdcoachsheila     | Not created | ADHD         | research_lead       | Post           | https://www.instagram.com/adhdcoachsheila/p/DX_WvGEgUXD/     | Comment          | Drafted | Pending selection from 3 options                                                                                                                                                                                                 | stage_1_reviewed       | stage_2_queued         | Pending            | daily-engagement/2026-05-06_instagram-replies-pm.md      |
+| 2026-05-06 | instagram | @leaturnerholt       | Not created | Solo         | audience_multiplier | Post           | https://www.instagram.com/leaturnerholt/reel/DX9aMmXMaTk/    | Comment          | Drafted | Pending selection from 3 options                                                                                                                                                                                                 | stage_2_queued         | stage_2_queued         | Pending            | daily-engagement/2026-05-06_instagram-replies-pm.md      |
+| 2026-05-07 | instagram | @nathanbarry         | Not created | Solo         | audience_multiplier | Post           | https://www.instagram.com/nathanbarry/p/DYAhbE2kiG9/         | Comment          | Queued  | Pending /instagram-reply                                                                                                                                                                                                         | stage_1_reviewed       | stage_2_queued         | Pending            | daily-engagement/2026-05-07_instagram-warmup.md          |
+| 2026-05-07 | instagram | @matthgray           | Not created | WateringHole | watering_hole       | Comment thread | https://www.instagram.com/matthgray/reel/DYAvyJcBfCn/        | Commenter mining | Queued  | Pending /instagram-reply                                                                                                                                                                                                         | stage_1_reviewed       | stage_2_queued         | Pending            | daily-engagement/2026-05-07_instagram-warmup.md          |
+| 2026-05-07 | instagram | @dickiebush          | Not created | Solo         | audience_multiplier | Post           | https://www.instagram.com/dickiebush/p/DYA86tbiEHn/          | Comment          | Queued  | Pending /instagram-reply                                                                                                                                                                                                         | stage_2_queued         | stage_2_queued         | Pending            | daily-engagement/2026-05-07_instagram-warmup.md          |
+| 2026-05-07 | instagram | @nicolascole77       | Not created | Author       | audience_multiplier | Post           | https://www.instagram.com/nicolascole77/p/DYA89V2DeUe/       | Comment          | Queued  | Pending /instagram-reply                                                                                                                                                                                                         | stage_1_reviewed       | stage_2_queued         | Pending            | daily-engagement/2026-05-07_instagram-warmup.md          |
+| 2026-05-07 | instagram | @davidperell         | Not created | Author       | audience_multiplier | Post           | https://www.instagram.com/davidperell/p/DYAb1TaH6_Q/         | Comment          | Queued  | Pending /instagram-reply                                                                                                                                                                                                         | stage_1_reviewed       | stage_2_queued         | Pending            | daily-engagement/2026-05-07_instagram-warmup.md          |
+| 2026-05-07 | instagram | @jayclouse           | Not created | Course       | audience_multiplier | Reel           | https://www.instagram.com/jayclouse/reel/DYCuMKlAlxT/        | Comment          | Drafted | 3 options drafted (audience-defines-quality angle). Pending selection from 3 options. Mention fit 0-1; no product mention. First-ever touch.                                                                                     | stage_1_reviewed       | stage_2_queued         | Pending            | daily-engagement/2026-05-07_instagram-replies-evening.md |
+| 2026-05-07 | instagram | @nicolascole77       | Not created | Author       | audience_multiplier | Post           | https://www.instagram.com/nicolascole77/p/DYCxrzGDUvE/       | Comment          | Drafted | 3 options drafted (Miyazaki / iteration-as-the-moat). Pending selection from 3 options. **Pick this OR morning DYA89V2DeUe — never both.** Mention fit 0-1.                                                                      | stage_2_queued         | stage_2_queued         | Pending            | daily-engagement/2026-05-07_instagram-replies-evening.md |
+| 2026-05-07 | instagram | @davidperell         | Not created | Author       | audience_multiplier | Post           | https://www.instagram.com/davidperell/p/DYCdblnjJxC/         | Comment          | Drafted | 3 options drafted (Forsyth / rhythm-from-internalization). Pending selection from 3 options. **Pick this OR morning DYAb1TaH6_Q — never both.** Mention fit 0-1.                                                                 | stage_2_queued         | stage_2_queued         | Pending            | daily-engagement/2026-05-07_instagram-replies-evening.md |
+| 2026-05-07 | instagram | @matthgray           | Not created | WateringHole | watering_hole       | Comment thread | https://www.instagram.com/matthgray/p/DYDFURaidov/           | Commenter mining | Drafted | Mining protocol + 3 commenter-reply options drafted (everything-bleeds, overwhelm, cheerleader). NEVER engage Matt directly. **Pick this OR morning DYAvyJcBfCn — never both.** Mention fit 0.                                   | stage_2_queued         | stage_2_queued         | Pending            | daily-engagement/2026-05-07_instagram-replies-evening.md |
+| 2026-05-07 | instagram | @thefuturishere      | Not created | WateringHole | watering_hole       | Comment thread | https://www.instagram.com/thefuturishere/reel/DYDOQsxJgUg/   | Commenter mining | Drafted | Mining protocol + 3 commenter-reply options drafted (lose-track-of-asks, every-project-new, cheerleader). NEVER engage Chris/The Futur directly. Skip + demote to monitor if thread <5 organic cmts at post time. Mention fit 0. | stage_0_discovered     | stage_2_queued         | Pending            | daily-engagement/2026-05-07_instagram-replies-evening.md |
+
+## Reaction Updates
+
+When a reaction comes in, update the original ledger row instead of adding a duplicate unless the reaction becomes a new touchpoint.
+
+Record:
+
+- like on comment
+- reply to comment
+- account followed DJ
+- profile visit signal
+- story reply
+- DM response
+- signup or call
+
+## Weekly Review Prompts
+
+- Which drafted comments were never posted?
+- Which posted comments got reactions?
+- Which account should move from `Prospect` to `Warm`?
+- Which account has too many pending touches and should be paused?
+- Which lane produced the best reactions?
+- Which candidate source should be amplified or retired?
+
+## Example Row
+
+| Date       | Platform  | Account | Person ID    | Lane | Lead Class  | Surface | Post URL | Action  | Status  | Comment / Message | Ladder Before  | Ladder After   | Reaction Within 7d | Source                   |
+| ---------- | --------- | ------- | ------------ | ---- | ----------- | ------- | -------- | ------- | ------- | ----------------- | -------------- | -------------- | ------------------ | ------------------------ |
+| YYYY-MM-DD | instagram | @handle | canonical-id | Solo | direct_user | Post    | URL      | Comment | Drafted | Pending           | stage_2_queued | stage_2_queued | Pending            | daily-engagement/file.md |

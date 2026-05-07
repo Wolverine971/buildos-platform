@@ -60,6 +60,9 @@ Read these first:
 - `/docs/marketing/content/drafts/why-i-built-buildos.md`
 - `/docs/marketing/social-media/instagram-voice-quick-ref.md`
 - `/docs/marketing/social-media/instagram-profiles/README.md`
+- `/docs/marketing/social-media/comment-log.md`
+- `/docs/marketing/social-media/discovery/instagram/candidates.md`
+- `/docs/marketing/social-media/people/README.md`
 
 Then read the account profile for every queued account listed in the warmup doc.
 
@@ -75,7 +78,8 @@ Then read the account profile for every queued account listed in the warmup doc.
 4. Avoid repeating old angles or phrasing from past interactions.
 5. Write a separate replies doc.
 6. Update account histories with `Drafted` notes.
-7. If the user confirms actual posting, record the exact comment and mark it `Posted`.
+7. Add or update `Drafted` rows in `docs/marketing/social-media/comment-log.md`.
+8. If the user confirms actual posting, record the exact comment, mark it `Posted`, and update ladder state.
 
 If the warmup doc is a legacy doc without a `Reply Queue`, convert it into a working queue first using legacy compatibility mode.
 
@@ -118,38 +122,82 @@ If the warmup doc and the actual post context disagree, default to the more cons
 
 1. Most comments should not mention BuildOS.
 2. Be a community member first, not a marketer in the comments.
-3. Add one sharp observation, not a mini-essay.
-4. Match the author's tone, vocabulary, and emotional energy.
-5. Keep comments short enough to feel typed on a phone.
-6. Sound like a real person, not a polished caption generator.
+3. **Match the comment posture to the relationship state.** A stranger gets a real question or a genuine cheer — not a founder lesson. Lived moments only earn their place when there's already some relationship or when the lived moment is genuinely small and not wrapped in a takeaway.
+4. Sound like a real person texting on their phone — lowercase-friendly, short, specific to one thing in the post.
+5. Match the author's tone, vocabulary, and emotional energy.
+6. Add one sharp observation OR one real question OR one specific cheer — never a mini-essay, never a thesis.
 
-### Modes
+### Mode Selection (relationship-driven)
 
-Draft with a mix of:
+The mode you pick depends on the relationship state, not on a "mix it up" quota.
 
-- **Value:** One concrete insight or lived-experience reframe
-- **Cheerleader:** Pure energy, quick and specific
-- **Casual:** Human, present, lightly personal
+**No relationship / first-ever touch (most common case for new accounts):**
 
-Do not produce three value comments in a row for the same post.
+The strongest opener is almost always one of:
+
+- **Real question:** Something you genuinely want to know about how they think or what they actually said. Questions invite a response, which is the actual goal of a first touch. Example: _"genuinely curious — do you optimize for your own taste or for what your audience seems to want? feel like those pull in opposite directions"_
+- **Specific cheer:** Short, specific, no thesis attached. Example: _"11 films, 100+ awards, none compromised. quietly insane résumé."_
+- **Tiny lived moment, no takeaway:** Only if the moment is small, specific, and doesn't end in a wrapped lesson. Example: _"rewrote my onboarding flow 5 times last year. each version felt right when i shipped it. only the 5th made people actually finish."_ — works because there's no "this is what most people miss" cap on it.
+
+**Some relationship (already commented, exchanged a like/reply, or DJ has a documented past touchpoint):**
+
+- Lived moments and soft "thinking environment" / "context" / "project memory" language earn more room.
+- Continuity is welcome — reference (without mirroring) what you've talked about before.
+- Still no thesis wrappers, still no founder bio dumps.
+
+**Commenter mining (replying to a commenter on a watering hole, not the principal):**
+
+- Lead with a real reaction + question whenever possible. The question earns elaboration, which is the mining signal.
+- Or: a warm peer reaction ("oh same, this got me too — anything actually helping for you?")
+- Never relay the principal's framing back at the commenter.
+- Never mention BuildOS on a first mining pass.
+
+### Banned Patterns (these read as thought-leader posture, hated by user)
+
+Do not write any of these constructions:
+
+- **"X is the part / thing / moat / trap / question"** — sounds like a LinkedIn opener. Examples to never produce:
+  - "the iteration is the actual moat"
+  - "this is the trap"
+  - "the X is the thing"
+  - "the rhythm thing only shows up when…"
+- **"that's what most people miss / skip past / don't understand / get wrong"** — generic thought-leader framing. Hated.
+- **"X is the part i keep relearning"** / **"i have to keep reminding myself X"** — formulaic. Hated.
+- **"X hits different"** as a reframe of the creator's point — sounds polished and LinkedIn-y when used as a reframe.
+- **Tidy aphorisms at the end of a comment** ("the absence feels louder than the criticism ever could," "the best corrections don't feel good in the moment").
+- **Analyzing the subject from a distance** ("Sullivan sounds like someone who knew exactly what he was doing").
+- **A "founder version" wrapper on every emotional topic.**
+- **Stacking a founder bio into a comment.**
+- **Generic praise:** "love this," "so true," "fire content," "100%," "this is gold."
+
+If a draft uses any of those constructions, it's wrong — rewrite it.
+
+### Pre-Send Gut Check
+
+Before recording any draft, ask:
+
+1. **Does this sound like a doc?** If yes, cut. Real comments are typed on a phone.
+2. **Am I dropping a founder lesson on a stranger?** If there's no relationship and the comment ends in a wrapped takeaway, replace it with a real question or a genuine cheer.
+3. **Did I co-sign the creator first, or did I jump straight to my reframe?** Validate or react first. Then add one real thing if you have one. Then stop.
+4. **Is there a banned pattern in here?** (See list above.) If so, rewrite.
+5. **Could a brand account have written this?** If yes, cut.
 
 ### Constraints
 
-- 1-2 sentences preferred, 3 max
-- No hashtags
-- Minimal emoji, only if natural
-- Avoid generic praise like "love this" or "so true"
-- Avoid preachy phrasing
-- Avoid stacking your whole founder bio into a comment
-- Never sound like a brand account pretending to be a person
+- 1-2 sentences preferred, 3 max.
+- A good comment can be one sentence — don't pad.
+- Lowercase-friendly is fine (often better).
+- No hashtags.
+- Minimal emoji, only if natural to the post's tone.
+- Never sound like a brand account pretending to be a person.
 
 ### BuildOS-Specific Guardrails
 
-- On ADHD struggle posts, default to **Level 0**
-- On emotional or mental-health posts, do not force a systems/product angle
-- On builder or tool-frustration posts, a soft BuildOS-adjacent angle may fit at **Level 1**
-- Only use **Level 2** when the post is explicitly about the exact problem BuildOS solves
-- If you mention BuildOS, do it transparently and casually
+- On ADHD struggle posts, default to **Level 0**.
+- On emotional or mental-health posts, do not force a systems/product angle.
+- On builder or tool-frustration posts, a soft BuildOS-adjacent angle may fit at **Level 1**.
+- Only use **Level 2** when the post is explicitly about the exact problem BuildOS solves AND there's at least some relationship — never Level 2 on a first-ever touch.
+- If you mention BuildOS, do it transparently and casually.
 
 ---
 
@@ -194,10 +242,14 @@ For each queued item:
 
 1. Read the account profile.
 2. Pull the relationship intel and past touchpoints.
-3. Note repetition risks.
-4. Draft 2-3 comment options with different modes.
-5. Update the replies doc immediately.
-6. Add a `Drafted` row to the account profile history if one does not already exist for this post.
+3. **Determine the relationship state** explicitly: _no relationship_, _some relationship_, or _commenter mining_. Record it in the draft so the mode selection is auditable.
+4. Check `comment-log.md` for duplicate pending or posted touches.
+5. Note repetition risks.
+6. Draft 2-3 comment options using the mode picker rules. For _no relationship_ items, **at least one option must be a real question**.
+7. Run the **Pre-Send Gut Check** on every option before recording it. If a draft uses any banned pattern, rewrite it before saving — do not record bad drafts and "let the user pick."
+8. Update the replies doc immediately.
+9. Add a `Drafted` row to the account profile history if one does not already exist for this post.
+10. Add or update a matching `Drafted` row in `comment-log.md`.
 
 ## Step 4: Record Execution State
 
@@ -205,12 +257,23 @@ If the user has not confirmed posting yet:
 
 - Mark each item `Drafted - Pending Posting`
 - Add a short reconciliation checklist so the next pass can mark each item `Posted`, `Skipped`, or `Still pending`
+- Keep the related `comment-log.md` row at `Drafted`
 
 If the user confirms a specific comment was posted:
 
 - Record the exact comment in the replies doc
 - Update the account profile history to `Posted`
 - Update `Last Engaged` and any open loops
+- Update the matching `comment-log.md` row to `Posted`
+- Advance ladder state from `stage_2_queued` to `stage_3_commented_once`, or from `stage_3_commented_once` to `stage_4_visible_presence` if this is a repeated confirmed touch
+- If the account exists in `discovery/instagram/candidates.md`, update its state to `engaged`
+
+If the user confirms a reply was skipped:
+
+- Mark it `Skipped` in the replies doc
+- Update the account profile row to `Skipped`
+- Update the matching `comment-log.md` row to `Skipped`
+- If the candidate should not resurface, update `candidates.md` to `monitor` or `skip` with a reason
 
 ---
 
@@ -256,17 +319,24 @@ Use this structure:
 
 - [previous angle or phrasing to avoid]
 
-**Suggested Comment Option 1 (mode: value - [angle]):**
+**Suggested Comment Option 1 (mode: [question | lived moment | cheer] - [angle]):**
 
 > [comment]
 
-**Suggested Comment Option 2 (mode: casual - [angle]):**
+**Suggested Comment Option 2 (mode: [question | lived moment | cheer] - [angle]):**
 
 > [comment]
 
-**Suggested Comment Option 3 (mode: cheerleader - [angle]):**
+**Suggested Comment Option 3 (mode: [question | lived moment | cheer] - [angle]):**
 
 > [comment]
+
+> **Mode picker:**
+>
+> - **No relationship:** lead with at least one **question** option. Add a small **lived moment** without a takeaway and/or a specific **cheer**.
+> - **Some relationship:** lived moments earn more room; continuity is welcome.
+> - **Commenter mining:** lead with reaction + question. Never relay the principal's framing back.
+> - Never produce three "lived moment with a takeaway wrapper" options. That's the failure mode.
 
 **Product mention?** [Yes/No]
 **Story reply opportunity?** [Yes/No]
@@ -298,6 +368,12 @@ Use this structure:
 | Account | Profile | Update |
 |---------|---------|--------|
 | @handle | [path] | Added drafted reply record |
+
+## Loop Updates
+
+| Account | Comment Log | Candidate Queue | Ladder Update |
+|---------|-------------|-----------------|---------------|
+| @handle | Added Drafted row | queued_for_warmup unchanged | stage_2_queued |
 ```
 
 ---

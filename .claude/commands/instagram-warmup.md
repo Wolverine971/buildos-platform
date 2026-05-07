@@ -49,6 +49,9 @@ Read these first:
 - `/docs/marketing/social-media/instagram-voice-quick-ref.md`
 - `/docs/marketing/social-media/instagram-strategy.md`
 - `/docs/marketing/social-media/instagram-engagement-targets.md`
+- `/docs/marketing/social-media/discovery/instagram/candidates.md`
+- `/docs/marketing/social-media/comment-log.md`
+- `/docs/marketing/social-media/people/README.md`
 - `/docs/marketing/social-media/instagram-niche-expansion-research.md`
 - `/docs/marketing/strategy/adhd-productivity-os-strategy.md`
 - `/docs/marketing/social-media/instagram-profiles/README.md`
@@ -69,11 +72,13 @@ If an Instagram browser automation skill exists at `.claude/skills/instagram/SKI
 
 `/instagram-warmup` is **Stage 1 only**:
 
-1. Check notifications, stories, feed, profiles, hashtags, explore, and reels.
-2. Identify strong engagement opportunities.
-3. Look up account history and relationship context.
-4. Create or update the account profile when needed.
-5. Queue the best opportunities for `/instagram-reply`.
+1. Pull eligible candidates from Stage 0 discovery.
+2. Check notifications, stories, feed, profiles, hashtags, explore, and reels.
+3. Identify strong engagement opportunities.
+4. Look up account history and relationship context.
+5. Create or update the account profile when needed.
+6. Queue the best opportunities for `/instagram-reply`.
+7. Mark candidate handoff state so `/instagram-intel` can audit the loop.
 
 Do not draft final comments here.
 
@@ -87,12 +92,18 @@ Treat this workflow like a lightweight Instagram CRM for BuildOS.
 
 - `docs/marketing/social-media/instagram-engagement-targets.md`
   Use this as the universe of accounts, tiers, competitors, and discovery lanes.
+- `docs/marketing/social-media/discovery/instagram/candidates.md`
+  Use this as the Stage 0 discovery queue. Pull from it before scanning from scratch.
 - `docs/marketing/social-media/instagram-profiles/<handle>.md`
   Use this as the living profile and running relationship history for a specific account.
+- `docs/marketing/social-media/people/<canonical-id>.md`
+  Use this only for high-value cross-platform relationship targets.
 - `docs/marketing/social-media/daily-engagement/YYYY-MM-DD_instagram-warmup*.md`
   Use this as the sourcing log and daily reply queue.
 - `docs/marketing/social-media/daily-engagement/YYYY-MM-DD_instagram-replies*.md`
   Use this as the separate reply drafting and execution log.
+- `docs/marketing/social-media/comment-log.md`
+  Use this as the cross-run ledger for queued, drafted, posted, reacted, and converted touches.
 - `docs/marketing/social-media/buildos-platform-growth-plan-2026.md`
   Use this to judge how Instagram should support BuildOS growth.
 
@@ -178,8 +189,23 @@ Do not continue until the active account is confirmed.
 
 1. Read the required docs.
 2. Scan the last 7 days of Instagram warmup docs to avoid re-queuing the same posts.
-3. Scan relevant account profiles for repeat accounts you are likely to encounter.
-4. Build a seen-post list from recent warmup docs.
+3. Scan `docs/marketing/social-media/discovery/instagram/candidates.md` for `queued_for_warmup` candidates.
+4. Scan `docs/marketing/social-media/comment-log.md` for drafted, posted, skipped, and reacted touches.
+5. Scan relevant account profiles for repeat accounts you are likely to encounter.
+6. Build a seen-post list from recent warmup docs, reply docs, and the comment log.
+
+## Phase 1.5: Pull From Stage 0 Discovery Queue
+
+Before scanning live surfaces from scratch, inspect candidates marked `queued_for_warmup`.
+
+For each eligible candidate:
+
+1. Confirm the candidate still has a current post or comment thread worth inspecting.
+2. Read or create its Instagram profile.
+3. Check the comment log for prior touches and unresolved drafts.
+4. Either promote it into today's Reply Queue, demote it to `monitor`, or mark it `skip` with a reason.
+
+At least one queue slot should come from Stage 0 discovery when a credible candidate exists. If no discovery candidates are usable, note why in the warmup doc.
 
 ## Phase 2: Check Real-Time Signals First
 
@@ -201,25 +227,32 @@ If a real-time signal comes from an account with an existing profile, load that 
 
 ## Phase 3: Scan Priority Sources
 
-Scan in this order:
+BuildOS now leads with **"thinking environment for people making complex things"** — not ADHD-first. Scan in this order:
 
-1. Tier 1 ADHD and neurodivergent accounts
-2. Tier 1 solo founders, solopreneurs, AI builders, and PKM accounts
-3. Watering-hole accounts and their comment sections
-4. Competitors and adjacent products
-5. Hashtag pages
-6. Explore page
-7. Reels feed
+1. **Creator-founders, solopreneurs, and creator-builders** (Lane: `Solo`)
+2. **PKM / Second Brain / Notion / Obsidian** (Lane: `PKM`)
+3. **AI workflow builders + AI-native operators** (Lane: `AI`) — supporting lane on IG; sub-50K AI builder density is thin, prefer watering-hole mining
+4. **Watering-hole comment sections** — mine commenters, do NOT engage the account directly (Lane: `WateringHole`)
+5. **Course / creator-economy educators** (Lane: `Course`)
+6. **Authors / writers** (Lane: `Author`) — mostly watering hole; #amwriting and #writingcommunity Reels Recent are the discovery surface
+7. **Freelancers / agencies / creative operators** (Lane: `Freelance`)
+8. **ADHD / scattered-mind accounts** as Supporting Affinity ONLY (Lane: `ADHD`) — capped at 1/run unless direct relationship signal
+9. Competitors and adjacent products
+10. Hashtag pages (use the Daily list from `instagram-engagement-targets.md`)
+11. Explore page
+12. Reels feed
 
 Use `docs/marketing/social-media/instagram-engagement-targets.md` as the scanning map.
 
 During peer-growth discovery, look for:
 
-- similar-size or slightly larger creators
+- similar-size or slightly larger creators (sweet spot: 1K–15K; acceptable: 15K–50K)
 - adjacent creators whose commenters look like future BuildOS followers or customers
 - accounts with thoughtful recurring commenters instead of spammy engagement
 - creators who already use Stories, Reels, comments, and community prompts well
 - rising accounts with strong voice and clear audience pain overlap
+
+**Commenter-mining is a first-class queue source.** A reply to a high-signal commenter on a watering-hole post counts as one queue slot, not zero. The watering holes worth mining first: @gregisenberg (AI builders), @hamptonfounders (founders), @nathanbarry (creator-economy), @notionhq (PKM), @writeordiemag (authors), @designjoyhq (productized freelance), @thefuturishere (agencies).
 
 ## Phase 4: For Each Candidate Account, Load or Create Memory
 
@@ -253,6 +286,8 @@ Capture:
 - Why this account is strategically relevant now
 - Relationship intel
 - Past touchpoints summary
+- Lead class
+- Current ladder stage, if known
 - BuildOS mention fit
 - Reply angle for `/instagram-reply`
 - Queue status
@@ -261,16 +296,31 @@ Capture:
 
 Score using these factors:
 
-| Factor              | Weight | Criteria                         |
-| ------------------- | ------ | -------------------------------- |
-| Freshness           | 3x     | Newer is better                  |
-| Natural fit         | 3x     | Clear way to add value           |
-| Tone match          | 2x     | You can sound native to the room |
-| Comment competition | 2x     | Lower is better                  |
-| Relationship value  | 2x     | Worth building over time         |
-| Mention fit         | 1x     | Is a BuildOS angle naturally there? |
+| Factor               | Weight | Criteria                                                                      |
+| -------------------- | ------ | ----------------------------------------------------------------------------- |
+| Audience fit         | 4x     | Creators / builders / operators with fragmented project-context pain          |
+| Natural DJ angle     | 3x     | DJ can speak from lived building experience without performing expertise     |
+| Freshness            | 3x     | <24h ideal, <6h excellent                                                     |
+| Comment visibility   | 2x     | Low/moderate competition or high-signal threads                               |
+| Relationship value   | 2x     | Worth repeated attention                                                       |
+| Discovery value      | 2x     | Opens a new audience lane or commenter graph                                  |
+| BuildOS category fit | 1x     | Thinking environment / project memory / context-compounds can be hinted       |
 
-Select the top 5-7 opportunities for the reply queue.
+**ADHD content receives no automatic priority boost.** If a post is only ADHD-awareness content, score it down unless there is a clear creator/builder/operator angle.
+
+Select the top 5–7 opportunities for the reply queue.
+
+### Lane balance check (run after selecting the queue)
+
+Tag every queued item with a lane label (`Solo`, `PKM`, `AI`, `Course`, `Author`, `Freelance`, `WateringHole`, `ADHD`).
+
+Hard requirements:
+
+- **≥4 of 5–7 queued items must be non-ADHD.**
+- **≤1 `ADHD` item per run**, unless there is a direct relationship signal (the account replied to / liked / followed @djwayne3, or there is a confirmed prior thread).
+- A run with three `Solo`, two `PKM`, one `AI`, one `WateringHole`, zero `ADHD` is healthy. A run with four `ADHD` items is broken — re-balance before queueing.
+
+If the queue fails either requirement, drop the lowest-scoring ADHD items and replace them with the next-best non-ADHD opportunities surfaced during Phase 3.
 
 ---
 
@@ -279,9 +329,11 @@ Select the top 5-7 opportunities for the reply queue.
 ### Include
 
 - Posts from the last 24 hours, with preference for `<6h`
-- Low-to-moderate comment competition
-- Clear audience overlap with BuildOS's current Instagram lanes
-- Peer or strategic accounts worth repeated engagement
+- Low-to-moderate comment competition (high-signal threads OK)
+- Clear audience overlap with BuildOS's current Instagram lanes (Solo, PKM, AI, Course, Author, Freelance)
+- Peer or strategic accounts worth repeated engagement (sweet spot: 1K–15K; acceptable: 15K–50K with thoughtful comments)
+- Commenter-mining replies on watering-hole posts (count as one queue slot)
+- First-commenter windows on non-ADHD lane accounts: 0–2 comment fresh posts get priority
 - Competitor posts when the comment section offers learning or visibility
 
 ### Skip
@@ -291,14 +343,28 @@ Select the top 5-7 opportunities for the reply queue.
 - Posts where the only viable angle is a forced product plug
 - Highly crowded posts where a new comment has little visibility value
 - Emotional vulnerability posts where BuildOS mention would feel opportunistic
+- Pure quote pages, faceless repost accounts, listicle "AI tools" pages
+- Hustle-guru pages, meme-only accounts, brand accounts with dead comments
+- Hard CTA-funnel accounts ("Reply BOOK / Comment MASTERCLASS / Drop DESIGN below") with bot-bait engagement
+- 150K+ accounts as direct comment targets — convert to watering-hole mining instead
+- Any account on the persistent skip list in `instagram-engagement-targets.md` (e.g., @aifirstsolopreneurs at 102 followers, @justyn.ai CTA-bait pattern)
+
+### ADHD Lane Cap
+
+- ADHD content gets no automatic priority boost
+- ≤1 ADHD-first queue item per run, unless there is a direct relationship signal
+- @danidonovan: Competitor Intel only — no engagement on her account
+- @theadhdtools: Monitor only (direct competitor, anemic engagement)
 
 ### Discovery Rule
 
 If a newly discovered account is clearly worth repeated attention:
 
 1. Create or update a profile
-2. Add it to `New Accounts Discovered`
+2. Add it to `New Accounts Discovered` with the lane tag (`Solo` / `PKM` / `AI` / `Course` / `Author` / `Freelance`)
 3. Note whether `instagram-engagement-targets.md` should be updated later
+
+If a discovered account is clearly disqualified (sub-1K dead account, bot-bait, faceless repost), add it to the skip list candidates section in the warmup doc so it doesn't get rediscovered next run.
 
 Do not force a target-doc update during the scan unless the fit is obvious.
 
@@ -331,17 +397,21 @@ Use this structure:
 
 ## Priority Summary
 
-| # | Account | Topic | Age | Comments | Opp Type | Mention Fit | Score | Profile | Queue |
-|---|---------|-------|-----|----------|----------|-------------|-------|---------|-------|
-| 1 | @handle | [topic] | Xh | X | [type] | [0/1/2] | XX | [path] | Queued |
+| # | Account | Lane | Topic | Age | Comments | Opp Type | Mention Fit | Score | Profile | Queue |
+|---|---------|------|-------|-----|----------|----------|-------------|-------|---------|-------|
+| 1 | @handle | [Solo/PKM/AI/Course/Author/Freelance/WateringHole/ADHD] | [topic] | Xh | X | [type] | [0/1/2] | XX | [path] | Queued |
+
+**Lane balance:** Solo X / PKM X / AI X / Course X / Author X / Freelance X / WateringHole X / ADHD X → [PASS / FAIL]
+
+> PASS requires: ≥4 of 5–7 items non-ADHD AND ≤1 ADHD item. FAIL = re-balance before queueing.
 
 ---
 
 ## Reply Queue
 
-| # | Account | Topic | Post Link | Opp Type | Strategic Role | Mention Fit | Profile | Reply Angle |
-|---|---------|-------|-----------|----------|----------------|-------------|---------|-------------|
-| 1 | @handle | [topic] | [URL] | [type] | [role] | [0/1/2] | [path] | [brief angle] |
+| # | Account | Lane | Topic | Post Link | Opp Type | Strategic Role | Mention Fit | Profile | Reply Angle |
+|---|---------|------|-------|-----------|----------|----------------|-------------|---------|-------------|
+| 1 | @handle | [lane] | [topic] | [URL] | [type] | [role] | [0/1/2] | [path] | [brief angle] |
 
 ---
 
@@ -426,6 +496,7 @@ Present a concise summary to the user:
 Instagram warmup complete for [date].
 
 Opportunities queued: X
+Lane balance: Solo X / PKM X / AI X / Course X / Author X / Freelance X / WateringHole X / ADHD X → [PASS/FAIL]
 Profiles created or updated: X
 New accounts discovered: X
 Competitor notes: [Yes/No]

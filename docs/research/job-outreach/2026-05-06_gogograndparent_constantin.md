@@ -18,31 +18,33 @@ Companion to:
 
 ---
 
-## Message draft (v2 — shorter, conversation starter)
+## Message draft (v3 — rules-aligned)
 
 > Hi Constantin,
 >
-> DJ Wayne here. Saw the Backend Engineer role and wanted to reach out.
+> Saw the Backend Engineer role and wanted to reach out.
 >
-> The mission genuinely lands for me — helping elderly folks and grandparents keep their independence at home is the kind of product I'd be proud to work on.
+> I spent three years at Curri (YC S19) building and owning the third-party delivery integration layer — Lyft, Uber, DoorDash, and four regional carriers. Reverse-engineered each partner's API by hand and built reconciliation across inconsistent event coverage. So when I read GoGo's pitch about tailoring existing on-demand apps to the needs of older adults, that felt really close to what I worked on.
 >
-> On the work: I spent three years at Curri (YC S19) building and owning the third-party delivery integration layer — Lyft, Uber, DoorDash, and four regional carriers. Reverse-engineered each partner's API by hand and built reconciliation across inconsistent event coverage. GoGo's pitch — tailoring existing on-demand apps to the needs of older adults — feels really close to what I shipped.
+> I'm currently founding BuildOS, an AI-native productivity tool with 80+ beta users (Node.js + TypeScript + Postgres). I have Vue 2/3 + GraphQL from earlier roles — it's been a minute, but I can dust those off quickly.
 >
-> I'm currently founding BuildOS, an AI-native productivity tool (Node.js + TypeScript + Postgres, 80+ beta users). I have Vue 2/3 + GraphQL from earlier roles — it's been a minute, but I can dust those off quickly.
+> Looking for high ownership, close collaboration with PM and project managers, and weekly ship cadence.
 >
-> High ownership, close collaboration with PM and project managers, weekly ship cadence — that's the kind of team I've been looking for. Would love to chat if there's interest.
+> Would love to chat if you think I would be a good fit.
 >
-> — DJ
+> Thanks,
+> DJ
 
 ---
 
-## Why this draft (v2 assessment notes)
+## Why this draft (v3 assessment notes)
 
-- **Mission first, not Curri.** Per DJ's note that he genuinely cares about the elderly-independence mission. Leading with that signals authentic interest before the resume pitch lands.
-- **Curri integration story is now one paragraph.** Bridges directly to "tailoring existing on-demand apps for older adults" — their language, not ours.
-- **Vue gap is honest.** "It's been a minute, but I can dust those off quickly" is humble without being apologetic.
-- **Closes on what DJ wants.** High ownership, PM/project manager collaboration, weekly ship cadence — all three are explicit in their listing.
-- **Conversation starter, not a full pitch.** ~180 words. Enough signal to get a reply, not enough to overload.
+- **Aligned with `cold-outreach-rules.md`.** Stripped the "the mission genuinely lands for me" line — flagged as anti-pattern. Curri → "tailoring existing on-demand apps for older adults" carries the bridge on its own; no mission paragraph needed.
+- **Stripped "DJ Wayne here." self-intro.** Signature at the bottom is enough, matches the reference message style.
+- **Stripped "On the work:" transition.** Goes straight into the Curri credential conversationally.
+- **Personal alignment with the elderly-independence mission is real but intentionally not in the message.** It's not a concrete factual overlap (no specific lived experience cited), so per the rules it's skipped. If it comes up in conversation, share it then.
+- **Vue gap honest.** Same as before — "it's been a minute, but I can dust those off quickly."
+- **~140 words.** Tighter than v2.
 
 ---
 

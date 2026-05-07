@@ -4,8 +4,24 @@
 
 **Account:** @djwayne3
 **Current Followers:** _[UPDATE AFTER FIRST SCAN]_
-**Target Range for Peer Accounts:** Accounts with similar or slightly larger followings
-**Last Updated:** 2026-03-23 (verified all accounts, added @thefuturishere + @flux.academy as watering holes, removed dead accounts, corrected @themindgeek follower count, removed @danshipper)
+**Target Range for Peer Accounts:** Sweet spot 1K–15K; acceptable 15K–50K with thoughtful comments; 150K+ as watering-hole mining only
+**Last Updated:** 2026-05-06 (anti-ADHD-first pivot — promoted Creator-Founders/Solopreneurs to PRIMARY, demoted ADHD to Supporting Affinity, added PKM/Author/Course/Freelance lanes, added persistent Skip List per `instagram-non-adhd-discovery-2026-05-06.md`)
+
+---
+
+## Strategic Pivot Summary
+
+BuildOS leads with **"thinking environment for people making complex things"** — not ADHD-first. The Instagram audience priority is now:
+
+1. Creator-founders, solopreneurs, and creator-builders (PRIMARY)
+2. PKM / Second Brain / Notion / Obsidian
+3. AI workflow builders / AI-native operators (Supporting — IG density is thin, prefer watering-hole mining)
+4. Course creators / creator-economy educators
+5. Authors / writers (mostly watering-hole mining via #amwriting)
+6. Freelancers / agencies / creative operators
+7. ADHD / scattered-mind accounts (Supporting Affinity ONLY — capped at 1/run)
+
+ADHD content gets no automatic priority boost. The warmup command enforces ≥4 of 5–7 queued items must be non-ADHD; ≤1 ADHD item per run unless direct relationship signal.
 
 ---
 
@@ -23,143 +39,177 @@ Unlike Twitter/LinkedIn where you engage with big accounts to get visibility, In
 1. **Same size** (0.5x-2x your followers) - Peer engagement, mutual growth
 2. **Slightly bigger** (2x-10x your followers) - Aspirational peers, still accessible
 3. **Much bigger** (10x-50x) - Strategic engagement, build visibility
-4. **Mega accounts** (50x+) - Monitor and engage selectively on viral content
+4. **Mega accounts** (50x+) - Watering hole only — mine commenters, don't engage account directly
 
 ---
 
 ## Tier 1 - Core Engagement Targets
 
-### ADHD/Neurodivergent Creators (PRIMARY)
+### 1. Creator-Founders, Solopreneurs, Builders (PRIMARY)
 
-> The ADHD community on Instagram is massive, tight-knit, and highly engaged. This is where BuildOS's audience lives.
+> The actual primary audience for BuildOS — operators with real project load who feel context-fragmentation pain. Mix of peer-tier direct engagement and bigger watering-hole mining.
 
-| Account                | Followers | Content Focus                                             | Engagement Angle                                                                                                                                                                                                                         | Verified   |
-| ---------------------- | --------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| @danidonovan           | ~130K     | ADHD comics, Anti-Planner                                 | Peer (also a competitor - respect, don't attack)                                                                                                                                                                                         | 2026-03-12 |
-| @howtoadhd             | 260K      | ADHD education, Jessica McCabe                            | Educational, supportive community. Bio: "Building a toolbox of techniques for tackling ADHD"                                                                                                                                             | 2026-03-12 |
-| @the_mini_adhd_coach   | 633K      | ADHD explained with cute doodles                          | Infographic-style ADHD education. Diagnosed at 29. NEW Book: ADHD & Emotion                                                                                                                                                              | 2026-03-12 |
-| @adhd_alien            | 137K      | ADHD comics and illustrations (Pina, she/they)            | Visual ADHD content, relatable. Book releasing Sept 2026. Followed by the_mini_adhd_coach                                                                                                                                                | 2026-03-15 |
-| @strugglecare          | 450K      | ADHD home management, KC Davis                            | "Struggle care" approach. Author of How to Keep House While Drowning. TikTok is @domesticblisters                                                                                                                                        | 2026-03-12 |
-| @connor.dewolfe        | 817K      | ADHD awareness, Actor, "w/ adhd DAVE"                     | Big account, very community-oriented. Active Stories regularly. Story reply = DM relationship opportunity                                                                                                                                | 2026-03-15 |
-| @the_adhd_entrepreneur | 144K      | ADHD Business Builder (Ari Scott)                         | Verified. "Scale your ADHD owned business." Followed by @adhd_alien                                                                                                                                                                      | 2026-03-12 |
-| @adhdcoachsheila       | 117K      | ADHD Coach, Neurodiversity Educator (Sheila Henson)       | Verified. "Shame-free support for minds that work differently." Highlights: Task Initiation, AuDHD, Time Agnosia                                                                                                                         | 2026-03-12 |
-| @an.nalogy             | 82K       | ADHD Productivity & Lifestyle (Anna)                      | "For the ambitious but overwhelmed." MSc Neuroscience + ADHD. Neuroscience-informed tools                                                                                                                                                | 2026-03-12 |
-| @carenmagill           | 11.3K     | ADHD Coach, Productivity & Planning                       | "I help busy ADHD brains plan + follow through." 951 posts, very active. Peer-level size                                                                                                                                                 | 2026-03-12 |
-| @adhdjesse             | 127K      | ADHD Motivation Mastery, Author (Jesse J. Anderson)       | Author of "Extra Focus: The Quick Start Guide to Adult ADHD." Followed by adhd_alien, the_mini_adhd_coach, themindgeek. Very aligned with BuildOS philosophy (momentum > willpower). 0 comments on recent posts = engagement opportunity | 2026-03-15 |
-| @adhd_understood       | 155K      | ADHD & Neuro-Educational Consultant (Donna Giachino M.Sc) | Strength-based ADHD education. Followed by connor.dewolfe and the_mini_adhd_coach. Has "Apps" Story highlight - may review ADHD productivity tools. Clinical authority                                                                   | 2026-03-15 |
+| Account          | Followers | Content Focus                                         | Engagement Angle                                                                                                        | Verified   |
+| ---------------- | --------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- |
+| @nathanbarry     | 12K       | Founder of Kit (formerly ConvertKit); creator-economy | **Underleveraged on IG** (1M+ on X). Sweet-spot peer-tier; comments draw real founders. Add as weekly touchpoint.       | 2026-05-06 |
+| @hamptonfounders | 13K       | Hampton founders peer group (Sam Parr's community)    | Peer-graph mining. Comments on founder-spotlights are other Hampton members — capture 3–5 sub-100K founder handles/run. | 2026-05-06 |
+| @thejustinwelsh  | 89K       | Diversified Solopreneur, OS for One                   | Peer/aspirational. Active comment section of solo operators.                                                            | 2026-05-06 |
+| @jayclouse       | 11K       | Creator Science newsletter + podcast                  | Peer-tier. Comments are creator-educators with their own newsletters. Both direct engage AND mine commenters.           | 2026-05-06 |
+| @leaturnerholt   | 22.1K     | Solopreneur tips, small business community            | Sweet spot. Owns @theholtcommunity. Has podcast, events, active community.                                              | 2026-03-22 |
+| @dickiebush      | 24.3K     | Digital writing, Ship 30, AI writing, personal growth | Sweet spot. Already followed by @djwayne3. 877 posts. Highlights: Ship 30, AI Writing.                                  | 2026-03-22 |
+| @chloedigital.ai | 1.7K      | AI Tips & Productivity (Chloe)                        | Founder @ Roleefy/Inddie. Peer-level, active. "Vibe Coding to 6 Figures."                                               | 2026-03-12 |
+| @cassidoo        | 1.0K      | Cassidy Williams — developer advocate, indie tools    | Peer-tier on IG (large on X). Comments thoughtful, not engagement-bait.                                                 | 2026-05-06 |
+| @startuprules    | 1.4K      | Startup growth, founder tips, 3x founder / 1 exit     | Peer-level. Open to collabs (DM in bio).                                                                                | 2026-03-22 |
+| @thesamparr      | 87.8K     | Founder stories, Hampton Founders peer groups         | Verified. Comment section = startup founders. Owns @hamptonfounders.                                                    | 2026-03-22 |
+| @matthgray       | ~966K     | Founder OS, content systems                           | Watering hole — mine commenters (founders asking "how do you actually do this").                                        | 2026-05-06 |
+| @hormozi         | ~10M      | Acquisition.com, business operations                  | Watering hole only.                                                                                                     | 2026-05-06 |
+| @codiesanchez    | ~1.5M     | Contrarian Thinking, business buying                  | Watering hole only.                                                                                                     | 2026-05-06 |
+| @sahilbloom      | ~1M       | Curiosity Chronicle, decision-making frameworks       | Watering hole only.                                                                                                     | 2026-05-06 |
+| @jennakutcher    | ~1M       | Goal Digger Podcast, course creator                   | Watering hole only.                                                                                                     | 2026-05-06 |
+| @indie_hackers   | 8.3K      | Official Indie Hackers community                      | Sweet-spot watering hole. Comments thoughtful per IH discussion-thread DNA.                                             | 2026-05-06 |
 
-**How to engage:**
+### 2. PKM / Second Brain / Notion / Obsidian
 
-- Be a genuine community member, NOT a product shill
-- Share your own ADHD-adjacent experiences (wife thinks you might have it, scattered mind tendencies)
-- Validate struggles, celebrate wins
-- NEVER mention BuildOS on emotional/struggle posts
+> The highest-density peer-tier lane discovered in the 2026-05-06 research pass. Sub-5K Notion creators are reachable, post sweet-spot content weekly, and bridge cleanly to BuildOS's "messy thinking → structured work" promise.
 
-### Productivity & Organization Creators
+| Account                  | Followers | Content Focus                                           | Engagement Angle                                                                                                          | Verified   |
+| ------------------------ | --------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| @mariepoulin             | 4.8K      | Notion Mastery course; life systems; AuDHD-aware        | **Highest single-account leverage.** First-pass mis-sized at 30K+ — actually 4.8K. Bridge: PKM + ADHD + creator-business. | 2026-05-06 |
+| @theproductivitypixie    | 3.5K      | Mel — research-backed productivity, Notion templates    | Sweet-spot peer-tier. "Research-backed" framing closer to BuildOS voice than guru voice. 276 posts → consistent.          | 2026-05-06 |
+| @notionwithro            | 8.5K      | Rosie — Notion creator, digital planners                | Confirmed sweet-spot peer.                                                                                                | 2026-05-06 |
+| @notion_for_productivity | 3.9K      | Tuong — Notion templates + PhD life content             | Sweet-spot peer. Cross-niche (academia + Notion).                                                                         | 2026-05-06 |
+| @mattragland             | 3.8K      | Notion + analog productivity; podcast host              | Strong fit. Known peer of @jayclouse. Active commenter on creator-economy posts.                                          | 2026-05-06 |
+| @notionflows             | 1.3K      | Roxana Rodriguez — Certified Notion Consulting Partner  | Tiny but exact-niche. Solo Notion consultant = workflow-credibility commenter.                                            | 2026-05-06 |
+| @jodigrahamcoach         | 1.6K      | Jodi — Notion & Productivity Expert; coaching           | Sweet-spot peer-tier. Coaching-lane bridge to course-creator lane.                                                        | 2026-05-06 |
+| @_obsidian.md_           | 1,085     | Obsidian tips, note-making, second brain                | Niche-perfect. DJ's Obsidian origin story lands here. Run by @shuvangkar_das.                                             | 2026-03-22 |
+| @heyeaslo                | ~370K     | Notion templates, PKM systems                           | Watering hole — mine commenters (PKM users + Notion template buyers).                                                     | 2026-05-06 |
+| @tomfrankly              | 104K      | Thomas Frank — productivity YouTuber, Notion power user | Watering hole — mine commenters only.                                                                                     | 2026-05-06 |
 
-| Account      | Followers | Content Focus                                     | Engagement Angle                                                                                                                | Verified           |
-| ------------ | --------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| @notionhq    | 443K      | Notion, AI workspace features                     | Competitor + watering hole. 318 posts. Mine comment sections for PKM people. Bio: "The AI workspace that works while you sleep" | 2026-03-22         |
-| @aliabdaal   | 1.1M      | Productivity, LifeOS, Feel-Good Productivity book | Watering hole. Has "LifeOS" product (parallel to BuildOS). Huge comment section of tool-curious people                          | 2026-03-22         |
-| @mattdavella | ~1.5M     | Minimalism, productivity, habits                  | Big but posts high-quality discussion-worthy content                                                                            | From original list |
+**PKM peer week:** Run a single warmup where 4 of 5–7 queue items come from this list (target the sub-10K accounts). Track whether the lane returns relationship signal (replies, story tags, DMs) within 2–3 cycles. This is the most opinionated experiment recommended by the 2026-05-06 research.
 
-### Solo Founders / Building in Public
+### 3. AI Workflow Builders / AI-Native Operators (Supporting Lane)
 
-| Account          | Followers | Content Focus                                          | Engagement Angle                                                                                       | Verified   |
-| ---------------- | --------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ---------- |
-| @dickiebush      | 24.3K     | Digital writing, Ship 30, AI writing, personal growth  | Sweet spot. Already followed by djwayne3. 877 posts. Highlights: Ship 30, AI Writing                   | 2026-03-22 |
-| @leaturnerholt   | 22.1K     | Solopreneur tips, small business community             | Sweet spot. 451 posts. Owns @theholtcommunity. Has podcast, events, active community                   | 2026-03-22 |
-| @justyn.ai       | 92.2K     | AI automation for solo founders, Reels, ChatGPT agents | Verified. "Helping entrepreneurs save 10+ hrs/wk with AI." Comment section full of solo founders       | 2026-03-22 |
-| @thesamparr      | 87.8K     | Founder stories, Hampton Founders peer groups          | Verified. 1,009 posts, very active. Owns @hamptonfounders. Comment section = startup founders          | 2026-03-22 |
-| @startuprules    | 1.4K      | Startup growth, founder tips, 3x founder / 1 exit      | Peer-level. 163 posts with Reels. Open to collabs (DM me in bio). Good for authentic engagement        | 2026-03-22 |
-| @chloedigital.ai | 1.7K      | AI Tips & Productivity (Chloe)                         | Founder @ Roleefy/Inddie. Posts about Claude, AI tools, "Vibe Coding to 6 Figures." Peer-level, active | 2026-03-12 |
-| ~~@danshipper~~  | 467       | Private account, not active on IG                      | **REMOVED** — only 467 followers, private. Lives on X/Substack.                                        | 2026-03-23 |
+> IG density for sub-50K AI builders is genuinely thin — the audience lives on X and YouTube. Keep this lane but treat it as **mostly watering-hole mining via @gregisenberg**, plus a small set of peer-tier AI-native operators who happen to also be on IG.
 
-### Solopreneur / Creator Economy
+| Account          | Followers | Content Focus                                        | Engagement Angle                                                                                                                     | Verified   |
+| ---------------- | --------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| @gregisenberg    | 105K      | Startup founders, AI-age builders. CEO @latecheckout | **Primary AI-lane mining target.** Already followed by @djwayne3. Comments include real builders with bios linked to repos/products. | 2026-03-22 |
+| @chloedigital.ai | 1.7K      | AI Tips & Productivity (also in Solopreneur lane)    | Peer-tier AI-native operator. Cross-niche.                                                                                           | 2026-03-12 |
+| @anthropicai     | ~200K     | Claude, AI safety                                    | Monitor; engage on productivity/Claude-workflow announcements.                                                                       | _existing_ |
+| @openai          | ~5M       | AI product updates                                   | Monitor; engage on relevant announcements only.                                                                                      | _existing_ |
 
-| Account        | Followers | Content Focus                       | Engagement Angle                                                                      | Verified   |
-| -------------- | --------- | ----------------------------------- | ------------------------------------------------------------------------------------- | ---------- |
-| @leaturnerholt | 22.1K     | Solopreneur tips, community founder | Sweet spot. Owns @theholtcommunity. Podcast + events. Audience = solo business owners | 2026-03-22 |
-| @startuprules  | 1.4K      | Startup growth, 3x founder, Reels   | Peer-level, open to collabs. Comment authentically about building                     | 2026-03-22 |
+**Lane note:** the 2026-05-06 research recommended dropping this lane from IG entirely. DJ chose to keep it as Supporting. That means: no aggressive AI-builder hunting on IG; rely on @gregisenberg watering-hole mining and treat sub-50K AI builders as opportunistic.
 
-### PKM / Second Brain / Notion (NEW NICHE)
+### 4. Course Creators / Creator-Economy Educators
 
-| Account        | Followers | Content Focus                            | Engagement Angle                                                                       | Verified   |
-| -------------- | --------- | ---------------------------------------- | -------------------------------------------------------------------------------------- | ---------- |
-| @_obsidian.md_ | 1,085     | Obsidian tips, note-making, second brain | Small but niche-perfect. Your Obsidian origin story lands here. Run by @shuvangkar_das | 2026-03-22 |
+> New lane added in 2026-05-06 pivot. Course creators feel curriculum-organization pain natively.
 
-### AI for Entrepreneurs (NEW NICHE)
+| Account         | Followers | Content Focus                                     | Engagement Angle                                                                            | Verified   |
+| --------------- | --------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------- |
+| @amyporterfield | ~1M       | Online course expert, Online Marketing Made Easy  | Watering hole. Comments are course creators / digital product operators.                    | 2026-05-06 |
+| @jayclouse      | 11K       | Creator Science (also in Solopreneur lane)        | Peer-tier direct engage. Comment section = creator-educators running courses + newsletters. | 2026-05-06 |
+| @aliabdaal      | 1.1M      | Productivity, LifeOS, Feel-Good Productivity book | Watering hole. Has "LifeOS" product (parallel to BuildOS).                                  | 2026-03-22 |
 
-| Account    | Followers | Content Focus                                          | Engagement Angle                                                                                  | Verified   |
-| ---------- | --------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------- | ---------- |
-| @justyn.ai | 92.2K     | AI automation for solo founders, ChatGPT agents, Reels | Verified. Cross-niche (solo founder + AI). "Context > prompts" angle fits. Active comment section | 2026-03-22 |
+### 5. Authors / Writers (Mostly Watering Hole)
+
+> Author content on IG is structurally bookstagram-shaped (covers, aesthetics, quotes), not process-shaped. Process content lives on YouTube + Substack + X. Strategy: **mine #amwriting and watering-hole comment sections, don't pre-curate a list.**
+
+| Account             | Followers | Content Focus                                         | Engagement Angle                                                                                           | Verified   |
+| ------------------- | --------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------- |
+| @writeordiemag      | 23K       | Lit magazine — fiction, essays, interviews, workshops | **Best author watering hole found.** Comments are working writers, not bookstagrammers.                    | 2026-05-06 |
+| @davidperell        | 26K       | Write of Passage course; Write to think               | Sweet-spot for direct engagement. He's a writer-creator-founder bridge. IG underleveraged vs his X (474K). | 2026-05-06 |
+| @creativenonfiction | (mid)     | Creative Nonfiction magazine                          | Nonfiction-specific watering hole — adjacent to "thinking environment" framing.                            | 2026-05-06 |
+| @nyucreativewriting | 16K       | NYU Creative Writing program                          | Institutional watering hole; commenters are MFA-track writers and educators.                               | 2026-05-06 |
+| @nicolascole77      | 94K       | Ship 30 cofounder; writer-founder                     | Watering hole. Comments = working writers, ghost-writers, cohort grads.                                    | 2026-05-06 |
+| @jamesclear         | ~5M       | Atomic Habits author                                  | Watering hole only — mine commenters.                                                                      | 2026-05-06 |
+| @markmanson         | ~1M       | Subtle Art author                                     | Watering hole only — mine commenters.                                                                      | 2026-05-06 |
+| @ryanholiday        | ~1M       | Stoic / Daily Stoic                                   | Watering hole only.                                                                                        | 2026-05-06 |
+| @chasejarvis        | ~500K     | Creative Calling, photographer-founder                | Watering hole — creator-founder commenters.                                                                | 2026-05-06 |
+
+**Author-lane mining protocol:** spend the first 10 minutes of any warmup walking `#amwriting Recent Reels` and `#writingcommunity Recent Reels`. Drop any sub-50K creator showing actual writing surface (Scrivener, Notion, Obsidian, longhand) into the queue. This single behavior unblocks the author lane more than list-curation.
+
+### 6. Freelancers / Agencies / Creative Operators
+
+> Smaller-volume direct lane; primarily watering-hole mining. The "one operator, many client projects" framing is a clean BuildOS fit.
+
+| Account         | Followers | Content Focus                                                    | Engagement Angle                                                                                        | Verified   |
+| --------------- | --------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- | ---------- |
+| @designjoyhq    | ~68K      | Brett Williams — productized design service ($1M one-man agency) | Watering hole. Comments are solo designers + productized-service operators. Brett = model BuildOS user. | 2026-05-06 |
+| @thefuturishere | 528K      | Chris Do's "The Futur" — creative business education             | Watering hole. Freelancers + agency owners in comments.                                                 | 2026-03-23 |
+| @thechrisdo     | _(check)_ | Chris Do — personal account                                      | Watering hole. Adjacent to @thefuturishere.                                                             | 2026-05-06 |
+| @flux.academy   | 55.2K     | Web design school. Freelancer audience.                          | Watering hole — freelancer commenters.                                                                  | 2026-03-23 |
+| @mattdavella    | ~1.5M     | Minimalism, productivity, habits (creator-operator)              | Watering hole only — discussion-worthy content but too big for direct engagement.                       | _existing_ |
 
 ---
 
-## Tier 2 - Strategic Engagement
+## Tier 2 - Watering Holes & Adjacent Audiences
 
-### Watering Holes (mine comment sections — don't engage the account directly)
+### Productivity / LifeOS Watering Holes
 
-> These accounts are too big for direct engagement to matter, but their comment sections are full of exactly the people BuildOS should reach. Visit their latest posts weekly, engage with the _commenters_, not the account.
+> Mine commenters; don't engage the account directly. These accounts are too big for direct engagement to matter, but their commenters are the people BuildOS should reach.
 
-| Account         | Followers | Where to find your people                                                                     | Verified   |
-| --------------- | --------- | --------------------------------------------------------------------------------------------- | ---------- |
-| @thedankoe      | 1.7M      | Solo builders, one-person business people. Building @edendotso + @drink.sonder                | 2026-03-22 |
-| @gregisenberg   | 105K      | Startup founders, AI-age builders. CEO @latecheckout. Already followed by djwayne3            | 2026-03-22 |
-| @aliabdaal      | 1.1M      | Productivity tool enthusiasts, PKM people. Has "LifeOS" product                               | 2026-03-22 |
-| @notionhq       | 443K      | PKM/second brain enthusiasts. Your "second brain graveyard" story lands in these comments     | 2026-03-22 |
-| @garyvee        | ~15M      | Multi-project hustlers, creative entrepreneurs. Engage the commenters, not Gary               | 2026-03-22 |
-| @thefuturishere | 528K      | Chris Do's "The Futur" — creative business education. Freelancers + agency owners in comments | 2026-03-23 |
-| @flux.academy   | 55.2K     | Web design school. Freelancer audience. 858 posts.                                            | 2026-03-23 |
-
-### AI & Tech Creators
-
-| Account      | Followers | Content Focus      | Engagement Angle                          | Verified           |
-| ------------ | --------- | ------------------ | ----------------------------------------- | ------------------ |
-| @openai      | ~5M       | AI product updates | Monitor, engage on relevant announcements | From original list |
-| @anthropicai | ~200K     | Claude, AI safety  | Monitor, engage on productivity angles    | From original list |
+| Account    | Followers | Where to find your people                                                                                  | Verified   |
+| ---------- | --------- | ---------------------------------------------------------------------------------------------------------- | ---------- |
+| @notionhq  | 443K      | PKM/second brain enthusiasts. Plan Mode / AI feature posts surface PKM users complaining about complexity. | 2026-03-22 |
+| @aliabdaal | 1.1M      | Productivity tool enthusiasts, PKM people. Has "LifeOS" product.                                           | 2026-03-22 |
+| @thedankoe | 1.7M      | Solo builders, one-person business people.                                                                 | 2026-03-22 |
+| @garyvee   | ~15M      | Multi-project hustlers, creative entrepreneurs. Engage commenters, not Gary.                               | 2026-03-22 |
 
 ### Mental Health & Wellness (Adjacent to ADHD)
 
-| Account             | Followers | Content Focus                         | Engagement Angle                                                                         |
-| ------------------- | --------- | ------------------------------------- | ---------------------------------------------------------------------------------------- | ---------- |
-| @nedratawwab        | ~1.5M     | Boundaries, mental health             | Adjacent audience, respect the space                                                     |
-| @lisaoliveratherapy | ~500K     | Therapy insights                      | Mental health awareness                                                                  |
-| @themindgeek        | 313K      | Sarah Crosby, psychotherapist, author | Verified. Already followed by build.os. Too big for peer engagement — watering hole only | 2026-03-23 |
-
-### ADHD Humor & Community
-
-| Account           | Followers | Content Focus              | Engagement Angle                                                                | Verified   |
-| ----------------- | --------- | -------------------------- | ------------------------------------------------------------------------------- | ---------- |
-| @adhd_memetherapy | 1.9M      | ADHD Meme Therapy (Behrad) | Mega account. Already followed by djwayne3. Engage selectively on viral content | 2026-03-12 |
-
-### ADHD Adjacent & AuDHD (Monitor)
-
-| Account           | Followers | Content Focus                                     | Engagement Angle                                                                                                    | Verified   |
-| ----------------- | --------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ---------- |
-| @the.adhd.friend  | 173K      | AuDHD awareness, neurodivergent (The ADHD Friend) | Currently ON HIATUS. Followed by adhd_alien and the_mini_adhd_coach. Monitor for return - high engagement potential | 2026-03-15 |
-| @adhdadultjourney | TBD       | ADHD Adult Journey                                | Adult ADHD content. Suggested via @adhdcoachsheila similar accounts                                                 | 2026-03-15 |
-| @shimmer.care     | TBD       | Shimmer - ADHD Coaching platform                  | Appears to be an ADHD coaching tech product/app. Potential competitor or partnership. Investigate further           | 2026-03-15 |
+| Account             | Followers | Content Focus                         | Engagement Angle                                  | Verified   |
+| ------------------- | --------- | ------------------------------------- | ------------------------------------------------- | ---------- |
+| @nedratawwab        | ~1.5M     | Boundaries, mental health             | Adjacent audience, respect the space.             | _existing_ |
+| @lisaoliveratherapy | ~500K     | Therapy insights                      | Mental health awareness.                          | _existing_ |
+| @themindgeek        | 313K      | Sarah Crosby, psychotherapist, author | Already followed by build.os. Watering hole only. | 2026-03-23 |
 
 ---
 
-## Tier 3 - Discovery & Monitor
+## Tier 3 - Supporting Affinity & Competitor Monitoring
 
-### Creator Economy
+### ADHD/Neurodivergent Creators (Supporting Affinity Lane)
 
-| Account    | Followers | Content Focus                         | Why Monitor                                                            |
-| ---------- | --------- | ------------------------------------- | ---------------------------------------------------------------------- |
-| @garyvee   | ~15M      | Entrepreneurship, content             | Moved to Tier 2 watering holes — mine his comment section for hustlers |
-| @thedankoe | 1.7M      | One-person business, digital leverage | Moved to Tier 2 watering holes — comment section full of solo builders |
+> **Demoted from PRIMARY in the 2026-05-06 pivot.** ADHD remains a real affinity lane but is no longer the default scan target. Cap: ≤1 ADHD-first item per warmup run unless there is a direct relationship signal. ADHD content gets no automatic priority boost.
+
+| Account                | Followers | Content Focus                                       | Engagement Angle                                                                                                                          | Verified   |
+| ---------------------- | --------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| @the_mini_adhd_coach   | 633K      | ADHD explained with cute doodles                    | Supporting Affinity — engage only on posts with strong specific creator/builder hook.                                                     | 2026-03-12 |
+| @howtoadhd             | 260K      | ADHD education, Jessica McCabe                      | Supporting Affinity — same.                                                                                                               | 2026-03-12 |
+| @adhd_alien            | 137K      | ADHD comics and illustrations (Pina, she/they)      | Supporting Affinity — **vulnerability-only mode.** Drop if no panel-specific hook. Book releasing Sept 2026.                              | 2026-03-15 |
+| @adhdcoachsheila       | 117K      | ADHD Coach, Neurodiversity Educator (Sheila Henson) | Supporting Affinity — **first-commenter mode only.** Keep first-commenter window; not a default scan target.                              | 2026-03-12 |
+| @strugglecare          | 450K      | ADHD home management, KC Davis                      | Supporting Affinity. "Struggle care" approach. TikTok is @domesticblisters.                                                               | 2026-03-12 |
+| @connor.dewolfe        | 817K      | ADHD awareness, Actor                               | Supporting Affinity. Active Stories regularly — Story reply = DM relationship opportunity.                                                | 2026-03-15 |
+| @the_adhd_entrepreneur | 144K      | ADHD Business Builder (Ari Scott)                   | Supporting Affinity — has direct creator/builder overlap, slightly higher relevance than pure ADHD-awareness accounts.                    | 2026-03-12 |
+| @an.nalogy             | 82K       | ADHD Productivity & Lifestyle (Anna)                | Supporting Affinity. Neuroscience-informed tools.                                                                                         | 2026-03-12 |
+| @carenmagill           | 11.3K     | ADHD Coach, Productivity & Planning                 | Supporting Affinity. Peer-level size.                                                                                                     | 2026-03-12 |
+| @adhd_understood       | 155K      | ADHD & Neuro-Educational Consultant                 | Supporting Affinity. Strength-based ADHD education. Has "Apps" Story highlight.                                                           | 2026-03-15 |
+| @adhdjesse             | 127K      | ADHD Motivation, Author                             | **Monitor only.** "Reply BOOK / STRATEGY" CTA-bait pattern lowers engagement value despite bio alignment. Re-evaluate if pattern changes. | 2026-05-06 |
+| @adhd_memetherapy      | 1.9M      | ADHD Meme Therapy (Behrad)                          | Mega watering hole. Already followed by @djwayne3. Engage selectively on viral content.                                                   | 2026-03-12 |
+| @the.adhd.friend       | 173K      | AuDHD awareness                                     | Currently ON HIATUS. Monitor for return.                                                                                                  | 2026-03-15 |
 
 ### Competitor Monitoring
 
-| Account          | Product                                             | Why Monitor                                                                                                                                                                                                                | Strategy                                                                                       | Verified   |
-| ---------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------- |
-| @danidonovan     | Anti-Planner                                        | ADHD competing philosophy                                                                                                                                                                                                  | Respect, learn, don't attack                                                                   | 2026-03-12 |
-| @notionhq        | Notion                                              | Productivity tool competitor. Launched "Custom Agents" (March 2026) — directly competes with BuildOS daily briefs                                                                                                          | Watch for frustrated users, monitor AI features                                                | 2026-03-12 |
-| @todoistofficial | Todoist (31K followers)                             | Task management. Very low IG engagement rate                                                                                                                                                                               | Watch for "too complex" complaints. Low competition in comments                                | 2026-03-12 |
-| @theadhdtools    | ADHD Operating System (69K followers, Ezra Dewolfe) | Verified. Running IG ads: "Operating System used by 3,000+ business owners to eliminate ADHD chaos." DIRECT competitor positioning. Grew +7K in 3.5 weeks (62K→69K) suggesting paid growth. No new content since March 19. | Already followed by djwayne3. Monitor closely — ad spend, content strategy, community response | 2026-04-05 |
+| Account          | Product                                   | Why Monitor                                                                                            | Strategy                                                                                                          | Verified   |
+| ---------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- | ---------- |
+| @danidonovan     | Anti-Planner                              | ADHD competing philosophy. Direct competitor.                                                          | **Competitor Intel ONLY — no engagement on her account.** Any DJ comment reads as a competitor watching the room. | 2026-05-06 |
+| @notionhq        | Notion                                    | Productivity tool competitor. "Custom Agents" (March 2026) competes with BuildOS daily briefs.         | Watch for frustrated users, monitor AI features. Mine commenters.                                                 | 2026-03-12 |
+| @theadhdtools    | ADHD Operating System (69K, Ezra Dewolfe) | Verified. Running IG ads. DIRECT competitor positioning. Grew +7K in 3.5 weeks suggesting paid growth. | Monitor closely — ad spend, content strategy, community response. Recheck cadence in 1–2 weeks.                   | 2026-04-05 |
+| @todoistofficial | Todoist (31K)                             | Task management. Very low IG engagement rate.                                                          | Watch for "too complex" complaints. Low competition in comments.                                                  | 2026-03-12 |
+
+---
+
+## Persistent Skip List (Don't Re-Discover These)
+
+> Accounts that have been disqualified or downgraded after evaluation. If you find one of these in a feed, hashtag, or watering-hole comment section, **skip without analysis** — don't burn cycles re-evaluating.
+
+| Account              | Reason                                                                         | Status              | Date Added |
+| -------------------- | ------------------------------------------------------------------------------ | ------------------- | ---------- |
+| @aifirstsolopreneurs | 102 followers — no comment-section traffic to mine, no audience to engage      | Drop                | 2026-05-06 |
+| @notionwithtori      | 96 followers — too small for any engagement value                              | Skip                | 2026-05-06 |
+| @yournotioncreator   | 624 on IG (2.4K on Threads) — sub-1K floor; monitor on Threads instead         | Downgrade (IG only) | 2026-05-06 |
+| @justyn.ai           | 92.2K but bot-bait CTA pattern (1700–2300 comments per post = engagement spam) | Monitor only        | 2026-05-06 |
+
+**Rule:** if a discovered account in a future warmup matches any of the skip patterns (sub-1K dead account, faceless repost, listicle "AI tools" page, hard-CTA bot-bait, hustle-guru, meme-only, dead comments), add it here so the next warmup doesn't burn time on it again.
 
 ---
 
@@ -201,24 +251,26 @@ When scanning Instagram, flag accounts for potential addition to tiers if they:
 
 ### Must-Haves
 
-- Post about ADHD, productivity, AI tools, building, solopreneurship, or PKM/second brain
+- Post about creator-founder workflow, PKM, AI workflow, building, solopreneurship, course creation, writing process, or freelance/agency operations
 - Have authentic engagement (real comments, not bots)
 - Post consistently (2+ times per week)
-- Content aligns with at least one of BuildOS's pillars
+- Content aligns with at least one of BuildOS's audience lanes
 
 ### Ideal Characteristics
 
-- **Follower range**: 500-50K (engagement sweet spot on Instagram)
+- **Follower range**: 1K–15K (sweet spot); 15K–50K acceptable with thoughtful comments
 - **Good engagement ratio**: 3%+ engagement rate (likes + comments / followers)
-- **Practitioners, not just commentators** - Actually building, doing, or living the content
-- **Reply to comments** - Shows they're community-oriented
-- **Mix of content types** - Reels, carousels, Stories (signals active creator)
+- **Practitioners, not just commentators** — Actually building, doing, or living the content
+- **Reply to comments** — Shows they're community-oriented
+- **Mix of content types** — Reels, carousels, Stories (signals active creator)
+- **"On the rise" signals** — Recent breakthrough Reel, accelerating posting cadence, mentioned/duetted by larger creators, shows actual workflow not polished aesthetic
 
 ### Capture for Each Discovered Account
 
 - Username and display name
-- Follower count
+- Follower count (confirm in-app — don't guess)
 - Bio summary
+- Lane tag (`Solo` / `PKM` / `AI` / `Course` / `Author` / `Freelance` / `WateringHole` / `ADHD`)
 - Content themes
 - Recent post/reel that caught your attention
 - Engagement quality (are comments real or generic?)
@@ -230,38 +282,56 @@ When scanning Instagram, flag accounts for potential addition to tiers if they:
 
 ### Daily Check (Top Engagement Opportunities)
 
-- #adhd
-- #adhdproductivity
-- #braindump
 - #buildinpublic
+- #notiontemplate (Recent — Notion creator graph)
+- #notionworkflow (Recent — fewer accounts, higher signal)
+- #amwriting (Recent Reels — author lane primary)
+- #writingcommunity (Recent Reels — author lane secondary, filter for non-aesthetic process content)
 - #productivitytips
+- #solofounder
 
 ### Weekly Check (Broader Discovery)
 
-- #neurodivergent
-- #executivedysfunction
-- #adhdentrepreneur
-- #solofounder
 - #solopreneur
 - #onepersonbusiness
-- #aitools
-- #digitalorganization
-- #secondbrain
-- #notiontips
-- #notiontemplate
-- #obsidian
+- #creatorfounder
+- #secondbrain (Obsidian + Notion overlap)
 - #pkm
+- #notiontips
+- #obsidian
+- #obsidianmd
+- #digitalorganization
+- #lifeos
+- #coursecreator
+- #onlinecourse
+- #substackwriter (Recent — newsletter creator graph)
+- #newsletteroperator (small but on-target)
+- #notionconsultant (very small but on-target)
+- #productizedservice (Recent — freelance / Designjoy graph)
+- #agencyfounder
+- #freelancelife
+- #creativebusiness
+- #nonfictionwriter (under-saturated)
 
 ### Monthly Check (Trend Monitoring)
 
-- #contextengineering
-- #aiproductivity
 - #futureofwork
 - #indiemaker
 - #microSaaS
-- #lifeos
-- #buildinpublic
 - #founderstories
+- #adhd (deprioritized from daily — was Daily, moved to Monthly per pivot)
+- #adhdproductivity (deprioritized)
+- #adhdentrepreneur (deprioritized)
+
+### De-prioritized / Skip
+
+> These hashtags surfaced too much listicle / guru / faceless content in the 2026-05-06 research. Use only as passive radar, not primary discovery surface.
+
+- #aiworkflow — dominated by listicle / faceless / guru content
+- #claudeai — same
+- #vibecoding — overrun by branded sponsored builds
+- #contextengineering — too few real-creator accounts; X owns this term
+- #aitools — listicle-heavy
 
 ---
 
@@ -269,21 +339,25 @@ When scanning Instagram, flag accounts for potential addition to tiers if they:
 
 ### What Works on Instagram
 
-1. **Be early** - First 30 min of a post being live is critical
-2. **Be specific** - Reference exactly what you liked about their content
-3. **Ask questions** - Drives replies, which boost both accounts
-4. **Engage with Stories** - Most personal, goes to DMs, builds real relationships
-5. **Save content** - The algorithm notices and may surface you to similar accounts
-6. **Consistent presence** - Instagram rewards showing up daily over sporadic bursts
+1. **Be early** — First 30 min of a post being live is critical
+2. **Be specific** — Reference exactly what you liked about their content
+3. **Ask questions** — Drives replies, which boost both accounts
+4. **Engage with Stories** — Most personal, goes to DMs, builds real relationships
+5. **Save content** — The algorithm notices and may surface you to similar accounts
+6. **Consistent presence** — Instagram rewards showing up daily over sporadic bursts
+7. **Mine commenters on watering-hole posts** — counts as a first-class queue slot, not zero. Often produces stronger peer discoveries than direct engagement on big accounts.
+8. **Walk #amwriting Recent Reels for the author lane** — this is the only realistic discovery surface for sub-50K author accounts.
 
 ### What Doesn't Work
 
-1. **Generic comments** - "great post!" does nothing
-2. **Follow/unfollow** - Instagram penalizes this heavily
-3. **Comment pods** - Artificial engagement groups get flagged
-4. **Too many actions too fast** - Instagram will rate limit or soft-ban
-5. **Product pushing** - The community will ignore or block you
-6. **Hashtag stuffing in comments** - Looks desperate
+1. **Generic comments** — "great post!" does nothing
+2. **Follow/unfollow** — Instagram penalizes this heavily
+3. **Comment pods** — Artificial engagement groups get flagged
+4. **Too many actions too fast** — Instagram will rate limit or soft-ban
+5. **Product pushing** — The community will ignore or block you
+6. **Hashtag stuffing in comments** — Looks desperate
+7. **ADHD-default scanning** — Pre-2026-05-06 default; produced ~50% ADHD queues across May. ADHD now capped at 1/run.
+8. **Direct engagement on 150K+ accounts** — convert to watering-hole mining instead.
 
 ### Rate Limiting Guidelines
 
@@ -295,7 +369,21 @@ When scanning Instagram, flag accounts for potential addition to tiers if they:
 
 ---
 
-_Last updated: 2026-03-23_
+## Open Investigations (Pending Future Passes)
+
+> These are open from the 2026-05-06 research and warrant resolution in a future pass.
+
+1. **Confirm follower counts in-app** for any account marked `_(check)_` above
+2. **#amwriting / #writingcommunity Recent Reels walk** — the third research pass needs logged-in browser access to capture sub-50K author accounts that don't surface via WebSearch
+3. **Watering-hole commenter handles** — capture 5–10 specific commenters per post on @gregisenberg, @hamptonfounders, @nathanbarry, @notionhq during next warmup
+4. **@theadhdtools recheck** in 1–2 weeks (broke content drought 2026-05-06; engagement still anemic)
+5. **Threads as parallel surface for PKM peer-graph** — multiple PKM creators (@yournotioncreator, @theproductivitypixie) are larger on Threads than IG; worth raising as a separate warmup track if capacity allows
+
+---
+
+_Last updated: 2026-05-06 (anti-ADHD-first pivot)_
 _Used by: `/.claude/commands/instagram-warmup.md`_
+_Research source: `docs/marketing/social-media/instagram-non-adhd-discovery-2026-05-06.md`_
+_Strategic context: `docs/marketing/social-media/instagram-warmup-retargeting-agent-brief-2026-05-06.md`_
 _Related: `docs/marketing/social-media/instagram-strategy.md`_
 _Related: `docs/marketing/social-media/instagram-voice-quick-ref.md`_

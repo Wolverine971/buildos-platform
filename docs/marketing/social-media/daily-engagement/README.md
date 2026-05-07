@@ -11,6 +11,15 @@ This folder is for active social warmup docs only.
 - In-progress platform-specific engagement runs
 - The latest dated file for a still-active campaign
 
+## Loop Files Outside This Folder
+
+- `../discovery/instagram/candidates.md` holds the Stage 0 discovery queue.
+- `../instagram-profiles/` holds account-level relationship memory.
+- `../people/` holds cross-platform person records for high-value relationships.
+- `../comment-log.md` holds the cross-run touchpoint ledger.
+
+Warmup and reply docs are working files. The long-term loop should be visible in profiles, people nodes, candidates, and the comment log.
+
 ## Archive Rule
 
 - Move older dated warmups to `docs/archive/marketing/social-media/daily-engagement/`

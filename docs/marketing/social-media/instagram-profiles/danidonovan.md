@@ -11,7 +11,7 @@
 **Relationship Status:** Monitor only
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-05-06
+**Last Reviewed:** 2026-05-07
 **Last Engaged:** Never
 **Source of First Discovery:** `instagram-engagement-targets.md` (Tier 1 ADHD + Tier 3 competitor monitoring)
 
@@ -54,6 +54,7 @@
 | 2026-03-29 | Post    | Anti-Planner coffee shop photo (new format)                     | N/A                                      | Reviewed | Logged          | 83 likes — new photo format underperforming vs comics                                                                                                                                                                                                                                                                             | Competitor intel logged | 2026-03-29_instagram-warmup.md     |
 | 2026-04-04 | Profile | Still light posting, stale grid                                 | N/A                                      | Reviewed | Logged          | No competition in IG ADHD space from her right now                                                                                                                                                                                                                                                                                | Competitor intel logged | 2026-04-04_instagram-warmup.md     |
 | 2026-05-06 | Post    | "sketch vs. final: Who has ADHD?" (illustrated comic returning) | https://www.instagram.com/p/DX9vrczjVZO/ | Drafted  | Pending Posting | Cheerleader / craft-curiosity ONLY. 3 drafted options: (1) eyes-doing-more-work observation, (2) shoulder-slope shift, (3) "this format being back is the one i was waiting for". DJ should pick whichever matches a real visual detail in the carousel, or drop. NO ADHD self-claim, NO Anti-Planner, NO BuildOS. Mention fit 0. | Pending                 | 2026-05-06_instagram-replies-pm.md |
+| 2026-05-07 | Profile | "sketch vs. final" extended first-commenter window              | https://www.instagram.com/p/DX9vrczjVZO/ | Reviewed | Logged          | Yesterday's queued post is now 43h old at 113 likes / **still 0 comments.** Unusually extended first-commenter window. Confirms the lower-engagement pattern on her recent illustrated returns. May 6 PM draft remains the right move — post it sooner rather than later or drop. No new posts to queue today.                    | Competitor intel logged | 2026-05-07_instagram-warmup.md     |
 
 ## Open Loops
 
