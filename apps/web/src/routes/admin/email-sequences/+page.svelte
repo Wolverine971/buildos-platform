@@ -1,5 +1,7 @@
 <!-- apps/web/src/routes/admin/email-sequences/+page.svelte -->
 <script lang="ts">
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import {
 		CheckCircle2,
 		Clock3,
@@ -14,6 +16,7 @@
 	import type { ActionData, PageData } from './$types';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 
 	type SequenceKey = 'buildos_reactivation_founder_pilot' | 'buildos_welcome';
 
@@ -21,6 +24,10 @@
 		sequenceKey: SequenceKey;
 		stepKey: string;
 		variantKey: string;
+		sequencePosition: number;
+		stepLabel: string;
+		triggerLabel: string;
+		triggerDetail: string;
 		label: string;
 		description: string;
 		status: 'source' | 'override';
@@ -32,6 +39,15 @@
 		ctaLabel: string | null;
 		ctaUrl: string | null;
 		updatedAt: string | null;
+	};
+
+	type CopyGroup = {
+		stepKey: string;
+		sequencePosition: number;
+		stepLabel: string;
+		triggerLabel: string;
+		triggerDetail: string;
+		options: CopyOption[];
 	};
 
 	type RecipientRow = {
@@ -62,6 +78,8 @@
 	const selectedSequenceKey = $derived(data.selectedSequenceKey as SequenceKey);
 	const selectedCopy = $derived((data.selectedCopy ?? null) as CopyOption | null);
 	const copyOptions = $derived((data.copyOptions ?? []) as CopyOption[]);
+	const groupedCopyOptions = $derived(groupCopyOptions(copyOptions));
+	const selectedCopyParam = $derived($page.url.searchParams.get('copy'));
 	const recipients = $derived(
 		selectedSequenceKey === 'buildos_welcome'
 			? ((data.welcome?.recipients ?? []) as RecipientRow[])
@@ -72,6 +90,52 @@
 			(cohort) => cohort.cohortId === data.reactivation?.selectedCohortId
 		)?.batches ?? []) as string[]
 	);
+
+	let copyModalOpen = $state(false);
+	let activeCopyKey = $state<string | null>(selectedCopyParam);
+	const modalCopy = $derived.by(() => {
+		const key = activeCopyKey ?? selectedCopyParam;
+		if (!key) {
+			return selectedCopy;
+		}
+
+		return copyOptions.find((option) => copyKey(option) === key) ?? selectedCopy;
+	});
+
+	$effect(() => {
+		if (selectedCopyParam) {
+			activeCopyKey = selectedCopyParam;
+			copyModalOpen = true;
+		}
+	});
+
+	function groupCopyOptions(options: CopyOption[]): CopyGroup[] {
+		const groups = new Map<string, CopyGroup>();
+
+		for (const option of options) {
+			const current =
+				groups.get(option.stepKey) ??
+				({
+					stepKey: option.stepKey,
+					sequencePosition: option.sequencePosition,
+					stepLabel: option.stepLabel,
+					triggerLabel: option.triggerLabel,
+					triggerDetail: option.triggerDetail,
+					options: []
+				} satisfies CopyGroup);
+
+			current.options.push(option);
+			groups.set(option.stepKey, current);
+		}
+
+		return Array.from(groups.values()).sort(
+			(left, right) => left.sequencePosition - right.sequencePosition
+		);
+	}
+
+	function copyKey(option: CopyOption): string {
+		return `${option.stepKey}:${option.variantKey}`;
+	}
 
 	function formatDate(value: string | null): string {
 		if (!value) {
@@ -89,7 +153,7 @@
 	function copyHref(option: CopyOption): string {
 		const params = new URLSearchParams();
 		params.set('sequence', selectedSequenceKey);
-		params.set('copy', `${option.stepKey}:${option.variantKey}`);
+		params.set('copy', copyKey(option));
 
 		if (data.reactivation?.selectedCampaignId) {
 			params.set('campaign_id', data.reactivation.selectedCampaignId);
@@ -102,6 +166,36 @@
 		}
 
 		return `/admin/email-sequences?${params.toString()}`;
+	}
+
+	function copyActionHref(actionName: 'saveCopy' | 'clearCopy', option: CopyOption): string {
+		const href = copyHref(option);
+		const query = href.includes('?') ? href.slice(href.indexOf('?') + 1) : '';
+		return `?/${actionName}${query ? `&${query}` : ''}`;
+	}
+
+	function openCopyModal(event: MouseEvent, option: CopyOption): void {
+		event.preventDefault();
+		activeCopyKey = copyKey(option);
+		copyModalOpen = true;
+		void goto(copyHref(option), { noScroll: true, keepFocus: true });
+	}
+
+	function closeCopyModal(): void {
+		copyModalOpen = false;
+		activeCopyKey = null;
+
+		const url = new URL($page.url);
+		url.searchParams.delete('copy');
+		void goto(url.toString(), { replaceState: true, noScroll: true, keepFocus: true });
+	}
+
+	function variantLabel(option: CopyOption): string {
+		return option.variantKey.replaceAll('_', ' ');
+	}
+
+	function isActiveCopy(option: CopyOption): boolean {
+		return Boolean(copyModalOpen && modalCopy && copyKey(option) === copyKey(modalCopy));
 	}
 
 	function statusClasses(status: string): string {
@@ -245,173 +339,81 @@
 		</AdminCard>
 	{/if}
 
-	<div class="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-		<AdminCard padding="none" class="overflow-hidden">
-			<div class="border-b border-border px-4 py-3">
-				<h2 class="text-base font-semibold text-foreground">Emails</h2>
-				<p class="mt-1 text-sm text-muted-foreground">
-					Source copy is the fallback. Overrides are used by the send paths.
-				</p>
-			</div>
-			<div class="max-h-[760px] overflow-auto divide-y divide-border">
-				{#each copyOptions as option}
-					<a
-						href={copyHref(option)}
-						class="block p-4 transition-colors hover:bg-muted/60 {selectedCopy?.stepKey ===
-							option.stepKey && selectedCopy?.variantKey === option.variantKey
-							? 'bg-accent/10'
-							: ''}"
-					>
-						<div class="flex items-start justify-between gap-3">
+	<AdminCard padding="none" class="overflow-hidden">
+		<div class="border-b border-border px-4 py-3">
+			<h2 class="text-base font-semibold text-foreground">Sequence Map</h2>
+			<p class="mt-1 text-sm text-muted-foreground">
+				Variants are grouped under the step that sends them. Source copy is the fallback;
+				overrides are used by send paths.
+			</p>
+		</div>
+		<div class="divide-y divide-border">
+			{#each groupedCopyOptions as group}
+				<section class="grid gap-4 px-4 py-4 lg:grid-cols-[14rem_minmax(0,1fr)]">
+					<div class="min-w-0">
+						<div class="flex items-center gap-3">
+							<span
+								class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-foreground text-sm font-bold text-background"
+							>
+								{group.sequencePosition}
+							</span>
 							<div class="min-w-0">
-								<p class="text-sm font-semibold text-foreground">{option.label}</p>
-								<p class="mt-1 text-xs text-muted-foreground">
-									{option.description}
-								</p>
+								<h3 class="text-sm font-semibold text-foreground">
+									{group.stepLabel}
+								</h3>
+								<p class="text-xs text-muted-foreground">{group.stepKey}</p>
 							</div>
-							<span
-								class="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold uppercase {statusClasses(
-									option.status
-								)}"
+						</div>
+						<div class="mt-3 flex items-start gap-2 text-xs text-foreground">
+							<Clock3 class="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+							<p class="font-medium">{group.triggerLabel}</p>
+						</div>
+						<p class="mt-1 pl-5 text-xs leading-relaxed text-muted-foreground">
+							{group.triggerDetail}
+						</p>
+					</div>
+					<div class="grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
+						{#each group.options as option}
+							<a
+								href={copyHref(option)}
+								onclick={(event) => openCopyModal(event, option)}
+								class="block rounded-lg border px-3 py-3 transition-colors {isActiveCopy(
+									option
+								)
+									? 'border-accent bg-accent/10'
+									: 'border-border bg-background hover:bg-muted/60'}"
 							>
-								{option.status}
-							</span>
-						</div>
-						<p class="mt-3 line-clamp-2 text-sm font-medium text-foreground">
-							{option.subject}
-						</p>
-						<p class="mt-1 text-xs text-muted-foreground">
-							{option.stepKey} / {option.variantKey}
-						</p>
-					</a>
-				{/each}
-			</div>
-		</AdminCard>
-
-		{#if selectedCopy}
-			<AdminCard>
-				<div class="flex flex-wrap items-start justify-between gap-3">
-					<div>
-						<div class="flex flex-wrap items-center gap-2">
-							<h2 class="text-lg font-semibold text-foreground">
-								{selectedCopy.label}
-							</h2>
-							<span
-								class="rounded-md px-2 py-1 text-[11px] font-semibold uppercase {statusClasses(
-									selectedCopy.status
-								)}"
-							>
-								{selectedCopy.status}
-							</span>
-						</div>
-						<p class="mt-1 text-sm text-muted-foreground">{selectedCopy.description}</p>
+								<div class="flex items-start justify-between gap-2">
+									<div class="min-w-0">
+										<p
+											class="truncate text-sm font-semibold capitalize text-foreground"
+										>
+											{variantLabel(option)}
+										</p>
+										<p
+											class="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground"
+										>
+											{option.description}
+										</p>
+									</div>
+									<span
+										class="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold uppercase {statusClasses(
+											option.status
+										)}"
+									>
+										{option.status}
+									</span>
+								</div>
+								<p class="mt-3 line-clamp-2 text-sm font-medium text-foreground">
+									{option.subject}
+								</p>
+							</a>
+						{/each}
 					</div>
-					{#if selectedCopy.updatedAt}
-						<p class="text-xs text-muted-foreground">
-							Updated {formatDate(selectedCopy.updatedAt)}
-						</p>
-					{/if}
-				</div>
-
-				<form method="POST" class="mt-5 grid gap-4">
-					<input type="hidden" name="sequence_key" value={selectedCopy.sequenceKey} />
-					<input type="hidden" name="step_key" value={selectedCopy.stepKey} />
-					<input type="hidden" name="variant_key" value={selectedCopy.variantKey} />
-					<label class="grid gap-1 text-sm font-medium text-foreground">
-						<span>Subject</span>
-						<input
-							name="subject"
-							value={selectedCopy.subject}
-							required
-							class="h-11 rounded-md border border-border bg-background px-3 text-sm"
-						/>
-					</label>
-					<label class="grid gap-1 text-sm font-medium text-foreground">
-						<span>Body</span>
-						<textarea
-							name="body"
-							required
-							rows="16"
-							class="rounded-md border border-border bg-background px-3 py-3 font-mono text-xs leading-relaxed"
-							value={selectedCopy.body}
-						></textarea>
-					</label>
-					<div class="rounded-md border border-border bg-muted/40 p-3">
-						<p
-							class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-						>
-							Available tokens
-						</p>
-						<div class="mt-2 flex flex-wrap gap-1.5">
-							{#each data.tokens as token}
-								<code
-									class="rounded bg-background px-2 py-1 text-[11px] text-foreground"
-									>{token}</code
-								>
-							{/each}
-						</div>
-					</div>
-					<div class="flex flex-wrap gap-2">
-						<button
-							type="submit"
-							formaction="?/saveCopy"
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
-						>
-							<CheckCircle2 class="h-4 w-4" />
-							Save Copy
-						</button>
-					</div>
-				</form>
-
-				{#if selectedCopy.status === 'override'}
-					<form method="POST" class="mt-3">
-						<input type="hidden" name="sequence_key" value={selectedCopy.sequenceKey} />
-						<input type="hidden" name="step_key" value={selectedCopy.stepKey} />
-						<input type="hidden" name="variant_key" value={selectedCopy.variantKey} />
-						<button
-							type="submit"
-							formaction="?/clearCopy"
-							class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
-						>
-							<RotateCcw class="h-4 w-4" />
-							Restore Source Copy
-						</button>
-					</form>
-				{/if}
-
-				<div class="mt-6 grid gap-4 lg:grid-cols-2">
-					<div>
-						<p class="mb-2 text-xs font-semibold uppercase text-muted-foreground">
-							Source Subject
-						</p>
-						<p
-							class="rounded-md border border-border bg-background p-3 text-sm text-foreground"
-						>
-							{selectedCopy.sourceSubject}
-						</p>
-						<p class="mt-4 mb-2 text-xs font-semibold uppercase text-muted-foreground">
-							Source Body
-						</p>
-						<pre
-							class="max-h-[420px] overflow-auto whitespace-pre-wrap rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-muted-foreground">{selectedCopy.sourceBody}</pre>
-					</div>
-					<div>
-						<div class="mb-2 flex items-center gap-2">
-							<Eye class="h-4 w-4 text-muted-foreground" />
-							<p class="text-xs font-semibold uppercase text-muted-foreground">
-								Rendered Preview
-							</p>
-						</div>
-						<iframe
-							title="Email copy preview"
-							srcdoc={selectedCopy.previewHtml}
-							class="h-[520px] w-full rounded-md border border-border bg-white"
-						></iframe>
-					</div>
-				</div>
-			</AdminCard>
-		{/if}
-	</div>
+				</section>
+			{/each}
+		</div>
+	</AdminCard>
 
 	<AdminCard padding="none" class="overflow-hidden">
 		<div class="border-b border-border px-4 py-3">
@@ -484,3 +486,194 @@
 		</div>
 	</AdminCard>
 </div>
+
+<Modal
+	bind:isOpen={copyModalOpen}
+	title={modalCopy ? `${modalCopy.stepLabel}: ${variantLabel(modalCopy)}` : 'Email Copy'}
+	size="xl"
+	customClasses="!max-w-[92rem] sm:!max-h-[92dvh]"
+	onClose={closeCopyModal}
+>
+	{#if modalCopy}
+		<div class="space-y-4 p-4 sm:p-5">
+			<div class="flex flex-wrap items-start justify-between gap-3">
+				<div class="min-w-0">
+					<div class="flex flex-wrap items-center gap-2">
+						<span
+							class="rounded-md px-2 py-1 text-[11px] font-semibold uppercase {statusClasses(
+								modalCopy.status
+							)}"
+						>
+							{modalCopy.status}
+						</span>
+						<span class="text-sm font-medium text-muted-foreground">
+							{modalCopy.stepKey} / {modalCopy.variantKey}
+						</span>
+					</div>
+					<div
+						class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground"
+					>
+						<span class="inline-flex items-center gap-1.5">
+							<Clock3 class="h-4 w-4" />
+							{modalCopy.triggerLabel}
+						</span>
+						<span>{modalCopy.description}</span>
+					</div>
+				</div>
+				{#if modalCopy.updatedAt}
+					<p class="text-xs text-muted-foreground">
+						Updated {formatDate(modalCopy.updatedAt)}
+					</p>
+				{/if}
+			</div>
+
+			{#if form?.error}
+				<div
+					class="flex items-start gap-3 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+				>
+					<TriangleAlert class="mt-0.5 h-4 w-4 shrink-0" />
+					<p>{form.error}</p>
+				</div>
+			{:else if form?.success}
+				<div
+					class="flex items-start gap-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-800"
+				>
+					<CheckCircle2 class="mt-0.5 h-4 w-4 shrink-0" />
+					<p>{form.message}</p>
+				</div>
+			{/if}
+
+			<div class="grid gap-4 xl:grid-cols-2">
+				<div class="rounded-lg border border-border bg-card">
+					<div class="border-b border-border px-4 py-3">
+						<p class="text-xs font-semibold uppercase text-muted-foreground">
+							Editable Copy
+						</p>
+					</div>
+					<div class="p-4">
+						<form method="POST" class="grid gap-4">
+							<input
+								type="hidden"
+								name="sequence_key"
+								value={modalCopy.sequenceKey}
+							/>
+							<input type="hidden" name="step_key" value={modalCopy.stepKey} />
+							<input type="hidden" name="variant_key" value={modalCopy.variantKey} />
+							<label class="grid gap-1 text-sm font-medium text-foreground">
+								<span>Subject</span>
+								<input
+									name="subject"
+									value={modalCopy.subject}
+									required
+									class="h-11 rounded-md border border-border bg-background px-3 text-sm"
+								/>
+							</label>
+							<label class="grid gap-1 text-sm font-medium text-foreground">
+								<span>Body</span>
+								<textarea
+									name="body"
+									required
+									rows="24"
+									class="min-h-[520px] rounded-md border border-border bg-background px-3 py-3 font-mono text-xs leading-relaxed"
+									value={modalCopy.body}
+								></textarea>
+							</label>
+							<div class="rounded-md border border-border bg-muted/40 p-3">
+								<p
+									class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+								>
+									Available tokens
+								</p>
+								<div class="mt-2 flex flex-wrap gap-1.5">
+									{#each data.tokens as token}
+										<code
+											class="rounded bg-background px-2 py-1 text-[11px] text-foreground"
+										>
+											{token}
+										</code>
+									{/each}
+								</div>
+							</div>
+							<div class="flex flex-wrap gap-2">
+								<button
+									type="submit"
+									formaction={copyActionHref('saveCopy', modalCopy)}
+									class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-foreground px-4 text-sm font-medium text-background transition-colors hover:bg-foreground/90"
+								>
+									<CheckCircle2 class="h-4 w-4" />
+									Save Copy
+								</button>
+							</div>
+						</form>
+
+						{#if modalCopy.status === 'override'}
+							<form method="POST" class="mt-3">
+								<input
+									type="hidden"
+									name="sequence_key"
+									value={modalCopy.sequenceKey}
+								/>
+								<input type="hidden" name="step_key" value={modalCopy.stepKey} />
+								<input
+									type="hidden"
+									name="variant_key"
+									value={modalCopy.variantKey}
+								/>
+								<button
+									type="submit"
+									formaction={copyActionHref('clearCopy', modalCopy)}
+									class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+								>
+									<RotateCcw class="h-4 w-4" />
+									Restore Source Copy
+								</button>
+							</form>
+						{/if}
+
+						<details class="mt-4 rounded-md border border-border bg-muted/40 p-3">
+							<summary
+								class="cursor-pointer text-xs font-semibold uppercase text-muted-foreground"
+							>
+								Source Copy Reference
+							</summary>
+							<p class="mt-3 text-xs font-semibold uppercase text-muted-foreground">
+								Subject
+							</p>
+							<p
+								class="mt-1 rounded-md border border-border bg-background p-3 text-sm text-foreground"
+							>
+								{modalCopy.sourceSubject}
+							</p>
+							<p class="mt-4 text-xs font-semibold uppercase text-muted-foreground">
+								Body
+							</p>
+							<pre
+								class="mt-1 max-h-[300px] overflow-auto whitespace-pre-wrap rounded-md border border-border bg-background p-3 text-xs leading-relaxed text-muted-foreground">{modalCopy.sourceBody}</pre>
+						</details>
+					</div>
+				</div>
+
+				<div class="rounded-lg border border-border bg-card">
+					<div
+						class="flex items-center justify-between gap-3 border-b border-border px-4 py-3"
+					>
+						<div class="flex items-center gap-2">
+							<Eye class="h-4 w-4 text-muted-foreground" />
+							<p class="text-xs font-semibold uppercase text-muted-foreground">
+								Polished Preview
+							</p>
+						</div>
+						<p class="text-xs text-muted-foreground">{modalCopy.triggerLabel}</p>
+					</div>
+					<div class="p-4">
+						<iframe
+							title="Email copy preview"
+							srcdoc={modalCopy.previewHtml}
+							class="h-[760px] w-full rounded-md border border-border bg-white"
+						></iframe>
+					</div>
+				</div>
+			</div>
+		</div>
+	{/if}
+</Modal>

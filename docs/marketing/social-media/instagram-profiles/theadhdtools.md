@@ -11,7 +11,7 @@
 **Relationship Status:** Monitor only
 **Audience Quality:** Medium
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-14
+**Last Reviewed:** 2026-05-06
 **Last Engaged:** Never
 **Source of First Discovery:** `instagram-engagement-targets.md` plus backfill from daily engagement logs
 
@@ -26,7 +26,7 @@
 ## Bio Snapshot
 
 - **Bio:** ADHD Operating System positioning for business owners; verified account
-- **Followers:** ~70.3K
+- **Followers:** ~75K (up from ~70.3K, +4.7K in 3 weeks)
 - **Offer / link:** Paid operating-system-style productivity product
 - **Formats:** Reels, ads, entrepreneur-facing ADHD content
 - **Audience vibe:** Faster follower growth than organic comment quality suggests; comments often thinner than expected
@@ -46,18 +46,20 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                                      | Post Link                                | Action   | Status                  | What We Said / Planned                                           | Outcome                 | Source                                 |
-| ---------- | ------- | ------------------------------------------ | ---------------------------------------- | -------- | ----------------------- | ---------------------------------------------------------------- | ----------------------- | -------------------------------------- |
-| 2026-03-22 | Post    | Why ADHD entrepreneurs can't estimate time | https://www.instagram.com/p/DWEGkceEgQk/ | Queued   | No posting confirmation | Agree with external-structure framing from builder angle         | Unknown                 | 2026-03-22_instagram-warmup.md         |
-| 2026-03-24 | Profile | Follower growth + no new post              | N/A                                      | Reviewed | Logged                  | No fresh content; account up to ~65.2K                           | Competitor intel logged | 2026-03-24_instagram-warmup.md         |
-| 2026-04-04 | Profile | Paid growth acceleration                   | N/A                                      | Reviewed | Logged                  | Up ~6.8K in 3 weeks; monitor ads and content strategy            | Competitor intel logged | 2026-04-04_instagram-warmup.md         |
-| 2026-04-05 | Profile | Paid growth without fresh content          | N/A                                      | Reviewed | Logged                  | +7K in ~3.5 weeks; no new organic content                        | Competitor intel logged | 2026-04-05_instagram-warmup.md         |
-| 2026-04-06 | Feed Ad | Sponsored ad in DJ's feed                  | N/A                                      | Reviewed | Logged                  | Ad: "If ADHD is sabotaging your business growth..."              | Competitor ad observed  | 2026-04-06_instagram-warmup.md         |
-| 2026-04-14 | Profile | Content drought + continued paid growth    | N/A                                      | Reviewed | Logged                  | Now at 70.3K (+1.3K since Apr 5); no organic content in ~25 days | Competitor intel logged | 2026-04-14_instagram-warmup-evening.md |
+| Date       | Surface | Topic                                                | Post Link                                | Action   | Status                  | What We Said / Planned                                                                                                                                                                                                                               | Outcome                 | Source                                 |
+| ---------- | ------- | ---------------------------------------------------- | ---------------------------------------- | -------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- | -------------------------------------- |
+| 2026-03-22 | Post    | Why ADHD entrepreneurs can't estimate time           | https://www.instagram.com/p/DWEGkceEgQk/ | Queued   | No posting confirmation | Agree with external-structure framing from builder angle                                                                                                                                                                                             | Unknown                 | 2026-03-22_instagram-warmup.md         |
+| 2026-03-24 | Profile | Follower growth + no new post                        | N/A                                      | Reviewed | Logged                  | No fresh content; account up to ~65.2K                                                                                                                                                                                                               | Competitor intel logged | 2026-03-24_instagram-warmup.md         |
+| 2026-04-04 | Profile | Paid growth acceleration                             | N/A                                      | Reviewed | Logged                  | Up ~6.8K in 3 weeks; monitor ads and content strategy                                                                                                                                                                                                | Competitor intel logged | 2026-04-04_instagram-warmup.md         |
+| 2026-04-05 | Profile | Paid growth without fresh content                    | N/A                                      | Reviewed | Logged                  | +7K in ~3.5 weeks; no new organic content                                                                                                                                                                                                            | Competitor intel logged | 2026-04-05_instagram-warmup.md         |
+| 2026-04-06 | Feed Ad | Sponsored ad in DJ's feed                            | N/A                                      | Reviewed | Logged                  | Ad: "If ADHD is sabotaging your business growth..."                                                                                                                                                                                                  | Competitor ad observed  | 2026-04-06_instagram-warmup.md         |
+| 2026-04-14 | Profile | Content drought + continued paid growth              | N/A                                      | Reviewed | Logged                  | Now at 70.3K (+1.3K since Apr 5); no organic content in ~25 days                                                                                                                                                                                     | Competitor intel logged | 2026-04-14_instagram-warmup-evening.md |
+| 2026-05-06 | Profile | Content drought BROKEN — 3 simultaneous posts at 48h | N/A                                      | Reviewed | Logged                  | Shipped DX7E3eGIfS1, DX7D0-wow_d, DX7DlRnIII1 simultaneously after ~25 days silence. Engagement still anemic (4-20 likes, 0-2 comments). Followers ~75K (+4.7K). Paid growth not converting to organic conversation. Hands-off engagement continues. | Competitor intel logged | 2026-05-06_instagram-warmup-pm.md      |
 
 ## Open Loops
 
 - Compare organic comments to paid-follower growth over time
+- Watch whether the 2026-05-06 3-post burst was a one-shot push or whether subsequent posts compound
 - If DJ ever comments here, keep it respectful and systems-focused
 
 ## Next Best Angles

@@ -63,25 +63,15 @@
 		return formatInTimeZone(new Date(), userTimezone, 'yyyy-MM-dd');
 	});
 
-	// Brief snippet - first 150 chars of executive summary
+	// Brief snippet - CSS handles the final truncation based on available width.
 	let briefSnippet = $derived.by(() => {
 		const content = brief?.summary_content || brief?.executive_summary || '';
 		if (!content) return '';
-		// Strip markdown and get first 150 chars
-		const stripped = content
+		return content
 			.replace(/#{1,6}\s/g, '')
 			.replace(/\*\*/g, '')
-			.replace(/\n/g, ' ')
+			.replace(/\s+/g, ' ')
 			.trim();
-		return stripped.length > 150 ? stripped.slice(0, 150) + '...' : stripped;
-	});
-
-	let mobileBriefLine = $derived.by(() => {
-		const priorityCount = brief?.priority_actions?.length ?? 0;
-		if (priorityCount > 0) {
-			return `${priorityCount} priority ${priorityCount === 1 ? 'action' : 'actions'} ready`;
-		}
-		return briefSnippet || 'Your daily brief is ready';
 	});
 
 	// Subscribe to streaming stores using onMount to avoid repeated subscriptions
@@ -286,52 +276,39 @@
 					<Sun class="h-3 w-3 sm:h-4 sm:w-4 text-warning" />
 				</div>
 				<div class="flex-1 min-w-0">
-					<div class="flex items-center justify-between gap-1.5 sm:gap-2">
-						<h3 class="text-xs sm:text-sm font-semibold text-foreground">
-							Today's Brief
-						</h3>
-						<!-- Mobile: Show priority count inline if exists - with icon for context -->
-						<div class="flex items-center justify-between gap-1.5 sm:gap-2">
+					<div class="flex min-w-0 items-center justify-between gap-1.5 sm:gap-2">
+						<div class="flex min-w-0 items-center gap-1.5 sm:gap-2">
+							<h3 class="shrink-0 text-xs sm:text-sm font-semibold text-foreground">
+								Today's Brief
+							</h3>
 							{#if brief.priority_actions && brief.priority_actions.length > 0}
 								<span
-									class="sm:hidden inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-accent/15 text-accent border border-accent/20"
+									class="inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold rounded bg-accent/10 text-accent border border-accent/20"
 									title="{brief.priority_actions.length} priority action{brief
 										.priority_actions.length === 1
 										? ''
 										: 's'}"
 								>
-									<AlertCircle class="w-2.5 h-2.5" />
-									{brief.priority_actions.length}
+									<AlertCircle class="w-2.5 h-2.5 sm:hidden" />
+									<span class="sm:hidden">{brief.priority_actions.length}</span>
+									<span class="hidden sm:inline">
+										{brief.priority_actions.length} priority {brief
+											.priority_actions.length === 1
+											? 'action'
+											: 'actions'}
+									</span>
 								</span>
 							{/if}
-							<ChevronRight
-								class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground/50 group-hover:text-accent transition-colors flex-shrink-0"
-							/>
 						</div>
+						<ChevronRight
+							class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground/50 group-hover:text-accent transition-colors flex-shrink-0"
+						/>
 					</div>
 					<p
-						class="sm:hidden text-[11px] text-muted-foreground line-clamp-1 leading-snug mt-0.5"
-					>
-						{mobileBriefLine}
-					</p>
-					<!-- Desktop: Show snippet and priority actions -->
-					<p
-						class="hidden sm:block text-xs text-muted-foreground line-clamp-2 leading-relaxed mt-1"
+						class="mt-0.5 sm:mt-1 w-full min-w-0 truncate text-[11px] sm:text-xs text-muted-foreground leading-snug sm:leading-relaxed"
 					>
 						{briefSnippet || 'Your daily brief is ready'}
 					</p>
-					{#if brief.priority_actions && brief.priority_actions.length > 0}
-						<div class="hidden sm:flex mt-2 items-center gap-1.5">
-							<span
-								class="px-1.5 py-0.5 text-[10px] font-bold rounded bg-accent/10 text-accent border border-accent/20"
-							>
-								{brief.priority_actions.length} priority {brief.priority_actions
-									.length === 1
-									? 'action'
-									: 'actions'}
-							</span>
-						</div>
-					{/if}
 				</div>
 			</div>
 		</button>

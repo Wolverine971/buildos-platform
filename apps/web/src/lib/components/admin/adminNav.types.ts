@@ -10,6 +10,8 @@ export type AdminNavItem = {
 	description?: string;
 	badge?: string;
 	children?: AdminNavItem[];
+	activePaths?: string[];
+	activePrefixes?: string[];
 };
 
 export type AdminNavGroup = {

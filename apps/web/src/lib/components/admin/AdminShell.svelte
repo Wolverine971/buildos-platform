@@ -1,9 +1,15 @@
 <!-- apps/web/src/lib/components/admin/AdminShell.svelte -->
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import {
 		X,
+		Menu,
+		Home,
+		PanelLeftClose,
+		PanelLeftOpen,
 		LayoutDashboard,
 		LineChart,
 		CreditCard,
@@ -22,7 +28,8 @@
 		Layers,
 		Activity,
 		Database,
-		Globe
+		Globe,
+		Network
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import AdminSidebar from '$lib/components/admin/AdminSidebar.svelte';
@@ -39,7 +46,22 @@
 		hero?: Snippet;
 	} = $props();
 
+	const ADMIN_SIDEBAR_COLLAPSED_KEY = 'buildos.admin.sidebar.collapsed';
+	const wideContentRoutePrefixes = [
+		'/admin/email-sequences',
+		'/admin/users',
+		'/admin/errors',
+		'/admin/notifications/nlogs',
+		'/admin/migration',
+		'/admin/chat/sessions',
+		'/admin/chat/costs',
+		'/admin/chat/timing',
+		'/admin/ontology/graph',
+		'/admin/ontology/public-pages'
+	];
+
 	let mobileOpen = $state(false);
+	let sidebarCollapsed = $state(false);
 
 	const navGroups: AdminNavGroup[] = [
 		{
@@ -84,7 +106,19 @@
 					title: 'Email Sequences',
 					href: '/admin/email-sequences',
 					icon: Mail,
-					description: 'Copy, recipients & timing'
+					description: 'Copy, recipients & timing',
+					children: [
+						{
+							title: 'Overview',
+							href: '/admin/email-sequences',
+							icon: Mail
+						},
+						{
+							title: 'Welcome Sequence',
+							href: '/admin/welcome-sequence',
+							icon: Sparkles
+						}
+					]
 				},
 				{
 					title: 'Beta Program',
@@ -140,21 +174,41 @@
 				},
 				{
 					title: 'Ontology',
-					href: '/admin/ontology',
+					href: '/admin/ontology/graph',
 					icon: Workflow,
-					description: 'Knowledge graph'
-				},
-				{
-					title: 'Public Pages',
-					href: '/admin/ontology/public-pages',
-					icon: Globe,
-					description: 'Published pages & reviews'
+					description: 'Knowledge graph',
+					children: [
+						{
+							title: 'Graph',
+							href: '/admin/ontology/graph',
+							icon: Network,
+							activePaths: ['/admin/ontology']
+						},
+						{
+							title: 'Public Pages',
+							href: '/admin/ontology/public-pages',
+							icon: Globe
+						}
+					]
 				},
 				{
 					title: 'Migration',
 					href: '/admin/migration',
 					icon: Database,
-					description: 'Data migration tools'
+					description: 'Data migration tools',
+					children: [
+						{
+							title: 'Dashboard',
+							href: '/admin/migration',
+							icon: Database,
+							activePrefixes: ['/admin/migration/users']
+						},
+						{
+							title: 'Errors',
+							href: '/admin/migration/errors',
+							icon: AlertTriangle
+						}
+					]
 				},
 				{
 					title: 'Error Control',
@@ -189,7 +243,11 @@
 	}
 
 	let pathname = $derived($page.url.pathname);
-	let isWideContentRoute = $derived(pathname === '/admin/chat/sessions');
+	let isWideContentRoute = $derived(
+		wideContentRoutePrefixes.some(
+			(route) => pathname === route || pathname.startsWith(`${route}/`)
+		)
+	);
 
 	const initials = $derived(
 		(user?.name || user?.email || '')
@@ -201,61 +259,189 @@
 
 	const avatarClasses =
 		'flex h-10 w-10 items-center justify-center rounded-full bg-foreground text-sm font-semibold uppercase text-background';
+
+	onMount(() => {
+		if (!browser) return;
+
+		try {
+			sidebarCollapsed = localStorage.getItem(ADMIN_SIDEBAR_COLLAPSED_KEY) === 'true';
+		} catch (error) {
+			console.warn('Unable to load admin sidebar preference', error);
+		}
+	});
+
+	function setSidebarCollapsed(nextValue: boolean) {
+		sidebarCollapsed = nextValue;
+
+		if (!browser) return;
+
+		try {
+			localStorage.setItem(ADMIN_SIDEBAR_COLLAPSED_KEY, String(nextValue));
+		} catch (error) {
+			console.warn('Unable to save admin sidebar preference', error);
+		}
+	}
+
+	function toggleSidebarCollapsed() {
+		setSidebarCollapsed(!sidebarCollapsed);
+	}
 </script>
 
-<div class="admin-shell relative flex min-h-screen bg-background text-foreground transition-colors">
+<div
+	class="admin-shell relative flex min-h-full flex-1 bg-background text-foreground transition-colors"
+>
 	<!-- Desktop sidebar -->
 	<aside
-		class="relative hidden w-72 shrink-0 border-r border-border bg-card backdrop-blur-xl lg:flex lg:flex-col tx tx-frame tx-weak"
+		class={`relative hidden shrink-0 border-r border-border bg-card backdrop-blur-xl transition-[width] duration-200 lg:flex lg:flex-col tx tx-frame tx-weak ${
+			sidebarCollapsed ? 'w-16' : 'w-72'
+		}`}
 	>
 		<!-- Logo Section -->
-		<div class="border-b border-border px-6 py-6">
-			<div class="flex items-center gap-4">
-				<div
-					class="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-ink"
+		<div
+			class={sidebarCollapsed
+				? 'border-b border-border px-2 py-4'
+				: 'border-b border-border px-5 py-5'}
+		>
+			<div
+				class={sidebarCollapsed
+					? 'flex flex-col items-center gap-3'
+					: 'flex items-center justify-between gap-3'}
+			>
+				<a
+					href="/admin"
+					class={sidebarCollapsed
+						? 'flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-ink'
+						: 'flex min-w-0 items-center gap-4 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring'}
+					aria-label="Admin dashboard"
+					title={sidebarCollapsed ? 'Admin dashboard' : undefined}
 				>
-					<Layers class="h-5 w-5" />
-				</div>
-				<div>
-					<p
-						class="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-muted-foreground"
+					<span
+						class={sidebarCollapsed
+							? 'flex h-11 w-11 items-center justify-center rounded-xl'
+							: 'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-ink'}
 					>
-						BuildOS
-					</p>
-					<p class="text-base font-bold text-foreground">Admin Console</p>
-				</div>
+						<Layers class="h-5 w-5" />
+					</span>
+					{#if !sidebarCollapsed}
+						<span class="min-w-0">
+							<span
+								class="block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-muted-foreground"
+							>
+								BuildOS
+							</span>
+							<span class="block truncate text-base font-bold text-foreground">
+								Admin Console
+							</span>
+						</span>
+					{/if}
+				</a>
+
+				<button
+					type="button"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					aria-label={sidebarCollapsed
+						? 'Expand admin sidebar'
+						: 'Collapse admin sidebar'}
+					title={sidebarCollapsed ? 'Expand admin sidebar' : 'Collapse admin sidebar'}
+					onclick={toggleSidebarCollapsed}
+				>
+					{#if sidebarCollapsed}
+						<PanelLeftOpen class="h-4 w-4" />
+					{:else}
+						<PanelLeftClose class="h-4 w-4" />
+					{/if}
+				</button>
 			</div>
 		</div>
 
 		<!-- Navigation -->
-		<AdminSidebar groups={navGroups} {pathname} />
+		<AdminSidebar groups={navGroups} {pathname} collapsed={sidebarCollapsed} />
 
 		<!-- User Profile -->
-		<div class="mt-auto border-t border-border px-6 py-5">
-			<div class="flex items-center gap-3">
+		<div
+			class={sidebarCollapsed
+				? 'mt-auto border-t border-border px-2 py-4'
+				: 'mt-auto border-t border-border px-5 py-5'}
+		>
+			<div
+				class={sidebarCollapsed
+					? 'flex flex-col items-center gap-3'
+					: 'flex items-center gap-3'}
+			>
 				<div class="relative">
-					<div class={avatarClasses}>{initials}</div>
+					<div
+						class={avatarClasses}
+						title={sidebarCollapsed ? user?.name || user?.email || 'Admin' : undefined}
+					>
+						{initials}
+					</div>
 					<span
 						class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-emerald-500"
 					></span>
 				</div>
-				<div class="flex-1 min-w-0">
-					<p class="text-sm font-semibold text-foreground truncate">
-						{user?.name || 'Admin'}
-					</p>
-					{#if user?.email}
-						<p class="text-xs text-muted-foreground truncate">
-							{user.email}
+				{#if !sidebarCollapsed}
+					<div class="flex-1 min-w-0">
+						<p class="text-sm font-semibold text-foreground truncate">
+							{user?.name || 'Admin'}
 						</p>
-					{/if}
-				</div>
+						{#if user?.email}
+							<p class="text-xs text-muted-foreground truncate">
+								{user.email}
+							</p>
+						{/if}
+					</div>
+				{/if}
+				<a
+					href="/"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					aria-label="Open main app"
+					title="Open main app"
+				>
+					<Home class="h-4 w-4" />
+				</a>
 			</div>
 		</div>
 	</aside>
 
 	<!-- Main content -->
 	<div class="flex min-h-screen min-w-0 flex-1 flex-col">
-		<!-- Top Header Bar -->
+		<!-- Mobile top bar -->
+		<header
+			class="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card px-3 shadow-ink lg:hidden"
+		>
+			<button
+				type="button"
+				class="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				aria-label="Open admin menu"
+				aria-controls="admin-mobile-nav"
+				aria-expanded={mobileOpen}
+				onclick={() => (mobileOpen = true)}
+			>
+				<Menu class="h-5 w-5" />
+			</button>
+
+			<a
+				href="/admin"
+				class="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				aria-label="Admin dashboard"
+			>
+				<span
+					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground shadow-ink"
+				>
+					<Layers class="h-4 w-4" />
+				</span>
+				<span class="truncate text-sm font-bold text-foreground">Admin Console</span>
+			</a>
+
+			<a
+				href="/"
+				class="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				aria-label="Open main app"
+				title="Open main app"
+			>
+				<Home class="h-5 w-5" />
+			</a>
+		</header>
 
 		<!-- Main Content Area -->
 		<main class="relative flex-1 overflow-y-auto">

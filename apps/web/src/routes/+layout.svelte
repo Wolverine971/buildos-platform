@@ -266,8 +266,17 @@
 	});
 
 	// Onboarding state — fully reactive to user/data changes (not route-gated)
+	let pathname = $derived($page.url.pathname);
+	let isAdminRoute = $derived(pathname === '/admin' || pathname.startsWith('/admin/'));
 	let showNavigation = $derived(routeBasedState.showNavigation);
-	let showFooter = $derived(routeBasedState.showFooter);
+	let showFooter = $derived(routeBasedState.showFooter && !isAdminRoute);
+	let mainContentClasses = $derived(
+		isAdminRoute
+			? 'relative flex flex-1 w-full min-h-0'
+			: `rounded-md relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-[1200px] p-1 ${
+					showNavigation ? '' : 'min-h-screen'
+				}`
+	);
 	let needsOnboarding = $derived(Boolean(user && !completedOnboarding));
 	let showOnboardingModal = $derived.by(() => {
 		if (!needsOnboarding || animatingDismiss) return false;
@@ -846,7 +855,7 @@
 		<Navigation bind:element={navigationElement} {...navigationProps} />
 	{/if}
 
-	{#if user && trialStatus && data.stripeEnabled}
+	{#if !isAdminRoute && user && trialStatus && data.stripeEnabled}
 		<TrialBannerStatic
 			user={{
 				trial_ends_at: user.trial_ends_at,
@@ -855,7 +864,7 @@
 		/>
 	{/if}
 
-	{#if !billingLoading && paymentWarnings.length > 0 && PaymentWarning}
+	{#if !isAdminRoute && !billingLoading && paymentWarnings.length > 0 && PaymentWarning}
 		<div class="container mx-auto px-3 sm:px-6 lg:px-8 mt-3 sm:mt-4">
 			{#each paymentWarnings as warning (warning.id)}
 				<PaymentWarning notification={warning} ondismiss={handlePaymentWarningDismiss} />
@@ -863,7 +872,7 @@
 		</div>
 	{/if}
 
-	{#if !billingLoading && isConsumptionFrozen}
+	{#if !isAdminRoute && !billingLoading && isConsumptionFrozen}
 		<div class="container mx-auto px-3 sm:px-6 lg:px-8 mt-3 sm:mt-4">
 			<section
 				class="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 sm:px-5 sm:py-4 shadow-ink"
@@ -890,10 +899,7 @@
 		</div>
 	{/if}
 
-	<main
-		id="main-content"
-		class={`rounded-md relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-[1200px] p-1 ${showNavigation ? '' : 'min-h-screen'} `}
-	>
+	<main id="main-content" class={mainContentClasses}>
 		{@render children?.()}
 	</main>
 

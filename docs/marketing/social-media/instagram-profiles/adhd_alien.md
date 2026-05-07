@@ -11,7 +11,7 @@
 **Relationship Status:** Prospect
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-08
+**Last Reviewed:** 2026-05-05
 **Last Engaged:** Never
 **Source of First Discovery:** 2026-03-22 afternoon warmup (graphic novel finished post)
 
@@ -47,11 +47,12 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                            | Post Link                                | Action   | Status                  | What We Said / Planned                              | Outcome       | Source                         |
-| ---------- | ------- | -------------------------------- | ---------------------------------------- | -------- | ----------------------- | --------------------------------------------------- | ------------- | ------------------------------ |
-| 2026-03-22 | Post    | Graphic novel "finished!" reveal | https://www.instagram.com/p/DWKS5QRjq08/ | Queued   | No posting confirmation | 5-year persistence + finished-with-ADHD celebration | Unknown       | 2026-03-22_instagram-warmup.md |
-| 2026-03-23 | Profile | Carryover strong ratio (664:1)   | N/A                                      | Reviewed | Logged                  | Noted as still viable engagement                    | No engagement | 2026-03-23_instagram-warmup.md |
-| 2026-03-24 | Post    | B&N pre-order event (25% off)    | https://www.instagram.com/p/DWRmNzHiPI3/ | Queued   | No posting confirmation | Milestone cheerleading + pre-order hype             | Unknown       | 2026-03-24_instagram-warmup.md |
+| Date       | Surface | Topic                                             | Post Link                                           | Action   | Status                   | What We Said / Planned                                                                                                                                                                                         | Outcome       | Source                                 |
+| ---------- | ------- | ------------------------------------------------- | --------------------------------------------------- | -------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------------------------------------- |
+| 2026-03-22 | Post    | Graphic novel "finished!" reveal                  | https://www.instagram.com/p/DWKS5QRjq08/            | Queued   | No posting confirmation  | 5-year persistence + finished-with-ADHD celebration                                                                                                                                                            | Unknown       | 2026-03-22_instagram-warmup.md         |
+| 2026-03-23 | Profile | Carryover strong ratio (664:1)                    | N/A                                                 | Reviewed | Logged                   | Noted as still viable engagement                                                                                                                                                                               | No engagement | 2026-03-23_instagram-warmup.md         |
+| 2026-03-24 | Post    | B&N pre-order event (25% off)                     | https://www.instagram.com/p/DWRmNzHiPI3/            | Queued   | No posting confirmation  | Milestone cheerleading + pre-order hype                                                                                                                                                                        | Unknown       | 2026-03-24_instagram-warmup.md         |
+| 2026-05-05 | Post    | "ADHD's serious impact on life and mental health" | https://www.instagram.com/adhd_alien/p/DX69w6gCH8j/ | Queued   | Pending /instagram-reply | Cheerleader/empathy mode only. Acknowledge one specific panel that hit (NOT a generic "this is so real"). No product. No founder framing. Vulnerability post — risk if it sounds opportunistic. Mention fit 0. | Pending       | 2026-05-05_instagram-warmup-evening.md |
 
 ## Open Loops
 

@@ -1,7 +1,7 @@
 // apps/web/src/routes/admin/email-sequences/+page.server.ts
 import { dev } from '$app/environment';
 import { PUBLIC_APP_URL } from '$env/static/public';
-import { fail } from '@sveltejs/kit';
+import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import {
@@ -46,6 +46,10 @@ type CopyOption = {
 	sequenceKey: SequenceKey;
 	stepKey: string;
 	variantKey: string;
+	sequencePosition: number;
+	stepLabel: string;
+	triggerLabel: string;
+	triggerDetail: string;
 	label: string;
 	description: string;
 	status: CopyStatus;
@@ -128,6 +132,81 @@ const SEQUENCES = [
 	}
 ] as const;
 
+const WELCOME_STEP_COPY_META: Record<
+	WelcomeSequenceStep,
+	{
+		sequencePosition: number;
+		stepLabel: string;
+		triggerLabel: string;
+		triggerDetail: string;
+	}
+> = {
+	email_1: {
+		sequencePosition: 1,
+		stepLabel: 'Email 1',
+		triggerLabel: 'Immediately after account creation',
+		triggerDetail: 'First queue step is due at sequence start.'
+	},
+	email_2: {
+		sequencePosition: 2,
+		stepLabel: 'Email 2',
+		triggerLabel: 'Day 1 after signup',
+		triggerDetail:
+			'Sends during the user local 9am-5pm window; branch depends on project creation.'
+	},
+	email_3: {
+		sequencePosition: 3,
+		stepLabel: 'Email 3',
+		triggerLabel: 'Day 3 after signup',
+		triggerDetail:
+			'Sends during the user local 9am-5pm window; branch depends on setup progress.'
+	},
+	email_4: {
+		sequencePosition: 4,
+		stepLabel: 'Email 4',
+		triggerLabel: 'Day 6 after signup',
+		triggerDetail:
+			'Sends during the user local 9am-5pm window; skipped when follow-through channels are ready.'
+	},
+	email_5: {
+		sequencePosition: 5,
+		stepLabel: 'Email 5',
+		triggerLabel: 'Day 9 after signup',
+		triggerDetail:
+			'Sends during the user local 9am-5pm window; branch depends on return-session activity.'
+	}
+};
+
+const RETARGETING_STEP_COPY_META: Record<
+	RetargetingPilotStep,
+	{
+		sequencePosition: number;
+		stepLabel: string;
+		triggerLabel: string;
+		triggerDetail: string;
+	}
+> = {
+	touch_1: {
+		sequencePosition: 1,
+		stepLabel: 'Touch 1',
+		triggerLabel: 'Manual send when cohort member is unsent',
+		triggerDetail: 'Eligible non-holdout members with no reply or manual stop.'
+	},
+	touch_2: {
+		sequencePosition: 2,
+		stepLabel: 'Touch 2',
+		triggerLabel: '72 hours after Touch 1',
+		triggerDetail:
+			'Only when no tracked post-send activity exists; requires a demo URL at send time.'
+	},
+	touch_3: {
+		sequencePosition: 3,
+		stepLabel: 'Touch 3',
+		triggerLabel: '7 days after Touch 1',
+		triggerDetail: 'Only for open/click members with no tracked product action.'
+	}
+};
+
 function getBaseUrl(): string {
 	return PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
 }
@@ -195,6 +274,10 @@ function asCopyOption(input: {
 	sequenceKey: SequenceKey;
 	stepKey: string;
 	variantKey: string;
+	sequencePosition: number;
+	stepLabel: string;
+	triggerLabel: string;
+	triggerDetail: string;
 	label: string;
 	description: string;
 	sourceContent: EmailContentWithCopy;
@@ -209,6 +292,10 @@ function asCopyOption(input: {
 		sequenceKey: input.sequenceKey,
 		stepKey: input.stepKey,
 		variantKey: input.variantKey,
+		sequencePosition: input.sequencePosition,
+		stepLabel: input.stepLabel,
+		triggerLabel: input.triggerLabel,
+		triggerDetail: input.triggerDetail,
 		label: input.label,
 		description: input.description,
 		status: input.override ? 'override' : 'source',
@@ -335,10 +422,12 @@ function buildWelcomeCopyOptions(
 			baseUrl
 		);
 		const key = overrideKey(variant.step, content.branchKey);
+		const stepMeta = WELCOME_STEP_COPY_META[variant.step];
 		return asCopyOption({
 			sequenceKey: BUILDOS_WELCOME_SEQUENCE_KEY,
 			stepKey: variant.step,
 			variantKey: content.branchKey,
+			...stepMeta,
 			label: variant.label,
 			description: variant.description,
 			sourceContent: welcomeContentWithCta(content),
@@ -366,6 +455,7 @@ function buildRetargetingCopyOptions(
 
 	return RETARGETING_STEPS.flatMap((step) =>
 		variants.map((variant) => {
+			const stepMeta = RETARGETING_STEP_COPY_META[step];
 			const content = buildRetargetingEmailContent({
 				baseUrl,
 				campaignId,
@@ -390,6 +480,7 @@ function buildRetargetingCopyOptions(
 				sequenceKey: RETARGETING_EMAIL_SEQUENCE_KEY,
 				stepKey: step,
 				variantKey: variant,
+				...stepMeta,
 				label: `${step.replace('_', ' ')} - variant ${variant}`,
 				description:
 					step === 'touch_1'
@@ -581,7 +672,15 @@ async function requireAdmin(
 	return { ok: true, userId: user.id };
 }
 
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ url, locals: { safeGetSession, supabase } }) => {
+	const admin = await requireAdmin(safeGetSession, supabase);
+	if (!admin.ok) {
+		if (admin.status === 401) {
+			throw redirect(303, '/auth/login');
+		}
+		throw redirect(303, '/');
+	}
+
 	const selectedSequenceKey = normalizeSequenceKey(url.searchParams.get('sequence'));
 	const baseUrl = getBaseUrl();
 	const adminSupabase = createAdminSupabaseClient();

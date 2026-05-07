@@ -11,7 +11,7 @@
 **Relationship Status:** Warm
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-08
+**Last Reviewed:** 2026-05-05
 **Last Engaged:** Never (already followed by @djwayne3)
 **Source of First Discovery:** `instagram-engagement-targets.md` (Tier 2 watering holes)
 
@@ -26,7 +26,7 @@
 ## Bio Snapshot
 
 - **Bio:** CEO @latecheckout, startup founders, AI-age builders
-- **Followers:** ~105K
+- **Followers:** ~121K (up from ~105K — non-trivial growth since profile creation)
 - **Offer / link:** Late Checkout, startup idea content, newsletter
 - **Formats:** Carousels, Reels, idea-list posts, cross-posted X content
 - **Audience vibe:** Founder-heavy, idea-curious, high comment volume
@@ -47,9 +47,10 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                    | Post Link | Action   | Status | What We Said / Planned                                | Outcome       | Source                            |
-| ---------- | ------- | ------------------------ | --------- | -------- | ------ | ----------------------------------------------------- | ------------- | --------------------------------- |
-| 2026-04-08 | Profile | Initial profile creation | N/A       | Reviewed | Logged | Already followed by @djwayne3, untapped watering hole | No engagement | `instagram-engagement-targets.md` |
+| Date       | Surface | Topic                                              | Post Link                                             | Action   | Status                   | What We Said / Planned                                                                                                                                                                                                                                                                                                                                     | Outcome       | Source                                 |
+| ---------- | ------- | -------------------------------------------------- | ----------------------------------------------------- | -------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | -------------------------------------- |
+| 2026-04-08 | Profile | Initial profile creation                           | N/A                                                   | Reviewed | Logged                   | Already followed by @djwayne3, untapped watering hole                                                                                                                                                                                                                                                                                                      | No engagement | `instagram-engagement-targets.md`      |
+| 2026-05-05 | Post    | "I tested Claude Design — what I learned" carousel | https://www.instagram.com/gregisenberg/p/DX62RZlkftc/ | Queued   | Pending /instagram-reply | DO NOT engage Greg directly. Reply to @timhaydenclark's thoughtful comment about "splitting context, design, copy, and reviewing in human mode rather than .md file form" — agree from a builder POV; mention how splitting context vs. output is the actual hard part of working with these tools. Mention fit 1 (soft thinking-environment language ok). | Pending       | 2026-05-05_instagram-warmup-evening.md |
 
 ## Open Loops
 
