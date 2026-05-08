@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/instagram-profiles/jayclouse.md -->
+
 # @jayclouse
 
 **Handle:** @jayclouse
@@ -11,11 +13,11 @@
 **Strategic Role:** Peer
 **Relationship Status:** Prospect
 **Audience Quality:** High
-**Ladder Stage:** stage_0_discovered
-**Next Best Action:** Live profile-walk at next warmup; mine commenters AND consider one direct peer-tier comment on a creator-tools post
-**Earliest Next Touch:** Now (Course lane is empty in recent runs)
+**Ladder Stage:** stage_2_queued
+**Next Best Action:** Direct peer-tier comment on the "quality vs. quantity" Reel (DYCuMKlAlxT, 4.9h, 5 cmts at queue time); fresh first-commenter window
+**Earliest Next Touch:** Now (Course lane fill — promoted from Stage 0 candidates queue this evening)
 **Profile Created:** 2026-05-07
-**Last Reviewed:** 2026-05-07
+**Last Reviewed:** 2026-05-07 (evening)
 **Last Engaged:** Never
 **Source of First Discovery:** instagram-engagement-targets.md (Solo + Course lanes); 2026-05-06 Lane C #22
 
@@ -51,14 +53,16 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                  | Post Link | Action     | Status | What We Said / Planned                                                       | Outcome  | Source                         |
-| ---------- | ------- | ---------------------- | --------- | ---------- | ------ | ---------------------------------------------------------------------------- | -------- | ------------------------------ |
-| 2026-05-07 | n/a     | First profile creation | n/a       | Discovered | Logged | Direct peer-tier comment + commenter mining; profile-walk at next warmup     | none yet | discovery/instagram/2026-05-07 |
+| Date                 | Surface | Topic                                                                                                        | Post Link                                             | Action     | Status                   | What We Said / Planned                                                                                                                                                                                                                                                                                                                                                                                             | Outcome  | Source                                  |
+| -------------------- | ------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------- | ---------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | --------------------------------------- |
+| 2026-05-07           | n/a     | First profile creation                                                                                       | n/a                                                   | Discovered | Logged                   | Direct peer-tier comment + commenter mining; profile-walk at next warmup                                                                                                                                                                                                                                                                                                                                           | none yet | discovery/instagram/2026-05-07          |
+| 2026-05-07 (evening) | Reel    | "The quality vs. quantity debate rages on. But who defines quality?" — 4.9h, 15 likes / 5 cmts at queue time | https://www.instagram.com/jayclouse/reel/DYCuMKlAlxT/ | Queued     | Pending /instagram-reply | Promoted from Stage 0 to evening reply queue. Direct peer comment on the "audience-defines-quality" framing — DJ has a lived BuildOS POV on shipping for the messy creator/builder audience rather than the "best-in-class taste" audience. Soft thinking-environment language fine. Mention fit 0-1. First-commenter window still open at 4.9h. **Bio confirmed: 11.2K verified, "supporting content creators."** | Pending  | 2026-05-07_instagram-warmup-evening.md  |
+| 2026-05-07 (evening) | Reel    | Same DYCuMKlAlxT — 3 reply options drafted                                                                   | https://www.instagram.com/jayclouse/reel/DYCuMKlAlxT/ | Drafted    | Pending Posting          | 3 options drafted: (1) value — audience-defines-quality with concrete BuildOS-shipping-the-messy-version anchor; (2) casual — peer agreement, lighter; (3) cheerleader — short, calm. Mention fit 0-1; no product mention. First-ever touch on Jay's account. Reply-time recommendation: lead with Option 1 if comment thread still craft-tone; switch to Option 3 if filling with hookier comments.               | Pending  | 2026-05-07_instagram-replies-evening.md |
 
 ## Ledger Links
 
-- **Comment log rows:** None yet
-- **Discovery candidate row:** active (queued_for_warmup, 2026-05-07)
+- **Comment log rows:** 1 row (2026-05-07 evening, Queued → Drafted via 2026-05-07 evening replies pass)
+- **Discovery candidate row:** active → engaged (state moved to `engaged` on 2026-05-07 evening — promoted into reply queue)
 - **Person node:** Not created — promote if a real reaction lands or if cross-platform touch (newsletter, podcast) becomes likely
 
 ## Open Loops

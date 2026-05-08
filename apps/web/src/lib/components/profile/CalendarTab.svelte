@@ -97,6 +97,20 @@
 		return prefs;
 	}
 
+	function getCalendarReturnPath() {
+		const returnUrl = new URL($page.url);
+		returnUrl.searchParams.set('tab', 'calendar');
+		returnUrl.searchParams.set('calendar', '1');
+		returnUrl.searchParams.delete('success');
+		returnUrl.searchParams.delete('error');
+		return `${returnUrl.pathname}${returnUrl.search}`;
+	}
+
+	function getCalendarSettingsUrl() {
+		const params = new URLSearchParams({ redirect: getCalendarReturnPath() });
+		return `/profile/calendar?${params.toString()}`;
+	}
+
 	// Handle calendar data from form actions
 	$effect(() => {
 		if (form?.calendarData) {
@@ -121,9 +135,13 @@
 
 	// Handle URL parameters for success/error messages
 	$effect(() => {
-		if (browser && $page.url.searchParams.get('success') === 'calendar_connected') {
+		if (
+			browser &&
+			$page.url.searchParams.get('calendar') === '1' &&
+			$page.url.searchParams.get('success') === 'calendar_connected'
+		) {
 			// Calendar was just connected, refresh data and show success
-			refreshCalendarData();
+			refreshCalendarData({ showErrors: false });
 			onsuccess?.({ message: 'Google Calendar connected successfully!' });
 
 			// Check if this is first-time calendar connection
@@ -139,6 +157,7 @@
 			// Clean up URL parameters
 			const newUrl = new URL($page.url);
 			newUrl.searchParams.delete('success');
+			newUrl.searchParams.delete('calendar');
 			replaceState(newUrl.toString(), {});
 		}
 	});
@@ -155,7 +174,11 @@
 	});
 
 	$effect(() => {
-		if (browser && $page.url.searchParams.get('error')) {
+		if (
+			browser &&
+			$page.url.searchParams.get('calendar') === '1' &&
+			$page.url.searchParams.get('error')
+		) {
 			const error = $page.url.searchParams.get('error');
 			let errorMessage = 'Failed to connect Google Calendar';
 
@@ -181,6 +204,7 @@
 			// Clean up URL parameters
 			const newUrl = new URL($page.url);
 			newUrl.searchParams.delete('error');
+			newUrl.searchParams.delete('calendar');
 			replaceState(newUrl.toString(), {});
 		}
 	});
@@ -201,7 +225,7 @@
 
 		loadingCalendar = true;
 		try {
-			const response = await fetch('/profile/calendar');
+			const response = await fetch(getCalendarSettingsUrl());
 
 			if (!response.ok) {
 				throw new Error(`HTTP error! status: ${response.status}`);
@@ -231,12 +255,13 @@
 	}
 
 	// Function to refresh calendar data (used after OAuth or manual refresh)
-	async function refreshCalendarData() {
+	async function refreshCalendarData(options: { showErrors?: boolean } = {}) {
 		if (refreshingCalendar) return;
 
+		const { showErrors = true } = options;
 		refreshingCalendar = true;
 		try {
-			const response = await fetch('/profile/calendar', {
+			const response = await fetch(getCalendarSettingsUrl(), {
 				headers: {
 					'Cache-Control': 'no-cache'
 				}
@@ -250,7 +275,7 @@
 
 			if (result.error) {
 				console.error('Failed to refresh calendar settings:', result.error);
-				onerror?.({ message: 'Failed to refresh calendar settings' });
+				if (showErrors) onerror?.({ message: 'Failed to refresh calendar settings' });
 				return;
 			}
 
@@ -258,16 +283,37 @@
 			calendarPreferences = normalizeCalendarPreferences(result.calendarPreferences);
 		} catch (error) {
 			console.error('Error refreshing calendar settings:', error);
-			onerror?.({ message: 'Error refreshing calendar settings' });
+			if (showErrors) onerror?.({ message: 'Error refreshing calendar settings' });
 		} finally {
 			refreshingCalendar = false;
 		}
 	}
 
 	// Calendar functions
-	function connectCalendar() {
-		if (calendarData?.calendarAuthUrl) {
-			window.location.href = calendarData.calendarAuthUrl;
+	async function connectCalendar() {
+		try {
+			let calendarAuthUrl = calendarData?.calendarAuthUrl;
+			if (!calendarAuthUrl) {
+				const response = await fetch(getCalendarSettingsUrl());
+				if (!response.ok) {
+					throw new Error('Failed to get calendar authorization URL');
+				}
+
+				const result = await response.json();
+				calendarAuthUrl = result.calendarAuthUrl;
+			}
+
+			if (!calendarAuthUrl) {
+				throw new Error('No calendar authorization URL returned');
+			}
+
+			window.location.href = calendarAuthUrl;
+		} catch (error) {
+			console.error('Calendar connection error:', error);
+			onerror?.({
+				message:
+					error instanceof Error ? error.message : 'Failed to connect Google Calendar'
+			});
 		}
 	}
 
@@ -569,7 +615,7 @@
 							</div>
 
 							<Button
-								onclick={refreshCalendarData}
+								onclick={() => refreshCalendarData()}
 								disabled={refreshingCalendar}
 								variant="ghost"
 								size="sm"

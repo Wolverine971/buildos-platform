@@ -1,7 +1,10 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/executors/calendar-executor.ts
 import { BaseExecutor } from './base-executor';
 import { CalendarService } from '$lib/services/calendar-service';
-import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
+import {
+	OntoEventSyncService,
+	type OntoEventActivityLogOptions
+} from '$lib/services/ontology/onto-event-sync.service';
 import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import type { CalendarEvent } from '$lib/services/calendar-service';
@@ -132,6 +135,18 @@ export class CalendarExecutor extends BaseExecutor {
 		this.eventSyncService = new OntoEventSyncService(this.supabase as any);
 		this.projectCalendarService = new ProjectCalendarService(this.supabase as any);
 		this.googleOAuthService = new GoogleOAuthService(this.supabase as any);
+	}
+
+	private buildEventActivityLog(actorId?: string | null): OntoEventActivityLogOptions {
+		const isExternalAgent = Boolean(this.activityLogActorContext?.externalAgentCallerId);
+		return {
+			changeSource: isExternalAgent ? 'agent_call' : 'chat',
+			chatSessionId: isExternalAgent ? undefined : this.sessionId,
+			actorContext: {
+				...(this.activityLogActorContext ?? {}),
+				changedByActorId: this.activityLogActorContext?.changedByActorId ?? actorId ?? null
+			}
+		};
 	}
 
 	private normalizeCalendarId(value?: string | null): string | null {
@@ -831,7 +846,8 @@ export class CalendarExecutor extends BaseExecutor {
 			props,
 			calendarScope: scope,
 			calendarId: requestedCalendarId,
-			syncToCalendar: args.sync_to_calendar
+			syncToCalendar: args.sync_to_calendar,
+			activityLog: this.buildEventActivityLog(actorId)
 		});
 
 		if (taskMetadata && projectId) {
@@ -945,6 +961,7 @@ export class CalendarExecutor extends BaseExecutor {
 				}
 			}
 
+			const actorId = await this.getActorId();
 			const updated = await this.eventSyncService.updateEvent(this.userId, {
 				eventId: ontoEventId,
 				title: args.title,
@@ -961,7 +978,8 @@ export class CalendarExecutor extends BaseExecutor {
 						: normalizedEnd,
 				timezone: timezoneForUpdate,
 				props: nextProps as any,
-				syncToCalendar: args.sync_to_calendar
+				syncToCalendar: args.sync_to_calendar,
+				activityLog: this.buildEventActivityLog(actorId)
 			});
 			return { source: 'ontology', event: updated };
 		}
@@ -1047,9 +1065,11 @@ export class CalendarExecutor extends BaseExecutor {
 			if (!ontoEventId) {
 				throw new Error('onto_event_id is required for ontology event delete');
 			}
+			const actorId = await this.getActorId();
 			const deleted = await this.eventSyncService.deleteEvent(this.userId, {
 				eventId: ontoEventId,
-				syncToCalendar: args.sync_to_calendar
+				syncToCalendar: args.sync_to_calendar,
+				activityLog: this.buildEventActivityLog(actorId)
 			});
 			return { source: 'ontology', event: deleted };
 		}

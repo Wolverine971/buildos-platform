@@ -311,7 +311,7 @@ function getNextRetargetingStep(member: RetargetingPilotMetricRow): {
 function computeScheduledFor(
 	member: RetargetingPilotMetricRow,
 	step: RetargetingPilotStep,
-	input: Pick<TriggerSelectedRetargetingInput, 'triggerMode' | 'scheduledFor'>,
+	input: Pick<TriggerSelectedRetargetingInput, 'triggerMode' | 'scheduleMode' | 'scheduledFor'>,
 	now: Date
 ): string {
 	if (input.triggerMode === 'send_now') {
@@ -320,6 +320,9 @@ function computeScheduledFor(
 
 	const requestedMinimum =
 		parseDate(input.scheduledFor) ?? new Date(now.getTime() + 24 * 60 * 60 * 1000);
+	if (input.scheduleMode === 'custom_minimum') {
+		return maxDate(now, requestedMinimum).toISOString();
+	}
 
 	switch (step) {
 		case 'touch_1':

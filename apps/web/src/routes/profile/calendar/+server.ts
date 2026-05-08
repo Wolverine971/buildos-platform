@@ -6,6 +6,18 @@ import { ensureActorId } from '$lib/services/ontology/ontology-projects.service'
 
 // Removed - now using GoogleOAuthService.generateCalendarAuthUrl()
 
+function getSafeRedirectPath(candidate: string | null, origin: string): string | undefined {
+	if (!candidate) return undefined;
+
+	try {
+		const redirectUrl = new URL(candidate, origin);
+		if (redirectUrl.origin !== origin) return undefined;
+		return `${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`;
+	} catch {
+		return undefined;
+	}
+}
+
 export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }, url }) => {
 	const { user } = await safeGetSession();
 
@@ -150,9 +162,7 @@ export const GET: RequestHandler = async ({ locals: { safeGetSession, supabase }
 
 		// Generate calendar auth URL, preserving optional redirect path
 		const calendarRedirectUri = `${url.origin}/auth/google/calendar-callback`;
-		const requestedRedirect = url.searchParams.get('redirect');
-		const redirectPath =
-			requestedRedirect && requestedRedirect.startsWith('/') ? requestedRedirect : undefined;
+		const redirectPath = getSafeRedirectPath(url.searchParams.get('redirect'), url.origin);
 		const calendarAuthUrl = oAuthService.generateCalendarAuthUrl(calendarRedirectUri, user.id, {
 			redirectPath
 		});

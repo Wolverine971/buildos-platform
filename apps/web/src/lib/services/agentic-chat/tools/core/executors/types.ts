@@ -9,6 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { ProjectSpec } from '$lib/types/onto';
+import type { ActivityLogActorContext } from '$lib/services/async-activity-logger';
 
 // ============================================
 // EXECUTOR CONTEXT
@@ -26,6 +27,7 @@ export interface ExecutorContext {
 	getActorId: () => Promise<string>;
 	getAdminSupabase: () => TypedSupabaseClient;
 	getAuthHeaders: () => Promise<HeadersInit>;
+	activityLogActorContext?: ActivityLogActorContext;
 }
 
 /**

@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/instagram-profiles/mariepoulin.md -->
+
 # @mariepoulin
 
 **Handle:** @mariepoulin
@@ -51,9 +53,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                  | Post Link | Action     | Status | What We Said / Planned                                                            | Outcome    | Source                         |
-| ---------- | ------- | ---------------------- | --------- | ---------- | ------ | --------------------------------------------------------------------------------- | ---------- | ------------------------------ |
-| 2026-05-07 | n/a     | First profile creation | n/a       | Discovered | Logged | PKM peer-week candidate; profile-walk at next warmup to pick fresh post           | none yet   | discovery/instagram/2026-05-07 |
+| Date       | Surface | Topic                  | Post Link | Action     | Status | What We Said / Planned                                                  | Outcome  | Source                         |
+| ---------- | ------- | ---------------------- | --------- | ---------- | ------ | ----------------------------------------------------------------------- | -------- | ------------------------------ |
+| 2026-05-07 | n/a     | First profile creation | n/a       | Discovered | Logged | PKM peer-week candidate; profile-walk at next warmup to pick fresh post | none yet | discovery/instagram/2026-05-07 |
 
 ## Ledger Links
 

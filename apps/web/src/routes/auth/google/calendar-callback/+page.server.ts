@@ -33,17 +33,29 @@ export const load: PageServerLoad = async ({
 	const stateMatchesUser = !!stateUserId && stateUserId === user.id;
 
 	const DEFAULT_REDIRECT_PATH = '/profile?tab=calendar';
-	const resolvedRedirectPath =
-		stateMatchesUser && decodedState?.redirectPath && decodedState.redirectPath.startsWith('/')
-			? decodedState.redirectPath
-			: DEFAULT_REDIRECT_PATH;
+	const normalizeRedirectPath = (path: string | null | undefined): string => {
+		if (!path) return DEFAULT_REDIRECT_PATH;
+
+		try {
+			const redirectUrl = new URL(path, url.origin);
+			if (redirectUrl.origin !== url.origin) {
+				return DEFAULT_REDIRECT_PATH;
+			}
+
+			return `${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`;
+		} catch {
+			return DEFAULT_REDIRECT_PATH;
+		}
+	};
+
+	const resolvedRedirectPath = normalizeRedirectPath(
+		stateMatchesUser ? decodedState?.redirectPath : null
+	);
 
 	const buildRedirectTarget = (path: string, params: Record<string, string>): string => {
-		const [basePath = '', existingQuery = ''] = path.split('?');
-		const search = new URLSearchParams(existingQuery);
-		Object.entries(params).forEach(([key, value]) => search.set(key, value));
-		const queryString = search.toString();
-		return queryString ? `${basePath}?${queryString}` : basePath;
+		const redirectUrl = new URL(normalizeRedirectPath(path), url.origin);
+		Object.entries(params).forEach(([key, value]) => redirectUrl.searchParams.set(key, value));
+		return `${redirectUrl.pathname}${redirectUrl.search}${redirectUrl.hash}`;
 	};
 
 	const buildCalendarRedirect = (path: string, params: Record<string, string>) =>
@@ -104,7 +116,7 @@ export const load: PageServerLoad = async ({
 			temporarily_unavailable: 'Google OAuth temporarily unavailable'
 		};
 
-		const errorMsg = errorDescriptions[error] || `OAuth error: ${error}`;
+		const errorMsg = errorDescriptions[error] ? error : 'oauth_error';
 		const target = buildCalendarRedirect(resolvedRedirectPath, {
 			error: errorMsg
 		});
@@ -226,7 +238,7 @@ export const load: PageServerLoad = async ({
 			}
 		});
 		const target = buildCalendarRedirect(resolvedRedirectPath, {
-			error: result.error || 'token_exchange_failed'
+			error: 'token_exchange_failed'
 		});
 		throw redirect(303, target);
 	}

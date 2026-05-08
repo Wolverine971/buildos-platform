@@ -41,11 +41,11 @@ import type {
  * Looks for X-Change-Source header to identify the source of the change.
  *
  * @param request - The incoming request object
- * @returns The change source ('chat', 'api', 'form', 'brain_dump') or default 'api'
+ * @returns The change source ('chat', 'api', 'form', 'brain_dump', 'agent_call') or default 'api'
  */
 export function getChangeSourceFromRequest(request: Request): ProjectLogChangeSource {
 	const headerValue = request.headers.get('X-Change-Source');
-	if (headerValue && ['chat', 'api', 'form', 'brain_dump'].includes(headerValue)) {
+	if (headerValue && ['chat', 'api', 'form', 'brain_dump', 'agent_call'].includes(headerValue)) {
 		return headerValue as ProjectLogChangeSource;
 	}
 	return 'api';
@@ -75,12 +75,21 @@ export interface ActivityLogParams {
 	beforeData?: Record<string, unknown> | null;
 	afterData?: Record<string, unknown> | null;
 	changedBy: string;
+	changedByActorId?: string | null;
 	changeSource?: ProjectLogChangeSource;
 	chatSessionId?: string;
+	externalAgentCallerId?: string | null;
+	agentCallSessionId?: string | null;
 }
 
 export interface BulkActivityLogParams {
 	logs: ActivityLogParams[];
+}
+
+export interface ActivityLogActorContext {
+	changedByActorId?: string | null;
+	externalAgentCallerId?: string | null;
+	agentCallSessionId?: string | null;
 }
 
 // =============================================================================
@@ -151,6 +160,9 @@ async function performLogInsert(
 		before_data: params.beforeData ?? null,
 		after_data: params.afterData ?? null,
 		changed_by: params.changedBy,
+		changed_by_actor_id: params.changedByActorId ?? null,
+		external_agent_caller_id: params.externalAgentCallerId ?? null,
+		agent_call_session_id: params.agentCallSessionId ?? null,
 		change_source: params.changeSource ?? null,
 		chat_session_id: params.chatSessionId ?? null
 	};
@@ -176,6 +188,9 @@ async function performBulkLogInsert(
 		before_data: log.beforeData ?? null,
 		after_data: log.afterData ?? null,
 		changed_by: log.changedBy,
+		changed_by_actor_id: log.changedByActorId ?? null,
+		external_agent_caller_id: log.externalAgentCallerId ?? null,
+		agent_call_session_id: log.agentCallSessionId ?? null,
 		change_source: log.changeSource ?? null,
 		chat_session_id: log.chatSessionId ?? null
 	}));
@@ -202,7 +217,8 @@ export function logCreateAsync(
 	entityData: Record<string, unknown>,
 	changedBy: string,
 	changeSource?: ProjectLogChangeSource,
-	chatSessionId?: string
+	chatSessionId?: string,
+	actorContext?: ActivityLogActorContext
 ): void {
 	logActivityAsync(supabase, {
 		projectId,
@@ -212,8 +228,11 @@ export function logCreateAsync(
 		beforeData: null,
 		afterData: entityData,
 		changedBy,
+		changedByActorId: actorContext?.changedByActorId,
 		changeSource,
-		chatSessionId
+		chatSessionId,
+		externalAgentCallerId: actorContext?.externalAgentCallerId,
+		agentCallSessionId: actorContext?.agentCallSessionId
 	});
 }
 
@@ -229,7 +248,8 @@ export function logUpdateAsync(
 	afterData: Record<string, unknown>,
 	changedBy: string,
 	changeSource?: ProjectLogChangeSource,
-	chatSessionId?: string
+	chatSessionId?: string,
+	actorContext?: ActivityLogActorContext
 ): void {
 	logActivityAsync(supabase, {
 		projectId,
@@ -239,8 +259,11 @@ export function logUpdateAsync(
 		beforeData,
 		afterData,
 		changedBy,
+		changedByActorId: actorContext?.changedByActorId,
 		changeSource,
-		chatSessionId
+		chatSessionId,
+		externalAgentCallerId: actorContext?.externalAgentCallerId,
+		agentCallSessionId: actorContext?.agentCallSessionId
 	});
 }
 
@@ -255,7 +278,8 @@ export function logDeleteAsync(
 	entityData: Record<string, unknown>,
 	changedBy: string,
 	changeSource?: ProjectLogChangeSource,
-	chatSessionId?: string
+	chatSessionId?: string,
+	actorContext?: ActivityLogActorContext
 ): void {
 	logActivityAsync(supabase, {
 		projectId,
@@ -265,7 +289,10 @@ export function logDeleteAsync(
 		beforeData: entityData,
 		afterData: null,
 		changedBy,
+		changedByActorId: actorContext?.changedByActorId,
 		changeSource,
-		chatSessionId
+		chatSessionId,
+		externalAgentCallerId: actorContext?.externalAgentCallerId,
+		agentCallSessionId: actorContext?.agentCallSessionId
 	});
 }

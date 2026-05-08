@@ -1404,7 +1404,35 @@ describe('external tool gateway', () => {
 		expect(state.tasks[0]?.created_by).toBe('actor-1');
 		expect(state.tasks[0]?.type_key).toBe('task.default');
 		expect(syncTaskEventsMock).toHaveBeenCalledTimes(1);
+		expect(syncTaskEventsMock).toHaveBeenCalledWith(
+			'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			'actor-1',
+			expect.objectContaining({ id: state.tasks[0]?.id }),
+			{
+				activityLog: {
+					changeSource: 'agent_call',
+					actorContext: {
+						externalAgentCallerId: '11111111-1111-1111-1111-111111111111',
+						agentCallSessionId: '22222222-2222-2222-2222-222222222222'
+					}
+				}
+			}
+		);
 		expect(logCreateAsyncMock).toHaveBeenCalledTimes(1);
+		expect(logCreateAsyncMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'44444444-4444-4444-4444-444444444444',
+			'task',
+			state.tasks[0]?.id,
+			expect.objectContaining({ title: 'Draft launch checklist' }),
+			'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			'agent_call',
+			undefined,
+			{
+				externalAgentCallerId: '11111111-1111-1111-1111-111111111111',
+				agentCallSessionId: '22222222-2222-2222-2222-222222222222'
+			}
+		);
 		expect(notifyEntityMentionsAddedMock).toHaveBeenCalledTimes(1);
 		expect(state.toolExecutions).toHaveLength(1);
 		expect(state.toolExecutions[0]?.status).toBe('succeeded');

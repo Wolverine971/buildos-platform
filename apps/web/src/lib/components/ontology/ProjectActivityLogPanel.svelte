@@ -205,6 +205,10 @@
 	function formatEntityType(type: string): string {
 		return type.charAt(0).toUpperCase() + type.slice(1);
 	}
+
+	function actorLabel(log: EnrichedLogEntry): string {
+		return log.actor_display_name || log.changed_by_name || 'Someone';
+	}
 </script>
 
 <div
@@ -274,6 +278,7 @@
 						{@const canOpenEntity =
 							log.entity_type !== 'edge' && Boolean(onEntityClick)}
 						{@const summary = buildActivityLogSummary(log)}
+						{@const actor = actorLabel(log)}
 						<div>
 							<button
 								type="button"
@@ -286,16 +291,13 @@
 								</span>
 								<span
 									class="flex-1 min-w-0"
-									title="{log.changed_by_name ||
-										'Someone'} {log.action} {formatEntityType(
+									title="{actor} {log.action} {formatEntityType(
 										log.entity_type
 									)}: {log.entity_name ||
 										log.entity_id.slice(0, 8)} - {summary.description}"
 								>
 									<span class="block truncate">
-										<span class="text-foreground font-medium"
-											>{log.changed_by_name || 'Someone'}</span
-										>
+										<span class="text-foreground font-medium">{actor}</span>
 										<span class="text-muted-foreground"> {log.action} </span>
 										<span class="text-foreground"
 											>{formatEntityType(log.entity_type)}: {log.entity_name ||

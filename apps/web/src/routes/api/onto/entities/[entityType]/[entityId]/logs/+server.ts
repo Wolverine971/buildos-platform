@@ -9,6 +9,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../../shared/error-logging';
 import type { ProjectLogEntityType } from '@buildos/shared-types';
 import { randomUUID } from 'crypto';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 // Valid entity types that can have activity logs
 const VALID_ENTITY_TYPES: Set<ProjectLogEntityType> = new Set([
@@ -248,6 +249,8 @@ async function enrichLogsWithActorNames(
 		after_data: any;
 		changed_by: string | null;
 		changed_by_actor_id?: string | null;
+		external_agent_caller_id?: string | null;
+		agent_call_session_id?: string | null;
 		created_at: string;
 		change_source: string | null;
 	}>
@@ -296,11 +299,54 @@ async function enrichLogsWithActorNames(
 		}
 	}
 
+	const externalAgentIds = Array.from(
+		new Set(
+			logs
+				.map((log) => log.external_agent_caller_id)
+				.filter((id): id is string => Boolean(id))
+		)
+	);
+
+	const externalAgentsById = new Map<string, { name: string; provider: string | null }>();
+	if (externalAgentIds.length > 0) {
+		const admin = createAdminSupabaseClient();
+		const { data: callers, error } = await admin
+			.from('external_agent_callers')
+			.select('id, provider, caller_key, metadata')
+			.in('id', externalAgentIds);
+
+		if (error) {
+			console.warn('[Entity Logs API] Failed to enrich external agent callers:', error);
+		}
+
+		for (const caller of callers || []) {
+			externalAgentsById.set(caller.id, {
+				name: resolveExternalAgentCallerName(caller),
+				provider: caller.provider ?? null
+			});
+		}
+	}
+
 	// Enrich logs with actor names
-	return logs.map((log) => ({
-		...log,
-		changed_by_name: resolveActorName(log, actorsById, actorByUserId)
-	}));
+	return logs.map((log) => {
+		const userActorName = resolveActorName(log, actorsById, actorByUserId);
+		const externalAgent = log.external_agent_caller_id
+			? externalAgentsById.get(log.external_agent_caller_id)
+			: undefined;
+		const externalAgentName =
+			externalAgent?.name ?? (log.external_agent_caller_id ? 'API key' : null);
+
+		return {
+			...log,
+			changed_by_name: userActorName,
+			external_agent_caller_name: externalAgentName,
+			external_agent_provider: externalAgent?.provider ?? null,
+			actor_display_name: externalAgentName
+				? `Agent ${externalAgentName}`
+				: (userActorName ?? null),
+			actor_type: externalAgentName ? 'external_agent' : 'user'
+		};
+	});
 }
 
 function resolveActorName(
@@ -319,4 +365,28 @@ function resolveActorName(
 	}
 
 	return null;
+}
+
+function resolveExternalAgentCallerName(caller: {
+	caller_key: string;
+	metadata?: unknown;
+}): string {
+	const metadata =
+		caller.metadata && typeof caller.metadata === 'object' && !Array.isArray(caller.metadata)
+			? (caller.metadata as Record<string, unknown>)
+			: null;
+	const metadataName =
+		metadata && typeof metadata.installation_name === 'string'
+			? metadata.installation_name
+			: metadata && typeof metadata.display_name === 'string'
+				? metadata.display_name
+				: metadata && typeof metadata.name === 'string'
+					? metadata.name
+					: null;
+
+	if (metadataName?.trim()) {
+		return metadataName.trim();
+	}
+
+	return caller.caller_key.split(':').at(-1)?.replace(/-/g, ' ') || caller.caller_key;
 }

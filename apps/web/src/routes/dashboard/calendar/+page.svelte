@@ -145,6 +145,9 @@
 			summary: item.title || '(Untitled)',
 			start: { dateTime: item.start_at },
 			end: { dateTime: item.end_at || item.start_at },
+			allDay: item.all_day ?? false,
+			itemType: item.item_type,
+			itemKind: item.item_kind,
 			htmlLink: (item.props?.external_link as string | undefined) ?? undefined,
 			externalLink: (item.props?.external_link as string | undefined) ?? undefined,
 			colorClass: getItemColorClass(item),
@@ -520,13 +523,28 @@
 	function formatRange(start: string, end: string | null, allDay: boolean | null) {
 		const startDate = new Date(start);
 		const endDate = new Date(end ?? start);
+		const sameDay = startDate.toDateString() === endDate.toDateString();
 		if (allDay) {
-			return `${format(startDate, 'MMM d, yyyy')} (All day)`;
+			const displayEnd =
+				end && endDate > startDate ? new Date(endDate.getTime() - 1) : startDate;
+			if (displayEnd.toDateString() === startDate.toDateString()) {
+				return `${format(startDate, 'MMM d, yyyy')} (All day)`;
+			}
+			return `${format(startDate, 'MMM d, yyyy')} - ${format(
+				displayEnd,
+				'MMM d, yyyy'
+			)} (All day)`;
 		}
 		if (!end || end === start) {
 			return format(startDate, 'MMM d, yyyy h:mm a');
 		}
-		return `${format(startDate, 'MMM d, yyyy h:mm a')} – ${format(endDate, 'h:mm a')}`;
+		if (sameDay) {
+			return `${format(startDate, 'MMM d, yyyy h:mm a')} - ${format(endDate, 'h:mm a')}`;
+		}
+		return `${format(startDate, 'MMM d, yyyy h:mm a')} - ${format(
+			endDate,
+			'MMM d, yyyy h:mm a'
+		)}`;
 	}
 
 	function getDescription(detailData: ItemDetail): string | null {

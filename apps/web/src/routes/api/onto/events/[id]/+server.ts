@@ -3,6 +3,10 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
 import { logOntologyApiError } from '../../shared/error-logging';
+import {
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
+} from '$lib/services/async-activity-logger';
 
 type EventAccessResult =
 	| {
@@ -208,7 +212,12 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			recurrence: body.recurrence,
 			externalLink: body.external_link,
 			props: body.props,
-			syncToCalendar: body.sync_to_calendar
+			syncToCalendar: body.sync_to_calendar,
+			activityLog: {
+				changeSource: getChangeSourceFromRequest(request),
+				chatSessionId: getChatSessionIdFromRequest(request),
+				actorContext: { changedByActorId: access.actorId }
+			}
 		});
 
 		return ApiResponse.success({ event: updated });
@@ -248,7 +257,12 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		const event = await eventService.deleteEvent(access.userId, {
 			eventId,
 			syncToCalendar,
-			deferCalendarSync: true
+			deferCalendarSync: true,
+			activityLog: {
+				changeSource: getChangeSourceFromRequest(request),
+				chatSessionId: getChatSessionIdFromRequest(request),
+				actorContext: { changedByActorId: access.actorId }
+			}
 		});
 
 		return ApiResponse.success({ event });

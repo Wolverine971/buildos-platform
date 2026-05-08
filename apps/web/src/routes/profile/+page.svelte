@@ -50,6 +50,7 @@
 
 	// State
 	let saveSuccess = $state(false);
+	let successMessage = $state('Changes saved successfully.');
 	let saveError = $state(false);
 	let errorMessage = $state('');
 	let showOnboardingComplete = $state(data.justCompletedOnboarding || false);
@@ -75,6 +76,7 @@
 	$effect(() => {
 		if (form?.success) {
 			saveSuccess = true;
+			successMessage = 'Changes saved successfully.';
 			saveError = false;
 			editingTemplate = null;
 			creatingTemplate = null;
@@ -177,7 +179,8 @@
 	}
 
 	// Utility functions for messages
-	function showSuccess(_message: string) {
+	function showSuccess(message: string) {
+		successMessage = message || 'Changes saved successfully.';
 		saveSuccess = true;
 		saveError = false;
 		setTimeout(() => {
@@ -285,7 +288,7 @@
 					<div class="flex items-center gap-2">
 						<CircleCheck class="w-4 h-4 text-emerald-500" />
 						<p class="text-sm text-foreground font-medium">
-							Changes saved successfully.
+							{successMessage}
 						</p>
 					</div>
 					<Button

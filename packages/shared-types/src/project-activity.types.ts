@@ -42,7 +42,7 @@ export type ProjectLogAction = 'created' | 'updated' | 'deleted';
 /**
  * Source of the change - how was this modification made
  */
-export type ProjectLogChangeSource = 'chat' | 'form' | 'brain_dump' | 'api';
+export type ProjectLogChangeSource = 'chat' | 'form' | 'brain_dump' | 'api' | 'agent_call';
 
 /**
  * Who generated the next step
@@ -68,6 +68,8 @@ export interface ProjectLogEntry {
 	changed_by: string;
 	changed_by_actor_id?: string | null;
 	changed_by_name?: string | null;
+	external_agent_caller_id?: string | null;
+	agent_call_session_id?: string | null;
 	change_source: ProjectLogChangeSource | null;
 	chat_session_id: string | null;
 	created_at: string;
@@ -85,6 +87,8 @@ export interface ProjectLogInsert {
 	after_data?: Json | null;
 	changed_by: string;
 	changed_by_actor_id?: string | null;
+	external_agent_caller_id?: string | null;
+	agent_call_session_id?: string | null;
 	change_source?: ProjectLogChangeSource | null;
 	chat_session_id?: string | null;
 }
@@ -260,6 +264,14 @@ export interface EntityReferenceProps {
 export interface ProjectLogEntryWithMeta extends ProjectLogEntry {
 	/** Display name of the user who made the change */
 	changed_by_name?: string;
+	/** Display name of the API key / external caller that made the change */
+	external_agent_caller_name?: string | null;
+	/** Provider for the external caller, such as openclaw */
+	external_agent_provider?: string | null;
+	/** Final display label for the actor, including external-agent attribution */
+	actor_display_name?: string | null;
+	/** Whether the actor display label refers to a user or an external agent */
+	actor_type?: 'user' | 'external_agent';
 	/** Display name of the entity that was changed */
 	entity_name?: string;
 	/** Formatted date string */

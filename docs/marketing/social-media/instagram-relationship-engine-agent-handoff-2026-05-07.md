@@ -64,65 +64,65 @@ This turns daily engagement from a list of posts into a compounding relationship
 ### New Commands
 
 - `.claude/commands/instagram-discover.md`
-  - Stage 0 discovery command.
-  - Finds new BuildOS-fit accounts through search terms, source accounts, and commenter mining.
-  - Scores `Comment Fit`, `Track Worthiness`, and `Lead Class`.
-  - Writes candidates into the discovery queue.
+    - Stage 0 discovery command.
+    - Finds new BuildOS-fit accounts through search terms, source accounts, and commenter mining.
+    - Scores `Comment Fit`, `Track Worthiness`, and `Lead Class`.
+    - Writes candidates into the discovery queue.
 
 - `.claude/commands/instagram-profile-research.md`
-  - Deep research pass for one account.
-  - Updates account-level profile memory.
-  - Creates a cross-platform person node only when warranted.
+    - Deep research pass for one account.
+    - Updates account-level profile memory.
+    - Creates a cross-platform person node only when warranted.
 
 - `.claude/commands/instagram-intel.md`
-  - Pipeline audit command.
-  - Finds stale drafts, pending queues, follow-up opportunities, accounts ready for DM, and lanes that are working or failing.
+    - Pipeline audit command.
+    - Finds stale drafts, pending queues, follow-up opportunities, accounts ready for DM, and lanes that are working or failing.
 
 ### New Data Files
 
 - `docs/marketing/social-media/discovery/instagram/search-terms.md`
-  - Search-term queue for discovery.
-  - Tracks active, testing, retired, and skipped terms.
+    - Search-term queue for discovery.
+    - Tracks active, testing, retired, and skipped terms.
 
 - `docs/marketing/social-media/discovery/instagram/candidates.md`
-  - Stage 0 candidate queue.
-  - `/instagram-discover` writes here.
-  - `/instagram-warmup` reads from here.
+    - Stage 0 candidate queue.
+    - `/instagram-discover` writes here.
+    - `/instagram-warmup` reads from here.
 
 - `docs/marketing/social-media/comment-log.md`
-  - Cross-run touchpoint ledger.
-  - Tracks `Queued`, `Drafted`, `Posted`, `Skipped`, `Reacted`, `DM Sent`, and `Converted`.
-  - Seeded with the May 6 PM draft backlog and May 7 warmup queue.
+    - Cross-run touchpoint ledger.
+    - Tracks `Queued`, `Drafted`, `Posted`, `Skipped`, `Reacted`, `DM Sent`, and `Converted`.
+    - Seeded with the May 6 PM draft backlog and May 7 warmup queue.
 
 - `docs/marketing/social-media/people/README.md`
-  - Explains cross-platform person records.
+    - Explains cross-platform person records.
 
 - `docs/marketing/social-media/people/_template.md`
-  - Template for high-value people who matter beyond Instagram.
+    - Template for high-value people who matter beyond Instagram.
 
 ### Updated Existing Files
 
 - `.claude/commands/instagram-warmup.md`
-  - Now reads the discovery candidate queue before scanning from scratch.
-  - Now checks `comment-log.md` for stale or duplicate touches.
-  - Captures lead class and ladder stage.
+    - Now reads the discovery candidate queue before scanning from scratch.
+    - Now checks `comment-log.md` for stale or duplicate touches.
+    - Captures lead class and ladder stage.
 
 - `.claude/commands/instagram-reply.md`
-  - Now writes drafted rows into `comment-log.md`.
-  - Now updates the ledger when DJ confirms `Posted` or `Skipped`.
-  - Now advances relationship ladder state after confirmed posting.
+    - Now writes drafted rows into `comment-log.md`.
+    - Now updates the ledger when DJ confirms `Posted` or `Skipped`.
+    - Now advances relationship ladder state after confirmed posting.
 
 - `docs/marketing/social-media/instagram-profiles/_template.md`
-  - Added canonical person ID, lane, lead class, ladder stage, next action, and ledger links.
+    - Added canonical person ID, lane, lead class, ladder stage, next action, and ledger links.
 
 - `docs/marketing/social-media/instagram-profiles/README.md`
-  - Documents the relationship between profiles, candidates, people nodes, and the comment ledger.
+    - Documents the relationship between profiles, candidates, people nodes, and the comment ledger.
 
 - `docs/marketing/social-media/README.md`
-  - Points agents to discovery, comment log, profile memory, and people graph.
+    - Points agents to discovery, comment log, profile memory, and people graph.
 
 - `docs/marketing/social-media/daily-engagement/README.md`
-  - Clarifies that daily engagement docs are working files, not the long-term source of truth.
+    - Clarifies that daily engagement docs are working files, not the long-term source of truth.
 
 ---
 
@@ -355,13 +355,13 @@ Every scheduled run should write a dated file or update an existing queue. It sh
 Suggested output files:
 
 - discovery runs:
-  - `docs/marketing/social-media/discovery/instagram/YYYY-MM-DD_discovery.md`
+    - `docs/marketing/social-media/discovery/instagram/YYYY-MM-DD_discovery.md`
 
 - intel audits:
-  - `docs/marketing/social-media/instagram/YYYY-MM-DD_intel.md`
+    - `docs/marketing/social-media/instagram/YYYY-MM-DD_intel.md`
 
 - warmup runs:
-  - `docs/marketing/social-media/daily-engagement/YYYY-MM-DD_instagram-warmup.md`
+    - `docs/marketing/social-media/daily-engagement/YYYY-MM-DD_instagram-warmup.md`
 
 ### Automation Guardrails
 

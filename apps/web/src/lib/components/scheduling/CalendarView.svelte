@@ -17,10 +17,47 @@
 		parseLocalDate
 	} from '$lib/utils/schedulingUtils';
 
+	interface CalendarDateValue {
+		dateTime?: string | null;
+		date?: string | null;
+	}
+
+	interface CalendarViewEvent {
+		summary?: string | null;
+		start?: CalendarDateValue | null;
+		end?: CalendarDateValue | null;
+		htmlLink?: string | null;
+		externalLink?: string | null;
+		colorClass?: string | null;
+		allDay?: boolean | null;
+		all_day?: boolean | null;
+		itemType?: string | null;
+		itemKind?: string | null;
+		calendarItem?: any;
+	}
+
+	interface CalendarDayEvent {
+		type: 'existing' | 'proposed';
+		title: string;
+		start: Date;
+		end: Date;
+		displayEnd: Date;
+		color: string;
+		htmlLink?: string | null;
+		originalEvent?: CalendarViewEvent;
+		calendarItem?: any;
+		schedule?: any;
+		isHighlighted?: boolean;
+		allDay: boolean;
+		spansMultipleDays: boolean;
+		continuesBefore: boolean;
+		continuesAfter: boolean;
+	}
+
 	interface Props {
 		viewMode?: 'day' | 'week' | 'month';
 		currentDate?: Date;
-		events?: any[];
+		events?: CalendarViewEvent[];
 		proposedSchedules?: any[];
 		workingHours?: {
 			work_start_time: string;
@@ -135,67 +172,159 @@
 		oneventClick?.(event);
 	}
 
-	function getEventsForDay(date: Date): any[] {
-		const dayStart = new Date(date);
-		dayStart.setHours(0, 0, 0, 0);
-		const dayEnd = new Date(date);
-		dayEnd.setHours(23, 59, 59, 999);
+	function getDayBounds(date: Date): { start: Date; end: Date } {
+		const start = new Date(date);
+		start.setHours(0, 0, 0, 0);
+		const end = new Date(start);
+		end.setDate(end.getDate() + 1);
+		return { start, end };
+	}
 
-		const dayEvents = [];
+	function addLocalDays(date: Date, days: number): Date {
+		const next = new Date(date);
+		next.setDate(next.getDate() + days);
+		return next;
+	}
 
-		// Add existing calendar events
-		for (const event of events) {
-			const eventStart = new Date(event.start?.dateTime || event.start?.date);
-			if (eventStart >= dayStart && eventStart <= dayEnd) {
-				const colorClass =
-					typeof event.colorClass === 'string'
-						? event.colorClass
-						: 'bg-muted border border-border';
-				const htmlLink = event.htmlLink ?? event.externalLink;
-				dayEvents.push({
-					type: 'existing',
-					title: event.summary,
-					start: eventStart,
-					end: new Date(event.end?.dateTime || event.end?.date),
-					color: colorClass,
-					htmlLink,
-					originalEvent: event,
-					calendarItem: event.calendarItem
-				});
-			}
+	function parseCalendarDateValue(value: string | Date | null | undefined): Date | null {
+		if (!value) return null;
+		const parsed = parseLocalDate(value);
+		return Number.isNaN(parsed.getTime()) ? null : parsed;
+	}
+
+	function normalizeEventDates(
+		startValue: string | Date | null | undefined,
+		endValue: string | Date | null | undefined,
+		allDay: boolean
+	): { start: Date; end: Date; displayEnd: Date } | null {
+		const start = parseCalendarDateValue(startValue);
+		if (!start) return null;
+
+		const parsedEnd = parseCalendarDateValue(endValue);
+		let end = parsedEnd && parsedEnd > start ? parsedEnd : null;
+		if (!end) {
+			end = allDay ? addLocalDays(start, 1) : new Date(start.getTime() + 30 * 60 * 1000);
 		}
 
-		// Add proposed task schedules
+		let displayEnd = end;
+		if (allDay && end > start) {
+			displayEnd = new Date(end.getTime() - 1);
+			if (displayEnd < start) displayEnd = start;
+		}
+
+		return { start, end, displayEnd };
+	}
+
+	function isSameLocalDay(a: Date, b: Date): boolean {
+		return (
+			a.getFullYear() === b.getFullYear() &&
+			a.getMonth() === b.getMonth() &&
+			a.getDate() === b.getDate()
+		);
+	}
+
+	function eventOverlapsDay(start: Date, end: Date, date: Date): boolean {
+		const { start: dayStart, end: dayEnd } = getDayBounds(date);
+		return start < dayEnd && end > dayStart;
+	}
+
+	function buildDayEvent(
+		date: Date,
+		input: {
+			type: 'existing' | 'proposed';
+			title: string;
+			startValue: string | Date | null | undefined;
+			endValue: string | Date | null | undefined;
+			color: string;
+			allDay?: boolean | null;
+			htmlLink?: string | null;
+			originalEvent?: CalendarViewEvent;
+			calendarItem?: any;
+			schedule?: any;
+			isHighlighted?: boolean;
+		}
+	): CalendarDayEvent | null {
+		const allDay = Boolean(input.allDay);
+		const normalized = normalizeEventDates(input.startValue, input.endValue, allDay);
+		if (!normalized || !eventOverlapsDay(normalized.start, normalized.end, date)) return null;
+
+		const { start: dayStart, end: dayEnd } = getDayBounds(date);
+		const spansMultipleDays = !isSameLocalDay(normalized.start, normalized.displayEnd);
+
+		return {
+			type: input.type,
+			title: input.title,
+			start: normalized.start,
+			end: normalized.end,
+			displayEnd: normalized.displayEnd,
+			color: input.color,
+			htmlLink: input.htmlLink,
+			originalEvent: input.originalEvent,
+			calendarItem: input.calendarItem,
+			schedule: input.schedule,
+			isHighlighted: input.isHighlighted,
+			allDay,
+			spansMultipleDays,
+			continuesBefore: normalized.start < dayStart,
+			continuesAfter: normalized.end > dayEnd
+		};
+	}
+
+	function getEventsForDay(date: Date): CalendarDayEvent[] {
+		const dayEvents: CalendarDayEvent[] = [];
+
+		for (const event of events) {
+			const colorClass =
+				typeof event.colorClass === 'string'
+					? event.colorClass
+					: 'bg-muted border border-border';
+			const htmlLink = event.htmlLink ?? event.externalLink;
+			const allDay = event.allDay ?? event.all_day ?? event.calendarItem?.all_day ?? false;
+			const dayEvent = buildDayEvent(date, {
+				type: 'existing',
+				title: event.summary || '(Untitled)',
+				startValue: event.start?.dateTime || event.start?.date,
+				endValue: event.end?.dateTime || event.end?.date,
+				color: colorClass,
+				allDay,
+				htmlLink,
+				originalEvent: event,
+				calendarItem: event.calendarItem
+			});
+			if (dayEvent) dayEvents.push(dayEvent);
+		}
+
 		for (const schedule of proposedSchedules) {
 			if (!schedule?.task?.title) continue;
 
-			const scheduleStart = new Date(schedule.proposedStart);
-			if (scheduleStart >= dayStart && scheduleStart <= dayEnd) {
-				const isHighlighted = highlightedTaskId === schedule.task.id;
-
-				dayEvents.push({
-					type: 'proposed',
-					title: schedule.task.title,
-					start: scheduleStart,
-					end: new Date(schedule.proposedEnd),
-					color: isHighlighted
-						? 'bg-accent/20 ring-2 ring-accent'
-						: schedule.hasConflict
-							? 'bg-destructive/10 border-destructive/40'
-							: 'bg-accent/10 border-accent/40',
-					schedule: schedule,
-					isHighlighted
-				});
-			}
+			const isHighlighted = highlightedTaskId === schedule.task.id;
+			const dayEvent = buildDayEvent(date, {
+				type: 'proposed',
+				title: schedule.task.title,
+				startValue: schedule.proposedStart,
+				endValue: schedule.proposedEnd,
+				color: isHighlighted
+					? 'bg-accent/20 ring-2 ring-accent'
+					: schedule.hasConflict
+						? 'bg-destructive/10 border-destructive/40'
+						: 'bg-accent/10 border-accent/40',
+				schedule,
+				isHighlighted
+			});
+			if (dayEvent) dayEvents.push(dayEvent);
 		}
 
-		// Sort by start time
-		dayEvents.sort((a, b) => a.start.getTime() - b.start.getTime());
+		dayEvents.sort((a, b) => {
+			const aMulti = shouldRenderInAllDayLane(a) ? 0 : 1;
+			const bMulti = shouldRenderInAllDayLane(b) ? 0 : 1;
+			if (aMulti !== bMulti) return aMulti - bMulti;
+			return a.start.getTime() - b.start.getTime();
+		});
 		return dayEvents;
 	}
 
-	function calculateEventColumns(dayEvents: any[]): Map<number, any[]> {
-		const columns: Map<number, any[]> = new Map();
+	function calculateEventColumns(dayEvents: CalendarDayEvent[]): Map<number, CalendarDayEvent[]> {
+		const columns: Map<number, CalendarDayEvent[]> = new Map();
 
 		for (const event of dayEvents) {
 			let columnIndex = 0;
@@ -224,6 +353,75 @@
 		}
 
 		return columns;
+	}
+
+	function shouldRenderInAllDayLane(event: CalendarDayEvent): boolean {
+		return event.allDay || event.spansMultipleDays;
+	}
+
+	function getAllDayLaneEvents(dayEvents: CalendarDayEvent[]): CalendarDayEvent[] {
+		return dayEvents.filter(shouldRenderInAllDayLane);
+	}
+
+	function getTimedEvents(dayEvents: CalendarDayEvent[]): CalendarDayEvent[] {
+		return dayEvents.filter((event) => !shouldRenderInAllDayLane(event));
+	}
+
+	function formatShortDate(date: Date): string {
+		return date.toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric'
+		});
+	}
+
+	function getEventRangeLabel(event: CalendarDayEvent): string {
+		if (event.allDay) {
+			if (event.spansMultipleDays) {
+				return `${formatShortDate(event.start)} - ${formatShortDate(event.displayEnd)}`;
+			}
+			return 'All day';
+		}
+
+		if (event.spansMultipleDays) {
+			return `${formatShortDate(event.start)} ${formatTime(event.start)} - ${formatShortDate(
+				event.end
+			)} ${formatTime(event.end)}`;
+		}
+
+		return `${formatTime(event.start)} - ${formatTime(event.end)}`;
+	}
+
+	function getEventDayLabel(event: CalendarDayEvent): string {
+		if (event.allDay) {
+			if (event.spansMultipleDays) return getEventRangeLabel(event);
+			return 'All day';
+		}
+
+		if (event.spansMultipleDays) {
+			if (event.continuesBefore && event.continuesAfter) return 'Continues all day';
+			if (event.continuesBefore) return `Until ${formatTime(event.end)}`;
+			if (event.continuesAfter) return `${formatTime(event.start)} onward`;
+		}
+
+		return getEventRangeLabel(event);
+	}
+
+	function getContinuationLabel(event: CalendarDayEvent): string | null {
+		if (!shouldRenderInAllDayLane(event)) return null;
+		if (event.continuesBefore && event.continuesAfter) return 'Continues';
+		if (event.continuesBefore) return 'Ends';
+		if (event.continuesAfter) return 'Starts';
+		return null;
+	}
+
+	function getContinuationClass(event: CalendarDayEvent): string {
+		if (!shouldRenderInAllDayLane(event)) return '';
+		if (event.continuesBefore && event.continuesAfter) {
+			return 'border-l-4 border-r-4 border-l-accent/50 border-r-accent/50';
+		}
+		if (event.continuesBefore) return 'border-l-4 border-l-accent/50';
+		if (event.continuesAfter) return 'border-r-4 border-r-accent/50';
+		return '';
 	}
 
 	function getTimePosition(date: Date): number {
@@ -361,45 +559,99 @@
 		{:else if viewMode === 'day'}
 			<!-- Day View -->
 			<div class="max-w-2xl mx-auto space-y-2">
-				{#each getEventsForDay(internalDate) as event}
-					<button
-						onclick={() => handleEventClick(event)}
-						class="w-full text-left px-3 py-2.5 rounded-lg border border-border transition-colors hover:border-accent/50 hover:shadow-ink shadow-ink pressable tx tx-grain tx-weak {event.color}"
-					>
-						<div class="flex items-center justify-between gap-2">
-							<div class="flex-1 min-w-0">
-								<div class="flex items-center gap-2">
-									<h4 class="text-sm font-medium text-foreground truncate">
-										{event.title}
-									</h4>
-									{#if event.type === 'existing' && event.htmlLink}
-										<ExternalLink
-											class="w-3.5 h-3.5 text-muted-foreground shrink-0"
-										/>
+				{#each [getEventsForDay(internalDate)] as dayEvents}
+					{@const allDayEvents = getAllDayLaneEvents(dayEvents)}
+					{@const timedEvents = getTimedEvents(dayEvents)}
+
+					{#if allDayEvents.length > 0}
+						<div
+							class="rounded-lg border border-border bg-muted/20 p-2 shadow-ink-inner"
+						>
+							<div
+								class="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+							>
+								<Calendar class="h-3 w-3" />
+								<span>All-day and multi-day</span>
+							</div>
+							<div class="space-y-1">
+								{#each allDayEvents as event}
+									<button
+										onclick={() => handleEventClick(event)}
+										class="w-full text-left px-3 py-2 rounded-md border border-border transition-colors hover:border-accent/50 hover:shadow-ink pressable tx tx-grain tx-weak {event.color} {getContinuationClass(
+											event
+										)}"
+									>
+										<div class="flex items-center justify-between gap-2">
+											<div class="min-w-0 flex-1">
+												<div class="flex items-center gap-2">
+													<h4
+														class="text-sm font-medium text-foreground truncate"
+													>
+														{event.title}
+													</h4>
+													{#if event.type === 'existing' && event.htmlLink}
+														<ExternalLink
+															class="w-3.5 h-3.5 text-muted-foreground shrink-0"
+														/>
+													{/if}
+												</div>
+												<p class="text-xs text-muted-foreground mt-0.5">
+													{#if getContinuationLabel(event)}
+														<span class="font-medium"
+															>{getContinuationLabel(event)}</span
+														>
+														<span> - </span>
+													{/if}
+													{getEventRangeLabel(event)}
+												</p>
+											</div>
+										</div>
+									</button>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					{#each timedEvents as event}
+						<button
+							onclick={() => handleEventClick(event)}
+							class="w-full text-left px-3 py-2.5 rounded-lg border border-border transition-colors hover:border-accent/50 hover:shadow-ink shadow-ink pressable tx tx-grain tx-weak {event.color}"
+						>
+							<div class="flex items-center justify-between gap-2">
+								<div class="flex-1 min-w-0">
+									<div class="flex items-center gap-2">
+										<h4 class="text-sm font-medium text-foreground truncate">
+											{event.title}
+										</h4>
+										{#if event.type === 'existing' && event.htmlLink}
+											<ExternalLink
+												class="w-3.5 h-3.5 text-muted-foreground shrink-0"
+											/>
+										{/if}
+									</div>
+									<p class="text-xs text-muted-foreground mt-0.5">
+										{getEventDayLabel(event)}
+									</p>
+									{#if event.type === 'proposed' && event.schedule?.hasConflict}
+										<p class="text-xs text-destructive mt-0.5">
+											{event.schedule.conflictReason}
+										</p>
 									{/if}
 								</div>
-								<p class="text-xs text-muted-foreground mt-0.5">
-									{formatTime(event.start)} – {formatTime(event.end)}
-								</p>
-								{#if event.type === 'proposed' && event.schedule?.hasConflict}
-									<p class="text-xs text-destructive mt-0.5">
-										{event.schedule.conflictReason}
-									</p>
+								{#if event.type === 'proposed'}
+									<Clock class="w-4 h-4 text-muted-foreground shrink-0" />
 								{/if}
 							</div>
-							{#if event.type === 'proposed'}
-								<Clock class="w-4 h-4 text-muted-foreground shrink-0" />
-							{/if}
-						</div>
-					</button>
-				{/each}
+						</button>
+					{/each}
 
-				{#if getEventsForDay(internalDate).length === 0}
-					<div class="text-center py-8 text-muted-foreground">
-						<Calendar class="w-10 h-10 mx-auto mb-2 opacity-40" />
-						<p class="text-sm">No events scheduled for this day</p>
-					</div>
-				{/if}
+					{#if dayEvents.length === 0}
+						<div class="text-center py-8 text-muted-foreground">
+							<Calendar class="w-10 h-10 mx-auto mb-2 opacity-40" />
+							<p class="text-sm">No events scheduled for this day</p>
+						</div>
+					{/if}
+				{/each}
 			</div>
 		{:else if viewMode === 'week'}
 			<!-- Week View - Desktop: Grid, Mobile: Card-based list -->
@@ -409,6 +661,11 @@
 				<!-- Time column -->
 				<div class="bg-muted/50">
 					<div class="h-10 border-b border-border"></div>
+					<div
+						class="h-[46px] border-b border-border px-1.5 py-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+					>
+						All day
+					</div>
 					{#each Array(parseInt(workingHours.work_end_time.split(':')[0] ?? '17') - parseInt(workingHours.work_start_time.split(':')[0] ?? '9')) as _, i}
 						<div
 							class="h-16 px-1.5 py-1 text-[10px] text-muted-foreground border-b border-border tabular-nums"
@@ -421,7 +678,9 @@
 				<!-- Day columns -->
 				{#each getWeekDates(internalDate) as date, i}
 					{@const dayEvents = getEventsForDay(date)}
-					{@const eventColumns = calculateEventColumns(dayEvents)}
+					{@const allDayEvents = getAllDayLaneEvents(dayEvents)}
+					{@const timedEvents = getTimedEvents(dayEvents)}
+					{@const eventColumns = calculateEventColumns(timedEvents)}
 					{@const columnCount = eventColumns.size || 1}
 					{@const isToday = date.toDateString() === new Date().toDateString()}
 					<div class="bg-card {isToday ? 'bg-accent/[0.03]' : ''}">
@@ -436,6 +695,30 @@
 							>
 								{date.getDate()}
 							</div>
+						</div>
+						<div
+							class="h-[46px] border-b border-border p-1 space-y-0.5 overflow-hidden"
+						>
+							{#each allDayEvents.slice(0, 2) as event}
+								<button
+									onclick={() => handleEventClick(event)}
+									class="w-full px-1 py-0.5 rounded-sm text-[10px] leading-tight text-left truncate transition-all hover:opacity-90 hover:shadow-ink pressable {event.color} {getContinuationClass(
+										event
+									)}"
+									title={`${event.title} - ${getEventDayLabel(event)}`}
+								>
+									<span class="font-medium"
+										>{getContinuationLabel(event) || 'All day'}</span
+									>
+									<span class="opacity-70"> - </span>
+									<span>{event.title}</span>
+								</button>
+							{/each}
+							{#if allDayEvents.length > 2}
+								<div class="text-[10px] text-muted-foreground pl-1">
+									+{allDayEvents.length - 2} more
+								</div>
+							{/if}
 						</div>
 						<div
 							class="relative"
@@ -511,7 +794,9 @@
 								{#each dayEvents as event}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted pressable {event.color}"
+										class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted pressable {event.color} {getContinuationClass(
+											event
+										)}"
 									>
 										<div class="flex-1 min-w-0">
 											<div
@@ -520,10 +805,13 @@
 												{event.title}
 											</div>
 											<div class="text-xs text-muted-foreground tabular-nums">
-												{formatTime(event.start)}
-												{#if event.end && event.start.getTime() !== event.end.getTime()}
-													– {formatTime(event.end)}
+												{#if getContinuationLabel(event)}
+													<span class="font-medium"
+														>{getContinuationLabel(event)}</span
+													>
+													<span> - </span>
 												{/if}
+												{getEventDayLabel(event)}
 											</div>
 										</div>
 									</button>
@@ -574,8 +862,16 @@
 							{#each dayEvents.slice(0, 3) as event}
 								<button
 									onclick={() => handleEventClick(event)}
-									class="w-full text-[10px] leading-tight px-1 py-0.5 rounded-sm truncate text-left transition-all hover:opacity-90 hover:shadow-ink pressable {event.color}"
+									class="w-full text-[10px] leading-tight px-1 py-0.5 rounded-sm truncate text-left transition-all hover:opacity-90 hover:shadow-ink pressable {event.color} {getContinuationClass(
+										event
+									)}"
+									title={`${event.title} - ${getEventDayLabel(event)}`}
 								>
+									{#if getContinuationLabel(event)}
+										<span class="mr-1 font-semibold uppercase opacity-70"
+											>{getContinuationLabel(event)}</span
+										>
+									{/if}
 									<span class="truncate">{event.title}</span>
 								</button>
 							{/each}
@@ -628,12 +924,23 @@
 								{#each dayEvents as event}
 									<button
 										onclick={() => handleEventClick(event)}
-										class="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs transition-colors hover:bg-muted pressable {event.color}"
+										class="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-xs transition-colors hover:bg-muted pressable {event.color} {getContinuationClass(
+											event
+										)}"
 									>
-										<div
-											class="flex-1 min-w-0 truncate text-foreground font-medium"
-										>
-											{event.title}
+										<div class="min-w-0 flex-1">
+											<div class="truncate text-foreground font-medium">
+												{event.title}
+											</div>
+											<div class="text-[10px] text-muted-foreground">
+												{#if getContinuationLabel(event)}
+													<span class="font-medium"
+														>{getContinuationLabel(event)}</span
+													>
+													<span> - </span>
+												{/if}
+												{getEventDayLabel(event)}
+											</div>
 										</div>
 									</button>
 								{/each}

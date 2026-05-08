@@ -37,6 +37,9 @@
 		changed_by_name: string | null;
 		created_at: string;
 		change_source: string | null;
+		actor_display_name?: string | null;
+		external_agent_caller_name?: string | null;
+		external_agent_provider?: string | null;
 	}
 
 	interface LogsResponse {
@@ -221,9 +224,15 @@
 				return 'captured context';
 			case 'api':
 				return 'API';
+			case 'agent_call':
+				return 'agent call';
 			default:
 				return '';
 		}
+	}
+
+	function actorLabel(log: LogEntry): string | null {
+		return log.actor_display_name || log.changed_by_name || null;
 	}
 </script>
 
@@ -268,6 +277,7 @@
 					{@const ActionIcon = getActionIcon(log.action)}
 					{@const sourceBadge = getSourceBadge(log.change_source)}
 					{@const summary = buildActivityLogSummary(log)}
+					{@const actor = actorLabel(log)}
 					<div>
 						<button
 							type="button"
@@ -294,11 +304,11 @@
 										</span>
 									</div>
 									<div class="flex items-center gap-1.5 mt-0.5">
-										{#if log.changed_by_name}
+										{#if actor}
 											<span
 												class="text-[10px] text-muted-foreground truncate"
 											>
-												{log.changed_by_name}
+												{actor}
 											</span>
 										{/if}
 										{#if sourceBadge}

@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/ontology/task-event-sync.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@buildos/shared-types';
-import { OntoEventSyncService } from './onto-event-sync.service';
+import { OntoEventSyncService, type OntoEventActivityLogOptions } from './onto-event-sync.service';
 
 type OntoTaskRow = Database['public']['Tables']['onto_tasks']['Row'];
 type OntoEventRow = Database['public']['Tables']['onto_events']['Row'];
@@ -15,6 +15,10 @@ interface TaskEventSpec {
 	title: string;
 }
 
+interface TaskEventSyncOptions {
+	activityLog?: OntoEventActivityLogOptions;
+}
+
 const TEN_HOURS_MS = 10 * 60 * 60 * 1000;
 const HALF_HOUR_MS = 30 * 60 * 1000;
 
@@ -25,8 +29,14 @@ export class TaskEventSyncService {
 		this.eventSyncService = new OntoEventSyncService(supabase);
 	}
 
-	async syncTaskEvents(userId: string, actorId: string, task: OntoTaskRow): Promise<void> {
+	async syncTaskEvents(
+		userId: string,
+		actorId: string,
+		task: OntoTaskRow,
+		options: TaskEventSyncOptions = {}
+	): Promise<void> {
 		const desiredSpecs = this.buildSpecs(task);
+		const activityLog = this.buildActivityLogOptions(options.activityLog, actorId);
 
 		const { data: edges, error: edgeError } = await this.supabase
 			.from('onto_edges')
@@ -63,13 +73,13 @@ export class TaskEventSyncService {
 		if (task.state_key === 'done') {
 			const eventsToRemove = this.getFutureEventsToRemoveOnCompletion(existingEvents);
 			if (eventsToRemove.length > 0) {
-				await this.removeEvents(userId, eventsToRemove);
+				await this.removeEvents(userId, eventsToRemove, activityLog);
 			}
 			return;
 		}
 
 		if (desiredSpecs.length === 0) {
-			await this.removeEvents(userId, existingEvents);
+			await this.removeEvents(userId, existingEvents, activityLog);
 			return;
 		}
 
@@ -107,7 +117,8 @@ export class TaskEventSyncService {
 						task_link: `/projects/${task.project_id}/tasks/${task.id}`,
 						project_id: task.project_id
 					},
-					syncTaskFromEvent: false
+					syncTaskFromEvent: false,
+					activityLog
 				});
 			} else {
 				const result = await this.eventSyncService.createEvent(userId, {
@@ -125,7 +136,8 @@ export class TaskEventSyncService {
 						task_title: task.title ?? 'Task',
 						task_link: `/projects/${task.project_id}/tasks/${task.id}`,
 						project_id: task.project_id
-					}
+					},
+					activityLog
 				});
 
 				await this.supabase.from('onto_edges').insert({
@@ -142,7 +154,7 @@ export class TaskEventSyncService {
 		}
 
 		const eventsToRemove = existingEvents.filter((event) => !usedEventIds.has(event.id));
-		await this.removeEvents(userId, eventsToRemove);
+		await this.removeEvents(userId, eventsToRemove, activityLog);
 	}
 
 	private getFutureEventsToRemoveOnCompletion(events: OntoEventRow[]): OntoEventRow[] {
@@ -259,11 +271,29 @@ export class TaskEventSyncService {
 		];
 	}
 
-	private async removeEvents(userId: string, events: OntoEventRow[]): Promise<void> {
+	private buildActivityLogOptions(
+		activityLog: OntoEventActivityLogOptions | undefined,
+		actorId: string
+	): OntoEventActivityLogOptions {
+		return {
+			...(activityLog ?? {}),
+			actorContext: {
+				...(activityLog?.actorContext ?? {}),
+				changedByActorId: activityLog?.actorContext?.changedByActorId ?? actorId
+			}
+		};
+	}
+
+	private async removeEvents(
+		userId: string,
+		events: OntoEventRow[],
+		activityLog?: OntoEventActivityLogOptions
+	): Promise<void> {
 		for (const event of events) {
 			await this.eventSyncService.deleteEvent(userId, {
 				eventId: event.id,
-				deferCalendarSync: true
+				deferCalendarSync: true,
+				activityLog
 			});
 			await this.supabase
 				.from('onto_edges')

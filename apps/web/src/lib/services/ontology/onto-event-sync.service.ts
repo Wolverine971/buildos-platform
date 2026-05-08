@@ -1,12 +1,18 @@
 // apps/web/src/lib/services/ontology/onto-event-sync.service.ts
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Json } from '@buildos/shared-types';
+import type { Database, Json, ProjectLogChangeSource } from '@buildos/shared-types';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { OntoEventService, type OntoEventOwner } from './onto-event.service';
 import { PUBLIC_APP_URL } from '$env/static/public';
+import {
+	logCreateAsync,
+	logDeleteAsync,
+	logUpdateAsync,
+	type ActivityLogActorContext
+} from '$lib/services/async-activity-logger';
 
 type OntoEventRow = Database['public']['Tables']['onto_events']['Row'];
 type OntoEventSyncRow = Database['public']['Tables']['onto_event_sync']['Row'];
@@ -17,6 +23,12 @@ type TaskEventKind = 'range' | 'start' | 'due';
 export type CalendarScope = 'project' | 'user' | 'calendar_id';
 type ProjectCalendarSyncMode = 'actor_projection' | 'member_fanout';
 type ProjectEventSyncAction = 'upsert' | 'delete';
+
+export interface OntoEventActivityLogOptions {
+	changeSource?: ProjectLogChangeSource;
+	chatSessionId?: string;
+	actorContext?: ActivityLogActorContext;
+}
 
 export interface CreateOntoEventRequest {
 	orgId?: string | null;
@@ -40,6 +52,7 @@ export interface CreateOntoEventRequest {
 	syncToCalendar?: boolean;
 	deferCalendarSync?: boolean;
 	createProjectCalendarIfMissing?: boolean;
+	activityLog?: OntoEventActivityLogOptions;
 }
 
 export interface UpdateOntoEventRequest {
@@ -59,12 +72,14 @@ export interface UpdateOntoEventRequest {
 	syncToCalendar?: boolean;
 	deferCalendarSync?: boolean;
 	syncTaskFromEvent?: boolean;
+	activityLog?: OntoEventActivityLogOptions;
 }
 
 export interface DeleteOntoEventRequest {
 	eventId: string;
 	syncToCalendar?: boolean;
 	deferCalendarSync?: boolean;
+	activityLog?: OntoEventActivityLogOptions;
 }
 
 export interface CreateOntoEventResult {
@@ -94,6 +109,34 @@ function buildTaskUrl(projectId: string, taskId: string): string {
 function buildAppUrlFromPath(path: string): string {
 	const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 	return `${APP_BASE_URL}${normalizedPath}`;
+}
+
+function buildEventActivitySnapshot(event: OntoEventRow): Record<string, unknown> {
+	return {
+		title: event.title,
+		type_key: event.type_key,
+		state_key: event.state_key,
+		start_at: event.start_at,
+		end_at: event.end_at,
+		owner_entity_type: event.owner_entity_type,
+		owner_entity_id: event.owner_entity_id,
+		project_id: event.project_id
+	};
+}
+
+function mergeActivityActorContext(
+	activityLog: OntoEventActivityLogOptions | undefined,
+	changedByActorId?: string | null
+): ActivityLogActorContext | undefined {
+	const actorContext = activityLog?.actorContext;
+	if (!actorContext && !changedByActorId) {
+		return undefined;
+	}
+
+	return {
+		...(actorContext ?? {}),
+		changedByActorId: actorContext?.changedByActorId ?? changedByActorId ?? null
+	};
 }
 
 function isProbablyGoogleCalendarLink(text: string): boolean {
@@ -350,6 +393,20 @@ export class OntoEventSyncService {
 			createdBy: request.createdBy
 		});
 
+		if (event.project_id) {
+			logCreateAsync(
+				this.supabase,
+				event.project_id,
+				'event',
+				event.id,
+				buildEventActivitySnapshot(event),
+				userId,
+				request.activityLog?.changeSource ?? 'api',
+				request.activityLog?.chatSessionId,
+				mergeActivityActorContext(request.activityLog, request.createdBy)
+			);
+		}
+
 		const shouldSync = request.syncToCalendar !== false;
 		if (!shouldSync) {
 			return { event };
@@ -413,6 +470,22 @@ export class OntoEventSyncService {
 			props: request.props
 		});
 
+		const projectId = updated.project_id ?? existing.project_id;
+		if (projectId) {
+			logUpdateAsync(
+				this.supabase,
+				projectId,
+				'event',
+				updated.id,
+				buildEventActivitySnapshot(existing),
+				buildEventActivitySnapshot(updated),
+				userId,
+				request.activityLog?.changeSource ?? 'api',
+				request.activityLog?.chatSessionId,
+				mergeActivityActorContext(request.activityLog)
+			);
+		}
+
 		if (request.syncTaskFromEvent !== false) {
 			try {
 				await this.syncTaskFromEvent(updated);
@@ -466,6 +539,21 @@ export class OntoEventSyncService {
 
 		if (error || !updated) {
 			throw new Error(error?.message ?? 'Failed to delete event');
+		}
+
+		const projectId = updated.project_id ?? existing.project_id;
+		if (projectId) {
+			logDeleteAsync(
+				this.supabase,
+				projectId,
+				'event',
+				existing.id,
+				buildEventActivitySnapshot(existing),
+				userId,
+				request.activityLog?.changeSource ?? 'api',
+				request.activityLog?.chatSessionId,
+				mergeActivityActorContext(request.activityLog)
+			);
 		}
 
 		if (request.syncToCalendar !== false) {

@@ -1,8 +1,8 @@
 // apps/web/src/routes/profile/+page.server.ts
 import { redirect, fail, Actions, type RequestEvent } from '@sveltejs/kit';
 import { CalendarService } from '$lib/services/calendar-service';
+import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import { ActivityLogger } from '$lib/utils/activityLogger';
-import { PRIVATE_GOOGLE_CLIENT_ID } from '$env/static/private';
 import { StripeService } from '$lib/services/stripe-service';
 import { CalendarWebhookService } from '$lib/services/calendar-webhook-service';
 import { CalendarDisconnectService } from '$lib/services/calendar-disconnect-service';
@@ -39,39 +39,8 @@ type PageLoadReturn = {
 	stripeEnabled: boolean;
 };
 
-// Enhanced function to generate calendar auth URL with proper scopes
-function generateEnhancedCalendarAuthUrl(
-	clientId: string,
-	redirectUri: string,
-	state: string
-): string {
-	// OPTIMIZED: Required scopes for calendar integration and calendar creation
-	const scopes = [
-		'https://www.googleapis.com/auth/calendar', // Full calendar access (includes events)
-		'https://www.googleapis.com/auth/userinfo.email', // Email for user identification
-		'openid' // OpenID Connect for secure identification
-	].join(' ');
-
-	const params = new URLSearchParams({
-		client_id: clientId,
-		response_type: 'code',
-		scope: scopes,
-		redirect_uri: redirectUri,
-		state: state,
-		access_type: 'offline', // Get refresh token
-		prompt: 'consent', // Force consent to ensure refresh token
-		include_granted_scopes: 'true' // Include previously granted scopes
-	});
-
-	const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-
-	console.log('Generated calendar auth URL with enhanced scopes:', {
-		scopes,
-		redirectUri,
-		state
-	});
-
-	return authUrl;
+function getCalendarReturnPath(): string {
+	return '/profile?tab=calendar&calendar=1';
 }
 
 export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
@@ -233,7 +202,7 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 
 export const actions: Actions = {
 	// Connect calendar action
-	connectCalendar: async ({ locals: { safeGetSession }, url }) => {
+	connectCalendar: async ({ locals: { safeGetSession, supabase }, url }) => {
 		const { user } = await safeGetSession();
 		if (!user) {
 			return fail(401, { error: 'Unauthorized' });
@@ -244,10 +213,10 @@ export const actions: Actions = {
 
 			// Generate the enhanced auth URL
 			const calendarRedirectUri = `${url.origin}/auth/google/calendar-callback`;
-			const calendarAuthUrl = generateEnhancedCalendarAuthUrl(
-				PRIVATE_GOOGLE_CLIENT_ID,
+			const calendarAuthUrl = new GoogleOAuthService(supabase).generateCalendarAuthUrl(
 				calendarRedirectUri,
-				user.id
+				user.id,
+				{ redirectPath: getCalendarReturnPath() }
 			);
 
 			console.log('Redirecting to Google OAuth with enhanced scopes');
@@ -386,10 +355,10 @@ export const actions: Actions = {
 
 			// Then redirect to new OAuth flow with enhanced scopes
 			const calendarRedirectUri = `${url.origin}/auth/google/calendar-callback`;
-			const calendarAuthUrl = generateEnhancedCalendarAuthUrl(
-				PRIVATE_GOOGLE_CLIENT_ID,
+			const calendarAuthUrl = new GoogleOAuthService(supabase).generateCalendarAuthUrl(
 				calendarRedirectUri,
-				user.id
+				user.id,
+				{ redirectPath: getCalendarReturnPath() }
 			);
 
 			console.log('Redirecting to Google OAuth for reconnection');

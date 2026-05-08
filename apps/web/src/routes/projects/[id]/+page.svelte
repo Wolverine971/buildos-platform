@@ -1037,6 +1037,7 @@
 					{tasks}
 					{milestones}
 					{goals}
+					{events}
 					onOpenEntity={handleEntityClick}
 				/>
 

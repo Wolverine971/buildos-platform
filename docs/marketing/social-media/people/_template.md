@@ -17,9 +17,9 @@
 
 ## Handles
 
-| Platform | Handle | URL | Followers | Last Scan |
-|----------|--------|-----|-----------|-----------|
-| instagram | @handle | https://www.instagram.com/handle/ | TBD | YYYY-MM-DD |
+| Platform  | Handle  | URL                               | Followers | Last Scan  |
+| --------- | ------- | --------------------------------- | --------- | ---------- |
+| instagram | @handle | https://www.instagram.com/handle/ | TBD       | YYYY-MM-DD |
 
 ## Condensed Intel
 
@@ -34,9 +34,9 @@
 
 ## Touchpoint Log
 
-| Date | Platform | Surface | Link | Action | Status | Outcome | Source |
-|------|----------|---------|------|--------|--------|---------|--------|
-| YYYY-MM-DD | instagram | Post | URL | Reviewed | Logged | None yet | source |
+| Date       | Platform  | Surface | Link | Action   | Status | Outcome  | Source |
+| ---------- | --------- | ------- | ---- | -------- | ------ | -------- | ------ |
+| YYYY-MM-DD | instagram | Post    | URL  | Reviewed | Logged | None yet | source |
 
 ## Open Loops
 

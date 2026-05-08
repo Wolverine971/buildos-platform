@@ -17,6 +17,7 @@ import { ensureActorId } from '$lib/services/ontology/ontology-projects.service'
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import type { ExecutorContext } from './types';
 import { createLogger } from '$lib/utils/logger';
+import type { ActivityLogActorContext } from '$lib/services/async-activity-logger';
 
 const logger = createLogger('BaseExecutor');
 
@@ -37,6 +38,7 @@ export class BaseExecutor {
 	protected readonly sessionId?: string;
 	protected readonly fetchFn: typeof fetch;
 	protected readonly llmService?: SmartLLMService;
+	protected readonly activityLogActorContext?: ActivityLogActorContext;
 
 	private _actorId?: string;
 	private _adminSupabase?: TypedSupabaseClient;
@@ -47,6 +49,7 @@ export class BaseExecutor {
 		this.sessionId = context.sessionId;
 		this.fetchFn = context.fetchFn;
 		this.llmService = context.llmService;
+		this.activityLogActorContext = context.activityLogActorContext;
 	}
 
 	// ============================================

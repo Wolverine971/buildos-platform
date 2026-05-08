@@ -1,3 +1,5 @@
+<!-- docs/marketing/social-media/instagram-profiles/notion_for_productivity.md -->
+
 # @notion_for_productivity
 
 **Handle:** @notion_for_productivity
@@ -50,9 +52,9 @@
 
 ## Relationship History
 
-| Date       | Surface | Topic                  | Post Link | Action     | Status | What We Said / Planned                                | Outcome  | Source                         |
-| ---------- | ------- | ---------------------- | --------- | ---------- | ------ | ----------------------------------------------------- | -------- | ------------------------------ |
-| 2026-05-07 | n/a     | First profile creation | n/a       | Discovered | Logged | PKM peer-week candidate; profile-walk at next warmup  | none yet | discovery/instagram/2026-05-07 |
+| Date       | Surface | Topic                  | Post Link | Action     | Status | What We Said / Planned                               | Outcome  | Source                         |
+| ---------- | ------- | ---------------------- | --------- | ---------- | ------ | ---------------------------------------------------- | -------- | ------------------------------ |
+| 2026-05-07 | n/a     | First profile creation | n/a       | Discovered | Logged | PKM peer-week candidate; profile-walk at next warmup | none yet | discovery/instagram/2026-05-07 |
 
 ## Ledger Links
 

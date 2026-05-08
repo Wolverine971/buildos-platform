@@ -5,6 +5,10 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import {
+	getChangeSourceFromRequest,
+	getChatSessionIdFromRequest
+} from '$lib/services/async-activity-logger';
 
 type ProjectAccessResult =
 	| {
@@ -373,7 +377,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 			calendarScope,
 			calendarId,
 			syncToCalendar,
-			deferCalendarSync: true
+			deferCalendarSync: true,
+			activityLog: {
+				changeSource: getChangeSourceFromRequest(request),
+				chatSessionId: getChatSessionIdFromRequest(request),
+				actorContext: { changedByActorId: actorId }
+			}
 		});
 
 		if (resolvedOwnerType === 'task' && resolvedOwnerId) {

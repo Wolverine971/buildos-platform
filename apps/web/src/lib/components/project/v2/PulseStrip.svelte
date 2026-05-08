@@ -22,10 +22,10 @@
 		Target
 	} from 'lucide-svelte';
 	import type { ProjectLogEntityType, ProjectLogEntryWithMeta } from '@buildos/shared-types';
-	import type { Goal, Milestone, Task } from '$lib/types/onto';
+	import type { Goal, Milestone, OntoEvent, Task } from '$lib/types/onto';
 	import { fetchProjectLogs } from '$lib/components/project/project-page-data-controller';
 
-	type UpcomingKind = 'task' | 'milestone' | 'goal';
+	type UpcomingKind = 'task' | 'milestone' | 'goal' | 'event';
 
 	type UpcomingItem = {
 		id: string;
@@ -41,12 +41,14 @@
 		tasks,
 		milestones,
 		goals,
+		events,
 		onOpenEntity
 	}: {
 		projectId: string;
 		tasks: Task[];
 		milestones: Milestone[];
 		goals: Goal[];
+		events: OntoEvent[];
 		onOpenEntity: (kind: ProjectLogEntityType, id: string) => void;
 	} = $props();
 
@@ -103,7 +105,7 @@
 				name: log.entity_name || `${log.entity_type}`,
 				action: log.action,
 				when: new Date(log.created_at),
-				actor: log.changed_by_name ?? null,
+				actor: log.actor_display_name ?? log.changed_by_name ?? null,
 				source: log.change_source ?? null
 			});
 			if (out.length >= 6) break;
@@ -160,6 +162,21 @@
 				title: g.name,
 				date,
 				state: g.state_key,
+				isOverdue: date < now
+			});
+		}
+
+		for (const event of events) {
+			if (event.deleted_at) continue;
+			if (event.state_key === 'cancelled' || event.state_key === 'canceled') continue;
+			if (!event.start_at) continue;
+			const date = new Date(event.start_at);
+			items.push({
+				id: event.id,
+				kind: 'event',
+				title: event.title,
+				date,
+				state: event.state_key,
 				isOverdue: date < now
 			});
 		}
@@ -223,6 +240,7 @@
 			case 'goal':
 				return Target;
 			case 'plan':
+			case 'event':
 				return Calendar;
 			case 'document':
 			case 'note':
@@ -243,6 +261,8 @@
 				return 'text-violet-500';
 			case 'plan':
 				return 'text-indigo-500';
+			case 'event':
+				return 'text-rose-500';
 			case 'document':
 			case 'note':
 			case 'requirement':
@@ -275,9 +295,18 @@
 				return 'form';
 			case 'api':
 				return 'api';
+			case 'agent_call':
+				return 'agent call';
 			default:
 				return '';
 		}
+	}
+
+	function activityActorPhrase(tile: RecentTile): string {
+		if (tile.actor) {
+			return `${tile.actor} ${actionVerb(tile.action)}`;
+		}
+		return actionVerb(tile.action);
 	}
 </script>
 
@@ -339,9 +368,9 @@
 									{tile.name}
 								</p>
 								<p class="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
-									<span class="capitalize">{tile.entityType}</span>
+									<span>{activityActorPhrase(tile)}</span>
 									<span class="mx-1 text-muted-foreground/50">·</span>
-									{actionVerb(tile.action)}
+									<span class="capitalize">{tile.entityType}</span>
 									<span class="mx-1 text-muted-foreground/50">·</span>
 									<span>{relativeTime(tile.when)}</span>
 									{#if tile.source && sourceLabel(tile.source)}
@@ -373,7 +402,7 @@
 				<div>
 					<p class="text-xs sm:text-sm font-semibold text-foreground">Up next</p>
 					<p class="text-[10px] sm:text-xs text-muted-foreground">
-						Scheduled tasks, milestones &amp; goals
+						Scheduled tasks, milestones, goals &amp; events
 					</p>
 				</div>
 			</div>
@@ -387,7 +416,8 @@
 		<div class="p-2 sm:p-3 space-y-1.5">
 			{#if upcomingItems.length === 0}
 				<p class="text-xs text-muted-foreground px-1 py-3 italic">
-					Nothing scheduled. Add a due date to a task, milestone, or goal to see it here.
+					Nothing scheduled. Add a date to a task, milestone, goal, or event to see it
+					here.
 				</p>
 			{:else}
 				{#each upcomingItems as item (item.id)}

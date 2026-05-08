@@ -8,7 +8,11 @@ import type {
 	BuildosAgentToolDefinition
 } from '@buildos/shared-types';
 import { buildSearchFilter } from '$lib/utils/api-helpers';
-import { logCreateAsync, logUpdateAsync } from '$lib/services/async-activity-logger';
+import {
+	logCreateAsync,
+	logUpdateAsync,
+	type ActivityLogActorContext
+} from '$lib/services/async-activity-logger';
 import {
 	ensureActorId,
 	fetchProjectSummaries,
@@ -1290,6 +1294,19 @@ function ensureWriteExecutionContext(
 	};
 }
 
+function getExternalAgentActivityContext(
+	context: ToolExecutionContext
+): ActivityLogActorContext | undefined {
+	if (!context.callerId && !context.callSessionId) {
+		return undefined;
+	}
+
+	return {
+		externalAgentCallerId: context.callerId ?? null,
+		agentCallSessionId: context.callSessionId ?? null
+	};
+}
+
 function getStringArg(...values: unknown[]): string | undefined {
 	for (const value of values) {
 		if (typeof value !== 'string') continue;
@@ -1312,7 +1329,8 @@ function createCalendarExecutor(context: ToolExecutionContext): CalendarExecutor
 		getAuthHeaders: async () => ({
 			'Content-Type': 'application/json',
 			'X-Change-Source': 'agent_call'
-		})
+		}),
+		activityLogActorContext: getExternalAgentActivityContext(context)
 	});
 }
 
@@ -1752,7 +1770,13 @@ async function syncCreatedTaskSideEffects(params: {
 		await taskEventSync.syncTaskEvents(
 			params.context.userId,
 			params.actorId,
-			params.task as any
+			params.task as any,
+			{
+				activityLog: {
+					changeSource: 'agent_call',
+					actorContext: getExternalAgentActivityContext(params.context)
+				}
+			}
 		);
 	} catch (eventError) {
 		console.warn('[External Tool Gateway] Failed to sync task events on create:', eventError);
@@ -1769,7 +1793,9 @@ async function syncCreatedTaskSideEffects(params: {
 			state_key: params.task.state_key
 		},
 		params.context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(params.context)
 	);
 }
 
@@ -1801,7 +1827,13 @@ async function syncUpdatedTaskSideEffects(params: {
 			await taskEventSync.syncTaskEvents(
 				params.context.userId,
 				params.actorId,
-				params.updatedTask as any
+				params.updatedTask as any,
+				{
+					activityLog: {
+						changeSource: 'agent_call',
+						actorContext: getExternalAgentActivityContext(params.context)
+					}
+				}
 			);
 		} catch (eventError) {
 			console.warn(
@@ -1860,7 +1892,9 @@ async function syncUpdatedTaskSideEffects(params: {
 			props: params.updatedTask.props
 		},
 		params.context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(params.context)
 	);
 }
 
@@ -2759,7 +2793,9 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 			state_key: data.state_key
 		},
 		context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
 	);
 
 	return {
@@ -2969,7 +3005,9 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 			type_key: data.type_key
 		},
 		context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
 	);
 
 	return {
@@ -3045,7 +3083,9 @@ async function createProject(context: ToolExecutionContext, args: Record<string,
 			counts: result.counts
 		},
 		context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
 	);
 
 	return {
@@ -3129,7 +3169,9 @@ async function updateProject(context: ToolExecutionContext, args: Record<string,
 		access.entity,
 		data as Record<string, unknown>,
 		context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
 	);
 
 	return {
@@ -3194,7 +3236,9 @@ async function createGoal(context: ToolExecutionContext, args: Record<string, un
 		String(data.id),
 		{ name: data.name, type_key: data.type_key, state_key: data.state_key },
 		context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
 	);
 
 	return {
@@ -3305,7 +3349,9 @@ async function createPlan(context: ToolExecutionContext, args: Record<string, un
 		String(data.id),
 		{ name: data.name, type_key: data.type_key, state_key: data.state_key },
 		context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
 	);
 
 	return {
@@ -3413,7 +3459,9 @@ async function createMilestone(context: ToolExecutionContext, args: Record<strin
 		String(data.id),
 		{ title: data.title, state_key: data.state_key },
 		context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
 	);
 
 	return {
@@ -3519,7 +3567,9 @@ async function createRisk(context: ToolExecutionContext, args: Record<string, un
 		String(data.id),
 		{ title: data.title, impact: data.impact, state_key: data.state_key },
 		context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
 	);
 
 	return {
@@ -3648,7 +3698,9 @@ async function updateCoreEntity(
 		access.entity,
 		data as Record<string, unknown>,
 		context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
 	);
 
 	return {
@@ -3807,7 +3859,9 @@ async function createEdge(
 		String(data.id),
 		{ src_kind: data.src_kind, dst_kind: data.dst_kind, rel: data.rel },
 		context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
 	);
 
 	return {
@@ -3862,7 +3916,9 @@ async function unlinkOntoEdge(context: ToolExecutionContext, args: Record<string
 		edge as Record<string, unknown>,
 		{ deleted: true },
 		context.userId,
-		'api'
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
 	);
 
 	return {
