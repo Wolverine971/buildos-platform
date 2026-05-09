@@ -5,7 +5,7 @@
 	A horizontal strip of pill tabs for project context that wasn't moved into
 	the kanban or pulse strip:
 
-	  [📔 Briefs]  [🌿 Graph]  [🎯 Goals]  [🚩 Milestones]  [📅 Plans]  [⚠️ Risks]
+	  [📔 Briefs]  [💬 Chats]  [🌿 Graph]  [🎯 Goals]  [🚩 Milestones]  [📅 Plans]  [⚠️ Risks]  [🕒 Events]
 
 	Single-expansion model: click a pill, it expands to full width with its
 	content body underneath. Other pills wrap above and below via flex-wrap
@@ -29,6 +29,7 @@
 		Flag,
 		GitBranch,
 		LoaderCircle,
+		MessagesSquare,
 		Plus,
 		Sparkles,
 		Target
@@ -39,19 +40,22 @@
 	} from '$lib/components/project/project-page-data-controller';
 	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 	import type { ProjectLogEntityType } from '@buildos/shared-types';
-	import type { Goal, Milestone, Plan, Risk } from '$lib/types/onto';
+	import type { Goal, Milestone, OntoEvent, Plan, Risk } from '$lib/types/onto';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 
 	type TabKey = 'briefs' | 'graph' | 'goals' | 'milestones' | 'plans' | 'risks';
+	type TabActionKey = 'chats' | 'events';
+	type TabItemKey = TabKey | TabActionKey;
 
 	let {
 		projectId,
 		canEdit,
-		goals,
-		milestones,
-		plans,
-		risks,
-		milestonesByGoalId,
+		goals = [],
+		milestones = [],
+		plans = [],
+		risks = [],
+		events = [],
+		milestonesByGoalId = new Map<string, Milestone[]>(),
 		onEditGoal,
 		onEditMilestone,
 		onEditPlan,
@@ -61,7 +65,9 @@
 		onAddGoal,
 		onAddMilestoneFromGoal,
 		onAddPlan,
-		onAddRisk
+		onAddRisk,
+		onOpenRecentChats,
+		onOpenEvents
 	}: {
 		projectId: string;
 		canEdit: boolean;
@@ -69,6 +75,7 @@
 		milestones: Milestone[];
 		plans: Plan[];
 		risks: Risk[];
+		events: OntoEvent[];
 		milestonesByGoalId: Map<string, Milestone[]>;
 		onEditGoal: (id: string) => void;
 		onEditMilestone: (id: string) => void;
@@ -80,6 +87,8 @@
 		onAddMilestoneFromGoal?: (goalId: string, goalName: string) => void;
 		onAddPlan?: () => void;
 		onAddRisk?: () => void;
+		onOpenRecentChats?: () => void;
+		onOpenEvents?: () => void;
 	} = $props();
 
 	let expanded = $state<TabKey | null>(null);
@@ -128,12 +137,13 @@
 	// ----------------------------------------------------------------
 
 	type TabDef = {
-		key: TabKey;
+		key: TabItemKey;
 		label: string;
 		count: number | null;
 		icon: typeof Target;
 		accent: string;
 		bg: string;
+		action?: true;
 		hidden?: boolean;
 	};
 
@@ -146,6 +156,16 @@
 				icon: Sparkles,
 				accent: 'text-violet-500',
 				bg: 'bg-violet-500/10'
+			},
+			{
+				key: 'chats',
+				label: 'Chats',
+				count: null,
+				icon: MessagesSquare,
+				accent: 'text-teal-500',
+				bg: 'bg-teal-500/10',
+				action: true,
+				hidden: !onOpenRecentChats
 			},
 			{
 				key: 'graph',
@@ -186,6 +206,16 @@
 				icon: AlertTriangle,
 				accent: 'text-rose-500',
 				bg: 'bg-rose-500/10'
+			},
+			{
+				key: 'events',
+				label: 'Events',
+				count: events.length,
+				icon: Clock,
+				accent: 'text-teal-500',
+				bg: 'bg-teal-500/10',
+				action: true,
+				hidden: !onOpenEvents
 			}
 		];
 		return all.filter((t) => !t.hidden);
@@ -280,38 +310,61 @@
 
 <section class="flex flex-wrap gap-1.5 sm:gap-2 items-start" aria-label="Project context tabs">
 	{#each tabs as tab (tab.key)}
-		{@const isExpanded = expanded === tab.key}
+		{@const isExpanded = !tab.action && expanded === tab.key}
 		<div
 			class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden transition-all duration-[140ms] ease-out {isExpanded
 				? 'w-full'
 				: 'min-w-[88px] flex-1 sm:flex-none'}"
 		>
 			<!-- Pill header (compact: small icon, label, optional count, no chevron when collapsed) -->
-			<button
-				type="button"
-				onclick={() => toggle(tab.key)}
-				class="w-full flex items-center justify-between gap-1.5 px-2 py-1.5 hover:bg-muted/50 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
-				aria-expanded={isExpanded}
-				aria-controls="entity-tab-{tab.key}"
-				title={tab.label}
-			>
-				<div class="flex items-center gap-1.5 min-w-0">
-					<tab.icon class="w-3.5 h-3.5 shrink-0 {tab.accent}" />
-					<span class="text-[11px] sm:text-xs font-semibold text-foreground truncate">
-						{tab.label}
-					</span>
-					{#if tab.count !== null}
-						<span class="text-[10px] text-muted-foreground shrink-0">
-							{tab.count}
+			{#if tab.action}
+				<button
+					type="button"
+					onclick={() =>
+						tab.key === 'chats' ? onOpenRecentChats?.() : onOpenEvents?.()}
+					class="w-full flex items-center justify-between gap-1.5 px-2 py-1.5 hover:bg-muted/50 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+					aria-haspopup="dialog"
+					title={tab.label}
+				>
+					<div class="flex items-center gap-1.5 min-w-0">
+						<tab.icon class="w-3.5 h-3.5 shrink-0 {tab.accent}" />
+						<span class="text-[11px] sm:text-xs font-semibold text-foreground truncate">
+							{tab.label}
 						</span>
+						{#if tab.count !== null}
+							<span class="text-[10px] text-muted-foreground shrink-0">
+								{tab.count}
+							</span>
+						{/if}
+					</div>
+				</button>
+			{:else}
+				<button
+					type="button"
+					onclick={() => toggle(tab.key as TabKey)}
+					class="w-full flex items-center justify-between gap-1.5 px-2 py-1.5 hover:bg-muted/50 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+					aria-expanded={isExpanded}
+					aria-controls="entity-tab-{tab.key}"
+					title={tab.label}
+				>
+					<div class="flex items-center gap-1.5 min-w-0">
+						<tab.icon class="w-3.5 h-3.5 shrink-0 {tab.accent}" />
+						<span class="text-[11px] sm:text-xs font-semibold text-foreground truncate">
+							{tab.label}
+						</span>
+						{#if tab.count !== null}
+							<span class="text-[10px] text-muted-foreground shrink-0">
+								{tab.count}
+							</span>
+						{/if}
+					</div>
+					{#if isExpanded}
+						<ChevronDown
+							class="w-3 h-3 text-muted-foreground shrink-0 rotate-180 transition-transform duration-[140ms]"
+						/>
 					{/if}
-				</div>
-				{#if isExpanded}
-					<ChevronDown
-						class="w-3 h-3 text-muted-foreground shrink-0 rotate-180 transition-transform duration-[140ms]"
-					/>
-				{/if}
-			</button>
+				</button>
+			{/if}
 
 			<!-- Expanded body -->
 			{#if isExpanded}

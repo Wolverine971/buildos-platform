@@ -11,7 +11,8 @@ export type AssetEntityKind =
 	| 'plan'
 	| 'goal'
 	| 'risk'
-	| 'milestone';
+	| 'milestone'
+	| 'event';
 
 export interface OntologyImageAsset {
 	id: string;

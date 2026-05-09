@@ -23,7 +23,8 @@ const ENTITY_TABLE_BY_KIND: Record<string, string> = {
 	plan: 'onto_plans',
 	goal: 'onto_goals',
 	risk: 'onto_risks',
-	milestone: 'onto_milestones'
+	milestone: 'onto_milestones',
+	event: 'onto_events'
 };
 
 export function isEntityKind(value: string): boolean {

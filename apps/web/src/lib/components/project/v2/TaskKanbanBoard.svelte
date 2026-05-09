@@ -3,7 +3,7 @@
 	TaskKanbanBoard — v2 PoC component
 
 	Trello-style 7-column board on a single row:
-	  Backlog · In Progress · Blocked · Done · Scheduled · Overdue · Archived
+	  Backlog · In Progress · Scheduled · Overdue · Blocked · Done · Archived
 
 	The row scrolls horizontally so each column keeps a comfortable 300px width
 	(cards stay readable).
@@ -101,6 +101,24 @@
 			targetState: 'in_progress'
 		},
 		{
+			key: 'scheduled',
+			label: 'Scheduled',
+			hint: 'On the calendar',
+			accent: 'text-violet-500',
+			bg: 'bg-violet-500/10',
+			icon: CalendarClock,
+			dropAction: 'none'
+		},
+		{
+			key: 'overdue',
+			label: 'Overdue',
+			hint: 'Past due date',
+			accent: 'text-rose-500',
+			bg: 'bg-rose-500/10',
+			icon: AlertTriangle,
+			dropAction: 'none'
+		},
+		{
 			key: 'blocked',
 			label: 'Blocked',
 			hint: 'Stuck or waiting',
@@ -119,24 +137,6 @@
 			icon: CheckCircle2,
 			dropAction: 'state',
 			targetState: 'done'
-		},
-		{
-			key: 'scheduled',
-			label: 'Scheduled',
-			hint: 'On the calendar',
-			accent: 'text-violet-500',
-			bg: 'bg-violet-500/10',
-			icon: CalendarClock,
-			dropAction: 'none'
-		},
-		{
-			key: 'overdue',
-			label: 'Overdue',
-			hint: 'Past due date',
-			accent: 'text-rose-500',
-			bg: 'bg-rose-500/10',
-			icon: AlertTriangle,
-			dropAction: 'none'
 		},
 		{
 			key: 'archived',

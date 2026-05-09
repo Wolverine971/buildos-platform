@@ -84,6 +84,29 @@ export type ProjectBriefsPage = {
 	hasMore: boolean;
 };
 
+export type ProjectRecentChatSummary = {
+	id: string;
+	title: string;
+	summary: string | null;
+	chat_topics: string[];
+	context_type: string;
+	entity_id: string | null;
+	message_count: number;
+	status: string;
+	focus_label: string | null;
+	focus_type: string | null;
+	created_at: string | null;
+	updated_at: string | null;
+	last_message_at: string | null;
+	last_activity_at: string | null;
+};
+
+export type ProjectRecentChatsPage = {
+	chats: ProjectRecentChatSummary[];
+	total: number;
+	hasMore: boolean;
+};
+
 export type GeneratedProjectNextStep = {
 	next_step_short: string;
 	next_step_long: string;
@@ -299,6 +322,31 @@ export async function fetchProjectBriefs(options: {
 		briefs: requireArray<ProjectBriefSummary>(data.briefs, 'Invalid project briefs response'),
 		total: requireNumber(data.total, 'Invalid project briefs response'),
 		hasMore: requireBoolean(data.hasMore, 'Invalid project briefs response')
+	};
+}
+
+export async function fetchProjectRecentChats(options: {
+	projectId: string;
+	limit: number;
+	offset: number;
+}): Promise<ProjectRecentChatsPage> {
+	const { projectId, limit, offset } = options;
+	const params = new URLSearchParams({
+		limit: String(limit),
+		offset: String(offset)
+	});
+	const data = await requestApiDataRecord(
+		`/api/onto/projects/${projectId}/recent-chats?${params.toString()}`,
+		'Failed to fetch recent chats'
+	);
+
+	return {
+		chats: requireArray<ProjectRecentChatSummary>(
+			data.chats,
+			'Invalid project recent chats response'
+		),
+		total: requireNumber(data.total, 'Invalid project recent chats response'),
+		hasMore: requireBoolean(data.hasMore, 'Invalid project recent chats response')
 	};
 }
 

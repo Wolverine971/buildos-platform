@@ -9,7 +9,7 @@
 	  │  └─────────────────────────────────────────────────┘    │
 	  │  ┌─ EntityTabStrip ────────────────────────────────┐    │
 	  │  │  Briefs · Activity · Graph · Goals · Milestones │    │
-	  │  │  · Plans · Risks                                │    │
+	  │  │  · Plans · Risks · Events                       │    │
 	  │  └─────────────────────────────────────────────────┘    │
 	  │  ┌─ TaskKanbanBoard ───────────────────────────────┐    │
 	  │  │  Backlog · In Progress · Blocked · Done ·       │    │
@@ -26,7 +26,7 @@
 	ProjectModalsHost so v2 has the same modal coverage as v1.
 -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
@@ -41,6 +41,8 @@
 	import ProjectHeaderCard from '$lib/components/project/ProjectHeaderCard.svelte';
 	import ProjectHistorySection from '$lib/components/project/ProjectHistorySection.svelte';
 	import ProjectDocumentsSection from '$lib/components/project/ProjectDocumentsSection.svelte';
+	import ProjectEventsModal from '$lib/components/project/ProjectEventsModal.svelte';
+	import RecentProjectChatsModal from '$lib/components/project/RecentProjectChatsModal.svelte';
 	import PulseStrip from '$lib/components/project/v2/PulseStrip.svelte';
 	import TaskKanbanBoard from '$lib/components/project/v2/TaskKanbanBoard.svelte';
 	import EntityTabStrip from '$lib/components/project/v2/EntityTabStrip.svelte';
@@ -58,7 +60,17 @@
 		type ProjectNotificationSettings
 	} from '$lib/components/project/project-page-data-controller';
 	import { resolveEntityOpenAction } from '$lib/components/project/project-page-interactions';
-	import { Bell, BellOff, Calendar, GitBranch, Pencil, Trash2, Users } from 'lucide-svelte';
+	import {
+		Bell,
+		BellOff,
+		Calendar,
+		CalendarClock,
+		GitBranch,
+		MessagesSquare,
+		Pencil,
+		Trash2,
+		Users
+	} from 'lucide-svelte';
 	import type {
 		Project,
 		Task,
@@ -72,6 +84,7 @@
 	import type { EntityReference, ProjectLogEntityType } from '@buildos/shared-types';
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -202,6 +215,24 @@
 
 	// Graph modal (full-screen)
 	let showGraphModal = $state(false);
+
+	// Recent project chats
+	type AgentChatModalLazy =
+		| typeof import('$lib/components/agent/AgentChatModal.svelte').default
+		| null;
+	let showEventsModal = $state(false);
+	let showRecentChatsModal = $state(false);
+	let showRecentChatAgentModal = $state(false);
+	let selectedRecentChatSessionId = $state<string | null>(null);
+	let AgentChatModalComponent = $state<AgentChatModalLazy>(null);
+
+	async function loadAgentChatModal() {
+		if (!AgentChatModalComponent) {
+			const mod = await import('$lib/components/agent/AgentChatModal.svelte');
+			AgentChatModalComponent = mod.default;
+		}
+		return AgentChatModalComponent;
+	}
 
 	// ============================================================
 	// HEADER SETTINGS MENU PORTAL
@@ -816,6 +847,40 @@
 	function closeGraphModal() {
 		showGraphModal = false;
 	}
+	function openEventsModal() {
+		showEventsModal = true;
+	}
+	function closeEventsModal() {
+		showEventsModal = false;
+	}
+	function openEventFromEventsModal(eventId: string) {
+		showEventsModal = false;
+		editingEventId = eventId;
+	}
+	function openEventCreateFromEventsModal() {
+		showEventsModal = false;
+		showEventCreateModal = true;
+	}
+	function openRecentChatsModal() {
+		showRecentChatsModal = true;
+	}
+	function closeRecentChatsModal() {
+		showRecentChatsModal = false;
+	}
+	async function handleRecentChatSelected(sessionId: string) {
+		selectedRecentChatSessionId = sessionId;
+		showRecentChatsModal = false;
+		await tick();
+		await loadAgentChatModal();
+		showRecentChatAgentModal = true;
+	}
+	function closeRecentChatAgentModal(summary?: DataMutationSummary) {
+		showRecentChatAgentModal = false;
+		selectedRecentChatSessionId = null;
+		if (summary?.hasChanges) {
+			void refreshSilently();
+		}
+	}
 	function handleCollaborationLeftProject() {
 		goto('/projects');
 	}
@@ -928,6 +993,13 @@
 		<div class="sm:hidden mb-2 grid">
 			{#if isHydrating}
 				<div class="space-y-1.5" aria-busy="true" aria-label="Loading project panels">
+					<div class="grid grid-cols-2 gap-1.5">
+						{#each Array(2) as _, i (i)}
+							<div
+								class="h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
+							></div>
+						{/each}
+					</div>
 					{#each Array(4) as _, i (i)}
 						<div
 							class="w-full h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
@@ -935,7 +1007,55 @@
 					{/each}
 				</div>
 			{:else}
-				<div in:fade={fadeIn} out:fade={fadeOut}>
+				<div class="space-y-1.5" in:fade={fadeIn} out:fade={fadeOut}>
+					<div class="grid grid-cols-2 gap-1.5" aria-label="Project quick sections">
+						<button
+							type="button"
+							onclick={openRecentChatsModal}
+							class="min-h-14 rounded-lg border border-border bg-card px-2.5 py-2 text-left shadow-ink tx tx-frame tx-weak transition-colors hover:bg-muted/50 pressable"
+							aria-haspopup="dialog"
+						>
+							<div class="flex items-center gap-2 min-w-0">
+								<div
+									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-teal-500/10"
+								>
+									<MessagesSquare class="h-4 w-4 text-teal-500" />
+								</div>
+								<div class="min-w-0">
+									<p class="truncate text-xs font-semibold text-foreground">
+										Recent Chats
+									</p>
+									<p class="truncate text-[10px] text-muted-foreground">
+										Conversations
+									</p>
+								</div>
+							</div>
+						</button>
+
+						<button
+							type="button"
+							onclick={openEventsModal}
+							class="min-h-14 rounded-lg border border-border bg-card px-2.5 py-2 text-left shadow-ink tx tx-frame tx-weak transition-colors hover:bg-muted/50 pressable"
+							aria-haspopup="dialog"
+						>
+							<div class="flex items-center gap-2 min-w-0">
+								<div
+									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-teal-500/10"
+								>
+									<CalendarClock class="h-4 w-4 text-teal-500" />
+								</div>
+								<div class="min-w-0">
+									<p class="truncate text-xs font-semibold text-foreground">
+										Events
+									</p>
+									<p class="truncate text-[10px] text-muted-foreground">
+										{events.length} {events.length === 1 ? 'event' : 'events'}
+									</p>
+								</div>
+							</div>
+						</button>
+					</div>
+
 					{#await import('$lib/components/project/MobileCommandCenter.svelte') then { default: MobileCommandCenter }}
 						<MobileCommandCenter
 							{goals}
@@ -1010,7 +1130,7 @@
 					{/each}
 				</div>
 				<div class="flex flex-wrap gap-1.5 sm:gap-2">
-					{#each Array(7) as _, i (i)}
+					{#each Array(8) as _, i (i)}
 						<div
 							class="h-10 min-w-[88px] flex-1 sm:flex-none bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
 						></div>
@@ -1048,6 +1168,7 @@
 					{milestones}
 					{plans}
 					{risks}
+					{events}
 					{milestonesByGoalId}
 					onEditGoal={(id) => (editingGoalId = id)}
 					onEditMilestone={(id) => (editingMilestoneId = id)}
@@ -1059,6 +1180,8 @@
 					onAddMilestoneFromGoal={canEdit ? handleAddMilestoneFromGoal : undefined}
 					onAddPlan={canEdit ? () => (showPlanCreateModal = true) : undefined}
 					onAddRisk={canEdit ? () => (showRiskCreateModal = true) : undefined}
+					onOpenRecentChats={openRecentChatsModal}
+					onOpenEvents={openEventsModal}
 				/>
 
 				<TaskKanbanBoard
@@ -1189,6 +1312,31 @@
 			onGraphNodeClick={handleGraphNodeClick}
 		/>
 	{/await}
+{/if}
+
+<ProjectEventsModal
+	isOpen={showEventsModal}
+	{events}
+	{canEdit}
+	onClose={closeEventsModal}
+	onAddEvent={openEventCreateFromEventsModal}
+	onSelectEvent={openEventFromEventsModal}
+/>
+
+<RecentProjectChatsModal
+	isOpen={showRecentChatsModal}
+	projectId={project.id}
+	projectName={project.name}
+	onClose={closeRecentChatsModal}
+	onSelectChat={handleRecentChatSelected}
+/>
+
+{#if showRecentChatAgentModal && selectedRecentChatSessionId && AgentChatModalComponent}
+	<AgentChatModalComponent
+		isOpen={showRecentChatAgentModal}
+		initialChatSessionId={selectedRecentChatSessionId}
+		onClose={closeRecentChatAgentModal}
+	/>
 {/if}
 
 <!-- Header settings menu portal -->
