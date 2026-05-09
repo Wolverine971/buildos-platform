@@ -38,6 +38,7 @@
 		fetchProjectBriefs,
 		type ProjectBriefSummary
 	} from '$lib/components/project/project-page-data-controller';
+	import { getUpcomingEvents } from '$lib/components/project/project-event-filters';
 	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 	import type { ProjectLogEntityType } from '@buildos/shared-types';
 	import type { Goal, Milestone, OntoEvent, Plan, Risk } from '$lib/types/onto';
@@ -210,7 +211,7 @@
 			{
 				key: 'events',
 				label: 'Events',
-				count: events.length,
+				count: getUpcomingEvents(events).length,
 				icon: Clock,
 				accent: 'text-teal-500',
 				bg: 'bg-teal-500/10',

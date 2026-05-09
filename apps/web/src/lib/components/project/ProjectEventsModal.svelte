@@ -2,6 +2,10 @@
 <script lang="ts">
 	import { CalendarClock, Clock, ExternalLink, MapPin, Plus } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import {
+		getProjectEventBuckets,
+		type ProjectEventBucketKey
+	} from '$lib/components/project/project-event-filters';
 	import type { OntoEvent } from '$lib/types/onto';
 
 	type EventWithOptionalSync = OntoEvent & {
@@ -31,6 +35,30 @@
 		completed: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
 		cancelled: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30'
 	};
+	const tabLabels: Record<ProjectEventBucketKey, string> = {
+		upcoming: 'Upcoming',
+		recent: 'Recent',
+		past: 'Past'
+	};
+
+	let activeTab = $state<ProjectEventBucketKey>('upcoming');
+	let wasOpen = $state(false);
+	const eventBuckets = $derived(getProjectEventBuckets(events));
+	const visibleEvents = $derived(eventBuckets[activeTab]);
+	const tabOptions = $derived(
+		(['upcoming', 'recent', 'past'] as ProjectEventBucketKey[]).map((key) => ({
+			key,
+			label: tabLabels[key],
+			count: eventBuckets[key].length
+		}))
+	);
+
+	$effect(() => {
+		if (isOpen && !wasOpen) {
+			activeTab = 'upcoming';
+		}
+		wasOpen = isOpen;
+	});
 
 	function stateChip(
 		state: string | null | undefined
@@ -41,14 +69,6 @@
 			className:
 				eventStateAccents[state] ?? 'bg-muted/40 text-muted-foreground border-border/60'
 		};
-	}
-
-	function sortEvents(list: OntoEvent[]): OntoEvent[] {
-		return [...list].sort((a, b) => {
-			const da = new Date(a.start_at).getTime();
-			const db = new Date(b.start_at).getTime();
-			return (Number.isFinite(da) ? da : Infinity) - (Number.isFinite(db) ? db : Infinity);
-		});
 	}
 
 	function eventHasCalendarSync(event: OntoEvent): boolean {
@@ -111,6 +131,17 @@
 		parts.push(eventHasCalendarSync(event) ? 'synced' : 'local');
 		return parts.join(' / ');
 	}
+
+	function emptyMessage(tab: ProjectEventBucketKey): string {
+		switch (tab) {
+			case 'recent':
+				return 'No recent events.';
+			case 'past':
+				return 'No older events.';
+			default:
+				return 'No upcoming events.';
+		}
+	}
 </script>
 
 <Modal {isOpen} {onClose} title="Events" size="lg" ariaLabel="Project events">
@@ -118,7 +149,10 @@
 		<div class="flex items-center justify-between gap-3">
 			<div class="flex items-center gap-2 min-w-0 text-xs text-muted-foreground">
 				<CalendarClock class="w-4 h-4 shrink-0 text-teal-500" />
-				<span>{events.length} {events.length === 1 ? 'event' : 'events'}</span>
+				<span>
+					{eventBuckets.upcoming.length}
+					{eventBuckets.upcoming.length === 1 ? 'upcoming event' : 'upcoming events'}
+				</span>
 			</div>
 			{#if canEdit && onAddEvent}
 				<button
@@ -132,13 +166,39 @@
 			{/if}
 		</div>
 
+		<div
+			class="grid grid-cols-3 gap-1 rounded-lg border border-border bg-muted/30 p-1"
+			role="tablist"
+			aria-label="Event timeframe"
+		>
+			{#each tabOptions as tab (tab.key)}
+				<button
+					type="button"
+					role="tab"
+					aria-selected={activeTab === tab.key}
+					onclick={() => (activeTab = tab.key)}
+					class="flex min-w-0 items-center justify-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-medium transition-colors pressable {activeTab ===
+					tab.key
+						? 'bg-card text-foreground shadow-ink'
+						: 'text-muted-foreground hover:bg-card/60 hover:text-foreground'}"
+				>
+					<span class="truncate">{tab.label}</span>
+					<span class="text-[10px] opacity-75">{tab.count}</span>
+				</button>
+			{/each}
+		</div>
+
 		{#if events.length === 0}
 			<div class="rounded-lg border border-border bg-card px-3 py-8 text-center">
 				<p class="text-sm text-muted-foreground">No events scheduled.</p>
 			</div>
+		{:else if visibleEvents.length === 0}
+			<div class="rounded-lg border border-border bg-card px-3 py-8 text-center">
+				<p class="text-sm text-muted-foreground">{emptyMessage(activeTab)}</p>
+			</div>
 		{:else}
 			<div class="grid grid-cols-1 gap-2">
-				{#each sortEvents(events) as event (event.id)}
+				{#each visibleEvents as event (event.id)}
 					{@const chip = stateChip(event.state_key)}
 					{@const meta = formatEventMeta(event)}
 					<button

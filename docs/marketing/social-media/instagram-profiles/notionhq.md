@@ -11,7 +11,7 @@
 **Relationship Status:** Monitor only
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-05-03
+**Last Reviewed:** 2026-05-09
 **Last Engaged:** Never (mine commenters, not Notion directly)
 **Source of First Discovery:** `instagram-engagement-targets.md`
 
@@ -53,10 +53,13 @@
 | 2026-03-27 | Post    | Notion 3.4 AI update launch                | https://www.instagram.com/p/DWXAfUCCGG6/ | Queued   | No posting               | Watering hole — reply to commenters, not the post                                                                                                                                                                                                                                                                                                | Unknown                 | 2026-03-27_instagram-warmup.md |
 | 2026-03-29 | Profile | 3.4 launch carryover                       | https://www.instagram.com/p/DWXAfUCCGG6/ | Reviewed | Logged                   | Steady engagement, no pushback in comments                                                                                                                                                                                                                                                                                                       | Competitor intel logged | 2026-03-29_instagram-warmup.md |
 | 2026-05-03 | Post    | Plan Mode launch (agent plan-then-approve) | https://www.instagram.com/p/DXffODED3nB/ | Queued   | Pending /instagram-reply | Watering-hole pass — reply to commenters like @opsdeck (5d) on "trust exercise vs review process" and to billing-frustrated commenters. Do NOT engage @notionhq directly. Strong competitor intel: Notion is now leading with "plan → approve → execute" agent UX, which overlaps directly with BuildOS agentic chat positioning. Mention fit 0. | Pending                 | 2026-05-03_instagram-warmup.md |
+| 2026-05-09 | Post    | Plan Mode revisit (now 2w old) | https://www.instagram.com/p/DXffODED3nB/ | Reviewed | Logged — too old to act on | Plan Mode comment thread now has @sb_setter (6d, 3 likes) "still get charged $25 / no one responds" complaint and @josegonzalezi05 (Spanish, 3d) "increíble la verdad si no fuera tan costoso" cost-complaint — both archetypal frustrated-Notion-user voices for future commenter-mining. Post too old to comment on now (2w); captured here as historical intel. | Intel logged | 2026-05-09_instagram-warmup.md |
+| 2026-05-09 | Post    | "Apply to be a Notion Campus Leader" carousel (4d, 550 likes) | https://www.instagram.com/p/DX7MIBjiVAW/ | Drafted   | Drafted - Pending Posting (size-gate before posting) | **Commenter-mining slot — primary target @opsdeck (backup @zappflow_).** 3 mining options drafted: **Opt 1 (reaction + diagnostic question):** "yeah this tracks. the builders i've worked with were always already mid-project when anyone official noticed. curious if you've ever seen the formal program version of this make the energy worse?"; **Opt 2 (agreement + concrete question):** "agreed especially on the 'discovered it on their own' line. wonder how these programs handle the kid who shows up already further along than the curriculum — is there a structured path for them or do they just cap out?"; **Opt 3 (peer experience + question):** "yeah this is the right read. did a couple of bootcamp/hackathon community things back in the day and the people who showed up already shipping were always the ones who got the most out of them. curious — what's the typical split for campus leaders, mostly already-building or mostly looking-to-learn?". Recommendation: Option 1. **NEVER engage @notionhq directly. Decline if both @opsdeck and @zappflow_ are 50K+ guru accounts.** Mention fit 0. | Pending | 2026-05-09_instagram-warmup.md → 2026-05-09_instagram-replies.md |
 
 ## Open Loops
 
 - Mine 2026-03-27 3.4 launch comments for feature-fatigue voices — still open as a watering-hole pass.
+- Mine 2026-05-09 Campus Leader thread (DX7MIBjiVAW) — operator-voice commenters (@opsdeck, @zappflow_) need profiling.
 - Monitor for the next major launch to catch the comment wave early.
 
 ## Next Best Angles

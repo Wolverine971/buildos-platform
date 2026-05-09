@@ -43,6 +43,7 @@
 	import ProjectDocumentsSection from '$lib/components/project/ProjectDocumentsSection.svelte';
 	import ProjectEventsModal from '$lib/components/project/ProjectEventsModal.svelte';
 	import RecentProjectChatsModal from '$lib/components/project/RecentProjectChatsModal.svelte';
+	import { getUpcomingEvents } from '$lib/components/project/project-event-filters';
 	import PulseStrip from '$lib/components/project/v2/PulseStrip.svelte';
 	import TaskKanbanBoard from '$lib/components/project/v2/TaskKanbanBoard.svelte';
 	import EntityTabStrip from '$lib/components/project/v2/EntityTabStrip.svelte';
@@ -268,6 +269,7 @@
 		}
 		return Array.from(set);
 	});
+	const upcomingEventCount = $derived(getUpcomingEvents(events).length);
 
 	// ============================================================
 	// DOC TREE SEED
@@ -1049,7 +1051,7 @@
 										Events
 									</p>
 									<p class="truncate text-[10px] text-muted-foreground">
-										{events.length} {events.length === 1 ? 'event' : 'events'}
+										{upcomingEventCount} upcoming
 									</p>
 								</div>
 							</div>
