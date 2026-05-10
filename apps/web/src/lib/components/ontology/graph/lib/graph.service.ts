@@ -347,17 +347,15 @@ const LABEL_OVERFLOW_MARKER = '...';
  * the legend, and the Inkprint canonical icon table.
  */
 function buildTargetIconDataUri(stroke: string): string {
-	const encoded = encodeURIComponent(stroke);
-	return (
-		"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' " +
-		"fill='none' stroke='" +
-		encoded +
-		"' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>" +
-		"<circle cx='12' cy='12' r='10'/>" +
-		"<circle cx='12' cy='12' r='6'/>" +
-		"<circle cx='12' cy='12' r='2'/>" +
+	const svg = [
+		`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
+		'<circle cx="12" cy="12" r="10"/>',
+		'<circle cx="12" cy="12" r="6"/>',
+		'<circle cx="12" cy="12" r="2"/>',
 		'</svg>'
-	);
+	].join('');
+
+	return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }
 
 // ============================================================

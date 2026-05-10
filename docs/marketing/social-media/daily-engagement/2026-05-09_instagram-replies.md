@@ -12,12 +12,12 @@
 
 ## Queue Summary
 
-| #   | Account         | Topic                                                              | Profile                                                          | Relationship Note                                                                              | Status  |
-| --- | --------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ------- |
-| 1   | @thejustinwelsh | "Most people are so afraid of making the wrong move" essay-screenshot | [thejustinwelsh.md](../instagram-profiles/thejustinwelsh.md)     | First-ever Justin touch on any DJ-controlled handle. No prior interaction.                     | Drafted |
-| 2   | @nathanbarry    | "What makes hospitality feel like magic?" Reel (Guidara/Canlis)    | [nathanbarry.md](../instagram-profiles/nathanbarry.md)           | First-ever Nathan touch (despite 2 prior drafts on yesterday/the day before — both un-posted). SWAP recommended; do not post the older two today. | Drafted |
-| 3   | @notionhq       | "Apply to be a Notion Campus Leader" carousel (commenter mining)   | [notionhq.md](../instagram-profiles/notionhq.md)                 | Commenter mining only — never engage @notionhq directly. Reply target is @opsdeck (verified peer-tier needed). | Drafted (size-check gate before posting) |
-| 4   | @gregisenberg   | "I tested Claude Design" carousel (commenter mining, fallback)     | [gregisenberg.md](../instagram-profiles/gregisenberg.md)         | Commenter mining only — never engage Greg directly. Reply target is @timhaydenclark. **Decline if slot #3 is posted today** — only mine ONE watering hole. | Drafted (fallback only) |
+| #   | Account         | Topic                                                                 | Profile                                                      | Relationship Note                                                                                                                                          | Status                                   |
+| --- | --------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| 1   | @thejustinwelsh | "Most people are so afraid of making the wrong move" essay-screenshot | [thejustinwelsh.md](../instagram-profiles/thejustinwelsh.md) | First-ever Justin touch on any DJ-controlled handle. No prior interaction.                                                                                 | Drafted                                  |
+| 2   | @nathanbarry    | "What makes hospitality feel like magic?" Reel (Guidara/Canlis)       | [nathanbarry.md](../instagram-profiles/nathanbarry.md)       | First-ever Nathan touch (despite 2 prior drafts on yesterday/the day before — both un-posted). SWAP recommended; do not post the older two today.          | Drafted                                  |
+| 3   | @notionhq       | "Apply to be a Notion Campus Leader" carousel (commenter mining)      | [notionhq.md](../instagram-profiles/notionhq.md)             | Commenter mining only — never engage @notionhq directly. Reply target is @opsdeck (verified peer-tier needed).                                             | Drafted (size-check gate before posting) |
+| 4   | @gregisenberg   | "I tested Claude Design" carousel (commenter mining, fallback)        | [gregisenberg.md](../instagram-profiles/gregisenberg.md)     | Commenter mining only — never engage Greg directly. Reply target is @timhaydenclark. **Decline if slot #3 is posted today** — only mine ONE watering hole. | Drafted (fallback only)                  |
 
 ---
 
@@ -133,15 +133,15 @@
 **Mining Protocol:**
 
 1. **Profile @opsdeck before posting.** Verify size + voice. Decline if 50K+ guru-style account. Decline if their grid is course-funnel-shaped.
-2. **Backup target if @opsdeck disqualifies:** @zappflow_ ("The ones who actually use it teach best…") — verified-checkmark, also articulate.
-3. **Decline this slot entirely if both @opsdeck and @zappflow_ turn out to be 50K+ accounts.** Fall back to slot #4.
+2. **Backup target if @opsdeck disqualifies:** @zappflow\_ ("The ones who actually use it teach best…") — verified-checkmark, also articulate.
+3. **Decline this slot entirely if both @opsdeck and @zappflow\_ turn out to be 50K+ accounts.** Fall back to slot #4.
 4. Reply to one commenter only — never both. Never @notionhq.
 5. Update `discovery/instagram/candidates.md` with the engaged handle's state after posting.
 
 **Relationship Intel:**
 
 - @opsdeck — operator/builder voice, peer-tier hypothesis. Confirm in-app size before posting.
-- No prior touches on either @opsdeck or @zappflow_.
+- No prior touches on either @opsdeck or @zappflow\_.
 
 **Do Not Repeat:**
 
@@ -258,12 +258,12 @@
 
 ## Reconciliation Needed
 
-| #   | Account         | Post                                    | Current State              | Next Update Needed                                                           |
-| --- | --------------- | --------------------------------------- | -------------------------- | ---------------------------------------------------------------------------- |
-| 1   | @thejustinwelsh | DYE3uMBILkS                             | Drafted - Pending Posting  | Mark Posted (with exact comment) / Skipped / Still pending after execution   |
-| 2   | @nathanbarry    | DYH7QDfA0Dw                             | Drafted - Pending Posting  | Mark Posted (with exact comment) / Skipped / Still pending — and update DYAhbE2kiG9 + DYDJGIXSNnv to Skipped (superseded) once today's Nathan is posted |
-| 3   | @notionhq mining (@opsdeck) | DX7MIBjiVAW (commenter)     | Drafted - Pending Posting (size-gate) | Mark Posted (record handle, comment, ladder advance) / Skipped (note disqualifying reason) / Still pending |
-| 4   | @gregisenberg mining (@timhaydenclark) | DX62RZlkftc (commenter) | Drafted - Pending Posting (fallback) | Mark Skipped if slot #3 posted; otherwise Posted / Skipped / Still pending |
+| #   | Account                                | Post                    | Current State                         | Next Update Needed                                                                                                                                      |
+| --- | -------------------------------------- | ----------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | @thejustinwelsh                        | DYE3uMBILkS             | Drafted - Pending Posting             | Mark Posted (with exact comment) / Skipped / Still pending after execution                                                                              |
+| 2   | @nathanbarry                           | DYH7QDfA0Dw             | Drafted - Pending Posting             | Mark Posted (with exact comment) / Skipped / Still pending — and update DYAhbE2kiG9 + DYDJGIXSNnv to Skipped (superseded) once today's Nathan is posted |
+| 3   | @notionhq mining (@opsdeck)            | DX7MIBjiVAW (commenter) | Drafted - Pending Posting (size-gate) | Mark Posted (record handle, comment, ladder advance) / Skipped (note disqualifying reason) / Still pending                                              |
+| 4   | @gregisenberg mining (@timhaydenclark) | DX62RZlkftc (commenter) | Drafted - Pending Posting (fallback)  | Mark Skipped if slot #3 posted; otherwise Posted / Skipped / Still pending                                                                              |
 
 ---
 
@@ -278,21 +278,21 @@
 
 ## CRM Updates
 
-| Account             | Profile                                                                       | Update                                                                                                                                                              |
-| ------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| @thejustinwelsh     | [thejustinwelsh.md](../instagram-profiles/thejustinwelsh.md)                  | 2026-05-09 row updated: status Queued → **Drafted (3 options)**. First-touch options recorded.                                                                      |
-| @nathanbarry        | [nathanbarry.md](../instagram-profiles/nathanbarry.md)                        | 2026-05-09 row updated: status Queued → **Drafted (3 options)**. SWAP recommendation captured. Older 5/7 + 5/8 rows annotated as superseded-pending-posting confirmation. |
-| @notionhq           | [notionhq.md](../instagram-profiles/notionhq.md)                              | 2026-05-09 row updated: status Queued → **Drafted (3 options for @opsdeck mining)**. Backup target @zappflow_ noted. Size-gate flagged.                              |
-| @gregisenberg       | [gregisenberg.md](../instagram-profiles/gregisenberg.md)                      | 2026-05-09 row updated: status Queued → **Drafted (3 options for @timhaydenclark mining, fallback only)**. Decline-if-slot-#3-posts rule captured.                   |
+| Account         | Profile                                                      | Update                                                                                                                                                                    |
+| --------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| @thejustinwelsh | [thejustinwelsh.md](../instagram-profiles/thejustinwelsh.md) | 2026-05-09 row updated: status Queued → **Drafted (3 options)**. First-touch options recorded.                                                                            |
+| @nathanbarry    | [nathanbarry.md](../instagram-profiles/nathanbarry.md)       | 2026-05-09 row updated: status Queued → **Drafted (3 options)**. SWAP recommendation captured. Older 5/7 + 5/8 rows annotated as superseded-pending-posting confirmation. |
+| @notionhq       | [notionhq.md](../instagram-profiles/notionhq.md)             | 2026-05-09 row updated: status Queued → **Drafted (3 options for @opsdeck mining)**. Backup target @zappflow\_ noted. Size-gate flagged.                                  |
+| @gregisenberg   | [gregisenberg.md](../instagram-profiles/gregisenberg.md)     | 2026-05-09 row updated: status Queued → **Drafted (3 options for @timhaydenclark mining, fallback only)**. Decline-if-slot-#3-posts rule captured.                        |
 
 ## Loop Updates
 
-| Account             | Comment Log              | Candidate Queue                        | Ladder Update                              |
-| ------------------- | ------------------------ | -------------------------------------- | ------------------------------------------ |
-| @thejustinwelsh     | Updated row: Queued → Drafted (3 options) | n/a (sourced from target list)         | stage_2_queued (unchanged until posting)   |
-| @nathanbarry        | Updated row: Queued → Drafted (3 options) | n/a (sourced from target list)         | stage_2_queued (unchanged until posting)   |
-| @notionhq (@opsdeck mining) | Updated row: Queued → Drafted (3 options) | @opsdeck remains pre-Stage-0 until profiled | stage_2_queued (unchanged until posting)   |
-| @gregisenberg (@timhaydenclark mining) | Updated row: Queued (fallback) → Drafted (fallback) | @timhaydenclark remains pre-Stage-0 until profiled | stage_2_queued (unchanged until posting)   |
+| Account                                | Comment Log                                         | Candidate Queue                                    | Ladder Update                            |
+| -------------------------------------- | --------------------------------------------------- | -------------------------------------------------- | ---------------------------------------- |
+| @thejustinwelsh                        | Updated row: Queued → Drafted (3 options)           | n/a (sourced from target list)                     | stage_2_queued (unchanged until posting) |
+| @nathanbarry                           | Updated row: Queued → Drafted (3 options)           | n/a (sourced from target list)                     | stage_2_queued (unchanged until posting) |
+| @notionhq (@opsdeck mining)            | Updated row: Queued → Drafted (3 options)           | @opsdeck remains pre-Stage-0 until profiled        | stage_2_queued (unchanged until posting) |
+| @gregisenberg (@timhaydenclark mining) | Updated row: Queued (fallback) → Drafted (fallback) | @timhaydenclark remains pre-Stage-0 until profiled | stage_2_queued (unchanged until posting) |
 
 ---
 

@@ -18,7 +18,9 @@ import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { getRequestIdFromHeaders, logServerError } from '$lib/server/error-tracking';
 import { StripeService } from '$lib/services/stripe-service';
 import {
+	getErrorStatus,
 	isPrivateConfigProbePath,
+	shouldPersistGenericErrorEvent,
 	shouldTrackServerResponseFailure
 } from '$lib/utils/error-observability';
 import { configureLibriRuntimeEnv } from '$lib/services/agentic-chat/tools/libri/config';
@@ -31,8 +33,18 @@ import {
 configureLibriRuntimeEnv(() => privateEnv);
 
 const LEGACY_FEATURE_PATHS = new Set(['/features', '/features/']);
+const LEGACY_PATH_REDIRECTS = new Map<string, string>([
+	['/community', '/contact'],
+	['/community/', '/contact'],
+	['/s-build-os.webp', '/twitter_card_light.webp']
+]);
 const LEGACY_BLOG_MARKDOWN_PATH = /^\/src\/content\/blogs\/([^/]+)\/([^/]+?)(?:\.md)?\/?$/;
 function getLegacyRedirectPath(pathname: string): string | null {
+	const redirectedPath = LEGACY_PATH_REDIRECTS.get(pathname);
+	if (redirectedPath) {
+		return redirectedPath;
+	}
+
 	if (LEGACY_FEATURE_PATHS.has(pathname)) {
 		return '/';
 	}
@@ -628,6 +640,14 @@ export const handle = handleSupabase;
 export const handleError: HandleServerError = async ({ error, event }) => {
 	const errorId = Math.random().toString(36).substr(2, 9);
 	const errorMessage = error instanceof Error ? error.message : String(error);
+	const status = getErrorStatus(error);
+	const routeId = event.route.id ?? null;
+	const shouldLogToConsole = shouldPersistGenericErrorEvent({
+		operation: 'hooks.handle_error',
+		pathname: event.url.pathname,
+		status,
+		routeId
+	});
 
 	await logServerError({
 		error,
@@ -639,7 +659,7 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 		severity: 'error',
 		metadata: {
 			errorId,
-			routeId: event.route.id ?? null,
+			routeId,
 			params: event.params
 		}
 	});
@@ -652,7 +672,7 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 			timestamp: new Date().toISOString(),
 			userId: event.locals.user?.id
 		});
-	} else {
+	} else if (shouldLogToConsole) {
 		// Minimal logging in production
 		console.error(`[${errorId}] Error on ${event.url.pathname}:`, errorMessage);
 	}

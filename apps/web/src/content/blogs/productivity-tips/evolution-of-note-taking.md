@@ -183,7 +183,7 @@ The category isn't "better notes app." It's a **thinking environment** — one p
 
 **1. Capture without friction.** Talk or type whatever's on your mind. No categories, no folders, no decisions about where something belongs.
 
-**2. The system turns it into structure.** BuildOS doesn't file things into folders. It builds relationships. Goals connect to plans. Plans contain tasks. Tasks link to documents. No orphan notes. (See [Under the Hood](/blog/under-the-hood) for the technical architecture.)
+**2. The system turns it into structure.** BuildOS doesn't file things into folders. It builds relationships. Goals connect to plans. Plans contain tasks. Tasks link to documents. No orphan notes. (See [Under the Hood](/blogs/getting-started/under-the-hood) for the technical architecture.)
 
 **3. Context persists and compounds.** Each brain dump adds to your project memory. Work on something for weeks, and the system knows where you left off: decisions made, tasks completed, documents created. Switch to a different AI tool? Export the full context with one click.
 
@@ -245,7 +245,7 @@ Traditional note-taking creates piles. Even with good organization, you're addin
 
 Day 1 notes are just files. Day 100 notes, where every piece is connected, become something that understands your work — your project history, your decisions, the threads you keep picking back up. The system doesn't just store; it synthesizes across everything you've captured.
 
-This is what traditional note-taking was always trying to achieve and couldn't: notes that connect to action, notes that serve goals, notes that get more valuable over time instead of harder to search. (For more on this idea, see [Context Engineering 101](/blog/context-engineering-101).)
+This is what traditional note-taking was always trying to achieve and couldn't: notes that connect to action, notes that serve goals, notes that get more valuable over time instead of harder to search. (For more on this idea, see [Context Engineering 101](/blogs/productivity-tips/context-engineering-101).)
 
 ---
 

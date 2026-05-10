@@ -35,7 +35,7 @@ BuildOS solves this by putting goals at the top of everything. Not as aspiration
 
 ## How Goals Work in BuildOS
 
-In BuildOS, goals aren't isolated aspirations. They're the top-level entities in a connected architecture: Goals → Plans → Tasks → Documents. (See [Under the Hood](/blog/under-the-hood) for the full technical picture.)
+In BuildOS, goals aren't isolated aspirations. They're the top-level entities in a connected architecture: Goals → Plans → Tasks → Documents. (See [Under the Hood](/blogs/getting-started/under-the-hood) for the full technical picture.)
 
 This hierarchy creates automatic alignment:
 
@@ -230,7 +230,7 @@ Here's what most people miss: **goal context compounds**.
 
 Every brain dump, every task completion, every decision connects to your goals. Day 1 goals are definitions. Day 100 goals, enriched by projects, completed tasks, and documented decisions, become strategic intelligence.
 
-Goals in BuildOS aren't static statements. They're living context that grows with every piece of work you add. (For more on how context compounding works, see [Context Engineering 101](/blog/context-engineering-101).)
+Goals in BuildOS aren't static statements. They're living context that grows with every piece of work you add. (For more on how context compounding works, see [Context Engineering 101](/blogs/productivity-tips/context-engineering-101).)
 
 ## The Power of Structured Context
 

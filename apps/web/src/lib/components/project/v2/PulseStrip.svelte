@@ -24,6 +24,7 @@
 	import type { ProjectLogEntityType, ProjectLogEntryWithMeta } from '@buildos/shared-types';
 	import type { Goal, Milestone, OntoEvent, Task } from '$lib/types/onto';
 	import { fetchProjectLogs } from '$lib/components/project/project-page-data-controller';
+	import { getEventStartMs, isEventPast } from '$lib/components/project/project-event-filters';
 
 	type UpcomingKind = 'task' | 'milestone' | 'goal' | 'event';
 
@@ -117,23 +118,24 @@
 	// Up Next — upcoming dated work
 	// ----------------------------------------------------------------
 
-	const now = new Date();
-
 	const upcomingItems = $derived.by<UpcomingItem[]>(() => {
 		const items: UpcomingItem[] = [];
+		const nowMs = Date.now();
 
 		for (const t of tasks) {
 			if (t.state_key === 'done') continue;
 			const ref = t.due_at || t.start_at;
 			if (!ref) continue;
 			const date = new Date(ref);
+			const dateMs = date.getTime();
+			if (!Number.isFinite(dateMs)) continue;
 			items.push({
 				id: t.id,
 				kind: 'task',
 				title: t.title,
 				date,
 				state: t.state_key,
-				isOverdue: date < now
+				isOverdue: dateMs < nowMs
 			});
 		}
 
@@ -142,13 +144,15 @@
 			if (state === 'completed') continue;
 			if (!m.due_at) continue;
 			const date = new Date(m.due_at);
+			const dateMs = date.getTime();
+			if (!Number.isFinite(dateMs)) continue;
 			items.push({
 				id: m.id,
 				kind: 'milestone',
 				title: m.title,
 				date,
 				state,
-				isOverdue: date < now
+				isOverdue: dateMs < nowMs
 			});
 		}
 
@@ -156,28 +160,31 @@
 			if (g.state_key === 'achieved' || g.state_key === 'abandoned') continue;
 			if (!g.target_date) continue;
 			const date = new Date(g.target_date);
+			const dateMs = date.getTime();
+			if (!Number.isFinite(dateMs)) continue;
 			items.push({
 				id: g.id,
 				kind: 'goal',
 				title: g.name,
 				date,
 				state: g.state_key,
-				isOverdue: date < now
+				isOverdue: dateMs < nowMs
 			});
 		}
 
 		for (const event of events) {
 			if (event.deleted_at) continue;
 			if (event.state_key === 'cancelled' || event.state_key === 'canceled') continue;
-			if (!event.start_at) continue;
-			const date = new Date(event.start_at);
+			const startMs = getEventStartMs(event);
+			if (startMs === null || isEventPast(event, nowMs)) continue;
+			const date = new Date(startMs < nowMs ? nowMs : startMs);
 			items.push({
 				id: event.id,
 				kind: 'event',
 				title: event.title,
 				date,
 				state: event.state_key,
-				isOverdue: date < now
+				isOverdue: false
 			});
 		}
 
@@ -212,6 +219,7 @@
 	function relativeFuture(date: Date): { label: string; isOverdue: boolean } {
 		const diffMs = date.getTime() - Date.now();
 		const diffMin = Math.round(diffMs / 60000);
+		if (diffMin === 0) return { label: 'now', isOverdue: false };
 		if (diffMin < 0) {
 			const past = Math.abs(diffMin);
 			if (past < 60) return { label: `${past}m late`, isOverdue: true };

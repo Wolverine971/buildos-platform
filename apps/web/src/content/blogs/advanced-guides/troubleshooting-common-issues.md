@@ -179,7 +179,7 @@ Reach out if:
 
 ---
 
-_Still stuck? [Contact our team](/contact) or check the [community forum](/community) where other users share solutions._
+_Still stuck? [Contact our team](/contact)._
 
 ---
 
@@ -191,12 +191,12 @@ PURPOSE: Practical troubleshooting reference for existing BuildOS users — cale
 READER VALUE: Genuinely useful. This is the only file in /advanced-guides/ that delivers reader value. Concrete fixes, scoped to real product surfaces (calendar settings link, OAuth disconnect/reconnect, work hours, time zones, project re-assignment).
 VOICE FIT: Reasonable. "Something not working right? ... Jump to your problem, try the solution, and get back to work." is direct and human, on-brand. Some sections drift toward generic SaaS-help-center voice ("Hard refresh ... Close other tabs"), but nothing offensive. Doesn't lead with AI — good.
 ACCURACY: Mostly grounded, with a couple of items to verify:
-- "[community forum](/community)" — needs verification that this route exists. If not, link is broken (likely).
+- Former community forum link was removed because that route does not exist.
 - "Update your preferences in settings. Tell it when you do deep work, when you handle admin tasks" — verify these preference surfaces exist.
 - "Select them and combine" for merging projects — verify a merge UI actually exists; if not, soften to "delete the duplicate after copying notes over."
 - "BuildOS learns from your patterns" — vague claim; the product doesn't actually have a feedback-trained personalization loop today AFAIK. Soften or remove.
 ISSUES:
-- /community link almost certainly 404s.
+- Former /community link has been replaced with /contact.
 - "BuildOS learns from your patterns" overpromises an adaptive-learning behavior.
 - "Select them and combine" assumes a merge feature — verify before keeping.
 - date 2025-06-27 is the oldest in the folder; lastmod = date, hasn't been refreshed.
@@ -208,5 +208,5 @@ GAPS:
 - No mention of daily brief delivery problems (timezone of brief, missing brief).
 - No mention of "I exported context but it's huge / messy" — relevant to the context-compiler positioning.
 DUPLICATES/OVERLAP: none in this folder. Possible overlap with getting-started/onboarding content (calendar setup), should be checked across folders.
-NOTES: Strong candidate to KEEP and refresh. Should probably move to /getting-started/ or /support/ — it isn't an "advanced guide", it's a help doc. Update dates, fix the /community link, soften the "learns from your patterns" claim, verify the merge-projects UI before keeping that fix. Add a section on chat / daily brief / voice transcription troubleshooting.
+NOTES: Strong candidate to KEEP and refresh. Should probably move to /getting-started/ or /support/ — it isn't an "advanced guide", it's a help doc. Update dates, soften the "learns from your patterns" claim, verify the merge-projects UI before keeping that fix. Add a section on chat / daily brief / voice transcription troubleshooting.
 -->

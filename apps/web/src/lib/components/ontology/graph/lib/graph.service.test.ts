@@ -99,4 +99,35 @@ describe('OntologyGraphService label display data', () => {
 		expect(planNode?.data.height).toBeGreaterThan(40);
 		expect(planNode?.data.labelBackgroundOpacity).toBe(0);
 	});
+
+	it('uses a fully encoded data URI for goal icons', () => {
+		const graph = OntologyGraphService.buildGraphData(
+			makeSourceData({
+				goals: [
+					{
+						id: 'goal-1',
+						project_id: 'project-1',
+						type_key: 'goal',
+						name: 'Launch',
+						description: null,
+						state_key: 'active',
+						props: null,
+						created_by: 'actor-1',
+						created_at: now,
+						updated_at: now
+					}
+				]
+			}),
+			'full'
+		);
+
+		const goalNode = graph.nodes.find((node) => node.data.id === 'goal-1');
+		const iconImage = goalNode?.data.iconImage ?? '';
+
+		expect(iconImage).toMatch(/^data:image\/svg\+xml,%3Csvg/);
+		expect(iconImage).not.toMatch(/[<>"'\s]/);
+		expect(decodeURIComponent(iconImage.replace(/^data:image\/svg\+xml,/, ''))).toContain(
+			'xmlns="http://www.w3.org/2000/svg"'
+		);
+	});
 });

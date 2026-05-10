@@ -321,8 +321,7 @@
 			{#if tab.action}
 				<button
 					type="button"
-					onclick={() =>
-						tab.key === 'chats' ? onOpenRecentChats?.() : onOpenEvents?.()}
+					onclick={() => (tab.key === 'chats' ? onOpenRecentChats?.() : onOpenEvents?.())}
 					class="w-full flex items-center justify-between gap-1.5 px-2 py-1.5 hover:bg-muted/50 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 					aria-haspopup="dialog"
 					title={tab.label}

@@ -30,6 +30,9 @@ describe('error observability filters', () => {
 		expect(isIgnorableProbePath('/.openai/config.json')).toBe(true);
 		expect(isIgnorableProbePath('/.anthropic/config.json')).toBe(true);
 		expect(isIgnorableProbePath('/.well-known/assetlinks.json')).toBe(true);
+		expect(isIgnorableProbePath('/.well-known/traffic-advice')).toBe(true);
+		expect(isIgnorableProbePath('/ads.txt')).toBe(true);
+		expect(isIgnorableProbePath('/wp-json/gravitysmtp/v1/tests/mock-data')).toBe(true);
 		expect(isIgnorableProbePath('/brain-bolt-80.png')).toBe(false);
 	});
 

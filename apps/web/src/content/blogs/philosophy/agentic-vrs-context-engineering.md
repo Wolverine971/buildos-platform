@@ -28,7 +28,7 @@ pic: 'context-vs-agentic'
 path: apps/web/src/content/blogs/philosophy/agentic-vrs-context-engineering.md
 ---
 
-> **Deep dive:** This post explores a technical distinction between two approaches to AI systems. If you’re new to BuildOS, start with [First Project Setup](/blog/first-project-setup) or [How BuildOS Works](/blog/how-buildos-works) instead.
+> **Deep dive:** This post explores a technical distinction between two approaches to AI systems. If you’re new to BuildOS, start with [First Project Setup](/blogs/getting-started/first-project-setup) or [How BuildOS Works](/blogs/getting-started/how-buildos-works) instead.
 
 Right now, everyone’s talking about **AI agents** - autonomous programs that can chain together reasoning steps, call APIs, operate tools, and act on your behalf. The hype is about _capability_:
 

@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/ontology/onto-event-sync.service.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { OntoEventSyncService } from './onto-event-sync.service';
+import { GoogleOAuthConnectionError } from '../google-oauth-service';
 
 function createSupabaseMock(fixtures: {
 	tasks?: Record<
@@ -242,6 +243,111 @@ describe('OntoEventSyncService project sync job version guards', () => {
 			'sync-1',
 			'2026-03-02T12:00:00.000Z'
 		);
+	});
+
+	it('skips project update jobs that need calendar reconnection', async () => {
+		const service = new OntoEventSyncService({} as any);
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
+			id: 'event-4',
+			project_id: 'project-1',
+			updated_at: '2026-03-03T12:00:00.000Z',
+			created_at: '2026-03-03T10:00:00.000Z',
+			deleted_at: null,
+			external_link: null,
+			props: {},
+			onto_event_sync: [
+				{
+					id: 'sync-1',
+					user_id: 'user-1'
+				}
+			]
+		});
+		vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue({
+			externalEventId: 'evt_1',
+			calendarId: 'cal_1',
+			syncRowId: 'sync-1'
+		});
+		vi.spyOn(service as any, 'buildCalendarEventDescription').mockResolvedValue('notes');
+		vi.spyOn((service as any).calendarService, 'updateCalendarEvent').mockRejectedValue(
+			new GoogleOAuthConnectionError(
+				'No calendar connection found. Please connect your Google Calendar.',
+				true
+			)
+		);
+		const markSyncErrorSpy = vi
+			.spyOn(service as any, 'markEventSyncError')
+			.mockResolvedValue(undefined);
+
+		const result = await service.processProjectEventSyncJob({
+			action: 'upsert',
+			eventId: 'event-4',
+			projectId: 'project-1',
+			targetUserId: 'user-1'
+		});
+
+		expect(result).toEqual({
+			outcome: 'skipped',
+			reason: 'calendar_not_connected'
+		});
+		expect(markSyncErrorSpy).toHaveBeenCalledWith(
+			'event-4',
+			'No calendar connection found. Please connect your Google Calendar.',
+			'sync-1',
+			'2026-03-03T12:00:00.000Z'
+		);
+	});
+
+	it('skips project delete jobs that need calendar reconnection', async () => {
+		const service = new OntoEventSyncService({} as any);
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
+			id: 'event-5',
+			project_id: 'project-1',
+			updated_at: '2026-03-04T12:00:00.000Z',
+			created_at: '2026-03-04T10:00:00.000Z',
+			deleted_at: '2026-03-04T12:00:00.000Z',
+			external_link: null,
+			props: {},
+			onto_event_sync: [
+				{
+					id: 'sync-2',
+					user_id: 'user-1'
+				}
+			]
+		});
+		vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue({
+			externalEventId: 'evt_2',
+			calendarId: 'cal_1',
+			syncRowId: 'sync-2'
+		});
+		vi.spyOn((service as any).calendarService, 'deleteCalendarEvent').mockRejectedValue(
+			new GoogleOAuthConnectionError(
+				'No calendar connection found. Please connect your Google Calendar.',
+				true
+			)
+		);
+		const logDeleteFailureSpy = vi.spyOn(service as any, 'logGoogleDeleteFailure');
+		const markSyncErrorSpy = vi
+			.spyOn(service as any, 'markEventSyncError')
+			.mockResolvedValue(undefined);
+
+		const result = await service.processProjectEventSyncJob({
+			action: 'delete',
+			eventId: 'event-5',
+			projectId: 'project-1',
+			targetUserId: 'user-1'
+		});
+
+		expect(result).toEqual({
+			outcome: 'skipped',
+			reason: 'calendar_not_connected'
+		});
+		expect(markSyncErrorSpy).toHaveBeenCalledWith(
+			'event-5',
+			'No calendar connection found. Please connect your Google Calendar.',
+			'sync-2',
+			'2026-03-04T12:00:00.000Z'
+		);
+		expect(logDeleteFailureSpy).not.toHaveBeenCalled();
 	});
 
 	it('recovers project mapping from event props when sync row is missing', async () => {

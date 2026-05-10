@@ -20,6 +20,7 @@ const KNOWN_NON_ACTIONABLE_SUBSTRINGS = [
 	'/setup-config.php',
 	'/wp-admin/',
 	'/wp-content/',
+	'/wp-json/',
 	'/wordpress/'
 ];
 

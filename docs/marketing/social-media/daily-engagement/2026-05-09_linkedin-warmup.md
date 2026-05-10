@@ -40,12 +40,12 @@ LinkedIn session is alive on this Chrome profile. Notifications + profile-activi
 
 ## Priority Summary
 
-| #   | Author        | Topic                                                                       | Post URL                                                                  | Age  | Reactions / Comments | Mention Fit | Score | Profile                            | Queue                          |
-| --- | ------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ---- | -------------------- | ----------- | ----- | ---------------------------------- | ------------------------------ |
-| 1   | Beck Power    | @-mention reply on Obsidian + Claude content-system post                    | https://www.linkedin.com/feed/update/urn:li:activity:7453126915009261568/ | ~12h reply on 2w post | DJ comment: 1 like / 1 reply | 1 | 38 | linkedin-profiles/beckpower.md | Queued (top — direct relationship signal) |
-| 2   | Jonathan Chua | "You can outsource your thinking, but you can't outsource your understanding" | https://www.linkedin.com/feed/update/urn:li:activity:7458889186486407168/ | ~3h | 0 / 0 (no engagement visible) | 1 | 32 | linkedin-profiles/jonathan-chua.md | Queued (1st conn, freshest, low competition) |
-| 3   | Dexter Horthy | "Token-counting grift" → Outcomes > Outputs > Inputs hierarchy               | https://www.linkedin.com/feed/update/urn:li:activity:7457427197834928128/ | ~4d | Not yet captured | 0 | 24 | linkedin-profiles/dexterihorthy.md | Queued (category voice, original post) |
-| 4   | Tim Hsia      | Executive Summary: Veteran Leadership Venture Capital                        | https://www.linkedin.com/feed/update/urn:li:activity:7458516518243500034/ | ~1d | Not yet captured | 0 | 20 | linkedin-profiles/timhsia.md | Queued (1st conn, USMC angle) |
+| #   | Author        | Topic                                                                         | Post URL                                                                  | Age                   | Reactions / Comments          | Mention Fit | Score | Profile                            | Queue                                        |
+| --- | ------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------- | --------------------- | ----------------------------- | ----------- | ----- | ---------------------------------- | -------------------------------------------- |
+| 1   | Beck Power    | @-mention reply on Obsidian + Claude content-system post                      | https://www.linkedin.com/feed/update/urn:li:activity:7453126915009261568/ | ~12h reply on 2w post | DJ comment: 1 like / 1 reply  | 1           | 38    | linkedin-profiles/beckpower.md     | Queued (top — direct relationship signal)    |
+| 2   | Jonathan Chua | "You can outsource your thinking, but you can't outsource your understanding" | https://www.linkedin.com/feed/update/urn:li:activity:7458889186486407168/ | ~3h                   | 0 / 0 (no engagement visible) | 1           | 32    | linkedin-profiles/jonathan-chua.md | Queued (1st conn, freshest, low competition) |
+| 3   | Dexter Horthy | "Token-counting grift" → Outcomes > Outputs > Inputs hierarchy                | https://www.linkedin.com/feed/update/urn:li:activity:7457427197834928128/ | ~4d                   | Not yet captured              | 0           | 24    | linkedin-profiles/dexterihorthy.md | Queued (category voice, original post)       |
+| 4   | Tim Hsia      | Executive Summary: Veteran Leadership Venture Capital                         | https://www.linkedin.com/feed/update/urn:li:activity:7458516518243500034/ | ~1d                   | Not yet captured              | 0           | 20    | linkedin-profiles/timhsia.md       | Queued (1st conn, USMC angle)                |
 
 **Skipped (with reason):**
 
@@ -60,21 +60,21 @@ LinkedIn session is alive on this Chrome profile. Notifications + profile-activi
 - **Blaise Pascual** — 2d DTC landing pages + 4d supplement-industry posts. Off-BuildOS-lane. Skip.
 - **Anthony Owens / William Treseder thread** — Treseder's comment is pure "Congratulations brother!" cheerleading. No substantive thread for DJ. Skip.
 - **Topic searches:**
-  - **`"context engineering"` past 24h** — 3 results: Rudo Musanhu (3rd+ student-dev), Brazilian dev (Portuguese), Rohit Singh (3rd+ Anthropic finance-agents architect take). None are right-audience or right-tone. Skip.
-  - **`"AI memory"` past 24h** — Arslan jaffar's emoji-heavy "build your own AI system locally" listicle. Skip.
-  - **`"brain dump"` past 24h** — Astha Goyal's GCSE study tips. Off-target. Skip.
+    - **`"context engineering"` past 24h** — 3 results: Rudo Musanhu (3rd+ student-dev), Brazilian dev (Portuguese), Rohit Singh (3rd+ Anthropic finance-agents architect take). None are right-audience or right-tone. Skip.
+    - **`"AI memory"` past 24h** — Arslan jaffar's emoji-heavy "build your own AI system locally" listicle. Skip.
+    - **`"brain dump"` past 24h** — Astha Goyal's GCSE study tips. Off-target. Skip.
 - **2026-04-27 carry-over backlog (Alain Tovel, Dexter Horthy "AI replaces juniors", Todd Baur, Jonathan Chua DHH-takeaways, Daniel Vecera)** — **all 12+ days past, drop hard**. Do not re-post late.
 
 ---
 
 ## Reply Queue
 
-| #   | Author        | Topic                                                                       | Post URL                                                                  | Opp Type                                                            | Strategic Role            | Mention Fit | Profile                            | Reply Angle                                                                                                                                                                                                                  |
-| --- | ------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------- | ----------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Beck Power    | @-mention reply on her Obsidian + Claude content-system post                | https://www.linkedin.com/feed/update/urn:li:activity:7453126915009261568/ | Direct relationship signal — reply to her @-mention                 | Adjacent operator         | 1           | linkedin-profiles/beckpower.md     | Thank her for the share + a curiosity question on her actual workflow (does Claude carry context across sessions, or does she repaste each time?). Soft mention OK but not required.                                          |
-| 2   | Jonathan Chua | "You can outsource your thinking, but you can't outsource your understanding" | https://www.linkedin.com/feed/update/urn:li:activity:7458889186486407168/ | Fresh 3h, 1st conn, low competition                                 | Peer (1st conn)           | 1           | linkedin-profiles/jonathan-chua.md | Reframe: the "outsource your understanding" line is the BuildOS thesis in disguise — what you can't outsource is the project memory and judgment that lives between sessions. Curri/Linear example optional, soft mention OK. |
-| 3   | Dexter Horthy | "Token-counting grift" → Outcomes > Outputs > Inputs hierarchy               | https://www.linkedin.com/feed/update/urn:li:activity:7457427197834928128/ | Category voice, original (not repost), 4d aging                     | Category voice            | 0           | linkedin-profiles/dexterihorthy.md | Builder-side confirmation: same hierarchy applies on the consumer/founder side — most "AI productivity" tools sell tokens-spent or chats-had as if those are outcomes. The actual outcome is "the project moves." No pitch.   |
-| 4   | Tim Hsia      | Executive Summary: Veteran Leadership Venture Capital                        | https://www.linkedin.com/feed/update/urn:li:activity:7458516518243500034/ | 1d, 1st conn, USMC peer angle                                       | Adjacent operator         | 0           | linkedin-profiles/timhsia.md       | Veteran-to-veteran, specific recognition of one of his structured points, no "great post." If natural, share the one thing about military-to-founder transition that nobody warned DJ about. No BuildOS pitch.                |
+| #   | Author        | Topic                                                                         | Post URL                                                                  | Opp Type                                            | Strategic Role    | Mention Fit | Profile                            | Reply Angle                                                                                                                                                                                                                   |
+| --- | ------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------- | ----------------- | ----------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Beck Power    | @-mention reply on her Obsidian + Claude content-system post                  | https://www.linkedin.com/feed/update/urn:li:activity:7453126915009261568/ | Direct relationship signal — reply to her @-mention | Adjacent operator | 1           | linkedin-profiles/beckpower.md     | Thank her for the share + a curiosity question on her actual workflow (does Claude carry context across sessions, or does she repaste each time?). Soft mention OK but not required.                                          |
+| 2   | Jonathan Chua | "You can outsource your thinking, but you can't outsource your understanding" | https://www.linkedin.com/feed/update/urn:li:activity:7458889186486407168/ | Fresh 3h, 1st conn, low competition                 | Peer (1st conn)   | 1           | linkedin-profiles/jonathan-chua.md | Reframe: the "outsource your understanding" line is the BuildOS thesis in disguise — what you can't outsource is the project memory and judgment that lives between sessions. Curri/Linear example optional, soft mention OK. |
+| 3   | Dexter Horthy | "Token-counting grift" → Outcomes > Outputs > Inputs hierarchy                | https://www.linkedin.com/feed/update/urn:li:activity:7457427197834928128/ | Category voice, original (not repost), 4d aging     | Category voice    | 0           | linkedin-profiles/dexterihorthy.md | Builder-side confirmation: same hierarchy applies on the consumer/founder side — most "AI productivity" tools sell tokens-spent or chats-had as if those are outcomes. The actual outcome is "the project moves." No pitch.   |
+| 4   | Tim Hsia      | Executive Summary: Veteran Leadership Venture Capital                         | https://www.linkedin.com/feed/update/urn:li:activity:7458516518243500034/ | 1d, 1st conn, USMC peer angle                       | Adjacent operator | 0           | linkedin-profiles/timhsia.md       | Veteran-to-veteran, specific recognition of one of his structured points, no "great post." If natural, share the one thing about military-to-founder transition that nobody warned DJ about. No BuildOS pitch.                |
 
 ---
 
@@ -129,11 +129,11 @@ DJ asked her a question 2 weeks ago. She just answered. This is the exact moment
 - **Soft BuildOS mention** is acceptable as a one-liner ("I'm building toward this exact problem with BuildOS — context that compounds across sessions instead of repaste-every-time"), but **only as a parenthetical, not the headline**
 - 2-3 sentences max. Warm + curious, not sales.
 - **What to avoid:**
-  - leading with BuildOS
-  - "great system!" / "love this!" energy
-  - a wall of comparison between her stack and BuildOS
-  - lecturing on what she "should" do differently
-  - making her feel like the @-mention got hijacked into a pitch
+    - leading with BuildOS
+    - "great system!" / "love this!" energy
+    - a wall of comparison between her stack and BuildOS
+    - lecturing on what she "should" do differently
+    - making her feel like the @-mention got hijacked into a pitch
 
 **Queue Status:** Queued for `/linkedin-reply` — first slot
 
@@ -190,10 +190,10 @@ Fresh 3h, 1st conn, low-engagement thread = high relative comment visibility. Th
 - **Soft BuildOS mention** OK as a transparent parenthetical ("that's the lane I'm building BuildOS in") — not required
 - 2-3 sentences. Builder peer voice.
 - **What to avoid:**
-  - "great post" / "this resonates"
-  - over-quoting Karpathy back at him
-  - turning into a long BuildOS thesis essay
-  - contradicting his framing instead of extending it
+    - "great post" / "this resonates"
+    - over-quoting Karpathy back at him
+    - turning into a long BuildOS thesis essay
+    - contradicting his framing instead of extending it
 
 **Queue Status:** Queued for `/linkedin-reply` — second slot
 
@@ -219,15 +219,18 @@ Fresh 3h, 1st conn, low-engagement thread = high relative comment visibility. Th
 > Inputs -> outputs -> outcomes (thanks Luke Mercado)
 >
 > Outcomes
+>
 > - If you can't measure revenue, measure KPIs
 > - If you cant measure KPIs, measure customer impact
 >
 > Outputs
+>
 > - If you cant measure customer impact, measure task throughput (features, tickets, bugs)
 > - If you cant measure task throughput, measure work throughput (eg PRs deployed)
 > - If you cant measure PRs, measure LOC
 >
 > Inputs
+>
 > - If you cant measure LOC, measure raw inputs - tokens, time spent physically in office or active in editor (basically the most disrespectful form of micromanager surveillance)
 >
 > if you're a leader and you're not focused on moving up this list, improving you...
@@ -263,10 +266,10 @@ Tier 1 category voice. DJ has been "monitor only" since profile creation 2026-04
 - **Specific lived observation:** what DJ has noticed building BuildOS — users who spend more time on the system don't actually move the project; the metric that correlates is whether the next-action becomes obvious without re-orientation
 - 2-3 sentences. Quiet category alignment, peer not fan, NO "context engineering" parroted back
 - **What to avoid:**
-  - over-quoting his own term back at him
-  - thought-leader framing ("here's how leaders should...")
-  - BuildOS pitch
-  - any energy that reads "I'm trying to position next to you"
+    - over-quoting his own term back at him
+    - thought-leader framing ("here's how leaders should...")
+    - BuildOS pitch
+    - any energy that reads "I'm trying to position next to you"
 
 **Queue Status:** Queued for `/linkedin-reply` — third slot
 
@@ -320,10 +323,10 @@ Tim's "Executive Summary" format invites substantive comments — the structure 
 - **Specific recognition of one of his structured points** (TBD which numbered point lands best — read the full post during reply drafting)
 - 2-3 sentences, deliberate (not punchy — Tim's audience and format reward substance)
 - **What to avoid:**
-  - generic veteran praise
-  - making it about BuildOS (zero BuildOS energy on this comment)
-  - over-explaining DJ's own background
-  - "great post" energy
+    - generic veteran praise
+    - making it about BuildOS (zero BuildOS energy on this comment)
+    - over-explaining DJ's own background
+    - "great post" energy
 
 **Queue Status:** Queued for `/linkedin-reply` — fourth slot
 
@@ -360,10 +363,10 @@ Tim's "Executive Summary" format invites substantive comments — the structure 
 
 ## New Accounts Discovered
 
-| Account                  | Theme                                                | Suggested Tier | Strategic Role            | Why                                                                                                                                                                              |
-| ------------------------ | ---------------------------------------------------- | -------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Joe Hewett (Asteroid)    | Agent-scale infrastructure, healthcare voice AI      | 3              | Adjacent operator         | Surfaced via "suggested for you" notification. Posts "GitHub canary in the coal mine for agent-scale" + concrete deployment lessons (1k parallel agents, healthcare case). Worth tracking. |
-| Karim Zuhayeer            | Cloudflare layoffs / severance commentary            | -              | Monitor only              | "Suggested for you" only, off-BuildOS-lane. Pass.                                                                                                                                |
+| Account               | Theme                                           | Suggested Tier | Strategic Role    | Why                                                                                                                                                                                        |
+| --------------------- | ----------------------------------------------- | -------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Joe Hewett (Asteroid) | Agent-scale infrastructure, healthcare voice AI | 3              | Adjacent operator | Surfaced via "suggested for you" notification. Posts "GitHub canary in the coal mine for agent-scale" + concrete deployment lessons (1k parallel agents, healthcare case). Worth tracking. |
+| Karim Zuhayeer        | Cloudflare layoffs / severance commentary       | -              | Monitor only      | "Suggested for you" only, off-BuildOS-lane. Pass.                                                                                                                                          |
 
 > **Note:** No new strategic accounts queued today. Joe Hewett's framing is interesting (agent-scale infrastructure for legacy systems) but adjacent enough to BuildOS positioning that it doesn't warrant a Tier 1/2 placement yet. Re-check in 2-3 scans before committing.
 
@@ -382,34 +385,34 @@ Tim's "Executive Summary" format invites substantive comments — the structure 
 
 ## Relationship Memory Updates
 
-| Account         | Profile                              | Update                                                                                                                                                                                                                                |
-| --------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Beck Power      | linkedin-profiles/beckpower.md       | **Refreshed — major signal.** Confirmed DJ posted casual "where can we follow you?" 2w ago; Beck @-replied 12h ago with her IG/Skool/Freedom Stack. Upgrade Strategic Role from "Adjacent operator" → consider "Adjacent operator (active)" pending DJ's reply. |
-| Jonathan Chua   | linkedin-profiles/jonathan-chua.md   | Refreshed — fresh 3h "outsource your thinking" post queued. Old 2026-04-27 DHH carry-over angle dropped (12d past-window).                                                                                                              |
-| Dexter Horthy   | linkedin-profiles/dexterihorthy.md   | Refreshed — first original engageable post in 10+ days (4d old). Old 2026-04-27 "AI replaces juniors" carry-over dropped.                                                                                                              |
-| Tim Hsia        | linkedin-profiles/timhsia.md         | Refreshed — fresh 1d Veteran Leadership VC EXSUM queued. 2026-04-15 Lia Kieck + 2026-04-23/24 Brian O'Connor EXSUM carry-overs all dropped (12-24d past-window).                                                                       |
-| Alain Tovel     | linkedin-profiles/alaintovel.md      | No update today — 1d ServiceNow Build Agent governance post is off-thesis vs his 2026-04-27 Context Engine post. Continue monitoring for next Context Engine-type post.                                                                |
-| William Treseder | _no profile_                         | No profile created — comment was pure cheerleading, no engagement angle. Tracked here only.                                                                                                                                            |
-| Iron Mike Steadman | linkedin-profiles/iron-mike-steadman.md | No update — 1d post too thin, 4d post past-window                                                                                                                                                                                  |
-| Blaise Pascual  | linkedin-profiles/blaise-pascual.md  | No update — 2d/4d posts off-BuildOS-lane                                                                                                                                                                                              |
-| Mitchell Hashimoto | linkedin-profiles/mitchellh.md     | No update — 1mo + 7y. Effectively inactive.                                                                                                                                                                                          |
-| Sahil Lavingia  | linkedin-profiles/sahillavingia.md   | No update — confirmed permanently inactive on LinkedIn                                                                                                                                                                                |
-| Dan Shipper     | linkedin-profiles/danshipper.md      | No update — past-window                                                                                                                                                                                                                |
-| Daniel Vecera   | linkedin-profiles/1vecera.md         | No update — original talk post at 17d, drop the angle definitively                                                                                                                                                                     |
+| Account            | Profile                                 | Update                                                                                                                                                                                                                                                          |
+| ------------------ | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Beck Power         | linkedin-profiles/beckpower.md          | **Refreshed — major signal.** Confirmed DJ posted casual "where can we follow you?" 2w ago; Beck @-replied 12h ago with her IG/Skool/Freedom Stack. Upgrade Strategic Role from "Adjacent operator" → consider "Adjacent operator (active)" pending DJ's reply. |
+| Jonathan Chua      | linkedin-profiles/jonathan-chua.md      | Refreshed — fresh 3h "outsource your thinking" post queued. Old 2026-04-27 DHH carry-over angle dropped (12d past-window).                                                                                                                                      |
+| Dexter Horthy      | linkedin-profiles/dexterihorthy.md      | Refreshed — first original engageable post in 10+ days (4d old). Old 2026-04-27 "AI replaces juniors" carry-over dropped.                                                                                                                                       |
+| Tim Hsia           | linkedin-profiles/timhsia.md            | Refreshed — fresh 1d Veteran Leadership VC EXSUM queued. 2026-04-15 Lia Kieck + 2026-04-23/24 Brian O'Connor EXSUM carry-overs all dropped (12-24d past-window).                                                                                                |
+| Alain Tovel        | linkedin-profiles/alaintovel.md         | No update today — 1d ServiceNow Build Agent governance post is off-thesis vs his 2026-04-27 Context Engine post. Continue monitoring for next Context Engine-type post.                                                                                         |
+| William Treseder   | _no profile_                            | No profile created — comment was pure cheerleading, no engagement angle. Tracked here only.                                                                                                                                                                     |
+| Iron Mike Steadman | linkedin-profiles/iron-mike-steadman.md | No update — 1d post too thin, 4d post past-window                                                                                                                                                                                                               |
+| Blaise Pascual     | linkedin-profiles/blaise-pascual.md     | No update — 2d/4d posts off-BuildOS-lane                                                                                                                                                                                                                        |
+| Mitchell Hashimoto | linkedin-profiles/mitchellh.md          | No update — 1mo + 7y. Effectively inactive.                                                                                                                                                                                                                     |
+| Sahil Lavingia     | linkedin-profiles/sahillavingia.md      | No update — confirmed permanently inactive on LinkedIn                                                                                                                                                                                                          |
+| Dan Shipper        | linkedin-profiles/danshipper.md         | No update — past-window                                                                                                                                                                                                                                         |
+| Daniel Vecera      | linkedin-profiles/1vecera.md            | No update — original talk post at 17d, drop the angle definitively                                                                                                                                                                                              |
 
 ---
 
 ## Reconciliation From 2026-04-27 (carry-over disposition)
 
-| Author         | Post                              | 2026-04-27 Status         | Today's Window (2026-05-09) | Disposition |
-| -------------- | --------------------------------- | ------------------------- | --------------------------- | ----------- |
-| Alain Tovel    | ServiceNow Context Engine         | Drafted - Pending Posting | ~12d                        | **DROP** — past-window. Wait for next Context Engine-type post. |
-| Dexter Horthy  | "AI replaces juniors"             | Drafted - Pending Posting | ~12d                        | **DROP** — past-window. Today's token-grift post is the new opportunity. |
-| Todd Baur      | "AI company" rejection            | Drafted - Pending Posting | ~13d                        | **DROP** — past-window. Re-queue if Todd surfaces again. |
-| Jonathan Chua  | DHH agent-first / Lex Fridman     | Drafted - Pending Posting | ~13d                        | **DROP** — past-window. Today's "outsource your thinking" post is the replacement. |
-| Daniel Vecera  | Personal second brain → Claude Code talk | Drafted - Pending Posting | ~17d              | **DROP** — past-window definitively. |
+| Author        | Post                                     | 2026-04-27 Status         | Today's Window (2026-05-09) | Disposition                                                                        |
+| ------------- | ---------------------------------------- | ------------------------- | --------------------------- | ---------------------------------------------------------------------------------- |
+| Alain Tovel   | ServiceNow Context Engine                | Drafted - Pending Posting | ~12d                        | **DROP** — past-window. Wait for next Context Engine-type post.                    |
+| Dexter Horthy | "AI replaces juniors"                    | Drafted - Pending Posting | ~12d                        | **DROP** — past-window. Today's token-grift post is the new opportunity.           |
+| Todd Baur     | "AI company" rejection                   | Drafted - Pending Posting | ~13d                        | **DROP** — past-window. Re-queue if Todd surfaces again.                           |
+| Jonathan Chua | DHH agent-first / Lex Fridman            | Drafted - Pending Posting | ~13d                        | **DROP** — past-window. Today's "outsource your thinking" post is the replacement. |
+| Daniel Vecera | Personal second brain → Claude Code talk | Drafted - Pending Posting | ~17d                        | **DROP** — past-window definitively.                                               |
 
-All older drafts (2026-04-15, 2026-04-23/24, 2026-03-* Mollick / Welsh / Sahil queues) — also DROP.
+All older drafts (2026-04-15, 2026-04-23/24, 2026-03-\* Mollick / Welsh / Sahil queues) — also DROP.
 
 ---
 

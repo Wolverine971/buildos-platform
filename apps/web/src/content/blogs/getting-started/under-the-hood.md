@@ -25,7 +25,7 @@ pic: 'under-the-hood'
 path: apps/web/src/content/blogs/getting-started/under-the-hood.md
 ---
 
-> **Deep dive:** This post explains the technical architecture behind BuildOS. If you're new here, start with [First Project Setup](/blog/first-project-setup) or [Daily Brief Guide](/blog/daily-brief-guide) instead.
+> **Deep dive:** This post explains the technical architecture behind BuildOS. If you're new here, start with [First Project Setup](/blogs/getting-started/first-project-setup) or [Daily Brief Guide](/blogs/getting-started/daily-brief-guide) instead.
 
 ## The Problem with Templates
 
@@ -273,7 +273,7 @@ Every brain dump, every task completed, every decision documented. It all connec
 
 The AI doesn't just remember your tasks. It understands which goals they serve, what milestones they advance, what risks might block them, and which documents provide the context you need.
 
-For more on context compounding, see [Context Engineering 101](/blog/context-engineering-101).
+For more on context compounding, see [Context Engineering 101](/blogs/productivity-tips/context-engineering-101).
 
 ---
 

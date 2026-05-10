@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/project/project-event-filters.ts
 import type { OntoEvent } from '$lib/types/onto';
 
 export type ProjectEventBucketKey = 'upcoming' | 'recent' | 'past';

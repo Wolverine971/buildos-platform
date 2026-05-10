@@ -140,7 +140,7 @@
 		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
-			"components": ["MobileCommandCenter", "ProjectModalsHost"]
+			"components": ["AgentChatModal", "MobileCommandCenter", "ProjectModalsHost"]
 		},
 		{
 			"file": "src/routes/projects/create/+page.svelte",
@@ -622,17 +622,6 @@
 			"exports": ["userContextStore"]
 		},
 		{
-			"file": "src/lib/components/admin/adminRoutes.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"CHAT_ADMIN_ROOT",
-				"CHAT_ADMIN_TITLE",
-				"CHAT_ADMIN_NAV_ITEMS",
-				"isChatAdminSubpath"
-			]
-		},
-		{
 			"file": "src/lib/components/agent/agent-chat-formatters.ts",
 			"type": "component",
 			"components": [],
@@ -743,6 +732,17 @@
 			]
 		},
 		{
+			"file": "src/lib/components/admin/adminRoutes.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"CHAT_ADMIN_ROOT",
+				"CHAT_ADMIN_TITLE",
+				"CHAT_ADMIN_NAV_ITEMS",
+				"isChatAdminSubpath"
+			]
+		},
+		{
 			"file": "src/lib/components/chat/project-selector-browser.ts",
 			"type": "component",
 			"components": [],
@@ -754,6 +754,18 @@
 				"normalizeProjectSelectionLimit",
 				"clearProjectSelectionBrowserCache",
 				"fetchProjectSelectionSummaries"
+			]
+		},
+		{
+			"file": "src/lib/components/project/project-event-filters.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"getEventStartMs",
+				"getEventEndMs",
+				"isEventPast",
+				"getUpcomingEvents",
+				"getProjectEventBuckets"
 			]
 		},
 		{
@@ -769,6 +781,7 @@
 				"updateProjectNotificationSettings",
 				"fetchProjectLogs",
 				"fetchProjectBriefs",
+				"fetchProjectRecentChats",
 				"generateProjectNextStep",
 				"moveProjectDocument",
 				"archiveProjectDocument",
@@ -1042,7 +1055,6 @@
 		"src/lib/components/project/ProjectHistorySection.svelte",
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
 		"src/lib/components/project/v2/EntityTabStrip.svelte",
-		"src/lib/components/admin/adminRoutes.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat-operation-activity.ts",
 		"src/lib/components/agent/agent-chat-prewarm.svelte.ts",
@@ -1054,7 +1066,9 @@
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
+		"src/lib/components/admin/adminRoutes.ts",
 		"src/lib/components/chat/project-selector-browser.ts",
+		"src/lib/components/project/project-event-filters.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",

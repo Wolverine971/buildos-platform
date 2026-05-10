@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Json, ProjectLogChangeSource } from '@buildos/shared-types';
 import { CalendarService } from '$lib/services/calendar-service';
 import { ProjectCalendarService } from '$lib/services/project-calendar.service';
-import { GoogleOAuthService } from '$lib/services/google-oauth-service';
+import { GoogleOAuthConnectionError, GoogleOAuthService } from '$lib/services/google-oauth-service';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { OntoEventService, type OntoEventOwner } from './onto-event.service';
 import { PUBLIC_APP_URL } from '$env/static/public';
@@ -1324,6 +1324,19 @@ export class OntoEventSyncService {
 		return message.includes('not found') || message.includes('404');
 	}
 
+	private isCalendarConnectionError(error: unknown): boolean {
+		if (error instanceof GoogleOAuthConnectionError) {
+			return error.requiresReconnection;
+		}
+
+		if (!error || typeof error !== 'object') return false;
+		const candidate = error as { name?: unknown; requiresReconnection?: unknown };
+		return (
+			candidate.name === 'GoogleOAuthConnectionError' &&
+			candidate.requiresReconnection === true
+		);
+	}
+
 	async processProjectEventSyncJob(input: {
 		action: ProjectEventSyncAction;
 		eventId: string;
@@ -1388,6 +1401,21 @@ export class OntoEventSyncService {
 					reason: 'deleted_external_event'
 				};
 			} catch (error) {
+				if (this.isCalendarConnectionError(error)) {
+					const message =
+						error instanceof Error ? error.message : 'Google Calendar is not connected';
+					await this.markEventSyncError(
+						event.id,
+						message,
+						mapping.syncRowId,
+						eventVersion
+					);
+					return {
+						outcome: 'skipped',
+						reason: 'calendar_not_connected'
+					};
+				}
+
 				if (this.isGoogleNotFoundError(error)) {
 					const nowIso = new Date().toISOString();
 					await this.markEventSynced(
@@ -1507,6 +1535,16 @@ export class OntoEventSyncService {
 				reason: 'updated_external_event'
 			};
 		} catch (error) {
+			if (this.isCalendarConnectionError(error)) {
+				const message =
+					error instanceof Error ? error.message : 'Google Calendar is not connected';
+				await this.markEventSyncError(event.id, message, mapping.syncRowId, eventVersion);
+				return {
+					outcome: 'skipped',
+					reason: 'calendar_not_connected'
+				};
+			}
+
 			if (this.isGoogleNotFoundError(error)) {
 				await this.markEventSyncError(
 					event.id,

@@ -96,7 +96,7 @@ Klaassen runs five Claude instances simultaneously — frontend, backend, testin
 
 You are already running parallel streams. A career. A side project. Family logistics. Health goals. That creative thing you have been meaning to get to for six months. The problem is not that you have too many projects. It is that nothing connects them.
 
-BuildOS connects them through the [ontology](/blog/under-the-hood) — goals, milestones, plans, tasks, and documents, all linked. When your career goal and your side project share a task ("build portfolio site"), that dependency is visible. When your health goal is getting neglected because your career is demanding all your energy, the daily brief can surface that.
+BuildOS connects them through the [ontology](/blogs/getting-started/under-the-hood) — goals, milestones, plans, tasks, and documents, all linked. When your career goal and your side project share a task ("build portfolio site"), that dependency is visible. When your health goal is getting neglected because your career is demanding all your energy, the daily brief can surface that.
 
 But the real parallel orchestration happens with **Project Lens**. You can zoom into any level:
 
@@ -108,7 +108,7 @@ You control the altitude. The AI brings in the right context at each level. Star
 
 This is orchestration. You are not managing five separate task lists. You are managing one connected system from whatever altitude makes sense right now.
 
-**Practical tip:** Use [Project Audit mode](/blog/how-buildos-works) to stress-test a project when it feels stuck. It is like having a specialized agent dedicated to finding risks and gaps in your plan — the same way Klaassen's engineers run a testing agent alongside their implementation agent.
+**Practical tip:** Use [Project Audit mode](/blogs/getting-started/how-buildos-works) to stress-test a project when it feels stuck. It is like having a specialized agent dedicated to finding risks and gaps in your plan — the same way Klaassen's engineers run a testing agent alongside their implementation agent.
 
 ---
 

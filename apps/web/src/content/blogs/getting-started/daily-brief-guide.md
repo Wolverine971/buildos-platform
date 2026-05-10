@@ -85,7 +85,7 @@ BuildOS extracts that into structured data: tasks get created, projects get upda
 
 The brief might say: "New task from yesterday's brain dump—investigate API docs issue Dave flagged. This connects to your developer experience goal." You didn't file a ticket. You didn't organize anything. You just thought out loud, and the system did the rest.
 
-**The more you dump, the smarter your briefs get.** It's a virtuous cycle—brain dumps feed context, context feeds briefs, briefs help you focus, focus generates new thoughts to dump. (For more on how context compounds, see [Context Engineering 101](/blog/context-engineering-101).)
+**The more you dump, the smarter your briefs get.** It's a virtuous cycle—brain dumps feed context, context feeds briefs, briefs help you focus, focus generates new thoughts to dump. (For more on how context compounds, see [Context Engineering 101](/blogs/productivity-tips/context-engineering-101).)
 
 ## Your Morning Routine
 

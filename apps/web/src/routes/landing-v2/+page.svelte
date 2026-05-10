@@ -16,6 +16,8 @@
 		FileText,
 		AlertTriangle,
 		ArrowRight,
+		ArrowLeft,
+		ArrowDown,
 		CheckCircle2,
 		Circle,
 		Mail
@@ -42,7 +44,7 @@
 </script>
 
 <svelte:head>
-	<title>BuildOS — Talk to BuildOS, see your stuff organized.</title>
+	<title>BuildOS — Talk to BuildOS, see your thoughts organized.</title>
 	<meta
 		name="description"
 		content="BuildOS is a thinking environment for creators. Talk to BuildOS, see your projects organized. Same context for you and your agents — both make progress, in parallel."
@@ -70,7 +72,7 @@
 					class="text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight leading-[1.02]"
 				>
 					Talk to BuildOS,<br />
-					see your stuff
+					see your thoughts
 					<span class="relative">
 						organized.
 						<span
@@ -146,139 +148,737 @@
 		</div>
 	</section>
 
-	<!-- ─── §02 the two-persona split (modeled on Stakes screenshot) ─── -->
-	<section id="split" class="border-b border-border bg-card/40">
-		<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16">
-			<div class="text-center mb-8 sm:mb-10">
-				<div
-					class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
-				>
-					<span class="h-px w-10 bg-border"></span>
-					<span>§02 — Do you work with AI agents yet?</span>
-					<span class="h-px w-10 bg-border"></span>
+	<!-- ═══ BRANCH WRAPPER: continuous decision-tree rails — §02 → §03 (No) and §02 → §04 (Yes, skirts §03) ═══ -->
+	<div class="relative">
+		<!--
+		  decorative rail layer (lg+ only).
+		  - LEFT path: straight vertical from §02A card-bottom (x=25%) to §03 chip (x=25%, y=31.5%).
+		  - RIGHT path: right-angle around §03 — from §02B card-bottom (x=75%) drops a hair,
+		    turns right to x=88% (clears §03's 70%-wide card), then drops past §03's bottom and
+		    lands at the §04 chip at (x=88%, y=75%).
+		  SVG keeps the dash pattern continuous around corners (CSS borders break dashes at joins).
+		  Coordinate space: viewBox 0-100 stretched non-uniformly over the rail wrapper.
+		  vector-effect="non-scaling-stroke" keeps the stroke 2px regardless of the stretch.
+		-->
+		<div aria-hidden="true" class="hidden lg:block absolute inset-0 pointer-events-none z-[1]">
+			<div class="mx-auto max-w-6xl h-full">
+				<div class="relative h-full mx-4">
+					<svg
+						class="absolute inset-0 w-full h-full text-foreground/55"
+						viewBox="0 0 100 100"
+						preserveAspectRatio="none"
+					>
+						<!-- LEFT: §02A → §03 -->
+						<path
+							d="M 25,27 L 25,31.5"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-dasharray="6 4"
+							vector-effect="non-scaling-stroke"
+						/>
+						<!-- RIGHT: §02B → around §03 → §04 -->
+						<path
+							d="M 75,27 L 75,29 L 88,29 L 88,75"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-dasharray="6 4"
+							stroke-linejoin="miter"
+							vector-effect="non-scaling-stroke"
+						/>
+					</svg>
+					<!-- exit dots (HTML so they stay round under the SVG's non-uniform stretch) -->
+					<span
+						class="absolute left-[25%] top-[27%] -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/60"
+					></span>
+					<span
+						class="absolute left-[75%] top-[27%] -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/60"
+					></span>
+					<!-- landing dots -->
+					<span
+						class="absolute left-[25%] top-[31.5%] -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/60"
+					></span>
+					<span
+						class="absolute left-[88%] top-[75%] -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/60"
+					></span>
 				</div>
 			</div>
+		</div>
 
-			<div class="grid md:grid-cols-2 gap-4 sm:gap-5">
-				<!-- LEFT: NO — for the long-tail creator -->
-				<article
-					class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-5 sm:p-6 flex flex-col"
-				>
+		<!-- ─── §02 the two-persona split (modeled on Stakes screenshot) ─── -->
+		<section id="split" class="border-b border-border bg-card/40">
+			<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16">
+				<div class="text-center mb-8 sm:mb-10">
 					<div
-						class="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground mb-3 flex items-center gap-2"
+						class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
 					>
-						<span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/60"></span>
-						<span>§02A — No</span>
+						<span class="h-px w-10 bg-border"></span>
+						<span>§02 — Do you work with AI agents yet?</span>
+						<span class="h-px w-10 bg-border"></span>
 					</div>
+				</div>
 
-					<h3 class="text-xl sm:text-2xl font-semibold tracking-tight leading-snug">
-						That's most people. Most of the work isn't AI — it's keeping the project
-						from falling apart.
-					</h3>
-
-					<p class="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
-						Chapters drift. Episodes pile up. Launches sprawl into ten tabs. BuildOS
-						holds the whole project in one place — notes, tasks, research, decisions —
-						so you stop losing the thread between sessions.
-					</p>
-
-					<p class="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
-						You talk. We organize. You come back tomorrow and pick up exactly where you
-						left off.
-					</p>
-
-					<div class="mt-auto pt-6">
-						<a
-							href="/auth/register"
-							class="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:gap-3 transition-all"
-						>
-							Start with one project
-							<ArrowRight class="w-4 h-4" />
-						</a>
-					</div>
-				</article>
-
-				<!-- RIGHT: YES — for the technical / builder -->
-				<article
-					class="rounded-lg border border-border bg-background shadow-ink tx tx-grain tx-weak p-5 sm:p-6 flex flex-col"
-				>
-					<div
-						class="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground mb-3 flex items-center gap-2"
+				<div class="grid md:grid-cols-2 gap-4 sm:gap-5">
+					<!-- LEFT: NO — for the long-tail creator -->
+					<article
+						class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-5 sm:p-6 flex flex-col"
 					>
-						<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-						<span>§02B — Yes</span>
-					</div>
-
-					<h3 class="text-xl sm:text-2xl font-semibold tracking-tight leading-snug">
-						Then you already know context is the bottleneck. BuildOS is the layer
-						between you and your agents.
-					</h3>
-
-					<p class="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
-						A framework for the person. A harness for the agent. Same context drives
-						both. Cheap models stay productive when the context layer is right — and
-						your non-technical collaborators can finally read off the same sheet of
-						music.
-					</p>
-
-					<!-- mini "type cards" mirroring the Stakes pattern -->
-					<div class="mt-5 space-y-2">
 						<div
-							class="rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-frame tx-weak"
+							class="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground mb-3 flex items-center gap-2"
+						>
+							<span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/60"></span>
+							<span>§02A — No</span>
+						</div>
+
+						<h3 class="text-xl sm:text-2xl font-semibold tracking-tight leading-snug">
+							That's most people. Most of the work isn't AI — it's keeping the project
+							from falling apart.
+						</h3>
+
+						<p class="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
+							Chapters drift. Episodes pile up. Launches sprawl into ten tabs. BuildOS
+							holds the whole project in one place — notes, tasks, research, decisions
+							— so you stop losing the thread between sessions.
+						</p>
+
+						<p class="mt-3 text-sm sm:text-base text-muted-foreground leading-relaxed">
+							You talk. We organize. You come back tomorrow and pick up exactly where
+							you left off.
+						</p>
+
+						<div class="mt-auto pt-6">
+							<a
+								href="/auth/register"
+								class="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:gap-3 transition-all"
+							>
+								Start with one project
+								<ArrowRight class="w-4 h-4" />
+							</a>
+						</div>
+					</article>
+
+					<!-- RIGHT: YES — for the technical / builder -->
+					<article
+						class="rounded-lg border border-border bg-background shadow-ink tx tx-grain tx-weak p-5 sm:p-6 flex flex-col"
+					>
+						<div
+							class="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground mb-3 flex items-center gap-2"
+						>
+							<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
+							<span>§02B — Yes</span>
+						</div>
+
+						<h3 class="text-xl sm:text-2xl font-semibold tracking-tight leading-snug">
+							Then you already know context is the bottleneck. BuildOS is the layer
+							between you and your agents.
+						</h3>
+
+						<p class="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
+							A framework for the person. A harness for the agent. Same context drives
+							both. Cheap models stay productive when the context layer is right — and
+							your non-technical collaborators can finally read off the same sheet of
+							music.
+						</p>
+
+						<!-- mini "type cards" mirroring the Stakes pattern -->
+						<div class="mt-5 space-y-2">
+							<div
+								class="rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-frame tx-weak"
+							>
+								<div
+									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
+								>
+									Framework — for you
+								</div>
+								<p class="text-xs sm:text-sm text-foreground leading-snug">
+									Daily brief, return-and-update, the ritual of clarity. You stay
+									in the work, not above it.
+								</p>
+							</div>
+							<div
+								class="rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-grain tx-weak"
+							>
+								<div
+									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
+								>
+									Harness — for your agent
+								</div>
+								<p class="text-xs sm:text-sm text-foreground leading-snug">
+									Persistent project memory, structured tool calls, the context an
+									agent needs to actually be useful in production.
+								</p>
+							</div>
+							<div
+								class="rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-thread tx-weak"
+							>
+								<div
+									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
+								>
+									Shared context
+								</div>
+								<p class="text-xs sm:text-sm text-foreground leading-snug">
+									Both sides read from the same project state. Parallel work, not
+									delegation.
+								</p>
+							</div>
+						</div>
+
+						<div class="mt-auto pt-6">
+							<a
+								href="#agents"
+								class="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:gap-3 transition-all"
+							>
+								Skip to: how agents work in BuildOS
+								<ArrowDown class="w-4 h-4" />
+							</a>
+						</div>
+					</article>
+				</div>
+			</div>
+		</section>
+
+		<!-- ─── §03 the loop — flow chart for non-AI users (rail enters from §02A above) ── -->
+		<section id="loop" class="border-b border-border">
+			<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8">
+				<!--
+				  entry marker: dead-center under LEFT rail via grid-mirroring.
+				  Uses the same grid shape as §02 so the chip lands on the same X as the rail.
+				  On mobile the outer div collapses to block and the chip just sits left-aligned.
+				-->
+				<div class="lg:grid lg:grid-cols-2 lg:gap-5">
+					<div class="lg:flex lg:justify-center">
+						<div class="relative">
+							<!-- landing extension: short upward dashed line that meets the rail's bottom dot -->
+							<div
+								aria-hidden="true"
+								class="hidden lg:block absolute left-1/2 -translate-x-1/2 -top-4 h-4 w-0 border-l-2 border-dashed border-foreground/55"
+							></div>
+							<div
+								class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card shadow-ink-inner px-3 py-1.5 tx tx-bloom tx-weak"
+							>
+								<span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/60"></span>
+								<span
+									class="text-[0.55rem] uppercase tracking-[0.22em] text-muted-foreground"
+								>
+									↓ from §02A — no
+								</span>
+							</div>
+						</div>
+					</div>
+					<div class="hidden lg:block"></div>
+				</div>
+
+				<!--
+				  §03 card (70% width on lg+). The right ~30% gutter stays empty so the §02B
+				  rail can wrap around to the right and continue down to §04.
+				-->
+				<div
+					class="lg:max-w-[70%] rounded-lg border border-border bg-background shadow-ink-strong tx tx-frame tx-weak p-5 sm:p-8 space-y-8"
+				>
+					<div class="text-center">
+						<div
+							class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
+						>
+							<span class="h-px w-10 bg-border"></span>
+							<span>§03 — The loop</span>
+							<span class="h-px w-10 bg-border"></span>
+						</div>
+						<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
+							How it actually works.
+						</h2>
+						<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
+							You talk. BuildOS organizes. You come back tomorrow with more — and the
+							project keeps shape between sessions.
+						</p>
+					</div>
+
+					<div class="max-w-4xl mx-auto space-y-5">
+						<!-- TIME marker: Day 1 -->
+						<div class="flex items-center gap-3">
+							<div class="flex-1 border-t border-dashed border-border"></div>
+							<span
+								class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground font-medium"
+							>
+								Day 1
+							</span>
+							<div class="flex-1 border-t border-dashed border-border"></div>
+						</div>
+
+						<!-- ROW: brain dump → project created -->
+						<div
+							class="flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 md:items-stretch"
 						>
 							<div
-								class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
+								class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-4"
+							>
+								<div
+									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
+								>
+									You · brain dump
+								</div>
+								<p class="text-sm leading-relaxed">
+									"I want to write a fantasy novel — queen losing her magic. Magic
+									rules are loose. Maya's motivation feels weak. Beta readers
+									eventually."
+								</p>
+							</div>
+							<div class="flex items-center justify-center text-muted-foreground">
+								<ArrowRight class="hidden md:block w-5 h-5" />
+								<ArrowDown class="md:hidden w-5 h-5" />
+							</div>
+							<div
+								class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-4"
+							>
+								<div
+									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
+								>
+									BuildOS · project created
+								</div>
+								<ul class="text-sm space-y-1.5">
+									<li class="flex items-center gap-1.5">
+										<FolderKanban
+											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+										/>
+										<span
+											>Project: <strong class="font-medium"
+												>Fading Crown</strong
+											></span
+										>
+									</li>
+									<li class="flex items-center gap-1.5">
+										<FileText
+											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+										/>
+										<span>Doc: Magic system rules</span>
+									</li>
+									<li class="flex items-center gap-1.5">
+										<FileText
+											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+										/>
+										<span>Doc: Maya — character notes</span>
+									</li>
+									<li class="flex items-center gap-1.5">
+										<Circle
+											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+										/>
+										<span>Task: Rewrite Ch. 12 opening</span>
+									</li>
+									<li class="flex items-center gap-1.5">
+										<Target
+											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+										/>
+										<span>Goal: First-draft complete</span>
+									</li>
+								</ul>
+							</div>
+						</div>
+
+						<!-- TIME SKIP: 1 week later -->
+						<div class="flex items-center gap-3 py-2">
+							<div class="flex-1 border-t border-dashed border-border"></div>
+							<span
+								class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground font-medium"
+							>
+								1 week later
+							</span>
+							<div class="flex-1 border-t border-dashed border-border"></div>
+						</div>
+
+						<!-- ROW: brain dump updates project -->
+						<div
+							class="flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 md:items-stretch"
+						>
+							<div
+								class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-4"
+							>
+								<div
+									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
+								>
+									You · brain dump
+								</div>
+								<p class="text-sm leading-relaxed">
+									"Worked Maya's arc all week. Queen's motive should hinge on her
+									sister. Add a beta-reader pass after Ch. 14."
+								</p>
+							</div>
+							<div class="flex items-center justify-center text-muted-foreground">
+								<ArrowRight class="hidden md:block w-5 h-5" />
+								<ArrowDown class="md:hidden w-5 h-5" />
+							</div>
+							<div
+								class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-4"
+							>
+								<div
+									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
+								>
+									BuildOS · project updates
+								</div>
+								<ul class="text-sm space-y-1.5">
+									<li class="flex items-center gap-1.5">
+										<FileText
+											class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"
+										/>
+										<span>
+											Doc: Maya —
+											<span class="text-emerald-700 dark:text-emerald-400"
+												>updated</span
+											>
+										</span>
+									</li>
+									<li class="flex items-center gap-1.5">
+										<FileText
+											class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"
+										/>
+										<span>
+											Doc: Queen's motive —
+											<span class="text-emerald-700 dark:text-emerald-400"
+												>new</span
+											>
+										</span>
+									</li>
+									<li class="flex items-center gap-1.5">
+										<Circle
+											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+										/>
+										<span>
+											Task: Beta-reader pass after Ch. 14
+											<span class="text-emerald-700 dark:text-emerald-400"
+												>(new)</span
+											>
+										</span>
+									</li>
+								</ul>
+							</div>
+						</div>
+
+						<!-- ROW: BuildOS sends daily brief (next morning) -->
+						<div
+							class="flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 md:items-stretch"
+						>
+							<div
+								class="rounded-lg border border-border bg-background shadow-ink tx tx-pulse tx-weak p-4"
+							>
+								<div
+									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2 flex items-center gap-1.5"
+								>
+									<Mail class="w-3 h-3" />
+									<span>You · daily brief (next morning)</span>
+								</div>
+								<p class="text-sm leading-relaxed font-medium">
+									Yesterday: 2 docs updated, 1 task added.
+								</p>
+								<div class="text-sm text-muted-foreground mt-1.5 space-y-0.5">
+									<div>▸ Today: Ch. 12 rewrite</div>
+									<div>▸ Open: queen's act-3 turn</div>
+									<div>▸ Calendar: 2pm writing block</div>
+								</div>
+							</div>
+							<div class="flex items-center justify-center text-muted-foreground">
+								<ArrowLeft class="hidden md:block w-5 h-5" />
+								<ArrowDown class="md:hidden w-5 h-5 rotate-180" />
+							</div>
+							<div
+								class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-4"
+							>
+								<div
+									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
+								>
+									BuildOS · sends brief
+								</div>
+								<p class="text-sm leading-relaxed">
+									Pulls progress, today's tasks, open questions, and calendar
+									holds — into your inbox and the app. Same content, same context.
+								</p>
+							</div>
+						</div>
+
+						<!-- TIME SKIP: later that day -->
+						<div class="flex items-center gap-3 py-2">
+							<div class="flex-1 border-t border-dashed border-border"></div>
+							<span
+								class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground font-medium"
+							>
+								later that day
+							</span>
+							<div class="flex-1 border-t border-dashed border-border"></div>
+						</div>
+
+						<!-- ROW: brain dump completes a task -->
+						<div
+							class="flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] gap-3 md:gap-4 md:items-stretch"
+						>
+							<div
+								class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-4"
+							>
+								<div
+									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
+								>
+									You · brain dump
+								</div>
+								<p class="text-sm leading-relaxed">
+									"Finally finished the Ch. 12 rewrite. Feels much tighter.
+									Pushing the beta-reader pass to next week."
+								</p>
+							</div>
+							<div class="flex items-center justify-center text-muted-foreground">
+								<ArrowRight class="hidden md:block w-5 h-5" />
+								<ArrowDown class="md:hidden w-5 h-5" />
+							</div>
+							<div
+								class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-4"
+							>
+								<div
+									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
+								>
+									BuildOS · state syncs
+								</div>
+								<ul class="text-sm space-y-1.5">
+									<li class="flex items-center gap-1.5">
+										<CheckCircle2
+											class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"
+										/>
+										<span class="line-through text-muted-foreground"
+											>Rewrite Ch. 12 opening</span
+										>
+										<span
+											class="text-[0.55rem] uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400 font-semibold"
+										>
+											done
+										</span>
+									</li>
+									<li class="flex items-center gap-1.5">
+										<Calendar
+											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+										/>
+										<span
+											>Beta-reader pass → moved <strong>+1 week</strong></span
+										>
+									</li>
+									<li class="flex items-center gap-1.5">
+										<FileText
+											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+										/>
+										<span>Captured: "tighter" — Ch. 12 notes</span>
+									</li>
+								</ul>
+							</div>
+						</div>
+
+						<!-- footer caption -->
+						<p
+							class="text-center text-xs sm:text-sm text-muted-foreground pt-6 max-w-2xl mx-auto leading-relaxed"
+						>
+							No re-explaining where you are. No re-finding what you decided last
+							week. The project remembers — and the loop tightens as the work moves.
+						</p>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- ─── §04 same context — agents at the same project (for §02B readers) ── -->
+		<section id="agents" class="relative border-b border-border bg-card/40">
+			<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8">
+				<!--
+				  entry marker: lands at the RIGHT rail's terminus (x=88% on lg+).
+				  The chip sits inside a 24%-wide column anchored to the parent's right edge
+				  (so it spans 76%-100%), then centers itself in that column → chip center at 88%.
+				  On mobile, the outer's flex justify-end keeps the chip right-aligned.
+				-->
+				<div class="relative min-h-[2.5rem] flex justify-end">
+					<div
+						class="lg:absolute lg:right-0 lg:top-0 lg:w-[24%] lg:flex lg:justify-center"
+					>
+						<div class="relative">
+							<div
+								aria-hidden="true"
+								class="hidden lg:block absolute left-1/2 -translate-x-1/2 -top-4 h-4 w-0 border-l-2 border-dashed border-foreground/55"
+							></div>
+							<div
+								class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card shadow-ink-inner px-3 py-1.5 tx tx-grain tx-weak whitespace-nowrap"
+							>
+								<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
+								<span
+									class="text-[0.55rem] uppercase tracking-[0.22em] text-muted-foreground"
+								>
+									↓ from §02B — yes
+								</span>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!--
+				  §04 card — wider than §03 (full content-area width), so the architecture
+				  chart can breathe and the rail's landing on its top-right reads as deliberate.
+				-->
+				<div
+					class="rounded-lg border border-border bg-background shadow-ink-strong tx tx-frame tx-weak p-5 sm:p-8 space-y-6"
+				>
+					<div class="text-center">
+						<div
+							class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
+						>
+							<span class="h-px w-10 bg-border"></span>
+							<span>§04 — Same context</span>
+							<span class="h-px w-10 bg-border"></span>
+						</div>
+						<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
+							You and your agents, on the same project.
+						</h2>
+						<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
+							Same context, two surfaces. You stay in the work. Your agents stay useful.
+							Both contribute to the same project state.
+						</p>
+					</div>
+
+					<!-- the chart: 3-column architecture (You · Shared state · Agent) -->
+					<div>
+					<div class="grid md:grid-cols-3 gap-3 sm:gap-4 items-stretch">
+						<!-- LEFT: Framework — for you -->
+						<article
+							class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-5 flex flex-col"
+						>
+							<div
+								class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground mb-2"
 							>
 								Framework — for you
 							</div>
-							<p class="text-xs sm:text-sm text-foreground leading-snug">
-								Daily brief, return-and-update, the ritual of clarity. You stay in
-								the work, not above it.
+							<h3 class="text-lg font-semibold tracking-tight">
+								High-level direction.
+							</h3>
+							<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+								Brain dumps, decisions, taste. The daily brief surfaces what
+								deserves your attention. You stay the author.
 							</p>
-						</div>
-						<div
-							class="rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-grain tx-weak"
+							<div
+								class="mt-4 rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-grid tx-weak"
+							>
+								<div
+									class="text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
+								>
+									You · brain dump
+								</div>
+								<p class="text-xs leading-relaxed">
+									"Push the beta-reader pass to next week. Maya's act-3 turn
+									should hinge on her sister."
+								</p>
+							</div>
+						</article>
+
+						<!-- MIDDLE: Shared project state -->
+						<article
+							class="rounded-lg border border-accent/40 bg-accent/5 shadow-ink-strong tx tx-frame tx-med p-5 flex flex-col"
+						>
+							<div class="text-[0.6rem] uppercase tracking-[0.22em] text-accent mb-2">
+								Shared project state
+							</div>
+							<h3 class="text-lg font-semibold tracking-tight">The same context.</h3>
+							<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+								Project, docs, decisions, conversations. Both sides write to it.
+								Both sides read from it.
+							</p>
+							<div class="mt-4 space-y-1.5 text-sm">
+								<div class="flex items-center gap-1.5">
+									<FolderKanban
+										class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+									/>
+									<span
+										>Project: <strong class="font-medium">Fading Crown</strong
+										></span
+									>
+								</div>
+								<div class="flex items-center gap-1.5">
+									<FileText
+										class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+									/>
+									<span>Doc: Maya — character arc</span>
+								</div>
+								<div class="flex items-center gap-1.5">
+									<Calendar
+										class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+									/>
+									<span>Task: Beta pass → +1 week</span>
+								</div>
+								<div class="flex items-center gap-1.5">
+									<CheckCircle2
+										class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"
+									/>
+									<span class="line-through text-muted-foreground">
+										Ch. 12 rewrite
+									</span>
+								</div>
+							</div>
+						</article>
+
+						<!-- RIGHT: Harness — for your agent -->
+						<article
+							class="rounded-lg border border-border bg-background shadow-ink tx tx-grain tx-weak p-5 flex flex-col"
 						>
 							<div
-								class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
+								class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground mb-2"
 							>
 								Harness — for your agent
 							</div>
-							<p class="text-xs sm:text-sm text-foreground leading-snug">
-								Persistent project memory, structured tool calls, the context an
-								agent needs to actually be useful in production.
+							<h3 class="text-lg font-semibold tracking-tight">
+								Grounded execution.
+							</h3>
+							<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+								Your agent reads the project state, picks up tool calls, ships
+								scoped work. Cheap models stay productive when the context layer is
+								right.
 							</p>
-						</div>
-						<div
-							class="rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-thread tx-weak"
-						>
 							<div
-								class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
+								class="mt-4 rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-thread tx-weak"
 							>
-								Shared context
+								<div
+									class="text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
+								>
+									Agent · acting on it
+								</div>
+								<p class="text-xs leading-relaxed">
+									"Drafting beta-reader email with the latest Ch. 12. Rescheduling
+									the calendar block. Logging notes back to the project."
+								</p>
 							</div>
-							<p class="text-xs sm:text-sm text-foreground leading-snug">
-								Both sides read from the same project state. Parallel work, not
-								delegation.
-							</p>
+						</article>
+					</div>
+
+					<!-- bidirectional flow indicators -->
+					<div
+						class="mt-5 grid md:grid-cols-3 gap-3 sm:gap-4 text-[0.55rem] uppercase tracking-[0.22em] text-muted-foreground/80 text-center"
+					>
+						<div class="flex items-center justify-center gap-2">
+							<ArrowRight class="w-3.5 h-3.5" />
+							<span>writes & reads</span>
+						</div>
+						<div class="flex items-center justify-center gap-2">
+							<ArrowLeft class="w-3.5 h-3.5" />
+							<span>shared</span>
+							<ArrowRight class="w-3.5 h-3.5" />
+						</div>
+						<div class="flex items-center justify-center gap-2">
+							<span>writes & reads</span>
+							<ArrowLeft class="w-3.5 h-3.5" />
 						</div>
 					</div>
 
-					<div class="mt-auto pt-6">
-						<a
-							href="/blogs/philosophy"
-							class="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:gap-3 transition-all"
-						>
-							Read: Framework + Harness
-							<ArrowRight class="w-4 h-4" />
-						</a>
-					</div>
-				</article>
+					<!-- closing caption -->
+					<p
+						class="mt-8 text-center text-xs sm:text-sm text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+					>
+						An agent can clone a workflow in a weekend. It can't clone a worldview. The
+						moat is the shared context layer — and you control it.
+					</p>
+				</div>
+				</div>
 			</div>
-		</div>
-	</section>
+		</section>
+	</div>
+	<!-- ═══ END BRANCH WRAPPER ═══ -->
 
-	<!-- ─── §03 what it holds (the data model) ──────────────────────── -->
+	<!-- ─── §05 what it holds (the data model) ──────────────────────── -->
 	<section class="border-b border-border">
 		<div class="mx-auto max-w-6xl px-4 py-10 sm:py-12 space-y-6">
 			<div class="text-center">
@@ -286,7 +886,7 @@
 					class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
 				>
 					<span class="h-px w-10 bg-border"></span>
-					<span>§03 — What it holds</span>
+					<span>§05 — What it holds</span>
 					<span class="h-px w-10 bg-border"></span>
 				</div>
 				<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
@@ -309,7 +909,7 @@
 		</div>
 	</section>
 
-	<!-- ─── §04 what it becomes — future pacing timeline ────────────── -->
+	<!-- ─── §06 what it becomes — future pacing timeline ────────────── -->
 	<section class="border-b border-border bg-card/40">
 		<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8">
 			<div class="text-center">
@@ -317,7 +917,7 @@
 					class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
 				>
 					<span class="h-px w-10 bg-border"></span>
-					<span>§04 — What it becomes</span>
+					<span>§06 — What it becomes</span>
 					<span class="h-px w-10 bg-border"></span>
 				</div>
 				<h2 class="mt-3 text-2xl sm:text-3xl font-semibold tracking-tight">
@@ -468,7 +1068,7 @@
 		</div>
 	</section>
 
-	<!-- ─── §05 case study placeholder ──────────────────────────────── -->
+	<!-- ─── §07 case study placeholder ──────────────────────────────── -->
 	<section class="border-b border-border">
 		<div class="mx-auto max-w-6xl px-4 py-12 sm:py-14">
 			<div class="text-center mb-6">
@@ -476,7 +1076,7 @@
 					class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
 				>
 					<span class="h-px w-10 bg-border"></span>
-					<span>§05 — Case study</span>
+					<span>§07 — Case study</span>
 					<span class="h-px w-10 bg-border"></span>
 				</div>
 			</div>
@@ -503,7 +1103,7 @@
 		</div>
 	</section>
 
-	<!-- ─── §06 honest comparison + final CTA ──────────────────────── -->
+	<!-- ─── §08 honest comparison + final CTA ──────────────────────── -->
 	<section class="py-12 sm:py-16">
 		<div class="mx-auto max-w-6xl px-4 space-y-8">
 			<div class="text-center">
@@ -511,7 +1111,7 @@
 					class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
 				>
 					<span class="h-px w-10 bg-border"></span>
-					<span>§06 — You have three options</span>
+					<span>§08 — You have three options</span>
 					<span class="h-px w-10 bg-border"></span>
 				</div>
 				<p class="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">

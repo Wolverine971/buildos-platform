@@ -54,6 +54,17 @@
 		continuesAfter: boolean;
 	}
 
+	interface MonthEventSegment {
+		id: string;
+		event: CalendarDayEvent;
+		startCol: number;
+		endCol: number;
+		colSpan: number;
+		lane: number;
+		continuesBefore: boolean;
+		continuesAfter: boolean;
+	}
+
 	interface Props {
 		viewMode?: 'day' | 'week' | 'month';
 		currentDate?: Date;
@@ -422,6 +433,141 @@
 		if (event.continuesBefore) return 'border-l-4 border-l-accent/50';
 		if (event.continuesAfter) return 'border-r-4 border-r-accent/50';
 		return '';
+	}
+
+	function getEventIdentity(event: CalendarDayEvent): string {
+		return (
+			event.calendarItem?.calendar_item_id ||
+			event.calendarItem?.event_id ||
+			event.calendarItem?.task_id ||
+			event.originalEvent?.calendarItem?.calendar_item_id ||
+			event.schedule?.task?.id ||
+			`${event.type}:${event.title}:${event.start.toISOString()}:${event.end.toISOString()}`
+		);
+	}
+
+	function getMonthWeeks(date: Date): Date[][] {
+		const dates = getMonthDates(date);
+		const weeks: Date[][] = [];
+		for (let i = 0; i < dates.length; i += 7) {
+			weeks.push(dates.slice(i, i + 7));
+		}
+		return weeks;
+	}
+
+	function getMonthWeekSegments(weekDates: Date[]): MonthEventSegment[] {
+		const segmentsById = new Map<
+			string,
+			{
+				event: CalendarDayEvent;
+				startCol: number;
+				endCol: number;
+			}
+		>();
+
+		weekDates.forEach((date, columnIndex) => {
+			for (const event of getAllDayLaneEvents(getEventsForDay(date))) {
+				const id = getEventIdentity(event);
+				const existing = segmentsById.get(id);
+				if (existing) {
+					existing.startCol = Math.min(existing.startCol, columnIndex);
+					existing.endCol = Math.max(existing.endCol, columnIndex);
+				} else {
+					segmentsById.set(id, {
+						event,
+						startCol: columnIndex,
+						endCol: columnIndex
+					});
+				}
+			}
+		});
+
+		const laneEnds: number[] = [];
+		const weekStart = getDayBounds(weekDates[0] ?? new Date()).start;
+		const weekEnd = getDayBounds(weekDates[weekDates.length - 1] ?? new Date()).end;
+
+		return Array.from(segmentsById.entries())
+			.map(([id, segment]) => ({ id, ...segment }))
+			.sort((a, b) => {
+				if (a.startCol !== b.startCol) return a.startCol - b.startCol;
+				if (a.endCol !== b.endCol) return b.endCol - a.endCol;
+				return a.event.start.getTime() - b.event.start.getTime();
+			})
+			.map((segment) => {
+				let lane = laneEnds.findIndex((endCol) => segment.startCol > endCol);
+				if (lane === -1) {
+					lane = laneEnds.length;
+				}
+				laneEnds[lane] = segment.endCol;
+				return {
+					...segment,
+					continuesBefore: segment.event.start < weekStart,
+					continuesAfter: segment.event.end > weekEnd,
+					lane,
+					colSpan: segment.endCol - segment.startCol + 1
+				};
+			});
+	}
+
+	function getVisibleMonthSegments(segments: MonthEventSegment[]): MonthEventSegment[] {
+		return segments.filter((segment) => segment.lane < 3);
+	}
+
+	function getMonthLaneCount(segments: MonthEventSegment[]): number {
+		const visible = getVisibleMonthSegments(segments);
+		if (visible.length === 0) return 0;
+		return Math.max(...visible.map((segment) => segment.lane + 1));
+	}
+
+	function getHiddenSegmentCountForColumn(
+		segments: MonthEventSegment[],
+		columnIndex: number
+	): number {
+		return segments.filter(
+			(segment) =>
+				segment.lane >= 3 &&
+				segment.startCol <= columnIndex &&
+				segment.endCol >= columnIndex
+		).length;
+	}
+
+	function getMonthTimedEventsForDay(date: Date): CalendarDayEvent[] {
+		return getTimedEvents(getEventsForDay(date));
+	}
+
+	function getMonthSegmentTop(lane: number): number {
+		return 30 + lane * 23;
+	}
+
+	function getMonthCellEventOffset(laneCount: number): number {
+		return laneCount === 0 ? 8 : 8 + laneCount * 23;
+	}
+
+	function getMonthRowMinHeight(laneCount: number): number {
+		return 104 + laneCount * 23;
+	}
+
+	function getMonthSegmentStyle(segment: MonthEventSegment): string {
+		const radiusLeft = segment.continuesBefore ? '0' : '4px';
+		const radiusRight = segment.continuesAfter ? '0' : '4px';
+		const leftInset = segment.continuesBefore ? 0 : 6;
+		const rightInset = segment.continuesAfter ? 0 : 6;
+		const leftPercent = (segment.startCol / 7) * 100;
+		const widthPercent = (segment.colSpan / 7) * 100;
+		return [
+			`left: calc(${leftPercent}% + ${leftInset}px)`,
+			`width: calc(${widthPercent}% - ${leftInset + rightInset}px)`,
+			`top: ${getMonthSegmentTop(segment.lane)}px`,
+			`border-top-left-radius: ${radiusLeft}`,
+			`border-bottom-left-radius: ${radiusLeft}`,
+			`border-top-right-radius: ${radiusRight}`,
+			`border-bottom-right-radius: ${radiusRight}`
+		].join('; ');
+	}
+
+	function getMonthSegmentLabel(segment: MonthEventSegment): string {
+		if (segment.event.allDay) return segment.event.title;
+		return `${formatTime(segment.event.start)} ${segment.event.title}`;
 	}
 
 	function getTimePosition(date: Date): number {
@@ -830,59 +976,102 @@
 		{:else}
 			<!-- Month View - Desktop: Grid, Mobile: List -->
 			<div
-				class="hidden md:grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden shadow-ink tx tx-frame tx-weak"
+				class="hidden md:block rounded-lg bg-border overflow-hidden shadow-ink tx tx-frame tx-weak"
 			>
-				{#each dayNames as day}
-					<div
-						class="bg-muted/50 px-1.5 py-1.5 text-center text-[10px] uppercase tracking-wide font-medium text-muted-foreground"
-					>
-						{day}
-					</div>
-				{/each}
-
-				{#each getMonthDates(internalDate) as date}
-					{@const dayEvents = getEventsForDay(date)}
-					{@const isCurrentMonth = date.getMonth() === internalDate.getMonth()}
-					{@const isToday = date.toDateString() === new Date().toDateString()}
-					<div
-						class="bg-card p-1.5 min-h-[88px] {!isCurrentMonth
-							? 'opacity-40'
-							: ''} {isToday
-							? 'ring-1 ring-inset ring-accent/50 bg-accent/[0.03]'
-							: ''}"
-					>
+				<div class="grid grid-cols-7 gap-px bg-border">
+					{#each dayNames as day}
 						<div
-							class="text-xs font-semibold tabular-nums mb-1 {isToday
-								? 'text-accent'
-								: 'text-foreground'}"
+							class="bg-muted/50 px-1.5 py-1.5 text-center text-[10px] uppercase tracking-wide font-medium text-muted-foreground"
 						>
-							{date.getDate()}
+							{day}
 						</div>
-						<div class="space-y-0.5">
-							{#each dayEvents.slice(0, 3) as event}
-								<button
-									onclick={() => handleEventClick(event)}
-									class="w-full text-[10px] leading-tight px-1 py-0.5 rounded-sm truncate text-left transition-all hover:opacity-90 hover:shadow-ink pressable {event.color} {getContinuationClass(
-										event
-									)}"
-									title={`${event.title} - ${getEventDayLabel(event)}`}
+					{/each}
+				</div>
+
+				<div class="space-y-px bg-border">
+					{#each getMonthWeeks(internalDate) as weekDates}
+						{@const weekSegments = getMonthWeekSegments(weekDates)}
+						{@const visibleSegments = getVisibleMonthSegments(weekSegments)}
+						{@const laneCount = getMonthLaneCount(weekSegments)}
+						<div
+							class="relative grid grid-cols-7 gap-px bg-border"
+							style="min-height: {getMonthRowMinHeight(laneCount)}px"
+						>
+							{#each weekDates as date, columnIndex}
+								{@const timedEvents = getMonthTimedEventsForDay(date)}
+								{@const hiddenSegments = getHiddenSegmentCountForColumn(
+									weekSegments,
+									columnIndex
+								)}
+								{@const isCurrentMonth =
+									date.getMonth() === internalDate.getMonth()}
+								{@const isToday = date.toDateString() === new Date().toDateString()}
+								<div
+									class="min-h-full bg-card p-1.5 {!isCurrentMonth
+										? 'opacity-40'
+										: ''} {isToday
+										? 'ring-1 ring-inset ring-accent/50 bg-accent/[0.03]'
+										: ''}"
 								>
-									{#if getContinuationLabel(event)}
-										<span class="mr-1 font-semibold uppercase opacity-70"
-											>{getContinuationLabel(event)}</span
-										>
-									{/if}
-									<span class="truncate">{event.title}</span>
+									<div
+										class="text-xs font-semibold tabular-nums {isToday
+											? 'text-accent'
+											: 'text-foreground'}"
+									>
+										{date.getDate()}
+									</div>
+									<div
+										class="space-y-0.5"
+										style="margin-top: {getMonthCellEventOffset(laneCount)}px"
+									>
+										{#if hiddenSegments > 0}
+											<div class="text-[10px] text-muted-foreground pl-1">
+												+{hiddenSegments} more
+											</div>
+										{/if}
+										{#each timedEvents.slice(0, 2) as event}
+											<button
+												onclick={() => handleEventClick(event)}
+												class="flex w-full items-center gap-1 truncate rounded-sm px-1 py-0.5 text-left text-[10px] leading-tight transition-all hover:bg-muted pressable"
+												title={`${event.title} - ${getEventDayLabel(event)}`}
+											>
+												<span
+													class="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/70"
+												></span>
+												<span class="truncate">
+													{#if !event.allDay}
+														<span class="tabular-nums"
+															>{formatTime(event.start)}</span
+														>
+														<span> </span>
+													{/if}
+													{event.title}
+												</span>
+											</button>
+										{/each}
+										{#if timedEvents.length > 2}
+											<div class="text-[10px] text-muted-foreground pl-1">
+												+{timedEvents.length - 2} more
+											</div>
+										{/if}
+									</div>
+								</div>
+							{/each}
+
+							{#each visibleSegments as segment}
+								<button
+									onclick={() => handleEventClick(segment.event)}
+									class="absolute z-10 h-5 truncate px-1.5 text-left text-[10px] font-semibold leading-5 text-foreground shadow-sm transition-all hover:brightness-95 hover:shadow-ink pressable {segment
+										.event.color}"
+									style={getMonthSegmentStyle(segment)}
+									title={`${segment.event.title} - ${getEventRangeLabel(segment.event)}`}
+								>
+									<span class="truncate">{getMonthSegmentLabel(segment)}</span>
 								</button>
 							{/each}
-							{#if dayEvents.length > 3}
-								<div class="text-[10px] text-muted-foreground pl-1">
-									+{dayEvents.length - 3} more
-								</div>
-							{/if}
 						</div>
-					</div>
-				{/each}
+					{/each}
+				</div>
 			</div>
 
 			<!-- Mobile Month View - Card-based layout -->

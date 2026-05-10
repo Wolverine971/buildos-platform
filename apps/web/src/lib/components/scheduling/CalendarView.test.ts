@@ -48,7 +48,7 @@ describe('CalendarView multi-day events', () => {
 		);
 	});
 
-	it('renders all-day multi-day events on each overlapped month day', () => {
+	it('renders all-day multi-day events as month-spanning bars', () => {
 		render(CalendarView, {
 			props: {
 				viewMode: 'month',
@@ -57,8 +57,8 @@ describe('CalendarView multi-day events', () => {
 				events: [
 					{
 						summary: 'Planning Retreat',
-						start: { date: '2026-05-01' },
-						end: { date: '2026-05-04' },
+						start: { date: '2026-05-11' },
+						end: { date: '2026-05-14' },
 						allDay: true
 					}
 				]
@@ -66,6 +66,14 @@ describe('CalendarView multi-day events', () => {
 		});
 
 		expect(screen.getAllByText('Planning Retreat').length).toBeGreaterThan(1);
+
+		const spanningButton = screen
+			.getAllByRole('button', { name: /Planning Retreat/i })
+			.find((button) => button.getAttribute('style')?.includes('width: calc('));
+
+		expect(spanningButton).toBeDefined();
+		expect(spanningButton?.getAttribute('style')).toContain('border-top-left-radius: 4px');
+		expect(spanningButton?.getAttribute('style')).toContain('border-top-right-radius: 4px');
 		expect(screen.getAllByText('Starts').length).toBeGreaterThan(0);
 		expect(screen.getAllByText('Continues').length).toBeGreaterThan(0);
 		expect(screen.getAllByText('Ends').length).toBeGreaterThan(0);

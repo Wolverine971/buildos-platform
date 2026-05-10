@@ -39,7 +39,7 @@ Every task in BuildOS knows four things:
 3. **What documents relate to it** so you have the context to execute
 4. **What's blocking it** so you can unblock and move forward
 
-This sounds simple, but it changes everything. When you look at a task, you see the bigger picture. When you complete a task, you see its impact on your goals. (See [Under the Hood](/blog/under-the-hood) for the technical details.)
+This sounds simple, but it changes everything. When you look at a task, you see the bigger picture. When you complete a task, you see its impact on your goals. (See [Under the Hood](/blogs/getting-started/under-the-hood) for the technical details.)
 
 Traditional task management asks: "Did you complete it?"
 
