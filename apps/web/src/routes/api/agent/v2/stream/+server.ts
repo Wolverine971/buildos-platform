@@ -99,6 +99,7 @@ import {
 } from '$lib/services/agentic-chat-v2/context-cache';
 import {
 	getPreparedPromptSurface,
+	isPreparedPromptSurfaceCurrent,
 	isPreparedPromptPrewarmEnabled,
 	parsePreparedPromptKey,
 	verifyPreparedPromptNonce,
@@ -721,6 +722,8 @@ async function consumePreparedPrompt(params: {
 	sessionId: string;
 	cacheKey: string;
 	surfaceProfile: ReturnType<typeof resolveFastChatSurfaceProfileForTurn>;
+	contextType: ChatContextType;
+	tools: ChatToolDefinition[];
 }): Promise<
 	| {
 			hit: true;
@@ -777,6 +780,17 @@ async function consumePreparedPrompt(params: {
 	const surface = getPreparedPromptSurface(row, params.surfaceProfile);
 	if (!surface) {
 		return { hit: false, reason: 'surface_missing' };
+	}
+	if (
+		!isPreparedPromptSurfaceCurrent({
+			surface,
+			contextType: params.contextType,
+			contextPayload: row.context_payload,
+			conversationSummary: row.conversation_summary ?? null,
+			tools: params.tools
+		})
+	) {
+		return { hit: false, reason: 'stale_harness' };
 	}
 
 	const consumedAt = new Date().toISOString();
@@ -3188,7 +3202,9 @@ export const POST: RequestHandler = async ({
 				userId,
 				sessionId: session.id,
 				cacheKey,
-				surfaceProfile: selectedSurfaceProfile
+				surfaceProfile: selectedSurfaceProfile,
+				contextType,
+				tools
 			});
 			if (!preparedPromptForTurn.hit) {
 				preparedPromptMissReason = preparedPromptForTurn.reason;

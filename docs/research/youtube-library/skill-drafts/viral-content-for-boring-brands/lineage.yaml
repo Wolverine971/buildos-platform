@@ -1,0 +1,174 @@
+# docs/research/youtube-library/skill-drafts/viral-content-for-boring-brands/lineage.yaml
+lineage_version: 0.1
+updated: 2026-05-10
+
+root_skill:
+    id: viral-content-for-boring-brands
+    name: Viral Content For Boring Brands
+    path: docs/research/youtube-library/skill-drafts/viral-content-for-boring-brands/SKILL.md
+    status: draft
+    summary: Design or audit brand-account content against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds. Brand-side complement to the creator-side viral skills.
+
+sources:
+    - id: source.tuan-le.3-billion-views-psychology
+      type: youtube_analysis
+      title: What Getting 3 Billion Views Taught Me About Human Psychology
+      creator: Tuan Le
+      creator_org: Shortscut
+      url: https://www.youtube.com/watch?v=KkK-Y7GiQ2o
+      transcript_path: docs/research/youtube-library/transcripts/2026-05-10_tuan-le_3-billion-views-psychology.md
+      analysis_path: docs/research/youtube-library/analyses/2026-05-10_tuan-le_3-billion-views-psychology_analysis.md
+      source_role: primary
+      used_for:
+          - format-steal mechanics (mere exposure effect)
+          - curiosity gap as override of scroll reflex
+          - means-end-chain three-layer model (attribute / functional / psychological value)
+          - credential shortcut and authority bias
+          - share-as-status / wingman framing
+          - Hook → Problem → Story → Payoff skeleton
+          - dual-pathway retention (captions, cuts deliver new info)
+
+primitives:
+    - id: primitive.format-recognition-audit
+      name: Format Recognition Audit
+      job: Verify the content sits inside a format the viewer's brain has seen and liked before.
+      rule_count: 5
+      sources:
+          - source.tuan-le.3-billion-views-psychology
+
+    - id: primitive.curiosity-gap-hook-audit
+      name: Curiosity Gap Hook Audit
+      job: Verify the first 1–2 seconds open a knowledge gap the brain wants to close.
+      rule_count: 4
+      sources:
+          - source.tuan-le.3-billion-views-psychology
+
+    - id: primitive.means-end-ladder
+      name: Means-End Ladder
+      job: Ladder any product/feature claim from layer 1 (attribute) to layer 3 (psychological value).
+      rule_count: 4
+      sources:
+          - source.tuan-le.3-billion-views-psychology
+
+    - id: primitive.credential-shortcut-audit
+      name: Credential Shortcut Audit
+      job: Verify a real, honest credential fires within the first 2 seconds.
+      rule_count: 4
+      sources:
+          - source.tuan-le.3-billion-views-psychology
+
+    - id: primitive.one-line-sharer-test
+      name: One-Line Sharer Test
+      job: Verify the piece is describable in one sentence the sharer would type in a DM.
+      rule_count: 5
+      sources:
+          - source.tuan-le.3-billion-views-psychology
+
+    - id: primitive.story-skeleton-pass
+      name: Story Skeleton Pass
+      job: Verify the piece follows Hook → Problem → Story → Payoff with zero dead-space frames.
+      rule_count: 5
+      sources:
+          - source.tuan-le.3-billion-views-psychology
+
+    - id: primitive.slop-format-rejection
+      name: Slop-Format Rejection (BuildOS overlay)
+      job: Reject format-steal candidates whose audience-acquisition mechanism is rage-bait, fake-confession, or manufactured drama.
+      rule_count: 3
+      sources:
+          - source.tuan-le.3-billion-views-psychology
+      synthesis_layer: buildos_anti_feed_doctrine
+
+    - id: primitive.performative-credential-rejection
+      name: Performative-Credential Rejection (BuildOS overlay)
+      job: Reject credential candidates that are not literally true (cosplaying authority).
+      rule_count: 4
+      sources:
+          - source.tuan-le.3-billion-views-psychology
+      synthesis_layer: buildos_anti_ai_doctrine
+
+source_claims:
+    - id: claim.tuan-le.brain-decides-pre-conscious
+      claim: The brain decides whether to scroll or stay within the first 0.5–2 seconds via three pre-conscious filters (familiarity, novelty, relevance).
+      source: source.tuan-le.3-billion-views-psychology
+      maps_to:
+          - primitive.format-recognition-audit
+
+    - id: claim.tuan-le.format-steal
+      claim: Original formats fail; format-steal succeeds via mere exposure effect.
+      source: source.tuan-le.3-billion-views-psychology
+      receipt: 'Bulldock (Korean ramen): 300K → 1.8M followers, 900M views in 12 months. Product unchanged; pivoted from manufacturing/ingredient content to spicy-challenge / reaction formats.'
+      maps_to:
+          - primitive.format-recognition-audit
+
+    - id: claim.tuan-le.curiosity-gap-overrides-scroll
+      claim: When the brain senses a gap between current and desired knowledge, the discomfort overrides the scroll reflex until the gap closes.
+      source: source.tuan-le.3-billion-views-psychology
+      receipt: "Stan (creator platform): opened with 'how much do you pay for rent?' office tour, not the software. 1M views TikTok / 5M views LinkedIn first try; 20M views over months for personal brand."
+      maps_to:
+          - primitive.curiosity-gap-hook-audit
+
+    - id: claim.tuan-le.means-end-three-layers
+      claim: Every product has three layers (attribute / functional consequence / psychological value); the brain only cares about layer 3.
+      source: source.tuan-le.3-billion-views-psychology
+      receipt: "AG1 example: supplement → healthier body → energy/mood → 'I feel in control of my body and life.' Content lives at the identity statement, not the supplement."
+      maps_to:
+          - primitive.means-end-ladder
+
+    - id: claim.tuan-le.credential-shortcut
+      claim: Authority is the brain's biggest cognitive shortcut; a credential in the first 2 seconds bypasses critical evaluation.
+      source: source.tuan-le.3-billion-views-psychology
+      receipt: "Japanese restaurant: 200–300 views → 1.8M, 2M back-to-back. 300K followers in 3 months. Same food. Format change: cinematic shots → 'hey chef, can you make me something gourmet?' The chef's outfit + pro kitchen *was* the credential."
+      maps_to:
+          - primitive.credential-shortcut-audit
+
+    - id: claim.tuan-le.share-as-status
+      claim: People share what makes the *sharer* look good, not what they personally enjoy.
+      source: source.tuan-le.3-billion-views-psychology
+      maps_to:
+          - primitive.one-line-sharer-test
+
+    - id: claim.tuan-le.story-suspends-skepticism
+      claim: Once a viewer is inside a story, critical thinking slows and emotional processing takes over. Universal skeleton Hook → Problem → Story → Payoff.
+      source: source.tuan-le.3-billion-views-psychology
+      maps_to:
+          - primitive.story-skeleton-pass
+
+    - id: claim.tuan-le.dual-pathway-retention
+      claim: Captions activate dual visual + audio neural pathways; cuts must deliver new information per cut.
+      source: source.tuan-le.3-billion-views-psychology
+      receipt: 'Bulldock 2.2M-view post: every clip a few seconds, every clip new info, zero dead space.'
+      maps_to:
+          - primitive.story-skeleton-pass
+
+    - id: claim.buildos.slop-format-rejection
+      claim: Format-steal is brand-amoral; the brand must impose the morality. Reject formats whose audience-acquisition mechanism is rage-bait, fake-confession, or manufactured drama.
+      source: synthesis.buildos_anti_feed_doctrine
+      maps_to:
+          - primitive.slop-format-rejection
+
+    - id: claim.buildos.performative-credential-rejection
+      claim: The credential shortcut works honest or performative; the brand must impose the honesty. For BuildOS the strongest credentials are receipts (founder using BuildOS, real shipped product).
+      source: synthesis.buildos_anti_ai_doctrine
+      maps_to:
+          - primitive.performative-credential-rejection
+
+candidate_v2_sources:
+    - title: Kallaway — 18 Psychology Tricks to Get Viewers Addicted to Your Videos
+      url: https://www.youtube.com/watch?v=g_6TIu7zHDw
+      reason: Creator-side complement to Tuan's brand-side framework. Six checkpoints (painpoint acceptance → drive action) triangulate with Tuan's six filters. Pair would strengthen the audit by adding creator-led variants.
+      analysis_path: docs/research/youtube-library/analyses/2026-04-29_kallaway_18-psychology-tricks_analysis.md
+
+    - title: Devin Nash — Exposing the New Manufactured Viral Content Economy
+      url: https://www.youtube.com/watch?v=-5lqJF5BTvo
+      reason: Explicit critique of the practices Tuan teaches. Strengthens the slop-format-rejection and performative-credential-rejection overlays by giving them external evidence, not just BuildOS doctrine.
+
+    - title: Means-End Chain Theory (Gutman 1982) and related consumer-research literature
+      url: https://en.wikipedia.org/wiki/Means%E2%80%93end_chain
+      reason: Tuan's three-layer summary is light. Original theory and its laddering technique would deepen primitive.means-end-ladder.
+
+stats:
+    sources: 1
+    primitives: 8
+    source_claims: 10
+    candidate_v2_sources: 3

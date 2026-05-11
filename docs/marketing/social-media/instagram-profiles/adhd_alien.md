@@ -11,9 +11,21 @@
 **Relationship Status:** Prospect
 **Audience Quality:** High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-05-05
-**Last Engaged:** Never
+**Last Reviewed:** 2026-05-11
+**Last Engaged:** ~2026-03-16 (DJ → Pina DM "hi, hows the book coming along?" — never replied by Pina) + ~2026-03-24 (Pina posted book-finished celebration DWKS5QRjq08 ~8 days after DJ's DM)
 **Source of First Discovery:** 2026-03-22 afternoon warmup (graphic novel finished post)
+
+## DM Intel (NEW — 2026-05-11)
+
+**DJ → Pina DM "hi, hows the book coming along?" was sent ~8 weeks ago (~2026-03-16) and never received a reply.** Surfaced via `instagram.com/direct/inbox/` walk on 2026-05-11 warmup. The 2026-05-09 audit covered Activity → Comments + Notifications but not DMs.
+
+**Critical context:** Pina posted "I really did it!!!! I really really finished it with my ADHD haha @penguinteen" (DWKS5QRjq08) on **2026-03-24** — exactly **8 days after** DJ's DM. The DM asked "how's the book coming along?" and 8 days later Pina announced she finished it. The natural relationship-continuation move would have been a follow-up DM within a few days of seeing the post. That window closed 6 weeks ago.
+
+**Recommendation for `/instagram-reply`:** The 7-week-late comment-on-the-book-post move is awkward and not recommended. The more natural move is a **fresh DM follow-up** to the existing thread: something like "saw the book post — congrats, that's huge" or anchored in a more recent post. The DM thread is dormant from DJ's side; restarting it casually is fine if it doesn't read as a delayed promo.
+
+**Skip-list status:** Pina remains "Supporting Affinity — vulnerability-only mode" per `instagram-engagement-targets.md`. The DM follow-up is a separate surface from the post-comment-cadence rule.
+
+---
 
 ## Condensed Intel
 

@@ -7,6 +7,7 @@ import type {
 	LitePromptContextInventory,
 	LitePromptToolsSummary
 } from '$lib/services/agentic-chat-lite/prompt';
+import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
 import type { GatewaySurfaceProfileName } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { resolveGatewaySurfaceProfileForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 
@@ -25,6 +26,7 @@ export type PreparedPromptCacheMissReason =
 	| 'user_mismatch'
 	| 'session_mismatch'
 	| 'scope_mismatch'
+	| 'stale_harness'
 	| 'surface_missing'
 	| 'update_failed'
 	| 'parse_error';
@@ -33,6 +35,8 @@ export type PreparedPromptSurface = {
 	surface_profile: GatewaySurfaceProfileName;
 	tool_names: string[];
 	tools_sha256: string | null;
+	tool_definitions_sha256: string | null;
+	harness_sha256: string;
 	system_prompt: string;
 	system_prompt_sha256: string;
 	sections: LitePromptSection[];
@@ -115,6 +119,49 @@ export function sha256Json(value: unknown): string {
 	return sha256Text(JSON.stringify(value ?? null));
 }
 
+function stableStringify(value: unknown): string {
+	if (Array.isArray(value)) {
+		return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+	}
+	if (value && typeof value === 'object') {
+		const record = value as Record<string, unknown>;
+		return `{${Object.keys(record)
+			.sort()
+			.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+			.join(',')}}`;
+	}
+	return JSON.stringify(value);
+}
+
+function sha256ToolDefinitions(tools: ChatToolDefinition[]): string | null {
+	return tools.length > 0 ? sha256Text(stableStringify(tools)) : null;
+}
+
+function buildPreparedPromptHarnessSha(params: {
+	contextType: ChatContextType;
+	contextPayload: Record<string, unknown>;
+	conversationSummary?: string | null;
+	tools: ChatToolDefinition[];
+}): string {
+	const canonicalEnvelope = buildLitePromptEnvelope({
+		...params.contextPayload,
+		contextType: params.contextType,
+		conversationSummary: params.conversationSummary ?? null,
+		tools: params.tools,
+		now: '2026-01-01T00:00:00.000Z',
+		timezone: 'UTC',
+		productSurface: '__prepared_prompt_canonical__',
+		conversationPosition: 'prepared prompt canonical'
+	});
+
+	return sha256Text(
+		stableStringify({
+			systemPrompt: canonicalEnvelope.systemPrompt,
+			tools: params.tools
+		})
+	);
+}
+
 export function buildPreparedPromptKey(id: string): {
 	key: string;
 	nonce: string;
@@ -166,6 +213,9 @@ export function resolveDefaultPreparedSurfaceProfile(
 
 export function buildPreparedPromptSurface(params: {
 	surfaceProfile: GatewaySurfaceProfileName;
+	contextType: ChatContextType;
+	contextPayload: Record<string, unknown>;
+	conversationSummary?: string | null;
 	tools: ChatToolDefinition[];
 	envelope: LitePromptEnvelope;
 	createdAt?: string;
@@ -177,6 +227,13 @@ export function buildPreparedPromptSurface(params: {
 		surface_profile: params.surfaceProfile,
 		tool_names: toolNames,
 		tools_sha256: toolNames.length > 0 ? sha256Json(toolNames) : null,
+		tool_definitions_sha256: sha256ToolDefinitions(params.tools),
+		harness_sha256: buildPreparedPromptHarnessSha({
+			contextType: params.contextType,
+			contextPayload: params.contextPayload,
+			conversationSummary: params.conversationSummary ?? null,
+			tools: params.tools
+		}),
 		system_prompt: params.envelope.systemPrompt,
 		system_prompt_sha256: sha256Text(params.envelope.systemPrompt),
 		sections: params.envelope.sections,
@@ -193,6 +250,24 @@ export function getPreparedPromptSurface(
 	const surface = row.prepared_surfaces?.[surfaceProfile];
 	if (!surface?.system_prompt) return null;
 	return surface;
+}
+
+export function isPreparedPromptSurfaceCurrent(params: {
+	surface: PreparedPromptSurface;
+	contextType: ChatContextType;
+	contextPayload: Record<string, unknown>;
+	conversationSummary?: string | null;
+	tools: ChatToolDefinition[];
+}): boolean {
+	return (
+		params.surface.harness_sha256 ===
+		buildPreparedPromptHarnessSha({
+			contextType: params.contextType,
+			contextPayload: params.contextPayload,
+			conversationSummary: params.conversationSummary ?? null,
+			tools: params.tools
+		})
+	);
 }
 
 export function buildPreparedPromptResponse(params: {

@@ -33,20 +33,20 @@ _Verified live 2026-05-09. Glen Burnie home base, ~1hr drive radius covers Balti
 
 **Why this list looks the way it does.** Most distinctive local product orgs are still remote-first (Aledade, Mercury-style). Senior IC seats in MD/DC tend to live at Aledade (Bethesda HQ, primary primary-care/value-based-care platform), Tenable (Columbia HQ, security platform with real product surface), Capital One McLean (highest-comp local seat with real AI work), and a handful of mission/civic shops (Nava, Strider Tysons). DC media-tech (Politico/NPR) had near-zero open senior IC seats at fetch time. ZeroFox, Govini's senior SWE roles, and most Bowie/Inovalon postings are either expired or have salary bands well below the $220–300K target. Ranked by combined fit (local + comp + resume thread match).
 
-| # | Company | Role | Location | Link | Resume thread |
-|---|---------|------|----------|------|---------------|
-| 1 | Aledade | Staff Software Engineer - Full Stack | Remote, US (Bethesda HQ) | [link](https://jobs.lever.co/aledade/f8602b51-a4d2-4db2-90b4-f088a2972eeb) | BuildOS + EHR/integration overlap (chromium overlay UIs, EHR/EMR integration explicitly preferred) |
-| 2 | Aledade | Staff Software Engineer, Agentic Patient Outreach | Remote, US (Bethesda HQ) | [link](https://jobs.lever.co/aledade/37625a71-4c88-4f2c-8ea4-8a8fa630415b) | BuildOS agent harness — voice + messaging modalities + AI orchestration is a 1:1 description |
-| 3 | Capital One | Sr Lead Software Engineer, Full Stack AI Parser - Shopping (Remote-Eligible) | McLean, VA / Remote (band $209–262K) | [link](https://www.capitalonecareers.com/job/mclean/sr-lead-software-engineer-full-stack-ai-parser-shopping-remote-eligible/1732/94770784592) | BuildOS multi-LLM routing — exact tech list (TS/Python/Go + LLMs/AI tooling); local hub, real comp |
-| 4 | Aledade | Staff Software Engineer - Data AI Agent | Remote, US (Bethesda HQ) | [link](https://jobs.lever.co/aledade/4ef7fcd0-40c5-4ec7-a678-e836408521e5) | BuildOS agentic chat + data tooling; "OpenAI/Pinterest Data Agent inspired" is straight from your wheelhouse |
-| 5 | Strider Technologies | Forward Deployed Engineer | Tysons Corner, VA (onsite/hybrid) | [link](https://jobs.ashbyhq.com/strider-technologies/76d9690d-08d4-4762-b299-b56681e9a088) | Curri integrations + DoD background — embed with customers, ship 0-to-1, no clearance required upfront |
-| 6 | Tenable | Senior Software Engineer - User Interface | Columbia, MD hybrid ($137–183K) | [link](https://job-boards.greenhouse.io/tenableinc/jobs/5203025008) | React/TS/Svelte chops; Columbia is 25 min from Glen Burnie, hybrid not remote-only |
-| 7 | Tenable | Senior Software Engineer - Event Sourcing & Stream Processing | Columbia MD HQ + Remote VA/MA/CA | [link](https://job-boards.greenhouse.io/tenableinc/jobs/4994807008) | BuildOS Supabase queue + Curri webhook+polling reconciliation maps directly to event-sourcing/Kafka work |
-| 8 | Aledade | Senior Software Engineer I, Backend | Remote, US (Bethesda HQ, $125–165K) | [link](https://jobs.lever.co/aledade/a788ae8d-0bbb-4b1e-aa7b-dc9aeb70994f) | Bridge-comp safety pick: Bethesda HQ company, lower band but cleanest "senior IC" fit |
-| 9 | Aledade | Full-Stack Analytics Engineer II | Washington DC (in-office/hybrid) | [link](https://jobs.lever.co/aledade/d5042db4-37cf-40d4-846b-c16a5c36d403) | One of the few DC-onsite seats at Aledade — full-stack + data; Census Bureau analytics UI thread fits |
-| 10 | Govini | Forward Deployed Software Engineer | Arlington, VA / Pittsburgh / Remote | [link](https://job-boards.greenhouse.io/govini/jobs/4068889009) | Marine Corps + DoD lineage + Curri customer-embed pattern; clearance "desired" not required |
-| 11 | Nava PBC | Senior Security Engineer (Azure Security) | Remote | [link](https://job-boards.greenhouse.io/navapbc/jobs/4206543009) | Census/MetroStar + DoD civic-tech thread — Nava builds public-benefits delivery, no clearance |
-| 12 | Tenable | Senior Software Engineer (general) | Columbia MD HQ + Remote CA/MA | [link](https://job-boards.greenhouse.io/tenableinc/jobs/4945094008) | Backup IC seat at the most senior-IC-friendly local product company |
+| #   | Company              | Role                                                                         | Location                             | Link                                                                                                                                          | Resume thread                                                                                                |
+| --- | -------------------- | ---------------------------------------------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| 1   | Aledade              | Staff Software Engineer - Full Stack                                         | Remote, US (Bethesda HQ)             | [link](https://jobs.lever.co/aledade/f8602b51-a4d2-4db2-90b4-f088a2972eeb)                                                                    | BuildOS + EHR/integration overlap (chromium overlay UIs, EHR/EMR integration explicitly preferred)           |
+| 2   | Aledade              | Staff Software Engineer, Agentic Patient Outreach                            | Remote, US (Bethesda HQ)             | [link](https://jobs.lever.co/aledade/37625a71-4c88-4f2c-8ea4-8a8fa630415b)                                                                    | BuildOS agent harness — voice + messaging modalities + AI orchestration is a 1:1 description                 |
+| 3   | Capital One          | Sr Lead Software Engineer, Full Stack AI Parser - Shopping (Remote-Eligible) | McLean, VA / Remote (band $209–262K) | [link](https://www.capitalonecareers.com/job/mclean/sr-lead-software-engineer-full-stack-ai-parser-shopping-remote-eligible/1732/94770784592) | BuildOS multi-LLM routing — exact tech list (TS/Python/Go + LLMs/AI tooling); local hub, real comp           |
+| 4   | Aledade              | Staff Software Engineer - Data AI Agent                                      | Remote, US (Bethesda HQ)             | [link](https://jobs.lever.co/aledade/4ef7fcd0-40c5-4ec7-a678-e836408521e5)                                                                    | BuildOS agentic chat + data tooling; "OpenAI/Pinterest Data Agent inspired" is straight from your wheelhouse |
+| 5   | Strider Technologies | Forward Deployed Engineer                                                    | Tysons Corner, VA (onsite/hybrid)    | [link](https://jobs.ashbyhq.com/strider-technologies/76d9690d-08d4-4762-b299-b56681e9a088)                                                    | Curri integrations + DoD background — embed with customers, ship 0-to-1, no clearance required upfront       |
+| 6   | Tenable              | Senior Software Engineer - User Interface                                    | Columbia, MD hybrid ($137–183K)      | [link](https://job-boards.greenhouse.io/tenableinc/jobs/5203025008)                                                                           | React/TS/Svelte chops; Columbia is 25 min from Glen Burnie, hybrid not remote-only                           |
+| 7   | Tenable              | Senior Software Engineer - Event Sourcing & Stream Processing                | Columbia MD HQ + Remote VA/MA/CA     | [link](https://job-boards.greenhouse.io/tenableinc/jobs/4994807008)                                                                           | BuildOS Supabase queue + Curri webhook+polling reconciliation maps directly to event-sourcing/Kafka work     |
+| 8   | Aledade              | Senior Software Engineer I, Backend                                          | Remote, US (Bethesda HQ, $125–165K)  | [link](https://jobs.lever.co/aledade/a788ae8d-0bbb-4b1e-aa7b-dc9aeb70994f)                                                                    | Bridge-comp safety pick: Bethesda HQ company, lower band but cleanest "senior IC" fit                        |
+| 9   | Aledade              | Full-Stack Analytics Engineer II                                             | Washington DC (in-office/hybrid)     | [link](https://jobs.lever.co/aledade/d5042db4-37cf-40d4-846b-c16a5c36d403)                                                                    | One of the few DC-onsite seats at Aledade — full-stack + data; Census Bureau analytics UI thread fits        |
+| 10  | Govini               | Forward Deployed Software Engineer                                           | Arlington, VA / Pittsburgh / Remote  | [link](https://job-boards.greenhouse.io/govini/jobs/4068889009)                                                                               | Marine Corps + DoD lineage + Curri customer-embed pattern; clearance "desired" not required                  |
+| 11  | Nava PBC             | Senior Security Engineer (Azure Security)                                    | Remote                               | [link](https://job-boards.greenhouse.io/navapbc/jobs/4206543009)                                                                              | Census/MetroStar + DoD civic-tech thread — Nava builds public-benefits delivery, no clearance                |
+| 12  | Tenable              | Senior Software Engineer (general)                                           | Columbia MD HQ + Remote CA/MA        | [link](https://job-boards.greenhouse.io/tenableinc/jobs/4945094008)                                                                           | Backup IC seat at the most senior-IC-friendly local product company                                          |
 
 ### Notes on what got cut and why
 
@@ -69,20 +69,107 @@ _Verified live 2026-05-09. Glen Burnie home base, ~1hr drive radius covers Balti
 
 ---
 
+## Defense Tech — May 2026 round
+
+_Verified live 2026-05-09. Filter: commercial + sponsor-eligible clearance posture only (skip "active TS/SCI required upfront"). DC-area offices weighted heavily. Marine Scout Sniper Team Leader background is a real narrative asset here — defense AI / drone-autonomy companies hire this profile specifically._
+
+**Clearance language scan rules:**
+
+- "Currently possesses" / "must currently hold" / "previously held" = **HARD CUT** (you don't hold an active clearance today)
+- "Eligible to obtain" / "ability to obtain with sponsorship" = **PURSUE** (sponsorable)
+- "US Person required" / "ITAR" with no clearance line = **PURSUE** (you qualify)
+
+### Tier S — Top 2 to prioritize
+
+| #   | Company  | Role                                               | Location                                 | Clearance posture                                      | Link                                                                        |
+| --- | -------- | -------------------------------------------------- | ---------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------------------- |
+| 1   | Saronic  | Senior Forward Deployed Software Engineer          | **Washington, DC**                       | US Person required, no active clearance bar            | [link](https://jobs.lever.co/saronic/65efcaf8-72e6-4c57-8015-a0fa0e3d8aab)  |
+| 2   | Palantir | Forward Deployed Software Engineer — US Government | **Washington, DC** (Georgetown) + Tysons | "Ability to obtain a security clearance" — sponsorable | [link](https://jobs.lever.co/palantir/289ad049-7b4e-41e3-8a39-146fbeb6fb64) |
+
+**Why these two:**
+
+- **Saronic DC FDE** — single highest-fit defense posting found. Senior IC, defined scope, DC office, no active clearance bar, FDE travel ≈ 50% maps cleanly to Marine deployment experience. Saronic is autonomous surface vessels (USVs) for DoD; ~$9.25B Series C valuation post-2025 round. Marine narrative + Curri live-ops console rebuild + 7-partner integration layer all narrate directly to this role.
+- **Palantir DC FDSE — US Government** — Georgetown DC office + Tysons VA, sponsorable clearance, FDSE total comp $171K–$415K (Levels.fyi median $215K). Palantir actively recruits veterans; Scout Sniper + USG deployment narrative is exactly the FDSE archetype. BuildOS = AIP/agentic-loop story. Curri = Foundry ops console + multi-source integration analog. Census Bureau + Air Force knowledge-graph history reinforces gov-tech credibility.
+
+### Tier A — Strong adds (apply this week alongside Tier S)
+
+| #   | Company       | Role                                            | Location                       | Clearance posture                                   | Link                                                                       |
+| --- | ------------- | ----------------------------------------------- | ------------------------------ | --------------------------------------------------- | -------------------------------------------------------------------------- |
+| 3   | Picogrid      | Senior Software Engineer (Legion Platform)      | **DC** + SF + El Segundo       | US citizenship + ability to obtain TS — sponsorable | [link](https://picogrid.com/careers/senior-software-engineer)              |
+| 4   | Shield AI     | Senior / Staff SWE (Arlington roles)            | **Arlington, VA** (Crystal Dr) | Mostly sponsorable; manual filter required          | [link](https://jobs.lever.co/shieldai)                                     |
+| 5   | Vannevar Labs | Senior SWE, Fullstack (Mission Agents)          | Remote (US)                    | No clearance required (FDE roles do — skip those)   | [link](https://job-boards.greenhouse.io/vannevarlabs)                      |
+| 6   | Anduril       | Senior Full-Stack SWE / Lattice UI (Costa Mesa) | Costa Mesa, CA                 | "Eligible to obtain TS" — sponsorable, $191–253K    | [link](https://job-boards.greenhouse.io/andurilindustries/jobs/5121462007) |
+
+**Why these four:**
+
+- **Picogrid Legion Platform** — best Curri narrative match in the entire defense batch. Legion = unified integration layer for unmanned systems and sensors across land/sea/air/space. Connecting heterogeneous hardware/software systems = Curri's 7-partner delivery integration story, defense edition. Series A, a16z-backed, DC office, sponsorable. Comp $150–220K + significant early-stage equity.
+- **Shield AI Arlington** — Crystal Drive office, ~23 jobs visible. Founder Brandon Tseng is former Navy SEAL — strongest narrative-match culture in the batch for a Marine Scout Sniper. Lever board scrapes hostile so manual filter for "Arlington" + "Software Engineer" + non-active-clearance roles is required.
+- **Vannevar Labs — Mission Agents** — best AI-agent surface in the batch and zero clearance friction. Remote, $150–215K (lower-band). Mission Agents role is direct BuildOS agent harness/MCP analogy — the cleanest pitch surface for BuildOS work in defense.
+- **Anduril Costa Mesa Lattice/Full-Stack** — top-of-list AI defense company, sponsorable clearance, comp in band. Caveat: NOT DC-local. Anduril Reston roles all require active TS+full-scope poly (HARD CUT until you hold clearance). Costa Mesa or Seattle Lattice/Full-Stack roles are the sponsorable path in.
+
+### Tier B — Maybe (one-screen-first or comp-negotiation required)
+
+| Company              | Role                                           | Location            | Open question                                                |
+| -------------------- | ---------------------------------------------- | ------------------- | ------------------------------------------------------------ |
+| Scale AI             | Senior SWE, Customer-Facing — Federal          | DC                  | Confirm Secret-only (sponsorable interim) vs TS/SCI required |
+| Two Six Technologies | Lead Full-Stack Engineer                       | Arlington (on-site) | Negotiate above $173K Lead band toward $200K+                |
+| HawkEye 360          | Senior Software Engineer — Architecture        | Herndon VA          | Verify clearance language per posting; comp tops at $210K    |
+| Saronic              | Senior Full Stack Engineer (Austin) — fallback | Austin TX           | Apply if DC FDE doesn't move                                 |
+
+### Cut from defense batch
+
+**Active clearance required upfront (HARD CUT until you hold one):**
+
+- **Anduril Reston Intelligence Systems Senior SWE** — "currently possesses ... active U.S. Top Secret + full-scope polygraph." Reopens once clearance is in motion.
+- **Helsing AI Engineer (DC)** — requires active Secret+ clearance held today.
+- **True Anomaly Senior/Staff Platform Engineer AI** — requires "currently hold or have previously held" clearance. DC office is non-engineering anyway.
+- **Primer AI Senior FDE / Forward Deployed AI Engineer** — TS/SCI required upfront. (Other Primer commercial roles may exist; manual board scan needed.)
+- **Scale AI Senior SWE Federal** — requires active Secret minimum. Listed in Tier B since Secret is sponsorable on faster timeline than TS, but verify per posting.
+
+**Geography (no DC office, on-site outside commute):**
+
+- **Mach Industries** — Huntington Beach CA on-site only.
+- **Hadrian** — Torrance CA on-site only. (Best comp + clearance posture in the batch, but blocked by location. Reopen if relocation.)
+- **Skydio** — SF Bay only for engineering. DC office is non-engineering.
+- **HavocAI** — visible senior roles are robotics/embedded in San Diego, not full-stack. DC office real but not advertising senior IC product roles. Worth a direct ping rather than board apply.
+
+**Comp band below $220K floor:**
+
+- **Govini Forward Deployed SWE** — $88–130K band. (Already #10 on local MD/DC list as a narrative pick, but comp is the blocker for treating it as a primary target.)
+- **Striveworks Senior SWE** — $160–200K. Bottom of band; no DC office.
+- **Rhombus Power** — caps at $190K.
+
+**Wrong role shape:**
+
+- **Latent AI** — core edge-ML / model-compression IC role; you're a product/full-stack/agent engineer, not a model researcher.
+- **Epirus Senior SWE Infrastructure** — AWS infra/IaC oriented; doesn't map to BuildOS agentic work or Curri integration narrative.
+- **Defcon AI** — only DevSecOps/Cloud Infra open right now; not your shape.
+
+### Application strategy for defense
+
+- **Apply Saronic DC FDE first.** No clearance friction, DC-local, FDE work is closest civilian analog to Scout Sniper Team Leader role in the entire job search. Lead with: Marine deployment experience + Curri live-ops console rebuild + 7-partner integration layer.
+- **Apply Palantir DC FDSE second.** Sponsorable clearance, comp in band, vet pipeline. Lead with: BuildOS for AIP/agentic-loop story + Curri integrations for multi-source ops console + Census/Air Force gov-tech credibility.
+- **Apply Picogrid third.** Pure Curri narrative — heterogeneous-system integration layer is what they're building. DC office + sponsorable + $150–220K + equity.
+- **Tailor resume bullet hierarchy per company.** BuildOS-led for Vannevar Mission Agents and Palantir AIP angle. Curri-led for Saronic FDE, Picogrid Legion, and Two Six Lead Full-Stack.
+- **Don't cold-apply Anduril Reston roles.** They're a clearance trap right now. Costa Mesa/Seattle Lattice roles are the sponsorable Anduril path; Reston re-opens after clearance is in motion.
+- **Re-pull each posting before applying.** Defense-tech job aggregators often soften "TS/SCI required" into "ability to obtain." Verify the original Lever/Greenhouse listing per role.
+
+---
+
 ## Active Targets — Verified Open 2026-05-09
 
 ### Tier 1 — Top 6 to prioritize
 
 Best fit for bridge-job constraints (remote, senior IC, AI-product surface).
 
-| #   | Company | Role                                                   | Location             | Link                                                                          |
-| --- | ------- | ------------------------------------------------------ | -------------------- | ----------------------------------------------------------------------------- |
-| 1   | Mercury | Senior Software Engineer, AI Engineering               | Any office or remote | [link](https://job-boards.greenhouse.io/mercury/jobs/5850044004)              |
-| 2   | Pomelo  | Staff Software Engineer, Patient Experience            | US remote ($220–260K)| [link](https://job-boards.greenhouse.io/pomelocare/jobs/5818328004)           |
-| 3   | Linear  | Senior / Staff Product Engineer, AI                    | NA remote            | [link](https://linear.app/careers/b4a7764e-c680-4bdf-9956-dc78f2ca94d5)       |
-| 4   | Replit  | Senior Software Engineer, Agent Platform               | Remote-friendly      | [link](https://jobs.ashbyhq.com/replit/b82de6f8-aebf-47b8-8bdc-39ea33807975)  |
-| 5   | Mercury | Senior Software Engineer, Banking Integration Platform | Any office or remote | [link](https://job-boards.greenhouse.io/mercury/jobs/5791111004)              |
-| 6   | Vercel  | Forward Deployed Engineer, v0                          | US distributed       | [link](https://vercel.com/careers/forward-deployed-engineer-v0-us-5872425004) |
+| #   | Company | Role                                                   | Location              | Link                                                                          |
+| --- | ------- | ------------------------------------------------------ | --------------------- | ----------------------------------------------------------------------------- |
+| 1   | Mercury | Senior Software Engineer, AI Engineering               | Any office or remote  | [link](https://job-boards.greenhouse.io/mercury/jobs/5850044004)              |
+| 2   | Pomelo  | Staff Software Engineer, Patient Experience            | US remote ($220–260K) | [link](https://job-boards.greenhouse.io/pomelocare/jobs/5818328004)           |
+| 3   | Linear  | Senior / Staff Product Engineer, AI                    | NA remote             | [link](https://linear.app/careers/b4a7764e-c680-4bdf-9956-dc78f2ca94d5)       |
+| 4   | Replit  | Senior Software Engineer, Agent Platform               | Remote-friendly       | [link](https://jobs.ashbyhq.com/replit/b82de6f8-aebf-47b8-8bdc-39ea33807975)  |
+| 5   | Mercury | Senior Software Engineer, Banking Integration Platform | Any office or remote  | [link](https://job-boards.greenhouse.io/mercury/jobs/5791111004)              |
+| 6   | Vercel  | Forward Deployed Engineer, v0                          | US distributed        | [link](https://vercel.com/careers/forward-deployed-engineer-v0-us-5872425004) |
 
 **Why these six:**
 
@@ -97,11 +184,11 @@ Best fit for bridge-job constraints (remote, senior IC, AI-product surface).
 
 Apply alongside Tier 1; one open question per company to confirm in screen.
 
-| #   | Company    | Role                              | Location             | Link                                                                | Confirm in screen                          |
-| --- | ---------- | --------------------------------- | -------------------- | ------------------------------------------------------------------- | ------------------------------------------ |
-| 7   | Braintrust | Software Engineer, Product        | SF/NYC + more        | [link](https://www.braintrust.dev/careers)                          | Does "+more locations" include US-remote?  |
-| 8   | Protege    | Software Engineer (mid–staff)     | NYC + remote         | [link](https://jobs.ashbyhq.com/protege)                            | Comp band + remote eligibility             |
-| 9   | GitButler  | Senior TypeScript Developer       | SF / Berlin / Remote | [link](https://jobs.gitbutler.com/jobs/frontend-typescript)         | Comp band + scope vs. founding-eng         |
+| #   | Company    | Role                          | Location             | Link                                                        | Confirm in screen                         |
+| --- | ---------- | ----------------------------- | -------------------- | ----------------------------------------------------------- | ----------------------------------------- |
+| 7   | Braintrust | Software Engineer, Product    | SF/NYC + more        | [link](https://www.braintrust.dev/careers)                  | Does "+more locations" include US-remote? |
+| 8   | Protege    | Software Engineer (mid–staff) | NYC + remote         | [link](https://jobs.ashbyhq.com/protege)                    | Comp band + remote eligibility            |
+| 9   | GitButler  | Senior TypeScript Developer   | SF / Berlin / Remote | [link](https://jobs.gitbutler.com/jobs/frontend-typescript) | Comp band + scope vs. founding-eng        |
 
 **Why these three:**
 
@@ -113,13 +200,13 @@ Apply alongside Tier 1; one open question per company to confirm in screen.
 
 Right shape but at least one critical unknown. Send a short note before drafting a tailored cover letter.
 
-| Company         | Role                                    | Location          | Open question                                          |
-| --------------- | --------------------------------------- | ----------------- | ------------------------------------------------------ |
-| Meridian AI     | Software Engineer, Product (Full-Stack) | NYC               | Defined scope or founding-eng-coded? (Seed stage)      |
-| Lio (askLio)    | Software Engineer                       | Munich + US (new) | Is there a US-remote senior IC track? Comp band?       |
-| Hilbert         | AI Engineer – Core / Enterprise         | SF hybrid         | Is a remote senior product role available?             |
-| Mega (gomega)   | Software Engineer                       | Brooklyn on-site  | Is remote/DC-hybrid on the table?                      |
-| Pluvo           | (only Senior Front-End posted)          | Unknown           | Is a senior full-stack/product-eng slot open?          |
+| Company       | Role                                    | Location          | Open question                                     |
+| ------------- | --------------------------------------- | ----------------- | ------------------------------------------------- |
+| Meridian AI   | Software Engineer, Product (Full-Stack) | NYC               | Defined scope or founding-eng-coded? (Seed stage) |
+| Lio (askLio)  | Software Engineer                       | Munich + US (new) | Is there a US-remote senior IC track? Comp band?  |
+| Hilbert       | AI Engineer – Core / Enterprise         | SF hybrid         | Is a remote senior product role available?        |
+| Mega (gomega) | Software Engineer                       | Brooklyn on-site  | Is remote/DC-hybrid on the table?                 |
+| Pluvo         | (only Senior Front-End posted)          | Unknown           | Is a senior full-stack/product-eng slot open?     |
 
 ### Full list by company
 
@@ -274,21 +361,27 @@ Right shape but at least one critical unknown. Send a short note before drafting
 
 _Fill in as you apply — flag which ones to pursue via warm YC-alum intro instead of cold apply._
 
-| Company    | Role                                     | Status | Channel |
-| ---------- | ---------------------------------------- | ------ | ------- |
-| Mercury    | Senior SWE, AI Engineering               |        |         |
-| Pomelo     | Staff SWE, Patient Experience            |        |         |
-| Linear     | Senior/Staff Product Engineer, AI        |        |         |
-| Replit     | Senior SWE, Agent Platform               |        |         |
-| Mercury    | Senior SWE, Banking Integration Platform |        |         |
-| Vercel     | Forward Deployed Engineer, v0            |        |         |
-| Braintrust | SWE, Product (or Open Source Eng)        |        |         |
-| Protege    | Software Engineer (mid–staff)            |        |         |
-| GitButler  | Senior TypeScript Developer              |        |         |
-| Hex        | SWE, Backend (Product)                   |        |         |
-| Cognition  | Full-Stack Engineer                      |        |         |
-| Resend     | Backend Engineer, Core Sending           |        |         |
-|            |                                          |        |         |
+| Company       | Role                                          | Status | Channel |
+| ------------- | --------------------------------------------- | ------ | ------- |
+| Saronic       | Senior FDE (Washington DC)                    |        |         |
+| Palantir      | FDSE — US Government (DC/Tysons)              |        |         |
+| Mercury       | Senior SWE, AI Engineering                    |        |         |
+| Pomelo        | Staff SWE, Patient Experience                 |        |         |
+| Picogrid      | Senior SWE, Legion Platform (DC)              |        |         |
+| Shield AI     | Senior SWE (Arlington)                        |        |         |
+| Linear        | Senior/Staff Product Engineer, AI             |        |         |
+| Replit        | Senior SWE, Agent Platform                    |        |         |
+| Mercury       | Senior SWE, Banking Integration Platform      |        |         |
+| Vannevar Labs | Senior SWE Fullstack, Mission Agents (Remote) |        |         |
+| Anduril       | Senior Full-Stack SWE (Costa Mesa)            |        |         |
+| Vercel        | Forward Deployed Engineer, v0                 |        |         |
+| Braintrust    | SWE, Product (or Open Source Eng)             |        |         |
+| Protege       | Software Engineer (mid–staff)                 |        |         |
+| GitButler     | Senior TypeScript Developer                   |        |         |
+| Hex           | SWE, Backend (Product)                        |        |         |
+| Cognition     | Full-Stack Engineer                           |        |         |
+| Resend        | Backend Engineer, Core Sending                |        |         |
+|               |                                               |        |         |
 
 ---
 

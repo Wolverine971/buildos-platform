@@ -184,6 +184,9 @@ async function buildPreparedPrompt(params: {
 		});
 		preparedSurfaces[surfaceProfile] = buildPreparedPromptSurface({
 			surfaceProfile,
+			contextType: params.contextType,
+			contextPayload: promptContext,
+			conversationSummary,
 			tools,
 			envelope,
 			createdAt: createdAt.toISOString()

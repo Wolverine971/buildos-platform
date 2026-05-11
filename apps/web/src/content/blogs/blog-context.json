@@ -666,6 +666,71 @@
 					"slug": "ui-ux-quality-review",
 					"category": "agent-skills",
 					"filePath": "src/content/blogs/agent-skills/ui-ux-quality-review.md"
+				},
+				"viral-content-for-boring-brands": {
+					"title": "Viral Content For Boring Brands: An Agent Skill For Brand-Account Content",
+					"description": "A source-lineaged agent skill for designing or auditing brand-account content (B2B SaaS, dev tools, commodity products) against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds.",
+					"author": "DJ Wayne",
+					"date": "2026-05-10",
+					"lastmod": "2026-05-10",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": [
+						"agent-skills",
+						"viral-content",
+						"brand-content",
+						"content-strategy",
+						"identity-marketing",
+						"means-end-chain",
+						"marketing-and-content",
+						"buildos"
+					],
+					"readingTime": 14,
+					"excerpt": "Six pre-conscious filters fire in the viewer's brain before the first second is over. Pass all six, the viewer stays and shares. Fail one, they scroll. This skill turns that into an agent-readable audit and design playbook for brand and founder accounts.",
+					"skillId": "marketing-and-content/viral-content-for-boring-brands",
+					"skillType": "combo",
+					"skillCategory": "marketing-and-content",
+					"providers": ["YouTube source analysis", "BuildOS YouTube library"],
+					"compatibleAgents": [
+						"BuildOS-compatible agents",
+						"Claude Code",
+						"Codex",
+						"portable Agent Skills"
+					],
+					"stackWith": [
+						"hook-craft-short-form",
+						"story-driven-content-craft",
+						"viral-video-script-structure",
+						"going-viral"
+					],
+					"skillSource": "docs/research/youtube-library/skill-drafts/viral-content-for-boring-brands/SKILL.md",
+					"lineagePath": "docs/research/youtube-library/skill-drafts/viral-content-for-boring-brands/lineage.yaml",
+					"lineagePeople": ["Tuan Le"],
+					"lineageStats": {
+						"sources": 1,
+						"primitives": 8,
+						"sourceClaims": 10,
+						"edges": 16,
+						"candidateV2Sources": 3
+					},
+					"lineageSources": [
+						{
+							"title": "What Getting 3 Billion Views Taught Me About Human Psychology",
+							"creator": "Tuan Le",
+							"creatorType": "Person",
+							"creatorOrg": "Shortscut",
+							"creatorUrl": "https://www.youtube.com/@tuann_lee",
+							"channelName": "Tuan Le",
+							"channelUrl": "https://www.youtube.com/@tuann_lee",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=KkK-Y7GiQ2o"
+						}
+					],
+					"path": "apps/web/src/content/blogs/agent-skills/viral-content-for-boring-brands.md",
+					"slug": "viral-content-for-boring-brands",
+					"category": "agent-skills",
+					"filePath": "src/content/blogs/agent-skills/viral-content-for-boring-brands.md"
 				}
 			}
 		},
@@ -2640,7 +2705,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-05-10T02:17:25.637Z",
-	"totalPosts": 81,
+	"generatedAt": "2026-05-11T16:21:38.520Z",
+	"totalPosts": 82,
 	"totalCategories": 8
 }

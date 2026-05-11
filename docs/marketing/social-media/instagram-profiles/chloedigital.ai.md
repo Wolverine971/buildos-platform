@@ -11,9 +11,21 @@
 **Relationship Status:** Prospect
 **Audience Quality:** Medium
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-05-05
-**Last Engaged:** Never
+**Last Reviewed:** 2026-05-11
+**Last Engaged:** ~2026-03-27 (@9takesdotcom liked the @build.os "and buildos" comment, per 2026-05-09 audit) + ~2026-03-30 (Chloé sent DM attachment — never opened, surfaced 2026-05-11)
 **Source of First Discovery:** `instagram-niche-expansion-research.md` (peer-level AI creator)
+
+## DM Intel (NEW — 2026-05-11)
+
+**Chloé sent an attachment DM to @build.os ~6 weeks ago (~2026-03-30).** Never opened. Surfaced via `instagram.com/direct/inbox/` walk on 2026-05-11 warmup. The 2026-05-09 reconciliation audit explicitly didn't cover DMs.
+
+**Context that recontextualizes the relationship:** @build.os has an existing direct comment "and buildos" on Chloé's "No gatekeeping. These are the AI tools I actually use" post (~2026-03-25), which got a like-back from @9takesdotcom on 2026-03-27. The DM came ~3 days later (3/30). Plausible interpretation: Chloé saw the comment, looked up the @build.os profile, and reached out by DM.
+
+**Implication:** Chloé is materially warmer than the "Prospect" status. The ladder stage should be at least stage_3+ given the DM inbound. The 5 pending Chloé comment drafts in the backlog become much less important than the unopened DM — saturation-on-comments was protecting against engagement dilution, but the DM is the natural higher-leverage surface.
+
+**Recommendation for `/instagram-reply`:** Open the DM. Attachment shape will dictate response — could be a product pitch, a collab offer, or "saw your handle, what is this." All three responses are very different. Defer all 5 pending comment drafts until DM is triaged.
+
+---
 
 ## Condensed Intel
 

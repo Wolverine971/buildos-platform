@@ -154,8 +154,8 @@
 		  decorative rail layer (lg+ only).
 		  - LEFT path: straight vertical from §02A card-bottom (x=25%) to §03 chip (x=25%, y=31.5%).
 		  - RIGHT path: right-angle around §03 — from §02B card-bottom (x=75%) drops a hair,
-		    turns right to x=88% (clears §03's 70%-wide card), then drops past §03's bottom and
-		    lands at the §04 chip at (x=88%, y=75%).
+		    turns right to x=90% (clears §03's 78%-wide card), then drops past §03's bottom and
+		    lands at the §04 chip at (x=90%, y=75%).
 		  SVG keeps the dash pattern continuous around corners (CSS borders break dashes at joins).
 		  Coordinate space: viewBox 0-100 stretched non-uniformly over the rail wrapper.
 		  vector-effect="non-scaling-stroke" keeps the stroke 2px regardless of the stretch.
@@ -179,7 +179,7 @@
 						/>
 						<!-- RIGHT: §02B → around §03 → §04 -->
 						<path
-							d="M 75,27 L 75,29 L 88,29 L 88,75"
+							d="M 75,27 L 75,29 L 90,29 L 90,75"
 							fill="none"
 							stroke="currentColor"
 							stroke-width="2"
@@ -200,7 +200,7 @@
 						class="absolute left-[25%] top-[31.5%] -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/60"
 					></span>
 					<span
-						class="absolute left-[88%] top-[75%] -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/60"
+						class="absolute left-[90%] top-[75%] -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-foreground/60"
 					></span>
 				</div>
 			</div>
@@ -350,14 +350,12 @@
 					<div class="lg:flex lg:justify-center">
 						<div class="relative">
 							<!-- landing extension: short upward dashed line that meets the rail's bottom dot -->
-							<div
-								aria-hidden="true"
-								class="hidden lg:block absolute left-1/2 -translate-x-1/2 -top-4 h-4 w-0 border-l-2 border-dashed border-foreground/55"
-							></div>
+
 							<div
 								class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card shadow-ink-inner px-3 py-1.5 tx tx-bloom tx-weak"
 							>
-								<span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/60"></span>
+								<span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/60"
+								></span>
 								<span
 									class="text-[0.55rem] uppercase tracking-[0.22em] text-muted-foreground"
 								>
@@ -370,11 +368,11 @@
 				</div>
 
 				<!--
-				  §03 card (70% width on lg+). The right ~30% gutter stays empty so the §02B
+				  §03 card (78% width on lg+). The right ~22% gutter stays empty so the §02B
 				  rail can wrap around to the right and continue down to §04.
 				-->
 				<div
-					class="lg:max-w-[70%] rounded-lg border border-border bg-background shadow-ink-strong tx tx-frame tx-weak p-5 sm:p-8 space-y-8"
+					class="lg:max-w-[78%] rounded-lg border border-border bg-background shadow-ink-strong tx tx-frame tx-weak p-5 sm:p-8 space-y-8"
 				>
 					<div class="text-center">
 						<div
@@ -681,20 +679,16 @@
 		<section id="agents" class="relative border-b border-border bg-card/40">
 			<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8">
 				<!--
-				  entry marker: lands at the RIGHT rail's terminus (x=88% on lg+).
-				  The chip sits inside a 24%-wide column anchored to the parent's right edge
-				  (so it spans 76%-100%), then centers itself in that column → chip center at 88%.
+				  entry marker: lands at the RIGHT rail's terminus (x=90% on lg+).
+				  The chip sits inside a 20%-wide column anchored to the parent's right edge
+				  (so it spans 80%-100%), then centers itself in that column → chip center at 90%.
 				  On mobile, the outer's flex justify-end keeps the chip right-aligned.
 				-->
 				<div class="relative min-h-[2.5rem] flex justify-end">
 					<div
-						class="lg:absolute lg:right-0 lg:top-0 lg:w-[24%] lg:flex lg:justify-center"
+						class="lg:absolute lg:right-0 lg:top-0 lg:w-[20%] lg:flex lg:justify-center"
 					>
 						<div class="relative">
-							<div
-								aria-hidden="true"
-								class="hidden lg:block absolute left-1/2 -translate-x-1/2 -top-4 h-4 w-0 border-l-2 border-dashed border-foreground/55"
-							></div>
 							<div
 								class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card shadow-ink-inner px-3 py-1.5 tx tx-grain tx-weak whitespace-nowrap"
 							>
@@ -728,150 +722,156 @@
 							You and your agents, on the same project.
 						</h2>
 						<p class="mt-2 text-sm text-muted-foreground max-w-xl mx-auto">
-							Same context, two surfaces. You stay in the work. Your agents stay useful.
-							Both contribute to the same project state.
+							Same context, two surfaces. You stay in the work. Your agents stay
+							useful. Both contribute to the same project state.
 						</p>
 					</div>
 
 					<!-- the chart: 3-column architecture (You · Shared state · Agent) -->
 					<div>
-					<div class="grid md:grid-cols-3 gap-3 sm:gap-4 items-stretch">
-						<!-- LEFT: Framework — for you -->
-						<article
-							class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-5 flex flex-col"
-						>
-							<div
-								class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground mb-2"
-							>
-								Framework — for you
-							</div>
-							<h3 class="text-lg font-semibold tracking-tight">
-								High-level direction.
-							</h3>
-							<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-								Brain dumps, decisions, taste. The daily brief surfaces what
-								deserves your attention. You stay the author.
-							</p>
-							<div
-								class="mt-4 rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-grid tx-weak"
+						<div class="grid md:grid-cols-3 gap-3 sm:gap-4 items-stretch">
+							<!-- LEFT: Framework — for you -->
+							<article
+								class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-5 flex flex-col"
 							>
 								<div
-									class="text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
+									class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground mb-2"
 								>
-									You · brain dump
+									Framework — for you
 								</div>
-								<p class="text-xs leading-relaxed">
-									"Push the beta-reader pass to next week. Maya's act-3 turn
-									should hinge on her sister."
+								<h3 class="text-lg font-semibold tracking-tight">
+									High-level direction.
+								</h3>
+								<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+									Brain dumps, decisions, taste. The daily brief surfaces what
+									deserves your attention. You stay the author.
 								</p>
-							</div>
-						</article>
-
-						<!-- MIDDLE: Shared project state -->
-						<article
-							class="rounded-lg border border-accent/40 bg-accent/5 shadow-ink-strong tx tx-frame tx-med p-5 flex flex-col"
-						>
-							<div class="text-[0.6rem] uppercase tracking-[0.22em] text-accent mb-2">
-								Shared project state
-							</div>
-							<h3 class="text-lg font-semibold tracking-tight">The same context.</h3>
-							<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-								Project, docs, decisions, conversations. Both sides write to it.
-								Both sides read from it.
-							</p>
-							<div class="mt-4 space-y-1.5 text-sm">
-								<div class="flex items-center gap-1.5">
-									<FolderKanban
-										class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-									/>
-									<span
-										>Project: <strong class="font-medium">Fading Crown</strong
-										></span
+								<div
+									class="mt-4 rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-grid tx-weak"
+								>
+									<div
+										class="text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
 									>
+										You · brain dump
+									</div>
+									<p class="text-xs leading-relaxed">
+										"Push the beta-reader pass to next week. Maya's act-3 turn
+										should hinge on her sister."
+									</p>
 								</div>
-								<div class="flex items-center gap-1.5">
-									<FileText
-										class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-									/>
-									<span>Doc: Maya — character arc</span>
-								</div>
-								<div class="flex items-center gap-1.5">
-									<Calendar
-										class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
-									/>
-									<span>Task: Beta pass → +1 week</span>
-								</div>
-								<div class="flex items-center gap-1.5">
-									<CheckCircle2
-										class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"
-									/>
-									<span class="line-through text-muted-foreground">
-										Ch. 12 rewrite
-									</span>
-								</div>
-							</div>
-						</article>
+							</article>
 
-						<!-- RIGHT: Harness — for your agent -->
-						<article
-							class="rounded-lg border border-border bg-background shadow-ink tx tx-grain tx-weak p-5 flex flex-col"
-						>
-							<div
-								class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground mb-2"
-							>
-								Harness — for your agent
-							</div>
-							<h3 class="text-lg font-semibold tracking-tight">
-								Grounded execution.
-							</h3>
-							<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
-								Your agent reads the project state, picks up tool calls, ships
-								scoped work. Cheap models stay productive when the context layer is
-								right.
-							</p>
-							<div
-								class="mt-4 rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-thread tx-weak"
+							<!-- MIDDLE: Shared project state -->
+							<article
+								class="rounded-lg border border-accent/40 bg-accent/5 shadow-ink-strong tx tx-frame tx-med p-5 flex flex-col"
 							>
 								<div
-									class="text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
+									class="text-[0.6rem] uppercase tracking-[0.22em] text-accent mb-2"
 								>
-									Agent · acting on it
+									Shared project state
 								</div>
-								<p class="text-xs leading-relaxed">
-									"Drafting beta-reader email with the latest Ch. 12. Rescheduling
-									the calendar block. Logging notes back to the project."
+								<h3 class="text-lg font-semibold tracking-tight">
+									The same context.
+								</h3>
+								<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+									Project, docs, decisions, conversations. Both sides write to it.
+									Both sides read from it.
 								</p>
+								<div class="mt-4 space-y-1.5 text-sm">
+									<div class="flex items-center gap-1.5">
+										<FolderKanban
+											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+										/>
+										<span
+											>Project: <strong class="font-medium"
+												>Fading Crown</strong
+											></span
+										>
+									</div>
+									<div class="flex items-center gap-1.5">
+										<FileText
+											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+										/>
+										<span>Doc: Maya — character arc</span>
+									</div>
+									<div class="flex items-center gap-1.5">
+										<Calendar
+											class="w-3.5 h-3.5 text-muted-foreground flex-shrink-0"
+										/>
+										<span>Task: Beta pass → +1 week</span>
+									</div>
+									<div class="flex items-center gap-1.5">
+										<CheckCircle2
+											class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"
+										/>
+										<span class="line-through text-muted-foreground">
+											Ch. 12 rewrite
+										</span>
+									</div>
+								</div>
+							</article>
+
+							<!-- RIGHT: Harness — for your agent -->
+							<article
+								class="rounded-lg border border-border bg-background shadow-ink tx tx-grain tx-weak p-5 flex flex-col"
+							>
+								<div
+									class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground mb-2"
+								>
+									Harness — for your agent
+								</div>
+								<h3 class="text-lg font-semibold tracking-tight">
+									Grounded execution.
+								</h3>
+								<p class="mt-2 text-sm text-muted-foreground leading-relaxed">
+									Your agent reads the project state, picks up tool calls, ships
+									scoped work. Cheap models stay productive when the context layer
+									is right.
+								</p>
+								<div
+									class="mt-4 rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-thread tx-weak"
+								>
+									<div
+										class="text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
+									>
+										Agent · acting on it
+									</div>
+									<p class="text-xs leading-relaxed">
+										"Drafting beta-reader email with the latest Ch. 12.
+										Rescheduling the calendar block. Logging notes back to the
+										project."
+									</p>
+								</div>
+							</article>
+						</div>
+
+						<!-- bidirectional flow indicators -->
+						<div
+							class="mt-5 grid md:grid-cols-3 gap-3 sm:gap-4 text-[0.55rem] uppercase tracking-[0.22em] text-muted-foreground/80 text-center"
+						>
+							<div class="flex items-center justify-center gap-2">
+								<ArrowRight class="w-3.5 h-3.5" />
+								<span>writes & reads</span>
 							</div>
-						</article>
-					</div>
+							<div class="flex items-center justify-center gap-2">
+								<ArrowLeft class="w-3.5 h-3.5" />
+								<span>shared</span>
+								<ArrowRight class="w-3.5 h-3.5" />
+							</div>
+							<div class="flex items-center justify-center gap-2">
+								<span>writes & reads</span>
+								<ArrowLeft class="w-3.5 h-3.5" />
+							</div>
+						</div>
 
-					<!-- bidirectional flow indicators -->
-					<div
-						class="mt-5 grid md:grid-cols-3 gap-3 sm:gap-4 text-[0.55rem] uppercase tracking-[0.22em] text-muted-foreground/80 text-center"
-					>
-						<div class="flex items-center justify-center gap-2">
-							<ArrowRight class="w-3.5 h-3.5" />
-							<span>writes & reads</span>
-						</div>
-						<div class="flex items-center justify-center gap-2">
-							<ArrowLeft class="w-3.5 h-3.5" />
-							<span>shared</span>
-							<ArrowRight class="w-3.5 h-3.5" />
-						</div>
-						<div class="flex items-center justify-center gap-2">
-							<span>writes & reads</span>
-							<ArrowLeft class="w-3.5 h-3.5" />
-						</div>
+						<!-- closing caption -->
+						<p
+							class="mt-8 text-center text-xs sm:text-sm text-muted-foreground max-w-2xl mx-auto leading-relaxed"
+						>
+							An agent can clone a workflow in a weekend. It can't clone a worldview.
+							The moat is the shared context layer — and you control it.
+						</p>
 					</div>
-
-					<!-- closing caption -->
-					<p
-						class="mt-8 text-center text-xs sm:text-sm text-muted-foreground max-w-2xl mx-auto leading-relaxed"
-					>
-						An agent can clone a workflow in a weekend. It can't clone a worldview. The
-						moat is the shared context layer — and you control it.
-					</p>
-				</div>
 				</div>
 			</div>
 		</section>

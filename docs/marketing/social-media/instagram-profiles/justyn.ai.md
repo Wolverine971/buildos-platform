@@ -11,9 +11,21 @@
 **Relationship Status:** Prospect
 **Audience Quality:** Medium-High
 **Profile Created:** 2026-04-08
-**Last Reviewed:** 2026-04-11
-**Last Engaged:** Never
+**Last Reviewed:** 2026-05-11
+**Last Engaged:** ~2026-03-30 (Justyn sent DM attachment to @build.os — never opened) + ~2026-04-11 @build.os posted substantive AI-builder comment on the "Drop SYSTEM" CTA-bait Claude Code post
 **Source of First Discovery:** `instagram-engagement-targets.md` plus backfill from daily engagement logs
+
+## DM Intel (NEW — 2026-05-11)
+
+**Justyn sent an attachment DM to @build.os ~6 weeks ago (~2026-03-30).** Never opened. Surfaced via `instagram.com/direct/inbox/` walk on 2026-05-11 warmup.
+
+**Conflict with current skip-list status:** `instagram-engagement-targets.md` lists @justyn.ai as "Monitor only" due to the CTA-bait posting pattern (1700–2300 keyword-stuffed comments per post). An active DM inbound to @build.os is a real signal even from a CTA-bait account — it means Justyn (or his team) noticed the @build.os account specifically enough to reach out, not just collect engagement.
+
+**Context:** @build.os has 3 prior posted comments on Justyn's posts per the 2026-05-09 audit: (1) ~4/11 substantive Claude Code MCP comment on the "Drop SYSTEM" CTA-bait post; (2) ~4/11 brief BOOOOK reply on @adhdjesse (different account but same CTA-bait family); (3) ~3/28 substantive agent-specialization comment on a "Drop AGENT" post.
+
+**Recommendation for `/instagram-reply`:** Open the DM. Attachment shape will dictate response. If it's a generic "follow back / engagement pod" pitch, ignore. If it's substantive (collab, "noticed your agentic work," etc.), respond. Don't adjust skip-list status until DM content is reviewed.
+
+---
 
 ## Condensed Intel
 
