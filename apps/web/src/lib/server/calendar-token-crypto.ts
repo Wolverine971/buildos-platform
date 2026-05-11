@@ -1,4 +1,5 @@
 // apps/web/src/lib/server/calendar-token-crypto.ts
+import { env as privateEnv } from '$env/dynamic/private';
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto';
 
 const ENCRYPTED_PREFIX = 'enc:v1.';
@@ -21,9 +22,13 @@ function deriveKey(secret: string): Buffer {
 	return createHash('sha256').update(`${ENCRYPTION_CONTEXT}:${secret}`, 'utf8').digest();
 }
 
+function getPrivateEnv(name: string): string | undefined {
+	return privateEnv[name] ?? process.env[name];
+}
+
 function buildFallbackSecret(): string | null {
-	const serviceKey = process.env.PRIVATE_SUPABASE_SERVICE_KEY?.trim();
-	const googleSecret = process.env.PRIVATE_GOOGLE_CLIENT_SECRET?.trim();
+	const serviceKey = getPrivateEnv('PRIVATE_SUPABASE_SERVICE_KEY')?.trim();
+	const googleSecret = getPrivateEnv('PRIVATE_GOOGLE_CLIENT_SECRET')?.trim();
 
 	if (!serviceKey || !googleSecret) {
 		return null;
@@ -33,7 +38,7 @@ function buildFallbackSecret(): string | null {
 }
 
 function getKeyCandidates(): Buffer[] {
-	const configuredSecret = process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY?.trim() || null;
+	const configuredSecret = getPrivateEnv('PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY')?.trim() || null;
 	const fallbackSecret = buildFallbackSecret();
 	const candidates = [configuredSecret, fallbackSecret].filter(
 		(value): value is string => typeof value === 'string' && value.length > 0

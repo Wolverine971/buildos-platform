@@ -1749,6 +1749,7 @@
 
 	// Auto-send after transcription completes (when user clicked send while recording)
 	$effect(() => {
+		if (!browser) return;
 		if (!voice.pendingSendAfterTranscription) return;
 		if (voice.isRecording || voice.isStopping || voice.isTranscribing || voice.isInitializing) {
 			return;

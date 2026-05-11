@@ -266,37 +266,49 @@
 <!-- INKPRINT container with muted background -->
 <div class="flex h-full flex-col bg-muted">
 	<div class="flex-1 overflow-auto p-3 sm:p-4">
-		<!-- Project Workspace card at top -->
+		<!-- Project Workspace card — pre-selected default -->
 		<button
 			type="button"
 			onclick={() => onSelectAction('workspace')}
-			class="group flex w-full items-center gap-2 rounded-lg border border-border bg-card p-3 text-left shadow-ink tx tx-frame tx-weak transition-all duration-200 hover:border-accent hover:shadow-ink-strong active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-3 sm:rounded-xl sm:p-4"
+			class="group relative flex w-full items-center gap-3 rounded-xl border-2 border-accent/60 bg-accent/5 p-3.5 text-left shadow-ink tx tx-frame tx-weak transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:shadow-ink-strong active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:gap-4 sm:p-4"
 		>
 			<div
-				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent sm:h-10 sm:w-10"
+				class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground shadow-ink sm:h-11 sm:w-11"
 			>
-				<BriefcaseBusiness class="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+				<BriefcaseBusiness class="h-4 w-4 sm:h-5 sm:w-5" />
 			</div>
 			<div class="min-w-0 flex-1">
-				<h3 class="text-sm font-semibold text-foreground">Project Workspace</h3>
-				<p class="text-xs text-muted-foreground">
+				<div class="flex items-center gap-2">
+					<h3 class="text-sm font-semibold text-foreground sm:text-base">
+						Project Workspace
+					</h3>
+					<span
+						class="inline-flex items-center rounded-full border border-accent/30 bg-accent/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent"
+					>
+						Default
+					</span>
+				</div>
+				<p class="mt-0.5 text-xs text-muted-foreground">
 					Chat about the whole project — goals, plans, tasks, anything.
 				</p>
 			</div>
+			<span
+				class="hidden shrink-0 items-center gap-1 rounded-full bg-accent px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-accent-foreground shadow-ink transition-all group-hover:bg-accent/90 sm:inline-flex"
+			>
+				Start chat
+				<ChevronRight class="h-3.5 w-3.5" />
+			</span>
 			<ChevronRight
-				class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent"
+				class="h-5 w-5 shrink-0 text-accent transition-transform group-hover:translate-x-0.5 sm:hidden"
 			/>
 		</button>
 
-		<!-- Divider with label -->
-		<div class="my-3 flex items-center gap-3 sm:my-4">
-			<div class="h-px flex-1 bg-border"></div>
-			<span
-				class="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
-			>
-				Or focus on something specific
-			</span>
-			<div class="h-px flex-1 bg-border"></div>
+		<!-- Or narrow the focus -->
+		<div class="mb-3 mt-4 sm:mt-5">
+			<h4 class="text-xs font-semibold text-foreground">Or narrow the focus</h4>
+			<p class="mt-0.5 text-[11px] text-muted-foreground">
+				Pick a specific item below and the chat will be scoped just to it.
+			</p>
 		</div>
 
 		<!-- Entity type tabs -->
@@ -467,8 +479,14 @@
 									</div>
 								{/if}
 							</div>
+							<span
+								class="hidden shrink-0 items-center gap-1 rounded-full border border-border bg-background px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition-all group-hover:border-accent group-hover:bg-accent/10 group-hover:text-accent sm:inline-flex"
+							>
+								Focus
+								<ChevronRight class="h-3 w-3" />
+							</span>
 							<ChevronRight
-								class="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent"
+								class="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent sm:hidden"
 							/>
 						</div>
 					</button>

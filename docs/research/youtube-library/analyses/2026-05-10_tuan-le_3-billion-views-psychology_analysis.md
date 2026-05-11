@@ -188,7 +188,7 @@ Constraints that follow:
 **Examples:**
 
 - Tuan's working question while drafting: "What does the person who shares this get to say about themselves by sharing it?"
-- Implicit content scoring: every piece should have an answer to "the sharer says, _this person/idea makes me look \_\_\__."
+- Implicit content scoring: every piece should have an answer to "the sharer says, \_this person/idea makes me look \_\_\_\_."
 
 **Agent behavior:**
 

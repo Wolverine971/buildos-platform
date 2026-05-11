@@ -2,7 +2,7 @@
 
 # Prompt Audit: calendar-analysis-part1-event-grouping
 
-**Generated at:** 2026-02-27T05:33:29.148Z
+**Generated at:** 2026-05-11T19:17:18.968Z
 **Environment:** Development
 
 ## Flow Context
@@ -16,8 +16,8 @@
 ```json
 {
 	"userId": "c44daf9e-27d5-4ef0-9ffd-a57887daff95",
-	"eventCount": 42,
-	"timestamp": "2026-02-27T05:33:29.148Z"
+	"eventCount": 28,
+	"timestamp": "2026-05-11T19:17:18.968Z"
 }
 ```
 
@@ -32,7 +32,7 @@ You are an expert at analyzing calendar patterns to identify potential projects.
 ```
 You are analyzing calendar events to identify patterns and group related events that might represent projects.
 
-**Today's date**: 2026-02-27
+**Today's date**: 2026-05-11
 
 ## Your Task
 
@@ -59,387 +59,271 @@ Group related calendar events and identify project themes. Focus on:
 - Focus time blocks for specific projects
 - Team sync meetings and standups
 
-## Calendar Events (42 total)
+## Calendar Events (28 total)
 
 [
   {
-    "id": "187stvtin15i2pnp62theevu3g_20260220T170000Z",
-    "title": "No Finned Friends",
-    "start": "2026-02-20T12:00:00-05:00",
-    "end": "2026-02-20T15:00:00-05:00",
+    "id": "li5o3slq63boc3ira3svdtjq4g_20260504T190000Z",
+    "title": "Fun in the forest",
+    "start": "2026-05-04T15:00:00-04:00",
+    "end": "2026-05-04T17:00:00-04:00",
     "is_recurring": true,
     "attendee_count": 2,
     "is_organizer": false
   },
   {
-    "id": "82cg0bva0q254vcpr6q9pd1usg",
-    "title": "Meet with Solo",
-    "start": "2026-02-21T20:30:00-05:00",
-    "end": "2026-02-21T21:30:00-05:00",
-    "is_recurring": false,
-    "attendee_count": 0,
-    "is_organizer": true
-  },
-  {
-    "id": "khnictki0nkdk8tmmsfkrlri6o",
-    "title": "Lily iCode 2:30-3:45",
-    "start": "2026-02-23T14:30:00-05:00",
-    "end": "2026-02-23T15:45:00-05:00",
-    "is_recurring": false,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260225T170000Z",
-    "title": "Finned Friends",
-    "start": "2026-02-25T12:00:00-05:00",
-    "end": "2026-02-25T15:00:00-05:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "oojqklo5fuc7ghrjso3cd8p3ac",
-    "title": "Helping grown up",
-    "start": "2026-02-25T12:00:00-05:00",
-    "end": "2026-02-25T15:00:00-05:00",
-    "is_recurring": false,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260226T170000Z",
-    "title": "Finned Friends",
-    "start": "2026-02-26T12:00:00-05:00",
-    "end": "2026-02-26T15:00:00-05:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "187stvtin15i2pnp62theevu3g_20260227T170000Z",
-    "title": "Finned Friends",
-    "start": "2026-02-27T12:00:00-05:00",
-    "end": "2026-02-27T15:00:00-05:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "j035l17eirk4ca2mo7143ispag",
-    "title": "12:45 dr Levi",
-    "start": "2026-02-27T12:45:00-05:00",
-    "end": "2026-02-27T13:45:00-05:00",
-    "is_recurring": false,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "npgl7qn0bh5ifc1ph8355nhls4",
-    "title": "Lily iCode 2:30-3:45",
-    "start": "2026-03-02T14:30:00-05:00",
-    "end": "2026-03-02T15:45:00-05:00",
-    "is_recurring": false,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260304T170000Z",
-    "title": "Finned Friends",
-    "start": "2026-03-04T12:00:00-05:00",
-    "end": "2026-03-04T15:00:00-05:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260305T170000Z",
-    "title": "Finned Friends",
-    "start": "2026-03-05T12:00:00-05:00",
-    "end": "2026-03-05T15:00:00-05:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "187stvtin15i2pnp62theevu3g_20260306T170000Z",
-    "title": "Finned Friends",
-    "start": "2026-03-06T12:00:00-05:00",
-    "end": "2026-03-06T15:00:00-05:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "9bifcjmgtc2d8c1v7v5pa710dk",
-    "title": "Vintage shopping with Kaitlyn",
-    "start": "2026-03-07T11:00:00-05:00",
-    "end": "2026-03-07T12:00:00-05:00",
+    "id": "vjbm3hmcpmpv0fajksk48cf1q0",
+    "title": "DJ Wayne and Rocio Hernandez",
+    "description_snippet": "Event Name\nTop AI Lab Interview\n\nLocation: This is a Google Meet web conference.\nYou can join this meeting from your computer, tablet, or smartphone.\nhttps://calendly.com/events/2cba5631-3f4c-4072-9f0",
+    "start": "2026-05-06T09:30:00-04:00",
+    "end": "2026-05-06T09:45:00-04:00",
     "is_recurring": false,
     "attendee_count": 2,
     "is_organizer": false,
-    "location": "730 Bestgate Rd, Annapolis, MD 21401, USA"
+    "location": "Google Meet (instructions in description)"
   },
   {
-    "id": "t8i94mphqbeqlm41affcm7uop4",
-    "title": "10Am booster flu shot Levi",
-    "start": "2026-03-09T10:00:00-04:00",
-    "end": "2026-03-09T11:00:00-04:00",
+    "id": "21bpafpsrusahhqv0b1n861m8k_20260506T160000Z",
+    "title": "Finned Friends",
+    "start": "2026-05-06T12:00:00-04:00",
+    "end": "2026-05-06T15:00:00-04:00",
+    "is_recurring": true,
+    "attendee_count": 2,
+    "is_organizer": false
+  },
+  {
+    "id": "2pcgc6u95poooh4bo7g3ii5d9o",
+    "title": "9:45AM Walter eye PG COUNTY",
+    "start": "2026-05-07T09:45:00-04:00",
+    "end": "2026-05-07T10:45:00-04:00",
     "is_recurring": false,
     "attendee_count": 2,
     "is_organizer": false
   },
   {
-    "id": "2ckma5g2dfqdrgm658bgc3b7q8",
-    "title": "Lily iCode 2:30-3:45",
-    "start": "2026-03-09T14:30:00-04:00",
-    "end": "2026-03-09T15:45:00-04:00",
+    "id": "jm7ubs5qnljaa4rj036tje90b8_20260507T160000Z",
+    "title": "Finned Friends",
+    "start": "2026-05-07T12:00:00-04:00",
+    "end": "2026-05-07T15:00:00-04:00",
+    "is_recurring": true,
+    "attendee_count": 2,
+    "is_organizer": false
+  },
+  {
+    "id": "187stvtin15i2pnp62theevu3g_20260508T160000Z",
+    "title": "Finned Friends",
+    "start": "2026-05-08T12:00:00-04:00",
+    "end": "2026-05-08T15:00:00-04:00",
+    "is_recurring": true,
+    "attendee_count": 2,
+    "is_organizer": false
+  },
+  {
+    "id": "sn7mmhh76h9moetl81e5ca0um8",
+    "title": "6pm book club",
+    "start": "2026-05-09T18:00:00-04:00",
+    "end": "2026-05-09T21:00:00-04:00",
     "is_recurring": false,
     "attendee_count": 2,
     "is_organizer": false
   },
   {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260311T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-03-11T12:00:00-04:00",
-    "end": "2026-03-11T15:00:00-04:00",
+    "id": "ebs5i61hisqsir87ujt333got8_20260510T010000Z",
+    "title": "Tina Bday",
+    "start": "2026-05-09T21:00:00-04:00",
+    "end": "2026-05-09T22:00:00-04:00",
     "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260312T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-03-12T12:00:00-04:00",
-    "end": "2026-03-12T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "187stvtin15i2pnp62theevu3g_20260313T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-03-13T12:00:00-04:00",
-    "end": "2026-03-13T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "6f9mheugl5tkb6uf4k7ei08ahg_20260314T020000Z",
-    "title": "National nap day",
-    "description_snippet": "Let’s all take a nap",
-    "start": "2026-03-13T22:00:00-04:00",
-    "end": "2026-03-13T23:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 11,
+    "attendee_count": 3,
     "is_organizer": true
   },
   {
-    "id": "9okfdbufsbha6kt3b0a2j7dk6s",
-    "title": "Lily iCode 2:30-5PM",
-    "description_snippet": "Extended time for makeup day pick up at 5pm!",
-    "start": "2026-03-16T14:30:00-04:00",
-    "end": "2026-03-16T17:00:00-04:00",
+    "id": "li5o3slq63boc3ira3svdtjq4g_20260511T190000Z",
+    "title": "Fun in the forest",
+    "start": "2026-05-11T15:00:00-04:00",
+    "end": "2026-05-11T17:00:00-04:00",
+    "is_recurring": true,
+    "attendee_count": 2,
+    "is_organizer": false
+  },
+  {
+    "id": "_60q30c1g60o30e1i60o4ac1g60rj8gpl88rj2c1h84s34h9g60s30c1g60o30c1g750kadq36koj6c238h348gpg64o30c1g60o30c1g60o30c1g60o32c1g60o30c1g89146chg6gq3ad1h84r48e1k61136dpi8oo3gg9h84o36dhk68qg",
+    "title": "Rod Chamberlin / DJ Wayne - 30-minute Zoom meeting",
+    "description_snippet": "Location details\nWhen it's time, use this link to join the meeting:\nhttps://us02web.zoom.us/j/9498889440#success\n\nAttendees\nRod Chamberlin (Host)\nDJ Wayne, djwayne35@gmail.com\n+1 410 980 0852\n\nNeed to",
+    "start": "2026-05-12T11:30:00-04:00",
+    "end": "2026-05-12T12:00:00-04:00",
+    "is_recurring": false,
+    "attendee_count": 2,
+    "is_organizer": false,
+    "location": "https://us02web.zoom.us/j/9498889440#success"
+  },
+  {
+    "id": "21bpafpsrusahhqv0b1n861m8k_20260513T160000Z",
+    "title": "Finned Friends",
+    "start": "2026-05-13T12:00:00-04:00",
+    "end": "2026-05-13T15:00:00-04:00",
+    "is_recurring": true,
+    "attendee_count": 2,
+    "is_organizer": false
+  },
+  {
+    "id": "jm7ubs5qnljaa4rj036tje90b8_20260514T160000Z",
+    "title": "Finned Friends",
+    "start": "2026-05-14T12:00:00-04:00",
+    "end": "2026-05-14T15:00:00-04:00",
+    "is_recurring": true,
+    "attendee_count": 2,
+    "is_organizer": false
+  },
+  {
+    "id": "187stvtin15i2pnp62theevu3g_20260515T160000Z",
+    "title": "Finned Friends",
+    "start": "2026-05-15T12:00:00-04:00",
+    "end": "2026-05-15T15:00:00-04:00",
+    "is_recurring": true,
+    "attendee_count": 2,
+    "is_organizer": false
+  },
+  {
+    "id": "k90gil7pefc8i711co4qc41dik",
+    "title": "helping parent",
+    "start": "2026-05-15T12:00:00-04:00",
+    "end": "2026-05-15T15:00:00-04:00",
     "is_recurring": false,
     "attendee_count": 2,
     "is_organizer": false
   },
   {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260318T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-03-18T12:00:00-04:00",
-    "end": "2026-03-18T15:00:00-04:00",
+    "id": "li5o3slq63boc3ira3svdtjq4g_20260518T190000Z",
+    "title": "Fun in the forest",
+    "start": "2026-05-18T15:00:00-04:00",
+    "end": "2026-05-18T17:00:00-04:00",
     "is_recurring": true,
     "attendee_count": 2,
     "is_organizer": false
   },
   {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260319T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-03-19T12:00:00-04:00",
-    "end": "2026-03-19T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "187stvtin15i2pnp62theevu3g_20260320T160000Z",
-    "title": "NO Finned Friends",
-    "start": "2026-03-20T12:00:00-04:00",
-    "end": "2026-03-20T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "hs0714dejol6b1msopr40iii6g",
-    "title": "Magothy Meeting",
-    "start": "2026-03-24T19:00:00-04:00",
-    "end": "2026-03-24T20:00:00-04:00",
+    "id": "g106a9m80l2fdkgq5spica9f5s",
+    "title": "Acton Acadamy open house",
+    "start": "2026-05-19T18:00:00-04:00",
+    "end": "2026-05-19T19:30:00-04:00",
     "is_recurring": false,
     "attendee_count": 2,
-    "is_organizer": false
+    "is_organizer": false,
+    "location": "461 College Pkwy, Arnold, MD 21012"
   },
   {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260325T160000Z",
+    "id": "21bpafpsrusahhqv0b1n861m8k_20260520T160000Z",
     "title": "Finned Friends",
-    "start": "2026-03-25T12:00:00-04:00",
-    "end": "2026-03-25T15:00:00-04:00",
+    "start": "2026-05-20T12:00:00-04:00",
+    "end": "2026-05-20T15:00:00-04:00",
     "is_recurring": true,
     "attendee_count": 2,
     "is_organizer": false
   },
   {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260326T160000Z",
+    "id": "jm7ubs5qnljaa4rj036tje90b8_20260521T160000Z",
     "title": "Finned Friends",
-    "start": "2026-03-26T12:00:00-04:00",
-    "end": "2026-03-26T15:00:00-04:00",
+    "start": "2026-05-21T12:00:00-04:00",
+    "end": "2026-05-21T15:00:00-04:00",
     "is_recurring": true,
     "attendee_count": 2,
     "is_organizer": false
   },
   {
-    "id": "187stvtin15i2pnp62theevu3g_20260327T160000Z",
+    "id": "187stvtin15i2pnp62theevu3g_20260522T160000Z",
     "title": "Finned Friends",
-    "start": "2026-03-27T12:00:00-04:00",
-    "end": "2026-03-27T15:00:00-04:00",
+    "start": "2026-05-22T12:00:00-04:00",
+    "end": "2026-05-22T15:00:00-04:00",
     "is_recurring": true,
     "attendee_count": 2,
     "is_organizer": false
   },
   {
-    "id": "66v30balf2ndpmnnd2sn0g5o90",
-    "title": "Spring Break!",
-    "start": "2026-03-30",
-    "end": "2026-04-07",
+    "id": "li5o3slq63boc3ira3svdtjq4g_20260525T190000Z",
+    "title": "Fun in the forest",
+    "start": "2026-05-25T15:00:00-04:00",
+    "end": "2026-05-25T17:00:00-04:00",
+    "is_recurring": true,
+    "attendee_count": 2,
+    "is_organizer": false
+  },
+  {
+    "id": "21bpafpsrusahhqv0b1n861m8k_20260527T160000Z",
+    "title": "Finned Friends",
+    "start": "2026-05-27T12:00:00-04:00",
+    "end": "2026-05-27T15:00:00-04:00",
+    "is_recurring": true,
+    "attendee_count": 2,
+    "is_organizer": false
+  },
+  {
+    "id": "jm7ubs5qnljaa4rj036tje90b8_20260528T160000Z",
+    "title": "Finned Friends",
+    "start": "2026-05-28T12:00:00-04:00",
+    "end": "2026-05-28T15:00:00-04:00",
+    "is_recurring": true,
+    "attendee_count": 2,
+    "is_organizer": false
+  },
+  {
+    "id": "nt0hvjt6ugkgfm72iatl96pn60",
+    "title": "Hot Wheels Monster Trucks Live Glow-N-Fire",
+    "start": "2026-05-30T12:00:00-04:00",
+    "end": "2026-05-30T15:00:00-04:00",
     "is_recurring": false,
     "attendee_count": 2,
-    "is_organizer": false
+    "is_organizer": false,
+    "location": "CFG Bank Arena, Baltimore, Maryland"
   },
   {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260401T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-01T12:00:00-04:00",
-    "end": "2026-04-01T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260402T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-02T12:00:00-04:00",
-    "end": "2026-04-02T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "187stvtin15i2pnp62theevu3g_20260403T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-03T12:00:00-04:00",
-    "end": "2026-04-03T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260408T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-08T12:00:00-04:00",
-    "end": "2026-04-08T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "430r1qj9dbf72002ao7i890jf8",
-    "title": "Helping parent",
-    "start": "2026-04-08T12:00:00-04:00",
-    "end": "2026-04-08T15:00:00-04:00",
+    "id": "a9cqbm18afr35lkcdq2brn0aj4",
+    "title": "Flight to Las Vegas (WN 1167)",
+    "description_snippet": "To see detailed information for automatically created events like this one, use the official Google Calendar app. https://g.co/calendar\n\nThis event was created from an email you received in Gmail. htt",
+    "start": "2026-05-31T06:05:00-04:00",
+    "end": "2026-05-31T11:20:00-04:00",
     "is_recurring": false,
-    "attendee_count": 2,
-    "is_organizer": false
+    "attendee_count": 1,
+    "is_organizer": true,
+    "location": "Baltimore BWI"
   },
   {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260409T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-09T12:00:00-04:00",
-    "end": "2026-04-09T15:00:00-04:00",
+    "id": "li5o3slq63boc3ira3svdtjq4g_20260601T190000Z",
+    "title": "Fun in the forest",
+    "start": "2026-06-01T15:00:00-04:00",
+    "end": "2026-06-01T17:00:00-04:00",
     "is_recurring": true,
     "attendee_count": 2,
     "is_organizer": false
   },
   {
-    "id": "187stvtin15i2pnp62theevu3g_20260410T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-10T12:00:00-04:00",
-    "end": "2026-04-10T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260415T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-15T12:00:00-04:00",
-    "end": "2026-04-15T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260416T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-16T12:00:00-04:00",
-    "end": "2026-04-16T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "187stvtin15i2pnp62theevu3g_20260417T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-17T12:00:00-04:00",
-    "end": "2026-04-17T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "8c996r1q1slmphgeuisq00nl68",
-    "title": "Magothy cleaning day",
-    "start": "2026-04-21T18:00:00-04:00",
-    "end": "2026-04-21T19:00:00-04:00",
+    "id": "qha8vvrk3b37os226ldbhtobms",
+    "title": "Flight to Houston (WN 2243)",
+    "description_snippet": "To see detailed information for automatically created events like this one, use the official Google Calendar app. https://g.co/calendar\n\nThis event was created from an email you received in Gmail. htt",
+    "start": "2026-06-06T17:25:00-04:00",
+    "end": "2026-06-06T20:30:00-04:00",
     "is_recurring": false,
-    "attendee_count": 2,
-    "is_organizer": false
+    "attendee_count": 1,
+    "is_organizer": true,
+    "location": "Las Vegas LAS"
   },
   {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260422T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-22T12:00:00-04:00",
-    "end": "2026-04-22T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
+    "id": "ggcl360d4cj4l1atda4c4j25pc",
+    "title": "Flight to Baltimore (WN 1961)",
+    "description_snippet": "To see detailed information for automatically created events like this one, use the official Google Calendar app. https://g.co/calendar\n\nThis event was created from an email you received in Gmail. htt",
+    "start": "2026-06-06T21:30:00-04:00",
+    "end": "2026-06-07T00:30:00-04:00",
+    "is_recurring": false,
+    "attendee_count": 1,
+    "is_organizer": true,
+    "location": "Houston HOU"
   },
   {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260423T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-23T12:00:00-04:00",
-    "end": "2026-04-23T15:00:00-04:00",
-    "is_recurring": true,
-    "attendee_count": 2,
-    "is_organizer": false
-  },
-  {
-    "id": "187stvtin15i2pnp62theevu3g_20260424T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-24T12:00:00-04:00",
-    "end": "2026-04-24T15:00:00-04:00",
-    "is_recurring": true,
+    "id": "2u0bgasjr7uegkogs28j47cma8",
+    "title": "Lily CAC Camp",
+    "description_snippet": "Instructor: Lorena Solano",
+    "start": "2026-06-29T09:30:00-04:00",
+    "end": "2026-07-02T00:30:00-04:00",
+    "is_recurring": false,
     "attendee_count": 2,
     "is_organizer": false
   }
@@ -501,8 +385,8 @@ Return JSON with this structure:
 ## Token Estimates
 
 - **System Prompt:** ~36 tokens
-- **User Prompt:** ~3456 tokens
-- **Total Estimate:** ~3492 tokens
+- **User Prompt:** ~2979 tokens
+- **Total Estimate:** ~3015 tokens
 
 ## Flow Notes
 

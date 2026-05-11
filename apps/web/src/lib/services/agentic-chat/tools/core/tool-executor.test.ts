@@ -1030,4 +1030,63 @@ describe('ChatToolExecutor - Update Behavior', () => {
 			expect(mockLLMService.generateTextDetailed).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('Document Detail Reads', () => {
+		it('returns a structured not_found payload when the document detail endpoint 404s', async () => {
+			const missingDocumentId = '00d853f9-a3ab-4ae1-8519-2d727823f8ad';
+			mockFetch = vi.fn().mockImplementation((url, options) => {
+				if (
+					String(url).includes(`/api/onto/documents/${missingDocumentId}`) &&
+					(!options?.method || options.method === 'GET')
+				) {
+					return Promise.resolve({
+						ok: false,
+						status: 404,
+						statusText: 'Not Found',
+						headers: { get: () => 'application/json' },
+						json: () => Promise.resolve({ error: 'Document not found' }),
+						text: () => Promise.resolve('Document not found')
+					});
+				}
+
+				return Promise.resolve({
+					ok: false,
+					status: 500,
+					statusText: 'Internal Server Error',
+					headers: { get: () => 'application/json' },
+					json: () => Promise.resolve({ error: 'Unexpected request' }),
+					text: () => Promise.resolve('Unexpected request')
+				});
+			});
+
+			const executor = new ChatToolExecutor(
+				mockSupabase,
+				userId,
+				sessionId,
+				mockFetch,
+				mockLLMService
+			);
+
+			const result = await executor.execute({
+				id: 'call-missing-doc',
+				type: 'function',
+				function: {
+					name: 'get_onto_document_details',
+					arguments: JSON.stringify({
+						document_id: missingDocumentId
+					})
+				}
+			} as ChatToolCall);
+
+			expect(result.success).toBe(true);
+			expect(result.error).toBeUndefined();
+			expect(result.result).toMatchObject({
+				status: 'not_found',
+				found: false,
+				document_id: missingDocumentId,
+				document: null
+			});
+			expect((result.result as any).message).toContain('search_onto_documents');
+		});
+	});
 });

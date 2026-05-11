@@ -28,6 +28,7 @@
 
 	type SavedOnboardingState = {
 		currentStep: number;
+		maxStepReached: number;
 		v3Data: OnboardingV3State;
 		savedAt: number;
 	};
@@ -36,6 +37,7 @@
 		if (!browser) return;
 		const state: SavedOnboardingState = {
 			currentStep,
+			maxStepReached,
 			v3Data: { ...v3Data },
 			savedAt: Date.now()
 		};
@@ -80,6 +82,7 @@
 	const savedSession = loadStateFromSession();
 
 	let currentStep = $state(savedSession?.currentStep ?? 0);
+	let maxStepReached = $state(savedSession?.maxStepReached ?? savedSession?.currentStep ?? 0);
 	let v3Data = $state<OnboardingV3State>(
 		savedSession?.v3Data ?? {
 			intent: null as OnboardingIntent | null,
@@ -99,6 +102,7 @@
 		v3Data.stakes = (data.savedStakes as OnboardingStakes) ?? null;
 		// They already completed step 0, jump to step 1
 		currentStep = 1;
+		maxStepReached = 1;
 	}
 
 	type OntologyCounts = {
@@ -118,6 +122,7 @@
 	$effect(() => {
 		// Access reactive values to track them
 		void currentStep;
+		void maxStepReached;
 		void v3Data.intent;
 		void v3Data.stakes;
 		void v3Data.projectsCreated;
@@ -126,7 +131,14 @@
 
 	// Step navigation
 	function goToStep(step: number) {
+		if (step < 0 || step >= totalSteps) return;
+		if (step > maxStepReached) return;
 		currentStep = step;
+	}
+
+	function advanceTo(step: number) {
+		currentStep = step;
+		if (step > maxStepReached) maxStepReached = step;
 	}
 
 	function goBack() {
@@ -145,7 +157,7 @@
 	}
 
 	function handleIntentStakesDone() {
-		goToStep(1);
+		advanceTo(1);
 	}
 
 	// Step 1: Project capture
@@ -162,7 +174,7 @@
 	}
 
 	function handleProjectCaptureDone() {
-		goToStep(2);
+		advanceTo(2);
 	}
 
 	// Step 2: Notifications
@@ -175,11 +187,12 @@
 	}
 
 	function handleNotificationsDone() {
-		goToStep(3);
+		advanceTo(3);
 		clearSessionState();
 	}
 
 	const isExploreUser = $derived(v3Data.intent === 'explore');
+	const showProgress = $derived(currentStep >= 1);
 </script>
 
 <svelte:head>
@@ -192,10 +205,18 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<!-- Progress indicator: show on steps 1 and 2 (project capture and notifications) -->
-	{#if currentStep === 1 || currentStep === 2}
-		<div class="pt-6 px-4">
-			<ProgressIndicatorV3 {currentStep} {totalSteps} />
+	<!-- Header: Progress indicator with Back navigation -->
+	{#if showProgress}
+		<div
+			class="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/60 px-4 py-4"
+		>
+			<ProgressIndicatorV3
+				{currentStep}
+				{totalSteps}
+				{maxStepReached}
+				onStepClick={goToStep}
+				onBack={goBack}
+			/>
 		</div>
 	{/if}
 
@@ -205,22 +226,23 @@
 			onNext={handleIntentStakesDone}
 			onIntentSelected={handleIntentSelected}
 			onStakesSelected={handleStakesSelected}
+			defaultIntent={v3Data.intent ?? undefined}
+			defaultStakes={v3Data.stakes ?? undefined}
 		/>
 	{:else if currentStep === 1}
 		<ProjectsCaptureStep
 			userContext={data.userContext}
 			onNext={handleProjectCaptureDone}
-			onBack={goBack}
 			onProjectsCreated={handleProjectsCreated}
 			onCalendarAnalyzed={handleCalendarAnalyzed}
 			intent={v3Data.intent ?? undefined}
 			isSkippable={isExploreUser}
+			initialProjects={data.existingProjects ?? []}
 		/>
 	{:else if currentStep === 2}
 		<NotificationsStepV3
 			userId={data.user.id}
 			onNext={handleNotificationsDone}
-			onBack={goBack}
 			onSMSEnabled={handleSMSEnabled}
 			onEmailEnabled={handleEmailEnabled}
 		/>
@@ -228,7 +250,6 @@
 		<ReadyStep
 			userId={data.user.id}
 			summary={v3Data}
-			onBack={goBack}
 			onboardingStartedAtMs={onboardingStartTime}
 		/>
 	{/if}

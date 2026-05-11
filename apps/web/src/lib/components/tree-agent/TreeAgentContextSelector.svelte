@@ -1,5 +1,7 @@
 <!-- apps/web/src/lib/components/tree-agent/TreeAgentContextSelector.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
+
 	interface Project {
 		id: string;
 		name: string;
@@ -31,9 +33,8 @@
 	let error = $state<string | null>(null);
 
 	$effect(() => {
-		if (isOpen && selectedContextType === 'project' && projects.length === 0) {
-			loadProjects();
-		}
+		if (!browser || !isOpen || selectedContextType !== 'project' || projects.length > 0) return;
+		void loadProjects();
 	});
 
 	async function loadProjects() {

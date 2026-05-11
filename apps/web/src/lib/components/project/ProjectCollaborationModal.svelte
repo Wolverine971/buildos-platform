@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/project/ProjectCollaborationModal.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import TabNav from '$lib/components/ui/TabNav.svelte';
 	import type { Tab } from '$lib/components/ui/TabNav.svelte';
@@ -120,6 +121,7 @@
 	}
 
 	$effect(() => {
+		if (!browser) return;
 		if (!isOpen) {
 			email = '';
 			role = 'editor';

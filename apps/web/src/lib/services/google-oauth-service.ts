@@ -778,12 +778,34 @@ export class GoogleOAuthService {
 			// Calculate expiry timestamp
 			const expiryDate = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null;
 
+			// Google can omit refresh_token on repeat consent grants. Preserve an existing
+			// refresh token instead of replacing it with null; first-time connects need one.
+			const { data: existingToken } = await this.supabase
+				.from('user_calendar_tokens')
+				.select('id, refresh_token')
+				.eq('user_id', userId)
+				.single();
+			const existingRefreshToken = existingToken?.refresh_token
+				? decodeStoredCalendarTokens({
+						access_token: null,
+						refresh_token: existingToken.refresh_token
+					}).refresh_token
+				: null;
+			const refreshToken = tokens.refresh_token || existingRefreshToken;
+
+			if (!refreshToken) {
+				return {
+					success: false,
+					error: 'No refresh token received from Google. Please reconnect Google Calendar.'
+				};
+			}
+
 			// Save tokens to database
 			const tokenData = {
 				user_id: userId,
 				...buildEncryptedCalendarTokenPatch({
 					access_token: tokens.access_token,
-					refresh_token: tokens.refresh_token || null
+					refresh_token: refreshToken
 				}),
 				expiry_date: expiryDate,
 				google_user_id: profile.id,
@@ -792,13 +814,6 @@ export class GoogleOAuthService {
 				token_type: tokens.token_type || 'Bearer',
 				updated_at: new Date().toISOString()
 			};
-
-			// Check if record exists and update or insert
-			const { data: existingToken } = await this.supabase
-				.from('user_calendar_tokens')
-				.select('id')
-				.eq('user_id', userId)
-				.single();
 
 			if (existingToken) {
 				const { error: dbError } = await this.supabase

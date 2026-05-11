@@ -55,9 +55,12 @@
 	let lastProjectLimit = $state(0);
 	let projectListRequestId = 0;
 
-	const INACTIVE_PROJECT_STATE_KEYS = new Set(['archived', 'completed', 'retired', 'closed']);
+	// Hide cancelled (treated as deleted) and archived projects. The API already
+	// filters `archived_at IS NULL`, but we keep `archived` here defensively.
+	const INACTIVE_PROJECT_STATE_KEYS = new Set(['archived', 'cancelled']);
 	const PROJECT_LIST_LIMIT = DEFAULT_PROJECT_SELECTOR_LIMIT;
 	const PROJECT_SEARCH_LIMIT = MAX_PROJECT_SELECTOR_LIMIT;
+	const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
 	const normalizedProjectSearch = $derived(normalizeProjectSelectionSearch(projectSearchTerm));
 	const isProjectSearchActive = $derived(normalizedProjectSearch.length > 0);
 
@@ -204,6 +207,68 @@
 		})
 	);
 	const hasProjects = $derived(projects.length > 0);
+
+	function parseProjectUpdatedAt(project: ProjectSelectionSummary): number {
+		if (!project.updatedAt) return 0;
+		const timestamp = Date.parse(project.updatedAt);
+		return Number.isNaN(timestamp) ? 0 : timestamp;
+	}
+
+	function formatRelativeUpdate(value: string | null | undefined): string {
+		if (!value) return 'Updated recently';
+		const ms = Date.parse(value);
+		if (Number.isNaN(ms)) return 'Updated recently';
+
+		const diffMs = Date.now() - ms;
+		if (diffMs < 60_000) return 'Just now';
+
+		const diffMin = Math.floor(diffMs / 60_000);
+		if (diffMin < 60) return `${diffMin}m ago`;
+
+		const diffHr = Math.floor(diffMin / 60);
+		if (diffHr < 24) return `${diffHr}h ago`;
+
+		const diffDay = Math.floor(diffHr / 24);
+		if (diffDay < 7) return `${diffDay}d ago`;
+
+		const diffWk = Math.floor(diffDay / 7);
+		if (diffWk < 5) return `${diffWk}w ago`;
+
+		const diffMo = Math.floor(diffDay / 30);
+		if (diffMo < 12) return `${diffMo}mo ago`;
+
+		const diffYr = Math.floor(diffDay / 365);
+		return `${diffYr}y ago`;
+	}
+
+	type ProjectRecencyGroups = {
+		recent: ProjectSelectionSummary[];
+		olderThan7Days: ProjectSelectionSummary[];
+		olderThan30Days: ProjectSelectionSummary[];
+	};
+
+	function groupProjectsByRecency(items: ProjectSelectionSummary[]): ProjectRecencyGroups {
+		const now = Date.now();
+		const recent: ProjectSelectionSummary[] = [];
+		const olderThan7Days: ProjectSelectionSummary[] = [];
+		const olderThan30Days: ProjectSelectionSummary[] = [];
+
+		const sorted = [...items].sort(
+			(a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a)
+		);
+
+		for (const project of sorted) {
+			const ts = parseProjectUpdatedAt(project);
+			const ageDays = ts > 0 ? (now - ts) / MILLIS_PER_DAY : Number.POSITIVE_INFINITY;
+			if (ageDays >= 30) olderThan30Days.push(project);
+			else if (ageDays >= 7) olderThan7Days.push(project);
+			else recent.push(project);
+		}
+
+		return { recent, olderThan7Days, olderThan30Days };
+	}
+
+	const activeProjectsByRecency = $derived(groupProjectsByRecency(activeProjects));
 	const isNewUser = $derived(
 		hasLoadedProjects && lastProjectQuery === '' && !hasProjects && !projectsError
 	);
@@ -513,66 +578,141 @@
 						</button>
 					</div>
 				{:else if activeProjects.length > 0}
-					<!-- Mobile: compact stacked list | Desktop: grid -->
-					<div class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-3 lg:grid-cols-3">
-						{#each activeProjects as project (project.id)}
-							{@const facetSummary = getFacetSummary(project)}
-							<button
-								onclick={() => selectProject(project)}
-								class={projectListItemClasses}
-							>
-								<!-- Mobile: title row with chevron -->
-								<div class="flex items-center gap-2">
-									<h3
-										class="flex-1 truncate text-sm font-semibold text-foreground"
-										title={project.name}
-									>
-										{project.name}
-									</h3>
-									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
-								</div>
-								<!-- Metadata row - compact -->
-								{#if project.stateKey || project.typeKey}
-									<div
-										class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-[11px]"
-									>
-										{#if project.stateKey}
-											<span
-												class="rounded-full border border-border px-1.5 py-0.5"
-											>
-												{formatKeyLabel(project.stateKey)}
-											</span>
-										{/if}
-										{#if project.typeKey}
-											<span>{formatKeyLabel(project.typeKey)}</span>
-										{/if}
-									</div>
-								{/if}
-								{#if facetSummary}
-									<p class="mt-1 text-[11px] text-muted-foreground sm:text-xs">
-										{facetSummary}
-									</p>
-								{/if}
-								{#if project.description}
-									<p
-										class="mt-1.5 line-clamp-2 text-xs text-muted-foreground hidden sm:block"
-									>
-										{project.description}
-									</p>
-								{/if}
-								{#if project.taskCount > 0}
-									<div
-										class="mt-2 border-t border-border pt-1.5 text-[11px] text-muted-foreground sm:text-xs"
-									>
-										<span>
-											{project.taskCount} task{project.taskCount !== 1
-												? 's'
-												: ''}
+					{#snippet projectCard(project: ProjectSelectionSummary)}
+						{@const facetSummary = getFacetSummary(project)}
+						{@const relativeUpdated = formatRelativeUpdate(project.updatedAt)}
+						{@const absoluteUpdated = project.updatedAt
+							? new Date(project.updatedAt).toLocaleString(undefined, {
+									month: 'short',
+									day: 'numeric',
+									year: 'numeric',
+									hour: 'numeric',
+									minute: '2-digit'
+								})
+							: ''}
+						<button
+							onclick={() => selectProject(project)}
+							class={projectListItemClasses}
+						>
+							<div class="flex items-start gap-2">
+								<h3
+									class="min-w-0 flex-1 truncate text-sm font-semibold text-foreground"
+									title={project.name}
+								>
+									{project.name}
+								</h3>
+								<ChevronRight
+									class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent"
+								/>
+							</div>
+							{#if project.stateKey || project.typeKey}
+								<div
+									class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-[11px]"
+								>
+									{#if project.stateKey}
+										<span
+											class="rounded-full border border-border px-1.5 py-0.5"
+										>
+											{formatKeyLabel(project.stateKey)}
 										</span>
-									</div>
+									{/if}
+									{#if project.typeKey}
+										<span>{formatKeyLabel(project.typeKey)}</span>
+									{/if}
+								</div>
+							{/if}
+							{#if facetSummary}
+								<p class="mt-1 text-[11px] text-muted-foreground sm:text-xs">
+									{facetSummary}
+								</p>
+							{/if}
+							{#if project.description}
+								<p
+									class="mt-1.5 hidden line-clamp-2 text-xs text-muted-foreground sm:block"
+								>
+									{project.description}
+								</p>
+							{/if}
+							<div
+								class="mt-2 flex items-center justify-between gap-2 border-t border-border pt-1.5 text-[11px] text-muted-foreground sm:text-xs"
+							>
+								<span>
+									{project.taskCount} task{project.taskCount !== 1 ? 's' : ''}
+								</span>
+								{#if project.updatedAt}
+									<time
+										datetime={project.updatedAt}
+										title={absoluteUpdated}
+										class="whitespace-nowrap font-medium"
+									>
+										Updated {relativeUpdated}
+									</time>
 								{/if}
-							</button>
-						{/each}
+							</div>
+						</button>
+					{/snippet}
+
+					{#snippet groupHeader(label: string, count: number, isFirst: boolean)}
+						<div
+							class={`project-recency-separator ${isFirst ? 'project-recency-separator--first' : ''}`}
+						>
+							<span>{label}</span>
+							<span class="project-recency-count">{count}</span>
+						</div>
+					{/snippet}
+
+					<div class="space-y-4 sm:space-y-5">
+						{#if activeProjectsByRecency.recent.length > 0}
+							<section>
+								{@render groupHeader(
+									'Recent',
+									activeProjectsByRecency.recent.length,
+									true
+								)}
+								<div
+									class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-3 lg:grid-cols-3"
+								>
+									{#each activeProjectsByRecency.recent as project (project.id)}
+										{@render projectCard(project)}
+									{/each}
+								</div>
+							</section>
+						{/if}
+
+						{#if activeProjectsByRecency.olderThan7Days.length > 0}
+							<section>
+								{@render groupHeader(
+									'Not touched in last 7 days',
+									activeProjectsByRecency.olderThan7Days.length,
+									activeProjectsByRecency.recent.length === 0
+								)}
+								<div
+									class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-3 lg:grid-cols-3"
+								>
+									{#each activeProjectsByRecency.olderThan7Days as project (project.id)}
+										{@render projectCard(project)}
+									{/each}
+								</div>
+							</section>
+						{/if}
+
+						{#if activeProjectsByRecency.olderThan30Days.length > 0}
+							<section>
+								{@render groupHeader(
+									'Not touched in last 30 days',
+									activeProjectsByRecency.olderThan30Days.length,
+									activeProjectsByRecency.recent.length === 0 &&
+										activeProjectsByRecency.olderThan7Days.length === 0
+								)}
+								<div
+									class="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-3 lg:grid-cols-3"
+								>
+									{#each activeProjectsByRecency.olderThan30Days as project (project.id)}
+										{@render projectCard(project)}
+									{/each}
+								</div>
+							</section>
+						{/if}
 					</div>
 				{:else}
 					<div
@@ -642,5 +782,41 @@
 		-webkit-line-clamp: 2;
 		line-clamp: 2;
 		-webkit-box-orient: vertical;
+	}
+
+	/* Recency group headers — mirrors styling on /projects page */
+	.project-recency-separator {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+		margin-bottom: 0.625rem;
+		padding-top: 0.75rem;
+		border-top: 1px solid hsl(var(--border));
+		font-size: 0.6875rem;
+		font-weight: 600;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: hsl(var(--muted-foreground) / 0.85);
+	}
+
+	.project-recency-separator--first {
+		padding-top: 0;
+		border-top: 0;
+	}
+
+	.project-recency-count {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		min-width: 1.5rem;
+		padding: 0 0.4rem;
+		border: 1px solid hsl(var(--border));
+		border-radius: 9999px;
+		background: hsl(var(--card));
+		font-size: 0.625rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		color: hsl(var(--muted-foreground));
 	}
 </style>

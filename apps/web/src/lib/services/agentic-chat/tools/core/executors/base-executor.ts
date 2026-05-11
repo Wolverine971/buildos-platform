@@ -21,6 +21,44 @@ import type { ActivityLogActorContext } from '$lib/services/async-activity-logge
 
 const logger = createLogger('BaseExecutor');
 
+function formatApiErrorDetails(details: unknown): string {
+	if (!details) return '';
+	try {
+		return ` (${JSON.stringify(details)})`;
+	} catch {
+		return ` (${String(details)})`;
+	}
+}
+
+export class ApiRequestError extends Error {
+	readonly method: string;
+	readonly path: string;
+	readonly status: number;
+	readonly statusText: string;
+	readonly details: unknown;
+
+	constructor(params: {
+		method: string;
+		path: string;
+		status: number;
+		statusText: string;
+		message: string;
+		details?: unknown;
+	}) {
+		super(
+			`API ${params.method} ${params.path} failed: ${params.message}${formatApiErrorDetails(
+				params.details
+			)}`
+		);
+		this.name = 'ApiRequestError';
+		this.method = params.method;
+		this.path = params.path;
+		this.status = params.status;
+		this.statusText = params.statusText;
+		this.details = params.details;
+	}
+}
+
 /**
  * Base class providing common infrastructure for all tool executors.
  *
@@ -154,11 +192,14 @@ export class BaseExecutor {
 				}
 			}
 
-			throw new Error(
-				`API ${method} ${path} failed: ${errorMessage}${
-					errorDetails ? ` (${JSON.stringify(errorDetails)})` : ''
-				}`
-			);
+			throw new ApiRequestError({
+				method,
+				path,
+				status: response.status,
+				statusText: response.statusText,
+				message: errorMessage,
+				details: errorDetails
+			});
 		}
 
 		// Validate Content-Type before parsing JSON response
@@ -193,6 +234,10 @@ export class BaseExecutor {
 
 		const payload = await response.json();
 		return payload?.data ?? payload;
+	}
+
+	protected isApiRequestStatus(error: unknown, status: number): boolean {
+		return error instanceof ApiRequestError && error.status === status;
 	}
 
 	// ============================================

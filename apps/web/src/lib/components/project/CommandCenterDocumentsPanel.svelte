@@ -12,6 +12,7 @@
 	- Inkprint Design System: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
 -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, Plus, FileText, RefreshCw } from 'lucide-svelte';
 	import { DocTreeCompactList } from '$lib/components/ontology/doc-tree';
@@ -102,9 +103,8 @@
 
 	// Fetch when expanded and we don't have data (only once)
 	$effect(() => {
-		if (expanded && !hasDocTree && !isLoading && !loadError && !hasFetched) {
-			fetchTreeData();
-		}
+		if (!browser || !expanded || hasDocTree || isLoading || loadError || hasFetched) return;
+		void fetchTreeData();
 	});
 
 	// Context menu state

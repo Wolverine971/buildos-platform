@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/ontology/AssetDetailModal.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
@@ -94,7 +95,7 @@
 	}
 
 	$effect(() => {
-		if (!isOpen || !assetId) return;
+		if (!browser || !isOpen || !assetId) return;
 		if (lastLoadedId !== assetId) {
 			void loadAsset(assetId);
 		}

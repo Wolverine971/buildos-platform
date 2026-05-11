@@ -2,24 +2,34 @@
 <script lang="ts">
 	import {
 		MessagesSquare,
-		FolderOpen,
-		FolderPlus,
 		Calendar,
 		LoaderCircle,
 		Sparkles,
 		CheckCircle,
-		ArrowLeft
+		FolderPlus,
+		FolderOpen,
+		ListChecks
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { toastService } from '$lib/stores/toast.store';
+	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import { ONBOARDING_V3_CONFIG, type OnboardingIntent } from '$lib/config/onboarding.config';
 	import { startCalendarAnalysis } from '$lib/services/calendar-analysis-notification.bridge';
-	import { scale } from 'svelte/transition';
+	import { fade, scale } from 'svelte/transition';
+	import { onMount } from 'svelte';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
+
+	type ProjectPreview = {
+		id: string;
+		name: string;
+		description: string | null;
+		status: string;
+		created_at: string | null;
+		task_count?: number;
+	};
 
 	interface Props {
 		userContext?: any; // From previous onboarding inputs
 		onNext: () => void;
-		onBack?: () => void;
 		onProjectsCreated: (
 			projectIds: string[],
 			ontologyCounts?: {
@@ -40,17 +50,36 @@
 		intent?: OnboardingIntent;
 		/** V3: allow skipping the project capture step (for "explore" users) */
 		isSkippable?: boolean;
+		/** Existing projects loaded server-side. */
+		initialProjects?: ProjectPreview[];
 	}
 
 	let {
 		userContext,
 		onNext,
-		onBack,
 		onProjectsCreated,
 		onCalendarAnalyzed,
 		intent,
-		isSkippable
+		isSkippable,
+		initialProjects = []
 	}: Props = $props();
+
+	// Live list of user's projects. Seeded from server, refreshed after chat creates one.
+	let projects = $state<ProjectPreview[]>(initialProjects);
+
+	async function refreshProjects() {
+		try {
+			const res = await fetch('/api/projects?status=active,paused&limit=6', {
+				cache: 'no-store'
+			});
+			if (!res.ok) return;
+			const payload = await res.json();
+			const list = (payload?.data?.projects ?? payload?.projects ?? []) as ProjectPreview[];
+			projects = list.slice(0, 6);
+		} catch (err) {
+			console.error('Failed to refresh projects:', err);
+		}
+	}
 
 	// V3 intent-aware prompt configuration
 	const v3Prompts = $derived(intent ? ONBOARDING_V3_CONFIG.capturePrompts[intent] : null);
@@ -65,6 +94,38 @@
 	let calendarAnalysisStarted = $state(false);
 	let calendarAnalysisCompleted = $state(false);
 
+	// Agentic chat modal (project_create context)
+	let AgentChatModal = $state<any>(null);
+	let showChatModal = $state(false);
+	let isLoadingChat = $state(false);
+
+	async function handleOpenProjectChat() {
+		try {
+			if (!AgentChatModal) {
+				isLoadingChat = true;
+				const module = await import('$lib/components/agent/AgentChatModal.svelte');
+				AgentChatModal = module.default;
+			}
+			showChatModal = true;
+		} catch (err) {
+			console.error('Failed to load AgentChatModal:', err);
+			toastService.error('Could not open the project chat. Please try again.');
+		} finally {
+			isLoadingChat = false;
+		}
+	}
+
+	function handleChatClose(summary?: DataMutationSummary) {
+		showChatModal = false;
+		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
+			toastService.success('Project created! We saved it to your workspace.', {
+				duration: TOAST_DURATION.LONG
+			});
+			onProjectsCreated(summary.affectedProjectIds);
+			void refreshProjects();
+		}
+	}
+
 	/**
 	 * Check if user has Google Calendar connected
 	 */
@@ -73,7 +134,7 @@
 			isCheckingConnection = true;
 			connectionError = null;
 
-			const response = await fetch('/api/calendar');
+			const response = await fetch('/api/calendar', { cache: 'no-store' });
 
 			if (!response.ok) {
 				throw new Error(`HTTP ${response.status}`);
@@ -100,6 +161,7 @@
 	async function handleConnectCalendar() {
 		try {
 			isConnectingCalendar = true;
+			connectionError = null;
 
 			const redirectPath = '/onboarding?v2=true';
 			const encodedRedirect = encodeURIComponent(redirectPath);
@@ -125,28 +187,61 @@
 		}
 	}
 
+	function replaceCalendarUrlParams(params: URLSearchParams) {
+		if (typeof window === 'undefined') return;
+		const query = params.toString();
+		const newUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+		window.history.replaceState({}, '', newUrl);
+	}
+
+	async function refreshCalendarConnection(
+		options: {
+			fromOAuthSuccess?: boolean;
+			showSuccessToast?: boolean;
+		} = {}
+	) {
+		const connected = await checkCalendarConnection();
+		hasCalendarConnected = connected;
+
+		if (connected) {
+			connectionError = null;
+			if (options.showSuccessToast) {
+				showConnectionSuccess = true;
+				toastService.success('Google Calendar connected successfully!');
+				setTimeout(() => {
+					showConnectionSuccess = false;
+				}, 5000);
+			}
+			return true;
+		}
+
+		showConnectionSuccess = false;
+		if (options.fromOAuthSuccess) {
+			connectionError =
+				'Google Calendar did not finish connecting. Please connect it before analyzing your calendar.';
+			toastService.error(connectionError);
+		}
+		return false;
+	}
+
 	// Initialize calendar status and handle OAuth callback
-	$effect(() => {
+	onMount(() => {
 		// Check if user just returned from OAuth
 		if (typeof window !== 'undefined') {
 			const params = new URLSearchParams(window.location.search);
 
 			// Handle success callback
 			if (params.get('calendar') === '1' && params.get('success') === 'calendar_connected') {
-				// Calendar was just connected!
-				showConnectionSuccess = true;
-				toastService.success('Google Calendar connected successfully! 🎉');
-
-				// Auto-hide success message after 5 seconds
-				setTimeout(() => {
-					showConnectionSuccess = false;
-				}, 5000);
-
 				// Clean up URL params
 				params.delete('calendar');
 				params.delete('success');
-				const newUrl = `${window.location.pathname}?${params.toString()}`;
-				window.history.replaceState({}, '', newUrl);
+				replaceCalendarUrlParams(params);
+
+				void refreshCalendarConnection({
+					fromOAuthSuccess: true,
+					showSuccessToast: true
+				});
+				return;
 			}
 
 			// Handle error callback
@@ -176,15 +271,12 @@
 				// Clean up URL params
 				params.delete('calendar');
 				params.delete('error');
-				const newUrl = `${window.location.pathname}?${params.toString()}`;
-				window.history.replaceState({}, '', newUrl);
+				replaceCalendarUrlParams(params);
 			}
 		}
 
 		// Check calendar connection status
-		checkCalendarConnection().then((connected) => {
-			hasCalendarConnected = connected;
-		});
+		void refreshCalendarConnection();
 	});
 
 	/**
@@ -199,6 +291,7 @@
 			if (!connected) {
 				toastService.error('Please connect your Google Calendar first.');
 				hasCalendarConnected = false;
+				showConnectionSuccess = false;
 				return;
 			}
 
@@ -211,12 +304,16 @@
 			});
 
 			calendarAnalysisStarted = true;
-			void completion.finally(() => {
-				if (!calendarAnalysisCompleted) {
+			void completion
+				.then(() => {
+					if (calendarAnalysisCompleted) return;
 					calendarAnalysisCompleted = true;
 					onCalendarAnalyzed?.(true);
-				}
-			});
+				})
+				.catch(() => {
+					calendarAnalysisStarted = false;
+					calendarAnalysisCompleted = false;
+				});
 
 			toastService.success(
 				'Calendar analysis started! Check the notification in the bottom-right corner.'
@@ -230,19 +327,9 @@
 	}
 </script>
 
-<div class="max-w-3xl mx-auto px-4">
-	{#if onBack}
-		<button
-			class="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
-			onclick={onBack}
-		>
-			<ArrowLeft class="w-4 h-4" />
-			Back
-		</button>
-	{/if}
-
+<div class="max-w-3xl mx-auto px-4 py-8 sm:py-10">
 	<!-- Header -->
-	<div class="mb-6 text-center">
+	<div class="mb-8 text-center">
 		<div class="flex justify-center mb-4">
 			<div
 				class="w-14 h-14 bg-muted rounded-xl flex items-center justify-center shadow-ink tx tx-bloom tx-weak"
@@ -251,161 +338,120 @@
 			</div>
 		</div>
 
-		<h2 class="text-2xl sm:text-3xl font-bold mb-2 text-foreground">
-			{v3Prompts ? v3Prompts.heading : 'Meet Your AI Assistant'}
+		<h2 class="text-2xl sm:text-3xl font-bold mb-3 text-foreground">
+			{projects.length > 0
+				? 'Your projects'
+				: v3Prompts
+					? v3Prompts.heading
+					: 'Create your first project'}
 		</h2>
-		{#if v3Prompts}
-			<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto mb-2">
-				Just write freely — BuildOS will turn your thoughts into organized projects and
-				tasks.
-			</p>
-		{:else}
-			<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto mb-2">
-				Everything in BuildOS happens through the <strong class="text-foreground"
-					>Agentic Chat</strong
-				>.
-			</p>
-			<p class="text-sm text-muted-foreground leading-relaxed max-w-xl mx-auto">
-				Here's how it works — then we'll capture your first project below.
-			</p>
-		{/if}
+		<p class="text-base text-muted-foreground leading-relaxed max-w-xl mx-auto">
+			{projects.length > 0
+				? 'You already have projects in BuildOS. Add another anytime or continue setup.'
+				: "Open the chat, describe what you're working on, and BuildOS will turn it into a structured project."}
+		</p>
 	</div>
 
-	<!-- Agentic Chat Overview -->
+	<!-- Existing projects preview -->
+	{#if projects.length > 0}
+		<div class="mb-6" in:fade={{ duration: 250 }}>
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+				{#each projects as project (project.id)}
+					<a
+						href={`/projects/${project.id}`}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="group relative block p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak hover:border-accent/50 hover:shadow-ink-strong transition-all pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>
+						<div class="flex items-start gap-3">
+							<div
+								class="flex-shrink-0 w-9 h-9 rounded-lg bg-accent/10 text-accent flex items-center justify-center"
+							>
+								<FolderOpen class="w-4.5 h-4.5" />
+							</div>
+							<div class="flex-1 min-w-0">
+								<h4
+									class="font-semibold text-sm text-foreground truncate group-hover:text-accent transition-colors"
+								>
+									{project.name}
+								</h4>
+								{#if project.description}
+									<p
+										class="text-xs text-muted-foreground mt-1 leading-snug line-clamp-2"
+									>
+										{project.description}
+									</p>
+								{/if}
+								<div
+									class="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground"
+								>
+									<span
+										class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-muted text-foreground/80 capitalize font-medium"
+									>
+										{project.status}
+									</span>
+									{#if (project.task_count ?? 0) > 0}
+										<span class="inline-flex items-center gap-1">
+											<ListChecks class="w-3 h-3" />
+											{project.task_count}
+											{project.task_count === 1 ? 'task' : 'tasks'}
+										</span>
+									{/if}
+								</div>
+							</div>
+						</div>
+					</a>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<!-- How to create a project -->
 	<div class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-frame tx-weak">
 		<h3 class="font-semibold mb-2 flex items-center gap-2 text-foreground text-sm">
 			<Sparkles class="w-4 h-4 text-accent" />
-			Where to Find It
+			{projects.length > 0 ? 'Create another project' : 'This is how you create a project'}
 		</h3>
 		<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
-			Look for the <strong class="text-foreground">Ask AI</strong> button in the top navigation
-			bar. Open it anytime to work with your AI assistant.
+			Click the <strong class="text-foreground">Ask AI</strong> button in the top nav anytime.
+			Describe what you're working on and BuildOS will turn it into a structured project — goals,
+			tasks, notes, all in one place.
 		</p>
 
-		<!-- Screenshot: Where to find the chat -->
-		<div class="mb-4 bg-muted rounded-lg overflow-hidden border border-border">
-			<img
-				src="/onboarding-assets/screenshots/agentic-chat-select.webp"
-				alt="Arrow pointing to the Ask AI button in the navigation bar"
-				loading="lazy"
-				class="w-full"
-			/>
-		</div>
-
-		<!-- Chat modes heading -->
-		<h3 class="font-semibold mb-2 flex items-center gap-2 text-foreground text-sm">
-			<Sparkles class="w-4 h-4 text-accent" />
-			Three Ways to Work
-		</h3>
-		<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
-			When you open the chat, you choose how you want to work. Each mode tailors the assistant
-			to what you need.
-		</p>
-
-		<!-- Screenshot: The 4 chat modes -->
-		<div class="mb-3 bg-muted rounded-lg overflow-hidden border border-border">
-			<img
-				src="/onboarding-assets/screenshots/agentic-chat-options.webp"
-				alt="Chat mode options for general chat, project chat, and project setup"
-				loading="lazy"
-				class="w-full"
-			/>
-		</div>
-
-		<!-- Mode descriptions -->
-		<div class="flex flex-col gap-3 text-xs mb-4">
-			<div class="flex gap-2.5 items-start">
-				<div
-					class="w-5 h-5 rounded bg-accent/10 flex items-center justify-center flex-shrink-0 mt-0.5"
-				>
-					<MessagesSquare class="w-3 h-3 text-accent" />
-				</div>
-				<div>
-					<strong class="text-foreground">General Chat</strong>
-					<p class="text-muted-foreground leading-snug mt-0.5">
-						Get the big picture across everything you're working on. Ask about your
-						week, compare progress across projects, or get high-level intel on what
-						needs attention — without picking a single project first.
-					</p>
-				</div>
-			</div>
-			<div class="flex gap-2.5 items-start">
-				<div
-					class="w-5 h-5 rounded bg-emerald-500/10 flex items-center justify-center flex-shrink-0 mt-0.5"
-				>
-					<FolderOpen class="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-				</div>
-				<div>
-					<strong class="text-foreground">Project Chat</strong>
-					<p class="text-muted-foreground leading-snug mt-0.5">
-						Dive into a specific project. Update tasks, revise plans, add documents, or
-						ask questions — all within the context of that project so the assistant
-						knows exactly what you're working on.
-					</p>
-				</div>
-			</div>
-			<div class="flex gap-2.5 items-start">
-				<div
-					class="w-5 h-5 rounded bg-purple-500/10 flex items-center justify-center flex-shrink-0 mt-0.5"
-				>
-					<FolderPlus class="w-3 h-3 text-purple-600 dark:text-purple-400" />
-				</div>
-				<div>
-					<strong class="text-foreground">Start a Project</strong>
-					<p class="text-muted-foreground leading-snug mt-0.5">
-						Got a new idea? Describe it and the assistant will help you shape it into a
-						structured project with goals, milestones, and next steps.
-					</p>
-					<div
-						class="mt-1.5 flex flex-wrap gap-1.5 text-[10px] font-medium text-muted-foreground"
-					>
-						<span class="rounded-full border border-border px-2 py-0.5"
-							>Home renovation</span
-						>
-						<span class="rounded-full border border-border px-2 py-0.5"
-							>Side business</span
-						>
-						<span class="rounded-full border border-border px-2 py-0.5"
-							>Fitness goal</span
-						>
-						<span class="rounded-full border border-border px-2 py-0.5">Job search</span
-						>
-						<span class="rounded-full border border-border px-2 py-0.5">App launch</span
-						>
-						<span class="rounded-full border border-border px-2 py-0.5"
-							>Wedding planning</span
-						>
-						<span class="rounded-full border border-border px-2 py-0.5"
-							>Learning a skill</span
-						>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<!-- Voice transcription hint -->
-		<div class="border-t border-border pt-3">
-			<h3 class="font-semibold mb-2 flex items-center gap-2 text-foreground text-sm">
-				<Sparkles class="w-4 h-4 text-accent" />
-				Talk Instead of Type
-			</h3>
-			<p class="text-xs text-muted-foreground mb-3 leading-relaxed">
-				Use the <strong class="text-foreground">voice button</strong> in any chat to talk instead
-				of type. It's faster for rough notes, project updates, and when you're on the go.
-			</p>
-			<div class="bg-muted rounded-lg overflow-hidden border border-border">
+		{#if projects.length === 0}
+			<!-- Screenshot: where the chat icon lives — only show for first-time users -->
+			<div class="mb-4 bg-muted rounded-lg overflow-hidden border border-border">
 				<img
-					src="/onboarding-assets/screenshots/agentic-chat-voice-transcription.webp"
-					alt="Voice transcription button highlighted in the chat input area"
+					src="/onboarding-assets/screenshots/agentic-chat-select.webp"
+					alt="Arrow pointing to the Ask AI button in the navigation bar"
 					loading="lazy"
 					class="w-full"
 				/>
 			</div>
-		</div>
+		{/if}
+
+		<!-- Or click here CTA -->
+		<Button
+			variant="primary"
+			size="lg"
+			onclick={handleOpenProjectChat}
+			disabled={isLoadingChat}
+			loading={isLoadingChat}
+			class="w-full shadow-ink pressable"
+		>
+			{#if isLoadingChat}
+				Opening...
+			{:else}
+				<FolderPlus class="w-5 h-5 mr-2" />
+				{projects.length > 0
+					? 'Create another project'
+					: 'Or click here to create a project'}
+			{/if}
+		</Button>
 	</div>
 
 	<!-- Calendar Connection & Analysis Section -->
-	{#if showConnectionSuccess || hasCalendarConnected}
+	{#if hasCalendarConnected}
 		<!-- Calendar Connected — prominent CTA to analyze -->
 		<div
 			class="mb-4 p-5 bg-accent/5 rounded-xl border-2 border-accent/30 shadow-ink tx tx-grain tx-weak"
@@ -423,7 +469,7 @@
 						<span
 							class="text-[10px] bg-accent/20 text-accent px-1.5 py-0.5 rounded-full font-medium"
 						>
-							Ready
+							{showConnectionSuccess ? 'Connected just now' : 'Ready'}
 						</span>
 					</h3>
 					<p class="text-sm text-muted-foreground mt-1 leading-relaxed">
@@ -474,6 +520,27 @@
 				</Button>
 			{/if}
 		</div>
+	{:else if isCheckingConnection}
+		<div
+			class="mb-4 p-4 bg-card rounded-xl border border-border shadow-ink tx tx-thread tx-weak"
+		>
+			<div class="flex items-center gap-3">
+				<div
+					class="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0"
+				>
+					<LoaderCircle class="w-5 h-5 animate-spin text-accent" />
+				</div>
+				<div>
+					<h3 class="text-sm font-semibold text-foreground mb-1">
+						Checking calendar connection
+					</h3>
+					<p class="text-xs text-muted-foreground leading-relaxed">
+						We are confirming Google Calendar is connected before calendar analysis
+						starts.
+					</p>
+				</div>
+			</div>
+		</div>
 	{:else if !hasCalendarConnected && !isCheckingConnection}
 		<!-- Calendar Not Connected -->
 		<div
@@ -513,6 +580,14 @@
 			</div>
 
 			<!-- Primary CTA -->
+			{#if connectionError}
+				<div
+					class="mb-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+				>
+					{connectionError}
+				</div>
+			{/if}
+
 			<Button
 				variant="primary"
 				onclick={handleConnectCalendar}
@@ -531,9 +606,25 @@
 	{/if}
 
 	<!-- Continue -->
-	<div class="mt-4 p-2 flex justify-center">
-		<Button variant="ghost" onclick={onNext}>
-			{isSkippable ? 'Skip for now' : 'Continue'}
-		</Button>
+	<div class="mt-6 flex justify-center">
+		{#if projects.length > 0}
+			<Button
+				variant="primary"
+				size="lg"
+				onclick={onNext}
+				class="min-w-[200px] shadow-ink-strong pressable"
+			>
+				Continue
+			</Button>
+		{:else}
+			<Button variant="ghost" onclick={onNext}>
+				{isSkippable ? 'Skip for now' : 'Continue'}
+			</Button>
+		{/if}
 	</div>
 </div>
+
+<!-- Agentic chat modal for project creation -->
+{#if AgentChatModal && showChatModal}
+	<AgentChatModal isOpen={showChatModal} contextType="project_create" onClose={handleChatClose} />
+{/if}

@@ -17,8 +17,11 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		const hasCalendarConnection = await calendarService.hasValidConnection(session.user.id);
 
 		if (!hasCalendarConnection) {
-			return ApiResponse.badRequest(
-				'No calendar connected. Please connect your Google Calendar first.'
+			return ApiResponse.error(
+				'No calendar connected. Please connect your Google Calendar first.',
+				403,
+				'CALENDAR_NOT_CONNECTED',
+				{ requiresAuth: true }
 			);
 		}
 

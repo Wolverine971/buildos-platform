@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/(public)/p/[slug]/+page.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { tick } from 'svelte';
 	import SEOHead from '$lib/components/SEOHead.svelte';
 	import { getProseClasses, renderMarkdown } from '$lib/utils/markdown';
@@ -39,6 +40,7 @@
 
 	// Scroll to hash + log a view (fire-and-forget; server filters crawlers & dedups)
 	$effect(() => {
+		if (!browser) return;
 		const currentPage = page;
 		let canceled = false;
 

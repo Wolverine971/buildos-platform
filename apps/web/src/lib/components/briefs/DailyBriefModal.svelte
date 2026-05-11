@@ -137,6 +137,7 @@
 
 	// Watch for regeneration completion
 	$effect(() => {
+		if (!browser) return;
 		if (
 			isRegenerating &&
 			completionEvent &&

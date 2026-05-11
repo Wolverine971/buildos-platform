@@ -15,6 +15,7 @@
 	<EntityActivityLog entityType="task" entityId={taskId} />
 -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { Plus, Pencil, Trash2, LoaderCircle, History, Clock, ChevronDown } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
@@ -78,23 +79,21 @@
 	// EFFECTS
 	// ============================================================
 	$effect(() => {
-		if (autoLoad && entityType && entityId && !hasLoaded) {
-			loadLogs();
-		}
+		if (!browser || !autoLoad || !entityType || !entityId || hasLoaded) return;
+		void loadLogs();
 	});
 
 	// Reset when entity changes
 	$effect(() => {
-		if (entityType && entityId) {
-			hasLoaded = false;
-			logs = [];
-			total = 0;
-			hasMore = false;
-			error = null;
-			expandedLogId = null;
-			if (autoLoad) {
-				loadLogs();
-			}
+		if (!browser || !entityType || !entityId) return;
+		hasLoaded = false;
+		logs = [];
+		total = 0;
+		hasMore = false;
+		error = null;
+		expandedLogId = null;
+		if (autoLoad) {
+			void loadLogs();
 		}
 	});
 

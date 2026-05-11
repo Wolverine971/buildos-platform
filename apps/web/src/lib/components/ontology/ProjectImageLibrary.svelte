@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/ontology/ProjectImageLibrary.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { Eye, RefreshCw } from 'lucide-svelte';
@@ -89,7 +90,7 @@
 	}
 
 	$effect(() => {
-		if (!projectId) return;
+		if (!browser || !projectId) return;
 		void loadAssets();
 	});
 </script>

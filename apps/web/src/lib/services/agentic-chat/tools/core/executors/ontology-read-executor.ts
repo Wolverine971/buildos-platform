@@ -159,6 +159,62 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return normalized.length > 0 ? normalized : undefined;
 	}
 
+	private async getDetailOrNotFound(args: {
+		path: string;
+		entityType: string;
+		idKey: string;
+		id: string;
+		payloadKey: string;
+		searchTool?: string;
+		listTool?: string;
+	}): Promise<any> {
+		let details: any;
+		try {
+			details = await this.apiRequest(args.path);
+		} catch (error) {
+			if (this.isApiRequestStatus(error, 404)) {
+				return this.buildDetailNotFoundPayload(args);
+			}
+			throw error;
+		}
+
+		if (!details?.[args.payloadKey]) {
+			return this.buildDetailNotFoundPayload(args, {
+				reason: `${args.entityType} details response did not include ${args.payloadKey}.`
+			});
+		}
+
+		return details;
+	}
+
+	private buildDetailNotFoundPayload(
+		args: {
+			entityType: string;
+			idKey: string;
+			id: string;
+			searchTool?: string;
+			listTool?: string;
+		},
+		options: { reason?: string } = {}
+	): Record<string, any> {
+		const entityLabel = args.entityType[0]?.toUpperCase() + args.entityType.slice(1);
+		const recoveryTools = [args.listTool, args.searchTool].filter(Boolean).join(' or ');
+		const recoveryMessage = recoveryTools
+			? ` Use ${recoveryTools} to find a current ${args.entityType}.`
+			: '';
+		const reason =
+			options.reason ??
+			`${entityLabel} not found. The ${args.entityType} may have been deleted, archived, inaccessible, or the ID may be stale.`;
+
+		return {
+			status: 'not_found',
+			found: false,
+			[args.idKey]: args.id,
+			[args.entityType]: null,
+			message: `${reason}${recoveryMessage}`
+		};
+	}
+
 	private async runAgenticSearch(args: {
 		query: string;
 		project_id?: string;
@@ -1085,10 +1141,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 	// ============================================
 
 	async getOntoProjectDetails(args: GetOntoProjectDetailsArgs): Promise<any> {
-		const details = await this.apiRequest(`/api/onto/projects/${args.project_id}`);
-		if (!details?.project) {
-			throw new Error('Ontology project not found');
-		}
+		const details = await this.getDetailOrNotFound({
+			path: `/api/onto/projects/${args.project_id}`,
+			entityType: 'project',
+			idKey: 'project_id',
+			id: args.project_id,
+			payloadKey: 'project',
+			listTool: 'list_onto_projects',
+			searchTool: 'search_onto_projects'
+		});
+		if (details.status === 'not_found') return details;
 
 		return {
 			...details,
@@ -1097,10 +1159,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 	}
 
 	async getOntoProjectGraph(args: GetOntoProjectGraphArgs): Promise<any> {
-		const details = await this.apiRequest(`/api/onto/projects/${args.project_id}/graph/full`);
-		if (!details?.graph) {
-			throw new Error('Ontology project graph not found');
-		}
+		const details = await this.getDetailOrNotFound({
+			path: `/api/onto/projects/${args.project_id}/graph/full`,
+			entityType: 'project',
+			idKey: 'project_id',
+			id: args.project_id,
+			payloadKey: 'graph',
+			listTool: 'list_onto_projects',
+			searchTool: 'search_onto_projects'
+		});
+		if (details.status === 'not_found') return details;
 
 		return {
 			...details,
@@ -1109,10 +1177,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 	}
 
 	async getOntoTaskDetails(args: GetOntoTaskDetailsArgs): Promise<any> {
-		const details = await this.apiRequest(`/api/onto/tasks/${args.task_id}`);
-		if (!details?.task) {
-			throw new Error('Ontology task not found');
-		}
+		const details = await this.getDetailOrNotFound({
+			path: `/api/onto/tasks/${args.task_id}`,
+			entityType: 'task',
+			idKey: 'task_id',
+			id: args.task_id,
+			payloadKey: 'task',
+			listTool: 'list_onto_tasks',
+			searchTool: 'search_onto_tasks'
+		});
+		if (details.status === 'not_found') return details;
 
 		return {
 			...details,
@@ -1121,10 +1195,15 @@ export class OntologyReadExecutor extends BaseExecutor {
 	}
 
 	async getOntoGoalDetails(args: GetOntoGoalDetailsArgs): Promise<any> {
-		const details = await this.apiRequest(`/api/onto/goals/${args.goal_id}`);
-		if (!details?.goal) {
-			throw new Error('Ontology goal not found');
-		}
+		const details = await this.getDetailOrNotFound({
+			path: `/api/onto/goals/${args.goal_id}`,
+			entityType: 'goal',
+			idKey: 'goal_id',
+			id: args.goal_id,
+			payloadKey: 'goal',
+			searchTool: 'search_onto_goals'
+		});
+		if (details.status === 'not_found') return details;
 
 		return {
 			...details,
@@ -1133,10 +1212,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 	}
 
 	async getOntoPlanDetails(args: GetOntoPlanDetailsArgs): Promise<any> {
-		const details = await this.apiRequest(`/api/onto/plans/${args.plan_id}`);
-		if (!details?.plan) {
-			throw new Error('Ontology plan not found');
-		}
+		const details = await this.getDetailOrNotFound({
+			path: `/api/onto/plans/${args.plan_id}`,
+			entityType: 'plan',
+			idKey: 'plan_id',
+			id: args.plan_id,
+			payloadKey: 'plan',
+			listTool: 'list_onto_plans',
+			searchTool: 'search_onto_plans'
+		});
+		if (details.status === 'not_found') return details;
 
 		return {
 			...details,
@@ -1145,10 +1230,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 	}
 
 	async getOntoDocumentDetails(args: GetOntoDocumentDetailsArgs): Promise<any> {
-		const details = await this.apiRequest(`/api/onto/documents/${args.document_id}`);
-		if (!details?.document) {
-			throw new Error('Ontology document not found');
-		}
+		const details = await this.getDetailOrNotFound({
+			path: `/api/onto/documents/${args.document_id}`,
+			entityType: 'document',
+			idKey: 'document_id',
+			id: args.document_id,
+			payloadKey: 'document',
+			listTool: 'list_onto_documents',
+			searchTool: 'search_onto_documents'
+		});
+		if (details.status === 'not_found') return details;
 
 		return {
 			...details,
@@ -1157,10 +1248,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 	}
 
 	async getOntoMilestoneDetails(args: GetOntoMilestoneDetailsArgs): Promise<any> {
-		const details = await this.apiRequest(`/api/onto/milestones/${args.milestone_id}`);
-		if (!details?.milestone) {
-			throw new Error('Ontology milestone not found');
-		}
+		const details = await this.getDetailOrNotFound({
+			path: `/api/onto/milestones/${args.milestone_id}`,
+			entityType: 'milestone',
+			idKey: 'milestone_id',
+			id: args.milestone_id,
+			payloadKey: 'milestone',
+			listTool: 'list_onto_milestones',
+			searchTool: 'search_onto_milestones'
+		});
+		if (details.status === 'not_found') return details;
 
 		return {
 			...details,
@@ -1169,10 +1266,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 	}
 
 	async getOntoRiskDetails(args: GetOntoRiskDetailsArgs): Promise<any> {
-		const details = await this.apiRequest(`/api/onto/risks/${args.risk_id}`);
-		if (!details?.risk) {
-			throw new Error('Ontology risk not found');
-		}
+		const details = await this.getDetailOrNotFound({
+			path: `/api/onto/risks/${args.risk_id}`,
+			entityType: 'risk',
+			idKey: 'risk_id',
+			id: args.risk_id,
+			payloadKey: 'risk',
+			listTool: 'list_onto_risks',
+			searchTool: 'search_onto_risks'
+		});
+		if (details.status === 'not_found') return details;
 
 		return {
 			...details,

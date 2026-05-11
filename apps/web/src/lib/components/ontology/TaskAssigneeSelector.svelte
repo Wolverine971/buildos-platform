@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/ontology/TaskAssigneeSelector.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { Search, X } from 'lucide-svelte';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 
@@ -153,7 +154,7 @@
 	);
 
 	$effect(() => {
-		if (!projectId || loadedProjectId === projectId) return;
+		if (!browser || !projectId || loadedProjectId === projectId) return;
 		void loadMembers(projectId);
 	});
 

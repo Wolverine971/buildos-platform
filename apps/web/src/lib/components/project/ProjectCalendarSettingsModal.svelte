@@ -227,6 +227,7 @@
 	}
 
 	$effect(() => {
+		if (!browser) return;
 		if (!isOpen) {
 			activeTab = 'calendar';
 			viewMode = 'month';
@@ -241,7 +242,7 @@
 			return;
 		}
 
-		if (browser && project) {
+		if (project) {
 			void loadCalendarSettings();
 			void loadCollaborationSummary();
 			void loadSyncHealth();

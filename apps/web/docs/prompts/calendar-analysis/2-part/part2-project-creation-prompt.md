@@ -2,7 +2,7 @@
 
 # Prompt Audit: calendar-analysis-part2-project-creation
 
-**Generated at:** 2026-02-27T05:34:38.888Z
+**Generated at:** 2026-05-11T19:17:58.051Z
 **Environment:** Development
 
 ## Flow Context
@@ -10,17 +10,17 @@
 **Flow Type:** 2-Part LLM Analysis
 **Current Part:** Part 2 of 2
 **Purpose:** Ontology project suggestion creation (new projects only)
-**Input from Part 1:** 1 event groups
+**Input from Part 1:** 2 event groups
 
 ## Metadata
 
 ```json
 {
 	"userId": "c44daf9e-27d5-4ef0-9ffd-a57887daff95",
-	"eventGroupCount": 1,
-	"pastEventCount": 6,
-	"upcomingEventCount": 36,
-	"timestamp": "2026-02-27T05:34:38.888Z"
+	"eventGroupCount": 2,
+	"pastEventCount": 9,
+	"upcomingEventCount": 19,
+	"timestamp": "2026-05-11T19:17:58.051Z"
 }
 ```
 
@@ -35,29 +35,29 @@ You are an expert in creating structured projects from calendar event patterns. 
 ````
 You are creating BuildOS ontology project suggestions from calendar event groups.
 
-**Today's date**: 2026-02-27
+**Today's date**: 2026-05-11
 
 ## Event Groups to Process
 
-You've already identified 1 event groups. Now create BuildOS projects for each group.
+You've already identified 2 event groups. Now create BuildOS projects for each group.
 
 
-### Group 1: Recurring team collaboration sessions
+### Group 1: Recurring social or hobby group meetings
 
-**Suggested Name**: Finned Friends Collaboration Series
-**Confidence**: 0.92
-**Event Count**: 27
-**Keywords**: Finned, Friends, Collaboration
-**Time Range**: 2026-02-25 to 2026-04-24
-**Reasoning**: The 'Finned Friends' events form a clear recurring weekly pattern with consistent title, time (12:00-15:00), and 2 attendees. The recurring nature and consistent naming strongly indicate a coordinated team effort or project collaboration. The pattern continues consistently from February to April with only one instance marked 'NO Finned Friends' which appears to be an exception rather than a cancellation pattern.
+**Suggested Name**: Finned Friends Group
+**Confidence**: 0.8
+**Event Count**: 11
+**Keywords**: Finned Friends, recurring, group
+**Time Range**: 2026-05-06 to 2026-05-28
+**Reasoning**: Multiple recurring events with the same title 'Finned Friends' spanning several weeks, indicating a regular group meeting or project.
 
-**Past Events in this group (2 events - for context only)**:
+**Past Events in this group (3 events - for context only)**:
 [
   {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260225T170000Z",
+    "id": "21bpafpsrusahhqv0b1n861m8k_20260506T160000Z",
     "title": "Finned Friends",
-    "start": "2026-02-25T12:00:00-05:00",
-    "end": "2026-02-25T15:00:00-05:00",
+    "start": "2026-05-06T12:00:00-04:00",
+    "end": "2026-05-06T15:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
@@ -65,10 +65,21 @@ You've already identified 1 event groups. Now create BuildOS projects for each g
     "organizer": "glittrgraveyard@gmail.com"
   },
   {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260226T170000Z",
+    "id": "jm7ubs5qnljaa4rj036tje90b8_20260507T160000Z",
     "title": "Finned Friends",
-    "start": "2026-02-26T12:00:00-05:00",
-    "end": "2026-02-26T15:00:00-05:00",
+    "start": "2026-05-07T12:00:00-04:00",
+    "end": "2026-05-07T15:00:00-04:00",
+    "attendees": [
+      "glittrgraveyard@gmail.com",
+      "djwayne35@gmail.com"
+    ],
+    "organizer": "glittrgraveyard@gmail.com"
+  },
+  {
+    "id": "187stvtin15i2pnp62theevu3g_20260508T160000Z",
+    "title": "Finned Friends",
+    "start": "2026-05-08T12:00:00-04:00",
+    "end": "2026-05-08T15:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
@@ -77,13 +88,13 @@ You've already identified 1 event groups. Now create BuildOS projects for each g
   }
 ]
 
-**Upcoming Events in this group (25 events - create tasks from these)**:
+**Upcoming Events in this group (8 events - create tasks from these)**:
 [
   {
-    "id": "187stvtin15i2pnp62theevu3g_20260227T170000Z",
+    "id": "21bpafpsrusahhqv0b1n861m8k_20260513T160000Z",
     "title": "Finned Friends",
-    "start": "2026-02-27T12:00:00-05:00",
-    "end": "2026-02-27T15:00:00-05:00",
+    "start": "2026-05-13T12:00:00-04:00",
+    "end": "2026-05-13T15:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
@@ -93,10 +104,10 @@ You've already identified 1 event groups. Now create BuildOS projects for each g
     "is_recurring": true
   },
   {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260304T170000Z",
+    "id": "jm7ubs5qnljaa4rj036tje90b8_20260514T160000Z",
     "title": "Finned Friends",
-    "start": "2026-03-04T12:00:00-05:00",
-    "end": "2026-03-04T15:00:00-05:00",
+    "start": "2026-05-14T12:00:00-04:00",
+    "end": "2026-05-14T15:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
@@ -106,10 +117,10 @@ You've already identified 1 event groups. Now create BuildOS projects for each g
     "is_recurring": true
   },
   {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260305T170000Z",
+    "id": "187stvtin15i2pnp62theevu3g_20260515T160000Z",
     "title": "Finned Friends",
-    "start": "2026-03-05T12:00:00-05:00",
-    "end": "2026-03-05T15:00:00-05:00",
+    "start": "2026-05-15T12:00:00-04:00",
+    "end": "2026-05-15T15:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
@@ -119,10 +130,10 @@ You've already identified 1 event groups. Now create BuildOS projects for each g
     "is_recurring": true
   },
   {
-    "id": "187stvtin15i2pnp62theevu3g_20260306T170000Z",
+    "id": "21bpafpsrusahhqv0b1n861m8k_20260520T160000Z",
     "title": "Finned Friends",
-    "start": "2026-03-06T12:00:00-05:00",
-    "end": "2026-03-06T15:00:00-05:00",
+    "start": "2026-05-20T12:00:00-04:00",
+    "end": "2026-05-20T15:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
@@ -132,10 +143,10 @@ You've already identified 1 event groups. Now create BuildOS projects for each g
     "is_recurring": true
   },
   {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260311T160000Z",
+    "id": "jm7ubs5qnljaa4rj036tje90b8_20260521T160000Z",
     "title": "Finned Friends",
-    "start": "2026-03-11T12:00:00-04:00",
-    "end": "2026-03-11T15:00:00-04:00",
+    "start": "2026-05-21T12:00:00-04:00",
+    "end": "2026-05-21T15:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
@@ -145,10 +156,10 @@ You've already identified 1 event groups. Now create BuildOS projects for each g
     "is_recurring": true
   },
   {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260312T160000Z",
+    "id": "187stvtin15i2pnp62theevu3g_20260522T160000Z",
     "title": "Finned Friends",
-    "start": "2026-03-12T12:00:00-04:00",
-    "end": "2026-03-12T15:00:00-04:00",
+    "start": "2026-05-22T12:00:00-04:00",
+    "end": "2026-05-22T15:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
@@ -158,10 +169,10 @@ You've already identified 1 event groups. Now create BuildOS projects for each g
     "is_recurring": true
   },
   {
-    "id": "187stvtin15i2pnp62theevu3g_20260313T160000Z",
+    "id": "21bpafpsrusahhqv0b1n861m8k_20260527T160000Z",
     "title": "Finned Friends",
-    "start": "2026-03-13T12:00:00-04:00",
-    "end": "2026-03-13T15:00:00-04:00",
+    "start": "2026-05-27T12:00:00-04:00",
+    "end": "2026-05-27T15:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
@@ -171,10 +182,10 @@ You've already identified 1 event groups. Now create BuildOS projects for each g
     "is_recurring": true
   },
   {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260318T160000Z",
+    "id": "jm7ubs5qnljaa4rj036tje90b8_20260528T160000Z",
     "title": "Finned Friends",
-    "start": "2026-03-18T12:00:00-04:00",
-    "end": "2026-03-18T15:00:00-04:00",
+    "start": "2026-05-28T12:00:00-04:00",
+    "end": "2026-05-28T15:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
@@ -182,226 +193,85 @@ You've already identified 1 event groups. Now create BuildOS projects for each g
     "organizer": "glittrgraveyard@gmail.com",
     "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
     "is_recurring": true
+  }
+]
+
+---
+
+### Group 2: Recurring personal outdoor activity
+
+**Suggested Name**: Fun in the Forest Outings
+**Confidence**: 0.75
+**Event Count**: 5
+**Keywords**: Fun in the forest, recurring
+**Time Range**: 2026-05-04 to 2026-06-01
+**Reasoning**: Recurring events with the same title 'Fun in the forest' every Monday, suggesting a regular personal or hobby activity.
+
+**Past Events in this group (2 events - for context only)**:
+[
+  {
+    "id": "li5o3slq63boc3ira3svdtjq4g_20260504T190000Z",
+    "title": "Fun in the forest",
+    "start": "2026-05-04T15:00:00-04:00",
+    "end": "2026-05-04T17:00:00-04:00",
+    "attendees": [
+      "glittrgraveyard@gmail.com",
+      "djwayne35@gmail.com"
+    ],
+    "organizer": "glittrgraveyard@gmail.com"
   },
   {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260319T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-03-19T12:00:00-04:00",
-    "end": "2026-03-19T15:00:00-04:00",
+    "id": "li5o3slq63boc3ira3svdtjq4g_20260511T190000Z",
+    "title": "Fun in the forest",
+    "start": "2026-05-11T15:00:00-04:00",
+    "end": "2026-05-11T17:00:00-04:00",
+    "attendees": [
+      "glittrgraveyard@gmail.com",
+      "djwayne35@gmail.com"
+    ],
+    "organizer": "glittrgraveyard@gmail.com"
+  }
+]
+
+**Upcoming Events in this group (3 events - create tasks from these)**:
+[
+  {
+    "id": "li5o3slq63boc3ira3svdtjq4g_20260518T190000Z",
+    "title": "Fun in the forest",
+    "start": "2026-05-18T15:00:00-04:00",
+    "end": "2026-05-18T17:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
     ],
     "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
+    "hangoutLink": "https://meet.google.com/kfh-diib-mgz",
     "is_recurring": true
   },
   {
-    "id": "187stvtin15i2pnp62theevu3g_20260320T160000Z",
-    "title": "NO Finned Friends",
-    "start": "2026-03-20T12:00:00-04:00",
-    "end": "2026-03-20T15:00:00-04:00",
+    "id": "li5o3slq63boc3ira3svdtjq4g_20260525T190000Z",
+    "title": "Fun in the forest",
+    "start": "2026-05-25T15:00:00-04:00",
+    "end": "2026-05-25T17:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
     ],
     "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
+    "hangoutLink": "https://meet.google.com/kfh-diib-mgz",
     "is_recurring": true
   },
   {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260325T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-03-25T12:00:00-04:00",
-    "end": "2026-03-25T15:00:00-04:00",
+    "id": "li5o3slq63boc3ira3svdtjq4g_20260601T190000Z",
+    "title": "Fun in the forest",
+    "start": "2026-06-01T15:00:00-04:00",
+    "end": "2026-06-01T17:00:00-04:00",
     "attendees": [
       "glittrgraveyard@gmail.com",
       "djwayne35@gmail.com"
     ],
     "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260326T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-03-26T12:00:00-04:00",
-    "end": "2026-03-26T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "187stvtin15i2pnp62theevu3g_20260327T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-03-27T12:00:00-04:00",
-    "end": "2026-03-27T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260401T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-01T12:00:00-04:00",
-    "end": "2026-04-01T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260402T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-02T12:00:00-04:00",
-    "end": "2026-04-02T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "187stvtin15i2pnp62theevu3g_20260403T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-03T12:00:00-04:00",
-    "end": "2026-04-03T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260408T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-08T12:00:00-04:00",
-    "end": "2026-04-08T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260409T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-09T12:00:00-04:00",
-    "end": "2026-04-09T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "187stvtin15i2pnp62theevu3g_20260410T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-10T12:00:00-04:00",
-    "end": "2026-04-10T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260415T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-15T12:00:00-04:00",
-    "end": "2026-04-15T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260416T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-16T12:00:00-04:00",
-    "end": "2026-04-16T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "187stvtin15i2pnp62theevu3g_20260417T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-17T12:00:00-04:00",
-    "end": "2026-04-17T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "21bpafpsrusahhqv0b1n861m8k_20260422T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-22T12:00:00-04:00",
-    "end": "2026-04-22T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "jm7ubs5qnljaa4rj036tje90b8_20260423T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-23T12:00:00-04:00",
-    "end": "2026-04-23T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
-    "is_recurring": true
-  },
-  {
-    "id": "187stvtin15i2pnp62theevu3g_20260424T160000Z",
-    "title": "Finned Friends",
-    "start": "2026-04-24T12:00:00-04:00",
-    "end": "2026-04-24T15:00:00-04:00",
-    "attendees": [
-      "glittrgraveyard@gmail.com",
-      "djwayne35@gmail.com"
-    ],
-    "organizer": "glittrgraveyard@gmail.com",
-    "hangoutLink": "https://meet.google.com/sqt-rzbq-sxg",
+    "hangoutLink": "https://meet.google.com/kfh-diib-mgz",
     "is_recurring": true
   }
 ]
@@ -444,7 +314,7 @@ Write a markdown document that orients any human or agent to the project's visio
 
 **Avoid**
 - Task lists, status checklists, or implementation minutiae
-- Raw braindump transcripts or disconnected bullet soup
+- Raw transcripts or disconnected bullet soup
 - Step-by-step directives that belong inside the task model
 
 **Formatting**
@@ -506,12 +376,12 @@ Return JSON:
 ### 1. Task Generation Requirements
 
 **Task Count**: Generate tasks for 30-50% of upcoming events
-- Calculate: For 1 event groups, if a group has N upcoming events, generate Math.ceil(N * 0.4) tasks minimum
+- Calculate: For 2 event groups, if a group has N upcoming events, generate Math.ceil(N * 0.4) tasks minimum
 - **Minimum**: 2 tasks per project
 - **Strategy**: Convert key upcoming events to tasks + add inferred preparation/follow-up tasks
 
 **Task Dates**:
-- **ALL tasks must have start_date >= 2026-02-27**
+- **ALL tasks must have start_date >= 2026-05-11**
 - No past-dated tasks allowed
 
 ### 2. Recurring Event Handling (CRITICAL)
@@ -571,8 +441,8 @@ When an event has a "recurrence" field with RRULE:
 ## Token Estimates
 
 - **System Prompt:** ~36 tokens
-- **User Prompt:** ~4338 tokens
-- **Total Estimate:** ~4374 tokens
+- **User Prompt:** ~3232 tokens
+- **Total Estimate:** ~3268 tokens
 
 ## Flow Notes
 

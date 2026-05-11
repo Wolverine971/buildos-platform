@@ -13,6 +13,7 @@
 	- onRestoreRequested: Callback when user wants to restore a version
 -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import {
 		History,
 		LoaderCircle,
@@ -133,16 +134,15 @@
 	// ============================================================
 	// Reset when document changes
 	$effect(() => {
-		if (documentId) {
-			hasLoaded = false;
-			versions = [];
-			total = 0;
-			hasMore = false;
-			nextCursor = null;
-			error = null;
-			selectedVersion = null;
-			loadVersions();
-		}
+		if (!browser || !documentId) return;
+		hasLoaded = false;
+		versions = [];
+		total = 0;
+		hasMore = false;
+		nextCursor = null;
+		error = null;
+		selectedVersion = null;
+		void loadVersions();
 	});
 
 	// ============================================================

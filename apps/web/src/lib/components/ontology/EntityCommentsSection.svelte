@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/ontology/EntityCommentsSection.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { MessageSquare, LoaderCircle } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
@@ -76,13 +77,13 @@
 
 	$effect(() => {
 		const key = `${projectId}:${entityType}:${entityId}`;
-		if (!projectId || !entityType || !entityId) return;
+		if (!browser || !projectId || !entityType || !entityId) return;
 		if (key === lastKey) return;
 		lastKey = key;
 		comments = [];
 		actorId = null;
 		error = null;
-		loadComments();
+		void loadComments();
 	});
 
 	async function loadComments() {

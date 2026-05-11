@@ -22,14 +22,19 @@
 		onNext: () => void;
 		onIntentSelected: (intent: OnboardingIntent) => void;
 		onStakesSelected: (stakes: OnboardingStakes) => void;
+		defaultIntent?: OnboardingIntent;
+		defaultStakes?: OnboardingStakes;
 	}
 
-	let { onNext, onIntentSelected, onStakesSelected }: Props = $props();
+	let { onNext, onIntentSelected, onStakesSelected, defaultIntent, defaultStakes }: Props =
+		$props();
 
-	let selectedIntent = $state<OnboardingIntent | null>(null);
-	let selectedStakes = $state<OnboardingStakes | null>(null);
+	let selectedIntent = $state<OnboardingIntent | null>(defaultIntent ?? null);
+	let selectedStakes = $state<OnboardingStakes | null>(defaultStakes ?? null);
 	let isSaving = $state(false);
-	let currentQuestion = $state<'intent' | 'stakes'>('intent');
+	// If the user already picked an intent (returning from a later step), start
+	// them on the stakes question so they don't have to re-traverse.
+	let currentQuestion = $state<'intent' | 'stakes'>(defaultIntent ? 'stakes' : 'intent');
 
 	const canContinue = $derived(selectedIntent !== null && selectedStakes !== null);
 

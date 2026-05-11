@@ -98,6 +98,7 @@ async function executeAnalysis(
 			headers: {
 				'Content-Type': 'application/json'
 			},
+			cache: 'no-store',
 			body: JSON.stringify({
 				daysBack: controller.daysBack,
 				daysForward: controller.daysForward
@@ -156,6 +157,7 @@ async function executeAnalysis(
 			error instanceof Error ? error.message : 'Failed to analyze calendar events';
 		notificationStore.setError(controller.notificationId, message);
 		toastService.error(message);
+		throw error;
 	} finally {
 		controller.status = 'idle';
 		controller.abortController = undefined;
@@ -246,9 +248,7 @@ export async function startCalendarAnalysis(
 		notificationStore.expand(notificationId);
 	}
 
-	const completion = executeAnalysis(controller, { reason: 'initial' }).catch((error) => {
-		console.error('[CalendarAnalysisBridge] Execution failed', error);
-	});
+	const completion = executeAnalysis(controller, { reason: 'initial' });
 
 	return { notificationId, completion };
 }
