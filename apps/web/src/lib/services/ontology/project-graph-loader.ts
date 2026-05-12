@@ -36,12 +36,212 @@ import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
 
 const COMPLETED_TASK_STATES = new Set(['done', 'complete', 'completed']);
 
+const PROJECT_GRAPH_PROJECT_COLUMNS = [
+	'id',
+	'name',
+	'description',
+	'type_key',
+	'state_key',
+	'props',
+	'start_at',
+	'end_at',
+	'facet_context',
+	'facet_scale',
+	'facet_stage',
+	'doc_structure',
+	'created_by',
+	'created_at',
+	'updated_at',
+	'archived_at',
+	'deleted_at',
+	'is_public',
+	'org_id',
+	'next_step_short',
+	'next_step_long',
+	'next_step_source',
+	'next_step_updated_at'
+].join(',');
+
+const PROJECT_SUMMARY_PROJECT_COLUMNS = [
+	PROJECT_GRAPH_PROJECT_COLUMNS,
+	'icon_svg',
+	'icon_concept',
+	'icon_generated_at',
+	'icon_generation_prompt',
+	'icon_generation_source'
+].join(',');
+
+const PLAN_COLUMNS = [
+	'id',
+	'project_id',
+	'type_key',
+	'name',
+	'plan',
+	'description',
+	'state_key',
+	'props',
+	'facet_context',
+	'facet_scale',
+	'facet_stage',
+	'created_by',
+	'created_at',
+	'updated_at',
+	'archived_at',
+	'deleted_at'
+].join(',');
+
+const TASK_COLUMNS = [
+	'id',
+	'project_id',
+	'type_key',
+	'title',
+	'description',
+	'state_key',
+	'priority',
+	'props',
+	'facet_scale',
+	'created_by',
+	'created_at',
+	'updated_at',
+	'start_at',
+	'due_at',
+	'completed_at',
+	'archived_at',
+	'deleted_at'
+].join(',');
+
+const GOAL_COLUMNS = [
+	'id',
+	'project_id',
+	'type_key',
+	'name',
+	'goal',
+	'description',
+	'state_key',
+	'target_date',
+	'props',
+	'created_by',
+	'created_at',
+	'updated_at',
+	'completed_at',
+	'archived_at',
+	'deleted_at'
+].join(',');
+
+const MILESTONE_COLUMNS = [
+	'id',
+	'project_id',
+	'type_key',
+	'title',
+	'milestone',
+	'description',
+	'state_key',
+	'due_at',
+	'completed_at',
+	'props',
+	'created_by',
+	'created_at',
+	'updated_at',
+	'archived_at',
+	'deleted_at'
+].join(',');
+
+const DOCUMENT_COLUMNS = [
+	'id',
+	'project_id',
+	'type_key',
+	'title',
+	'state_key',
+	'description',
+	'props',
+	'children',
+	'created_by',
+	'created_at',
+	'updated_at',
+	'archived_at',
+	'deleted_at'
+].join(',');
+
+const REQUIREMENT_COLUMNS = [
+	'id',
+	'project_id',
+	'text',
+	'type_key',
+	'priority',
+	'props',
+	'created_by',
+	'created_at',
+	'updated_at',
+	'deleted_at'
+].join(',');
+
+const METRIC_COLUMNS = [
+	'id',
+	'project_id',
+	'name',
+	'definition',
+	'unit',
+	'type_key',
+	'props',
+	'created_by',
+	'created_at'
+].join(',');
+
+const SOURCE_COLUMNS = [
+	'id',
+	'project_id',
+	'uri',
+	'snapshot_uri',
+	'captured_at',
+	'props',
+	'created_by',
+	'created_at'
+].join(',');
+
+const RISK_COLUMNS = [
+	'id',
+	'project_id',
+	'title',
+	'type_key',
+	'probability',
+	'impact',
+	'state_key',
+	'content',
+	'props',
+	'created_by',
+	'created_at',
+	'updated_at',
+	'mitigated_at',
+	'archived_at',
+	'deleted_at'
+].join(',');
+
+const EDGE_COLUMNS = [
+	'id',
+	'project_id',
+	'src_id',
+	'src_kind',
+	'dst_id',
+	'dst_kind',
+	'rel',
+	'props',
+	'created_at'
+].join(',');
+
 function isCompletedTask(task: OntoTask): boolean {
 	const state = String(task.state_key ?? '').toLowerCase();
 	return (
 		COMPLETED_TASK_STATES.has(state) ||
 		(typeof task.completed_at === 'string' && task.completed_at.length > 0)
 	);
+}
+
+function asRows<T>(data: unknown): T[] {
+	return (data ?? []) as T[];
+}
+
+function asRow<T>(data: unknown): T {
+	return data as T;
 }
 
 /**
@@ -88,14 +288,14 @@ export async function loadProjectGraphData(
 	] = await Promise.all([
 		supabase
 			.from('onto_projects')
-			.select('*')
+			.select(PROJECT_GRAPH_PROJECT_COLUMNS)
 			.eq('id', projectId)
 			.is('deleted_at', null)
 			.single(),
 		shouldFetch('plan')
 			? supabase
 					.from('onto_plans')
-					.select('*')
+					.select(PLAN_COLUMNS)
 					.eq('project_id', projectId)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
@@ -103,7 +303,7 @@ export async function loadProjectGraphData(
 			? (() => {
 					const query = supabase
 						.from('onto_tasks')
-						.select('*')
+						.select(TASK_COLUMNS)
 						.eq('project_id', projectId)
 						.is('deleted_at', null);
 					return excludeCompletedTasks ? query.neq('state_key', 'done') : query;
@@ -112,46 +312,46 @@ export async function loadProjectGraphData(
 		shouldFetch('goal')
 			? supabase
 					.from('onto_goals')
-					.select('*')
+					.select(GOAL_COLUMNS)
 					.eq('project_id', projectId)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('milestone')
 			? supabase
 					.from('onto_milestones')
-					.select('*')
+					.select(MILESTONE_COLUMNS)
 					.eq('project_id', projectId)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('document')
 			? supabase
 					.from('onto_documents')
-					.select('*')
+					.select(DOCUMENT_COLUMNS)
 					.eq('project_id', projectId)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('requirement')
 			? supabase
 					.from('onto_requirements')
-					.select('*')
+					.select(REQUIREMENT_COLUMNS)
 					.eq('project_id', projectId)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('metric')
-			? supabase.from('onto_metrics').select('*').eq('project_id', projectId)
+			? supabase.from('onto_metrics').select(METRIC_COLUMNS).eq('project_id', projectId)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('source')
-			? supabase.from('onto_sources').select('*').eq('project_id', projectId)
+			? supabase.from('onto_sources').select(SOURCE_COLUMNS).eq('project_id', projectId)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('risk')
 			? supabase
 					.from('onto_risks')
-					.select('*')
+					.select(RISK_COLUMNS)
 					.eq('project_id', projectId)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		// This is the key improvement - edges now have project_id!
-		supabase.from('onto_edges').select('*').eq('project_id', projectId)
+		supabase.from('onto_edges').select(EDGE_COLUMNS).eq('project_id', projectId)
 	]);
 
 	// Handle project not found
@@ -181,32 +381,34 @@ export async function loadProjectGraphData(
 	logError('risks', risksResult.error);
 	logError('edges', edgesResult.error);
 
+	const taskRows = asRows<OntoTask>(tasksResult.data);
+	const edgeRows = asRows<OntoEdge>(edgesResult.data);
 	const filteredTasks =
 		shouldFetch('task') && excludeCompletedTasks
-			? ((tasksResult.data ?? []) as OntoTask[]).filter((task) => !isCompletedTask(task))
-			: ((tasksResult.data ?? []) as OntoTask[]);
+			? taskRows.filter((task) => !isCompletedTask(task))
+			: taskRows;
 
 	const filteredTaskIds = new Set(filteredTasks.map((task) => task.id));
 	const filteredEdges =
 		shouldFetch('task') && excludeCompletedTasks
-			? ((edgesResult.data ?? []) as OntoEdge[]).filter((edge) => {
+			? edgeRows.filter((edge) => {
 					if (edge.src_kind === 'task' && !filteredTaskIds.has(edge.src_id)) return false;
 					if (edge.dst_kind === 'task' && !filteredTaskIds.has(edge.dst_id)) return false;
 					return true;
 				})
-			: ((edgesResult.data ?? []) as OntoEdge[]);
+			: edgeRows;
 
 	return {
-		project: sanitizeProjectForClient(projectResult.data as OntoProject),
-		plans: (plansResult.data ?? []) as OntoPlan[],
+		project: sanitizeProjectForClient(asRow<OntoProject>(projectResult.data)),
+		plans: asRows<OntoPlan>(plansResult.data),
 		tasks: filteredTasks,
-		goals: (goalsResult.data ?? []) as OntoGoal[],
-		milestones: (milestonesResult.data ?? []) as OntoMilestone[],
-		documents: (documentsResult.data ?? []) as OntoDocument[],
-		requirements: (requirementsResult.data ?? []) as OntoRequirement[],
-		metrics: (metricsResult.data ?? []) as OntoMetric[],
-		sources: (sourcesResult.data ?? []) as OntoSource[],
-		risks: (risksResult.data ?? []) as OntoRisk[],
+		goals: asRows<OntoGoal>(goalsResult.data),
+		milestones: asRows<OntoMilestone>(milestonesResult.data),
+		documents: asRows<OntoDocument>(documentsResult.data),
+		requirements: asRows<OntoRequirement>(requirementsResult.data),
+		metrics: asRows<OntoMetric>(metricsResult.data),
+		sources: asRows<OntoSource>(sourcesResult.data),
+		risks: asRows<OntoRisk>(risksResult.data),
 		edges: filteredEdges
 	};
 }
@@ -256,11 +458,15 @@ export async function loadMultipleProjectGraphs(
 		risksResult,
 		edgesResult
 	] = await Promise.all([
-		supabase.from('onto_projects').select('*').in('id', projectIds).is('deleted_at', null),
+		supabase
+			.from('onto_projects')
+			.select(PROJECT_GRAPH_PROJECT_COLUMNS)
+			.in('id', projectIds)
+			.is('deleted_at', null),
 		shouldFetch('plan')
 			? supabase
 					.from('onto_plans')
-					.select('*')
+					.select(PLAN_COLUMNS)
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
@@ -268,7 +474,7 @@ export async function loadMultipleProjectGraphs(
 			? (() => {
 					const query = supabase
 						.from('onto_tasks')
-						.select('*')
+						.select(TASK_COLUMNS)
 						.in('project_id', projectIds)
 						.is('deleted_at', null);
 					return excludeCompletedTasks ? query.neq('state_key', 'done') : query;
@@ -277,50 +483,50 @@ export async function loadMultipleProjectGraphs(
 		shouldFetch('goal')
 			? supabase
 					.from('onto_goals')
-					.select('*')
+					.select(GOAL_COLUMNS)
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('milestone')
 			? supabase
 					.from('onto_milestones')
-					.select('*')
+					.select(MILESTONE_COLUMNS)
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('document')
 			? supabase
 					.from('onto_documents')
-					.select('*')
+					.select(DOCUMENT_COLUMNS)
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('requirement')
 			? supabase
 					.from('onto_requirements')
-					.select('*')
+					.select(REQUIREMENT_COLUMNS)
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('metric')
-			? supabase.from('onto_metrics').select('*').in('project_id', projectIds)
+			? supabase.from('onto_metrics').select(METRIC_COLUMNS).in('project_id', projectIds)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('source')
-			? supabase.from('onto_sources').select('*').in('project_id', projectIds)
+			? supabase.from('onto_sources').select(SOURCE_COLUMNS).in('project_id', projectIds)
 			: Promise.resolve({ data: [], error: null }),
 		shouldFetch('risk')
 			? supabase
 					.from('onto_risks')
-					.select('*')
+					.select(RISK_COLUMNS)
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
 			: Promise.resolve({ data: [], error: null }),
-		supabase.from('onto_edges').select('*').in('project_id', projectIds)
+		supabase.from('onto_edges').select(EDGE_COLUMNS).in('project_id', projectIds)
 	]);
 
 	// Group entities by project_id
 	const projectsById = new Map<string, OntoProject>();
-	for (const project of (projectsResult.data ?? []) as OntoProject[]) {
+	for (const project of asRows<OntoProject>(projectsResult.data)) {
 		projectsById.set(project.id, sanitizeProjectForClient(project));
 	}
 
@@ -338,8 +544,8 @@ export async function loadMultipleProjectGraphs(
 		return grouped;
 	};
 
-	const tasksData = (tasksResult.data ?? []) as OntoTask[];
-	const edgesData = (edgesResult.data ?? []) as OntoEdge[];
+	const tasksData = asRows<OntoTask>(tasksResult.data);
+	const edgesData = asRows<OntoEdge>(edgesResult.data);
 
 	const filteredTasks =
 		shouldFetch('task') && excludeCompletedTasks
@@ -356,17 +562,17 @@ export async function loadMultipleProjectGraphs(
 				})
 			: edgesData;
 
-	const plansByProject = groupByProjectId((plansResult.data ?? []) as OntoPlan[]);
+	const plansByProject = groupByProjectId(asRows<OntoPlan>(plansResult.data));
 	const tasksByProject = groupByProjectId(filteredTasks);
-	const goalsByProject = groupByProjectId((goalsResult.data ?? []) as OntoGoal[]);
-	const milestonesByProject = groupByProjectId((milestonesResult.data ?? []) as OntoMilestone[]);
-	const documentsByProject = groupByProjectId((documentsResult.data ?? []) as OntoDocument[]);
+	const goalsByProject = groupByProjectId(asRows<OntoGoal>(goalsResult.data));
+	const milestonesByProject = groupByProjectId(asRows<OntoMilestone>(milestonesResult.data));
+	const documentsByProject = groupByProjectId(asRows<OntoDocument>(documentsResult.data));
 	const requirementsByProject = groupByProjectId(
-		(requirementsResult.data ?? []) as OntoRequirement[]
+		asRows<OntoRequirement>(requirementsResult.data)
 	);
-	const metricsByProject = groupByProjectId((metricsResult.data ?? []) as OntoMetric[]);
-	const sourcesByProject = groupByProjectId((sourcesResult.data ?? []) as OntoSource[]);
-	const risksByProject = groupByProjectId((risksResult.data ?? []) as OntoRisk[]);
+	const metricsByProject = groupByProjectId(asRows<OntoMetric>(metricsResult.data));
+	const sourcesByProject = groupByProjectId(asRows<OntoSource>(sourcesResult.data));
+	const risksByProject = groupByProjectId(asRows<OntoRisk>(risksResult.data));
 	const edgesByProject = groupByProjectId(filteredEdges);
 
 	// Build result map
@@ -419,7 +625,7 @@ export async function loadUserProjectSummaries(
 	// First get all projects for the user
 	const { data: projects, error: projectsError } = await supabase
 		.from('onto_projects')
-		.select('*')
+		.select(PROJECT_SUMMARY_PROJECT_COLUMNS)
 		.eq('created_by', actorId)
 		.order('created_at', { ascending: false });
 
@@ -428,11 +634,13 @@ export async function loadUserProjectSummaries(
 		return [];
 	}
 
-	if (projects.length === 0) {
+	const projectRows = asRows<OntoProject>(projects);
+
+	if (projectRows.length === 0) {
 		return [];
 	}
 
-	const projectIds = projects.map((p) => p.id);
+	const projectIds = projectRows.map((p) => p.id);
 
 	// Get counts in parallel
 	const [taskCounts, planCounts, edgeCounts] = await Promise.all([
@@ -463,8 +671,8 @@ export async function loadUserProjectSummaries(
 	const planCountsByProject = countByProject(planCounts.data);
 	const edgeCountsByProject = countByProject(edgeCounts.data);
 
-	return (projects as OntoProject[]).map((project) => ({
-		project,
+	return projectRows.map((project) => ({
+		project: sanitizeProjectForClient(project),
 		taskCount: taskCountsByProject.get(project.id) ?? 0,
 		planCount: planCountsByProject.get(project.id) ?? 0,
 		edgeCount: edgeCountsByProject.get(project.id) ?? 0

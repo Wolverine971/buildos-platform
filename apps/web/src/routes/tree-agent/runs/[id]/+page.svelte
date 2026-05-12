@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/tree-agent/runs/[id]/+page.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import TreeAgentGraph from '$lib/components/tree-agent/TreeAgentGraph.svelte';
 	import TreeAgentContextSelector from '$lib/components/tree-agent/TreeAgentContextSelector.svelte';
@@ -117,6 +118,8 @@
 	}
 
 	$effect(() => {
+		if (!browser) return;
+
 		refresh();
 		polling = setInterval(refresh, 5000);
 

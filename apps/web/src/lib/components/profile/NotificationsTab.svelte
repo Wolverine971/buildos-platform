@@ -5,6 +5,8 @@
 	import NotificationPreferences from '$lib/components/settings/NotificationPreferences.svelte';
 	import SMSPreferences from '$lib/components/settings/SMSPreferences.svelte';
 	import ScheduledSMSList from '$lib/components/profile/ScheduledSMSList.svelte';
+	import TabHeader from './_shared/TabHeader.svelte';
+	import SettingsCard from './_shared/SettingsCard.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 
 	interface Props {
@@ -45,20 +47,11 @@
 </script>
 
 <div class="space-y-4 sm:space-y-5">
-	<!-- Tab Header -->
-	<div class="flex items-start gap-3">
-		<div
-			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
-		>
-			<Bell class="w-5 h-5 text-accent-foreground" />
-		</div>
-		<div class="flex-1 min-w-0">
-			<h2 class="text-lg sm:text-xl font-bold text-foreground">Notifications</h2>
-			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
-				Manage how you receive notifications across email, SMS, push, and in-app.
-			</p>
-		</div>
-	</div>
+	<TabHeader
+		icon={Bell}
+		title="Notifications"
+		description="Manage how you receive notifications across email, SMS, push, and in-app."
+	/>
 
 	<!-- Notification Preferences Component -->
 	<NotificationPreferences
@@ -78,10 +71,12 @@
 
 	<!-- Scheduled Messages List -->
 	{#if !loadingSmsPreferences && smsPreferences?.event_reminders_enabled}
-		<div
-			class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak p-4 sm:p-5"
+		<SettingsCard
+			title="Scheduled SMS"
+			description="Upcoming and recent SMS jobs."
+			labelledById="scheduled-sms-heading"
 		>
 			<ScheduledSMSList timezone={userTimezone} />
-		</div>
+		</SettingsCard>
 	{/if}
 </div>

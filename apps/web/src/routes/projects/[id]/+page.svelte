@@ -19,7 +19,9 @@
 	  │  └─────────────────────────────────────────────────┘    │
 	  └─────────────────────────────────────────────────────────┘
 
-	Layout (< sm mobile): existing MobileCommandCenter + history.
+	Layout (< sm mobile): PulseStrip (tabbed) + shared EntityTabStrip (all
+	entity tabs wrap onto multiple pill rows) + MobileTaskBoard + shared
+	ProjectDocumentsSection.
 
 	The data loader is identical to v1 (skeleton-first + hydrate via
 	/api/onto/projects/[id]/full). Modals are rendered through
@@ -39,12 +41,11 @@
 		parseDocStructure
 	} from '$lib/services/ontology/doc-structure.service';
 	import ProjectHeaderCard from '$lib/components/project/ProjectHeaderCard.svelte';
-	import ProjectHistorySection from '$lib/components/project/ProjectHistorySection.svelte';
 	import ProjectDocumentsSection from '$lib/components/project/ProjectDocumentsSection.svelte';
 	import ProjectEventsModal from '$lib/components/project/ProjectEventsModal.svelte';
 	import RecentProjectChatsModal from '$lib/components/project/RecentProjectChatsModal.svelte';
-	import { getUpcomingEvents } from '$lib/components/project/project-event-filters';
 	import PulseStrip from '$lib/components/project/v2/PulseStrip.svelte';
+	import MobileTaskBoard from '$lib/components/project/v2/MobileTaskBoard.svelte';
 	import TaskKanbanBoard from '$lib/components/project/v2/TaskKanbanBoard.svelte';
 	import EntityTabStrip from '$lib/components/project/v2/EntityTabStrip.svelte';
 	import {
@@ -61,17 +62,7 @@
 		type ProjectNotificationSettings
 	} from '$lib/components/project/project-page-data-controller';
 	import { resolveEntityOpenAction } from '$lib/components/project/project-page-interactions';
-	import {
-		Bell,
-		BellOff,
-		Calendar,
-		CalendarClock,
-		GitBranch,
-		MessagesSquare,
-		Pencil,
-		Trash2,
-		Users
-	} from 'lucide-svelte';
+	import { Bell, BellOff, Calendar, GitBranch, Pencil, Trash2, Users } from 'lucide-svelte';
 	import type {
 		Project,
 		Task,
@@ -269,7 +260,6 @@
 		}
 		return Array.from(set);
 	});
-	const upcomingEventCount = $derived(getUpcomingEvents(events).length);
 
 	// ============================================================
 	// DOC TREE SEED
@@ -991,129 +981,28 @@
 			</div>
 		{/if}
 
-		<!-- Mobile: existing MobileCommandCenter (< sm only) -->
-		<div class="sm:hidden mb-2 grid">
-			{#if isHydrating}
-				<div class="space-y-1.5" aria-busy="true" aria-label="Loading project panels">
-					<div class="grid grid-cols-2 gap-1.5">
-						{#each Array(2) as _, i (i)}
+		<!-- Pulse (shared mobile + desktop). PulseStrip handles its own
+			 viewport layout: tabbed on mobile, two-column at md+. -->
+		{#if isHydrating}
+			<div class="mb-2 sm:mb-3">
+				<!-- Mobile pulse skeleton -->
+				<div
+					class="sm:hidden bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+				>
+					<div class="flex border-b border-border/60">
+						<div class="flex-1 h-10 bg-muted/40 animate-pulse"></div>
+						<div class="flex-1 h-10 bg-muted/40 animate-pulse"></div>
+					</div>
+					<div class="p-2 space-y-1.5">
+						{#each Array(3) as _, i (i)}
 							<div
-								class="h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
+								class="h-14 bg-muted/40 border border-border/60 rounded-md animate-pulse"
 							></div>
 						{/each}
 					</div>
-					{#each Array(4) as _, i (i)}
-						<div
-							class="w-full h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
-						></div>
-					{/each}
 				</div>
-			{:else}
-				<div class="space-y-1.5" in:fade={fadeIn} out:fade={fadeOut}>
-					<div class="grid grid-cols-2 gap-1.5" aria-label="Project quick sections">
-						<button
-							type="button"
-							onclick={openRecentChatsModal}
-							class="min-h-14 rounded-lg border border-border bg-card px-2.5 py-2 text-left shadow-ink tx tx-frame tx-weak transition-colors hover:bg-muted/50 pressable"
-							aria-haspopup="dialog"
-						>
-							<div class="flex items-center gap-2 min-w-0">
-								<div
-									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-teal-500/10"
-								>
-									<MessagesSquare class="h-4 w-4 text-teal-500" />
-								</div>
-								<div class="min-w-0">
-									<p class="truncate text-xs font-semibold text-foreground">
-										Recent Chats
-									</p>
-									<p class="truncate text-[10px] text-muted-foreground">
-										Conversations
-									</p>
-								</div>
-							</div>
-						</button>
-
-						<button
-							type="button"
-							onclick={openEventsModal}
-							class="min-h-14 rounded-lg border border-border bg-card px-2.5 py-2 text-left shadow-ink tx tx-frame tx-weak transition-colors hover:bg-muted/50 pressable"
-							aria-haspopup="dialog"
-						>
-							<div class="flex items-center gap-2 min-w-0">
-								<div
-									class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-teal-500/10"
-								>
-									<CalendarClock class="h-4 w-4 text-teal-500" />
-								</div>
-								<div class="min-w-0">
-									<p class="truncate text-xs font-semibold text-foreground">
-										Events
-									</p>
-									<p class="truncate text-[10px] text-muted-foreground">
-										{upcomingEventCount} upcoming
-									</p>
-								</div>
-							</div>
-						</button>
-					</div>
-
-					{#await import('$lib/components/project/MobileCommandCenter.svelte') then { default: MobileCommandCenter }}
-						<MobileCommandCenter
-							{goals}
-							{milestones}
-							{tasks}
-							{plans}
-							{risks}
-							{documents}
-							{events}
-							{milestonesByGoalId}
-							docStructure={docTreeStructure}
-							{docTreeDocuments}
-							projectId={project.id}
-							{canEdit}
-							onAddGoal={() => canEdit && (showGoalCreateModal = true)}
-							onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
-							onAddTask={() => canEdit && (showTaskCreateModal = true)}
-							onAddPlan={() => canEdit && (showPlanCreateModal = true)}
-							onAddRisk={() => canEdit && (showRiskCreateModal = true)}
-							onAddDocument={(parentId) => canEdit && handleCreateDocument(parentId)}
-							onAddEvent={() => canEdit && (showEventCreateModal = true)}
-							onEditGoal={(id) => (editingGoalId = id)}
-							onEditMilestone={(id) => (editingMilestoneId = id)}
-							onEditTask={(id) => (editingTaskId = id)}
-							onEditPlan={(id) => (editingPlanId = id)}
-							onEditRisk={(id) => (editingRiskId = id)}
-							onEditDocument={(id) => {
-								activeDocumentId = id;
-								showDocumentModal = true;
-							}}
-							onEditEvent={(id) => (editingEventId = id)}
-							onToggleMilestoneComplete={handleToggleMilestoneComplete}
-						/>
-					{:catch}
-						<div
-							class="rounded-lg border border-border bg-card px-3 py-2 text-sm text-muted-foreground"
-						>
-							Unable to load mobile command center.
-						</div>
-					{/await}
-
-					<ProjectHistorySection
-						{canViewLogs}
-						projectId={project.id}
-						projectName={project.name || 'Project'}
-						compact={true}
-						onEntityClick={handleEntityClick}
-					/>
-				</div>
-			{/if}
-		</div>
-
-		<!-- Desktop: v2 layout (sm+) -->
-		<div class="hidden sm:block space-y-3 sm:space-y-4">
-			{#if isHydrating}
-				<div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+				<!-- Desktop pulse skeleton -->
+				<div class="hidden sm:grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
 					{#each Array(2) as _, i (i)}
 						<div
 							class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
@@ -1131,29 +1020,9 @@
 						</div>
 					{/each}
 				</div>
-				<div class="flex flex-wrap gap-1.5 sm:gap-2">
-					{#each Array(8) as _, i (i)}
-						<div
-							class="h-10 min-w-[88px] flex-1 sm:flex-none bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
-						></div>
-					{/each}
-				</div>
-				<div
-					class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
-				>
-					<div class="px-3 sm:px-4 py-2.5 border-b border-border/60">
-						<div class="h-3.5 w-24 bg-muted rounded animate-pulse"></div>
-					</div>
-					<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-3">
-						{#each Array(4) as _, i (i)}
-							<div class="space-y-2">
-								<div class="h-4 w-20 bg-muted rounded animate-pulse"></div>
-								<div class="h-16 bg-muted/40 rounded animate-pulse"></div>
-							</div>
-						{/each}
-					</div>
-				</div>
-			{:else}
+			</div>
+		{:else}
+			<div class="mb-2 sm:mb-3">
 				<PulseStrip
 					projectId={project.id}
 					{tasks}
@@ -1162,7 +1031,23 @@
 					{events}
 					onOpenEntity={handleEntityClick}
 				/>
+			</div>
+		{/if}
 
+		<!-- Entity tabs (shared mobile + desktop). All entity surfaces live
+			 here: Briefs · Chats · Graph · Goals · Milestones · Plans · Risks
+			 · Events. Pills wrap on narrow screens. Chats and Events open
+			 modals; the rest expand inline. -->
+		{#if isHydrating}
+			<div class="mb-2 sm:mb-3 flex flex-wrap gap-1.5 sm:gap-2">
+				{#each Array(8) as _, i (i)}
+					<div
+						class="h-10 min-w-[88px] flex-1 sm:flex-none bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
+					></div>
+				{/each}
+			</div>
+		{:else}
+			<div class="mb-2 sm:mb-3">
 				<EntityTabStrip
 					projectId={project.id}
 					{canEdit}
@@ -1185,7 +1070,48 @@
 					onOpenRecentChats={openRecentChatsModal}
 					onOpenEvents={openEventsModal}
 				/>
+			</div>
+		{/if}
 
+		<!-- Mobile-only: task board (sm:hidden). Tasks are the daily-driver
+			 surface and deserve a dedicated pane on mobile. -->
+		<div class="sm:hidden mb-2">
+			{#if isHydrating}
+				<div
+					class="h-32 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
+				></div>
+			{:else}
+				<div in:fade={fadeIn} out:fade={fadeOut}>
+					<MobileTaskBoard
+						projectId={project.id}
+						{tasks}
+						{canEdit}
+						onEditTask={(id) => (editingTaskId = id)}
+						onCreateTask={() => (showTaskCreateModal = true)}
+					/>
+				</div>
+			{/if}
+		</div>
+
+		<!-- Desktop-only: 7-column kanban board (hidden sm:block). -->
+		<div class="hidden sm:block">
+			{#if isHydrating}
+				<div
+					class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+				>
+					<div class="px-3 sm:px-4 py-2.5 border-b border-border/60">
+						<div class="h-3.5 w-24 bg-muted rounded animate-pulse"></div>
+					</div>
+					<div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 p-2 sm:p-3">
+						{#each Array(4) as _, i (i)}
+							<div class="space-y-2">
+								<div class="h-4 w-20 bg-muted rounded animate-pulse"></div>
+								<div class="h-16 bg-muted/40 rounded animate-pulse"></div>
+							</div>
+						{/each}
+					</div>
+				</div>
+			{:else}
 				<TaskKanbanBoard
 					projectId={project.id}
 					{tasks}
@@ -1194,7 +1120,12 @@
 					onCreateTask={() => (showTaskCreateModal = true)}
 					onTaskMoved={() => void refreshSilently()}
 				/>
+			{/if}
+		</div>
 
+		<!-- Documents (shared mobile + desktop) -->
+		{#if !isHydrating}
+			<div class="mt-2 sm:mt-3">
 				<ProjectDocumentsSection
 					projectId={project.id}
 					{documents}
@@ -1215,8 +1146,8 @@
 						docTreeViewRef = ref;
 					}}
 				/>
-			{/if}
-		</div>
+			</div>
+		{/if}
 	</main>
 </div>
 

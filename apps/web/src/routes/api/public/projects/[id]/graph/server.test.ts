@@ -18,19 +18,28 @@ vi.mock('$lib/components/ontology/graph/lib/graph.service', () => ({
 import { GET } from './+server';
 
 function createSupabase(project: { id: string; is_public: boolean } | null) {
-	const maybeSingle = vi.fn().mockResolvedValue({
-		data: project,
-		error: null
-	});
-	const queryBuilder: any = {
-		select: vi.fn(() => queryBuilder),
-		eq: vi.fn(() => queryBuilder),
-		is: vi.fn(() => ({ maybeSingle }))
-	};
+	const projectQuery: any = (() => {
+		const builder: any = {};
+		builder.select = vi.fn(() => builder);
+		builder.eq = vi.fn(() => builder);
+		builder.is = vi.fn(() => builder);
+		builder.maybeSingle = vi.fn().mockResolvedValue({ data: project, error: null });
+		return builder;
+	})();
+
+	const eventsQuery: any = (() => {
+		const builder: any = {};
+		const result = Promise.resolve({ data: [], error: null });
+		builder.select = vi.fn(() => builder);
+		builder.eq = vi.fn(() => builder);
+		builder.is = vi.fn(() => result);
+		return builder;
+	})();
 
 	return {
 		from: vi.fn((table: string) => {
-			if (table === 'onto_projects') return queryBuilder;
+			if (table === 'onto_projects') return projectQuery;
+			if (table === 'onto_events') return eventsQuery;
 			throw new Error(`Unexpected table: ${table}`);
 		})
 	};

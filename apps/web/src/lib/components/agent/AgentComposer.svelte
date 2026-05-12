@@ -13,6 +13,8 @@
 		allowSendWhileStreaming?: boolean;
 		displayContextLabel: string;
 		disabled?: boolean;
+		/** Optional human-readable reason the composer is disabled (e.g. "Loading session"). */
+		disabledReason?: string | null;
 		vocabularyTerms?: string;
 		voiceInputRef: TextareaWithVoiceComponent | null;
 		isVoiceRecording: boolean;
@@ -37,6 +39,7 @@
 		allowSendWhileStreaming = false,
 		displayContextLabel,
 		disabled = false,
+		disabledReason = null,
 		vocabularyTerms = '',
 		voiceInputRef = $bindable(),
 		isVoiceRecording = $bindable(),
@@ -54,17 +57,35 @@
 		onStop
 	}: Props = $props();
 
+	// Generic labels like "general chat" / "project chat" / "open-ended chat" /
+	// the unconfigured placeholder don't read naturally with "Ask about ...".
+	// Fall through to the catch-all in those cases.
+	const GENERIC_CONTEXT_LABELS = new Set([
+		'',
+		'general chat',
+		'project chat',
+		'open-ended chat',
+		'select a focus to begin'
+	]);
+
 	const placeholder = $derived.by(() => {
 		const label = displayContextLabel.trim().toLowerCase();
-		return label ? `Ask about ${label}...` : 'Ask BuildOS anything...';
+		if (!label || GENERIC_CONTEXT_LABELS.has(label)) {
+			return 'Ask BuildOS anything...';
+		}
+		return `Ask about ${label}...`;
 	});
 
 	const initialRows = 1;
 	const maxRows = 6;
 	const isVoiceBlocked = $derived(isStreaming || disabled);
 	const composerHint = $derived.by(() => {
-		if (disabled) return 'Loading...';
-		if (isStreaming) return 'Responding...';
+		if (disabled) {
+			// Prefer the parent-supplied reason (e.g. "Loading session" /
+			// "Preparing session") over a generic "Loading..." placeholder.
+			return disabledReason ? `${disabledReason}...` : 'Preparing chat...';
+		}
+		if (isStreaming) return 'BuildOS is responding...';
 		return undefined;
 	});
 
@@ -75,8 +96,8 @@
 	}
 </script>
 
-<!-- INKPRINT form with compact spacing and Grain texture for active input workspace -->
-<form onsubmit={handleSubmit} class="tx tx-grain tx-weak rounded-lg">
+<!-- INKPRINT composer: Grid texture marks this surface as editable/writable (§3.4). -->
+<form onsubmit={handleSubmit}>
 	<TextareaWithVoice
 		bind:this={voiceInputRef}
 		bind:value={inputValue}
@@ -92,7 +113,7 @@
 		{onVoiceNoteSegmentSaved}
 		{onVoiceNoteSegmentError}
 		class="w-full"
-		containerClass="rounded-lg border border-border bg-card shadow-ink focus-within:border-accent/70 focus-within:ring-1 focus-within:ring-accent/30 transition-all"
+		containerClass="rounded-lg border border-border bg-card shadow-ink tx tx-grid tx-weak focus-within:border-accent/70 focus-within:ring-1 focus-within:ring-accent/30 transition-all"
 		textareaClass="border-none bg-transparent px-3 py-2 text-base font-medium leading-snug text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 sm:px-4 sm:py-3"
 		{placeholder}
 		autoResize

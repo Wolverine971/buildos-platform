@@ -8,7 +8,8 @@
 		MessageCircle,
 		Mail,
 		Globe,
-		Check
+		Check,
+		Plug
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { goto, invalidateAll } from '$app/navigation';
@@ -284,6 +285,52 @@
 			{/if}
 		</div>
 	{/if}
+
+	<!-- Connect your agents -->
+	<div
+		class="bg-card rounded-xl border border-border p-6 shadow-ink tx tx-frame tx-weak mb-6"
+		in:fade={{ delay: 380, duration: 300 }}
+	>
+		<div class="flex items-start gap-3 mb-3">
+			<div
+				class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-accent/15 text-accent shrink-0"
+			>
+				<Plug class="w-4 h-4" />
+			</div>
+			<div class="min-w-0">
+				<h3 class="text-base font-semibold text-foreground">Connect your AI tools</h3>
+				<p class="text-xs text-muted-foreground leading-relaxed mt-0.5">
+					Your projects live in BuildOS. Let Claude Code, Cursor, ChatGPT, or any
+					HTTP-capable tool read off the same sheet of paper instead of starting from zero
+					each session.
+				</p>
+			</div>
+		</div>
+
+		<!-- Tool chips -->
+		<div class="mb-3 flex flex-wrap gap-1.5 text-[11px] font-medium text-muted-foreground">
+			<span class="rounded-full border border-border px-2 py-0.5">Claude Code</span>
+			<span class="rounded-full border border-border px-2 py-0.5">Cursor</span>
+			<span class="rounded-full border border-border px-2 py-0.5">ChatGPT</span>
+			<span class="rounded-full border border-border px-2 py-0.5">Claude Desktop</span>
+			<span class="rounded-full border border-border px-2 py-0.5">Any HTTP tool</span>
+		</div>
+
+		<div class="flex flex-wrap items-center gap-3">
+			<Button
+				type="button"
+				onclick={() => goto('/profile?tab=agent-keys')}
+				variant="primary"
+				size="sm"
+			>
+				<Plug class="w-4 h-4 mr-1.5" />
+				Set up agent keys
+			</Button>
+			<span class="text-xs text-muted-foreground">
+				One key per tool · Per-project scope · Rotate any time
+			</span>
+		</div>
+	</div>
 
 	<!-- Next actions -->
 	<div

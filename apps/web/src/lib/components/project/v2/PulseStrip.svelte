@@ -1,13 +1,19 @@
 <!-- apps/web/src/lib/components/project/v2/PulseStrip.svelte -->
 <!--
-	PulseStrip — v2 PoC component
+	PulseStrip — v2 component
 
-	Two-column "what's happening" header:
-	- Left: Recently Done — derived from project activity logs (created/updated/deleted)
-	- Right: Up Next — upcoming scheduled work, sorted by date
+	Two layouts in one component, CSS-toggled by viewport:
 
-	Tiles are intentionally small and dense so the page reads as a status board,
-	not a doc index. Click a tile to open its entity.
+	Desktop (sm+): two-column "what's happening" header
+		- Left: Recently Done — derived from project activity logs
+		- Right: Up Next — upcoming scheduled work, sorted by date
+
+	Mobile (< sm): single card with a segmented Recent / Up next tab strip.
+		Only one list is visible at a time. Tap targets and meta rows are
+		tuned for thumb use.
+
+	Tiles are dense so the page reads as a status board, not a doc index.
+	Click a tile to open its entity.
 -->
 <script lang="ts">
 	import {
@@ -56,6 +62,8 @@
 	let logs = $state<ProjectLogEntryWithMeta[]>([]);
 	let logsLoading = $state(true);
 	let logsError = $state<string | null>(null);
+
+	let mobileTab = $state<'next' | 'recent'>('recent');
 
 	async function loadLogs() {
 		logsLoading = true;
@@ -318,7 +326,170 @@
 	}
 </script>
 
-<section class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4" aria-label="Project pulse">
+<!-- Mobile layout (< sm): segmented tabs, one list visible at a time -->
+<section
+	class="sm:hidden bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"
+	aria-label="Project pulse"
+>
+	<div role="tablist" aria-label="Project pulse views" class="flex border-b border-border/60">
+		<button
+			role="tab"
+			type="button"
+			id="pulse-tab-recent"
+			aria-selected={mobileTab === 'recent'}
+			aria-controls="pulse-panel-recent"
+			tabindex={mobileTab === 'recent' ? 0 : -1}
+			onclick={() => (mobileTab = 'recent')}
+			class="flex-1 px-3 py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {mobileTab ===
+			'recent'
+				? 'text-foreground bg-muted/40 border-b-2 border-foreground/50 -mb-px'
+				: 'text-muted-foreground hover:text-foreground hover:bg-muted/40'}"
+		>
+			<History
+				class="w-3.5 h-3.5 {mobileTab === 'recent'
+					? 'text-foreground'
+					: 'text-muted-foreground'}"
+			/>
+			<span>Recent</span>
+			{#if !logsLoading && recentTiles.length > 0}
+				<span class="text-[10px] text-muted-foreground/80">({recentTiles.length})</span>
+			{/if}
+		</button>
+		<button
+			role="tab"
+			type="button"
+			id="pulse-tab-next"
+			aria-selected={mobileTab === 'next'}
+			aria-controls="pulse-panel-next"
+			tabindex={mobileTab === 'next' ? 0 : -1}
+			onclick={() => (mobileTab = 'next')}
+			class="flex-1 px-3 py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {mobileTab ===
+			'next'
+				? 'text-foreground bg-amber-500/5 border-b-2 border-amber-500 -mb-px'
+				: 'text-muted-foreground hover:text-foreground hover:bg-muted/40'}"
+		>
+			<ArrowRight
+				class="w-3.5 h-3.5 {mobileTab === 'next'
+					? 'text-amber-500'
+					: 'text-muted-foreground'}"
+			/>
+			<span>Up next</span>
+			{#if upcomingItems.length > 0}
+				<span class="text-[10px] text-muted-foreground/80">({upcomingItems.length})</span>
+			{/if}
+		</button>
+	</div>
+
+	{#if mobileTab === 'next'}
+		<div
+			id="pulse-panel-next"
+			role="tabpanel"
+			aria-labelledby="pulse-tab-next"
+			class="p-2 space-y-1.5"
+		>
+			{#if upcomingItems.length === 0}
+				<p class="text-xs text-muted-foreground px-2 py-4 text-center italic">
+					Nothing scheduled. Add a date to a task, milestone, goal, or event.
+				</p>
+			{:else}
+				{#each upcomingItems as item (item.id)}
+					{@const Icon = entityIcon(item.kind)}
+					{@const future = relativeFuture(item.date)}
+					<button
+						type="button"
+						onclick={() => onOpenEntity(item.kind, item.id)}
+						class="w-full text-left bg-background hover:bg-muted/50 active:bg-muted border border-border/60 rounded-md px-3 py-2.5 transition-colors pressable min-h-[44px]"
+					>
+						<div class="flex items-start gap-2.5 min-w-0">
+							<Icon class="w-4 h-4 mt-0.5 shrink-0 {entityAccent(item.kind)}" />
+							<div class="min-w-0 flex-1">
+								<p class="text-sm font-medium text-foreground line-clamp-1">
+									{item.title}
+								</p>
+								<p class="text-[11px] mt-0.5 flex items-center gap-1.5 flex-wrap">
+									<span class="capitalize text-muted-foreground">{item.kind}</span
+									>
+									<span class="text-muted-foreground/50">·</span>
+									<span
+										class="inline-flex items-center gap-1 {future.isOverdue
+											? 'text-destructive font-medium'
+											: 'text-muted-foreground'}"
+									>
+										<Clock class="w-3 h-3 shrink-0" />
+										{future.label}
+									</span>
+									{#if item.kind === 'task' && item.state === 'in_progress'}
+										<span class="text-muted-foreground/50">·</span>
+										<span class="text-sky-600 dark:text-sky-400 font-medium"
+											>in progress</span
+										>
+									{:else if item.kind === 'task' && item.state === 'blocked'}
+										<span class="text-muted-foreground/50">·</span>
+										<span class="text-rose-600 dark:text-rose-400 font-medium"
+											>blocked</span
+										>
+									{/if}
+								</p>
+							</div>
+						</div>
+					</button>
+				{/each}
+			{/if}
+		</div>
+	{:else}
+		<div
+			id="pulse-panel-recent"
+			role="tabpanel"
+			aria-labelledby="pulse-tab-recent"
+			class="p-2 space-y-1.5"
+		>
+			{#if logsLoading}
+				{#each Array(3) as _, i (i)}
+					<div
+						class="h-14 bg-muted/40 border border-border/60 rounded-md animate-pulse"
+					></div>
+				{/each}
+			{:else if logsError}
+				<p class="text-xs text-destructive px-2 py-3">{logsError}</p>
+			{:else if recentTiles.length === 0}
+				<p class="text-xs text-muted-foreground px-2 py-4 text-center italic">
+					Nothing logged yet. As you work, recent edits show up here.
+				</p>
+			{:else}
+				{#each recentTiles as tile (tile.key)}
+					{@const Icon = entityIcon(tile.entityType)}
+					<button
+						type="button"
+						onclick={() => onOpenEntity(tile.entityType, tile.entityId)}
+						class="w-full text-left bg-background hover:bg-muted/50 active:bg-muted border border-border/60 rounded-md px-3 py-2.5 transition-colors pressable min-h-[44px]"
+					>
+						<div class="flex items-start gap-2.5 min-w-0">
+							<Icon class="w-4 h-4 mt-0.5 shrink-0 {entityAccent(tile.entityType)}" />
+							<div class="min-w-0 flex-1">
+								<p class="text-sm font-medium text-foreground line-clamp-1">
+									{tile.name}
+								</p>
+								<p class="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+									<span>{activityActorPhrase(tile)}</span>
+									<span class="mx-1 text-muted-foreground/50">·</span>
+									<span class="capitalize">{tile.entityType}</span>
+									<span class="mx-1 text-muted-foreground/50">·</span>
+									<span>{relativeTime(tile.when)}</span>
+								</p>
+							</div>
+						</div>
+					</button>
+				{/each}
+			{/if}
+		</div>
+	{/if}
+</section>
+
+<!-- Desktop layout (sm+): side-by-side at md+, stacked at sm -->
+<section
+	class="hidden sm:grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4"
+	aria-label="Project pulse"
+>
 	<!-- Recently Done -->
 	<div
 		class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden"

@@ -820,6 +820,9 @@ export class SmartLLMService {
 					// Log to database (async, non-blocking)
 					const cachedTokens =
 						responseForLogging.usage?.prompt_tokens_details?.cached_tokens || 0;
+					const openrouterFields = this.extractOpenRouterUsageFields(
+						responseForLogging.usage
+					);
 					const modelsAttempted = Array.from(
 						new Set<string>([
 							...attemptedModels,
@@ -862,6 +865,13 @@ export class SmartLLMService {
 							clientTurnId: options.clientTurnId,
 							openrouterRequestId: responseForLogging.id,
 							openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
+							reasoningTokens: openrouterFields.reasoningTokens,
+							cachedPromptTokens: openrouterFields.cachedPromptTokens,
+							cacheWriteTokens: openrouterFields.cacheWriteTokens,
+							openrouterUsageCost: openrouterFields.openrouterUsageCost,
+							openrouterByok: openrouterFields.openrouterByok,
+							openrouterUpstreamInferenceCost:
+								openrouterFields.openrouterUpstreamInferenceCost,
 							metadata: {
 								...options.metadata,
 								complexity,
@@ -1146,6 +1156,9 @@ export class SmartLLMService {
 					// Log to database (async, non-blocking)
 					const cachedTokens =
 						attemptResponse.usage?.prompt_tokens_details?.cached_tokens || 0;
+					const openrouterFields = this.extractOpenRouterUsageFields(
+						attemptResponse.usage
+					);
 					this.usageLogger
 						.logUsageToDatabase({
 							userId: options.userId,
@@ -1180,6 +1193,13 @@ export class SmartLLMService {
 							clientTurnId: options.clientTurnId,
 							openrouterRequestId: attemptResponse.id,
 							openrouterCacheStatus: cachedTokens > 0 ? 'hit' : 'miss',
+							reasoningTokens: openrouterFields.reasoningTokens,
+							cachedPromptTokens: openrouterFields.cachedPromptTokens,
+							cacheWriteTokens: openrouterFields.cacheWriteTokens,
+							openrouterUsageCost: openrouterFields.openrouterUsageCost,
+							openrouterByok: openrouterFields.openrouterByok,
+							openrouterUpstreamInferenceCost:
+								openrouterFields.openrouterUpstreamInferenceCost,
 							metadata: {
 								...options.metadata,
 								estimatedLength,
@@ -1503,6 +1523,29 @@ export class SmartLLMService {
 
 		const hitRate = Math.round((cachedTokens / promptTokens) * 1000) / 10;
 		return `${hitRate}% cache hit`;
+	}
+
+	private extractOpenRouterUsageFields(usage: any): {
+		reasoningTokens?: number;
+		cachedPromptTokens?: number;
+		cacheWriteTokens?: number;
+		openrouterUsageCost?: number;
+		openrouterByok?: boolean;
+		openrouterUpstreamInferenceCost?: number;
+	} {
+		if (!usage || typeof usage !== 'object') return {};
+
+		const num = (value: unknown): number | undefined =>
+			typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+
+		return {
+			reasoningTokens: num(usage.completion_tokens_details?.reasoning_tokens),
+			cachedPromptTokens: num(usage.prompt_tokens_details?.cached_tokens),
+			cacheWriteTokens: num(usage.prompt_tokens_details?.cache_write_tokens),
+			openrouterUsageCost: num(usage.cost),
+			openrouterByok: typeof usage.is_byok === 'boolean' ? usage.is_byok : undefined,
+			openrouterUpstreamInferenceCost: num(usage.cost_details?.upstream_inference_cost)
+		};
 	}
 
 	// ============================================
@@ -2307,6 +2350,7 @@ export class SmartLLMService {
 								options.operationType ||
 								this.buildChatStreamOperationType(options.contextType);
 							const cacheStatus = this.describePromptCacheStatus(usage);
+							const openrouterFields = this.extractOpenRouterUsageFields(usage);
 
 							this.usageLogger
 								.logUsageToDatabase({
@@ -2338,6 +2382,13 @@ export class SmartLLMService {
 									streamRunId: options.streamRunId,
 									clientTurnId: options.clientTurnId,
 									openrouterCacheStatus: cacheStatus,
+									reasoningTokens: openrouterFields.reasoningTokens,
+									cachedPromptTokens: openrouterFields.cachedPromptTokens,
+									cacheWriteTokens: openrouterFields.cacheWriteTokens,
+									openrouterUsageCost: openrouterFields.openrouterUsageCost,
+									openrouterByok: openrouterFields.openrouterByok,
+									openrouterUpstreamInferenceCost:
+										openrouterFields.openrouterUpstreamInferenceCost,
 									metadata: {
 										sessionId: options.sessionId,
 										turnRunId: options.turnRunId,

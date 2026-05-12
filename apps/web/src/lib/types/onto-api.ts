@@ -73,6 +73,10 @@ export interface OntoProject {
 	props: Record<string, unknown>;
 	start_at?: string | null;
 	end_at?: string | null;
+	next_step_short?: string | null;
+	next_step_long?: string | null;
+	next_step_source?: string | null;
+	next_step_updated_at?: string | null;
 	facet_context?: string | null;
 	facet_scale?: string | null;
 	facet_stage?: string | null;
@@ -176,6 +180,8 @@ export interface OntoDocument {
 	title: string;
 	state_key: string;
 	content?: string | null;
+	/** Present on lightweight document projections that omit the body content. */
+	has_content?: boolean;
 	description?: string | null;
 	props: Record<string, unknown>;
 	/** Immediate child documents for hierarchy */
@@ -239,6 +245,7 @@ export interface OntoMilestone {
 	project_id: string;
 	title: string;
 	type_key?: string | null;
+	state_key?: string | null;
 	due_at?: string | null;
 	milestone?: string | null;
 	description?: string | null;

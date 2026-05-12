@@ -377,4 +377,309 @@ describe('streamFastChat direct tool orchestration', () => {
 			)
 		).toBe(true);
 	});
+
+	it('forces a final no-tool synthesis pass before read-only tools hit the round cap', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		let streamInvocation = 0;
+		const streamParams: Array<{
+			toolChoice?: string;
+			toolNames: string[];
+			messages: FastChatHistoryMessage[];
+		}> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					toolNames: (params.tools ?? [])
+						.map((tool: ChatToolDefinition) => tool.function?.name)
+						.filter((name: string | undefined): name is string => Boolean(name)),
+					messages: JSON.parse(JSON.stringify(params.messages))
+				});
+
+				if (streamInvocation <= 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_project',
+							{
+								project_id: projectId,
+								query: streamInvocation === 1 ? 'Rod Chamberlin' : 'Beyond Exit',
+								limit: 5
+							},
+							`search_project:${streamInvocation}`
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Rod meeting prep answer from gathered context.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			return {
+				tool_call_id: call.id,
+				result: {
+					results: [
+						{
+							id: `document-${toolExecutor.mock.calls.length}`,
+							entity_type: 'document',
+							title: 'Rod Chamberlin notes',
+							snippet: 'Meeting prep context.'
+						}
+					]
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Prep me for my Rod meeting.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'search_project']),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 3
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(3);
+		expect(toolExecutor).toHaveBeenCalledTimes(2);
+		expect(streamParams[2]?.toolChoice).toBe('none');
+		expect(streamParams[2]?.toolNames).toContain('search_project');
+		expect(result.toolRounds).toBe(2);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe('Rod meeting prep answer from gathered context.');
+		expect(result.finalAssistantText).not.toContain('safety limit');
+		expect(result.llmPasses?.[2]?.forcedNoToolSynthesis).toBe(true);
+	});
+
+	it('re-injects read-loop repair instructions with escalating guidance', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		let streamInvocation = 0;
+		const streamParams: Array<{
+			toolChoice?: string;
+			messages: FastChatHistoryMessage[];
+		}> = [];
+		const readCalls = [
+			toolCall(
+				'search_project',
+				{ project_id: projectId, query: 'Rod Chamberlin', limit: 5 },
+				'search_project:rod'
+			),
+			toolCall(
+				'get_onto_project_details',
+				{ project_id: projectId },
+				'get_onto_project_details:project-1'
+			),
+			toolCall(
+				'search_project',
+				{ project_id: projectId, query: 'Beyond Exit Planning', limit: 5 },
+				'search_project:beyond-exit'
+			),
+			toolCall(
+				'get_onto_project_details',
+				{ project_id: projectId },
+				'get_onto_project_details:project-2'
+			)
+		];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					messages: JSON.parse(JSON.stringify(params.messages))
+				});
+
+				const nextToolCall = readCalls[streamInvocation - 1];
+				if (nextToolCall) {
+					yield { type: 'tool_call', tool_call: nextToolCall };
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Final answer from the accumulated reads.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			if (call.function.name === 'get_onto_project_details') {
+				return {
+					tool_call_id: call.id,
+					result: { project: { id: projectId, name: 'Rod Chamberlin prep' } },
+					success: true
+				};
+			}
+			return {
+				tool_call_id: call.id,
+				result: {
+					results: [
+						{
+							id: `document-${toolExecutor.mock.calls.length}`,
+							entity_type: 'document',
+							title: 'Meeting prep notes',
+							snippet: 'Useful context.'
+						}
+					]
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Prep me for my Rod meeting.',
+			tools: tools([
+				'skill_load',
+				'tool_search',
+				'tool_schema',
+				'search_project',
+				'get_onto_project_details'
+			]),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 8
+		});
+
+		const passThreeSystemText = (streamParams[2]?.messages ?? [])
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
+		const passFiveSystemText = (streamParams[4]?.messages ?? [])
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
+
+		expect(llm.streamText).toHaveBeenCalledTimes(5);
+		expect(passThreeSystemText).toContain('Read-loop nudge');
+		expect(passFiveSystemText).toContain('Read-loop nudge');
+		expect(passFiveSystemText).toContain('Read-loop escalation');
+		expect(passFiveSystemText).toContain('Tool rounds remaining before the safety cap: 4.');
+		expect(streamParams[4]?.toolChoice).toBe('auto');
+		expect(result.finalAssistantText).toBe('Final answer from the accumulated reads.');
+	});
+
+	it('uses the context ledger to synthesize when read rounds stop adding new evidence', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		const documentId = '3e9432fb-90e1-4404-a480-c73186b1337d';
+		let streamInvocation = 0;
+		const streamParams: Array<{
+			toolChoice?: string;
+			messages: FastChatHistoryMessage[];
+		}> = [];
+		const readCalls = [
+			toolCall(
+				'search_project',
+				{ project_id: projectId, query: 'Rod Chamberlin', limit: 5 },
+				'search_project:first'
+			),
+			toolCall(
+				'get_onto_document_details',
+				{ document_id: documentId },
+				'get_onto_document_details:first'
+			),
+			toolCall(
+				'search_all_projects',
+				{ query: 'Beyond Exit Planning', limit: 5 },
+				'search_all_projects:first'
+			),
+			toolCall(
+				'get_onto_document_details',
+				{ document_id: documentId },
+				'get_onto_document_details:second'
+			),
+			toolCall(
+				'get_onto_document_details',
+				{ document_id: documentId },
+				'get_onto_document_details:third'
+			)
+		];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					messages: JSON.parse(JSON.stringify(params.messages))
+				});
+
+				const nextToolCall = readCalls[streamInvocation - 1];
+				if (nextToolCall) {
+					yield { type: 'tool_call', tool_call: nextToolCall };
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Synthesized answer from saturated context.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			if (call.function.name === 'get_onto_document_details') {
+				return {
+					tool_call_id: call.id,
+					result: { document: { id: documentId, title: 'Rod notes' } },
+					success: true
+				};
+			}
+			return {
+				tool_call_id: call.id,
+				result: {
+					results: [{ id: documentId, type: 'document', title: 'Rod notes' }]
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Prep me for my Rod meeting.',
+			tools: tools([
+				'skill_load',
+				'tool_search',
+				'tool_schema',
+				'search_project',
+				'search_all_projects',
+				'get_onto_document_details'
+			]),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 8
+		});
+
+		const finalPassSystemText = (streamParams[5]?.messages ?? [])
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
+
+		expect(llm.streamText).toHaveBeenCalledTimes(6);
+		expect(toolExecutor).toHaveBeenCalledTimes(5);
+		expect(streamParams[5]?.toolChoice).toBe('none');
+		expect(finalPassSystemText).toContain('Context gathering: must synthesize.');
+		expect(finalPassSystemText).toContain('Read-loop hard stop: synthesize now.');
+		expect(result.toolRounds).toBe(5);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe('Synthesized answer from saturated context.');
+	});
 });

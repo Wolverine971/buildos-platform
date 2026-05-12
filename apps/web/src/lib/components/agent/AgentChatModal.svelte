@@ -360,6 +360,10 @@
 
 	// Actionable Insight agent identifier (used for agent-to-agent bridge)
 	const RESEARCH_AGENT_ID = 'actionable_insight_agent';
+	// Today there is exactly one helper, so the wizard skips the "Pick a helper"
+	// step. Flip this to true once a second helper ships and the agent step
+	// becomes a real choice instead of a forced click-through.
+	const HAS_MULTIPLE_AGENT_HELPERS = false;
 	const ACTIVE_TURN_SESSION_REFRESH_MS = 2000;
 
 	let agentToAgentMode = $state(false);
@@ -421,20 +425,23 @@
 
 	const shouldShowSessionLoadingState = $derived.by(() => {
 		if (!isSessionBusy || messages.length > 0) return false;
-		if (showContextSelection || showProjectActionSelector) return false;
+		if (showContextSelection || showProjectActionSelector || showFocusSelector) return false;
 		if (agentToAgentMode && agentToAgentStep !== 'chat') return false;
 		return true;
 	});
 
 	const shouldShowSessionLoadErrorState = $derived.by(() => {
 		if (!sessionLoadError || isSessionBusy || messages.length > 0) return false;
-		if (showContextSelection || showProjectActionSelector) return false;
+		if (showContextSelection || showProjectActionSelector || showFocusSelector) return false;
 		if (agentToAgentMode && agentToAgentStep !== 'chat') return false;
 		return true;
 	});
 
 	const shouldShowComposer = $derived(
-		!showContextSelection && !showProjectActionSelector && !agentToAgentMode
+		!showContextSelection &&
+			!showProjectActionSelector &&
+			!showFocusSelector &&
+			!agentToAgentMode
 	);
 
 	const chatComposerVocabularyTerms = $derived(
@@ -580,6 +587,9 @@
 		if (showContextSelection && contextSelectionView !== 'primary') {
 			// Delegate to ContextSelectionScreen's internal navigation
 			contextSelectionRef?.handleBackNavigation?.();
+		} else if (showFocusSelector) {
+			// From inline focus selector → back to active chat (no focus change)
+			showFocusSelector = false;
 		} else if (showProjectActionSelector) {
 			// From project action selector → back to context selection
 			autoInitDismissed = true;
@@ -590,8 +600,16 @@
 			// From goal step → back to project selection
 			backToAgentProjectSelection();
 		} else if (agentToAgentMode && agentToAgentStep === 'project') {
-			// From project step → back to agent selection
-			backToAgentSelection();
+			// With a single helper, the agent step is auto-skipped — so the
+			// project step's back affordance exits the wizard entirely rather
+			// than returning to a one-option screen.
+			if (HAS_MULTIPLE_AGENT_HELPERS) {
+				backToAgentSelection();
+			} else {
+				agentToAgentMode = false;
+				agentToAgentStep = null;
+				changeContext();
+			}
 		} else if (agentToAgentMode && agentToAgentStep === 'agent') {
 			// From agent selection → back to context selection
 			agentToAgentMode = false;
@@ -703,7 +721,12 @@
 			selectedContextLabel = selection.label ?? 'BuildOS automation';
 			projectFocus = null;
 			showContextSelection = false;
-			// No initial message for agent-to-agent mode
+
+			// With a single helper available the agent step is a forced click-through,
+			// so auto-select and advance straight to picking a project.
+			if (!HAS_MULTIPLE_AGENT_HELPERS) {
+				selectAgentForBridge(RESEARCH_AGENT_ID);
+			}
 			return;
 		}
 
@@ -728,12 +751,6 @@
 
 		// If user picked a project from the generic flow, funnel them through the shared action selector
 		showProjectActionSelector = selection.contextType === 'project';
-
-		// Seed the chat with an initial message for contexts that go directly to chat
-		// (not 'project' which shows the action selector first)
-		if (selection.contextType !== 'project') {
-			seedInitialMessage(selection.contextType, selection.label);
-		}
 	}
 
 	function changeContext() {
@@ -758,24 +775,19 @@
 
 		projectFocus = newFocus;
 		logFocusActivity('Focus updated', newFocus);
-		// Move into project workspace chat with the chosen focus
+		// Move into project chat with the chosen focus
 		selectedContextType = 'project';
 		selectedContextLabel = buildContextLabelForAction('workspace', newFocus.projectName);
 		showProjectActionSelector = false;
 		showFocusSelector = false;
 		showContextSelection = false;
 
-		// Only seed initial message if we're starting a new chat (from action selector)
+		// Starting fresh from the action selector means we want a clean message
+		// list. The empty-state card in AgentMessageList branches its suggestions
+		// off `selectedContextType` + `resolvedProjectFocus`, so the user lands
+		// on focus-aware prompts without a preseeded assistant bubble.
 		if (isStartingFresh) {
-			// Reset conversation to start fresh with the new focus
 			messages = [];
-			// Create a focused initial message
-			const focusName = newFocus.focusEntityName || newFocus.focusType;
-			const message =
-				newFocus.focusType === 'project-wide'
-					? `What would you like to do with ${newFocus.projectName}? I can help you explore goals, update tasks, or answer questions about the project.`
-					: `Let's focus on "${focusName}" in ${newFocus.projectName}. What would you like to know or update?`;
-			addInitialAssistantMessage(message);
 		}
 	}
 
@@ -819,9 +831,6 @@
 		showFocusSelector = false;
 		agentToAgentMode = false;
 		agentToAgentStep = null;
-
-		// Seed the chat with a contextual initial message
-		seedInitialMessage(contextType, projectName);
 	}
 
 	function primeProjectContext(projectId: string, projectName: string | null | undefined) {
@@ -1016,6 +1025,8 @@
 
 	// Auto-initialize the modal when launched with a context preset or project preset
 	$effect(() => {
+		if (!browser) return;
+
 		if (!isOpen) {
 			if (wasOpen) {
 				// In embedded mode, trigger full close cleanup since there's no Modal.onClose
@@ -1059,7 +1070,6 @@
 				selectedContextLabel = CONTEXT_DESCRIPTORS[_initialContextType]?.title ?? null;
 				showContextSelection = false;
 				showProjectActionSelector = false;
-				seedInitialMessage(_initialContextType, selectedContextLabel);
 				return;
 			}
 		}
@@ -1136,14 +1146,6 @@
 
 		showContextSelection = false;
 		showProjectActionSelector = false;
-
-		// Seed with a focus-specific initial message
-		const focusTypeLabel = initialProjectFocus.focusType.replace('-', ' ');
-		const message =
-			initialProjectFocus.focusType === 'project-wide'
-				? `What would you like to do with ${projectName}? I can help you explore goals, update tasks, or answer questions about the project.`
-				: `Let's focus on "${focusName}" in ${projectName}. What would you like to know or update about this ${focusTypeLabel}?`;
-		addInitialAssistantMessage(message);
 	});
 
 	// Handle initialChatSessionId prop - when resuming a previous chat session from history
@@ -2436,73 +2438,6 @@
 		currentActivity = '';
 	}
 
-	// ========================================================================
-	// Initial Message Generation
-	// ========================================================================
-
-	/**
-	 * Generates a contextual initial message based on the selected context type and project info.
-	 * This seeds the conversation with the right tone and expectations.
-	 */
-	function generateInitialMessage(
-		contextType: ChatContextType | null,
-		projectName?: string | null
-	): string | null {
-		if (!contextType) return null;
-
-		const name = projectName?.trim() || 'this project';
-
-		switch (contextType) {
-			case 'global':
-				return "I've got context across all your projects, tasks, and calendar. What are you working through?";
-
-			case 'project_create':
-				return "What are you working on? Doesn't have to be clear yet — bring me the rough idea, the half-formed plan, whatever you've got. We'll turn it into something structured.";
-
-			case 'project':
-				return `${name === 'this project' ? 'Project' : name} is loaded up. What do you want to dig into?`;
-
-			case 'calendar':
-				return "Your calendar's pulled up. What needs sorting out?";
-
-			case 'daily_brief':
-				return "Your brief's ready with today's context. What do you want to tackle first?";
-
-			case 'daily_brief_update':
-				return "What's not landing right in your daily brief? Tell me what to change.";
-
-			default:
-				return null;
-		}
-	}
-
-	/**
-	 * Adds an initial assistant message to start the conversation.
-	 * Called when transitioning to chat view after context selection.
-	 */
-	function addInitialAssistantMessage(content: string) {
-		const initialMessage: UIMessage = {
-			id: crypto.randomUUID(),
-			type: 'assistant',
-			role: 'assistant' as ChatRole,
-			content,
-			timestamp: new Date(),
-			created_at: new Date().toISOString()
-		};
-		messages = [initialMessage];
-	}
-
-	/**
-	 * Seeds the chat with an initial message based on current context.
-	 * Should be called after context selection is complete and chat view is ready.
-	 */
-	function seedInitialMessage(contextType: ChatContextType | null, projectName?: string | null) {
-		const message = generateInitialMessage(contextType, projectName);
-		if (message) {
-			addInitialAssistantMessage(message);
-		}
-	}
-
 	onDestroy(() => {
 		// Clear all pending timeouts to prevent memory leaks
 		pendingTimeouts.forEach((id) => clearTimeout(id));
@@ -2543,17 +2478,17 @@
 	retrySessionId: string | null
 )}
 	{#if showSessionLoadingState}
-		<div class="flex flex-1 items-center justify-center px-6 text-center">
-			<div class="max-w-sm space-y-2">
-				<div
-					class="mx-auto inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted"
-				>
+		<div
+			class="flex flex-1 items-center justify-center bg-muted px-6 py-12 text-center sm:py-16"
+		>
+			<div class="max-w-sm space-y-3">
+				<div class="flex justify-center">
 					<span
-						class="inline-flex h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent text-muted-foreground"
+						class="inline-flex h-8 w-8 animate-spin rounded-full border-[3px] border-muted-foreground/30 border-t-accent"
 					></span>
 				</div>
 				<p class="text-sm font-semibold text-foreground">
-					{sessionStatusLabel}
+					{sessionStatusLabel ?? 'Loading conversation'}
 				</p>
 				<p class="text-xs text-muted-foreground">
 					Restoring the conversation before the next turn.
@@ -2561,12 +2496,15 @@
 			</div>
 		</div>
 	{:else if showSessionLoadErrorState}
-		<div class="flex flex-1 items-center justify-center px-6 text-center">
+		<div
+			class="flex flex-1 items-center justify-center bg-muted px-6 py-12 text-center sm:py-16"
+		>
 			<div
-				class="max-w-sm space-y-3 rounded-xl border border-red-600/20 bg-red-50 p-4 dark:bg-red-950/20"
+				class="max-w-sm space-y-3 rounded-lg border border-red-600/30 bg-red-50 p-4 shadow-ink tx tx-static tx-weak dark:bg-red-950/20"
+				role="alert"
 			>
 				<p class="text-sm font-semibold text-red-700 dark:text-red-300">
-					Unable to load this chat
+					Couldn't load this chat
 				</p>
 				<p class="text-xs text-red-600 dark:text-red-400">
 					{sessionLoadError}
@@ -2574,7 +2512,7 @@
 				{#if retrySessionId}
 					<button
 						type="button"
-						class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted"
+						class="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground shadow-ink transition pressable hover:border-accent hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						onclick={() => loadChatSession(retrySessionId)}
 					>
 						Try again
@@ -2586,6 +2524,8 @@
 		<AgentMessageList
 			{messages}
 			{displayContextLabel}
+			{selectedContextType}
+			{resolvedProjectFocus}
 			onToggleThinkingBlock={toggleThinkingBlockCollapse}
 			bind:container={messagesContainer}
 			onScroll={handleScroll}
@@ -2627,6 +2567,7 @@
 			allowSendWhileStreaming={isTouchDevice}
 			{displayContextLabel}
 			disabled={isSessionBusy}
+			disabledReason={sessionStatusLabel}
 			vocabularyTerms={chatComposerVocabularyTerms}
 			onVoiceNoteSegmentSaved={voice.handleSegmentSaved.bind(voice)}
 			onVoiceNoteSegmentError={voice.handleSegmentError.bind(voice)}
@@ -2723,6 +2664,13 @@
 							onSelectAction={(action) => handleProjectActionSelect(action)}
 							onSelectFocus={handleFocusSelection}
 						/>
+					{:else if showFocusSelector && isProjectContext(selectedContextType) && selectedEntityId && resolvedProjectFocus}
+						<ProjectFocusSelector
+							projectId={selectedEntityId}
+							projectName={resolvedProjectFocus.projectName}
+							currentFocus={resolvedProjectFocus}
+							onSelect={handleFocusSelection}
+						/>
 					{:else if agentToAgentMode && agentToAgentStep !== 'chat'}
 						<AgentAutomationWizard
 							step={agentToAgentStep ?? 'agent'}
@@ -2733,10 +2681,9 @@
 							{agentTurnBudget}
 							{selectedAgentLabel}
 							{selectedContextLabel}
+							hasMultipleHelpers={HAS_MULTIPLE_AGENT_HELPERS}
 							onUseActionableInsight={() => selectAgentForBridge(RESEARCH_AGENT_ID)}
 							onProjectSelect={(project) => selectAgentProject(project)}
-							onBackAgent={backToAgentSelection}
-							onBackProject={backToAgentProjectSelection}
 							onStartChat={startAgentToAgentChat}
 							onExit={() => {
 								agentToAgentMode = false;
@@ -2745,6 +2692,10 @@
 							}}
 							onGoalChange={(value) => (agentGoal = value)}
 							onTurnBudgetChange={updateAgentTurnBudget}
+							onJumpToStep={(target) => {
+								if (target === 'agent') backToAgentSelection();
+								else if (target === 'project') backToAgentProjectSelection();
+							}}
 						/>
 					{:else}
 						{@render chatConversationPane(
@@ -2848,17 +2799,6 @@
 			</div>
 		{/snippet}
 	</Modal>
-{/if}
-
-{#if isProjectContext(selectedContextType) && selectedEntityId && resolvedProjectFocus}
-	<ProjectFocusSelector
-		isOpen={showFocusSelector}
-		projectId={selectedEntityId}
-		projectName={resolvedProjectFocus.projectName}
-		currentFocus={resolvedProjectFocus}
-		onSelect={handleFocusSelection}
-		onClose={() => (showFocusSelector = false)}
-	/>
 {/if}
 
 <style>

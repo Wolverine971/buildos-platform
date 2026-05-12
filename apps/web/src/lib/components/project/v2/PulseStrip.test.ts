@@ -73,6 +73,9 @@ describe('PulseStrip', () => {
 		vi.clearAllMocks();
 	});
 
+	// Both mobile (tabbed) and desktop (two-column) layouts are in the DOM,
+	// gated only by CSS. The mobile tab defaults to "Up next" with its panel
+	// rendered, so an upcoming item appears in both layouts.
 	it('does not show events that have already ended in Up next', () => {
 		renderPulseStrip([
 			createEvent({
@@ -88,7 +91,7 @@ describe('PulseStrip', () => {
 		]);
 
 		expect(screen.queryByText('Past review')).not.toBeInTheDocument();
-		expect(screen.getByText('Future review')).toBeInTheDocument();
+		expect(screen.getAllByText('Future review').length).toBeGreaterThan(0);
 	});
 
 	it('keeps an in-progress event without marking it late', () => {
@@ -100,8 +103,8 @@ describe('PulseStrip', () => {
 			})
 		]);
 
-		expect(screen.getByText('Live planning session')).toBeInTheDocument();
-		expect(screen.getByText('now')).toBeInTheDocument();
+		expect(screen.getAllByText('Live planning session').length).toBeGreaterThan(0);
+		expect(screen.getAllByText('now').length).toBeGreaterThan(0);
 		expect(screen.queryByText(/late/i)).not.toBeInTheDocument();
 	});
 });

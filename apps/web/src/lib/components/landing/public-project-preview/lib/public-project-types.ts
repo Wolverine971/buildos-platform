@@ -8,6 +8,8 @@
  */
 
 import type { GraphSourceData, GraphStats } from '$lib/components/ontology/graph/lib/graph.types';
+import type { OntoEvent } from '$lib/types/onto';
+import type { DocStructure } from '$lib/types/onto-api';
 
 export interface PublicProjectSummary {
 	id: string;
@@ -26,15 +28,33 @@ export interface PublicProjectInfo {
 	state_key: string;
 	start_at: string | null;
 	end_at: string | null;
+	type_key?: string | null;
+	icon_svg?: string | null;
+	icon_concept?: string | null;
+	doc_structure?: DocStructure | null;
+	next_step_short?: string | null;
+	next_step_long?: string | null;
+	next_step_source?: 'ai' | 'user' | null;
+	next_step_updated_at?: string | null;
 }
 
+export type PublicProjectSource = GraphSourceData & {
+	events?: OntoEvent[];
+};
+
 export interface PublicProjectFullData {
-	source: GraphSourceData;
+	source: PublicProjectSource;
 	stats: GraphStats & {
 		totalDecisions?: number;
 	};
 	project: PublicProjectInfo;
 }
+
+/**
+ * The example preview can be rendered at two viewports so visitors can see
+ * what BuildOS looks like on desktop and on mobile.
+ */
+export type ViewportMode = 'desktop' | 'mobile';
 
 /**
  * Hand-curated commander/lead names for known public projects.

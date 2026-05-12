@@ -120,9 +120,13 @@
 		}
 	}
 
+	// Load projects on both the primary and project-selection views.
+	// Primary view needs the project count to (a) render the new-user empty
+	// state via `isNewUser` and (b) show the active-project count on the
+	// project-chat card. Cache short-circuit in loadProjects() keeps this
+	// from re-fetching unnecessarily when switching views.
 	$effect(() => {
 		if (!browser) return;
-		if (selectedView !== 'project-selection') return;
 		const timeoutId = setTimeout(
 			() => void loadProjects({ search: projectSearchTerm }),
 			normalizedProjectSearch ? PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS : 0
@@ -274,43 +278,43 @@
 	);
 	const optionCardBaseClasses =
 		'group flex flex-col rounded-lg border border-border bg-card p-3 text-left shadow-ink pressable transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:p-4';
+	// Canonical texture mapping (see INKPRINT design system §3.4):
+	//   General chat   → Frame  (canonical / primary surface)
+	//   Project chat   → Grain  (active execution)
+	//   Project setup  → Bloom  (new / creation)
 	const primaryChatCardClasses = `${optionCardBaseClasses} tx tx-frame tx-weak hover:border-accent/40`;
-	const projectChatCardClasses = `${optionCardBaseClasses} tx tx-thread tx-weak hover:border-accent/40`;
-	const setupCardClasses = `${optionCardBaseClasses} tx tx-strip tx-weak hover:border-accent/30`;
+	const projectChatCardClasses = `${optionCardBaseClasses} tx tx-grain tx-weak hover:border-accent/40`;
+	const setupCardClasses = `${optionCardBaseClasses} tx tx-bloom tx-weak hover:border-accent/40`;
 	const projectListItemClasses =
 		'group flex flex-col rounded-lg border border-border bg-card p-3 text-left shadow-ink tx tx-frame tx-weak pressable transition-colors duration-150 hover:border-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:p-3';
 	const optionIconClasses =
 		'flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-foreground shadow-ink-inner sm:h-10 sm:w-10';
 </script>
 
-<div class="flex h-full min-h-0 flex-col overflow-hidden bg-background">
+<div class="flex h-full min-h-0 flex-col overflow-hidden bg-muted">
 	<!-- PRIMARY SELECTION VIEW -->
 	{#if selectedView === 'primary'}
-		<div class="mx-auto w-full max-w-5xl flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:p-5">
-			<!-- Header - compact on mobile -->
-			<div class="mb-4 text-center sm:mb-6">
-				{#if isNewUser}
-					<h2
-						class="mb-1 text-lg font-semibold tracking-tight text-foreground sm:text-2xl sm:mb-1.5"
-					>
-						Start with your first project
-					</h2>
-					<p class="text-xs text-muted-foreground sm:text-sm">
-						Set up the project once, then return here for focused project chat and
-						workspace-wide help.
-					</p>
-				{:else}
-					<h2
-						class="mb-1 text-lg font-semibold tracking-tight text-foreground sm:text-2xl sm:mb-1.5"
-					>
-						Choose a working context
-					</h2>
-					<p class="text-xs text-muted-foreground sm:text-sm">
-						Start in general chat, work inside a project, or create a new project.
-					</p>
-				{/if}
-			</div>
+		<!-- Screen header band (matches other selection screens) -->
+		<div class="border-b border-border bg-card px-3 py-2.5 tx tx-strip tx-weak sm:p-4">
+			{#if isNewUser}
+				<h2 class="text-base font-semibold text-foreground sm:text-lg">
+					Start with your first project
+				</h2>
+				<p class="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+					Set up the project once, then return here for project chat and workspace-wide
+					help.
+				</p>
+			{:else}
+				<h2 class="text-base font-semibold text-foreground sm:text-lg">
+					What do you want to work on?
+				</h2>
+				<p class="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+					Pick a starting point — switch later from the arrow in the top-left.
+				</p>
+			{/if}
+		</div>
 
+		<div class="mx-auto w-full max-w-5xl flex-1 min-h-0 overflow-y-auto px-3 py-3 sm:p-5">
 			{#if isNewUser}
 				<!-- NEW USER: No projects yet — guide to first project creation -->
 				<div class="flex flex-col items-center gap-4 sm:gap-5">
@@ -331,58 +335,60 @@
 								<p
 									class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
 								>
-									Define the objective, create the project shell, and give the
-									assistant something stable to work with.
+									Define the objective, create the shell, and give the assistant
+									something stable to work with.
 								</p>
 							</div>
 							<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
 						</div>
 					</button>
 
-					<div
-						class="w-full max-w-xl rounded-lg border border-border bg-card p-3 shadow-ink tx tx-frame tx-weak"
-					>
-						<p class="micro-label mb-2">AVAILABLE AFTER SETUP</p>
-						<div class="grid gap-2 sm:grid-cols-2">
-							<div
-								class="flex items-center gap-2.5 rounded-lg border border-border bg-background p-2.5 text-muted-foreground"
-							>
-								<div
-									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted"
-								>
-									<MessagesSquare class="h-3.5 w-3.5" />
-								</div>
+					<!-- Informational preview — clearly NOT clickable (no shadow, no card bg) -->
+					<div class="w-full max-w-xl px-1">
+						<p
+							class="mb-2 text-center text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground"
+						>
+							Once a project exists, you can also
+						</p>
+						<dl
+							class="grid gap-x-4 gap-y-1.5 text-xs text-muted-foreground sm:grid-cols-2"
+						>
+							<div class="flex items-start gap-2">
+								<MessagesSquare
+									class="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
+								/>
 								<div>
-									<p class="text-sm font-medium text-foreground">General chat</p>
-									<p class="text-[11px] leading-snug">
-										Workspace-wide questions and planning.
-									</p>
+									<dt class="font-semibold text-foreground">General chat</dt>
+									<dd class="text-[11px] leading-snug">
+										Ask workspace-wide questions.
+									</dd>
 								</div>
 							</div>
-							<div
-								class="flex items-center gap-2.5 rounded-lg border border-border bg-background p-2.5 text-muted-foreground"
-							>
-								<div
-									class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted"
-								>
-									<FolderOpen class="h-3.5 w-3.5" />
-								</div>
+							<div class="flex items-start gap-2">
+								<FolderOpen
+									class="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70"
+								/>
 								<div>
-									<p class="text-sm font-medium text-foreground">Project chat</p>
-									<p class="text-[11px] leading-snug">
-										Focused work inside a single project.
-									</p>
+									<dt class="font-semibold text-foreground">Project chat</dt>
+									<dd class="text-[11px] leading-snug">
+										Focused help inside one project.
+									</dd>
 								</div>
 							</div>
-						</div>
+						</dl>
 					</div>
 				</div>
 			{:else}
-				<div class="space-y-4">
-					<div class="space-y-2">
-						<div class="flex items-center justify-between gap-3">
-							<p class="micro-label">PRIMARY</p>
-							<p class="text-xs text-muted-foreground">Start in chat</p>
+				<div class="space-y-5 sm:space-y-6">
+					<!-- Group 1: Start chatting -->
+					<section class="space-y-2.5">
+						<div class="flex items-center gap-3">
+							<h3
+								class="text-xs font-semibold uppercase tracking-[0.15em] text-foreground"
+							>
+								Start a chat
+							</h3>
+							<span class="h-px flex-1 bg-border"></span>
 						</div>
 						<div class="grid gap-2 sm:grid-cols-2 sm:gap-3">
 							<button onclick={selectGlobal} class={primaryChatCardClasses}>
@@ -400,16 +406,11 @@
 										<p
 											class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
 										>
-											Work across your workspace when you do not need to start
-											inside one project.
+											Workspace-wide questions, planning, or cross-project
+											context.
 										</p>
 									</div>
 									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
-								</div>
-								<div
-									class="mt-3 border-t border-border pt-2 text-xs text-muted-foreground"
-								>
-									Best for questions, planning, and cross-project context.
 								</div>
 							</button>
 
@@ -423,37 +424,37 @@
 										<h3
 											class="text-sm font-semibold text-foreground sm:text-base"
 										>
-											Work inside a project
+											Chat inside a project
 										</h3>
 										<p
 											class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
 										>
-											Choose a project and get focused help with planning,
-											reviewing, and next steps.
+											{#if hasLoadedProjects && hasProjects}
+												Pick from {activeProjects.length} active project{activeProjects.length !==
+												1
+													? 's'
+													: ''} and get focused help.
+											{:else}
+												Pick a project and get focused help with planning
+												and next steps.
+											{/if}
 										</p>
 									</div>
 									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
 								</div>
-								<div
-									class="mt-3 border-t border-border pt-2 text-xs text-muted-foreground"
-								>
-									{#if hasLoadedProjects && hasProjects}
-										{activeProjects.length} active project{activeProjects.length !==
-										1
-											? 's'
-											: ''} ready
-									{:else}
-										Browse your current project list
-									{/if}
-								</div>
 							</button>
 						</div>
-					</div>
+					</section>
 
-					<div class="space-y-2">
-						<div class="flex items-center justify-between gap-3">
-							<p class="micro-label">SECONDARY</p>
-							<p class="text-xs text-muted-foreground">Project setup</p>
+					<!-- Group 2: Set something up -->
+					<section class="space-y-2.5">
+						<div class="flex items-center gap-3">
+							<h3
+								class="text-xs font-semibold uppercase tracking-[0.15em] text-foreground"
+							>
+								Or set something up
+							</h3>
+							<span class="h-px flex-1 bg-border"></span>
 						</div>
 						<div
 							class={`grid gap-2 sm:gap-3 ${dev ? 'sm:grid-cols-2' : 'sm:grid-cols-1'}`}
@@ -468,12 +469,12 @@
 										<h3
 											class="text-sm font-semibold text-foreground sm:text-base"
 										>
-											Start a project
+											Start a new project
 										</h3>
 										<p
 											class="mt-1 text-xs leading-snug text-muted-foreground sm:text-sm"
 										>
-											Create structure first, then move into focused work.
+											Create the structure first, then move into focused work.
 										</p>
 									</div>
 									<ChevronRight class="h-4 w-4 shrink-0 text-muted-foreground" />
@@ -507,16 +508,7 @@
 								</button>
 							{/if}
 						</div>
-					</div>
-
-					{#if hasProjects}
-						<div
-							class="flex items-center justify-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground shadow-ink tx tx-strip tx-weak"
-						>
-							<div class="h-1.5 w-1.5 rounded-full bg-accent"></div>
-							<span>{activeProjects.length} projects ready for focused chat</span>
-						</div>
-					{/if}
+					</section>
 				</div>
 			{/if}
 		</div>
@@ -525,12 +517,14 @@
 	<!-- PROJECT SELECTION VIEW -->
 	{#if selectedView === 'project-selection'}
 		<div class="flex h-full min-h-0 flex-col">
-			<!-- Header - compact on mobile -->
+			<!-- Screen header band (matches other selection screens) -->
 			<div class="border-b border-border bg-card px-3 py-2.5 tx tx-strip tx-weak sm:p-4">
 				<h2 class="text-base font-semibold text-foreground sm:text-lg">
-					Choose a project context
+					Pick a project to chat in
 				</h2>
-				<p class="text-xs text-muted-foreground">Start chat inside a specific project</p>
+				<p class="mt-0.5 text-xs text-muted-foreground sm:text-sm">
+					Chat will be scoped to this project — search or pick a recent one below.
+				</p>
 				<div class="relative mt-3">
 					<Search
 						class="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
@@ -665,7 +659,7 @@
 						{#if activeProjectsByRecency.recent.length > 0}
 							<section>
 								{@render groupHeader(
-									'Recent',
+									'Last 7 days',
 									activeProjectsByRecency.recent.length,
 									true
 								)}
@@ -682,7 +676,7 @@
 						{#if activeProjectsByRecency.olderThan7Days.length > 0}
 							<section>
 								{@render groupHeader(
-									'Not touched in last 7 days',
+									'8–30 days ago',
 									activeProjectsByRecency.olderThan7Days.length,
 									activeProjectsByRecency.recent.length === 0
 								)}
@@ -699,7 +693,7 @@
 						{#if activeProjectsByRecency.olderThan30Days.length > 0}
 							<section>
 								{@render groupHeader(
-									'Not touched in last 30 days',
+									'Over 30 days ago',
 									activeProjectsByRecency.olderThan30Days.length,
 									activeProjectsByRecency.recent.length === 0 &&
 										activeProjectsByRecency.olderThan7Days.length === 0

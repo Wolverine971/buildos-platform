@@ -3,30 +3,35 @@
 	Public Project Preview — Landing-page embed.
 
 	Renders a real BuildOS project (one of ~6 hand-curated public ontology
-	projects) in a read-only, project-page-lookalike layout: header card, stats
-	row, document list, insight rail (goals/milestones/plans/tasks/risks), and
-	the interactive graph. Visitors switch between examples via a dropdown.
+	projects) in a read-only mirror of the v2 project page:
+
+		Header card → Pulse strip (Recent / Up next) → Entity tab strip
+		→ Task kanban → Documents tree
+
+	The toolbar exposes a Desktop / Mobile toggle so visitors can preview the
+	same project at both viewports. Mobile renders inside a centered phone
+	frame (~390px wide) with the mobile-mode children layouts.
 
 	Data sources:
 	- GET /api/public/projects                          (list of public projects)
 	- GET /api/public/projects/[id]/graph?viewMode=full (full payload for one)
 
 	No authentication required. No edit affordances.
-
-	Plan doc: apps/web/docs/technical/audits/LANDING_PUBLIC_PROJECT_PREVIEW_PLAN_2026-04-29.md
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { ChevronDown, GitBranch, LoaderCircle } from 'lucide-svelte';
+	import { ChevronDown, GitBranch, LoaderCircle, Monitor, Smartphone } from 'lucide-svelte';
 	import PublicProjectHeader from './PublicProjectHeader.svelte';
 	import PublicProjectStatsRow from './PublicProjectStatsRow.svelte';
-	import PublicProjectDocsList from './PublicProjectDocsList.svelte';
-	import PublicProjectInsightRail from './PublicProjectInsightRail.svelte';
-	import PublicProjectGraphPanel from './PublicProjectGraphPanel.svelte';
+	import PublicPulseStrip from './PublicPulseStrip.svelte';
+	import PublicEntityTabStrip from './PublicEntityTabStrip.svelte';
+	import PublicTaskBoard from './PublicTaskBoard.svelte';
+	import PublicDocsTree from './PublicDocsTree.svelte';
 	import {
 		DEFAULT_PUBLIC_PROJECT_ID,
 		type PublicProjectFullData,
-		type PublicProjectSummary
+		type PublicProjectSummary,
+		type ViewportMode
 	} from './lib/public-project-types';
 
 	let {
@@ -44,6 +49,8 @@
 	let isLoadingProject = $state(false);
 	let listError = $state<string | null>(null);
 	let projectError = $state<string | null>(null);
+
+	let viewport = $state<ViewportMode>('desktop');
 
 	onMount(async () => {
 		await loadProjectList();
@@ -150,32 +157,70 @@
 							See what a real BuildOS project looks like.
 						</h2>
 						<p class="text-sm text-muted-foreground max-w-2xl">
-							This is the same view a logged-in user gets — header, documents, goals,
-							plans, tasks, and the project graph — rendered from a real public
-							project. Pick a different example below.
+							Header, pulse, kanban, docs, graph — the same view a logged-in user
+							gets, rendered from a real public project. Switch between examples or
+							preview what it looks like on mobile.
 						</p>
 					</div>
 
-					<label class="relative shrink-0">
-						<span class="sr-only">Choose an example project</span>
-						<select
-							class="appearance-none pressable h-9 pl-3 pr-9 text-sm font-medium rounded-lg border border-border bg-card text-foreground shadow-ink hover:border-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
-							value={currentProjectId ?? ''}
-							onchange={handleSelectChange}
-							disabled={isLoadingList || availableProjects.length === 0}
+					<div class="flex items-center gap-2 shrink-0">
+						<!-- Desktop / Mobile toggle -->
+						<div
+							role="tablist"
+							aria-label="Viewport"
+							class="inline-flex rounded-lg border border-border bg-card shadow-ink p-0.5 h-9"
 						>
-							{#if availableProjects.length === 0}
-								<option value="">Loading examples…</option>
-							{:else}
-								{#each availableProjects as project (project.id)}
-									<option value={project.id}>{project.name}</option>
-								{/each}
-							{/if}
-						</select>
-						<ChevronDown
-							class="w-4 h-4 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
-						/>
-					</label>
+							<button
+								role="tab"
+								type="button"
+								aria-selected={viewport === 'desktop'}
+								onclick={() => (viewport = 'desktop')}
+								class="inline-flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-md transition-colors {viewport ===
+								'desktop'
+									? 'bg-accent text-accent-foreground shadow-sm'
+									: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
+								title="Desktop preview"
+							>
+								<Monitor class="w-3.5 h-3.5" />
+								<span class="hidden sm:inline">Desktop</span>
+							</button>
+							<button
+								role="tab"
+								type="button"
+								aria-selected={viewport === 'mobile'}
+								onclick={() => (viewport = 'mobile')}
+								class="inline-flex items-center gap-1.5 px-2.5 text-xs font-medium rounded-md transition-colors {viewport ===
+								'mobile'
+									? 'bg-accent text-accent-foreground shadow-sm'
+									: 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}"
+								title="Mobile preview"
+							>
+								<Smartphone class="w-3.5 h-3.5" />
+								<span class="hidden sm:inline">Mobile</span>
+							</button>
+						</div>
+
+						<label class="relative shrink-0">
+							<span class="sr-only">Choose an example project</span>
+							<select
+								class="appearance-none pressable h-9 pl-3 pr-9 text-sm font-medium rounded-lg border border-border bg-card text-foreground shadow-ink hover:border-accent transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50"
+								value={currentProjectId ?? ''}
+								onchange={handleSelectChange}
+								disabled={isLoadingList || availableProjects.length === 0}
+							>
+								{#if availableProjects.length === 0}
+									<option value="">Loading examples…</option>
+								{:else}
+									{#each availableProjects as project (project.id)}
+										<option value={project.id}>{project.name}</option>
+									{/each}
+								{/if}
+							</select>
+							<ChevronDown
+								class="w-4 h-4 text-muted-foreground absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none"
+							/>
+						</label>
+					</div>
 				</div>
 			</div>
 
@@ -218,20 +263,48 @@
 					</button>
 				</div>
 			{:else if fullData}
-				<PublicProjectHeader project={fullData.project} />
-
-				<PublicProjectStatsRow stats={fullData.stats} />
-
-				<div class="grid lg:grid-cols-5 gap-3 sm:gap-4">
-					<div class="lg:col-span-3">
-						<PublicProjectDocsList documents={fullData.source.documents ?? []} />
+				{#if viewport === 'mobile'}
+					<div class="flex justify-center">
+						<div
+							class="relative w-[390px] max-w-full rounded-[2rem] border-[8px] border-foreground/80 dark:border-foreground/60 bg-background shadow-ink-strong overflow-hidden"
+							aria-label="Mobile preview"
+						>
+							<!-- Phone notch -->
+							<div
+								class="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-5 rounded-b-2xl bg-foreground/80 dark:bg-foreground/60 z-10"
+								aria-hidden="true"
+							></div>
+							<div
+								class="bg-background h-[640px] overflow-y-auto px-2.5 pt-7 pb-4 space-y-2.5"
+							>
+								<PublicProjectHeader project={fullData.project} viewport="mobile" />
+								<PublicProjectStatsRow stats={fullData.stats} />
+								<PublicPulseStrip source={fullData.source} viewport="mobile" />
+								<PublicEntityTabStrip source={fullData.source} viewport="mobile" />
+								<PublicTaskBoard
+									tasks={fullData.source.tasks ?? []}
+									viewport="mobile"
+								/>
+								<PublicDocsTree
+									documents={fullData.source.documents ?? []}
+									docStructure={fullData.project.doc_structure ?? null}
+								/>
+							</div>
+						</div>
 					</div>
-					<div class="lg:col-span-2">
-						<PublicProjectInsightRail source={fullData.source} />
+				{:else}
+					<div class="space-y-3 sm:space-y-4">
+						<PublicProjectHeader project={fullData.project} viewport="desktop" />
+						<PublicProjectStatsRow stats={fullData.stats} />
+						<PublicPulseStrip source={fullData.source} viewport="desktop" />
+						<PublicEntityTabStrip source={fullData.source} viewport="desktop" />
+						<PublicTaskBoard tasks={fullData.source.tasks ?? []} viewport="desktop" />
+						<PublicDocsTree
+							documents={fullData.source.documents ?? []}
+							docStructure={fullData.project.doc_structure ?? null}
+						/>
 					</div>
-				</div>
-
-				<PublicProjectGraphPanel source={fullData.source} isLoading={isLoadingProject} />
+				{/if}
 			{/if}
 		</div>
 	</div>

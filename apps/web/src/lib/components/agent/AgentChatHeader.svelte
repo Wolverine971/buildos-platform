@@ -134,9 +134,8 @@
 		{/if}
 
 		{#if selectedContextType}
-			<span class="hidden text-muted-foreground sm:inline">•</span>
-
 			{#if resolvedProjectFocus}
+				<span class="hidden text-muted-foreground sm:inline">•</span>
 				<!-- Hide project-wide indicator on mobile to give more room for project title -->
 				<span
 					class={resolvedProjectFocus.focusType === 'project-wide'
@@ -149,12 +148,13 @@
 						{onClearFocus}
 					/>
 				</span>
-			{:else}
+			{:else if displayContextSubtitle}
+				<span class="hidden text-muted-foreground sm:inline">•</span>
 				<span class="hidden truncate text-xs text-muted-foreground sm:inline">
-					{displayContextSubtitle || 'Ready to assist'}
+					{displayContextSubtitle}
 				</span>
 			{/if}
-		{:else}
+		{:else if displayContextSubtitle}
 			<span class="hidden text-muted-foreground sm:inline">•</span>
 			<span class="hidden truncate text-xs text-muted-foreground sm:inline">
 				{displayContextSubtitle}

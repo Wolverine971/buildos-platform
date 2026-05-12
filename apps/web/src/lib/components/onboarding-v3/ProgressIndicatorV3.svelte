@@ -33,7 +33,7 @@
 <div class="max-w-3xl mx-auto w-full">
 	<div class="relative flex items-center gap-3 sm:gap-4">
 		<!-- Back button (left) -->
-		<div class="shrink-0 w-16 sm:w-20">
+		<!-- <div class="shrink-0 w-16 sm:w-20">
 			{#if onBack && currentStep > 0}
 				<button
 					type="button"
@@ -45,7 +45,7 @@
 					<span class="hidden sm:inline">Back</span>
 				</button>
 			{/if}
-		</div>
+		</div> -->
 
 		<!-- Progress track -->
 		<div class="flex-1 min-w-0">

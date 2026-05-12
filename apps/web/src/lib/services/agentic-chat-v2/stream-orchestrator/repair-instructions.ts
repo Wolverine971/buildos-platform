@@ -423,14 +423,59 @@ export function buildGatewayRequiredFieldRepairInstruction(
 	].join(' ');
 }
 
-export function buildReadLoopRepairInstruction(readOps: string[]): string {
+export type ReadLoopRepairInstructionLevel = 'nudge' | 'stop_and_answer' | 'must_synthesize';
+
+export function buildReadLoopRepairInstruction(
+	readOps: string[],
+	options: {
+		level?: ReadLoopRepairInstructionLevel;
+		roundsRemaining?: number;
+	} = {}
+): string {
 	const opsLabel = readOps.length > 0 ? readOps.join(', ') : 'read-only ops';
+	const roundsRemaining =
+		typeof options.roundsRemaining === 'number' && Number.isFinite(options.roundsRemaining)
+			? Math.max(0, Math.floor(options.roundsRemaining))
+			: null;
+	const roundsRemainingLine =
+		roundsRemaining === null
+			? null
+			: `Tool rounds remaining before the safety cap: ${roundsRemaining}.`;
+	const level = options.level ?? 'nudge';
+
+	if (level === 'must_synthesize') {
+		return [
+			'Read-loop hard stop: synthesize now.',
+			`Repeated ops: ${opsLabel}.`,
+			roundsRemainingLine,
+			'Do not call more read tools in the next response.',
+			'Answer from the existing tool results now; state uncertainty or missing facts concisely.'
+		]
+			.filter((line): line is string => Boolean(line))
+			.join(' ');
+	}
+
+	if (level === 'stop_and_answer') {
+		return [
+			'Read-loop escalation: stop broad context gathering.',
+			`Repeated ops: ${opsLabel}.`,
+			roundsRemainingLine,
+			'Only call another read tool if one specific missing fact blocks the answer.',
+			'Otherwise answer from the existing results now.'
+		]
+			.filter((line): line is string => Boolean(line))
+			.join(' ');
+	}
+
 	return [
-		'You are repeating read-only tool calls without making progress.',
+		'Read-loop nudge: you are repeating read-only tool calls without making progress.',
 		`Repeated ops: ${opsLabel}.`,
+		roundsRemainingLine,
 		'Stop reloading the same data. Use the existing results to answer, or perform the next required action.',
 		'If required IDs are still missing, ask one concise clarification question instead of repeating the same reads.'
-	].join(' ');
+	]
+		.filter((line): line is string => Boolean(line))
+		.join(' ');
 }
 
 export function buildConsolidatedRepairInstruction(instructions: string[]): string {

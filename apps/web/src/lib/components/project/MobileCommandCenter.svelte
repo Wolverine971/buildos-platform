@@ -2,31 +2,27 @@
 <!--
 	Mobile Command Center Component
 
-	Ultra-compact mobile layout for project data models.
-	Organizes entity types into rows with single-expansion behavior.
-	Supports filter/sort controls when panelStates are provided.
+	Ultra-compact mobile layout for "context" entities. Tasks and Documents
+	have their own dedicated mobile surfaces (MobileTaskBoard and
+	ProjectDocumentsSection), so this component only handles:
 
-	Row Layout:
-	1. Goals (with nested milestone progress)
-	2. Tasks + Plans (Execution)
-	3. Risks + Documents (Context)
-	4. Events (Scheduling) - Standalone
+	Row 1: Goals (with nested milestone progress)
+	Row 2: Plans + Risks
+	Row 3: Events
 
-	Note: Milestones are now nested under goals, not shown as a separate panel.
-	See: /thoughts/shared/research/2026-01-16_milestones-under-goals-ux-proposal.md
+	Milestones are nested under goals; a flat Milestones list is also
+	reachable via EntityTabStrip on mobile.
 
 	Documentation:
-	- Mobile Command Center: /apps/web/docs/features/mobile-command-center/MOBILE_COMMAND_CENTER_SPEC.md
+	- Mobile parity audit: /apps/web/docs/features/mobile-command-center/MOBILE_PARITY_AUDIT_2026-05-12.md
 	- Inkprint Design System: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
 -->
 <script lang="ts">
-	import { Target, Flag, ListChecks, Calendar, Clock, AlertTriangle } from 'lucide-svelte';
+	import { Target, Flag, Calendar, Clock, AlertTriangle } from 'lucide-svelte';
 	import CommandCenterRow from './CommandCenterRow.svelte';
 	import CommandCenterPanel from './CommandCenterPanel.svelte';
-	import CommandCenterDocumentsPanel from './CommandCenterDocumentsPanel.svelte';
 	import GoalMilestonesSection from '$lib/components/ontology/GoalMilestonesSection.svelte';
-	import type { Goal, Milestone, Task, Plan, Risk, Document, OntoEvent } from '$lib/types/onto';
-	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
+	import type { Goal, Milestone, Plan, Risk, OntoEvent } from '$lib/types/onto';
 	import {
 		PANEL_CONFIGS,
 		type FilterGroup,
@@ -35,41 +31,35 @@
 	} from '$lib/components/ontology/insight-panels';
 	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 
-	// Note: 'milestones' removed from PanelKey - now nested under goals
+	// Milestones are nested under goals; Tasks and Documents have their
+	// own mobile surfaces and are no longer rendered here.
+	//
+	// PanelKey keeps the full key set to match `CommandCenterPanel`'s
+	// internal type — we only ever toggle a subset, but narrowing breaks
+	// the callback signature.
 	type PanelKey = 'goals' | 'tasks' | 'plans' | 'risks' | 'documents' | 'events';
 
 	interface Props {
 		// Entity data arrays
 		goals: Goal[];
 		milestones: Milestone[];
-		tasks: Task[];
 		plans: Plan[];
 		risks: Risk[];
-		documents: Document[];
 		events: OntoEvent[];
 		milestonesByGoalId?: Map<string, Milestone[]>;
-
-		// Hierarchical document tree data (optional - falls back to flat list)
-		docStructure?: DocStructure | null;
-		docTreeDocuments?: Record<string, OntoDocument>;
-		projectId?: string;
 
 		// Entity action callbacks - Add
 		onAddGoal: () => void;
 		onAddMilestoneFromGoal?: (goalId: string, goalName: string) => void;
-		onAddTask: () => void;
 		onAddPlan: () => void;
 		onAddRisk: () => void;
-		onAddDocument: (parentId?: string | null) => void;
 		onAddEvent: () => void;
 
 		// Entity action callbacks - Edit
 		onEditGoal: (id: string) => void;
 		onEditMilestone: (id: string) => void;
-		onEditTask: (id: string) => void;
 		onEditPlan: (id: string) => void;
 		onEditRisk: (id: string) => void;
-		onEditDocument: (id: string) => void;
 		onEditEvent: (id: string) => void;
 
 		// Entity action callbacks - State change
@@ -94,28 +84,19 @@
 	let {
 		goals,
 		milestones,
-		tasks,
 		plans,
 		risks,
-		documents,
 		events,
 		milestonesByGoalId,
-		docStructure,
-		docTreeDocuments,
-		projectId,
 		onAddGoal,
 		onAddMilestoneFromGoal,
-		onAddTask,
 		onAddPlan,
 		onAddRisk,
-		onAddDocument,
 		onAddEvent,
 		onEditGoal,
 		onEditMilestone,
-		onEditTask,
 		onEditPlan,
 		onEditRisk,
-		onEditDocument,
 		onEditEvent,
 		onToggleMilestoneComplete,
 		panelStates,
@@ -141,32 +122,11 @@
 	}
 
 	// Helper to check if a panel's partner is expanded
-	// Note: Goals and Events are standalone, others are paired
+	// Goals and Events are standalone full-width; Plans + Risks are paired.
 	function isPartnerExpanded(key: PanelKey): boolean {
-		// Standalone panels have no partner
-		if (key === 'goals' || key === 'events') return false;
-
-		const pairs: Record<'tasks' | 'plans' | 'risks' | 'documents', PanelKey> = {
-			tasks: 'plans',
-			plans: 'tasks',
-			risks: 'documents',
-			documents: 'risks'
-		};
-		return expandedPanel === pairs[key];
-	}
-
-	// State badge colors
-	function getTaskStateColor(state: string): string {
-		switch (state) {
-			case 'done':
-				return 'text-emerald-500';
-			case 'in_progress':
-				return 'text-amber-500';
-			case 'blocked':
-				return 'text-red-500';
-			default:
-				return 'text-muted-foreground';
-		}
+		if (key === 'plans') return expandedPanel === 'risks';
+		if (key === 'risks') return expandedPanel === 'plans';
+		return false;
 	}
 
 	function getGoalStateColor(state: string): string {
@@ -219,29 +179,6 @@
 				// Default 'scheduled' state
 				return 'text-muted-foreground';
 		}
-	}
-
-	function getAssigneeDisplayLabel(assignee: {
-		name?: string | null;
-		email?: string | null;
-		actor_id?: string | null;
-	}): string {
-		const name = assignee.name?.trim();
-		if (name) return name;
-		const email = assignee.email?.trim().toLowerCase();
-		if (email) return email.split('@')[0] ?? 'Teammate';
-		if (assignee.actor_id) return assignee.actor_id.slice(0, 8);
-		return 'Teammate';
-	}
-
-	function formatTaskAssigneeSummary(task: Task): string | null {
-		const assignees = Array.isArray(task.assignees) ? task.assignees : [];
-		if (assignees.length === 0) return null;
-		const firstAssignee = assignees[0];
-		if (!firstAssignee) return null;
-		const primaryLabel = getAssigneeDisplayLabel(firstAssignee);
-		if (assignees.length === 1) return `@${primaryLabel}`;
-		return `@${primaryLabel} +${assignees.length - 1}`;
 	}
 </script>
 
@@ -327,61 +264,8 @@
 		</CommandCenterPanel>
 	</CommandCenterRow>
 
-	<!-- Row 2: Tasks + Plans (Execution) -->
+	<!-- Row 2: Plans + Risks (Execution + Context) -->
 	<CommandCenterRow>
-		<!-- Tasks Panel -->
-		<CommandCenterPanel
-			panelKey="tasks"
-			label="Tasks"
-			icon={ListChecks}
-			iconColor="text-muted-foreground"
-			count={tasks.length}
-			expanded={expandedPanel === 'tasks'}
-			partnerExpanded={isPartnerExpanded('tasks')}
-			onToggle={togglePanel}
-			onAdd={onAddTask}
-			emptyMessage="Add tasks to track work"
-			panelConfig={hasControls ? PANEL_CONFIGS.tasks : undefined}
-			panelState={hasControls && panelStates ? panelStates.tasks : undefined}
-			filterGroups={hasControls ? taskFilterGroups : undefined}
-			toggleCounts={hasControls && panelCounts ? panelCounts.tasks : undefined}
-			onFilterChange={hasControls && onFilterChange
-				? (filters) => onFilterChange('tasks', filters)
-				: undefined}
-			onFilterOpen={hasControls && onFilterOpen ? () => onFilterOpen('tasks') : undefined}
-			onSortChange={hasControls && onSortChange
-				? (sort) => onSortChange('tasks', sort)
-				: undefined}
-			onToggleChange={hasControls && onToggleChange
-				? (toggleId, value) => onToggleChange('tasks', toggleId, value)
-				: undefined}
-		>
-			{#each tasks as task (task.id)}
-				{@const assigneeSummary = formatTaskAssigneeSummary(task)}
-				<button
-					type="button"
-					onclick={() => onEditTask(task.id)}
-					class="w-full px-2.5 py-1.5 text-left hover:bg-accent/5 transition-colors pressable border-b border-border/50 last:border-b-0"
-				>
-					<div class="flex items-center justify-between gap-2">
-						<span class="text-xs text-foreground truncate">{task.title}</span>
-						<div class="flex items-center gap-1.5 shrink-0">
-							{#if assigneeSummary}
-								<span
-									class="text-[10px] text-muted-foreground truncate max-w-[80px]"
-									>{assigneeSummary}</span
-								>
-								<span class="text-[10px] text-border">·</span>
-							{/if}
-							<span class="text-[10px] capitalize {getTaskStateColor(task.state_key)}"
-								>{task.state_key.replace('_', ' ')}</span
-							>
-						</div>
-					</div>
-				</button>
-			{/each}
-		</CommandCenterPanel>
-
 		<!-- Plans Panel -->
 		<CommandCenterPanel
 			panelKey="plans"
@@ -425,10 +309,7 @@
 				</button>
 			{/each}
 		</CommandCenterPanel>
-	</CommandCenterRow>
 
-	<!-- Row 3: Risks + Documents (Context) -->
-	<CommandCenterRow>
 		<!-- Risks Panel -->
 		<CommandCenterPanel
 			panelKey="risks"
@@ -472,23 +353,9 @@
 				</button>
 			{/each}
 		</CommandCenterPanel>
-
-		<!-- Documents Panel - Uses hierarchical tree when available -->
-		<CommandCenterDocumentsPanel
-			projectId={projectId ?? ''}
-			{documents}
-			{docStructure}
-			{docTreeDocuments}
-			expanded={expandedPanel === 'documents'}
-			partnerExpanded={isPartnerExpanded('documents')}
-			onToggle={() => togglePanel('documents')}
-			{onAddDocument}
-			{onEditDocument}
-			{canEdit}
-		/>
 	</CommandCenterRow>
 
-	<!-- Row 4: Events (Scheduling) - Standalone -->
+	<!-- Row 3: Events (Scheduling) - Standalone -->
 	<CommandCenterRow>
 		<!-- Events Panel (Standalone Full Width) -->
 		<CommandCenterPanel

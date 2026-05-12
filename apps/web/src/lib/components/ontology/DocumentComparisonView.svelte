@@ -10,6 +10,7 @@
 	Inkprint design tokens. Svelte 5 runes.
 -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import { onDestroy } from 'svelte';
 	import { LoaderCircle, AlertCircle, RefreshCw } from 'lucide-svelte';
 	import ComparisonToolbar from './ComparisonToolbar.svelte';
@@ -129,6 +130,8 @@
 	// EFFECTS
 	// ============================================================
 	$effect(() => {
+		if (!browser) return;
+
 		// Re-fetch when version numbers change
 		const _from = fromVersionNumber;
 		const _to = toVersionNumber;

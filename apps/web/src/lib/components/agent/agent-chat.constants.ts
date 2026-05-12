@@ -7,8 +7,8 @@ export const CONTEXT_DESCRIPTORS: Record<ChatContextType, { title: string; subti
 		subtitle: 'Work across projects, tasks, and the calendar without constraints.'
 	},
 	project: {
-		title: 'Project workspace',
-		subtitle: 'Answer questions, explore insights, or update a selected project.'
+		title: 'Project chat',
+		subtitle: 'Answer questions, explore insights, or update the selected project.'
 	},
 	calendar: {
 		title: 'Calendar planning',

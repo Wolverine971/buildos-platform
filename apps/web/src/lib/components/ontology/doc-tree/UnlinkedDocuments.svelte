@@ -46,7 +46,7 @@
 			order: 0,
 			depth: 0,
 			path: [],
-			has_content: !!doc.content,
+			has_content: doc.has_content === true || !!doc.content,
 			state_key: doc.state_key ?? 'active',
 			type_key: doc.type_key ?? 'document',
 			created_at: doc.created_at ?? new Date().toISOString(),

@@ -1,21 +1,34 @@
 ---
 layout: docs
-title: Connect External Agents
+title: Connect Your Agents
 slug: connect-agents
-summary: Connect Claude Code, OpenClaw, or a custom external agent to read and write BuildOS project context, with per-project scopes and audit trails you control.
+summary: One key. Every project. Connect Claude Code, Cursor, Claude Desktop, ChatGPT, or any HTTP-capable tool to your BuildOS workspace so they read off the same sheet of paper instead of starting from zero each session.
 icon: Plug
 order: 9
-lastUpdated: 2026-04-18
+lastUpdated: 2026-05-11
 path: apps/web/src/content/docs/connect-agents.md
 ---
 
-BuildOS exposes a JSON-RPC gateway so external agents — Claude Code, OpenClaw, or anything you build yourself — can read and write in your projects the same way the in-app agent does. This replaces the old copy-and-paste-your-context workflow with a live, scoped connection.
+Your messy thinking lives in BuildOS. Your AI tools — Claude Code, Cursor, Claude Desktop, ChatGPT, anything that can call HTTP — can read off the same sheet of paper instead of starting from zero each session.
 
-## Why you'd want this
+Generate a key. Paste it into your AI tool's config. Now that tool can see your projects, read your tasks and docs, and (if you allow it) write back to them.
 
-The in-app agent is where BuildOS does most of its work. But a lot of serious work happens outside BuildOS — in Claude Code when you're coding, in Claude Desktop when you're drafting, in your own tooling when you're automating. The gateway gives those tools the same view of your projects and the same ability to act on them, with permissions you actually control.
+Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any time. No vendor SDK. No OAuth dance. No retraining your agents on your context every session.
 
-The difference is a snapshot versus an account. With the gateway, your external agent can read the current state of a project, write a new task, update a document, and see the result reflected back in BuildOS on the next view.
+## Tools that work today
+
+Same key. Same env block. Different paste location.
+
+| Tool                      | Status                | Where the env goes                     |
+| ------------------------- | --------------------- | -------------------------------------- |
+| **Claude Code**           | Works today           | Claude Code config file (env section)  |
+| **Cursor**                | Works today           | Cursor agent settings (env / secrets)  |
+| **Claude Desktop**        | Works today           | Claude Desktop connector config        |
+| **ChatGPT (Custom GPT)**  | Works today           | Custom GPT Actions auth (Bearer token) |
+| **Custom HTTP / scripts** | Works today           | Your own env file or secret store      |
+| **OpenClaw**              | Connector in progress | OpenClaw plugin / secret config        |
+
+If your tool can make an HTTP request with a bearer token, it can connect.
 
 ## Generate an agent key
 
@@ -27,9 +40,60 @@ The difference is a snapshot versus an account. With the gateway, your external 
 4. Choose **which projects** the key can see — all of them or an explicit list.
 5. If you picked `read_write`, whitelist the specific write ops.
 6. Copy the **connection prompt**. The one-time secret shows only once; BuildOS stores a prefix for identification and never the full key.
-7. Paste into Claude Code or OpenClaw. Done.
+7. Paste into your tool's config (see per-tool subsections below).
 
-[`/integrations`](/integrations) has the same flow plus per-agent setup notes.
+[`/integrations`](/integrations) has the same flow plus the public landing page.
+
+## Setting it up in Claude Code
+
+Claude Code is the most common path. Setup is three lines.
+
+1. **Generate a key** as above. Copy the env block.
+2. **Paste it into your Claude Code config** — wherever it stores env vars for that workspace. Never paste the token into chat input.
+3. **Ask Claude to dial:**
+
+    > "Connect to BuildOS and list my projects."
+
+    Claude will hit `POST /api/agent-call/buildos` with the bearer token, open a session, and show your projects. From there you can ask it to read a project's tasks, draft a document, or — if your key allows write — update a task.
+
+The env block looks like:
+
+```env
+BUILDOS_BASE_URL=https://build-os.com
+BUILDOS_AGENT_TOKEN=boca_your_one_time_secret
+BUILDOS_CALLEE_HANDLE=buildos:user:YOUR_USER_ID
+BUILDOS_CALLER_KEY=claude-code:install:your-handle
+```
+
+## Setting it up in Cursor
+
+Cursor uses the same env block. Drop it into your Cursor agent settings (the place where Cursor stores env vars and secrets for the workspace). Then prompt:
+
+> "Connect to BuildOS, list my projects."
+
+Cursor will use the bearer token to dial the gateway. Same tool surface as Claude Code.
+
+## Setting it up in Claude Desktop
+
+Claude Desktop's connector config accepts the same env block. After pasting:
+
+> "Connect to BuildOS using the configured credentials and show my projects."
+
+The desktop client opens a scoped session and exposes the same read/write tools.
+
+## Setting it up in ChatGPT (Custom GPT)
+
+ChatGPT goes through Custom GPT Actions:
+
+1. In your Custom GPT, add a new Action.
+2. Use **Bearer** auth, with `BUILDOS_AGENT_TOKEN` as the value.
+3. Point it at `POST https://build-os.com/api/agent-call/buildos` with a JSON-RPC body.
+
+The Custom GPT can then run `call.dial → tools/list → tools/call → call.hangup` like any other client.
+
+## Setting it up in OpenClaw
+
+The OpenClaw-specific connector is still mid-build. Once it ships, the same env block works without changes. See [`/docs/integrations/openclaw/setup`](/docs/integrations/openclaw/setup) for the OpenClaw-only walkthrough.
 
 ## What you can scope
 
@@ -44,14 +108,14 @@ The difference is a snapshot versus an account. With the gateway, your external 
 
 The Agent Keys UI leads with preset bundles. Pick one and you're done — the per-op matrix sits behind an **Advanced permissions** disclosure if you need finer control.
 
-| Bundle                                     | What it grants                                                          |
-| ------------------------------------------ | ----------------------------------------------------------------------- |
-| **Read only**                              | Every read op. No writes.                                               |
-| **Author docs + tasks** (OpenClaw default) | Reads plus `onto.document.create/update` and `onto.task.create/update`. |
-| **Full read/write**                        | Reads plus every write op the gateway currently exposes.                |
-| **Custom**                                 | Any per-op combination you pick in Advanced.                            |
+| Bundle                                        | What it grants                                                          |
+| --------------------------------------------- | ----------------------------------------------------------------------- |
+| **Read only**                                 | Every read op. No writes.                                               |
+| **Author docs + tasks** (recommended default) | Reads plus `onto.document.create/update` and `onto.task.create/update`. |
+| **Full read/write**                           | Reads plus every write op the gateway currently exposes.                |
+| **Custom**                                    | Any per-op combination you pick in Advanced.                            |
 
-Existing OpenClaw keys that still carry the old narrow default (task writes only) auto-upgrade to **Author docs + tasks** on the next call — no action needed.
+Existing keys that still carry the old narrow default (task writes only) auto-upgrade to **Author docs + tasks** on the next call — no action needed.
 
 ## What's exposed
 
@@ -82,7 +146,7 @@ Existing OpenClaw keys that still carry the old narrow default (task writes only
 
 ## Saving a markdown document from an external agent
 
-The headline v1 write op is `onto.document.create`. An external agent (Claude Code, OpenClaw, custom) can save a markdown artifact into a specific project in a single call.
+The headline v1 write op is `onto.document.create`. Any connected tool can save a markdown artifact into a specific project in a single call.
 
 ```json
 {
@@ -96,7 +160,7 @@ The headline v1 write op is `onto.document.create`. An external agent (Claude Co
 			"content": "# Research\n\nFull markdown body here...",
 			"description": "Initial pass on distribution tactics",
 			"state_key": "draft",
-			"idempotency_key": "openclaw:<project>:research-creator-distribution-loops:2026-04-18"
+			"idempotency_key": "claude-code:<project>:research-creator-distribution-loops:2026-05-11"
 		}
 	}
 }
@@ -121,7 +185,7 @@ When you generate a key in the UI, BuildOS also produces a bootstrap URL:
 GET /api/agent-call/bootstrap/<setupToken>
 ```
 
-That endpoint returns the environment variables and a ready-to-paste prompt for Claude Code or OpenClaw, so you don't have to wire up the JSON-RPC client by hand.
+That endpoint returns the env block and a ready-to-paste connection prompt — so you don't have to wire the JSON-RPC client by hand. Works for any tool that can read an env block.
 
 ## Custom agents
 

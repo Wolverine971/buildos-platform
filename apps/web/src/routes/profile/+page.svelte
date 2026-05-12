@@ -9,9 +9,7 @@
 		User,
 		Users,
 		CircleCheck,
-		Rocket,
 		Key,
-		Settings,
 		Sparkles,
 		Calendar,
 		Mail,
@@ -30,7 +28,6 @@
 	import type { Tab as TabNavTab } from '$lib/components/ui/TabNav.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
-	import { requireApiData } from '$lib/utils/api-client-helpers';
 
 	// Import the new components
 	import BriefsTab from '$lib/components/profile/BriefsTab.svelte';
@@ -40,6 +37,7 @@
 	import NotificationsTab from '$lib/components/profile/NotificationsTab.svelte';
 	import PreferencesTab from '$lib/components/profile/PreferencesTab.svelte';
 	import AgentKeysTab from '$lib/components/profile/AgentKeysTab.svelte';
+	import BillingTab from '$lib/components/profile/BillingTab.svelte';
 
 	interface Props {
 		data: PageData;
@@ -149,23 +147,6 @@
 			url.searchParams.set('tab', tab);
 		}
 		goto(url.toString(), { replaceState: true });
-	}
-
-	// Function to download invoice PDF
-	async function downloadInvoice(invoiceId: string) {
-		try {
-			const response = await fetch(`/api/stripe/invoice/${invoiceId}/download`);
-			const { url } = await requireApiData<{ url?: string }>(
-				response,
-				'Failed to get invoice'
-			);
-			if (url) {
-				window.open(url, '_blank');
-			}
-		} catch (err) {
-			console.error('Error downloading invoice:', err);
-			showError('Failed to download invoice');
-		}
 	}
 
 	async function refreshData() {
@@ -359,7 +340,7 @@
 					</div>
 				</div>
 
-				{#if !data.userContext || !data.completedOnboarding || progressData.missingRequiredFields?.length > 0}
+				{#if !data.completedOnboarding}
 					<Button
 						onclick={() => goto('/onboarding')}
 						variant="primary"
@@ -421,245 +402,7 @@
 		{:else if activeTab === 'agent-keys'}
 			<AgentKeysTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
 		{:else if activeTab === 'billing' && data.stripeEnabled}
-			<!-- Billing/Subscription Tab -->
-			<div class="space-y-4 sm:space-y-5">
-				<!-- Tab Header -->
-				<div class="flex items-start gap-3">
-					<div
-						class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
-					>
-						<CreditCard class="w-5 h-5 text-accent-foreground" />
-					</div>
-					<div class="flex-1 min-w-0">
-						<h2 class="text-lg sm:text-xl font-bold text-foreground">Billing</h2>
-						<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
-							Manage your subscription and payment history.
-						</p>
-					</div>
-				</div>
-
-				{#if data.subscriptionDetails?.subscription}
-					<!-- Active Subscription -->
-					<div
-						class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak"
-					>
-						<div class="px-4 sm:px-5 py-3 border-b border-border">
-							<h3
-								class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
-							>
-								<CircleCheck class="w-4 h-4 text-emerald-500" />
-								{data.subscriptionDetails.subscription.subscription_plans?.name ||
-									'Pro Plan'}
-							</h3>
-							<p class="text-xs text-muted-foreground mt-0.5">Active subscription</p>
-						</div>
-
-						<div class="p-4 sm:p-5 space-y-4">
-							<div class="flex items-baseline justify-between gap-3 flex-wrap">
-								<div>
-									<p class="text-2xl font-bold text-foreground">
-										${(
-											(data.subscriptionDetails.subscription
-												.subscription_plans?.price_cents ?? 0) / 100
-										).toFixed(2)}<span
-											class="text-sm font-normal text-muted-foreground"
-											>/{data.subscriptionDetails.subscription
-												.subscription_plans?.billing_interval}</span
-										>
-									</p>
-									<p class="text-xs text-muted-foreground mt-0.5">
-										Next billing: {data.subscriptionDetails.subscription
-											.current_period_end
-											? new Date(
-													data.subscriptionDetails.subscription.current_period_end
-												).toLocaleDateString()
-											: 'N/A'}
-									</p>
-								</div>
-							</div>
-
-							<div class="grid grid-cols-2 gap-4 pt-3 border-t border-border">
-								<div>
-									<p
-										class="text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5"
-									>
-										Status
-									</p>
-									<p class="text-sm text-foreground capitalize">
-										{data.subscriptionDetails.subscription.status}
-									</p>
-								</div>
-								<div>
-									<p
-										class="text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5"
-									>
-										Member Since
-									</p>
-									<p class="text-sm text-foreground">
-										{data.subscriptionDetails.subscription.created_at
-											? new Date(
-													data.subscriptionDetails.subscription.created_at
-												).toLocaleDateString()
-											: 'N/A'}
-									</p>
-								</div>
-							</div>
-
-							<form method="POST" action="/api/stripe/portal" use:enhance>
-								<Button
-									type="submit"
-									variant="secondary"
-									size="sm"
-									class="shadow-ink pressable"
-									icon={Settings}
-								>
-									Manage Subscription
-								</Button>
-							</form>
-						</div>
-					</div>
-
-					<!-- Invoice Info -->
-					<div class="bg-muted rounded-lg p-3 border border-border">
-						<p
-							class="text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1"
-						>
-							Invoice Information
-						</p>
-						<ul class="text-xs text-muted-foreground space-y-0.5">
-							<li>• Invoices are emailed automatically</li>
-							<li>
-								• Tax ID and business details can be updated in the billing portal
-							</li>
-							<li>• All invoices include applicable taxes</li>
-						</ul>
-					</div>
-
-					<!-- Payment History -->
-					{#if data.subscriptionDetails.invoices.length > 0}
-						<div
-							class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak"
-						>
-							<div class="px-4 sm:px-5 py-3 border-b border-border">
-								<h3 class="text-sm sm:text-base font-semibold text-foreground">
-									Payment History
-								</h3>
-							</div>
-							<div class="divide-y divide-border">
-								{#each data.subscriptionDetails.invoices as invoice}
-									<div
-										class="flex items-center justify-between gap-3 px-4 sm:px-5 py-2.5"
-									>
-										<div class="min-w-0">
-											<p class="text-sm font-medium text-foreground">
-												${(invoice.amount_paid / 100).toFixed(2)}
-											</p>
-											<p class="text-xs text-muted-foreground">
-												{invoice.created_at
-													? new Date(
-															invoice.created_at
-														).toLocaleDateString()
-													: 'N/A'}
-											</p>
-										</div>
-										<div class="text-right flex-shrink-0">
-											<p
-												class="text-xs font-medium capitalize text-foreground"
-											>
-												{invoice.status}
-											</p>
-											{#if invoice.invoice_pdf}
-												<a
-													href={invoice.invoice_pdf}
-													target="_blank"
-													rel="noopener noreferrer"
-													class="text-xs text-accent hover:text-accent/80 transition-colors"
-												>
-													Download PDF
-												</a>
-											{:else if invoice.stripe_invoice_id}
-												<Button
-													onclick={() =>
-														downloadInvoice(invoice.stripe_invoice_id)}
-													variant="ghost"
-													size="sm"
-													class="text-xs text-accent hover:text-accent/80 py-0"
-												>
-													Generate PDF
-												</Button>
-											{/if}
-										</div>
-									</div>
-								{/each}
-							</div>
-						</div>
-					{/if}
-				{:else}
-					<!-- No Subscription -->
-					<div
-						class="bg-card rounded-lg shadow-ink border border-border tx tx-bloom tx-weak"
-					>
-						<div class="p-5 sm:p-6 text-center">
-							<div class="max-w-md mx-auto">
-								<div
-									class="p-2.5 bg-accent/10 rounded-full w-12 h-12 mx-auto mb-3 flex items-center justify-center"
-								>
-									<Sparkles class="w-6 h-6 text-accent" />
-								</div>
-								<h3 class="text-lg sm:text-xl font-bold text-foreground mb-1">
-									Upgrade to Pro
-								</h3>
-								<p class="text-sm text-muted-foreground mb-5">
-									Unlock all features and take your productivity to the next
-									level.
-								</p>
-								<div class="space-y-2 text-left max-w-sm mx-auto mb-5">
-									<div class="flex items-start gap-2">
-										<CircleCheck
-											class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0"
-										/>
-										<p class="text-sm text-foreground">
-											Google Calendar integration for automatic task
-											scheduling
-										</p>
-									</div>
-									<div class="flex items-start gap-2">
-										<CircleCheck
-											class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0"
-										/>
-										<p class="text-sm text-foreground">
-											AI-powered daily briefs to keep you on track
-										</p>
-									</div>
-									<div class="flex items-start gap-2">
-										<CircleCheck
-											class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0"
-										/>
-										<p class="text-sm text-foreground">
-											Advanced project phases and timeline management
-										</p>
-									</div>
-									<div class="flex items-start gap-2">
-										<CircleCheck
-											class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0"
-										/>
-										<p class="text-sm text-foreground">
-											Priority support and early access to new features
-										</p>
-									</div>
-								</div>
-								<a
-									href="/pricing"
-									class="inline-flex items-center px-5 py-2.5 bg-accent hover:bg-accent/90 text-accent-foreground font-medium text-sm rounded-lg shadow-ink pressable transition-all duration-200"
-								>
-									<Rocket class="w-4 h-4 mr-2" />
-									Get Started — $20/month
-								</a>
-							</div>
-						</div>
-					</div>
-				{/if}
-			</div>
+			<BillingTab subscriptionDetails={data.subscriptionDetails} />
 		{/if}
 
 		<!-- Template Editor/Preview Modal -->

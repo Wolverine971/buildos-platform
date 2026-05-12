@@ -1873,33 +1873,20 @@
 							<MobileCommandCenter
 								goals={filteredGoals}
 								milestones={filteredMilestones}
-								tasks={filteredTasks}
 								plans={filteredPlans}
 								risks={filteredRisks}
-								{documents}
 								events={filteredEvents}
 								{milestonesByGoalId}
-								docStructure={docTreeStructure}
-								{docTreeDocuments}
-								projectId={project.id}
 								{canEdit}
 								onAddGoal={() => canEdit && (showGoalCreateModal = true)}
 								onAddMilestoneFromGoal={handleAddMilestoneFromGoal}
-								onAddTask={() => canEdit && (showTaskCreateModal = true)}
 								onAddPlan={() => canEdit && (showPlanCreateModal = true)}
 								onAddRisk={() => canEdit && (showRiskCreateModal = true)}
-								onAddDocument={(parentId) =>
-									canEdit && handleCreateDocument(parentId)}
 								onAddEvent={() => canEdit && (showEventCreateModal = true)}
 								onEditGoal={(id) => (editingGoalId = id)}
 								onEditMilestone={(id) => (editingMilestoneId = id)}
-								onEditTask={(id) => (editingTaskId = id)}
 								onEditPlan={(id) => (editingPlanId = id)}
 								onEditRisk={(id) => (editingRiskId = id)}
-								onEditDocument={(id) => {
-									activeDocumentId = id;
-									showDocumentModal = true;
-								}}
 								onEditEvent={(id) => (editingEventId = id)}
 								onToggleMilestoneComplete={handleToggleMilestoneComplete}
 								{panelStates}

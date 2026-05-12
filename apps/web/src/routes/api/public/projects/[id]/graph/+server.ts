@@ -17,9 +17,39 @@ import type {
 	GraphStats,
 	ViewMode
 } from '$lib/components/ontology/graph/lib/graph.types';
+import type { OntoEvent } from '$lib/types/onto';
 
 const DEFAULT_NODE_LIMIT = 600;
 const VIEW_MODES: ViewMode[] = ['full', 'projects'];
+
+const PUBLIC_EVENT_COLUMNS = [
+	'id',
+	'project_id',
+	'owner_entity_type',
+	'owner_entity_id',
+	'type_key',
+	'state_key',
+	'title',
+	'description',
+	'location',
+	'start_at',
+	'end_at',
+	'all_day',
+	'timezone',
+	'recurrence',
+	'external_link',
+	'props',
+	'last_synced_at',
+	'sync_status',
+	'sync_error',
+	'deleted_at',
+	'facet_context',
+	'facet_scale',
+	'facet_stage',
+	'created_by',
+	'created_at',
+	'updated_at'
+].join(',');
 
 function parseViewMode(raw: string | null): ViewMode | null {
 	if (!raw) return 'full';
@@ -54,9 +84,12 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		}
 
 		// Keep this route public-only even for authenticated users.
+		// Also pull the icon + doc_structure here so we don't need another roundtrip.
 		const { data: project, error: projectError } = await locals.supabase
 			.from('onto_projects')
-			.select('id, is_public')
+			.select(
+				'id, is_public, icon_svg, icon_concept, type_key, doc_structure, next_step_short, next_step_long, next_step_source, next_step_updated_at'
+			)
 			.eq('id', id)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -65,7 +98,25 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			return ApiResponse.notFound('Public project not found');
 		}
 
-		const data = await loadProjectGraphData(locals.supabase, id);
+		const [data, eventsResult] = await Promise.all([
+			loadProjectGraphData(locals.supabase, id),
+			locals.supabase
+				.from('onto_events')
+				.select(PUBLIC_EVENT_COLUMNS)
+				.eq('project_id', id)
+				.is('deleted_at', null)
+		]);
+
+		if (eventsResult.error) {
+			console.warn(
+				'[Public Project Graph API] Failed to load events:',
+				eventsResult.error.message
+			);
+		}
+
+		const events = ((eventsResult.data ?? []) as unknown as OntoEvent[]).filter(
+			(event) => event.state_key !== 'cancelled' && event.state_key !== 'canceled'
+		);
 
 		// Build source data for graph service
 		const sourceData: GraphSourceData = {
@@ -115,7 +166,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		};
 
 		return ApiResponse.success({
-			source: sourceData,
+			source: { ...sourceData, events },
 			graph: graphData,
 			stats,
 			project: {
@@ -125,7 +176,31 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 				props: data.project.props,
 				state_key: data.project.state_key,
 				start_at: data.project.start_at,
-				end_at: data.project.end_at
+				end_at: data.project.end_at,
+				type_key:
+					(project as { type_key: string | null }).type_key ?? data.project.type_key,
+				icon_svg: (project as { icon_svg: string | null }).icon_svg ?? null,
+				icon_concept: (project as { icon_concept: string | null }).icon_concept ?? null,
+				doc_structure:
+					(project as { doc_structure: unknown }).doc_structure ??
+					data.project.doc_structure ??
+					null,
+				next_step_short:
+					(project as { next_step_short: string | null }).next_step_short ??
+					data.project.next_step_short ??
+					null,
+				next_step_long:
+					(project as { next_step_long: string | null }).next_step_long ??
+					data.project.next_step_long ??
+					null,
+				next_step_source:
+					(project as { next_step_source: 'ai' | 'user' | null }).next_step_source ??
+					data.project.next_step_source ??
+					null,
+				next_step_updated_at:
+					(project as { next_step_updated_at: string | null }).next_step_updated_at ??
+					data.project.next_step_updated_at ??
+					null
 			},
 			metadata: {
 				viewMode,

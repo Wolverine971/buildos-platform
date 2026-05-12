@@ -30,6 +30,233 @@ import {
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
+type ProjectRow = Database['public']['Tables']['onto_projects']['Row'];
+
+const PROJECT_PAGE_PROJECT_COLUMNS = [
+	'archived_at',
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'description',
+	'doc_structure',
+	'end_at',
+	'facet_context',
+	'facet_scale',
+	'facet_stage',
+	'icon_concept',
+	'icon_generated_at',
+	'icon_generation_prompt',
+	'icon_generation_source',
+	'icon_svg',
+	'id',
+	'is_public',
+	'name',
+	'next_step_long',
+	'next_step_short',
+	'next_step_source',
+	'next_step_updated_at',
+	'org_id',
+	'props',
+	'start_at',
+	'state_key',
+	'type_key',
+	'updated_at'
+].join(',');
+
+const GOAL_COLUMNS = [
+	'archived_at',
+	'completed_at',
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'description',
+	'goal',
+	'id',
+	'name',
+	'project_id',
+	'props',
+	'state_key',
+	'target_date',
+	'type_key',
+	'updated_at'
+].join(',');
+
+const REQUIREMENT_COLUMNS = [
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'id',
+	'priority',
+	'project_id',
+	'props',
+	'text',
+	'type_key',
+	'updated_at'
+].join(',');
+
+const PLAN_COLUMNS = [
+	'archived_at',
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'description',
+	'facet_context',
+	'facet_scale',
+	'facet_stage',
+	'id',
+	'name',
+	'plan',
+	'project_id',
+	'props',
+	'state_key',
+	'type_key',
+	'updated_at'
+].join(',');
+
+const TASK_COLUMNS = [
+	'archived_at',
+	'completed_at',
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'description',
+	'due_at',
+	'facet_scale',
+	'id',
+	'priority',
+	'project_id',
+	'props',
+	'start_at',
+	'state_key',
+	'title',
+	'type_key',
+	'updated_at'
+].join(',');
+
+const DOCUMENT_SUMMARY_COLUMNS = [
+	'archived_at',
+	'children',
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'description',
+	'id',
+	'project_id',
+	'props',
+	'state_key',
+	'title',
+	'type_key',
+	'updated_at'
+].join(',');
+
+const CONTEXT_DOCUMENT_COLUMNS = [
+	'archived_at',
+	'children',
+	'content',
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'description',
+	'id',
+	'project_id',
+	'props',
+	'state_key',
+	'title',
+	'type_key',
+	'updated_at'
+].join(',');
+
+const ASSET_COLUMNS = [
+	'alt_text',
+	'caption',
+	'checksum_sha256',
+	'content_type',
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'extracted_text',
+	'extracted_text_source',
+	'extracted_text_updated_at',
+	'extracted_text_updated_by',
+	'extraction_metadata',
+	'extraction_summary',
+	'file_size_bytes',
+	'height',
+	'id',
+	'kind',
+	'metadata',
+	'ocr_completed_at',
+	'ocr_error',
+	'ocr_model',
+	'ocr_started_at',
+	'ocr_status',
+	'ocr_version',
+	'original_filename',
+	'project_id',
+	'storage_bucket',
+	'storage_path',
+	'updated_at',
+	'width'
+].join(',');
+
+const SOURCE_COLUMNS = [
+	'captured_at',
+	'created_at',
+	'created_by',
+	'id',
+	'project_id',
+	'props',
+	'snapshot_uri',
+	'uri'
+].join(',');
+
+const MILESTONE_COLUMNS = [
+	'archived_at',
+	'completed_at',
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'description',
+	'due_at',
+	'id',
+	'milestone',
+	'project_id',
+	'props',
+	'state_key',
+	'title',
+	'type_key',
+	'updated_at'
+].join(',');
+
+const RISK_COLUMNS = [
+	'archived_at',
+	'content',
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'id',
+	'impact',
+	'mitigated_at',
+	'probability',
+	'project_id',
+	'props',
+	'state_key',
+	'title',
+	'type_key',
+	'updated_at'
+].join(',');
+
+const METRIC_COLUMNS = [
+	'created_at',
+	'created_by',
+	'definition',
+	'id',
+	'name',
+	'project_id',
+	'props',
+	'type_key',
+	'unit'
+].join(',');
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
@@ -72,7 +299,11 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		// Note: We don't filter deleted_at here to allow viewing deleted projects
 		// (but we return deleted_at status so frontend can handle it)
 		const [projectResult, accessResult] = await Promise.all([
-			supabase.from('onto_projects').select('*').eq('id', id).maybeSingle(),
+			supabase
+				.from('onto_projects')
+				.select(PROJECT_PAGE_PROJECT_COLUMNS)
+				.eq('id', id)
+				.maybeSingle(),
 			supabase.rpc('current_actor_has_project_access', {
 				p_project_id: id,
 				p_required_access: 'read'
@@ -95,7 +326,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.databaseError(projectResult.error);
 		}
 
-		const project = projectResult.data;
+		const project = projectResult.data as unknown as ProjectRow | null;
 		if (!project) {
 			return ApiResponse.notFound('Project');
 		}
@@ -144,58 +375,66 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		] = await Promise.all([
 			supabase
 				.from('onto_goals')
-				.select('*')
+				.select(GOAL_COLUMNS)
 				.eq('project_id', id)
 				.is('deleted_at', null)
 				.order('created_at'),
 			supabase
 				.from('onto_requirements')
-				.select('*')
+				.select(REQUIREMENT_COLUMNS)
 				.eq('project_id', id)
 				.is('deleted_at', null)
 				.order('created_at'),
 			supabase
 				.from('onto_plans')
-				.select('*')
+				.select(PLAN_COLUMNS)
 				.eq('project_id', id)
 				.is('deleted_at', null)
 				.order('created_at'),
 			supabase
 				.from('onto_tasks')
-				.select('*')
+				.select(TASK_COLUMNS)
 				.eq('project_id', id)
 				.is('deleted_at', null)
 				.order('created_at'),
 			supabase
 				.from('onto_documents')
-				.select('*')
+				.select(DOCUMENT_SUMMARY_COLUMNS)
 				.eq('project_id', id)
 				.is('deleted_at', null)
 				.order('created_at'),
 			(supabase as any)
 				.from('onto_assets')
-				.select('*')
+				.select(ASSET_COLUMNS)
 				.eq('project_id', id)
 				.is('deleted_at', null)
 				.order('created_at', { ascending: false }),
-			supabase.from('onto_sources').select('*').eq('project_id', id).order('created_at'),
+			supabase
+				.from('onto_sources')
+				.select(SOURCE_COLUMNS)
+				.eq('project_id', id)
+				.order('created_at'),
 			supabase
 				.from('onto_milestones')
-				.select('*')
+				.select(MILESTONE_COLUMNS)
 				.eq('project_id', id)
 				.is('deleted_at', null)
 				.order('due_at', { ascending: true, nullsFirst: false }),
 			supabase
 				.from('onto_risks')
-				.select('*')
+				.select(RISK_COLUMNS)
 				.eq('project_id', id)
 				.is('deleted_at', null)
 				.order('created_at'),
-			supabase.from('onto_metrics').select('*').eq('project_id', id).order('created_at'),
+			supabase
+				.from('onto_metrics')
+				.select(METRIC_COLUMNS)
+				.eq('project_id', id)
+				.order('created_at'),
 			// OPTIMIZATION: Fetch context document via edge in single query with JOIN
 			supabase
 				.from('onto_edges')
-				.select('dst_id, document:onto_documents!inner(*)')
+				.select(`dst_id, document:onto_documents!inner(${CONTEXT_DOCUMENT_COLUMNS})`)
 				.eq('src_kind', 'project')
 				.eq('src_id', id)
 				.eq('rel', 'has_context_document')
@@ -230,11 +469,11 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const { milestones: decoratedMilestones } = await decorateMilestonesWithGoals(
 			supabase,
-			(goalsResult.data || []) as GoalRow[],
-			(milestonesResult.data || []) as MilestoneRow[]
+			(goalsResult.data || []) as unknown as GoalRow[],
+			(milestonesResult.data || []) as unknown as MilestoneRow[]
 		);
 
-		const rawTasks = (tasksResult.data || []) as Array<
+		const rawTasks = (tasksResult.data || []) as unknown as Array<
 			{ id: string } & Record<string, unknown>
 		>;
 		let tasksWithAssignees = rawTasks;
@@ -446,12 +685,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Fetch project to verify existing props
-		const { data: existingProject, error: fetchError } = await supabase
+		const { data: existingProjectData, error: fetchError } = await supabase
 			.from('onto_projects')
-			.select('*')
+			.select(PROJECT_PAGE_PROJECT_COLUMNS)
 			.eq('id', id)
 			.is('deleted_at', null)
 			.single();
+
+		const existingProject = existingProjectData as unknown as ProjectRow | null;
 
 		if (fetchError || !existingProject) {
 			return ApiResponse.notFound('Project not found');
@@ -554,12 +795,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			updateData.next_step_updated_at = new Date().toISOString();
 		}
 
-		const { data: updatedProject, error: updateError } = await supabase
+		const { data: updatedProjectData, error: updateError } = await supabase
 			.from('onto_projects')
 			.update(updateData)
 			.eq('id', id)
-			.select('*')
+			.select(PROJECT_PAGE_PROJECT_COLUMNS)
 			.single();
+
+		const updatedProject = updatedProjectData as unknown as ProjectRow | null;
 
 		if (updateError || !updatedProject) {
 			console.error('[Project PATCH] Failed to update project:', updateError);

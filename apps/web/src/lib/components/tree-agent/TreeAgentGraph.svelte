@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/tree-agent/TreeAgentGraph.svelte -->
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import cytoscape from 'cytoscape';
 	import dagre from 'cytoscape-dagre';
 	import {
@@ -228,6 +229,8 @@
 	}
 
 	$effect(() => {
+		if (!browser) return;
+
 		// Initialize on mount
 		initializeCytoscape();
 

@@ -14,14 +14,34 @@
 		ListChecks,
 		Flag,
 		FileText,
-		AlertTriangle,
+		TriangleAlert,
 		ArrowRight,
 		ArrowLeft,
 		ArrowDown,
-		CheckCircle2,
+		CircleCheck,
 		Circle,
-		Mail
+		Mail,
+		LoaderCircle
 	} from 'lucide-svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
+
+	let isExampleOpen = $state(false);
+	let PublicProjectView = $state<any>(null);
+	let publicProjectLoadFailed = $state(false);
+
+	async function openExampleModal() {
+		isExampleOpen = true;
+		if (PublicProjectView || publicProjectLoadFailed) return;
+		try {
+			const module = await import(
+				'$lib/components/landing/public-project-preview/PublicProjectView.svelte'
+			);
+			PublicProjectView = module.default;
+		} catch (err) {
+			console.error('[landing-v2] Failed to load PublicProjectView:', err);
+			publicProjectLoadFailed = true;
+		}
+	}
 
 	const dataModel = [
 		{
@@ -34,7 +54,7 @@
 		{ icon: ListChecks, name: 'Tasks', desc: 'The concrete next moves that ship it.' },
 		{ icon: Flag, name: 'Milestones', desc: 'Checkpoints that show the project is moving.' },
 		{ icon: FileText, name: 'Documents', desc: 'Research, scripts, notes, references.' },
-		{ icon: AlertTriangle, name: 'Risks', desc: 'Unknowns, blockers, and loose ends.' },
+		{ icon: TriangleAlert, name: 'Risks', desc: 'Unknowns, blockers, and loose ends.' },
 		{
 			icon: FolderKanban,
 			name: 'Flexible structure',
@@ -248,13 +268,14 @@
 						</p>
 
 						<div class="mt-auto pt-6">
-							<a
-								href="/auth/register"
-								class="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:gap-3 transition-all"
+							<button
+								type="button"
+								onclick={openExampleModal}
+								class="group inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:gap-3 transition-all"
 							>
-								Start with one project
+								Want to see what a project looks like in BuildOS?
 								<ArrowRight class="w-4 h-4" />
-							</a>
+							</button>
 						</div>
 					</article>
 
@@ -346,11 +367,9 @@
 				  Uses the same grid shape as §02 so the chip lands on the same X as the rail.
 				  On mobile the outer div collapses to block and the chip just sits left-aligned.
 				-->
-				<div class="lg:grid lg:grid-cols-2 lg:gap-5">
+				<div class="relative z-10 lg:grid lg:grid-cols-2 lg:gap-5">
 					<div class="lg:flex lg:justify-center">
 						<div class="relative">
-							<!-- landing extension: short upward dashed line that meets the rail's bottom dot -->
-
 							<div
 								class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card shadow-ink-inner px-3 py-1.5 tx tx-bloom tx-weak"
 							>
@@ -633,7 +652,7 @@
 								</div>
 								<ul class="text-sm space-y-1.5">
 									<li class="flex items-center gap-1.5">
-										<CheckCircle2
+										<CircleCheck
 											class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"
 										/>
 										<span class="line-through text-muted-foreground"
@@ -684,7 +703,7 @@
 				  (so it spans 80%-100%), then centers itself in that column → chip center at 90%.
 				  On mobile, the outer's flex justify-end keeps the chip right-aligned.
 				-->
-				<div class="relative min-h-[2.5rem] flex justify-end">
+				<div class="relative z-10 min-h-[2.5rem] flex justify-end">
 					<div
 						class="lg:absolute lg:right-0 lg:top-0 lg:w-[20%] lg:flex lg:justify-center"
 					>
@@ -801,7 +820,7 @@
 										<span>Task: Beta pass → +1 week</span>
 									</div>
 									<div class="flex items-center gap-1.5">
-										<CheckCircle2
+										<CircleCheck
 											class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"
 										/>
 										<span class="line-through text-muted-foreground">
@@ -828,6 +847,77 @@
 									scoped work. Cheap models stay productive when the context layer
 									is right.
 								</p>
+
+								<!-- compatible agents row -->
+								<div class="mt-4 space-y-2">
+									<div
+										class="text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground"
+									>
+										Works with
+									</div>
+									<div class="flex flex-wrap items-center gap-2">
+										<span
+											class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card shadow-ink-inner px-2 py-1"
+											title="Claude / Claude Code"
+										>
+											<svg
+												aria-hidden="true"
+												viewBox="0 0 24 24"
+												class="w-3.5 h-3.5 text-foreground"
+												fill="currentColor"
+											>
+												<path
+													d="M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693-3.5527h7.0052l1.3693 3.5527h3.7442L10.5363 3.541Zm-.3712 10.2232 2.2914-5.9456 2.2914 5.9456Z"
+												/>
+											</svg>
+											<span
+												class="text-[0.65rem] font-medium text-foreground"
+											>
+												Claude
+											</span>
+										</span>
+										<span
+											class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card shadow-ink-inner px-2 py-1"
+											title="ChatGPT / Codex"
+										>
+											<svg
+												aria-hidden="true"
+												viewBox="0 0 24 24"
+												class="w-3.5 h-3.5 text-foreground"
+												fill="currentColor"
+											>
+												<path
+													d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"
+												/>
+											</svg>
+											<span
+												class="text-[0.65rem] font-medium text-foreground"
+											>
+												ChatGPT / Codex
+											</span>
+										</span>
+										<span
+											class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card shadow-ink-inner px-2 py-1"
+											title="OpenClaw"
+										>
+											<img
+												src="/brands/openclaw.png"
+												alt=""
+												aria-hidden="true"
+												class="w-4 h-4 object-contain"
+												width="16"
+												height="16"
+												decoding="async"
+											/>
+											<span
+												class="text-[0.65rem] font-medium text-foreground"
+											>
+												OpenClaw
+											</span>
+										</span>
+									</div>
+								</div>
+
 								<div
 									class="mt-4 rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-thread tx-weak"
 								>
@@ -850,8 +940,8 @@
 							class="mt-5 grid md:grid-cols-3 gap-3 sm:gap-4 text-[0.55rem] uppercase tracking-[0.22em] text-muted-foreground/80 text-center"
 						>
 							<div class="flex items-center justify-center gap-2">
-								<ArrowRight class="w-3.5 h-3.5" />
 								<span>writes & reads</span>
+								<ArrowRight class="w-3.5 h-3.5" />
 							</div>
 							<div class="flex items-center justify-center gap-2">
 								<ArrowLeft class="w-3.5 h-3.5" />
@@ -859,8 +949,8 @@
 								<ArrowRight class="w-3.5 h-3.5" />
 							</div>
 							<div class="flex items-center justify-center gap-2">
-								<span>writes & reads</span>
 								<ArrowLeft class="w-3.5 h-3.5" />
+								<span>writes & reads</span>
 							</div>
 						</div>
 
@@ -991,13 +1081,13 @@
 						<div class="p-3 space-y-2 text-xs">
 							<div class="space-y-1">
 								<div class="flex items-center gap-1.5 text-foreground">
-									<CheckCircle2 class="w-3 h-3 text-emerald-600" />
+									<CircleCheck class="w-3 h-3 text-emerald-600" />
 									<span class="line-through text-muted-foreground"
 										>Outline act 1 beats</span
 									>
 								</div>
 								<div class="flex items-center gap-1.5 text-foreground">
-									<CheckCircle2 class="w-3 h-3 text-emerald-600" />
+									<CircleCheck class="w-3 h-3 text-emerald-600" />
 									<span class="line-through text-muted-foreground"
 										>Magic system v2 draft</span
 									>
@@ -1173,3 +1263,26 @@
 		</div>
 	</section>
 </div>
+
+<Modal
+	isOpen={isExampleOpen}
+	onClose={() => (isExampleOpen = false)}
+	size="xl"
+	title="Example project in BuildOS"
+	ariaLabel="Example BuildOS project preview"
+>
+	{#if PublicProjectView}
+		<PublicProjectView />
+	{:else if publicProjectLoadFailed}
+		<div class="px-4 sm:px-6 py-12 text-center text-sm text-muted-foreground">
+			Couldn't load the example project. Close this and try again.
+		</div>
+	{:else}
+		<div
+			class="px-4 sm:px-6 py-16 flex items-center justify-center gap-2 text-sm text-muted-foreground"
+		>
+			<LoaderCircle class="w-5 h-5 animate-spin" />
+			<span>Loading example project…</span>
+		</div>
+	{/if}
+</Modal>

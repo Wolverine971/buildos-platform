@@ -192,7 +192,6 @@
 	}
 
 	const isExploreUser = $derived(v3Data.intent === 'explore');
-	const showProgress = $derived(currentStep >= 1);
 </script>
 
 <svelte:head>
@@ -206,19 +205,17 @@
 
 <div class="min-h-screen bg-background">
 	<!-- Header: Progress indicator with Back navigation -->
-	{#if showProgress}
-		<div
-			class="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/60 px-4 py-4"
-		>
-			<ProgressIndicatorV3
-				{currentStep}
-				{totalSteps}
-				{maxStepReached}
-				onStepClick={goToStep}
-				onBack={goBack}
-			/>
-		</div>
-	{/if}
+	<div
+		class="sticky top-0 z-20 bg-background/80 backdrop-blur-sm border-b border-border/60 px-4 py-4"
+	>
+		<ProgressIndicatorV3
+			{currentStep}
+			{totalSteps}
+			{maxStepReached}
+			onStepClick={goToStep}
+			onBack={goBack}
+		/>
+	</div>
 
 	<!-- Step content -->
 	{#if currentStep === 0}

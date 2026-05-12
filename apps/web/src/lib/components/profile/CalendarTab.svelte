@@ -36,6 +36,9 @@
 	import CalendarDisconnectModal from '$lib/components/calendar/CalendarDisconnectModal.svelte';
 	import { CalendarDisconnectService } from '$lib/services/calendar-disconnect-service';
 	import { invalidate } from '$app/navigation';
+	import TabHeader from './_shared/TabHeader.svelte';
+	import SettingsCard from './_shared/SettingsCard.svelte';
+	import CheckboxField from './_shared/CheckboxField.svelte';
 
 	// Props
 	interface Props {
@@ -133,56 +136,47 @@
 		}
 	});
 
-	// Handle URL parameters for success/error messages
+	// Consolidated URL parameter handling — one effect branches per param.
+	// Original behaviors preserved:
+	//  1) calendar=1 & success=calendar_connected → refresh, fire success, maybe show analysis modal, strip both params
+	//  2) analyze=true → start analysis, strip analyze param
+	//  3) calendar=1 & error=<code> → emit error, strip both params
 	$effect(() => {
-		if (
-			browser &&
-			$page.url.searchParams.get('calendar') === '1' &&
-			$page.url.searchParams.get('success') === 'calendar_connected'
-		) {
-			// Calendar was just connected, refresh data and show success
+		if (!browser) return;
+
+		const params = $page.url.searchParams;
+		const calendarFlag = params.get('calendar') === '1';
+		const success = params.get('success');
+		const errorCode = params.get('error');
+		const analyzeFlag = params.get('analyze') === 'true';
+
+		if (!calendarFlag && !analyzeFlag) return;
+
+		// (1) Calendar connected success path
+		if (calendarFlag && success === 'calendar_connected') {
 			refreshCalendarData({ showErrors: false });
 			onsuccess?.({ message: 'Google Calendar connected successfully!' });
 
-			// Check if this is first-time calendar connection
 			const hasShownAnalysis =
 				localStorage.getItem('calendar_analysis_requested') ||
 				localStorage.getItem('calendar_analysis_skipped');
 
 			if (!hasShownAnalysis) {
-				// Show the analysis modal for first-time users
 				showAnalysisModal = true;
 			}
 
-			// Clean up URL parameters
 			const newUrl = new URL($page.url);
 			newUrl.searchParams.delete('success');
 			newUrl.searchParams.delete('calendar');
 			replaceState(newUrl.toString(), {});
+			return;
 		}
-	});
 
-	// Handle analyze parameter from URL
-	$effect(() => {
-		if (browser && $page.url.searchParams.get('analyze') === 'true') {
-			startCalendarAnalysis();
-			// Clean up URL parameter
-			const newUrl = new URL($page.url);
-			newUrl.searchParams.delete('analyze');
-			replaceState(newUrl.toString(), {});
-		}
-	});
-
-	$effect(() => {
-		if (
-			browser &&
-			$page.url.searchParams.get('calendar') === '1' &&
-			$page.url.searchParams.get('error')
-		) {
-			const error = $page.url.searchParams.get('error');
+		// (3) Calendar connection error path
+		if (calendarFlag && errorCode) {
 			let errorMessage = 'Failed to connect Google Calendar';
 
-			switch (error) {
+			switch (errorCode) {
 				case 'access_denied':
 					errorMessage = 'Access to Google Calendar was denied';
 					break;
@@ -196,21 +190,32 @@
 					errorMessage = 'Failed to exchange authorization code for tokens';
 					break;
 				default:
-					errorMessage = `Calendar connection failed: ${error}`;
+					errorMessage = `Calendar connection failed: ${errorCode}`;
 			}
 
 			onerror?.({ message: errorMessage });
 
-			// Clean up URL parameters
 			const newUrl = new URL($page.url);
 			newUrl.searchParams.delete('error');
 			newUrl.searchParams.delete('calendar');
+			replaceState(newUrl.toString(), {});
+			return;
+		}
+
+		// (2) Analyze deep-link path
+		if (analyzeFlag) {
+			startCalendarAnalysis();
+			const newUrl = new URL($page.url);
+			newUrl.searchParams.delete('analyze');
 			replaceState(newUrl.toString(), {});
 		}
 	});
 
 	// Computed values
 	let calendarConnected = $derived(calendarData?.calendarStatus?.isConnected ?? false);
+	let scheduledTasksPreview = $derived(
+		(calendarData?.scheduledTasks ?? []).slice(0, 10) as any[]
+	);
 
 	onMount(() => {
 		loadCalendarData();
@@ -317,7 +322,7 @@
 		}
 	}
 
-	function formatLastSync(dateString: string | null) {
+	function formatRelative(dateString: string | null, options: { extendedDate?: boolean } = {}) {
 		if (!dateString) return 'Never';
 		const date = new Date(dateString);
 		const now = new Date();
@@ -329,7 +334,23 @@
 		if (diffMins < 1) return 'Just now';
 		if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
 		if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+		if (options.extendedDate) {
+			if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+			return date.toLocaleDateString('en-US', {
+				month: 'short',
+				day: 'numeric',
+				year: 'numeric'
+			});
+		}
 		return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+	}
+
+	function formatLastSync(dateString: string | null) {
+		return formatRelative(dateString);
+	}
+
+	function formatRelativeTime(dateString: string | null) {
+		return formatRelative(dateString, { extendedDate: true });
 	}
 
 	function formatEventDate(dateString: string) {
@@ -390,87 +411,6 @@
 		} catch (error) {
 			console.error('Error loading calendar analysis history:', error);
 		}
-	}
-
-	async function loadCalendarProjects() {
-		try {
-			if (!supabase) return; // Guard for SSR
-			const { data: actorId, error: actorError } = await supabase.rpc(
-				'ensure_actor_for_user',
-				{
-					p_user_id: data.user.id
-				}
-			);
-
-			if (actorError || !actorId) throw actorError || new Error('Failed to resolve actor');
-
-			const { data: projects, error: projectsError } = await supabase
-				.from('onto_projects')
-				.select('id, name, created_at, description, props')
-				.eq('created_by', actorId)
-				.is('deleted_at', null)
-				.order('created_at', { ascending: false });
-
-			if (projectsError) throw projectsError;
-
-			const calendarSourceProjects = (projects || []).filter((project) => {
-				const props = (project.props as Record<string, unknown> | null) ?? {};
-				const source = props.source;
-				const sourceMetadata =
-					(props.source_metadata as Record<string, unknown> | null)?.source ?? null;
-				return source === 'calendar_analysis' || sourceMetadata === 'calendar_analysis';
-			});
-
-			const projectIds = calendarSourceProjects.map((project) => project.id);
-			let taskCountByProject = new Map<string, number>();
-			if (projectIds.length > 0) {
-				const { data: tasks, error: tasksError } = await supabase
-					.from('onto_tasks')
-					.select('id, project_id')
-					.in('project_id', projectIds)
-					.is('deleted_at', null);
-
-				if (tasksError) throw tasksError;
-
-				taskCountByProject = new Map<string, number>();
-				for (const task of tasks || []) {
-					taskCountByProject.set(
-						task.project_id,
-						(taskCountByProject.get(task.project_id) || 0) + 1
-					);
-				}
-			}
-
-			calendarProjects = calendarSourceProjects.map((project) => ({
-				id: project.id,
-				name: project.name,
-				created_at: project.created_at,
-				description: project.description,
-				task_count: taskCountByProject.get(project.id) || 0
-			}));
-		} catch (error) {
-			console.error('Error loading calendar projects:', error);
-		}
-	}
-
-	function formatRelativeTime(dateString: string | null) {
-		if (!dateString) return 'Never';
-		const date = new Date(dateString);
-		const now = new Date();
-		const diffMs = now.getTime() - date.getTime();
-		const diffMins = Math.floor(diffMs / 60000);
-		const diffHours = Math.floor(diffMs / 3600000);
-		const diffDays = Math.floor(diffMs / 86400000);
-
-		if (diffMins < 1) return 'Just now';
-		if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
-		if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-		if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-		return date.toLocaleDateString('en-US', {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric'
-		});
 	}
 
 	// Handle disconnect button click
@@ -554,20 +494,11 @@
 </script>
 
 <div class="space-y-4 sm:space-y-5">
-	<!-- Tab Header -->
-	<div class="flex items-start gap-3">
-		<div
-			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
-		>
-			<Calendar class="w-5 h-5 text-accent-foreground" />
-		</div>
-		<div class="flex-1 min-w-0">
-			<h2 class="text-lg sm:text-xl font-bold text-foreground">Calendar</h2>
-			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
-				Connect Google Calendar and configure scheduling preferences.
-			</p>
-		</div>
-	</div>
+	<TabHeader
+		icon={Calendar}
+		title="Calendar"
+		description="Connect Google Calendar and configure scheduling preferences."
+	/>
 
 	{#if loadingCalendar}
 		<div class="text-center py-12">
@@ -576,150 +507,119 @@
 		</div>
 	{:else if calendarData}
 		<!-- Google Calendar Integration -->
-		<div
-			class="bg-card rounded-lg shadow-ink border border-border overflow-hidden tx tx-frame tx-weak"
+		<SettingsCard
+			icon={Calendar}
+			title={calendarConnected
+				? calendarData.calendarStatus?.google_email || 'Calendar Connected'
+				: 'Google Calendar'}
+			description={calendarConnected ? '' : 'Connect to schedule tasks automatically'}
+			labelledById="calendar-integration-heading"
+			bodyClass="bg-muted/50"
 		>
-			<div class="px-4 sm:px-5 py-3 border-b border-border">
-				<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-					<div class="flex items-center gap-2.5 min-w-0">
-						<Calendar class="w-4 h-4 text-accent flex-shrink-0" />
-						<div class="min-w-0">
-							<h3 class="text-sm sm:text-base font-semibold text-foreground truncate">
-								{#if calendarConnected}
-									{calendarData.calendarStatus?.google_email ||
-										'Calendar Connected'}
-								{:else}
-									Google Calendar
-								{/if}
-							</h3>
-							{#if !calendarConnected}
-								<p class="text-xs text-muted-foreground mt-0.5">
-									Connect to schedule tasks automatically
-								</p>
-							{/if}
-						</div>
+			{#snippet actions()}
+				{#if calendarConnected}
+					<div class="flex items-center gap-1.5 text-xs">
+						<CircleCheck class="w-3.5 h-3.5 text-emerald-500" />
+						<span class="font-medium text-emerald-500">Connected</span>
+						{#if calendarData.calendarStatus?.lastSync}
+							<span class="text-muted-foreground">
+								· Last sync {formatLastSync(calendarData.calendarStatus.lastSync)}
+							</span>
+						{/if}
 					</div>
 
-					{#if calendarConnected}
-						<div class="flex items-center gap-2 flex-wrap">
-							<div class="flex items-center gap-1.5 text-xs">
-								<CircleCheck class="w-3.5 h-3.5 text-emerald-500" />
-								<span class="font-medium text-emerald-600">Connected</span>
-								{#if calendarData.calendarStatus?.lastSync}
-									<span class="text-muted-foreground">
-										· Last sync {formatLastSync(
-											calendarData.calendarStatus.lastSync
-										)}
-									</span>
-								{/if}
-							</div>
+					<Button
+						onclick={() => refreshCalendarData()}
+						disabled={refreshingCalendar}
+						variant="ghost"
+						size="sm"
+						title="Refresh calendar data"
+						icon={RefreshCw}
+						loading={refreshingCalendar}
+					></Button>
 
-							<Button
-								onclick={() => refreshCalendarData()}
-								disabled={refreshingCalendar}
-								variant="ghost"
-								size="sm"
-								title="Refresh calendar data"
-								icon={RefreshCw}
-								loading={refreshingCalendar}
-							></Button>
-
-							<Button
-								onclick={handleDisconnectClick}
-								variant="danger"
-								size="sm"
-								icon={Unlink}
-								disabled={checkingDependencies || disconnecting}
-								loading={checkingDependencies || disconnecting}
-							>
-								Disconnect
-							</Button>
-						</div>
-					{:else}
-						<Button
-							onclick={connectCalendar}
-							variant="primary"
-							size="sm"
-							icon={Link}
-							class="shadow-ink pressable"
-						>
-							Connect Calendar
-						</Button>
-					{/if}
-				</div>
-			</div>
+					<Button
+						onclick={handleDisconnectClick}
+						variant="danger"
+						size="sm"
+						icon={Unlink}
+						disabled={checkingDependencies || disconnecting}
+						loading={checkingDependencies || disconnecting}
+					>
+						Disconnect
+					</Button>
+				{:else}
+					<Button
+						onclick={connectCalendar}
+						variant="primary"
+						size="sm"
+						icon={Link}
+						class="shadow-ink pressable"
+					>
+						Connect Calendar
+					</Button>
+				{/if}
+			{/snippet}
 
 			<!-- Features List -->
-			<div class="p-4 sm:p-5 bg-muted/50">
-				<p
-					class="text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-2"
-				>
-					Calendar Features
-				</p>
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-					<div class="flex items-start gap-2">
-						<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-						<div class="min-w-0">
-							<p class="text-xs sm:text-sm font-medium text-foreground">
-								Automatic Task Scheduling
-							</p>
-							<p class="text-xs text-muted-foreground">
-								Schedule tasks directly to your calendar
-							</p>
-						</div>
+			<h4
+				class="text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-2"
+			>
+				Calendar Features
+			</h4>
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+				<div class="flex items-start gap-2">
+					<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+					<div class="min-w-0">
+						<p class="text-xs sm:text-sm font-medium text-foreground">
+							Automatic Task Scheduling
+						</p>
+						<p class="text-xs text-muted-foreground">
+							Schedule tasks directly to your calendar
+						</p>
 					</div>
-					<div class="flex items-start gap-2">
-						<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-						<div class="min-w-0">
-							<p class="text-xs sm:text-sm font-medium text-foreground">
-								Smart Time Slots
-							</p>
-							<p class="text-xs text-muted-foreground">
-								Find slots based on your preferences
-							</p>
-						</div>
+				</div>
+				<div class="flex items-start gap-2">
+					<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+					<div class="min-w-0">
+						<p class="text-xs sm:text-sm font-medium text-foreground">
+							Smart Time Slots
+						</p>
+						<p class="text-xs text-muted-foreground">
+							Find slots based on your preferences
+						</p>
 					</div>
-					<div class="flex items-start gap-2">
-						<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-						<div class="min-w-0">
-							<p class="text-xs sm:text-sm font-medium text-foreground">
-								Two-way Sync
-							</p>
-							<p class="text-xs text-muted-foreground">
-								Tasks and calendar events stay in sync
-							</p>
-						</div>
+				</div>
+				<div class="flex items-start gap-2">
+					<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+					<div class="min-w-0">
+						<p class="text-xs sm:text-sm font-medium text-foreground">Two-way Sync</p>
+						<p class="text-xs text-muted-foreground">
+							Tasks and calendar events stay in sync
+						</p>
 					</div>
-					<div class="flex items-start gap-2">
-						<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
-						<div class="min-w-0">
-							<p class="text-xs sm:text-sm font-medium text-foreground">
-								Holiday Awareness
-							</p>
-							<p class="text-xs text-muted-foreground">
-								Avoid scheduling on holidays
-							</p>
-						</div>
+				</div>
+				<div class="flex items-start gap-2">
+					<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+					<div class="min-w-0">
+						<p class="text-xs sm:text-sm font-medium text-foreground">
+							Holiday Awareness
+						</p>
+						<p class="text-xs text-muted-foreground">Avoid scheduling on holidays</p>
 					</div>
 				</div>
 			</div>
-		</div>
+		</SettingsCard>
 
 		<!-- Calendar Preferences -->
 		{#if calendarConnected && calendarPreferences}
-			<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-				<div class="px-4 sm:px-5 py-3 border-b border-border">
-					<h3
-						class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
-					>
-						<Clock class="w-4 h-4 text-accent" />
-						Calendar Preferences
-					</h3>
-					<p class="text-xs text-muted-foreground mt-0.5">
-						Customize how tasks are scheduled
-					</p>
-				</div>
-
+			<SettingsCard
+				icon={Clock}
+				title="Calendar Preferences"
+				description="Customize how tasks are scheduled"
+				labelledById="calendar-preferences-heading"
+				bodyClass="p-0"
+			>
 				<form
 					method="POST"
 					action="?/updateCalendarPreferences"
@@ -887,44 +787,30 @@
 
 						<!-- Additional Preferences -->
 						<div class="space-y-3">
-							<label class="flex items-center space-x-3 cursor-pointer">
-								<input
-									type="checkbox"
-									name="exclude_holidays"
-									checked={calendarPreferences.exclude_holidays}
-									class="w-4 h-4 text-accent border-border rounded focus:ring-accent
-                                    bg-muted checked:bg-accent cursor-pointer"
-								/>
-								<div>
-									<span class="text-sm font-medium text-foreground">
-										Exclude holidays from scheduling
-									</span>
-									<p class="text-xs text-muted-foreground">
-										Prevents tasks from being scheduled on national holidays
-									</p>
-								</div>
-							</label>
+							<CheckboxField
+								bind:checked={calendarPreferences.exclude_holidays}
+								name="exclude_holidays"
+								label="Exclude holidays from scheduling"
+								description="Prevents tasks from being scheduled on national holidays"
+								disabled={isSavingCalendar}
+							/>
 
-							<label class="flex items-center space-x-3 cursor-pointer">
-								<input
-									type="checkbox"
-									name="prefer_morning_for_important_tasks"
-									checked={calendarPreferences.prefer_morning_for_important_tasks}
-									class="w-4 h-4 text-accent border-border rounded focus:ring-accent
-                                    bg-muted checked:bg-accent cursor-pointer"
-								/>
-								<div>
-									<span
-										class="text-sm font-medium text-foreground flex items-center"
-									>
+							<CheckboxField
+								bind:checked={
+									calendarPreferences.prefer_morning_for_important_tasks
+								}
+								name="prefer_morning_for_important_tasks"
+								label="Schedule important tasks in the morning"
+								description="Prioritizes morning time slots for high-priority tasks"
+								disabled={isSavingCalendar}
+							>
+								{#snippet labelHtml()}
+									<span class="flex items-center">
 										<Sun class="w-4 h-4 mr-1 text-amber-500" />
 										Schedule important tasks in the morning
 									</span>
-									<p class="text-xs text-muted-foreground">
-										Prioritizes morning time slots for high-priority tasks
-									</p>
-								</div>
-							</label>
+								{/snippet}
+							</CheckboxField>
 						</div>
 
 						<!-- Save Button -->
@@ -943,23 +829,19 @@
 						</div>
 					</div>
 				</form>
-			</div>
+			</SettingsCard>
 
 			<!-- Scheduled Tasks Preview -->
 			{#if calendarData.scheduledTasks && calendarData.scheduledTasks.length > 0}
-				<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-					<div class="px-4 sm:px-5 py-3 border-b border-border">
-						<h3
-							class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
-						>
-							<CalendarCheck class="w-4 h-4 text-emerald-500" />
-							Scheduled Tasks
-						</h3>
-						<p class="text-xs text-muted-foreground mt-0.5">Tasks on your calendar</p>
-					</div>
-
+				<SettingsCard
+					icon={CalendarCheck}
+					title="Scheduled Tasks"
+					description="Tasks on your calendar"
+					labelledById="scheduled-tasks-heading"
+					bodyClass="p-0"
+				>
 					<div class="divide-y divide-border">
-						{#each calendarData.scheduledTasks.slice(0, 10) as task}
+						{#each scheduledTasksPreview as task}
 							<div class="px-4 sm:px-5 py-3 hover:bg-muted/60 transition-colors">
 								<div class="flex items-center justify-between gap-3">
 									<div class="flex-1 min-w-0">
@@ -1006,134 +888,121 @@
 							</p>
 						</div>
 					{/if}
-				</div>
+				</SettingsCard>
 			{/if}
 
 			<!-- Calendar Intelligence Section -->
 			{#if calendarConnected}
-				<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-					<div class="px-4 sm:px-5 py-3 border-b border-border">
-						<h3
-							class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
-						>
-							<Brain class="w-4 h-4 text-purple-500" />
-							Calendar Intelligence
-						</h3>
-						<p class="text-xs text-muted-foreground mt-0.5">
-							Discover projects from calendar
-						</p>
-					</div>
-
-					<div class="p-4 sm:p-5">
-						<!-- Analysis Button -->
+				<SettingsCard
+					icon={Brain}
+					title="Calendar Intelligence"
+					description="Discover projects from calendar"
+					labelledById="calendar-intelligence-heading"
+				>
+					<!-- Analysis Button -->
+					<div
+						class="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 tx tx-grain tx-weak"
+					>
 						<div
-							class="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 tx tx-grain tx-weak"
+							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
 						>
-							<div
-								class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-							>
-								<div class="flex-1 min-w-0">
-									<h4
-										class="text-sm font-semibold text-foreground flex items-center gap-1.5"
-									>
-										<Sparkles class="w-4 h-4 text-purple-500" />
-										Analyze Your Calendar
-									</h4>
-									<p class="text-xs text-muted-foreground mt-0.5">
-										Find projects in your calendar
-									</p>
-								</div>
-								<Button
-									variant="primary"
-									size="sm"
-									onclick={startCalendarAnalysis}
-									disabled={analysisInProgress}
-									loading={analysisInProgress}
-									icon={Brain}
-									class="flex-shrink-0 shadow-ink pressable"
+							<div class="flex-1 min-w-0">
+								<h4
+									class="text-sm font-semibold text-foreground flex items-center gap-1.5"
 								>
-									{analysisInProgress ? 'Analyzing...' : 'Analyze'}
-								</Button>
+									<Sparkles class="w-4 h-4 text-purple-500" />
+									Analyze Your Calendar
+								</h4>
+								<p class="text-xs text-muted-foreground mt-0.5">
+									Find projects in your calendar
+								</p>
 							</div>
-
-							{#if calendarAnalysisHistory.length > 0}
-								{@const lastAnalysis = calendarAnalysisHistory[0]}
-								<div class="mt-2 text-xs text-muted-foreground">
-									Last analyzed {formatRelativeTime(lastAnalysis.completed_at)}
-									· {lastAnalysis.projects_created} projects created
-								</div>
-							{/if}
+							<Button
+								variant="primary"
+								size="sm"
+								onclick={startCalendarAnalysis}
+								disabled={analysisInProgress}
+								loading={analysisInProgress}
+								icon={Brain}
+								class="flex-shrink-0 shadow-ink pressable"
+							>
+								{analysisInProgress ? 'Analyzing...' : 'Analyze'}
+							</Button>
 						</div>
 
-						<!-- Calendar Projects -->
-						{#if calendarProjects.length > 0}
-							<div class="mt-4">
-								<div class="flex items-center justify-between mb-2">
-									<h4
-										class="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"
-									>
-										<FolderOpen class="w-3.5 h-3.5" />
-										From Calendar ({calendarProjects.length})
-									</h4>
-								</div>
-								<div class="space-y-2">
-									{#each calendarProjects.slice(0, 5) as project}
-										<a
-											href="/projects/{project.id}"
-											class="block p-3 bg-card border border-border rounded-lg hover:shadow-ink transition-all hover:border-purple-500/50 pressable"
-										>
-											<div class="flex items-center justify-between gap-3">
-												<div class="flex-1 min-w-0">
-													<h5
-														class="text-sm font-semibold text-foreground truncate"
-													>
-														{project.name}
-													</h5>
-													{#if project.description}
-														<p
-															class="text-xs text-muted-foreground line-clamp-1"
-														>
-															{project.description}
-														</p>
-													{/if}
-													<p
-														class="text-xs text-muted-foreground/80 mt-0.5"
-													>
-														Created {formatRelativeTime(
-															project.created_at
-														)}
-														{#if project.task_count > 0}
-															· {project.task_count} task{project.task_count !==
-															1
-																? 's'
-																: ''}
-														{/if}
-													</p>
-												</div>
-												<ExternalLink
-													class="w-4 h-4 text-muted-foreground flex-shrink-0"
-												/>
-											</div>
-										</a>
-									{/each}
-
-									{#if calendarProjects.length > 5}
-										<div class="text-center pt-1">
-											<Button
-												variant="ghost"
-												size="sm"
-												onclick={() => goto('/projects?source=calendar')}
-												class="pressable"
-											>
-												View all {calendarProjects.length} calendar projects
-											</Button>
-										</div>
-									{/if}
-								</div>
+						{#if calendarAnalysisHistory.length > 0}
+							{@const lastAnalysis = calendarAnalysisHistory[0]}
+							<div class="mt-2 text-xs text-muted-foreground">
+								Last analyzed {formatRelativeTime(lastAnalysis.completed_at)}
+								· {lastAnalysis.projects_created} projects created
 							</div>
 						{/if}
 					</div>
-				</div>
+
+					<!-- Calendar Projects -->
+					{#if calendarProjects.length > 0}
+						<div class="mt-4">
+							<div class="flex items-center justify-between mb-2">
+								<h4
+									class="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5"
+								>
+									<FolderOpen class="w-3.5 h-3.5" />
+									From Calendar ({calendarProjects.length})
+								</h4>
+							</div>
+							<div class="space-y-2">
+								{#each calendarProjects.slice(0, 5) as project}
+									<a
+										href="/projects/{project.id}"
+										class="block p-3 bg-card border border-border rounded-lg hover:shadow-ink transition-all hover:border-purple-500/50 pressable"
+									>
+										<div class="flex items-center justify-between gap-3">
+											<div class="flex-1 min-w-0">
+												<h5
+													class="text-sm font-semibold text-foreground truncate"
+												>
+													{project.name}
+												</h5>
+												{#if project.description}
+													<p
+														class="text-xs text-muted-foreground line-clamp-1"
+													>
+														{project.description}
+													</p>
+												{/if}
+												<p class="text-xs text-muted-foreground/80 mt-0.5">
+													Created {formatRelativeTime(project.created_at)}
+													{#if project.task_count > 0}
+														· {project.task_count} task{project.task_count !==
+														1
+															? 's'
+															: ''}
+													{/if}
+												</p>
+											</div>
+											<ExternalLink
+												class="w-4 h-4 text-muted-foreground flex-shrink-0"
+											/>
+										</div>
+									</a>
+								{/each}
+
+								{#if calendarProjects.length > 5}
+									<div class="text-center pt-1">
+										<Button
+											variant="ghost"
+											size="sm"
+											onclick={() => goto('/projects?source=calendar')}
+											class="pressable"
+										>
+											View all {calendarProjects.length} calendar projects
+										</Button>
+									</div>
+								{/if}
+							</div>
+						</div>
+					{/if}
+				</SettingsCard>
 			{/if}
 		{/if}
 	{:else}

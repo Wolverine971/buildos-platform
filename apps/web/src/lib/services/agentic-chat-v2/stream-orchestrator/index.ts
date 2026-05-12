@@ -3,13 +3,15 @@ import type {
 	ChatContextType,
 	ChatToolCall,
 	ChatToolDefinition,
-	ChatToolResult
+	ChatToolResult,
+	ContextUsageSnapshot
 } from '@buildos/shared-types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { FastChatHistoryMessage, FastAgentStreamUsage } from '../types';
 import { normalizeFastContextType } from '../prompt-builder';
 import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
 import { FASTCHAT_LIMITS } from '../limits';
+import { buildLiveSnapshotFromTokens, FASTCHAT_TOKEN_BUDGETS } from '../context-usage';
 import {
 	extractGatewayMaterializedToolNames,
 	materializeGatewayTools
@@ -60,6 +62,9 @@ import {
 } from './round-analysis';
 import { validateToolCalls } from './tool-validation';
 import { buildWriteLedgerMessage } from './write-ledger';
+import { ContextGatheringLedger } from './context-gathering-ledger';
+import * as readLoopEscalation from './read-loop-escalation';
+import type { ReadLoopRepairEscalation as ReadLoopRepairEscalationLevel } from './read-loop-escalation';
 
 type StreamFastChatParams = {
 	llm: SmartLLMService;
@@ -83,6 +88,8 @@ type StreamFastChatParams = {
 	) => Promise<ChatToolResult>;
 	onToolCall?: (toolCall: ChatToolCall) => Promise<void> | void;
 	onToolResult?: (execution: FastToolExecution) => Promise<void> | void;
+	onContextUsageUpdate?: (snapshot: ContextUsageSnapshot) => Promise<void> | void;
+	orchestrationTokenBudget?: number;
 	maxToolRounds?: number;
 	maxToolCalls?: number;
 	allowAutonomousRecovery?: boolean;
@@ -99,6 +106,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	toolRounds?: number;
 	toolCallsMade?: number;
 	cancelled?: boolean;
+	peakPromptTokens?: number;
+	finalContextUsage?: ContextUsageSnapshot;
 }> {
 	const { llm, userId, sessionId, contextType, entityId, history, message, signal, onDelta } =
 		params;
@@ -160,7 +169,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let readOnlyRoundCount = 0;
 	let lastReadOpSetKey: string | null = null;
 	let repeatedReadOpSetCount = 0;
-	let readLoopRepairInjected = false;
+	let readLoopRepairRank = 0;
+	let forceNoToolSynthesisPass = false;
 	const gatewayRequiredFieldFailureCounts = new Map<string, number>();
 	let docOrganizationRecoveryEligible = false;
 	let gatewaySchemaRepairInjected = false;
@@ -173,6 +183,42 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let activeAssistantBuffer = '';
 	let activePendingToolCallCount = 0;
 	const pendingRepairInstructions: string[] = [];
+	const contextGatheringLedger = new ContextGatheringLedger();
+
+	// Live context-usage snapshot. Updated after every LLM `done` event using
+	// the provider-reported prompt_tokens (ground truth) so saturation logic
+	// has a current view of context-window load as tool results accumulate.
+	// Separate budget from the UI badge — see context-usage.ts and
+	// docs/specs/agent-token-tracking-investigation-2026-05-12.md.
+	const orchestrationTokenBudget = Math.max(
+		1,
+		params.orchestrationTokenBudget ?? FASTCHAT_TOKEN_BUDGETS.ORCHESTRATION
+	);
+	let liveContextUsage: ContextUsageSnapshot | undefined;
+	let peakPromptTokens = 0;
+	const updateLiveContextUsage = async (promptTokens: number | undefined): Promise<void> => {
+		if (
+			typeof promptTokens !== 'number' ||
+			!Number.isFinite(promptTokens) ||
+			promptTokens <= 0
+		) {
+			return;
+		}
+		if (promptTokens > peakPromptTokens) {
+			peakPromptTokens = promptTokens;
+		}
+		liveContextUsage = buildLiveSnapshotFromTokens({
+			estimatedTokens: promptTokens,
+			tokenBudget: orchestrationTokenBudget
+		});
+		if (params.onContextUsageUpdate) {
+			try {
+				await params.onContextUsageUpdate(liveContextUsage);
+			} catch {
+				// Telemetry callbacks must not crash orchestration.
+			}
+		}
+	};
 	const isAbortLikeError = (error: unknown): boolean => {
 		if (!error || typeof error !== 'object') return false;
 		const maybeError = error as { name?: string; message?: string };
@@ -212,6 +258,24 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		if (!normalized) return;
 		if (!pendingRepairInstructions.includes(normalized)) {
 			pendingRepairInstructions.push(normalized);
+		}
+	};
+	const queueReadLoopRepairInstruction = (
+		level: ReadLoopRepairEscalationLevel,
+		readOps: string[],
+		roundsRemaining: number
+	): void => {
+		const nextRank = readLoopEscalation.READ_LOOP_REPAIR_RANK[level];
+		if (nextRank <= readLoopRepairRank) return;
+		readLoopRepairRank = nextRank;
+		queueRepairInstruction(
+			buildReadLoopRepairInstruction(readOps, {
+				level,
+				roundsRemaining
+			})
+		);
+		if (level === 'must_synthesize') {
+			forceNoToolSynthesisPass = true;
 		}
 	};
 	const flushRepairInstructions = (): void => {
@@ -454,17 +518,22 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 			let assistantBuffer = '';
 			const pendingToolCalls: ChatToolCall[] = [];
+			const noToolSynthesisPass = forceNoToolSynthesisPass;
+			forceNoToolSynthesisPass = false;
 			activeAssistantBuffer = '';
 			activePendingToolCallCount = 0;
 			const llmPassMeta: LLMStreamPassMetadata = {
 				pass: llmStreamPasses.length + 1
 			};
+			if (noToolSynthesisPass) {
+				llmPassMeta.forcedNoToolSynthesis = true;
+			}
 			let llmDoneReceived = false;
 
 			for await (const event of llm.streamText({
 				messages,
 				tools: hasTools ? tools : undefined,
-				tool_choice: hasTools ? 'auto' : undefined,
+				tool_choice: noToolSynthesisPass ? 'none' : hasTools ? 'auto' : undefined,
 				temperature: hasTools ? 0.2 : undefined,
 				userId,
 				sessionId,
@@ -546,6 +615,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 						if (typeof event.usage.prompt_tokens === 'number') {
 							llmPassMeta.promptTokens = event.usage.prompt_tokens;
+							// Update live context-usage snapshot from provider ground truth
+							// so saturation logic and the UI badge can react to real
+							// context-window load mid-turn.
+							await updateLiveContextUsage(event.usage.prompt_tokens);
 						}
 						if (typeof event.usage.completion_tokens === 'number') {
 							llmPassMeta.completionTokens = event.usage.completion_tokens;
@@ -647,6 +720,24 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				break;
 			}
 
+			if (noToolSynthesisPass) {
+				const candidateFinalText = sanitizeAssistantFinalText(assistantBuffer);
+				if (candidateFinalText) {
+					finalAssistantText = enforceMutationOutcomeIntegrity(candidateFinalText, {
+						contextType: normalizedContext,
+						toolExecutions
+					});
+					if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
+						await emitAssistantRemainder(finalAssistantText);
+					}
+					activeAssistantBuffer = '';
+					activePendingToolCallCount = 0;
+					break;
+				}
+				markToolLimitReached('round');
+				break;
+			}
+
 			const replayAssistantContent = toolLeadInEmitted
 				? ''
 				: sanitizeToolPassLeadIn(assistantBuffer, message);
@@ -702,6 +793,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			);
 			const executableToolCalls = sanitizeToolCallsForReplay(pendingToolCalls);
 			const roundExecutions: FastToolExecution[] = [];
+			let roundModelPayloadChars = 0;
 			const toolCallsToExecute: Array<{ original: ChatToolCall; executable: ChatToolCall }> =
 				[];
 			if (validationIssues.length > 0) {
@@ -745,9 +837,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						if (validationIssue?.errors?.length) {
 							validationPayload.details = { field_errors: validationIssue.errors };
 						}
+						const validationToolContent = JSON.stringify(validationPayload);
+						roundModelPayloadChars += validationToolContent.length;
 						messages.push({
 							role: 'tool',
-							content: JSON.stringify(validationPayload),
+							content: validationToolContent,
 							tool_call_id: toolCall.id
 						});
 						continue;
@@ -898,9 +992,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					result,
 					parseToolArguments
 				);
+				const toolPayloadContent = JSON.stringify(toolPayload);
+				roundModelPayloadChars += toolPayloadContent.length;
 				messages.push({
 					role: 'tool',
-					content: JSON.stringify(toolPayload),
+					content: toolPayloadContent,
 					tool_call_id: originalToolCall.id
 				});
 			}
@@ -926,6 +1022,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				readOnlyRoundCount = 0;
 				lastReadOpSetKey = null;
 				repeatedReadOpSetCount = 0;
+				readLoopRepairRank = 0;
 			} else if (roundPattern.readOps.length > 0) {
 				readOnlyRoundCount += 1;
 				const readOpSetKey = roundPattern.readOps.join('|');
@@ -937,15 +1034,38 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 			}
 
-			if (
-				gatewayModeActive &&
-				!hasWriteAttempt &&
-				roundPattern.readOps.length > 0 &&
-				readOnlyRoundCount >= 2 &&
-				!readLoopRepairInjected
-			) {
-				queueRepairInstruction(buildReadLoopRepairInstruction(roundPattern.readOps));
-				readLoopRepairInjected = true;
+			if (gatewayModeActive && !hasWriteAttempt && roundPattern.readOps.length > 0) {
+				const ledgerObservation = contextGatheringLedger.observeToolRound({
+					roundExecutions,
+					roundPattern,
+					toolRounds,
+					maxToolRounds,
+					modelPayloadChars: roundModelPayloadChars,
+					liveContextUsage
+				});
+				if (ledgerObservation.message) {
+					messages.push({ role: 'system', content: ledgerObservation.message });
+				}
+				if (ledgerObservation.forceSynthesis) {
+					queueReadLoopRepairInstruction(
+						'must_synthesize',
+						roundPattern.readOps,
+						ledgerObservation.status.roundsRemaining
+					);
+				}
+
+				const roundsRemaining = maxToolRounds - toolRounds;
+				const escalation = readLoopEscalation.selectReadLoopRepairEscalation({
+					readOnlyRoundCount,
+					roundsRemaining
+				});
+				if (escalation) {
+					queueReadLoopRepairInstruction(
+						escalation,
+						roundPattern.readOps,
+						roundsRemaining
+					);
+				}
 			}
 
 			if (
@@ -957,8 +1077,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				if (await attemptDocOrganizationRecovery()) {
 					break;
 				}
-				markToolLimitReached('repetition');
-				break;
+				queueReadLoopRepairInstruction(
+					'must_synthesize',
+					roundPattern.readOps,
+					maxToolRounds - toolRounds
+				);
+				flushRepairInstructions();
+				continue;
 			}
 
 			const requiredFieldFailures = extractGatewayRequiredFieldFailures(roundExecutions);
@@ -1065,7 +1190,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				llmPasses: llmStreamPasses,
 				toolRounds,
 				toolCallsMade,
-				cancelled: true
+				cancelled: true,
+				peakPromptTokens: peakPromptTokens > 0 ? peakPromptTokens : undefined,
+				finalContextUsage: liveContextUsage
 			};
 		}
 		throw error;
@@ -1097,7 +1224,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		toolExecutions,
 		llmPasses: llmStreamPasses,
 		toolRounds,
-		toolCallsMade
+		toolCallsMade,
+		peakPromptTokens: peakPromptTokens > 0 ? peakPromptTokens : undefined,
+		finalContextUsage: liveContextUsage
 	};
 }
 

@@ -465,7 +465,8 @@ export function enrichTreeNodes(
 			description: doc?.description ?? node.description ?? null,
 			state_key: doc?.state_key || 'draft',
 			type_key: doc?.type_key || 'document',
-			has_content: !!(doc?.content && doc.content.trim().length > 0),
+			has_content:
+				doc?.has_content === true || !!(doc?.content && doc.content.trim().length > 0),
 			created_at: doc?.created_at || new Date().toISOString(),
 			updated_at: doc?.updated_at || new Date().toISOString(),
 			is_public: node.is_public === true,

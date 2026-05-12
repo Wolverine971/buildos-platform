@@ -5,13 +5,16 @@ type ToolArgumentParser = (rawArgs: unknown) => { args: Record<string, any>; err
 
 const MAX_MODEL_TOOL_PAYLOAD_CHARS = 6000;
 const MAX_TOOL_LIST_ITEMS = 20;
+const INTERNAL_PAYLOAD_KEYS = new Set(['search_vector']);
 
 export function buildToolPayloadForModel(
 	toolCall: ChatToolCall,
 	result: ChatToolResult,
 	_parseToolArguments: ToolArgumentParser
 ): unknown {
-	const basePayload = result.result ?? (result.error ? { error: result.error } : null);
+	const basePayload = stripInternalPayloadFields(
+		result.result ?? (result.error ? { error: result.error } : null)
+	);
 	if (basePayload === null || basePayload === undefined) {
 		return null;
 	}
@@ -156,6 +159,19 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 
 function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 	const normalizedToolName = toolName.trim().toLowerCase();
+	if (
+		normalizedToolName === 'search_project' ||
+		normalizedToolName === 'search_all_projects' ||
+		normalizedToolName === 'search_ontology'
+	) {
+		return compactOntologySearchPayload(payload);
+	}
+	if (normalizedToolName === 'get_onto_document_details') {
+		return compactOntologyDocumentDetailPayload(payload);
+	}
+	if (normalizedToolName === 'get_onto_project_details') {
+		return compactOntologyProjectDetailPayload(payload);
+	}
 	if (normalizedToolName === 'get_document_tree') {
 		return compactDocumentTreeGatewayPayload(payload);
 	}
@@ -169,6 +185,271 @@ function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
 		return compactDocumentCollectionGatewayPayload(payload);
 	}
 	return applyToolPayloadSizeGuard(payload);
+}
+
+function stripInternalPayloadFields(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return value.map(stripInternalPayloadFields);
+	}
+
+	if (!value || typeof value !== 'object') {
+		return value;
+	}
+
+	const output: Record<string, unknown> = {};
+	for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+		if (INTERNAL_PAYLOAD_KEYS.has(key)) continue;
+		output[key] = stripInternalPayloadFields(raw);
+	}
+	return output;
+}
+
+function compactOntologySearchPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return payload;
+	}
+
+	const record = payload as Record<string, any>;
+	const results = Array.isArray(record.results) ? record.results : [];
+	const compactResults = results.slice(0, 12).map(compactSearchResult);
+	const compactPayload: Record<string, unknown> = {
+		query: record.query,
+		search_scope: record.search_scope,
+		project_id: record.project_id,
+		total_returned:
+			typeof record.total_returned === 'number' ? record.total_returned : results.length,
+		total: typeof record.total === 'number' ? record.total : results.length,
+		maybe_more: Boolean(record.maybe_more),
+		message: record.message,
+		results: compactResults
+	};
+
+	if (results.length > compactResults.length) {
+		compactPayload.results_truncated = results.length - compactResults.length;
+	}
+
+	return applyToolPayloadSizeGuard(compactPayload);
+}
+
+function compactSearchResult(result: any): Record<string, unknown> {
+	return {
+		type: result?.type,
+		id: result?.id,
+		project_id: result?.project_id,
+		project_name: result?.project_name,
+		title: result?.title,
+		state_key: result?.state_key,
+		type_key: result?.type_key,
+		score: typeof result?.score === 'number' ? result.score : undefined,
+		path: result?.path,
+		snippet: toTextPreview(result?.snippet, 700),
+		matched_fields: Array.isArray(result?.matched_fields)
+			? result.matched_fields.slice(0, 8)
+			: undefined,
+		why_matched: toTextPreview(result?.why_matched, 220)
+	};
+}
+
+function compactOntologyDocumentDetailPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return payload;
+	}
+
+	const record = payload as Record<string, any>;
+	const document =
+		record.document && typeof record.document === 'object' ? record.document : null;
+	if (!document) {
+		return applyToolPayloadSizeGuard(payload);
+	}
+
+	const content =
+		typeof document.content === 'string'
+			? document.content
+			: typeof document.props?.body_markdown === 'string'
+				? document.props.body_markdown
+				: '';
+	const contentPreview = toTextPreview(content, 3500);
+
+	return applyToolPayloadSizeGuard({
+		message: record.message,
+		document: {
+			id: document.id,
+			project_id: document.project_id,
+			project_name: document.project_name,
+			title: document.title,
+			description: toTextPreview(document.description, 700),
+			type_key: document.type_key,
+			state_key: document.state_key,
+			created_at: document.created_at,
+			updated_at: document.updated_at,
+			archived_at: document.archived_at,
+			content_length: content.length,
+			content_preview: contentPreview,
+			content_truncated: content.length > (contentPreview?.length ?? 0),
+			children_count: Array.isArray(document.children?.children)
+				? document.children.children.length
+				: undefined
+		}
+	});
+}
+
+function compactOntologyProjectDetailPayload(payload: unknown): unknown {
+	if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+		return payload;
+	}
+
+	const record = payload as Record<string, any>;
+	const project = record.project && typeof record.project === 'object' ? record.project : null;
+	if (!project) {
+		return applyToolPayloadSizeGuard(payload);
+	}
+	const sourceCounts =
+		record.counts && typeof record.counts === 'object' && !Array.isArray(record.counts)
+			? (record.counts as Record<string, unknown>)
+			: {};
+	const totalFor = (key: string, fallback: number): number =>
+		typeof sourceCounts[key] === 'number' ? (sourceCounts[key] as number) : fallback;
+
+	const compactPayload: Record<string, unknown> = {
+		message: record.message,
+		project: {
+			id: project.id,
+			name: project.name,
+			description: toTextPreview(project.description, 900),
+			type_key: project.type_key,
+			state_key: project.state_key,
+			updated_at: project.updated_at,
+			task_count: project.task_count,
+			goal_count: project.goal_count,
+			plan_count: project.plan_count,
+			document_count: project.document_count,
+			next_step_short: project.next_step_short,
+			next_step_long: toTextPreview(project.next_step_long, 700)
+		},
+		counts: {
+			goals: totalFor('goals', arrayLength(record.goals)),
+			requirements: totalFor('requirements', arrayLength(record.requirements)),
+			plans: totalFor('plans', arrayLength(record.plans)),
+			tasks: totalFor('tasks', arrayLength(record.tasks)),
+			documents: totalFor('documents', arrayLength(record.documents)),
+			images: totalFor('images', arrayLength(record.images)),
+			sources: totalFor('sources', arrayLength(record.sources)),
+			milestones: totalFor('milestones', arrayLength(record.milestones)),
+			risks: totalFor('risks', arrayLength(record.risks)),
+			metrics: totalFor('metrics', arrayLength(record.metrics))
+		},
+		goals: compactEntityList(record.goals, compactNamedEntity, 8, sourceCounts.goals),
+		requirements: compactEntityList(
+			record.requirements,
+			compactRequirementEntity,
+			8,
+			sourceCounts.requirements
+		),
+		plans: compactEntityList(record.plans, compactNamedEntity, 8, sourceCounts.plans),
+		tasks: compactEntityList(record.tasks, compactTitledEntity, 12, sourceCounts.tasks),
+		documents: compactEntityList(
+			record.documents,
+			compactDocumentSummary,
+			12,
+			sourceCounts.documents
+		),
+		milestones: compactEntityList(
+			record.milestones,
+			compactTitledEntity,
+			8,
+			sourceCounts.milestones
+		),
+		risks: compactEntityList(record.risks, compactTitledEntity, 8, sourceCounts.risks),
+		context_document: compactDocumentSummary(record.context_document)
+	};
+
+	return applyToolPayloadSizeGuard(compactPayload);
+}
+
+function arrayLength(value: unknown): number {
+	return Array.isArray(value) ? value.length : 0;
+}
+
+function compactEntityList<T>(
+	value: unknown,
+	compact: (item: T) => Record<string, unknown> | null,
+	limit: number,
+	totalOverride?: unknown
+): Record<string, unknown> {
+	const items = Array.isArray(value) ? value : [];
+	const compactItems = items
+		.slice(0, limit)
+		.map((item) => compact(item as T))
+		.filter((item): item is Record<string, unknown> => Boolean(item));
+	const total =
+		typeof totalOverride === 'number' && Number.isFinite(totalOverride)
+			? totalOverride
+			: items.length;
+
+	return {
+		total,
+		items: compactItems,
+		truncated: total > compactItems.length || items.length > compactItems.length
+	};
+}
+
+function compactNamedEntity(entity: any): Record<string, unknown> | null {
+	if (!entity || typeof entity !== 'object') return null;
+	return {
+		id: entity.id,
+		name: entity.name,
+		description: toTextPreview(entity.description, 360),
+		type_key: entity.type_key,
+		state_key: entity.state_key,
+		target_date: entity.target_date,
+		updated_at: entity.updated_at
+	};
+}
+
+function compactTitledEntity(entity: any): Record<string, unknown> | null {
+	if (!entity || typeof entity !== 'object') return null;
+	return {
+		id: entity.id,
+		title: entity.title,
+		description: toTextPreview(entity.description, 360),
+		type_key: entity.type_key,
+		state_key: entity.state_key,
+		priority: entity.priority,
+		due_at: entity.due_at,
+		updated_at: entity.updated_at
+	};
+}
+
+function compactRequirementEntity(entity: any): Record<string, unknown> | null {
+	if (!entity || typeof entity !== 'object') return null;
+	return {
+		id: entity.id,
+		text: toTextPreview(entity.text, 420),
+		type_key: entity.type_key,
+		state_key: entity.state_key,
+		created_at: entity.created_at,
+		updated_at: entity.updated_at
+	};
+}
+
+function compactDocumentSummary(document: any): Record<string, unknown> | null {
+	if (!document || typeof document !== 'object') return null;
+	const content =
+		typeof document.content === 'string'
+			? document.content
+			: typeof document.props?.body_markdown === 'string'
+				? document.props.body_markdown
+				: '';
+	return {
+		id: document.id,
+		project_id: document.project_id,
+		title: document.title,
+		description: toTextPreview(document.description, 360),
+		type_key: document.type_key,
+		state_key: document.state_key,
+		updated_at: document.updated_at,
+		content_length: content.length
+	};
 }
 
 function compactWebVisitPayload(payload: unknown): unknown {

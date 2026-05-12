@@ -318,6 +318,8 @@
 
 	// Watch for content changes and schedule autosave
 	$effect(() => {
+		if (!browser) return;
+
 		// Read reactive dependencies
 		const _title = title;
 		const _desc = description;

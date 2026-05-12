@@ -2,6 +2,8 @@
 
 # OpenClaw to BuildOS Setup Guide
 
+> **This guide is OpenClaw-specific.** If you're connecting Claude Code, Cursor, Claude Desktop, ChatGPT, or any other HTTP-capable tool, see [`/docs/connect-agents`](/docs/connect-agents) — those tools work today and the setup is the same env block, different paste location. This page only covers the OpenClaw-specific pieces.
+
 This guide is written for non-technical users.
 
 ## The Short Version
@@ -16,9 +18,9 @@ Right now:
 
 - BuildOS can generate the key
 - BuildOS can accept the connection
-- OpenClaw still needs the BuildOS connector tool
+- OpenClaw still needs its own BuildOS connector tool — that part is mid-build
 
-So if you paste a token into normal OpenClaw chat, it will not work by itself.
+Other tools (Claude Code, Cursor, Claude Desktop, ChatGPT, custom HTTP) don't need this connector — they call BuildOS directly using the env block. See [`/docs/connect-agents`](/docs/connect-agents).
 
 ## What The Different Values Mean
 
@@ -45,17 +47,13 @@ What they mean:
     - the OpenClaw workspace identity
     - think of this like caller ID
 
-## Important Rule
+## Where the Token Belongs
 
-Do **not** paste `BUILDOS_AGENT_TOKEN` into normal Telegram or OpenClaw chat.
+The token belongs in your tool's secret store, env file, or plugin config — wherever it stores credentials it won't echo back. For Claude Code that's the relevant config file. For Cursor, the agent settings. For OpenClaw, the secret store. Never paste it into the agent's chat input or have the agent read it from a chat message.
 
-Why:
+For OpenClaw specifically, this means: put the token in OpenClaw's env config or secret config, not in normal OpenClaw chat — chat history isn't a secure storage layer.
 
-- chat is not the secure storage layer
-- the model may not have a real BuildOS tool installed
-- the token may end up exposed in logs or chat history
-
-If you already pasted a real token into chat:
+If you already pasted a real token into a chat:
 
 1. go to `/profile?tab=agent-keys`
 2. find that caller
@@ -209,12 +207,14 @@ Do not ask me to paste secrets into chat.
 If BuildOS is not configured yet, tell me exactly which configuration value is missing.
 ```
 
-## What To Tell Users Right Now
+## What To Tell OpenClaw Users Right Now
 
-If a user asks why it did not work, the correct explanation is:
+If an OpenClaw user asks why it didn't work, the correct explanation is:
 
 ```text
-BuildOS is ready, but OpenClaw still needs a BuildOS connector tool.
-Your key should be stored in OpenClaw config or secrets, not pasted into chat.
-Once the connector is installed, OpenClaw will be able to call BuildOS directly.
+The BuildOS agent-key gateway is live. OpenClaw still needs its own connector tool
+to call it — that piece is mid-build. Once OpenClaw ships the connector, your existing
+BuildOS key will work without any extra setup.
 ```
+
+This only applies to OpenClaw. For Claude Code, Cursor, Claude Desktop, ChatGPT, or any other HTTP-capable tool, the connection works today — point users to [`/docs/connect-agents`](/docs/connect-agents).

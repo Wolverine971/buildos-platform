@@ -80,15 +80,25 @@ export function buildRoundToolPattern(toolCalls: ChatToolCall[]): RoundToolPatte
 		const toolName = toolCall.function?.name?.trim();
 		if (!toolName) continue;
 
-		const registryOp = getToolRegistry().byToolName[toolName]?.op;
-		const operationName = registryOp ?? toolName;
+		const registryEntry = getToolRegistry().byToolName[toolName];
+		const operationName = registryEntry?.op ?? toolName;
 
-		if (isWriteLikeOperation(operationName)) {
+		if (registryEntry?.kind === 'write' || isWriteLikeOperation(operationName)) {
 			hasWriteOps = true;
 			continue;
 		}
 
-		if (isReadLikeOperation(operationName)) {
+		// Pure gateway-discovery tools (tool_search/tool_schema/skill_load)
+		// do not gather user-facing evidence — they only resolve which tools
+		// exist. Counting them as read rounds caused the read-loop escalation
+		// to fire on legitimate gateway flows that spent 1-2 rounds resolving
+		// the right tool before doing any real reads. Filter them here so the
+		// read-loop guard only escalates on actual evidence-gathering rounds.
+		if (isDiscoveryToolName(toolName) || isDiscoveryToolName(operationName)) {
+			continue;
+		}
+
+		if (registryEntry?.kind === 'read' || isReadLikeOperation(operationName)) {
 			readOps.add(operationName.toLowerCase());
 		}
 	}
@@ -190,6 +200,20 @@ export function isReadLikeOperation(name: string): boolean {
 		normalized.endsWith('.search') ||
 		normalized.endsWith('.visit')
 	);
+}
+
+// Gateway-discovery tools resolve which other tools/skills are available;
+// they do not gather evidence the model can use to answer. Used by
+// buildRoundToolPattern to keep discovery rounds out of read-loop counting.
+// web_visit is intentionally NOT in this set — it fetches real content.
+const DISCOVERY_TOOL_NAMES: ReadonlySet<string> = new Set([
+	'tool_search',
+	'tool_schema',
+	'skill_load'
+]);
+
+export function isDiscoveryToolName(name: string): boolean {
+	return DISCOVERY_TOOL_NAMES.has(name.trim().toLowerCase());
 }
 
 export function isWriteLikeOperation(name: string): boolean {

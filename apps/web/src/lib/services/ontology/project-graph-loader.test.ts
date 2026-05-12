@@ -6,6 +6,7 @@ type TableData = Record<string, { list?: any[]; single?: any } | any[] | null>;
 
 function createMockSupabase(tableData: TableData) {
 	const calls: string[] = [];
+	const selectCalls: Array<{ table: string; columns: string | undefined }> = [];
 
 	const supabase = {
 		from(table: string) {
@@ -18,7 +19,10 @@ function createMockSupabase(tableData: TableData) {
 			const response = Promise.resolve({ data: listData, error: null });
 
 			const builder: any = {
-				select: () => builder,
+				select: (columns?: string) => {
+					selectCalls.push({ table, columns });
+					return builder;
+				},
 				eq: () => builder,
 				neq: () => builder,
 				is: () => builder,
@@ -32,7 +36,8 @@ function createMockSupabase(tableData: TableData) {
 
 			return builder;
 		},
-		__calls: calls
+		__calls: calls,
+		__selectCalls: selectCalls
 	};
 
 	return supabase as any;
@@ -124,6 +129,33 @@ describe('loadProjectGraphData', () => {
 
 		expect(result.tasks.map((t: any) => t.id)).toEqual(['task-2']);
 		expect(result.edges.map((e: any) => e.id)).toEqual(['edge-2']);
+	});
+
+	it('uses explicit graph projections without document content or internal vectors', async () => {
+		const supabase = createMockSupabase({
+			onto_projects: { single: { id: 'proj-1', state_key: 'active' } },
+			onto_documents: [{ id: 'doc-1', project_id: 'proj-1', title: 'Doc' }],
+			onto_edges: []
+		});
+
+		await loadProjectGraphData(supabase, 'proj-1');
+
+		for (const call of supabase.__selectCalls) {
+			expect(call.columns).toBeTruthy();
+			expect(call.columns).not.toBe('*');
+			expect(call.columns).not.toContain('search_vector');
+		}
+
+		const documentSelect = supabase.__selectCalls.find(
+			(call) => call.table === 'onto_documents'
+		)?.columns;
+		expect(documentSelect).toBeTruthy();
+		expect(documentSelect?.split(',')).not.toContain('content');
+
+		const projectSelect = supabase.__selectCalls.find(
+			(call) => call.table === 'onto_projects'
+		)?.columns;
+		expect(projectSelect?.split(',')).not.toContain('icon_svg');
 	});
 });
 

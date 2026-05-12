@@ -61,6 +61,7 @@ import {
 	type FastChatHistoryMessage
 } from '$lib/services/agentic-chat-v2';
 import type { FastChatHistoryCompositionResult } from '$lib/services/agentic-chat-v2/history-composer';
+import type { LLMStreamPassMetadata } from '$lib/services/agentic-chat-v2/stream-orchestrator/shared';
 import {
 	buildLitePromptEnvelope,
 	LITE_PROMPT_VARIANT,
@@ -2112,6 +2113,47 @@ function buildPersistedToolTraceSummary(trace: PersistedToolTraceEntry[]): strin
 	return truncateToolTraceText(parts.join(' '), 600);
 }
 
+// Reduce per-pass LLMStreamPassMetadata into a compact summary stored on
+// chat_messages.metadata. Preserves per-pass shape for tool-using turns where
+// the message-level prompt_tokens column otherwise reports a cumulative sum
+// across passes (see docs/specs/agent-token-tracking-investigation-2026-05-12.md
+// Bug 1).
+function buildLLMPassSummary(
+	llmPasses: LLMStreamPassMetadata[] | undefined
+): { passes: Json; peak_prompt_tokens: number | null; pass_count: number } | null {
+	if (!llmPasses?.length) return null;
+
+	const passes = llmPasses.map((pass) => {
+		const entry: Record<string, Json> = { pass: pass.pass };
+		if (pass.model !== undefined) entry.model = pass.model;
+		if (pass.provider !== undefined) entry.provider = pass.provider;
+		if (pass.requestId !== undefined) entry.request_id = pass.requestId;
+		if (pass.systemFingerprint !== undefined) entry.system_fingerprint = pass.systemFingerprint;
+		if (pass.cacheStatus !== undefined) entry.cache_status = pass.cacheStatus;
+		if (pass.finishedReason !== undefined) entry.finished_reason = pass.finishedReason;
+		if (typeof pass.promptTokens === 'number') entry.prompt_tokens = pass.promptTokens;
+		if (typeof pass.completionTokens === 'number')
+			entry.completion_tokens = pass.completionTokens;
+		if (typeof pass.totalTokens === 'number') entry.total_tokens = pass.totalTokens;
+		if (typeof pass.reasoningTokens === 'number') entry.reasoning_tokens = pass.reasoningTokens;
+		if (pass.forcedNoToolSynthesis === true) entry.forced_no_tool_synthesis = true;
+		return entry;
+	});
+
+	let peak: number | null = null;
+	for (const pass of llmPasses) {
+		if (typeof pass.promptTokens === 'number' && Number.isFinite(pass.promptTokens)) {
+			peak = peak === null ? pass.promptTokens : Math.max(peak, pass.promptTokens);
+		}
+	}
+
+	return {
+		passes: passes as Json,
+		peak_prompt_tokens: peak,
+		pass_count: llmPasses.length
+	};
+}
+
 type ToolExecutionInsertRow = {
 	session_id: string;
 	message_id: string | null;
@@ -3834,7 +3876,9 @@ export const POST: RequestHandler = async ({
 				llmPasses,
 				toolRounds,
 				toolCallsMade,
-				cancelled
+				cancelled,
+				peakPromptTokens,
+				finalContextUsage
 			} = await streamFastChat({
 				llm,
 				userId,
@@ -3854,6 +3898,12 @@ export const POST: RequestHandler = async ({
 				maxToolRounds: Math.max(1, gatewayRoundCap),
 				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
 				tools,
+				// Live orchestration-budget snapshot from provider-reported tokens.
+				// Not re-emitted to the UI badge because the UI uses a different
+				// (smaller) budget calibrated for chat length; mixing them would
+				// mislead the user. See docs/specs/agent-token-tracking-
+				// investigation-2026-05-12.md for the two-budget design.
+				onContextUsageUpdate: undefined,
 				debugContext: {
 					promptVariant: LITE_PROMPT_VARIANT,
 					turnNumber: promptDumpTurnNumber,
@@ -4289,6 +4339,15 @@ export const POST: RequestHandler = async ({
 					if (clientTurnId) {
 						interruptedMetadata.client_turn_id = clientTurnId;
 					}
+					const interruptedLLMPassSummary = buildLLMPassSummary(llmPasses);
+					if (interruptedLLMPassSummary) {
+						interruptedMetadata.llm_passes = interruptedLLMPassSummary.passes;
+						interruptedMetadata.llm_pass_count = interruptedLLMPassSummary.pass_count;
+						if (interruptedLLMPassSummary.peak_prompt_tokens !== null) {
+							interruptedMetadata.peak_prompt_tokens =
+								interruptedLLMPassSummary.peak_prompt_tokens;
+						}
+					}
 					interruptedMessage = await sessionService.persistMessage({
 						sessionId: session.id,
 						userId,
@@ -4436,9 +4495,41 @@ export const POST: RequestHandler = async ({
 
 			const persistedToolTrace = buildPersistedToolTrace(normalizedExecutions);
 			const persistedToolTraceSummary = buildPersistedToolTraceSummary(persistedToolTrace);
+			const llmPassSummary = buildLLMPassSummary(llmPasses);
 			const persistedAssistantContent =
 				resolvePersistableAssistantContent({ finalAssistantText, assistantText }) ??
 				FASTCHAT_CLEAN_RESPONSE_FALLBACK;
+			const assistantPersistMetadata: Record<string, Json | undefined> = {};
+			if (persistedToolTrace.length > 0) {
+				assistantPersistMetadata.fastchat_tool_trace_v1 = persistedToolTrace as Json;
+				if (persistedToolTraceSummary) {
+					assistantPersistMetadata.fastchat_tool_trace_summary =
+						persistedToolTraceSummary;
+				}
+			}
+			if (clientTurnId) assistantPersistMetadata.client_turn_id = clientTurnId;
+			if (streamRunId) assistantPersistMetadata.stream_run_id = streamRunId;
+			if (llmPassSummary) {
+				assistantPersistMetadata.llm_passes = llmPassSummary.passes;
+				assistantPersistMetadata.llm_pass_count = llmPassSummary.pass_count;
+				if (llmPassSummary.peak_prompt_tokens !== null) {
+					assistantPersistMetadata.peak_prompt_tokens = llmPassSummary.peak_prompt_tokens;
+				}
+			}
+			// Prefer the orchestrator's peakPromptTokens when present (computed from
+			// live provider-reported tokens; survives even if llmPasses metadata
+			// is missing).
+			if (typeof peakPromptTokens === 'number' && peakPromptTokens > 0) {
+				assistantPersistMetadata.peak_prompt_tokens = peakPromptTokens;
+			}
+			if (finalContextUsage) {
+				assistantPersistMetadata.final_context_usage = {
+					estimated_tokens: finalContextUsage.estimatedTokens,
+					token_budget: finalContextUsage.tokenBudget,
+					usage_percent: finalContextUsage.usagePercent,
+					status: finalContextUsage.status
+				} as Json;
+			}
 			assistantPersistStartedAtMs = Date.now();
 			const assistantMessage = await sessionService.persistMessage({
 				sessionId: session.id,
@@ -4446,19 +4537,9 @@ export const POST: RequestHandler = async ({
 				role: 'assistant',
 				content: persistedAssistantContent,
 				metadata:
-					persistedToolTrace.length > 0
-						? {
-								fastchat_tool_trace_v1: persistedToolTrace,
-								fastchat_tool_trace_summary: persistedToolTraceSummary,
-								...(clientTurnId ? { client_turn_id: clientTurnId } : {}),
-								...(streamRunId ? { stream_run_id: streamRunId } : {})
-							}
-						: clientTurnId || streamRunId
-							? {
-									...(clientTurnId ? { client_turn_id: clientTurnId } : {}),
-									...(streamRunId ? { stream_run_id: streamRunId } : {})
-								}
-							: undefined,
+					Object.keys(assistantPersistMetadata).length > 0
+						? assistantPersistMetadata
+						: undefined,
 				usage,
 				idempotencyKey: clientTurnId ? `turn:${clientTurnId}:assistant` : undefined
 			});

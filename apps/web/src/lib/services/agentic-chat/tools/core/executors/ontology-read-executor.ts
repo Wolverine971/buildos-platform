@@ -62,9 +62,38 @@ export class OntologyReadExecutor extends BaseExecutor {
 		'requirement',
 		'image'
 	]);
+	private static readonly INTERNAL_PAYLOAD_KEYS = new Set(['search_vector']);
 
 	constructor(context: ExecutorContext) {
 		super(context);
+	}
+
+	private stripInternalPayloadFields<T>(value: T): T {
+		if (Array.isArray(value)) {
+			return value.map((item) => this.stripInternalPayloadFields(item)) as T;
+		}
+
+		if (!value || typeof value !== 'object') {
+			return value;
+		}
+
+		const output: Record<string, unknown> = {};
+		let changed = false;
+
+		for (const [key, raw] of Object.entries(value as Record<string, unknown>)) {
+			if (OntologyReadExecutor.INTERNAL_PAYLOAD_KEYS.has(key)) {
+				changed = true;
+				continue;
+			}
+
+			const sanitized = this.stripInternalPayloadFields(raw);
+			output[key] = sanitized;
+			if (sanitized !== raw) {
+				changed = true;
+			}
+		}
+
+		return changed ? (output as T) : value;
 	}
 
 	/**
@@ -159,6 +188,188 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return normalized.length > 0 ? normalized : undefined;
 	}
 
+	private getCountedRows<T>(result: { data?: T[] | null }): T[] {
+		return Array.isArray(result.data) ? result.data : [];
+	}
+
+	private getResultCount(result: { data?: unknown[] | null; count?: number | null }): number {
+		return typeof result.count === 'number' ? result.count : (result.data?.length ?? 0);
+	}
+
+	private throwFirstQueryError(results: Array<{ label: string; error?: unknown }>): void {
+		const failed = results.find((result) => result.error);
+		if (!failed) return;
+		const error =
+			failed.error instanceof Error
+				? failed.error
+				: new Error(`Failed to load ${failed.label}`);
+		throw error;
+	}
+
+	private async loadCompactProjectDetails(
+		projectId: string
+	): Promise<Record<string, any> | null> {
+		await this.assertProjectAccess(projectId, 'read');
+		const supabase = this.supabase as any;
+
+		const [
+			projectResult,
+			goalsResult,
+			requirementsResult,
+			plansResult,
+			tasksResult,
+			documentsResult,
+			milestonesResult,
+			risksResult,
+			contextDocResult
+		] = await Promise.all([
+			supabase
+				.from('onto_projects')
+				.select(
+					'id, name, description, type_key, state_key, created_at, updated_at, task_count, goal_count, plan_count, document_count, next_step_short, next_step_long, start_at, end_at'
+				)
+				.eq('id', projectId)
+				.is('deleted_at', null)
+				.maybeSingle(),
+			supabase
+				.from('onto_goals')
+				.select(
+					'id, project_id, name, description, type_key, state_key, target_date, completed_at, updated_at',
+					{ count: 'exact' }
+				)
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(8),
+			supabase
+				.from('onto_requirements')
+				.select('id, project_id, text, type_key, priority, created_at, updated_at', {
+					count: 'exact'
+				})
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.order('priority', { ascending: false, nullsFirst: false })
+				.order('updated_at', { ascending: false, nullsFirst: false })
+				.limit(8),
+			supabase
+				.from('onto_plans')
+				.select('id, project_id, name, description, type_key, state_key, updated_at', {
+					count: 'exact'
+				})
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(8),
+			supabase
+				.from('onto_tasks')
+				.select(
+					'id, project_id, title, description, type_key, state_key, priority, due_at, completed_at, updated_at, archived_at',
+					{ count: 'exact' }
+				)
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.is('archived_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(12),
+			supabase
+				.from('onto_documents')
+				.select(
+					'id, project_id, title, description, type_key, state_key, created_at, updated_at, archived_at',
+					{ count: 'exact' }
+				)
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.is('archived_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(12),
+			supabase
+				.from('onto_milestones')
+				.select(
+					'id, project_id, title, description, type_key, state_key, due_at, completed_at, updated_at',
+					{ count: 'exact' }
+				)
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.order('due_at', { ascending: true, nullsFirst: false })
+				.limit(8),
+			supabase
+				.from('onto_risks')
+				.select(
+					'id, project_id, title, type_key, state_key, impact, probability, updated_at',
+					{ count: 'exact' }
+				)
+				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.is('archived_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(8),
+			supabase
+				.from('onto_edges')
+				.select(
+					'dst_id, document:onto_documents!inner(id, project_id, title, description, type_key, state_key, created_at, updated_at, archived_at)'
+				)
+				.eq('src_kind', 'project')
+				.eq('src_id', projectId)
+				.eq('rel', 'has_context_document')
+				.eq('dst_kind', 'document')
+				.is('document.deleted_at', null)
+				.maybeSingle()
+		]);
+
+		this.throwFirstQueryError([
+			{ label: 'project', error: projectResult.error },
+			{ label: 'goals', error: goalsResult.error },
+			{ label: 'requirements', error: requirementsResult.error },
+			{ label: 'plans', error: plansResult.error },
+			{ label: 'tasks', error: tasksResult.error },
+			{ label: 'documents', error: documentsResult.error },
+			{ label: 'milestones', error: milestonesResult.error },
+			{ label: 'risks', error: risksResult.error },
+			{ label: 'context document', error: contextDocResult.error }
+		]);
+
+		const project = projectResult.data;
+		if (!project) {
+			return null;
+		}
+
+		const contextDocumentRaw = contextDocResult.data?.document ?? null;
+		const contextDocument = Array.isArray(contextDocumentRaw)
+			? (contextDocumentRaw[0] ?? null)
+			: contextDocumentRaw;
+
+		return this.stripInternalPayloadFields({
+			project,
+			counts: {
+				goals: this.getResultCount(goalsResult),
+				requirements: this.getResultCount(requirementsResult),
+				plans: this.getResultCount(plansResult),
+				tasks: this.getResultCount(tasksResult),
+				documents: this.getResultCount(documentsResult),
+				milestones: this.getResultCount(milestonesResult),
+				risks: this.getResultCount(risksResult)
+			},
+			limits: {
+				goals: 8,
+				requirements: 8,
+				plans: 8,
+				tasks: 12,
+				documents: 12,
+				milestones: 8,
+				risks: 8
+			},
+			goals: this.getCountedRows(goalsResult),
+			requirements: this.getCountedRows(requirementsResult),
+			plans: this.getCountedRows(plansResult),
+			tasks: this.getCountedRows(tasksResult),
+			documents: this.getCountedRows(documentsResult),
+			milestones: this.getCountedRows(milestonesResult),
+			risks: this.getCountedRows(risksResult),
+			context_document: contextDocument,
+			source: 'compact_agent_project_context'
+		});
+	}
+
 	private async getDetailOrNotFound(args: {
 		path: string;
 		entityType: string;
@@ -184,7 +395,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			});
 		}
 
-		return details;
+		return this.stripInternalPayloadFields(details);
 	}
 
 	private buildDetailNotFoundPayload(
@@ -1141,20 +1352,20 @@ export class OntologyReadExecutor extends BaseExecutor {
 	// ============================================
 
 	async getOntoProjectDetails(args: GetOntoProjectDetailsArgs): Promise<any> {
-		const details = await this.getDetailOrNotFound({
-			path: `/api/onto/projects/${args.project_id}`,
-			entityType: 'project',
-			idKey: 'project_id',
-			id: args.project_id,
-			payloadKey: 'project',
-			listTool: 'list_onto_projects',
-			searchTool: 'search_onto_projects'
-		});
-		if (details.status === 'not_found') return details;
+		const details = await this.loadCompactProjectDetails(args.project_id);
+		if (!details) {
+			return this.buildDetailNotFoundPayload({
+				entityType: 'project',
+				idKey: 'project_id',
+				id: args.project_id,
+				listTool: 'list_onto_projects',
+				searchTool: 'search_onto_projects'
+			});
+		}
 
 		return {
 			...details,
-			message: 'Complete ontology project details loaded.'
+			message: 'Compact ontology project details loaded.'
 		};
 	}
 

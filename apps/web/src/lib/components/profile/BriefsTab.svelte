@@ -23,6 +23,11 @@
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import TabHeader from './_shared/TabHeader.svelte';
+	import SettingsCard from './_shared/SettingsCard.svelte';
+	import CheckboxField from './_shared/CheckboxField.svelte';
 
 	interface Props {
 		onsuccess?: (event: { message: string }) => void;
@@ -42,22 +47,9 @@
 	});
 	let refreshingJobs = $state(false);
 
-	// For the time input, we need to handle HH:MM format
-	let timeInputValue = $state('09:00');
-
-	// Timezone options
-	const TIMEZONE_OPTIONS = [
-		{ value: 'UTC', label: 'UTC' },
-		{ value: 'America/New_York', label: 'Eastern Time (ET)' },
-		{ value: 'America/Chicago', label: 'Central Time (CT)' },
-		{ value: 'America/Denver', label: 'Mountain Time (MT)' },
-		{ value: 'America/Los_Angeles', label: 'Pacific Time (PT)' },
-		{ value: 'Europe/London', label: 'London (GMT/BST)' },
-		{ value: 'Europe/Paris', label: 'Paris (CET/CEST)' },
-		{ value: 'Asia/Tokyo', label: 'Tokyo (JST)' },
-		{ value: 'Asia/Shanghai', label: 'Shanghai (CST)' },
-		{ value: 'Australia/Sydney', label: 'Sydney (AEST/AEDT)' }
-	];
+	// Confirmation modal state
+	let showResetConfirmation = $state(false);
+	let cancelJobTarget = $state<any | null>(null);
 
 	// Day of week options
 	const DAY_OPTIONS = [
@@ -103,26 +95,36 @@
 		notificationPreferencesState.preferences?.should_email_daily_brief || false
 	);
 
-	// Handle store errors
+	// Handle store errors. Reads error then clears it; clearError mutates store
+	// but the early return guards against re-entrant loops once cleared.
 	$effect(() => {
-		if (briefPreferencesState.error) {
-			onerror?.({ message: briefPreferencesState.error });
+		const err = briefPreferencesState.error;
+		if (err) {
+			onerror?.({ message: err });
 			briefPreferencesStore.clearError();
 		}
 	});
 
-	// Reactive update for time input
-	$effect(() => {
-		if (briefPreferencesForm?.time_of_day) {
-			timeInputValue = convertTimeToHHMM(briefPreferencesForm.time_of_day);
-		}
+	// One-way derived for the time input display. The input writes back via
+	// handleTimeInput rather than bind:value to avoid the previous $effect
+	// ping-pong between time_of_day (HH:MM:SS) and timeInputValue (HH:MM).
+	let timeInputValue = $derived(convertTimeToHHMM(briefPreferencesForm.time_of_day));
+
+	function handleTimeInput(value: string) {
+		briefPreferencesForm.time_of_day = convertTimeToHHMMSS(value);
+	}
+
+	// Derived job lists (recomputed only when jobs change, not on every render)
+	let upcomingJobs = $derived.by(() => {
+		const now = new Date();
+		return briefPreferencesState.jobs.filter((job) => new Date(job.scheduled_for) > now);
 	});
 
-	// Update form when time input changes
-	$effect(() => {
-		if (timeInputValue && briefPreferencesForm) {
-			briefPreferencesForm.time_of_day = convertTimeToHHMMSS(timeInputValue);
-		}
+	let recentJobs = $derived.by(() => {
+		const now = new Date();
+		return briefPreferencesState.jobs
+			.filter((job) => new Date(job.scheduled_for) <= now)
+			.slice(0, 2);
 	});
 
 	// Load brief preferences on mount
@@ -165,9 +167,6 @@
 		briefPreferencesForm = briefPreferences
 			? { ...briefPreferences }
 			: briefPreferencesStore.getDefaults();
-
-		// Set the time input value from the form
-		timeInputValue = convertTimeToHHMM(briefPreferencesForm.time_of_day);
 	}
 
 	function cancelEditingBriefPreferences() {
@@ -175,9 +174,6 @@
 		briefPreferencesForm = briefPreferences
 			? { ...briefPreferences }
 			: briefPreferencesStore.getDefaults();
-
-		// Reset the time input value
-		timeInputValue = convertTimeToHHMM(briefPreferencesForm.time_of_day);
 	}
 
 	async function saveBriefPreferences() {
@@ -198,63 +194,48 @@
 		}
 	}
 
-	async function resetBriefPreferences() {
-		if (confirm('Are you sure you want to reset to default preferences?')) {
-			try {
-				await briefPreferencesStore.resetToDefaults();
-				editingBriefPreferences = false;
-				onsuccess?.({ message: 'Brief preferences reset to defaults' });
-			} catch (error) {
-				onerror?.({
-					message: `Failed to reset preferences: ${error instanceof Error ? error.message : 'Unknown error'}`
-				});
-			}
+	async function confirmResetBriefPreferences() {
+		showResetConfirmation = false;
+		try {
+			await briefPreferencesStore.resetToDefaults();
+			editingBriefPreferences = false;
+			onsuccess?.({ message: 'Brief preferences reset to defaults' });
+		} catch (error) {
+			onerror?.({
+				message: `Failed to reset preferences: ${error instanceof Error ? error.message : 'Unknown error'}`
+			});
 		}
 	}
 
-	async function cancelBriefJob(job: any) {
-		if (confirm('Are you sure you want to cancel this scheduled brief?')) {
-			try {
-				const briefDate = job.scheduled_for.split('T')[0];
-				await briefPreferencesStore.cancelJob(briefDate);
-				onsuccess?.({ message: 'Brief job cancelled successfully' });
-			} catch (error) {
-				onerror?.({
-					message: `Failed to cancel brief job: ${error instanceof Error ? error.message : 'Unknown error'}`
-				});
-			}
+	async function confirmCancelBriefJob() {
+		const job = cancelJobTarget;
+		cancelJobTarget = null;
+		if (!job) return;
+		try {
+			const briefDate = job.scheduled_for.split('T')[0];
+			await briefPreferencesStore.cancelJob(briefDate);
+			onsuccess?.({ message: 'Brief job cancelled successfully' });
+		} catch (error) {
+			onerror?.({
+				message: `Failed to cancel brief job: ${error instanceof Error ? error.message : 'Unknown error'}`
+			});
 		}
 	}
 
-	function formatJobStatus(status: string) {
-		const statusMap: Record<string, { text: string; color: string }> = {
-			pending: {
-				text: 'Pending',
-				color: 'text-amber-700 bg-amber-500/20 border border-amber-500/30'
-			},
-			generating: {
-				text: 'Generating',
-				color: 'text-accent bg-accent/20 border border-accent/30'
-			},
-			completed: {
-				text: 'Completed',
-				color: 'text-emerald-700 bg-emerald-500/20 border border-emerald-500/30'
-			},
-			failed: {
-				text: 'Failed',
-				color: 'text-red-700 bg-red-500/20 border border-red-500/30'
-			},
-			cancelled: {
-				text: 'Cancelled',
-				color: 'text-muted-foreground bg-muted border border-border'
-			}
+	type StatusInfo = {
+		text: string;
+		variant: 'success' | 'warning' | 'error' | 'info' | 'default';
+	};
+
+	function formatJobStatus(status: string): StatusInfo {
+		const statusMap: Record<string, StatusInfo> = {
+			pending: { text: 'Pending', variant: 'warning' },
+			generating: { text: 'Generating', variant: 'info' },
+			completed: { text: 'Completed', variant: 'success' },
+			failed: { text: 'Failed', variant: 'error' },
+			cancelled: { text: 'Cancelled', variant: 'default' }
 		};
-		return (
-			statusMap[status] || {
-				text: status,
-				color: 'text-muted-foreground bg-muted border border-border'
-			}
-		);
+		return statusMap[status] || { text: status, variant: 'default' };
 	}
 
 	function formatDateTime(dateString: string) {
@@ -267,411 +248,370 @@
 			minute: '2-digit'
 		});
 	}
-
-	function getUpcomingJobs() {
-		const now = new Date();
-		return briefPreferencesState.jobs.filter((job) => new Date(job.scheduled_for) > now);
-	}
-
-	function getRecentJobs() {
-		const now = new Date();
-		return briefPreferencesState.jobs
-			.filter((job) => new Date(job.scheduled_for) <= now)
-			.slice(0, 2);
-	}
 </script>
 
 <div class="space-y-4 sm:space-y-5">
-	<!-- Tab Header -->
-	<div class="flex items-start gap-3">
-		<div
-			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
-		>
-			<Bell class="w-5 h-5 text-accent-foreground" />
-		</div>
-		<div class="flex-1 min-w-0">
-			<h2 class="text-lg sm:text-xl font-bold text-foreground">Brief Settings</h2>
-			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
-				Configure when and how you receive daily briefs.
-			</p>
-		</div>
-	</div>
+	<TabHeader
+		icon={Bell}
+		title="Brief Settings"
+		description="Configure when and how you receive daily briefs."
+	/>
 
 	<!-- Brief Preferences -->
-	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-		<div class="px-4 sm:px-5 py-3 border-b border-border">
-			<div
-				class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0"
-			>
-				<div class="flex-1 min-w-0">
-					<h3
-						class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
-					>
-						<Bell class="w-4 h-4 text-accent" />
-						Brief Preferences
-					</h3>
-					<p class="text-xs text-muted-foreground mt-0.5">
-						Configure when you receive briefs
-					</p>
+	<SettingsCard
+		title="Brief Preferences"
+		description="Configure when you receive briefs"
+		icon={Bell}
+		labelledById="brief-preferences-heading"
+	>
+		{#snippet actions()}
+			{#if !editingBriefPreferences}
+				<Button
+					onclick={() => startEditingBriefPreferences()}
+					variant="primary"
+					size="sm"
+					icon={Edit3}
+				>
+					Edit
+				</Button>
+			{:else}
+				<Button
+					onclick={() => (showResetConfirmation = true)}
+					variant="ghost"
+					size="sm"
+					icon={RotateCcw}
+				>
+					Reset
+				</Button>
+				<Button
+					onclick={() => cancelEditingBriefPreferences()}
+					variant="ghost"
+					size="sm"
+					icon={X}
+				>
+					Cancel
+				</Button>
+				<Button
+					onclick={() => saveBriefPreferences()}
+					disabled={briefPreferencesState.isSaving}
+					variant="primary"
+					size="sm"
+					loading={briefPreferencesState.isSaving}
+					icon={Save}
+				>
+					Save
+				</Button>
+			{/if}
+		{/snippet}
+
+		{#if briefPreferencesState.isLoading}
+			<div class="text-center py-8">
+				<div
+					class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
+				></div>
+				<p class="text-sm text-muted-foreground mt-4">Loading preferences...</p>
+			</div>
+		{:else if briefPreferencesState.error}
+			<div class="text-center py-8">
+				<CircleAlert class="w-10 h-10 text-red-500 mx-auto mb-3" />
+				<p class="text-sm text-muted-foreground mb-4">Failed to load brief preferences</p>
+				<Button
+					onclick={loadBriefPreferences}
+					variant="primary"
+					size="sm"
+					icon={RefreshCw}
+					class="shadow-ink pressable"
+				>
+					Retry
+				</Button>
+			</div>
+		{:else if !editingBriefPreferences && briefPreferences}
+			<!-- Display Mode -->
+			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+				<div>
+					<p class="block text-sm font-medium text-foreground mb-2">Frequency</p>
+					<div class="px-3 py-2 bg-muted text-foreground rounded-lg border border-border">
+						{briefPreferences.frequency === 'daily' ? 'Daily' : 'Weekly'}
+					</div>
 				</div>
-				<div class="flex items-center gap-2 flex-wrap">
-					{#if !editingBriefPreferences}
-						<Button
-							onclick={() => startEditingBriefPreferences()}
-							variant="primary"
-							size="sm"
-							class="flex-1 sm:flex-initial"
+
+				{#if briefPreferences.frequency === 'weekly'}
+					<div>
+						<p class="block text-sm font-medium text-foreground mb-2">Day of Week</p>
+						<div
+							class="px-3 py-2 bg-muted text-foreground rounded-lg border border-border"
 						>
-							<Edit3 class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-							Edit
-						</Button>
-					{:else}
-						<Button
-							onclick={() => resetBriefPreferences()}
-							variant="ghost"
-							size="sm"
-							class="text-xs sm:text-sm"
-						>
-							<RotateCcw class="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
-							<span class="hidden sm:inline">Reset</span>
-						</Button>
-						<Button
-							onclick={() => cancelEditingBriefPreferences()}
-							variant="ghost"
-							size="sm"
-							class="text-xs sm:text-sm"
-						>
-							<X class="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
-							<span class="hidden sm:inline">Cancel</span>
-						</Button>
-						<Button
-							onclick={() => saveBriefPreferences()}
-							disabled={briefPreferencesState.isSaving}
-							variant="primary"
-							size="sm"
-							loading={briefPreferencesState.isSaving}
-							class="text-xs sm:text-sm"
-						>
-							<Save class="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-							Save
-						</Button>
-					{/if}
+							{DAY_OPTIONS.find((d) => d.value === briefPreferences?.day_of_week)
+								?.label || 'Monday'}
+						</div>
+					</div>
+				{/if}
+
+				<div>
+					<p class="block text-sm font-medium text-foreground mb-2">Time</p>
+					<div class="px-3 py-2 bg-muted text-foreground rounded-lg border border-border">
+						{convertTimeToHHMM(briefPreferences?.time_of_day)}
+					</div>
+				</div>
+
+				<div class="sm:col-span-2">
+					<p class="block text-sm font-medium text-foreground mb-2">Status</p>
+					<div class="space-y-2">
+						<div class="flex flex-col sm:flex-row sm:items-center gap-2">
+							<Badge
+								variant={briefPreferences.is_active ? 'success' : 'default'}
+								size="sm"
+							>
+								{briefPreferences.is_active ? 'Active' : 'Inactive'}
+							</Badge>
+							{#if briefPreferencesState.nextScheduledBrief}
+								<span class="text-xs sm:text-sm text-muted-foreground">
+									Next: {formatDateTime(
+										briefPreferencesState.nextScheduledBrief.toISOString()
+									)}
+								</span>
+							{/if}
+						</div>
+						{#if briefPreferences.is_active && hasEmailOptIn}
+							<div class="flex items-center space-x-2">
+								<Mail class="w-4 h-4 text-accent" />
+								<span class="text-sm text-muted-foreground">
+									Email delivery enabled
+								</span>
+							</div>
+						{/if}
+					</div>
 				</div>
 			</div>
-		</div>
-
-		<div class="p-4 sm:p-5">
-			{#if briefPreferencesState.isLoading}
-				<div class="text-center py-8">
-					<div
-						class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
-					></div>
-					<p class="text-sm text-muted-foreground mt-4">Loading preferences...</p>
-				</div>
-			{:else if briefPreferencesState.error}
-				<div class="text-center py-8">
-					<CircleAlert class="w-10 h-10 text-red-500 mx-auto mb-3" />
-					<p class="text-sm text-muted-foreground mb-4">
-						Failed to load brief preferences
-					</p>
-					<Button
-						onclick={loadBriefPreferences}
-						variant="primary"
-						size="sm"
-						icon={RefreshCw}
-						class="shadow-ink pressable"
-					>
-						Retry
-					</Button>
-				</div>
-			{:else if !editingBriefPreferences && briefPreferences}
-				<!-- Display Mode -->
+		{:else if editingBriefPreferences}
+			<!-- Edit Mode -->
+			<div class="space-y-4">
 				<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-					<div>
-						<p class="block text-sm font-medium text-foreground mb-2">Frequency</p>
-						<div
-							class="px-3 py-2 bg-muted text-foreground rounded-lg border border-border"
+					<FormField label="Frequency" labelFor="brief-frequency">
+						<Select
+							id="brief-frequency"
+							bind:value={briefPreferencesForm.frequency}
+							size="md"
 						>
-							{briefPreferences.frequency === 'daily' ? 'Daily' : 'Weekly'}
-						</div>
-					</div>
+							<option value="daily">Daily</option>
+							<option value="weekly">Weekly</option>
+						</Select>
+					</FormField>
 
-					{#if briefPreferences.frequency === 'weekly'}
-						<div>
-							<p class="block text-sm font-medium text-foreground mb-2">
-								Day of Week
-							</p>
-							<div
-								class="px-3 py-2 bg-muted text-foreground rounded-lg border border-border"
-							>
-								{DAY_OPTIONS.find((d) => d.value === briefPreferences?.day_of_week)
-									?.label || 'Monday'}
-							</div>
-						</div>
-					{/if}
-
-					<div>
-						<p class="block text-sm font-medium text-foreground mb-2">Time</p>
-						<div
-							class="px-3 py-2 bg-muted text-foreground rounded-lg border border-border"
-						>
-							{convertTimeToHHMM(briefPreferences?.time_of_day)}
-						</div>
-					</div>
-
-					<div class="sm:col-span-2">
-						<p class="block text-sm font-medium text-foreground mb-2">Status</p>
-						<div class="space-y-2">
-							<div class="flex flex-col sm:flex-row sm:items-center gap-2">
-								<div
-									class={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium w-fit ${briefPreferences.is_active ? 'bg-emerald-500/20 text-emerald-700 border border-emerald-500/30' : 'bg-muted text-muted-foreground border border-border'}`}
-								>
-									{briefPreferences.is_active ? 'Active' : 'Inactive'}
-								</div>
-								{#if briefPreferencesState.nextScheduledBrief}
-									<span class="text-xs sm:text-sm text-muted-foreground">
-										Next: {formatDateTime(
-											briefPreferencesState.nextScheduledBrief.toISOString()
-										)}
-									</span>
-								{/if}
-							</div>
-							{#if briefPreferences.is_active && hasEmailOptIn}
-								<div class="flex items-center space-x-2">
-									<Mail class="w-4 h-4 text-accent" />
-									<span class="text-sm text-muted-foreground">
-										Email delivery enabled
-									</span>
-								</div>
-							{/if}
-						</div>
-					</div>
-				</div>
-			{:else if editingBriefPreferences}
-				<!-- Edit Mode -->
-				<div class="space-y-4">
-					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-						<FormField label="Frequency" labelFor="brief-frequency">
+					{#if briefPreferencesForm.frequency === 'weekly'}
+						<FormField label="Day of Week" labelFor="brief-day-of-week">
 							<Select
-								id="brief-frequency"
-								bind:value={briefPreferencesForm.frequency}
+								id="brief-day-of-week"
+								bind:value={briefPreferencesForm.day_of_week}
 								size="md"
 							>
-								<option value="daily">Daily</option>
-								<option value="weekly">Weekly</option>
+								{#each DAY_OPTIONS as day}
+									<option value={day.value}>{day.label}</option>
+								{/each}
 							</Select>
 						</FormField>
+					{/if}
 
-						{#if briefPreferencesForm.frequency === 'weekly'}
-							<FormField label="Day of Week" labelFor="brief-day-of-week">
-								<Select
-									id="brief-day-of-week"
-									bind:value={briefPreferencesForm.day_of_week}
-									size="md"
-								>
-									{#each DAY_OPTIONS as day}
-										<option value={day.value}>{day.label}</option>
-									{/each}
-								</Select>
-							</FormField>
+					<FormField label="Time" labelFor="briefTime" size="md">
+						<TextInput
+							id="briefTime"
+							type="time"
+							value={timeInputValue}
+							oninput={(e) =>
+								handleTimeInput((e.currentTarget as HTMLInputElement).value)}
+							size="md"
+						/>
+					</FormField>
+
+					<div class="sm:col-span-2 space-y-3">
+						<CheckboxField
+							bind:checked={briefPreferencesForm.is_active}
+							label="Enable daily brief generation"
+							description="Briefs will be scheduled and generated at the selected time."
+						/>
+
+						{#if briefPreferencesForm.is_active}
+							<div class="p-3 bg-accent/10 border border-accent/30 rounded-lg">
+								<p class="text-xs text-muted-foreground">
+									<strong class="text-foreground">Note:</strong> To receive briefs
+									via email or SMS, visit the
+									<a
+										href="/settings?tab=notifications"
+										class="text-accent hover:underline">Notifications</a
+									> tab.
+								</p>
+							</div>
 						{/if}
+					</div>
+				</div>
 
-						<FormField label="Time" labelFor="briefTime" size="md">
-							<TextInput
-								id="briefTime"
-								type="time"
-								bind:value={timeInputValue}
-								size="md"
-							/>
-						</FormField>
-
-						<div class="sm:col-span-2 space-y-3">
-							<label class="flex items-start sm:items-center gap-2">
-								<input
-									type="checkbox"
-									bind:checked={briefPreferencesForm.is_active}
-									class="h-4 w-4 mt-0.5 sm:mt-0 rounded border-border text-accent focus:ring-accent cursor-pointer bg-muted checked:bg-accent flex-shrink-0"
-								/>
-								<span class="text-sm font-medium text-foreground">
-									Enable daily brief generation
-								</span>
-							</label>
-
-							{#if briefPreferencesForm.is_active}
-								<div
-									class="ml-6 p-3 bg-accent/10 border border-accent/30 rounded-lg"
-								>
-									<p class="text-xs text-muted-foreground">
-										<strong class="text-foreground">Note:</strong> To receive
-										briefs via email or SMS, visit the
-										<a
-											href="/settings?tab=notifications"
-											class="text-accent hover:underline">Notifications</a
-										> tab.
-									</p>
-								</div>
-							{/if}
+				{#if briefPreferencesForm.is_active}
+					<div
+						class="bg-accent/10 border border-accent/30 rounded-lg p-4 tx tx-grain tx-weak"
+					>
+						<div class="flex items-center">
+							<Clock class="w-5 h-5 text-accent mr-2" />
+							<p class="text-sm text-foreground">
+								<strong>Preview:</strong> Next brief will be scheduled for {briefPreferencesForm.frequency ===
+								'daily'
+									? 'daily'
+									: DAY_OPTIONS.find(
+											(d) => d.value === briefPreferencesForm.day_of_week
+										)?.label} at {convertTimeToHHMM(
+									briefPreferencesForm.time_of_day
+								)} (in your timezone)
+							</p>
 						</div>
 					</div>
+				{/if}
+			</div>
+		{/if}
+	</SettingsCard>
 
-					{#if briefPreferencesForm.is_active}
-						<div
-							class="bg-accent/10 border border-accent/30 rounded-lg p-4 tx tx-grain tx-weak"
-						>
-							<div class="flex items-center">
-								<Clock class="w-5 h-5 text-accent mr-2" />
-								<p class="text-sm text-foreground">
-									<strong>Preview:</strong> Next brief will be scheduled for {briefPreferencesForm.frequency ===
-									'daily'
-										? 'daily'
-										: DAY_OPTIONS.find(
-												(d) => d.value === briefPreferencesForm.day_of_week
-											)?.label} at {convertTimeToHHMM(
-										briefPreferencesForm.time_of_day
-									)} (in your timezone)
+	<!-- Scheduled Briefs -->
+	<SettingsCard
+		title="Scheduled Briefs"
+		description="Upcoming and recent jobs"
+		icon={Calendar}
+		labelledById="scheduled-briefs-heading"
+	>
+		{#snippet actions()}
+			<Button
+				onclick={refreshBriefJobs}
+				disabled={refreshingJobs}
+				variant="ghost"
+				size="sm"
+				title="Refresh brief jobs"
+				class="pressable"
+			>
+				<RefreshCw class={`w-4 h-4 ${refreshingJobs ? 'animate-spin' : ''}`} />
+			</Button>
+			<a
+				href="/projects?tab=briefs"
+				class="inline-flex items-center px-3 py-1.5 text-xs sm:text-sm text-accent hover:text-accent/80 font-medium rounded-lg hover:bg-accent/10 transition-colors pressable"
+			>
+				View All
+				<ExternalLink class="w-3.5 h-3.5 ml-1" />
+			</a>
+		{/snippet}
+
+		{#if briefPreferencesState.isLoading}
+			<div class="text-center py-8">
+				<div
+					class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
+				></div>
+				<p class="text-sm sm:text-base text-muted-foreground mt-4">
+					Loading scheduled briefs...
+				</p>
+			</div>
+		{:else if briefPreferencesState.jobs.length === 0}
+			<div class="text-center py-8 tx tx-bloom tx-weak rounded-lg">
+				<Calendar class="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+				<p class="text-sm text-muted-foreground mb-1">No scheduled briefs found</p>
+				<p class="text-xs text-muted-foreground/70">
+					Enable brief preferences above to start scheduling
+				</p>
+			</div>
+		{:else}
+			<div class="space-y-2">
+				<!-- Upcoming Briefs -->
+				{#each upcomingJobs as job}
+					<div
+						class="flex items-center justify-between gap-3 p-3 bg-accent/10 border border-accent/30 rounded-lg tx tx-grain tx-weak"
+						transition:slide
+					>
+						<div class="flex items-center gap-2.5 min-w-0">
+							<Clock class="w-4 h-4 text-accent flex-shrink-0" />
+							<div class="min-w-0">
+								<p class="text-xs sm:text-sm font-medium text-foreground truncate">
+									{formatDateTime(job.scheduled_for)}
+								</p>
+								<p class="text-xs text-muted-foreground">
+									{job.job_type || 'Daily Brief'}
 								</p>
 							</div>
 						</div>
-					{/if}
-				</div>
-			{/if}
-		</div>
-	</div>
+						<div class="flex items-center gap-2 flex-shrink-0">
+							<Badge variant={formatJobStatus(job.status).variant} size="sm">
+								{formatJobStatus(job.status).text}
+							</Badge>
+							{#if job.status === 'pending'}
+								<Button
+									onclick={() => (cancelJobTarget = job)}
+									variant="ghost"
+									size="sm"
+									class="p-1 text-red-500 hover:text-red-600 rounded pressable"
+									title="Cancel job"
+								>
+									<XCircle class="w-4 h-4" />
+								</Button>
+							{/if}
+						</div>
+					</div>
+				{/each}
 
-	<!-- Scheduled Briefs -->
-	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-		<div class="px-4 sm:px-5 py-3 border-b border-border">
-			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-				<div class="flex-1 min-w-0">
-					<h3
-						class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
-					>
-						<Calendar class="w-4 h-4 text-emerald-500" />
-						Scheduled Briefs
-					</h3>
-					<p class="text-xs text-muted-foreground mt-0.5">Upcoming and recent jobs</p>
-				</div>
-				<div class="flex items-center gap-2">
-					<Button
-						onclick={refreshBriefJobs}
-						disabled={refreshingJobs}
-						variant="ghost"
-						size="sm"
-						title="Refresh brief jobs"
-						class="pressable"
-					>
-						<RefreshCw class={`w-4 h-4 ${refreshingJobs ? 'animate-spin' : ''}`} />
-					</Button>
-					<a
-						href="/projects?tab=briefs"
-						class="inline-flex items-center px-3 py-1.5 text-xs sm:text-sm text-accent hover:text-accent/80 font-medium rounded-lg hover:bg-accent/10 transition-colors pressable"
-					>
-						<span class="hidden sm:inline">View All</span>
-						<span class="sm:hidden">All</span>
-						<ExternalLink class="w-3.5 h-3.5 ml-1" />
-					</a>
-				</div>
-			</div>
-		</div>
-
-		<div class="p-4 sm:p-5">
-			{#if briefPreferencesState.isLoading}
-				<div class="text-center py-8">
+				<!-- Recent Briefs -->
+				{#each recentJobs as job}
 					<div
-						class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent mx-auto"
-					></div>
-					<p class="text-sm sm:text-base text-muted-foreground mt-4">
-						Loading scheduled briefs...
-					</p>
-				</div>
-			{:else if briefPreferencesState.jobs.length === 0}
-				<div class="text-center py-8 tx tx-bloom tx-weak rounded-lg">
-					<Calendar class="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-					<p class="text-sm text-muted-foreground mb-1">No scheduled briefs found</p>
-					<p class="text-xs text-muted-foreground/70">
-						Enable brief preferences above to start scheduling
-					</p>
-				</div>
-			{:else}
-				<div class="space-y-2">
-					<!-- Upcoming Briefs -->
-					{#each getUpcomingJobs() as job}
-						<div
-							class="flex items-center justify-between gap-3 p-3 bg-accent/10 border border-accent/30 rounded-lg tx tx-grain tx-weak"
-							transition:slide
-						>
-							<div class="flex items-center gap-2.5 min-w-0">
-								<Clock class="w-4 h-4 text-accent flex-shrink-0" />
-								<div class="min-w-0">
-									<p
-										class="text-xs sm:text-sm font-medium text-foreground truncate"
-									>
-										{formatDateTime(job.scheduled_for)}
-									</p>
-									<p class="text-xs text-muted-foreground">
-										{job.job_type || 'Daily Brief'}
-									</p>
-								</div>
-							</div>
-							<div class="flex items-center gap-2 flex-shrink-0">
-								<span
-									class={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${formatJobStatus(job.status).color}`}
-								>
-									{formatJobStatus(job.status).text}
-								</span>
-								{#if job.status === 'pending'}
-									<Button
-										onclick={() => cancelBriefJob(job)}
-										variant="ghost"
-										size="sm"
-										class="p-1 text-red-500 hover:text-red-600 rounded pressable"
-										title="Cancel job"
-									>
-										<XCircle class="w-4 h-4" />
-									</Button>
-								{/if}
+						class="flex items-center justify-between gap-3 p-3 bg-muted border border-border rounded-lg"
+						transition:slide
+					>
+						<div class="flex items-center gap-2.5 min-w-0">
+							<Calendar class="w-4 h-4 text-muted-foreground flex-shrink-0" />
+							<div class="min-w-0">
+								<p class="text-xs sm:text-sm font-medium text-foreground truncate">
+									{formatDateTime(job.scheduled_for)}
+								</p>
+								<p class="text-xs text-muted-foreground">
+									{job.job_type || 'Daily Brief'}
+								</p>
 							</div>
 						</div>
-					{/each}
-
-					<!-- Recent Briefs -->
-					{#each getRecentJobs() as job}
-						<div
-							class="flex items-center justify-between gap-3 p-3 bg-muted border border-border rounded-lg"
-							transition:slide
-						>
-							<div class="flex items-center gap-2.5 min-w-0">
-								<Calendar class="w-4 h-4 text-muted-foreground flex-shrink-0" />
-								<div class="min-w-0">
-									<p
-										class="text-xs sm:text-sm font-medium text-foreground truncate"
-									>
-										{formatDateTime(job.scheduled_for)}
-									</p>
-									<p class="text-xs text-muted-foreground">
-										{job.job_type || 'Daily Brief'}
-									</p>
-								</div>
-							</div>
-							<div class="flex items-center gap-2 flex-shrink-0">
+						<div class="flex items-center gap-2 flex-shrink-0">
+							<Badge variant={formatJobStatus(job.status).variant} size="sm">
+								{formatJobStatus(job.status).text}
+							</Badge>
+							{#if job.error_message}
 								<span
-									class={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${formatJobStatus(job.status).color}`}
+									class="text-xs text-red-500 truncate"
+									title={job.error_message}
 								>
-									{formatJobStatus(job.status).text}
+									Error
 								</span>
-								{#if job.error_message}
-									<span
-										class="text-xs text-red-500 truncate"
-										title={job.error_message}
-									>
-										Error
-									</span>
-								{/if}
-							</div>
+							{/if}
 						</div>
-					{/each}
-				</div>
-			{/if}
-		</div>
-	</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
+	</SettingsCard>
 </div>
+
+<!-- Reset Preferences Confirmation -->
+<ConfirmationModal
+	isOpen={showResetConfirmation}
+	title="Reset Brief Preferences"
+	confirmText="Reset to Defaults"
+	cancelText="Cancel"
+	confirmVariant="danger"
+	icon="warning"
+	onconfirm={confirmResetBriefPreferences}
+	oncancel={() => (showResetConfirmation = false)}
+>
+	Are you sure you want to reset to default preferences? This will overwrite your current
+	settings.
+</ConfirmationModal>
+
+<!-- Cancel Job Confirmation -->
+<ConfirmationModal
+	isOpen={cancelJobTarget !== null}
+	title="Cancel Scheduled Brief"
+	confirmText="Cancel Brief"
+	cancelText="Keep It"
+	confirmVariant="danger"
+	icon="warning"
+	onconfirm={confirmCancelBriefJob}
+	oncancel={() => (cancelJobTarget = null)}
+>
+	Are you sure you want to cancel this scheduled brief? This action cannot be undone.
+</ConfirmationModal>

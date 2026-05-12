@@ -151,7 +151,18 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 	}
 
 	// Onboarding completion is derived from users.onboarding_completed_at.
-	const completedOnboarding = Boolean(userData.onboarding_completed_at);
+	// Fall back to the already-loaded session user so a duplicate users lookup
+	// cannot disagree with the root layout/nav state.
+	const completedOnboarding = Boolean(
+		userData.onboarding_completed_at ?? user.onboarding_completed_at
+	);
+
+	const completedCategoryCompletion: Record<string, boolean> = {
+		projects: true,
+		work_style: true,
+		challenges: true,
+		help_focus: true
+	};
 
 	// Enhanced progress data calculation for new structure
 	const categoryCompletion: Record<string, boolean> = {
@@ -161,28 +172,36 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 		help_focus: !!userContext?.input_help_focus?.trim()
 	};
 
-	const missingCategoriesArray = ['projects', 'work_style', 'challenges', 'help_focus'].filter(
-		(category) => {
-			const inputField = `input_${category}`;
-			const value = (userContext as Record<string, any> | null)?.[inputField];
-			return !(value && typeof value === 'string' && (value as string).trim().length > 0);
-		}
-	);
+	const effectiveCategoryCompletion = completedOnboarding
+		? completedCategoryCompletion
+		: categoryCompletion;
 
-	const progressPercentage = userContext
-		? Math.round((Object.values(categoryCompletion).filter(Boolean).length / 4) * 100)
-		: 0;
+	const missingCategoriesArray = completedOnboarding
+		? []
+		: ['projects', 'work_style', 'challenges', 'help_focus'].filter((category) => {
+				const inputField = `input_${category}`;
+				const value = (userContext as Record<string, any> | null)?.[inputField];
+				return !(value && typeof value === 'string' && (value as string).trim().length > 0);
+			});
+
+	const progressPercentage = completedOnboarding
+		? 100
+		: userContext
+			? Math.round((Object.values(categoryCompletion).filter(Boolean).length / 4) * 100)
+			: 0;
 
 	const enhancedProgressData = {
 		completed: completedOnboarding,
 		progress: progressPercentage,
 		missingFields: missingCategoriesArray,
-		completedFields: Object.keys(categoryCompletion).filter((cat) => categoryCompletion[cat]),
+		completedFields: Object.keys(effectiveCategoryCompletion).filter(
+			(cat) => effectiveCategoryCompletion[cat]
+		),
 		missingRequiredFields: missingCategoriesArray.filter((cat) =>
 			['projects', 'work_style', 'challenges'].includes(cat)
 		),
-		categoryProgress: categoryCompletion as Record<string, boolean>,
-		categoryCompletion,
+		categoryProgress: effectiveCategoryCompletion as Record<string, boolean>,
+		categoryCompletion: effectiveCategoryCompletion,
 		missingCategories: missingCategoriesArray
 	};
 
@@ -192,7 +211,7 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 		progressData: enhancedProgressData,
 		projectTemplates,
 		completedOnboarding,
-		isAdmin: userData.is_admin || false,
+		isAdmin: userData.is_admin ?? user.is_admin ?? false,
 		justCompletedOnboarding,
 		activeTab, // Pass the active tab to the client
 		subscriptionDetails,

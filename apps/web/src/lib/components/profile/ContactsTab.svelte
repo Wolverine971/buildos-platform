@@ -14,6 +14,10 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Textarea from '$lib/components/ui/Textarea.svelte';
+	import FormField from '$lib/components/ui/FormField.svelte';
+	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import TabHeader from './_shared/TabHeader.svelte';
+	import SettingsCard from './_shared/SettingsCard.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import type {
 		ContactImportCommitResult,
@@ -59,6 +63,9 @@
 	let importCommitResult = $state<ContactImportCommitResult | null>(null);
 	let selectedFile = $state<File | null>(null);
 	let importWarning = $state<string | null>(null);
+
+	let showDeleteContactConfirmation = $state(false);
+	let pendingDelete = $state<{ id: string; name: string } | null>(null);
 
 	let formState = $state({
 		display_name: '',
@@ -190,29 +197,42 @@
 		};
 	}
 
-	async function archiveContact(contactId: string) {
-		if (!contactId) return;
-		if (
-			!window.confirm('Archive this contact? You can still view archived contacts via API.')
-		) {
+	function requestArchiveContact(contact: ContactRow) {
+		if (!contact?.id) return;
+		pendingDelete = { id: contact.id, name: contact.display_name || 'this contact' };
+		showDeleteContactConfirmation = true;
+	}
+
+	async function confirmArchiveContact() {
+		const target = pendingDelete;
+		if (!target) {
+			showDeleteContactConfirmation = false;
 			return;
 		}
 
 		try {
-			const response = await fetch(`/api/profile/contacts/${contactId}`, {
+			const response = await fetch(`/api/profile/contacts/${target.id}`, {
 				method: 'DELETE'
 			});
 			await parseApiData(response);
 			const message = 'Contact archived.';
 			toastService.success(message);
 			onsuccess?.({ message });
-			if (editingContactId === contactId) resetForm();
+			if (editingContactId === target.id) resetForm();
 			await loadContacts();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to archive contact';
 			toastService.error(message);
 			onerror?.({ message });
+		} finally {
+			showDeleteContactConfirmation = false;
+			pendingDelete = null;
 		}
+	}
+
+	function cancelArchiveContact() {
+		showDeleteContactConfirmation = false;
+		pendingDelete = null;
 	}
 
 	function formatMethods(contact: ContactRow): string {
@@ -383,64 +403,95 @@
 </script>
 
 <div class="space-y-4 sm:space-y-5">
-	<!-- Tab Header -->
-	<div class="flex items-start gap-3">
-		<div
-			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
-		>
-			<Users class="w-5 h-5 text-accent-foreground" />
-		</div>
-		<div class="flex-1 min-w-0">
-			<h2 class="text-lg sm:text-xl font-bold text-foreground">Contacts</h2>
-			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
-				Manage your personal contact memory. Sensitive values stay masked by default.
-			</p>
-		</div>
-		<Button variant="outline" size="sm" onclick={loadContacts} icon={RefreshCw}>Refresh</Button>
-	</div>
+	<TabHeader
+		icon={Users}
+		title="Contacts"
+		description="Manage your personal contact memory. Sensitive values stay masked by default."
+	/>
 
 	<!-- Add/Edit Contact -->
-	<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
-		<div
-			class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border"
-		>
-			<h3 class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
-				<Pencil class="w-4 h-4 text-accent" />
-				{editingContactId ? 'Edit Contact' : 'Add Contact'}
-			</h3>
+	<SettingsCard
+		title={editingContactId ? 'Edit Contact' : 'Add Contact'}
+		icon={Pencil}
+		labelledById="contacts-form-heading"
+	>
+		{#snippet actions()}
 			{#if editingContactId}
 				<Button variant="ghost" size="sm" onclick={resetForm}>Cancel edit</Button>
 			{/if}
-		</div>
+		{/snippet}
 
-		<form class="p-4 sm:p-5 space-y-3" onsubmit={submitContactForm}>
+		<form class="space-y-4" onsubmit={submitContactForm}>
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-				<TextInput
-					bind:value={formState.display_name}
-					placeholder="Display name"
-					required
-				/>
-				<TextInput
-					bind:value={formState.relationship_label}
-					placeholder="Relationship label"
-				/>
-				<TextInput bind:value={formState.given_name} placeholder="Given name" />
-				<TextInput bind:value={formState.family_name} placeholder="Family name" />
-				<TextInput bind:value={formState.organization} placeholder="Organization" />
-				<TextInput bind:value={formState.title} placeholder="Title" />
-				<TextInput bind:value={formState.phone} type="tel" placeholder="Phone (optional)" />
-				<TextInput
-					bind:value={formState.email}
-					type="email"
-					placeholder="Email (optional)"
-				/>
+				<FormField label="Display name" labelFor="contact-display-name" required={true}>
+					<TextInput
+						id="contact-display-name"
+						bind:value={formState.display_name}
+						placeholder="Display name"
+						required
+					/>
+				</FormField>
+				<FormField label="Relationship" labelFor="contact-relationship">
+					<TextInput
+						id="contact-relationship"
+						bind:value={formState.relationship_label}
+						placeholder="e.g. teammate, client"
+					/>
+				</FormField>
+				<FormField label="Given name" labelFor="contact-given-name">
+					<TextInput
+						id="contact-given-name"
+						bind:value={formState.given_name}
+						placeholder="Given name"
+					/>
+				</FormField>
+				<FormField label="Family name" labelFor="contact-family-name">
+					<TextInput
+						id="contact-family-name"
+						bind:value={formState.family_name}
+						placeholder="Family name"
+					/>
+				</FormField>
+				<FormField label="Organization" labelFor="contact-organization">
+					<TextInput
+						id="contact-organization"
+						bind:value={formState.organization}
+						placeholder="Organization"
+					/>
+				</FormField>
+				<FormField label="Title" labelFor="contact-title">
+					<TextInput
+						id="contact-title"
+						bind:value={formState.title}
+						placeholder="Title"
+					/>
+				</FormField>
+				<FormField label="Phone" labelFor="contact-phone">
+					<TextInput
+						id="contact-phone"
+						bind:value={formState.phone}
+						type="tel"
+						placeholder="Phone (optional)"
+					/>
+				</FormField>
+				<FormField label="Email" labelFor="contact-email">
+					<TextInput
+						id="contact-email"
+						bind:value={formState.email}
+						type="email"
+						placeholder="Email (optional)"
+					/>
+				</FormField>
 			</div>
-			<Textarea
-				bind:value={formState.notes}
-				placeholder="Notes (optional)"
-				rows={3}
-				autoResize
-			/>
+			<FormField label="Notes" labelFor="contact-notes">
+				<Textarea
+					id="contact-notes"
+					bind:value={formState.notes}
+					placeholder="Notes (optional)"
+					rows={3}
+					autoResize
+				/>
+			</FormField>
 			{#if editingContactId}
 				<p class="text-xs text-muted-foreground">
 					Existing method values remain masked. Add a new phone/email value here if you
@@ -459,30 +510,32 @@
 				</Button>
 			</div>
 		</form>
-	</div>
+	</SettingsCard>
 
 	<!-- Bulk Upload -->
-	<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
-		<div
-			class="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border"
-		>
-			<h3 class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
-				<Upload class="w-4 h-4 text-accent" />
-				Bulk Upload (CSV)
-			</h3>
+	<SettingsCard
+		title="Bulk Upload (CSV)"
+		icon={Upload}
+		labelledById="contacts-bulk-upload-heading"
+	>
+		{#snippet actions()}
 			<Button variant="outline" size="sm" onclick={downloadCsvTemplate} icon={Download}>
 				Download template
 			</Button>
-		</div>
+		{/snippet}
 
-		<div class="p-4 sm:p-5">
-			<div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 items-center">
+		<div class="space-y-4">
+			<FormField label="CSV File" labelFor="contacts-csv-input">
 				<input
+					id="contacts-csv-input"
 					type="file"
 					accept=".csv,text/csv"
 					onchange={handleFileSelection}
-					class="text-sm"
+					class="block w-full text-sm text-foreground file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-accent file:text-accent-foreground hover:file:bg-accent/90 file:cursor-pointer file:transition-colors file:shadow-ink"
 				/>
+			</FormField>
+
+			<div class="flex flex-wrap items-center justify-end gap-2">
 				<Button
 					variant="outline"
 					size="sm"
@@ -506,11 +559,11 @@
 			</div>
 
 			{#if importWarning}
-				<p class="text-xs text-destructive mt-3">{importWarning}</p>
+				<p class="text-xs text-destructive">{importWarning}</p>
 			{/if}
 
 			{#if importPreview}
-				<div class="mt-4 space-y-3">
+				<div class="space-y-3">
 					<p class="text-sm text-muted-foreground">
 						Rows: {importPreview.summary.total} · Ready: {importPreview.summary.ready} ·
 						Skipped:
@@ -555,78 +608,90 @@
 			{/if}
 
 			{#if importCommitResult}
-				<p class="text-sm text-muted-foreground mt-3">
+				<p class="text-sm text-muted-foreground">
 					Imported: {importCommitResult.summary.imported} · Failed: {importCommitResult
 						.summary.failed}
 				</p>
 			{/if}
 		</div>
-	</div>
+	</SettingsCard>
 
 	<!-- Saved Contacts -->
-	<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
-		<div
-			class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border"
-		>
-			<h3 class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
-				<Users class="w-4 h-4 text-accent" />
-				Saved Contacts
-			</h3>
-			<p class="text-xs text-muted-foreground">{contacts.length} total</p>
-		</div>
+	<SettingsCard
+		title="Saved Contacts"
+		description="{contacts.length} total"
+		icon={Users}
+		labelledById="contacts-saved-heading"
+	>
+		{#snippet actions()}
+			<Button variant="outline" size="sm" onclick={loadContacts} icon={RefreshCw}>
+				Refresh
+			</Button>
+		{/snippet}
 
-		<div class="p-4 sm:p-5">
-			{#if loadingContacts}
-				<p class="text-sm text-muted-foreground">Loading contacts...</p>
-			{:else if contacts.length === 0}
-				<p class="text-sm text-muted-foreground">
-					No contacts yet. Add one manually or upload a CSV file.
-				</p>
-			{:else}
-				<div class="space-y-2">
-					{#each contacts as contact (contact.id)}
-						<div
-							class="border border-border rounded-md p-3 hover:border-accent/50 transition-colors"
-						>
-							<div class="flex flex-wrap items-start justify-between gap-3">
-								<div class="min-w-0">
-									<p class="font-semibold text-sm text-foreground">
-										{contact.display_name}
-									</p>
-									<p class="text-xs text-muted-foreground mt-0.5">
-										{contact.relationship_label || 'No relationship'} · {contact.organization ||
-											'No org'}
-									</p>
-									<p class="text-xs text-muted-foreground mt-0.5">
-										{formatMethods(contact)}
-									</p>
-									<p class="text-xs text-muted-foreground/70 mt-0.5">
-										Updated {formatLastUpdated(contact.updated_at)}
-									</p>
-								</div>
-								<div class="flex items-center gap-1.5">
-									<Button
-										variant="ghost"
-										size="sm"
-										icon={Pencil}
-										onclick={() => startEdit(contact)}
-									>
-										Edit
-									</Button>
-									<Button
-										variant="danger"
-										size="sm"
-										icon={Trash2}
-										onclick={() => archiveContact(contact.id)}
-									>
-										Archive
-									</Button>
-								</div>
+		{#if loadingContacts}
+			<p class="text-sm text-muted-foreground">Loading contacts...</p>
+		{:else if contacts.length === 0}
+			<p class="text-sm text-muted-foreground">
+				No contacts yet. Add one manually or upload a CSV file.
+			</p>
+		{:else}
+			<div class="space-y-2">
+				{#each contacts as contact (contact.id)}
+					<div
+						class="border border-border rounded-md p-3 hover:border-accent/50 transition-colors"
+					>
+						<div class="flex flex-wrap items-start justify-between gap-3">
+							<div class="min-w-0">
+								<p class="font-semibold text-sm text-foreground">
+									{contact.display_name}
+								</p>
+								<p class="text-xs text-muted-foreground mt-0.5">
+									{contact.relationship_label || 'No relationship'} · {contact.organization ||
+										'No org'}
+								</p>
+								<p class="text-xs text-muted-foreground mt-0.5">
+									{formatMethods(contact)}
+								</p>
+								<p class="text-xs text-muted-foreground/70 mt-0.5">
+									Updated {formatLastUpdated(contact.updated_at)}
+								</p>
+							</div>
+							<div class="flex items-center gap-1.5">
+								<Button
+									variant="ghost"
+									size="sm"
+									icon={Pencil}
+									onclick={() => startEdit(contact)}
+								>
+									Edit
+								</Button>
+								<Button
+									variant="danger"
+									size="sm"
+									icon={Trash2}
+									onclick={() => requestArchiveContact(contact)}
+								>
+									Archive
+								</Button>
 							</div>
 						</div>
-					{/each}
-				</div>
-			{/if}
-		</div>
-	</div>
+					</div>
+				{/each}
+			</div>
+		{/if}
+	</SettingsCard>
 </div>
+
+<!-- Archive Confirmation Modal -->
+<ConfirmationModal
+	isOpen={showDeleteContactConfirmation}
+	title="Delete contact"
+	confirmText="Delete"
+	cancelText="Cancel"
+	confirmVariant="danger"
+	onconfirm={confirmArchiveContact}
+	oncancel={cancelArchiveContact}
+>
+	Archive {pendingDelete?.name ?? 'this contact'}? You can still view archived contacts via API.
+</ConfirmationModal>

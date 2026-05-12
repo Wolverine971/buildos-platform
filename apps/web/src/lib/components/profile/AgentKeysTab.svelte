@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/profile/AgentKeysTab.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -40,6 +40,9 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import CheckboxField from './_shared/CheckboxField.svelte';
+	import SettingsCard from './_shared/SettingsCard.svelte';
+	import TabHeader from './_shared/TabHeader.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 
 	interface Props {
@@ -167,9 +170,9 @@
 		},
 		{
 			id: 'author_docs_tasks',
-			label: 'Author docs + tasks (OpenClaw default)',
+			label: 'Author docs + tasks (recommended default)',
 			description:
-				'Recommended for Claude Code / OpenClaw. Create/update documents and tasks.',
+				'Recommended for Claude Code, Cursor, ChatGPT, and most AI tools. Create/update documents and tasks.',
 			scopeMode: 'read_write',
 			writeOps: [...OPENCLAW_DEFAULT_WRITE_OPS] as BuildosAgentAllowedOp[]
 		},
@@ -188,6 +191,7 @@
 	let loading = $state(false);
 	let saving = $state(false);
 	let copiedId = $state<string | null>(null);
+	let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 	let buildosAgent = $state<BuildosAgentIdentitySummary | null>(null);
 	let callers = $state<BuildosAgentCallerSummary[]>([]);
 	let availableProjects = $state<BuildosAgentAvailableProject[]>([]);
@@ -197,12 +201,35 @@
 	let rotatingCallerId = $state<string | null>(null);
 	let editingCaller = $state<BuildosAgentCallerSummary | null>(null);
 
+	// Memoized lookup: caller.id -> (period -> trend). Built once whenever callers list
+	// changes, so usageTrend() doesn't do a linear scan per caller per render.
+	let trendIndex = $derived.by(() => {
+		const map = new Map<
+			string,
+			Map<
+				BuildosAgentUsagePeriod,
+				NonNullable<BuildosAgentCallerSummary['usage']>['trends'][number]
+			>
+		>();
+		for (const c of callers ?? []) {
+			const inner = new Map<
+				BuildosAgentUsagePeriod,
+				NonNullable<BuildosAgentCallerSummary['usage']>['trends'][number]
+			>();
+			for (const t of c.usage?.trends ?? []) {
+				inner.set(t.period, t);
+			}
+			map.set(c.id, inner);
+		}
+		return map;
+	});
+
 	// Modal state
 	let showGenerateModal = $state(false);
 	let showKeyCreatedModal = $state(false);
 
 	// Form state
-	let providerMode = $state<ProviderMode>('openclaw');
+	let providerMode = $state<ProviderMode>('custom');
 	let customProvider = $state('');
 	let installationName = $state('');
 	let selectedProjectIds = $state<string[]>([]);
@@ -432,7 +459,7 @@
 		editingCaller = null;
 		installationName = '';
 		selectedProjectIds = [];
-		providerMode = 'openclaw';
+		providerMode = 'custom';
 		customProvider = '';
 		const defaultBundle = PERMISSION_BUNDLES.find(
 			(bundle) => bundle.id === 'author_docs_tasks'
@@ -499,12 +526,21 @@
 
 	function markCopied(id: string) {
 		copiedId = id;
-		setTimeout(() => {
+		if (copyTimeout) clearTimeout(copyTimeout);
+		copyTimeout = setTimeout(() => {
 			if (copiedId === id) {
 				copiedId = null;
 			}
+			copyTimeout = null;
 		}, 2000);
 	}
+
+	onDestroy(() => {
+		if (copyTimeout) {
+			clearTimeout(copyTimeout);
+			copyTimeout = null;
+		}
+	});
 
 	async function writeToClipboard(id: string, text: string): Promise<boolean> {
 		if (!browser) return false;
@@ -862,7 +898,7 @@
 	}
 
 	function usageTrend(caller: BuildosAgentCallerSummary, period: BuildosAgentUsagePeriod) {
-		return caller.usage?.trends.find((trend) => trend.period === period) ?? null;
+		return trendIndex.get(caller.id)?.get(period) ?? null;
 	}
 
 	function periodLabel(period: BuildosAgentUsagePeriod): string {
@@ -924,21 +960,13 @@
 	}
 </script>
 
-<div class="min-w-0 space-y-4 overflow-x-hidden sm:space-y-5">
-	<!-- Tab Header -->
-	<div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
-		<div
-			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
-		>
-			<Key class="w-5 h-5 text-accent-foreground" />
-		</div>
-		<div class="flex-1 min-w-0">
-			<h2 class="text-lg sm:text-xl font-bold text-foreground">Agent Keys</h2>
-			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
-				Manage API keys for external agents (like OpenClaw) to access your BuildOS data.
-			</p>
-		</div>
-		<div class="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
+<div class="space-y-4 sm:space-y-5">
+	<TabHeader
+		icon={Key}
+		title="Agent Keys"
+		description="Give Claude, Cursor, ChatGPT, or any AI tool a scoped read/write into your projects. One key per tool. Rotate or revoke any time."
+	>
+		{#snippet actions()}
 			<Button
 				variant="outline"
 				size="sm"
@@ -951,8 +979,47 @@
 			<Button variant="primary" size="sm" icon={Plus} onclick={openGenerateModal}>
 				Generate
 			</Button>
+		{/snippet}
+	</TabHeader>
+
+	<!-- What is this? -->
+	<details
+		class="group tx tx-frame tx-weak overflow-hidden rounded-lg border border-border bg-card shadow-ink"
+	>
+		<summary
+			class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 sm:px-5 py-3 text-sm font-semibold text-foreground"
+		>
+			<span class="flex items-center gap-2">
+				<Key class="w-4 h-4 text-accent" />
+				What is this?
+			</span>
+			<ChevronDown
+				class="h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+			/>
+		</summary>
+		<div
+			class="border-t border-border px-4 sm:px-5 py-3 space-y-2 text-xs sm:text-sm text-muted-foreground"
+		>
+			<p>
+				<span class="font-semibold text-foreground">What:</span> A scoped read/write connection
+				between BuildOS and any AI tool that can call HTTP.
+			</p>
+			<p>
+				<span class="font-semibold text-foreground">Why:</span> Your projects live in BuildOS.
+				Your AI tools should read off the same sheet of paper instead of starting from zero each
+				session.
+			</p>
+			<p>
+				<span class="font-semibold text-foreground">How:</span> Generate a key → paste it into
+				your tool's config → tell the agent "connect to BuildOS, list my projects."
+			</p>
+			<p>
+				<span class="font-semibold text-foreground">Safety:</span> Per-project scope. Per-op
+				write whitelist. Audit log. Rotate or revoke any time. BuildOS stores only a hash — the
+				full key is shown once on generate.
+			</p>
 		</div>
-	</div>
+	</details>
 
 	<!-- Agent Handle -->
 	{#if buildosAgent}
@@ -976,366 +1043,347 @@
 	{/if}
 
 	<!-- Registered Callers -->
-	<div
-		class="tx tx-frame tx-weak min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-ink"
+	<SettingsCard
+		title="Registered Keys"
+		icon={Key}
+		labelledById="registered-keys-heading"
+		bodyClass="space-y-3"
 	>
-		<div
-			class="flex items-center justify-between gap-3 px-4 sm:px-5 py-3 border-b border-border"
-		>
-			<h3 class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2">
-				<Key class="w-4 h-4 text-accent" />
-				Registered Keys
-			</h3>
+		{#snippet actions()}
 			<Badge variant="info">
 				{callers.length} key{callers.length === 1 ? '' : 's'}
 			</Badge>
+		{/snippet}
+		<div class="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
+			<span class="font-medium text-foreground">Need the full key?</span>
+			For security, BuildOS stores only a hash. Use Rotate + Copy to reissue the key, then copy
+			the full BuildOS Agent Key from the confirmation modal.
 		</div>
 
-		<div class="p-4 sm:p-5 space-y-3">
+		{#if loading}
 			<div
-				class="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground"
+				class="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground text-center"
 			>
-				<span class="font-medium text-foreground">Need the full key?</span>
-				For security, BuildOS stores only a hash. Use Rotate + Copy to reissue the key, then
-				copy the full BuildOS Agent Key from the confirmation modal.
+				Loading...
 			</div>
-
-			{#if loading}
-				<div
-					class="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground text-center"
-				>
-					Loading...
-				</div>
-			{:else if callers.length === 0}
-				<div class="rounded-lg border border-dashed border-border p-6 text-center">
-					<Key class="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-					<p class="text-sm text-muted-foreground">
-						No keys yet. Generate your first key to connect an external agent.
-					</p>
-				</div>
-			{:else}
-				<div class="min-w-0 space-y-2">
-					{#each callers as caller (caller.id)}
-						<details
-							class="group min-w-0 overflow-hidden rounded-lg border border-border bg-muted/30"
-						>
-							<summary class="list-none cursor-pointer p-3 sm:p-4">
-								<div
-									class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-								>
-									<div class="flex min-w-0 items-start gap-2.5">
-										<ChevronDown
-											class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-										/>
-										<div class="min-w-0 space-y-1.5">
-											<div class="flex flex-wrap items-center gap-2">
-												<h4
-													class="min-w-0 max-w-full break-words text-sm font-semibold text-foreground"
-												>
-													{installationDisplayName(caller)}
-												</h4>
-												<Badge variant={statusVariant(caller.status)}>
-													{caller.status}
-												</Badge>
-												<Badge variant="default">
-													{displayProvider(caller.provider)}
-												</Badge>
-											</div>
-											<div
-												class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
+		{:else if callers.length === 0}
+			<div class="rounded-lg border border-dashed border-border p-6 text-center">
+				<Key class="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+				<p class="text-sm text-muted-foreground">
+					No tools connected yet. Generate a key for the AI tool you use most — Claude
+					Code, Cursor, ChatGPT, or anything that can call HTTP.
+				</p>
+			</div>
+		{:else}
+			<div class="space-y-2">
+				{#each callers as caller (caller.id)}
+					<details
+						class="group min-w-0 overflow-hidden rounded-lg border border-border bg-muted/30"
+					>
+						<summary class="list-none cursor-pointer p-3 sm:p-4">
+							<div
+								class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+							>
+								<div class="flex min-w-0 items-start gap-2.5">
+									<ChevronDown
+										class="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+									/>
+									<div class="min-w-0 space-y-1.5">
+										<div class="flex flex-wrap items-center gap-2">
+											<h4
+												class="min-w-0 max-w-full break-words text-sm font-semibold text-foreground"
 											>
-												<span>{accessModeLabel(caller)}</span>
-												<span>{scopeLabel(caller)}</span>
-												<span>
-													Last used {formatRelativeTimestamp(
-														caller.last_used_at
-													)}
-												</span>
-											</div>
+												{installationDisplayName(caller)}
+											</h4>
+											<Badge variant={statusVariant(caller.status)}>
+												{caller.status}
+											</Badge>
+											<Badge variant="default">
+												{displayProvider(caller.provider)}
+											</Badge>
 										</div>
-									</div>
-									<div
-										class="flex min-w-0 flex-wrap gap-1.5 sm:max-w-[48%] sm:justify-end"
-									>
-										<Badge variant="info" size="sm">
-											{recentSessionCount(caller, 'week')} sessions / 7d
-										</Badge>
-										<Badge variant="accent" size="sm">
-											{recentWriteCount(caller, 'week')} writes / 7d
-										</Badge>
-										<Badge variant="default" size="sm">
-											{caller.usage?.project_count ?? 0} projects touched
-										</Badge>
-									</div>
-								</div>
-							</summary>
-
-							<div class="border-t border-border p-3 sm:p-4 space-y-4">
-								<div class="flex flex-wrap gap-2">
-									{#if caller.status === 'trusted'}
-										<Button
-											variant="outline"
-											size="sm"
-											icon={copiedId === `agent-prompt-${caller.id}`
-												? CircleCheck
-												: Copy}
-											onclick={() =>
-												copyToClipboard(
-													`agent-prompt-${caller.id}`,
-													agentConnectionPromptForCaller(caller),
-													'Agent prompt copied'
+										<div
+											class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
+										>
+											<span>{accessModeLabel(caller)}</span>
+											<span>{scopeLabel(caller)}</span>
+											<span>
+												Last used {formatRelativeTimestamp(
+													caller.last_used_at
 												)}
-										>
-											{copiedId === `agent-prompt-${caller.id}`
-												? 'Copied'
-												: 'Copy Prompt'}
-										</Button>
-									{/if}
-									<Button
-										variant="outline"
-										size="sm"
-										icon={BarChart3}
-										onclick={() => openUsageDetail(caller)}
-									>
-										Usage
-									</Button>
-									<Button
-										variant="outline"
-										size="sm"
-										icon={Copy}
-										loading={rotatingCallerId === caller.id}
-										disabled={saving ||
-											(rotatingCallerId !== null &&
-												rotatingCallerId !== caller.id)}
-										onclick={() => rotateAndShowKey(caller)}
-									>
-										{caller.status === 'revoked'
-											? 'Reissue + Copy'
-											: 'Rotate + Copy'}
-									</Button>
-									<Button
-										variant="outline"
-										size="sm"
-										icon={RefreshCw}
-										loading={saving && editingCaller?.id === caller.id}
-										disabled={saving || rotatingCallerId !== null}
-										onclick={() => openEditModal(caller)}
-									>
-										{caller.status === 'revoked' ? 'Reissue Key' : 'Edit'}
-									</Button>
-									{#if caller.status !== 'revoked'}
-										<Button
-											variant="danger"
-											size="sm"
-											icon={Trash2}
-											disabled={revokingCallerId === caller.id}
-											onclick={() => (pendingRevokeCaller = caller)}
-										>
-											Revoke
-										</Button>
-									{/if}
-								</div>
-
-								<div
-									class="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
-								>
-									<div class="min-w-0 space-y-2 text-xs text-muted-foreground">
-										<div
-											class="text-xs uppercase tracking-wider text-muted-foreground"
-										>
-											Key Details
-										</div>
-										<p class="min-w-0">
-											<span class="font-medium text-foreground"
-												>Caller key:</span
-											>
-											<code class="break-all">{caller.caller_key}</code>
-										</p>
-										<p class="min-w-0">
-											<span class="font-medium text-foreground">Prefix:</span>
-											<code class="break-all">{caller.token_prefix}</code>
-											<span class="ml-1 text-muted-foreground">
-												secret shown only on generate or rotate
 											</span>
-										</p>
-										<p>
-											<span class="font-medium text-foreground">Access:</span>
-											{accessModeLabel(caller)}
-										</p>
-										<p>
-											<span class="font-medium text-foreground"
-												>Last used:</span
-											>
-											{formatTimestamp(caller.last_used_at)}
-										</p>
-									</div>
-
-									<div class="min-w-0 space-y-2">
-										<div
-											class="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground"
-										>
-											<Activity class="h-3.5 w-3.5" />
-											Usage
 										</div>
-										<div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
-											{#each USAGE_PERIODS as period (period)}
-												{@const trend = usageTrend(caller, period)}
-												<div
-													class="min-w-0 rounded-md border border-border bg-card/70 p-2"
-												>
-													<div
-														class="text-xs font-semibold text-foreground"
-													>
-														{periodLabel(period)}
-													</div>
-													<div
-														class="mt-1 text-[0.7rem] text-muted-foreground"
-													>
-														{trend?.session_count ?? 0} sessions
-													</div>
-													<div
-														class="text-[0.7rem] text-muted-foreground"
-													>
-														{trend?.write_count ?? 0} writes
-													</div>
-												</div>
-											{/each}
-										</div>
-										<p class="text-xs text-muted-foreground">
-											{caller.usage?.total_write_count ?? 0} total tracked writes,
-											{caller.usage?.successful_write_count ?? 0} succeeded,
-											{caller.usage?.failed_write_count ?? 0} failed.
-										</p>
 									</div>
 								</div>
+								<div
+									class="flex min-w-0 flex-wrap gap-1.5 sm:max-w-[48%] sm:justify-end"
+								>
+									<Badge variant="info" size="sm">
+										{recentSessionCount(caller, 'week')} sessions / 7d
+									</Badge>
+									<Badge variant="accent" size="sm">
+										{recentWriteCount(caller, 'week')} writes / 7d
+									</Badge>
+									<Badge variant="default" size="sm">
+										{caller.usage?.project_count ?? 0} projects touched
+									</Badge>
+								</div>
+							</div>
+						</summary>
 
-								<div class="space-y-2">
+						<div class="border-t border-border p-3 sm:p-4 space-y-4">
+							<div class="flex flex-wrap gap-2">
+								{#if caller.status === 'trusted'}
+									<Button
+										variant="outline"
+										size="sm"
+										icon={copiedId === `agent-prompt-${caller.id}`
+											? CircleCheck
+											: Copy}
+										title="Token redacted — paste your stored env value where `<BUILDOS_AGENT_TOKEN>` appears."
+										onclick={() =>
+											copyToClipboard(
+												`agent-prompt-${caller.id}`,
+												agentConnectionPromptForCaller(caller),
+												'Agent prompt copied'
+											)}
+									>
+										{copiedId === `agent-prompt-${caller.id}`
+											? 'Copied'
+											: 'Copy Prompt'}
+									</Button>
+								{/if}
+								<Button
+									variant="outline"
+									size="sm"
+									icon={BarChart3}
+									onclick={() => openUsageDetail(caller)}
+								>
+									Usage
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									icon={Copy}
+									loading={rotatingCallerId === caller.id}
+									disabled={saving ||
+										(rotatingCallerId !== null &&
+											rotatingCallerId !== caller.id)}
+									onclick={() => rotateAndShowKey(caller)}
+								>
+									{caller.status === 'revoked'
+										? 'Reissue + Copy'
+										: 'Rotate + Copy'}
+								</Button>
+								<Button
+									variant="outline"
+									size="sm"
+									icon={RefreshCw}
+									loading={saving && editingCaller?.id === caller.id}
+									disabled={saving || rotatingCallerId !== null}
+									onclick={() => openEditModal(caller)}
+								>
+									{caller.status === 'revoked' ? 'Reissue Key' : 'Edit'}
+								</Button>
+								{#if caller.status !== 'revoked'}
+									<Button
+										variant="danger"
+										size="sm"
+										icon={Trash2}
+										disabled={revokingCallerId === caller.id}
+										onclick={() => (pendingRevokeCaller = caller)}
+									>
+										Revoke
+									</Button>
+								{/if}
+							</div>
+
+							<div
+								class="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
+							>
+								<div class="min-w-0 space-y-2 text-xs text-muted-foreground">
 									<div
 										class="text-xs uppercase tracking-wider text-muted-foreground"
 									>
-										Recent Activity
+										Key Details
 									</div>
-									{#if caller.usage?.recent_activity?.length}
-										<div class="min-w-0 space-y-2">
-											{#each caller.usage.recent_activity as event (event.id)}
-												<div
-													class="min-w-0 rounded-md border border-border bg-card/70 px-3 py-2"
-												>
-													<div
-														class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
-													>
-														<div class="min-w-0">
-															<p
-																class="truncate text-sm font-medium text-foreground"
-															>
-																{event.summary}
-															</p>
-															<p
-																class="break-words text-xs text-muted-foreground"
-															>
-																{eventMetaLabel(event)}
-															</p>
-														</div>
-														<Badge
-															variant={activityStatusVariant(
-																event.status
-															)}
-															size="sm"
-														>
-															{event.status}
-														</Badge>
-													</div>
-												</div>
-											{/each}
-										</div>
-									{:else}
-										<div
-											class="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground"
-										>
-											No tracked write activity yet. Reads and connection
-											pings are reflected in usage counts as agents start
-											sessions.
-										</div>
-									{/if}
+									<p class="min-w-0">
+										<span class="font-medium text-foreground">Caller key:</span>
+										<code class="break-all">{caller.caller_key}</code>
+									</p>
+									<p class="min-w-0">
+										<span class="font-medium text-foreground">Prefix:</span>
+										<code class="break-all">{caller.token_prefix}</code>
+										<span class="ml-1 text-muted-foreground">
+											secret shown only on generate or rotate
+										</span>
+									</p>
+									<p>
+										<span class="font-medium text-foreground">Access:</span>
+										{accessModeLabel(caller)}
+									</p>
+									<p>
+										<span class="font-medium text-foreground">Last used:</span>
+										{formatTimestamp(caller.last_used_at)}
+									</p>
 								</div>
 
-								<details class="border-t border-border pt-3">
-									<summary
-										class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground"
+								<div class="min-w-0 space-y-2">
+									<div
+										class="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground"
 									>
-										<span>Project Scope</span>
-										<span class="text-[0.7rem] normal-case tracking-normal">
-											{scopeLabel(caller)}
-										</span>
-									</summary>
-									{#if (caller.allowed_project_ids && caller.allowed_project_ids.length > 0) || unavailableProjectCount(caller) > 0}
-										<div class="mt-2 flex flex-wrap gap-1.5">
-											{#if caller.allowed_project_ids && caller.allowed_project_ids.length > 0}
-												{#each caller.allowed_project_ids as projectId (projectId)}
-													<Badge variant="accent">
-														{projectName(projectId)}
-													</Badge>
-												{/each}
-											{/if}
-											{#if unavailableProjectCount(caller) > 0}
-												<Badge variant="warning">
-													{projectCountLabel(
-														unavailableProjectCount(caller)
-													)}
-													unavailable
-												</Badge>
-											{/if}
-										</div>
-									{:else}
-										<p class="mt-2 text-xs text-muted-foreground">
-											This key can access all visible BuildOS projects.
-										</p>
-									{/if}
-								</details>
-
-								<details class="border-t border-border pt-3">
-									<summary
-										class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground"
-									>
-										<span>Write Permissions</span>
-										<span class="text-[0.7rem] normal-case tracking-normal">
-											{writePermissionLabels(caller).length} write op{writePermissionLabels(
-												caller
-											).length === 1
-												? ''
-												: 's'}
-										</span>
-									</summary>
-									{#if writePermissionLabels(caller).length > 0}
-										<div class="mt-2 flex flex-wrap gap-1.5">
-											{#each writePermissionLabels(caller) as label (label)}
-												<Badge variant="accent">{label}</Badge>
-											{/each}
-										</div>
-									{:else}
-										<p class="mt-2 text-xs text-muted-foreground">
-											This key is read-only and cannot create, update, or
-											delete BuildOS records.
-										</p>
-									{/if}
-								</details>
+										<Activity class="h-3.5 w-3.5" />
+										Usage
+									</div>
+									<div class="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-3">
+										{#each USAGE_PERIODS as period (period)}
+											{@const trend = usageTrend(caller, period)}
+											<div
+												class="min-w-0 rounded-md border border-border bg-card/70 p-2"
+											>
+												<div class="text-xs font-semibold text-foreground">
+													{periodLabel(period)}
+												</div>
+												<div
+													class="mt-1 text-[0.7rem] text-muted-foreground"
+												>
+													{trend?.session_count ?? 0} sessions
+												</div>
+												<div class="text-[0.7rem] text-muted-foreground">
+													{trend?.write_count ?? 0} writes
+												</div>
+											</div>
+										{/each}
+									</div>
+									<p class="text-xs text-muted-foreground">
+										{caller.usage?.total_write_count ?? 0} total tracked writes,
+										{caller.usage?.successful_write_count ?? 0} succeeded,
+										{caller.usage?.failed_write_count ?? 0} failed.
+									</p>
+								</div>
 							</div>
-						</details>
-					{/each}
-				</div>
-			{/if}
 
-			<div class="pt-2 border-t border-border">
-				<a
-					href="/integrations"
-					class="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors"
-				>
-					Integration docs
-					<ExternalLink class="w-3.5 h-3.5" />
-				</a>
+							<div class="space-y-2">
+								<div class="text-xs uppercase tracking-wider text-muted-foreground">
+									Recent Activity
+								</div>
+								{#if caller.usage?.recent_activity?.length}
+									<div class="min-w-0 space-y-2">
+										{#each caller.usage.recent_activity as event (event.id)}
+											<div
+												class="min-w-0 rounded-md border border-border bg-card/70 px-3 py-2"
+											>
+												<div
+													class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between"
+												>
+													<div class="min-w-0">
+														<p
+															class="truncate text-sm font-medium text-foreground"
+														>
+															{event.summary}
+														</p>
+														<p
+															class="break-words text-xs text-muted-foreground"
+														>
+															{eventMetaLabel(event)}
+														</p>
+													</div>
+													<Badge
+														variant={activityStatusVariant(
+															event.status
+														)}
+														size="sm"
+													>
+														{event.status}
+													</Badge>
+												</div>
+											</div>
+										{/each}
+									</div>
+								{:else}
+									<div
+										class="rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground"
+									>
+										No tracked write activity yet. Reads and connection pings
+										are reflected in usage counts as agents start sessions.
+									</div>
+								{/if}
+							</div>
+
+							<details class="border-t border-border pt-3">
+								<summary
+									class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground"
+								>
+									<span>Project Scope</span>
+									<span class="text-[0.7rem] normal-case tracking-normal">
+										{scopeLabel(caller)}
+									</span>
+								</summary>
+								{#if (caller.allowed_project_ids && caller.allowed_project_ids.length > 0) || unavailableProjectCount(caller) > 0}
+									<div class="mt-2 flex flex-wrap gap-1.5">
+										{#if caller.allowed_project_ids && caller.allowed_project_ids.length > 0}
+											{#each caller.allowed_project_ids as projectId (projectId)}
+												<Badge variant="accent">
+													{projectName(projectId)}
+												</Badge>
+											{/each}
+										{/if}
+										{#if unavailableProjectCount(caller) > 0}
+											<Badge variant="warning">
+												{projectCountLabel(unavailableProjectCount(caller))}
+												unavailable
+											</Badge>
+										{/if}
+									</div>
+								{:else}
+									<p class="mt-2 text-xs text-muted-foreground">
+										This key can access all visible BuildOS projects.
+									</p>
+								{/if}
+							</details>
+
+							<details class="border-t border-border pt-3">
+								<summary
+									class="flex cursor-pointer list-none items-center justify-between gap-3 text-xs uppercase tracking-wider text-muted-foreground"
+								>
+									<span>Write Permissions</span>
+									<span class="text-[0.7rem] normal-case tracking-normal">
+										{writePermissionLabels(caller).length} write op{writePermissionLabels(
+											caller
+										).length === 1
+											? ''
+											: 's'}
+									</span>
+								</summary>
+								{#if writePermissionLabels(caller).length > 0}
+									<div class="mt-2 flex flex-wrap gap-1.5">
+										{#each writePermissionLabels(caller) as label (label)}
+											<Badge variant="accent">{label}</Badge>
+										{/each}
+									</div>
+								{:else}
+									<p class="mt-2 text-xs text-muted-foreground">
+										This key is read-only and cannot create, update, or delete
+										BuildOS records.
+									</p>
+								{/if}
+							</details>
+						</div>
+					</details>
+				{/each}
 			</div>
+		{/if}
+
+		<div class="pt-2 border-t border-border">
+			<a
+				href="/integrations"
+				class="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-accent transition-colors"
+			>
+				Integration docs
+				<ExternalLink class="w-3.5 h-3.5" />
+			</a>
 		</div>
-	</div>
+	</SettingsCard>
 </div>
 
 <!-- Generate Key Modal -->
@@ -1349,228 +1397,232 @@
 	size="md"
 >
 	{#snippet children()}
-		<div class="p-4 sm:p-6 space-y-5">
-			{#if editingCaller}
-				<div
-					class="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground"
-				>
-					<span class="font-medium text-foreground">Editing rotates the key.</span>
-					BuildOS cannot reveal the existing secret because only the hash is stored. Save changes
-					to generate a fresh key, then copy it from the next screen.
+		{#if showGenerateModal}
+			<div class="p-4 sm:p-6 space-y-5">
+				{#if editingCaller}
+					<div
+						class="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground"
+					>
+						<span class="font-medium text-foreground">Editing rotates the key.</span>
+						BuildOS cannot reveal the existing secret because only the hash is stored. Save
+						changes to generate a fresh key, then copy it from the next screen.
+					</div>
+				{/if}
+
+				<div class="grid gap-4 sm:grid-cols-2">
+					<FormField
+						label="Agent Type"
+						labelFor="agent-provider-mode"
+						hint="Pick Custom Agent for Claude Code, Cursor, ChatGPT, or any HTTP tool. OpenClaw uses its own adapter."
+					>
+						<Select id="agent-provider-mode" bind:value={providerMode}>
+							<option value="custom">Custom Agent (any HTTP tool)</option>
+							<option value="openclaw">OpenClaw</option>
+						</Select>
+					</FormField>
+
+					<FormField
+						label="Installation Name"
+						labelFor="agent-installation-name"
+						required={true}
+						hint="e.g. Claude Code on my laptop"
+					>
+						<TextInput
+							id="agent-installation-name"
+							bind:value={installationName}
+							placeholder="claude-code"
+						/>
+					</FormField>
 				</div>
-			{/if}
 
-			<div class="grid gap-4 sm:grid-cols-2">
-				<FormField
-					label="Agent Type"
-					labelFor="agent-provider-mode"
-					hint="OpenClaw is the default integration."
-				>
-					<Select id="agent-provider-mode" bind:value={providerMode}>
-						<option value="openclaw">OpenClaw</option>
-						<option value="custom">Custom Agent</option>
-					</Select>
-				</FormField>
+				{#if providerMode === 'custom'}
+					<FormField
+						label="Provider Key"
+						labelFor="agent-custom-provider"
+						required={true}
+						hint="Lowercase identifier — e.g. claude-code, cursor, chatgpt."
+					>
+						<TextInput
+							id="agent-custom-provider"
+							bind:value={customProvider}
+							placeholder="claude-code"
+						/>
+					</FormField>
+				{/if}
 
-				<FormField
-					label="Installation Name"
-					labelFor="agent-installation-name"
-					required={true}
-					hint="e.g. Research Workspace"
-				>
-					<TextInput
-						id="agent-installation-name"
-						bind:value={installationName}
-						placeholder="OpenClaw Main"
-					/>
-				</FormField>
-			</div>
-
-			{#if providerMode === 'custom'}
-				<FormField
-					label="Provider Key"
-					labelFor="agent-custom-provider"
-					required={true}
-					hint="Lowercase identifier for routing."
-				>
-					<TextInput
-						id="agent-custom-provider"
-						bind:value={customProvider}
-						placeholder="custom-agent"
-					/>
-				</FormField>
-			{/if}
-
-			<div class="space-y-2">
-				<div class="flex items-center justify-between gap-3">
-					<h4 class="text-sm font-semibold text-foreground">Permission Bundle</h4>
-					<span class="text-xs text-muted-foreground">
-						Project, task, document, and search reads are always included.
-					</span>
-				</div>
-				<div class="grid gap-2">
-					{#each PERMISSION_BUNDLES as bundle (bundle.id)}
-						{@const isActive = activeBundleId === bundle.id}
-						<label
-							class="flex items-start gap-2.5 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors {isActive
-								? 'border-accent bg-accent/5'
-								: 'border-border hover:bg-muted/40'}"
-						>
-							<input
-								type="radio"
-								name="agent-permission-bundle"
-								class="mt-1 h-3.5 w-3.5 border-border text-accent focus:ring-accent"
-								value={bundle.id}
-								checked={isActive}
-								onchange={() => applyBundle(bundle)}
-							/>
-							<div>
-								<div class="text-sm font-medium text-foreground">
-									{bundle.label}
+				<div class="space-y-2">
+					<div class="flex items-center justify-between gap-3">
+						<h4 class="text-sm font-semibold text-foreground">Permission Bundle</h4>
+						<span class="text-xs text-muted-foreground">
+							Project, task, document, and search reads are always included.
+						</span>
+					</div>
+					<div class="grid gap-2">
+						{#each PERMISSION_BUNDLES as bundle (bundle.id)}
+							{@const isActive = activeBundleId === bundle.id}
+							<label
+								class="flex items-start gap-2.5 rounded-lg border px-3 py-2.5 cursor-pointer transition-colors {isActive
+									? 'border-accent bg-accent/5'
+									: 'border-border hover:bg-muted/40'}"
+							>
+								<input
+									type="radio"
+									name="agent-permission-bundle"
+									class="mt-1 h-3.5 w-3.5 border-border text-accent focus:ring-accent"
+									value={bundle.id}
+									checked={isActive}
+									onchange={() => applyBundle(bundle)}
+								/>
+								<div>
+									<div class="text-sm font-medium text-foreground">
+										{bundle.label}
+									</div>
+									<div class="text-xs text-muted-foreground">
+										{bundle.description}
+									</div>
 								</div>
-								<div class="text-xs text-muted-foreground">
-									{bundle.description}
-								</div>
+							</label>
+						{/each}
+						{#if activeBundleId === 'custom'}
+							<div
+								class="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground"
+							>
+								Custom bundle — configured via Advanced permissions below.
 							</div>
-						</label>
-					{/each}
-					{#if activeBundleId === 'custom'}
+						{/if}
+					</div>
+				</div>
+
+				<div class="space-y-2">
+					<button
+						type="button"
+						class="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+						onclick={() => (showAdvancedPermissions = !showAdvancedPermissions)}
+					>
+						<span>{showAdvancedPermissions ? '▾' : '▸'}</span>
+						Advanced permissions ({selectedWriteOps.length} write op{selectedWriteOps.length ===
+						1
+							? ''
+							: 's'} selected)
+					</button>
+					{#if showAdvancedPermissions}
+						<div class="space-y-2 rounded-lg border border-border p-2">
+							<p class="text-xs text-muted-foreground px-2">
+								Fine-tune which write ops the key can perform. Picking any
+								combination here switches the bundle to Custom.
+							</p>
+							<label
+								class="flex items-start gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
+							>
+								<input
+									type="checkbox"
+									class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+									checked={scopeMode === 'read_write'}
+									onchange={() =>
+										(scopeMode =
+											scopeMode === 'read_write'
+												? 'read_only'
+												: 'read_write')}
+								/>
+								<div>
+									<div class="text-sm font-medium text-foreground">
+										Enable write scope
+									</div>
+									<div class="text-xs text-muted-foreground">
+										Required before selecting any individual write op.
+									</div>
+								</div>
+							</label>
+							{#if scopeMode === 'read_write'}
+								{#each WRITE_PERMISSION_OPTIONS as option (option.op)}
+									<label
+										class="flex items-start gap-2.5 rounded-md px-2.5 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
+									>
+										<input
+											type="checkbox"
+											class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+											checked={selectedWriteOps.includes(option.op)}
+											onchange={() => toggleWriteOp(option.op)}
+										/>
+										<div>
+											<div class="text-sm font-medium text-foreground">
+												{option.label}
+											</div>
+											<div class="text-xs text-muted-foreground">
+												{option.description}
+											</div>
+										</div>
+									</label>
+								{/each}
+							{/if}
+						</div>
+					{/if}
+				</div>
+
+				<div class="space-y-2">
+					<div class="flex items-center justify-between gap-3">
+						<h4 class="text-sm font-semibold text-foreground">Allowed Projects</h4>
+						<div class="flex items-center gap-2">
+							{#if availableProjects.length > 0}
+								<Button variant="ghost" size="sm" onclick={toggleAllProjects}>
+									{allProjectsSelected ? 'Deselect All' : 'Select All'}
+								</Button>
+							{/if}
+							{#if selectedProjectIds.length > 0}
+								<Button
+									variant="ghost"
+									size="sm"
+									onclick={() => (selectedProjectIds = [])}
+								>
+									Clear
+								</Button>
+							{/if}
+						</div>
+					</div>
+					<p class="text-xs text-muted-foreground">
+						Leave unchecked to allow access to all your projects.
+					</p>
+
+					{#if editingCaller && unavailableProjectCount(editingCaller) > 0}
 						<div
-							class="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground"
+							class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200"
 						>
-							Custom bundle — configured via Advanced permissions below.
+							{projectCountLabel(unavailableProjectCount(editingCaller))} previously scoped
+							to this key are no longer available in your workspace. Rotating the key will
+							keep only currently selected projects.
+						</div>
+					{/if}
+
+					{#if availableProjects.length === 0}
+						<div
+							class="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground"
+						>
+							No projects found. The key will cover future projects.
+						</div>
+					{:else}
+						<div
+							class="grid gap-2 sm:grid-cols-2 max-h-48 overflow-y-auto rounded-lg border border-border p-2"
+						>
+							{#each availableProjects as project (project.id)}
+								<label
+									class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
+								>
+									<input
+										type="checkbox"
+										class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
+										checked={selectedProjectIds.includes(project.id)}
+										onchange={() => toggleProject(project.id)}
+									/>
+									<span class="text-sm text-foreground truncate">
+										{project.name}
+									</span>
+								</label>
+							{/each}
 						</div>
 					{/if}
 				</div>
 			</div>
-
-			<div class="space-y-2">
-				<button
-					type="button"
-					class="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-					onclick={() => (showAdvancedPermissions = !showAdvancedPermissions)}
-				>
-					<span>{showAdvancedPermissions ? '▾' : '▸'}</span>
-					Advanced permissions ({selectedWriteOps.length} write op{selectedWriteOps.length ===
-					1
-						? ''
-						: 's'} selected)
-				</button>
-				{#if showAdvancedPermissions}
-					<div class="space-y-2 rounded-lg border border-border p-2">
-						<p class="text-xs text-muted-foreground px-2">
-							Fine-tune which write ops the key can perform. Picking any combination
-							here switches the bundle to Custom.
-						</p>
-						<label
-							class="flex items-start gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
-						>
-							<input
-								type="checkbox"
-								class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
-								checked={scopeMode === 'read_write'}
-								onchange={() =>
-									(scopeMode =
-										scopeMode === 'read_write' ? 'read_only' : 'read_write')}
-							/>
-							<div>
-								<div class="text-sm font-medium text-foreground">
-									Enable write scope
-								</div>
-								<div class="text-xs text-muted-foreground">
-									Required before selecting any individual write op.
-								</div>
-							</div>
-						</label>
-						{#if scopeMode === 'read_write'}
-							{#each WRITE_PERMISSION_OPTIONS as option (option.op)}
-								<label
-									class="flex items-start gap-2.5 rounded-md px-2.5 py-2 cursor-pointer hover:bg-muted/40 transition-colors"
-								>
-									<input
-										type="checkbox"
-										class="mt-0.5 h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
-										checked={selectedWriteOps.includes(option.op)}
-										onchange={() => toggleWriteOp(option.op)}
-									/>
-									<div>
-										<div class="text-sm font-medium text-foreground">
-											{option.label}
-										</div>
-										<div class="text-xs text-muted-foreground">
-											{option.description}
-										</div>
-									</div>
-								</label>
-							{/each}
-						{/if}
-					</div>
-				{/if}
-			</div>
-
-			<div class="space-y-2">
-				<div class="flex items-center justify-between gap-3">
-					<h4 class="text-sm font-semibold text-foreground">Allowed Projects</h4>
-					<div class="flex items-center gap-2">
-						{#if availableProjects.length > 0}
-							<Button variant="ghost" size="sm" onclick={toggleAllProjects}>
-								{allProjectsSelected ? 'Deselect All' : 'Select All'}
-							</Button>
-						{/if}
-						{#if selectedProjectIds.length > 0}
-							<Button
-								variant="ghost"
-								size="sm"
-								onclick={() => (selectedProjectIds = [])}
-							>
-								Clear
-							</Button>
-						{/if}
-					</div>
-				</div>
-				<p class="text-xs text-muted-foreground">
-					Leave unchecked to allow access to all your projects.
-				</p>
-
-				{#if editingCaller && unavailableProjectCount(editingCaller) > 0}
-					<div
-						class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200"
-					>
-						{projectCountLabel(unavailableProjectCount(editingCaller))} previously scoped
-						to this key are no longer available in your workspace. Rotating the key will
-						keep only currently selected projects.
-					</div>
-				{/if}
-
-				{#if availableProjects.length === 0}
-					<div
-						class="rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground"
-					>
-						No projects found. The key will cover future projects.
-					</div>
-				{:else}
-					<div
-						class="grid gap-2 sm:grid-cols-2 max-h-48 overflow-y-auto rounded-lg border border-border p-2"
-					>
-						{#each availableProjects as project (project.id)}
-							<label
-								class="flex items-center gap-2.5 rounded-md px-2.5 py-1.5 cursor-pointer hover:bg-muted/40 transition-colors"
-							>
-								<input
-									type="checkbox"
-									class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-accent"
-									checked={selectedProjectIds.includes(project.id)}
-									onchange={() => toggleProject(project.id)}
-								/>
-								<span class="text-sm text-foreground truncate">
-									{project.name}
-								</span>
-							</label>
-						{/each}
-					</div>
-				{/if}
-			</div>
-		</div>
+		{/if}
 	{/snippet}
 
 	{#snippet footer()}
@@ -1615,7 +1667,7 @@
 	size="md"
 >
 	{#snippet children()}
-		{#if latestProvisioned}
+		{#if showKeyCreatedModal && latestProvisioned}
 			<div class="p-4 sm:p-6 space-y-4">
 				<div class="flex items-start gap-3">
 					<div class="p-1.5 rounded-full bg-emerald-500/10">

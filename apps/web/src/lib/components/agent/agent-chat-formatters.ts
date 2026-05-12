@@ -3,7 +3,11 @@ import type { ContextUsageSnapshot } from '@buildos/shared-types';
 import { hasMarkdownFormatting } from '$lib/utils/markdown';
 import type { UIMessage } from './agent-chat.types';
 
-export const DEFAULT_AGENT_CHAT_TOKEN_BUDGET = 8000;
+// UI badge budget — calibrated for "your conversation is getting long, consider
+// compressing or starting a new chat." NOT the model's context-window ceiling
+// (which is tracked separately by the orchestrator). Kept in sync with the
+// server-side default in agentic-chat-v2/context-usage.ts.
+export const DEFAULT_AGENT_CHAT_TOKEN_BUDGET = 15000;
 
 export function formatTime(date: Date): string {
 	return date.toLocaleTimeString('en-US', {

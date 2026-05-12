@@ -17,6 +17,9 @@
 	import { Sparkles, MessageCircle, Zap, AlignLeft } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
+	import FormField from '$lib/components/ui/FormField.svelte';
+	import TabHeader from './_shared/TabHeader.svelte';
+	import SettingsCard from './_shared/SettingsCard.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { requireApiData } from '$lib/utils/api-client-helpers';
 	import type {
@@ -194,174 +197,112 @@
 	}
 </script>
 
+{#snippet OptionCard(
+	option: { id: string; title: string; description: string },
+	isSelected: boolean,
+	onSelect: () => void
+)}
+	<button
+		type="button"
+		onclick={onSelect}
+		disabled={isDisabled}
+		class="text-left p-3 rounded-lg border transition-all duration-200 pressable {isSelected
+			? 'border-accent bg-accent/5 shadow-ink'
+			: 'border-border bg-card hover:border-accent/50 hover:shadow-ink'} {isDisabled
+			? 'opacity-60 cursor-not-allowed'
+			: ''}"
+		aria-pressed={isSelected}
+	>
+		<h4 class="text-sm font-semibold text-foreground mb-1">{option.title}</h4>
+		<p class="text-xs text-muted-foreground leading-relaxed">
+			{option.description}
+		</p>
+	</button>
+{/snippet}
+
 <div class="space-y-4 sm:space-y-5">
-	<!-- Tab Header -->
-	<div class="flex items-start gap-3">
-		<div
-			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
-		>
-			<Sparkles class="w-5 h-5 text-accent-foreground" />
-		</div>
-		<div class="flex-1 min-w-0">
-			<h2 class="text-lg sm:text-xl font-bold text-foreground">AI Preferences</h2>
-			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
-				Control how BuildOS communicates and plans with you.
-			</p>
-		</div>
-	</div>
+	<TabHeader
+		icon={Sparkles}
+		title="AI Preferences"
+		description="Control how BuildOS communicates and plans with you."
+	/>
 
 	{#if isLoading}
 		<div class="bg-card border border-border rounded-lg shadow-ink p-6 text-center">
 			<p class="text-sm text-muted-foreground">Loading preferences...</p>
 		</div>
 	{:else}
-		<!-- Communication Style -->
-		<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
-			<div class="px-4 sm:px-5 py-3 border-b border-border">
-				<h3
-					class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
-				>
-					<MessageCircle class="w-4 h-4 text-accent" />
-					Communication style
-				</h3>
-				<p class="text-xs text-muted-foreground mt-0.5">
-					Set the tone for chat responses, brief summaries, and planning guidance.
-				</p>
-			</div>
-			<div class="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-3">
-				{#each communicationOptions as option}
-					{@const isSelected = communicationStyle === option.id}
-					<button
-						type="button"
-						onclick={() => (communicationStyle = option.id)}
-						disabled={isDisabled}
-						class="text-left p-3 rounded-lg border transition-all duration-200 pressable {isSelected
-							? 'border-accent bg-accent/5 shadow-ink'
-							: 'border-border bg-card hover:border-accent/50 hover:shadow-ink'} {isDisabled
-							? 'opacity-60 cursor-not-allowed'
-							: ''}"
-						aria-pressed={isSelected}
-					>
-						<h4 class="text-sm font-semibold text-foreground mb-1">{option.title}</h4>
-						<p class="text-xs text-muted-foreground leading-relaxed">
-							{option.description}
-						</p>
-					</button>
-				{/each}
-			</div>
-		</div>
+		<SettingsCard
+			title="Communication style"
+			description="Set the tone for chat responses, brief summaries, and planning guidance."
+			icon={MessageCircle}
+			labelledById="comm-style-heading"
+			bodyClass="grid grid-cols-1 md:grid-cols-3 gap-3"
+		>
+			{#each communicationOptions as option}
+				{@render OptionCard(
+					option,
+					communicationStyle === option.id,
+					() => (communicationStyle = option.id)
+				)}
+			{/each}
+		</SettingsCard>
 
-		<!-- Proactivity -->
-		<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
-			<div class="px-4 sm:px-5 py-3 border-b border-border">
-				<h3
-					class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
-				>
-					<Zap class="w-4 h-4 text-accent" />
-					Proactivity
-				</h3>
-				<p class="text-xs text-muted-foreground mt-0.5">
-					Decide how much BuildOS should push beyond what you ask.
-				</p>
-			</div>
-			<div class="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-3">
-				{#each proactivityOptions as option}
-					{@const isSelected = proactivityLevel === option.id}
-					<button
-						type="button"
-						onclick={() => (proactivityLevel = option.id)}
-						disabled={isDisabled}
-						class="text-left p-3 rounded-lg border transition-all duration-200 pressable {isSelected
-							? 'border-accent bg-accent/5 shadow-ink'
-							: 'border-border bg-card hover:border-accent/50 hover:shadow-ink'} {isDisabled
-							? 'opacity-60 cursor-not-allowed'
-							: ''}"
-						aria-pressed={isSelected}
-					>
-						<h4 class="text-sm font-semibold text-foreground mb-1">{option.title}</h4>
-						<p class="text-xs text-muted-foreground leading-relaxed">
-							{option.description}
-						</p>
-					</button>
-				{/each}
-			</div>
-		</div>
+		<SettingsCard
+			title="Proactivity"
+			description="Decide how much BuildOS should push beyond what you ask."
+			icon={Zap}
+			labelledById="proactivity-heading"
+			bodyClass="grid grid-cols-1 md:grid-cols-3 gap-3"
+		>
+			{#each proactivityOptions as option}
+				{@render OptionCard(
+					option,
+					proactivityLevel === option.id,
+					() => (proactivityLevel = option.id)
+				)}
+			{/each}
+		</SettingsCard>
 
-		<!-- Response Length -->
-		<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
-			<div class="px-4 sm:px-5 py-3 border-b border-border">
-				<h3
-					class="text-sm sm:text-base font-semibold text-foreground flex items-center gap-2"
-				>
-					<AlignLeft class="w-4 h-4 text-accent" />
-					Response length
-				</h3>
-				<p class="text-xs text-muted-foreground mt-0.5">
-					Choose how detailed responses should be by default.
-				</p>
-			</div>
-			<div class="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-3 gap-3">
-				{#each responseLengthOptions as option}
-					{@const isSelected = responseLength === option.id}
-					<button
-						type="button"
-						onclick={() => (responseLength = option.id)}
-						disabled={isDisabled}
-						class="text-left p-3 rounded-lg border transition-all duration-200 pressable {isSelected
-							? 'border-accent bg-accent/5 shadow-ink'
-							: 'border-border bg-card hover:border-accent/50 hover:shadow-ink'} {isDisabled
-							? 'opacity-60 cursor-not-allowed'
-							: ''}"
-						aria-pressed={isSelected}
-					>
-						<h4 class="text-sm font-semibold text-foreground mb-1">{option.title}</h4>
-						<p class="text-xs text-muted-foreground leading-relaxed">
-							{option.description}
-						</p>
-					</button>
-				{/each}
-			</div>
-		</div>
+		<SettingsCard
+			title="Response length"
+			description="Choose how detailed responses should be by default."
+			icon={AlignLeft}
+			labelledById="response-length-heading"
+			bodyClass="grid grid-cols-1 md:grid-cols-3 gap-3"
+		>
+			{#each responseLengthOptions as option}
+				{@render OptionCard(
+					option,
+					responseLength === option.id,
+					() => (responseLength = option.id)
+				)}
+			{/each}
+		</SettingsCard>
 
-		<!-- Working Context -->
-		<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
-			<div class="px-4 sm:px-5 py-3 border-b border-border">
-				<h3 class="text-sm sm:text-base font-semibold text-foreground">Working context</h3>
-				<p class="text-xs text-muted-foreground mt-0.5">
-					Optional details that help BuildOS tailor examples and recommendations.
-				</p>
-			</div>
-			<div class="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-				<div>
-					<label
-						for="primary-role"
-						class="block text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
-					>
-						Your role
-					</label>
-					<TextInput
-						id="primary-role"
-						bind:value={primaryRole}
-						placeholder="e.g., Product manager, Founder, Student"
-						disabled={isDisabled}
-					/>
-				</div>
-				<div>
-					<label
-						for="domain-context"
-						class="block text-[0.65rem] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
-					>
-						Your domain
-					</label>
-					<TextInput
-						id="domain-context"
-						bind:value={domainContext}
-						placeholder="e.g., B2B SaaS, Healthcare, Creative agency"
-						disabled={isDisabled}
-					/>
-				</div>
-			</div>
-		</div>
+		<SettingsCard
+			title="Working context"
+			description="Optional details that help BuildOS tailor examples and recommendations."
+			labelledById="working-context-heading"
+			bodyClass="grid grid-cols-1 md:grid-cols-2 gap-4"
+		>
+			<FormField label="Your role" labelFor="primary-role">
+				<TextInput
+					id="primary-role"
+					bind:value={primaryRole}
+					placeholder="e.g., Product manager, Founder, Student"
+					disabled={isDisabled}
+				/>
+			</FormField>
+			<FormField label="Your domain" labelFor="domain-context">
+				<TextInput
+					id="domain-context"
+					bind:value={domainContext}
+					placeholder="e.g., B2B SaaS, Healthcare, Creative agency"
+					disabled={isDisabled}
+				/>
+			</FormField>
+		</SettingsCard>
 
 		<div class="flex justify-end">
 			<Button

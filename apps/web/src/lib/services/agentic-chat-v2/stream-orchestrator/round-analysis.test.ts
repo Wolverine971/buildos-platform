@@ -64,6 +64,48 @@ describe('round analysis helpers', () => {
 		});
 	});
 
+	it('uses registry kind so project search counts as a read operation', () => {
+		const pattern = buildRoundToolPattern([
+			createToolCall('search_project', {
+				project_id: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+				query: 'Rod Chamberlin'
+			})
+		]);
+
+		expect(pattern).toEqual({
+			readOps: ['x.search.project'],
+			hasWriteOps: false
+		});
+	});
+
+	it('excludes pure gateway-discovery tools from read-op counting', () => {
+		const pattern = buildRoundToolPattern([
+			createToolCall('tool_search', { query: 'search project' }),
+			createToolCall('tool_schema', { op: 'x.search.project' }),
+			createToolCall('skill_load', { id: 'plan_management' })
+		]);
+
+		expect(pattern).toEqual({
+			readOps: [],
+			hasWriteOps: false
+		});
+	});
+
+	it('still counts real reads in a round that mixes discovery and evidence reads', () => {
+		const pattern = buildRoundToolPattern([
+			createToolCall('tool_search', { query: 'document details' }),
+			createToolCall('search_project', {
+				project_id: '05c40ed8-9dbe-4893-bd64-8aeec90eab40',
+				query: 'Rod Chamberlin'
+			})
+		]);
+
+		expect(pattern).toEqual({
+			readOps: ['x.search.project'],
+			hasWriteOps: false
+		});
+	});
+
 	it('aggregates required-field failures from validation issues', () => {
 		const toolCall = createToolCall('update_onto_task', {});
 		const issues: ToolValidationIssue[] = [

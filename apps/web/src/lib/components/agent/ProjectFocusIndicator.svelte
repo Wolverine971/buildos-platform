@@ -36,7 +36,7 @@
 	const FocusIcon = $derived(focus ? focusIcons[focus.focusType] || Search : Search);
 
 	const focusLabelMap: Partial<Record<ProjectFocus['focusType'], string>> = {
-		'project-wide': 'Project-wide view',
+		'project-wide': 'Project-wide',
 		task: 'Task focus',
 		goal: 'Goal focus',
 		plan: 'Plan focus',

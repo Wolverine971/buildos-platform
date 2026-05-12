@@ -8,6 +8,8 @@
 	import { dev } from '$app/environment';
 	import VoiceNoteGroupPanel from '$lib/components/voice-notes/VoiceNoteGroupPanel.svelte';
 	import type { VoiceNote } from '$lib/types/voice-notes';
+	import type { ChatContextType } from '@buildos/shared-types';
+	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 
 	interface Props {
 		messages: UIMessage[];
@@ -18,6 +20,8 @@
 		voiceNotesByGroupId?: Record<string, VoiceNote[]>;
 		onDeleteVoiceNote?: (groupId: string, noteId: string) => void;
 		onSelectSuggestion?: (text: string) => void;
+		selectedContextType?: ChatContextType | null;
+		resolvedProjectFocus?: ProjectFocus | null;
 	}
 
 	let {
@@ -28,16 +32,72 @@
 		container = $bindable(),
 		voiceNotesByGroupId = {},
 		onDeleteVoiceNote,
-		onSelectSuggestion
+		onSelectSuggestion,
+		selectedContextType = null,
+		resolvedProjectFocus = null
 	}: Props = $props();
 
 	const proseClasses = getProseClasses('sm');
 
-	const emptyStateSuggestions = [
-		'Summarize where this stands',
-		'Draft the next update',
-		'What should we do next?'
-	];
+	// Per-context suggestion sets shown in the empty-state card.
+	// Project context branches further on focus type so entity-focused chats
+	// get prompts that operate on the focused entity rather than the project.
+	const emptyStateSuggestions = $derived.by<string[]>(() => {
+		const focusType = resolvedProjectFocus?.focusType ?? null;
+		const focusName = resolvedProjectFocus?.focusEntityName ?? null;
+
+		switch (selectedContextType) {
+			case 'global':
+				return [
+					'What should I work on today?',
+					'Summarize what is in flight across my projects',
+					'Help me plan this week'
+				];
+			case 'project_create':
+				return [
+					'I have a rough idea for a project',
+					'Help me structure a vague goal',
+					'Turn this brain dump into a project'
+				];
+			case 'project':
+				if (focusType && focusType !== 'project-wide' && focusName) {
+					return [
+						`Tell me about ${focusName}`,
+						`What needs to happen next on ${focusName}?`,
+						`Update ${focusName}`
+					];
+				}
+				return [
+					'Summarize where this project stands',
+					'Draft the next update',
+					'What should we do next?'
+				];
+			case 'calendar':
+				return [
+					"What's on my calendar this week?",
+					'Find time for a deep-work block',
+					'Reschedule low-priority items'
+				];
+			case 'daily_brief':
+				return [
+					"Summarize today's brief",
+					'What did I miss?',
+					'What should I tackle first?'
+				];
+			case 'daily_brief_update':
+				return [
+					'Add more on a specific project',
+					'Reduce noise in my brief',
+					'Drop reminders I no longer need'
+				];
+			default:
+				return [
+					'Summarize where this stands',
+					'Draft the next update',
+					'What should we do next?'
+				];
+		}
+	});
 
 	const USER_MESSAGE_PREVIEW_LINES = 10;
 	const USER_MESSAGE_COLLAPSE_CHAR_THRESHOLD = 800;
@@ -85,21 +145,20 @@
 	style="overflow-anchor: none; -webkit-overflow-scrolling: touch;"
 >
 	{#if messages.length === 0}
-		<!-- INKPRINT empty state card with Bloom texture -->
+		<!-- INKPRINT empty state card with Bloom texture (creation/new) -->
 		<div
 			class="rounded-lg border border-dashed border-border bg-card p-3 tx tx-bloom tx-weak shadow-ink sm:p-4"
 		>
-			<div class="space-y-2">
+			<div class="space-y-2.5">
 				<!-- INKPRINT micro-label heading -->
 				<p class="text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-accent">
-					READY TO OPERATE
+					New chat · {displayContextLabel}
 				</p>
 				<!-- Body text -->
-				<p class="text-sm font-medium leading-relaxed text-muted-foreground">
-					Ask BuildOS to plan, explain, or take the next step for
-					{displayContextLabel.toLowerCase()}.
+				<p class="text-sm font-medium leading-relaxed text-foreground">
+					Ask BuildOS to plan, explain, or take the next step — or try one of these:
 				</p>
-				<!-- Suggestion buttons: prefill the composer on click (Principle 1: real affordances) -->
+				<!-- Suggestion buttons: prefill the composer on click -->
 				<ul class="space-y-1.5">
 					{#each emptyStateSuggestions as suggestion}
 						<li>

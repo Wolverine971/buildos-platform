@@ -5,7 +5,11 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
+	import TabNav from '$lib/components/ui/TabNav.svelte';
+	import type { Tab as TabNavTab } from '$lib/components/ui/TabNav.svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
+	import TabHeader from './_shared/TabHeader.svelte';
+	import SettingsCard from './_shared/SettingsCard.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 
 	interface Props {
@@ -285,23 +289,20 @@
 		errors = [];
 		successMessage = '';
 	}
+
+	const sectionTabs: TabNavTab[] = [
+		{ id: 'profile', label: 'Profile', icon: User },
+		{ id: 'password', label: 'Password', icon: Lock },
+		{ id: 'danger', label: 'Delete', icon: Trash2 }
+	];
 </script>
 
 <div class="space-y-4 sm:space-y-5">
-	<!-- Tab Header -->
-	<div class="flex items-start gap-3">
-		<div
-			class="flex items-center justify-center w-10 h-10 rounded-lg bg-accent shadow-ink flex-shrink-0"
-		>
-			<User class="w-5 h-5 text-accent-foreground" />
-		</div>
-		<div class="flex-1 min-w-0">
-			<h2 class="text-lg sm:text-xl font-bold text-foreground">Account</h2>
-			<p class="text-xs sm:text-sm text-muted-foreground mt-0.5">
-				Manage your profile, password, and public URL.
-			</p>
-		</div>
-	</div>
+	<TabHeader
+		icon={User}
+		title="Account"
+		description="Manage your profile, password, and public URL."
+	/>
 
 	<!-- Success Message -->
 	{#if successMessage}
@@ -331,347 +332,307 @@
 		</div>
 	{/if}
 
-	<!-- Section Buttons -->
-	<div class="bg-card rounded-lg shadow-ink border border-border tx tx-frame tx-weak">
-		<div class="border-b border-border">
-			<nav
-				class="flex overflow-x-auto px-3 sm:px-5 -mb-px scrollbar-hide"
-				aria-label="Account sections"
-			>
-				<Button
-					onclick={() => switchSection('profile')}
-					disabled={loading}
-					variant="ghost"
-					size="sm"
-					class="py-2.5 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0
-					{activeSection === 'profile'
-						? 'border-accent text-accent'
-						: 'border-transparent text-muted-foreground hover:text-foreground'}"
-					icon={User}
-				>
-					<span class="hidden sm:inline">Profile</span>
-					<span class="sm:hidden">Profile</span>
-				</Button>
-				<Button
-					onclick={() => switchSection('password')}
-					disabled={loading}
-					variant="ghost"
-					size="sm"
-					class="py-2.5 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0 ml-3 sm:ml-5
-					{activeSection === 'password'
-						? 'border-accent text-accent'
-						: 'border-transparent text-muted-foreground hover:text-foreground'}"
-					icon={Lock}
-				>
-					<span class="hidden sm:inline">Password</span>
-					<span class="sm:hidden">Password</span>
-				</Button>
-				<Button
-					onclick={() => switchSection('danger')}
-					disabled={loading}
-					variant="ghost"
-					size="sm"
-					class="py-2.5 px-2 sm:px-3 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap focus:ring-0 focus:ring-offset-0 flex-shrink-0 ml-3 sm:ml-5
-					{activeSection === 'danger'
-						? 'border-red-500 text-red-500'
-						: 'border-transparent text-muted-foreground hover:text-foreground'}"
-					icon={Trash2}
-				>
-					<span class="hidden sm:inline">Delete</span>
-					<span class="sm:hidden">Delete</span>
-				</Button>
-			</nav>
-		</div>
+	<!-- Sub-tab navigation (Profile / Password / Delete) -->
+	<TabNav
+		tabs={sectionTabs}
+		activeTab={activeSection}
+		onchange={(event) => switchSection(event.detail as 'profile' | 'password' | 'danger')}
+		ariaLabel="Account sections"
+	/>
 
-		<!-- Section Content -->
-		<div class="p-4 sm:p-5">
-			<!-- Profile Section -->
-			{#if activeSection === 'profile'}
-				<div class="space-y-4">
-					<div>
-						<h3 class="text-sm sm:text-base font-semibold text-foreground mb-0.5">
-							Profile Information
-						</h3>
-						<p class="text-xs text-muted-foreground">Update your account information</p>
-					</div>
+	<!-- Profile Section: two stacked cards -->
+	{#if activeSection === 'profile'}
+		<SettingsCard
+			title="Profile Information"
+			description="Update your name and email."
+			labelledById="profile-info-heading"
+		>
+			<div class="space-y-4">
+				<FormField label="Full Name" labelFor="name">
+					<TextInput
+						id="name"
+						bind:value={profileForm.name}
+						type="text"
+						inputmode="text"
+						enterkeyhint="next"
+						placeholder="Enter your full name"
+						disabled={loading}
+						size="md"
+					/>
+				</FormField>
 
-					<div class="space-y-4">
-						<FormField label="Full Name" labelFor="name">
-							<TextInput
-								id="name"
-								bind:value={profileForm.name}
-								type="text"
-								inputmode="text"
-								enterkeyhint="next"
-								placeholder="Enter your full name"
-								disabled={loading}
-								size="md"
-							/>
-						</FormField>
+				<FormField
+					label="Email Address"
+					labelFor="email"
+					hint="Changing your email will require confirmation"
+				>
+					<TextInput
+						id="email"
+						bind:value={profileForm.email}
+						type="email"
+						inputmode="email"
+						enterkeyhint="done"
+						placeholder="Enter your email address"
+						disabled={loading}
+						size="md"
+					/>
+				</FormField>
 
-						<FormField
-							label="Email Address"
-							labelFor="email"
-							hint="Changing your email will require confirmation"
+				<div class="flex justify-end">
+					<Button
+						onclick={updateProfile}
+						disabled={loading}
+						variant="primary"
+						size="sm"
+						{loading}
+						class="shadow-ink pressable"
+					>
+						{loading ? 'Updating...' : 'Update Profile'}
+					</Button>
+				</div>
+			</div>
+		</SettingsCard>
+
+		<SettingsCard
+			title="Your public URL"
+			description="The first segment of every published project doc."
+			labelledById="public-url-heading"
+		>
+			<div class="space-y-4">
+				<p class="text-xs text-muted-foreground leading-relaxed">
+					Currently published at
+					<span class="font-mono text-foreground"
+						>build-os.com/p/{usernameValue || derivedFallback}/…</span
+					>
+				</p>
+
+				<FormField
+					label="Username"
+					labelFor="username"
+					hint="Lowercase letters, numbers, hyphens. 3–24 characters."
+				>
+					<div
+						class="flex items-stretch rounded-md border border-border bg-background overflow-hidden focus-within:border-accent focus-within:ring-1 focus-within:ring-accent"
+					>
+						<span
+							class="inline-flex items-center px-3 text-xs font-mono text-muted-foreground bg-muted/40 border-r border-border whitespace-nowrap"
 						>
-							<TextInput
-								id="email"
-								bind:value={profileForm.email}
-								type="email"
-								inputmode="email"
-								enterkeyhint="done"
-								placeholder="Enter your email address"
-								disabled={loading}
-								size="md"
-							/>
-						</FormField>
+							build-os.com/p/
+						</span>
+						<input
+							id="username"
+							type="text"
+							bind:value={usernameDraft}
+							placeholder={derivedFallback}
+							minlength="3"
+							maxlength="24"
+							pattern={'^[a-z0-9]+(-[a-z0-9]+)*$'}
+							class="flex-1 min-w-0 bg-transparent px-3 py-2 text-sm font-mono focus:outline-none disabled:opacity-50"
+							disabled={usernameLoading}
+							aria-label="Public username"
+						/>
 					</div>
+				</FormField>
 
-					<div class="flex justify-end">
-						<Button
-							onclick={updateProfile}
+				{#if usernameError}
+					<p class="text-xs text-destructive">{usernameError}</p>
+				{/if}
+
+				<div class="flex flex-wrap items-center justify-end gap-3">
+					{#if usernameValue}
+						<button
+							type="button"
+							onclick={clearUsername}
+							disabled={usernameLoading}
+							class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 disabled:opacity-50 mr-auto"
+						>
+							Clear (revert to derived)
+						</button>
+					{/if}
+					<Button
+						type="button"
+						onclick={saveUsername}
+						disabled={usernameLoading ||
+							!usernameDraft.trim() ||
+							usernameDraft.trim() === (usernameValue ?? '')}
+						variant="primary"
+						size="sm"
+						loading={usernameLoading}
+						class="shadow-ink pressable"
+					>
+						{usernameValue ? 'Update username' : 'Claim username'}
+					</Button>
+				</div>
+			</div>
+		</SettingsCard>
+	{/if}
+
+	<!-- Password Section -->
+	{#if activeSection === 'password'}
+		<SettingsCard
+			title="Change Password"
+			description="Update your password to keep your account secure."
+			labelledById="change-password-heading"
+		>
+			<div class="space-y-4">
+				<FormField
+					label="Current Password"
+					labelFor="currentPassword"
+					hint="Enter your current password to confirm your identity"
+					required={true}
+				>
+					<div class="relative">
+						<TextInput
+							id="currentPassword"
+							bind:value={passwordForm.currentPassword}
+							type={showCurrentPassword ? 'text' : 'password'}
+							autocomplete="current-password"
+							enterkeyhint="next"
+							placeholder="Enter current password"
 							disabled={loading}
-							variant="primary"
-							size="sm"
-							{loading}
-							class="shadow-ink pressable"
+							size="md"
+						/>
+						<button
+							type="button"
+							onclick={() => (showCurrentPassword = !showCurrentPassword)}
+							class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+							aria-label={showCurrentPassword
+								? 'Hide current password'
+								: 'Show current password'}
 						>
-							{loading ? 'Updating...' : 'Update Profile'}
-						</Button>
-					</div>
-
-					<!-- Public URL / Username -->
-					<div class="mt-4 border-t border-border pt-4">
-						<h4 class="text-sm font-semibold text-foreground">Your public URL</h4>
-						<p class="mt-0.5 text-xs text-muted-foreground leading-relaxed">
-							When you publish a project doc, the link uses your username as the first
-							segment:
-							<span class="font-mono text-foreground"
-								>build-os.com/p/{usernameValue || derivedFallback}/…</span
-							>
-						</p>
-						<div class="mt-3 space-y-2">
-							<div class="flex flex-wrap items-stretch gap-2">
-								<div
-									class="inline-flex items-center rounded-md border border-border bg-muted/40 px-2 text-[12px] font-mono text-muted-foreground"
-								>
-									build-os.com/p/
-								</div>
-								<input
-									type="text"
-									bind:value={usernameDraft}
-									placeholder={derivedFallback}
-									minlength="3"
-									maxlength="24"
-									pattern={'^[a-z0-9]+(-[a-z0-9]+)*$'}
-									class="flex-1 min-w-0 rounded-md border border-border bg-background px-2 py-1.5 text-sm font-mono focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
-									disabled={usernameLoading}
-									aria-label="Public username"
-								/>
-							</div>
-							{#if usernameError}
-								<p class="text-xs text-destructive">{usernameError}</p>
+							{#if showCurrentPassword}
+								<EyeOff class="w-4 h-4" />
+							{:else}
+								<Eye class="w-4 h-4" />
 							{/if}
-							<div class="flex flex-wrap items-center gap-2">
-								<Button
-									type="button"
-									onclick={saveUsername}
-									disabled={usernameLoading ||
-										!usernameDraft.trim() ||
-										usernameDraft.trim() === (usernameValue ?? '')}
-									variant="primary"
-									size="sm"
-									loading={usernameLoading}
-								>
-									{usernameValue ? 'Update username' : 'Claim username'}
-								</Button>
-								{#if usernameValue}
-									<button
-										type="button"
-										onclick={clearUsername}
-										disabled={usernameLoading}
-										class="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 disabled:opacity-50"
-									>
-										Clear (revert to derived)
-									</button>
-								{/if}
-							</div>
-						</div>
+						</button>
 					</div>
-				</div>
-			{/if}
+				</FormField>
 
-			<!-- Password Section -->
-			{#if activeSection === 'password'}
-				<div class="space-y-4">
-					<div>
-						<h3 class="text-sm sm:text-base font-semibold text-foreground mb-0.5">
-							Change Password
-						</h3>
-						<p class="text-xs text-muted-foreground">
-							Update your password to keep your account secure
-						</p>
-					</div>
-
-					<div class="space-y-4">
-						<FormField
-							label="Current Password"
-							labelFor="currentPassword"
-							hint="Enter your current password to confirm your identity"
-							required={true}
-						>
-							<div class="relative">
-								<TextInput
-									id="currentPassword"
-									bind:value={passwordForm.currentPassword}
-									type={showCurrentPassword ? 'text' : 'password'}
-									autocomplete="current-password"
-									enterkeyhint="next"
-									placeholder="Enter current password"
-									disabled={loading}
-									size="md"
-								/>
-								<button
-									type="button"
-									onclick={() => (showCurrentPassword = !showCurrentPassword)}
-									class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-								>
-									{#if showCurrentPassword}
-										<EyeOff class="w-4 h-4" />
-									{:else}
-										<Eye class="w-4 h-4" />
-									{/if}
-								</button>
-							</div>
-						</FormField>
-
-						<FormField
-							label="New Password"
-							labelFor="newPassword"
-							hint="Must be at least 6 characters long"
-							required={true}
-						>
-							<div class="relative">
-								<TextInput
-									id="newPassword"
-									bind:value={passwordForm.newPassword}
-									type={showNewPassword ? 'text' : 'password'}
-									autocomplete="new-password"
-									enterkeyhint="next"
-									placeholder="Enter new password"
-									disabled={loading}
-									size="md"
-								/>
-								<button
-									type="button"
-									onclick={() => (showNewPassword = !showNewPassword)}
-									class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-								>
-									{#if showNewPassword}
-										<EyeOff class="w-4 h-4" />
-									{:else}
-										<Eye class="w-4 h-4" />
-									{/if}
-								</button>
-							</div>
-						</FormField>
-
-						<FormField
-							label="Confirm New Password"
-							labelFor="confirmPassword"
-							required={true}
-						>
-							<div class="relative">
-								<TextInput
-									id="confirmPassword"
-									bind:value={passwordForm.confirmPassword}
-									type={showConfirmPassword ? 'text' : 'password'}
-									autocomplete="new-password"
-									enterkeyhint="done"
-									placeholder="Confirm new password"
-									disabled={loading}
-									size="md"
-								/>
-								<button
-									type="button"
-									onclick={() => (showConfirmPassword = !showConfirmPassword)}
-									class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-								>
-									{#if showConfirmPassword}
-										<EyeOff class="w-4 h-4" />
-									{:else}
-										<Eye class="w-4 h-4" />
-									{/if}
-								</button>
-							</div>
-						</FormField>
-					</div>
-
-					<div class="flex justify-end">
-						<Button
-							onclick={updatePassword}
-							disabled={loading}
-							variant="primary"
-							size="sm"
-							{loading}
-							class="shadow-ink pressable"
-						>
-							{loading ? 'Updating...' : 'Update Password'}
-						</Button>
-					</div>
-				</div>
-			{/if}
-
-			<!-- Danger Zone Section -->
-			{#if activeSection === 'danger'}
-				<div
-					class="bg-red-500/10 border border-red-500/30 rounded-lg p-4 sm:p-5 tx tx-static tx-weak"
+				<FormField
+					label="New Password"
+					labelFor="newPassword"
+					hint="Must be at least 6 characters long"
+					required={true}
 				>
-					<div class="flex items-center gap-2 mb-3">
-						<Trash2 class="w-4 h-4 text-red-500" />
-						<h3 class="text-sm sm:text-base font-semibold text-foreground">
-							Delete Account
-						</h3>
+					<div class="relative">
+						<TextInput
+							id="newPassword"
+							bind:value={passwordForm.newPassword}
+							type={showNewPassword ? 'text' : 'password'}
+							autocomplete="new-password"
+							enterkeyhint="next"
+							placeholder="Enter new password"
+							disabled={loading}
+							size="md"
+						/>
+						<button
+							type="button"
+							onclick={() => (showNewPassword = !showNewPassword)}
+							class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+							aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+						>
+							{#if showNewPassword}
+								<EyeOff class="w-4 h-4" />
+							{:else}
+								<Eye class="w-4 h-4" />
+							{/if}
+						</button>
 					</div>
+				</FormField>
 
-					<div class="bg-card rounded-lg p-3 border border-red-500/30">
-						<div class="flex items-start gap-2.5">
-							<TriangleAlert class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-							<div class="text-xs sm:text-sm">
-								<p class="text-foreground font-medium mb-1">
-									This action cannot be undone
-								</p>
-								<p class="text-muted-foreground">
-									Deleting your account permanently removes:
-								</p>
-								<ul
-									class="list-disc list-inside mt-1 text-muted-foreground space-y-0.5"
-								>
-									<li>All projects and tasks</li>
-									<li>Daily briefs and project context</li>
-									<li>Calendar integration settings</li>
-									<li>Subscription and billing data</li>
-								</ul>
-							</div>
+				<FormField label="Confirm New Password" labelFor="confirmPassword" required={true}>
+					<div class="relative">
+						<TextInput
+							id="confirmPassword"
+							bind:value={passwordForm.confirmPassword}
+							type={showConfirmPassword ? 'text' : 'password'}
+							autocomplete="new-password"
+							enterkeyhint="done"
+							placeholder="Confirm new password"
+							disabled={loading}
+							size="md"
+						/>
+						<button
+							type="button"
+							onclick={() => (showConfirmPassword = !showConfirmPassword)}
+							class="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+							aria-label={showConfirmPassword
+								? 'Hide password confirmation'
+								: 'Show password confirmation'}
+						>
+							{#if showConfirmPassword}
+								<EyeOff class="w-4 h-4" />
+							{:else}
+								<Eye class="w-4 h-4" />
+							{/if}
+						</button>
+					</div>
+				</FormField>
+
+				<div class="flex justify-end">
+					<Button
+						onclick={updatePassword}
+						disabled={loading}
+						variant="primary"
+						size="sm"
+						{loading}
+						class="shadow-ink pressable"
+					>
+						{loading ? 'Updating...' : 'Update Password'}
+					</Button>
+				</div>
+			</div>
+		</SettingsCard>
+	{/if}
+
+	<!-- Danger Zone Section -->
+	{#if activeSection === 'danger'}
+		<SettingsCard
+			title="Delete Account"
+			description="Permanently remove your account and all data."
+			icon={Trash2}
+			variant="danger"
+			labelledById="delete-account-heading"
+		>
+			<div class="space-y-4">
+				<div class="bg-card rounded-lg p-3 border border-red-500/30">
+					<div class="flex items-start gap-2.5">
+						<TriangleAlert class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+						<div class="text-xs sm:text-sm">
+							<p class="text-foreground font-medium mb-1">
+								This action cannot be undone
+							</p>
+							<p class="text-muted-foreground">
+								Deleting your account permanently removes:
+							</p>
+							<ul
+								class="list-disc list-inside mt-1 text-muted-foreground space-y-0.5"
+							>
+								<li>All projects and tasks</li>
+								<li>Daily briefs and project context</li>
+								<li>Calendar integration settings</li>
+								<li>Subscription and billing data</li>
+							</ul>
 						</div>
 					</div>
-
-					<div class="flex justify-end mt-4">
-						<Button
-							onclick={() => (showDeleteConfirmation = true)}
-							disabled={loading}
-							variant="outline"
-							size="sm"
-							class="text-red-500 hover:text-white hover:bg-red-600 border-red-500 shadow-ink pressable"
-							icon={Trash2}
-						>
-							Delete My Account
-						</Button>
-					</div>
 				</div>
-			{/if}
-		</div>
-	</div>
+
+				<div class="flex justify-end">
+					<Button
+						onclick={() => (showDeleteConfirmation = true)}
+						disabled={loading}
+						variant="outline"
+						size="sm"
+						class="text-red-500 hover:text-white hover:bg-red-600 border-red-500 shadow-ink pressable"
+						icon={Trash2}
+					>
+						Delete My Account
+					</Button>
+				</div>
+			</div>
+		</SettingsCard>
+	{/if}
 </div>
 
 <!-- Delete Confirmation Modal -->
