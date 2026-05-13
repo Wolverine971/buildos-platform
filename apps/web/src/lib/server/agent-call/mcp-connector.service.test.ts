@@ -10,7 +10,9 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 		expect(response.headers.get('WWW-Authenticate')).toContain(
 			'https://build-os.com/.well-known/oauth-protected-resource/mcp/buildos'
 		);
-		expect(response.headers.get('WWW-Authenticate')).toContain('scope="buildos.read"');
+		expect(response.headers.get('WWW-Authenticate')).toContain(
+			'scope="buildos.read offline_access"'
+		);
 	});
 
 	it('returns an OAuth challenge for JSON-RPC calls without a bearer token', async () => {
@@ -29,7 +31,9 @@ describe('BuildOS MCP connector endpoint helpers', () => {
 		});
 
 		expect(response.status).toBe(401);
-		expect(response.headers.get('WWW-Authenticate')).toContain('scope="buildos.read"');
+		expect(response.headers.get('WWW-Authenticate')).toContain(
+			'scope="buildos.read offline_access"'
+		);
 		const body = await response.json();
 		expect(body.error.code).toBe(-32001);
 	});

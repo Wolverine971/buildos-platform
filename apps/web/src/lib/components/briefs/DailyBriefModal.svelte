@@ -58,6 +58,9 @@
 	let emailOptInLoading = $state(false);
 	let audioPollTimer: ReturnType<typeof setInterval> | null = null;
 	let audioPollBriefId: string | null = null;
+	let audioRetrying = $state(false);
+
+	const STUCK_AUDIO_MS = 10 * 60 * 1000;
 
 	// Regenerate state
 	let isRegenerating = $state(false);
@@ -73,6 +76,18 @@
 	// Subscribe to streaming status for regeneration
 	let generationStatus = $derived($streamingStatus);
 	let completionEvent = $derived($briefGenerationCompleted);
+	let canRetryAudio = $derived.by(() => {
+		const current = displayBrief;
+		if (!current) return false;
+		if (current.audio_status === 'failed') return true;
+		if (current.audio_status !== 'generating') return false;
+
+		const startedAt = current.audio_generation_started_at
+			? Date.parse(current.audio_generation_started_at)
+			: NaN;
+
+		return !Number.isFinite(startedAt) || Date.now() - startedAt > STUCK_AUDIO_MS;
+	});
 
 	// Fetch brief when briefDate changes
 	$effect(() => {
@@ -170,6 +185,33 @@
 			audioPollTimer = null;
 		}
 		audioPollBriefId = null;
+	}
+
+	async function retryAudioNarration() {
+		if (!displayBrief) return;
+
+		audioRetrying = true;
+		try {
+			const response = await fetch(`/api/daily-briefs/${displayBrief.id}/audio-request`, {
+				method: 'POST'
+			});
+			const result = await response.json().catch(() => null);
+
+			if (!response.ok || !result?.success) {
+				throw new Error(result?.message || 'Failed to queue audio narration');
+			}
+
+			if (result.data?.brief) {
+				fetchedBrief = result.data.brief;
+			}
+			toastService.success('Audio narration queued');
+		} catch (err) {
+			toastService.error(
+				err instanceof Error ? err.message : 'Failed to queue audio narration'
+			);
+		} finally {
+			audioRetrying = false;
+		}
 	}
 
 	// Load preferences when modal opens
@@ -389,17 +431,41 @@
 							/>
 						{:else if displayBrief.audio_status === 'pending' || displayBrief.audio_status === 'generating'}
 							<div
-								class="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground"
+								class="flex flex-col gap-3 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
 							>
-								<LoaderCircle class="h-4 w-4 animate-spin text-accent" />
-								<span>Generating audio narration...</span>
+								<div class="flex items-center gap-2">
+									<LoaderCircle class="h-4 w-4 animate-spin text-accent" />
+									<span>Generating audio narration...</span>
+								</div>
+								{#if canRetryAudio}
+									<Button
+										variant="outline"
+										size="sm"
+										icon={RefreshCw}
+										loading={audioRetrying}
+										onclick={retryAudioNarration}
+									>
+										Retry audio
+									</Button>
+								{/if}
 							</div>
 						{:else if displayBrief.audio_status === 'failed'}
 							<div
-								class="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+								class="flex flex-col gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between"
 							>
-								<AlertCircle class="mt-0.5 h-4 w-4 shrink-0" />
-								<span>Audio narration is unavailable.</span>
+								<div class="flex items-start gap-2">
+									<AlertCircle class="mt-0.5 h-4 w-4 shrink-0" />
+									<span>Audio narration is unavailable.</span>
+								</div>
+								<Button
+									variant="outline"
+									size="sm"
+									icon={RefreshCw}
+									loading={audioRetrying}
+									onclick={retryAudioNarration}
+								>
+									Retry audio
+								</Button>
 							</div>
 						{/if}
 					</div>

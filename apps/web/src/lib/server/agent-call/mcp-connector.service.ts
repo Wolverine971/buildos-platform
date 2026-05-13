@@ -44,7 +44,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export function mcpAuthChallengeHeaders(origin: string): Headers {
 	return new Headers({
-		'WWW-Authenticate': `Bearer resource_metadata="${protectedResourceMetadataUrl(origin)}", scope="buildos.read"`,
+		'WWW-Authenticate': `Bearer resource_metadata="${protectedResourceMetadataUrl(origin)}", scope="buildos.read offline_access"`,
 		'Cache-Control': 'no-store',
 		'Access-Control-Allow-Origin': '*'
 	});

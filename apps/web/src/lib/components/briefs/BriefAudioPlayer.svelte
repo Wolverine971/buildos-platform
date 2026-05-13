@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/briefs/BriefAudioPlayer.svelte -->
 <script lang="ts">
-	import { AlertCircle, LoaderCircle, RefreshCw, Volume2 } from 'lucide-svelte';
+	import { AlertCircle, LoaderCircle, Pause, Play, RefreshCw, Volume2 } from 'lucide-svelte';
+	import { tick } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
 	let {
@@ -17,7 +18,9 @@
 
 	let signedUrl = $state<string | null>(null);
 	let isLoading = $state(false);
+	let isPlaying = $state(false);
 	let error = $state<string | null>(null);
+	let audioElement: HTMLAudioElement | null = null;
 	let requestId = 0;
 
 	let formattedDuration = $derived.by(() => {
@@ -37,11 +40,12 @@
 			void loadSignedUrl(id);
 		} else {
 			signedUrl = null;
+			isPlaying = false;
 			error = null;
 		}
 	});
 
-	async function loadSignedUrl(id: string) {
+	async function loadSignedUrl(id: string): Promise<string | null> {
 		const currentRequestId = ++requestId;
 		isLoading = true;
 		error = null;
@@ -55,7 +59,9 @@
 			}
 
 			if (currentRequestId === requestId) {
-				signedUrl = result.data.url;
+				const url = result.data.url as string;
+				signedUrl = url;
+				return url;
 			}
 		} catch (err) {
 			if (currentRequestId === requestId) {
@@ -66,6 +72,26 @@
 			if (currentRequestId === requestId) {
 				isLoading = false;
 			}
+		}
+
+		return null;
+	}
+
+	async function togglePlayback() {
+		if (isPlaying) {
+			audioElement?.pause();
+			return;
+		}
+
+		const url = signedUrl ?? (await loadSignedUrl(briefId));
+		if (!url) return;
+
+		await tick();
+
+		try {
+			await audioElement?.play();
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to play audio';
 		}
 	}
 </script>
@@ -102,6 +128,24 @@
 			</Button>
 		</div>
 	{:else if signedUrl}
-		<audio controls preload="metadata" src={signedUrl} class="block w-full"></audio>
+		<div class="flex flex-col gap-3">
+			<Button
+				variant="primary"
+				size="sm"
+				icon={isPlaying ? Pause : Play}
+				onclick={togglePlayback}
+			>
+				{isPlaying ? 'Pause' : 'Play'}
+			</Button>
+			<audio
+				bind:this={audioElement}
+				preload="metadata"
+				src={signedUrl}
+				class="hidden"
+				onplay={() => (isPlaying = true)}
+				onpause={() => (isPlaying = false)}
+				onended={() => (isPlaying = false)}
+			></audio>
+		</div>
 	{/if}
 </div>

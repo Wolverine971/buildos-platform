@@ -921,10 +921,19 @@ export async function exchangeOAuthAuthorizationCode(params: {
 	if (grant.status !== 'active')
 		throw new OAuthConnectorError('OAuth grant revoked', 400, 'invalid_grant');
 
-	await params.admin
+	const { data: consumedCode, error: consumeCodeError } = await params.admin
 		.from('agent_oauth_authorization_codes')
 		.update({ used_at: new Date().toISOString() })
-		.eq('id', authCode.id);
+		.eq('id', authCode.id)
+		.is('used_at', null)
+		.select('id')
+		.maybeSingle();
+	if (consumeCodeError) {
+		throw new OAuthConnectorError('Failed to consume authorization code', 500, 'server_error');
+	}
+	if (!consumedCode) {
+		throw new OAuthConnectorError('Authorization code already used', 400, 'invalid_grant');
+	}
 
 	const tokens = await issueOAuthTokens({
 		admin: params.admin,
@@ -997,10 +1006,20 @@ export async function exchangeOAuthRefreshToken(params: {
 	if (grant.status !== 'active')
 		throw new OAuthConnectorError('OAuth grant revoked', 400, 'invalid_grant');
 
-	await params.admin
+	const { data: rotatedToken, error: rotateError } = await params.admin
 		.from('agent_oauth_refresh_tokens')
 		.update({ used_at: new Date().toISOString(), revoked_at: new Date().toISOString() })
-		.eq('id', current.id);
+		.eq('id', current.id)
+		.is('used_at', null)
+		.is('revoked_at', null)
+		.select('id')
+		.maybeSingle();
+	if (rotateError) {
+		throw new OAuthConnectorError('Failed to rotate refresh token', 500, 'server_error');
+	}
+	if (!rotatedToken) {
+		throw new OAuthConnectorError('Refresh token is no longer valid', 400, 'invalid_grant');
+	}
 
 	return issueOAuthTokens({
 		admin: params.admin,
@@ -1069,11 +1088,8 @@ export async function revokeOAuthToken(params: {
 
 function bearerTokenFromRequest(request: Request): string | null {
 	const auth = request.headers.get('authorization') ?? '';
-	const [scheme, token] = auth.split(' ');
-	if (scheme !== 'Bearer' || !token?.trim()) {
-		return null;
-	}
-	return token.trim();
+	const match = auth.match(/^Bearer\s+(.+)$/i);
+	return match?.[1]?.trim() || null;
 }
 
 export async function authenticateOAuthMcpRequest(params: {

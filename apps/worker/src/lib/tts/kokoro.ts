@@ -21,6 +21,7 @@ const KOKORO_MODEL_ID =
 	process.env.BRIEF_AUDIO_KOKORO_MODEL || 'onnx-community/Kokoro-82M-v1.0-ONNX';
 const KOKORO_VOICE = process.env.BRIEF_AUDIO_KOKORO_VOICE || 'am_onyx';
 const KOKORO_SPEED = Number(process.env.BRIEF_AUDIO_KOKORO_SPEED || '1');
+const KOKORO_SPLIT_PATTERN = /(?<=[.!?])\s+/u;
 
 let ttsPromise: Promise<KokoroTTS> | null = null;
 
@@ -77,7 +78,8 @@ export async function synthesizeBriefAudio(text: string): Promise<BriefAudioSynt
 
 	for await (const chunk of tts.stream(text, {
 		voice: KOKORO_VOICE,
-		speed: Number.isFinite(KOKORO_SPEED) && KOKORO_SPEED > 0 ? KOKORO_SPEED : 1
+		speed: Number.isFinite(KOKORO_SPEED) && KOKORO_SPEED > 0 ? KOKORO_SPEED : 1,
+		split_pattern: KOKORO_SPLIT_PATTERN
 	})) {
 		const normalized = normalizeRawAudio(chunk.audio as RawAudioLike);
 		if (sampleRate === null) {

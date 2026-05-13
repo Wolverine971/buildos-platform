@@ -489,8 +489,10 @@
 		const currentData = data;
 		if (currentData.projectId === activePageDataProjectId) return;
 		activePageDataProjectId = currentData.projectId;
-		seedCoreProjectData(currentData);
-		startProjectDataLoading(currentData);
+		untrack(() => {
+			seedCoreProjectData(currentData);
+			startProjectDataLoading(currentData);
+		});
 	});
 
 	// ============================================================

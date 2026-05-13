@@ -1,7 +1,7 @@
 // apps/worker/src/lib/tts/textCleanup.ts
 import { stripMarkdown } from '../utils/markdown';
 
-const DEFAULT_MAX_NARRATION_CHARS = 7000;
+const DEFAULT_MAX_NARRATION_CHARS = 1800;
 
 export interface BriefNarrationInput {
 	briefDate: string;
@@ -52,7 +52,7 @@ function truncateAtSentence(text: string, maxChars: number): string {
 }
 
 export function buildBriefNarrationText(input: BriefNarrationInput): string {
-	const source = input.executiveSummary || input.llmAnalysis || '';
+	const source = input.llmAnalysis || input.executiveSummary || '';
 	const summary = normalizeForSpeech(stripMarkdown(source));
 	const priorityActions = (input.priorityActions || [])
 		.map((action) => normalizeForSpeech(stripMarkdown(action)))

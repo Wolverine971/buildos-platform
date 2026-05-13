@@ -40,7 +40,6 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
-	import CheckboxField from './_shared/CheckboxField.svelte';
 	import SettingsCard from './_shared/SettingsCard.svelte';
 	import TabHeader from './_shared/TabHeader.svelte';
 	import { toastService } from '$lib/stores/toast.store';

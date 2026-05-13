@@ -19,6 +19,7 @@ type BriefRecord = {
 	priority_actions: string[] | null;
 	audio_status: string | null;
 	audio_storage_path: string | null;
+	audio_generation_started_at: string | null;
 };
 
 type UserRecord = {
@@ -27,10 +28,36 @@ type UserRecord = {
 };
 
 const AUDIO_HEARTBEAT_MS = 60_000;
+const DEFAULT_SYNTHESIS_TIMEOUT_MS = 8 * 60 * 1000;
 let audioChain: Promise<unknown> = Promise.resolve();
 
 function truncateErrorMessage(message: string): string {
 	return message.length > 1000 ? `${message.slice(0, 997)}...` : message;
+}
+
+function getSynthesisTimeoutMs(): number {
+	const configured = Number(process.env.BRIEF_AUDIO_SYNTHESIS_TIMEOUT_MS);
+	if (Number.isFinite(configured) && configured >= 60_000) {
+		return Math.floor(configured);
+	}
+	return DEFAULT_SYNTHESIS_TIMEOUT_MS;
+}
+
+async function withAudioTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+	let timeout: ReturnType<typeof setTimeout> | null = null;
+	const timeoutPromise = new Promise<T>((_, reject) => {
+		timeout = setTimeout(() => {
+			reject(new Error(`Audio synthesis timed out after ${timeoutMs}ms`));
+		}, timeoutMs);
+	});
+
+	try {
+		return await Promise.race([promise, timeoutPromise]);
+	} finally {
+		if (timeout) {
+			clearTimeout(timeout);
+		}
+	}
 }
 
 async function markAudioFailed(briefId: string, userId: string, message: string): Promise<void> {
@@ -92,7 +119,7 @@ async function fetchBrief(briefId: string, userId: string): Promise<BriefRecord>
 	const { data, error } = await supabase
 		.from('ontology_daily_briefs')
 		.select(
-			'id, user_id, brief_date, executive_summary, llm_analysis, priority_actions, audio_status, audio_storage_path'
+			'id, user_id, brief_date, executive_summary, llm_analysis, priority_actions, audio_status, audio_storage_path, audio_generation_started_at'
 		)
 		.eq('id', briefId)
 		.eq('user_id', userId)
@@ -193,7 +220,7 @@ async function processBriefAudioInner(
 			})
 			.eq('id', briefId)
 			.eq('user_id', userId)
-			.in('audio_status', ['pending', 'failed', 'none'])
+			.in('audio_status', ['pending', 'generating', 'failed', 'none'])
 			.select('id, audio_status, audio_storage_path')
 			.maybeSingle();
 
@@ -235,7 +262,10 @@ async function processBriefAudioInner(
 			total: 100,
 			message: 'Generating audio narration'
 		});
-		const synthesis = await synthesizeBriefAudio(narrationText);
+		const synthesis = await withAudioTimeout(
+			synthesizeBriefAudio(narrationText),
+			getSynthesisTimeoutMs()
+		);
 		model = synthesis.model;
 
 		stage = 'upload';

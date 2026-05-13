@@ -55,6 +55,7 @@
 
 	// FIXED: Convert to $props() for Svelte 5 runes mode compatibility
 	let { data, children }: { data: LayoutData; children?: Snippet } = $props();
+	const initialData = untrack(() => data);
 
 	// Pre-load components that are commonly used - wrapped in $state for reactivity
 	let OnboardingModal = $state<any>(undefined);
@@ -82,7 +83,7 @@
 	let installPromptCleanup = $state<(() => void) | void>(undefined);
 
 	// Use the Supabase client from +layout.ts (avoids duplicate clients and auth listeners)
-	const supabase = data.supabase;
+	const supabase = initialData.supabase;
 	if (supabase) {
 		setContext('supabase', supabase);
 	}
@@ -126,12 +127,12 @@
 		typeof (value as Promise<T>).then === 'function';
 
 	let billingContext = $state<BillingContext>(
-		createBillingContextPlaceholder(Boolean(data.user && data.stripeEnabled))
+		createBillingContextPlaceholder(Boolean(initialData.user && initialData.stripeEnabled))
 	);
 	let onboardingProgress = $state(
-		typeof data.onboardingProgress === 'number'
-			? clampProgress(data.onboardingProgress)
-			: data.completedOnboarding
+		typeof initialData.onboardingProgress === 'number'
+			? clampProgress(initialData.onboardingProgress)
+			: initialData.completedOnboarding
 				? 100
 				: 0
 	);
@@ -295,7 +296,7 @@
 	// When tab becomes visible, Supabase may emit SIGNED_IN even if user was already signed in.
 	// Initialize from SSR user data so SIGNED_IN after INITIAL_SESSION(null) is recognized
 	// as the same user and skipped — preventing two redundant __data.json re-fetches.
-	let previousAuthUserId = $state<string | null>(data.user?.id ?? null);
+	let previousAuthUserId = $state<string | null>(initialData.user?.id ?? null);
 
 	// Convert to $effect - load resources when user becomes available
 	$effect(() => {
