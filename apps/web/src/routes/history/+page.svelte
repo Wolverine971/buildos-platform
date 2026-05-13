@@ -391,32 +391,25 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background rounded-md">
-	<!-- Header -->
-	<div class="border-b border-border bg-card tx tx-frame tx-weak rounded-md">
-		<div class="mx-auto max-w-6xl px-2 sm:px-4 lg:px-8 py-3 sm:py-6">
-			<div class="flex items-center gap-2 sm:gap-3">
-				<div class="rounded-md sm:rounded-lg bg-accent/15 p-1.5 sm:p-2">
-					<Lightbulb class="h-4 w-4 sm:h-6 sm:w-6 text-accent" />
-				</div>
-				<div class="min-w-0 flex-1">
-					<div class="flex items-center gap-2">
-						<h1 class="text-lg sm:text-2xl font-bold text-foreground">History</h1>
-						{#if historyLoading}
-							<LoaderCircle
-								class="h-4 w-4 sm:h-5 sm:w-5 animate-spin text-muted-foreground"
-							/>
-						{/if}
-					</div>
-					<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-						Your captures and chat conversations
-					</p>
-				</div>
-			</div>
+	<div
+		class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4"
+	>
+		<!-- Page Header - Inkprint design with micro-label pattern -->
+		<header class="flex flex-col gap-2 sm:gap-1.5 flex-1">
+		<p class="micro-label text-accent">YOUR ARCHIVE</p>
+		<div class="flex items-center gap-2.5">
+			<h1 class="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">History</h1>
+			{#if historyLoading}
+				<LoaderCircle class="h-4 w-4 sm:h-5 sm:w-5 text-accent animate-spin" />
+			{/if}
 		</div>
-	</div>
+		<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+			Your captures and chat conversations
+		</p>
+	</header>
 
 	<!-- Main content -->
-	<div class="mx-auto max-w-6xl px-2 sm:px-4 lg:px-8 py-3 sm:py-6">
+	<div>
 		<!-- Stats cards - compact on mobile -->
 		<div class="mb-3 sm:mb-6 grid grid-cols-4 gap-1.5 sm:gap-4">
 			<div
@@ -734,6 +727,7 @@
 			</div>
 		{/if}
 	</div>
+</div>
 </div>
 
 <!-- Agent Chat Modal for chat sessions -->

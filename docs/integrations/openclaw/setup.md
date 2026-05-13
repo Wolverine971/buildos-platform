@@ -2,7 +2,7 @@
 
 # OpenClaw to BuildOS Setup Guide
 
-> **This guide is OpenClaw-specific.** If you're connecting Claude Code, Cursor, Claude Desktop, ChatGPT, or any other HTTP-capable tool, see [`/docs/connect-agents`](/docs/connect-agents) — those tools work today and the setup is the same env block, different paste location. This page only covers the OpenClaw-specific pieces.
+> **This guide is OpenClaw-specific.** If you're connecting Claude Code, Codex, ChatGPT Actions, a browser connector, or any other HTTP-capable tool, see [`/docs/connect-agents`](/docs/connect-agents). BuildOS now gives each client profile its own storage instructions.
 
 This guide is written for non-technical users.
 
@@ -20,7 +20,7 @@ Right now:
 - BuildOS can accept the connection
 - OpenClaw still needs its own BuildOS connector tool — that part is mid-build
 
-Other tools (Claude Code, Cursor, Claude Desktop, ChatGPT, custom HTTP) don't need this connector — they call BuildOS directly using the env block. See [`/docs/connect-agents`](/docs/connect-agents).
+Other tools may use env config, Action auth secrets, MCP config, or OAuth depending on the client. See [`/docs/connect-agents`](/docs/connect-agents).
 
 ## What The Different Values Mean
 
@@ -49,7 +49,7 @@ What they mean:
 
 ## Where the Token Belongs
 
-The token belongs in your tool's secret store, env file, or plugin config — wherever it stores credentials it won't echo back. For Claude Code that's the relevant config file. For Cursor, the agent settings. For OpenClaw, the secret store. Never paste it into the agent's chat input or have the agent read it from a chat message.
+The token belongs in your tool's secret store, env file, or plugin config — wherever it stores credentials it won't echo back. For OpenClaw, that means env, SecretRef, or plugin config. Never paste it into the agent's chat input or have the agent read it from a chat message.
 
 For OpenClaw specifically, this means: put the token in OpenClaw's env config or secret config, not in normal OpenClaw chat — chat history isn't a secure storage layer.
 
@@ -68,7 +68,7 @@ Inside BuildOS:
 
 1. Open `Profile`
 2. Open the `Agent Keys` tab
-3. Choose `OpenClaw`
+3. Choose the `OpenClaw` client profile
 4. Give it an installation name
 5. Optionally limit it to specific projects
 6. Click `Generate BuildOS Key`
@@ -217,4 +217,4 @@ to call it — that piece is mid-build. Once OpenClaw ships the connector, your 
 BuildOS key will work without any extra setup.
 ```
 
-This only applies to OpenClaw. For Claude Code, Cursor, Claude Desktop, ChatGPT, or any other HTTP-capable tool, the connection works today — point users to [`/docs/connect-agents`](/docs/connect-agents).
+This only applies to OpenClaw. Other clients have their own profile-specific setup paths, including env-backed local clients, ChatGPT Action auth secrets, and OAuth-backed remote MCP connectors. Point users to [`/docs/connect-agents`](/docs/connect-agents).

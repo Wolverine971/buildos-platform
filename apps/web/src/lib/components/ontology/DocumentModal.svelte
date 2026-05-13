@@ -2461,14 +2461,14 @@
 					class="flex-1 flex flex-col min-h-0"
 					onsubmit={handleSave}
 				>
-					<!-- Desktop: Two-column layout | Mobile: Content-first with collapsible metadata -->
-					<div class="flex flex-col lg:flex-row flex-1 min-h-0">
-						<!-- Left sidebar (metadata + history + activity) - Desktop only, hidden on mobile -->
+					<!-- Desktop: Two-column layout (sidebar on the right) | Mobile: content-first with collapsible metadata -->
+					<div class="flex flex-col lg:flex-row-reverse flex-1 min-h-0">
+						<!-- Right sidebar (metadata + history + activity) - Desktop only, hidden on mobile -->
 						<div
-							class="hidden lg:flex lg:flex-col lg:w-60 xl:w-76 flex-shrink-0 lg:border-r border-border bg-muted overflow-y-auto tx tx-frame tx-weak"
+							class="hidden lg:flex lg:flex-col lg:w-64 xl:w-72 flex-shrink-0 lg:border-l border-border bg-muted overflow-y-auto tx tx-frame tx-weak"
 						>
-							<div class="p-3 pr-4 space-y-2">
-								<!-- Settings Section - Always expanded -->
+							<div class="p-3 space-y-3">
+								<!-- Settings: Title / Description / State -->
 								<div class="space-y-2">
 									<!-- Title field -->
 									<FormField
@@ -2525,9 +2525,52 @@
 									</FormField>
 								</div>
 
+								<!-- Tags + Metadata strip -->
+								{#if isEditing}
+									<div class="pt-3 border-t border-border space-y-2">
+										{#if hasTags}
+											<TagsDisplay props={documentProps} />
+										{/if}
+										<dl class="space-y-1">
+											<div class="flex items-center justify-between gap-2">
+												<dt class="micro-label text-muted-foreground/70">
+													CREATED
+												</dt>
+												<dd class="text-xs font-mono text-foreground">
+													{createdAt
+														? new Date(createdAt).toLocaleDateString()
+														: '—'}
+												</dd>
+											</div>
+											<div class="flex items-center justify-between gap-2">
+												<dt class="micro-label text-muted-foreground/70">
+													UPDATED
+												</dt>
+												<dd class="text-xs font-mono text-foreground">
+													{updatedAt
+														? new Date(updatedAt).toLocaleDateString()
+														: '—'}
+												</dd>
+											</div>
+											<div class="flex items-start justify-between gap-2">
+												<dt
+													class="micro-label text-muted-foreground/70 shrink-0"
+												>
+													ID
+												</dt>
+												<dd
+													class="text-xs font-mono text-foreground truncate text-right"
+												>
+													{activeDocumentId}
+												</dd>
+											</div>
+										</dl>
+									</div>
+								{/if}
+
 								<!-- Public Page -->
 								{#if isEditing && activeDocumentId}
-									<div class="pt-2 border-t border-border space-y-2">
+									<div class="pt-3 border-t border-border space-y-2">
 										{#if !publicPageStateLoaded || publicPageLoading}
 											<div
 												class="flex items-center gap-2 text-xs text-muted-foreground"
@@ -2543,7 +2586,7 @@
 											>
 												<div class="flex items-start gap-2">
 													<Globe
-														class="w-3.5 h-3.5 mt-0.5 {liveDocumentNeedsAttention
+														class="w-3.5 h-3.5 mt-0.5 shrink-0 {liveDocumentNeedsAttention
 															? 'text-amber-700'
 															: 'text-emerald-700'}"
 													/>
@@ -2565,15 +2608,11 @@
 													</div>
 												</div>
 												<div
-													class="flex items-center justify-between gap-2"
+													class="text-[11px] font-mono truncate {liveDocumentNeedsAttention
+														? 'text-amber-900'
+														: 'text-emerald-900'}"
 												>
-													<span
-														class="text-[11px] font-mono truncate {liveDocumentNeedsAttention
-															? 'text-amber-900'
-															: 'text-emerald-900'}"
-													>
-														{publicPageUrlPath}
-													</span>
+													{publicPageUrlPath}
 												</div>
 												{#if publicPageLastLiveUpdateLabel}
 													<div
@@ -2612,12 +2651,12 @@
 														{/if}
 													</div>
 												{/if}
-												<div class="flex flex-wrap items-center gap-1.5">
+												<div class="grid grid-cols-2 gap-1.5">
 													<button
 														type="button"
 														onclick={handleCopyPublicPageUrl}
 														aria-label="Copy public page link"
-														class="inline-flex min-h-[32px] items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors pressable {liveDocumentNeedsAttention
+														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors pressable {liveDocumentNeedsAttention
 															? 'border-amber-300/70 bg-amber-100/70 text-amber-900 hover:bg-amber-200/70'
 															: 'border-emerald-300/70 bg-emerald-100/70 text-emerald-900 hover:bg-emerald-200/70'}"
 													>
@@ -2628,9 +2667,9 @@
 														type="button"
 														onclick={openPublicPageInNewTab}
 														aria-label="Open public page in new tab"
-														class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
-															? 'text-amber-900 hover:bg-amber-100/70'
-															: 'text-emerald-900 hover:bg-emerald-100/70'}"
+														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
+															? 'border-amber-200/60 text-amber-900 hover:bg-amber-100/70'
+															: 'border-emerald-200/60 text-emerald-900 hover:bg-emerald-100/70'}"
 													>
 														Open
 														<ExternalLink class="w-3 h-3" />
@@ -2638,7 +2677,7 @@
 													<button
 														type="button"
 														onclick={handleMakeDocumentPublic}
-														class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
+														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
 															? 'text-amber-900 hover:bg-amber-100/70'
 															: 'text-emerald-900 hover:bg-emerald-100/70'}"
 													>
@@ -2651,7 +2690,7 @@
 														onclick={handleUnpublishPublicPage}
 														disabled={publicPageActionLoading}
 														aria-label="Unpublish public page"
-														class="ml-auto inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-rose-800 hover:bg-rose-100/60 transition-colors pressable disabled:opacity-50"
+														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-rose-800 hover:bg-rose-100/60 transition-colors pressable disabled:opacity-50"
 													>
 														Unpublish
 													</button>
@@ -2796,228 +2835,193 @@
 									</div>
 								{/if}
 
-								<!-- Tags Display -->
-								{#if isEditing && hasTags}
-									<div class="pt-2 border-t border-border">
-										<TagsDisplay props={documentProps} />
-									</div>
-								{/if}
-
-								<!-- Metadata with micro-labels -->
-								{#if isEditing}
-									<div class="pt-2 border-t border-border space-y-1">
-										<div class="flex items-center justify-between gap-2">
-											<span class="micro-label text-muted-foreground/70"
-												>CREATED</span
-											>
-											<span class="text-xs font-mono text-foreground"
-												>{createdAt
-													? new Date(createdAt).toLocaleDateString()
-													: '—'}</span
-											>
-										</div>
-										<div class="flex items-center justify-between gap-2">
-											<span class="micro-label text-muted-foreground/70"
-												>UPDATED</span
-											>
-											<span class="text-xs font-mono text-foreground"
-												>{updatedAt
-													? new Date(updatedAt).toLocaleDateString()
-													: '—'}</span
-											>
-										</div>
-										<div class="flex items-start justify-between gap-2">
-											<span
-												class="micro-label text-muted-foreground/70 shrink-0"
-												>ID</span
-											>
-											<span
-												class="text-xs font-mono text-foreground truncate text-right"
-												>{activeDocumentId}</span
-											>
-										</div>
-									</div>
-								{/if}
-
-								<!-- Collapsible Sections for editing mode -->
+								<!-- Collapsible group: Linked Entities / Images / Version History / Voice Notes / Activity Log -->
 								{#if isEditing && activeDocumentId}
-									<!-- Linked Entities Section -->
-									<div class="pt-2 border-t border-border">
-										<button
-											type="button"
-											onclick={() =>
-												(showLinkedEntities = !showLinkedEntities)}
-											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
-										>
-											<span class="flex items-center gap-2">
-												<span class="micro-label text-foreground"
-													>LINKED ENTITIES</span
+									<div class="pt-3 border-t border-border">
+										<div class="divide-y divide-border/50">
+											<!-- Linked Entities -->
+											<div class="py-0.5">
+												<button
+													type="button"
+													onclick={() =>
+														(showLinkedEntities = !showLinkedEntities)}
+													class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
 												>
-												{#if linkedCount > 0}
-													<span
-														class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-[0.6rem] font-semibold bg-accent/20 text-accent rounded-full"
-													>
-														{linkedCount}
+													<span class="flex items-center gap-2">
+														<span class="micro-label text-foreground"
+															>LINKED ENTITIES</span
+														>
+														{#if linkedCount > 0}
+															<span
+																class="inline-flex items-center justify-center min-w-[1.25rem] h-4 px-1 text-[0.6rem] font-semibold bg-accent/20 text-accent rounded-full"
+															>
+																{linkedCount}
+															</span>
+														{/if}
 													</span>
+													{#if showLinkedEntities}
+														<ChevronUp
+															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+														/>
+													{:else}
+														<ChevronDown
+															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+														/>
+													{/if}
+												</button>
+												{#if showLinkedEntities}
+													<div class="pt-2 pb-1">
+														<LinkedEntities
+															sourceId={activeDocumentId}
+															sourceKind="document"
+															{projectId}
+															initialLinkedEntities={linkedEntities}
+															onEntityClick={handleLinkedEntityClick}
+															onLinksChanged={handleLinksChanged}
+														/>
+													</div>
 												{/if}
-											</span>
-											{#if showLinkedEntities}
-												<ChevronUp
-													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-												/>
-											{:else}
-												<ChevronDown
-													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-												/>
-											{/if}
-										</button>
-										{#if showLinkedEntities}
-											<div class="pt-2">
-												<LinkedEntities
-													sourceId={activeDocumentId}
-													sourceKind="document"
-													{projectId}
-													initialLinkedEntities={linkedEntities}
-													onEntityClick={handleLinkedEntityClick}
-													onLinksChanged={handleLinksChanged}
-												/>
 											</div>
-										{/if}
-									</div>
 
-									<!-- Images Section -->
-									<div class="pt-2 border-t border-border">
-										<button
-											type="button"
-											onclick={() => (showImages = !showImages)}
-											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
-										>
-											<span class="micro-label text-foreground">IMAGES</span>
-											{#if showImages}
-												<ChevronUp
-													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-												/>
-											{:else}
-												<ChevronDown
-													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-												/>
-											{/if}
-										</button>
-										{#if showImages}
-											<div class="pt-2">
-												<ImageAssetsPanel
-													{projectId}
-													entityKind="document"
-													entityId={activeDocumentId}
-													showTitle={false}
-													compact={true}
-													onChanged={() => onSaved?.()}
-												/>
+											<!-- Images -->
+											<div class="py-0.5">
+												<button
+													type="button"
+													onclick={() => (showImages = !showImages)}
+													class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+												>
+													<span class="micro-label text-foreground"
+														>IMAGES</span
+													>
+													{#if showImages}
+														<ChevronUp
+															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+														/>
+													{:else}
+														<ChevronDown
+															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+														/>
+													{/if}
+												</button>
+												{#if showImages}
+													<div class="pt-2 pb-1">
+														<ImageAssetsPanel
+															{projectId}
+															entityKind="document"
+															entityId={activeDocumentId}
+															showTitle={false}
+															compact={true}
+															onChanged={() => onSaved?.()}
+														/>
+													</div>
+												{/if}
 											</div>
-										{/if}
-									</div>
 
-									<!-- Version History Section -->
-									<div class="pt-2 border-t border-border">
-										<button
-											type="button"
-											onclick={toggleVersionHistory}
-											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
-										>
-											<span class="micro-label text-foreground"
-												>VERSION HISTORY</span
-											>
-											{#if showVersionHistory}
-												<ChevronUp
-													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-												/>
-											{:else}
-												<ChevronDown
-													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-												/>
-											{/if}
-										</button>
-										{#if showVersionHistory}
-											<div class="pt-2">
-												<DocumentVersionHistoryPanel
-													bind:this={versionHistoryPanelRef}
-													documentId={activeDocumentId}
-													{projectId}
-													isAdmin={isAdminUser}
-													onRestoreRequested={handleRestoreRequested}
-													onCompareRequested={handleEnterComparison}
-												/>
+											<!-- Version History -->
+											<div class="py-0.5">
+												<button
+													type="button"
+													onclick={toggleVersionHistory}
+													class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+												>
+													<span class="micro-label text-foreground"
+														>VERSION HISTORY</span
+													>
+													{#if showVersionHistory}
+														<ChevronUp
+															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+														/>
+													{:else}
+														<ChevronDown
+															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+														/>
+													{/if}
+												</button>
+												{#if showVersionHistory}
+													<div class="pt-2 pb-1">
+														<DocumentVersionHistoryPanel
+															bind:this={versionHistoryPanelRef}
+															documentId={activeDocumentId}
+															{projectId}
+															isAdmin={isAdminUser}
+															onRestoreRequested={handleRestoreRequested}
+															onCompareRequested={handleEnterComparison}
+														/>
+													</div>
+												{/if}
 											</div>
-										{/if}
-									</div>
 
-									<!-- Voice Notes Section -->
-									<div class="pt-2 border-t border-border">
-										<button
-											type="button"
-											onclick={() => (showVoiceNotes = !showVoiceNotes)}
-											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
-										>
-											<span class="micro-label text-foreground"
-												>VOICE NOTES</span
-											>
-											{#if showVoiceNotes}
-												<ChevronUp
-													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-												/>
-											{:else}
-												<ChevronDown
-													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-												/>
-											{/if}
-										</button>
-										{#if showVoiceNotes}
-											<div class="pt-2">
-												<DocumentVoiceNotesPanel
-													bind:this={voiceNotesPanelRef}
-													documentId={activeDocumentId}
-													{projectId}
-													limit={20}
-												/>
+											<!-- Voice Notes -->
+											<div class="py-0.5">
+												<button
+													type="button"
+													onclick={() =>
+														(showVoiceNotes = !showVoiceNotes)}
+													class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+												>
+													<span class="micro-label text-foreground"
+														>VOICE NOTES</span
+													>
+													{#if showVoiceNotes}
+														<ChevronUp
+															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+														/>
+													{:else}
+														<ChevronDown
+															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+														/>
+													{/if}
+												</button>
+												{#if showVoiceNotes}
+													<div class="pt-2 pb-1">
+														<DocumentVoiceNotesPanel
+															bind:this={voiceNotesPanelRef}
+															documentId={activeDocumentId}
+															{projectId}
+															limit={20}
+														/>
+													</div>
+												{/if}
 											</div>
-										{/if}
-									</div>
 
-									<!-- Activity Log Section -->
-									<div class="pt-2 border-t border-border">
-										<button
-											type="button"
-											onclick={() => (showActivityLog = !showActivityLog)}
-											class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
-										>
-											<span class="micro-label text-foreground"
-												>ACTIVITY LOG</span
-											>
-											{#if showActivityLog}
-												<ChevronUp
-													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-												/>
-											{:else}
-												<ChevronDown
-													class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
-												/>
-											{/if}
-										</button>
-										{#if showActivityLog}
-											<div class="pt-2">
-												<EntityActivityLog
-													entityType="document"
-													entityId={activeDocumentId}
-													autoLoad={!loading}
-													embedded={true}
-												/>
+											<!-- Activity Log -->
+											<div class="py-0.5">
+												<button
+													type="button"
+													onclick={() =>
+														(showActivityLog = !showActivityLog)}
+													class="w-full flex items-center justify-between px-2 py-1.5 -mx-2 text-left rounded-md hover:bg-card hover:shadow-ink transition-all pressable group"
+												>
+													<span class="micro-label text-foreground"
+														>ACTIVITY LOG</span
+													>
+													{#if showActivityLog}
+														<ChevronUp
+															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+														/>
+													{:else}
+														<ChevronDown
+															class="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors"
+														/>
+													{/if}
+												</button>
+												{#if showActivityLog}
+													<div class="pt-2 pb-1">
+														<EntityActivityLog
+															entityType="document"
+															entityId={activeDocumentId}
+															autoLoad={!loading}
+															embedded={true}
+														/>
+													</div>
+												{/if}
 											</div>
-										{/if}
+										</div>
 									</div>
 
 									<!-- Move to... button -->
 									{#if !isArchivedDocument}
-										<div class="pt-2 border-t border-border">
+										<div class="pt-3 border-t border-border">
 											<Button
 												type="button"
 												variant="ghost"

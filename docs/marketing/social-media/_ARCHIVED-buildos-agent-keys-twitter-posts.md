@@ -1,4 +1,6 @@
-<!-- docs/marketing/social-media/buildos-agent-keys-twitter-posts.md -->
+<!-- docs/marketing/social-media/_ARCHIVED-buildos-agent-keys-twitter-posts.md -->
+
+> **ARCHIVED 2026-05-12.** Uses pre-spec language ("agent keys," "external agent"). Current framing lives in `/docs/specs/connect-your-agents-promotion-readiness-2026-05-08.md` §3 — use "context surface," "connect your agents," and "reading off the same sheet of paper." Kept here as v0 reference for the eventual launch publish kit at `docs/marketing/social-media/publish-kits/2026-05-15-connect-your-agents-launch.md`.
 
 # BuildOS Agent Keys Twitter Posts
 

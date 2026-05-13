@@ -105,6 +105,8 @@ export interface ErrorContext {
 	endpoint?: string;
 	httpMethod?: string;
 	requestId?: string;
+	userAgent?: string;
+	ipAddress?: string;
 	operationType?: string;
 	tableName?: string;
 	recordId?: string;

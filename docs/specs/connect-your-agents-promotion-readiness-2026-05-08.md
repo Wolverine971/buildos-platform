@@ -41,19 +41,19 @@ This spec is the closing of that gap. It is not a feature build. It is an onboar
 
 ## 1. What is already shipped (do not rebuild)
 
-| Capability                       | Where                                                                                                                              | Status     |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| JSON-RPC gateway                 | `POST /api/agent-call/buildos`                                                                                                     | Live       |
-| Session protocol                 | `call.dial → tools/list → tools/call → call.hangup`                                                                                | Live       |
-| Per-key scope                    | `read_only` / `read_write`, per-project allowlist, per-write-op whitelist (`AgentKeysTab.svelte:160`)                              | Live       |
-| Permission bundles               | Read only / Author docs+tasks (default) / Full / Custom                                                                            | Live       |
-| Token hygiene                    | SHA-256 hash stored; full secret shown once on generate/rotate                                                                     | Live       |
-| Rotate / Reissue / Revoke        | UI flows in `AgentKeysTab.svelte`                                                                                                  | Live       |
-| Audit + usage analytics          | Per-key page at `/profile/agent-keys/[callerId]` (sessions, tool calls, writes, errors, denied, latency, security events)          | Live       |
-| One-paste bootstrap              | `GET /api/agent-call/bootstrap/<setupToken>` → env block + paste prompt as text or JSON (`bootstrap-link.service.ts`)              | Live       |
-| Copy Prompt                      | "Copy Prompt" button in `AgentKeysTab.svelte:586-649` builds a self-contained instruction prompt for any external agent            | Live       |
-| Public technical doc             | `/docs/connect-agents` (`apps/web/src/content/docs/connect-agents.md`)                                                             | Live, good |
-| Public marketing surface         | `/integrations` (`apps/web/src/routes/(public)/integrations/+page.svelte`)                                                         | Live, off  |
+| Capability                | Where                                                                                                                     | Status     |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| JSON-RPC gateway          | `POST /api/agent-call/buildos`                                                                                            | Live       |
+| Session protocol          | `call.dial → tools/list → tools/call → call.hangup`                                                                       | Live       |
+| Per-key scope             | `read_only` / `read_write`, per-project allowlist, per-write-op whitelist (`AgentKeysTab.svelte:160`)                     | Live       |
+| Permission bundles        | Read only / Author docs+tasks (default) / Full / Custom                                                                   | Live       |
+| Token hygiene             | SHA-256 hash stored; full secret shown once on generate/rotate                                                            | Live       |
+| Rotate / Reissue / Revoke | UI flows in `AgentKeysTab.svelte`                                                                                         | Live       |
+| Audit + usage analytics   | Per-key page at `/profile/agent-keys/[callerId]` (sessions, tool calls, writes, errors, denied, latency, security events) | Live       |
+| One-paste bootstrap       | `GET /api/agent-call/bootstrap/<setupToken>` → env block + paste prompt as text or JSON (`bootstrap-link.service.ts`)     | Live       |
+| Copy Prompt               | "Copy Prompt" button in `AgentKeysTab.svelte:586-649` builds a self-contained instruction prompt for any external agent   | Live       |
+| Public technical doc      | `/docs/connect-agents` (`apps/web/src/content/docs/connect-agents.md`)                                                    | Live, good |
+| Public marketing surface  | `/integrations` (`apps/web/src/routes/(public)/integrations/+page.svelte`)                                                | Live, off  |
 
 **Out of scope for this spec.** No new write ops. No new auth flow. No connector SDK. No changes to `agent-call-policy.ts` or `caller-provisioning.service.ts`. We are wrapping what exists in the right surface.
 
@@ -136,16 +136,16 @@ Add a fourth item to the "What to do next" list, after the existing entries, **a
 
 ```svelte
 <div class="flex items-center gap-3 text-foreground">
-  <Plug class="w-5 h-5 text-accent flex-shrink-0" />
-  <span>
-    Connect Claude, Cursor, or any AI tool — they'll read off the same projects.
-    <a
-      href="/profile?tab=agent-keys"
-      class="text-accent underline underline-offset-2 hover:text-accent/80"
-    >
-      Set up
-    </a>
-  </span>
+	<Plug class="w-5 h-5 text-accent flex-shrink-0" />
+	<span>
+		Connect Claude, Cursor, or any AI tool — they'll read off the same projects.
+		<a
+			href="/profile?tab=agent-keys"
+			class="text-accent underline underline-offset-2 hover:text-accent/80"
+		>
+			Set up
+		</a>
+	</span>
 </div>
 ```
 
@@ -321,9 +321,9 @@ Low. Doc edit.
 ### Required edits
 
 1. Move the file to `docs/integrations/openclaw/setup-openclaw.md` and update `docs/integrations/openclaw/README.md` to point to it. (Keeps the path namespace; signals scope.)
-2. **Rewrite the "Important Rule" section.** The current copy says "Do not paste `BUILDOS_AGENT_TOKEN` into normal Telegram or OpenClaw chat" and reads as a warning against pasting *anywhere*. New copy:
+2. **Rewrite the "Important Rule" section.** The current copy says "Do not paste `BUILDOS_AGENT_TOKEN` into normal Telegram or OpenClaw chat" and reads as a warning against pasting _anywhere_. New copy:
 
-   > **Where the token belongs:** in your tool's secret store, env file, or plugin config — wherever it stores credentials it won't echo back. For Claude Code that's the relevant config file. For Cursor, the agent settings. For OpenClaw, the secret store. Never paste it into the agent's chat input or have the agent read it from a chat message.
+    > **Where the token belongs:** in your tool's secret store, env file, or plugin config — wherever it stores credentials it won't echo back. For Claude Code that's the relevant config file. For Cursor, the agent settings. For OpenClaw, the secret store. Never paste it into the agent's chat input or have the agent read it from a chat message.
 
 3. Add a one-line caveat at the top: "This guide is OpenClaw-specific. For Claude Code, Cursor, Claude Desktop, or any other tool, see `/docs/connect-agents`."
 4. Remove the "What to tell users right now" section, which says "BuildOS is ready, but OpenClaw still needs a BuildOS connector tool" as a generic answer. Limit it to the OpenClaw-specific case.
@@ -400,10 +400,10 @@ Low.
 The `docs/marketing/social-media/buildos-agent-keys-twitter-posts.md` file already has draft copy that leads with "agent keys" / "external agent." That post needs a rewrite **after** this spec ships — with the framing from §3. Create:
 
 - `docs/marketing/social-media/publish-kits/2026-05-15-connect-your-agents-launch.md`
-  - Twitter: 4-tweet thread + reply variants
-  - LinkedIn: long-form personal + short company post
-  - Instagram: single-image carousel (4 slides) + caption
-  - TikTok: 30s hook script using the screen recording
+    - Twitter: 4-tweet thread + reply variants
+    - LinkedIn: long-form personal + short company post
+    - Instagram: single-image carousel (4 slides) + caption
+    - TikTok: 30s hook script using the screen recording
 
 Slot this kit into the active **Guerrilla Seed Campaign** (`docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md`) at the next open week. Reference: that file already has weekly themes; check the table and book the slot.
 
@@ -434,19 +434,19 @@ These belong in this spec's neighborhood but are **out of scope** for the immedi
 
 ## 11. Sequencing and ownership
 
-| Phase | Workstream                                | Order | Owner | ETA target |
-| ----- | ----------------------------------------- | ----- | ----- | ---------- |
-| 1     | A. ReadyStep callout                      | 1st   | DJ    | 1 day      |
-| 1     | E. AgentKeysTab polish                    | 1st   | DJ    | 1 day      |
-| 1     | C. `connect-agents.md` rewrite            | 1st   | DJ    | 1 day      |
-| 2     | D. OpenClaw doc soften + relocate         | 2nd   | DJ    | 0.5 day    |
-| 2     | F. Demo asset capture                     | 2nd   | DJ    | 1 day      |
-| 3     | B. `/integrations` rewrite (with clip)    | 3rd   | DJ    | 2 days     |
-| 4     | F. Publish kit + post launch              | 4th   | DJ    | day-of     |
+| Phase | Workstream                             | Order | Owner | ETA target |
+| ----- | -------------------------------------- | ----- | ----- | ---------- |
+| 1     | A. ReadyStep callout                   | 1st   | DJ    | 1 day      |
+| 1     | E. AgentKeysTab polish                 | 1st   | DJ    | 1 day      |
+| 1     | C. `connect-agents.md` rewrite         | 1st   | DJ    | 1 day      |
+| 2     | D. OpenClaw doc soften + relocate      | 2nd   | DJ    | 0.5 day    |
+| 2     | F. Demo asset capture                  | 2nd   | DJ    | 1 day      |
+| 3     | B. `/integrations` rewrite (with clip) | 3rd   | DJ    | 2 days     |
+| 4     | F. Publish kit + post launch           | 4th   | DJ    | day-of     |
 
 Total elapsed estimate: 5–6 working days, single-builder.
 
-**Critical path:** Workstream B can't ship without F. Workstream F can't ship without C and E (the surfaces it shows). Workstream A can ship independently and probably *should* ship first as a one-line PR.
+**Critical path:** Workstream B can't ship without F. Workstream F can't ship without C and E (the surfaces it shows). Workstream A can ship independently and probably _should_ ship first as a one-line PR.
 
 ---
 
@@ -478,14 +478,14 @@ The spec is complete when:
 
 ## 14. Risks and mitigations
 
-| Risk                                                                                                         | Likelihood | Impact | Mitigation                                                                                                                                |
-| ------------------------------------------------------------------------------------------------------------ | ---------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `/integrations` rewrite ships without the hero clip and feels lighter than the current page                  | Medium     | Medium | Block ship of B until F is captured. F can be a static image fallback for v1 if needed.                                                   |
-| New users misinterpret "Connect your agents" as a feature they need before doing anything else               | Low        | Medium | Keep the ReadyStep callout one-line, low-pressure, last in the list. Do not modal it. Do not redirect.                                    |
-| OpenClaw shipping its connector mid-launch dilutes the message                                               | Medium     | Low    | Coordinate publish kit timing. If OpenClaw ships within the launch week, fold it into a follow-up post, not the launch.                   |
-| A user pastes their token into a chat and complains when it leaks                                            | Medium     | Medium | Existing safety doc is good. Reinforce in §6 and §7. Keep rotate-from-`/profile?tab=agent-keys` one click away.                           |
-| `/integrations` SEO ranking drops on rewrite                                                                 | Low        | Medium | Preserve URL. Preserve key headers in body. Add 301-equivalent intent in canonical. Track Search Console weekly post-ship.                |
-| The "this works with anything HTTP" claim invites support questions for tools we haven't tested              | Medium     | Low    | FAQ on `/integrations` includes "if you're getting a 401, here's what's wrong" + a pointer to `/profile/agent-keys/[callerId]` audit log. |
+| Risk                                                                                            | Likelihood | Impact | Mitigation                                                                                                                                |
+| ----------------------------------------------------------------------------------------------- | ---------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `/integrations` rewrite ships without the hero clip and feels lighter than the current page     | Medium     | Medium | Block ship of B until F is captured. F can be a static image fallback for v1 if needed.                                                   |
+| New users misinterpret "Connect your agents" as a feature they need before doing anything else  | Low        | Medium | Keep the ReadyStep callout one-line, low-pressure, last in the list. Do not modal it. Do not redirect.                                    |
+| OpenClaw shipping its connector mid-launch dilutes the message                                  | Medium     | Low    | Coordinate publish kit timing. If OpenClaw ships within the launch week, fold it into a follow-up post, not the launch.                   |
+| A user pastes their token into a chat and complains when it leaks                               | Medium     | Medium | Existing safety doc is good. Reinforce in §6 and §7. Keep rotate-from-`/profile?tab=agent-keys` one click away.                           |
+| `/integrations` SEO ranking drops on rewrite                                                    | Low        | Medium | Preserve URL. Preserve key headers in body. Add 301-equivalent intent in canonical. Track Search Console weekly post-ship.                |
+| The "this works with anything HTTP" claim invites support questions for tools we haven't tested | Medium     | Low    | FAQ on `/integrations` includes "if you're getting a 401, here's what's wrong" + a pointer to `/profile/agent-keys/[callerId]` audit log. |
 
 ---
 

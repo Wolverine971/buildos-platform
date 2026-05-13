@@ -46,11 +46,15 @@ function isExplicitErrorType(value: unknown): value is ErrorType {
 	return typeof value === 'string' && EXPLICIT_ERROR_TYPES.has(value as ErrorType);
 }
 
+function getNodeEnv(): Record<string, string | undefined> {
+	return typeof process !== 'undefined' && process.env ? process.env : {};
+}
+
 export class ErrorLoggerService {
 	private static instances = new WeakMap<SupabaseClient<Database>, ErrorLoggerService>();
 	private supabase: SupabaseClient<Database>;
 	private environment: 'development' | 'staging' | 'production';
-	private appVersion: string = '1.0.0'; // You can update this from package.json
+	private appVersion: string = this.detectAppVersion();
 
 	private constructor(supabase: SupabaseClient<Database>) {
 		this.supabase = supabase;
@@ -77,7 +81,18 @@ export class ErrorLoggerService {
 			}
 			return 'production';
 		}
-		return process.env.NODE_ENV === 'production' ? 'production' : 'development';
+
+		const env = getNodeEnv();
+		return env.NODE_ENV === 'production' ? 'production' : 'development';
+	}
+
+	private detectAppVersion(): string {
+		const env = getNodeEnv();
+		return (
+			env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ||
+			env.npm_package_version ||
+			'1.0.0'
+		);
 	}
 
 	private getBrowserInfo(): Record<string, any> | undefined {
@@ -430,8 +445,8 @@ export class ErrorLoggerService {
 				endpoint: context?.endpoint,
 				http_method: context?.httpMethod,
 				request_id: context?.requestId || this.generateRequestId(),
-				user_agent: browser ? navigator.userAgent : undefined,
-				ip_address: null, // We'll add this later if needed
+				user_agent: browser ? navigator.userAgent : context?.userAgent,
+				ip_address: context?.ipAddress ?? null,
 
 				llm_provider: context?.llmMetadata?.provider,
 				llm_model: context?.llmMetadata?.model,

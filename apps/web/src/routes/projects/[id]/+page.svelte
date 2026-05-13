@@ -949,7 +949,6 @@
 	<ProjectHeaderCard
 		{project}
 		showMobileMenu={showSettingsMenu}
-		onBack={() => goto('/projects')}
 		onOpenMenu={handleHeaderMenuOpen}
 		onEntityClick={handleNextStepClick}
 		onNextStepGenerated={refreshSilently}
@@ -960,7 +959,7 @@
 		}}
 	/>
 
-	<main class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 overflow-x-hidden">
+	<main class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 overflow-x-hidden">
 		{#if hydrationError}
 			<div
 				class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 tx tx-static tx-weak"

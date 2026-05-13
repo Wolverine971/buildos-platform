@@ -38,7 +38,7 @@ export const DEFAULT_ORGANIZATION_SOCIAL_PROFILES = [
 	'https://twitter.com/build_os',
 	'https://www.linkedin.com/company/build-os-app'
 ] as const;
-export const HOME_PAGE_LAST_MODIFIED = '2026-03-24';
+export const HOME_PAGE_LAST_MODIFIED = '2026-05-13';
 
 export const DEFAULT_TWITTER_SITE = '@build_os';
 export const DEFAULT_TWITTER_CREATOR = '@djwayne3';

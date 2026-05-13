@@ -22,7 +22,21 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Save, Loader, Trash2, Target, X, ChevronDown, CalendarRange } from 'lucide-svelte';
+	import {
+		Save,
+		Loader,
+		Trash2,
+		Target,
+		X,
+		ChevronDown,
+		CalendarRange,
+		Activity,
+		Clock,
+		Flag,
+		Link as LinkIcon,
+		Image as ImageIcon,
+		Tag as TagIcon
+	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -105,6 +119,8 @@
 	let showMilestoneCreateModal = $state(false);
 	let showMilestoneEditModal = $state(false);
 	let editingMilestoneId = $state<string | null>(null);
+	let showLinkedEntities = $state(true);
+	let showImages = $state(false);
 	let showActivityLog = $state(false);
 
 	// Extract milestones from linkedEntities for the dedicated section
@@ -712,6 +728,19 @@
 
 					<!-- Sidebar (Right column) -->
 					<div class="space-y-3">
+						<!-- Milestones (goal-specific, self-contained card) -->
+						<GoalMilestonesSidebarSection
+							{milestones}
+							{goalId}
+							goalName={name || goal?.name || 'Goal'}
+							goalState={stateKey}
+							{projectId}
+							canEdit={!isSaving && !isDeleting}
+							onAddMilestone={handleAddMilestone}
+							onEditMilestone={handleEditMilestone}
+							onToggleMilestoneComplete={handleToggleMilestoneComplete}
+						/>
+
 						<Card variant="elevated" class="wt-card">
 							<CardHeader variant="muted" texture="strip">
 								<div class="flex items-center justify-between gap-3">
@@ -719,56 +748,74 @@
 										<p
 											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 										>
-											At a glance
+											Controls
 										</p>
 										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Goal snapshot
+											Goal operations
 										</h3>
 									</div>
-									<Badge variant={stateMeta.variant} size="sm"
-										>{stateMeta.label}</Badge
-									>
 								</div>
 							</CardHeader>
-							<CardBody class="space-y-3">
-								<div class="grid grid-cols-2 gap-2">
-									<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
-										<p
-											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-										>
-											Priority
-										</p>
-										<p class="mt-1 text-sm font-semibold text-foreground">
-											{priorityMeta.label}
-										</p>
-										<p class="mt-1 text-xs text-muted-foreground">
-											{priorityMeta.note}
-										</p>
-									</div>
-									<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
-										<p
-											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-										>
-											State
-										</p>
-										<p class="mt-1 text-sm font-semibold text-foreground">
-											{stateMeta.label}
-										</p>
-										<p class="mt-1 text-xs text-muted-foreground">
+							<CardBody padding="none">
+								<div class="divide-y divide-border/70">
+									<!-- State -->
+									<section
+										class="px-3 py-3 sm:px-4"
+										aria-label="State: {stateMeta.label}"
+									>
+										<div class="flex items-center justify-between gap-2">
+											<div class="flex items-center gap-2">
+												<Target class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													State
+												</p>
+											</div>
+											<Badge variant={stateMeta.variant} size="sm"
+												>{stateMeta.label}</Badge
+											>
+										</div>
+										<p class="mt-2 text-xs text-muted-foreground">
 											{stateMeta.note}
 										</p>
-									</div>
-								</div>
+									</section>
 
-								<div class="rounded-lg border border-border/70 bg-card p-3">
-									<div class="space-y-2">
-										<p
-											class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
-										>
-											Timeline
+									<!-- Priority -->
+									<section
+										class="px-3 py-3 sm:px-4"
+										aria-label="Priority: {priorityMeta.label}"
+									>
+										<div class="flex items-center justify-between gap-2">
+											<div class="flex items-center gap-2">
+												<Flag class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Priority
+												</p>
+											</div>
+											<Badge variant={priorityMeta.variant} size="sm"
+												>{priorityMeta.label}</Badge
+											>
+										</div>
+										<p class="mt-2 text-xs text-muted-foreground">
+											{priorityMeta.note}
 										</p>
-										<div class="grid grid-cols-1 gap-1.5 text-xs">
-											<div class="flex items-center justify-between gap-2">
+									</section>
+
+									<!-- Timeline -->
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2">
+											<CalendarRange class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+											>
+												Timeline
+											</p>
+										</div>
+										<div class="mt-2 space-y-1.5 text-sm">
+											<div class="flex items-center justify-between gap-3">
 												<span class="text-muted-foreground">Target</span>
 												<span class="text-right text-foreground">
 													{targetDate
@@ -782,7 +829,21 @@
 														: 'No target date'}
 												</span>
 											</div>
-											<div class="flex items-center justify-between gap-2">
+										</div>
+									</section>
+
+									<!-- Record -->
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2">
+											<Clock class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+											>
+												Record
+											</p>
+										</div>
+										<div class="mt-2 space-y-1.5 text-sm">
+											<div class="flex items-center justify-between gap-3">
 												<span class="text-muted-foreground">Created</span>
 												<span class="text-right text-foreground">
 													{goal.created_at
@@ -796,7 +857,7 @@
 														: '—'}
 												</span>
 											</div>
-											<div class="flex items-center justify-between gap-2">
+											<div class="flex items-center justify-between gap-3">
 												<span class="text-muted-foreground">Updated</span>
 												<span class="text-right text-foreground">
 													{goal.updated_at
@@ -811,87 +872,139 @@
 												</span>
 											</div>
 										</div>
-									</div>
+									</section>
+
+									<!-- Tags -->
+									{#if goal?.props?.tags?.length}
+										<section class="px-3 py-3 sm:px-4">
+											<div class="flex items-center gap-2 mb-2">
+												<TagIcon class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Tags
+												</p>
+											</div>
+											<TagsDisplay
+												props={goal.props}
+												size="sm"
+												compact={true}
+											/>
+										</section>
+									{/if}
+
+									<!-- Linked Entities (collapsible, default open) -->
+									<section class="px-3 sm:px-4">
+										<button
+											type="button"
+											onclick={() =>
+												(showLinkedEntities = !showLinkedEntities)}
+											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											aria-expanded={showLinkedEntities}
+										>
+											<div class="flex items-center gap-2">
+												<LinkIcon class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Linked Entities
+												</p>
+											</div>
+											<ChevronDown
+												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
+													? 'rotate-180'
+													: ''}"
+											/>
+										</button>
+										{#if showLinkedEntities}
+											<div class="pb-3">
+												<LinkedEntities
+													sourceId={goalId}
+													sourceKind="goal"
+													{projectId}
+													initialLinkedEntities={linkedEntities}
+													onEntityClick={handleLinkedEntityClick}
+													onLinksChanged={handleLinksChanged}
+												/>
+											</div>
+										{/if}
+									</section>
+
+									<!-- Images (collapsible) -->
+									<section class="px-3 sm:px-4">
+										<button
+											type="button"
+											onclick={() => (showImages = !showImages)}
+											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											aria-expanded={showImages}
+										>
+											<div class="flex items-center gap-2">
+												<ImageIcon class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Images
+												</p>
+											</div>
+											<ChevronDown
+												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
+													? 'rotate-180'
+													: ''}"
+											/>
+										</button>
+										{#if showImages}
+											<div class="pb-3">
+												<ImageAssetsPanel
+													{projectId}
+													entityKind="goal"
+													entityId={goalId}
+													showTitle={false}
+													compact={true}
+													onChanged={() => {
+														void loadGoal();
+														onUpdated?.();
+													}}
+												/>
+											</div>
+										{/if}
+									</section>
+
+									<!-- Activity (collapsible) -->
+									<section class="px-3 sm:px-4">
+										<button
+											type="button"
+											onclick={() => (showActivityLog = !showActivityLog)}
+											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											aria-expanded={showActivityLog}
+										>
+											<div class="flex items-center gap-2">
+												<Activity class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Activity
+												</p>
+											</div>
+											<ChevronDown
+												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
+													? 'rotate-180'
+													: ''}"
+											/>
+										</button>
+										{#if showActivityLog}
+											<div class="pb-3">
+												<EntityActivityLog
+													entityType="goal"
+													entityId={goalId}
+													autoLoad={true}
+													embedded={true}
+												/>
+											</div>
+										{/if}
+									</section>
 								</div>
 							</CardBody>
 						</Card>
-
-						<!-- Milestones -->
-						<GoalMilestonesSidebarSection
-							{milestones}
-							{goalId}
-							goalName={name || goal?.name || 'Goal'}
-							goalState={stateKey}
-							{projectId}
-							canEdit={!isSaving && !isDeleting}
-							onAddMilestone={handleAddMilestone}
-							onEditMilestone={handleEditMilestone}
-							onToggleMilestoneComplete={handleToggleMilestoneComplete}
-						/>
-
-						<!-- Linked Entities -->
-						<LinkedEntities
-							sourceId={goalId}
-							sourceKind="goal"
-							{projectId}
-							initialLinkedEntities={linkedEntities}
-							onEntityClick={handleLinkedEntityClick}
-							onLinksChanged={handleLinksChanged}
-						/>
-
-						<!-- Images -->
-						<ImageAssetsPanel
-							{projectId}
-							entityKind="goal"
-							entityId={goalId}
-							title="Images"
-							compact={true}
-							onChanged={() => {
-								void loadGoal();
-								onUpdated?.();
-							}}
-						/>
-
-						{#if goal?.props?.tags?.length}
-							<div
-								class="px-3 py-2.5 border border-border rounded-lg bg-card shadow-ink"
-							>
-								<p
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5"
-								>
-									Tags
-								</p>
-								<TagsDisplay props={goal.props} size="sm" compact={true} />
-							</div>
-						{/if}
-
-						<!-- Activity Log (collapsible) -->
-						<div
-							class="border border-border rounded-lg bg-card shadow-ink overflow-hidden"
-						>
-							<button
-								type="button"
-								onclick={() => (showActivityLog = !showActivityLog)}
-								class="w-full px-3 py-2 flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:bg-muted/50 transition-colors"
-							>
-								<span>Activity</span>
-								<ChevronDown
-									class="w-3.5 h-3.5 transition-transform {showActivityLog
-										? 'rotate-180'
-										: ''}"
-								/>
-							</button>
-							{#if showActivityLog}
-								<div class="border-t border-border">
-									<EntityActivityLog
-										entityType="goal"
-										entityId={goalId}
-										autoLoad={true}
-										embedded={true}
-									/>
-								</div>
-							{/if}
-						</div>
 					</div>
 				</div>
 

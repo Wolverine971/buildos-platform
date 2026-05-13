@@ -22,6 +22,11 @@ import { SSEResponse } from '$lib/utils/sse-response';
 import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
+import {
+	getClientIpFromHeaders,
+	getRequestIdFromHeaders,
+	getUserAgentFromHeaders
+} from '$lib/server/error-tracking';
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { normalizeTimingMetricSessionReference } from '$lib/services/agentic-chat/shared/timing-metrics';
@@ -113,6 +118,7 @@ import {
 	readFastChatCancelReasonFromMetadata,
 	type FastChatCancelReason
 } from '$lib/services/agentic-chat-v2/cancel-reason-channel';
+import { isRunningTurnUniqueViolation } from '$lib/services/agentic-chat-v2/turn-run-conflicts';
 import { sanitizeAssistantFinalText } from '$lib/services/agentic-chat-v2/stream-orchestrator/assistant-text-sanitization';
 
 const logger = createLogger('API:AgentStreamV2');
@@ -233,13 +239,6 @@ function isAbortLikeError(error: unknown): boolean {
 		message.includes('stream closed') ||
 		message.includes('cancelled')
 	);
-}
-
-function isUniqueViolationError(error: unknown): boolean {
-	if (!error || typeof error !== 'object') return false;
-	const maybeError = error as { code?: string; message?: string };
-	const message = maybeError.message?.toLowerCase() ?? '';
-	return maybeError.code === '23505' || message.includes('duplicate key');
 }
 
 async function parseRequest(request: Request): Promise<FastAgentStreamRequest> {
@@ -2486,6 +2485,9 @@ export const POST: RequestHandler = async ({
 	const errorLogger = ErrorLoggerService.getInstance(supabase);
 	const userId = user.id;
 	const requestStartedAtMs = Date.now();
+	const requestId = getRequestIdFromHeaders(request.headers);
+	const requestUserAgent = getUserAgentFromHeaders(request.headers);
+	const requestIpAddress = getClientIpFromHeaders(request.headers);
 
 	const logFastChatError = (params: {
 		error: unknown;
@@ -2510,6 +2512,9 @@ export const POST: RequestHandler = async ({
 			projectId: params.projectId,
 			endpoint: FASTCHAT_STREAM_ENDPOINT,
 			httpMethod: FASTCHAT_STREAM_METHOD,
+			requestId,
+			userAgent: requestUserAgent,
+			ipAddress: requestIpAddress,
 			operationType: params.operationType,
 			tableName: params.tableName,
 			recordId: params.recordId,
@@ -3182,7 +3187,7 @@ export const POST: RequestHandler = async ({
 					return;
 				}
 
-				void supabase
+				const { error: staleTurnCancelError } = await supabase
 					.from('chat_turn_runs')
 					.update({
 						status: 'cancelled',
@@ -3191,6 +3196,24 @@ export const POST: RequestHandler = async ({
 					})
 					.eq('id', activeTurn.id)
 					.eq('user_id', userId);
+				if (staleTurnCancelError) {
+					logFastChatError({
+						error: staleTurnCancelError,
+						operationType: 'fastchat_stale_turn_cancel',
+						projectId: projectIdForLogs,
+						tableName: 'chat_turn_runs',
+						recordId: activeTurn.id,
+						metadata: {
+							sessionId: session.id,
+							contextType,
+							entityId,
+							activeTurnRunId: activeTurn.id,
+							activeStreamRunId: activeTurn.stream_run_id,
+							streamRunId,
+							clientTurnId: clientTurnId ?? null
+						}
+					});
+				}
 			}
 
 			const requestLastTurnContext =
@@ -3318,28 +3341,6 @@ export const POST: RequestHandler = async ({
 			if (streamRunId) {
 				userMessageMetadata.stream_run_id = streamRunId;
 			}
-			const userMessagePromise = sessionService.persistMessage({
-				sessionId: session.id,
-				userId,
-				role: 'user',
-				content: message,
-				metadata:
-					Object.keys(userMessageMetadata).length > 0 ? userMessageMetadata : undefined,
-				idempotencyKey: clientTurnId ? `turn:${clientTurnId}:user` : undefined
-			});
-			void userMessagePromise
-				.then((persistedUserMessage) => {
-					if (persistedUserMessage?.id) {
-						queueTurnRunUpdate(
-							{ user_message_id: persistedUserMessage.id },
-							'link_turn_run_user_message',
-							{ messageId: persistedUserMessage.id }
-						);
-					}
-				})
-				.catch(() => {
-					// User message persistence is already handled later in the route.
-				});
 
 			turnRunId = uuidv4();
 			let turnRunInsertError: unknown = null;
@@ -3372,20 +3373,34 @@ export const POST: RequestHandler = async ({
 			}
 			if (turnRunInsertError) {
 				const failedTurnRunId = turnRunId;
-				const activeTurnConflict = isUniqueViolationError(turnRunInsertError);
+				const activeTurnConflict = isRunningTurnUniqueViolation(turnRunInsertError);
 				turnRunId = null;
-				logFastChatError({
-					error: turnRunInsertError,
-					operationType: 'fastchat_turn_run_insert',
-					projectId: projectIdForLogs,
-					metadata: {
-						sessionId: session.id,
-						turnRunId: failedTurnRunId,
-						contextType,
-						entityId,
-						activeTurnConflict
-					}
-				});
+				const conflictMetadata = {
+					sessionId: session.id,
+					turnRunId: failedTurnRunId,
+					streamRunId,
+					clientTurnId: clientTurnId ?? null,
+					contextType,
+					entityId,
+					projectId: timingProjectId,
+					activeTurnConflict,
+					requestMessageLength: message.length
+				};
+				if (activeTurnConflict) {
+					logger.info('FastChat turn insert skipped because a turn is already running', {
+						...conflictMetadata,
+						streamRunId
+					});
+				} else {
+					logFastChatError({
+						error: turnRunInsertError,
+						operationType: 'fastchat_turn_run_insert',
+						projectId: projectIdForLogs,
+						tableName: 'chat_turn_runs',
+						recordId: failedTurnRunId,
+						metadata: conflictMetadata
+					});
+				}
 				await sendTimedMessage(
 					{
 						type: 'error',
@@ -3430,6 +3445,28 @@ export const POST: RequestHandler = async ({
 				queueTimingMetric(failedReason);
 				return;
 			}
+			const userMessagePromise = sessionService.persistMessage({
+				sessionId: session.id,
+				userId,
+				role: 'user',
+				content: message,
+				metadata:
+					Object.keys(userMessageMetadata).length > 0 ? userMessageMetadata : undefined,
+				idempotencyKey: clientTurnId ? `turn:${clientTurnId}:user` : undefined
+			});
+			void userMessagePromise
+				.then((persistedUserMessage) => {
+					if (persistedUserMessage?.id) {
+						queueTurnRunUpdate(
+							{ user_message_id: persistedUserMessage.id },
+							'link_turn_run_user_message',
+							{ messageId: persistedUserMessage.id }
+						);
+					}
+				})
+				.catch(() => {
+					// User message persistence is already handled later in the route.
+				});
 			const toolsRequiringProjectId = getToolsRequiringProjectId(tools);
 			let effectiveContextType: ChatContextType = contextType;
 			let effectiveEntityId: string | null = entityId ?? null;

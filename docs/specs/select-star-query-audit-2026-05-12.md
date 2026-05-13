@@ -1,4 +1,6 @@
-# SELECT * Query Audit
+<!-- docs/specs/select-star-query-audit-2026-05-12.md -->
+
+# SELECT \* Query Audit
 
 Date: 2026-05-12
 
@@ -15,30 +17,30 @@ The main issue is not every `*` equally. The waste risk is highest where a broad
 
 ## Scan Results
 
-| Scope | Count |
-| --- | ---: |
-| Total textual hits | 1,200 |
-| Runtime-relevant hits | 525 |
-| Production app/package hits | 473 |
-| Current SQL function hits | 52 |
+| Scope                       | Count |
+| --------------------------- | ----: |
+| Total textual hits          | 1,200 |
+| Runtime-relevant hits       |   525 |
+| Production app/package hits |   473 |
+| Current SQL function hits   |    52 |
 
 Production app/package hits:
 
-| Pattern | Count | Notes |
-| --- | ---: | --- |
-| Supabase `.select('*')` | 441 | Main production risk surface. |
-| Supabase `.select('*', { count, head: true })` | 18 | Lower risk; no row body is returned, but should still use `id` for clarity. |
-| Supabase `.select('*', { count })` | 14 | Returns rows plus count; should be projected explicitly. |
+| Pattern                                        | Count | Notes                                                                       |
+| ---------------------------------------------- | ----: | --------------------------------------------------------------------------- |
+| Supabase `.select('*')`                        |   441 | Main production risk surface.                                               |
+| Supabase `.select('*', { count, head: true })` |    18 | Lower risk; no row body is returned, but should still use `id` for clarity. |
+| Supabase `.select('*', { count })`             |    14 | Returns rows plus count; should be projected explicitly.                    |
 
 Read query shape:
 
-| Shape | Count | Risk |
-| --- | ---: | --- |
-| Single-row reads | 183 | Usually lower risk, but still leaks wide/internal fields. |
-| Multi-row reads with no obvious bound | 72 | Highest payload and latency risk. |
-| Limited reads | 64 | Medium risk if rows are wide. |
-| Bounded by input IDs | 38 | Medium risk; depends on input size. |
-| Paged/ranged reads | 6 | Usually acceptable if row width is controlled. |
+| Shape                                 | Count | Risk                                                      |
+| ------------------------------------- | ----: | --------------------------------------------------------- |
+| Single-row reads                      |   183 | Usually lower risk, but still leaks wide/internal fields. |
+| Multi-row reads with no obvious bound |    72 | Highest payload and latency risk.                         |
+| Limited reads                         |    64 | Medium risk if rows are wide.                             |
+| Bounded by input IDs                  |    38 | Medium risk; depends on input size.                       |
+| Paged/ranged reads                    |     6 | Usually acceptable if row width is controlled.            |
 
 ## Highest-Risk Clusters
 
@@ -118,12 +120,12 @@ Keep export routes explicit about their export contract. For global ontology gra
 
 Question checked: in project graph/full project loading, are `onto_documents.content`, `onto_documents.props`, `search_vector`, or `icon_svg` still used?
 
-| Field | Still used? | Bulk graph/full-project recommendation | Notes |
-| --- | --- | --- | --- |
-| `onto_documents.content` | Yes, but mostly in detail/edit paths. | Do not include in general project document lists or graph payloads. Keep for `context_document` if the project edit modal needs it, and for document detail endpoints. | `DocumentModal` loads full content from `/api/onto/documents/[id]/full`. `OntologyProjectEditModal` reads context document content. The project doc tree only needs a `has_content` boolean for list rendering. |
-| `onto_documents.props` | Yes, but selectively. | Do not include raw props in graph/list payloads by default. Keep for document detail/edit and known compatibility fallbacks like `props.body_markdown`. | Graph services currently attach `document.props` to node metadata, but the visible graph node components only read `typeKey` and similar explicit metadata. |
-| `search_vector` | Yes, internally in SQL search/ranking only. | Never return from app/API/tool payloads. | `onto_search_entities.sql` ranks with `search_vector`. UI-facing types already say this should be omitted. Several agent serializers already strip it. |
-| `icon_svg` | Yes, actively in project UI. | Keep in project page/list/skeleton UI payloads where the icon is rendered. Strip from LLM/tool graph/context payloads unless a caller explicitly needs visual branding. | Project headers and project list cards render `icon_svg`. It is one row per project, so less dangerous than document content, but it is still unnecessary in agent context. |
+| Field                    | Still used?                                 | Bulk graph/full-project recommendation                                                                                                                                  | Notes                                                                                                                                                                                                           |
+| ------------------------ | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `onto_documents.content` | Yes, but mostly in detail/edit paths.       | Do not include in general project document lists or graph payloads. Keep for `context_document` if the project edit modal needs it, and for document detail endpoints.  | `DocumentModal` loads full content from `/api/onto/documents/[id]/full`. `OntologyProjectEditModal` reads context document content. The project doc tree only needs a `has_content` boolean for list rendering. |
+| `onto_documents.props`   | Yes, but selectively.                       | Do not include raw props in graph/list payloads by default. Keep for document detail/edit and known compatibility fallbacks like `props.body_markdown`.                 | Graph services currently attach `document.props` to node metadata, but the visible graph node components only read `typeKey` and similar explicit metadata.                                                     |
+| `search_vector`          | Yes, internally in SQL search/ranking only. | Never return from app/API/tool payloads.                                                                                                                                | `onto_search_entities.sql` ranks with `search_vector`. UI-facing types already say this should be omitted. Several agent serializers already strip it.                                                          |
+| `icon_svg`               | Yes, actively in project UI.                | Keep in project page/list/skeleton UI payloads where the icon is rendered. Strip from LLM/tool graph/context payloads unless a caller explicitly needs visual branding. | Project headers and project list cards render `icon_svg`. It is one row per project, so less dangerous than document content, but it is still unnecessary in agent context.                                     |
 
 Important distinction:
 

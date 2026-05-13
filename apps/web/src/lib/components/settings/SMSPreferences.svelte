@@ -36,8 +36,13 @@
 	}: Props = $props();
 
 	let preferences = $state<any>(null);
-	let isLoading = $state(smsPreferences === undefined);
+	let localPreferencesLoading = $state(true);
 	let isSaving = $state(false);
+	let isLoading = $derived(
+		smsPreferences === undefined
+			? localPreferencesLoading
+			: Boolean(smsPreferencesLoading) && !smsPreferences
+	);
 
 	// Preference settings
 	let eventRemindersEnabled = $state(false);
@@ -61,7 +66,6 @@
 	$effect(() => {
 		if (smsPreferences !== undefined) {
 			applyPreferences(smsPreferences);
-			isLoading = Boolean(smsPreferencesLoading) && !smsPreferences;
 		}
 	});
 
@@ -80,12 +84,12 @@
 	}
 
 	async function loadPreferences() {
-		isLoading = true;
+		localPreferencesLoading = true;
 		const result = await smsService.getSMSPreferences(userId);
 		if (result.success && result.data?.preferences) {
 			applyPreferences(result.data.preferences);
 		}
-		isLoading = false;
+		localPreferencesLoading = false;
 	}
 
 	async function refreshPreferences() {

@@ -527,7 +527,7 @@
 	disabled={isPullRefreshing || showChatModal || projectsLoading}
 >
 	<div
-		class="mx-auto max-w-screen-2xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-2 sm:space-y-4"
+		class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4"
 	>
 		<!-- Page Header - Inkprint design with micro-label pattern -->
 		<header class="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">

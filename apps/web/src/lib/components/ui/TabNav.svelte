@@ -1,11 +1,11 @@
 <!-- apps/web/src/lib/components/ui/TabNav.svelte -->
 <script lang="ts" module>
-	import type { Component } from 'svelte';
+	import type { ComponentType } from 'svelte';
 
 	export interface Tab {
 		id: string;
 		label: string;
-		icon?: Component<any>;
+		icon?: ComponentType;
 		count?: number;
 		hideCount?: boolean;
 	}

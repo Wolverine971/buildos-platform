@@ -1729,7 +1729,6 @@
 		<ProjectHeaderCard
 			{project}
 			{showMobileMenu}
-			onBack={() => goto('/projects')}
 			onOpenMenu={handleHeaderMenuOpen}
 			onEntityClick={handleNextStepEntityClick}
 			onNextStepGenerated={refreshProjectSilently}

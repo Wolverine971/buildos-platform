@@ -33,7 +33,11 @@
 		CalendarRange,
 		Clock3,
 		CircleAlert,
-		Repeat
+		Repeat,
+		Activity,
+		Link as LinkIcon,
+		Image as ImageIcon,
+		Tag as TagIcon
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
@@ -165,6 +169,8 @@
 	let selectedLinkedTaskId = $state<string | null>(null);
 	let showChatModal = $state(false);
 	let showActivityLog = $state(false);
+	let showLinkedEntities = $state(true);
+	let showImages = $state(false);
 
 	type SurfaceBadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
 
@@ -916,7 +922,7 @@
 					</div>
 
 					<!-- Sidebar (Right column) -->
-					<div class="space-y-3">
+					<div>
 						<Card variant="elevated" class="wt-card">
 							<CardHeader variant="muted" texture="strip">
 								<div class="flex items-center justify-between gap-3">
@@ -1268,75 +1274,137 @@
 											</div>
 										</div>
 									</section>
+
+									<!-- Tags -->
+									{#if task?.props?.tags?.length}
+										<section class="px-3 py-3 sm:px-4">
+											<div class="flex items-center gap-2 mb-2">
+												<TagIcon class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Tags
+												</p>
+											</div>
+											<TagsDisplay
+												props={task.props}
+												size="sm"
+												compact={true}
+											/>
+										</section>
+									{/if}
+
+									<!-- Linked Entities (collapsible, default open) -->
+									<section class="px-3 sm:px-4">
+										<button
+											type="button"
+											onclick={() =>
+												(showLinkedEntities = !showLinkedEntities)}
+											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											aria-expanded={showLinkedEntities}
+										>
+											<div class="flex items-center gap-2">
+												<LinkIcon class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Linked Entities
+												</p>
+											</div>
+											<ChevronDown
+												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
+													? 'rotate-180'
+													: ''}"
+											/>
+										</button>
+										{#if showLinkedEntities}
+											<div class="pb-3">
+												<LinkedEntities
+													sourceId={taskId}
+													sourceKind="task"
+													projectId={task.project_id}
+													onEntityClick={handleLinkedEntityClick}
+													onLinksChanged={handleLinksChanged}
+												/>
+											</div>
+										{/if}
+									</section>
+
+									<!-- Images (collapsible) -->
+									<section class="px-3 sm:px-4">
+										<button
+											type="button"
+											onclick={() => (showImages = !showImages)}
+											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											aria-expanded={showImages}
+										>
+											<div class="flex items-center gap-2">
+												<ImageIcon class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Images
+												</p>
+											</div>
+											<ChevronDown
+												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
+													? 'rotate-180'
+													: ''}"
+											/>
+										</button>
+										{#if showImages}
+											<div class="pb-3">
+												<ImageAssetsPanel
+													{projectId}
+													entityKind="task"
+													entityId={taskId}
+													showTitle={false}
+													compact={true}
+													onChanged={() => {
+														void loadTask();
+														onUpdated?.();
+													}}
+												/>
+											</div>
+										{/if}
+									</section>
+
+									<!-- Activity (collapsible) -->
+									<section class="px-3 sm:px-4">
+										<button
+											type="button"
+											onclick={() => (showActivityLog = !showActivityLog)}
+											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											aria-expanded={showActivityLog}
+										>
+											<div class="flex items-center gap-2">
+												<Activity class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Activity
+												</p>
+											</div>
+											<ChevronDown
+												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
+													? 'rotate-180'
+													: ''}"
+											/>
+										</button>
+										{#if showActivityLog}
+											<div class="pb-3">
+												<EntityActivityLog
+													entityType="task"
+													entityId={taskId}
+													autoLoad={true}
+													embedded={true}
+												/>
+											</div>
+										{/if}
+									</section>
 								</div>
 							</CardBody>
 						</Card>
-
-						<!-- Linked Entities -->
-						<LinkedEntities
-							sourceId={taskId}
-							sourceKind="task"
-							projectId={task.project_id}
-							compactEditToggle={true}
-							collapsible={true}
-							defaultExpanded={false}
-							onEntityClick={handleLinkedEntityClick}
-							onLinksChanged={handleLinksChanged}
-						/>
-
-						<!-- Images -->
-						<ImageAssetsPanel
-							{projectId}
-							entityKind="task"
-							entityId={taskId}
-							title="Images"
-							compact={true}
-							onChanged={() => {
-								void loadTask();
-								onUpdated?.();
-							}}
-						/>
-
-						{#if task?.props?.tags?.length}
-							<div
-								class="px-3 py-2.5 border border-border rounded-lg bg-card shadow-ink"
-							>
-								<p
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5"
-								>
-									Tags
-								</p>
-								<TagsDisplay props={task.props} size="sm" compact={true} />
-							</div>
-						{/if}
-
-						<!-- Activity Log (collapsible) -->
-						<div
-							class="border border-border rounded-lg bg-card shadow-ink overflow-hidden"
-						>
-							<button
-								type="button"
-								onclick={() => (showActivityLog = !showActivityLog)}
-								class="w-full px-3 py-2 flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:bg-muted/50 transition-colors"
-							>
-								<span>Activity</span>
-								<ChevronDown
-									class="w-3.5 h-3.5 transition-transform {showActivityLog
-										? 'rotate-180'
-										: ''}"
-								/>
-							</button>
-							{#if showActivityLog}
-								<div class="border-t border-border">
-									<EntityActivityLog
-										entityType="task"
-										entityId={taskId}
-										autoLoad={true}
-										embedded={true}
-									/>
-								</div>
-							{/if}
-						</div>
 					</div>
 				</div>
 			{/if}

@@ -30,8 +30,13 @@
 
 	// Profile form
 	let profileForm = $state({
-		name: user?.user_metadata?.name || user?.name || '',
-		email: user?.email || ''
+		name: '',
+		email: ''
+	});
+
+	$effect(() => {
+		profileForm.name = user?.user_metadata?.name || user?.name || '';
+		profileForm.email = user?.email || '';
 	});
 
 	// Password form

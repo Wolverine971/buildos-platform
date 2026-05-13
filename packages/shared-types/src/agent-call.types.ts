@@ -406,6 +406,29 @@ export interface BuildosAgentCallerBootstrapSummary {
 	paste_prompt: string;
 }
 
+export type BuildosAgentBootstrapArtifactKind =
+	| 'env'
+	| 'json'
+	| 'openapi'
+	| 'shell'
+	| 'text'
+	| 'toml';
+
+export interface BuildosAgentBootstrapArtifact {
+	id: string;
+	label: string;
+	kind: BuildosAgentBootstrapArtifactKind;
+	content: string;
+	sensitive?: boolean;
+}
+
+export interface BuildosAgentBootstrapOAuthGuidance {
+	recommended: boolean;
+	required: boolean;
+	reason: string;
+	next_steps: string[];
+}
+
 export interface BuildosAgentCallerProvisionResponse {
 	buildos_agent: BuildosAgentIdentitySummary;
 	caller: BuildosAgentCallerSummary;
@@ -432,9 +455,17 @@ export interface BuildosAgentCallerRevokeResponse {
 
 export interface BuildosAgentBootstrapDocument {
 	provider: string;
-	instructions_version: 'openclaw_bootstrap_v1';
+	client_profile_id: string;
+	instructions_version: 'agent_profile_bootstrap_v1' | 'openclaw_bootstrap_v1';
 	expires_at: string;
 	summary: string;
+	client: {
+		label: string;
+		credential_delivery: string;
+		transport: string;
+		requires_oauth: boolean;
+		setup_status: 'ready' | 'requires_connector' | 'requires_oauth';
+	};
 	buildos: {
 		base_url: string;
 		dial_url: string;
@@ -445,7 +476,12 @@ export interface BuildosAgentBootstrapDocument {
 		scope_mode: BuildosAgentScopeMode;
 		allowed_ops: BuildosAgentAllowedOp[];
 	};
-	openclaw: {
+	artifacts: BuildosAgentBootstrapArtifact[];
+	storage_targets: string[];
+	setup_steps: string[];
+	follow_up_prompt: string;
+	oauth?: BuildosAgentBootstrapOAuthGuidance;
+	openclaw?: {
 		env_block: string;
 		storage_targets: string[];
 		setup_steps: string[];

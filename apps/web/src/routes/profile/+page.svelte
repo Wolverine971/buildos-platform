@@ -46,29 +46,53 @@
 
 	let { data, form }: Props = $props();
 
+	function getInitialOnboardingComplete() {
+		return data.justCompletedOnboarding || false;
+	}
+
+	function getInitialActiveTab() {
+		return data.activeTab || 'account';
+	}
+
+	function getInitialProgressData() {
+		return (
+			data.progressData || {
+				completed: false,
+				progress: 0,
+				missingFields: [] as string[],
+				completedFields: [] as string[],
+				missingRequiredFields: [] as string[],
+				categoryProgress: {} as Record<string, boolean>
+			}
+		);
+	}
+
 	// State
 	let saveSuccess = $state(false);
 	let successMessage = $state('Changes saved successfully.');
 	let saveError = $state(false);
 	let errorMessage = $state('');
-	let showOnboardingComplete = $state(data.justCompletedOnboarding || false);
-	let activeTab = $state(data.activeTab || 'account');
+	let showOnboardingComplete = $state(getInitialOnboardingComplete());
+	let activeTab = $state(getInitialActiveTab());
+	const baseProfileTabIds = [
+		'account',
+		'contacts',
+		'preferences',
+		'briefs',
+		'calendar',
+		'notifications',
+		'agent-keys'
+	];
+	let validProfileTabIds = $derived(
+		data.stripeEnabled ? [...baseProfileTabIds, 'billing'] : baseProfileTabIds
+	);
 
 	// Template management state
 	let editingTemplate = $state<any>(null);
 	let creatingTemplate = $state<'project' | null>(null);
 
 	// Progress data from server
-	let progressData = $state(
-		data.progressData || {
-			completed: false,
-			progress: 0,
-			missingFields: [] as string[],
-			completedFields: [] as string[],
-			missingRequiredFields: [] as string[],
-			categoryProgress: {} as Record<string, boolean>
-		}
-	);
+	let progressData = $state(getInitialProgressData());
 
 	// Handle form submission results
 	$effect(() => {
@@ -91,21 +115,10 @@
 	// Watch for URL changes to update active tab
 	$effect(() => {
 		const urlTab = $page.url.searchParams.get('tab');
-		if (urlTab && urlTab !== activeTab) {
-			if (
-				[
-					'account',
-					'contacts',
-					'preferences',
-					'briefs',
-					'calendar',
-					'notifications',
-					'agent-keys',
-					'billing'
-				].includes(urlTab)
-			) {
-				activeTab = urlTab;
-			}
+		if (urlTab && validProfileTabIds.includes(urlTab) && urlTab !== activeTab) {
+			activeTab = urlTab;
+		} else if (!validProfileTabIds.includes(activeTab)) {
+			activeTab = 'account';
 		}
 	});
 
@@ -137,6 +150,10 @@
 
 	// Function to switch tabs and update URL
 	function switchTab(tab: string) {
+		if (!validProfileTabIds.includes(tab)) {
+			tab = 'account';
+		}
+
 		activeTab = tab;
 
 		// Update URL without reload

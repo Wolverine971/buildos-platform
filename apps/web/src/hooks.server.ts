@@ -15,7 +15,12 @@ import {
 	shouldGuardMutationForConsumptionBilling
 } from '$lib/server/consumption-billing';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
-import { getRequestIdFromHeaders, logServerError } from '$lib/server/error-tracking';
+import {
+	getClientIpFromHeaders,
+	getRequestIdFromHeaders,
+	getUserAgentFromHeaders,
+	logServerError
+} from '$lib/server/error-tracking';
 import { StripeService } from '$lib/services/stripe-service';
 import {
 	getErrorStatus,
@@ -130,6 +135,8 @@ function logHookError(
 			userId: options.userId ?? event.locals.user?.id,
 			projectId: options.projectId,
 			requestId: getRequestIdFromHeaders(event.request.headers),
+			userAgent: getUserAgentFromHeaders(event.request.headers),
+			ipAddress: getClientIpFromHeaders(event.request.headers),
 			severity: options.severity,
 			metadata: {
 				routeId: event.route.id ?? null,
@@ -656,6 +663,8 @@ export const handleError: HandleServerError = async ({ error, event }) => {
 		operation: 'hooks.handle_error',
 		userId: event.locals.user?.id,
 		requestId: getRequestIdFromHeaders(event.request.headers),
+		userAgent: getUserAgentFromHeaders(event.request.headers),
+		ipAddress: getClientIpFromHeaders(event.request.headers),
 		severity: 'error',
 		metadata: {
 			errorId,

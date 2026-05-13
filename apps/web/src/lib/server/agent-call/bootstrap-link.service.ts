@@ -12,10 +12,15 @@ import {
 	extractAllowedOpsFromPolicy,
 	extractScopeModeFromPolicy
 } from './agent-call-policy';
+import {
+	buildAgentClientBootstrapInstructions,
+	getAgentClientProfile,
+	inferAgentClientProfileId
+} from '$lib/agent-call/agent-client-profiles';
 import { ensureUserBuildosAgent } from './callee-resolution';
 
 const BOOTSTRAP_TTL_MS = 1000 * 60 * 30;
-const INSTRUCTIONS_VERSION = 'openclaw_bootstrap_v1';
+const INSTRUCTIONS_VERSION = 'agent_profile_bootstrap_v1';
 
 function normalizeBaseUrl(baseUrl: string): string {
 	return baseUrl.replace(/\/+$/g, '');
@@ -33,38 +38,15 @@ function buildInstructionsUrl(baseUrl: string, setupToken: string): string {
 	return `${normalizeBaseUrl(baseUrl)}/api/agent-call/bootstrap/${setupToken}`;
 }
 
-function buildFollowUpPrompt(): string {
-	return [
-		'Use the configured BuildOS credentials.',
-		'Connect to BuildOS, list the available BuildOS tools, then call the scoped direct tools by name. Use tool_search only when the exact tool is unknown, and tool_schema when you need exact arguments before a write.',
-		'Do not ask the user to paste secrets into chat.',
-		'If configuration is incomplete, say exactly which file, env var, or secret location still needs to be updated.'
-	].join(' ');
-}
-
-function buildEnvBlock(params: {
-	baseUrl: string;
-	bearerToken: string;
-	calleeHandle: string;
-	callerKey: string;
-}): string {
-	return [
-		`BUILDOS_BASE_URL=${normalizeBaseUrl(params.baseUrl)}`,
-		`BUILDOS_AGENT_TOKEN=${params.bearerToken}`,
-		`BUILDOS_CALLEE_HANDLE=${params.calleeHandle}`,
-		`BUILDOS_CALLER_KEY=${params.callerKey}`
-	].join('\n');
-}
-
 function buildPastePrompt(params: {
 	instructionsUrl: string;
 	expiresAt: string;
-	provider: string;
+	clientLabel: string;
+	requiresOAuth: boolean;
+	secretHandlingNote: string;
 }): string {
-	const providerLabel = params.provider === 'openclaw' ? 'OpenClaw' : 'external agent';
-
 	return [
-		`You are being connected to BuildOS from ${providerLabel}.`,
+		`You are being connected to BuildOS from ${params.clientLabel}.`,
 		'',
 		`Open this setup URL now and follow the instructions exactly:`,
 		params.instructionsUrl,
@@ -72,9 +54,15 @@ function buildPastePrompt(params: {
 		'Important rules:',
 		'- Treat any tokens returned there as secrets.',
 		'- Store the BuildOS values in secure config or env, not in normal chat memory.',
+		`- ${params.secretHandlingNote}`,
 		'- Prefer the native BuildOS connector if one exists.',
 		'- If no connector exists, use your shell/HTTP capability to call BuildOS directly as instructed.',
 		'- Do not ask the user to paste the secret token into chat again.',
+		...(params.requiresOAuth
+			? [
+					'- This client needs a remote connector/OAuth path for production; do not treat browser chat as secret storage.'
+				]
+			: []),
 		'',
 		`This setup link expires at ${params.expiresAt}.`
 	].join('\n');
@@ -82,22 +70,43 @@ function buildPastePrompt(params: {
 
 function formatBootstrapDocumentAsText(document: BuildosAgentBootstrapDocument): string {
 	return [
-		'BuildOS OpenClaw Bootstrap Instructions',
+		`BuildOS ${document.client.label} Bootstrap Instructions`,
 		`Version: ${document.instructions_version}`,
 		`Expires: ${document.expires_at}`,
+		`Client profile: ${document.client_profile_id}`,
 		'',
 		document.summary,
 		'',
 		'This response contains secrets. Do not copy them into normal chat logs or memory.',
 		'',
-		'Store these values in OpenClaw config or env:',
-		document.openclaw.env_block,
+		'Client:',
+		`- Credential delivery: ${document.client.credential_delivery}`,
+		`- Transport: ${document.client.transport}`,
+		`- Setup status: ${document.client.setup_status}`,
+		`- Requires OAuth: ${document.client.requires_oauth ? 'yes' : 'no'}`,
 		'',
 		'Preferred storage targets:',
-		...document.openclaw.storage_targets.map((target) => `- ${target}`),
+		...document.storage_targets.map((target) => `- ${target}`),
+		'',
+		'Artifacts:',
+		...document.artifacts.flatMap((artifact) => [
+			`## ${artifact.label} (${artifact.kind}${artifact.sensitive ? ', sensitive' : ''})`,
+			artifact.content,
+			''
+		]),
 		'',
 		'What to do next:',
-		...document.openclaw.setup_steps.map((step, index) => `${index + 1}. ${step}`),
+		...document.setup_steps.map((step, index) => `${index + 1}. ${step}`),
+		...(document.oauth
+			? [
+					'',
+					'OAuth guidance:',
+					`- Recommended: ${document.oauth.recommended ? 'yes' : 'no'}`,
+					`- Required: ${document.oauth.required ? 'yes' : 'no'}`,
+					`- Reason: ${document.oauth.reason}`,
+					...document.oauth.next_steps.map((step) => `- ${step}`)
+				]
+			: []),
 		'',
 		'BuildOS gateway:',
 		`- URL: ${document.buildos.dial_url}`,
@@ -108,7 +117,7 @@ function formatBootstrapDocumentAsText(document: BuildosAgentBootstrapDocument):
 		...document.gateway.next_methods.map((method) => `- Then: ${method}`),
 		'',
 		'Follow-up prompt after configuration:',
-		document.openclaw.follow_up_prompt
+		document.follow_up_prompt
 	].join('\n');
 }
 
@@ -178,6 +187,9 @@ export class AgentCallBootstrapLinkService {
 		}
 
 		const instructionsUrl = buildInstructionsUrl(params.baseUrl, setupToken);
+		const profile = getAgentClientProfile(
+			inferAgentClientProfileId(params.caller.provider, params.caller.metadata)
+		);
 
 		return {
 			instructions_url: instructionsUrl,
@@ -185,7 +197,9 @@ export class AgentCallBootstrapLinkService {
 			paste_prompt: buildPastePrompt({
 				instructionsUrl,
 				expiresAt,
-				provider: params.caller.provider
+				clientLabel: profile.label,
+				requiresOAuth: profile.requiresOAuth,
+				secretHandlingNote: profile.secretHandlingNote
 			})
 		};
 	}
@@ -243,11 +257,16 @@ export class AgentCallBootstrapLinkService {
 		const scopeMode = extractScopeModeFromPolicy(caller.policy);
 		const allowedOps = extractAllowedOpsFromPolicy(caller.policy, scopeMode);
 		const baseUrl = normalizeBaseUrl(params.baseUrl);
-		const envBlock = buildEnvBlock({
+		const clientProfileId = inferAgentClientProfileId(caller.provider, caller.metadata);
+		const profile = getAgentClientProfile(clientProfileId);
+		const instructions = buildAgentClientBootstrapInstructions(profile, {
 			baseUrl,
 			bearerToken: payload.bearer_token,
 			calleeHandle: buildosAgent.agent_handle,
-			callerKey: caller.caller_key
+			callerKey: caller.caller_key,
+			provider: caller.provider,
+			scopeMode,
+			allowedOps
 		});
 
 		await this.admin
@@ -257,9 +276,17 @@ export class AgentCallBootstrapLinkService {
 
 		return {
 			provider: caller.provider,
+			client_profile_id: profile.id,
 			instructions_version: INSTRUCTIONS_VERSION,
 			expires_at: bootstrapLink.expires_at,
-			summary: `Use this document to store BuildOS credentials in OpenClaw and connect through the BuildOS call gateway. This key grants ${describeScopeMode(scopeMode)} access and exposes ${allowedOps.length} BuildOS ops as scoped direct tools. If a native BuildOS connector is unavailable, use exec plus curl as the fallback path.`,
+			summary: `Use this document to store BuildOS credentials for ${profile.label} and connect through the BuildOS call gateway. This key grants ${describeScopeMode(scopeMode)} access and exposes ${allowedOps.length} BuildOS ops as scoped direct tools. ${profile.requiresOAuth ? 'For this client, production setup should use remote connector OAuth instead of pasted bearer-token chat handoff.' : 'If a native BuildOS connector is unavailable, use shell/HTTP calls as the fallback path.'}`,
+			client: {
+				label: profile.label,
+				credential_delivery: profile.credentialDelivery,
+				transport: profile.transport,
+				requires_oauth: profile.requiresOAuth,
+				setup_status: profile.setupStatus
+			},
 			buildos: {
 				base_url: baseUrl,
 				dial_url: `${baseUrl}/api/agent-call/buildos`,
@@ -270,29 +297,12 @@ export class AgentCallBootstrapLinkService {
 				scope_mode: scopeMode,
 				allowed_ops: allowedOps
 			},
-			openclaw: {
-				env_block: envBlock,
-				storage_targets: [
-					'OpenClaw secret or env configuration',
-					'~/.openclaw/.env',
-					'BuildOS plugin or connector config'
-				],
-				setup_steps: [
-					'Store the env block exactly as shown below in secure config, not in normal chat memory.',
-					'If a BuildOS connector or plugin exists, use it.',
-					'If no connector exists, use exec plus curl to POST to the BuildOS gateway.',
-					'Authenticate with Authorization: Bearer <BUILDOS_AGENT_TOKEN>.',
-					`Request ${scopeMode} during call.dial unless you only need less access for this session.`,
-					'First call method call.dial, then tools/list.',
-					'Use the direct tools returned by tools/list for normal BuildOS reads and writes.',
-					'Use tool_search to discover candidate tools when the exact tool is not known.',
-					'Use tool_schema with the exact op to load required args and examples before first-time or uncertain writes, then call the returned direct tool_name.',
-					'If a write op returns FORBIDDEN, inspect the granted scope and allowed ops before retrying.',
-					'When finished, call call.hangup.',
-					'If you cannot update config directly, tell the user exactly which file or config screen must be updated.'
-				],
-				follow_up_prompt: buildFollowUpPrompt()
-			},
+			artifacts: instructions.artifacts,
+			storage_targets: instructions.storageTargets,
+			setup_steps: instructions.setupSteps,
+			follow_up_prompt: instructions.followUpPrompt,
+			...(instructions.oauth ? { oauth: instructions.oauth } : {}),
+			...(instructions.openclaw ? { openclaw: instructions.openclaw } : {}),
 			gateway: {
 				first_method: 'call.dial',
 				next_methods: ['tools/list', 'tools/call', 'call.hangup']

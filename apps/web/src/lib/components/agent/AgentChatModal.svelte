@@ -395,6 +395,7 @@
 	let sessionLoadController: AbortController | null = null;
 	let sessionRefreshTimeout: ReturnType<typeof setTimeout> | null = null;
 	let activeRestoredTurnRunId = $state<string | null>(null);
+	let isStartingStream = $state(false);
 	let sessionBootstrapRequestId = 0;
 	let sessionBootstrapController: AbortController | null = null;
 	let sessionBootstrapPromise: Promise<ChatSession | null> | null = null;
@@ -649,6 +650,7 @@
 			!selectedContextType ||
 			isSessionBusy ||
 			activeRestoredTurnRunId !== null ||
+			isStartingStream ||
 			(!inputValue.trim() && !voice.isRecording) || // Allow send if recording (will get transcribed text)
 			(isStreaming && !isTouchDevice) ||
 			voice.isInitializing ||
@@ -1786,100 +1788,108 @@
 			error = 'BuildOS is still finishing the latest response.';
 			return;
 		}
+		if (isStartingStream) return;
 
-		if (isStreaming) {
-			await handleStopGeneration('superseded', { awaitCancelHint: true });
-		}
-
-		const requestContextType = selectedContextType;
-		const requestEntityId = selectedEntityId;
-		const requestProjectFocus = resolvedProjectFocus;
-		let sessionForTurn = currentSession;
-		if (!sessionForTurn?.id) {
-			try {
-				sessionForTurn = await ensureSessionReady(
-					buildSessionBootstrapTarget(
-						requestContextType,
-						requestEntityId,
-						requestProjectFocus
-					)
-				);
-			} catch (sessionError) {
-				if ((sessionError as DOMException)?.name === 'AbortError') {
-					return;
-				}
-				error =
-					sessionError instanceof Error
-						? sessionError.message
-						: 'Unable to prepare a chat session right now.';
-				return;
-			}
-		}
-
-		if (!sessionForTurn?.id) {
-			error = 'Unable to prepare a chat session right now.';
-			return;
-		}
-
-		const now = new Date();
-		const clientTurnId = crypto.randomUUID();
-		const transportStreamRunId = crypto.randomUUID();
-
-		// Add user message
-		const userMessage: UIMessage = {
-			id: crypto.randomUUID(),
-			session_id: sessionForTurn.id,
-			user_id: undefined, // Will be set by backend
-			type: senderType as UIMessage['type'],
-			role: 'user' as ChatRole,
-			content: trimmed,
-			timestamp: now,
-			created_at: now.toISOString(),
-			metadata: {
-				...(activeVoiceNoteGroupId ? { voice_note_group_id: activeVoiceNoteGroupId } : {}),
-				client_turn_id: clientTurnId,
-				stream_run_id: transportStreamRunId
-			}
-		};
-
-		messages = [...messages, userMessage];
-		hasSentMessage = true;
-		if (!suppressInputClear) {
-			inputValue = '';
-		}
-		if (activeVoiceNoteGroupId) {
-			voice.noteGroupId = null;
-		}
-		error = null;
-
-		// Increment run id for stale-stream guard
-		activeStreamRunId = activeStreamRunId + 1;
-		const runId = activeStreamRunId;
-		activeTransportStreamRunId = transportStreamRunId;
-		activeClientTurnId = clientTurnId;
-		activeStreamTiming = buildClientStreamTimingState(runId);
-
-		isStreaming = true;
-		pendingToolResults.clear();
-		hiddenToolCallIds.clear();
-
-		createThinkingBlock();
-
-		currentActivity = 'Analyzing request...';
-		updateThinkingBlockState('thinking', 'BuildOS is processing your request...');
-
-		// NOTE: Do NOT reset lastTurnContext here - it should be preserved and sent with the next request
-		// for conversation continuity. The server will generate fresh context after each turn.
-
-		// Reset scroll flag so we always scroll to show new user message
-		userHasScrolled = false;
-
+		isStartingStream = true;
+		let userMessage: UIMessage | null = null;
+		let runId: number | null = null;
 		let streamController: AbortController | null = null;
-		let receivedStreamEvent = false;
 
 		try {
+			if (isStreaming) {
+				await handleStopGeneration('superseded', { awaitCancelHint: true });
+			}
+
+			const requestContextType = selectedContextType;
+			const requestEntityId = selectedEntityId;
+			const requestProjectFocus = resolvedProjectFocus;
+			let sessionForTurn = currentSession;
+			if (!sessionForTurn?.id) {
+				try {
+					sessionForTurn = await ensureSessionReady(
+						buildSessionBootstrapTarget(
+							requestContextType,
+							requestEntityId,
+							requestProjectFocus
+						)
+					);
+				} catch (sessionError) {
+					if ((sessionError as DOMException)?.name === 'AbortError') {
+						return;
+					}
+					error =
+						sessionError instanceof Error
+							? sessionError.message
+							: 'Unable to prepare a chat session right now.';
+					return;
+				}
+			}
+
+			if (!sessionForTurn?.id) {
+				error = 'Unable to prepare a chat session right now.';
+				return;
+			}
+
+			const now = new Date();
+			const clientTurnId = crypto.randomUUID();
+			const transportStreamRunId = crypto.randomUUID();
+
+			// Add user message
+			userMessage = {
+				id: crypto.randomUUID(),
+				session_id: sessionForTurn.id,
+				user_id: undefined, // Will be set by backend
+				type: senderType as UIMessage['type'],
+				role: 'user' as ChatRole,
+				content: trimmed,
+				timestamp: now,
+				created_at: now.toISOString(),
+				metadata: {
+					...(activeVoiceNoteGroupId
+						? { voice_note_group_id: activeVoiceNoteGroupId }
+						: {}),
+					client_turn_id: clientTurnId,
+					stream_run_id: transportStreamRunId
+				}
+			};
+
+			messages = [...messages, userMessage];
+			hasSentMessage = true;
+			if (!suppressInputClear) {
+				inputValue = '';
+			}
+			if (activeVoiceNoteGroupId) {
+				voice.noteGroupId = null;
+			}
+			error = null;
+
+			// Increment run id for stale-stream guard
+			activeStreamRunId = activeStreamRunId + 1;
+			runId = activeStreamRunId;
+			activeTransportStreamRunId = transportStreamRunId;
+			activeClientTurnId = clientTurnId;
+			activeStreamTiming = buildClientStreamTimingState(runId);
+
+			isStreaming = true;
+			pendingToolResults.clear();
+			hiddenToolCallIds.clear();
+
+			createThinkingBlock();
+
+			currentActivity = 'Analyzing request...';
+			updateThinkingBlockState('thinking', 'BuildOS is processing your request...');
+
+			// NOTE: Do NOT reset lastTurnContext here - it should be preserved and sent with the next request
+			// for conversation continuity. The server will generate fresh context after each turn.
+
+			// Reset scroll flag so we always scroll to show new user message
+			userHasScrolled = false;
+
+			let receivedStreamEvent = false;
+
 			streamController = new AbortController();
 			currentStreamController = streamController;
+			isStartingStream = false;
 
 			// Determine ontology entity type from context
 			let ontologyEntityType:
@@ -1984,7 +1994,7 @@
 		} catch (err) {
 			currentStreamController = null;
 			if ((err as DOMException)?.name === 'AbortError') {
-				if (runId !== activeStreamRunId) {
+				if (runId === null || runId !== activeStreamRunId) {
 					// This stream was superseded; ignore abort cleanup
 					return;
 				}
@@ -2008,12 +2018,18 @@
 			finalizeThinkingBlock('error'); // Ensure thinking block is closed on error
 			flushAssistantText();
 			finalizeAssistantMessage();
-			finalizeClientStreamTiming(runId, 'error', 'error');
+			if (runId !== null) {
+				finalizeClientStreamTiming(runId, 'error', 'error');
+			}
 
 			// Remove user message on error
-			messages = messages.filter((m) => m.id !== userMessage.id);
+			const failedUserMessageId = userMessage?.id;
+			if (failedUserMessageId) {
+				messages = messages.filter((m) => m.id !== failedUserMessageId);
+			}
 			inputValue = trimmed;
 		} finally {
+			isStartingStream = false;
 			if (currentStreamController === streamController) {
 				currentStreamController = null;
 			}

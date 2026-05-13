@@ -2,59 +2,60 @@
 layout: docs
 title: Connect Your Agents
 slug: connect-agents
-summary: One key. Every project. Connect Claude Code, Cursor, Claude Desktop, ChatGPT, or any HTTP-capable tool to your BuildOS workspace so they read off the same sheet of paper instead of starting from zero each session.
+summary: One key. Every project. Connect Claude Code, OpenClaw, ChatGPT Actions, Codex, or any HTTP-capable tool to your BuildOS workspace with setup instructions tailored to the client.
 icon: Plug
 order: 9
-lastUpdated: 2026-05-11
+lastUpdated: 2026-05-13
 path: apps/web/src/content/docs/connect-agents.md
 ---
 
-Your messy thinking lives in BuildOS. Your AI tools — Claude Code, Cursor, Claude Desktop, ChatGPT, anything that can call HTTP — can read off the same sheet of paper instead of starting from zero each session.
+Your messy thinking lives in BuildOS. Your AI tools — Claude Code, OpenClaw, Codex, ChatGPT Actions, custom HTTP clients, and browser-based remote connectors — can read off the same sheet of paper instead of starting from zero each session.
 
-Generate a key. Paste it into your AI tool's config. Now that tool can see your projects, read your tasks and docs, and (if you allow it) write back to them.
+Generate a key. Choose where you are installing it. BuildOS gives you the right storage instructions for that client. Local tools usually use env or MCP config. Private ChatGPT Actions use the Action authentication secret. Browser/cloud clients should use a remote connector with OAuth.
 
-Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any time. No vendor SDK. No OAuth dance. No retraining your agents on your context every session.
+Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any time. No retraining your agents on your context every session.
 
-## Tools that work today
+## Client profiles
 
-Same key. Same env block. Different paste location.
+Same BuildOS auth core. Different save location.
 
-| Tool                      | Status                | Where the env goes                     |
-| ------------------------- | --------------------- | -------------------------------------- |
-| **Claude Code**           | Works today           | Claude Code config file (env section)  |
-| **Cursor**                | Works today           | Cursor agent settings (env / secrets)  |
-| **Claude Desktop**        | Works today           | Claude Desktop connector config        |
-| **ChatGPT (Custom GPT)**  | Works today           | Custom GPT Actions auth (Bearer token) |
-| **Custom HTTP / scripts** | Works today           | Your own env file or secret store      |
-| **OpenClaw**              | Connector in progress | OpenClaw plugin / secret config        |
+| Client profile                   | Best storage path                         | Status                                                       |
+| -------------------------------- | ----------------------------------------- | ------------------------------------------------------------ |
+| **OpenClaw**                     | OpenClaw env, SecretRef, or plugin config | BuildOS side ready; OpenClaw connector in progress           |
+| **Claude Code**                  | Local MCP config env/header or adapter    | BuildOS gateway ready; MCP facade/adapter is the clean path  |
+| **ChatGPT Actions**              | GPT Action API key secret                 | Ready for private GPTs; use OAuth before sharing broadly     |
+| **Codex CLI / IDE**              | Codex MCP config env reference            | BuildOS gateway ready; MCP facade/adapter is the clean path  |
+| **Claude browser / ChatGPT MCP** | Remote MCP OAuth connector                | Needs OAuth-backed remote connector, not pasted bearer token |
+| **Custom HTTP / scripts**        | Your env file or secret manager           | Ready                                                        |
 
-If your tool can make an HTTP request with a bearer token, it can connect.
+If your tool can make an HTTP request with a bearer token, it can call the gateway today. If the client runs in someone else's browser/cloud account, use OAuth-backed remote MCP instead of asking the model to remember a token.
 
 ## Generate an agent key
 
 1. Go to [`/profile`](/profile) and open the **Agent Keys** tab.
 2. Click **Generate**.
-3. Pick a **scope**:
+3. Choose the **Client Profile** for the place this key will be installed.
+4. Pick a **scope**:
     - `read_only` — reads only, no writes.
     - `read_write` — reads plus the writes you whitelist.
-4. Choose **which projects** the key can see — all of them or an explicit list.
-5. If you picked `read_write`, whitelist the specific write ops.
-6. Copy the **connection prompt**. The one-time secret shows only once; BuildOS stores a prefix for identification and never the full key.
-7. Paste into your tool's config (see per-tool subsections below).
+5. Choose **which projects** the key can see — all of them or an explicit list.
+6. If you picked `read_write`, whitelist the specific write ops.
+7. Copy the profile-specific setup block. The one-time secret shows only once; BuildOS stores a prefix for identification and never the full key.
+8. Save it in the profile's config, secret store, Action auth field, or connector backend.
 
 [`/integrations`](/integrations) has the same flow plus the public landing page.
 
 ## Setting it up in Claude Code
 
-Claude Code is the most common path. Setup is three lines.
+Choose the **Claude Code** client profile when generating the key.
 
 1. **Generate a key** as above. Copy the env block.
-2. **Paste it into your Claude Code config** — wherever it stores env vars for that workspace. Never paste the token into chat input.
+2. **Store it in local config or env** used by your BuildOS MCP adapter/facade. Never paste the token into chat input.
 3. **Ask Claude to dial:**
 
     > "Connect to BuildOS and list my projects."
 
-    Claude will hit `POST /api/agent-call/buildos` with the bearer token, open a session, and show your projects. From there you can ask it to read a project's tasks, draft a document, or — if your key allows write — update a task.
+    Claude will use the configured BuildOS transport, open a session, and show your projects. Until the MCP facade ships, the JSON-RPC gateway at `POST /api/agent-call/buildos` is the fallback.
 
 The env block looks like:
 
@@ -62,7 +63,7 @@ The env block looks like:
 BUILDOS_BASE_URL=https://build-os.com
 BUILDOS_AGENT_TOKEN=boca_your_one_time_secret
 BUILDOS_CALLEE_HANDLE=buildos:user:YOUR_USER_ID
-BUILDOS_CALLER_KEY=claude-code:install:your-handle
+BUILDOS_CALLER_KEY=claude-code:local:your-handle
 ```
 
 ## Setting it up in Cursor
@@ -73,27 +74,35 @@ Cursor uses the same env block. Drop it into your Cursor agent settings (the pla
 
 Cursor will use the bearer token to dial the gateway. Same tool surface as Claude Code.
 
-## Setting it up in Claude Desktop
+## Setting it up in Claude Desktop and Claude browser
 
-Claude Desktop's connector config accepts the same env block. After pasting:
+There are two different paths:
 
-> "Connect to BuildOS using the configured credentials and show my projects."
+- **Local MCP config** behaves like Claude Code: env/header storage is fine if the server runs locally.
+- **Claude browser or cloud-brokered remote connectors** need a public remote MCP server with OAuth. Browser chat is not a secret store, and Claude's cloud cannot read your local env.
 
-The desktop client opens a scoped session and exposes the same read/write tools.
+For remote connectors, BuildOS should expose an MCP facade and OAuth flow. The generated profile currently marks this as `requires_oauth`.
 
 ## Setting it up in ChatGPT (Custom GPT)
 
-ChatGPT goes through Custom GPT Actions:
+Choose **ChatGPT Actions** for a private Custom GPT:
 
 1. In your Custom GPT, add a new Action.
-2. Use **Bearer** auth, with `BUILDOS_AGENT_TOKEN` as the value.
-3. Point it at `POST https://build-os.com/api/agent-call/buildos` with a JSON-RPC body.
+2. Use **API key** auth with **Bearer** placement, and paste the one-time BuildOS token into the Action authentication secret.
+3. Import the OpenAPI artifact from the BuildOS bootstrap document.
+4. Point it at `POST https://build-os.com/api/agent-call/buildos` with a JSON-RPC body.
 
 The Custom GPT can then run `call.dial → tools/list → tools/call → call.hangup` like any other client.
 
+For shared GPTs or workspace-wide installs, use OAuth instead of a single bearer token.
+
+## Setting it up in ChatGPT Developer Mode
+
+Choose **ChatGPT Developer Mode** only when you are building a remote MCP connector. Developer Mode is the right path for full read/write tools in ChatGPT, but it should be backed by a remote MCP server and OAuth, not a pasted BuildOS bearer token.
+
 ## Setting it up in OpenClaw
 
-The OpenClaw-specific connector is still mid-build. Once it ships, the same env block works without changes. See [`/docs/integrations/openclaw/setup`](/docs/integrations/openclaw/setup) for the OpenClaw-only walkthrough.
+Choose **OpenClaw** when generating the key. Store the values in OpenClaw env, SecretRef, or plugin config. The OpenClaw-specific connector is still mid-build. Once it ships, it should read those values and call the BuildOS gateway. See [`/docs/integrations/openclaw/setup`](/docs/integrations/openclaw/setup) for the OpenClaw-only walkthrough.
 
 ## What you can scope
 
@@ -185,7 +194,15 @@ When you generate a key in the UI, BuildOS also produces a bootstrap URL:
 GET /api/agent-call/bootstrap/<setupToken>
 ```
 
-That endpoint returns the env block and a ready-to-paste connection prompt — so you don't have to wire the JSON-RPC client by hand. Works for any tool that can read an env block.
+That endpoint returns an `agent_profile_bootstrap_v1` document with:
+
+- the BuildOS env block
+- client-specific storage targets
+- setup steps
+- artifacts such as a ChatGPT Action OpenAPI schema or MCP config target notes
+- OAuth guidance for browser/cloud clients
+
+It is short-lived and returns `Cache-Control: no-store`.
 
 ## Custom agents
 

@@ -44,6 +44,21 @@ function getCalendarReturnPath(): string {
 	return '/profile?tab=calendar&calendar=1';
 }
 
+function getActiveProfileTab(requestedTab: string | null, stripeEnabled: boolean): string {
+	const validTabs = new Set([
+		'account',
+		'contacts',
+		'preferences',
+		'briefs',
+		'calendar',
+		'notifications',
+		'agent-keys',
+		...(stripeEnabled ? ['billing'] : [])
+	]);
+
+	return requestedTab && validTabs.has(requestedTab) ? requestedTab : 'account';
+}
+
 export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 	const {
 		locals: { safeGetSession, supabase },
@@ -143,7 +158,7 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 	const justCompletedOnboarding = url.searchParams.get('onboarding') === 'complete';
 
 	// Get active tab from URL params
-	const activeTab = url.searchParams.get('tab') || 'account';
+	const activeTab = getActiveProfileTab(url.searchParams.get('tab'), stripeEnabled);
 
 	// Fetch recent invoices once we have the subscription id.
 	let subscriptionDetails: SubscriptionDetails | null = null;

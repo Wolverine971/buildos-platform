@@ -44,13 +44,20 @@
 	import SettingsCard from './_shared/SettingsCard.svelte';
 	import TabHeader from './_shared/TabHeader.svelte';
 	import { toastService } from '$lib/stores/toast.store';
+	import {
+		AGENT_CLIENT_PROFILES,
+		buildBuildosEnvBlock,
+		buildCallerKeyForProfile,
+		getAgentClientProfile,
+		inferAgentClientProfileId,
+		type AgentClientProfileId
+	} from '$lib/agent-call/agent-client-profiles';
 
 	interface Props {
 		onsuccess?: (event: { message: string }) => void;
 		onerror?: (event: { message: string }) => void;
 	}
 
-	type ProviderMode = 'openclaw' | 'custom';
 	type WritePermissionOption = {
 		op: BuildosAgentAllowedOp;
 		label: string;
@@ -229,7 +236,7 @@
 	let showKeyCreatedModal = $state(false);
 
 	// Form state
-	let providerMode = $state<ProviderMode>('custom');
+	let selectedProfileId = $state<AgentClientProfileId>('custom-http');
 	let customProvider = $state('');
 	let installationName = $state('');
 	let selectedProjectIds = $state<string[]>([]);
@@ -238,6 +245,7 @@
 	let showAdvancedPermissions = $state(false);
 
 	let activeBundleId = $derived(detectBundleId(scopeMode, selectedWriteOps));
+	let selectedProfile = $derived(getAgentClientProfile(selectedProfileId));
 
 	function detectBundleId(
 		mode: BuildosAgentScopeMode,
@@ -315,7 +323,8 @@
 	}
 
 	function currentProvider(): string {
-		return providerMode === 'custom' ? normalizeProvider(customProvider) : 'openclaw';
+		const profile = getAgentClientProfile(selectedProfileId);
+		return profile.customProvider ? normalizeProvider(customProvider) : profile.provider;
 	}
 
 	function requireValidProvider(provider: string): string {
@@ -343,20 +352,25 @@
 			throw new Error('Installation name is required');
 		}
 
-		if (provider === 'openclaw') {
-			return `openclaw:workspace:${slug}`;
-		}
-
-		return `${provider}:installation:${slug}`;
+		return buildCallerKeyForProfile({
+			profileId: selectedProfileId,
+			provider,
+			slug
+		});
 	}
 
 	function displayProvider(provider: string): string {
-		if (provider === 'openclaw') return 'OpenClaw';
+		const profile = AGENT_CLIENT_PROFILES.find((candidate) => candidate.provider === provider);
+		if (profile) return profile.label;
 		return provider
 			.split(/[-_:]/g)
 			.filter(Boolean)
 			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
 			.join(' ');
+	}
+
+	function profileForCaller(caller: BuildosAgentCallerSummary) {
+		return getAgentClientProfile(inferAgentClientProfileId(caller.provider, caller.metadata));
 	}
 
 	function installationDisplayName(caller: BuildosAgentCallerSummary): string {
@@ -459,7 +473,7 @@
 		editingCaller = null;
 		installationName = '';
 		selectedProjectIds = [];
-		providerMode = 'custom';
+		selectedProfileId = 'custom-http';
 		customProvider = '';
 		const defaultBundle = PERMISSION_BUNDLES.find(
 			(bundle) => bundle.id === 'author_docs_tasks'
@@ -481,8 +495,8 @@
 
 	function openEditModal(caller: BuildosAgentCallerSummary) {
 		editingCaller = caller;
-		providerMode = caller.provider === 'openclaw' ? 'openclaw' : 'custom';
-		customProvider = caller.provider === 'openclaw' ? '' : caller.provider;
+		selectedProfileId = inferAgentClientProfileId(caller.provider, caller.metadata);
+		customProvider = selectedProfileId === 'custom-http' ? caller.provider : '';
 		installationName = installationDisplayName(caller);
 		selectedProjectIds = filterAvailableProjectIds(caller.allowed_project_ids ?? []);
 		scopeMode = caller.scope_mode;
@@ -502,7 +516,10 @@
 				caller.allowed_project_ids && caller.allowed_project_ids.length > 0
 					? filterAvailableProjectIds(caller.allowed_project_ids)
 					: undefined,
-			metadata: caller.metadata ?? {}
+			metadata: {
+				...(caller.metadata ?? {}),
+				client_profile_id: inferAgentClientProfileId(caller.provider, caller.metadata)
+			}
 		};
 	}
 
@@ -564,15 +581,15 @@
 		}
 	}
 
-	function openClawEnvSnippet(provisioned: BuildosAgentCallerProvisionResponse): string {
+	function envSnippet(provisioned: BuildosAgentCallerProvisionResponse): string {
 		const origin = buildosBaseUrl();
 
-		return [
-			`BUILDOS_BASE_URL=${origin}`,
-			`BUILDOS_AGENT_TOKEN=${provisioned.credentials.bearer_token}`,
-			`BUILDOS_CALLEE_HANDLE=${provisioned.buildos_agent.handle}`,
-			`BUILDOS_CALLER_KEY=${provisioned.caller.caller_key}`
-		].join('\n');
+		return buildBuildosEnvBlock({
+			baseUrl: origin,
+			bearerToken: provisioned.credentials.bearer_token,
+			calleeHandle: provisioned.buildos_agent.handle,
+			callerKey: provisioned.caller.caller_key
+		});
 	}
 
 	function buildosBaseUrl(): string {
@@ -628,6 +645,7 @@
 		const baseUrl = buildosBaseUrl();
 		const gatewayUrl = `${baseUrl}/api/agent-call/buildos`;
 		const authHeaderToken = params.includeKey ? params.bearerToken : '<BUILDOS_AGENT_TOKEN>';
+		const profile = profileForCaller(params.caller);
 		const dialRequest = {
 			method: 'call.dial',
 			params: {
@@ -647,7 +665,7 @@
 		};
 
 		return [
-			'Connect to my BuildOS agent.',
+			`Connect ${profile.label} to my BuildOS agent.`,
 			'',
 			'BuildOS config:',
 			`BUILDOS_BASE_URL=${baseUrl}`,
@@ -655,6 +673,10 @@
 			`BUILDOS_CALLEE_HANDLE=${params.calleeHandle}`,
 			`BUILDOS_CALLER_KEY=${params.caller.caller_key}`,
 			`BUILDOS_CALLER_PROVIDER=${params.caller.provider}`,
+			'',
+			`Client profile: ${profile.label}`,
+			`Credential storage: ${profile.credentialDelivery}`,
+			`Token handling: ${profile.secretHandlingNote}`,
 			'',
 			params.includeKey
 				? 'The BuildOS token is included above. Treat it as a secret: do not print it, summarize it, or store it in normal chat memory.'
@@ -707,14 +729,16 @@
 		});
 	}
 
-	function openClawBootstrapPrompt(
-		provisioned: BuildosAgentCallerProvisionResponse
-	): string | null {
+	function bootstrapPrompt(provisioned: BuildosAgentCallerProvisionResponse): string | null {
 		return provisioned.bootstrap?.paste_prompt ?? null;
 	}
 
-	function openClawBootstrapUrl(provisioned: BuildosAgentCallerProvisionResponse): string | null {
+	function bootstrapUrl(provisioned: BuildosAgentCallerProvisionResponse): string | null {
 		return provisioned.bootstrap?.instructions_url ?? null;
+	}
+
+	function bootstrapProfile(provisioned: BuildosAgentCallerProvisionResponse) {
+		return profileForCaller(provisioned.caller);
 	}
 
 	async function provisionCaller() {
@@ -733,6 +757,7 @@
 				callerKey = existingCaller.caller_key;
 				metadata = {
 					...(existingCaller.metadata ?? {}),
+					client_profile_id: selectedProfileId,
 					installation_name:
 						installationName.trim() || installationDisplayName(existingCaller)
 				};
@@ -746,6 +771,7 @@
 				}
 				callerKey = buildCallerKey(provider, installationName);
 				metadata = {
+					client_profile_id: selectedProfileId,
 					installation_name: installationName.trim()
 				};
 			}
@@ -1411,13 +1437,18 @@
 
 				<div class="grid gap-4 sm:grid-cols-2">
 					<FormField
-						label="Agent Type"
+						label="Client Profile"
 						labelFor="agent-provider-mode"
-						hint="Pick Custom Agent for Claude Code, Cursor, ChatGPT, or any HTTP tool. OpenClaw uses its own adapter."
+						hint="Choose where this key will be installed so BuildOS can tailor the storage instructions."
 					>
-						<Select id="agent-provider-mode" bind:value={providerMode}>
-							<option value="custom">Custom Agent (any HTTP tool)</option>
-							<option value="openclaw">OpenClaw</option>
+						<Select
+							id="agent-provider-mode"
+							bind:value={selectedProfileId}
+							disabled={Boolean(editingCaller)}
+						>
+							{#each AGENT_CLIENT_PROFILES as profile (profile.id)}
+								<option value={profile.id}>{profile.label}</option>
+							{/each}
 						</Select>
 					</FormField>
 
@@ -1430,25 +1461,36 @@
 						<TextInput
 							id="agent-installation-name"
 							bind:value={installationName}
-							placeholder="claude-code"
+							placeholder={selectedProfile.installationPlaceholder}
 						/>
 					</FormField>
 				</div>
 
-				{#if providerMode === 'custom'}
+				{#if selectedProfile.customProvider}
 					<FormField
 						label="Provider Key"
 						labelFor="agent-custom-provider"
 						required={true}
-						hint="Lowercase identifier — e.g. claude-code, cursor, chatgpt."
+						hint="Lowercase identifier, e.g. cursor, internal-agent, webhook-worker."
 					>
 						<TextInput
 							id="agent-custom-provider"
 							bind:value={customProvider}
-							placeholder="claude-code"
+							placeholder="internal-agent"
+							disabled={Boolean(editingCaller)}
 						/>
 					</FormField>
 				{/if}
+
+				<div
+					class="rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground"
+				>
+					<span class="font-medium text-foreground">{selectedProfile.label}:</span>
+					{selectedProfile.description}
+					<span class="mt-1 block">
+						Token handling: {selectedProfile.secretHandlingNote}
+					</span>
+				</div>
 
 				<div class="space-y-2">
 					<div class="flex items-center justify-between gap-3">
@@ -1646,7 +1688,9 @@
 				size="md"
 				icon={Key}
 				loading={saving}
-				disabled={saving || !installationName.trim()}
+				disabled={saving ||
+					!installationName.trim() ||
+					(Boolean(selectedProfile.customProvider) && !customProvider.trim())}
 				onclick={provisionCaller}
 				class="w-full sm:w-auto"
 			>
@@ -1733,11 +1777,10 @@
 					<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 						<div>
 							<div class="text-xs uppercase tracking-wider text-muted-foreground">
-								Paste Into Any Agent
+								{bootstrapProfile(latestProvisioned).label} Handoff
 							</div>
 							<p class="mt-1 text-xs text-muted-foreground">
-								Use the placeholder prompt when you want to store the key
-								separately. Use the key prompt only for a trusted agent chat.
+								{bootstrapProfile(latestProvisioned).secretHandlingNote}
 							</p>
 						</div>
 						<div class="flex flex-wrap gap-2">
@@ -1759,22 +1802,26 @@
 									? 'Copied'
 									: 'Copy Placeholder'}
 							</Button>
-							<Button
-								variant="outline"
-								size="sm"
-								icon={copiedId === 'agent-prompt-with-key' ? CircleCheck : Copy}
-								onclick={() =>
-									copyToClipboard(
-										'agent-prompt-with-key',
-										agentConnectionPromptForProvisioned(
-											latestProvisioned!,
-											true
-										),
-										'Agent prompt with key copied'
-									)}
-							>
-								{copiedId === 'agent-prompt-with-key' ? 'Copied' : 'Copy With Key'}
-							</Button>
+							{#if bootstrapProfile(latestProvisioned).allowSecretPrompt}
+								<Button
+									variant="outline"
+									size="sm"
+									icon={copiedId === 'agent-prompt-with-key' ? CircleCheck : Copy}
+									onclick={() =>
+										copyToClipboard(
+											'agent-prompt-with-key',
+											agentConnectionPromptForProvisioned(
+												latestProvisioned!,
+												true
+											),
+											'Agent prompt with key copied'
+										)}
+								>
+									{copiedId === 'agent-prompt-with-key'
+										? 'Copied'
+										: 'Copy With Key'}
+								</Button>
+							{/if}
 						</div>
 					</div>
 					<pre
@@ -1795,24 +1842,29 @@
 							onclick={() =>
 								copyToClipboard(
 									'env-snippet',
-									openClawEnvSnippet(latestProvisioned!),
+									envSnippet(latestProvisioned!),
 									'Configuration copied'
 								)}
 						>
 							{copiedId === 'env-snippet' ? 'Copied' : 'Copy'}
 						</Button>
 					</div>
+					<p class="text-xs text-muted-foreground">
+						Use this only in the storage location for {bootstrapProfile(
+							latestProvisioned
+						).label}.
+					</p>
 					<pre
 						class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground"><code
-							>{openClawEnvSnippet(latestProvisioned)}</code
+							>{envSnippet(latestProvisioned)}</code
 						></pre>
 				</div>
 
-				{#if openClawBootstrapUrl(latestProvisioned)}
+				{#if bootstrapUrl(latestProvisioned)}
 					<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
 						<div class="flex items-center justify-between">
 							<div class="text-xs uppercase tracking-wider text-muted-foreground">
-								OpenClaw Setup URL
+								{bootstrapProfile(latestProvisioned).setupUrlLabel}
 							</div>
 							<Button
 								variant="ghost"
@@ -1821,7 +1873,7 @@
 								onclick={() =>
 									copyToClipboard(
 										'bootstrap-url',
-										openClawBootstrapUrl(latestProvisioned!) ?? '',
+										bootstrapUrl(latestProvisioned!) ?? '',
 										'Setup URL copied'
 									)}
 							>
@@ -1829,21 +1881,20 @@
 							</Button>
 						</div>
 						<p class="text-xs text-muted-foreground">
-							Paste the prompt below into OpenClaw. It will fetch this URL to get the
-							next-step BuildOS instructions and secure config values.
+							{bootstrapProfile(latestProvisioned).setupUrlDescription}
 						</p>
 						<pre
 							class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground"><code
-								>{openClawBootstrapUrl(latestProvisioned)}</code
+								>{bootstrapUrl(latestProvisioned)}</code
 							></pre>
 					</div>
 				{/if}
 
-				{#if openClawBootstrapPrompt(latestProvisioned)}
+				{#if bootstrapPrompt(latestProvisioned)}
 					<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
 						<div class="flex items-center justify-between">
 							<div class="text-xs uppercase tracking-wider text-muted-foreground">
-								Paste Into OpenClaw
+								{bootstrapProfile(latestProvisioned).pastePromptLabel}
 							</div>
 							<Button
 								variant="ghost"
@@ -1852,21 +1903,20 @@
 								onclick={() =>
 									copyToClipboard(
 										'bootstrap-prompt',
-										openClawBootstrapPrompt(latestProvisioned!) ?? '',
-										'OpenClaw prompt copied'
+										bootstrapPrompt(latestProvisioned!) ?? '',
+										`${bootstrapProfile(latestProvisioned!).label} prompt copied`
 									)}
 							>
 								{copiedId === 'bootstrap-prompt' ? 'Copied' : 'Copy'}
 							</Button>
 						</div>
 						<p class="text-xs text-muted-foreground">
-							This is the non-technical handoff prompt for OpenClaw. It tells the
-							agent to fetch the setup URL, store the config safely, and then connect
-							to BuildOS.
+							This handoff tells the client to fetch the setup URL, use the
+							profile-specific storage path, and then connect to BuildOS.
 						</p>
 						<pre
 							class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
-								>{openClawBootstrapPrompt(latestProvisioned)}</code
+								>{bootstrapPrompt(latestProvisioned)}</code
 							></pre>
 					</div>
 				{/if}

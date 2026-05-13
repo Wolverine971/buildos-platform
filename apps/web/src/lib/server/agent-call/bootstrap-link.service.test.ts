@@ -261,28 +261,81 @@ describe('AgentCallBootstrapLinkService', () => {
 		expect(document.buildos.dial_url).toBe('https://build-os.com/api/agent-call/buildos');
 		expect(document.buildos.scope_mode).toBe('read_only');
 		expect(document.buildos.allowed_ops).toEqual([...BUILDOS_AGENT_READ_OPS]);
-		expect(document.openclaw.env_block).toContain('BUILDOS_AGENT_TOKEN=boca_test_secret');
-		expect(document.openclaw.setup_steps).toContain(
+		expect(document.instructions_version).toBe('agent_profile_bootstrap_v1');
+		expect(document.client_profile_id).toBe('openclaw');
+		expect(document.client.label).toBe('OpenClaw');
+		expect(
+			document.artifacts.find((artifact) => artifact.id === 'buildos-env')?.content
+		).toContain('BUILDOS_AGENT_TOKEN=boca_test_secret');
+		expect(document.openclaw?.env_block).toContain('BUILDOS_AGENT_TOKEN=boca_test_secret');
+		expect(document.setup_steps).toContain(
 			'If no connector exists, use exec plus curl to POST to the BuildOS gateway.'
 		);
-		expect(document.openclaw.setup_steps).toContain(
-			'Request read_only during call.dial unless you only need less access for this session.'
+		expect(document.setup_steps).toContain(
+			'Request read_only during call.dial unless this session only needs narrower access.'
 		);
-		expect(document.openclaw.setup_steps).toContain(
-			'Use the direct tools returned by tools/list for normal BuildOS reads and writes.'
+		expect(document.setup_steps).toContain(
+			'Use direct tools returned by tools/list for normal BuildOS reads and writes.'
 		);
-		expect(document.openclaw.setup_steps).toContain(
-			'Use tool_search to discover candidate tools when the exact tool is not known.'
+		expect(document.setup_steps).toContain(
+			'Use tool_search only when the exact BuildOS tool is unknown.'
 		);
-		expect(document.openclaw.setup_steps).toContain(
-			'Use tool_schema with the exact op to load required args and examples before first-time or uncertain writes, then call the returned direct tool_name.'
+		expect(document.setup_steps).toContain(
+			'Use tool_schema before first-time or uncertain writes, then call the returned direct tool_name.'
 		);
-		expect(document.openclaw.follow_up_prompt).toContain(
-			'call the scoped direct tools by name'
-		);
+		expect(document.follow_up_prompt).toContain('call the scoped direct tools by name');
 		expect(serializeBootstrapDocumentAsText(document)).toContain(
 			'BuildOS OpenClaw Bootstrap Instructions'
 		);
 		expect(state.bootstrapRows[0]?.last_accessed_at).toBeDefined();
+	});
+
+	it('marks browser and cloud profiles as OAuth-required', async () => {
+		const setupToken = 'bocs_oauth_profile';
+		const state: State = {
+			callerRows: [
+				createCaller({
+					provider: 'chatgpt-developer-mode',
+					caller_key: 'chatgpt-developer-mode:connector:test',
+					metadata: {
+						client_profile_id: 'chatgpt-developer-mode',
+						installation_name: 'Developer Mode'
+					}
+				})
+			],
+			bootstrapRows: [
+				{
+					id: '99999999-9999-9999-9999-999999999999',
+					user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+					external_agent_caller_id: '11111111-1111-1111-1111-111111111111',
+					setup_token_hash: createHash('sha256').update(setupToken).digest('hex'),
+					payload: {
+						bearer_token: 'boca_test_secret'
+					},
+					expires_at: '2099-04-28T00:00:00.000Z',
+					last_accessed_at: null,
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:00:00.000Z'
+				}
+			]
+		};
+		const { AgentCallBootstrapLinkService, serializeBootstrapDocumentAsText } = await import(
+			'./bootstrap-link.service'
+		);
+		const service = new AgentCallBootstrapLinkService(createAdminMock(state));
+
+		const document = await service.loadBootstrapDocument({
+			setupToken,
+			baseUrl: 'https://build-os.com'
+		});
+
+		expect(document.client_profile_id).toBe('chatgpt-developer-mode');
+		expect(document.client.requires_oauth).toBe(true);
+		expect(document.client.setup_status).toBe('requires_oauth');
+		expect(document.oauth?.required).toBe(true);
+		expect(document.setup_steps).toContain(
+			'Protect the connector with OAuth so ChatGPT receives a per-user grant.'
+		);
+		expect(serializeBootstrapDocumentAsText(document)).toContain('OAuth guidance');
 	});
 });

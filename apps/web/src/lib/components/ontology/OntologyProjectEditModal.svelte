@@ -18,10 +18,15 @@
 	import Textarea from '$lib/components/ui/Textarea.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import MarkdownToggleField from '$lib/components/ui/MarkdownToggleField.svelte';
+	import Card from '$lib/components/ui/Card.svelte';
+	import CardHeader from '$lib/components/ui/CardHeader.svelte';
+	import CardBody from '$lib/components/ui/CardBody.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import {
 		Copy,
-		Calendar,
+		CalendarRange,
+		Clock,
+		Compass,
 		FileText,
 		X,
 		Trash2,
@@ -29,7 +34,8 @@
 		Zap,
 		Sparkles,
 		RefreshCw,
-		LoaderCircle
+		LoaderCircle,
+		Tag as TagIcon
 	} from 'lucide-svelte';
 	import ConfirmationModal from '$lib/components/ui/ConfirmationModal.svelte';
 	import TagsDisplay from './TagsDisplay.svelte';
@@ -158,6 +164,8 @@
 		if (!Array.isArray(tagsValue)) return [];
 		return tagsValue.filter((tag): tag is string => typeof tag === 'string' && tag.length > 0);
 	});
+
+	const hasTags = $derived(projectTags.length > 0);
 
 	// Computed: has existing next step
 	const hasNextStep = $derived(!!nextStepShort.trim());
@@ -840,166 +848,272 @@
 						</div>
 					</div>
 
-					<!-- Metadata Sidebar -->
-					<div
-						class="lg:col-span-1 bg-card rounded border border-border shadow-ink transition-all duration-200 lg:max-h-full lg:overflow-y-auto tx tx-grain tx-weak"
-					>
-						<div class="bg-muted p-3 sm:p-3.5 rounded-t border-b border-border">
-							<h3
-								class="text-xs font-semibold text-foreground uppercase tracking-wider flex items-center gap-2"
-							>
-								<span class="w-1.5 h-1.5 bg-accent rounded-full animate-pulse"
-								></span>
-								Project Details
-							</h3>
-						</div>
-
-						<div class="p-3 sm:p-3.5 space-y-3.5">
-							<!-- Facet Context -->
-							<div>
-								<label
-									for="facet-context"
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block"
-								>
-									📂 Context
-								</label>
-								<Select
-									id="facet-context"
-									bind:value={facetContext}
-									size="sm"
-									disabled={isSaving}
-								>
-									<option value="">Not set</option>
-									{#each FACET_CONTEXT_OPTIONS as option}
-										<option value={option}>{facetLabel(option)}</option>
-									{/each}
-								</Select>
-							</div>
-
-							<!-- Facet Scale -->
-							<div>
-								<label
-									for="facet-scale"
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block"
-								>
-									📏 Scale
-								</label>
-								<Select
-									id="facet-scale"
-									bind:value={facetScale}
-									size="sm"
-									disabled={isSaving}
-								>
-									<option value="">Not set</option>
-									{#each FACET_SCALE_OPTIONS as option}
-										<option value={option}>{facetLabel(option)}</option>
-									{/each}
-								</Select>
-							</div>
-
-							<!-- Facet Stage -->
-							<div>
-								<label
-									for="facet-stage"
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block"
-								>
-									🎯 Stage
-								</label>
-								<Select
-									id="facet-stage"
-									bind:value={facetStage}
-									size="sm"
-									disabled={isSaving}
-								>
-									<option value="">Not set</option>
-									{#each FACET_STAGE_OPTIONS as option}
-										<option value={option}>{facetLabel(option)}</option>
-									{/each}
-								</Select>
-							</div>
-
-							<!-- Project State -->
-							<div>
-								<label
-									for="project-state"
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block"
-								>
-									📊 Status
-								</label>
-								<Select
-									id="project-state"
-									bind:value={stateKey}
-									size="sm"
-									disabled={isSaving}
-								>
-									{#each PROJECT_STATES as state}
-										<option value={state}>
-											{state === 'planning'
-												? 'Planning'
-												: state === 'active'
-													? 'Active'
-													: state === 'completed'
-														? 'Completed'
-														: state === 'cancelled'
-															? 'Cancelled'
-															: state}
-										</option>
-									{/each}
-								</Select>
-							</div>
-
-							<!-- Timeline Section -->
-							<div class="space-y-3">
-								<div
-									class="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider"
-								>
-									<Calendar class="w-3.5 h-3.5" />
-									Timeline
+					<!-- Sidebar (Right column) -->
+					<div class="lg:col-span-1">
+						<Card variant="elevated" class="wt-card">
+							<CardHeader variant="muted" texture="strip">
+								<div class="flex items-center justify-between gap-3">
+									<div>
+										<p
+											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+										>
+											Controls
+										</p>
+										<h3 class="mt-1 text-sm font-semibold text-foreground">
+											Project operations
+										</h3>
+									</div>
 								</div>
+							</CardHeader>
+							<CardBody padding="none">
+								<div class="divide-y divide-border/70">
+									<!-- Workflow -->
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2">
+											<FileText class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+											>
+												Workflow
+											</p>
+										</div>
+										<div class="mt-2 space-y-2">
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="project-state"
+													class="text-xs font-medium text-muted-foreground"
+												>
+													Status
+												</label>
+												<Select
+													id="project-state"
+													bind:value={stateKey}
+													size="sm"
+													disabled={isSaving}
+												>
+													{#each PROJECT_STATES as state}
+														<option value={state}>
+															{state === 'planning'
+																? 'Planning'
+																: state === 'active'
+																	? 'Active'
+																	: state === 'completed'
+																		? 'Completed'
+																		: state === 'cancelled'
+																			? 'Cancelled'
+																			: state}
+														</option>
+													{/each}
+												</Select>
+											</div>
+										</div>
+									</section>
 
-								<!-- Start Date -->
-								<div>
-									<label
-										for="start-date"
-										class="text-xs text-muted-foreground mb-1 block"
-									>
-										Start Date
-									</label>
-									<TextInput
-										id="start-date"
-										type="date"
-										bind:value={startDate}
-										size="sm"
-										disabled={isSaving}
-									/>
-								</div>
+									<!-- Facets -->
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2">
+											<Compass class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+											>
+												Facets
+											</p>
+										</div>
+										<div class="mt-2 space-y-2">
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="facet-context"
+													class="text-xs font-medium text-muted-foreground"
+												>
+													Context
+												</label>
+												<Select
+													id="facet-context"
+													bind:value={facetContext}
+													size="sm"
+													disabled={isSaving}
+												>
+													<option value="">Not set</option>
+													{#each FACET_CONTEXT_OPTIONS as option}
+														<option value={option}
+															>{facetLabel(option)}</option
+														>
+													{/each}
+												</Select>
+											</div>
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="facet-scale"
+													class="text-xs font-medium text-muted-foreground"
+												>
+													Scale
+												</label>
+												<Select
+													id="facet-scale"
+													bind:value={facetScale}
+													size="sm"
+													disabled={isSaving}
+												>
+													<option value="">Not set</option>
+													{#each FACET_SCALE_OPTIONS as option}
+														<option value={option}
+															>{facetLabel(option)}</option
+														>
+													{/each}
+												</Select>
+											</div>
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="facet-stage"
+													class="text-xs font-medium text-muted-foreground"
+												>
+													Stage
+												</label>
+												<Select
+													id="facet-stage"
+													bind:value={facetStage}
+													size="sm"
+													disabled={isSaving}
+												>
+													<option value="">Not set</option>
+													{#each FACET_STAGE_OPTIONS as option}
+														<option value={option}
+															>{facetLabel(option)}</option
+														>
+													{/each}
+												</Select>
+											</div>
+										</div>
+									</section>
 
-								<!-- End Date -->
-								<div>
-									<label
-										for="end-date"
-										class="text-xs text-muted-foreground mb-1 block"
-									>
-										End Date
-									</label>
-									<TextInput
-										id="end-date"
-										type="date"
-										bind:value={endDate}
-										min={startDate}
-										size="sm"
-										disabled={isSaving}
-									/>
-								</div>
-							</div>
+									<!-- Timeline -->
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2">
+											<CalendarRange class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+											>
+												Timeline
+											</p>
+										</div>
+										<div class="mt-2 grid grid-cols-1 gap-2">
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="start-date"
+													class="text-xs font-medium text-muted-foreground"
+												>
+													Start
+												</label>
+												<TextInput
+													id="start-date"
+													type="date"
+													bind:value={startDate}
+													size="sm"
+													disabled={isSaving}
+												/>
+											</div>
+											<div
+												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
+											>
+												<label
+													for="end-date"
+													class="text-xs font-medium text-muted-foreground"
+												>
+													End
+												</label>
+												<TextInput
+													id="end-date"
+													type="date"
+													bind:value={endDate}
+													min={startDate}
+													size="sm"
+													disabled={isSaving}
+												/>
+											</div>
+										</div>
+									</section>
 
-							<!-- Tags Section -->
-							{#if projectTags.length > 0}
-								<div class="pt-3 border-t border-border">
-									<TagsDisplay props={project.props} />
+									<!-- Record -->
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2">
+											<Clock class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+											>
+												Record
+											</p>
+										</div>
+										<div class="mt-2 space-y-1.5 text-sm">
+											{#if project.created_at}
+												<div
+													class="flex items-center justify-between gap-3"
+												>
+													<span class="text-muted-foreground"
+														>Created</span
+													>
+													<span class="text-right text-foreground">
+														{new Date(
+															project.created_at
+														).toLocaleDateString(undefined, {
+															month: 'short',
+															day: 'numeric',
+															year: 'numeric'
+														})}
+													</span>
+												</div>
+											{/if}
+											{#if project.updated_at}
+												<div
+													class="flex items-center justify-between gap-3"
+												>
+													<span class="text-muted-foreground"
+														>Updated</span
+													>
+													<span class="text-right text-foreground">
+														{new Date(
+															project.updated_at
+														).toLocaleDateString(undefined, {
+															month: 'short',
+															day: 'numeric',
+															year: 'numeric'
+														})}
+													</span>
+												</div>
+											{/if}
+										</div>
+									</section>
+
+									<!-- Tags -->
+									{#if hasTags}
+										<section class="px-3 py-3 sm:px-4">
+											<div class="flex items-center gap-2 mb-2">
+												<TagIcon class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Tags
+												</p>
+											</div>
+											<TagsDisplay
+												props={project.props}
+												size="sm"
+												compact={true}
+											/>
+										</section>
+									{/if}
 								</div>
-							{/if}
-						</div>
+							</CardBody>
+						</Card>
 					</div>
 				</div>
 
@@ -1099,95 +1213,3 @@
 		onClose={handleChatClose}
 	/>
 {/if}
-
-<style>
-	/* Mobile grab handle - Inkprint styling */
-	:global(.modal-grab-handle) {
-		width: 36px;
-		height: 4px;
-		background: hsl(var(--muted-foreground) / 0.4);
-		border-radius: 2px;
-		margin: 0.5rem auto 1rem;
-	}
-
-	/* Premium Apple-style shadows and effects */
-	:global(.modal-content > div > div) {
-		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-	}
-
-	/* Premium focus states */
-	:global(.modal-content input),
-	:global(.modal-content textarea),
-	:global(.modal-content select) {
-		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-	}
-
-	:global(.modal-content input:focus),
-	:global(.modal-content textarea:focus),
-	:global(.modal-content select:focus) {
-		outline: none;
-		border-color: var(--accent-orange);
-		box-shadow:
-			0 0 0 3px rgba(216, 138, 58, 0.15),
-			0 2px 4px 0 rgba(0, 0, 0, 0.05);
-	}
-
-	:global(.dark .modal-content input:focus),
-	:global(.dark .modal-content textarea:focus),
-	:global(.dark .modal-content select:focus) {
-		border-color: var(--accent-orange);
-		box-shadow:
-			0 0 0 3px rgba(216, 138, 58, 0.25),
-			0 2px 4px 0 rgba(0, 0, 0, 0.2);
-	}
-
-	/* Premium gradient animations */
-	:global(.modal-content .bg-gradient-to-r) {
-		background-size: 200% 200%;
-		animation: gradient-shift 15s ease infinite;
-	}
-
-	@keyframes gradient-shift {
-		0% {
-			background-position: 0% 50%;
-		}
-		50% {
-			background-position: 100% 50%;
-		}
-		100% {
-			background-position: 0% 50%;
-		}
-	}
-
-	/* Premium scrollbar styling */
-	:global(.modal-content *::-webkit-scrollbar) {
-		width: 8px;
-		height: 8px;
-	}
-
-	:global(.modal-content *::-webkit-scrollbar-track) {
-		background: rgba(0, 0, 0, 0.05);
-		border-radius: 4px;
-	}
-
-	:global(.modal-content *::-webkit-scrollbar-thumb) {
-		background: rgba(0, 0, 0, 0.2);
-		border-radius: 4px;
-	}
-
-	:global(.modal-content *::-webkit-scrollbar-thumb:hover) {
-		background: rgba(0, 0, 0, 0.3);
-	}
-
-	:global(.dark .modal-content *::-webkit-scrollbar-track) {
-		background: rgba(255, 255, 255, 0.05);
-	}
-
-	:global(.dark .modal-content *::-webkit-scrollbar-thumb) {
-		background: rgba(255, 255, 255, 0.2);
-	}
-
-	:global(.dark .modal-content *::-webkit-scrollbar-thumb:hover) {
-		background: rgba(255, 255, 255, 0.3);
-	}
-</style>

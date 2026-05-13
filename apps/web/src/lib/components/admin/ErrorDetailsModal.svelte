@@ -70,6 +70,11 @@
 		return userId ? `/admin/users?search=${encodeURIComponent(userId)}` : undefined;
 	}
 
+	function getAdminChatSessionHref(sessionId: unknown): string | undefined {
+		if (typeof sessionId !== 'string' || !sessionId.trim()) return undefined;
+		return `/admin/chat/sessions?chat_session_id=${encodeURIComponent(sessionId.trim())}`;
+	}
+
 	function getMetadataRecord(metadata: unknown): Record<string, any> | undefined {
 		if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
 			return undefined;
@@ -160,6 +165,23 @@
 	{@const toolDurationMs = getMetadataValue(metadata, 'durationMs', 'duration_ms')}
 	{@const toolArgs = getMetadataValue(metadata, 'args', 'arguments') ?? operationPayload}
 	{@const userAdminHref = getAdminUserHref(error)}
+	{@const routeId = getMetadataValue(metadata, 'routeId', 'route_id')}
+	{@const responseStatus = getMetadataValue(metadata, 'status')}
+	{@const chatSessionId = getMetadataValue(metadata, 'sessionId', 'session_id')}
+	{@const streamRunId = getMetadataValue(metadata, 'streamRunId', 'stream_run_id')}
+	{@const clientTurnId = getMetadataValue(metadata, 'clientTurnId', 'client_turn_id')}
+	{@const turnRunId = getMetadataValue(metadata, 'turnRunId', 'turn_run_id')}
+	{@const contextType = getMetadataValue(metadata, 'contextType', 'context_type')}
+	{@const entityId = getMetadataValue(metadata, 'entityId', 'entity_id')}
+	{@const metadataProjectId = getMetadataValue(metadata, 'projectId', 'project_id')}
+	{@const activeTurnConflict = getMetadataValue(metadata, 'activeTurnConflict')}
+	{@const originalError = getMetadataRecord(
+		getMetadataValue(metadata, 'originalError', 'original_error')
+	)}
+	{@const originalErrorCode = getMetadataValue(originalError, 'code')}
+	{@const originalErrorDetails = getMetadataValue(originalError, 'details')}
+	{@const originalErrorHint = getMetadataValue(originalError, 'hint')}
+	{@const chatSessionHref = getAdminChatSessionHref(chatSessionId)}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<!-- svelte-ignore a11y_click_events_have_key_events -->
 	<div
@@ -273,7 +295,7 @@
 						</div>
 					{/if}
 
-					{#if error.endpoint || error.http_method}
+					{#if error.endpoint || error.http_method || error.request_id || error.ip_address || error.user_agent || routeId !== undefined || responseStatus !== undefined}
 						<div class="bg-muted/50 border border-border rounded-lg p-3">
 							<p
 								class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-2"
@@ -281,11 +303,29 @@
 								Request Context
 							</p>
 							<div class="grid grid-cols-2 gap-2 text-xs">
+								{#if error.request_id}
+									<div class="col-span-2">
+										<span class="text-muted-foreground">Request ID:</span>
+										<p
+											class="text-foreground font-mono text-[0.65rem] break-all"
+										>
+											{error.request_id}
+										</p>
+									</div>
+								{/if}
 								{#if error.endpoint}
 									<div class="col-span-2">
 										<span class="text-muted-foreground">Endpoint:</span>
 										<p class="text-foreground font-mono text-[0.65rem]">
 											{error.endpoint}
+										</p>
+									</div>
+								{/if}
+								{#if routeId !== undefined}
+									<div class="col-span-2">
+										<span class="text-muted-foreground">Route ID:</span>
+										<p class="text-foreground font-mono text-[0.65rem]">
+											{formatMetadataValue(routeId)}
 										</p>
 									</div>
 								{/if}
@@ -297,11 +337,126 @@
 										</p>
 									</div>
 								{/if}
+								{#if responseStatus !== undefined}
+									<div>
+										<span class="text-muted-foreground">Status:</span>
+										<p class="text-foreground font-medium">
+											{formatMetadataValue(responseStatus)}
+										</p>
+									</div>
+								{/if}
 								{#if error.ip_address}
 									<div>
 										<span class="text-muted-foreground">IP:</span>
 										<p class="text-foreground font-mono">
 											{error.ip_address}
+										</p>
+									</div>
+								{/if}
+								{#if error.user_agent}
+									<div class="col-span-2">
+										<span class="text-muted-foreground">User Agent:</span>
+										<p class="text-foreground text-[0.65rem] break-words">
+											{error.user_agent}
+										</p>
+									</div>
+								{/if}
+							</div>
+						</div>
+					{/if}
+
+					{#if chatSessionId || streamRunId || clientTurnId || turnRunId || contextType || entityId || metadataProjectId || activeTurnConflict !== undefined}
+						<div class="bg-violet-500/5 border border-violet-500/20 rounded-lg p-3">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-violet-600 dark:text-violet-400 mb-2"
+							>
+								Chat Correlation
+							</p>
+							<div class="grid grid-cols-2 gap-2 text-xs">
+								{#if chatSessionId}
+									<div class="col-span-2">
+										<span class="text-muted-foreground">Session ID:</span>
+										<p
+											class="text-foreground font-mono text-[0.65rem] break-all"
+										>
+											{formatMetadataValue(chatSessionId)}
+										</p>
+										{#if chatSessionHref}
+											<a
+												href={chatSessionHref}
+												class="mt-1 inline-flex items-center gap-1 text-[0.65rem] font-medium text-violet-700 hover:underline dark:text-violet-300"
+											>
+												<span>Open chat audit</span>
+												<ArrowUpRight class="w-3 h-3" />
+											</a>
+										{/if}
+									</div>
+								{/if}
+								{#if turnRunId}
+									<div>
+										<span class="text-muted-foreground">Turn Run:</span>
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
+											{formatMetadataValue(turnRunId)}
+										</p>
+									</div>
+								{/if}
+								{#if streamRunId}
+									<div>
+										<span class="text-muted-foreground">Stream Run:</span>
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
+											{formatMetadataValue(streamRunId)}
+										</p>
+									</div>
+								{/if}
+								{#if clientTurnId}
+									<div>
+										<span class="text-muted-foreground">Client Turn:</span>
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
+											{formatMetadataValue(clientTurnId)}
+										</p>
+									</div>
+								{/if}
+								{#if contextType}
+									<div>
+										<span class="text-muted-foreground">Context:</span>
+										<p class="text-foreground">
+											{formatMetadataValue(contextType)}
+										</p>
+									</div>
+								{/if}
+								{#if entityId}
+									<div>
+										<span class="text-muted-foreground">Entity:</span>
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
+											{formatMetadataValue(entityId)}
+										</p>
+									</div>
+								{/if}
+								{#if metadataProjectId || error.project_id}
+									<div>
+										<span class="text-muted-foreground">Project:</span>
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
+											{formatMetadataValue(
+												metadataProjectId ?? error.project_id
+											)}
+										</p>
+									</div>
+								{/if}
+								{#if activeTurnConflict !== undefined}
+									<div>
+										<span class="text-muted-foreground">Active Conflict:</span>
+										<p class="text-foreground">
+											{formatMetadataValue(activeTurnConflict)}
 										</p>
 									</div>
 								{/if}
@@ -323,6 +478,42 @@
 							</p>
 						</div>
 					</div>
+
+					{#if originalErrorCode || originalErrorDetails || originalErrorHint}
+						<div class="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-red-600 dark:text-red-400 mb-2"
+							>
+								Original Error
+							</p>
+							<div class="grid grid-cols-2 gap-2 text-xs">
+								{#if originalErrorCode}
+									<div>
+										<span class="text-muted-foreground">Code:</span>
+										<p class="text-foreground font-mono">
+											{formatMetadataValue(originalErrorCode)}
+										</p>
+									</div>
+								{/if}
+								{#if originalErrorDetails}
+									<div class="col-span-2">
+										<span class="text-muted-foreground">Details:</span>
+										<p class="text-foreground font-mono text-[0.65rem]">
+											{formatMetadataValue(originalErrorDetails)}
+										</p>
+									</div>
+								{/if}
+								{#if originalErrorHint}
+									<div class="col-span-2">
+										<span class="text-muted-foreground">Hint:</span>
+										<p class="text-foreground font-mono text-[0.65rem]">
+											{formatMetadataValue(originalErrorHint)}
+										</p>
+									</div>
+								{/if}
+							</div>
+						</div>
+					{/if}
 
 					{#if isToolExecution}
 						<div class="bg-sky-500/5 border border-sky-500/20 rounded-lg p-3">
@@ -469,7 +660,7 @@
 						</div>
 					{/if}
 
-					{#if !isToolExecution && (error.operation_type || error.table_name)}
+					{#if !isToolExecution && (error.operation_type || error.table_name || error.record_id || error.project_id || error.brain_dump_id)}
 						<div class="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
 							<p
 								class="text-[0.65rem] uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2"
@@ -490,6 +681,36 @@
 										<span class="text-muted-foreground">Table:</span>
 										<p class="text-foreground font-mono">
 											{error.table_name}
+										</p>
+									</div>
+								{/if}
+								{#if error.record_id}
+									<div>
+										<span class="text-muted-foreground">Record:</span>
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
+											{error.record_id}
+										</p>
+									</div>
+								{/if}
+								{#if error.project_id}
+									<div>
+										<span class="text-muted-foreground">Project:</span>
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
+											{error.project_id}
+										</p>
+									</div>
+								{/if}
+								{#if error.brain_dump_id}
+									<div>
+										<span class="text-muted-foreground">Brain Dump:</span>
+										<p
+											class="text-foreground font-mono text-[0.65rem] truncate"
+										>
+											{error.brain_dump_id}
 										</p>
 									</div>
 								{/if}
@@ -526,6 +747,41 @@
 									</div>
 								{/if}
 							</div>
+						</div>
+					{/if}
+
+					{#if error.environment || error.app_version || error.browser_info}
+						<div class="bg-muted/40 border border-border rounded-lg p-3">
+							<p
+								class="text-[0.65rem] uppercase tracking-wider text-muted-foreground mb-2"
+							>
+								Runtime
+							</p>
+							<div class="grid grid-cols-2 gap-2 text-xs">
+								{#if error.environment}
+									<div>
+										<span class="text-muted-foreground">Environment:</span>
+										<p class="text-foreground">{error.environment}</p>
+									</div>
+								{/if}
+								{#if error.app_version}
+									<div>
+										<span class="text-muted-foreground">App Version:</span>
+										<p class="text-foreground font-mono text-[0.65rem]">
+											{error.app_version}
+										</p>
+									</div>
+								{/if}
+							</div>
+							{#if error.browser_info}
+								<div class="mt-2">
+									<span class="text-muted-foreground text-xs">Browser Info:</span>
+									<pre
+										class="bg-background border border-border rounded-lg p-3 shadow-ink-inner text-[0.65rem] overflow-x-auto text-foreground/80 max-h-32 leading-relaxed">{formatJson(
+											error.browser_info
+										)}</pre>
+								</div>
+							{/if}
 						</div>
 					{/if}
 

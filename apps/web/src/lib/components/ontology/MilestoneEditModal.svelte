@@ -23,7 +23,20 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { Save, Loader, Trash2, Flag, Calendar, Clock, X, ChevronDown } from 'lucide-svelte';
+	import {
+		Save,
+		Loader,
+		Trash2,
+		Flag,
+		Calendar,
+		Clock,
+		X,
+		ChevronDown,
+		Activity,
+		Link as LinkIcon,
+		Image as ImageIcon,
+		Tag as TagIcon
+	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -135,6 +148,8 @@
 	let showRiskModal = $state(false);
 	let selectedRiskIdForModal = $state<string | null>(null);
 	let showChatModal = $state(false);
+	let showLinkedEntities = $state(true);
+	let showImages = $state(false);
 	let showActivityLog = $state(false);
 
 	type SurfaceBadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'accent';
@@ -648,7 +663,7 @@
 					</div>
 
 					<!-- Sidebar (Right column) -->
-					<div class="space-y-3">
+					<div>
 						<Card variant="elevated" class="wt-card">
 							<CardHeader variant="muted" texture="strip">
 								<div class="flex items-center justify-between gap-3">
@@ -656,10 +671,10 @@
 										<p
 											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 										>
-											At a glance
+											Controls
 										</p>
 										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Milestone snapshot
+											Milestone operations
 										</h3>
 									</div>
 									<Badge variant={milestoneStateMeta.variant} size="sm"
@@ -667,161 +682,250 @@
 									>
 								</div>
 							</CardHeader>
-							<CardBody class="space-y-3">
-								<!-- Due Date Display -->
-								<div
-									class="rounded-lg border border-border/70 {dueDateStatus ===
-									'overdue'
-										? 'bg-destructive/5'
-										: 'bg-muted/30'} p-3 text-center"
-								>
-									<p
-										class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+							<CardBody padding="none">
+								<div class="divide-y divide-border/70">
+									<!-- Due Date -->
+									<section
+										class="px-3 py-3 sm:px-4"
+										aria-label="Due date: {dueAt
+											? formatDueDate(dueAt)
+											: 'None'}"
 									>
-										Due Date
-									</p>
-									{#if dueDate}
-										{@const days = daysUntilDue}
-										{@const status = dueDateStatus}
-										<p
-											class="mt-1 text-xl font-bold {status === 'overdue' ||
-											status === 'missed'
-												? 'text-destructive'
-												: status === 'today'
-													? 'text-warning'
-													: status === 'completed'
-														? 'text-foreground'
-														: 'text-foreground'}"
-										>
-											{#if status === 'completed'}
-												Done
-											{:else if status === 'missed'}
-												Missed
-											{:else if days === 0}
-												Today
-											{:else if days === 1}
-												Tomorrow
-											{:else if days === -1}
-												Yesterday
-											{:else if days !== null && days < 0}
-												{Math.abs(days)} days ago
-											{:else if days !== null}
-												{days} days
-											{/if}
-										</p>
-										<p class="text-xs text-muted-foreground mt-1">
-											{formatDueDate(dueAt)}
-										</p>
-									{:else}
-										<p class="mt-1 text-sm text-muted-foreground">
-											No due date set
-										</p>
-									{/if}
-								</div>
-
-								<div class="rounded-lg border border-border/70 bg-muted/30 p-3">
-									<div class="grid grid-cols-1 gap-1.5 text-xs">
-										<div class="flex items-center justify-between gap-2">
-											<span class="text-muted-foreground">State</span>
-											<span class="text-right text-foreground">
-												{milestoneStateMeta.label}
-											</span>
+										<div class="flex items-center gap-2">
+											<Calendar class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+											>
+												Due Date
+											</p>
 										</div>
-										<div class="flex items-center justify-between gap-2">
-											<span class="text-muted-foreground">Created</span>
-											<span class="text-right text-foreground">
-												{milestone.created_at
-													? new Date(
-															milestone.created_at
+
+										<div
+											class="mt-2 rounded-lg border border-border/70 {dueDateStatus ===
+											'overdue'
+												? 'bg-destructive/5'
+												: 'bg-muted/30'} p-3 text-center"
+										>
+											{#if dueDate}
+												{@const days = daysUntilDue}
+												{@const status = dueDateStatus}
+												<p
+													class="text-xl font-bold {status ===
+														'overdue' || status === 'missed'
+														? 'text-destructive'
+														: status === 'today'
+															? 'text-warning'
+															: 'text-foreground'}"
+												>
+													{#if status === 'completed'}
+														Done
+													{:else if status === 'missed'}
+														Missed
+													{:else if days === 0}
+														Today
+													{:else if days === 1}
+														Tomorrow
+													{:else if days === -1}
+														Yesterday
+													{:else if days !== null && days < 0}
+														{Math.abs(days)} days ago
+													{:else if days !== null}
+														{days} days
+													{/if}
+												</p>
+												<p class="text-xs text-muted-foreground mt-1">
+													{formatDueDate(dueAt)}
+												</p>
+											{:else}
+												<p class="text-sm text-muted-foreground">
+													No due date set
+												</p>
+											{/if}
+										</div>
+									</section>
+
+									<!-- Record -->
+									<section class="px-3 py-3 sm:px-4">
+										<div class="flex items-center gap-2">
+											<Clock class="h-4 w-4 text-muted-foreground" />
+											<p
+												class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+											>
+												Record
+											</p>
+										</div>
+										<div class="mt-2 space-y-1.5 text-sm">
+											<div class="flex items-center justify-between gap-3">
+												<span class="text-muted-foreground">State</span>
+												<span class="text-right text-foreground"
+													>{milestoneStateMeta.label}</span
+												>
+											</div>
+											<div class="flex items-center justify-between gap-3">
+												<span class="text-muted-foreground">Created</span>
+												<span class="text-right text-foreground">
+													{milestone.created_at
+														? new Date(
+																milestone.created_at
+															).toLocaleDateString(undefined, {
+																month: 'short',
+																day: 'numeric',
+																year: 'numeric'
+															})
+														: '—'}
+												</span>
+											</div>
+											{#if milestone.updated_at}
+												<div
+													class="flex items-center justify-between gap-3"
+												>
+													<span class="text-muted-foreground"
+														>Updated</span
+													>
+													<span class="text-right text-foreground">
+														{new Date(
+															milestone.updated_at
 														).toLocaleDateString(undefined, {
 															month: 'short',
 															day: 'numeric',
 															year: 'numeric'
-														})
-													: '—'}
-											</span>
+														})}
+													</span>
+												</div>
+											{/if}
 										</div>
-										{#if milestone.updated_at}
-											<div class="flex items-center justify-between gap-2">
-												<span class="text-muted-foreground">Updated</span>
-												<span class="text-right text-foreground">
-													{new Date(
-														milestone.updated_at
-													).toLocaleDateString(undefined, {
-														month: 'short',
-														day: 'numeric',
-														year: 'numeric'
-													})}
-												</span>
+									</section>
+
+									<!-- Tags -->
+									{#if milestone?.props?.tags?.length}
+										<section class="px-3 py-3 sm:px-4">
+											<div class="flex items-center gap-2 mb-2">
+												<TagIcon class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Tags
+												</p>
+											</div>
+											<TagsDisplay
+												props={milestone.props}
+												size="sm"
+												compact={true}
+											/>
+										</section>
+									{/if}
+
+									<!-- Linked Entities (collapsible, default open) -->
+									<section class="px-3 sm:px-4">
+										<button
+											type="button"
+											onclick={() =>
+												(showLinkedEntities = !showLinkedEntities)}
+											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											aria-expanded={showLinkedEntities}
+										>
+											<div class="flex items-center gap-2">
+												<LinkIcon class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Linked Entities
+												</p>
+											</div>
+											<ChevronDown
+												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showLinkedEntities
+													? 'rotate-180'
+													: ''}"
+											/>
+										</button>
+										{#if showLinkedEntities}
+											<div class="pb-3">
+												<LinkedEntities
+													sourceId={milestoneId}
+													sourceKind="milestone"
+													{projectId}
+													onEntityClick={handleLinkedEntityClick}
+													onLinksChanged={loadMilestone}
+												/>
 											</div>
 										{/if}
-									</div>
+									</section>
+
+									<!-- Images (collapsible) -->
+									<section class="px-3 sm:px-4">
+										<button
+											type="button"
+											onclick={() => (showImages = !showImages)}
+											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											aria-expanded={showImages}
+										>
+											<div class="flex items-center gap-2">
+												<ImageIcon class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Images
+												</p>
+											</div>
+											<ChevronDown
+												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showImages
+													? 'rotate-180'
+													: ''}"
+											/>
+										</button>
+										{#if showImages}
+											<div class="pb-3">
+												<ImageAssetsPanel
+													{projectId}
+													entityKind="milestone"
+													entityId={milestoneId}
+													showTitle={false}
+													compact={true}
+													onChanged={() => {
+														void loadMilestone();
+														onUpdated?.();
+													}}
+												/>
+											</div>
+										{/if}
+									</section>
+
+									<!-- Activity (collapsible) -->
+									<section class="px-3 sm:px-4">
+										<button
+											type="button"
+											onclick={() => (showActivityLog = !showActivityLog)}
+											class="w-full py-3 flex items-center justify-between gap-2 text-left hover:opacity-80 transition-opacity pressable"
+											aria-expanded={showActivityLog}
+										>
+											<div class="flex items-center gap-2">
+												<Activity class="h-4 w-4 text-muted-foreground" />
+												<p
+													class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground"
+												>
+													Activity
+												</p>
+											</div>
+											<ChevronDown
+												class="w-3.5 h-3.5 text-muted-foreground transition-transform {showActivityLog
+													? 'rotate-180'
+													: ''}"
+											/>
+										</button>
+										{#if showActivityLog}
+											<div class="pb-3">
+												<EntityActivityLog
+													entityType="milestone"
+													entityId={milestoneId}
+													autoLoad={true}
+													embedded={true}
+												/>
+											</div>
+										{/if}
+									</section>
 								</div>
 							</CardBody>
 						</Card>
-
-						<!-- Linked Entities -->
-						<LinkedEntities
-							sourceId={milestoneId}
-							sourceKind="milestone"
-							{projectId}
-							onEntityClick={handleLinkedEntityClick}
-							onLinksChanged={loadMilestone}
-						/>
-
-						<!-- Images -->
-						<ImageAssetsPanel
-							{projectId}
-							entityKind="milestone"
-							entityId={milestoneId}
-							title="Images"
-							compact={true}
-							onChanged={() => {
-								void loadMilestone();
-								onUpdated?.();
-							}}
-						/>
-
-						{#if milestone?.props?.tags?.length}
-							<div
-								class="px-3 py-2.5 border border-border rounded-lg bg-card shadow-ink"
-							>
-								<p
-									class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5"
-								>
-									Tags
-								</p>
-								<TagsDisplay props={milestone.props} size="sm" compact={true} />
-							</div>
-						{/if}
-
-						<!-- Activity Log (collapsible) -->
-						<div
-							class="border border-border rounded-lg bg-card shadow-ink overflow-hidden"
-						>
-							<button
-								type="button"
-								onclick={() => (showActivityLog = !showActivityLog)}
-								class="w-full px-3 py-2 flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:bg-muted/50 transition-colors"
-							>
-								<span>Activity</span>
-								<ChevronDown
-									class="w-3.5 h-3.5 transition-transform {showActivityLog
-										? 'rotate-180'
-										: ''}"
-								/>
-							</button>
-							{#if showActivityLog}
-								<div class="border-t border-border">
-									<EntityActivityLog
-										entityType="milestone"
-										entityId={milestoneId}
-										autoLoad={true}
-										embedded={true}
-									/>
-								</div>
-							{/if}
-						</div>
 					</div>
 				</div>
 
