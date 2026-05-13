@@ -37,7 +37,7 @@
 <div class="admin-page">
 	<AdminPageHeader
 		title="Ontology Graph"
-		description="Visualize and explore the complete ontology system"
+		description="Visualize and explore a bounded recent ontology graph"
 		icon={Workflow}
 		backHref="/admin"
 	/>

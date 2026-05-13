@@ -99,7 +99,7 @@ Use for queries about project goals or strategic objectives.`,
 		type: 'function',
 		function: {
 			name: 'list_onto_documents',
-			description: `List documents from the ontology system (onto_documents table). Returns document summaries plus markdown heading outlines (H1/H2/H3), not full body content.
+			description: `List documents from the ontology system (onto_documents table). Returns metadata summaries only, not full body content.
 Use get_onto_document_details when full document content is needed.`,
 			parameters: {
 				type: 'object',
@@ -488,7 +488,7 @@ Use when the user references a task by name or description but the project is un
 		type: 'function',
 		function: {
 			name: 'search_onto_documents',
-			description: `Search ontology documents by title. Returns concise matches plus markdown heading outlines (H1/H2/H3), not full body content.
+			description: `Search ontology documents by title. Returns concise metadata matches only, not full body content.
 Use get_onto_document_details when full document content is needed.`,
 			parameters: {
 				type: 'object',

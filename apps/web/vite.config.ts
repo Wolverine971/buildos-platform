@@ -1,4 +1,5 @@
 // apps/web/vite.config.ts
+import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { visualizer } from 'rollup-plugin-visualizer';
@@ -81,13 +82,23 @@ export default defineConfig(({ mode }) => {
 
 		preview: { port: 4173 },
 
+		resolve: {
+			alias: [
+				{
+					find: /^lucide-svelte$/,
+					replacement: fileURLToPath(
+						new URL('./src/lib/icons/lucide.ts', import.meta.url)
+					)
+				}
+			]
+		},
+
 		// Enhanced dependency optimization
 		optimizeDeps: {
 			include: [
 				'date-fns',
 				'marked',
 				'sanitize-html',
-				'lucide-svelte',
 				'mode-watcher',
 				'tailwind-merge',
 				'rrule'
@@ -141,7 +152,6 @@ export default defineConfig(({ mode }) => {
 						if (id.includes('node_modules')) {
 							// UI libraries
 							if (
-								id.includes('lucide-svelte') ||
 								id.includes('@tiptap/core') ||
 								id.includes('@tiptap/starter-kit') ||
 								id.includes('@tiptap/extension')

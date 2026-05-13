@@ -532,9 +532,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 			for await (const event of llm.streamText({
 				messages,
-				tools: hasTools ? tools : undefined,
-				tool_choice: noToolSynthesisPass ? 'none' : hasTools ? 'auto' : undefined,
-				temperature: hasTools ? 0.2 : undefined,
+				tools: noToolSynthesisPass ? undefined : hasTools ? tools : undefined,
+				tool_choice: noToolSynthesisPass ? undefined : hasTools ? 'auto' : undefined,
+				temperature: noToolSynthesisPass ? undefined : hasTools ? 0.2 : undefined,
 				userId,
 				sessionId,
 				chatSessionId: sessionId,

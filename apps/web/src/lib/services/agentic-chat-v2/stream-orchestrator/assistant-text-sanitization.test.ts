@@ -73,6 +73,26 @@ describe('sanitizeAssistantFinalText', () => {
 		expect(cleaned).not.toContain('Mention every successful write');
 	});
 
+	it('strips read-loop and ID-repair instruction leaks before the user-facing answer', () => {
+		const raw = [
+			'If a required ID is still missing, ask one short question.',
+			'Read-loop hard stop: synthesize now.',
+			'Repeated ops: x.search.project, onto.document.list.',
+			'Do not call more read tools in the next response.',
+			'',
+			"Here's the meeting outline I would use with Rod.",
+			'Start by asking whether he reviewed the demo, then move to specific design feedback.'
+		].join('\n');
+
+		const cleaned = sanitizeAssistantFinalText(raw);
+		expect(cleaned).toContain('meeting outline');
+		expect(cleaned).toContain('specific design feedback');
+		expect(cleaned).not.toContain('required ID');
+		expect(cleaned).not.toContain('Read-loop hard stop');
+		expect(cleaned).not.toContain('Repeated ops');
+		expect(cleaned).not.toContain('Do not call more read tools');
+	});
+
 	it('preserves legitimate content that happens to mention "rules" in prose', () => {
 		// Sanity check that we did not over-match. The scratchpad patterns all
 		// anchor on `^` and specific phrases; regular prose should pass through.

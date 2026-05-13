@@ -15,6 +15,7 @@ vi.mock('$lib/services/smart-llm-service');
 describe('ChatToolExecutor - Update Behavior', () => {
 	let toolExecutor: ChatToolExecutor;
 	let mockSupabase: SupabaseClient<Database>;
+	let mockChain: Record<string, any>;
 	let mockLLMService: SmartLLMService;
 	let mockFetch: typeof fetch;
 
@@ -23,17 +24,38 @@ describe('ChatToolExecutor - Update Behavior', () => {
 
 	beforeEach(() => {
 		// Setup mock Supabase client with chaining support
-		const mockChain = {
+		mockChain = {
 			select: vi.fn().mockReturnThis(),
 			eq: vi.fn().mockReturnThis(),
+			is: vi.fn().mockReturnThis(),
 			single: vi.fn().mockReturnThis(),
-			maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+			maybeSingle: vi.fn().mockResolvedValue({
+				data: {
+					id: 'doc-123',
+					project_id: 'project-123',
+					title: 'Test Document',
+					content: 'Existing document content',
+					props: {
+						body_markdown: 'Existing document content'
+					}
+				},
+				error: null
+			}),
 			insert: vi.fn().mockResolvedValue({ data: null, error: null }),
 			update: vi.fn().mockReturnThis()
 		};
 
 		mockSupabase = {
 			from: vi.fn(() => mockChain),
+			rpc: vi.fn((fn: string) => {
+				if (fn === 'current_actor_has_project_access') {
+					return Promise.resolve({ data: true, error: null });
+				}
+				if (fn === 'ensure_actor_for_user') {
+					return Promise.resolve({ data: 'actor-123', error: null });
+				}
+				return Promise.resolve({ data: null, error: null });
+			}),
 			auth: {
 				getSession: vi.fn().mockResolvedValue({
 					data: {
@@ -219,11 +241,9 @@ describe('ChatToolExecutor - Update Behavior', () => {
 			const result = await toolExecutor.execute(toolCall);
 
 			expect(result.success).toBe(true);
-			// Should fetch existing content first
-			expect(mockFetch).toHaveBeenCalledWith(
-				expect.stringContaining('/api/onto/documents/doc-123'),
-				expect.any(Object)
-			);
+			// Should load existing content through the agent document projection first.
+			expect(mockSupabase.from).toHaveBeenCalledWith('onto_documents');
+			expect(mockChain.maybeSingle).toHaveBeenCalled();
 			// Then update with appended content
 			expect(mockFetch).toHaveBeenCalledWith(
 				expect.stringContaining('/api/onto/documents/doc-123'),
@@ -255,11 +275,9 @@ describe('ChatToolExecutor - Update Behavior', () => {
 			const result = await toolExecutor.execute(toolCall);
 
 			expect(result.success).toBe(true);
-			// Should fetch existing content
-			expect(mockFetch).toHaveBeenCalledWith(
-				expect.stringContaining('/api/onto/documents/doc-123'),
-				expect.any(Object)
-			);
+			// Should load existing content through the agent document projection.
+			expect(mockSupabase.from).toHaveBeenCalledWith('onto_documents');
+			expect(mockChain.maybeSingle).toHaveBeenCalled();
 			// Should call LLM service
 			expect(mockLLMService.generateTextDetailed).toHaveBeenCalledWith(
 				expect.objectContaining({
@@ -321,25 +339,18 @@ describe('ChatToolExecutor - Update Behavior', () => {
 		});
 
 		it('should handle empty existing content gracefully', async () => {
-			// Mock empty existing content
+			mockChain.maybeSingle.mockResolvedValueOnce({
+				data: {
+					id: 'doc-123',
+					project_id: 'project-123',
+					title: 'Test Document',
+					content: null,
+					props: {}
+				},
+				error: null
+			});
+
 			mockFetch = vi.fn().mockImplementation((url, options) => {
-				if (
-					url.includes('/api/onto/documents/') &&
-					(!options?.method || options.method === 'GET')
-				) {
-					return Promise.resolve({
-						ok: true,
-						json: () =>
-							Promise.resolve({
-								success: true,
-								document: {
-									id: 'doc-123',
-									title: 'Test Document',
-									props: {} // No body_markdown
-								}
-							})
-					});
-				}
 				if (url.includes('/api/onto/documents/') && options?.method === 'PATCH') {
 					return Promise.resolve({
 						ok: true,
@@ -559,14 +570,12 @@ describe('ChatToolExecutor - Update Behavior', () => {
 		});
 
 		it('should handle fetch errors gracefully', async () => {
-			// Make fetch fail for GET
+			mockChain.maybeSingle.mockResolvedValueOnce({
+				data: null,
+				error: new Error('Document read failed')
+			});
+
 			mockFetch = vi.fn().mockImplementation((url, options) => {
-				if (!options?.method || options.method === 'GET') {
-					return Promise.resolve({
-						ok: false,
-						json: () => Promise.resolve({ error: 'Network error' })
-					});
-				}
 				if (options?.method === 'PATCH') {
 					return Promise.resolve({
 						ok: true,
@@ -1032,31 +1041,11 @@ describe('ChatToolExecutor - Update Behavior', () => {
 	});
 
 	describe('Document Detail Reads', () => {
-		it('returns a structured not_found payload when the document detail endpoint 404s', async () => {
+		it('returns a structured not_found payload when the document projection finds no row', async () => {
 			const missingDocumentId = '00d853f9-a3ab-4ae1-8519-2d727823f8ad';
-			mockFetch = vi.fn().mockImplementation((url, options) => {
-				if (
-					String(url).includes(`/api/onto/documents/${missingDocumentId}`) &&
-					(!options?.method || options.method === 'GET')
-				) {
-					return Promise.resolve({
-						ok: false,
-						status: 404,
-						statusText: 'Not Found',
-						headers: { get: () => 'application/json' },
-						json: () => Promise.resolve({ error: 'Document not found' }),
-						text: () => Promise.resolve('Document not found')
-					});
-				}
-
-				return Promise.resolve({
-					ok: false,
-					status: 500,
-					statusText: 'Internal Server Error',
-					headers: { get: () => 'application/json' },
-					json: () => Promise.resolve({ error: 'Unexpected request' }),
-					text: () => Promise.resolve('Unexpected request')
-				});
+			mockChain.maybeSingle.mockResolvedValueOnce({
+				data: null,
+				error: null
 			});
 
 			const executor = new ChatToolExecutor(
@@ -1086,6 +1075,7 @@ describe('ChatToolExecutor - Update Behavior', () => {
 				document_id: missingDocumentId,
 				document: null
 			});
+			expect(mockFetch).not.toHaveBeenCalled();
 			expect((result.result as any).message).toContain('search_onto_documents');
 		});
 	});

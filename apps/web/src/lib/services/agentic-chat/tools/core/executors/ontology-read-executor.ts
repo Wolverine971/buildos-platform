@@ -226,7 +226,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			supabase
 				.from('onto_projects')
 				.select(
-					'id, name, description, type_key, state_key, created_at, updated_at, task_count, goal_count, plan_count, document_count, next_step_short, next_step_long, start_at, end_at'
+					'id, name, description, type_key, state_key, created_at, updated_at, next_step_short, next_step_long'
 				)
 				.eq('id', projectId)
 				.is('deleted_at', null)
@@ -499,9 +499,12 @@ export class OntologyReadExecutor extends BaseExecutor {
 	}
 
 	private summarizeDocumentForList(document: Record<string, any>): Record<string, any> {
-		const content = typeof document.content === 'string' ? document.content : '';
-		const fallback = typeof document.description === 'string' ? document.description : '';
-		const outline = this.extractMarkdownOutline(content || fallback);
+		const outline =
+			document.markdown_outline && typeof document.markdown_outline === 'object'
+				? document.markdown_outline
+				: null;
+		const contentLength =
+			typeof document.content_length === 'number' ? document.content_length : null;
 
 		return {
 			id: typeof document.id === 'string' ? document.id : null,
@@ -512,9 +515,32 @@ export class OntologyReadExecutor extends BaseExecutor {
 			description: typeof document.description === 'string' ? document.description : null,
 			created_at: typeof document.created_at === 'string' ? document.created_at : null,
 			updated_at: typeof document.updated_at === 'string' ? document.updated_at : null,
-			content_length: content.length,
+			content_length: contentLength,
 			markdown_outline: outline
 		};
+	}
+
+	private async loadAgentDocumentDetails(
+		documentId: string
+	): Promise<Record<string, any> | null> {
+		const { data: document, error } = await this.supabase
+			.from('onto_documents')
+			.select(
+				'id, project_id, title, description, type_key, state_key, content, props, children, created_at, updated_at, archived_at'
+			)
+			.eq('id', documentId)
+			.is('deleted_at', null)
+			.maybeSingle();
+
+		if (error) throw error;
+		if (!document) return null;
+
+		await this.assertProjectAccess(document.project_id, 'read');
+
+		return this.stripInternalPayloadFields({
+			document,
+			source: 'agent_document_detail_projection'
+		});
 	}
 
 	private extractMarkdownOutline(markdown: string): {
@@ -813,7 +839,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		let query = this.supabase
 			.from('onto_documents')
 			.select(
-				'id, project_id, title, type_key, state_key, content, description, created_at, updated_at',
+				'id, project_id, title, type_key, state_key, description, created_at, updated_at',
 				{
 					count: 'exact'
 				}
@@ -841,7 +867,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return {
 			documents,
 			total: count ?? documents.length,
-			message: `Found ${documents.length} ontology documents.`
+			message: `Found ${documents.length} ontology documents. Use get_onto_document_details for full document content.`
 		};
 	}
 
@@ -1133,7 +1159,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		let query = this.supabase
 			.from('onto_documents')
 			.select(
-				'id, project_id, title, type_key, state_key, content, description, created_at, updated_at',
+				'id, project_id, title, type_key, state_key, description, created_at, updated_at',
 				{
 					count: 'exact'
 				}
@@ -1162,7 +1188,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return {
 			documents,
 			total: count ?? documents.length,
-			message: `Found ${documents.length} documents matching "${searchTerm}".`
+			message: `Found ${documents.length} documents matching "${searchTerm}". Use get_onto_document_details for full document content.`
 		};
 	}
 
@@ -1441,16 +1467,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 	}
 
 	async getOntoDocumentDetails(args: GetOntoDocumentDetailsArgs): Promise<any> {
-		const details = await this.getDetailOrNotFound({
-			path: `/api/onto/documents/${args.document_id}`,
-			entityType: 'document',
-			idKey: 'document_id',
-			id: args.document_id,
-			payloadKey: 'document',
-			listTool: 'list_onto_documents',
-			searchTool: 'search_onto_documents'
-		});
-		if (details.status === 'not_found') return details;
+		const details = await this.loadAgentDocumentDetails(args.document_id);
+		if (!details?.document) {
+			return this.buildDetailNotFoundPayload({
+				entityType: 'document',
+				idKey: 'document_id',
+				id: args.document_id,
+				listTool: 'list_onto_documents',
+				searchTool: 'search_onto_documents'
+			});
+		}
 
 		return {
 			...details,

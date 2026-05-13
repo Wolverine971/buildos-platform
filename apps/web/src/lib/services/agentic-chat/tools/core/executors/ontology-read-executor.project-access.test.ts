@@ -14,6 +14,8 @@ describe('OntologyReadExecutor project-scoped access', () => {
 		documentQuery = {
 			select: vi.fn().mockReturnThis(),
 			eq: vi.fn().mockReturnThis(),
+			in: vi.fn().mockReturnThis(),
+			or: vi.fn().mockReturnThis(),
 			is: vi.fn().mockReturnThis(),
 			order: vi.fn().mockReturnThis(),
 			limit: vi.fn().mockResolvedValue({
@@ -43,6 +45,43 @@ describe('OntologyReadExecutor project-scoped access', () => {
 				}
 				if (fn === 'ensure_actor_for_user') {
 					return Promise.resolve({ data: 'collaborator-actor', error: null });
+				}
+				if (fn === 'get_onto_project_summaries_v1') {
+					return Promise.resolve({
+						data: [
+							{
+								id: 'project-1',
+								name: 'Shared project',
+								description: null,
+								icon_svg: null,
+								icon_concept: null,
+								icon_generated_at: null,
+								icon_generation_source: null,
+								icon_generation_prompt: null,
+								type_key: 'project.default',
+								state_key: 'active',
+								props: {},
+								facet_context: null,
+								facet_scale: null,
+								facet_stage: null,
+								created_at: '2026-04-29T00:00:00.000Z',
+								updated_at: '2026-04-29T00:00:00.000Z',
+								task_count: 0,
+								goal_count: 0,
+								plan_count: 0,
+								document_count: 1,
+								owner_actor_id: 'owner-actor',
+								access_role: 'editor',
+								access_level: 'write',
+								is_shared: true,
+								next_step_short: null,
+								next_step_long: null,
+								next_step_source: null,
+								next_step_updated_at: null
+							}
+						],
+						error: null
+					});
 				}
 				return Promise.resolve({ data: null, error: null });
 			}),
@@ -83,7 +122,7 @@ describe('OntologyReadExecutor project-scoped access', () => {
 		expect(result.documents[0].id).toBe('doc-1');
 	});
 
-	it('keeps owner-scoped listing when no project is provided', async () => {
+	it('scopes unfiltered document listings to readable projects', async () => {
 		const executor = new OntologyReadExecutor(context);
 
 		await executor.listOntoDocuments({ limit: 10 });
@@ -95,6 +134,7 @@ describe('OntologyReadExecutor project-scoped access', () => {
 			p_project_id: expect.anything(),
 			p_required_access: 'read'
 		});
-		expect(documentQuery.eq).toHaveBeenCalledWith('created_by', 'collaborator-actor');
+		expect(documentQuery.in).toHaveBeenCalledWith('project_id', ['project-1']);
+		expect(documentQuery.eq).not.toHaveBeenCalledWith('created_by', expect.anything());
 	});
 });

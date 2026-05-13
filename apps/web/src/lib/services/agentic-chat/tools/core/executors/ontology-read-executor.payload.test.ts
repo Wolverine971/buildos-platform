@@ -5,18 +5,14 @@ import type { Database } from '@buildos/shared-types';
 import { OntologyReadExecutor } from './ontology-read-executor';
 import type { ExecutorContext } from './types';
 
-function jsonResponse(data: unknown): Response {
-	return new Response(JSON.stringify({ data }), {
-		status: 200,
-		headers: { 'content-type': 'application/json' }
-	});
-}
-
 function createSupabaseQuery(result: Record<string, unknown>) {
 	const query: Record<string, any> = {};
 	query.select = vi.fn(() => query);
 	query.eq = vi.fn(() => query);
 	query.is = vi.fn(() => query);
+	query.ilike = vi.fn(() => query);
+	query.in = vi.fn(() => query);
+	query.not = vi.fn(() => query);
 	query.order = vi.fn(() => query);
 	query.limit = vi.fn(() => Promise.resolve(result));
 	query.maybeSingle = vi.fn(() => Promise.resolve(result));
@@ -46,28 +42,105 @@ describe('OntologyReadExecutor payload hygiene', () => {
 		};
 	});
 
-	it('strips search_vector from document detail tool results before returning them', async () => {
-		fetchFn.mockResolvedValue(
-			jsonResponse({
-				document: {
-					id: 'doc-1',
-					title: 'Rod notes',
-					content: '# Notes',
-					props: {
-						body_markdown: '# Notes',
-						search_vector: "'nested':1"
-					},
-					search_vector: "'internal':1"
-				}
-			})
-		);
+	it('loads document details through an explicit agent projection', async () => {
+		const documentQuery = createSupabaseQuery({
+			data: {
+				id: 'doc-1',
+				project_id: 'project-1',
+				title: 'Rod notes',
+				description: 'Prep notes',
+				type_key: 'document.default',
+				state_key: 'draft',
+				content: '# Notes',
+				props: {
+					body_markdown: '# Notes',
+					search_vector: "'nested':1"
+				},
+				search_vector: "'internal':1"
+			},
+			error: null
+		});
+		(mockSupabase as any).rpc = vi.fn().mockResolvedValue({ data: true, error: null });
+		(mockSupabase as any).from = vi.fn(() => documentQuery);
 
 		const executor = new OntologyReadExecutor(context);
 		const result = await executor.getOntoDocumentDetails({ document_id: 'doc-1' });
 
+		expect(fetchFn).not.toHaveBeenCalled();
+		expect(mockSupabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+			p_project_id: 'project-1',
+			p_required_access: 'read'
+		});
+		const selections = documentQuery.select.mock.calls.map(([selection]) => String(selection));
+		expect(selections).toHaveLength(1);
+		expect(selections[0]).not.toBe('*');
+		expect(selections[0]).toContain('content');
+		expect(selections[0]).not.toContain('search_vector');
 		expect(result.document.search_vector).toBeUndefined();
 		expect(result.document.props.search_vector).toBeUndefined();
 		expect(result.document.props.body_markdown).toBe('# Notes');
+		expect(result.source).toBe('agent_document_detail_projection');
+	});
+
+	it('uses metadata-only projections for document list and search rows', async () => {
+		const listQuery = createSupabaseQuery({
+			data: [
+				{
+					id: 'doc-1',
+					project_id: 'project-1',
+					title: 'Rod notes',
+					description: 'Prep notes',
+					type_key: 'document.default',
+					state_key: 'draft',
+					content: '# Full content that should not be selected',
+					search_vector: "'doc':1"
+				}
+			],
+			count: 1,
+			error: null
+		});
+		const searchQuery = createSupabaseQuery({
+			data: [
+				{
+					id: 'doc-2',
+					project_id: 'project-1',
+					title: 'Rod compliance prep',
+					description: 'Compliance prep',
+					type_key: 'document.default',
+					state_key: 'draft',
+					content: '# Full search content that should not be selected',
+					search_vector: "'doc':1"
+				}
+			],
+			count: 1,
+			error: null
+		});
+		(mockSupabase as any).rpc = vi.fn().mockResolvedValue({ data: true, error: null });
+		(mockSupabase as any).from = vi
+			.fn()
+			.mockReturnValueOnce(listQuery)
+			.mockReturnValueOnce(searchQuery);
+
+		const executor = new OntologyReadExecutor(context);
+		const listResult = await executor.listOntoDocuments({ project_id: 'project-1' });
+		const searchResult = await executor.searchOntoDocuments({
+			project_id: 'project-1',
+			query: 'Rod'
+		});
+
+		for (const query of [listQuery, searchQuery]) {
+			const selections = query.select.mock.calls.map(([selection]) => String(selection));
+			expect(selections).toHaveLength(1);
+			expect(selections[0]).not.toBe('*');
+			expect(selections[0]).not.toContain('content');
+			expect(selections[0]).not.toContain('body_markdown');
+			expect(selections[0]).not.toContain('search_vector');
+		}
+		expect(searchQuery.ilike).toHaveBeenCalledWith('title', '%Rod%');
+		expect(JSON.stringify(listResult.documents)).not.toContain('Full content');
+		expect(JSON.stringify(searchResult.documents)).not.toContain('Full search content');
+		expect(JSON.stringify(listResult.documents)).not.toContain('search_vector');
+		expect(JSON.stringify(searchResult.documents)).not.toContain('search_vector');
 	});
 
 	it('strips search_vector recursively from project detail tool results', async () => {
@@ -164,6 +237,15 @@ describe('OntologyReadExecutor payload hygiene', () => {
 			expect.stringContaining('/api/onto/projects/'),
 			expect.anything()
 		);
+		const projectSelections = queries.onto_projects.select.mock.calls
+			.map(([selection]) => String(selection))
+			.join('\n');
+		expect(projectSelections).not.toContain('start_at');
+		expect(projectSelections).not.toContain('end_at');
+		expect(projectSelections).not.toContain('task_count');
+		expect(projectSelections).not.toContain('goal_count');
+		expect(projectSelections).not.toContain('plan_count');
+		expect(projectSelections).not.toContain('document_count');
 		for (const query of Object.values(queries)) {
 			for (const [selection] of query.select.mock.calls) {
 				expect(selection).not.toBe('*');

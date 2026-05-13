@@ -453,8 +453,8 @@ describe('streamFastChat direct tool orchestration', () => {
 
 		expect(llm.streamText).toHaveBeenCalledTimes(3);
 		expect(toolExecutor).toHaveBeenCalledTimes(2);
-		expect(streamParams[2]?.toolChoice).toBe('none');
-		expect(streamParams[2]?.toolNames).toContain('search_project');
+		expect(streamParams[2]?.toolChoice).toBeUndefined();
+		expect(streamParams[2]?.toolNames).toEqual([]);
 		expect(result.toolRounds).toBe(2);
 		expect(result.finishedReason).toBe('stop');
 		expect(result.finalAssistantText).toBe('Rod meeting prep answer from gathered context.');
@@ -675,7 +675,7 @@ describe('streamFastChat direct tool orchestration', () => {
 
 		expect(llm.streamText).toHaveBeenCalledTimes(6);
 		expect(toolExecutor).toHaveBeenCalledTimes(5);
-		expect(streamParams[5]?.toolChoice).toBe('none');
+		expect(streamParams[5]?.toolChoice).toBeUndefined();
 		expect(finalPassSystemText).toContain('Context gathering: must synthesize.');
 		expect(finalPassSystemText).toContain('Read-loop hard stop: synthesize now.');
 		expect(result.toolRounds).toBe(5);
