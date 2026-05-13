@@ -1,3 +1,4 @@
+// apps/web/src/lib/server/error-tracking.test.ts
 import { describe, expect, it } from 'vitest';
 import {
 	getClientIpFromHeaders,

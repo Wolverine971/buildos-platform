@@ -88,11 +88,7 @@ export class ErrorLoggerService {
 
 	private detectAppVersion(): string {
 		const env = getNodeEnv();
-		return (
-			env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) ||
-			env.npm_package_version ||
-			'1.0.0'
-		);
+		return env.VERCEL_GIT_COMMIT_SHA?.slice(0, 12) || env.npm_package_version || '1.0.0';
 	}
 
 	private getBrowserInfo(): Record<string, any> | undefined {

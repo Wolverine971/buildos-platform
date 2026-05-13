@@ -373,6 +373,10 @@
 		return getAgentClientProfile(inferAgentClientProfileId(caller.provider, caller.metadata));
 	}
 
+	function isOAuthConnectorCaller(caller: BuildosAgentCallerSummary): boolean {
+		return caller.metadata?.auth_scheme === 'oauth' || caller.caller_key.startsWith('oauth:');
+	}
+
 	function installationDisplayName(caller: BuildosAgentCallerSummary): string {
 		const metadataName = caller.metadata?.installation_name;
 		if (typeof metadataName === 'string' && metadataName.trim()) {
@@ -1160,24 +1164,26 @@
 						<div class="border-t border-border p-3 sm:p-4 space-y-4">
 							<div class="flex flex-wrap gap-2">
 								{#if caller.status === 'trusted'}
-									<Button
-										variant="outline"
-										size="sm"
-										icon={copiedId === `agent-prompt-${caller.id}`
-											? CircleCheck
-											: Copy}
-										title="Token redacted — paste your stored env value where `<BUILDOS_AGENT_TOKEN>` appears."
-										onclick={() =>
-											copyToClipboard(
-												`agent-prompt-${caller.id}`,
-												agentConnectionPromptForCaller(caller),
-												'Agent prompt copied'
-											)}
-									>
-										{copiedId === `agent-prompt-${caller.id}`
-											? 'Copied'
-											: 'Copy Prompt'}
-									</Button>
+									{#if !isOAuthConnectorCaller(caller)}
+										<Button
+											variant="outline"
+											size="sm"
+											icon={copiedId === `agent-prompt-${caller.id}`
+												? CircleCheck
+												: Copy}
+											title="Token redacted — paste your stored env value where `<BUILDOS_AGENT_TOKEN>` appears."
+											onclick={() =>
+												copyToClipboard(
+													`agent-prompt-${caller.id}`,
+													agentConnectionPromptForCaller(caller),
+													'Agent prompt copied'
+												)}
+										>
+											{copiedId === `agent-prompt-${caller.id}`
+												? 'Copied'
+												: 'Copy Prompt'}
+										</Button>
+									{/if}
 								{/if}
 								<Button
 									variant="outline"
@@ -1187,30 +1193,32 @@
 								>
 									Usage
 								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									icon={Copy}
-									loading={rotatingCallerId === caller.id}
-									disabled={saving ||
-										(rotatingCallerId !== null &&
-											rotatingCallerId !== caller.id)}
-									onclick={() => rotateAndShowKey(caller)}
-								>
-									{caller.status === 'revoked'
-										? 'Reissue + Copy'
-										: 'Rotate + Copy'}
-								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									icon={RefreshCw}
-									loading={saving && editingCaller?.id === caller.id}
-									disabled={saving || rotatingCallerId !== null}
-									onclick={() => openEditModal(caller)}
-								>
-									{caller.status === 'revoked' ? 'Reissue Key' : 'Edit'}
-								</Button>
+								{#if !isOAuthConnectorCaller(caller)}
+									<Button
+										variant="outline"
+										size="sm"
+										icon={Copy}
+										loading={rotatingCallerId === caller.id}
+										disabled={saving ||
+											(rotatingCallerId !== null &&
+												rotatingCallerId !== caller.id)}
+										onclick={() => rotateAndShowKey(caller)}
+									>
+										{caller.status === 'revoked'
+											? 'Reissue + Copy'
+											: 'Rotate + Copy'}
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
+										icon={RefreshCw}
+										loading={saving && editingCaller?.id === caller.id}
+										disabled={saving || rotatingCallerId !== null}
+										onclick={() => openEditModal(caller)}
+									>
+										{caller.status === 'revoked' ? 'Reissue Key' : 'Edit'}
+									</Button>
+								{/if}
 								{#if caller.status !== 'revoked'}
 									<Button
 										variant="danger"
@@ -1231,19 +1239,34 @@
 									<div
 										class="text-xs uppercase tracking-wider text-muted-foreground"
 									>
-										Key Details
+										{isOAuthConnectorCaller(caller)
+											? 'Connector Details'
+											: 'Key Details'}
 									</div>
 									<p class="min-w-0">
-										<span class="font-medium text-foreground">Caller key:</span>
+										<span class="font-medium text-foreground"
+											>{isOAuthConnectorCaller(caller)
+												? 'Grant key:'
+												: 'Caller key:'}</span
+										>
 										<code class="break-all">{caller.caller_key}</code>
 									</p>
-									<p class="min-w-0">
-										<span class="font-medium text-foreground">Prefix:</span>
-										<code class="break-all">{caller.token_prefix}</code>
-										<span class="ml-1 text-muted-foreground">
-											secret shown only on generate or rotate
-										</span>
-									</p>
+									{#if isOAuthConnectorCaller(caller)}
+										<p>
+											<span class="font-medium text-foreground"
+												>Credential:</span
+											>
+											OAuth connector grant
+										</p>
+									{:else}
+										<p class="min-w-0">
+											<span class="font-medium text-foreground">Prefix:</span>
+											<code class="break-all">{caller.token_prefix}</code>
+											<span class="ml-1 text-muted-foreground">
+												secret shown only on generate or rotate
+											</span>
+										</p>
+									{/if}
 									<p>
 										<span class="font-medium text-foreground">Access:</span>
 										{accessModeLabel(caller)}

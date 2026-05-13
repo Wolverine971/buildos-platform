@@ -391,343 +391,347 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background rounded-md">
-	<div
-		class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4"
-	>
+	<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4">
 		<!-- Page Header - Inkprint design with micro-label pattern -->
 		<header class="flex flex-col gap-2 sm:gap-1.5 flex-1">
-		<p class="micro-label text-accent">YOUR ARCHIVE</p>
-		<div class="flex items-center gap-2.5">
-			<h1 class="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">History</h1>
-			{#if historyLoading}
-				<LoaderCircle class="h-4 w-4 sm:h-5 sm:w-5 text-accent animate-spin" />
-			{/if}
-		</div>
-		<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
-			Your captures and chat conversations
-		</p>
-	</header>
-
-	<!-- Main content -->
-	<div>
-		<!-- Stats cards - compact on mobile -->
-		<div class="mb-3 sm:mb-6 grid grid-cols-4 gap-1.5 sm:gap-4">
-			<div
-				class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
-			>
-				<div class="text-base sm:text-2xl font-bold text-foreground">
-					{stats.totalBraindumps + stats.totalChatSessions}
-				</div>
-				<div class="text-[9px] sm:text-sm text-muted-foreground">Total</div>
+			<p class="micro-label text-accent">YOUR ARCHIVE</p>
+			<div class="flex items-center gap-2.5">
+				<h1 class="text-xl sm:text-2xl lg:text-3xl font-semibold text-foreground">
+					History
+				</h1>
+				{#if historyLoading}
+					<LoaderCircle class="h-4 w-4 sm:h-5 sm:w-5 text-accent animate-spin" />
+				{/if}
 			</div>
-			<div
-				class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
-			>
-				<div class="flex items-center gap-1 sm:gap-2">
-					<Lightbulb class="h-3 w-3 sm:h-5 sm:w-5 text-purple-500 hidden sm:block" />
-					<span class="text-base sm:text-2xl font-bold text-purple-500">
+			<p class="text-xs sm:text-sm text-muted-foreground hidden sm:block">
+				Your captures and chat conversations
+			</p>
+		</header>
+
+		<!-- Main content -->
+		<div>
+			<!-- Stats cards - compact on mobile -->
+			<div class="mb-3 sm:mb-6 grid grid-cols-4 gap-1.5 sm:gap-4">
+				<div
+					class="rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
+				>
+					<div class="text-base sm:text-2xl font-bold text-foreground">
+						{stats.totalBraindumps + stats.totalChatSessions}
+					</div>
+					<div class="text-[9px] sm:text-sm text-muted-foreground">Total</div>
+				</div>
+				<div
+					class="rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
+				>
+					<div class="flex items-center gap-1 sm:gap-2">
+						<Lightbulb class="h-3 w-3 sm:h-5 sm:w-5 text-purple-500 hidden sm:block" />
+						<span class="text-base sm:text-2xl font-bold text-purple-500">
+							{stats.totalBraindumps}
+						</span>
+					</div>
+					<div class="text-[9px] sm:text-sm text-muted-foreground">Captures</div>
+				</div>
+				<div
+					class="rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
+				>
+					<div class="flex items-center gap-1 sm:gap-2">
+						<MessagesSquare class="h-3 w-3 sm:h-5 sm:w-5 text-accent hidden sm:block" />
+						<span class="text-base sm:text-2xl font-bold text-accent">
+							{stats.totalChatSessions}
+						</span>
+					</div>
+					<div class="text-[9px] sm:text-sm text-muted-foreground">Chats</div>
+				</div>
+				<div
+					class="rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
+				>
+					<div class="text-base sm:text-2xl font-bold text-emerald-500">
+						{stats.processedBraindumps + stats.chatSessionsWithSummary}
+					</div>
+					<div class="text-[9px] sm:text-sm text-muted-foreground">Done</div>
+				</div>
+			</div>
+
+			<!-- Type filter tabs - compact on mobile -->
+			<div class="mb-2 sm:mb-4 flex gap-0.5 sm:gap-2 border-b border-border overflow-x-auto">
+				<button
+					onclick={() => setTypeFilter('all')}
+					class="relative px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap {typeFilter ===
+					'all'
+						? 'text-foreground'
+						: 'text-muted-foreground hover:text-foreground'}"
+				>
+					All
+					{#if typeFilter === 'all'}
+						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
+					{/if}
+				</button>
+				<button
+					onclick={() => setTypeFilter('braindumps')}
+					class="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap {typeFilter ===
+					'braindumps'
+						? 'text-foreground'
+						: 'text-muted-foreground hover:text-foreground'}"
+				>
+					<Lightbulb class="h-3 w-3 sm:h-4 sm:w-4" />
+					<span class="hidden sm:inline">Captures</span>
+					<span class="sm:hidden">Captures</span>
+					<span
+						class="rounded-full bg-purple-500/15 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-xs text-purple-600 dark:text-purple-400"
+					>
 						{stats.totalBraindumps}
 					</span>
-				</div>
-				<div class="text-[9px] sm:text-sm text-muted-foreground">Captures</div>
-			</div>
-			<div
-				class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
-			>
-				<div class="flex items-center gap-1 sm:gap-2">
-					<MessagesSquare class="h-3 w-3 sm:h-5 sm:w-5 text-accent hidden sm:block" />
-					<span class="text-base sm:text-2xl font-bold text-accent">
+					{#if typeFilter === 'braindumps'}
+						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500"></span>
+					{/if}
+				</button>
+				<button
+					onclick={() => setTypeFilter('chats')}
+					class="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap {typeFilter ===
+					'chats'
+						? 'text-foreground'
+						: 'text-muted-foreground hover:text-foreground'}"
+				>
+					<MessagesSquare class="h-3 w-3 sm:h-4 sm:w-4" />
+					Chats
+					<span
+						class="rounded-full bg-accent/15 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-xs text-accent"
+					>
 						{stats.totalChatSessions}
 					</span>
-				</div>
-				<div class="text-[9px] sm:text-sm text-muted-foreground">Chats</div>
-			</div>
-			<div
-				class="rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
-			>
-				<div class="text-base sm:text-2xl font-bold text-emerald-500">
-					{stats.processedBraindumps + stats.chatSessionsWithSummary}
-				</div>
-				<div class="text-[9px] sm:text-sm text-muted-foreground">Done</div>
-			</div>
-		</div>
-
-		<!-- Type filter tabs - compact on mobile -->
-		<div class="mb-2 sm:mb-4 flex gap-0.5 sm:gap-2 border-b border-border overflow-x-auto">
-			<button
-				onclick={() => setTypeFilter('all')}
-				class="relative px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap {typeFilter ===
-				'all'
-					? 'text-foreground'
-					: 'text-muted-foreground hover:text-foreground'}"
-			>
-				All
-				{#if typeFilter === 'all'}
-					<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
-				{/if}
-			</button>
-			<button
-				onclick={() => setTypeFilter('braindumps')}
-				class="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap {typeFilter ===
-				'braindumps'
-					? 'text-foreground'
-					: 'text-muted-foreground hover:text-foreground'}"
-			>
-				<Lightbulb class="h-3 w-3 sm:h-4 sm:w-4" />
-				<span class="hidden sm:inline">Captures</span>
-				<span class="sm:hidden">Captures</span>
-				<span
-					class="rounded-full bg-purple-500/15 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-xs text-purple-600 dark:text-purple-400"
-				>
-					{stats.totalBraindumps}
-				</span>
-				{#if typeFilter === 'braindumps'}
-					<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500"></span>
-				{/if}
-			</button>
-			<button
-				onclick={() => setTypeFilter('chats')}
-				class="relative flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors pressable whitespace-nowrap {typeFilter ===
-				'chats'
-					? 'text-foreground'
-					: 'text-muted-foreground hover:text-foreground'}"
-			>
-				<MessagesSquare class="h-3 w-3 sm:h-4 sm:w-4" />
-				Chats
-				<span
-					class="rounded-full bg-accent/15 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-xs text-accent"
-				>
-					{stats.totalChatSessions}
-				</span>
-				{#if typeFilter === 'chats'}
-					<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
-				{/if}
-			</button>
-		</div>
-
-		<!-- Search and filters - compact on mobile -->
-		<div class="mb-3 sm:mb-6 flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center">
-			<div class="relative flex-1">
-				<Search
-					class="absolute left-2.5 sm:left-3 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-muted-foreground"
-				/>
-				<input
-					type="text"
-					placeholder="Search..."
-					bind:value={searchInput}
-					onkeydown={handleKeydown}
-					class="w-full rounded-md sm:rounded-lg border border-border bg-background py-1.5 sm:py-2 pl-8 sm:pl-10 pr-3 sm:pr-4 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-				/>
-			</div>
-			<div class="flex items-center gap-1.5 sm:gap-2">
-				<Filter class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground hidden sm:block" />
-				<select
-					bind:value={statusFilter}
-					onchange={applyFilters}
-					class="flex-1 sm:flex-none rounded-md sm:rounded-lg border border-border bg-background px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
-				>
-					<option value="">All</option>
-					<option value="processed">Done</option>
-					<option value="pending">Pending</option>
-					<option value="processing">Processing</option>
-					<option value="failed">Failed</option>
-				</select>
-				<button
-					onclick={applyFilters}
-					class="rounded-md sm:rounded-lg bg-accent px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-accent-foreground hover:bg-accent/90 shadow-ink pressable"
-				>
-					Go
-				</button>
-				{#if searchInput || statusFilter || typeFilter !== 'all'}
-					<button
-						onclick={clearFilters}
-						class="rounded-md sm:rounded-lg border border-border p-1.5 sm:px-3 sm:py-2 text-sm text-muted-foreground hover:bg-muted pressable"
-					>
-						<X class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-					</button>
-				{/if}
-			</div>
-		</div>
-
-		<!-- History items list -->
-		{#if showSkeletons}
-			<!-- Show skeletons while loading - exact count for zero layout shift -->
-			<HistoryListSkeleton count={itemCount} />
-		{:else if historyError}
-			<!-- Error state -->
-			<div
-				class="flex flex-col items-center justify-center rounded-lg border border-dashed border-destructive/30 bg-destructive/5 py-16 tx tx-static tx-weak"
-			>
-				<AlertCircle class="mb-4 h-12 w-12 text-destructive" />
-				<h3 class="mb-2 text-lg font-medium text-foreground">Failed to load history</h3>
-				<p class="mb-4 text-center text-sm text-muted-foreground">{historyError}</p>
-				<button
-					onclick={() => location.reload()}
-					class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/90 shadow-ink pressable"
-				>
-					Retry
-				</button>
-			</div>
-		{:else if items.length === 0}
-			<div
-				class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 py-16 tx tx-bloom tx-weak"
-			>
-				<Lightbulb class="mb-4 h-12 w-12 text-muted-foreground" />
-				<h3 class="mb-2 text-lg font-medium text-foreground">No history found</h3>
-				<p class="mb-4 text-center text-sm text-muted-foreground">
-					{#if typeFilter === 'braindumps'}
-						You haven't captured any notes yet.<br />
-						Start a conversation with BuildOS to get started.
-					{:else if typeFilter === 'chats'}
-						You haven't had any chat sessions yet.<br />
-						Start a conversation with BuildOS to see it here.
-					{:else}
-						Your captures and chat sessions will appear here.
+					{#if typeFilter === 'chats'}
+						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-accent"></span>
 					{/if}
-				</p>
+				</button>
 			</div>
-		{:else}
-			<!-- Responsive grid: 2 cols mobile for density, 2 cols tablet, 3 cols desktop -->
-			<div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
-				{#each items as item (item.id)}
-					{@const TypeIcon = getTypeIcon(item.type)}
-					{@const classifyStatus = chatClassificationState[item.id] ?? 'idle'}
-					{@const displayStatus = getEffectiveDisplayStatus(item, classifyStatus)}
-					{@const statusLabel = getEffectiveStatusLabel(item, classifyStatus)}
-					{@const StatusIcon = getStatusIcon(displayStatus)}
-					<div
-						role="button"
-						tabindex="0"
-						onclick={() => openItem(item)}
-						onkeydown={(event) => handleItemKeydown(event, item)}
-						class="group flex h-full flex-col rounded-md sm:rounded-lg border border-border bg-card p-2 sm:p-4 text-left shadow-ink transition-all hover:border-accent/50 hover:shadow-ink-strong tx tx-frame tx-weak pressable"
+
+			<!-- Search and filters - compact on mobile -->
+			<div class="mb-3 sm:mb-6 flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center">
+				<div class="relative flex-1">
+					<Search
+						class="absolute left-2.5 sm:left-3 top-1/2 h-3.5 w-3.5 sm:h-4 sm:w-4 -translate-y-1/2 text-muted-foreground"
+					/>
+					<input
+						type="text"
+						placeholder="Search..."
+						bind:value={searchInput}
+						onkeydown={handleKeydown}
+						class="w-full rounded-lg border border-border bg-background py-1.5 sm:py-2 pl-8 sm:pl-10 pr-3 sm:pr-4 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+					/>
+				</div>
+				<div class="flex items-center gap-1.5 sm:gap-2">
+					<Filter
+						class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground hidden sm:block"
+					/>
+					<select
+						bind:value={statusFilter}
+						onchange={applyFilters}
+						class="flex-1 sm:flex-none rounded-lg border border-border bg-background px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-foreground focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
 					>
-						<!-- Header: Type badge and status -->
-						<div class="mb-1 sm:mb-2 flex items-center justify-between">
-							<span
-								class="inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-xs font-medium {getTypeColor(
-									item.type
-								)}"
-							>
-								<TypeIcon class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-								<span class="hidden sm:inline"
-									>{item.type === 'chat_session' ? 'Chat' : 'Capture'}</span
-								>
-							</span>
-							<div class="flex items-center gap-1 sm:gap-2">
-								{#if canQueueChatSummary(item, classifyStatus)}
-									<button
-										type="button"
-										onclick={(e) => {
-											e.stopPropagation();
-											classifyChatSession(item);
-										}}
-										disabled={classifyStatus === 'loading' ||
-											classifyStatus === 'queued'}
-										class="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition pressable hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-70"
-										aria-label="Summarize chat session"
-									>
-										{#if classifyStatus === 'error'}
-											<Sparkles class="h-2.5 w-2.5 text-destructive" />
-											<span class="hidden sm:inline">Retry</span>
-										{:else}
-											<Sparkles class="h-2.5 w-2.5" />
-											<span class="hidden sm:inline">Summarize</span>
-										{/if}
-									</button>
-								{/if}
+						<option value="">All</option>
+						<option value="processed">Done</option>
+						<option value="pending">Pending</option>
+						<option value="processing">Processing</option>
+						<option value="failed">Failed</option>
+					</select>
+					<button
+						onclick={applyFilters}
+						class="rounded-lg bg-accent px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-accent-foreground hover:bg-accent/90 shadow-ink pressable"
+					>
+						Go
+					</button>
+					{#if searchInput || statusFilter || typeFilter !== 'all'}
+						<button
+							onclick={clearFilters}
+							class="rounded-lg border border-border p-1.5 sm:px-3 sm:py-2 text-sm text-muted-foreground hover:bg-muted pressable"
+						>
+							<X class="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+						</button>
+					{/if}
+				</div>
+			</div>
+
+			<!-- History items list -->
+			{#if showSkeletons}
+				<!-- Show skeletons while loading - exact count for zero layout shift -->
+				<HistoryListSkeleton count={itemCount} />
+			{:else if historyError}
+				<!-- Error state -->
+				<div
+					class="flex flex-col items-center justify-center rounded-lg border border-dashed border-destructive/30 bg-destructive/5 py-16 tx tx-static tx-weak"
+				>
+					<AlertCircle class="mb-4 h-12 w-12 text-destructive" />
+					<h3 class="mb-2 text-lg font-medium text-foreground">Failed to load history</h3>
+					<p class="mb-4 text-center text-sm text-muted-foreground">{historyError}</p>
+					<button
+						onclick={() => location.reload()}
+						class="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/90 shadow-ink pressable"
+					>
+						Retry
+					</button>
+				</div>
+			{:else if items.length === 0}
+				<div
+					class="flex flex-col items-center justify-center rounded-lg border border-dashed border-border bg-muted/50 py-16 tx tx-bloom tx-weak"
+				>
+					<Lightbulb class="mb-4 h-12 w-12 text-muted-foreground" />
+					<h3 class="mb-2 text-lg font-medium text-foreground">No history found</h3>
+					<p class="mb-4 text-center text-sm text-muted-foreground">
+						{#if typeFilter === 'braindumps'}
+							You haven't captured any notes yet.<br />
+							Start a conversation with BuildOS to get started.
+						{:else if typeFilter === 'chats'}
+							You haven't had any chat sessions yet.<br />
+							Start a conversation with BuildOS to see it here.
+						{:else}
+							Your captures and chat sessions will appear here.
+						{/if}
+					</p>
+				</div>
+			{:else}
+				<!-- Responsive grid: 2 cols mobile for density, 2 cols tablet, 3 cols desktop -->
+				<div class="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3">
+					{#each items as item (item.id)}
+						{@const TypeIcon = getTypeIcon(item.type)}
+						{@const classifyStatus = chatClassificationState[item.id] ?? 'idle'}
+						{@const displayStatus = getEffectiveDisplayStatus(item, classifyStatus)}
+						{@const statusLabel = getEffectiveStatusLabel(item, classifyStatus)}
+						{@const StatusIcon = getStatusIcon(displayStatus)}
+						<div
+							role="button"
+							tabindex="0"
+							onclick={() => openItem(item)}
+							onkeydown={(event) => handleItemKeydown(event, item)}
+							class="group flex h-full flex-col rounded-lg border border-border bg-card p-2 sm:p-4 text-left shadow-ink transition-all hover:border-accent/50 hover:shadow-ink-strong tx tx-frame tx-weak pressable"
+						>
+							<!-- Header: Type badge and status -->
+							<div class="mb-1 sm:mb-2 flex items-center justify-between">
 								<span
-									class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[8px] sm:text-[10px] font-medium {getStatusBadgeClass(
-										displayStatus
+									class="inline-flex items-center gap-0.5 sm:gap-1 rounded-full px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-xs font-medium {getTypeColor(
+										item.type
 									)}"
 								>
-									<StatusIcon
-										class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0 {getStatusColor(
-											displayStatus
-										)}"
-									/>
-									<span class="hidden sm:inline whitespace-nowrap"
-										>{statusLabel}</span
+									<TypeIcon class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+									<span class="hidden sm:inline"
+										>{item.type === 'chat_session' ? 'Chat' : 'Capture'}</span
 									>
 								</span>
-							</div>
-						</div>
-
-						<!-- Title -->
-						<h3
-							class="mb-1 sm:mb-2 line-clamp-2 text-xs sm:text-base font-medium text-foreground"
-						>
-							{item.title}
-						</h3>
-
-						<!-- Preview / Summary - hidden on mobile for density -->
-						<p
-							class="hidden sm:block mb-3 line-clamp-3 flex-1 text-sm text-muted-foreground"
-						>
-							{item.preview}
-						</p>
-
-						<!-- Topics (compact) - show fewer on mobile -->
-						{#if item.topics && item.topics.length > 0}
-							<div class="mb-1.5 sm:mb-3 flex flex-wrap gap-0.5 sm:gap-1">
-								{#each item.topics.slice(0, 2) as topic}
+								<div class="flex items-center gap-1 sm:gap-2">
+									{#if canQueueChatSummary(item, classifyStatus)}
+										<button
+											type="button"
+											onclick={(e) => {
+												e.stopPropagation();
+												classifyChatSession(item);
+											}}
+											disabled={classifyStatus === 'loading' ||
+												classifyStatus === 'queued'}
+											class="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition pressable hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-70"
+											aria-label="Summarize chat session"
+										>
+											{#if classifyStatus === 'error'}
+												<Sparkles class="h-2.5 w-2.5 text-destructive" />
+												<span class="hidden sm:inline">Retry</span>
+											{:else}
+												<Sparkles class="h-2.5 w-2.5" />
+												<span class="hidden sm:inline">Summarize</span>
+											{/if}
+										</button>
+									{/if}
 									<span
-										class="inline-flex items-center rounded-full bg-muted px-1 sm:px-1.5 py-0.5 text-[8px] sm:text-[10px] text-muted-foreground truncate max-w-[60px] sm:max-w-none"
+										class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[8px] sm:text-[10px] font-medium {getStatusBadgeClass(
+											displayStatus
+										)}"
 									>
-										{topic}
+										<StatusIcon
+											class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0 {getStatusColor(
+												displayStatus
+											)}"
+										/>
+										<span class="hidden sm:inline whitespace-nowrap"
+											>{statusLabel}</span
+										>
 									</span>
-								{/each}
-								{#if item.topics.length > 2}
-									<span class="text-[8px] sm:text-[10px] text-muted-foreground">
-										+{item.topics.length - 2}
-									</span>
-								{/if}
+								</div>
 							</div>
-						{/if}
 
-						<!-- Footer: Metadata - compact on mobile -->
-						<div
-							class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-[9px] sm:text-xs text-muted-foreground"
-						>
-							<span class="flex items-center gap-0.5 sm:gap-1 truncate">
-								<Clock class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
-								<span class="truncate">{formatDate(item.createdAt)}</span>
-							</span>
-							<div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-								{#if item.type === 'chat_session' && item.messageCount}
-									<span class="flex items-center gap-0.5">
-										<MessageSquare class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-										{item.messageCount}
-									</span>
-								{/if}
-								<ChevronRight
-									class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground transition-colors group-hover:text-accent"
-								/>
+							<!-- Title -->
+							<h3
+								class="mb-1 sm:mb-2 line-clamp-2 text-xs sm:text-base font-medium text-foreground"
+							>
+								{item.title}
+							</h3>
+
+							<!-- Preview / Summary - hidden on mobile for density -->
+							<p
+								class="hidden sm:block mb-3 line-clamp-3 flex-1 text-sm text-muted-foreground"
+							>
+								{item.preview}
+							</p>
+
+							<!-- Topics (compact) - show fewer on mobile -->
+							{#if item.topics && item.topics.length > 0}
+								<div class="mb-1.5 sm:mb-3 flex flex-wrap gap-0.5 sm:gap-1">
+									{#each item.topics.slice(0, 2) as topic}
+										<span
+											class="inline-flex items-center rounded-full bg-muted px-1 sm:px-1.5 py-0.5 text-[8px] sm:text-[10px] text-muted-foreground truncate max-w-[60px] sm:max-w-none"
+										>
+											{topic}
+										</span>
+									{/each}
+									{#if item.topics.length > 2}
+										<span
+											class="text-[8px] sm:text-[10px] text-muted-foreground"
+										>
+											+{item.topics.length - 2}
+										</span>
+									{/if}
+								</div>
+							{/if}
+
+							<!-- Footer: Metadata - compact on mobile -->
+							<div
+								class="mt-auto flex items-center justify-between border-t border-border pt-1.5 sm:pt-3 text-[9px] sm:text-xs text-muted-foreground"
+							>
+								<span class="flex items-center gap-0.5 sm:gap-1 truncate">
+									<Clock class="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
+									<span class="truncate">{formatDate(item.createdAt)}</span>
+								</span>
+								<div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+									{#if item.type === 'chat_session' && item.messageCount}
+										<span class="flex items-center gap-0.5">
+											<MessageSquare class="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+											{item.messageCount}
+										</span>
+									{/if}
+									<ChevronRight
+										class="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground transition-colors group-hover:text-accent"
+									/>
+								</div>
 							</div>
 						</div>
-					</div>
-				{/each}
-			</div>
+					{/each}
+				</div>
 
-			<!-- Load more -->
-			{#if hasMore}
-				<div class="mt-6 flex justify-center">
-					<button
-						onclick={loadMore}
-						class="rounded-lg border border-border px-6 py-2 text-sm font-medium text-foreground hover:bg-muted pressable"
-					>
-						Load more
-					</button>
+				<!-- Load more -->
+				{#if hasMore}
+					<div class="mt-6 flex justify-center">
+						<button
+							onclick={loadMore}
+							class="rounded-lg border border-border px-6 py-2 text-sm font-medium text-foreground hover:bg-muted pressable"
+						>
+							Load more
+						</button>
+					</div>
+				{/if}
+
+				<!-- Results info -->
+				<div class="mt-4 text-center text-sm text-muted-foreground">
+					Showing {Math.min(currentOffset + items.length, totalItems)} of {totalItems} items
 				</div>
 			{/if}
-
-			<!-- Results info -->
-			<div class="mt-4 text-center text-sm text-muted-foreground">
-				Showing {Math.min(currentOffset + items.length, totalItems)} of {totalItems} items
-			</div>
-		{/if}
+		</div>
 	</div>
-</div>
 </div>
 
 <!-- Agent Chat Modal for chat sessions -->

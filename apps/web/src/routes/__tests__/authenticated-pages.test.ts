@@ -72,12 +72,7 @@ describe('Authenticated Pages', () => {
 
 			expect(result).toEqual({
 				user: null,
-				dashboard: null,
-				featuredBlogPosts: [
-					{ slug: 'how-buildos-works', title: 'How BuildOS Works' },
-					{ slug: 'first-project-setup', title: 'First Project Setup' },
-					{ slug: 'daily-brief-guide', title: 'Daily Brief Guide' }
-				]
+				dashboard: null
 			});
 			expect(depends).toHaveBeenCalledWith('app:auth');
 			expect(depends).toHaveBeenCalledWith('dashboard:analytics');

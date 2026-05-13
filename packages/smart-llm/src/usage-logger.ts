@@ -53,6 +53,18 @@ export type UsageLogger = {
 	logUsageToDatabase(params: UsageLogParams): Promise<void>;
 };
 
+type UsageLogInsert = Database['public']['Tables']['llm_usage_logs']['Insert'];
+type UsageLogForeignKeyColumn =
+	| 'agent_execution_id'
+	| 'agent_plan_id'
+	| 'agent_session_id'
+	| 'brain_dump_id'
+	| 'brief_id'
+	| 'chat_session_id'
+	| 'project_id'
+	| 'task_id'
+	| 'turn_run_id';
+
 export class LLMUsageLogger {
 	private supabase?: SupabaseClient<Database>;
 	private errorLogger?: ErrorLogger;
@@ -113,7 +125,7 @@ export class LLMUsageLogger {
 				totalCost: params.totalCost,
 				openrouterUsageCost: params.openrouterUsageCost
 			});
-			const payload = {
+			const payload: UsageLogInsert = {
 				user_id: sanitizedUserId,
 				operation_type: params.operationType,
 				model_requested: params.modelRequested,
@@ -162,27 +174,31 @@ export class LLMUsageLogger {
 				metadata: params.metadata
 			};
 
-			const { error } = await this.supabase.from('llm_usage_logs').insert(payload);
+			let payloadForInsert = payload;
+			const clearedForeignKeyColumns = new Set<UsageLogForeignKeyColumn>();
 
-			if (error) {
-				if (
-					error.code === '23503' &&
-					error.message?.includes('llm_usage_logs_project_id_fkey')
-				) {
-					const { error: retryError } = await this.supabase
-						.from('llm_usage_logs')
-						.insert({ ...payload, project_id: null });
-					if (retryError) {
-						console.error(
-							'Failed to log LLM usage (retry without project_id):',
-							retryError
-						);
-					}
+			for (let attempt = 0; attempt < 4; attempt += 1) {
+				const { error } = await this.supabase
+					.from('llm_usage_logs')
+					.insert(payloadForInsert);
+
+				if (!error) {
 					return;
 				}
 
-				console.error('Failed to log LLM usage to database:', error);
+				const foreignKeyColumn = this.getRetryableUsageForeignKeyColumn(error);
+				if (!foreignKeyColumn || clearedForeignKeyColumns.has(foreignKeyColumn)) {
+					console.error('Failed to log LLM usage to database:', error);
+					return;
+				}
+
+				clearedForeignKeyColumns.add(foreignKeyColumn);
+				payloadForInsert = { ...payloadForInsert, [foreignKeyColumn]: null };
 			}
+
+			console.error('Failed to log LLM usage after clearing foreign-key columns:', {
+				clearedForeignKeyColumns: Array.from(clearedForeignKeyColumns)
+			});
 		} catch (error) {
 			console.error('Exception while logging LLM usage:', error);
 			if (this.errorLogger?.logDatabaseError) {
@@ -227,6 +243,35 @@ export class LLMUsageLogger {
 		}
 		const value = metadata[key];
 		return typeof value === 'string' ? value : undefined;
+	}
+
+	private getRetryableUsageForeignKeyColumn(error: {
+		code?: string;
+		message?: string;
+		details?: string;
+	}): UsageLogForeignKeyColumn | null {
+		if (error.code !== '23503') return null;
+
+		const description = `${error.message ?? ''} ${error.details ?? ''}`;
+		const constraintColumns: Array<[string, UsageLogForeignKeyColumn]> = [
+			['llm_usage_logs_agent_execution_id_fkey', 'agent_execution_id'],
+			['llm_usage_logs_agent_plan_id_fkey', 'agent_plan_id'],
+			['llm_usage_logs_agent_session_id_fkey', 'agent_session_id'],
+			['llm_usage_logs_brain_dump_id_fkey', 'brain_dump_id'],
+			['llm_usage_logs_brief_id_fkey', 'brief_id'],
+			['llm_usage_logs_chat_session_id_fkey', 'chat_session_id'],
+			['llm_usage_logs_project_id_fkey', 'project_id'],
+			['llm_usage_logs_task_id_fkey', 'task_id'],
+			['llm_usage_logs_turn_run_id_fkey', 'turn_run_id']
+		];
+
+		for (const [constraintName, columnName] of constraintColumns) {
+			if (description.includes(constraintName)) {
+				return columnName;
+			}
+		}
+
+		return null;
 	}
 
 	private isUUID(value: string): boolean {

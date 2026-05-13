@@ -28,7 +28,7 @@
 	ProjectModalsHost so v2 has the same modal coverage as v1.
 -->
 <script lang="ts">
-	import { onMount, tick } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
@@ -80,6 +80,7 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	const initialData = untrack(() => data);
 
 	// ============================================================
 	// ACCESS / PERMISSIONS
@@ -106,43 +107,64 @@
 	// CORE PROJECT DATA (skeleton or fully loaded)
 	// ============================================================
 
-	let isHydrating = $state(data.skeleton === true);
+	function projectFromPageData(sourceData: PageData): Project {
+		return sourceData.skeleton
+			? ({
+					id: sourceData.project.id,
+					name: sourceData.project.name,
+					description: sourceData.project.description,
+					icon_svg: sourceData.project.icon_svg,
+					icon_concept: sourceData.project.icon_concept,
+					icon_generated_at: sourceData.project.icon_generated_at,
+					icon_generation_source: sourceData.project.icon_generation_source,
+					icon_generation_prompt: sourceData.project.icon_generation_prompt,
+					state_key: sourceData.project.state_key,
+					type_key: sourceData.project.type_key || 'project',
+					next_step_short: sourceData.project.next_step_short,
+					next_step_long: sourceData.project.next_step_long,
+					next_step_source: sourceData.project.next_step_source,
+					next_step_updated_at: sourceData.project.next_step_updated_at
+				} as Project)
+			: (sourceData.project as Project);
+	}
+
+	let isHydrating = $state(initialData.skeleton === true);
 	let hydrationError = $state<string | null>(null);
 
-	let project = $state<Project>(
-		data.skeleton
-			? ({
-					id: data.project.id,
-					name: data.project.name,
-					description: data.project.description,
-					icon_svg: data.project.icon_svg,
-					icon_concept: data.project.icon_concept,
-					icon_generated_at: data.project.icon_generated_at,
-					icon_generation_source: data.project.icon_generation_source,
-					icon_generation_prompt: data.project.icon_generation_prompt,
-					state_key: data.project.state_key,
-					type_key: data.project.type_key || 'project',
-					next_step_short: data.project.next_step_short,
-					next_step_long: data.project.next_step_long,
-					next_step_source: data.project.next_step_source,
-					next_step_updated_at: data.project.next_step_updated_at
-				} as Project)
-			: (data.project as Project)
+	let project = $state<Project>(projectFromPageData(initialData));
+	let tasks = $state<Task[]>(initialData.skeleton ? [] : ((initialData.tasks ?? []) as Task[]));
+	let documents = $state<Document[]>(
+		initialData.skeleton ? [] : ((initialData.documents ?? []) as Document[])
 	);
-	let tasks = $state<Task[]>(data.skeleton ? [] : ((data.tasks ?? []) as Task[]));
-	let documents = $state<Document[]>(data.skeleton ? [] : ((data.documents ?? []) as Document[]));
-	let plans = $state<Plan[]>(data.skeleton ? [] : ((data.plans ?? []) as Plan[]));
-	let goals = $state<Goal[]>(data.skeleton ? [] : ((data.goals ?? []) as Goal[]));
+	let plans = $state<Plan[]>(initialData.skeleton ? [] : ((initialData.plans ?? []) as Plan[]));
+	let goals = $state<Goal[]>(initialData.skeleton ? [] : ((initialData.goals ?? []) as Goal[]));
 	let milestones = $state<Milestone[]>(
-		data.skeleton ? [] : ((data.milestones ?? []) as Milestone[])
+		initialData.skeleton ? [] : ((initialData.milestones ?? []) as Milestone[])
 	);
-	let risks = $state<Risk[]>(data.skeleton ? [] : ((data.risks ?? []) as Risk[]));
+	let risks = $state<Risk[]>(initialData.skeleton ? [] : ((initialData.risks ?? []) as Risk[]));
 	let events = $state<OntoEventWithSync[]>(
-		data.skeleton ? [] : ((data.events ?? []) as OntoEventWithSync[])
+		initialData.skeleton ? [] : ((initialData.events ?? []) as OntoEventWithSync[])
 	);
 	let contextDocument = $state<Document | null>(
-		data.skeleton ? null : ((data.context_document ?? null) as Document | null)
+		initialData.skeleton ? null : ((initialData.context_document ?? null) as Document | null)
 	);
+	let activePageDataProjectId = initialData.projectId;
+
+	function seedCoreProjectData(sourceData: PageData) {
+		isHydrating = sourceData.skeleton === true;
+		hydrationError = null;
+		project = projectFromPageData(sourceData);
+		tasks = sourceData.skeleton ? [] : ((sourceData.tasks ?? []) as Task[]);
+		documents = sourceData.skeleton ? [] : ((sourceData.documents ?? []) as Document[]);
+		plans = sourceData.skeleton ? [] : ((sourceData.plans ?? []) as Plan[]);
+		goals = sourceData.skeleton ? [] : ((sourceData.goals ?? []) as Goal[]);
+		milestones = sourceData.skeleton ? [] : ((sourceData.milestones ?? []) as Milestone[]);
+		risks = sourceData.skeleton ? [] : ((sourceData.risks ?? []) as Risk[]);
+		events = sourceData.skeleton ? [] : ((sourceData.events ?? []) as OntoEventWithSync[]);
+		contextDocument = sourceData.skeleton
+			? null
+			: ((sourceData.context_document ?? null) as Document | null);
+	}
 
 	// ============================================================
 	// DOCUMENT TREE (also passed into ProjectDocumentsSection + modals)
@@ -297,10 +319,12 @@
 	// HYDRATION + REFRESH
 	// ============================================================
 
-	async function hydrateFullData() {
-		if (!data.skeleton) return;
+	async function hydrateFullData(sourceData: PageData = data) {
+		if (!sourceData.skeleton) return;
+		const projectId = sourceData.projectId;
 		try {
-			const fullData = await fetchProjectFullData(data.projectId);
+			const fullData = await fetchProjectFullData(projectId);
+			if (data.projectId !== projectId) return;
 			project = (fullData.project as Project) || project;
 			tasks = (fullData.tasks ?? []) as Task[];
 			documents = (fullData.documents ?? []) as Document[];
@@ -316,12 +340,13 @@
 				void loadProjectEvents();
 			}
 		} catch (err) {
+			if (data.projectId !== projectId) return;
 			hydrationError = err instanceof Error ? err.message : 'Failed to load project data';
 			isHydrating = false;
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/projects/${data.projectId}/full`,
+				endpoint: `/api/onto/projects/${projectId}/full`,
 				method: 'GET',
-				projectId: data.projectId,
+				projectId,
 				entityType: 'project',
 				operation: 'project_v2_hydrate'
 			});
@@ -329,8 +354,10 @@
 	}
 
 	async function refreshSilently() {
+		const projectId = data.projectId;
 		try {
-			const fullData = await fetchProjectSnapshot(data.projectId);
+			const fullData = await fetchProjectSnapshot(projectId);
+			if (data.projectId !== projectId) return;
 			project = (fullData.project as Project) || project;
 			tasks = (fullData.tasks ?? []) as Task[];
 			documents = (fullData.documents ?? []) as Document[];
@@ -350,16 +377,19 @@
 		}
 	}
 
-	async function loadProjectEvents(showToast = false) {
-		if (!project?.id) return;
+	async function loadProjectEvents(showToast = false, projectId = project?.id) {
+		if (!projectId) return;
 		try {
-			events = await fetchProjectEvents(project.id);
+			const loadedEvents = await fetchProjectEvents(projectId);
+			if (data.projectId !== projectId) return;
+			events = loadedEvents;
 		} catch (err) {
+			if (data.projectId !== projectId) return;
 			console.error('[Project v2] Failed to load events', err);
 			void logOntologyClientError(err, {
-				endpoint: `/api/onto/projects/${project.id}/events`,
+				endpoint: `/api/onto/projects/${projectId}/events`,
 				method: 'GET',
-				projectId: project.id,
+				projectId,
 				entityType: 'event',
 				operation: 'project_events_load'
 			});
@@ -429,6 +459,40 @@
 		}
 	}
 
+	function startProjectDataLoading(sourceData: PageData) {
+		if (sourceData.skeleton) {
+			const navData = getNavigationData(sourceData.projectId);
+			if (navData) {
+				project = {
+					...project,
+					name: navData.name,
+					description: navData.description,
+					icon_svg: navData.icon_svg,
+					icon_concept: navData.icon_concept,
+					state_key: navData.state_key,
+					next_step_short: navData.next_step_short,
+					next_step_long: navData.next_step_long,
+					next_step_source: navData.next_step_source,
+					next_step_updated_at: navData.next_step_updated_at
+				} as Project;
+			}
+			void hydrateFullData(sourceData);
+		} else {
+			applyDocTreeSeed(buildDocTreeSeed(project, documents));
+			if (!Array.isArray((sourceData as Record<string, unknown>).events)) {
+				void loadProjectEvents(false, project.id);
+			}
+		}
+	}
+
+	$effect(() => {
+		const currentData = data;
+		if (currentData.projectId === activePageDataProjectId) return;
+		activePageDataProjectId = currentData.projectId;
+		seedCoreProjectData(currentData);
+		startProjectDataLoading(currentData);
+	});
+
 	// ============================================================
 	// MOUNT
 	// ============================================================
@@ -446,29 +510,7 @@
 			}
 		}
 
-		if (data.skeleton) {
-			const navData = getNavigationData(data.projectId);
-			if (navData) {
-				project = {
-					...project,
-					name: navData.name,
-					description: navData.description,
-					icon_svg: navData.icon_svg,
-					icon_concept: navData.icon_concept,
-					state_key: navData.state_key,
-					next_step_short: navData.next_step_short,
-					next_step_long: navData.next_step_long,
-					next_step_source: navData.next_step_source,
-					next_step_updated_at: navData.next_step_updated_at
-				} as Project;
-			}
-			void hydrateFullData();
-		} else {
-			applyDocTreeSeed(buildDocTreeSeed(project, documents));
-			if (!Array.isArray((data as Record<string, unknown>).events)) {
-				void loadProjectEvents();
-			}
-		}
+		startProjectDataLoading(data);
 	});
 
 	// ============================================================
@@ -945,7 +987,7 @@
 	<title>{project?.name || 'Project'} | BuildOS</title>
 </svelte:head>
 
-<div class="min-h-screen bg-background overflow-x-hidden">
+<div class="overflow-x-hidden">
 	<ProjectHeaderCard
 		{project}
 		showMobileMenu={showSettingsMenu}

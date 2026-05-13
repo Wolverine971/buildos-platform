@@ -9,6 +9,16 @@ export type BuildosAgentDiscoveryToolName = 'skill_load' | 'tool_search' | 'tool
 export type BuildosAgentGatewayToolName = BuildosAgentDiscoveryToolName;
 export type BuildosAgentPublicToolName = string;
 export type BuildosAgentScopeMode = 'read_only' | 'read_write';
+export type BuildosAgentOAuthClientType = 'public' | 'confidential';
+export type BuildosAgentOAuthRegistrationSource =
+	| 'static'
+	| 'dynamic'
+	| 'cimd'
+	| 'anthropic_held'
+	| 'admin';
+export type BuildosAgentOAuthClientStatus = 'active' | 'revoked';
+export type BuildosAgentOAuthGrantStatus = 'active' | 'revoked';
+export type BuildosAgentOAuthScope = 'buildos.read' | 'buildos.write' | 'offline_access';
 
 export const BUILDOS_AGENT_READ_OPS = [
 	'onto.project.list',
@@ -543,6 +553,94 @@ export interface AgentCallBootstrapLinkRecord {
 	payload: Record<string, unknown>;
 	expires_at: string;
 	last_accessed_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface AgentOAuthClientRecord {
+	id: string;
+	client_id: string;
+	client_secret_hash: string | null;
+	client_name: string;
+	client_uri: string | null;
+	logo_uri: string | null;
+	redirect_uris: string[];
+	allowed_scopes: BuildosAgentOAuthScope[];
+	client_type: BuildosAgentOAuthClientType;
+	registration_source: BuildosAgentOAuthRegistrationSource;
+	status: BuildosAgentOAuthClientStatus;
+	metadata: Record<string, unknown>;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface AgentOAuthGrantRecord {
+	id: string;
+	user_id: string;
+	client_id: string;
+	external_agent_caller_id: string;
+	client_profile_id: string;
+	resource: string;
+	scope: string;
+	scope_mode: BuildosAgentScopeMode;
+	allowed_ops: BuildosAgentAllowedOp[];
+	allowed_project_ids: string[] | null;
+	status: BuildosAgentOAuthGrantStatus;
+	last_used_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface AgentOAuthAuthorizationCodeRecord {
+	id: string;
+	code_hash: string;
+	client_id: string;
+	user_id: string;
+	grant_id: string;
+	external_agent_caller_id: string;
+	redirect_uri: string;
+	resource: string;
+	scope: string;
+	code_challenge: string;
+	code_challenge_method: 'S256';
+	expires_at: string;
+	used_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface AgentOAuthAccessTokenRecord {
+	id: string;
+	grant_id: string;
+	client_id: string;
+	user_id: string;
+	external_agent_caller_id: string;
+	token_hash: string;
+	token_prefix: string;
+	resource: string;
+	scope: string;
+	expires_at: string;
+	last_used_at: string | null;
+	revoked_at: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface AgentOAuthRefreshTokenRecord {
+	id: string;
+	grant_id: string;
+	client_id: string;
+	user_id: string;
+	external_agent_caller_id: string;
+	token_hash: string;
+	token_prefix: string;
+	family_id: string;
+	rotated_from_id: string | null;
+	resource: string;
+	scope: string;
+	expires_at: string;
+	used_at: string | null;
+	revoked_at: string | null;
 	created_at: string;
 	updated_at: string;
 }

@@ -418,7 +418,7 @@ function buildProfileArtifacts(
 			content: [
 				'# Use this shape when the BuildOS MCP facade or local adapter is available.',
 				'[mcp_servers.buildos]',
-				'url = "${BUILDOS_BASE_URL}/api/agent-call/mcp"',
+				'url = "${BUILDOS_BASE_URL}/mcp/buildos"',
 				'bearer_token_env_var = "BUILDOS_AGENT_TOKEN"'
 			].join('\n'),
 			sensitive: false
@@ -435,7 +435,7 @@ function buildProfileArtifacts(
 					mcpServers: {
 						buildos: {
 							type: 'http',
-							url: '${BUILDOS_BASE_URL}/api/agent-call/mcp',
+							url: '${BUILDOS_BASE_URL}/mcp/buildos',
 							headers: {
 								Authorization: 'Bearer ${BUILDOS_AGENT_TOKEN}'
 							}

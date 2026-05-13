@@ -410,14 +410,15 @@ async function generateOntologyProjectBrief(
 				minAccuracy: 4.3
 			},
 			operationType: 'daily_brief_project_brief',
-			projectId: project.project.id,
-			briefId: dailyBriefId,
 			validation: {
 				retryOnParseError: true,
 				maxRetries: 1,
 				allowTruncatedJsonRecovery: true
 			},
 			metadata: {
+				ontologyDailyBriefId: dailyBriefId,
+				ontologyProjectId: project.project.id,
+				briefDate,
 				model_policy: 'active_experiment_only',
 				fallback_model_count: PROJECT_BRIEF_MODELS.length
 			},
@@ -472,12 +473,18 @@ async function generateOntologyProjectBrief(
 
 	const { data: savedBrief, error } = await supabase
 		.from('ontology_project_briefs')
-		.insert({
-			daily_brief_id: dailyBriefId,
-			project_id: project.project.id,
-			brief_content: briefContent,
-			metadata: metadata as unknown as Json
-		})
+		.upsert(
+			{
+				daily_brief_id: dailyBriefId,
+				project_id: project.project.id,
+				brief_content: briefContent,
+				metadata: metadata as unknown as Json,
+				updated_at: new Date().toISOString()
+			},
+			{
+				onConflict: 'daily_brief_id,project_id'
+			}
+		)
 		.select()
 		.single();
 

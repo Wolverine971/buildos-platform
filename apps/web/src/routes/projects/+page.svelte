@@ -526,9 +526,7 @@
 	onRefresh={handlePullRefresh}
 	disabled={isPullRefreshing || showChatModal || projectsLoading}
 >
-	<div
-		class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4"
-	>
+	<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6 space-y-3 sm:space-y-4">
 		<!-- Page Header - Inkprint design with micro-label pattern -->
 		<header class="flex flex-col gap-2 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
 			<div class="space-y-1 sm:space-y-1.5 flex-1">
@@ -1285,7 +1283,9 @@
 								<h3 class="text-base font-semibold text-foreground">
 									Unable to load graph view
 								</h3>
-								<p class="text-sm text-muted-foreground">{graphComponentError}</p>
+								<p class="text-sm text-muted-foreground">
+									{graphComponentError}
+								</p>
 								<Button variant="primary" size="sm" onclick={ensureGraphComponents}
 									>Try again</Button
 								>

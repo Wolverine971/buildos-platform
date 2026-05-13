@@ -251,7 +251,10 @@ async function generateNextStepForProject(
 				profile: 'fast',
 				temperature: 0.35,
 				operationType: 'daily_brief_project_next_step',
-				projectId: project.project.id,
+				metadata: {
+					ontologyProjectId: project.project.id,
+					briefDate: options.briefDate
+				},
 				validation: {
 					retryOnParseError: true,
 					maxRetries: 1

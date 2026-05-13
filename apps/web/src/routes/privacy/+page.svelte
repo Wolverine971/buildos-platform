@@ -6,9 +6,9 @@
 
 <SEOHead
 	title="Privacy Policy - BuildOS | Data Protection & User Privacy"
-	description="BuildOS privacy policy: how we protect your data, handle project context securely, and respect your privacy. GDPR compliant, encrypted, you own your content."
+	description="BuildOS privacy policy: how we protect your data, handle project context securely, manage connected agents, and respect your privacy. GDPR compliant, encrypted, you own your content."
 	canonical="https://build-os.com/privacy"
-	keywords="BuildOS privacy policy, data protection, GDPR compliance, user privacy, project context security, data encryption, privacy rights"
+	keywords="BuildOS privacy policy, data protection, GDPR compliance, user privacy, project context security, connected agents, OAuth connectors, data encryption, privacy rights"
 	author="BuildOS"
 />
 
@@ -110,6 +110,12 @@
 							<strong class="text-foreground">Technical Data:</strong> Login timestamps,
 							IP address, and browser information for security
 						</li>
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Connector and Agent Access Data:</strong
+							>
+							Agent key metadata, OAuth connector grants, approved scopes, token hashes,
+							revocation state, and audit logs for connected agent access
+						</li>
 					</ul>
 				</div>
 			</section>
@@ -137,6 +143,10 @@
 						</li>
 						<li class="text-muted-foreground">
 							Communicate with you about your account
+						</li>
+						<li class="text-muted-foreground">
+							Authenticate connected agents, enforce approved scopes, support
+							revocation, and maintain security audit logs
 						</li>
 					</ul>
 				</div>
@@ -172,6 +182,58 @@
 			</section>
 
 			<section>
+				<h2 class="text-2xl font-bold text-foreground mb-4">
+					Third-Party AI Connectors and Agents
+				</h2>
+				<div class="prose dark:prose-invert max-w-none">
+					<p class="text-muted-foreground mb-4">
+						BuildOS may let you connect third-party AI tools and agent clients,
+						including Claude, ChatGPT, OpenClaw, Codex, and custom tools, through the
+						BuildOS Connector, agent keys, OAuth grants, or similar authorization flows.
+					</p>
+					<ul class="space-y-2 text-muted-foreground">
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">You control access:</strong> Connected agents
+							can only access BuildOS data within the scopes, projects, and permissions
+							you approve. Read-only access is the default for connector flows when available.
+						</li>
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Optional write access:</strong> If you approve
+							write access, a connected agent may create or update selected BuildOS content,
+							such as tasks or documents, according to the permissions you grant.
+						</li>
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Data shared through connectors:</strong>
+							When a connected agent requests information, BuildOS may send scoped project
+							context, tasks, documents, notes, and related metadata needed to answer that
+							request.
+						</li>
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Security records:</strong> We store connector
+							metadata, approved scopes, hashed tokens, revocation records, and tool-call
+							audit logs to authenticate requests, enforce permissions, investigate abuse,
+							and let you disconnect access.
+						</li>
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Token handling:</strong> We do not store
+							raw agent tokens or OAuth refresh tokens. Tokens are stored as hashes or
+							encrypted security records where needed for authentication and revocation.
+						</li>
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Third-party handling:</strong> Once data
+							is sent to a connected agent or AI platform at your request, that third party
+							processes it according to its own privacy policy and terms.
+						</li>
+					</ul>
+					<p class="text-muted-foreground mt-4">
+						You can revoke connected agent access from the BuildOS interface. After
+						revocation, future connector requests using that grant or token will be
+						blocked.
+					</p>
+				</div>
+			</section>
+
+			<section>
 				<h2 class="text-2xl font-bold text-foreground mb-4">Third-Party Services</h2>
 				<div class="prose dark:prose-invert max-w-none">
 					<p class="text-muted-foreground mb-4">
@@ -197,6 +259,11 @@
 						<li class="text-muted-foreground">
 							<strong class="text-foreground">AI Providers:</strong> OpenAI, Anthropic,
 							and other LLM services for content processing
+						</li>
+						<li class="text-muted-foreground">
+							<strong class="text-foreground">Connected AI Clients:</strong> Claude, ChatGPT,
+							OpenClaw, Codex, and other agent platforms only when you choose to connect
+							them
 						</li>
 					</ul>
 				</div>
@@ -315,13 +382,17 @@
 				<h2 class="text-2xl font-bold text-foreground mb-4">Updates to This Policy</h2>
 				<p class="text-muted-foreground">
 					We may update this privacy policy as BuildOS evolves. We'll notify users of any
-					significant changes and update the "Last Updated" date below.
+					significant changes and update the "Last Updated" date below. For privacy
+					questions, contact us at <a
+						href="mailto:dj@build-os.com"
+						class="text-accent hover:text-accent/80 underline">dj@build-os.com</a
+					>.
 				</p>
 			</section>
 
 			<!-- Last Updated -->
 			<div class="border-t border-border pt-6">
-				<p class="text-sm text-muted-foreground">Last updated: October 6, 2025</p>
+				<p class="text-sm text-muted-foreground">Last updated: May 13, 2026</p>
 			</div>
 		</div>
 
@@ -331,7 +402,7 @@
 				<h3 class="text-2xl font-bold mb-4">Questions about your data?</h3>
 				<p class="mb-6 opacity-90">We're here to help. Reach out anytime.</p>
 				<a
-					href="/contact"
+					href="mailto:dj@build-os.com"
 					class="inline-flex items-center px-6 py-3 bg-card text-accent font-semibold rounded-lg hover:bg-card/90 transition-colors"
 				>
 					Contact Us

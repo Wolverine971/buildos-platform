@@ -87,6 +87,68 @@ describe('LLMUsageLogger', () => {
 		});
 	});
 
+	it('clears retryable foreign-key columns until usage logging succeeds', async () => {
+		const insert = vi
+			.fn()
+			.mockResolvedValueOnce({
+				error: {
+					code: '23503',
+					details:
+						'Key (project_id)=(22222222-2222-4222-8222-222222222222) is not present in table "projects".',
+					message:
+						'insert or update on table "llm_usage_logs" violates foreign key constraint "llm_usage_logs_project_id_fkey"'
+				}
+			})
+			.mockResolvedValueOnce({
+				error: {
+					code: '23503',
+					details:
+						'Key (brief_id)=(33333333-3333-4333-8333-333333333333) is not present in table "daily_briefs".',
+					message:
+						'insert or update on table "llm_usage_logs" violates foreign key constraint "llm_usage_logs_brief_id_fkey"'
+				}
+			})
+			.mockResolvedValueOnce({ error: null });
+		const logger = new LLMUsageLogger({
+			supabase: {
+				from: vi.fn(() => ({ insert }))
+			} as any
+		});
+
+		await logger.logUsageToDatabase({
+			userId: '11111111-1111-4111-8111-111111111111',
+			operationType: 'daily_brief_project_brief',
+			modelRequested: 'deepseek/deepseek-v3.2',
+			modelUsed: 'deepseek/deepseek-v3.2',
+			promptTokens: 1000,
+			completionTokens: 500,
+			totalTokens: 1500,
+			inputCost: 0.0001,
+			outputCost: 0.0002,
+			totalCost: 0.0003,
+			responseTimeMs: 100,
+			requestStartedAt: new Date('2026-04-11T15:36:50.000Z'),
+			requestCompletedAt: new Date('2026-04-11T15:36:55.000Z'),
+			status: 'success',
+			projectId: '22222222-2222-4222-8222-222222222222',
+			briefId: '33333333-3333-4333-8333-333333333333'
+		});
+
+		expect(insert).toHaveBeenCalledTimes(3);
+		expect(insert.mock.calls[0]?.[0]).toMatchObject({
+			project_id: '22222222-2222-4222-8222-222222222222',
+			brief_id: '33333333-3333-4333-8333-333333333333'
+		});
+		expect(insert.mock.calls[1]?.[0]).toMatchObject({
+			project_id: null,
+			brief_id: '33333333-3333-4333-8333-333333333333'
+		});
+		expect(insert.mock.calls[2]?.[0]).toMatchObject({
+			project_id: null,
+			brief_id: null
+		});
+	});
+
 	it('does not estimate a nonzero total when OpenRouter reports a zero native cost', async () => {
 		const insert = vi.fn(async () => ({ error: null }));
 		const logger = new LLMUsageLogger({

@@ -1266,6 +1266,8 @@ export class CallerProvisioningService {
 			throw new CallerProvisioningError('External caller not found', 404);
 		}
 
+		await this.revokeOAuthArtifactsForCaller(userId, callerId);
+
 		await logSecurityEvent(
 			{
 				eventType: 'agent.caller.revoked',
@@ -1288,6 +1290,36 @@ export class CallerProvisioningService {
 		return {
 			caller: mapCallerSummary(data as ExternalAgentCallerRecord)
 		};
+	}
+
+	private async revokeOAuthArtifactsForCaller(userId: string, callerId: string): Promise<void> {
+		const now = new Date().toISOString();
+
+		try {
+			await Promise.all([
+				this.admin
+					.from('agent_oauth_grants')
+					.update({ status: 'revoked' })
+					.eq('user_id', userId)
+					.eq('external_agent_caller_id', callerId),
+				this.admin
+					.from('agent_oauth_access_tokens')
+					.update({ revoked_at: now })
+					.eq('user_id', userId)
+					.eq('external_agent_caller_id', callerId),
+				this.admin
+					.from('agent_oauth_refresh_tokens')
+					.update({ revoked_at: now })
+					.eq('user_id', userId)
+					.eq('external_agent_caller_id', callerId)
+			]);
+		} catch (error) {
+			console.error('[Agent Callers] Failed to revoke OAuth artifacts for caller:', {
+				userId,
+				callerId,
+				error
+			});
+		}
 	}
 
 	private async resolveAllowedProjectIds(
