@@ -116,8 +116,8 @@
 		{ id: 'my-role', label: 'My Role', icon: UserCog }
 	];
 
-	function handleTabChange(event: { detail: string }) {
-		activeTab = event.detail as 'sharing' | 'my-role';
+	function handleTabChange(tabId: string) {
+		activeTab = tabId as 'sharing' | 'my-role';
 	}
 
 	$effect(() => {

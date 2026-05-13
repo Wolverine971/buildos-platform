@@ -137,6 +137,17 @@
 		...restProps
 	}: Props = $props();
 
+	// Per-instance clientId so the singleton voiceRecordingService doesn't
+	// merge callbacks across two simultaneously-mounted TextareaWithVoice
+	// instances (audio in input A would otherwise upload into input B's group).
+	const propsId = $props.id();
+	const voiceClientId = `txtvoice-${propsId}`;
+
+	// AbortController shared by all in-flight fetches from this instance.
+	// Aborted on cleanup so resolved/rejected promises don't try to mutate
+	// state on a torn-down component.
+	let abortController: AbortController | null = null;
+
 	// Internal voice state (using Svelte 5 $state)
 	let isVoiceSupported = $state(false);
 	let isCurrentlyRecording = $state(false);
@@ -232,7 +243,7 @@
 	// Update vocabulary terms on the voice recording service when prop changes
 	$effect(() => {
 		if (voiceInitialized) {
-			voiceRecordingService.setVocabularyTerms(vocabularyTerms);
+			voiceRecordingService.setVocabularyTerms(vocabularyTerms, voiceClientId);
 		}
 	});
 
@@ -246,9 +257,15 @@
 			formData.append('vocabularyTerms', vocabTerms);
 		}
 
+		// Lazily allocate the AbortController; recreated after each cleanup.
+		if (!abortController) {
+			abortController = new AbortController();
+		}
+
 		const response = await fetch(transcriptionEndpoint, {
 			method: 'POST',
-			body: formData
+			body: formData,
+			signal: abortController.signal
 		});
 
 		if (!response.ok) {
@@ -827,10 +844,11 @@
 				},
 				onAudioCaptured: handleAudioCaptured
 			},
-			transcriptionService
+			transcriptionService,
+			voiceClientId
 		);
 
-		const durationStore = voiceRecordingService.getRecordingDuration();
+		const durationStore = voiceRecordingService.getRecordingDuration(voiceClientId);
 		durationUnsubscribe = durationStore.subscribe((newDuration) => {
 			_recordingDuration = newDuration;
 		});
@@ -862,7 +880,7 @@
 		hadLiveTranscript = false;
 
 		try {
-			await voiceRecordingService.startRecording(value);
+			await voiceRecordingService.startRecording(value, voiceClientId);
 			isInitializingRecording = false;
 			isCurrentlyRecording = true;
 			microphonePermissionGranted = true;
@@ -899,7 +917,7 @@
 		isInitializingRecording = false;
 
 		try {
-			await voiceRecordingService.stopRecording(value);
+			await voiceRecordingService.stopRecording(value, undefined, voiceClientId);
 		} catch (error) {
 			console.error('Failed to stop voice recording:', error);
 			const message =
@@ -939,7 +957,12 @@
 		durationUnsubscribe = null;
 		transcriptUnsubscribe = null;
 
-		voiceRecordingService.cleanup();
+		// Cancel any in-flight transcribe fetch so its promise doesn't resolve
+		// into our $state after the component has been torn down.
+		abortController?.abort();
+		abortController = null;
+
+		voiceRecordingService.cleanup(voiceClientId);
 
 		isCurrentlyRecording = false;
 		isInitializingRecording = false;
@@ -967,14 +990,23 @@
 		}
 	}
 
-	// Global keydown handler for stopping recording (works even when textarea not focused)
+	// Global keydown handler for stopping recording. Scoped so it does NOT
+	// intercept Space/Enter when the user is typing in a sibling input/textarea
+	// elsewhere on the page (otherwise voice recording silently swallows every
+	// space the user types in another field).
 	function handleGlobalKeyDown(event: KeyboardEvent) {
-		if (isCurrentlyRecording && (event.key === ' ' || event.key === 'Enter')) {
-			// Stop recording regardless of focus - this is the expected behavior
-			// when voice recording is active
-			event.preventDefault();
-			stopVoiceRecording();
-		}
+		if (!isCurrentlyRecording) return;
+		if (event.key !== ' ' && event.key !== 'Enter') return;
+
+		const active = document.activeElement;
+		const isTypingElsewhere =
+			active instanceof HTMLInputElement ||
+			active instanceof HTMLTextAreaElement ||
+			(active instanceof HTMLElement && active.isContentEditable);
+		if (isTypingElsewhere) return;
+
+		event.preventDefault();
+		stopVoiceRecording();
 	}
 
 	// Set up global keydown listener when recording starts

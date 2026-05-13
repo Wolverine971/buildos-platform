@@ -6,6 +6,7 @@
 	- Uses Inkprint semantic tokens
 -->
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { Eye, Edit } from 'lucide-svelte';
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
 	import Textarea from './Textarea.svelte';
@@ -50,31 +51,26 @@
 	let textareaElement = $state<TextareaHandle | null>(null);
 	let internalValue = $state(getInitialValue());
 
-	// Sync internal value when prop changes
+	// Sync internal value when the parent's prop changes — but ONLY in preview mode.
+	// Why: parents commonly debounce-save and feed the saved value back in. If we
+	// overwrite while the user is mid-typing, in-flight characters get wiped.
 	$effect(() => {
-		internalValue = value;
+		if (!isEditMode) {
+			internalValue = value;
+		}
 	});
 
-	function toggleMode() {
+	async function toggleMode() {
 		if (disabled) return;
 
 		isEditMode = !isEditMode;
 
-		// Focus textarea when switching to edit mode
-		if (isEditMode && textareaElement) {
-			setTimeout(() => {
-				textareaElement?.focus();
-				// Set cursor to end of text
-				if (textareaElement) {
-					textareaElement.setSelectionRange(internalValue.length, internalValue.length);
-				}
-			}, 10);
+		// Focus textarea after Svelte re-renders the edit-mode markup.
+		if (isEditMode) {
+			await tick();
+			textareaElement?.focus();
+			textareaElement?.setSelectionRange(internalValue.length, internalValue.length);
 		}
-	}
-
-	function handleBlur() {
-		// Don't auto-close on blur - let user decide when to switch modes
-		// This prevents accidental mode switches
 	}
 
 	function handleInput(event: Event) {
@@ -87,6 +83,7 @@
 		// Allow Ctrl+Enter or Cmd+Enter to save and exit
 		if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
 			event.preventDefault();
+			onUpdate(internalValue);
 			isEditMode = false;
 			return;
 		}
@@ -138,8 +135,7 @@
 			<Textarea
 				bind:this={textareaElement}
 				value={internalValue}
-				onchange={handleInput}
-				onblur={handleBlur}
+				oninput={handleInput}
 				onkeydown={handleKeydown}
 				{rows}
 				{maxRows}
@@ -156,15 +152,13 @@
 			</div>
 		{:else}
 			<!-- Preview Mode - Inkprint styling with responsive padding -->
-			<div
-				class="w-full px-2.5 py-1.5 sm:px-3 sm:py-2 border border-border rounded-lg bg-card shadow-ink-inner min-h-[2.25rem] sm:min-h-[2.5rem] cursor-pointer transition-colors hover:bg-muted/50 tx tx-frame tx-weak {showPlaceholder
+			<button
+				type="button"
+				class="w-full text-left px-2.5 py-1.5 sm:px-3 sm:py-2 border border-border rounded-lg bg-card shadow-ink-inner min-h-[2.25rem] sm:min-h-[2.5rem] transition-colors hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-60 tx tx-frame tx-weak {showPlaceholder
 					? 'flex items-center'
 					: ''}"
 				onclick={toggleMode}
-				onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && toggleMode()}
-				role="button"
-				tabindex={disabled ? -1 : 0}
-				aria-label="Click to edit content"
+				{disabled}
 				aria-labelledby={ariaLabelledby}
 			>
 				{#if showPlaceholder}
@@ -176,7 +170,7 @@
 						{@html renderMarkdown(displayValue)}
 					</div>
 				{/if}
-			</div>
+			</button>
 		{/if}
 	</div>
 </div>
@@ -184,11 +178,6 @@
 <style>
 	.markdown-toggle-field {
 		width: 100%;
-	}
-
-	/* Make preview area look clickable when not disabled */
-	.markdown-toggle-field [role='button']:not([tabindex='-1']):hover {
-		cursor: pointer;
 	}
 
 	/* Ensure consistent min-height for empty content */

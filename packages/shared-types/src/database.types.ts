@@ -7887,6 +7887,16 @@ export type Database = {
       ontology_daily_briefs: {
         Row: {
           actor_id: string
+          audio_duration_ms: number | null
+          audio_error: string | null
+          audio_generated_at: string | null
+          audio_generation_ms: number | null
+          audio_generation_started_at: string | null
+          audio_model: string | null
+          audio_requested_at: string | null
+          audio_status: string
+          audio_storage_path: string | null
+          audio_voice: string | null
           brief_date: string
           created_at: string
           executive_summary: string
@@ -7903,6 +7913,16 @@ export type Database = {
         }
         Insert: {
           actor_id: string
+          audio_duration_ms?: number | null
+          audio_error?: string | null
+          audio_generated_at?: string | null
+          audio_generation_ms?: number | null
+          audio_generation_started_at?: string | null
+          audio_model?: string | null
+          audio_requested_at?: string | null
+          audio_status?: string
+          audio_storage_path?: string | null
+          audio_voice?: string | null
           brief_date: string
           created_at?: string
           executive_summary?: string
@@ -7919,6 +7939,16 @@ export type Database = {
         }
         Update: {
           actor_id?: string
+          audio_duration_ms?: number | null
+          audio_error?: string | null
+          audio_generated_at?: string | null
+          audio_generation_ms?: number | null
+          audio_generation_started_at?: string | null
+          audio_model?: string | null
+          audio_requested_at?: string | null
+          audio_status?: string
+          audio_storage_path?: string | null
+          audio_voice?: string | null
           brief_date?: string
           created_at?: string
           executive_summary?: string
@@ -12587,6 +12617,7 @@ export type Database = {
           trial_ends_at: string | null
           updated_at: string
           usage_archetype: string | null
+          voice_narration_enabled: boolean
           username: string | null
         }
         Insert: {
@@ -12614,6 +12645,7 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string
           usage_archetype?: string | null
+          voice_narration_enabled?: boolean
           username?: string | null
         }
         Update: {
@@ -12641,6 +12673,7 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string
           usage_archetype?: string | null
+          voice_narration_enabled?: boolean
           username?: string | null
         }
         Relationships: [
@@ -14951,6 +14984,7 @@ export type Database = {
         | "project_activity_batch_flush"
         | "generate_project_icon"
         | "extract_onto_asset_ocr"
+        | "generate_brief_audio"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -15226,6 +15260,7 @@ export const Constants = {
         "project_activity_batch_flush",
         "generate_project_icon",
         "extract_onto_asset_ocr",
+        "generate_brief_audio",
       ],
       recurrence_end_reason: [
         "indefinite",

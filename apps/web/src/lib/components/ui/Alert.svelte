@@ -38,50 +38,58 @@
 	> = {
 		info: {
 			icon: Info,
-			bg: 'bg-muted',
-			border: 'border border-border',
+			bg: 'bg-info/10',
+			border: 'border border-info/30',
 			text: 'text-foreground',
-			icon_color: 'text-muted-foreground',
+			icon_color: 'text-info',
 			texture: 'tx tx-thread tx-weak'
 		},
 		success: {
 			icon: CircleCheck,
-			bg: 'bg-emerald-50 dark:bg-emerald-900/10',
-			border: 'border border-emerald-200 dark:border-emerald-800',
+			bg: 'bg-success/10',
+			border: 'border border-success/30',
 			text: 'text-foreground',
-			icon_color: 'text-emerald-600 dark:text-emerald-400',
+			icon_color: 'text-success',
 			texture: 'tx tx-grain tx-weak'
 		},
 		warning: {
 			icon: TriangleAlert,
-			bg: 'bg-amber-50 dark:bg-amber-900/10',
-			border: 'border border-amber-200 dark:border-amber-800',
+			bg: 'bg-warning/10',
+			border: 'border border-warning/30',
 			text: 'text-foreground',
-			icon_color: 'text-amber-600 dark:text-amber-400',
+			icon_color: 'text-warning',
 			texture: 'tx tx-static tx-weak'
 		},
 		error: {
 			icon: CircleAlert,
-			bg: 'bg-red-50 dark:bg-red-900/10',
-			border: 'border border-red-200 dark:border-red-800',
+			bg: 'bg-destructive/10',
+			border: 'border border-destructive/30',
 			text: 'text-foreground',
-			icon_color: 'text-red-600 dark:text-red-400',
+			icon_color: 'text-destructive',
 			texture: 'tx tx-static tx-weak'
 		}
 	};
 
-	const config = variantConfig[variant];
+	const config = $derived(variantConfig[variant]);
 
 	function handleClose() {
 		isVisible = false;
 		onClose?.();
 	}
 
-	const containerClasses = `rounded-lg p-3 sm:p-4 shadow-ink ${config.bg} ${config.border} ${config.text} ${config.texture} ${className}`;
+	const containerClasses = $derived(
+		`rounded-lg p-3 sm:p-4 shadow-ink ${config.bg} ${config.border} ${config.text} ${config.texture} ${className}`
+	);
+
+	// Errors and warnings should interrupt screen readers; info/success should not.
+	const ariaRole = $derived(variant === 'error' || variant === 'warning' ? 'alert' : 'status');
+	const ariaLive = $derived(
+		variant === 'error' || variant === 'warning' ? 'assertive' : 'polite'
+	);
 </script>
 
 {#if isVisible}
-	<div class={containerClasses} role="alert" {...rest}>
+	<div class={containerClasses} role={ariaRole} aria-live={ariaLive} {...rest}>
 		<div class="flex gap-2 sm:gap-3">
 			<!-- Icon -->
 			{#if icon}
@@ -117,6 +125,7 @@
 			<!-- Close button -->
 			{#if closeable}
 				<button
+					type="button"
 					class="flex-shrink-0 flex items-start pt-0.5 hover:opacity-70 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded pressable"
 					onclick={handleClose}
 					aria-label="Close alert"

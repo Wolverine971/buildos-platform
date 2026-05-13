@@ -1,6 +1,7 @@
 // apps/worker/src/worker.ts
 import type {
 	AssetOcrJobMetadata,
+	GenerateBriefAudioJobMetadata,
 	HomeworkJobMetadata,
 	ProjectContextSnapshotJobMetadata,
 	ProjectIconGenerationJobMetadata,
@@ -33,6 +34,7 @@ import { processTreeAgentJob } from './workers/tree-agent/treeAgentWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
 import { processProjectIconJob } from './workers/project-icon/projectIconWorker';
 import { processCalendarSyncJob } from './workers/calendar/calendarSyncWorker';
+import { processBriefAudio as processBriefAudioJob } from './workers/briefAudio/briefAudioWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
 import { getEnvironmentConfig, validateEnvironment } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
@@ -271,6 +273,22 @@ async function processVoiceNoteTranscription(
 }
 
 /**
+ * Daily brief audio narration processor.
+ */
+async function processBriefAudio(job: ProcessingJob<GenerateBriefAudioJobMetadata>) {
+	await job.log('Brief audio narration job received');
+
+	try {
+		const result = await processBriefAudioJob(job);
+		await job.log('Brief audio narration job completed');
+		return result;
+	} catch (error) {
+		await job.log(`Brief audio narration job failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
+/**
  * Ontology asset OCR processor
  */
 async function processAssetOcr(job: ProcessingJob<AssetOcrJobMetadata>) {
@@ -395,6 +413,9 @@ export async function startWorker() {
 	// Register voice note transcription processor
 	queue.process('transcribe_voice_note', processVoiceNoteTranscription);
 
+	// Register daily brief audio narration processor
+	queue.process('generate_brief_audio', processBriefAudio);
+
 	// Register ontology asset OCR processor
 	queue.process('extract_onto_asset_ocr', processAssetOcr);
 
@@ -493,6 +514,7 @@ export async function startWorker() {
 		'project_activity_batch_flush',
 		'classify_chat_session',
 		'process_onto_braindump',
+		'generate_brief_audio',
 		'buildos_tree_agent'
 	];
 

@@ -56,37 +56,44 @@
 		footerContent
 	}: Props = $props();
 
-	let hasBeenDismissed = $state(false);
-	let effectiveIsOpen = $state(false);
+	// One-time, mount-only check for prior dismissal. Avoids the binding loop the
+	// previous $effect created (effect re-running re-opened the modal after close).
+	const initiallyDismissed =
+		browser && storageKey ? localStorage.getItem(storageKey) === 'true' : false;
+	let effectiveIsOpen = $state(isOpen && !initiallyDismissed);
 
-	// Check if modal has been dismissed before and update effective state
-	$effect(() => {
+	function persistDismissal() {
 		if (browser && storageKey) {
-			hasBeenDismissed = localStorage.getItem(storageKey) === 'true';
+			localStorage.setItem(storageKey, 'true');
 		}
-		effectiveIsOpen = isOpen && !hasBeenDismissed;
-	});
+	}
 
+	// Explicit user dismissal (primary/secondary action) — persist so the modal
+	// doesn't reappear next session.
 	function handlePrimary() {
+		persistDismissal();
+		effectiveIsOpen = false;
 		onPrimary?.();
 	}
 
 	function handleSecondary() {
+		persistDismissal();
+		effectiveIsOpen = false;
 		onSecondary?.();
 	}
 
-	function handleDismiss() {
-		if (browser && storageKey) {
-			localStorage.setItem(storageKey, 'true');
-			hasBeenDismissed = true;
-		}
+	// Soft dismissal (backdrop tap, Escape, X button) — close the modal but
+	// don't permanently kill it. Accidental taps used to silently mark the
+	// welcome modal as never-show-again for this user.
+	function handleSoftDismiss() {
+		effectiveIsOpen = false;
 		onDismiss?.();
 	}
 </script>
 
 <Modal
 	bind:isOpen={effectiveIsOpen}
-	onClose={handleDismiss}
+	onClose={handleSoftDismiss}
 	title=""
 	size="sm"
 	showCloseButton={dismissible && !persistent}

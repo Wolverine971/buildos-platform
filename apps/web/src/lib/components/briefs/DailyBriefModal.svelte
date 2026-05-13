@@ -13,6 +13,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import BriefAudioPlayer from '$lib/components/briefs/BriefAudioPlayer.svelte';
 	import type { DailyBrief } from '$lib/types/daily-brief';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
@@ -45,11 +46,18 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 
-	// Use provided brief or fetched brief
-	let displayBrief = $derived(brief || fetchedBrief);
+	// Prefer a refreshed copy when polling updates a provided brief.
+	let displayBrief = $derived.by(() => {
+		if (fetchedBrief && (!brief || fetchedBrief.id === brief.id)) {
+			return fetchedBrief;
+		}
+		return brief;
+	});
 
 	let copiedToClipboard = $state(false);
 	let emailOptInLoading = $state(false);
+	let audioPollTimer: ReturnType<typeof setInterval> | null = null;
+	let audioPollBriefId: string | null = null;
 
 	// Regenerate state
 	let isRegenerating = $state(false);
@@ -71,6 +79,26 @@
 		if (!browser) return;
 		if (isOpen && briefDate && !brief) {
 			loadBriefByDate(briefDate);
+		}
+	});
+
+	$effect(() => {
+		if (!browser) return;
+		if (!isOpen) {
+			stopAudioPolling();
+			fetchedBrief = null;
+			error = null;
+			return;
+		}
+
+		const current = displayBrief;
+		const shouldPoll =
+			current?.audio_status === 'pending' || current?.audio_status === 'generating';
+
+		if (current && shouldPoll) {
+			startAudioPolling(current.id);
+		} else {
+			stopAudioPolling();
 		}
 	});
 
@@ -109,6 +137,39 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	async function refreshBriefById(id: string) {
+		if (!browser) return;
+
+		try {
+			const response = await fetch(`/api/daily-briefs/${id}`);
+			const result = await response.json().catch(() => null);
+			const refreshedBrief = result?.data?.brief as DailyBrief | undefined;
+
+			if (response.ok && refreshedBrief) {
+				fetchedBrief = refreshedBrief;
+			}
+		} catch (err) {
+			console.error('Error refreshing brief audio status:', err);
+		}
+	}
+
+	function startAudioPolling(id: string) {
+		if (audioPollTimer && audioPollBriefId === id) return;
+		stopAudioPolling();
+		audioPollBriefId = id;
+		audioPollTimer = setInterval(() => {
+			void refreshBriefById(id);
+		}, 4000);
+	}
+
+	function stopAudioPolling() {
+		if (audioPollTimer) {
+			clearInterval(audioPollTimer);
+			audioPollTimer = null;
+		}
+		audioPollBriefId = null;
 	}
 
 	// Load preferences when modal opens
@@ -175,6 +236,7 @@
 		if (isRegenerating) {
 			isRegenerating = false;
 		}
+		stopAudioPolling();
 	});
 
 	async function copyToClipboard() {
@@ -316,6 +378,33 @@
 
 			<!-- Brief Content -->
 			<div class="px-3 sm:px-4 py-4 sm:py-6">
+				{#if displayBrief.audio_status && displayBrief.audio_status !== 'none'}
+					<div class="mb-4">
+						{#if displayBrief.audio_status === 'ready' && displayBrief.audio_storage_path}
+							<BriefAudioPlayer
+								briefId={displayBrief.id}
+								audioStatus={displayBrief.audio_status}
+								audioStoragePath={displayBrief.audio_storage_path}
+								durationMs={displayBrief.audio_duration_ms}
+							/>
+						{:else if displayBrief.audio_status === 'pending' || displayBrief.audio_status === 'generating'}
+							<div
+								class="flex items-center gap-2 rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground"
+							>
+								<LoaderCircle class="h-4 w-4 animate-spin text-accent" />
+								<span>Generating audio narration...</span>
+							</div>
+						{:else if displayBrief.audio_status === 'failed'}
+							<div
+								class="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
+							>
+								<AlertCircle class="mt-0.5 h-4 w-4 shrink-0" />
+								<span>Audio narration is unavailable.</span>
+							</div>
+						{/if}
+					</div>
+				{/if}
+
 				<div
 					class="prose prose-sm max-w-none overflow-x-auto
 						prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground

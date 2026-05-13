@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/ui/ConfirmationModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { TriangleAlert, CircleAlert, Info, CircleCheck } from 'lucide-svelte';
 	import Modal from './Modal.svelte';
 	import Button from './Button.svelte';
@@ -20,13 +19,12 @@
 		details?: Snippet;
 		footer?: Snippet;
 		children?: Snippet;
-		// Svelte 5 callback props (preferred)
 		onconfirm?: () => void;
 		oncancel?: () => void;
 	}
 
 	let {
-		isOpen = false,
+		isOpen = $bindable(false),
 		title = 'Confirm Action',
 		confirmText = 'Confirm',
 		cancelText = 'Cancel',
@@ -42,20 +40,12 @@
 		oncancel
 	}: Props = $props();
 
-	// Legacy event dispatcher for backwards compatibility with on:confirm/on:cancel
-	const dispatch = createEventDispatcher<{
-		confirm: void;
-		cancel: void;
-	}>();
-
 	function handleConfirm() {
 		onconfirm?.();
-		dispatch('confirm');
 	}
 
 	function handleCancel() {
 		oncancel?.();
-		dispatch('cancel');
 	}
 
 	// Icon mapping
@@ -78,13 +68,20 @@
 
 	let IconComponent = $derived(icons[icon]);
 	let iconClasses = $derived(iconColors[icon]);
+	// Destructive and warning confirmations should announce themselves to screen
+	// readers immediately ("Delete project? This cannot be undone."). Other
+	// confirmations use the standard dialog role.
+	const dialogRole = $derived<'dialog' | 'alertdialog'>(
+		icon === 'danger' || icon === 'warning' ? 'alertdialog' : 'dialog'
+	);
 </script>
 
 <Modal
-	{isOpen}
+	bind:isOpen
 	onClose={handleCancel}
 	{title}
 	size="sm"
+	role={dialogRole}
 	closeOnBackdrop={!loading}
 	closeOnEscape={!loading}
 	persistent={loading}

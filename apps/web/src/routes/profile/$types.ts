@@ -30,6 +30,7 @@ export interface PageData {
 	projectTemplates: Database['public']['Tables']['project_brief_templates']['Row'][];
 	completedOnboarding: boolean;
 	isAdmin: boolean;
+	voiceNarrationEnabled: boolean;
 	justCompletedOnboarding: boolean;
 	activeTab: string;
 	subscriptionDetails: SubscriptionDetails | null;

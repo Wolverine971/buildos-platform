@@ -46,6 +46,7 @@
 
 	// Svelte 5 runes: Use $props() with rest syntax instead of export let and $$restProps
 	interface SelectProps {
+		id?: string;
 		value?: string | number | null;
 		size?: SelectSizeProp;
 		error?: boolean;
@@ -61,7 +62,13 @@
 		children?: Snippet;
 	}
 
+	// SSR-safe per-instance id (Svelte 5.20+). Used as fallback when consumer
+	// doesn't pass `id` so error/helper aria-describedby ids don't collide
+	// when multiple Selects render on one page.
+	const fallbackId = $props.id();
+
 	let {
+		id = fallbackId,
 		value = $bindable(''),
 		size = 'md',
 		error = false,
@@ -77,7 +84,10 @@
 		children,
 		...restProps
 	}: SelectProps &
-		Omit<HTMLSelectAttributes, 'onchange' | 'onfocus' | 'onblur' | 'size'> = $props();
+		Omit<HTMLSelectAttributes, 'onchange' | 'onfocus' | 'onblur' | 'size' | 'id'> = $props();
+
+	const errorId = `${id}-error`;
+	const helperId = `${id}-helper`;
 
 	/**
 	 * Helper function to resolve responsive size configuration into Tailwind classes
@@ -257,15 +267,12 @@
 <!-- Outer wrapper with dithering texture (selects can't have ::before pseudo-elements) -->
 <div class={wrapperClasses}>
 	<select
+		{id}
 		{value}
 		{disabled}
 		aria-invalid={error}
 		aria-required={required}
-		aria-describedby={error && errorMessage
-			? 'select-error'
-			: helperText
-				? 'select-helper'
-				: undefined}
+		aria-describedby={error && errorMessage ? errorId : helperText ? helperId : undefined}
 		class={selectClasses}
 		onchange={handleChange}
 		onfocus={handleFocus}
@@ -286,7 +293,7 @@
 </div>
 {#if error && errorMessage}
 	<p
-		id="select-error"
+		id={errorId}
 		role="alert"
 		aria-live="polite"
 		class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-destructive"
@@ -294,7 +301,7 @@
 		{errorMessage}
 	</p>
 {:else if helperText}
-	<p id="select-helper" class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-muted-foreground">
+	<p id={helperId} class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-muted-foreground">
 		{helperText}
 	</p>
 {/if}

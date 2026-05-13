@@ -16,6 +16,7 @@ import type {
 	ScheduleDailySMSJobMetadata,
 	ClassifyChatSessionJobMetadata,
 	VoiceNoteTranscriptionJobMetadata,
+	GenerateBriefAudioJobMetadata,
 	ProjectIconGenerationJobMetadata,
 	ProjectActivityBatchFlushJobMetadata,
 	AssetOcrJobMetadata,
@@ -626,6 +627,22 @@ export function validateVoiceNoteTranscriptionMetadata(
 	return meta as unknown as VoiceNoteTranscriptionJobMetadata;
 }
 
+export function validateGenerateBriefAudioMetadata(
+	metadata: unknown
+): GenerateBriefAudioJobMetadata {
+	if (!metadata || typeof metadata !== 'object') {
+		throw new ValidationError('metadata', metadata, 'object');
+	}
+
+	const meta = metadata as Record<string, unknown>;
+
+	if (typeof meta.briefId !== 'string' || !isValidUUID(meta.briefId)) {
+		throw new ValidationError('briefId', meta.briefId, 'valid UUID');
+	}
+
+	return meta as unknown as GenerateBriefAudioJobMetadata;
+}
+
 export function validateProjectActivityBatchFlushMetadata(
 	metadata: unknown
 ): ProjectActivityBatchFlushJobMetadata {
@@ -855,6 +872,8 @@ export function validateJobMetadata<T extends QueueJobType>(
 			return validateClassifyChatSessionMetadata(metadata) as JobMetadataMap[T];
 		case 'transcribe_voice_note':
 			return validateVoiceNoteTranscriptionMetadata(metadata) as JobMetadataMap[T];
+		case 'generate_brief_audio':
+			return validateGenerateBriefAudioMetadata(metadata) as JobMetadataMap[T];
 		case 'generate_project_icon':
 			return validateProjectIconGenerationMetadata(metadata) as JobMetadataMap[T];
 		case 'extract_onto_asset_ocr':

@@ -366,7 +366,7 @@
 			<TabNav
 				tabs={profileTabs}
 				{activeTab}
-				onchange={(event) => switchTab(event.detail)}
+				onchange={(tabId) => switchTab(tabId)}
 				containerClass="mb-0 border-0"
 				navClass="mx-0 px-3 sm:px-6"
 				ariaLabel="Profile sections"
@@ -387,7 +387,12 @@
 			<PreferencesTab />
 		{:else if activeTab === 'briefs'}
 			<!-- Use the new BriefsTab component -->
-			<BriefsTab onsuccess={handleComponentSuccess} onerror={handleComponentError} />
+			<BriefsTab
+				isAdmin={data.isAdmin}
+				initialVoiceNarrationEnabled={data.voiceNarrationEnabled}
+				onsuccess={handleComponentSuccess}
+				onerror={handleComponentError}
+			/>
 		{:else if activeTab === 'calendar'}
 			<!-- Use the new CalendarTab component -->
 			<CalendarTab

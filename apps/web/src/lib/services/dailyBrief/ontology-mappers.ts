@@ -30,7 +30,17 @@ export function mapOntologyDailyBriefRow(row: OntologyDailyBriefRow): DailyBrief
 		generation_completed_at: row.generation_completed_at || undefined,
 		metadata: row.metadata,
 		created_at: row.created_at,
-		updated_at: row.updated_at
+		updated_at: row.updated_at,
+		audio_status: row.audio_status,
+		audio_storage_path: row.audio_storage_path,
+		audio_voice: row.audio_voice,
+		audio_model: row.audio_model,
+		audio_duration_ms: row.audio_duration_ms,
+		audio_generation_ms: row.audio_generation_ms,
+		audio_requested_at: row.audio_requested_at,
+		audio_generation_started_at: row.audio_generation_started_at,
+		audio_generated_at: row.audio_generated_at,
+		audio_error: row.audio_error
 	};
 }
 

@@ -166,6 +166,10 @@ export interface VoiceNoteTranscriptionJobMetadata {
 	userId: string;
 }
 
+export interface GenerateBriefAudioJobMetadata {
+	briefId: string;
+}
+
 export interface HomeworkJobMetadata {
 	run_id: string;
 	iteration: number;
@@ -245,6 +249,7 @@ export interface JobMetadataMap {
 	classify_chat_session: ClassifyChatSessionJobMetadata;
 	process_onto_braindump: OntoBraindumpProcessingJobMetadata;
 	transcribe_voice_note: VoiceNoteTranscriptionJobMetadata;
+	generate_brief_audio: GenerateBriefAudioJobMetadata;
 	buildos_homework: HomeworkJobMetadata;
 	buildos_tree_agent: TreeAgentJobMetadata;
 	build_project_context_snapshot: ProjectContextSnapshotJobMetadata;
@@ -286,6 +291,17 @@ export interface VoiceNoteTranscriptionResult {
 	success: boolean;
 	voiceNoteId: string;
 	transcriptLength?: number;
+	skipped?: boolean;
+	reason?: string;
+	error?: string;
+}
+
+export interface GenerateBriefAudioResult {
+	success: boolean;
+	briefId: string;
+	storagePath?: string;
+	durationMs?: number;
+	generationMs?: number;
 	skipped?: boolean;
 	reason?: string;
 	error?: string;
@@ -367,6 +383,7 @@ export interface JobResultMap {
 	classify_chat_session: ClassifyChatSessionResult;
 	process_onto_braindump: OntoBraindumpProcessingResult;
 	transcribe_voice_note: VoiceNoteTranscriptionResult;
+	generate_brief_audio: GenerateBriefAudioResult;
 	buildos_homework: HomeworkJobResult;
 	buildos_tree_agent: TreeAgentJobResult;
 	build_project_context_snapshot: ProjectContextSnapshotResult;
@@ -512,6 +529,8 @@ export function isValidJobMetadata<T extends QueueJobType>(
 			return isOntoBraindumpProcessingMetadata(metadata);
 		case 'transcribe_voice_note':
 			return isVoiceNoteTranscriptionMetadata(metadata);
+		case 'generate_brief_audio':
+			return isGenerateBriefAudioMetadata(metadata);
 		case 'buildos_homework':
 			return isHomeworkMetadata(metadata);
 		case 'buildos_tree_agent':
@@ -654,6 +673,12 @@ function isVoiceNoteTranscriptionMetadata(obj: unknown): obj is VoiceNoteTranscr
 	if (!obj || typeof obj !== 'object') return false;
 	const meta = obj as Record<string, unknown>;
 	return typeof meta.voiceNoteId === 'string' && typeof meta.userId === 'string';
+}
+
+function isGenerateBriefAudioMetadata(obj: unknown): obj is GenerateBriefAudioJobMetadata {
+	if (!obj || typeof obj !== 'object') return false;
+	const meta = obj as Record<string, unknown>;
+	return typeof meta.briefId === 'string';
 }
 
 function isHomeworkMetadata(obj: unknown): obj is HomeworkJobMetadata {

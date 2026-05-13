@@ -650,7 +650,7 @@ app.get('/queue/stats', async (_req, res) => {
 // Stale jobs stats endpoint
 app.get('/queue/stale-stats', async (req, res) => {
 	try {
-		const { getStaleJobStats } = await import('./lib/utils/queueCleanup');
+		const { getStaleJobStats } = await import('./lib/utils/queueCleanup.js');
 
 		const thresholdHours = parseInt((req.query.thresholdHours as string) || '24');
 		const completedRetentionDays = parseInt(
@@ -693,7 +693,7 @@ app.get('/queue/stale-stats', async (req, res) => {
 // Manual cleanup endpoint
 app.post('/queue/cleanup', async (req, res) => {
 	try {
-		const { cleanupStaleJobs } = await import('./lib/utils/queueCleanup');
+		const { cleanupStaleJobs } = await import('./lib/utils/queueCleanup.js');
 
 		const {
 			staleThresholdHours = queueConfig.staleJobThresholdHours,

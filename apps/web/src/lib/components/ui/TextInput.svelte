@@ -6,6 +6,7 @@
 	type InputSize = 'sm' | 'md' | 'lg';
 
 	interface TextInputProps {
+		id?: string;
 		value?: string | number | null;
 		size?: InputSize;
 		error?: boolean;
@@ -22,8 +23,14 @@
 		oninput?: (event: Event) => void;
 	}
 
+	// SSR-safe per-instance id (Svelte 5.20+). Used as fallback when consumer
+	// doesn't pass `id` so error/helper aria-describedby ids don't collide
+	// when multiple TextInputs render on one page.
+	const fallbackId = $props.id();
+
 	// Svelte 5 runes: Use $props() with rest syntax, callback props instead of dispatcher
 	let {
+		id = fallbackId,
 		value = $bindable(''),
 		size = 'md',
 		error = false,
@@ -39,7 +46,10 @@
 		class: className = '',
 		oninput,
 		...restProps
-	}: TextInputProps & Omit<HTMLInputAttributes, 'size'> = $props();
+	}: TextInputProps & Omit<HTMLInputAttributes, 'size' | 'id'> = $props();
+
+	const errorId = `${id}-error`;
+	const helperId = `${id}-helper`;
 
 	// Smart inputmode detection based on type if not explicitly provided
 	let computedInputmode = $derived(
@@ -157,6 +167,7 @@
 	{/if}
 
 	<input
+		{id}
 		bind:value
 		{type}
 		{disabled}
@@ -164,11 +175,7 @@
 		enterkeyhint={computedEnterkeyhint}
 		aria-invalid={error}
 		aria-required={required}
-		aria-describedby={error && errorMessage
-			? 'input-error'
-			: helperText
-				? 'input-helper'
-				: undefined}
+		aria-describedby={error && errorMessage ? errorId : helperText ? helperId : undefined}
 		class={inputClasses}
 		{oninput}
 		{...restProps}
@@ -176,7 +183,7 @@
 </div>
 {#if error && errorMessage}
 	<p
-		id="input-error"
+		id={errorId}
 		role="alert"
 		aria-live="polite"
 		class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-destructive"
@@ -184,7 +191,7 @@
 		{errorMessage}
 	</p>
 {:else if helperText}
-	<p id="input-helper" class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-muted-foreground">
+	<p id={helperId} class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-muted-foreground">
 		{helperText}
 	</p>
 {/if}

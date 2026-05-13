@@ -41,9 +41,9 @@
 				<div class="flex items-start space-x-3">
 					<div class="flex-shrink-0">
 						<div
-							class="flex items-center justify-center w-10 h-10 rounded-full bg-primary-100 dark:bg-primary-900/30"
+							class="flex items-center justify-center w-10 h-10 rounded-full bg-info/15"
 						>
-							<Info class="w-6 h-6 text-primary-600 dark:text-primary-400" />
+							<Info class="w-6 h-6 text-info" />
 						</div>
 					</div>
 					<div class="flex-1">

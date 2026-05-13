@@ -46,6 +46,38 @@
 	- default - Main content (scrollable)
 	- footer - Footer actions
 -->
+<script lang="ts" module>
+	// Module-level open-modal stack — shared across ALL Modal instances on the
+	// page. Used to route Escape and backdrop clicks to the topmost modal only,
+	// so stacked modals don't all close on a single Escape press.
+	const modalStack: symbol[] = [];
+
+	// Background siblings of `<body>` that we marked inert when the first modal
+	// opened. Cleared when the last modal closes.
+	let inertNodes: Element[] = [];
+
+	function markBackgroundInert() {
+		if (typeof document === 'undefined') return;
+		const portalParent = document.body;
+		if (!portalParent) return;
+		inertNodes = Array.from(portalParent.children).filter(
+			(node) => !(node as HTMLElement).classList?.contains('modal-root')
+		);
+		for (const node of inertNodes) {
+			node.setAttribute('inert', '');
+			node.setAttribute('aria-hidden', 'true');
+		}
+	}
+
+	function clearBackgroundInert() {
+		for (const node of inertNodes) {
+			node.removeAttribute('inert');
+			node.removeAttribute('aria-hidden');
+		}
+		inertNodes = [];
+	}
+</script>
+
 <script lang="ts">
 	import { X } from 'lucide-svelte';
 	import { fade } from 'svelte/transition';
@@ -61,6 +93,8 @@
 		title?: string;
 		size?: 'sm' | 'md' | 'lg' | 'xl';
 		variant?: 'center' | 'bottom-sheet';
+		/** ARIA role. Use 'alertdialog' for destructive confirmations so SR announces immediately. */
+		role?: 'dialog' | 'alertdialog';
 		showCloseButton?: boolean;
 		closeOnBackdrop?: boolean;
 		closeOnEscape?: boolean;
@@ -80,6 +114,9 @@
 		footer?: Snippet;
 	}
 
+	// This instance's identity on the module-level modal stack.
+	const modalInstanceId = Symbol('modal');
+
 	// Props - Svelte 5 runes
 	let {
 		isOpen = $bindable(false),
@@ -87,6 +124,7 @@
 		title = '',
 		size = 'md',
 		variant = 'center',
+		role = 'dialog',
 		showCloseButton = true,
 		closeOnBackdrop = true,
 		closeOnEscape = true,
@@ -163,31 +201,50 @@
 	let dragTranslateY = $state(0);
 	let touchStartTarget = $state<EventTarget | null>(null);
 
-	// IDs for accessibility
-	const modalId = `modal-${Math.random().toString(36).slice(2, 11)}`;
+	// IDs for accessibility. $props.id() is SSR-safe and stable across hydration —
+	// previously this used Math.random(), which mismatched between server and client.
+	const propsId = $props.id();
+	const modalId = `modal-${propsId}`;
 	const titleId = `${modalId}-title`;
 	const contentId = `${modalId}-content`;
 
+	function isTopmostModal() {
+		return modalStack[modalStack.length - 1] === modalInstanceId;
+	}
+
 	// ==================== Event Handlers ====================
 
-	function handleBackdropClick(event: MouseEvent | TouchEvent) {
-		if (event.target === event.currentTarget && closeOnBackdrop && !persistent) {
+	/**
+	 * Outside-click dismissal.
+	 *
+	 * The overlay owns both the visual backdrop AND the click-catching role.
+	 * A click counts as "outside" when the target is not a descendant of the
+	 * dialog element — including direct clicks on the dimmed area and clicks
+	 * on the padded gutter between the dialog and the viewport edge. This is
+	 * cleaner than `target === currentTarget` (which misses the gutter) and
+	 * doesn't require the dialog to stopPropagation on its own clicks.
+	 *
+	 * Gated by `closeOnBackdrop` and `persistent`. `onBeforeClose` (called via
+	 * attemptClose) gets the final veto.
+	 */
+	function handleOutsideClick(event: MouseEvent | TouchEvent) {
+		if (!closeOnBackdrop || persistent) return;
+		// Only the topmost modal should respond to backdrop clicks — otherwise a
+		// click that bubbles to an outer modal's overlay closes the outer when
+		// the user really meant to dismiss the inner.
+		if (!isTopmostModal()) return;
+		if (!modalElement) return;
+		const target = event.target as Node | null;
+		if (target && !modalElement.contains(target)) {
 			attemptClose();
-		}
-	}
-
-	function handleModalContentClick(event: MouseEvent) {
-		event.stopPropagation();
-	}
-
-	function handleModalContentKeydown(event: KeyboardEvent) {
-		if (event.key !== 'Escape') {
-			event.stopPropagation();
 		}
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
 		if (!isOpen) return;
+		// Escape closes only the topmost modal. Without this, two stacked modals
+		// both close on a single Escape press.
+		if (!isTopmostModal()) return;
 		if (event.key === 'Escape' && closeOnEscape && !persistent) {
 			event.preventDefault();
 			attemptClose();
@@ -314,38 +371,43 @@
 
 	// ==================== Focus Management ====================
 
+	const FOCUSABLE_SELECTOR =
+		'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 	async function trapFocus() {
 		if (!modalElement) return;
 
 		await tick();
 
-		previousFocusElement = document.activeElement as HTMLElement;
-
-		const focusableElements = modalElement.querySelectorAll<HTMLElement>(
-			'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-		);
-
-		const firstFocusable = focusableElements[0];
-		const lastFocusable = focusableElements[focusableElements.length - 1];
+		const focusableElements = modalElement.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
 
 		if (focusableElements.length === 0) {
 			modalElement.focus();
 		} else {
-			firstFocusable?.focus();
+			focusableElements[0]?.focus();
 		}
 
+		// Re-query focusable elements on EVERY Tab press. Conditional content
+		// (errors appearing, sections expanding, async loads) changes which
+		// elements are focusable; caching the list once at open time traps
+		// focus on stale nodes.
 		function handleTabKey(e: KeyboardEvent) {
-			if (e.key !== 'Tab' || focusableElements.length === 0) return;
+			if (e.key !== 'Tab' || !modalElement) return;
+			const current = modalElement.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+			if (current.length === 0) return;
+			const first = current[0];
+			const last = current[current.length - 1];
+			const active = document.activeElement;
 
 			if (e.shiftKey) {
-				if (document.activeElement === firstFocusable) {
+				if (active === first || !modalElement.contains(active)) {
 					e.preventDefault();
-					lastFocusable?.focus();
+					last?.focus();
 				}
 			} else {
-				if (document.activeElement === lastFocusable) {
+				if (active === last || !modalElement.contains(active)) {
 					e.preventDefault();
-					firstFocusable?.focus();
+					first?.focus();
 				}
 			}
 		}
@@ -368,6 +430,22 @@
 		if (unlockRafId !== null) {
 			cancelAnimationFrame(unlockRafId);
 			unlockRafId = null;
+		}
+
+		// Capture the opener BEFORE awaiting tick. By the time tick() resolves,
+		// the modal is mounted and activeElement may already have shifted away
+		// (e.g. to <body>), making restoreFocus a no-op.
+		if (browser) {
+			previousFocusElement = document.activeElement as HTMLElement;
+		}
+
+		// Register on the open-modal stack so Escape and outside-click only fire
+		// on the topmost instance, and apply `inert` to background siblings the
+		// first time any modal opens.
+		const firstModal = modalStack.length === 0;
+		modalStack.push(modalInstanceId);
+		if (firstModal) {
+			markBackgroundInert();
 		}
 
 		await tick();
@@ -403,6 +481,16 @@
 		if (animationCompleteTimeoutId !== null) {
 			clearTimeout(animationCompleteTimeoutId);
 			animationCompleteTimeoutId = null;
+		}
+
+		// Pop ourselves off the open-modal stack; clear background inert if we
+		// were the last modal open.
+		const stackIndex = modalStack.lastIndexOf(modalInstanceId);
+		if (stackIndex !== -1) {
+			modalStack.splice(stackIndex, 1);
+		}
+		if (modalStack.length === 0) {
+			clearBackgroundInert();
 		}
 
 		// Defer scroll unlock to next frame so the close state/transition can render first.
@@ -444,11 +532,22 @@
 		if (focusTrapCleanup) {
 			focusTrapCleanup();
 		}
+		// Defensive: if this instance is somehow still in the stack at destroy
+		// (e.g. component unmounted while open), pop it and clear inert if it
+		// was the last one. Otherwise the next modal opens with inert siblings
+		// it didn't expect.
+		const stackIndex = modalStack.lastIndexOf(modalInstanceId);
+		if (stackIndex !== -1) {
+			modalStack.splice(stackIndex, 1);
+			if (modalStack.length === 0) {
+				clearBackgroundInert();
+			}
+		}
 		if (browser && scrollLockHeld) {
 			unlockBodyScroll();
 			scrollLockHeld = false;
-			restoreFocus();
 		}
+		restoreFocus();
 	});
 </script>
 
@@ -456,17 +555,27 @@
 
 {#if isOpen}
 	<div use:portal class="modal-root" transition:fade={{ duration: 100 }} role="presentation">
-		<!-- Backdrop with touch optimization -->
-		<div
-			class="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm z-[9998]"
-			style="touch-action: none;"
-			onclick={handleBackdropClick}
-			ontouchend={handleBackdropClick}
-			aria-hidden="true"
-		></div>
+		<!--
+			Unified overlay.
 
-		<!-- Modal Container -->
-		<div class="fixed inset-0 z-[9999] overflow-y-auto">
+			One element owns the visual backdrop AND the outside-click catcher.
+			Outside clicks dismiss via `handleOutsideClick`, which decides using
+			`modalElement.contains(event.target)` — so any click that isn't on
+			the dialog (the dimmed area OR the padded gutter) closes, and the
+			dialog itself doesn't need to stopPropagation. `overflow-y-auto`
+			lets tall dialogs scroll within this layer.
+		-->
+		<!--
+			Backdrop click only listens for `onclick`. Previously `ontouchend`
+			also called `handleOutsideClick`, which fires alongside the synthetic
+			`click` on mobile — closing the modal twice and calling `onClose`
+			twice for consumers that count closes (analytics, state cleanup).
+		-->
+		<div
+			class="modal-overlay fixed inset-0 z-[9999] overflow-y-auto bg-black/50 dark:bg-black/70 backdrop-blur-sm"
+			onclick={handleOutsideClick}
+			role="presentation"
+		>
 			<div
 				class="flex min-h-full {variantClasses.container} justify-center p-0 sm:p-3"
 				role="presentation"
@@ -500,14 +609,12 @@
 						transition: {isDragging ? 'none' : 'transform 200ms cubic-bezier(0.4, 0, 0.2, 1)'};
 						touch-action: pan-y;
 					"
-					role="dialog"
+					{role}
 					aria-modal="true"
 					aria-labelledby={title ? titleId : undefined}
 					aria-label={!title && ariaLabel ? ariaLabel : undefined}
 					aria-describedby={ariaDescribedBy || undefined}
 					tabindex="-1"
-					onclick={handleModalContentClick}
-					onkeydown={handleModalContentKeydown}
 				>
 					<!-- Drag Handle (compact, high-density design) -->
 					{#if shouldShowDragHandle}
@@ -615,6 +722,19 @@
 	@media (min-width: 640px) {
 		:global(.animate-modal-slide-up) {
 			animation: modal-scale 200ms cubic-bezier(0.4, 0, 0.2, 1);
+		}
+	}
+
+	/* Users with vestibular sensitivities: snap in without animating. */
+	@media (prefers-reduced-motion: reduce) {
+		:global(.animate-modal-slide-up),
+		:global(.animate-modal-scale) {
+			animation: none;
+		}
+
+		.modal-container {
+			transition: none !important;
+			will-change: auto !important;
 		}
 	}
 

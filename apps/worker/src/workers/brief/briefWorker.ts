@@ -14,6 +14,7 @@ import { LegacyJob } from '../shared/jobAdapter';
 import { generateOntologyDailyBrief } from './ontologyBriefGenerator';
 import { generateCorrelationId } from '@buildos/shared-utils';
 import { getStaleBriefJobDecision } from './briefDateGuard';
+import { enqueueBriefAudioIfEnabled } from '../briefAudio/enqueueBriefAudio';
 
 /**
  * Validates if a timezone string is valid
@@ -117,6 +118,18 @@ export async function processBriefJob(job: LegacyJob<BriefJobData>) {
 			job.id
 		);
 		const brief: { id: string } = { id: ontologyBrief.id };
+
+		try {
+			await enqueueBriefAudioIfEnabled({
+				briefId: brief.id,
+				userId: job.data.userId
+			});
+			await job.log(`Brief audio narration checked for brief ${brief.id}`);
+		} catch (audioError) {
+			const message = audioError instanceof Error ? audioError.message : 'Unknown error';
+			console.warn(`Failed to enqueue brief audio narration: ${message}`);
+			await job.log(`Brief audio narration enqueue failed: ${message}`);
+		}
 
 		// Check user notification preferences for daily brief delivery
 		const { data: notificationPrefs, error: notificationPrefsError } = await supabase

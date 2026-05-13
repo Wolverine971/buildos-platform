@@ -5,8 +5,14 @@
 
 	type TextareaSize = 'sm' | 'base' | 'md' | 'lg';
 
+	// SSR-safe per-instance id (Svelte 5.20+). Used as fallback when consumer
+	// doesn't pass `id` so error/helper aria-describedby ids don't collide
+	// when multiple textareas render on one page.
+	const fallbackId = $props.id();
+
 	// Svelte 5 runes: Use $props() with rest syntax
 	let {
+		id = fallbackId,
 		value = $bindable(''),
 		size = 'md',
 		error = false,
@@ -22,6 +28,7 @@
 		oninput,
 		...restProps
 	}: {
+		id?: string;
 		value?: string;
 		size?: TextareaSize;
 		error?: boolean;
@@ -35,7 +42,10 @@
 		enterkeyhint?: 'enter' | 'done' | 'go' | 'next' | 'previous' | 'search' | 'send';
 		class?: string;
 		oninput?: (event: Event) => void;
-	} & HTMLTextareaAttributes = $props();
+	} & Omit<HTMLTextareaAttributes, 'id'> = $props();
+
+	const errorId = `${id}-error`;
+	const helperId = `${id}-helper`;
 
 	// Default enterkeyhint to 'enter' for textareas (can be overridden)
 	let computedEnterkeyhint = $derived(enterkeyhint || 'enter');
@@ -229,6 +239,7 @@
 <!-- Outer wrapper -->
 <div class={wrapperClasses}>
 	<textarea
+		{id}
 		bind:this={textareaElement}
 		bind:value
 		{disabled}
@@ -236,11 +247,7 @@
 		enterkeyhint={computedEnterkeyhint}
 		aria-invalid={error}
 		aria-required={required}
-		aria-describedby={error && errorMessage
-			? 'textarea-error'
-			: helperText
-				? 'textarea-helper'
-				: undefined}
+		aria-describedby={error && errorMessage ? errorId : helperText ? helperId : undefined}
 		class={textareaClasses}
 		oninput={handleInput}
 		{...restProps}
@@ -248,7 +255,7 @@
 </div>
 {#if error && errorMessage}
 	<p
-		id="textarea-error"
+		id={errorId}
 		role="alert"
 		aria-live="polite"
 		class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-destructive"
@@ -256,7 +263,7 @@
 		{errorMessage}
 	</p>
 {:else if helperText}
-	<p id="textarea-helper" class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-muted-foreground">
+	<p id={helperId} class="mt-1 sm:mt-1.5 text-xs sm:text-sm text-muted-foreground">
 		{helperText}
 	</p>
 {/if}

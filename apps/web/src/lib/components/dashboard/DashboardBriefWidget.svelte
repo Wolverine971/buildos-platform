@@ -8,7 +8,7 @@
   - Brief data deferred - doesn't block initial page render
 -->
 <script lang="ts">
-	import { Sparkles, LoaderCircle, ChevronRight, AlertCircle, Sun } from 'lucide-svelte';
+	import { Sparkles, LoaderCircle, ChevronRight, AlertCircle, Sun, Volume2 } from 'lucide-svelte';
 	import { browser } from '$app/environment';
 	import { getContext, onMount } from 'svelte';
 	import {
@@ -161,7 +161,17 @@
 					priority_actions: ontologyBrief.priority_actions || [],
 					generation_status: ontologyBrief.generation_status,
 					created_at: ontologyBrief.created_at,
-					updated_at: ontologyBrief.updated_at
+					updated_at: ontologyBrief.updated_at,
+					audio_status: ontologyBrief.audio_status,
+					audio_storage_path: ontologyBrief.audio_storage_path,
+					audio_voice: ontologyBrief.audio_voice,
+					audio_model: ontologyBrief.audio_model,
+					audio_duration_ms: ontologyBrief.audio_duration_ms,
+					audio_generation_ms: ontologyBrief.audio_generation_ms,
+					audio_requested_at: ontologyBrief.audio_requested_at,
+					audio_generation_started_at: ontologyBrief.audio_generation_started_at,
+					audio_generated_at: ontologyBrief.audio_generated_at,
+					audio_error: ontologyBrief.audio_error
 				} as DailyBrief;
 			} else if (!ontologyError || ontologyError.code === 'PGRST116') {
 				brief = null;
@@ -297,6 +307,14 @@
 											? 'action'
 											: 'actions'}
 									</span>
+								</span>
+							{/if}
+							{#if brief.audio_status === 'ready' && brief.audio_storage_path}
+								<span
+									class="inline-flex shrink-0 items-center justify-center rounded bg-muted px-1.5 py-0.5 text-muted-foreground border border-border"
+									title="Audio narration ready"
+								>
+									<Volume2 class="h-3 w-3" />
 								</span>
 							{/if}
 						</div>

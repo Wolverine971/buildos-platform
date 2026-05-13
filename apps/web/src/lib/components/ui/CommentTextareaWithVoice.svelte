@@ -120,6 +120,16 @@
 		footer
 	}: Props = $props();
 
+	// Per-instance clientId so the singleton voiceRecordingService doesn't
+	// merge callbacks across two simultaneously-mounted comment composers.
+	const propsId = $props.id();
+	const voiceClientId = `cmtvoice-${propsId}`;
+
+	// AbortController shared by all in-flight fetches from this instance.
+	// Aborted on cleanup so resolved/rejected promises don't try to mutate
+	// state on a torn-down component.
+	let abortController: AbortController | null = null;
+
 	// Internal voice state
 	let isVoiceSupported = $state(false);
 	let isCurrentlyRecording = $state(false);
@@ -230,7 +240,7 @@
 
 	$effect(() => {
 		if (voiceInitialized) {
-			voiceRecordingService.setVocabularyTerms(vocabularyTerms);
+			voiceRecordingService.setVocabularyTerms(vocabularyTerms, voiceClientId);
 		}
 	});
 
@@ -701,9 +711,15 @@
 			formData.append('vocabularyTerms', vocabTerms);
 		}
 
+		// Lazily allocate the AbortController; recreated after each cleanup.
+		if (!abortController) {
+			abortController = new AbortController();
+		}
+
 		const response = await fetch(transcriptionEndpoint, {
 			method: 'POST',
-			body: formData
+			body: formData,
+			signal: abortController.signal
 		});
 
 		if (!response.ok) {
@@ -810,10 +826,11 @@
 				},
 				onAudioCaptured: handleAudioCaptured
 			},
-			transcriptionService
+			transcriptionService,
+			voiceClientId
 		);
 
-		const durationStore = voiceRecordingService.getRecordingDuration();
+		const durationStore = voiceRecordingService.getRecordingDuration(voiceClientId);
 		durationUnsubscribe = durationStore.subscribe((newDuration) => {
 			_recordingDuration = newDuration;
 		});
@@ -853,7 +870,7 @@
 
 		try {
 			// Pass empty string - we handle text insertion ourselves
-			await voiceRecordingService.startRecording('');
+			await voiceRecordingService.startRecording('', voiceClientId);
 			isInitializingRecording = false;
 			isCurrentlyRecording = true;
 			microphonePermissionGranted = true;
@@ -892,7 +909,7 @@
 
 		try {
 			// Pass empty string - we handle text ourselves
-			await voiceRecordingService.stopRecording('');
+			await voiceRecordingService.stopRecording('', undefined, voiceClientId);
 
 			// If we had a live transcript, insert it at cursor position now
 			if (transcriptToInsert) {
@@ -934,7 +951,12 @@
 		durationUnsubscribe = null;
 		transcriptUnsubscribe = null;
 
-		voiceRecordingService.cleanup();
+		// Cancel any in-flight transcribe fetch so its promise doesn't resolve
+		// into our $state after the component has been torn down.
+		abortController?.abort();
+		abortController = null;
+
+		voiceRecordingService.cleanup(voiceClientId);
 
 		isCurrentlyRecording = false;
 		isInitializingRecording = false;
@@ -960,12 +982,22 @@
 		}
 	}
 
-	// Global keydown handler for stopping recording
+	// Global keydown handler. Scoped so it does NOT intercept Space/Enter when
+	// the user is typing in a sibling input/textarea on the page (otherwise
+	// voice recording silently swallows every space the user types elsewhere).
 	function handleGlobalKeyDown(event: KeyboardEvent) {
-		if (isCurrentlyRecording && (event.key === ' ' || event.key === 'Enter')) {
-			event.preventDefault();
-			stopVoiceRecording();
-		}
+		if (!isCurrentlyRecording) return;
+		if (event.key !== ' ' && event.key !== 'Enter') return;
+
+		const active = document.activeElement;
+		const isTypingElsewhere =
+			active instanceof HTMLInputElement ||
+			active instanceof HTMLTextAreaElement ||
+			(active instanceof HTMLElement && active.isContentEditable);
+		if (isTypingElsewhere) return;
+
+		event.preventDefault();
+		stopVoiceRecording();
 	}
 
 	$effect(() => {

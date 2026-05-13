@@ -51,14 +51,16 @@
 		}
 	}
 
+	// Use border-l-4 (a default Tailwind class). The original used border-l-3 which
+	// isn't part of Tailwind's default config and silently fell back to no left border.
 	function getLineBorderClass(type: DocumentDiffLine['type']): string {
 		switch (type) {
 			case 'added':
-				return 'border-l-3 border-emerald-500';
+				return 'border-l-4 border-emerald-500';
 			case 'removed':
-				return 'border-l-3 border-rose-500';
+				return 'border-l-4 border-rose-500';
 			default:
-				return 'border-l-3 border-transparent';
+				return 'border-l-4 border-transparent';
 		}
 	}
 
@@ -110,19 +112,59 @@
 				<div class="font-mono text-xs leading-5 overflow-x-auto">
 					{#each field.unifiedLines as line, lineIndex (lineIndex)}
 						{#if line.type === 'separator'}
+							{@const separatorKey = `${fieldIndex}-${lineIndex}`}
+							{@const expanded = isSeparatorExpanded(fieldIndex, lineIndex)}
 							<!-- Collapsed context separator -->
 							<button
 								type="button"
 								onclick={() => toggleSeparator(fieldIndex, lineIndex)}
+								aria-expanded={expanded}
+								aria-controls={`diff-hidden-${separatorKey}`}
 								class="w-full flex items-center gap-2 px-3 py-1 bg-muted/50 border-y border-border/30 text-[10px] text-muted-foreground/60 hover:bg-muted hover:text-muted-foreground transition-colors cursor-pointer"
 							>
-								<ChevronDown class="w-3 h-3 shrink-0" />
+								<ChevronDown
+									class="w-3 h-3 shrink-0 transition-transform {expanded
+										? 'rotate-180'
+										: ''}"
+								/>
 								<span>
+									{expanded ? 'Hide' : 'Show'}
 									{line.hiddenLineCount} hidden line{line.hiddenLineCount === 1
 										? ''
 										: 's'}
 								</span>
 							</button>
+							{#if expanded && line.hiddenLines}
+								<div id={`diff-hidden-${separatorKey}`}>
+									{#each line.hiddenLines as hidden, hiddenIndex (hiddenIndex)}
+										<div
+											class="flex {getLineBgClass(
+												hidden.type
+											)} {getLineBorderClass(hidden.type)}"
+										>
+											<span
+												class="w-10 shrink-0 text-right pr-2 select-none text-[10px] tabular-nums {getGutterClass(
+													hidden.type
+												)} py-px"
+											>
+												{hidden.lineNumber ?? ''}
+											</span>
+											<span
+												class="w-4 shrink-0 text-center select-none font-bold {getGutterClass(
+													hidden.type
+												)} py-px"
+											>
+												{getLineGutterSymbol(hidden.type)}
+											</span>
+											<span
+												class="flex-1 px-2 py-px whitespace-pre-wrap break-words"
+											>
+												{hidden.content}
+											</span>
+										</div>
+									{/each}
+								</div>
+							{/if}
 						{:else}
 							<div
 								class="flex {getLineBgClass(line.type)} {getLineBorderClass(

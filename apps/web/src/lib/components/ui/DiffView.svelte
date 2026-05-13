@@ -32,6 +32,20 @@
 				return 'bg-muted/50';
 		}
 	}
+
+	// Pair color with a glyph so the diff stays readable for colorblind users
+	// and screen readers (WCAG 1.4.1).
+	function getGutterSymbol(line: DiffLine): string {
+		if (line.type === 'added') return '+';
+		if (line.type === 'removed') return '−';
+		return ' ';
+	}
+
+	function getGutterColorClass(line: DiffLine): string {
+		if (line.type === 'added') return 'text-emerald-600 dark:text-emerald-400';
+		if (line.type === 'removed') return 'text-rose-600 dark:text-rose-400';
+		return 'text-muted-foreground/50';
+	}
 </script>
 
 {#if diffs.length === 0}
@@ -59,7 +73,10 @@
 					class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-border"
 				>
 					<!-- Old Version -->
-					<div class="p-3 sm:p-4">
+					<section
+						class="p-3 sm:p-4"
+						aria-label={`${diff.label} — ${fromVersionLabel} (removed lines)`}
+					>
 						<h4
 							class="text-xs sm:text-sm font-medium text-rose-600 dark:text-rose-400 mb-2 sm:mb-3"
 						>
@@ -67,11 +84,20 @@
 						</h4>
 						<div class="font-mono text-xs sm:text-sm space-y-1 max-h-96 overflow-auto">
 							{#each diff.oldLines as line (line.lineNumber)}
-								<div class="flex">
+								<div class="flex items-stretch">
 									<span
-										class="w-6 sm:w-8 text-muted-foreground text-xs pr-1 sm:pr-2 flex-shrink-0"
+										class="w-6 sm:w-8 text-muted-foreground text-xs pr-1 sm:pr-2 flex-shrink-0 text-right"
+										aria-hidden="true"
 									>
 										{line.lineNumber}
+									</span>
+									<span
+										class="w-4 shrink-0 select-none text-center font-bold {getGutterColorClass(
+											line
+										)}"
+										aria-hidden="true"
+									>
+										{getGutterSymbol(line)}
 									</span>
 									<pre
 										class="flex-1 px-1 sm:px-2 py-1 {getLineClass(
@@ -80,10 +106,13 @@
 								</div>
 							{/each}
 						</div>
-					</div>
+					</section>
 
 					<!-- New Version -->
-					<div class="p-3 sm:p-4">
+					<section
+						class="p-3 sm:p-4"
+						aria-label={`${diff.label} — ${toVersionLabel} (added lines)`}
+					>
 						<h4
 							class="text-xs sm:text-sm font-medium text-emerald-600 dark:text-emerald-400 mb-2 sm:mb-3"
 						>
@@ -91,11 +120,20 @@
 						</h4>
 						<div class="font-mono text-xs sm:text-sm space-y-1 max-h-96 overflow-auto">
 							{#each diff.newLines as line (line.lineNumber)}
-								<div class="flex">
+								<div class="flex items-stretch">
 									<span
-										class="w-6 sm:w-8 text-muted-foreground text-xs pr-1 sm:pr-2 flex-shrink-0"
+										class="w-6 sm:w-8 text-muted-foreground text-xs pr-1 sm:pr-2 flex-shrink-0 text-right"
+										aria-hidden="true"
 									>
 										{line.lineNumber}
+									</span>
+									<span
+										class="w-4 shrink-0 select-none text-center font-bold {getGutterColorClass(
+											line
+										)}"
+										aria-hidden="true"
+									>
+										{getGutterSymbol(line)}
 									</span>
 									<pre
 										class="flex-1 px-1 sm:px-2 py-1 {getLineClass(
@@ -104,7 +142,7 @@
 								</div>
 							{/each}
 						</div>
-					</div>
+					</section>
 				</div>
 			</div>
 		{/each}

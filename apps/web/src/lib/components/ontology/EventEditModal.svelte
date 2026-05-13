@@ -20,16 +20,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { format } from 'date-fns';
-	import {
-		Loader,
-		Save,
-		Trash2,
-		Calendar,
-		X,
-		ExternalLink,
-		ChevronDown,
-		FileText
-	} from 'lucide-svelte';
+	import { Loader, Save, Trash2, Calendar, X, ExternalLink, ChevronDown } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -510,33 +501,15 @@
 							class="space-y-3 sm:space-y-4"
 						>
 							<Card variant="elevated" class="wt-paper">
-								<CardHeader variant="accent" texture="strip">
-									<div
-										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-									>
-										<div class="min-w-0">
-											<div class="flex items-center gap-2">
-												<FileText class="h-4 w-4 text-accent" />
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.18em] text-accent"
-												>
-													Event Details
-												</p>
-											</div>
-											<h3 class="mt-1 text-sm font-semibold text-foreground">
-												What this event is about
-											</h3>
-											<p class="mt-1 text-xs text-muted-foreground">
-												Title, description, and location for the event.
-											</p>
+								{#if hasCalendarLink}
+									<CardHeader variant="accent" texture="strip">
+										<div
+											class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"
+										>
+											<Badge variant="success" size="sm">Synced</Badge>
 										</div>
-										<div class="flex flex-wrap items-center gap-1.5">
-											{#if hasCalendarLink}
-												<Badge variant="success" size="sm">Synced</Badge>
-											{/if}
-										</div>
-									</div>
-								</CardHeader>
+									</CardHeader>
+								{/if}
 								<CardBody class="space-y-4">
 									<FormField
 										label="Event Title"

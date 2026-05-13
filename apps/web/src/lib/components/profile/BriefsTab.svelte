@@ -17,7 +17,9 @@
 		XCircle,
 		RefreshCw,
 		CircleAlert,
-		Mail
+		Mail,
+		Volume2,
+		Check
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
@@ -30,11 +32,18 @@
 	import CheckboxField from './_shared/CheckboxField.svelte';
 
 	interface Props {
+		isAdmin?: boolean;
+		initialVoiceNarrationEnabled?: boolean;
 		onsuccess?: (event: { message: string }) => void;
 		onerror?: (event: { message: string }) => void;
 	}
 
-	let { onsuccess, onerror }: Props = $props();
+	let {
+		isAdmin = false,
+		initialVoiceNarrationEnabled = false,
+		onsuccess,
+		onerror
+	}: Props = $props();
 
 	// State
 	let editingBriefPreferences = $state(false);
@@ -46,6 +55,8 @@
 		is_active: true
 	});
 	let refreshingJobs = $state(false);
+	let voiceNarrationEnabled = $state(initialVoiceNarrationEnabled);
+	let voiceNarrationSaving = $state(false);
 
 	// Confirmation modal state
 	let showResetConfirmation = $state(false);
@@ -247,6 +258,41 @@
 			hour: 'numeric',
 			minute: '2-digit'
 		});
+	}
+
+	async function saveVoiceNarration(enabled: boolean) {
+		if (!isAdmin || voiceNarrationSaving) return;
+
+		const previousValue = voiceNarrationEnabled;
+		voiceNarrationEnabled = enabled;
+		voiceNarrationSaving = true;
+
+		try {
+			const response = await fetch('/api/users/voice-narration', {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ enabled })
+			});
+
+			const result = await response.json().catch(() => null);
+			if (!response.ok || !result?.success) {
+				throw new Error(result?.message || 'Failed to update voice narration');
+			}
+
+			voiceNarrationEnabled = Boolean(result.data?.voice_narration_enabled);
+			onsuccess?.({
+				message: voiceNarrationEnabled
+					? 'Voice narration enabled for future briefs'
+					: 'Voice narration disabled'
+			});
+		} catch (error) {
+			voiceNarrationEnabled = previousValue;
+			onerror?.({
+				message: error instanceof Error ? error.message : 'Failed to update voice narration'
+			});
+		} finally {
+			voiceNarrationSaving = false;
+		}
 	}
 </script>
 
@@ -463,6 +509,65 @@
 							</p>
 						</div>
 					</div>
+				{/if}
+			</div>
+		{/if}
+	</SettingsCard>
+
+	<!-- Voice Narration -->
+	<SettingsCard
+		title="Voice Narration"
+		description="Generate playable audio for future daily briefs"
+		icon={Volume2}
+		labelledById="voice-narration-heading"
+	>
+		{#snippet actions()}
+			<Badge variant={voiceNarrationEnabled ? 'success' : 'default'} size="sm">
+				{voiceNarrationEnabled ? 'Enabled' : 'Off'}
+			</Badge>
+		{/snippet}
+
+		{#if !isAdmin}
+			<div class="p-3 bg-muted border border-border rounded-lg">
+				<p class="text-sm text-muted-foreground">
+					Voice narration is currently in admin-only alpha.
+				</p>
+			</div>
+		{:else}
+			<div class="space-y-3">
+				<label
+					class="flex items-start gap-3 p-3 rounded-lg border border-border bg-card hover:border-accent/40 hover:bg-muted/30 cursor-pointer transition-colors duration-200 {voiceNarrationSaving
+						? 'opacity-70 cursor-wait'
+						: ''}"
+				>
+					<span class="relative inline-flex flex-shrink-0 mt-0.5">
+						<input
+							type="checkbox"
+							checked={voiceNarrationEnabled}
+							disabled={voiceNarrationSaving}
+							onchange={(event) =>
+								saveVoiceNarration(
+									(event.currentTarget as HTMLInputElement).checked
+								)}
+							class="peer appearance-none w-4 h-4 rounded border border-border bg-background checked:bg-accent checked:border-accent focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 transition-colors duration-200 disabled:opacity-50"
+						/>
+						<Check
+							class="w-3 h-3 text-accent-foreground absolute top-0.5 left-0.5 pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity duration-150"
+						/>
+					</span>
+					<span class="flex-1 min-w-0">
+						<span class="block text-sm font-medium text-foreground leading-snug">
+							Create audio narration for new briefs
+						</span>
+						<span class="block text-xs text-muted-foreground mt-0.5 leading-relaxed">
+							Audio is generated after the brief completes and appears in the brief
+							modal when ready.
+						</span>
+					</span>
+				</label>
+
+				{#if voiceNarrationSaving}
+					<p class="text-xs text-muted-foreground">Saving narration preference...</p>
 				{/if}
 			</div>
 		{/if}

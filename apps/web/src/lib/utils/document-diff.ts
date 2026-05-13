@@ -23,6 +23,8 @@ export interface DocumentDiffLine {
 	wordSpans?: DiffWordSpan[];
 	/** Number of hidden lines (only for separator lines) */
 	hiddenLineCount?: number;
+	/** The actual hidden lines collapsed into this separator. Used to expand on click. */
+	hiddenLines?: DocumentDiffLine[];
 }
 
 export interface DocumentFieldDiff {
@@ -417,11 +419,12 @@ function collapseContext(lines: DocumentDiffLine[], contextLines: number): Docum
 		if (keepSet.has(i)) {
 			// Check if there's a gap since the last kept line
 			if (lastKeptIndex >= 0 && i - lastKeptIndex > 1) {
-				const hiddenCount = i - lastKeptIndex - 1;
+				const hiddenLines = lines.slice(lastKeptIndex + 1, i);
 				result.push({
 					type: 'separator',
 					content: '',
-					hiddenLineCount: hiddenCount
+					hiddenLineCount: hiddenLines.length,
+					hiddenLines
 				});
 			}
 			result.push(lines[i]!);
@@ -433,10 +436,12 @@ function collapseContext(lines: DocumentDiffLine[], contextLines: number): Docum
 	if (changedIndices.length > 0) {
 		const firstKeptIndex = Math.max(0, changedIndices[0]! - contextLines);
 		if (firstKeptIndex > 0) {
+			const hiddenLines = lines.slice(0, firstKeptIndex);
 			result.unshift({
 				type: 'separator',
 				content: '',
-				hiddenLineCount: firstKeptIndex
+				hiddenLineCount: hiddenLines.length,
+				hiddenLines
 			});
 		}
 	}
@@ -446,11 +451,12 @@ function collapseContext(lines: DocumentDiffLine[], contextLines: number): Docum
 		const lastChangeIndex = changedIndices[changedIndices.length - 1]!;
 		const lastContextIndex = Math.min(lines.length - 1, lastChangeIndex + contextLines);
 		if (lastContextIndex < lines.length - 1) {
-			const hiddenCount = lines.length - 1 - lastContextIndex;
+			const hiddenLines = lines.slice(lastContextIndex + 1);
 			result.push({
 				type: 'separator',
 				content: '',
-				hiddenLineCount: hiddenCount
+				hiddenLineCount: hiddenLines.length,
+				hiddenLines
 			});
 		}
 	}

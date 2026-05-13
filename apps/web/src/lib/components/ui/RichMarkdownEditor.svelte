@@ -154,6 +154,11 @@
 	const editorId = $derived(id ?? generatedId);
 	const voiceClientId = `${generatedId}-voice`;
 
+	// AbortController shared by all in-flight fetches from this instance.
+	// Aborted in cleanupVoice so resolved/rejected promises don't try to mutate
+	// state on a torn-down component.
+	let abortController: AbortController | null = null;
+
 	// ============================================
 	// Voice Recording State
 	// ============================================
@@ -901,9 +906,15 @@
 			formData.append('vocabularyTerms', vocabTerms);
 		}
 
+		// Lazily allocate the AbortController; recreated after each cleanup.
+		if (!abortController) {
+			abortController = new AbortController();
+		}
+
 		const response = await fetch(transcriptionEndpoint, {
 			method: 'POST',
-			body: formData
+			body: formData,
+			signal: abortController.signal
 		});
 
 		if (!response.ok) {
@@ -1172,6 +1183,11 @@
 		durationUnsubscribe = null;
 		transcriptUnsubscribe = null;
 
+		// Cancel any in-flight transcribe fetch so its promise doesn't resolve
+		// into our $state after the component has been torn down.
+		abortController?.abort();
+		abortController = null;
+
 		voiceRecordingService.cleanup(voiceClientId);
 
 		isCurrentlyRecording = false;
@@ -1203,12 +1219,22 @@
 	// ============================================
 	// Keyboard Shortcuts
 	// ============================================
-	// Global keydown handler for stopping recording
+	// Global keydown handler. Scoped so it does NOT intercept Space/Enter when
+	// the user is typing in a sibling input/textarea on the page (otherwise
+	// voice recording silently swallows every space the user types elsewhere).
 	function handleGlobalKeyDown(event: KeyboardEvent) {
-		if (isCurrentlyRecording && (event.key === ' ' || event.key === 'Enter')) {
-			event.preventDefault();
-			stopVoiceRecording();
-		}
+		if (!isCurrentlyRecording) return;
+		if (event.key !== ' ' && event.key !== 'Enter') return;
+
+		const active = document.activeElement;
+		const isTypingElsewhere =
+			active instanceof HTMLInputElement ||
+			active instanceof HTMLTextAreaElement ||
+			(active instanceof HTMLElement && active.isContentEditable);
+		if (isTypingElsewhere) return;
+
+		event.preventDefault();
+		stopVoiceRecording();
 	}
 
 	$effect(() => {

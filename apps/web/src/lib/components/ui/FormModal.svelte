@@ -114,6 +114,7 @@
 
 	let loading = $state(false);
 	let errors = $state<string[]>([]);
+	let fieldErrors = $state<Record<string, string>>({});
 	let formData = $state<Record<string, any>>({});
 	let lastOpenState = $state(false);
 	let hasInitialized = $state(false);
@@ -161,17 +162,18 @@
 	});
 
 	async function handleDelete() {
+		if (loading) return;
 		if ((!formData.id && !initialData.id) || !onDelete) {
 			return;
 		}
 
 		loading = true;
 		errors = [];
+		fieldErrors = {};
 
 		try {
 			const idToDelete = formData.id || initialData.id;
 			await onDelete(idToDelete);
-			// onClose();
 		} catch (error) {
 			errors = [(error as Error).message || 'Failed to delete.'];
 		} finally {
@@ -181,11 +183,16 @@
 
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
+		// Guard against double-submit when Enter is pressed twice before loading flips.
+		if (loading) return;
 		loading = true;
 		errors = [];
+		fieldErrors = {};
 
-		// Validate required fields
+		// Validate required fields. Track per-field errors so each input can pair with
+		// aria-invalid / aria-describedby for the screen reader.
 		const validationErrors: string[] = [];
+		const nextFieldErrors: Record<string, string> = {};
 		for (const [field, config] of Object.entries(formConfig)) {
 			if (config.required) {
 				const value = formData[field];
@@ -197,13 +204,16 @@
 					(typeof value === 'string' && !value.trim());
 
 				if (isEmpty) {
-					validationErrors.push(`${config.label} is required`);
+					const message = `${config.label} is required`;
+					validationErrors.push(message);
+					nextFieldErrors[field] = message;
 				}
 			}
 		}
 
 		if (validationErrors.length > 0) {
 			errors = validationErrors;
+			fieldErrors = nextFieldErrors;
 			loading = false;
 			return;
 		}
@@ -262,19 +272,6 @@
 		if (!loading) {
 			onClose();
 		}
-	}
-
-	function roundToNearestFifteen(date: Date): Date {
-		const minutes = date.getMinutes();
-		const remainder = minutes % 15;
-
-		// Round to nearest (not always up)
-		const roundedMinutes = remainder < 8 ? minutes - remainder : minutes + (15 - remainder);
-
-		const newDate = new Date(date);
-		newDate.setMinutes(roundedMinutes, 0, 0);
-
-		return newDate;
 	}
 
 	function getFieldValue(field: string): string {
@@ -387,7 +384,7 @@
 							type="button"
 							onclick={handleClose}
 							disabled={loading}
-							class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+							class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 							aria-label="Close modal"
 						>
 							<X class="h-4 w-4" />
@@ -421,6 +418,8 @@
 			<div class="space-y-4 overflow-y-auto px-4 py-4 flex-1 min-h-0 bg-background">
 				{#each Object.entries(formConfig) as [field, config] (field)}
 					{@const FieldIcon = getFieldIcon(field, config)}
+					{@const fieldError = fieldErrors[field]}
+					{@const hasFieldError = Boolean(fieldError)}
 
 					<!-- Inkprint field card - flat design with semantic texture -->
 					<div
@@ -483,6 +482,9 @@
 										rows={config.rows || 3}
 										disabled={loading}
 										placeholder={config.placeholder || ''}
+										error={hasFieldError}
+										errorMessage={fieldError}
+										required={config.required || false}
 										size="md"
 									/>
 								{/if}
@@ -492,6 +494,9 @@
 									value={formData[field] || ''}
 									onchange={(value) => handleFieldChange(field, value)}
 									disabled={loading}
+									error={hasFieldError}
+									errorMessage={fieldError}
+									required={config.required || false}
 									size="md"
 								>
 									<option value="">Select {config.label}</option>
@@ -515,6 +520,9 @@
 									value={getFieldValue(field)}
 									oninput={(e) => handleFieldChange(field, getEventValue(e))}
 									disabled={loading}
+									error={hasFieldError}
+									errorMessage={fieldError}
+									required={config.required || false}
 									size="md"
 								/>
 							{:else if config.type === 'datetime' || config.type === 'datetime-local'}
@@ -524,6 +532,9 @@
 									value={getFieldValue(field)}
 									oninput={(e) => handleDateTimeChange(field, e)}
 									disabled={loading}
+									error={hasFieldError}
+									errorMessage={fieldError}
+									required={config.required || false}
 									size="md"
 								/>
 							{:else if config.type === 'number'}
@@ -538,6 +549,9 @@
 									max={config.max}
 									disabled={loading}
 									placeholder={config.placeholder || ''}
+									error={hasFieldError}
+									errorMessage={fieldError}
+									required={config.required || false}
 									size="md"
 								/>
 							{:else if config.type === 'checkbox'}
@@ -546,11 +560,13 @@
 										id={`field-${field}`}
 										type="checkbox"
 										checked={formData[field] || false}
-										aria-invalid={false}
+										aria-invalid={hasFieldError}
 										aria-required={config.required || false}
-										aria-describedby={config.description
-											? `field-${field}-description`
-											: undefined}
+										aria-describedby={hasFieldError
+											? `field-${field}-error`
+											: config.description
+												? `field-${field}-description`
+												: undefined}
 										onchange={(e) => {
 											const target = e.target as HTMLInputElement | null;
 											handleFieldChange(
@@ -571,6 +587,15 @@
 										</label>
 									{/if}
 								</div>
+								{#if hasFieldError}
+									<p
+										id={`field-${field}-error`}
+										class="mt-1 text-xs sm:text-sm text-destructive"
+										role="alert"
+									>
+										{fieldError}
+									</p>
+								{/if}
 							{:else if config.type === 'tags'}
 								<TextInput
 									id={`field-${field}`}
@@ -580,6 +605,9 @@
 									disabled={loading}
 									placeholder={config.placeholder ||
 										'Enter tags separated by commas'}
+									error={hasFieldError}
+									errorMessage={fieldError}
+									required={config.required || false}
 									size="md"
 								/>
 							{:else}
@@ -590,6 +618,9 @@
 									oninput={(e) => handleFieldChange(field, getEventValue(e))}
 									disabled={loading}
 									placeholder={config.placeholder || ''}
+									error={hasFieldError}
+									errorMessage={fieldError}
+									required={config.required || false}
 									size="md"
 								/>
 							{/if}

@@ -23,6 +23,16 @@ export interface DailyBrief {
 	metadata?: any;
 	created_at?: string;
 	updated_at?: string;
+	audio_status?: 'none' | 'pending' | 'generating' | 'ready' | 'failed' | string | null;
+	audio_storage_path?: string | null;
+	audio_voice?: string | null;
+	audio_model?: string | null;
+	audio_duration_ms?: number | null;
+	audio_generation_ms?: number | null;
+	audio_requested_at?: string | null;
+	audio_generation_started_at?: string | null;
+	audio_generated_at?: string | null;
+	audio_error?: string | null;
 
 	// Synthesized by ontology mappers — not columns on `daily_briefs`.
 	chat_brief_id?: string;

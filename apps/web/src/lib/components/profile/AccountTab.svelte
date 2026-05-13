@@ -336,7 +336,7 @@
 	<TabNav
 		tabs={sectionTabs}
 		activeTab={activeSection}
-		onchange={(event) => switchSection(event.detail as 'profile' | 'password' | 'danger')}
+		onchange={(tabId) => switchSection(tabId as 'profile' | 'password' | 'danger')}
 		ariaLabel="Account sections"
 	/>
 

@@ -22,16 +22,7 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import {
-		Save,
-		Loader,
-		Trash2,
-		Target,
-		X,
-		ChevronDown,
-		FileText,
-		CalendarRange
-	} from 'lucide-svelte';
+	import { Save, Loader, Trash2, Target, X, ChevronDown, CalendarRange } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -523,25 +514,8 @@
 							<Card variant="elevated" class="wt-paper">
 								<CardHeader variant="accent" texture="strip">
 									<div
-										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+										class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"
 									>
-										<div class="min-w-0">
-											<div class="flex items-center gap-2">
-												<FileText class="h-4 w-4 text-accent" />
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.18em] text-accent"
-												>
-													Overview
-												</p>
-											</div>
-											<h3 class="mt-1 text-sm font-semibold text-foreground">
-												What this goal is and what "achieved" looks like
-											</h3>
-											<p class="mt-1 text-xs text-muted-foreground">
-												Lead with the name and supporting context so the
-												goal reads clearly at a glance.
-											</p>
-										</div>
 										<div class="flex flex-wrap items-center gap-1.5">
 											<Badge variant={stateMeta.variant} size="sm"
 												>{stateMeta.label}</Badge

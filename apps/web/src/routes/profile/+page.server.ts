@@ -33,6 +33,7 @@ type PageLoadReturn = {
 	projectTemplates: Database['public']['Tables']['project_brief_templates']['Row'][];
 	completedOnboarding: boolean;
 	isAdmin: boolean;
+	voiceNarrationEnabled: boolean;
 	justCompletedOnboarding: boolean;
 	activeTab: string;
 	subscriptionDetails: SubscriptionDetails | null;
@@ -92,15 +93,25 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 		// Get user metadata
 		supabase
 			.from('users')
-			.select('onboarding_completed_at, is_admin')
+			.select('onboarding_completed_at, is_admin, voice_narration_enabled')
 			.eq('id', user.id)
 			.single()
 			.then(({ data, error }) => {
 				if (error) {
 					console.error('Error fetching user data:', error);
-					return { onboarding_completed_at: null, is_admin: false };
+					return {
+						onboarding_completed_at: null,
+						is_admin: false,
+						voice_narration_enabled: false
+					};
 				}
-				return data || { onboarding_completed_at: null, is_admin: false };
+				return (
+					data || {
+						onboarding_completed_at: null,
+						is_admin: false,
+						voice_narration_enabled: false
+					}
+				);
 			}),
 
 		// Get active subscription (only when Stripe is enabled)
@@ -212,6 +223,7 @@ export const load = async (event: RequestEvent): Promise<PageLoadReturn> => {
 		projectTemplates,
 		completedOnboarding,
 		isAdmin: userData.is_admin ?? user.is_admin ?? false,
+		voiceNarrationEnabled: userData.voice_narration_enabled ?? false,
 		justCompletedOnboarding,
 		activeTab, // Pass the active tab to the client
 		subscriptionDetails,

@@ -23,17 +23,7 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import {
-		Save,
-		Loader,
-		Trash2,
-		Flag,
-		Calendar,
-		Clock,
-		X,
-		ChevronDown,
-		FileText
-	} from 'lucide-svelte';
+	import { Save, Loader, Trash2, Flag, Calendar, Clock, X, ChevronDown } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -513,25 +503,8 @@
 							<Card variant="elevated" class="wt-paper">
 								<CardHeader variant="accent" texture="strip">
 									<div
-										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+										class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"
 									>
-										<div class="min-w-0">
-											<div class="flex items-center gap-2">
-												<FileText class="h-4 w-4 text-accent" />
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.18em] text-accent"
-												>
-													Overview
-												</p>
-											</div>
-											<h3 class="mt-1 text-sm font-semibold text-foreground">
-												What this milestone marks and when it's due
-											</h3>
-											<p class="mt-1 text-xs text-muted-foreground">
-												Define the milestone and its deadline so progress is
-												trackable.
-											</p>
-										</div>
 										<Badge variant={milestoneStateMeta.variant} size="sm"
 											>{milestoneStateMeta.label}</Badge
 										>

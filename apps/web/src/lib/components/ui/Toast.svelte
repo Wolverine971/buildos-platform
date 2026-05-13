@@ -3,7 +3,6 @@
 	import type { Toast } from '$lib/stores/toast.store';
 	import { toastService } from '$lib/stores/toast.store';
 	import { X, Check, AlertTriangle, AlertCircle, Info } from 'lucide-svelte';
-	import { onMount } from 'svelte';
 
 	interface Props {
 		toast: Toast;
@@ -82,8 +81,16 @@
 
 	let config = $derived(typeConfig[toast.type]);
 
+	// Errors and warnings should interrupt screen readers; success/info should not.
+	const isAssertive = $derived(toast.type === 'error' || toast.type === 'warning');
+	const ariaRole = $derived(isAssertive ? 'alert' : 'status');
+	const ariaLive = $derived(isAssertive ? 'assertive' : 'polite');
+
+	// Tracked so the swipe-dismiss animation can be cancelled on unmount.
+	let swipeDismissTimeoutId: ReturnType<typeof setTimeout> | undefined;
+
 	// Progress bar countdown (visual only - store handles actual dismissal)
-	onMount(() => {
+	$effect(() => {
 		if (duration > 0) {
 			progressInterval = setInterval(() => {
 				if (!isPaused) {
@@ -99,6 +106,7 @@
 
 		return () => {
 			if (progressInterval) clearInterval(progressInterval);
+			if (swipeDismissTimeoutId) clearTimeout(swipeDismissTimeoutId);
 		};
 	});
 
@@ -127,7 +135,7 @@
 		if (translateX > threshold) {
 			// Animate out and dismiss
 			translateX = 400;
-			setTimeout(handleDismiss, 150);
+			swipeDismissTimeoutId = setTimeout(handleDismiss, 150);
 		} else {
 			// Snap back
 			translateX = 0;
@@ -169,13 +177,15 @@
 	style="transform: translateX({translateX}px); opacity: {translateX > 0
 		? 1 - translateX / 400
 		: 1}"
-	role="alert"
-	aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
+	role={ariaRole}
+	aria-live={ariaLive}
 	ontouchstart={handleTouchStart}
 	ontouchmove={handleTouchMove}
 	ontouchend={handleTouchEnd}
 	onmouseenter={handleMouseEnter}
 	onmouseleave={handleMouseLeave}
+	onfocusin={handleMouseEnter}
+	onfocusout={handleMouseLeave}
 >
 	<!-- Icon -->
 	<div
@@ -217,6 +227,7 @@
 	<!-- Dismiss button -->
 	{#if toast.dismissible}
 		<button
+			type="button"
 			onclick={handleDismiss}
 			class="
 				flex-shrink-0

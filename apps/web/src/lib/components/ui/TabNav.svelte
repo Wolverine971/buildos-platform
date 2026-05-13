@@ -1,11 +1,11 @@
 <!-- apps/web/src/lib/components/ui/TabNav.svelte -->
 <script lang="ts" module>
-	import type { ComponentType } from 'svelte';
+	import type { Component } from 'svelte';
 
 	export interface Tab {
 		id: string;
 		label: string;
-		icon?: ComponentType;
+		icon?: Component<any>;
 		count?: number;
 		hideCount?: boolean;
 	}
@@ -18,7 +18,7 @@
 		containerClass?: string;
 		navClass?: string;
 		ariaLabel?: string;
-		onchange?: (event: { detail: string }) => void;
+		onchange?: (tabId: string) => void;
 	}
 
 	let {
@@ -30,22 +30,60 @@
 		onchange
 	}: Props = $props();
 
+	let tabButtons: HTMLButtonElement[] = $state([]);
+
 	function handleTabClick(tabId: string) {
 		if (tabId !== activeTab) {
-			onchange?.({ detail: tabId });
+			onchange?.(tabId);
+		}
+	}
+
+	// WAI-ARIA tab pattern: Left/Right wrap, Home/End jump to ends.
+	// The roving tabindex (tabindex=0 on selected tab, -1 on the rest) makes
+	// the tablist a single Tab stop and arrow keys move between tabs.
+	function handleTabKeydown(event: KeyboardEvent, currentIndex: number) {
+		if (tabs.length === 0) return;
+
+		let targetIndex: number | null = null;
+		switch (event.key) {
+			case 'ArrowLeft':
+				targetIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+				break;
+			case 'ArrowRight':
+				targetIndex = (currentIndex + 1) % tabs.length;
+				break;
+			case 'Home':
+				targetIndex = 0;
+				break;
+			case 'End':
+				targetIndex = tabs.length - 1;
+				break;
+			default:
+				return;
+		}
+
+		event.preventDefault();
+		const targetTab = tabs[targetIndex];
+		const targetButton = tabButtons[targetIndex];
+		if (targetTab && targetButton) {
+			handleTabClick(targetTab.id);
+			targetButton.focus();
 		}
 	}
 </script>
 
 <div class="tab-container {containerClass}">
 	<div class="tab-nav {navClass}" role="tablist" aria-label={ariaLabel}>
-		{#each tabs as tab (tab.id)}
+		{#each tabs as tab, index (tab.id)}
 			<button
+				bind:this={tabButtons[index]}
 				type="button"
 				role="tab"
 				aria-selected={activeTab === tab.id}
 				aria-controls="{tab.id}-panel"
+				tabindex={activeTab === tab.id ? 0 : -1}
 				onclick={() => handleTabClick(tab.id)}
+				onkeydown={(e) => handleTabKeydown(e, index)}
 				class="tab-button {activeTab === tab.id ? 'tab-active' : 'tab-inactive'}"
 			>
 				{#if tab.icon}

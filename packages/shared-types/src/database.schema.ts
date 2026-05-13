@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-05-13T01:31:54.363Z
+// Generated on: 2026-05-13T15:47:48.231Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1891,6 +1891,16 @@ export type DatabaseSchema = {
 	};
 	ontology_daily_briefs: {
 		actor_id: string;
+		audio_duration_ms: number | null;
+		audio_error: string | null;
+		audio_generated_at: string | null;
+		audio_generation_ms: number | null;
+		audio_generation_started_at: string | null;
+		audio_model: string | null;
+		audio_requested_at: string | null;
+		audio_status: string;
+		audio_storage_path: string | null;
+		audio_voice: string | null;
 		brief_date: string;
 		created_at: string;
 		executive_summary: string;
@@ -3044,6 +3054,7 @@ export type DatabaseSchema = {
 		trial_ends_at: string | null;
 		updated_at: string;
 		usage_archetype: string | null;
+		voice_narration_enabled: boolean;
 		username: string | null;
 	};
 	visitors: {

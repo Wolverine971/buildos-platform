@@ -19,6 +19,7 @@
 
 	// Svelte 5 runes: Use $props() with rest syntax instead of export let and $$restProps
 	let {
+		type = 'button',
 		variant = 'primary',
 		size = 'md',
 		loading = false,
@@ -31,6 +32,7 @@
 		children,
 		...restProps
 	}: {
+		type?: 'button' | 'submit' | 'reset';
 		variant?: ButtonVariant;
 		size?: ButtonSize;
 		loading?: boolean;
@@ -41,7 +43,7 @@
 		btnType?: 'container' | 'regular';
 		class?: string;
 		children?: Snippet;
-	} & HTMLButtonAttributes = $props();
+	} & Omit<HTMLButtonAttributes, 'type'> = $props();
 
 	// Size classes ensuring minimum touch target of 44x44px per WCAG AA standards
 	const sizeClasses = {
@@ -152,13 +154,13 @@
 	let iconSpacingClass = $derived('gap-2'); // Consistent 8px spacing for all sizes
 </script>
 
-<button type="button" class={buttonClasses} disabled={disabled || loading} {...restProps}>
+<button {type} class={buttonClasses} disabled={disabled || loading} {...restProps}>
 	{#if btnType === 'container'}
 		{@render children?.()}
 	{:else}
 		<span class="inline-flex items-center {iconSpacingClass}">
 			{#if loading}
-				<LoaderCircle class="{iconClass} animate-spin" />
+				<LoaderCircle class={iconClass} />
 			{:else if icon && iconPosition === 'left'}
 				{@const IconComponent = icon}
 				<IconComponent class={iconClass} />

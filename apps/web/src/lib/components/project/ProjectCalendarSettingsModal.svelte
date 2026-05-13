@@ -256,8 +256,8 @@
 		void loadProjectCalendar(selectedDate, selectedView);
 	});
 
-	function handleTabChange(event: { detail: string }) {
-		activeTab = event.detail as CalendarModalTab;
+	function handleTabChange(tabId: string) {
+		activeTab = tabId as CalendarModalTab;
 	}
 
 	function handleCalendarDateChange(date: Date) {

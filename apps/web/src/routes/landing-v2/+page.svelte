@@ -1158,42 +1158,7 @@
 		</div>
 	</section>
 
-	<!-- ─── §07 case study placeholder ──────────────────────────────── -->
-	<section class="border-b border-border">
-		<div class="mx-auto max-w-6xl px-4 py-12 sm:py-14">
-			<div class="text-center mb-6">
-				<div
-					class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
-				>
-					<span class="h-px w-10 bg-border"></span>
-					<span>§07 — Case study</span>
-					<span class="h-px w-10 bg-border"></span>
-				</div>
-			</div>
-
-			<article
-				class="rounded-lg border border-dashed border-border bg-card shadow-ink tx tx-thread tx-weak p-6 sm:p-8"
-			>
-				<div class="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">
-					Placeholder · primary case study
-				</div>
-				<h3 class="mt-2 text-xl sm:text-2xl font-semibold tracking-tight">
-					A novelist drafts a book over four months in BuildOS.
-				</h3>
-				<p class="mt-3 text-sm text-muted-foreground max-w-2xl leading-relaxed">
-					Day 1 she dropped 600 words about a queen losing her magic. Month 4 she shipped
-					a 90,000-word draft, a magic-system bible, beta-reader notes consolidated, a
-					marketing project queued, and a launch plan with dates on the calendar. One
-					project. One place. Same context for her and the agents she leans on.
-				</p>
-				<p class="mt-4 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-					→ Case study to be written. Secondary: a YouTuber growing a channel.
-				</p>
-			</article>
-		</div>
-	</section>
-
-	<!-- ─── §08 honest comparison + final CTA ──────────────────────── -->
+	<!-- ─── §07 honest comparison + final CTA ──────────────────────── -->
 	<section class="py-12 sm:py-16">
 		<div class="mx-auto max-w-6xl px-4 space-y-8">
 			<div class="text-center">
@@ -1201,7 +1166,7 @@
 					class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
 				>
 					<span class="h-px w-10 bg-border"></span>
-					<span>§08 — You have three options</span>
+					<span>§07 — You have three options</span>
 					<span class="h-px w-10 bg-border"></span>
 				</div>
 				<p class="mt-3 text-sm text-muted-foreground max-w-xl mx-auto">
@@ -1272,7 +1237,7 @@
 	ariaLabel="Example BuildOS project preview"
 >
 	{#if PublicProjectView}
-		<PublicProjectView />
+		<PublicProjectView embedded />
 	{:else if publicProjectLoadFailed}
 		<div class="px-4 sm:px-6 py-12 text-center text-sm text-muted-foreground">
 			Couldn't load the example project. Close this and try again.

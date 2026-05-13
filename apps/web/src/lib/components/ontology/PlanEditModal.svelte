@@ -525,29 +525,6 @@
 							class="space-y-3 sm:space-y-4"
 						>
 							<Card variant="elevated" class="wt-paper">
-								<CardHeader variant="accent" texture="strip">
-									<div
-										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
-									>
-										<div class="min-w-0">
-											<div class="flex items-center gap-2">
-												<FileText class="h-4 w-4 text-accent" />
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.18em] text-accent"
-												>
-													Overview
-												</p>
-											</div>
-											<h3 class="mt-1 text-sm font-semibold text-foreground">
-												What this plan covers and its expected outcome
-											</h3>
-											<p class="mt-1 text-xs text-muted-foreground">
-												Lead with the name and context so the plan reads
-												clearly before adjusting execution details.
-											</p>
-										</div>
-									</div>
-								</CardHeader>
 								<CardBody class="space-y-4">
 									<FormField
 										label="Name"

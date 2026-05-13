@@ -23,16 +23,7 @@
 -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import {
-		Save,
-		Loader,
-		Trash2,
-		AlertTriangle,
-		X,
-		ChevronDown,
-		FileText,
-		Shield
-	} from 'lucide-svelte';
+	import { Save, Loader, Trash2, AlertTriangle, X, ChevronDown, Shield } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Card from '$lib/components/ui/Card.svelte';
@@ -469,25 +460,8 @@
 							<Card variant="elevated" class="wt-paper">
 								<CardHeader variant="accent" texture="strip">
 									<div
-										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+										class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"
 									>
-										<div class="min-w-0">
-											<div class="flex items-center gap-2">
-												<FileText class="h-4 w-4 text-accent" />
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.18em] text-accent"
-												>
-													Risk Overview
-												</p>
-											</div>
-											<h3 class="mt-1 text-sm font-semibold text-foreground">
-												What could go wrong and how to handle it
-											</h3>
-											<p class="mt-1 text-xs text-muted-foreground">
-												Describe the risk, its severity, and how you plan to
-												mitigate it.
-											</p>
-										</div>
 										<div class="flex flex-wrap items-center gap-1.5">
 											<Badge variant={stateMeta.variant} size="sm"
 												>{stateMeta.label}</Badge

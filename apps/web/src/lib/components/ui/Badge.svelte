@@ -34,16 +34,15 @@
 		...rest
 	}: Props = $props();
 
-	// Inkprint badge variants - clean, semantic colors
+	// Inkprint badge variants - semantic tokens (light/dark handled by token CSS vars).
+	// `secondary` keeps a slightly more pronounced surface so it visually differs from `default`.
 	const variantClasses: Record<BadgeVariant, string> = {
 		default: 'bg-muted text-muted-foreground border border-border',
-		secondary: 'bg-muted text-muted-foreground border border-border',
-		success:
-			'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800',
-		warning:
-			'bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800',
-		error: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800',
-		info: 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800',
+		secondary: 'bg-card text-foreground border border-border',
+		success: 'bg-success/10 text-success border border-success/30',
+		warning: 'bg-warning/10 text-warning border border-warning/30',
+		error: 'bg-destructive/10 text-destructive border border-destructive/30',
+		info: 'bg-info/10 text-info border border-info/30',
 		accent: 'bg-accent/10 text-accent border border-accent/30'
 	};
 

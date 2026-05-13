@@ -29,7 +29,6 @@
 		ListChecks,
 		X,
 		ChevronDown,
-		FileText,
 		Users,
 		CalendarRange,
 		Clock3,
@@ -828,23 +827,6 @@
 							class="space-y-3 sm:space-y-4"
 						>
 							<Card variant="elevated" class="wt-paper">
-								<CardHeader variant="accent" texture="strip">
-									<div class="flex items-start justify-between gap-3">
-										<div class="min-w-0">
-											<div class="flex items-center gap-2">
-												<FileText class="h-4 w-4 text-accent" />
-												<p
-													class="text-xs font-semibold uppercase tracking-[0.18em] text-accent"
-												>
-													Overview
-												</p>
-											</div>
-											<h3 class="mt-1 text-sm font-semibold text-foreground">
-												What this task is and what “done” looks like
-											</h3>
-										</div>
-									</div>
-								</CardHeader>
 								<CardBody class="space-y-4">
 									<div class="space-y-2">
 										<div class="flex items-end justify-between gap-2 mb-2">
