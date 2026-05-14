@@ -28,17 +28,20 @@
 	} from '$lib/components/ontology/graph/lib/graph.filters';
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
-	import {
-		LoaderCircle,
-		SlidersHorizontal,
-		ChevronDown,
-		ArrowRight,
-		PauseCircle
-	} from 'lucide-svelte';
+	import { LoaderCircle, SlidersHorizontal, ChevronDown } from 'lucide-svelte';
 	import FilterGroup from '$lib/components/ui/FilterGroup.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
-	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
 	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
+	import CollapsibleStateSection from '$lib/components/projects/CollapsibleStateSection.svelte';
+	import ProjectStateRow from '$lib/components/projects/ProjectStateRow.svelte';
+	import {
+		PROJECT_STATE_ORDER,
+		PROJECT_STATE_META,
+		normalizeProjectState,
+		isPrimaryTier,
+		emptyProjectStateCounts
+	} from '$lib/config/project-states';
+	import type { ProjectState } from '$lib/types/onto';
 
 	let { data } = $props();
 
@@ -203,15 +206,12 @@
 	});
 
 	const projects = $derived(projectSummaries);
-	const availableStates = $derived(
-		Array.from(
-			new Set(
-				(projects ?? [])
-					.map((project) => project.state_key)
-					.filter((state): state is OntologyProjectSummary['state_key'] => Boolean(state))
-			)
-		).sort()
-	);
+	const availableStates = $derived.by<readonly ProjectState[]>(() => {
+		const present = new Set(
+			(projects ?? []).map((project) => normalizeProjectState(project.state_key))
+		);
+		return PROJECT_STATE_ORDER.filter((state) => present.has(state));
+	});
 	const availableContexts = $derived(
 		Array.from(
 			new Set(
@@ -240,8 +240,11 @@
 		).sort()
 	);
 
+	type OwnershipFilter = 'all' | 'owned' | 'shared';
+
 	let searchQuery = $state('');
-	let selectedStates = $state<string[]>([]);
+	let selectedStates = $state<ProjectState[]>([]);
+	let selectedOwnership = $state<OwnershipFilter>('all');
 	let selectedContexts = $state<string[]>([]);
 	let selectedScales = $state<string[]>([]);
 	let selectedStages = $state<string[]>([]);
@@ -251,6 +254,7 @@
 		Boolean(
 			searchQuery.trim() ||
 				selectedStates.length ||
+				selectedOwnership !== 'all' ||
 				selectedContexts.length ||
 				selectedScales.length ||
 				selectedStages.length
@@ -260,6 +264,7 @@
 	// Count of active filters (excluding search)
 	const activeFilterCount = $derived(
 		selectedStates.length +
+			(selectedOwnership !== 'all' ? 1 : 0) +
 			selectedContexts.length +
 			selectedScales.length +
 			selectedStages.length
@@ -276,7 +281,9 @@
 			availableStages.length > 0
 	);
 
-	const filteredProjects = $derived.by(() => {
+	// Apply every filter except the state filter. The status count strip uses
+	// this list so users can see counts in other states and swap between them.
+	const projectsMatchingNonStateFilters = $derived.by(() => {
 		const query = searchQuery.trim().toLowerCase();
 		return (projects ?? []).filter((project) => {
 			if (query) {
@@ -286,9 +293,8 @@
 				if (!matchesQuery) return false;
 			}
 
-			if (selectedStates.length && !selectedStates.includes(project.state_key)) {
-				return false;
-			}
+			if (selectedOwnership === 'owned' && project.is_shared) return false;
+			if (selectedOwnership === 'shared' && !project.is_shared) return false;
 
 			if (selectedContexts.length) {
 				if (!project.facet_context || !selectedContexts.includes(project.facet_context)) {
@@ -312,20 +318,14 @@
 		});
 	});
 
-	const activeFilteredProjects = $derived.by(() =>
-		filteredProjects.filter((project) => project.state_key !== 'paused')
-	);
-	const pausedFilteredProjects = $derived.by(() =>
-		sortProjectsByUpdatedAt(
-			filteredProjects.filter((project) => project.state_key === 'paused')
-		)
-	);
-	const ownedFilteredProjects = $derived.by(() =>
-		activeFilteredProjects.filter((project) => !project.is_shared)
-	);
-	const sharedFilteredProjects = $derived.by(() =>
-		activeFilteredProjects.filter((project) => project.is_shared)
-	);
+	const filteredProjects = $derived.by(() => {
+		if (!selectedStates.length) return projectsMatchingNonStateFilters;
+		return projectsMatchingNonStateFilters.filter((project) => {
+			const normalized = normalizeProjectState(project.state_key);
+			return selectedStates.includes(normalized);
+		});
+	});
+
 	const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
 
 	type ProjectRecencyGroups = {
@@ -337,12 +337,6 @@
 	function parseProjectUpdatedAt(project: OntologyProjectSummary): number {
 		const timestamp = Date.parse(project.updated_at);
 		return Number.isNaN(timestamp) ? 0 : timestamp;
-	}
-
-	function sortProjectsByUpdatedAt(
-		projectList: OntologyProjectSummary[]
-	): OntologyProjectSummary[] {
-		return [...projectList].sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a));
 	}
 
 	function groupProjectsByRecency(projectList: OntologyProjectSummary[]): ProjectRecencyGroups {
@@ -376,62 +370,80 @@
 		};
 	}
 
-	const ownedFilteredProjectsSorted = $derived(sortProjectsByUpdatedAt(ownedFilteredProjects));
-	const sharedFilteredProjectsSorted = $derived(sortProjectsByUpdatedAt(sharedFilteredProjects));
-	const ownedFilteredProjectsByRecency = $derived(
-		groupProjectsByRecency(ownedFilteredProjectsSorted)
-	);
-	const sharedFilteredProjectsByRecency = $derived(
-		groupProjectsByRecency(sharedFilteredProjectsSorted)
-	);
+	const projectsByState = $derived.by(() => {
+		const groups = new Map<ProjectState, OntologyProjectSummary[]>();
+		for (const state of PROJECT_STATE_ORDER) groups.set(state, []);
+		for (const project of filteredProjects) {
+			const state = normalizeProjectState(project.state_key);
+			groups.get(state)?.push(project);
+		}
+		for (const list of groups.values()) {
+			list.sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a));
+		}
+		return groups;
+	});
+
+	// Planning + Active render as one combined "Current Work" section. Mixed
+	// by updated_at; each row's state chip distinguishes Planning vs Active.
+	const primaryProjects = $derived.by(() => {
+		const merged = [
+			...(projectsByState.get('planning') ?? []),
+			...(projectsByState.get('active') ?? [])
+		];
+		return merged.sort((a, b) => parseProjectUpdatedAt(b) - parseProjectUpdatedAt(a));
+	});
+
+	const primaryRecencyGroups = $derived(groupProjectsByRecency(primaryProjects));
+
+	const SECONDARY_STATES = PROJECT_STATE_ORDER.filter((state) => !isPrimaryTier(state));
+
+	// Counts shown in the status strip ignore the state filter so users can see
+	// how much work sits in each state and quick-switch between them.
+	const stateCounts = $derived.by(() => {
+		const counts = emptyProjectStateCounts();
+		for (const project of projectsMatchingNonStateFilters) {
+			const state = normalizeProjectState(project.state_key);
+			counts[state] += 1;
+			counts.total += 1;
+			if (isPrimaryTier(state)) counts.primaryTotal += 1;
+			else counts.secondaryTotal += 1;
+		}
+		return counts;
+	});
 
 	const stats = $derived.by(() => {
-		const list = activeFilteredProjects;
-		const taskTotal = list.reduce((acc, project) => acc + (project.task_count ?? 0), 0);
-		const goalTotal = list.reduce((acc, project) => acc + (project.goal_count ?? 0), 0);
-		const planTotal = list.reduce((acc, project) => acc + (project.plan_count ?? 0), 0);
-		const documentTotal = list.reduce((acc, project) => acc + (project.document_count ?? 0), 0);
-		const inProgress = list.filter((project) =>
-			['active', 'execution', 'in_progress'].includes(project.state_key)
-		).length;
-
+		const taskTotal = primaryProjects.reduce((acc, p) => acc + (p.task_count ?? 0), 0);
+		const documentTotal = primaryProjects.reduce((acc, p) => acc + (p.document_count ?? 0), 0);
 		return {
-			totalProjects: list.length,
+			currentWork: primaryProjects.length,
 			totalTasks: taskTotal,
-			totalGoals: goalTotal,
-			totalPlans: planTotal,
 			totalDocuments: documentTotal,
-			activeProjects: inProgress
+			activeProjects: projectsByState.get('active')?.length ?? 0
 		};
 	});
 
-	function toggleValue(list: string[], value: string): string[] {
+	// Only surface the "No current work" empty state when the user hasn't
+	// explicitly filtered themselves into a secondary-only view. Filtering to
+	// just Completed shouldn't shout that there's no current work.
+	const primaryFilterActive = $derived(
+		selectedStates.length === 0 || selectedStates.some((state) => isPrimaryTier(state))
+	);
+
+	function toggleValue<T extends string>(list: T[], value: T): T[] {
 		return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
 	}
 
 	function clearFilters() {
 		searchQuery = '';
 		selectedStates = [];
+		selectedOwnership = 'all';
 		selectedContexts = [];
 		selectedScales = [];
 		selectedStages = [];
 	}
 
-	function formatUpdatedAt(value: string): string {
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) return 'Updated recently';
-
-		return date.toLocaleString(undefined, {
-			month: 'short',
-			day: 'numeric',
-			year: 'numeric',
-			hour: 'numeric',
-			minute: '2-digit'
-		});
-	}
-
-	function formatEntityCounts(project: OntologyProjectSummary): string {
-		return `Tasks ${project.task_count} · Goals ${project.goal_count} · Plans ${project.plan_count} · Docs ${project.document_count}`;
+	function quickFilterState(state: ProjectState) {
+		selectedStates = selectedStates.includes(state) ? [] : [state];
 	}
 
 	async function ensureGraphComponents() {
@@ -499,6 +511,18 @@
 		if (viewParam !== activeTab) {
 			activeTab = viewParam;
 		}
+	});
+
+	// Deep-link support: /projects?state=active applies a state filter on load.
+	$effect(() => {
+		const stateParam = $page.url.searchParams.get('state');
+		if (!stateParam) return;
+		const normalized = stateParam.toLowerCase() as ProjectState;
+		if (!PROJECT_STATE_ORDER.includes(normalized)) return;
+		untrack(() => {
+			if (selectedStates.length === 1 && selectedStates[0] === normalized) return;
+			if (selectedStates.length === 0) selectedStates = [normalized];
+		});
 	});
 
 	$effect(() => {
@@ -648,14 +672,14 @@
 						</Button>
 					</div>
 
-					<!-- Stats Grid - Semantic textures per brand guidelines with weight -->
+					<!-- Stats Grid - Now counts current work (planning + active) instead of all-time -->
 					<div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-3">
-						<!-- Projects count - Frame texture (canonical/structure), paper weight (standard) -->
+						<!-- Current work = planning + active -->
 						<div class="wt-paper p-3 sm:p-4 tx tx-frame tx-weak">
 							<p
 								class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground"
 							>
-								PROJECTS
+								CURRENT WORK
 							</p>
 							{#if showSkeletons}
 								<div
@@ -663,11 +687,11 @@
 								></div>
 							{:else}
 								<p class="text-xl sm:text-2xl font-semibold text-foreground mt-1">
-									{stats.totalProjects}
+									{stats.currentWork}
 								</p>
 							{/if}
 						</div>
-						<!-- Tasks count - Grain texture (execution/progress), paper weight -->
+						<!-- Tasks across current work only -->
 						<div class="wt-paper p-3 sm:p-4 tx tx-grain tx-weak">
 							<p
 								class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground"
@@ -684,7 +708,7 @@
 								</p>
 							{/if}
 						</div>
-						<!-- Documents count - Thread texture (connections/relationships), paper weight -->
+						<!-- Docs across current work only -->
 						<div class="wt-paper p-3 sm:p-4 tx tx-thread tx-weak">
 							<p
 								class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground"
@@ -701,7 +725,7 @@
 								</p>
 							{/if}
 						</div>
-						<!-- Active count - Pulse texture (urgency/momentum), paper weight with accent styling -->
+						<!-- Active count - subset of current work -->
 						<div
 							class="wt-paper p-3 sm:p-4 tx tx-pulse tx-weak border-accent/30 bg-accent/5"
 						>
@@ -719,6 +743,34 @@
 							{/if}
 						</div>
 					</div>
+
+					<!-- Status count strip - click any segment to quick-filter by state -->
+					{#if !showSkeletons && stateCounts.total > 0}
+						<div
+							class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs sm:text-sm"
+						>
+							{#each PROJECT_STATE_ORDER as state (state)}
+								{@const count = stateCounts[state]}
+								{@const meta = PROJECT_STATE_META[state]}
+								{@const isSelected =
+									selectedStates.length === 1 && selectedStates[0] === state}
+								<button
+									type="button"
+									class="inline-flex items-center gap-1.5 rounded px-2 py-1 transition pressable {isSelected
+										? 'bg-accent/15 text-accent font-semibold'
+										: count === 0
+											? 'text-muted-foreground/60 hover:text-muted-foreground'
+											: 'text-muted-foreground hover:text-foreground'}"
+									onclick={() => quickFilterState(state)}
+									aria-pressed={isSelected}
+									disabled={count === 0 && !isSelected}
+								>
+									<span>{meta.label}</span>
+									<span class="font-semibold">{count}</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
 
 					<!-- Search + Filters panel (collapsible) -->
 					<div class="wt-paper overflow-hidden tx tx-frame tx-weak">
@@ -781,13 +833,46 @@
 									</svg>
 								</div>
 
+								<!-- Ownership filter - available to all users -->
+								<div class="space-y-1.5">
+									<p
+										class="micro-label text-[9px] sm:text-[0.65rem] text-muted-foreground"
+									>
+										OWNERSHIP
+									</p>
+									<div
+										class="inline-flex rounded-md bg-muted p-0.5 text-xs font-semibold"
+									>
+										{#each ['all', 'owned', 'shared'] as const as option (option)}
+											<button
+												type="button"
+												class="px-3 py-1 rounded transition pressable {selectedOwnership ===
+												option
+													? 'bg-card text-foreground shadow-ink'
+													: 'text-muted-foreground hover:text-foreground'}"
+												onclick={() => (selectedOwnership = option)}
+												aria-pressed={selectedOwnership === option}
+											>
+												{option === 'all'
+													? 'All'
+													: option === 'owned'
+														? 'Mine'
+														: 'Shared'}
+											</button>
+										{/each}
+									</div>
+								</div>
+
 								{#if isAdmin && hasFilterOptions}
 									<FilterGroup
 										label="State"
-										options={availableStates}
+										options={[...availableStates]}
 										selected={selectedStates}
 										onToggle={(state) =>
-											(selectedStates = toggleValue(selectedStates, state))}
+											(selectedStates = toggleValue(
+												selectedStates,
+												state as ProjectState
+											))}
 									/>
 
 									<div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -886,485 +971,76 @@
 				</div>
 			{:else if filteredProjects.length > 0}
 				<div class="space-y-6">
-					{#if ownedFilteredProjects.length > 0}
-						<div class="space-y-2">
-							<!-- Section Header - Inkprint micro-label pattern -->
+					<!-- Current Work — Planning + Active merged, sorted by updated_at desc -->
+					{#if primaryProjects.length > 0}
+						<section class="space-y-2" aria-labelledby="state-section-current-work">
 							<div class="flex items-baseline gap-2">
-								<p class="micro-label text-accent">MY PROJECTS</p>
+								<p id="state-section-current-work" class="micro-label text-accent">
+									Current Work
+								</p>
 								<span class="text-xs font-semibold text-muted-foreground">
-									{ownedFilteredProjects.length}
+									{primaryProjects.length}
 								</span>
-							</div>
-							<div class="space-y-2">
-								{#each ownedFilteredProjectsByRecency.recent as project (project.id)}
-									<a
-										href="/projects/{project.id}"
-										onclick={() => handleProjectClick(project)}
-										class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
-									>
-										<div class="flex items-start justify-between gap-3">
-											<div class="min-w-0 flex items-center gap-2.5">
-												<ProjectIcon
-													svg={project.icon_svg}
-													concept={project.icon_concept}
-													size="sm"
-												/>
-												<h4
-													class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-													style="view-transition-name: project-title-{project.id}"
-												>
-													{project.name}
-												</h4>
-											</div>
-											<div class="shrink-0 flex items-center gap-1.5">
-												<time
-													datetime={project.updated_at}
-													class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
-												>
-													{formatUpdatedAt(project.updated_at)}
-												</time>
-												<span
-													class="project-dossier-arrow"
-													aria-hidden="true"
-												>
-													<ArrowRight
-														class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
-													/>
-												</span>
-											</div>
-										</div>
-
-										<p
-											class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
-										>
-											{project.description?.trim() ||
-												'No description provided.'}
-										</p>
-
-										<p
-											class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
-										>
-											{formatEntityCounts(project)}
-										</p>
-									</a>
-								{/each}
-
-								{#if ownedFilteredProjectsByRecency.olderThan7Days.length > 0}
-									<div class="project-recency-separator">
-										Not touched in last 7 days
-									</div>
-									{#each ownedFilteredProjectsByRecency.olderThan7Days as project (project.id)}
-										<a
-											href="/projects/{project.id}"
-											onclick={() => handleProjectClick(project)}
-											class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
-										>
-											<div class="flex items-start justify-between gap-3">
-												<div class="min-w-0 flex items-center gap-2.5">
-													<ProjectIcon
-														svg={project.icon_svg}
-														concept={project.icon_concept}
-														size="sm"
-													/>
-													<h4
-														class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-														style="view-transition-name: project-title-{project.id}"
-													>
-														{project.name}
-													</h4>
-												</div>
-												<div class="shrink-0 flex items-center gap-1.5">
-													<time
-														datetime={project.updated_at}
-														class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
-													>
-														{formatUpdatedAt(project.updated_at)}
-													</time>
-													<span
-														class="project-dossier-arrow"
-														aria-hidden="true"
-													>
-														<ArrowRight
-															class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
-														/>
-													</span>
-												</div>
-											</div>
-
-											<p
-												class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
-											>
-												{project.description?.trim() ||
-													'No description provided.'}
-											</p>
-
-											<p
-												class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
-											>
-												{formatEntityCounts(project)}
-											</p>
-										</a>
-									{/each}
-								{/if}
-
-								{#if ownedFilteredProjectsByRecency.olderThan30Days.length > 0}
-									<div class="project-recency-separator">
-										Not touched in last 30 days
-									</div>
-									{#each ownedFilteredProjectsByRecency.olderThan30Days as project (project.id)}
-										<a
-											href="/projects/{project.id}"
-											onclick={() => handleProjectClick(project)}
-											class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-frame tx-weak"
-										>
-											<div class="flex items-start justify-between gap-3">
-												<div class="min-w-0 flex items-center gap-2.5">
-													<ProjectIcon
-														svg={project.icon_svg}
-														concept={project.icon_concept}
-														size="sm"
-													/>
-													<h4
-														class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-														style="view-transition-name: project-title-{project.id}"
-													>
-														{project.name}
-													</h4>
-												</div>
-												<div class="shrink-0 flex items-center gap-1.5">
-													<time
-														datetime={project.updated_at}
-														class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
-													>
-														{formatUpdatedAt(project.updated_at)}
-													</time>
-													<span
-														class="project-dossier-arrow"
-														aria-hidden="true"
-													>
-														<ArrowRight
-															class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
-														/>
-													</span>
-												</div>
-											</div>
-
-											<p
-												class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
-											>
-												{project.description?.trim() ||
-													'No description provided.'}
-											</p>
-
-											<p
-												class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
-											>
-												{formatEntityCounts(project)}
-											</p>
-										</a>
-									{/each}
-								{/if}
-							</div>
-						</div>
-					{/if}
-
-					{#if sharedFilteredProjects.length > 0}
-						<div class="space-y-2">
-							<!-- Section Header - Inkprint micro-label pattern with Thread texture indicator -->
-							<div class="flex items-baseline gap-2">
-								<p class="micro-label text-muted-foreground">SHARED WITH ME</p>
-								<span class="text-xs font-semibold text-muted-foreground">
-									{sharedFilteredProjects.length}
-								</span>
-							</div>
-							<div class="space-y-2">
-								{#each sharedFilteredProjectsByRecency.recent as project (project.id)}
-									<a
-										href="/projects/{project.id}"
-										onclick={() => handleProjectClick(project)}
-										class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-thread tx-weak"
-									>
-										<div class="flex items-start justify-between gap-3">
-											<div class="min-w-0 flex items-center gap-2.5">
-												<ProjectIcon
-													svg={project.icon_svg}
-													concept={project.icon_concept}
-													size="sm"
-												/>
-												<div class="min-w-0 flex items-center gap-2">
-													<h4
-														class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-														style="view-transition-name: project-title-{project.id}"
-													>
-														{project.name}
-													</h4>
-													<span
-														class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
-													>
-														Shared{project.access_role
-															? `: ${project.access_role}`
-															: ''}
-													</span>
-												</div>
-											</div>
-											<div class="shrink-0 flex items-center gap-1.5">
-												<time
-													datetime={project.updated_at}
-													class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
-												>
-													{formatUpdatedAt(project.updated_at)}
-												</time>
-												<span
-													class="project-dossier-arrow"
-													aria-hidden="true"
-												>
-													<ArrowRight
-														class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
-													/>
-												</span>
-											</div>
-										</div>
-
-										<p
-											class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
-										>
-											{project.description?.trim() ||
-												'No description provided.'}
-										</p>
-
-										<p
-											class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
-										>
-											{formatEntityCounts(project)}
-										</p>
-									</a>
-								{/each}
-
-								{#if sharedFilteredProjectsByRecency.olderThan7Days.length > 0}
-									<div class="project-recency-separator">
-										Not touched in last 7 days
-									</div>
-									{#each sharedFilteredProjectsByRecency.olderThan7Days as project (project.id)}
-										<a
-											href="/projects/{project.id}"
-											onclick={() => handleProjectClick(project)}
-											class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-thread tx-weak"
-										>
-											<div class="flex items-start justify-between gap-3">
-												<div class="min-w-0 flex items-center gap-2.5">
-													<ProjectIcon
-														svg={project.icon_svg}
-														concept={project.icon_concept}
-														size="sm"
-													/>
-													<div class="min-w-0 flex items-center gap-2">
-														<h4
-															class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-															style="view-transition-name: project-title-{project.id}"
-														>
-															{project.name}
-														</h4>
-														<span
-															class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
-														>
-															Shared{project.access_role
-																? `: ${project.access_role}`
-																: ''}
-														</span>
-													</div>
-												</div>
-												<div class="shrink-0 flex items-center gap-1.5">
-													<time
-														datetime={project.updated_at}
-														class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
-													>
-														{formatUpdatedAt(project.updated_at)}
-													</time>
-													<span
-														class="project-dossier-arrow"
-														aria-hidden="true"
-													>
-														<ArrowRight
-															class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
-														/>
-													</span>
-												</div>
-											</div>
-
-											<p
-												class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
-											>
-												{project.description?.trim() ||
-													'No description provided.'}
-											</p>
-
-											<p
-												class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
-											>
-												{formatEntityCounts(project)}
-											</p>
-										</a>
-									{/each}
-								{/if}
-
-								{#if sharedFilteredProjectsByRecency.olderThan30Days.length > 0}
-									<div class="project-recency-separator">
-										Not touched in last 30 days
-									</div>
-									{#each sharedFilteredProjectsByRecency.olderThan30Days as project (project.id)}
-										<a
-											href="/projects/{project.id}"
-											onclick={() => handleProjectClick(project)}
-											class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-thread tx-weak"
-										>
-											<div class="flex items-start justify-between gap-3">
-												<div class="min-w-0 flex items-center gap-2.5">
-													<ProjectIcon
-														svg={project.icon_svg}
-														concept={project.icon_concept}
-														size="sm"
-													/>
-													<div class="min-w-0 flex items-center gap-2">
-														<h4
-															class="truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
-															style="view-transition-name: project-title-{project.id}"
-														>
-															{project.name}
-														</h4>
-														<span
-															class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent"
-														>
-															Shared{project.access_role
-																? `: ${project.access_role}`
-																: ''}
-														</span>
-													</div>
-												</div>
-												<div class="shrink-0 flex items-center gap-1.5">
-													<time
-														datetime={project.updated_at}
-														class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
-													>
-														{formatUpdatedAt(project.updated_at)}
-													</time>
-													<span
-														class="project-dossier-arrow"
-														aria-hidden="true"
-													>
-														<ArrowRight
-															class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-accent"
-														/>
-													</span>
-												</div>
-											</div>
-
-											<p
-												class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
-											>
-												{project.description?.trim() ||
-													'No description provided.'}
-											</p>
-
-											<p
-												class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/90 whitespace-nowrap overflow-hidden text-ellipsis"
-											>
-												{formatEntityCounts(project)}
-											</p>
-										</a>
-									{/each}
-								{/if}
-							</div>
-						</div>
-					{/if}
-
-					{#if pausedFilteredProjects.length > 0}
-						<div class="space-y-2 border-t border-border/70 pt-4">
-							<div class="flex items-center justify-between gap-3">
-								<div class="flex items-baseline gap-2">
-									<p class="micro-label text-muted-foreground">PAUSED</p>
-									<span class="text-xs font-semibold text-muted-foreground">
-										{pausedFilteredProjects.length}
-									</span>
-								</div>
-								<div
-									class="hidden items-center gap-1.5 text-xs font-medium text-muted-foreground sm:flex"
+								<span
+									class="hidden sm:inline text-xs font-medium text-muted-foreground/80"
 								>
-									<PauseCircle class="h-3.5 w-3.5" />
-									Hidden from active work
-								</div>
+									· Planning and active projects
+								</span>
 							</div>
 							<div class="space-y-2">
-								{#each pausedFilteredProjects as project (project.id)}
-									<a
-										href="/projects/{project.id}"
-										onclick={() => handleProjectClick(project)}
-										class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-static tx-weak opacity-85 hover:opacity-100"
-									>
-										<div class="flex items-start justify-between gap-3">
-											<div class="min-w-0 flex items-center gap-2.5">
-												<ProjectIcon
-													svg={project.icon_svg}
-													concept={project.icon_concept}
-													size="sm"
-												/>
-												<div class="min-w-0 flex items-center gap-2">
-													<h4
-														class="truncate text-base sm:text-lg font-semibold text-foreground tracking-tight"
-														style="view-transition-name: project-title-{project.id}"
-													>
-														{project.name}
-													</h4>
-													<span
-														class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-muted text-muted-foreground"
-													>
-														Paused
-													</span>
-													{#if project.is_shared}
-														<span
-															class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/10 text-accent"
-														>
-															Shared{project.access_role
-																? `: ${project.access_role}`
-																: ''}
-														</span>
-													{/if}
-												</div>
-											</div>
-											<div class="shrink-0 flex items-center gap-1.5">
-												<time
-													datetime={project.updated_at}
-													class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
-												>
-													{formatUpdatedAt(project.updated_at)}
-												</time>
-												<span
-													class="project-dossier-arrow"
-													aria-hidden="true"
-												>
-													<ArrowRight
-														class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground"
-													/>
-												</span>
-											</div>
-										</div>
-
-										<p
-											class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
-										>
-											{project.description?.trim() ||
-												'No description provided.'}
-										</p>
-
-										<p
-											class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/80 whitespace-nowrap overflow-hidden text-ellipsis"
-										>
-											{formatEntityCounts(project)}
-										</p>
-									</a>
+								{#each primaryRecencyGroups.recent as project (project.id)}
+									<ProjectStateRow
+										{project}
+										variant="primary"
+										onSelect={handleProjectClick}
+									/>
 								{/each}
+								{#if primaryRecencyGroups.olderThan7Days.length > 0}
+									<div class="project-recency-separator">
+										Not touched in last 7 days
+									</div>
+									{#each primaryRecencyGroups.olderThan7Days as project (project.id)}
+										<ProjectStateRow
+											{project}
+											variant="primary"
+											onSelect={handleProjectClick}
+										/>
+									{/each}
+								{/if}
+								{#if primaryRecencyGroups.olderThan30Days.length > 0}
+									<div class="project-recency-separator">
+										Not touched in last 30 days
+									</div>
+									{#each primaryRecencyGroups.olderThan30Days as project (project.id)}
+										<ProjectStateRow
+											{project}
+											variant="primary"
+											onSelect={handleProjectClick}
+										/>
+									{/each}
+								{/if}
 							</div>
+						</section>
+					{:else if primaryFilterActive}
+						<div
+							class="wt-paper border-dashed px-4 py-6 text-center tx tx-thread tx-weak"
+						>
+							<p class="text-sm font-semibold text-foreground">No current work</p>
+							<p class="mt-1 text-xs text-muted-foreground">
+								No Planning or Active projects match the current filters.
+							</p>
 						</div>
 					{/if}
+
+					<!-- Secondary tiers: Completed, Cancelled, Paused -->
+					{#each SECONDARY_STATES as state (state)}
+						<CollapsibleStateSection
+							projectState={state}
+							projects={projectsByState.get(state) ?? []}
+							variant="secondary"
+							onSelect={handleProjectClick}
+						/>
+					{/each}
 				</div>
 			{/if}
 			<!-- Graph view - Admin Only -->
@@ -1492,29 +1168,6 @@
 {/if}
 
 <style>
-	.project-dossier-row {
-		transition: box-shadow 180ms ease;
-	}
-
-	.project-dossier-row:hover,
-	.project-dossier-row:focus-visible {
-		box-shadow: inset 0 -1px 0 hsl(var(--accent) / 0.6);
-	}
-
-	.project-dossier-arrow {
-		opacity: 0;
-		transform: translateX(-2px);
-		transition:
-			opacity 180ms ease,
-			transform 180ms ease;
-	}
-
-	.project-dossier-row:hover .project-dossier-arrow,
-	.project-dossier-row:focus-visible .project-dossier-arrow {
-		opacity: 1;
-		transform: translateX(0);
-	}
-
 	.project-recency-separator {
 		margin-top: 0.5rem;
 		padding-top: 0.75rem;

@@ -234,21 +234,30 @@ export class OverdueTaskRescheduleService {
 	}
 
 	private async loadContext(userId: string, taskId: string): Promise<RescheduleContext> {
-		const [{ data: userData }, { data: preferenceData, error: preferenceError }, taskResult] =
-			await Promise.all([
-				this.supabase.from('users').select('timezone').eq('id', userId).single(),
-				this.supabase
-					.from('user_calendar_preferences')
-					.select('*')
-					.eq('user_id', userId)
-					.single(),
-				this.supabase
-					.from('onto_tasks')
-					.select('*, project:onto_projects!inner(id)')
-					.eq('id', taskId)
-					.is('deleted_at', null)
-					.single()
-			]);
+		const [
+			{ data: actorId, error: actorError },
+			{ data: userData },
+			{ data: preferenceData, error: preferenceError },
+			taskResult
+		] = await Promise.all([
+			this.supabase.rpc('ensure_actor_for_user', { p_user_id: userId }),
+			this.supabase.from('users').select('timezone').eq('id', userId).single(),
+			this.supabase
+				.from('user_calendar_preferences')
+				.select('*')
+				.eq('user_id', userId)
+				.single(),
+			this.supabase
+				.from('onto_tasks')
+				.select('*, project:onto_projects!inner(id)')
+				.eq('id', taskId)
+				.is('deleted_at', null)
+				.single()
+		]);
+
+		if (actorError || !actorId) {
+			throw actorError ?? new ReschedulePlannerError('Actor not found', 403);
+		}
 
 		if (preferenceError && preferenceError.code !== 'PGRST116') {
 			throw preferenceError;
@@ -267,7 +276,7 @@ export class OverdueTaskRescheduleService {
 		}
 
 		const { data: hasAccess, error: accessError } = await this.supabase.rpc(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			{
 				p_project_id: projectId,
 				p_required_access: 'write'
