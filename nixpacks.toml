@@ -2,7 +2,7 @@
 # This file must be at the repository root for Railway to find it
 # when the root directory is set to /
 [phases.setup]
-nixPkgs = ["nodejs_20", "pnpm-9_x"]
+nixPkgs = ["nodejs_22", "pnpm-9_x"]
 
 [phases.install]
 dependsOn = ["setup"]

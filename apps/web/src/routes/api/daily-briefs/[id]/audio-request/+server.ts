@@ -6,6 +6,7 @@ import { mapOntologyDailyBriefRow } from '$lib/services/dailyBrief/ontology-mapp
 
 const AUDIO_JOB_TYPE = 'generate_brief_audio';
 const AUDIO_JOB_PRIORITY = 20;
+const AUDIO_JOB_MAX_ATTEMPTS = 1;
 
 function buildBriefAudioStoragePath(userId: string, briefId: string): string {
 	return `${userId}/${briefId}.mp3`;
@@ -82,10 +83,22 @@ export const POST: RequestHandler = async ({ params, locals: { safeGetSession } 
 			p_metadata: { briefId: params.id },
 			p_priority: AUDIO_JOB_PRIORITY,
 			p_scheduled_for: requestedAt,
-			p_dedup_key: `brief-audio-${params.id}`
+			p_dedup_key: `brief-audio-${params.id}-${Date.parse(requestedAt)}`
 		});
 
 		if (queueError) throw queueError;
+
+		if (typeof jobId === 'string') {
+			const { error: maxAttemptsError } = await admin
+				.from('queue_jobs')
+				.update({
+					max_attempts: AUDIO_JOB_MAX_ATTEMPTS,
+					updated_at: new Date().toISOString()
+				})
+				.eq('id', jobId);
+
+			if (maxAttemptsError) throw maxAttemptsError;
+		}
 
 		return ApiResponse.success(
 			{

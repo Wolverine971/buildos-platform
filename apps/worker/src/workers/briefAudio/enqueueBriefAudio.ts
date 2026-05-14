@@ -4,6 +4,7 @@ import { buildBriefAudioStoragePath } from '../../lib/storage/briefAudio';
 
 const AUDIO_JOB_TYPE = 'generate_brief_audio';
 const AUDIO_JOB_PRIORITY = 20;
+const AUDIO_JOB_MAX_ATTEMPTS = 1;
 const MAX_AUDIO_ERROR_LENGTH = 1000;
 
 type VoiceNarrationEligibility = {
@@ -55,6 +56,22 @@ function truncateErrorMessage(message: string): string {
 		: message;
 }
 
+async function forceSingleAttemptQueueJob(jobId: unknown): Promise<void> {
+	if (typeof jobId !== 'string') return;
+
+	const { error } = await supabase
+		.from('queue_jobs')
+		.update({
+			max_attempts: AUDIO_JOB_MAX_ATTEMPTS,
+			updated_at: new Date().toISOString()
+		})
+		.eq('id', jobId);
+
+	if (error) {
+		console.warn(`Failed to set brief audio job ${jobId} max attempts:`, error);
+	}
+}
+
 export async function enqueueBriefAudioIfEnabled(params: {
 	briefId: string;
 	userId: string;
@@ -96,7 +113,7 @@ export async function enqueueBriefAudioIfEnabled(params: {
 		throw new Error(`Brief ${params.briefId} not found for user ${params.userId}`);
 	}
 
-	const { error: queueError } = await supabase.rpc('add_queue_job', {
+	const { data: jobId, error: queueError } = await supabase.rpc('add_queue_job', {
 		p_user_id: params.userId,
 		p_job_type: AUDIO_JOB_TYPE,
 		p_metadata: { briefId: params.briefId },
@@ -118,4 +135,6 @@ export async function enqueueBriefAudioIfEnabled(params: {
 
 		throw new Error(`Failed to enqueue brief audio job: ${queueError.message}`);
 	}
+
+	await forceSingleAttemptQueueJob(jobId);
 }

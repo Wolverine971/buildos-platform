@@ -20,7 +20,7 @@
 	let isLoading = $state(false);
 	let isPlaying = $state(false);
 	let error = $state<string | null>(null);
-	let audioElement: HTMLAudioElement | null = null;
+	let audioElement = $state<HTMLAudioElement | null>(null);
 	let requestId = 0;
 
 	let formattedDuration = $derived.by(() => {
@@ -100,7 +100,7 @@
 	<div class="mb-2 flex items-center justify-between gap-3">
 		<div class="flex min-w-0 items-center gap-2">
 			<Volume2 class="h-4 w-4 shrink-0 text-accent" />
-			<span class="text-sm font-medium text-foreground">Audio narration</span>
+			<span class="text-sm font-medium text-foreground">AI audio narration</span>
 		</div>
 		{#if formattedDuration}
 			<span class="shrink-0 text-xs text-muted-foreground">{formattedDuration}</span>

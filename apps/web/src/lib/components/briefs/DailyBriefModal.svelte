@@ -80,13 +80,21 @@
 		const current = displayBrief;
 		if (!current) return false;
 		if (current.audio_status === 'failed') return true;
-		if (current.audio_status !== 'generating') return false;
 
-		const startedAt = current.audio_generation_started_at
-			? Date.parse(current.audio_generation_started_at)
-			: NaN;
+		const timestamp =
+			current.audio_status === 'generating'
+				? current.audio_generation_started_at
+				: current.audio_status === 'pending'
+					? current.audio_requested_at
+					: null;
 
-		return !Number.isFinite(startedAt) || Date.now() - startedAt > STUCK_AUDIO_MS;
+		if (!timestamp) return current.audio_status === 'pending';
+
+		const startedAt = Date.parse(timestamp);
+		return (
+			(current.audio_status === 'pending' || current.audio_status === 'generating') &&
+			(!Number.isFinite(startedAt) || Date.now() - startedAt > STUCK_AUDIO_MS)
+		);
 	});
 
 	// Fetch brief when briefDate changes
@@ -435,7 +443,11 @@
 							>
 								<div class="flex items-center gap-2">
 									<LoaderCircle class="h-4 w-4 animate-spin text-accent" />
-									<span>Generating audio narration...</span>
+									<span>
+										{canRetryAudio
+											? 'Audio narration is taking longer than expected.'
+											: 'Generating audio narration...'}
+									</span>
 								</div>
 								{#if canRetryAudio}
 									<Button

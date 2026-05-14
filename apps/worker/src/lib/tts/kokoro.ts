@@ -10,9 +10,9 @@ type RawAudioLike = {
 
 export interface BriefAudioSynthesisResult {
 	mp3: Buffer;
-	durationMs: number;
+	durationMs: number | null;
 	generationMs: number;
-	sampleRate: number;
+	sampleRate: number | null;
 	model: string;
 	voice: string;
 }

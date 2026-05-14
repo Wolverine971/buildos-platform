@@ -7,8 +7,8 @@ import { logWorkerError } from '../../lib/errorLogger';
 import { uploadBriefAudio } from '../../lib/storage/briefAudio';
 import { supabase } from '../../lib/supabase';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
-import { synthesizeBriefAudio } from '../../lib/tts/kokoro';
 import { buildBriefNarrationText } from '../../lib/tts/textCleanup';
+import { synthesizeBriefAudioForWorker } from './briefAudioSynthesis';
 
 type BriefRecord = {
 	id: string;
@@ -28,7 +28,7 @@ type UserRecord = {
 };
 
 const AUDIO_HEARTBEAT_MS = 60_000;
-const DEFAULT_SYNTHESIS_TIMEOUT_MS = 8 * 60 * 1000;
+const DEFAULT_SYNTHESIS_TIMEOUT_MS = 2 * 60 * 1000;
 let audioChain: Promise<unknown> = Promise.resolve();
 
 function truncateErrorMessage(message: string): string {
@@ -41,23 +41,6 @@ function getSynthesisTimeoutMs(): number {
 		return Math.floor(configured);
 	}
 	return DEFAULT_SYNTHESIS_TIMEOUT_MS;
-}
-
-async function withAudioTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-	let timeout: ReturnType<typeof setTimeout> | null = null;
-	const timeoutPromise = new Promise<T>((_, reject) => {
-		timeout = setTimeout(() => {
-			reject(new Error(`Audio synthesis timed out after ${timeoutMs}ms`));
-		}, timeoutMs);
-	});
-
-	try {
-		return await Promise.race([promise, timeoutPromise]);
-	} finally {
-		if (timeout) {
-			clearTimeout(timeout);
-		}
-	}
 }
 
 async function markAudioFailed(briefId: string, userId: string, message: string): Promise<void> {
@@ -262,10 +245,7 @@ async function processBriefAudioInner(
 			total: 100,
 			message: 'Generating audio narration'
 		});
-		const synthesis = await withAudioTimeout(
-			synthesizeBriefAudio(narrationText),
-			getSynthesisTimeoutMs()
-		);
+		const synthesis = await synthesizeBriefAudioForWorker(narrationText, getSynthesisTimeoutMs());
 		model = synthesis.model;
 
 		stage = 'upload';
@@ -309,7 +289,9 @@ async function processBriefAudioInner(
 		}
 
 		await job.log(
-			`Brief audio generated in ${synthesis.generationMs}ms, duration ${synthesis.durationMs}ms`
+			`Brief audio generated in ${synthesis.generationMs}ms, duration ${
+				synthesis.durationMs === null ? 'unknown' : `${synthesis.durationMs}ms`
+			}`
 		);
 		await job.updateProgress({
 			current: 100,
@@ -321,7 +303,7 @@ async function processBriefAudioInner(
 			success: true,
 			briefId,
 			storagePath,
-			durationMs: synthesis.durationMs,
+			durationMs: synthesis.durationMs ?? undefined,
 			generationMs: synthesis.generationMs
 		};
 	} catch (error: unknown) {
@@ -349,11 +331,12 @@ async function processBriefAudioInner(
 export function processBriefAudio(
 	job: ProcessingJob<GenerateBriefAudioJobMetadata>
 ): Promise<GenerateBriefAudioResult> {
-	const stopHeartbeat = startAudioJobHeartbeat(job);
 	const next = audioChain
-		.then(() => processBriefAudioInner(job))
-		.finally(() => {
-			stopHeartbeat();
+		.then(() => {
+			const stopHeartbeat = startAudioJobHeartbeat(job);
+			return processBriefAudioInner(job).finally(() => {
+				stopHeartbeat();
+			});
 		});
 	audioChain = next.catch(() => undefined);
 	return next;
