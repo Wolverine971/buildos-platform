@@ -308,7 +308,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		for (const projectId of projectIds) {
 			const { data: hasAccess, error: accessError } = await supabase.rpc(
-				'current_actor_has_project_access',
+				'current_actor_has_project_member_access',
 				{
 					p_project_id: projectId,
 					p_required_access: 'write'
@@ -468,6 +468,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		}
 
 		const supabase = locals.supabase;
+		const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
+		if (actorResult.error || !actorResult.data) {
+			return ApiResponse.error('Failed to resolve user actor', 500);
+		}
 
 		// Parse query parameters
 		const projectId = url.searchParams.get('project_id');
@@ -486,7 +490,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		if (projectId) {
 			// Verify user has access to this project
 			const { data: hasAccess, error: accessError } = await supabase.rpc(
-				'current_actor_has_project_access',
+				'current_actor_has_project_member_access',
 				{
 					p_project_id: projectId,
 					p_required_access: 'read'

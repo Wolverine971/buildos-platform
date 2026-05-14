@@ -102,6 +102,28 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const chatSessionId = getChatSessionIdFromRequest(request);
 
 		// Ensure project exists and belongs to current actor
+		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
+
+		if (actorError || !actorId) {
+			console.error('[Document API] Failed to resolve actor:', actorError);
+			await logOntologyApiError({
+				supabase,
+				error: actorError || new Error('Failed to resolve user actor'),
+				endpoint: '/api/onto/documents/create',
+				method: 'POST',
+				userId: session.user.id,
+				projectId: project_id as string,
+				entityType: 'document',
+				operation: 'document_actor_resolve'
+			});
+			return ApiResponse.internalError(
+				actorError || new Error('Failed to resolve user actor'),
+				'Failed to resolve user identity'
+			);
+		}
+
 		const { data: project, error: projectError } = await supabase
 			.from('onto_projects')
 			.select('id, name, created_by')
@@ -129,30 +151,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: session.user.id
-		});
-
-		if (actorError || !actorId) {
-			console.error('[Document API] Failed to resolve actor:', actorError);
-			await logOntologyApiError({
-				supabase,
-				error: actorError || new Error('Failed to resolve user actor'),
-				endpoint: '/api/onto/documents/create',
-				method: 'POST',
-				userId: session.user.id,
-				projectId: project_id as string,
-				entityType: 'document',
-				operation: 'document_actor_resolve'
-			});
-			return ApiResponse.internalError(
-				actorError || new Error('Failed to resolve user actor'),
-				'Failed to resolve user identity'
-			);
-		}
-
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			{
 				p_project_id: project_id,
 				p_required_access: 'write'

@@ -75,8 +75,20 @@ function isProjectContext(contextType: ChatContextType): boolean {
 	return contextType === 'project';
 }
 
-async function checkProjectAccess(supabase: any, projectId: string): Promise<boolean> {
-	const { data, error } = await supabase.rpc('current_actor_has_project_access', {
+async function checkProjectAccess(
+	supabase: any,
+	projectId: string,
+	userId: string
+): Promise<boolean> {
+	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+		p_user_id: userId
+	});
+	if (actorError || !actorId) {
+		logger.warn('Actor resolution failed during v2 prewarm', { error: actorError, projectId });
+		return false;
+	}
+
+	const { data, error } = await supabase.rpc('current_actor_has_project_member_access', {
 		p_project_id: projectId,
 		p_required_access: 'read'
 	});
@@ -264,7 +276,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 	}
 
 	if (isProjectContext(contextType) && entityId) {
-		const allowed = await checkProjectAccess(supabase, entityId);
+		const allowed = await checkProjectAccess(supabase, entityId, user.id);
 		if (!allowed) {
 			return ApiResponse.success({ warmed: false, reason: 'project_not_accessible' });
 		}

@@ -9,6 +9,7 @@ import {
 	getChangeSourceFromRequest,
 	getChatSessionIdFromRequest
 } from '$lib/services/async-activity-logger';
+import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 
 type ProjectAccessResult =
 	| {
@@ -24,174 +25,20 @@ type ProjectAccessResult =
 async function requireProjectAccess(
 	locals: App.Locals,
 	projectId: string,
-	method: string,
+	_method: string,
 	requiredAccess: 'read' | 'write' | 'admin'
 ): Promise<ProjectAccessResult> {
-	const { user } = await locals.safeGetSession();
-	const supabase = locals.supabase;
-	const buildLogMetadata = (projectExists: boolean, metadata?: Record<string, unknown>) =>
-		projectExists
-			? metadata
-			: {
-					requested_project_id: projectId,
-					...metadata
-				};
-
-	if (!user) {
-		if (requiredAccess !== 'read') {
-			return { ok: false, response: ApiResponse.unauthorized('Authentication required') };
-		}
-
-		const [accessResult, projectResult] = await Promise.all([
-			supabase.rpc('current_actor_has_project_access', {
-				p_project_id: projectId,
-				p_required_access: 'read'
-			}),
-			supabase
-				.from('onto_projects')
-				.select('id')
-				.eq('id', projectId)
-				.is('deleted_at', null)
-				.maybeSingle()
-		]);
-		const projectExists = Boolean(projectResult.data);
-
-		if (accessResult.error) {
-			console.error(
-				'[Project Events API] Failed to check public access:',
-				accessResult.error
-			);
-			await logOntologyApiError({
-				supabase,
-				error: accessResult.error,
-				endpoint: `/api/onto/projects/${projectId}/events`,
-				method,
-				projectId: projectExists ? projectId : undefined,
-				entityType: 'event',
-				operation: 'project_events_access',
-				metadata: buildLogMetadata(projectExists)
-			});
-			return {
-				ok: false,
-				response: ApiResponse.internalError(
-					accessResult.error,
-					'Failed to check project access'
-				)
-			};
-		}
-
-		if (!accessResult.data) {
-			return { ok: false, response: ApiResponse.notFound('Project') };
-		}
-
-		if (projectResult.error) {
-			console.error('[Project Events API] Failed to fetch project:', projectResult.error);
-			await logOntologyApiError({
-				supabase,
-				error: projectResult.error,
-				endpoint: `/api/onto/projects/${projectId}/events`,
-				method,
-				projectId: projectExists ? projectId : undefined,
-				entityType: 'project',
-				operation: 'project_events_access',
-				tableName: 'onto_projects',
-				metadata: buildLogMetadata(projectExists)
-			});
-			return { ok: false, response: ApiResponse.databaseError(projectResult.error) };
-		}
-
-		if (!projectResult.data) {
-			return { ok: false, response: ApiResponse.notFound('Project') };
-		}
-
-		return { ok: true, userId: null, actorId: null };
+	const access = await requireProjectMemberAccess({
+		locals,
+		projectId,
+		requiredAccess,
+		forbiddenMessage: 'Access denied'
+	});
+	if (!access.ok) {
+		return { ok: false, response: access.response };
 	}
 
-	const [actorResult, accessResult, projectResult] = await Promise.all([
-		supabase.rpc('ensure_actor_for_user', { p_user_id: user.id }),
-		supabase.rpc('current_actor_has_project_access', {
-			p_project_id: projectId,
-			p_required_access: requiredAccess
-		}),
-		supabase
-			.from('onto_projects')
-			.select('id')
-			.eq('id', projectId)
-			.is('deleted_at', null)
-			.maybeSingle()
-	]);
-	const projectExists = Boolean(projectResult.data);
-
-	if (actorResult.error || !actorResult.data) {
-		console.error('[Project Events API] Failed to resolve actor:', actorResult.error);
-		await logOntologyApiError({
-			supabase,
-			error: actorResult.error || new Error('Failed to resolve user actor'),
-			endpoint: `/api/onto/projects/${projectId}/events`,
-			method,
-			userId: user.id,
-			projectId: projectExists ? projectId : undefined,
-			entityType: 'event',
-			operation: 'project_events_access',
-			metadata: buildLogMetadata(projectExists)
-		});
-		return {
-			ok: false,
-			response: ApiResponse.internalError(
-				actorResult.error || new Error('Failed to resolve user actor'),
-				'Failed to resolve user actor'
-			)
-		};
-	}
-
-	if (accessResult.error) {
-		console.error('[Project Events API] Failed to check access:', accessResult.error);
-		await logOntologyApiError({
-			supabase,
-			error: accessResult.error,
-			endpoint: `/api/onto/projects/${projectId}/events`,
-			method,
-			userId: user.id,
-			projectId: projectExists ? projectId : undefined,
-			entityType: 'event',
-			operation: 'project_events_access',
-			metadata: buildLogMetadata(projectExists)
-		});
-		return {
-			ok: false,
-			response: ApiResponse.internalError(
-				accessResult.error,
-				'Failed to check project access'
-			)
-		};
-	}
-
-	if (!accessResult.data) {
-		return { ok: false, response: ApiResponse.forbidden('Access denied') };
-	}
-
-	if (projectResult.error) {
-		console.error('[Project Events API] Failed to fetch project:', projectResult.error);
-		await logOntologyApiError({
-			supabase,
-			error: projectResult.error,
-			endpoint: `/api/onto/projects/${projectId}/events`,
-			method,
-			userId: user.id,
-			projectId: projectExists ? projectId : undefined,
-			entityType: 'project',
-			operation: 'project_events_access',
-			tableName: 'onto_projects',
-			metadata: buildLogMetadata(projectExists)
-		});
-		return { ok: false, response: ApiResponse.databaseError(projectResult.error) };
-	}
-
-	if (!projectResult.data) {
-		return { ok: false, response: ApiResponse.notFound('Project') };
-	}
-
-	return { ok: true, userId: user.id, actorId: actorResult.data as string };
+	return { ok: true, userId: access.userId, actorId: access.actorId };
 }
 
 export const GET: RequestHandler = async ({ params, url, locals }) => {

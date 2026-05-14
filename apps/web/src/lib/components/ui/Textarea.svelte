@@ -44,8 +44,8 @@
 		oninput?: (event: Event) => void;
 	} & Omit<HTMLTextareaAttributes, 'id'> = $props();
 
-	const errorId = `${id}-error`;
-	const helperId = `${id}-helper`;
+	const errorId = $derived(`${id}-error`);
+	const helperId = $derived(`${id}-helper`);
 
 	// Default enterkeyhint to 'enter' for textareas (can be overridden)
 	let computedEnterkeyhint = $derived(enterkeyhint || 'enter');

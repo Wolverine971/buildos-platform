@@ -27,6 +27,7 @@
 	- Hover: subtle emerald hints (semantic coherence)
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { Plus, Flag, ChevronDown } from 'lucide-svelte';
 	import MilestoneListItem from './MilestoneListItem.svelte';
@@ -70,7 +71,7 @@
 		maxVisible = 10
 	}: Props = $props();
 
-	let localExpanded = $state(expanded);
+	let localExpanded = $state(untrack(() => expanded));
 	const isExpanded = $derived(onToggleExpanded ? expanded : localExpanded);
 	const isGoalTerminal = $derived(goalState === 'achieved' || goalState === 'abandoned');
 

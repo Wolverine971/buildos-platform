@@ -21,6 +21,7 @@
 	- Base Modal: /apps/web/src/lib/components/ui/Modal.svelte
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import {
 		ChevronRight,
 		Loader,
@@ -60,16 +61,23 @@
 	}
 
 	let { projectId, goals, goalId = null, goalName = null, onClose, onCreated }: Props = $props();
+	const initialGoalContext = untrack(() => ({
+		hasGoalContext: Boolean(goalId),
+		goalId,
+		goalName
+	}));
 
 	// When goalId is provided, skip goal selection
 	const hasGoalContext = $derived(Boolean(goalId));
 
 	// Current step: 'goal-selection' or 'form'
-	let currentStep = $state<'goal-selection' | 'form'>(hasGoalContext ? 'form' : 'goal-selection');
+	let currentStep = $state<'goal-selection' | 'form'>(
+		initialGoalContext.hasGoalContext ? 'form' : 'goal-selection'
+	);
 
 	// Selected goal
-	let selectedGoalId = $state<string | null>(goalId);
-	let selectedGoalName = $state<string | null>(goalName);
+	let selectedGoalId = $state<string | null>(initialGoalContext.goalId);
+	let selectedGoalName = $state<string | null>(initialGoalContext.goalName);
 
 	// Search/filter for goals
 	let goalSearchQuery = $state('');

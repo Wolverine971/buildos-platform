@@ -78,6 +78,7 @@ export interface DeleteCalendarEventParams {
 	event_id: string;
 	calendar_id?: string;
 	send_notifications?: boolean;
+	sendUpdates?: CalendarSendUpdatesOption;
 }
 
 export interface GetUpcomingTasksParams {
@@ -1147,13 +1148,24 @@ export class CalendarService {
 			const auth = await this.oAuthService.getAuthenticatedClient(userId);
 			const calendar = google.calendar({ version: 'v3', auth });
 
-			const { event_id, calendar_id = 'primary', send_notifications = false } = params;
+			const {
+				event_id,
+				calendar_id = 'primary',
+				send_notifications = false,
+				sendUpdates
+			} = params;
 
-			await calendar.events.delete({
+			const deleteParams: calendar_v3.Params$Resource$Events$Delete = {
 				calendarId: calendar_id,
-				eventId: event_id,
-				sendNotifications: send_notifications
-			});
+				eventId: event_id
+			};
+			if (sendUpdates) {
+				deleteParams.sendUpdates = sendUpdates;
+			} else {
+				deleteParams.sendNotifications = send_notifications;
+			}
+
+			await calendar.events.delete(deleteParams);
 
 			// Mark as deleted in our tracking table (soft delete for audit trail)
 			await this.supabase

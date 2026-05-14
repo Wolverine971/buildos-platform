@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/onboarding/+page.svelte -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
 	import type { OnboardingIntent, OnboardingStakes } from '$lib/config/onboarding.config';
@@ -12,6 +13,7 @@
 	import ProgressIndicatorV3 from '$lib/components/onboarding-v3/ProgressIndicatorV3.svelte';
 
 	let { data }: { data: PageData } = $props();
+	const initialData = untrack(() => data);
 
 	// --- Session state persistence (survives OAuth redirects) ---
 	const SESSION_KEY = 'buildos_onboarding_state';
@@ -97,9 +99,9 @@
 
 	// If no session state, check if intent/stakes were saved to the database
 	// (user completed step 0, then got redirected by OAuth)
-	if (!savedSession && (data.savedIntent || data.savedStakes)) {
-		v3Data.intent = (data.savedIntent as OnboardingIntent) ?? null;
-		v3Data.stakes = (data.savedStakes as OnboardingStakes) ?? null;
+	if (!savedSession && (initialData.savedIntent || initialData.savedStakes)) {
+		v3Data.intent = (initialData.savedIntent as OnboardingIntent) ?? null;
+		v3Data.stakes = (initialData.savedStakes as OnboardingStakes) ?? null;
 		// They already completed step 0, jump to step 1
 		currentStep = 1;
 		maxStepReached = 1;

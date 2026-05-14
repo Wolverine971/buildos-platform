@@ -700,10 +700,31 @@ export async function approveOAuthAuthorization(params: {
 		scopeString(scopes),
 		params.authorizationRequest.client.allowed_scopes
 	);
+
+	let allowedProjectIds = params.allowedProjectIds;
+	if (allowedProjectIds !== undefined) {
+		const visibleProjects = await loadVisibleProjectsForOAuth(params.admin, params.userId);
+		const visibleProjectIds = new Set(visibleProjects.map((project) => project.id));
+		const uniqueProjectIds = Array.from(new Set(allowedProjectIds));
+		const invalidProjectIds = uniqueProjectIds.filter(
+			(projectId) => !visibleProjectIds.has(projectId)
+		);
+
+		if (invalidProjectIds.length > 0) {
+			throw new OAuthConnectorError(
+				'Selected project is not available to this BuildOS account',
+				400,
+				'invalid_request'
+			);
+		}
+
+		allowedProjectIds = uniqueProjectIds;
+	}
+
 	const scope: AgentCallScope = {
 		mode: scopeModeFromScopes(normalizedScopes),
 		allowed_ops: allowedOpsForScopes(normalizedScopes),
-		...(params.allowedProjectIds === undefined ? {} : { project_ids: params.allowedProjectIds })
+		...(allowedProjectIds === undefined ? {} : { project_ids: allowedProjectIds })
 	};
 	const caller = await createOrUpdateOAuthCaller({
 		admin: params.admin,

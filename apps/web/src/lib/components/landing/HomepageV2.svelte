@@ -949,8 +949,12 @@
 						<p
 							class="mt-8 text-center text-xs sm:text-sm text-muted-foreground max-w-2xl mx-auto leading-relaxed"
 						>
-							An agent can clone a workflow in a weekend. It can't clone a worldview.
-							The moat is the shared context layer — and you control it.
+							<span class="mb-2 block font-medium text-foreground">
+								BuildOS is not another agent. BuildOS is where the project lives so
+								every human and agent can work from the same memory.
+							</span>
+							An agent can clone a workflow in a weekend. It can't clone a worldview. The
+							moat is the shared context layer — and you control it.
 						</p>
 					</div>
 				</div>

@@ -1,6 +1,7 @@
 <!-- apps/web/src/routes/admin/migration/+page.svelte -->
 <!-- Global Migration Dashboard with tabbed navigation -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { GitBranch, Globe, User, AlertTriangle, Play, RefreshCw, Users } from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import AdminCard from '$lib/components/admin/AdminCard.svelte';
@@ -27,7 +28,8 @@
 
 	// View state
 	type ViewTab = 'overview' | 'users' | 'user-detail';
-	let activeTab = $state<ViewTab>(data.viewMode === 'user' ? 'user-detail' : 'overview');
+	const initialViewMode = untrack(() => data.viewMode);
+	let activeTab = $state<ViewTab>(initialViewMode === 'user' ? 'user-detail' : 'overview');
 
 	// User list state
 	let usersData = $state<UserListResponse | null>(null);

@@ -52,6 +52,7 @@ import type {
 	PlanProgress,
 	ProjectActivityEntry,
 	ProjectBriefData,
+	ProjectPauseNotice,
 	ProjectRecentChange,
 	ProjectRecentChangeKind,
 	RecentUpdates,
@@ -1971,6 +1972,98 @@ export class OntologyBriefDataLoader {
 		});
 	}
 
+	async loadRecentlyPausedProjects(
+		userId: string,
+		actorId: string
+	): Promise<ProjectPauseNotice[]> {
+		const { data: memberRows, error: memberError } = await this.supabase
+			.from('onto_project_members')
+			.select('project_id')
+			.eq('actor_id', actorId)
+			.is('removed_at', null);
+
+		if (memberError) {
+			console.warn(
+				'[OntologyBriefDataLoader] Error loading memberships for paused notices:',
+				memberError
+			);
+			return [];
+		}
+
+		const memberProjectIds = (memberRows || [])
+			.map((row) => row.project_id)
+			.filter((id): id is string => Boolean(id));
+		const projectAccessFilter = buildProjectAccessFilter({
+			actorId,
+			userId,
+			memberProjectIds
+		});
+
+		const { data: pausedProjects, error: projectError } = await this.supabase
+			.from('onto_projects')
+			.select('id, name, state_key, updated_at, created_by')
+			.or(projectAccessFilter)
+			.eq('state_key', 'paused')
+			.is('deleted_at', null);
+
+		if (projectError) {
+			console.warn('[OntologyBriefDataLoader] Error loading paused projects:', projectError);
+			return [];
+		}
+
+		const projects = (pausedProjects || []) as Array<
+			Pick<OntoProject, 'id' | 'name' | 'state_key' | 'updated_at' | 'created_by'>
+		>;
+		if (projects.length === 0) return [];
+
+		const projectById = new Map(projects.map((project) => [project.id, project]));
+		const cutoff = subHours(new Date(), ACTIVITY_WINDOW_HOURS).toISOString();
+		const { data: logs, error: logError } = await this.supabase
+			.from('onto_project_logs')
+			.select('project_id, before_data, after_data, created_at, changed_by')
+			.in(
+				'project_id',
+				projects.map((project) => project.id)
+			)
+			.eq('entity_type', 'project')
+			.eq('action', 'updated')
+			.gte('created_at', cutoff)
+			.order('created_at', { ascending: false });
+
+		if (logError) {
+			console.warn('[OntologyBriefDataLoader] Error loading paused project logs:', logError);
+			return [];
+		}
+
+		const getState = (value: unknown): string | null => {
+			if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+			const state = (value as Record<string, unknown>).state_key;
+			return typeof state === 'string' ? state : null;
+		};
+
+		const notices: ProjectPauseNotice[] = [];
+		const seen = new Set<string>();
+		for (const log of logs || []) {
+			const project = log.project_id ? projectById.get(log.project_id) : null;
+			if (!project || seen.has(project.id)) continue;
+
+			const previousState = getState(log.before_data);
+			const nextState = getState(log.after_data);
+			if (nextState !== 'paused' || previousState === 'paused') continue;
+
+			notices.push({
+				projectId: project.id,
+				projectName: project.name,
+				pausedAt: log.created_at,
+				actorName: typeof log.changed_by === 'string' ? log.changed_by : null,
+				previousState
+			});
+			seen.add(project.id);
+		}
+
+		return notices;
+	}
+
 	/**
 	 * Load compact calendar data for the daily brief.
 	 *
@@ -2283,7 +2376,8 @@ export class OntologyBriefDataLoader {
 		projectsData: OntoProjectWithRelations[],
 		briefDate: string,
 		timezone: string,
-		calendar: CalendarBriefSection = createEmptyCalendarBriefSection()
+		calendar: CalendarBriefSection = createEmptyCalendarBriefSection(),
+		recentlyPausedProjects: ProjectPauseNotice[] = []
 	): OntologyBriefData {
 		// Aggregate data across all projects
 		const allTasks = projectsData.flatMap((p) => p.tasks);
@@ -2519,6 +2613,7 @@ export class OntologyBriefDataLoader {
 			overdueTasks: categorizedTasks.overdueTasks,
 			highPriorityCount,
 			recentUpdates: allRecentUpdates,
+			recentlyPausedProjects,
 			tasksByWorkMode,
 			projects,
 			calendar,
@@ -2595,6 +2690,7 @@ export class OntologyBriefDataLoader {
 			calendarSyncIssueCount: briefData.calendar.counts.all.syncIssue,
 			calendarUnconfirmedGoogleCount: briefData.calendar.counts.all.unconfirmedGoogle,
 			calendarStaleGoogleCount: briefData.calendar.counts.all.staleGoogle,
+			recentlyPausedProjectCount: briefData.recentlyPausedProjects.length,
 			generatedVia: 'ontology_v1',
 			timezone
 		};

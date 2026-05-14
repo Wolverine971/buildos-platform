@@ -34,12 +34,13 @@ The lead-gen operating system is the current source of truth for how to run manu
 
 These define what BuildOS is, who it's for, and how to talk about it.
 
-| Document                                                                                   | What It Does                                                                                    |
-| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| [Marketing Strategy 2026](strategy/buildos-marketing-strategy-2026.md)                     | Master strategy. Positioning, audience order, channel roles, solo-founder operating model       |
-| [Anti-AI Show-Don't-Tell Strategy](strategy/anti-ai-show-dont-tell-strategy.md)            | Core positioning thesis. Lead with relief, not AI. "AI is the engine, not the headline"         |
-| [Thinking Environment Creator Strategy](strategy/thinking-environment-creator-strategy.md) | Audience-first strategy. Authors and YouTubers as primary wedge, visual direction, demo library |
-| [Guerrilla Content Doctrine](strategy/buildos-guerrilla-content-doctrine.md)               | Content operating doctrine for a one-person team. Content lanes, cadence, decision rules        |
+| Document                                                                                   | What It Does                                                                                                      |
+| ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| [Marketing Strategy 2026](strategy/buildos-marketing-strategy-2026.md)                     | Master strategy. Positioning, audience order, channel roles, solo-founder operating model                         |
+| [Anti-AI Show-Don't-Tell Strategy](strategy/anti-ai-show-dont-tell-strategy.md)            | Core positioning thesis. Lead with relief, not AI. "AI is the engine, not the headline"                           |
+| [Thinking Environment Creator Strategy](strategy/thinking-environment-creator-strategy.md) | Audience-first strategy. Authors and YouTubers as primary wedge, visual direction, demo library                   |
+| [Guerrilla Content Doctrine](strategy/buildos-guerrilla-content-doctrine.md)               | Content operating doctrine for a one-person team. Content lanes, cadence, decision rules                          |
+| [How to Explain BuildOS](strategy/how-to-explain-buildos-2026-05-11.md)                    | Spoken-word companion. 17 modular talking points, two persona flows, market story, sentences DJ can say in person |
 
 ### Key positioning decisions (across all docs)
 

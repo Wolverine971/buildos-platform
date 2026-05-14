@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/tree-agent/TreeAgentContextSelector.svelte -->
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { untrack } from 'svelte';
 
 	interface Project {
 		id: string;
@@ -25,11 +26,15 @@
 		onClose,
 		isOpen = false
 	}: ContextSelectorProps = $props();
+	const initialContext = untrack(() => ({
+		type: currentContextType,
+		projectId: currentProjectId
+	}));
 
 	let projects = $state<Project[]>([]);
 	let isLoading = $state(false);
-	let selectedContextType = $state<'global' | 'project'>(currentContextType);
-	let selectedProjectId = $state<string | null>(currentProjectId);
+	let selectedContextType = $state<'global' | 'project'>(initialContext.type);
+	let selectedProjectId = $state<string | null>(initialContext.projectId);
 	let error = $state<string | null>(null);
 
 	$effect(() => {
@@ -108,7 +113,7 @@
 			<div class="space-y-4 px-4 py-4">
 				<!-- Context Type Selection -->
 				<div class="space-y-2">
-					<label class="block text-sm font-medium text-foreground">Context Type</label>
+					<div class="block text-sm font-medium text-foreground">Context Type</div>
 
 					<div class="space-y-2">
 						<!-- Global Option -->

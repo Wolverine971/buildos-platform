@@ -475,7 +475,7 @@ export class TimeBlockSuggestionService {
 	private mapProjectStatus(
 		stateKey: ProjectRow['state_key']
 	): NonNullable<CandidateTask['project']>['status'] {
-		if (stateKey === 'planning') return 'paused';
+		if (stateKey === 'paused') return 'paused';
 		if (stateKey === 'completed') return 'completed';
 		if (stateKey === 'cancelled') return 'archived';
 		return 'active';

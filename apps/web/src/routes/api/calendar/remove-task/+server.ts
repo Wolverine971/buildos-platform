@@ -22,7 +22,8 @@ export const POST: RequestHandler = async ({ request, locals: { safeGetSession, 
 		const result = await calendarService.deleteCalendarEvent(user.id, {
 			event_id,
 			calendar_id: calendar_id || 'primary',
-			send_notifications: false
+			send_notifications: false,
+			sendUpdates: 'none'
 		});
 
 		if (result.success) {

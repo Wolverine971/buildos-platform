@@ -90,7 +90,7 @@ class QueryBuilderMock {
 function createSupabaseMock() {
 	return {
 		rpc: vi.fn(async (fn: string) => {
-			if (fn === 'current_actor_has_project_access') {
+			if (fn === 'current_actor_has_project_member_access') {
 				return { data: true, error: null };
 			}
 			return { data: null, error: null };

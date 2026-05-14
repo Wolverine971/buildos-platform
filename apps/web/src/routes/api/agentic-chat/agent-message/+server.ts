@@ -150,17 +150,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.badRequest('Unsupported agent');
 	}
 
-	// Run actor resolution, access check, and project lookup in parallel — none depend on
-	// each other (the access RPC uses auth.uid(), not actorId; the project fetch is by id).
-	const [actorResult, accessResult, projectResult] = await Promise.all([
-		locals.supabase.rpc('ensure_actor_for_user', { p_user_id: user.id }),
-		locals.supabase.rpc('current_actor_has_project_access', {
-			p_project_id: projectId,
-			p_required_access: 'write'
-		}),
-		locals.supabase.from('onto_projects').select('id, name, props').eq('id', projectId).single()
-	]);
-
+	const actorResult = await locals.supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
 	const { data: actorData, error: actorError } = actorResult;
 
 	if (actorError || !actorData) {
@@ -183,6 +173,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const actorId = actorData as EnsureActorResponse;
+
+	const [accessResult, projectResult] = await Promise.all([
+		locals.supabase.rpc('current_actor_has_project_member_access', {
+			p_project_id: projectId,
+			p_required_access: 'write'
+		}),
+		locals.supabase.from('onto_projects').select('id, name, props').eq('id', projectId).single()
+	]);
 
 	const { data: hasAccess, error: accessError } = accessResult;
 

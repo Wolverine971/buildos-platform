@@ -63,6 +63,9 @@
 	// Derived
 	const hasNextStep = $derived(!!nextStepShort);
 	const hasLongVersion = $derived(!!nextStepLong && nextStepLong !== nextStepShort);
+	const nextStepSourceLabel = $derived(
+		nextStepSource === 'ai' ? 'AI' : nextStepSource === 'user' ? 'You' : null
+	);
 
 	const parsedLong = $derived.by(() => {
 		if (!nextStepLong) return null;
@@ -190,9 +193,12 @@
 			<span class="text-[10px] font-semibold uppercase tracking-wider text-accent">
 				Suggested Next Move
 			</span>
-			{#if updatedTimeAgo}
+			{#if nextStepSourceLabel || updatedTimeAgo}
 				<span class="text-[10px] text-muted-foreground hidden sm:inline">
-					· {updatedTimeAgo}
+					· {nextStepSourceLabel ?? updatedTimeAgo}
+					{#if nextStepSourceLabel && updatedTimeAgo}
+						· {updatedTimeAgo}
+					{/if}
 				</span>
 			{/if}
 			<!-- Regenerate button -->
@@ -216,31 +222,30 @@
 		</div>
 
 		<!-- Next step text (clickable to expand if long version exists) -->
-		<div
-			role={hasLongVersion ? 'button' : undefined}
-			tabindex={hasLongVersion ? 0 : -1}
-			onclick={toggleExpand}
-			onkeydown={(e) => {
-				if (e.key === 'Enter' || e.key === ' ') {
-					e.preventDefault();
-					toggleExpand();
-				}
-			}}
-			class="flex items-start gap-1.5 {hasLongVersion ? 'cursor-pointer' : 'cursor-default'}"
-			aria-expanded={hasLongVersion ? isExpanded : undefined}
-		>
-			<p class="text-sm font-medium text-foreground leading-snug flex-1 min-w-0">
-				{nextStepShort}
-			</p>
-			{#if hasLongVersion}
+		{#if hasLongVersion}
+			<button
+				type="button"
+				onclick={toggleExpand}
+				class="flex w-full cursor-pointer items-start gap-1.5 text-left focus:outline-none focus:ring-2 focus:ring-ring"
+				aria-expanded={isExpanded}
+			>
+				<p class="text-sm font-medium text-foreground leading-snug flex-1 min-w-0">
+					{nextStepShort}
+				</p>
 				<div
 					class="shrink-0 mt-0.5 text-muted-foreground transition-transform duration-[120ms]"
 					class:rotate-180={isExpanded}
 				>
 					<ChevronDown class="w-3.5 h-3.5" />
 				</div>
-			{/if}
-		</div>
+			</button>
+		{:else}
+			<div class="flex cursor-default items-start gap-1.5">
+				<p class="text-sm font-medium text-foreground leading-snug flex-1 min-w-0">
+					{nextStepShort}
+				</p>
+			</div>
+		{/if}
 
 		<!-- Expanded content -->
 		{#if isExpanded && hasLongVersion}

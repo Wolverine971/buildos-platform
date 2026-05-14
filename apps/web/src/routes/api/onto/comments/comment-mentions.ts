@@ -7,7 +7,6 @@ type SupabaseClient = App.Locals['supabase'];
 type ProjectContext = {
 	id: string;
 	name: string | null;
-	is_public: boolean | null;
 	created_by: string;
 };
 
@@ -95,30 +94,24 @@ export async function handleCommentMentions({
 
 		if (actorByUserId.size === 0) return;
 
-		let allowedUserIds: string[];
+		const { data: members, error: memberError } = await supabase
+			.from('onto_project_members')
+			.select('actor_id')
+			.eq('project_id', project.id)
+			.is('removed_at', null)
+			.in('actor_id', actorIds);
 
-		if (project.is_public) {
-			allowedUserIds = Array.from(actorByUserId.keys());
-		} else {
-			const { data: members, error: memberError } = await supabase
-				.from('onto_project_members')
-				.select('actor_id')
-				.eq('project_id', project.id)
-				.is('removed_at', null)
-				.in('actor_id', actorIds);
-
-			if (memberError) {
-				console.error('[Comments API] Failed to check mention access:', memberError);
-				return;
-			}
-
-			const allowedActorIds = new Set<string>(members?.map((m) => m.actor_id) ?? []);
-			allowedActorIds.add(project.created_by);
-
-			allowedUserIds = Array.from(actorByUserId.entries())
-				.filter(([, actorId]) => allowedActorIds.has(actorId))
-				.map(([userId]) => userId);
+		if (memberError) {
+			console.error('[Comments API] Failed to check mention access:', memberError);
+			return;
 		}
+
+		const allowedActorIds = new Set<string>(members?.map((m) => m.actor_id) ?? []);
+		allowedActorIds.add(project.created_by);
+
+		const allowedUserIds = Array.from(actorByUserId.entries())
+			.filter(([, actorId]) => allowedActorIds.has(actorId))
+			.map(([userId]) => userId);
 
 		const existingSet = new Set(existingMentionUserIds);
 		const newMentionUserIds = allowedUserIds.filter((userId) => !existingSet.has(userId));

@@ -325,10 +325,11 @@ Payload:
 
 - SELECT:
     - Project owners (`created_by = current_actor_id()` via project ownership).
+    - Active project members via `current_actor_has_project_member_access(project_id, 'read')`.
     - Admins (`is_admin()`).
-    - Public read if `onto_projects.is_public = true`.
+    - Public read only for comments on documents with a live `onto_public_pages` row.
 - INSERT:
-    - Users who own the project.
+    - Users with project write access, or authenticated users commenting on a live public document page.
     - Require `created_by = current_actor_id()`.
 - UPDATE:
     - Author or admin.
@@ -376,11 +377,11 @@ create index if not exists idx_onto_comment_read_states_actor
 
 ## Public Projects
 
-When `onto_projects.is_public = true`:
+For public document pages:
 
-- Comments are readable by anonymous users.
-- Write access still requires authentication and project access.
-- Mentions and unread tracking only apply to authenticated users.
+- Comments are readable by anonymous users only for the published document.
+- Write access requires authentication and a live public document page.
+- Mentions and unread tracking only apply to project members; public visibility does not open arbitrary mention notifications.
 
 ## Future Enhancements
 

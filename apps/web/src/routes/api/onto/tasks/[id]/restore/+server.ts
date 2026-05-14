@@ -18,6 +18,7 @@ import {
 	getChatSessionIdFromRequest,
 	logUpdateAsync
 } from '$lib/services/async-activity-logger';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const { user } = await locals.safeGetSession();
@@ -31,6 +32,23 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 	const chatSessionId = getChatSessionIdFromRequest(request);
 
 	try {
+		try {
+			await ensureActorId(supabase, user.id);
+		} catch (error) {
+			console.error('[Task Restore] Failed to resolve actor:', error);
+			await logOntologyApiError({
+				supabase,
+				error,
+				endpoint: `/api/onto/tasks/${taskId}/restore`,
+				method: 'POST',
+				userId: user.id,
+				entityType: 'task',
+				entityId: taskId,
+				operation: 'task_restore_actor_resolve'
+			});
+			return ApiResponse.internalError(error, 'Failed to resolve user actor');
+		}
+
 		// Find the soft-deleted task and its project for the access check.
 		const { data: task, error: fetchError } = await supabase
 			.from('onto_tasks')
@@ -59,7 +77,7 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 
 		// Write access on the parent project
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			{ p_project_id: task.project_id, p_required_access: 'write' }
 		);
 		if (accessError) {

@@ -18,6 +18,7 @@ function createEntityQueryResult(data: unknown[]) {
 
 describe('GET /api/onto/projects/[id]/entities', () => {
 	it('uses the lean project access check before loading entities', async () => {
+		const projectId = '11111111-1111-4111-8111-111111111111';
 		const query = createEntityQueryResult([
 			{
 				id: 'task-1',
@@ -29,21 +30,35 @@ describe('GET /api/onto/projects/[id]/entities', () => {
 				props: null
 			}
 		]);
+		const projectQuery = {
+			select: vi.fn().mockReturnThis(),
+			eq: vi.fn().mockReturnThis(),
+			is: vi.fn().mockReturnThis(),
+			maybeSingle: vi.fn().mockResolvedValue({ data: { id: projectId }, error: null })
+		};
+		let entityQueryRequested = false;
 		const supabase = {
 			rpc: vi.fn(async (fn: string, args: Record<string, unknown>) => {
-				if (fn === 'current_actor_has_project_access') {
+				if (fn === 'ensure_actor_for_user') {
+					return { data: 'actor-1', error: null };
+				}
+				if (fn === 'current_actor_has_project_member_access') {
 					return { data: true, error: null };
 				}
 
 				throw new Error(`Unexpected rpc: ${fn} ${JSON.stringify(args)}`);
 			}),
-			from: vi.fn(() => query)
+			from: vi.fn((table: string) => {
+				if (table === 'onto_projects') return projectQuery;
+				entityQueryRequested = true;
+				return query;
+			})
 		};
 
 		const response = await GET({
-			params: { id: 'project-1' },
+			params: { id: projectId },
 			url: new URL(
-				'http://localhost/api/onto/projects/project-1/entities?type=task&search=ship&limit=10'
+				`http://localhost/api/onto/projects/${projectId}/entities?type=task&search=ship&limit=10`
 			),
 			locals: {
 				supabase,
@@ -54,12 +69,16 @@ describe('GET /api/onto/projects/[id]/entities', () => {
 
 		expect(response.status).toBe(200);
 		expect(payload.success).toBe(true);
-		expect(supabase.rpc).toHaveBeenCalledTimes(1);
-		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
-			p_project_id: 'project-1',
+		expect(supabase.rpc).toHaveBeenCalledWith('ensure_actor_for_user', {
+			p_user_id: 'user-1'
+		});
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
+			p_project_id: projectId,
 			p_required_access: 'read'
 		});
+		expect(projectQuery.maybeSingle).toHaveBeenCalled();
 		expect(supabase.from).toHaveBeenCalledWith('onto_tasks');
+		expect(entityQueryRequested).toBe(true);
 		expect(payload.data).toEqual([
 			{
 				id: 'task-1',

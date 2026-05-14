@@ -3041,7 +3041,7 @@ DECLARE
 v_project jsonb;
 v_result jsonb;
 BEGIN
-IF NOT current_actor_has_project_access(p_project_id, 'read') THEN
+IF NOT current_actor_has_project_member_access(p_project_id, 'read') THEN
 RETURN NULL;
 END IF;
 
@@ -3359,7 +3359,7 @@ SELECT jsonb_build_object(
 FROM onto_projects p
 WHERE p.id = p_project_id
 AND p.deleted_at IS NULL
-AND current_actor_has_project_access(p.id, 'read');
+AND current_actor_has_project_member_access(p.id, 'read');
 $function$
 "
 },

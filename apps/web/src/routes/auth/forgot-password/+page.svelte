@@ -1,6 +1,7 @@
 <!-- apps/web/src/routes/auth/forgot-password/+page.svelte -->
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { untrack } from 'svelte';
 	import type { ActionData } from './$types';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -10,7 +11,7 @@
 	let { form }: { form?: ActionData } = $props();
 
 	let loading = $state(false);
-	let email = $state(form?.email ?? '');
+	let email = $state(untrack(() => form?.email ?? ''));
 	let emailError = $state('');
 
 	// Validate email on blur for instant feedback

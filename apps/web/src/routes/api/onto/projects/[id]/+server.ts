@@ -27,6 +27,7 @@ import {
 	attachLastChangedByActorToTasks,
 	fetchTaskLastChangedByActorMap
 } from '$lib/server/task-relevance.service';
+import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -260,8 +261,6 @@ const METRIC_COLUMNS = [
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
-		const { user } = await locals.safeGetSession();
-
 		const { id } = params;
 
 		if (!id) {
@@ -271,44 +270,24 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.badRequest('Invalid project ID');
 		}
 
+		const access = await requireProjectMemberAccess({
+			locals,
+			projectId: id,
+			requiredAccess: 'read'
+		});
+		if (!access.ok) return access.response;
+
 		const supabase = locals.supabase;
+		const user = { id: access.userId };
 
-		if (user) {
-			const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
-
-			if (actorResult.error || !actorResult.data) {
-				console.error('[Project API] Failed to get actor:', actorResult.error);
-				await logOntologyApiError({
-					supabase,
-					error: actorResult.error || new Error('Failed to resolve user actor'),
-					endpoint: `/api/onto/projects/${id}`,
-					method: 'GET',
-					userId: user.id,
-					projectId: id,
-					entityType: 'project',
-					operation: 'project_actor_resolve'
-				});
-				return ApiResponse.internalError(
-					actorResult.error || new Error('Failed to resolve user actor'),
-					'Failed to resolve user actor'
-				);
-			}
-		}
-
-		// OPTIMIZATION: Fetch project data + access check in parallel
+		// OPTIMIZATION: Fetch project data
 		// Note: We don't filter deleted_at here to allow viewing deleted projects
 		// (but we return deleted_at status so frontend can handle it)
-		const [projectResult, accessResult] = await Promise.all([
-			supabase
-				.from('onto_projects')
-				.select(PROJECT_PAGE_PROJECT_COLUMNS)
-				.eq('id', id)
-				.maybeSingle(),
-			supabase.rpc('current_actor_has_project_access', {
-				p_project_id: id,
-				p_required_access: 'read'
-			})
-		]);
+		const projectResult = await supabase
+			.from('onto_projects')
+			.select(PROJECT_PAGE_PROJECT_COLUMNS)
+			.eq('id', id)
+			.maybeSingle();
 
 		if (projectResult.error) {
 			console.error('[Project API] Failed to fetch project:', projectResult.error);
@@ -317,7 +296,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				error: projectResult.error,
 				endpoint: `/api/onto/projects/${id}`,
 				method: 'GET',
-				userId: user?.id,
+				userId: user.id,
 				projectId: id,
 				entityType: 'project',
 				operation: 'project_get',
@@ -334,27 +313,6 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		// Return 404 for soft-deleted projects (they shouldn't be accessed directly)
 		if (project.deleted_at) {
 			return ApiResponse.notFound('Project');
-		}
-
-		if (accessResult.error) {
-			console.error('[Project API] Failed to check access:', accessResult.error);
-			await logOntologyApiError({
-				supabase,
-				error: accessResult.error,
-				endpoint: `/api/onto/projects/${id}`,
-				method: 'GET',
-				userId: user?.id,
-				projectId: id,
-				entityType: 'project',
-				operation: 'project_access_check'
-			});
-			return ApiResponse.internalError(accessResult.error, 'Failed to check project access');
-		}
-
-		if (!accessResult.data) {
-			return user
-				? ApiResponse.forbidden('You do not have permission to access this project')
-				: ApiResponse.notFound('Project');
 		}
 
 		// OPTIMIZATION: Fetch ALL related entities in a single parallel batch
@@ -658,7 +616,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			{
 				p_project_id: id,
 				p_required_access: 'write'

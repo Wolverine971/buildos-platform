@@ -7,7 +7,7 @@
 	Data: GET /api/onto/projects/{projectId}/public-pages
 -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { ChevronDown, ExternalLink, Globe, Link, LoaderCircle } from 'lucide-svelte';
 	import { toastService } from '$lib/stores/toast.store';
@@ -56,7 +56,7 @@
 	let loading = $state(false);
 	let loaded = $state(false);
 	let error = $state<string | null>(null);
-	let isExpanded = $state(expanded ?? initialLiveCount > 0);
+	let isExpanded = $state(untrack(() => expanded ?? initialLiveCount > 0));
 
 	const liveCount = $derived(pages.filter((p) => p.public_status === 'live').length);
 	const displayedLiveCount = $derived(loaded ? liveCount : initialLiveCount);

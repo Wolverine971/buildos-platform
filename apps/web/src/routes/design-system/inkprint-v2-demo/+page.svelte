@@ -909,6 +909,8 @@
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
 		<!-- Backdrop -->
 		<button
+			type="button"
+			aria-label="Close create task modal"
 			class="absolute inset-0 bg-black/50 backdrop-blur-sm"
 			onclick={() => (showCreateModal = false)}
 		></button>
@@ -923,6 +925,8 @@
 			>
 				<h2 class="text-lg font-semibold text-foreground">Create Task</h2>
 				<button
+					type="button"
+					aria-label="Close create task modal"
 					onclick={() => (showCreateModal = false)}
 					class="p-1.5 rounded-lg hover:bg-muted transition-colors"
 				>
@@ -933,10 +937,13 @@
 			<!-- Form - GRID texture on inputs -->
 			<div class="relative z-10 p-4 space-y-4">
 				<div class="space-y-1.5">
-					<label class="text-xs font-medium text-muted-foreground">Title</label>
+					<label for="create-task-title" class="text-xs font-medium text-muted-foreground"
+						>Title</label
+					>
 					<!-- Input with GRID texture - "you can write here" -->
 					<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
 						<input
+							id="create-task-title"
 							type="text"
 							placeholder="What needs to be done?"
 							class="relative z-10 w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-accent/30 text-foreground placeholder:text-muted-foreground outline-none transition-colors"
@@ -945,10 +952,14 @@
 				</div>
 
 				<div class="space-y-1.5">
-					<label class="text-xs font-medium text-muted-foreground">Description</label>
+					<label
+						for="create-task-description"
+						class="text-xs font-medium text-muted-foreground">Description</label
+					>
 					<!-- Textarea with GRID texture -->
 					<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
 						<textarea
+							id="create-task-description"
 							placeholder="Add details..."
 							rows="3"
 							class="relative z-10 w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-accent/30 text-foreground placeholder:text-muted-foreground outline-none resize-none transition-colors"
@@ -958,10 +969,14 @@
 
 				<div class="grid grid-cols-2 gap-3">
 					<div class="space-y-1.5">
-						<label class="text-xs font-medium text-muted-foreground">Priority</label>
+						<label
+							for="create-task-priority"
+							class="text-xs font-medium text-muted-foreground">Priority</label
+						>
 						<!-- Select with GRID texture -->
 						<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
 							<select
+								id="create-task-priority"
 								class="relative z-10 w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner text-foreground outline-none"
 							>
 								<option>Low</option>
@@ -971,10 +986,14 @@
 						</div>
 					</div>
 					<div class="space-y-1.5">
-						<label class="text-xs font-medium text-muted-foreground">Due Date</label>
+						<label
+							for="create-task-due-date"
+							class="text-xs font-medium text-muted-foreground">Due Date</label
+						>
 						<!-- Date input with GRID texture -->
 						<div class="relative tx tx-grid tx-weak rounded-lg overflow-hidden">
 							<input
+								id="create-task-due-date"
 								type="date"
 								class="relative z-10 w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner text-foreground outline-none"
 							/>
@@ -1011,6 +1030,8 @@
 {#if showDeleteModal}
 	<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
 		<button
+			type="button"
+			aria-label="Close delete task modal"
 			class="absolute inset-0 bg-black/50 backdrop-blur-sm"
 			onclick={() => (showDeleteModal = false)}
 		></button>

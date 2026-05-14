@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/scheduling/CalendarView.svelte -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import {
 		ChevronLeft,
 		ChevronRight,
@@ -108,7 +109,7 @@
 	}: Props = $props();
 
 	// Internal date state
-	let internalDate = $state(new Date(currentDate));
+	let internalDate = $state(new Date(untrack(() => currentDate)));
 
 	// Calculate effective date boundaries
 	let effectivePhaseStart = $derived(phaseStart ? parseLocalDate(phaseStart) : null);

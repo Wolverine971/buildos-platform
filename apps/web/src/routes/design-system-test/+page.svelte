@@ -728,7 +728,7 @@
 	{/snippet}
 </Modal>
 
-<style>
+<style lang="postcss">
 	.code-inline {
 		@apply px-1.5 py-0.5 bg-muted text-accent rounded text-sm font-mono;
 	}

@@ -2,6 +2,8 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../shared/error-logging';
+import { canAccessPublicComments } from '$lib/server/comment-public-access';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const supabase = locals.supabase;
@@ -52,9 +54,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		const { data: project, error: projectError } = await supabase
+		const admin = createAdminSupabaseClient();
+		const { data: project, error: projectError } = await admin
 			.from('onto_projects')
-			.select('id, is_public')
+			.select('id')
 			.eq('id', projectId)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -79,31 +82,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
-		if (!project.is_public) {
-			const { data: hasAccess, error: accessError } = await supabase.rpc(
-				'current_actor_has_project_access',
-				{
-					p_project_id: projectId,
-					p_required_access: 'read'
-				}
-			);
-
-			if (accessError) {
-				await logOntologyApiError({
-					supabase,
-					error: accessError,
-					endpoint: '/api/onto/comments/read',
-					method: 'POST',
-					userId: session.user.id,
-					projectId,
-					entityType,
-					entityId,
-					operation: 'comment_read_access_check'
-				});
-				return ApiResponse.error('Failed to check project access', 500);
+		const { data: hasAccess, error: accessError } = await supabase.rpc(
+			'current_actor_has_project_member_access',
+			{
+				p_project_id: projectId,
+				p_required_access: 'read'
 			}
+		);
 
-			if (!hasAccess) {
+		if (accessError) {
+			await logOntologyApiError({
+				supabase,
+				error: accessError,
+				endpoint: '/api/onto/comments/read',
+				method: 'POST',
+				userId: session.user.id,
+				projectId,
+				entityType,
+				entityId,
+				operation: 'comment_read_access_check'
+			});
+			return ApiResponse.error('Failed to check project access', 500);
+		}
+
+		if (!hasAccess) {
+			const docIsLivePublic = await canAccessPublicComments(supabase, entityType, entityId);
+			if (!docIsLivePublic) {
 				return ApiResponse.forbidden('Access denied');
 			}
 		}

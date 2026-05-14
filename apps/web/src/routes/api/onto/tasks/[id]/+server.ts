@@ -151,7 +151,7 @@ export const GET: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			{
 				p_project_id: task.project.id,
 				p_required_access: 'read'
@@ -312,7 +312,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			{
 				p_project_id: existingTask.project.id,
 				p_required_access: 'write'
@@ -809,7 +809,7 @@ export const DELETE: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			{
 				p_project_id: task.project.id,
 				p_required_access: 'write'

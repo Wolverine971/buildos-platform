@@ -201,8 +201,8 @@ export interface AuthorizationResult {
 }
 
 /**
- * Verifies that the current user owns/has access to a project.
- * Uses the onto_projects table to check created_by matches the user's actor.
+ * Verifies that the current user owns or is an active member of a project.
+ * Public project visibility is not treated as collaboration access here.
  *
  * @param supabase - The Supabase client
  * @param projectId - The project ID to verify
@@ -234,7 +234,7 @@ export async function verifyProjectAccess(
 	}
 
 	const { data: hasAccess, error: accessError } = await supabase.rpc(
-		'current_actor_has_project_access',
+		'current_actor_has_project_member_access',
 		{
 			p_project_id: projectId,
 			p_required_access: 'read'

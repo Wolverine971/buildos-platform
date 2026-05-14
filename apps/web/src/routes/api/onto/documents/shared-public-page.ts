@@ -18,6 +18,15 @@ export async function ensureDocumentAccessForPublicPage(
 ): Promise<DocumentAccessResult> {
 	const supabase = locals.supabase;
 
+	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+		p_user_id: userId
+	});
+	if (actorError || !actorId) {
+		return {
+			error: ApiResponse.internalError(actorError || new Error('Failed to resolve actor'))
+		};
+	}
+
 	const { data: document, error: documentError } = await (supabase as any)
 		.from('onto_documents')
 		.select('*')
@@ -33,17 +42,8 @@ export async function ensureDocumentAccessForPublicPage(
 		return { error: ApiResponse.notFound('Document') };
 	}
 
-	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-		p_user_id: userId
-	});
-	if (actorError || !actorId) {
-		return {
-			error: ApiResponse.internalError(actorError || new Error('Failed to resolve actor'))
-		};
-	}
-
 	const { data: hasAccess, error: accessError } = await supabase.rpc(
-		'current_actor_has_project_access',
+		'current_actor_has_project_member_access',
 		{
 			p_project_id: document.project_id,
 			p_required_access: requiredAccess

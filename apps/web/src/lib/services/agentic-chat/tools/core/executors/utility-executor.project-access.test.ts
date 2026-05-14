@@ -43,7 +43,7 @@ describe('UtilityExecutor project-scoped entity access', () => {
 		let edgeQueryCount = 0;
 		mockSupabase = {
 			rpc: vi.fn((fn: string) => {
-				if (fn === 'current_actor_has_project_access') {
+				if (fn === 'current_actor_has_project_member_access') {
 					return Promise.resolve({ data: true, error: null });
 				}
 				if (fn === 'ensure_actor_for_user') {
@@ -89,7 +89,10 @@ describe('UtilityExecutor project-scoped entity access', () => {
 			direction: 'both'
 		});
 
-		expect(mockSupabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+		expect(mockSupabase.rpc).toHaveBeenCalledWith('ensure_actor_for_user', {
+			p_user_id: 'user-1'
+		});
+		expect(mockSupabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: 'project-1',
 			p_required_access: 'read'
 		});

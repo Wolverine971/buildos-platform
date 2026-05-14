@@ -387,7 +387,7 @@ async function checkProjectAccessFallback(
 	fallbackReason: 'rpc_failed' | 'exception' = 'rpc_failed'
 ): Promise<{ allowed: boolean; reason: string }> {
 	// Security note: this fallback runs only when the authoritative access RPC
-	// (`current_actor_has_project_access`) fails. We intentionally fail closed
+	// (`current_actor_has_project_member_access`) fails. We intentionally fail closed
 	// rather than approximate the access check with a bare row lookup — an
 	// RLS-visible row does not prove the actor has the required ('read') grant
 	// on the project. Log the failure so we can investigate RPC outages.
@@ -419,7 +419,23 @@ async function checkProjectAccess(
 	}
 ): Promise<{ allowed: boolean; reason?: string }> {
 	try {
-		const { data, error } = await supabase.rpc('current_actor_has_project_access', {
+		if (context?.userId) {
+			const { data: actorId, error: actorError } = await supabase.rpc(
+				'ensure_actor_for_user',
+				{
+					p_user_id: context.userId
+				}
+			);
+			if (actorError || !actorId) {
+				logger.warn('Project access actor resolution failed', {
+					error: actorError,
+					projectId
+				});
+				return { allowed: false, reason: 'actor_resolution_failed' };
+			}
+		}
+
+		const { data, error } = await supabase.rpc('current_actor_has_project_member_access', {
 			p_project_id: projectId,
 			p_required_access: 'read'
 		});

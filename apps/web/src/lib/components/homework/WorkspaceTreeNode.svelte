@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/homework/WorkspaceTreeNode.svelte -->
 <script lang="ts">
 	import { FileText, FolderOpen, Notebook, GitBranch } from 'lucide-svelte';
+	import WorkspaceTreeNode from './WorkspaceTreeNode.svelte';
 
 	interface Props {
 		node: {
@@ -210,7 +211,7 @@
 			{#if node.children?.length}
 				<div class="space-y-1 pl-3 border-l-2 border-border">
 					{#each node.children as child}
-						<svelte:self node={child} {onOpenDocument} />
+						<WorkspaceTreeNode node={child} {onOpenDocument} />
 					{/each}
 				</div>
 			{/if}

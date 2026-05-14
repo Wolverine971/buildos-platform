@@ -17,12 +17,17 @@ type OnboardingProjectPreview = {
 
 function toLegacyStatus(stateKey: string | null | undefined): string {
 	switch ((stateKey || '').toLowerCase()) {
+		case 'planning':
+		case 'active':
 		case 'project.state.active':
 			return 'active';
+		case 'paused':
 		case 'project.state.paused':
 			return 'paused';
+		case 'completed':
 		case 'project.state.completed':
 			return 'completed';
+		case 'cancelled':
 		case 'project.state.archived':
 			return 'archived';
 		default:
@@ -77,7 +82,7 @@ export const load: PageServerLoad = async ({ locals: { safeGetSession, supabase 
 		existingProjects = summaries
 			.filter((p) => {
 				const status = toLegacyStatus(p.state_key);
-				return status === 'active' || status === 'paused';
+				return status === 'active';
 			})
 			.slice(0, 6)
 			.map((p) => ({

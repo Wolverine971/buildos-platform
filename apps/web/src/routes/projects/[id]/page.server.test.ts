@@ -114,7 +114,8 @@ function createHarness(options: HarnessOptions = {}) {
 		operations,
 		timingLabels,
 		from,
-		rpc
+		rpc,
+		safeGetSession
 	};
 }
 
@@ -125,7 +126,7 @@ describe('projects/[id] +page.server load', () => {
 	});
 
 	it('owner access returns full owner/admin privileges from the RPC bundle', async () => {
-		const { event, operations, from } = createHarness({
+		const { event, operations, from, safeGetSession } = createHarness({
 			access: {
 				can_edit: true,
 				can_admin: true,
@@ -150,6 +151,7 @@ describe('projects/[id] +page.server load', () => {
 		// New hot path: exactly one DB round-trip.
 		expect(operations).toEqual(['rpc:get_project_skeleton_with_access']);
 		expect(from).not.toHaveBeenCalled();
+		expect(safeGetSession).not.toHaveBeenCalled();
 		expect(ensureActorIdMock).not.toHaveBeenCalled();
 	});
 
@@ -204,7 +206,7 @@ describe('projects/[id] +page.server load', () => {
 	});
 
 	it('anonymous requests return skeleton data without any fan-out queries', async () => {
-		const { event, operations, from } = createHarness({ userId: null });
+		const { event, operations, from, safeGetSession } = createHarness({ userId: null });
 
 		const result = await load(event);
 
@@ -220,6 +222,7 @@ describe('projects/[id] +page.server load', () => {
 		});
 		expect(operations).toEqual(['rpc:get_project_skeleton_with_access']);
 		expect(from).not.toHaveBeenCalled();
+		expect(safeGetSession).not.toHaveBeenCalled();
 		expect(ensureActorIdMock).not.toHaveBeenCalled();
 	});
 

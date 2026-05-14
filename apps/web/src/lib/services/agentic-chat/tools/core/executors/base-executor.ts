@@ -255,7 +255,8 @@ export class BaseExecutor {
 		projectId: string,
 		requiredAccess: 'read' | 'write' | 'admin' = 'write'
 	): Promise<void> {
-		const { data, error } = await this.supabase.rpc('current_actor_has_project_access', {
+		await this.getActorId();
+		const { data, error } = await this.supabase.rpc('current_actor_has_project_member_access', {
 			p_project_id: projectId,
 			p_required_access: requiredAccess
 		});
@@ -386,9 +387,9 @@ export class BaseExecutor {
 			started: 'active',
 			working: 'active',
 			ongoing: 'active',
-			paused: 'active',
-			on_hold: 'active',
-			hold: 'active',
+			paused: 'paused',
+			on_hold: 'paused',
+			hold: 'paused',
 			pending: 'planning',
 			planned: 'planning',
 			backlog: 'planning',
@@ -407,7 +408,7 @@ export class BaseExecutor {
 		};
 
 		const candidate = stateMap[normalized] ?? normalized;
-		return ['planning', 'active', 'completed', 'cancelled'].includes(candidate)
+		return ['planning', 'active', 'paused', 'completed', 'cancelled'].includes(candidate)
 			? candidate
 			: state;
 	}

@@ -1,13 +1,15 @@
 <!-- apps/web/src/routes/invites/+page.svelte -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
 	import { AlertCircle, ArrowRight, CheckCircle2, Mail, UserPlus } from 'lucide-svelte';
 
 	let { data } = $props();
+	const initialInvites = untrack(() => (data?.invites as any[]) ?? []);
 
-	let invites = $state((data?.invites as any[]) ?? []);
+	let invites = $state(initialInvites);
 	let actionError = $state('');
 	let processingId = $state<string | null>(null);
 

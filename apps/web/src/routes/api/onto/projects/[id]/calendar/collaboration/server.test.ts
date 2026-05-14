@@ -34,7 +34,7 @@ function createSupabase(options?: { hasAccess?: boolean }) {
 			if (fn === 'ensure_actor_for_user') {
 				return Promise.resolve({ data: 'actor-1', error: null });
 			}
-			if (fn === 'current_actor_has_project_access') {
+			if (fn === 'current_actor_has_project_member_access') {
 				return Promise.resolve({ data: hasAccess, error: null });
 			}
 			throw new Error(`Unexpected RPC ${fn}`);

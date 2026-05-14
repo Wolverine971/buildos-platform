@@ -55,9 +55,9 @@
 	let lastProjectLimit = $state(0);
 	let projectListRequestId = 0;
 
-	// Hide cancelled (treated as deleted) and archived projects. The API already
+	// Hide paused, cancelled (treated as deleted), and archived projects. The API already
 	// filters `archived_at IS NULL`, but we keep `archived` here defensively.
-	const INACTIVE_PROJECT_STATE_KEYS = new Set(['archived', 'cancelled']);
+	const INACTIVE_PROJECT_STATE_KEYS = new Set(['archived', 'cancelled', 'paused']);
 	const PROJECT_LIST_LIMIT = DEFAULT_PROJECT_SELECTOR_LIMIT;
 	const PROJECT_SEARCH_LIMIT = MAX_PROJECT_SELECTOR_LIMIT;
 	const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;

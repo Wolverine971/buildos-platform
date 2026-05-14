@@ -18,8 +18,8 @@ export const TASK_STATES = ['todo', 'in_progress', 'blocked', 'done'] as const;
 export type TaskState = (typeof TASK_STATES)[number];
 export const TaskStateSchema = z.enum(TASK_STATES);
 
-/** Project states: planning → active → completed, or cancelled */
-export const PROJECT_STATES = ['planning', 'active', 'completed', 'cancelled'] as const;
+/** Project states: planning → active → paused/resumed → completed, or cancelled */
+export const PROJECT_STATES = ['planning', 'active', 'paused', 'completed', 'cancelled'] as const;
 export type ProjectState = (typeof PROJECT_STATES)[number];
 export const ProjectStateSchema = z.enum(PROJECT_STATES);
 

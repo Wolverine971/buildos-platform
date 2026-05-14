@@ -12,6 +12,7 @@
 -->
 
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { goto, invalidate, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
@@ -84,6 +85,7 @@
 	}
 
 	let { data }: { data: PageData } = $props();
+	const initialFilters = untrack(() => data.filters);
 
 	// Immediate counts for skeleton rendering
 	const itemCount = $derived(data.itemCount);
@@ -119,9 +121,9 @@
 	});
 
 	// Local filter state
-	let searchInput = $state(data.filters.search);
-	let statusFilter = $state<string>(data.filters.status || '');
-	let typeFilter = $state<'all' | 'braindumps' | 'chats'>(data.filters.typeFilter || 'all');
+	let searchInput = $state(initialFilters.search);
+	let statusFilter = $state<string>(initialFilters.status || '');
+	let typeFilter = $state<'all' | 'braindumps' | 'chats'>(initialFilters.typeFilter || 'all');
 	let isAgentModalOpen = $state(false);
 	let selectedChatSessionId = $state<string | null>(null);
 	let chatClassificationState = $state<Record<string, 'loading' | 'queued' | 'error'>>({});

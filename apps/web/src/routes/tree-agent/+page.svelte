@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/tree-agent/+page.svelte -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { goto } from '$app/navigation';
 
 	interface TreeAgentRunRow {
@@ -15,7 +16,8 @@
 	}
 
 	let { data }: Props = $props();
-	let runs = $state<TreeAgentRunRow[]>(data.runs ?? []);
+	const initialData = untrack(() => data);
+	let runs = $state<TreeAgentRunRow[]>(initialData.runs ?? []);
 	let objective = $state('');
 	let creating = $state(false);
 	let error = $state<string | null>(null);

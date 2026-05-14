@@ -118,6 +118,23 @@
 	let error = $state<string | null>(null);
 	let showChatModal = $state(false);
 
+	function formatProjectStateLabel(state: string): string {
+		switch (state) {
+			case 'planning':
+				return 'Planning';
+			case 'active':
+				return 'Active';
+			case 'paused':
+				return 'Paused';
+			case 'completed':
+				return 'Completed';
+			case 'cancelled':
+				return 'Cancelled';
+			default:
+				return state;
+		}
+	}
+
 	// Next step state
 	let nextStepShort = $state('');
 	let nextStepLong = $state('');
@@ -895,15 +912,7 @@
 												>
 													{#each PROJECT_STATES as state}
 														<option value={state}>
-															{state === 'planning'
-																? 'Planning'
-																: state === 'active'
-																	? 'Active'
-																	: state === 'completed'
-																		? 'Completed'
-																		: state === 'cancelled'
-																			? 'Cancelled'
-																			: state}
+															{formatProjectStateLabel(state)}
 														</option>
 													{/each}
 												</Select>

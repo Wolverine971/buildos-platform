@@ -48,8 +48,8 @@
 		...restProps
 	}: TextInputProps & Omit<HTMLInputAttributes, 'size' | 'id'> = $props();
 
-	const errorId = `${id}-error`;
-	const helperId = `${id}-helper`;
+	const errorId = $derived(`${id}-error`);
+	const helperId = $derived(`${id}-helper`);
 
 	// Smart inputmode detection based on type if not explicitly provided
 	let computedInputmode = $derived(

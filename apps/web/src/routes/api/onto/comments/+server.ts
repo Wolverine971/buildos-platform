@@ -4,6 +4,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../shared/error-logging';
 import { handleCommentMentions } from './comment-mentions';
 import { canAccessPublicComments } from '$lib/server/comment-public-access';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -31,9 +32,10 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 	}
 
 	try {
-		const { data: project, error: projectError } = await supabase
+		const admin = createAdminSupabaseClient();
+		const { data: project, error: projectError } = await admin
 			.from('onto_projects')
-			.select('id, name, is_public, created_by')
+			.select('id, name, created_by')
 			.eq('id', projectId)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -57,6 +59,7 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.notFound('Project');
 		}
 
+		const docIsLivePublic = await canAccessPublicComments(supabase, entityType, entityId);
 		let actorId: string | null = null;
 		let hasAccess = false;
 
@@ -70,7 +73,7 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 
 			if (actorError || !resolvedActorId) {
 				console.error('[Comments GET] Failed to resolve actor:', actorError);
-				if (!project.is_public) {
+				if (!docIsLivePublic) {
 					await logOntologyApiError({
 						supabase,
 						error: actorError || new Error('Failed to resolve actor'),
@@ -90,7 +93,7 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 			} else {
 				actorId = resolvedActorId;
 				const { data: access, error: accessError } = await supabase.rpc(
-					'current_actor_has_project_access',
+					'current_actor_has_project_member_access',
 					{
 						p_project_id: projectId,
 						p_required_access: 'read'
@@ -116,15 +119,8 @@ export const GET: RequestHandler = async ({ request, locals }) => {
 			}
 		}
 
-		if (!project.is_public && !hasAccess) {
-			// Last-resort: allow reads of comments on documents that have a live,
-			// public-visibility public page. This is the document-level gate that
-			// backs commenting on /p/{user}/{slug} without requiring project
-			// membership.
-			const docIsLivePublic = await canAccessPublicComments(supabase, entityType, entityId);
-			if (!docIsLivePublic) {
-				return ApiResponse.forbidden('Access denied');
-			}
+		if (!hasAccess && !docIsLivePublic) {
+			return ApiResponse.forbidden('Access denied');
 		}
 
 		if (countOnly) {
@@ -279,9 +275,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return ApiResponse.badRequest('Project comments must use entity_id = project_id');
 		}
 
-		const { data: project, error: projectError } = await supabase
+		const admin = createAdminSupabaseClient();
+		const { data: project, error: projectError } = await admin
 			.from('onto_projects')
-			.select('id, name, is_public, created_by')
+			.select('id, name, created_by')
 			.eq('id', projectId)
 			.is('deleted_at', null)
 			.maybeSingle();
@@ -329,7 +326,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			{
 				p_project_id: projectId,
 				p_required_access: 'write'

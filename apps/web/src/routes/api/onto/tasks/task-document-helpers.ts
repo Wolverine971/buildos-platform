@@ -75,7 +75,7 @@ export async function ensureTaskAccess(
 	}
 
 	const { data: hasAccess, error: accessError } = await supabase.rpc(
-		'current_actor_has_project_access',
+		'current_actor_has_project_member_access',
 		{
 			p_project_id: task.project.id,
 			p_required_access: requiredAccess

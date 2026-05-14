@@ -82,7 +82,7 @@ async function requireEventAccess(
 
 	if (event.project_id) {
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			{
 				p_project_id: event.project_id,
 				p_required_access: requiredAccess

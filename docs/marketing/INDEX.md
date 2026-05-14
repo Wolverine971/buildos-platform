@@ -49,6 +49,11 @@
     - Strategic logic behind the current move
     - Content doctrine, sequencing, and positioning tradeoffs
 
+- **[How to Explain BuildOS](strategy/how-to-explain-buildos-2026-05-11.md)** ⭐ **NEW**
+    - Spoken-word companion to the strategy docs
+    - 17 modular talking points, two persona flows (heavy AI user vs creator), market opportunity narratives
+    - Sentences DJ can actually say in conversation — use before pitches, podcasts, investor calls
+
 - **[6-Week Guerrilla Seed Campaign](social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md)** ⭐
     - Current cross-platform content campaign
     - Weekly theses, hooks, demos, and rough post angles

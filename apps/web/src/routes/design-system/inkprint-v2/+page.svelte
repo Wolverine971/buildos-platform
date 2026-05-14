@@ -252,8 +252,11 @@
 			<h2 class="text-sm font-semibold text-foreground mb-3">Test Controls</h2>
 			<div class="flex flex-wrap gap-4 items-center">
 				<div class="flex items-center gap-2">
-					<label class="text-sm text-muted-foreground">Opacity:</label>
+					<label for="texture-opacity" class="text-sm text-muted-foreground"
+						>Opacity:</label
+					>
 					<select
+						id="texture-opacity"
 						class="px-2 py-1 text-sm bg-background border border-border rounded"
 						bind:value={selectedOpacity}
 					>

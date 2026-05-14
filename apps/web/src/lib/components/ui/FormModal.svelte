@@ -71,7 +71,6 @@
 	} from 'lucide-svelte';
 	import Modal from './Modal.svelte';
 	import MarkdownToggleField from './MarkdownToggleField.svelte';
-	import FormField from './FormField.svelte';
 	import TextInput from './TextInput.svelte';
 	import Textarea from './Textarea.svelte';
 	import Select from './Select.svelte';
@@ -87,12 +86,13 @@
 		loadingText,
 		formConfig,
 		initialData = {},
+		externalLoading = false,
 		onSubmit,
 		onDelete = null,
 		onClose,
 		size = 'md',
 		customClasses = '',
-		header,
+		header: headerContent,
 		beforeForm,
 		afterForm
 	}: {
@@ -102,6 +102,7 @@
 		loadingText: string;
 		formConfig: FormConfig;
 		initialData?: Record<string, any>;
+		externalLoading?: boolean;
 		onSubmit: (data: Record<string, any>) => Promise<void>;
 		onDelete?: ((id: string) => Promise<void>) | null;
 		onClose: () => void;
@@ -113,6 +114,7 @@
 	} = $props();
 
 	let loading = $state(false);
+	let isBusy = $derived(loading || externalLoading);
 	let errors = $state<string[]>([]);
 	let fieldErrors = $state<Record<string, string>>({});
 	let formData = $state<Record<string, any>>({});
@@ -162,7 +164,7 @@
 	});
 
 	async function handleDelete() {
-		if (loading) return;
+		if (isBusy) return;
 		if ((!formData.id && !initialData.id) || !onDelete) {
 			return;
 		}
@@ -184,7 +186,7 @@
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
 		// Guard against double-submit when Enter is pressed twice before loading flips.
-		if (loading) return;
+		if (isBusy) return;
 		loading = true;
 		errors = [];
 		fieldErrors = {};
@@ -228,7 +230,6 @@
 			}
 
 			await onSubmit(submitData);
-			onClose();
 		} catch (error) {
 			errors = [(error as Error).message || 'An error occurred'];
 		} finally {
@@ -269,7 +270,7 @@
 	}
 
 	function handleClose() {
-		if (!loading) {
+		if (!isBusy) {
 			onClose();
 		}
 	}
@@ -353,7 +354,7 @@
 				type: 'success',
 				message: `${formConfig[field]?.label || 'Content'} copied to clipboard`
 			});
-		} catch (error) {
+		} catch (_error) {
 			toastService.add({
 				type: 'error',
 				message: 'Failed to copy to clipboard'
@@ -366,8 +367,8 @@
 	{#snippet header()}
 		<!-- Inkprint compact header -->
 		<div>
-			{#if header}
-				{@render header()}
+			{#if headerContent}
+				{@render headerContent()}
 			{:else}
 				<div class="sm:hidden">
 					<div class="modal-grab-handle"></div>
@@ -383,7 +384,7 @@
 						<button
 							type="button"
 							onclick={handleClose}
-							disabled={loading}
+							disabled={isBusy}
 							class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 							aria-label="Close modal"
 						>
@@ -471,7 +472,7 @@
 											handleMarkdownUpdate(field, newValue)}
 										placeholder={config.placeholder || ''}
 										rows={config.rows || 3}
-										disabled={loading}
+										disabled={isBusy}
 									/>
 								{:else}
 									<!-- Regular textarea -->
@@ -480,7 +481,7 @@
 										value={formData[field] || ''}
 										oninput={(e) => handleFieldChange(field, getEventValue(e))}
 										rows={config.rows || 3}
-										disabled={loading}
+										disabled={isBusy}
 										placeholder={config.placeholder || ''}
 										error={hasFieldError}
 										errorMessage={fieldError}
@@ -493,7 +494,7 @@
 									id={`field-${field}`}
 									value={formData[field] || ''}
 									onchange={(value) => handleFieldChange(field, value)}
-									disabled={loading}
+									disabled={isBusy}
 									error={hasFieldError}
 									errorMessage={fieldError}
 									required={config.required || false}
@@ -519,7 +520,7 @@
 									type="date"
 									value={getFieldValue(field)}
 									oninput={(e) => handleFieldChange(field, getEventValue(e))}
-									disabled={loading}
+									disabled={isBusy}
 									error={hasFieldError}
 									errorMessage={fieldError}
 									required={config.required || false}
@@ -531,7 +532,7 @@
 									type="datetime-local"
 									value={getFieldValue(field)}
 									oninput={(e) => handleDateTimeChange(field, e)}
-									disabled={loading}
+									disabled={isBusy}
 									error={hasFieldError}
 									errorMessage={fieldError}
 									required={config.required || false}
@@ -547,7 +548,7 @@
 									}}
 									min={config.min}
 									max={config.max}
-									disabled={loading}
+									disabled={isBusy}
 									placeholder={config.placeholder || ''}
 									error={hasFieldError}
 									errorMessage={fieldError}
@@ -574,7 +575,7 @@
 												target?.checked ?? target?.value ?? false
 											);
 										}}
-										disabled={loading}
+										disabled={isBusy}
 										class="h-4 w-4 text-accent focus:ring-ring border-border rounded bg-card disabled:opacity-50"
 									/>
 									{#if config.description}
@@ -602,7 +603,7 @@
 									type="text"
 									value={getFieldValue(field)}
 									oninput={(e) => handleTagsInput(field, getEventValue(e))}
-									disabled={loading}
+									disabled={isBusy}
 									placeholder={config.placeholder ||
 										'Enter tags separated by commas'}
 									error={hasFieldError}
@@ -616,7 +617,7 @@
 									type="text"
 									value={getFieldValue(field)}
 									oninput={(e) => handleFieldChange(field, getEventValue(e))}
-									disabled={loading}
+									disabled={isBusy}
 									placeholder={config.placeholder || ''}
 									error={hasFieldError}
 									errorMessage={fieldError}
@@ -642,13 +643,13 @@
 					<!-- Primary action at top for mobile -->
 					<Button
 						type="submit"
-						disabled={loading}
+						disabled={isBusy}
 						variant="primary"
 						size="lg"
-						{loading}
+						loading={isBusy}
 						class="w-full font-semibold shadow-ink"
 					>
-						{loading ? loadingText : submitText}
+						{isBusy ? loadingText : submitText}
 					</Button>
 
 					<!-- Secondary actions in a row -->
@@ -656,7 +657,7 @@
 						<Button
 							type="button"
 							onclick={handleClose}
-							disabled={loading}
+							disabled={isBusy}
 							variant="ghost"
 							size="md"
 							class="w-full"
@@ -667,7 +668,7 @@
 							<Button
 								type="button"
 								onclick={handleDelete}
-								disabled={loading}
+								disabled={isBusy}
 								variant="danger"
 								size="md"
 								class="w-full"
@@ -684,7 +685,7 @@
 						<Button
 							type="button"
 							onclick={handleDelete}
-							disabled={loading}
+							disabled={isBusy}
 							variant="danger"
 							size="md"
 						>
@@ -698,7 +699,7 @@
 						<Button
 							type="button"
 							onclick={handleClose}
-							disabled={loading}
+							disabled={isBusy}
 							variant="outline"
 							size="md"
 						>
@@ -706,12 +707,12 @@
 						</Button>
 						<Button
 							type="submit"
-							disabled={loading}
+							disabled={isBusy}
 							variant="primary"
 							size="md"
-							{loading}
+							loading={isBusy}
 						>
-							{loading ? loadingText : submitText}
+							{isBusy ? loadingText : submitText}
 						</Button>
 					</div>
 				</div>

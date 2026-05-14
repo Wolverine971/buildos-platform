@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const { createAdminSupabaseClientMock } = vi.hoisted(() => ({
+	createAdminSupabaseClientMock: vi.fn()
+}));
+
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: createAdminSupabaseClientMock
+}));
+
 import { GET } from './+server';
 
 function createSupabase(projects: unknown[]) {
@@ -28,17 +36,24 @@ describe('GET /api/public/projects', () => {
 		vi.clearAllMocks();
 	});
 
-	it('returns public projects with the session-scoped Supabase client', async () => {
-		const response = await GET({
-			locals: {
-				supabase: createSupabase([
-					{
-						id: 'project-1',
-						name: 'Public Project',
-						description: 'Shown publicly'
-					}
-				])
+	it('returns public projects with the admin Supabase client', async () => {
+		const supabase = createSupabase([
+			{
+				id: 'project-1',
+				name: 'Public Project',
+				description: 'Shown publicly',
+				props: {
+					commander: 'Public lead',
+					private_note: 'do not expose'
+				},
+				start_at: null,
+				end_at: null
 			}
+		]);
+		createAdminSupabaseClientMock.mockReturnValue(supabase);
+
+		const response = await GET({
+			locals: {}
 		} as any);
 		const payload = await response.json();
 
@@ -46,5 +61,6 @@ describe('GET /api/public/projects', () => {
 		expect(payload.success).toBe(true);
 		expect(payload.data.projects).toHaveLength(1);
 		expect(payload.data.projects[0].id).toBe('project-1');
+		expect(payload.data.projects[0].props).toEqual({ commander: 'Public lead' });
 	});
 });

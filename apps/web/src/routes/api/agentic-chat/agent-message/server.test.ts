@@ -53,7 +53,7 @@ function createSupabase(options: MockSupabaseOptions = {}) {
 			if (fn === 'ensure_actor_for_user') {
 				return Promise.resolve({ data: actorData, error: actorError });
 			}
-			if (fn === 'current_actor_has_project_access') {
+			if (fn === 'current_actor_has_project_member_access') {
 				return Promise.resolve({ data: accessData, error: accessError });
 			}
 			return Promise.resolve({ data: null, error: null });

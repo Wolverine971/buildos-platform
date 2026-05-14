@@ -10,6 +10,7 @@ import { logOntologyApiError } from '../../../../shared/error-logging';
 import type { ProjectLogEntityType } from '@buildos/shared-types';
 import { randomUUID } from 'crypto';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
+import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
 // Valid entity types that can have activity logs
 const VALID_ENTITY_TYPES: Set<ProjectLogEntityType> = new Set([
@@ -50,6 +51,23 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 		const offset = parseInt(url.searchParams.get('offset') || '0', 10);
 
 		const supabase = locals.supabase;
+		try {
+			await ensureActorId(supabase, user.id);
+		} catch (error) {
+			console.error('[Entity Logs API] Failed to resolve actor:', error);
+			await logOntologyApiError({
+				supabase,
+				error,
+				endpoint: `/api/onto/entities/${entityType}/${entityId}/logs`,
+				method: 'GET',
+				userId: user.id,
+				entityType: entityType as ProjectLogEntityType,
+				entityId,
+				operation: 'entity_logs_actor_resolve'
+			});
+			return ApiResponse.internalError(error, 'Failed to resolve user actor');
+		}
+
 		console.info('[Entity Logs API] Request', {
 			requestId,
 			entityType,
@@ -80,7 +98,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 
 		// Check project access
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			{
 				p_project_id: projectId,
 				p_required_access: 'read'

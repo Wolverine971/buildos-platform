@@ -225,9 +225,3 @@
 		{/if}
 	</div>
 {/if}
-
-<style>
-	.doc-tree-compact {
-		/* Allow list to scroll within parent container */
-	}
-</style>

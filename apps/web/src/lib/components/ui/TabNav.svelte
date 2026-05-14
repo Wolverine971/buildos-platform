@@ -103,7 +103,7 @@
 	</div>
 </div>
 
-<style>
+<style lang="postcss">
 	/*
 	 * Inkprint Tab Navigation
 	 * Uses semantic tokens instead of hardcoded colors

@@ -435,7 +435,10 @@ export class UtilityExecutor extends BaseExecutor {
 	}): Promise<{ projects: ProjectRow[]; maybeMore: boolean }> {
 		const actorId = await this.getActorId();
 		const projectSummaries = await fetchProjectSummaries(this.supabase as any, actorId);
-		const sortedProjects = [...projectSummaries]
+		const visibleSummaries = params.projectId
+			? projectSummaries
+			: projectSummaries.filter((project) => project.state_key !== 'paused');
+		const sortedProjects = [...visibleSummaries]
 			.sort((a, b) => {
 				const aTs = a.updated_at ? Date.parse(a.updated_at) : Number.NEGATIVE_INFINITY;
 				const bTs = b.updated_at ? Date.parse(b.updated_at) : Number.NEGATIVE_INFINITY;

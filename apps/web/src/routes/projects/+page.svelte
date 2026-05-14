@@ -6,6 +6,7 @@
   - Zero layout shift - exact number of cards rendered from start
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { get } from 'svelte/store';
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -27,7 +28,13 @@
 	} from '$lib/components/ontology/graph/lib/graph.filters';
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
-	import { LoaderCircle, SlidersHorizontal, ChevronDown, ArrowRight } from 'lucide-svelte';
+	import {
+		LoaderCircle,
+		SlidersHorizontal,
+		ChevronDown,
+		ArrowRight,
+		PauseCircle
+	} from 'lucide-svelte';
 	import FilterGroup from '$lib/components/ui/FilterGroup.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import ProjectIcon from '$lib/components/project/ProjectIcon.svelte';
@@ -154,13 +161,14 @@
 		return fallback;
 	}
 
+	const initialProjects = untrack(() => data.projects);
 	let projectsStreamVersion = 0;
 	let projectsLoading = $state(
-		isPromiseLike<OntologyProjectSummary[]>(data.projects) ? true : false
+		isPromiseLike<OntologyProjectSummary[]>(initialProjects) ? true : false
 	);
 	let projectsError = $state<string | null>(null);
 	let projectSummaries = $state<OntologyProjectSummary[]>(
-		Array.isArray(data.projects) ? (data.projects as OntologyProjectSummary[]) : []
+		Array.isArray(initialProjects) ? (initialProjects as OntologyProjectSummary[]) : []
 	);
 
 	// SKELETON LOADING: Show skeletons based on projectCount while loading
@@ -304,11 +312,19 @@
 		});
 	});
 
+	const activeFilteredProjects = $derived.by(() =>
+		filteredProjects.filter((project) => project.state_key !== 'paused')
+	);
+	const pausedFilteredProjects = $derived.by(() =>
+		sortProjectsByUpdatedAt(
+			filteredProjects.filter((project) => project.state_key === 'paused')
+		)
+	);
 	const ownedFilteredProjects = $derived.by(() =>
-		filteredProjects.filter((project) => !project.is_shared)
+		activeFilteredProjects.filter((project) => !project.is_shared)
 	);
 	const sharedFilteredProjects = $derived.by(() =>
-		filteredProjects.filter((project) => project.is_shared)
+		activeFilteredProjects.filter((project) => project.is_shared)
 	);
 	const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -370,7 +386,7 @@
 	);
 
 	const stats = $derived.by(() => {
-		const list = filteredProjects;
+		const list = activeFilteredProjects;
 		const taskTotal = list.reduce((acc, project) => acc + (project.task_count ?? 0), 0);
 		const goalTotal = list.reduce((acc, project) => acc + (project.goal_count ?? 0), 0);
 		const planTotal = list.reduce((acc, project) => acc + (project.plan_count ?? 0), 0);
@@ -1257,6 +1273,95 @@
 										</a>
 									{/each}
 								{/if}
+							</div>
+						</div>
+					{/if}
+
+					{#if pausedFilteredProjects.length > 0}
+						<div class="space-y-2 border-t border-border/70 pt-4">
+							<div class="flex items-center justify-between gap-3">
+								<div class="flex items-baseline gap-2">
+									<p class="micro-label text-muted-foreground">PAUSED</p>
+									<span class="text-xs font-semibold text-muted-foreground">
+										{pausedFilteredProjects.length}
+									</span>
+								</div>
+								<div
+									class="hidden items-center gap-1.5 text-xs font-medium text-muted-foreground sm:flex"
+								>
+									<PauseCircle class="h-3.5 w-3.5" />
+									Hidden from active work
+								</div>
+							</div>
+							<div class="space-y-2">
+								{#each pausedFilteredProjects as project (project.id)}
+									<a
+										href="/projects/{project.id}"
+										onclick={() => handleProjectClick(project)}
+										class="project-dossier-row group block wt-paper p-3 sm:p-4 pressable tx tx-static tx-weak opacity-85 hover:opacity-100"
+									>
+										<div class="flex items-start justify-between gap-3">
+											<div class="min-w-0 flex items-center gap-2.5">
+												<ProjectIcon
+													svg={project.icon_svg}
+													concept={project.icon_concept}
+													size="sm"
+												/>
+												<div class="min-w-0 flex items-center gap-2">
+													<h4
+														class="truncate text-base sm:text-lg font-semibold text-foreground tracking-tight"
+														style="view-transition-name: project-title-{project.id}"
+													>
+														{project.name}
+													</h4>
+													<span
+														class="inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-muted text-muted-foreground"
+													>
+														Paused
+													</span>
+													{#if project.is_shared}
+														<span
+															class="hidden sm:inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/10 text-accent"
+														>
+															Shared{project.access_role
+																? `: ${project.access_role}`
+																: ''}
+														</span>
+													{/if}
+												</div>
+											</div>
+											<div class="shrink-0 flex items-center gap-1.5">
+												<time
+													datetime={project.updated_at}
+													class="text-[10px] sm:text-xs font-medium text-muted-foreground whitespace-nowrap text-right"
+												>
+													{formatUpdatedAt(project.updated_at)}
+												</time>
+												<span
+													class="project-dossier-arrow"
+													aria-hidden="true"
+												>
+													<ArrowRight
+														class="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground"
+													/>
+												</span>
+											</div>
+										</div>
+
+										<p
+											class="mt-1 text-xs sm:text-sm text-muted-foreground truncate"
+										>
+											{project.description?.trim() ||
+												'No description provided.'}
+										</p>
+
+										<p
+											class="mt-1 text-[11px] sm:text-xs font-medium text-muted-foreground/80 whitespace-nowrap overflow-hidden text-ellipsis"
+										>
+											{formatEntityCounts(project)}
+										</p>
+									</a>
+								{/each}
 							</div>
 						</div>
 					{/if}

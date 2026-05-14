@@ -12,8 +12,9 @@ Use this folder for current positioning, audience, content doctrine, and lifecyc
 2. [BuildOS Welcome Sequence](./buildos-welcome-sequence.md)
 3. [BuildOS Guerrilla Content Doctrine](./buildos-guerrilla-content-doctrine.md)
 4. [Anti-AI Show-Don't-Tell Strategy](./anti-ai-show-dont-tell-strategy.md)
+5. [How to Explain BuildOS](./how-to-explain-buildos-2026-05-11.md) — spoken-word companion; modular talking points and persona flows
 
-The four docs above are the fastest path to the current strategy stack.
+The five docs above are the fastest path to the current strategy stack.
 
 ## Document Map
 

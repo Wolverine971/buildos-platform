@@ -86,8 +86,8 @@
 	}: SelectProps &
 		Omit<HTMLSelectAttributes, 'onchange' | 'onfocus' | 'onblur' | 'size' | 'id'> = $props();
 
-	const errorId = `${id}-error`;
-	const helperId = `${id}-helper`;
+	const errorId = $derived(`${id}-error`);
+	const helperId = $derived(`${id}-helper`);
 
 	/**
 	 * Helper function to resolve responsive size configuration into Tailwind classes

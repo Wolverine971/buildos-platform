@@ -85,7 +85,7 @@ describe('POST /api/onto/projects/[id]/invites/[inviteId]/resend', () => {
 		expect(response.status).toBe(400);
 		expect(payload.error).toContain('already been accepted');
 		expect(sendEmailMock).not.toHaveBeenCalled();
-		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: 'project-1',
 			p_required_access: 'write'
 		});

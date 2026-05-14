@@ -11,6 +11,8 @@ import { formatProjectData, type FullProjectData } from './data-formatter';
 
 const MAX_TASKS_TO_DISPLAY = 15;
 
+type ProjectState = Database['public']['Enums']['project_state'];
+
 export interface ProjectDataOptions {
 	includeQuestions?: boolean;
 	includeTasks?: boolean;
@@ -32,6 +34,37 @@ export interface ProjectSummary {
 	tags: string[];
 	status: string;
 	updated_at: string;
+}
+
+function toLegacyProjectStatus(stateKey: string | null | undefined): string {
+	switch ((stateKey ?? '').toLowerCase()) {
+		case 'paused':
+			return 'paused';
+		case 'completed':
+			return 'completed';
+		case 'cancelled':
+			return 'archived';
+		case 'planning':
+		case 'active':
+		default:
+			return 'active';
+	}
+}
+
+function toProjectStateFilters(status: string): ProjectState[] {
+	switch (status.toLowerCase()) {
+		case 'paused':
+			return ['paused'];
+		case 'planning':
+			return ['planning'];
+		case 'archived':
+			return ['cancelled'];
+		case 'completed':
+			return ['completed'];
+		case 'active':
+		default:
+			return ['planning', 'active'];
+	}
 }
 
 export class ProjectDataFetcher {
@@ -229,14 +262,7 @@ export class ProjectDataFetcher {
 					typeof projectRow.slug === 'string' && projectRow.slug.trim().length > 0
 						? projectRow.slug
 						: projectRow.id,
-				status:
-					projectRow.state_key === 'planning'
-						? 'paused'
-						: projectRow.state_key === 'completed'
-							? 'completed'
-							: projectRow.state_key === 'cancelled'
-								? 'archived'
-								: 'active',
+				status: toLegacyProjectStatus(projectRow.state_key),
 				start_date: projectRow.start_at ?? null,
 				end_date: projectRow.end_at ?? null,
 				executive_summary: null,
@@ -366,19 +392,9 @@ export class ProjectDataFetcher {
 				return [];
 			}
 
-			const includeStates = includeStatus.map((status) => {
-				switch (status) {
-					case 'paused':
-						return 'planning';
-					case 'archived':
-						return 'cancelled';
-					case 'completed':
-						return 'completed';
-					case 'active':
-					default:
-						return 'active';
-				}
-			});
+			const includeStates = Array.from(
+				new Set(includeStatus.flatMap((status) => toProjectStateFilters(status)))
+			);
 
 			const { data, error } = await this.supabase
 				.from('onto_projects')
@@ -401,14 +417,7 @@ export class ProjectDataFetcher {
 				description: project.description,
 				executive_summary: null,
 				tags: [],
-				status:
-					project.state_key === 'planning'
-						? 'paused'
-						: project.state_key === 'completed'
-							? 'completed'
-							: project.state_key === 'cancelled'
-								? 'archived'
-								: 'active',
+				status: toLegacyProjectStatus(project.state_key),
 				updated_at: project.updated_at
 			}));
 		} catch (error) {

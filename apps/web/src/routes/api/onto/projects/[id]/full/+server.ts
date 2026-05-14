@@ -26,6 +26,7 @@ import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
 import { attachAssigneesToTasks, type TaskAssignee } from '$lib/server/task-assignment.service';
 import { attachLastChangedByActorToTasks } from '$lib/server/task-relevance.service';
 import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
+import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 
 // Type for the RPC response
 interface ProjectFullData {
@@ -138,8 +139,6 @@ const extractErrorMessage = (error: unknown): string => {
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
-		const { user } = await locals.safeGetSession();
-
 		const { id } = params;
 
 		if (!id) {
@@ -150,40 +149,20 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const supabase = locals.supabase;
-		let actorId: string | null = null;
+		const access = await requireProjectMemberAccess({
+			locals,
+			projectId: id,
+			requiredAccess: 'read'
+		});
+		if (!access.ok) return access.response;
 
-		// Get actor ID for authorization check
-		if (user) {
-			const { data, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-				p_user_id: user.id
-			});
-
-			if (actorError || !data) {
-				console.error('[Project Full API] Failed to get actor:', actorError);
-				await logOntologyApiError({
-					supabase,
-					error: actorError || new Error('Failed to resolve user actor'),
-					endpoint: `/api/onto/projects/${id}/full`,
-					method: 'GET',
-					userId: user.id,
-					projectId: id,
-					entityType: 'project',
-					operation: 'project_actor_resolve'
-				});
-				return ApiResponse.internalError(
-					actorError || new Error('Failed to resolve user actor'),
-					'Failed to resolve user actor'
-				);
-			}
-
-			actorId = data as string;
-		}
+		const actorId = access.actorId;
+		const userId = access.userId;
 
 		// OPTIMIZED: Single RPC call for all project data
-		// Note: actorId can be null for anonymous access to public projects
 		const { data, error } = (await supabase.rpc('get_project_full', {
 			p_project_id: id,
-			p_actor_id: actorId!
+			p_actor_id: actorId
 		})) as { data: ProjectFullData | null; error: unknown };
 
 		if (error) {
@@ -193,7 +172,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				error,
 				endpoint: `/api/onto/projects/${id}/full`,
 				method: 'GET',
-				userId: user?.id,
+				userId,
 				projectId: id,
 				entityType: 'project',
 				operation: 'project_full_get'
@@ -229,7 +208,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 					{
 						includeDeleted: false
 					},
-					user?.id ?? null
+					userId
 				)
 				.catch((eventsError) => {
 					console.warn('[Project Full API] Failed to load project events:', eventsError);

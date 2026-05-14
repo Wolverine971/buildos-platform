@@ -2134,7 +2134,9 @@ async function loadGlobalContextData(
 
 	try {
 		const actorId = await ensureActorId(supabase as any, userId);
-		projectSummaries = await fetchProjectSummaries(supabase as any, actorId);
+		projectSummaries = (await fetchProjectSummaries(supabase as any, actorId)).filter(
+			(project) => project.state_key !== 'paused'
+		);
 	} catch (error) {
 		logger.warn('Failed to load global project summaries', { error });
 		reportContextLoadError(onError, 'query.global.projects', error, { userId });

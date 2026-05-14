@@ -7,8 +7,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
-import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
-import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 
 type MemberWithRole = {
 	role_key: string | null;
@@ -29,49 +28,17 @@ function sortMembersByRoleAndCreatedAt<T extends MemberWithRole>(rows: T[]): T[]
 
 export const GET: RequestHandler = async ({ params, locals }) => {
 	try {
-		const { user } = await locals.safeGetSession();
-		if (!user) {
-			return ApiResponse.unauthorized('Authentication required');
-		}
-
-		const projectId = params.id;
-		if (!projectId) {
-			return ApiResponse.badRequest('Project ID required');
-		}
-		if (!isValidUUID(projectId)) {
-			return ApiResponse.badRequest('Invalid project ID');
-		}
-
 		const supabase = locals.supabase;
 
-		// Run actor resolution + access check in parallel — neither depends on the other's result.
-		const [actorId, accessResult] = await Promise.all([
-			ensureActorId(supabase, user.id),
-			supabase.rpc('current_actor_has_project_access', {
-				p_project_id: projectId,
-				p_required_access: 'read'
-			})
-		]);
+		const access = await requireProjectMemberAccess({
+			locals,
+			projectId: params.id,
+			requiredAccess: 'read',
+			forbiddenMessage: 'Access denied'
+		});
+		if (!access.ok) return access.response;
 
-		const { data: hasAccess, error: accessError } = accessResult;
-
-		if (accessError) {
-			await logOntologyApiError({
-				supabase,
-				error: accessError,
-				endpoint: `/api/onto/projects/${projectId}/members`,
-				method: 'GET',
-				userId: user.id,
-				projectId,
-				entityType: 'project',
-				operation: 'project_members_access'
-			});
-			return ApiResponse.internalError(accessError, 'Failed to check project access');
-		}
-
-		if (!hasAccess) {
-			return ApiResponse.forbidden('Access denied');
-		}
+		const projectId = access.projectId;
 
 		const { data: members, error } = await supabase
 			.from('onto_project_members')
@@ -88,7 +55,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				error,
 				endpoint: `/api/onto/projects/${projectId}/members`,
 				method: 'GET',
-				userId: user.id,
+				userId: access.userId,
 				projectId,
 				entityType: 'project',
 				operation: 'project_members_fetch',
@@ -99,7 +66,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 		const sortedMembers = sortMembersByRoleAndCreatedAt((members ?? []) as MemberWithRole[]);
 
-		return ApiResponse.success({ members: sortedMembers, actorId });
+		return ApiResponse.success({ members: sortedMembers, actorId: access.actorId });
 	} catch (error) {
 		console.error('[Project Members API] Failed to load members:', error);
 		return ApiResponse.internalError(error, 'Failed to load members');

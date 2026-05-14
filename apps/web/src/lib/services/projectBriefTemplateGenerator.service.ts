@@ -116,7 +116,7 @@ export class ProjectBriefTemplateGeneratorService {
 			...data,
 			user_id: userId,
 			status:
-				data.state_key === 'planning'
+				data.state_key === 'paused'
 					? 'paused'
 					: data.state_key === 'completed'
 						? 'completed'

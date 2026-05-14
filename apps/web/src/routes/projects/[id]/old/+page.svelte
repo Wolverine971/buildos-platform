@@ -44,7 +44,7 @@
 	- Ontology Types: /apps/web/src/lib/types/onto.ts (type_key labels, helpers)
 -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
@@ -194,20 +194,23 @@
 		return { structure, documents: documentsById, unlinked, archived };
 	}
 
-	function getInitialDocTreeSeed(): DocTreeLoadedData | null {
-		if (data.skeleton) return null;
-		return buildDocTreeSeed(data.project as Project, (data.documents || []) as Document[]);
+	function getInitialDocTreeSeed(sourceData: PageData): DocTreeLoadedData | null {
+		if (sourceData.skeleton) return null;
+		return buildDocTreeSeed(
+			sourceData.project as Project,
+			(sourceData.documents || []) as Document[]
+		);
 	}
 
-	function getInitialEventsIncluded(): boolean {
-		return !data.skeleton && Array.isArray(data.events);
+	function getInitialEventsIncluded(sourceData: PageData): boolean {
+		return !sourceData.skeleton && Array.isArray(sourceData.events);
 	}
 
-	function getInitialCurrentActorId(): string | null {
-		const accessActorId = data.access?.currentActorId;
+	function getInitialCurrentActorId(sourceData: PageData): string | null {
+		const accessActorId = sourceData.access?.currentActorId;
 		if (typeof accessActorId === 'string') return accessActorId;
-		if (!data.skeleton && typeof data.current_actor_id === 'string') {
-			return data.current_actor_id;
+		if (!sourceData.skeleton && typeof sourceData.current_actor_id === 'string') {
+			return sourceData.current_actor_id;
 		}
 		return null;
 	}
@@ -216,6 +219,7 @@
 	// PROPS & DATA
 	// ============================================================
 	let { data }: { data: PageData } = $props();
+	const initialData = untrack(() => data);
 	const access = $derived(
 		data?.access ?? {
 			canEdit: false,
@@ -235,7 +239,7 @@
 
 	// Skeleton loading state
 	// When data.skeleton is true, we're in skeleton mode and need to hydrate
-	let isHydrating = $state(data.skeleton === true);
+	let isHydrating = $state(initialData.skeleton === true);
 	let hydrationError = $state<string | null>(null);
 
 	// Entity counts from skeleton data (for skeleton rendering)
@@ -255,51 +259,63 @@
 	);
 	// Core data - initialized from skeleton or full data
 	let project = $state(
-		data.skeleton
+		initialData.skeleton
 			? ({
-					id: data.project.id,
-					name: data.project.name,
-					description: data.project.description,
-					icon_svg: data.project.icon_svg,
-					icon_concept: data.project.icon_concept,
-					icon_generated_at: data.project.icon_generated_at,
-					icon_generation_source: data.project.icon_generation_source,
-					icon_generation_prompt: data.project.icon_generation_prompt,
-					state_key: data.project.state_key,
-					type_key: data.project.type_key || 'project',
-					next_step_short: data.project.next_step_short,
-					next_step_long: data.project.next_step_long,
-					next_step_source: data.project.next_step_source,
-					next_step_updated_at: data.project.next_step_updated_at
+					id: initialData.project.id,
+					name: initialData.project.name,
+					description: initialData.project.description,
+					icon_svg: initialData.project.icon_svg,
+					icon_concept: initialData.project.icon_concept,
+					icon_generated_at: initialData.project.icon_generated_at,
+					icon_generation_source: initialData.project.icon_generation_source,
+					icon_generation_prompt: initialData.project.icon_generation_prompt,
+					state_key: initialData.project.state_key,
+					type_key: initialData.project.type_key || 'project',
+					next_step_short: initialData.project.next_step_short,
+					next_step_long: initialData.project.next_step_long,
+					next_step_source: initialData.project.next_step_source,
+					next_step_updated_at: initialData.project.next_step_updated_at
 				} as Project)
-			: (data.project as Project)
+			: (initialData.project as Project)
 	);
-	let tasks = $state(data.skeleton ? ([] as Task[]) : ((data.tasks || []) as Task[]));
+	let tasks = $state(
+		initialData.skeleton ? ([] as Task[]) : ((initialData.tasks || []) as Task[])
+	);
 	let documents = $state(
-		data.skeleton ? ([] as Document[]) : ((data.documents || []) as Document[])
+		initialData.skeleton ? ([] as Document[]) : ((initialData.documents || []) as Document[])
 	);
 	let images = $state(
-		data.skeleton ? ([] as OntologyImageAsset[]) : ((data.images || []) as OntologyImageAsset[])
+		initialData.skeleton
+			? ([] as OntologyImageAsset[])
+			: ((initialData.images || []) as OntologyImageAsset[])
 	);
-	let plans = $state(data.skeleton ? ([] as Plan[]) : ((data.plans || []) as Plan[]));
-	let goals = $state(data.skeleton ? ([] as Goal[]) : ((data.goals || []) as Goal[]));
+	let plans = $state(
+		initialData.skeleton ? ([] as Plan[]) : ((initialData.plans || []) as Plan[])
+	);
+	let goals = $state(
+		initialData.skeleton ? ([] as Goal[]) : ((initialData.goals || []) as Goal[])
+	);
 	let milestones = $state(
-		data.skeleton ? ([] as Milestone[]) : ((data.milestones || []) as Milestone[])
+		initialData.skeleton ? ([] as Milestone[]) : ((initialData.milestones || []) as Milestone[])
 	);
-	let risks = $state(data.skeleton ? ([] as Risk[]) : ((data.risks || []) as Risk[]));
+	let risks = $state(
+		initialData.skeleton ? ([] as Risk[]) : ((initialData.risks || []) as Risk[])
+	);
 	let events = $state(
-		data.skeleton ? ([] as OntoEventWithSync[]) : ((data.events || []) as OntoEventWithSync[])
+		initialData.skeleton
+			? ([] as OntoEventWithSync[])
+			: ((initialData.events || []) as OntoEventWithSync[])
 	);
 	let contextDocument = $state(
-		data.skeleton ? null : ((data.context_document || null) as Document | null)
+		initialData.skeleton ? null : ((initialData.context_document || null) as Document | null)
 	);
 	let publicPageCounts = $state(
-		data.skeleton
+		initialData.skeleton
 			? ({ total: 0, live: 0 } satisfies ProjectPublicPageCounts)
-			: normalizePublicPageCounts(data.public_page_counts)
+			: normalizePublicPageCounts(initialData.public_page_counts)
 	);
-	const initialEventsIncluded = getInitialEventsIncluded();
-	const initialDocTreeSeed = getInitialDocTreeSeed();
+	const initialEventsIncluded = getInitialEventsIncluded(initialData);
+	const initialDocTreeSeed = getInitialDocTreeSeed(initialData);
 
 	// Context for creating milestone from within a goal
 	let milestoneCreateGoalContext = $state<{ goalId: string; goalName: string } | null>(null);
@@ -332,7 +348,7 @@
 	let isNotificationSettingsLoading = $state(false);
 	let isNotificationSettingsSaving = $state(false);
 	let notificationSettingsLoadPromise = $state<Promise<void> | null>(null);
-	let currentProjectActorId = $state<string | null>(getInitialCurrentActorId());
+	let currentProjectActorId = $state<string | null>(getInitialCurrentActorId(initialData));
 	let taskAssigneeFilterMembers = $state<TaskAssigneeFilterMember[]>([]);
 	let membersLoadPromise = $state<Promise<void> | null>(null);
 	let membersLoaded = $state(false);

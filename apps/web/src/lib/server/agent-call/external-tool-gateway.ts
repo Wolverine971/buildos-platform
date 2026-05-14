@@ -845,20 +845,29 @@ function buildRegistryVersion(opNames: string[]): string {
 }
 
 function buildExternalToolDescription(entry: RegistryOp): string {
+	const scopeNotice =
+		'Only projects in the caller-approved BuildOS scope are visible; public project visibility does not grant connector access.';
+
 	if (entry.group !== 'cal') {
-		return entry.description;
+		return `${entry.description} ${scopeNotice}`;
 	}
 
-	return `${entry.description} External callers must scope calendar access to an allowed project_id or task_id; broad user calendar access is not exposed through the BuildOS call gateway.`;
+	return `${entry.description} External callers must scope calendar access to an allowed project_id or task_id; broad user calendar access is not exposed through the BuildOS call gateway. ${scopeNotice}`;
 }
 
 async function loadVisibleProjects(context: ToolExecutionContext): Promise<VisibleProjectContext> {
 	const actorId = await ensureActorId(context.admin, context.userId);
 	const projects = await fetchProjectSummaries(context.admin, actorId);
 	const projectMap = buildAllowedProjectSet(context.scope, projects);
+	const scopedProjectIds = Array.isArray(context.scope.project_ids)
+		? new Set(context.scope.project_ids)
+		: null;
+	const visibleProjects = Array.from(projectMap.values()).filter(
+		(project) => scopedProjectIds?.has(project.id) || project.state_key !== 'paused'
+	);
 
 	return {
-		projects: Array.from(projectMap.values()),
+		projects: visibleProjects,
 		projectMap
 	};
 }

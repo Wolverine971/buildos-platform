@@ -45,7 +45,9 @@ export async function fetchHydratedOverdueTasks({
 		timing ? timing.measure(name, fn) : fn();
 
 	const actorId = await ensureActorId(supabase, userId);
-	const projects = await fetchProjectSummaries(supabase, actorId, timing);
+	const projects = (await fetchProjectSummaries(supabase, actorId, timing)).filter(
+		(project) => project.state_key !== 'paused'
+	);
 	const projectById = new Map(projects.map((project) => [project.id, project]));
 	const projectIds = Array.from(projectById.keys());
 

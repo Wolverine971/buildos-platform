@@ -1151,7 +1151,9 @@ export class OntologyContextLoader {
 		const actorId = this.requireActorId();
 		console.log('[OntologyLoader] Loading global context');
 
-		const projectSummaries = await fetchProjectSummaries(this.supabase as any, actorId);
+		const projectSummaries = (
+			await fetchProjectSummaries(this.supabase as any, actorId)
+		).filter((project) => project.state_key !== 'paused');
 		const projects = projectSummaries.slice(0, 50).map((project) => ({
 			id: project.id,
 			name: project.name,
@@ -1781,7 +1783,7 @@ export class OntologyContextLoader {
 		requiredAccess: 'read' | 'write' | 'admin' = 'read'
 	): Promise<void> {
 		this.requireActorId();
-		const { data, error } = await this.supabase.rpc('current_actor_has_project_access', {
+		const { data, error } = await this.supabase.rpc('current_actor_has_project_member_access', {
 			p_project_id: projectId,
 			p_required_access: requiredAccess
 		});

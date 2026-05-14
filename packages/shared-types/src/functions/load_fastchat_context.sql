@@ -292,7 +292,7 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  IF NOT current_actor_has_project_access(p_project_id, 'read') THEN
+  IF NOT actor_has_project_member_access(v_actor_id, p_project_id, 'read') THEN
     RETURN NULL;
   END IF;
 

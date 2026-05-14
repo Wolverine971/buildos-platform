@@ -32,27 +32,10 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 	const documentId = params.id;
 
 	try {
-		// Phase 1: Parallelize initial queries
-		const [actorResult, documentResult] = await Promise.all([
-			supabase.rpc('ensure_actor_for_user', { p_user_id: session.user.id }),
-			supabase
-				.from('onto_documents')
-				.select(
-					`
-					*,
-					project:onto_projects!inner(
-						id
-					)
-				`
-				)
-				.eq('id', documentId)
-				.is('deleted_at', null)
-				.single()
-		]);
-
+		const actorResult = await supabase.rpc('ensure_actor_for_user', {
+			p_user_id: session.user.id
+		});
 		const { data: actorId, error: actorError } = actorResult;
-		const { data: document, error: documentError } = documentResult;
-		const projectId = document?.project?.id;
 
 		if (actorError || !actorId) {
 			console.error('[Document Full GET] Failed to resolve actor:', actorError);
@@ -71,6 +54,21 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				'Failed to get user actor'
 			);
 		}
+
+		const { data: document, error: documentError } = await supabase
+			.from('onto_documents')
+			.select(
+				`
+					*,
+					project:onto_projects!inner(
+						id
+					)
+				`
+			)
+			.eq('id', documentId)
+			.is('deleted_at', null)
+			.single();
+		const projectId = document?.project?.id;
 
 		if (documentError || !document) {
 			if (documentError) {
@@ -93,7 +91,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		}
 
 		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			{
 				p_project_id: document.project.id,
 				p_required_access: 'read'

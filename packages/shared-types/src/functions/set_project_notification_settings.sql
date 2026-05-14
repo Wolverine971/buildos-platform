@@ -25,7 +25,7 @@ BEGIN
     RAISE EXCEPTION 'At least one setting must be provided';
   END IF;
 
-  IF NOT current_actor_has_project_access(p_project_id, 'read') THEN
+  IF NOT current_actor_has_project_member_access(p_project_id, 'read') THEN
     RAISE EXCEPTION 'Access denied';
   END IF;
 

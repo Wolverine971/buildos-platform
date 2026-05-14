@@ -54,7 +54,7 @@ describe('OntologyContextLoader project-scoped access', () => {
 
 		mockSupabase = {
 			rpc: vi.fn((fn: string) => {
-				if (fn === 'current_actor_has_project_access') {
+				if (fn === 'current_actor_has_project_member_access') {
 					return Promise.resolve({ data: true, error: null });
 				}
 				return Promise.resolve({ data: null, error: null });
@@ -84,7 +84,7 @@ describe('OntologyContextLoader project-scoped access', () => {
 			includeDescriptions: true
 		});
 
-		expect(mockSupabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+		expect(mockSupabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: 'project-1',
 			p_required_access: 'read'
 		});

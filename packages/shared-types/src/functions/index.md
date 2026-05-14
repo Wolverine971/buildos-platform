@@ -4,15 +4,17 @@
 
 This directory contains SQL definitions for all RPC functions available in the BuildOS database.
 
-## Active Functions (93 total)
+## Active Functions (95 total)
 
 > **Note:** 52 unused functions were removed on 2026-01-12. See `supabase/migrations/20260112000000_cleanup_unused_rpc_functions.sql` for details.
 
-### Project & Collaboration (15 active)
+### Project & Collaboration (17 active)
 
 - [accept_project_invite](./accept_project_invite.sql) - Accept a project invite via token hash
 - [accept_project_invite_by_id](./accept_project_invite_by_id.sql) - Accept a project invite by ID
+- [actor_has_project_member_access](./actor_has_project_member_access.sql) - Check a specific ontology actor's owner/member project access
 - [current_actor_has_project_access](./current_actor_has_project_access.sql) - Check if current actor has access to project
+- [current_actor_has_project_member_access](./current_actor_has_project_member_access.sql) - Check owner/member project access without public read fallback
 - [current_actor_id](./current_actor_id.sql) - Get current actor ID for authenticated user (used by RLS)
 - [current_actor_is_project_member](./current_actor_is_project_member.sql) - Check if current actor is project member (used by RLS)
 - [decline_project_invite](./decline_project_invite.sql) - Decline a project invite
@@ -281,7 +283,7 @@ This directory contains SQL definitions for all RPC functions available in the B
 
 | Category                 | Active | Removed |
 | ------------------------ | ------ | ------- |
-| Project & Collaboration  | 15     | 7       |
+| Project & Collaboration  | 17     | 7       |
 | Tasks & Plans            | 2      | 5       |
 | Phases                   | 3      | 3       |
 | Documents                | 0      | 1       |

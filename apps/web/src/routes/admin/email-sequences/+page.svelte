@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { untrack } from 'svelte';
 	import {
 		Activity,
 		CalendarClock,
@@ -147,7 +148,7 @@
 	);
 
 	let copyModalOpen = $state(false);
-	let activeCopyKey = $state<string | null>(selectedCopyParam);
+	let activeCopyKey = $state<string | null>(untrack(() => selectedCopyParam));
 	let selectedMemberIds = $state<Set<string>>(new Set());
 	let triggerMode = $state<'schedule' | 'send_now'>('schedule');
 	let scheduledFor = $state(defaultScheduleInputValue());

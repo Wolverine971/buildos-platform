@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/tree-agent/runs/[id]/+page.svelte -->
 <script lang="ts">
+	import { onMount, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import TreeAgentGraph from '$lib/components/tree-agent/TreeAgentGraph.svelte';
@@ -30,8 +31,9 @@
 	}
 
 	let { data }: Props = $props();
-	let run = $state(data.run);
-	let events = $state(data.events ?? []);
+	const initialData = untrack(() => data);
+	let run = $state(initialData.run);
+	let events = $state(initialData.events ?? []);
 	let polling = $state<ReturnType<typeof setInterval> | null>(null);
 	let contextSelectorOpen = $state(false);
 	let isChangingContext = $state(false);
@@ -117,10 +119,10 @@
 		}
 	}
 
-	$effect(() => {
+	onMount(() => {
 		if (!browser) return;
 
-		refresh();
+		void refresh();
 		polling = setInterval(refresh, 5000);
 
 		return () => {

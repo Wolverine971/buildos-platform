@@ -35,6 +35,14 @@ export interface ProjectActivityEntry {
 	createdAt: string;
 }
 
+export interface ProjectPauseNotice {
+	projectId: string;
+	projectName: string;
+	pausedAt: string;
+	actorName: string | null;
+	previousState: string | null;
+}
+
 // ============================================================================
 // GOAL PROGRESS
 // ============================================================================
@@ -316,6 +324,7 @@ export interface OntologyBriefMetadata {
 	totalMilestones: number;
 	activeRisksCount: number;
 	recentUpdatesCount: number;
+	recentlyPausedProjectCount?: number;
 
 	// Analysis
 	blockedCount: number;
@@ -387,6 +396,7 @@ export interface OntologyBriefData {
 	overdueTasks: OntoTask[];
 	highPriorityCount: number;
 	recentUpdates: RecentUpdates;
+	recentlyPausedProjects: ProjectPauseNotice[];
 	tasksByWorkMode: Record<string, OntoTask[]>;
 	projects: ProjectBriefData[];
 	calendar: CalendarBriefSection;

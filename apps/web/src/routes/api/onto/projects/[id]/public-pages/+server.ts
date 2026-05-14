@@ -7,13 +7,9 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { buildPublicPageUrlPath } from '$lib/server/public-page.service';
+import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 
 export const GET: RequestHandler = async ({ params, locals }) => {
-	const session = await locals.safeGetSession();
-	if (!session?.user) {
-		return ApiResponse.unauthorized('Authentication required');
-	}
-
 	const projectId = params.id;
 	if (!projectId || !isValidUUID(projectId)) {
 		return ApiResponse.badRequest('Valid project ID required');
@@ -21,16 +17,13 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 	const supabase = locals.supabase;
 
-	const { data: hasAccess, error: accessError } = await supabase.rpc(
-		'current_actor_has_project_access',
-		{ p_project_id: projectId, p_required_access: 'read' }
-	);
-	if (accessError) {
-		return ApiResponse.internalError(accessError, 'Failed to check project access');
-	}
-	if (!hasAccess) {
-		return ApiResponse.forbidden('You do not have access to this project');
-	}
+	const access = await requireProjectMemberAccess({
+		locals,
+		projectId,
+		requiredAccess: 'read',
+		forbiddenMessage: 'You do not have access to this project'
+	});
+	if (!access.ok) return access.response;
 
 	const { data, error } = await (supabase as any)
 		.from('onto_public_pages')

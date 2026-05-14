@@ -149,10 +149,6 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
 		locals.serverTiming ? locals.serverTiming.measure(name, fn) : fn();
 
-	// Session is still needed for the fallback path.
-	const { user } = await locals.safeGetSession();
-	const isAuthenticated = Boolean(user);
-
 	// Single round-trip: ensures actor, resolves read access, returns skeleton + access.
 	const { data: bundleRaw, error: bundleError } = await measure(
 		'db.project_skeleton_with_access',
@@ -165,6 +161,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	if (bundleError) {
 		console.error('[Project Page] Skeleton+access RPC error:', bundleError);
 		// Fall back to full fetch so the page still loads if the RPC misbehaves.
+		const { user } = await locals.safeGetSession();
+		const isAuthenticated = Boolean(user);
 		let fallbackActorId: string | null = null;
 		if (user) {
 			try {
@@ -181,7 +179,13 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		);
 		return {
 			...fallbackData,
-			access: normalizeAccess({ current_actor_id: fallbackActorId }, isAuthenticated)
+			access: normalizeAccess(
+				{
+					current_actor_id: fallbackActorId,
+					is_authenticated: isAuthenticated
+				},
+				isAuthenticated
+			)
 		};
 	}
 
@@ -220,7 +224,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			risk_count: bundle.risk_count ?? 0,
 			image_count: bundle.image_count ?? 0
 		},
-		access: normalizeAccess(bundle.access, isAuthenticated)
+		access: normalizeAccess(bundle.access, Boolean(bundle.access?.is_authenticated))
 	} satisfies ProjectSkeletonData;
 };
 

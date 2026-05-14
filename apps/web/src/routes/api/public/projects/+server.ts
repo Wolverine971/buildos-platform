@@ -19,14 +19,25 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
-export const GET: RequestHandler = async ({ locals }) => {
+function pickPublicProjectProps(value: unknown): Record<string, unknown> | null {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+	const record = value as Record<string, unknown>;
+	const props: Record<string, unknown> = {};
+	if (typeof record.commander === 'string') props.commander = record.commander;
+	return Object.keys(props).length > 0 ? props : null;
+}
+
+export const GET: RequestHandler = async () => {
 	try {
-		const { data: projects, error } = await locals.supabase
+		const admin = createAdminSupabaseClient();
+		const { data: projects, error } = await admin
 			.from('onto_projects')
 			.select('id, name, description, props, start_at, end_at')
 			.eq('is_public', true)
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.order('name');
 
 		if (error) {
@@ -36,7 +47,16 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		// Public example projects list churns very rarely (manual is_public flip).
 		// Public cache: 1 hour fresh, 1 day SWR — homepage example picker.
-		return ApiResponse.cached({ projects: projects || [] }, undefined, 3600, {
+		const publicProjects = (projects ?? []).map((project) => ({
+			id: project.id,
+			name: project.name,
+			description: project.description ?? null,
+			props: pickPublicProjectProps(project.props),
+			start_at: project.start_at ?? null,
+			end_at: project.end_at ?? null
+		}));
+
+		return ApiResponse.cached({ projects: publicProjects }, undefined, 3600, {
 			public: true,
 			staleWhileRevalidate: 86400
 		});

@@ -245,7 +245,10 @@ async function processBriefAudioInner(
 			total: 100,
 			message: 'Generating audio narration'
 		});
-		const synthesis = await synthesizeBriefAudioForWorker(narrationText, getSynthesisTimeoutMs());
+		const synthesis = await synthesizeBriefAudioForWorker(
+			narrationText,
+			getSynthesisTimeoutMs()
+		);
 		model = synthesis.model;
 
 		stage = 'upload';
@@ -331,13 +334,12 @@ async function processBriefAudioInner(
 export function processBriefAudio(
 	job: ProcessingJob<GenerateBriefAudioJobMetadata>
 ): Promise<GenerateBriefAudioResult> {
-	const next = audioChain
-		.then(() => {
-			const stopHeartbeat = startAudioJobHeartbeat(job);
-			return processBriefAudioInner(job).finally(() => {
-				stopHeartbeat();
-			});
+	const next = audioChain.then(() => {
+		const stopHeartbeat = startAudioJobHeartbeat(job);
+		return processBriefAudioInner(job).finally(() => {
+			stopHeartbeat();
 		});
+	});
 	audioChain = next.catch(() => undefined);
 	return next;
 }

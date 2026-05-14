@@ -233,9 +233,9 @@
 		chars: value.length
 	});
 
-	const labelSizeClass = size === 'lg' ? 'text-base' : 'text-sm';
+	const labelSizeClass = $derived(size === 'lg' ? 'text-base' : 'text-sm');
 
-	const proseSize = size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : 'base';
+	const proseSize = $derived(size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : 'base');
 	const proseClasses = $derived(getProseClasses(proseSize));
 
 	// Primary toolbar buttons (always visible)

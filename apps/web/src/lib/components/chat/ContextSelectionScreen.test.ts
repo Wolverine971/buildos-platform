@@ -44,6 +44,13 @@ describe('ContextSelectionScreen', () => {
 								state_key: 'planning',
 								type_key: 'project.ops',
 								task_count: 2
+							},
+							{
+								id: 'project-3',
+								name: 'Paused Project',
+								state_key: 'paused',
+								type_key: 'project.ops',
+								task_count: 9
 							}
 						];
 
@@ -65,6 +72,9 @@ describe('ContextSelectionScreen', () => {
 		await waitFor(() => {
 			expect(global.fetch).toHaveBeenCalledTimes(1);
 		});
+		await screen.findByText('Apollo');
+		expect(screen.queryByText('Hermes')).not.toBeNull();
+		expect(screen.queryByText('Paused Project')).toBeNull();
 		expect(String((global.fetch as any).mock.calls[0][0])).toContain(
 			'/api/onto/projects?limit=24'
 		);

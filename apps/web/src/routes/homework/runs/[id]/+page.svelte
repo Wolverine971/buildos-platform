@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/homework/runs/[id]/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import WorkspaceTreeNode from '$lib/components/homework/WorkspaceTreeNode.svelte';
 	import DocumentModal from '$lib/components/ontology/DocumentModal.svelte';
 	import RichMarkdownEditor from '$lib/components/ui/RichMarkdownEditor.svelte';
@@ -89,14 +89,15 @@
 	}
 
 	let { data }: Props = $props();
+	const initialData = untrack(() => data);
 
-	let run = $state(data.run);
-	let iterations = $state(data.iterations);
-	let events = $state(data.events);
-	let workspaceDocs = $state(data.workspaceDocs ?? []);
-	let workspaceEdges = $state(data.workspaceEdges ?? []);
-	let scratchpad = $state(data.scratchpad);
-	let executorPads = $state(data.executorPads ?? []);
+	let run = $state(initialData.run);
+	let iterations = $state(initialData.iterations);
+	let events = $state(initialData.events);
+	let workspaceDocs = $state(initialData.workspaceDocs ?? []);
+	let workspaceEdges = $state(initialData.workspaceEdges ?? []);
+	let scratchpad = $state(initialData.scratchpad);
+	let executorPads = $state(initialData.executorPads ?? []);
 	const latestPlan = $derived.by(() => {
 		const firstIter = iterations[0];
 		const plan = (firstIter?.artifacts?.plan as any) || (run?.metrics?.plan as any) || null;

@@ -10,12 +10,13 @@ import {
 
 function toLegacyStatus(stateKey: string): 'active' | 'paused' | 'completed' | 'archived' {
 	switch (stateKey) {
-		case 'planning':
+		case 'paused':
 			return 'paused';
 		case 'completed':
 			return 'completed';
 		case 'cancelled':
 			return 'archived';
+		case 'planning':
 		case 'active':
 		default:
 			return 'active';
@@ -24,10 +25,10 @@ function toLegacyStatus(stateKey: string): 'active' | 'paused' | 'completed' | '
 
 function toProjectState(
 	status: string | null | undefined
-): 'planning' | 'active' | 'completed' | 'cancelled' {
+): 'planning' | 'active' | 'paused' | 'completed' | 'cancelled' {
 	switch ((status || '').toLowerCase()) {
 		case 'paused':
-			return 'planning';
+			return 'paused';
 		case 'completed':
 			return 'completed';
 		case 'archived':
@@ -45,6 +46,11 @@ function toProjectState(
 function mapStatusFilters(statuses: string[]): Set<string> {
 	const mapped = new Set<string>();
 	for (const status of statuses) {
+		if ((status || '').toLowerCase() === 'active') {
+			mapped.add('planning');
+			mapped.add('active');
+			continue;
+		}
 		mapped.add(toProjectState(status));
 	}
 	return mapped;
@@ -96,7 +102,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 					.map((status) => status.trim())
 					.filter(Boolean)
 			: mode === 'context-selection'
-				? ['active', 'paused']
+				? ['active', 'planning']
 				: ['active'];
 
 		const includeCounts =

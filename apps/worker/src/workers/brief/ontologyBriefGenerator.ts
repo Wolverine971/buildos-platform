@@ -559,6 +559,17 @@ function generateMainBriefMarkdown(
 	// Calendar - deterministic, compact, and rendered before LLM summary
 	mainBrief += formatCalendarSection(briefData.calendar);
 
+	if (briefData.recentlyPausedProjects.length > 0) {
+		mainBrief += `## Recently Paused\n\n`;
+		for (const project of briefData.recentlyPausedProjects.slice(0, 5)) {
+			mainBrief += `- [${project.projectName}](/projects/${project.projectId}) was paused recently and is excluded from active brief sections.\n`;
+		}
+		if (briefData.recentlyPausedProjects.length > 5) {
+			mainBrief += `- ... and ${briefData.recentlyPausedProjects.length - 5} more\n`;
+		}
+		mainBrief += '\n';
+	}
+
 	// Executive Summary
 	mainBrief += `## Executive Summary\n\n${executiveSummary}\n\n`;
 
@@ -897,11 +908,15 @@ export async function generateOntologyDailyBrief(
 			userTimezone
 		);
 
-		if (projectsData.length === 0) {
+		const recentlyPausedProjects = await dataLoader.loadRecentlyPausedProjects(userId, actorId);
+
+		if (projectsData.length === 0 && recentlyPausedProjects.length === 0) {
 			throw new Error('No ontology projects found for user');
 		}
 
-		console.log(`[OntologyBrief] Loaded ${projectsData.length} projects for user ${userId}`);
+		console.log(
+			`[OntologyBrief] Loaded ${projectsData.length} active projects and ${recentlyPausedProjects.length} paused notices for user ${userId}`
+		);
 
 		// Step 2: Generate fresh project next steps (used in briefs + saved to projects)
 		await updateProgress(
@@ -947,7 +962,8 @@ export async function generateOntologyDailyBrief(
 			projectsData,
 			briefDateInUserTz,
 			userTimezone,
-			calendar
+			calendar,
+			recentlyPausedProjects
 		);
 		const metadata = dataLoader.calculateMetadata(
 			projectsData,
@@ -1402,6 +1418,16 @@ async function recordBriefEntities(
 			entity_kind: item.eventId ? 'event' : 'task',
 			entity_id: item.eventId ?? item.taskId!,
 			role: 'calendar_upcoming'
+		});
+	}
+
+	for (const project of briefData.recentlyPausedProjects.slice(0, 10)) {
+		entities.push({
+			daily_brief_id: dailyBriefId,
+			project_id: project.projectId,
+			entity_kind: 'project',
+			entity_id: project.projectId,
+			role: 'recently_paused'
 		});
 	}
 

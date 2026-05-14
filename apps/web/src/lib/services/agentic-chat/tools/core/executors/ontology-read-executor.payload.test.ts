@@ -60,14 +60,25 @@ describe('OntologyReadExecutor payload hygiene', () => {
 			},
 			error: null
 		});
-		(mockSupabase as any).rpc = vi.fn().mockResolvedValue({ data: true, error: null });
+		(mockSupabase as any).rpc = vi.fn((fn: string) => {
+			if (fn === 'ensure_actor_for_user') {
+				return Promise.resolve({ data: 'actor-1', error: null });
+			}
+			if (fn === 'current_actor_has_project_member_access') {
+				return Promise.resolve({ data: true, error: null });
+			}
+			return Promise.resolve({ data: null, error: null });
+		});
 		(mockSupabase as any).from = vi.fn(() => documentQuery);
 
 		const executor = new OntologyReadExecutor(context);
 		const result = await executor.getOntoDocumentDetails({ document_id: 'doc-1' });
 
 		expect(fetchFn).not.toHaveBeenCalled();
-		expect(mockSupabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+		expect(mockSupabase.rpc).toHaveBeenCalledWith('ensure_actor_for_user', {
+			p_user_id: 'user-1'
+		});
+		expect(mockSupabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: 'project-1',
 			p_required_access: 'read'
 		});

@@ -78,9 +78,9 @@ LIMIT 5;
 Expected:
 
 - `current_actor_id()` returns a UUID.
-- `can_read` true for owners/members or public projects.
+- `can_read` may be true for owners/members or legacy public-aware checks.
 - `is_member` true for owners/members (public does not imply member).
-- Project logs only return rows if `is_member` is true.
+- Internal tables and project logs only return rows if member access is true.
 
 ## Check RLS enablement and policies
 

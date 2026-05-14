@@ -214,6 +214,12 @@ describe('UtilityExecutor overview scoping', () => {
 					access_role: 'editor',
 					access_level: 'write',
 					is_shared: true
+				}),
+				createProjectSummaryRow({
+					id: 'proj-paused',
+					name: 'Paused Backlog',
+					state_key: 'paused',
+					updated_at: '2026-03-31T12:00:00.000Z'
 				})
 			],
 			tasks: [
@@ -236,6 +242,16 @@ describe('UtilityExecutor overview scoping', () => {
 					due_at: null,
 					completed_at: null,
 					updated_at: '2026-03-29T10:00:00.000Z'
+				},
+				{
+					id: 'task-paused',
+					project_id: 'proj-paused',
+					title: 'Paused task',
+					state_key: 'todo',
+					priority: 3,
+					due_at: null,
+					completed_at: null,
+					updated_at: '2026-03-31T10:00:00.000Z'
 				},
 				{
 					id: 'task-public',

@@ -85,7 +85,7 @@ const PROJECT_STATE_MAP: Record<string, ProjectState> = {
 	draft: 'planning',
 	complete: 'completed',
 	archived: 'cancelled',
-	paused: 'active'
+	paused: 'paused'
 };
 
 const DOCUMENT_STATE_MAP: Record<string, DocumentState> = {

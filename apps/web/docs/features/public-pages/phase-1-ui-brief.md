@@ -536,11 +536,11 @@ alter table onto_public_pages add column view_count_30d int not null default 0;
 
 **User intent:** "Have comments on a public page."
 
-**Critical finding from the audit.** Comment infrastructure already exists and **already supports public-page commenting architecturally** — but with a coupling that needs a decision:
+**Critical finding from the audit.** Comment infrastructure already exists and **supports public-page commenting architecturally**. The original project-level coupling has been removed, so this section is retained as historical context and a guardrail for future changes:
 
 - Tables: `onto_comments`, `onto_comment_read_states`, plus `comment-mentions.ts` for mentions.
 - Routes: `GET /api/onto/comments`, `POST /api/onto/comments/read`, etc.
-- **The existing access gate is `onto_projects.is_public`** (checked in `/api/onto/comments/+server.ts` line ~34 and `/api/onto/comments/read/+server.ts` line ~82). If `onto_projects.is_public === true`, unauthenticated reads are allowed. Writes still require an authenticated actor.
+- **Do not use `onto_projects.is_public` as the comment access gate.** Public-page comment reads are allowed only for document entities with a live row in `onto_public_pages`; member/private reads continue to use member-only project access.
 
 ### The gating mismatch (decision needed)
 
@@ -549,11 +549,11 @@ alter table onto_public_pages add column view_count_30d int not null default 0;
 
 If we naively flip `onto_projects.is_public = true` whenever any doc in the project goes public, we expose **all** comments on **all** entities of that project (tasks, plans, other unpublished docs) to anonymous readers. That's a privacy regression.
 
-**Recommended model.** Extend the comment access check to also accept a document-level public-page match:
+**Implemented model.** The comment access check also accepts a document-level public-page match:
 
 > Comment access to `entity_type=document`/`entity_id=X` is granted for anonymous readers iff `X` has a live row in `onto_public_pages` (`status='published' AND public_status='live' AND visibility='public'` — we may or may not extend to `visibility='unlisted'`, see open question).
 
-Concretely: in `/api/onto/comments/+server.ts` and `/read/+server.ts`, replace the single project-level `is_public` check with a layered check:
+Concretely: `/api/onto/comments/+server.ts` and `/read/+server.ts` use a layered check:
 
 ```
 if entity_type === 'document':

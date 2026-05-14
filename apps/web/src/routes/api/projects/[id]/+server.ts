@@ -5,12 +5,13 @@ import { ensureActorId } from '$lib/services/ontology/ontology-projects.service'
 
 function toLegacyStatus(stateKey: string): 'active' | 'paused' | 'completed' | 'archived' {
 	switch (stateKey) {
-		case 'planning':
+		case 'paused':
 			return 'paused';
 		case 'completed':
 			return 'completed';
 		case 'cancelled':
 			return 'archived';
+		case 'planning':
 		case 'active':
 		default:
 			return 'active';
@@ -19,10 +20,10 @@ function toLegacyStatus(stateKey: string): 'active' | 'paused' | 'completed' | '
 
 function toProjectState(
 	status: string | null | undefined
-): 'planning' | 'active' | 'completed' | 'cancelled' {
+): 'planning' | 'active' | 'paused' | 'completed' | 'cancelled' {
 	switch ((status || '').toLowerCase()) {
 		case 'paused':
-			return 'planning';
+			return 'paused';
 		case 'completed':
 			return 'completed';
 		case 'archived':
@@ -69,7 +70,7 @@ function toTaskState(
 }
 
 function hasProjectWriteAccess(supabase: App.Locals['supabase'], projectId: string) {
-	return supabase.rpc('current_actor_has_project_access', {
+	return supabase.rpc('current_actor_has_project_member_access', {
 		p_project_id: projectId,
 		p_required_access: 'write'
 	});
@@ -85,7 +86,7 @@ export const GET: RequestHandler = async ({ params, locals: { supabase, safeGetS
 		await ensureActorId(supabase, user.id);
 
 		const { data: canRead, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			{
 				p_project_id: params.id,
 				p_required_access: 'read'
@@ -210,7 +211,8 @@ export const PUT: RequestHandler = async ({
 			projectUpdate.description = data.description;
 		}
 		if (typeof data.status === 'string') {
-			projectUpdate.state_key = toProjectState(data.status);
+			const nextState = toProjectState(data.status);
+			projectUpdate.state_key = nextState;
 		}
 		if (typeof data.start_date === 'string' || data.start_date === null) {
 			projectUpdate.start_at = data.start_date;

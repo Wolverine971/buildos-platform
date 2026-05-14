@@ -1,6 +1,7 @@
 <!-- apps/web/src/lib/components/admin/migration/ErrorBrowser.svelte -->
 <!-- Paginated, filterable error browser with retry actions -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import {
 		Search,
 		ListFilter,
@@ -91,7 +92,7 @@
 	let selectedCategory = $state<ErrorCategory | null>(null);
 	let selectedEntityType = $state<EntityType | null>(null);
 	let showFilters = $state(false);
-	let localSelectedIds = $state<Set<number>>(new Set(selectedIds));
+	let localSelectedIds = $state<Set<number>>(new Set(untrack(() => selectedIds)));
 
 	const totalSelected = $derived(localSelectedIds.size);
 	const canRetrySelected = $derived(

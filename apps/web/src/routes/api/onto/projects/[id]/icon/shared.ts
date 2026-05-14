@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/onto/projects/[id]/icon/shared.ts
 import { ApiResponse } from '$lib/utils/api-response';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 
 export const PROJECT_ICON_MAX_CANDIDATES = 8;
 export const PROJECT_ICON_DEFAULT_CANDIDATES = 4;
@@ -48,44 +49,13 @@ export async function requireProjectAccess(
 	projectId: string,
 	requiredAccess: AccessLevel
 ): Promise<ProjectAccessResult> {
-	const { user } = await locals.safeGetSession();
-	if (!user) {
-		return { ok: false, response: ApiResponse.unauthorized('Authentication required') };
-	}
+	const access = await requireProjectMemberAccess({
+		locals,
+		projectId,
+		requiredAccess,
+		forbiddenMessage: 'Access denied'
+	});
+	if (!access.ok) return { ok: false, response: access.response };
 
-	const supabase = locals.supabase as any;
-	const [projectResult, accessResult] = await Promise.all([
-		supabase
-			.from('onto_projects')
-			.select('id')
-			.eq('id', projectId)
-			.is('deleted_at', null)
-			.maybeSingle(),
-		supabase.rpc('current_actor_has_project_access', {
-			p_project_id: projectId,
-			p_required_access: requiredAccess
-		})
-	]);
-
-	if (projectResult.error) {
-		return { ok: false, response: ApiResponse.databaseError(projectResult.error) };
-	}
-	if (!projectResult.data) {
-		return { ok: false, response: ApiResponse.notFound('Project') };
-	}
-
-	if (accessResult.error) {
-		return {
-			ok: false,
-			response: ApiResponse.internalError(
-				accessResult.error,
-				'Failed to check project access'
-			)
-		};
-	}
-	if (!accessResult.data) {
-		return { ok: false, response: ApiResponse.forbidden('Access denied') };
-	}
-
-	return { ok: true, userId: user.id, supabase };
+	return { ok: true, userId: access.userId, supabase: locals.supabase as any };
 }

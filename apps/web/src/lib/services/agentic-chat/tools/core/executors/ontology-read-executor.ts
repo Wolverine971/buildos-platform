@@ -121,6 +121,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		const actorId = await this.getActorId();
 		const summaries = await fetchProjectSummaries(this.supabase as any, actorId);
 		const readableProjectIds = summaries
+			.filter((project) => project.state_key !== 'paused')
 			.map((project) => (typeof project.id === 'string' ? project.id : null))
 			.filter((id): id is string => Boolean(id));
 
@@ -697,6 +698,8 @@ export class OntologyReadExecutor extends BaseExecutor {
 		const normalizedState = this.normalizeProjectState(args.state_key);
 		if (normalizedState) {
 			projects = projects.filter((project) => project.state_key === normalizedState);
+		} else {
+			projects = projects.filter((project) => project.state_key !== 'paused');
 		}
 
 		if (args.type_key) {
@@ -985,6 +988,8 @@ export class OntologyReadExecutor extends BaseExecutor {
 
 		if (args.state_key) {
 			projects = projects.filter((project) => project.state_key === args.state_key);
+		} else {
+			projects = projects.filter((project) => project.state_key !== 'paused');
 		}
 
 		if (args.type_key) {

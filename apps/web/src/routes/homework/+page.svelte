@@ -142,11 +142,13 @@
 			{#if scope === 'project'}
 				<div class="space-y-1">
 					<label
+						for="homework-project"
 						class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
 					>
 						Project
 					</label>
 					<select
+						id="homework-project"
 						bind:value={selectedProject}
 						class="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-ring text-foreground outline-none transition-colors"
 						required
@@ -160,11 +162,13 @@
 			{:else if scope === 'multi_project'}
 				<div class="space-y-1">
 					<label
+						for="homework-projects"
 						class="text-xs font-medium text-muted-foreground uppercase tracking-wider"
 					>
 						Projects
 					</label>
 					<select
+						id="homework-projects"
 						bind:value={selectedProjectsMulti}
 						multiple
 						size="5"

@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/admin/errors/+page.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import type { PageData } from './$types';
 	import type {
 		ErrorLogEntry,
@@ -31,6 +31,7 @@
 	} from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
+	const initialData = untrack(() => data);
 	const EMPTY_SUMMARY: ErrorSummary = {
 		total_errors: 0,
 		unresolved_errors: 0,
@@ -39,10 +40,10 @@
 		error_trend: 0
 	};
 
-	let errors = $state<ErrorLogEntry[]>(data.errors || []);
+	let errors = $state<ErrorLogEntry[]>(initialData.errors || []);
 	let summary = $state<ErrorSummary>({
 		...EMPTY_SUMMARY,
-		...(data.summary || {})
+		...(initialData.summary || {})
 	});
 	let loading = $state(false);
 	let selectedError = $state<ErrorLogEntry | null>(null);
@@ -83,7 +84,7 @@
 	// Pagination
 	let currentPage = $state(1);
 	let itemsPerPage = $state(50);
-	let hasMore = $state(Boolean(data.hasMore));
+	let hasMore = $state(Boolean(initialData.hasMore));
 
 	async function loadErrors() {
 		loading = true;

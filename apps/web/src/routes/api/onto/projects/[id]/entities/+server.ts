@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { sanitizeSearchQuery } from '$lib/utils/api-helpers';
 import type { FocusEntitySummary } from '@buildos/shared-types';
+import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 
 type FocusEntityType = 'task' | 'goal' | 'plan' | 'document' | 'milestone' | 'risk' | 'requirement';
 
@@ -47,31 +48,8 @@ const ENTITY_CONFIG: Record<
 	}
 };
 
-async function verifyProjectReadAccess(supabase: any, projectId: string): Promise<Response | null> {
-	const { data: hasAccess, error } = await supabase.rpc('current_actor_has_project_access', {
-		p_project_id: projectId,
-		p_required_access: 'read'
-	});
-
-	if (error) {
-		console.error('[FocusEntitiesAPI] Failed to check project access:', error);
-		return ApiResponse.error('Failed to check project access', 500);
-	}
-
-	if (!hasAccess) {
-		return ApiResponse.forbidden('You do not have access to this project');
-	}
-
-	return null;
-}
-
 export const GET: RequestHandler = async ({ params, url, locals }) => {
 	try {
-		const session = await locals.safeGetSession();
-		if (!session?.user) {
-			return ApiResponse.unauthorized('Authentication required');
-		}
-
 		const projectId = params.id;
 		if (!projectId) {
 			return ApiResponse.badRequest('Project ID required');
@@ -79,10 +57,13 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 
 		const supabase = locals.supabase;
 
-		const accessError = await verifyProjectReadAccess(supabase, projectId);
-		if (accessError) {
-			return accessError;
-		}
+		const access = await requireProjectMemberAccess({
+			locals,
+			projectId,
+			requiredAccess: 'read',
+			forbiddenMessage: 'You do not have access to this project'
+		});
+		if (!access.ok) return access.response;
 
 		const typeParam = (url.searchParams.get('type') ?? 'task') as FocusEntityType;
 		if (!(typeParam in ENTITY_CONFIG)) {

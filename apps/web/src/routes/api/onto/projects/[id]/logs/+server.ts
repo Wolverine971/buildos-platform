@@ -9,6 +9,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
 import { validatePaginationCustom } from '$lib/utils/api-helpers';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 export const GET: RequestHandler = async ({ params, url, locals }) => {
@@ -34,58 +35,15 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 			{ defaultLimit: 10, maxLimit: 50 }
 		);
 
-		const supabase = locals.supabase;
-
-		const { data: project, error: projectError } = await supabase
-			.from('onto_projects')
-			.select('id')
-			.eq('id', projectId)
-			.is('deleted_at', null)
-			.maybeSingle();
-
-		if (projectError || !project) {
-			return ApiResponse.notFound('Project');
-		}
-
-		const memberAccessResult = await supabase.rpc('current_actor_is_project_member', {
-			p_project_id: projectId
+		const access = await requireProjectMemberAccess({
+			locals,
+			projectId,
+			requiredAccess: 'read',
+			user
 		});
-		let hasAccess = Boolean(memberAccessResult.data);
+		if (!access.ok) return access.response;
 
-		if (memberAccessResult.error) {
-			console.warn(
-				'[Project Logs API] Member check failed, falling back to access check:',
-				memberAccessResult.error
-			);
-			const fallbackAccessResult = await supabase.rpc('current_actor_has_project_access', {
-				p_project_id: projectId,
-				p_required_access: 'read'
-			});
-
-			if (fallbackAccessResult.error) {
-				console.error(
-					'[Project Logs API] Failed to check access:',
-					fallbackAccessResult.error
-				);
-				await logOntologyApiError({
-					supabase,
-					error: fallbackAccessResult.error,
-					endpoint: `/api/onto/projects/${projectId}/logs`,
-					method: 'GET',
-					userId: user.id,
-					projectId,
-					entityType: 'project',
-					operation: 'project_logs_access_check'
-				});
-				return ApiResponse.error('Failed to check project access', 500);
-			}
-
-			hasAccess = Boolean(fallbackAccessResult.data);
-		}
-
-		if (!hasAccess) {
-			return ApiResponse.forbidden('You do not have permission to access this project');
-		}
+		const supabase = locals.supabase;
 
 		// Fetch logs with pagination
 		const {

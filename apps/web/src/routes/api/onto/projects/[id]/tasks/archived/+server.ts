@@ -9,21 +9,12 @@
 
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
-import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { validatePaginationCustom } from '$lib/utils/api-helpers';
 import { attachAssigneesToTasks, fetchTaskAssigneesMap } from '$lib/server/task-assignment.service';
+import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 
 export const GET: RequestHandler = async ({ params, url, locals }) => {
 	try {
-		const { user } = await locals.safeGetSession();
-		if (!user) {
-			return ApiResponse.unauthorized('Authentication required');
-		}
-
-		const { id: projectId } = params;
-		if (!projectId) return ApiResponse.badRequest('Project ID required');
-		if (!isValidUUID(projectId)) return ApiResponse.badRequest('Invalid project ID');
-
 		const { limit, offset } = validatePaginationCustom(
 			{
 				limit: url.searchParams.get('limit'),
@@ -34,19 +25,14 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 
 		const supabase = locals.supabase;
 
-		// RLS will already gate the query, but check explicitly so we can
-		// return a friendlier 403 instead of an empty list.
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
-			{ p_project_id: projectId, p_required_access: 'read' }
-		);
-		if (accessError) {
-			console.error('[Archived Tasks API] access check failed:', accessError);
-			return ApiResponse.error('Failed to check project access', 500);
-		}
-		if (!hasAccess) {
-			return ApiResponse.forbidden('You do not have permission to access this project');
-		}
+		const access = await requireProjectMemberAccess({
+			locals,
+			projectId: params.id,
+			requiredAccess: 'read'
+		});
+		if (!access.ok) return access.response;
+
+		const projectId = access.projectId;
 
 		const {
 			data: rows,

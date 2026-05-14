@@ -32,7 +32,7 @@ function createSupabase() {
 			};
 		}
 
-		if (fn === 'current_actor_has_project_access') {
+		if (fn === 'current_actor_has_project_member_access') {
 			return { data: true, error: null };
 		}
 

@@ -40,7 +40,7 @@ describe('OntologyReadExecutor project-scoped access', () => {
 		mockSupabase = {
 			from: vi.fn(() => documentQuery),
 			rpc: vi.fn((fn: string) => {
-				if (fn === 'current_actor_has_project_access') {
+				if (fn === 'current_actor_has_project_member_access') {
 					return Promise.resolve({ data: true, error: null });
 				}
 				if (fn === 'ensure_actor_for_user') {
@@ -108,14 +108,13 @@ describe('OntologyReadExecutor project-scoped access', () => {
 			limit: 10
 		});
 
-		expect(mockSupabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+		expect(mockSupabase.rpc).toHaveBeenCalledWith('ensure_actor_for_user', {
+			p_user_id: 'user-1'
+		});
+		expect(mockSupabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: 'project-1',
 			p_required_access: 'read'
 		});
-		expect(mockSupabase.rpc).not.toHaveBeenCalledWith(
-			'ensure_actor_for_user',
-			expect.anything()
-		);
 		expect(documentQuery.eq).toHaveBeenCalledWith('project_id', 'project-1');
 		expect(documentQuery.eq).not.toHaveBeenCalledWith('created_by', expect.anything());
 		expect(result.documents).toHaveLength(1);
@@ -130,10 +129,13 @@ describe('OntologyReadExecutor project-scoped access', () => {
 		expect(mockSupabase.rpc).toHaveBeenCalledWith('ensure_actor_for_user', {
 			p_user_id: 'user-1'
 		});
-		expect(mockSupabase.rpc).not.toHaveBeenCalledWith('current_actor_has_project_access', {
-			p_project_id: expect.anything(),
-			p_required_access: 'read'
-		});
+		expect(mockSupabase.rpc).not.toHaveBeenCalledWith(
+			'current_actor_has_project_member_access',
+			{
+				p_project_id: expect.anything(),
+				p_required_access: 'read'
+			}
+		);
 		expect(documentQuery.in).toHaveBeenCalledWith('project_id', ['project-1']);
 		expect(documentQuery.eq).not.toHaveBeenCalledWith('created_by', expect.anything());
 	});

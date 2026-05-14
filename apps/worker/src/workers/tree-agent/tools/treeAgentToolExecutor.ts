@@ -56,6 +56,7 @@ const TASK_STATES: Database['public']['Enums']['task_state'][] = [
 const PROJECT_STATES: Database['public']['Enums']['project_state'][] = [
 	'planning',
 	'active',
+	'paused',
 	'completed',
 	'cancelled'
 ];

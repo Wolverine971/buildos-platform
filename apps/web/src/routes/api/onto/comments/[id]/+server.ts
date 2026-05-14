@@ -4,6 +4,7 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../shared/error-logging';
 import { handleCommentMentions } from '../comment-mentions';
 import { resolveCommentEntityOwnerActorId } from '$lib/server/comment-public-access';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 	const supabase = locals.supabase;
@@ -35,13 +36,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				entity_id,
 				root_id,
 				created_by,
-				deleted_at,
-				project:onto_projects!inner(
-					id,
-					name,
-					is_public,
-					created_by
-				)
+				deleted_at
 			`
 			)
 			.eq('id', params.id)
@@ -66,6 +61,32 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 
 		if (comment.deleted_at) {
 			return ApiResponse.badRequest('Deleted comments cannot be edited');
+		}
+
+		const admin = createAdminSupabaseClient();
+		const { data: project, error: projectError } = await admin
+			.from('onto_projects')
+			.select('id, name, created_by')
+			.eq('id', comment.project_id)
+			.is('deleted_at', null)
+			.maybeSingle();
+
+		if (projectError || !project) {
+			await logOntologyApiError({
+				supabase,
+				error: projectError || new Error('Project not found for comment'),
+				endpoint: `/api/onto/comments/${params.id}`,
+				method: 'PATCH',
+				userId: session.user.id,
+				projectId: comment.project_id,
+				entityType: comment.entity_type,
+				entityId: comment.entity_id,
+				operation: 'comments_project_fetch',
+				tableName: 'onto_projects'
+			});
+			return projectError
+				? ApiResponse.databaseError(projectError)
+				: ApiResponse.notFound('Project');
 		}
 
 		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
@@ -170,7 +191,7 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 		await handleCommentMentions({
 			supabase,
 			body: bodyText,
-			project: comment.project,
+			project,
 			comment: {
 				id: updated.id,
 				root_id: updated.root_id,

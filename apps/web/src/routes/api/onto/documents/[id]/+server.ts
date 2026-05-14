@@ -66,6 +66,28 @@ async function ensureDocumentAccess(
 ): Promise<AccessResult> {
 	const supabase = locals.supabase;
 
+	const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: userId });
+	const { data: actorId, error: actorError } = actorResult;
+	if (actorError || !actorId) {
+		console.error('[Document API] Failed to resolve actor:', actorError);
+		await logOntologyApiError({
+			supabase,
+			error: actorError || new Error('Failed to resolve user actor'),
+			endpoint: `/api/onto/documents/${documentId}`,
+			method,
+			userId,
+			entityType: 'document',
+			entityId: documentId,
+			operation: 'document_actor_resolve'
+		});
+		return {
+			error: ApiResponse.internalError(
+				actorError || new Error('Failed to resolve user actor'),
+				'Failed to resolve user identity'
+			)
+		};
+	}
+
 	const { data: document, error: documentError } = await supabase
 		.from('onto_documents')
 		.select('*')
@@ -93,11 +115,8 @@ async function ensureDocumentAccess(
 		return { error: ApiResponse.notFound('Document') };
 	}
 
-	// Parallelize actor resolution, access check, and project fetch —
-	// all three depend only on document.project_id / userId, not on each other.
-	const [actorResult, accessResult, projectResult] = await Promise.all([
-		supabase.rpc('ensure_actor_for_user', { p_user_id: userId }),
-		supabase.rpc('current_actor_has_project_access', {
+	const [accessResult, projectResult] = await Promise.all([
+		supabase.rpc('current_actor_has_project_member_access', {
 			p_project_id: document.project_id,
 			p_required_access: requiredAccess
 		}),
@@ -108,28 +127,6 @@ async function ensureDocumentAccess(
 			.is('deleted_at', null)
 			.maybeSingle()
 	]);
-
-	const { data: actorId, error: actorError } = actorResult;
-	if (actorError || !actorId) {
-		console.error('[Document API] Failed to resolve actor:', actorError);
-		await logOntologyApiError({
-			supabase,
-			error: actorError || new Error('Failed to resolve user actor'),
-			endpoint: `/api/onto/documents/${documentId}`,
-			method,
-			userId,
-			projectId: document.project_id,
-			entityType: 'document',
-			entityId: documentId,
-			operation: 'document_actor_resolve'
-		});
-		return {
-			error: ApiResponse.internalError(
-				actorError || new Error('Failed to resolve user actor'),
-				'Failed to resolve user identity'
-			)
-		};
-	}
 
 	const { data: hasAccess, error: accessError } = accessResult;
 	if (accessError) {

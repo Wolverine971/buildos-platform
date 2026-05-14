@@ -83,7 +83,7 @@ function createSupabaseMock(fixtures: { taskRow?: any; eventRows?: Array<{ id: s
 			if (fn === 'ensure_actor_for_user') {
 				return { data: 'actor1', error: null };
 			}
-			if (fn === 'current_actor_has_project_access') {
+			if (fn === 'current_actor_has_project_member_access') {
 				return { data: true, error: null };
 			}
 			return { data: null, error: null };

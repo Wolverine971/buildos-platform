@@ -35,11 +35,10 @@
 	import VisitorContributionChart from '$lib/components/analytics/VisitorContributionChart.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import type { ComponentType } from 'svelte';
 
 	import { browser } from '$app/environment';
 	import type { DashboardAnalyticsPayload } from '$lib/services/admin/dashboard-analytics.service';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack, type ComponentType } from 'svelte';
 
 	// Type definitions for better type safety
 	type Tone = 'success' | 'info' | 'brand' | 'muted' | 'warning' | 'danger' | 'default';
@@ -95,9 +94,11 @@
 	type TopActiveUser = { email: string; last_activity: string | null; activity_count: number };
 
 	let { data } = $props();
-	const initialDashboard = (data?.initialDashboard ?? null) as DashboardAnalyticsPayload | null;
-	const defaultTimeframe = (data?.defaultTimeframe ?? '30d') as '7d' | '30d' | '90d';
-	const loadErrorFromServer = data?.loadError as string | undefined;
+	const initialData = untrack(() => data);
+	const initialDashboard = (initialData?.initialDashboard ??
+		null) as DashboardAnalyticsPayload | null;
+	const defaultTimeframe = (initialData?.defaultTimeframe ?? '30d') as '7d' | '30d' | '90d';
+	const loadErrorFromServer = initialData?.loadError as string | undefined;
 
 	let isLoading = $state(initialDashboard ? false : true);
 	let error = $state<string | null>(loadErrorFromServer ?? null);

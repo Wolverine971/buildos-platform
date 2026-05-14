@@ -57,7 +57,15 @@ describe('POST /api/onto/projects/[id]/icon/generations', () => {
 		const supabase = event.locals.supabase as any;
 		const { projectSelect } = mockProjectExists();
 
-		supabase.rpc.mockResolvedValue({ data: false, error: null });
+		supabase.rpc.mockImplementation((fn: string) => {
+			if (fn === 'ensure_actor_for_user') {
+				return Promise.resolve({ data: 'actor-1', error: null });
+			}
+			if (fn === 'current_actor_has_project_member_access') {
+				return Promise.resolve({ data: false, error: null });
+			}
+			return Promise.resolve({ data: null, error: null });
+		});
 		supabase.from.mockImplementation((table: string) => {
 			if (table === 'onto_projects') {
 				return { select: projectSelect };
@@ -67,7 +75,7 @@ describe('POST /api/onto/projects/[id]/icon/generations', () => {
 
 		const response = await POST(event);
 		expect(response.status).toBe(403);
-		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: PROJECT_ID,
 			p_required_access: 'write'
 		});
@@ -81,7 +89,15 @@ describe('POST /api/onto/projects/[id]/icon/generations', () => {
 		const supabase = event.locals.supabase as any;
 		const { projectSelect } = mockProjectExists();
 
-		supabase.rpc.mockResolvedValue({ data: true, error: null });
+		supabase.rpc.mockImplementation((fn: string) => {
+			if (fn === 'ensure_actor_for_user') {
+				return Promise.resolve({ data: 'actor-1', error: null });
+			}
+			if (fn === 'current_actor_has_project_member_access') {
+				return Promise.resolve({ data: true, error: null });
+			}
+			return Promise.resolve({ data: null, error: null });
+		});
 		supabase.from.mockImplementation((table: string) => {
 			if (table === 'onto_projects') {
 				return { select: projectSelect };
@@ -138,7 +154,7 @@ describe('GET /api/onto/projects/[id]/icon/generations', () => {
 		expect(payload.success).toBe(true);
 		expect(payload.data.generationId).toBe(GENERATION_ID);
 		expect(payload.data.status).toBe('completed');
-		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: PROJECT_ID,
 			p_required_access: 'read'
 		});

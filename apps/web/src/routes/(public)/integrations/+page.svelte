@@ -246,9 +246,9 @@ Content-Type: application/json
 				<p
 					class="mx-auto mb-8 max-w-3xl text-base text-muted-foreground sm:text-lg lg:text-xl"
 				>
-					Your projects live in BuildOS. Give Claude Code, Cursor, Claude Desktop,
-					ChatGPT, or any HTTP-capable tool a scoped read/write into them — so they read
-					off the same sheet of paper instead of starting from zero each session.
+					BuildOS is not another agent. BuildOS is where the project lives so every human
+					and agent can work from the same memory.<br /><br />Give Claude Code, Cursor,
+					Claude Desktop, ChatGPT, or any HTTP-capable tool a scoped read/write into it.
 				</p>
 
 				<div class="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">

@@ -117,7 +117,7 @@ async function resolveMemberContext(params: {
 
 	const actorId = await ensureActorId(supabase, userId);
 	const { data: hasAccess, error: accessError } = await supabase.rpc(
-		'current_actor_has_project_access',
+		'current_actor_has_project_member_access',
 		{
 			p_project_id: projectId,
 			p_required_access: 'read'

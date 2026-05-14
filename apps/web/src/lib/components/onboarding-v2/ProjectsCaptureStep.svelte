@@ -15,7 +15,7 @@
 	import { ONBOARDING_V3_CONFIG, type OnboardingIntent } from '$lib/config/onboarding.config';
 	import { startCalendarAnalysis } from '$lib/services/calendar-analysis-notification.bridge';
 	import { fade, scale } from 'svelte/transition';
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 
 	type ProjectPreview = {
@@ -65,11 +65,11 @@
 	}: Props = $props();
 
 	// Live list of user's projects. Seeded from server, refreshed after chat creates one.
-	let projects = $state<ProjectPreview[]>(initialProjects);
+	let projects = $state<ProjectPreview[]>(untrack(() => initialProjects));
 
 	async function refreshProjects() {
 		try {
-			const res = await fetch('/api/projects?status=active,paused&limit=6', {
+			const res = await fetch('/api/projects?status=active,planning&limit=6', {
 				cache: 'no-store'
 			});
 			if (!res.ok) return;

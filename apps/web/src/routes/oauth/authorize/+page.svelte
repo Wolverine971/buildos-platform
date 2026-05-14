@@ -138,10 +138,12 @@
 							bind:group={projectScope}
 						/>
 						<span>
-							<span class="font-medium text-foreground">All current projects</span>
+							<span class="font-medium text-foreground"
+								>All current collaborator projects</span
+							>
 							<span class="block text-sm text-muted-foreground">
-								Use BuildOS permissions to expose all projects available to your
-								account.
+								Expose projects where your account is an owner or collaborator.
+								Public project pages are not included automatically.
 							</span>
 						</span>
 					</label>

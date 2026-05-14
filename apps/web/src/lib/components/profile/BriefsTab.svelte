@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/profile/BriefsTab.svelte -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { briefPreferencesStore } from '$lib/stores/briefPreferences';
 	import { notificationPreferencesStore } from '$lib/stores/notificationPreferences';
@@ -55,7 +55,7 @@
 		is_active: true
 	});
 	let refreshingJobs = $state(false);
-	let voiceNarrationEnabled = $state(initialVoiceNarrationEnabled);
+	let voiceNarrationEnabled = $state(untrack(() => initialVoiceNarrationEnabled));
 	let voiceNarrationSaving = $state(false);
 
 	// Confirmation modal state

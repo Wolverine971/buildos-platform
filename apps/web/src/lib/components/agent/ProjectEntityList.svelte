@@ -8,7 +8,7 @@
   consumers stay visually identical.
 -->
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import {
 		ListChecks,
@@ -198,7 +198,7 @@
 		return parts;
 	}
 
-	let selectedType = $state<FocusEntityType>(initialType);
+	let selectedType = $state<FocusEntityType>(untrack(() => initialType));
 	let entities = $state<FocusEntitySummary[]>([]);
 	let sortedEntities = $derived(sortEntitiesForSelection(entities, selectedType));
 	let loading = $state(false);

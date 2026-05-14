@@ -104,7 +104,7 @@ function createSupabase(projects: any[], members: any[] = []) {
 	return {
 		rpc: vi.fn((fn: string) =>
 			Promise.resolve({
-				data: fn === 'current_actor_has_project_access' ? true : 'actor-1',
+				data: fn === 'current_actor_has_project_member_access' ? true : 'actor-1',
 				error: null
 			})
 		),
@@ -265,7 +265,7 @@ describe('GET /api/onto/graph', () => {
 		expect(payload.success).toBe(false);
 		expect(loadProjectGraphDataMock).not.toHaveBeenCalled();
 		expect(supabase.rpc).not.toHaveBeenCalledWith(
-			'current_actor_has_project_access',
+			'current_actor_has_project_member_access',
 			expect.anything()
 		);
 	});

@@ -1,5 +1,6 @@
 <!-- apps/web/src/routes/admin/welcome-sequence/+page.svelte -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import {
 		Activity,
 		CheckCircle2,
@@ -143,21 +144,22 @@
 	};
 
 	let { data, form }: { data: PageData; form?: ActionData } = $props();
+	const initialData = untrack(() => data);
 
-	const summary = data.summary as {
+	const summary = initialData.summary as {
 		total: number;
 		matched: number;
 		mismatched: number;
 		missing: number;
 	};
-	const rows = (data.rows ?? []) as DiffRow[];
-	const stats = (data.stats ?? null) as SequenceStats | null;
-	const steps = (data.steps ?? []) as StepMetadata[];
-	const localPreviews = (data.localPreviews ?? []) as Preview[];
-	const sandbox = data.sandbox as { input: SandboxInput; preview: Preview };
-	const queueRows = (data.queueRows ?? []) as QueueRow[];
-	const alerts = (data.alerts ?? []) as AlertRow[];
-	const engagement = (data.engagement ?? null) as EngagementStats | null;
+	const rows = (initialData.rows ?? []) as DiffRow[];
+	const stats = (initialData.stats ?? null) as SequenceStats | null;
+	const steps = (initialData.steps ?? []) as StepMetadata[];
+	const localPreviews = (initialData.localPreviews ?? []) as Preview[];
+	const sandbox = initialData.sandbox as { input: SandboxInput; preview: Preview };
+	const queueRows = (initialData.queueRows ?? []) as QueueRow[];
+	const alerts = (initialData.alerts ?? []) as AlertRow[];
+	const engagement = (initialData.engagement ?? null) as EngagementStats | null;
 
 	const eventCounts = stats?.eventCounts ?? {};
 	const emailLogCounts = stats?.emailLogCounts ?? {};

@@ -10,7 +10,7 @@
 	- Inkprint Design System: /apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md
 -->
 <script lang="ts">
-	import type { ComponentType, Snippet } from 'svelte';
+	import { untrack, type ComponentType, type Snippet } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { ChevronDown } from 'lucide-svelte';
 
@@ -40,7 +40,7 @@
 		children
 	}: Props = $props();
 
-	let expanded = $state(defaultExpanded);
+	let expanded = $state(untrack(() => defaultExpanded));
 
 	function toggle() {
 		if (!alwaysExpanded) {

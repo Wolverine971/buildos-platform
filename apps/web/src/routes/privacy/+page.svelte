@@ -195,7 +195,8 @@
 						<li class="text-muted-foreground">
 							<strong class="text-foreground">You control access:</strong> Connected agents
 							can only access BuildOS data within the scopes, projects, and permissions
-							you approve. Read-only access is the default for connector flows when available.
+							you approve. Public project pages do not automatically grant connected-agent
+							access. Read-only access is the default for connector flows when available.
 						</li>
 						<li class="text-muted-foreground">
 							<strong class="text-foreground">Optional write access:</strong> If you approve

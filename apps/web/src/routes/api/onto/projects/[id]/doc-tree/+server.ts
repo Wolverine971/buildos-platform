@@ -14,6 +14,7 @@ import {
 } from '$lib/services/ontology/doc-structure.service';
 import type { DocStructure, DocTreeNode } from '$lib/types/onto';
 import { logOntologyApiError } from '../../../shared/error-logging';
+import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
 
 const VALID_CHANGE_TYPES = new Set<ChangeType>([
 	'create',
@@ -74,85 +75,15 @@ function validateStructure(structure: DocStructure): ValidationResult {
 
 export const GET: RequestHandler = async ({ params, locals, url }) => {
 	try {
-		const { user } = await locals.safeGetSession();
-		const { id } = params;
+		const access = await requireProjectMemberAccess({
+			locals,
+			projectId: params.id,
+			requiredAccess: 'read'
+		});
+		if (!access.ok) return access.response;
 
-		if (!id) {
-			return ApiResponse.badRequest('Project ID required');
-		}
-
+		const id = access.projectId;
 		const supabase = locals.supabase;
-
-		if (user) {
-			const actorResult = await supabase.rpc('ensure_actor_for_user', { p_user_id: user.id });
-			if (actorResult.error || !actorResult.data) {
-				console.error('[Doc Tree API] Failed to resolve actor', actorResult.error);
-				await logOntologyApiError({
-					supabase,
-					error: actorResult.error || new Error('Failed to resolve user actor'),
-					endpoint: `/api/onto/projects/${id}/doc-tree`,
-					method: 'GET',
-					userId: user.id,
-					projectId: id,
-					entityType: 'project',
-					operation: 'doc_tree_actor_resolve'
-				});
-				return ApiResponse.error('Failed to resolve user actor', 500);
-			}
-		}
-
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
-			{
-				p_project_id: id,
-				p_required_access: 'read'
-			}
-		);
-
-		if (accessError) {
-			console.error('[Doc Tree API] Failed to check access', accessError);
-			await logOntologyApiError({
-				supabase,
-				error: accessError,
-				endpoint: `/api/onto/projects/${id}/doc-tree`,
-				method: 'GET',
-				userId: user?.id,
-				projectId: id,
-				entityType: 'project',
-				operation: 'doc_tree_access_check'
-			});
-			return ApiResponse.error('Failed to check project access', 500);
-		}
-
-		if (!hasAccess) {
-			return user
-				? ApiResponse.forbidden('You do not have permission to access this project')
-				: ApiResponse.notFound('Project');
-		}
-
-		const { data: project, error: projectError } = await supabase
-			.from('onto_projects')
-			.select('id')
-			.eq('id', id)
-			.is('deleted_at', null)
-			.single();
-
-		if (projectError || !project) {
-			if (projectError) {
-				await logOntologyApiError({
-					supabase,
-					error: projectError,
-					endpoint: `/api/onto/projects/${id}/doc-tree`,
-					method: 'GET',
-					userId: user?.id,
-					projectId: id,
-					entityType: 'project',
-					operation: 'doc_tree_project_fetch',
-					tableName: 'onto_projects'
-				});
-			}
-			return ApiResponse.notFound('Project');
-		}
 
 		const includeContentParam = url.searchParams.get('include_content');
 		const includeContent =
@@ -219,80 +150,17 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			return ApiResponse.badRequest(structureValidation.message);
 		}
 
-		const supabase = locals.supabase;
-
-		const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-			p_user_id: session.user.id
+		const access = await requireProjectMemberAccess({
+			locals,
+			projectId: id,
+			requiredAccess: 'write',
+			user: session.user,
+			forbiddenMessage: 'You do not have permission to modify this project'
 		});
+		if (!access.ok) return access.response;
 
-		if (actorError || !actorId) {
-			console.error('[Doc Tree API] Failed to resolve actor:', actorError);
-			await logOntologyApiError({
-				supabase,
-				error: actorError || new Error('Failed to resolve user actor'),
-				endpoint: `/api/onto/projects/${id}/doc-tree`,
-				method: 'PATCH',
-				userId: session.user.id,
-				projectId: id,
-				entityType: 'project',
-				operation: 'doc_tree_actor_resolve'
-			});
-			return ApiResponse.internalError(
-				actorError || new Error('Failed to resolve user actor'),
-				'Failed to resolve user identity'
-			);
-		}
-
-		const { data: hasAccess, error: accessError } = await supabase.rpc(
-			'current_actor_has_project_access',
-			{
-				p_project_id: id,
-				p_required_access: 'write'
-			}
-		);
-
-		if (accessError) {
-			console.error('[Doc Tree API] Failed to check access', accessError);
-			await logOntologyApiError({
-				supabase,
-				error: accessError,
-				endpoint: `/api/onto/projects/${id}/doc-tree`,
-				method: 'PATCH',
-				userId: session.user.id,
-				projectId: id,
-				entityType: 'project',
-				operation: 'doc_tree_access_check'
-			});
-			return ApiResponse.error('Failed to check project access', 500);
-		}
-
-		if (!hasAccess) {
-			return ApiResponse.forbidden('You do not have permission to modify this project');
-		}
-
-		const { data: project, error: projectError } = await supabase
-			.from('onto_projects')
-			.select('id')
-			.eq('id', id)
-			.is('deleted_at', null)
-			.single();
-
-		if (projectError || !project) {
-			if (projectError) {
-				await logOntologyApiError({
-					supabase,
-					error: projectError,
-					endpoint: `/api/onto/projects/${id}/doc-tree`,
-					method: 'PATCH',
-					userId: session.user.id,
-					projectId: id,
-					entityType: 'project',
-					operation: 'doc_tree_project_fetch',
-					tableName: 'onto_projects'
-				});
-			}
-			return ApiResponse.notFound('Project');
-		}
+		const supabase = locals.supabase;
+		const actorId = access.actorId;
 
 		// Validate referenced document ids belong to the project and are active
 		const structureIds = Array.from(collectDocIds(structure.root));

@@ -41,7 +41,7 @@ describe('/api/onto/projects/[id]/invites access checks', () => {
 
 		const response = await GET(event);
 		expect(response.status).toBe(403);
-		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: 'project-1',
 			p_required_access: 'write'
 		});
@@ -55,7 +55,7 @@ describe('/api/onto/projects/[id]/invites access checks', () => {
 
 		const response = await POST(event);
 		expect(response.status).toBe(403);
-		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: 'project-1',
 			p_required_access: 'write'
 		});

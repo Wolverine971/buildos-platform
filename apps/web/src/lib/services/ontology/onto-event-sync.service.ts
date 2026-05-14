@@ -972,7 +972,8 @@ export class OntoEventSyncService {
 			await this.calendarService.deleteCalendarEvent(userId, {
 				event_id: mapping.externalEventId,
 				calendar_id: mapping.calendarId,
-				send_notifications: false
+				send_notifications: false,
+				sendUpdates: 'none'
 			});
 
 			const nowIso = new Date().toISOString();
@@ -1385,7 +1386,8 @@ export class OntoEventSyncService {
 				await this.calendarService.deleteCalendarEvent(input.targetUserId, {
 					event_id: mapping.externalEventId,
 					calendar_id: mapping.calendarId,
-					send_notifications: false
+					send_notifications: false,
+					sendUpdates: 'none'
 				});
 
 				const nowIso = new Date().toISOString();

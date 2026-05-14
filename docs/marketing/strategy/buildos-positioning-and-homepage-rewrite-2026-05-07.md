@@ -8,6 +8,7 @@ related_docs:
     - /docs/marketing/strategy/buildos-marketing-strategy-2026.md
     - /docs/marketing/strategy/anti-ai-show-dont-tell-strategy.md
     - /docs/marketing/strategy/thinking-environment-creator-strategy.md
+    - /docs/marketing/strategy/how-to-explain-buildos-2026-05-11.md
 preview_route: /landing-v2
 path: docs/marketing/strategy/buildos-positioning-and-homepage-rewrite-2026-05-07.md
 ---

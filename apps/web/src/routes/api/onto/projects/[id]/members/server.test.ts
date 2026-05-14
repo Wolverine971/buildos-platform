@@ -100,6 +100,20 @@ describe('GET /api/onto/projects/[id]/members', () => {
 		});
 
 		supabase.from.mockImplementation((table: string) => {
+			if (table === 'onto_projects') {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							is: vi.fn().mockReturnValue({
+								maybeSingle: vi.fn().mockResolvedValue({
+									data: { id: PROJECT_ID },
+									error: null
+								})
+							})
+						})
+					})
+				};
+			}
 			if (table === 'onto_project_members') {
 				return { select };
 			}
@@ -123,6 +137,41 @@ describe('GET /api/onto/projects/[id]/members', () => {
 			role_name: 'Project Owner',
 			role_description: 'Owns decisions.'
 		});
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
+			p_project_id: PROJECT_ID,
+			p_required_access: 'read'
+		});
+	});
+
+	it('rejects authenticated public-only readers', async () => {
+		const event = createEvent();
+		const supabase = event.locals.supabase as any;
+
+		supabase.rpc.mockResolvedValue({ data: false, error: null });
+		supabase.from.mockImplementation((table: string) => {
+			if (table === 'onto_projects') {
+				return {
+					select: vi.fn().mockReturnValue({
+						eq: vi.fn().mockReturnValue({
+							is: vi.fn().mockReturnValue({
+								maybeSingle: vi.fn().mockResolvedValue({
+									data: { id: PROJECT_ID },
+									error: null
+								})
+							})
+						})
+					})
+				};
+			}
+			return {};
+		});
+
+		const response = await GET(event);
+		const payload = await response.json();
+
+		expect(response.status).toBe(403);
+		expect(payload.error).toBe('Access denied');
+		expect(supabase.from).not.toHaveBeenCalledWith('onto_project_members');
 	});
 
 	it('rejects invalid project ids', async () => {

@@ -29,7 +29,6 @@
 
 	let {
 		isOpen = $bindable(false),
-		projectId: _projectId,
 		documentId,
 		documentTitle,
 		structure,
@@ -37,9 +36,6 @@
 		onClose,
 		onMove
 	}: Props = $props();
-
-	// Silence unused variable warning
-	void _projectId;
 
 	let selectedParentId = $state<string | null>(null);
 	let expandedIds = $state<Set<string>>(new Set());

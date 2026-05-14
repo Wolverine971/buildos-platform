@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/time-blocks/TimeBlockCreateModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, untrack } from 'svelte';
 	import FormModal from '$lib/components/ui/FormModal.svelte';
 	import type { FormConfig } from '$lib/types/form';
 
@@ -56,10 +56,24 @@
 		return Number.isNaN(parsed.getTime()) ? null : parsed;
 	}
 
-	let blockType = $state<'project' | 'build'>(projects.length > 0 ? 'project' : 'build');
-	let selectedProjectId = $state(projects[0]?.id ?? '');
-	let startValue = $state(formatForInput(initialStart ?? defaultStart()));
-	let endValue = $state(formatForInput(initialEnd ?? defaultEnd()));
+	const initialFormValues = untrack(
+		(): {
+			blockType: 'project' | 'build';
+			selectedProjectId: string;
+			startValue: string;
+			endValue: string;
+		} => ({
+			blockType: projects.length > 0 ? 'project' : 'build',
+			selectedProjectId: projects[0]?.id ?? '',
+			startValue: formatForInput(initialStart ?? defaultStart()),
+			endValue: formatForInput(initialEnd ?? defaultEnd())
+		})
+	);
+
+	let blockType = $state<'project' | 'build'>(initialFormValues.blockType);
+	let selectedProjectId = $state(initialFormValues.selectedProjectId);
+	let startValue = $state(initialFormValues.startValue);
+	let endValue = $state(initialFormValues.endValue);
 
 	// Flag to prevent auto-adjustment during initialization
 	let isInitialized = $state(false);
@@ -161,6 +175,7 @@
 	loadingText="Creating…"
 	{formConfig}
 	{initialData}
+	externalLoading={isCreating}
 	onSubmit={handleSubmit}
 	onClose={() => dispatch('close')}
 	size="lg"

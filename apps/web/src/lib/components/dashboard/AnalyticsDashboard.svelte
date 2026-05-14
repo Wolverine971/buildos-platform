@@ -136,7 +136,8 @@
 		'cancelled',
 		'closed',
 		'archived',
-		'abandoned'
+		'abandoned',
+		'paused'
 	]);
 
 	function normalizeStateKey(stateKey: string | null | undefined): string {

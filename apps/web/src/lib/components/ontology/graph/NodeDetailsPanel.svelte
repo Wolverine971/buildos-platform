@@ -40,10 +40,7 @@
 		showDetailLink?: boolean;
 	}
 
-	const componentProps: Props = $props();
-	const node: GraphNode | null = $derived(componentProps.node);
-	const onClose: () => void = componentProps.onClose;
-	const showDetailLink: boolean = componentProps.showDetailLink ?? true;
+	let { node, onClose, showDetailLink = true }: Props = $props();
 
 	// Type configuration with icons, colors, and textures
 	const typeConfig: Record<

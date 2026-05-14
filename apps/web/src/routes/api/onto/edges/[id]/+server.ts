@@ -97,7 +97,7 @@ async function verifyEdgeAccess(
 	if (!entityTable) {
 		// For project edges, check project ownership directly
 		if (edge.src_kind === 'project') {
-			const { data } = await supabase.rpc('current_actor_has_project_access', {
+			const { data } = await supabase.rpc('current_actor_has_project_member_access', {
 				p_project_id: edge.src_id,
 				p_required_access: 'write'
 			});
@@ -116,7 +116,7 @@ async function verifyEdgeAccess(
 
 	if (!entity?.project_id) return false;
 
-	const { data: hasAccess } = await supabase.rpc('current_actor_has_project_access', {
+	const { data: hasAccess } = await supabase.rpc('current_actor_has_project_member_access', {
 		p_project_id: entity.project_id,
 		p_required_access: 'write'
 	});

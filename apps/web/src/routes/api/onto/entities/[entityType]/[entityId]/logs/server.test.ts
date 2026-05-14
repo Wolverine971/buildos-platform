@@ -75,7 +75,7 @@ describe('GET /api/onto/entities/[entityType]/[entityId]/logs', () => {
 		expect(logsQuery.eq).toHaveBeenNthCalledWith(2, 'entity_id', 'event-1');
 		expect(logsQuery.range).toHaveBeenCalledWith(0, 4);
 
-		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
+		expect(supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_member_access', {
 			p_project_id: 'project-1',
 			p_required_access: 'read'
 		});

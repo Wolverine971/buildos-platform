@@ -4,7 +4,7 @@
 	import Modal from './Modal.svelte';
 	import Button from './Button.svelte';
 
-	import type { Snippet } from 'svelte';
+	import { untrack, type Snippet } from 'svelte';
 
 	interface Props {
 		isOpen?: boolean;
@@ -58,8 +58,9 @@
 
 	// One-time, mount-only check for prior dismissal. Avoids the binding loop the
 	// previous $effect created (effect re-running re-opened the modal after close).
-	const initiallyDismissed =
-		browser && storageKey ? localStorage.getItem(storageKey) === 'true' : false;
+	const initiallyDismissed = untrack(() =>
+		browser && storageKey ? localStorage.getItem(storageKey) === 'true' : false
+	);
 	let effectiveIsOpen = $state(isOpen && !initiallyDismissed);
 
 	function persistDismissal() {

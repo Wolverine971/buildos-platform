@@ -13618,7 +13618,19 @@ export type Database = {
         Args: { p_delivery_id: string; p_destination_url: string }
         Returns: string
       }
+      actor_has_project_member_access: {
+        Args: {
+          p_actor_id: string
+          p_project_id: string
+          p_required_access?: string
+        }
+        Returns: boolean
+      }
       current_actor_has_project_access: {
+        Args: { p_project_id: string; p_required_access?: string }
+        Returns: boolean
+      }
+      current_actor_has_project_member_access: {
         Args: { p_project_id: string; p_required_access?: string }
         Returns: boolean
       }
@@ -14952,7 +14964,7 @@ export type Database = {
         | "ask_clarifying_questions"
         | "project_creation"
       priority_level: "low" | "medium" | "high"
-      project_state: "planning" | "active" | "completed" | "cancelled"
+      project_state: "planning" | "active" | "paused" | "completed" | "cancelled"
       project_status: "active" | "paused" | "completed" | "archived"
       queue_status:
         | "pending"
@@ -15227,7 +15239,7 @@ export const Constants = {
         "project_creation",
       ],
       priority_level: ["low", "medium", "high"],
-      project_state: ["planning", "active", "completed", "cancelled"],
+      project_state: ["planning", "active", "paused", "completed", "cancelled"],
       project_status: ["active", "paused", "completed", "archived"],
       queue_status: [
         "pending",

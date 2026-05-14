@@ -16,6 +16,7 @@
 		type OnboardingStakes
 	} from '$lib/config/onboarding.config';
 	import { toastService } from '$lib/stores/toast.store';
+	import { untrack } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 
 	interface Props {
@@ -28,13 +29,16 @@
 
 	let { onNext, onIntentSelected, onStakesSelected, defaultIntent, defaultStakes }: Props =
 		$props();
+	const initialDefaults = untrack(() => ({ defaultIntent, defaultStakes }));
 
-	let selectedIntent = $state<OnboardingIntent | null>(defaultIntent ?? null);
-	let selectedStakes = $state<OnboardingStakes | null>(defaultStakes ?? null);
+	let selectedIntent = $state<OnboardingIntent | null>(initialDefaults.defaultIntent ?? null);
+	let selectedStakes = $state<OnboardingStakes | null>(initialDefaults.defaultStakes ?? null);
 	let isSaving = $state(false);
 	// If the user already picked an intent (returning from a later step), start
 	// them on the stakes question so they don't have to re-traverse.
-	let currentQuestion = $state<'intent' | 'stakes'>(defaultIntent ? 'stakes' : 'intent');
+	let currentQuestion = $state<'intent' | 'stakes'>(
+		initialDefaults.defaultIntent ? 'stakes' : 'intent'
+	);
 
 	const canContinue = $derived(selectedIntent !== null && selectedStakes !== null);
 

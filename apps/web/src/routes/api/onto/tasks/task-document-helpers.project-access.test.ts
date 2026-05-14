@@ -35,7 +35,7 @@ function createLocals() {
 		if (name === 'ensure_actor_for_user') {
 			return { data: 'collaborator-actor', error: null };
 		}
-		if (name === 'current_actor_has_project_access') {
+		if (name === 'current_actor_has_project_member_access') {
 			return {
 				data: args?.p_project_id === PROJECT_ID && args?.p_required_access === 'write',
 				error: null
@@ -62,9 +62,12 @@ describe('ensureTaskAccess', () => {
 		if ('error' in result) return;
 		expect(result.actorId).toBe('collaborator-actor');
 		expect(result.project.created_by).toBe('owner-actor');
-		expect(locals.supabase.rpc).toHaveBeenCalledWith('current_actor_has_project_access', {
-			p_project_id: PROJECT_ID,
-			p_required_access: 'write'
-		});
+		expect(locals.supabase.rpc).toHaveBeenCalledWith(
+			'current_actor_has_project_member_access',
+			{
+				p_project_id: PROJECT_ID,
+				p_required_access: 'write'
+			}
+		);
 	});
 });

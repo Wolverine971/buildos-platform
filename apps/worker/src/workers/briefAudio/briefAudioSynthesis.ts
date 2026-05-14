@@ -49,10 +49,7 @@ export async function synthesizeBriefAudioForWorker(
 			throw error;
 		}
 
-		console.warn(
-			'Kokoro brief audio synthesis failed; falling back to OpenAI TTS:',
-			error
-		);
+		console.warn('Kokoro brief audio synthesis failed; falling back to OpenAI TTS:', error);
 		return synthesizeBriefAudioWithOpenAI(text);
 	}
 }

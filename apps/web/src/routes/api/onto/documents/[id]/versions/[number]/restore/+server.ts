@@ -37,6 +37,20 @@ async function ensureRestoreAccess(
 ): Promise<RestoreAccessResult | { error: Response }> {
 	const supabase = locals.supabase;
 
+	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
+		p_user_id: userId
+	});
+
+	if (actorError || !actorId) {
+		console.error('[Restore API] Failed to resolve actor:', actorError);
+		return {
+			error: ApiResponse.internalError(
+				actorError || new Error('Failed to resolve user actor'),
+				'Failed to resolve user identity'
+			)
+		};
+	}
+
 	const { data: document, error: documentError } = await supabase
 		.from('onto_documents')
 		.select('*')
@@ -53,23 +67,9 @@ async function ensureRestoreAccess(
 		return { error: ApiResponse.notFound('Document') };
 	}
 
-	const { data: actorId, error: actorError } = await supabase.rpc('ensure_actor_for_user', {
-		p_user_id: userId
-	});
-
-	if (actorError || !actorId) {
-		console.error('[Restore API] Failed to resolve actor:', actorError);
-		return {
-			error: ApiResponse.internalError(
-				actorError || new Error('Failed to resolve user actor'),
-				'Failed to resolve user identity'
-			)
-		};
-	}
-
 	// Restore requires admin access
 	const { data: hasAccess, error: accessError } = await supabase.rpc(
-		'current_actor_has_project_access',
+		'current_actor_has_project_member_access',
 		{
 			p_project_id: document.project_id,
 			p_required_access: 'admin'

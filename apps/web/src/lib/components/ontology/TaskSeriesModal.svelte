@@ -1,5 +1,6 @@
 <!-- apps/web/src/lib/components/ontology/TaskSeriesModal.svelte -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -36,7 +37,7 @@
 	const defaultTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
 	let timezone = $state(defaultTimezone);
-	let startAt = $state(getDefaultStart(task));
+	let startAt = $state(getDefaultStart(untrack(() => task)));
 	let frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' = $state('WEEKLY');
 	let interval: number | string = $state(1);
 	let count: number | string = $state(8);

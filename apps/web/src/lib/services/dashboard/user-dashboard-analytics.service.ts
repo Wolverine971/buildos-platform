@@ -47,7 +47,8 @@ const TERMINAL_PROJECT_STATES = new Set([
 	'cancelled',
 	'closed',
 	'archived',
-	'abandoned'
+	'abandoned',
+	'paused'
 ]);
 
 function toNonNegativeInt(value: unknown): number {

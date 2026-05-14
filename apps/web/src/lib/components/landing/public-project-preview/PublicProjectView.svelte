@@ -19,7 +19,7 @@
 	No authentication required. No edit affordances.
 -->
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { ChevronDown, GitBranch, LoaderCircle, Monitor, Smartphone } from 'lucide-svelte';
 	import PublicProjectHeader from './PublicProjectHeader.svelte';
 	import PublicProjectStatsRow from './PublicProjectStatsRow.svelte';
@@ -48,7 +48,7 @@
 		embedded?: boolean;
 	} = $props();
 
-	const seededProjectId = initialProjectId ?? null;
+	const seededProjectId = untrack(() => initialProjectId ?? null);
 	let availableProjects = $state<PublicProjectSummary[]>([]);
 	let currentProjectId = $state<string | null>(seededProjectId);
 	let fullData = $state<PublicProjectFullData | null>(null);

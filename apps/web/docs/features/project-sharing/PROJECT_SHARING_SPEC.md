@@ -135,7 +135,10 @@ References:
 
 - `current_actor_id()` already exists.
     - `supabase/migrations/20251220_ontology_rls_policies.sql:40-55`
-- Add `current_actor_has_project_access(project_id, access)` which checks active membership.
+- Add member-only project helpers for collaboration surfaces:
+    - `current_actor_has_project_member_access(project_id, access)` for the current session actor.
+    - `actor_has_project_member_access(actor_id, project_id, access)` for service-role workers and durable agent principals.
+- Keep `current_actor_has_project_access(project_id, access)` only for explicitly public-aware read surfaces; it must not gate internal collaboration payloads.
 - Add `current_actor_project_role(project_id)` to annotate access in queries.
 
 ### RLS policy changes (map)
@@ -166,9 +169,10 @@ Add or update RLS on:
 **Recommended policy model**
 
 - SELECT:
-    - owner OR `current_actor_has_project_access(project_id, 'read')`.
+    - owner/member via `current_actor_has_project_member_access(project_id, 'read')`.
+    - Do not treat `onto_projects.is_public` as collaboration access.
 - INSERT/UPDATE/DELETE:
-    - owner OR `current_actor_has_project_access(project_id, 'write')` or `admin`.
+    - owner OR `current_actor_has_project_member_access(project_id, 'write')` or `admin`.
 
 **Service role**
 

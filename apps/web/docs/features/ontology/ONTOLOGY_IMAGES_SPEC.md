@@ -205,7 +205,9 @@ When user edits extracted text:
 
 ## 7. API Contracts
 
-All endpoints are under `/api/onto/assets` and use existing auth + `current_actor_has_project_access`.
+All endpoints are under `/api/onto/assets` and use existing auth plus member-only
+project access checks. Public project visibility is not enough to read or mutate
+assets; published-page asset exposure must go through a shaped public route.
 
 ## 7.1 Create asset record + signed upload URL
 
@@ -435,7 +437,7 @@ Bucket `onto-assets` on `storage.objects`:
 
 - path segment `[1] = 'projects'`
 - path segment `[2] = <project_id>`
-- user must satisfy `current_actor_has_project_access(project_id, 'read'|'write')` depending on operation
+- user must satisfy `current_actor_has_project_member_access(project_id, 'read')` for reads and project write access for mutations
 
 ## 11.3 Render endpoint hardening
 

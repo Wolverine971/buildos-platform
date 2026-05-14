@@ -58,7 +58,7 @@ export async function ensureProjectAccess(
 	}
 
 	const { data: hasAccess, error: accessError } = await supabase.rpc(
-		'current_actor_has_project_access',
+		'current_actor_has_project_member_access',
 		{
 			p_project_id: projectId,
 			p_required_access: requiredAccess
@@ -105,7 +105,7 @@ export async function ensureAssetAccess(
 	}
 
 	const { data: hasAccess, error: accessError } = await supabase.rpc(
-		'current_actor_has_project_access',
+		'current_actor_has_project_member_access',
 		{
 			p_project_id: asset.project_id,
 			p_required_access: requiredAccess

@@ -9,12 +9,13 @@ import {
 
 function toLegacyStatus(stateKey: string): 'active' | 'paused' | 'completed' | 'archived' {
 	switch (stateKey) {
-		case 'planning':
+		case 'paused':
 			return 'paused';
 		case 'completed':
 			return 'completed';
 		case 'cancelled':
 			return 'archived';
+		case 'planning':
 		case 'active':
 		default:
 			return 'active';
@@ -45,7 +46,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 
 		const summaries = await fetchProjectSummaries(supabase, actorId);
 		const matches = summaries.filter((project) => {
-			if (project.state_key !== 'active') return false;
+			if (project.state_key !== 'active' && project.state_key !== 'planning') return false;
 			return (
 				project.name.toLowerCase().includes(query) ||
 				(project.description || '').toLowerCase().includes(query)

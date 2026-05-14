@@ -183,6 +183,7 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 
 ## Overview Stats
 - Active Projects: ${briefData.projects.length}
+- Recently Paused Projects: ${briefData.recentlyPausedProjects.length}
 - Tasks Today: ${briefData.todaysTasks.length}
 - Recently Updated Tasks (7d): ${briefData.recentlyUpdatedTasks?.length ?? 0}
 - Upcoming Tasks (next 7d): ${briefData.upcomingTasks?.length ?? 0}
@@ -195,6 +196,15 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 - Calendar Upcoming: ${briefData.calendar.upcomingTotal}
 
 `;
+
+		if (briefData.recentlyPausedProjects.length > 0) {
+			prompt += `## Recently Paused Projects\n`;
+			prompt += `These projects are informational only. Do not infer tasks, risks, or next actions from them because paused project data is intentionally excluded.\n`;
+			for (const project of briefData.recentlyPausedProjects.slice(0, 5)) {
+				prompt += `- ${project.projectName} paused at ${project.pausedAt}\n`;
+			}
+			prompt += '\n';
+		}
 
 		if (briefData.calendar.todayTotal > 0 || briefData.calendar.upcomingTotal > 0) {
 			prompt += `## Calendar Summary\n`;
@@ -449,6 +459,7 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 
 ## Quick Stats
 - Projects: ${briefData.projects.length}
+- Recently Paused Projects: ${briefData.recentlyPausedProjects.length}
 - Tasks Today: ${briefData.todaysTasks.length}
 - Recently Updated (7d): ${briefData.recentlyUpdatedTasks?.length ?? 0}
 - Upcoming (next 7d): ${briefData.upcomingTasks?.length ?? 0}
@@ -468,6 +479,15 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 - Active Risks: ${briefData.risks.length}
 
 `;
+
+		if (briefData.recentlyPausedProjects.length > 0) {
+			prompt += `## Recently Paused Projects\n`;
+			prompt += `Mention these only as paused context. They are excluded from active project, task, goal, and calendar analysis.\n`;
+			for (const project of briefData.recentlyPausedProjects.slice(0, 5)) {
+				prompt += `- ${project.projectName} paused at ${project.pausedAt}\n`;
+			}
+			prompt += '\n';
+		}
 
 		if (briefData.calendar.todayTotal > 0 || briefData.calendar.upcomingTotal > 0) {
 			prompt += `## Calendar Summary\n`;
@@ -775,6 +795,7 @@ Last login: ${lastLoginDate}
 
 ## Quick Stats
 - Active Projects: ${briefData.projects.length}
+- Recently Paused Projects: ${briefData.recentlyPausedProjects.length}
 - Pending Tasks: ${briefData.todaysTasks.length + briefData.overdueTasks.length}
 - Overdue: ${briefData.overdueTasks.length}
 - Blocked: ${briefData.blockedTasks.length}
@@ -786,6 +807,15 @@ Last login: ${lastLoginDate}
 - Goals at Risk: ${goalsAtRisk.length}
 
 `;
+
+		if (briefData.recentlyPausedProjects.length > 0) {
+			prompt += `## Recently Paused Projects\n`;
+			prompt += `Mention these only as paused context. They are excluded from active work analysis.\n`;
+			for (const project of briefData.recentlyPausedProjects.slice(0, 5)) {
+				prompt += `- ${project.projectName} paused at ${project.pausedAt}\n`;
+			}
+			prompt += '\n';
+		}
 
 		if (briefData.calendar.todayTotal > 0 || briefData.calendar.upcomingTotal > 0) {
 			prompt += `## Calendar Summary\n`;
