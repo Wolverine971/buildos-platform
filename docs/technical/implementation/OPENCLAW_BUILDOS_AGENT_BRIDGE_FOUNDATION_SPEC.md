@@ -818,7 +818,7 @@ This keeps the system trustworthy while still allowing useful delegation.
 1. OpenCLAW never gets direct Supabase credentials.
 2. Every inbound external interaction begins with caller identification.
 3. Every BuildOS capability call runs through BuildOS authentication and authorization.
-4. External agent calls are scoped to the target user's BuildOS agent and project visibility.
+4. External agent calls are scoped to owner/member project access plus the explicit caller grant; public project visibility is not connector access.
 5. Secrets, tokens, and raw internal system prompts are never exposed through the capability layer.
 6. Tool schemas are allowlist-based, not discover-everything-based.
 

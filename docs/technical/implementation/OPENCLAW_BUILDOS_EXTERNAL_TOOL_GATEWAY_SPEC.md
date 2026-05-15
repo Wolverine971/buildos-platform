@@ -115,6 +115,15 @@ The `idempotency_key` and `dry_run` arguments are external write metadata. Build
 
 BuildOS filters direct tools from the accepted call scope.
 
+Project access has two gates:
+
+1. The authorizing BuildOS actor must be an owner/member of the project.
+2. The external caller grant must include the project and operation.
+
+Public project visibility is not enough. A project that has a public page is not
+available to OpenClaw unless the authorizing actor has owner/member access and
+the caller grant allows it.
+
 Read access can expose:
 
 - project list/search/get
@@ -160,6 +169,7 @@ After tool_schema, call the returned direct tool_name with concrete arguments.
 
 Do not ask the user to paste BuildOS secrets into normal chat.
 Never guess project_id, task_id, document_id, or other required IDs.
+Only use projects returned by the scoped BuildOS tools. Public project pages do not grant connector access.
 If a write tool returns FORBIDDEN, inspect the granted scope and allowed ops before retrying.
 ```
 

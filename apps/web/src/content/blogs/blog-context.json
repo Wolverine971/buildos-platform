@@ -240,6 +240,88 @@
 				"color": "gray"
 			},
 			"posts": {
+				"cold-email-engagement-first-outreach": {
+					"title": "Cold Email Engagement-First Outreach: An Agent Skill For 2026 Cold Campaigns",
+					"description": "A source-lineaged agent skill for planning, drafting, auditing, and rewriting cold outreach campaigns. Distilled from three 2026 cold-email source analyses (Connor Murray, Aaron Shepherd, Austin Schneider) into one playbook with mode-selection, deliverability floor, front-end offer design, assumptive-language audit, two-mode cadence, and three-rate diagnostic.",
+					"author": "DJ Wayne",
+					"date": "2026-05-14",
+					"lastmod": "2026-05-14",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": [
+						"agent-skills",
+						"cold-email",
+						"cold-outreach",
+						"b2b-sales",
+						"sales-and-growth",
+						"marketing-and-content",
+						"buildos"
+					],
+					"readingTime": 13,
+					"excerpt": "Cold email in 2026 is not a writing problem. It is a system problem with four locked layers — deliverability infrastructure, persona-times-signal segmentation, a real front-end offer, and a short assumptive cadence. This skill turns those four layers into an agent-readable playbook with refusal conditions, mode-locked cadences, and a passive-language audit pass.",
+					"skillId": "sales-and-growth/cold-email-engagement-first-outreach",
+					"skillType": "combo",
+					"skillCategory": "sales-and-growth",
+					"providers": ["YouTube source analysis", "BuildOS YouTube library"],
+					"compatibleAgents": [
+						"BuildOS-compatible agents",
+						"Claude Code",
+						"Codex",
+						"portable Agent Skills"
+					],
+					"stackWith": [
+						"cold-email-contextual-outbound",
+						"landing-page-scorecard-funnel",
+						"hook-craft-short-form"
+					],
+					"skillSource": "docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/SKILL.md",
+					"lineagePath": "docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/lineage.yaml",
+					"lineagePeople": ["Connor Murray", "Aaron Shepherd", "Austin Schneider"],
+					"lineageStats": {
+						"sources": 3,
+						"primitives": 15,
+						"sourceClaims": 16,
+						"edges": 31,
+						"candidateV2Sources": 1
+					},
+					"lineageSources": [
+						{
+							"title": "10 Years of Expert Cold Email Advice in 36 Minutes (B2B Sales)",
+							"creator": "Connor Murray",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@Connor-Murray",
+							"channelName": "Tech Sales With Higher Levels",
+							"channelUrl": "https://www.youtube.com/@techsales-higherlevels",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=XLsAAnNaFOc"
+						},
+						{
+							"title": "I Sent 1,500,000 Cold Emails Last Month, Here's What Works in 2026",
+							"creator": "Aaron Shepherd",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@AaronxShepherd",
+							"channelName": "Aaron Shepherd | GrowthFlare",
+							"channelUrl": "https://www.youtube.com/@AaronxShepherd",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=CFZuljj6DrU"
+						},
+						{
+							"title": "The New Way of Cold Emailing in 2026",
+							"creator": "Austin Schneider",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.instagram.com/theaustinschneider",
+							"channelName": "Instantly",
+							"channelUrl": "https://www.youtube.com/@InstantlyAI",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=h8u840Wm-BI"
+						}
+					],
+					"path": "apps/web/src/content/blogs/agent-skills/cold-email-engagement-first-outreach.md",
+					"slug": "cold-email-engagement-first-outreach",
+					"category": "agent-skills",
+					"filePath": "src/content/blogs/agent-skills/cold-email-engagement-first-outreach.md"
+				},
 				"google-calendar-for-ai-agents-search-before-you-create": {
 					"title": "Google Calendar For AI Agents: Search Before You Create",
 					"description": "A portable Google Calendar skill for AI agents: choose scope first, search before creating events, use exact IDs for mutations, and treat recurrence as high risk.",
@@ -1491,6 +1573,35 @@
 					"category": "philosophy",
 					"filePath": "src/content/blogs/philosophy/social-media-is-dead-interest-media.md"
 				},
+				"the-floor-under-the-agents": {
+					"title": "The Floor Under the Agents: Where Does the Project Live?",
+					"description": "YC is flooded with agents, AI coworkers, vertical operating systems, and agent infrastructure. The missing question is where durable project memory lives.",
+					"author": "DJ Wayne",
+					"date": "2026-05-14",
+					"lastmod": "2026-05-15",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": [
+						"AI-agents",
+						"agent-context",
+						"context-engineering",
+						"agent-infrastructure",
+						"agent-os",
+						"project-memory",
+						"yc-2026",
+						"build-os",
+						"AI-productivity",
+						"AI-tools"
+					],
+					"readingTime": 8,
+					"excerpt": "The Launch YC feed is full of agents that run companies, agents that run clinics, and agents that watch other agents. The unresolved question is where the project itself lives.",
+					"pic": "project-layer-floor",
+					"path": "apps/web/src/content/blogs/philosophy/the-floor-under-the-agents.md",
+					"slug": "the-floor-under-the-agents",
+					"category": "philosophy",
+					"filePath": "src/content/blogs/philosophy/the-floor-under-the-agents.md"
+				},
 				"what-a-thinking-environment-actually-is": {
 					"title": "What a Thinking Environment Actually Is",
 					"description": "Not a productivity tool. Not a note app. Not an AI assistant. A thinking environment is the surface where you author your own mind — defined by five properties.",
@@ -2052,6 +2163,49 @@
 				"color": "gray"
 			},
 			"posts": {
+				"aaron-shepherd-volume-front-end-offer": {
+					"title": "Volume, Front-End Offer, And Human-Sounding Scripts: Lessons from Aaron Shepherd",
+					"description": "A deep read of Aaron Shepherd's \"I Sent 1,500,000 Cold Emails Last Month, Here's What Works in 2026\" — the volume-as-data thesis, the 70/30 Outlook-Google domain infrastructure, the front-end-offer test-drive, and the human-sounding script discipline.",
+					"author": "DJ Wayne",
+					"date": "2026-05-14",
+					"lastmod": "2026-05-14",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"volume-outbound",
+						"email-infrastructure",
+						"front-end-offer",
+						"sales-and-growth",
+						"marketing-and-content"
+					],
+					"readingTime": 11,
+					"excerpt": "Send a small list of perfect-fit leads and you cannot tell whether good or bad results were luck or signal. Volume is data. After 1.5 million cold emails in 30 days, Aaron Shepherd's framework collapses to three pillars: send enough to get statistical signal (and filter quality on the back end with a pre-call form), wrap whatever you sell in a front-end offer that feels like a test drive, and write scripts so casual they look like they were typed from a phone.",
+					"sourceTitle": "I Sent 1,500,000 Cold Emails Last Month, Here's What Works in 2026",
+					"sourceCreator": "Aaron Shepherd (GrowthFlare)",
+					"sourceUrl": "https://www.youtube.com/watch?v=CFZuljj6DrU",
+					"sourceChannelUrl": "https://www.youtube.com/@AaronxShepherd",
+					"lineagePeople": ["Aaron Shepherd"],
+					"lineageSources": [
+						{
+							"title": "I Sent 1,500,000 Cold Emails Last Month, Here's What Works in 2026",
+							"creator": "Aaron Shepherd",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@AaronxShepherd",
+							"channelName": "Aaron Shepherd | GrowthFlare",
+							"channelUrl": "https://www.youtube.com/@AaronxShepherd",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=CFZuljj6DrU"
+						}
+					],
+					"relatedSkills": ["cold-email-engagement-first-outreach"],
+					"path": "apps/web/src/content/blogs/source-analyses/aaron-shepherd-volume-front-end-offer.md",
+					"slug": "aaron-shepherd-volume-front-end-offer",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/aaron-shepherd-volume-front-end-offer.md"
+				},
 				"april-dunford-sales-pitch-framework": {
 					"title": "The Sales Pitch Framework: Lessons from April Dunford",
 					"description": "A deep read of April Dunford on Lenny's Podcast — the two-part Setup → Follow-Through structure, differentiated value, why the setup eliminates most objections, and why FOMO marketing produces churning buyers.",
@@ -2095,6 +2249,92 @@
 					"slug": "april-dunford-sales-pitch-framework",
 					"category": "source-analyses",
 					"filePath": "src/content/blogs/source-analyses/april-dunford-sales-pitch-framework.md"
+				},
+				"austin-schneider-engagement-first-cold-email-2026": {
+					"title": "Engagement-First Cold Email: Lessons from Austin Schneider (Instantly)",
+					"description": "A deep read of Instantly's \"The New Way of Cold Emailing in 2026\" — why AI spam filters killed the seven-touch playbook, the deliverability infrastructure floor (5 emails per domain, ~30/day each), micro-targeted value campaigns (the under-50-recipient reply-rate cliff), and the two-touch rule with non-responder recycling.",
+					"author": "DJ Wayne",
+					"date": "2026-05-14",
+					"lastmod": "2026-05-14",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"deliverability",
+						"micro-targeting",
+						"two-touch-rule",
+						"sales-and-growth",
+						"marketing-and-content"
+					],
+					"readingTime": 11,
+					"excerpt": "Gmail rolled out AI spam filters in 2024. Microsoft followed in 2025. The seven-touch, 10,000-emails-a-month playbook that worked in 2022–2023 now gets you flagged as a bulk sender. The 2026 version is engagement-first: deliverability infrastructure first, micro-targeted value campaigns second, a strict two-touch rule third — and the value in the email has to be an actual deliverable, not \"worth a chat.\"",
+					"sourceTitle": "The New Way of Cold Emailing in 2026",
+					"sourceCreator": "Austin Schneider (Instantly)",
+					"sourceUrl": "https://www.youtube.com/watch?v=h8u840Wm-BI",
+					"sourceChannelUrl": "https://www.youtube.com/@InstantlyAI",
+					"lineagePeople": ["Austin Schneider", "Instantly"],
+					"lineageSources": [
+						{
+							"title": "The New Way of Cold Emailing in 2026",
+							"creator": "Austin Schneider",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.instagram.com/theaustinschneider",
+							"channelName": "Instantly",
+							"channelUrl": "https://www.youtube.com/@InstantlyAI",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=h8u840Wm-BI"
+						}
+					],
+					"relatedSkills": ["cold-email-engagement-first-outreach"],
+					"path": "apps/web/src/content/blogs/source-analyses/austin-schneider-engagement-first-cold-email-2026.md",
+					"slug": "austin-schneider-engagement-first-cold-email-2026",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/austin-schneider-engagement-first-cold-email-2026.md"
+				},
+				"connor-murray-cold-email-assumptive-cadence": {
+					"title": "Less Is More Cold Email: Lessons from Connor Murray",
+					"description": "A deep read of Connor Murray's \"10 Years of Expert Cold Email Advice in 36 Minutes\" — the three-paragraph body, assumptive language replacement, the coiled-spring prep system, and the AB follow-up cadence that turns a 10-email day into a 100-email day.",
+					"author": "DJ Wayne",
+					"date": "2026-05-14",
+					"lastmod": "2026-05-14",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"b2b-sales",
+						"sdr-outbound",
+						"outreach-cadence",
+						"sales-and-growth",
+						"marketing-and-content"
+					],
+					"readingTime": 12,
+					"excerpt": "Most cold email training falls into two failure camps: sales-enablement bloat (five paragraphs, MBA-in-psychology emails nobody reads) or LinkedIn-guru cuteness (fake personalization, fellow-eagle openers, manipulative warmth). Connor Murray's system rejects both. The email is three paragraphs — who I am, why I am relevant, what I want — written in assumptive language, sent from pre-built lists with persona-specific templates, and followed up every other day with three short notes that redirect attention back to the original. 70 to 80 percent of meetings come from the follow-ups, not the first email.",
+					"sourceTitle": "10 Years of Expert Cold Email Advice in 36 Minutes (B2B Sales)",
+					"sourceCreator": "Connor Murray (with Higher Levels)",
+					"sourceUrl": "https://www.youtube.com/watch?v=XLsAAnNaFOc",
+					"sourceChannelUrl": "https://www.youtube.com/@techsales-higherlevels",
+					"lineagePeople": ["Connor Murray", "Higher Levels (Tech Sales)"],
+					"lineageSources": [
+						{
+							"title": "10 Years of Expert Cold Email Advice in 36 Minutes (B2B Sales)",
+							"creator": "Connor Murray",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@Connor-Murray",
+							"channelName": "Tech Sales With Higher Levels",
+							"channelUrl": "https://www.youtube.com/@techsales-higherlevels",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=XLsAAnNaFOc"
+						}
+					],
+					"relatedSkills": ["cold-email-engagement-first-outreach"],
+					"path": "apps/web/src/content/blogs/source-analyses/connor-murray-cold-email-assumptive-cadence.md",
+					"slug": "connor-murray-cold-email-assumptive-cadence",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/connor-murray-cold-email-assumptive-cadence.md"
 				},
 				"daniel-priestley-1m-landing-page": {
 					"title": "The $1 Million Landing Page: Lessons from Daniel Priestley",
@@ -2311,6 +2551,48 @@
 					"slug": "designspo-visual-hierarchy",
 					"category": "source-analyses",
 					"filePath": "src/content/blogs/source-analyses/designspo-visual-hierarchy.md"
+				},
+				"hormozi-newsletter-email-marketing-39-minutes": {
+					"title": "Newsletter Email Marketing in 39 Minutes: Lessons from Alex Hormozi",
+					"description": "A deep read of Alex Hormozi's \"Learn Email Marketing in 39 Minutes\" — the reward-every-action loop, the templated newsletter structure (subject → quote → tactic → CTA → P.S.), the 3x/week cadence question, the segmentation 791% Roi anecdote, and the deliverability discipline (plain text, mobile, money-language hygiene).",
+					"author": "DJ Wayne",
+					"date": "2026-05-14",
+					"lastmod": "2026-05-14",
+					"changefreq": "monthly",
+					"priority": "0.6",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"newsletter-email",
+						"list-marketing",
+						"lifecycle-email",
+						"email-craft",
+						"sales-and-growth",
+						"marketing-and-content"
+					],
+					"readingTime": 12,
+					"excerpt": "This is *not* a cold email playbook. Hormozi is teaching how to email a list of people who opted in — the average ROI is 35–45x because the cost of acquisition was already paid. The frame is content-via-email: reward every action in the chain (open, read, click, reply), template the format so readers know what they're getting, and treat the email like a published artifact (plain text, mobile, no money-language, one CTA per audience).",
+					"sourceTitle": "Learn Email Marketing in 39 Minutes!",
+					"sourceCreator": "Alex Hormozi",
+					"sourceUrl": "https://www.youtube.com/watch?v=pLhQOYMGa88",
+					"sourceChannelUrl": "https://www.youtube.com/@AlexHormozi",
+					"lineagePeople": ["Alex Hormozi"],
+					"lineageSources": [
+						{
+							"title": "Learn Email Marketing in 39 Minutes!",
+							"creator": "Alex Hormozi",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@AlexHormozi",
+							"channelName": "Alex Hormozi",
+							"channelUrl": "https://www.youtube.com/@AlexHormozi",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=pLhQOYMGa88"
+						}
+					],
+					"path": "apps/web/src/content/blogs/source-analyses/hormozi-newsletter-email-marketing-39-minutes.md",
+					"slug": "hormozi-newsletter-email-marketing-39-minutes",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/hormozi-newsletter-email-marketing-39-minutes.md"
 				},
 				"kallaway-100-viral-hooks": {
 					"title": "The 6 Hook Archetypes: Lessons from Kane Kallaway",
@@ -2705,7 +2987,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-05-14T19:41:08.760Z",
-	"totalPosts": 82,
+	"generatedAt": "2026-05-15T02:53:36.308Z",
+	"totalPosts": 88,
 	"totalCategories": 8
 }

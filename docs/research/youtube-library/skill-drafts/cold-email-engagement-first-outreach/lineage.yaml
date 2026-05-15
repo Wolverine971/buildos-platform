@@ -1,0 +1,525 @@
+# docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/lineage.yaml
+lineage_version: 0.1
+updated: 2026-05-14
+
+root_skill:
+    id: cold-email-engagement-first-outreach
+    name: Cold Email Engagement-First Outreach
+    path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/SKILL.md
+    status: draft
+    summary: Plan, draft, audit, and rewrite cold outreach campaigns that pass 2026 inbox filters and earn replies through relevance, real value, and a short assumptive cadence.
+
+sources:
+    - id: source.murray.10-years-cold-email
+      type: youtube_analysis
+      title: 10 Years of Expert Cold Email Advice in 36 Minutes (B2B Sales)
+      creator: Connor Murray (Higher Levels)
+      url: https://www.youtube.com/watch?v=XLsAAnNaFOc
+      local_path: docs/marketing/growth/research/youtube-transcripts/2026-05-14-connor-murray-higher-levels-10-years-cold-email.md
+      analysis_path: apps/web/src/content/blogs/source-analyses/connor-murray-cold-email-assumptive-cadence.md
+      source_role: primary
+      used_for:
+          - three-paragraph body structure
+          - assumptive-language replacement
+          - coiled-spring prep system
+          - 4-touch AB follow-up cadence
+          - three-rate tracking diagnostic
+          - objection response bank
+          - strategic vs. volume bucket selection
+
+    - id: source.shepherd.1.5m-cold-emails-2026
+      type: youtube_analysis
+      title: I Sent 1,500,000 Cold Emails Last Month, Here's What Works in 2026
+      creator: Aaron Shepherd (GrowthFlare)
+      url: https://www.youtube.com/watch?v=CFZuljj6DrU
+      local_path: docs/marketing/growth/research/youtube-transcripts/2026-05-14-aaron-shepherd-1.5m-cold-emails-2026.md
+      analysis_path: apps/web/src/content/blogs/source-analyses/aaron-shepherd-volume-front-end-offer.md
+      source_role: primary
+      used_for:
+          - volume-as-data thesis
+          - 70/30 Outlook/Google infrastructure arithmetic
+          - back-end pre-call form qualification
+          - front-end offer design pattern
+          - casual / human-sounding script register
+          - non-overpersonalization discipline
+
+    - id: source.schneider.new-way-cold-emailing-2026
+      type: youtube_analysis
+      title: The New Way of Cold Emailing in 2026
+      creator: Austin Schneider (Instantly)
+      url: https://www.youtube.com/watch?v=h8u840Wm-BI
+      local_path: docs/marketing/growth/research/youtube-transcripts/2026-05-14-instantly-new-way-cold-emailing-2026.md
+      analysis_path: apps/web/src/content/blogs/source-analyses/austin-schneider-engagement-first-cold-email-2026.md
+      source_role: primary
+      used_for:
+          - engagement-first frame
+          - deliverability infrastructure floor (5 inboxes/domain, 30-50/day, warmup)
+          - under-50-recipient relevance arithmetic
+          - AI-enriched micro-targeting workflow
+          - 2-touch rule + non-responder recycle
+          - value-as-deliverable rule (no Loom, no calendar)
+
+excluded_sources:
+    - id: source.hormozi.email-marketing-39-min
+      title: Learn Email Marketing in 39 Minutes!
+      creator: Alex Hormozi
+      url: https://www.youtube.com/watch?v=pLhQOYMGa88
+      local_path: docs/marketing/growth/research/youtube-transcripts/2026-05-14-alex-hormozi-email-marketing-39-minutes.md
+      analysis_path: apps/web/src/content/blogs/source-analyses/hormozi-newsletter-email-marketing-39-minutes.md
+      exclusion_reason: Hormozi covers list/newsletter email to opted-in subscribers, not cold outreach to strangers. Different audience physics. Source-analysis kept separately and may seed a future list-email skill.
+
+candidate_v2_sources:
+    - id: skill.cold-email-contextual-outbound
+      title: Cold Email Contextual Outbound
+      creator: BuildOS YouTube Library (earlier draft)
+      local_path: docs/research/youtube-library/skill-drafts/cold-email-contextual-outbound/SKILL.md
+      possible_use: Earlier cold-email skill draft from Mitchell Keller + Sam McKenna sources. Merge contextual-outbound primitives (worldview research, mining buyer language, intro-offer testing) into a v2.
+
+nodes:
+    - id: skill.cold-email-engagement-first-outreach
+      type: skill
+      name: Cold Email Engagement-First Outreach
+      summary: Produce a campaign bundle (mode + segmentation + offer + body + cadence + tracking + objection bank) or a diagnostic report.
+
+    - id: primitive.deliverability-infrastructure-floor
+      type: primitive_skill
+      name: Deliverability Infrastructure Floor
+      summary: Verify SPF/DKIM/DMARC, spam complaint rate < 0.1%, 5 inboxes/domain, 30-50 emails/inbox/day, two-week warmup before any campaign ships.
+
+    - id: primitive.persona-segmentation
+      type: primitive_skill
+      name: Persona Segmentation
+      summary: Map each campaign to one persona x one narrowing signal. Reject mixed-persona lists.
+
+    - id: primitive.coiled-spring-prep
+      type: primitive_skill
+      name: Coiled-Spring Prep
+      summary: Move personalization upstream into pre-built lists, AI enrichment columns, and persona templates so the daily send target is 100+ in an hour, not 10 in a morning.
+
+    - id: primitive.front-end-offer-design
+      type: primitive_skill
+      name: Front-End Offer Design
+      summary: Wrap the core offer in a free, specific, custom deliverable that strangers will accept. Reject "worth a chat" framings.
+
+    - id: primitive.three-paragraph-body
+      type: primitive_skill
+      name: Three-Paragraph Body
+      summary: Strategic-mode body — who I am, why I am relevant, what I want — in four to six sentences across three short paragraphs.
+
+    - id: primitive.casual-volume-body
+      type: primitive_skill
+      name: Casual Volume Body
+      summary: Volume-mode body — 2-3 word lowercase subject, no greeting, one-sentence offer, "would that be worth sharing more?" CTA.
+
+    - id: primitive.assumptive-language-replacement
+      type: primitive_skill
+      name: Assumptive Language Replacement
+      summary: Replace every passive or interest-based CTA with assumptive directness. The goal of every email is a response.
+
+    - id: primitive.two-mode-cadence
+      type: primitive_skill
+      name: Two-Mode Cadence
+      summary: Strategic = 4-touch AB cadence with redirecting follow-ups. Volume = 2-touch then recycle non-responders into a new opener campaign.
+
+    - id: primitive.three-rate-tracking
+      type: primitive_skill
+      name: Three-Rate Tracking
+      summary: Track open / reply / meeting-booked separately. Each diagnoses a different broken input and routes to a different fix.
+
+    - id: primitive.back-end-qualification
+      type: primitive_skill
+      name: Back-End Qualification
+      summary: For volume mode, gate calendar with a pre-call form. Quality filters on the back end, not the front end.
+
+    - id: primitive.objection-response-bank
+      type: primitive_skill
+      name: Objection Response Bank
+      summary: Maintain base templates per common objection. Acknowledge-and-redirect. Customize 1-2 lines per send.
+
+    - id: guardrail.no-passive-cta
+      type: guardrail
+      name: No Passive CTA
+      summary: Reject "worth a chat", "if you're interested", "is this worth exploring".
+
+    - id: guardrail.no-fake-personalization
+      type: guardrail
+      name: No Fake Personalization
+      summary: Reject fellow-eagle, dog-dad, generic-saw-your-post openers. AI enrichment must use real public context.
+
+    - id: guardrail.no-long-cadences
+      type: guardrail
+      name: No 7-Touch Cadences
+      summary: 4 touches max strategic, 2 touches max volume. Deliverability cost exceeds reply lift past these thresholds.
+
+    - id: guardrail.no-uninspected-infrastructure
+      type: guardrail
+      name: No Uninspected Infrastructure
+      summary: Refuse to ship if deliverability floor not met or unverified.
+
+    - id: guardrail.no-loom-no-call-as-offer
+      type: guardrail
+      name: No Loom Or Call As Offer
+      summary: Loom videos and calendar links are not offers. Reject and request a real deliverable.
+
+    - id: guardrail.no-mixed-personas
+      type: guardrail
+      name: No Mixed Personas
+      summary: One persona x one signal per campaign. Mixed lists produce illegible data.
+
+    - id: guardrail.no-money-language-in-subject
+      type: guardrail
+      name: No Money Language In Subject
+      summary: Dollar words and ROI numbers in subject pushes the email to the promo tab.
+
+    - id: output.campaign-bundle
+      type: output_artifact
+      name: Campaign Bundle
+      summary: The required deliverable containing mode, segmentation, infrastructure check, offer, subject, preview, body, cadence, tracking targets, objection stubs, and back-end form fields.
+
+    - id: output.diagnostic-report
+      type: output_artifact
+      name: Diagnostic Report
+      summary: The audit deliverable — mode mismatch, passive-language hits, cadence violations, offer gap, segmentation gap, tracking gap, plus 3 rewrite candidates.
+
+source_claims:
+    - id: claim.murray.three-paragraph-body
+      source_id: source.murray.10-years-cold-email
+      summary: Cold emails should fit a who-I-am / why-I-am-relevant / what-I-want structure across three short paragraphs.
+      used_for:
+          - primitive.three-paragraph-body
+
+    - id: claim.murray.assumptive-language
+      source_id: source.murray.10-years-cold-email
+      summary: Passive and interest-based CTAs ("worth a chat") underperform assumptive directness ("I'm looking to set some time").
+      used_for:
+          - primitive.assumptive-language-replacement
+          - guardrail.no-passive-cta
+
+    - id: claim.murray.coiled-spring
+      source_id: source.murray.10-years-cold-email
+      summary: Pre-built persona x industry lists with paired templates raise daily throughput from 10 emails/day to 100+ emails/day.
+      used_for:
+          - primitive.coiled-spring-prep
+
+    - id: claim.murray.ab-cadence
+      source_id: source.murray.10-years-cold-email
+      summary: 4-touch every-other-day cadence — initial, benefit-of-the-doubt, "please give me your thoughts on this", assumptive breakup — books 70-80% of meetings on the follow-ups, not the initial email.
+      used_for:
+          - primitive.two-mode-cadence
+
+    - id: claim.murray.three-rate-tracking
+      source_id: source.murray.10-years-cold-email
+      summary: Open, reply, and meeting-booked rates diagnose three different broken inputs (subject/preview, body/CTA, why-relevant paragraph).
+      used_for:
+          - primitive.three-rate-tracking
+
+    - id: claim.murray.strategic-vs-volume
+      source_id: source.murray.10-years-cold-email
+      summary: Cold outreach should be bucketed into a high-volume base-template bucket and a strategic-account bucket with deep research lines.
+      used_for:
+          - primitive.persona-segmentation
+          - primitive.two-mode-cadence
+
+    - id: claim.shepherd.volume-as-data
+      source_id: source.shepherd.1.5m-cold-emails-2026
+      summary: Small lists cannot produce statistical signal; volume is what allows replication of what works.
+      used_for:
+          - primitive.persona-segmentation
+
+    - id: claim.shepherd.infrastructure-math
+      source_id: source.shepherd.1.5m-cold-emails-2026
+      summary: A 100K-prospect monthly campaign requires roughly 79 domains and 837 sending accounts at a 70/30 Outlook/Google split.
+      used_for:
+          - primitive.deliverability-infrastructure-floor
+
+    - id: claim.shepherd.front-end-offer
+      source_id: source.shepherd.1.5m-cold-emails-2026
+      summary: Cold campaigns convert when wrapped in a free, specific, custom front-end offer (audit, teardown, validation, sample), not when pitching the core service.
+      used_for:
+          - primitive.front-end-offer-design
+          - guardrail.no-loom-no-call-as-offer
+
+    - id: claim.shepherd.casual-scripts
+      source_id: source.shepherd.1.5m-cold-emails-2026
+      summary: 2026 inboxes reward casual scripts that look phone-typed — short lowercase subjects, no greeting, one-sentence offer.
+      used_for:
+          - primitive.casual-volume-body
+
+    - id: claim.shepherd.back-end-form
+      source_id: source.shepherd.1.5m-cold-emails-2026
+      summary: Quality should filter on the back end via a pre-call form, not by reducing send volume.
+      used_for:
+          - primitive.back-end-qualification
+
+    - id: claim.schneider.engagement-first
+      source_id: source.schneider.new-way-cold-emailing-2026
+      summary: AI-driven spam filters (Gmail 2024, Microsoft 2025) prioritize engagement quality (replies, clicks, complaint rate) over sender reputation alone.
+      used_for:
+          - primitive.deliverability-infrastructure-floor
+
+    - id: claim.schneider.deliverability-floor
+      source_id: source.schneider.new-way-cold-emailing-2026
+      summary: 5 inboxes per domain, 30-50 emails per inbox per day, two-week warmup, spam complaint rate < 0.1% is the 2026 deliverability floor.
+      used_for:
+          - primitive.deliverability-infrastructure-floor
+
+    - id: claim.schneider.under-50-relevance
+      source_id: source.schneider.new-way-cold-emailing-2026
+      summary: Campaigns under 50 recipients average 5.8% reply rate vs 2.1% for >1000-recipient campaigns; relevance, not personalization, is the driver.
+      used_for:
+          - primitive.persona-segmentation
+
+    - id: claim.schneider.two-touch
+      source_id: source.schneider.new-way-cold-emailing-2026
+      summary: First follow-up lifts replies 49%; email 3 drops them 20%; email 4+ drops them 55% and trains filters to flag the sender as bulk. Use 2 touches and recycle non-responders into a new opener campaign.
+      used_for:
+          - primitive.two-mode-cadence
+          - guardrail.no-long-cadences
+
+    - id: claim.schneider.value-as-deliverable
+      source_id: source.schneider.new-way-cold-emailing-2026
+      summary: 'Booking a call is not valuable. Sending a Loom is not valuable. The opener must solve a problem with an actual free deliverable.'
+      used_for:
+          - primitive.front-end-offer-design
+          - guardrail.no-loom-no-call-as-offer
+
+    - id: claim.schneider.ai-enrichment
+      source_id: source.schneider.new-way-cold-emailing-2026
+      summary: AI-enriched columns (LinkedIn headline, summary, company, website) feed templated prompts that produce personalized lines at scale from real public context.
+      used_for:
+          - primitive.coiled-spring-prep
+
+edges:
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.deliverability-infrastructure-floor
+      type: composed_of
+      confidence: 0.95
+      rationale: The skill refuses to ship campaigns that fail the infrastructure floor.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.persona-segmentation
+      type: composed_of
+      confidence: 0.95
+      rationale: Every campaign maps to one persona x one signal.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.coiled-spring-prep
+      type: composed_of
+      confidence: 0.9
+      rationale: Personalization is moved upstream into list and template prep.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.front-end-offer-design
+      type: composed_of
+      confidence: 0.95
+      rationale: The offer is the single biggest determinant of cold campaign success.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.three-paragraph-body
+      type: composed_of
+      confidence: 0.9
+      rationale: Strategic mode uses the three-paragraph body structure.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.casual-volume-body
+      type: composed_of
+      confidence: 0.9
+      rationale: Volume mode uses the casual one-line body.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.assumptive-language-replacement
+      type: composed_of
+      confidence: 0.95
+      rationale: Every draft is audited for passive CTAs.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.two-mode-cadence
+      type: composed_of
+      confidence: 0.95
+      rationale: Cadence selection (4-touch vs 2-touch) is mode-locked.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.three-rate-tracking
+      type: composed_of
+      confidence: 0.9
+      rationale: Diagnostic routing depends on open/reply/meeting-booked rates being tracked separately.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.back-end-qualification
+      type: composed_of
+      confidence: 0.85
+      rationale: Volume campaigns require a pre-call form before any reply hits the calendar.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.objection-response-bank
+      type: composed_of
+      confidence: 0.85
+      rationale: Objection handling is part of the operating system, not a one-off.
+
+    - from: primitive.deliverability-infrastructure-floor
+      to: claim.schneider.deliverability-floor
+      type: cites
+      confidence: 0.95
+      rationale: The arithmetic floor comes directly from this source layer.
+
+    - from: primitive.deliverability-infrastructure-floor
+      to: claim.shepherd.infrastructure-math
+      type: cites
+      confidence: 0.9
+      rationale: The volume-scale arithmetic comes from this source layer.
+
+    - from: primitive.deliverability-infrastructure-floor
+      to: claim.schneider.engagement-first
+      type: cites
+      confidence: 0.9
+      rationale: The engagement-first frame motivates why the floor matters.
+
+    - from: primitive.persona-segmentation
+      to: claim.schneider.under-50-relevance
+      type: cites
+      confidence: 0.95
+      rationale: The under-50-recipient relevance math is the empirical anchor for segmentation.
+
+    - from: primitive.persona-segmentation
+      to: claim.shepherd.volume-as-data
+      type: cites
+      confidence: 0.85
+      rationale: Segmentation enables legible volume-as-data analysis.
+
+    - from: primitive.persona-segmentation
+      to: claim.murray.strategic-vs-volume
+      type: cites
+      confidence: 0.85
+      rationale: The two-bucket model is operationalized through segmentation.
+
+    - from: primitive.coiled-spring-prep
+      to: claim.murray.coiled-spring
+      type: cites
+      confidence: 0.95
+      rationale: The coiled-spring prep system comes directly from this source layer.
+
+    - from: primitive.coiled-spring-prep
+      to: claim.schneider.ai-enrichment
+      type: cites
+      confidence: 0.9
+      rationale: AI enrichment columns are the 2026 version of the same upstream-personalization move.
+
+    - from: primitive.front-end-offer-design
+      to: claim.shepherd.front-end-offer
+      type: cites
+      confidence: 0.95
+      rationale: The front-end offer pattern comes from this source layer.
+
+    - from: primitive.front-end-offer-design
+      to: claim.schneider.value-as-deliverable
+      type: cites
+      confidence: 0.95
+      rationale: The "value is a free deliverable" rule comes from this source layer.
+
+    - from: primitive.three-paragraph-body
+      to: claim.murray.three-paragraph-body
+      type: cites
+      confidence: 0.95
+      rationale: The three-paragraph structure is the primitive's direct source claim.
+
+    - from: primitive.casual-volume-body
+      to: claim.shepherd.casual-scripts
+      type: cites
+      confidence: 0.95
+      rationale: The casual-volume body register comes from this source layer.
+
+    - from: primitive.assumptive-language-replacement
+      to: claim.murray.assumptive-language
+      type: cites
+      confidence: 0.95
+      rationale: The passive-to-assumptive replacement set comes directly from this source layer.
+
+    - from: primitive.two-mode-cadence
+      to: claim.murray.ab-cadence
+      type: cites
+      confidence: 0.95
+      rationale: The 4-touch strategic cadence comes from this source layer.
+
+    - from: primitive.two-mode-cadence
+      to: claim.schneider.two-touch
+      type: cites
+      confidence: 0.95
+      rationale: The 2-touch volume cadence comes from this source layer.
+
+    - from: primitive.three-rate-tracking
+      to: claim.murray.three-rate-tracking
+      type: cites
+      confidence: 0.95
+      rationale: The three-rate diagnostic comes directly from this source layer.
+
+    - from: primitive.back-end-qualification
+      to: claim.shepherd.back-end-form
+      type: cites
+      confidence: 0.95
+      rationale: The pre-call form pattern comes from this source layer.
+
+    - from: guardrail.no-passive-cta
+      to: claim.murray.assumptive-language
+      type: cites
+      confidence: 0.95
+      rationale: The passive-language failure mode comes directly from Murray's coaching.
+
+    - from: guardrail.no-long-cadences
+      to: claim.schneider.two-touch
+      type: cites
+      confidence: 0.95
+      rationale: The reply-rate cliffs past touch 2/4 motivate the cadence cap.
+
+    - from: guardrail.no-loom-no-call-as-offer
+      to: claim.schneider.value-as-deliverable
+      type: cites
+      confidence: 0.95
+      rationale: Schneider names this rule explicitly.
+
+    - from: guardrail.no-uninspected-infrastructure
+      to: primitive.deliverability-infrastructure-floor
+      type: depends_on
+      confidence: 0.95
+      rationale: The guardrail enforces the floor.
+
+    - from: primitive.deliverability-infrastructure-floor
+      to: output.campaign-bundle
+      type: operationalizes
+      confidence: 0.95
+      rationale: The infrastructure check is a required field in the bundle.
+
+    - from: primitive.front-end-offer-design
+      to: output.campaign-bundle
+      type: operationalizes
+      confidence: 0.95
+      rationale: The bundle must surface the front-end offer with justification.
+
+    - from: primitive.three-rate-tracking
+      to: output.diagnostic-report
+      type: operationalizes
+      confidence: 0.9
+      rationale: The diagnostic report routes fixes based on which of the three rates is broken.
+
+operational_map:
+    generation_order:
+        - confirm campaign mode
+        - verify deliverability infrastructure
+        - segment list (persona x signal)
+        - build persona prep (lists + templates + AI enrichment)
+        - design front-end offer
+        - draft body (mode-dependent register)
+        - replace passive language
+        - plan cadence (2-touch or 4-touch)
+        - plan back-end qualification (if volume)
+        - set up tracking baselines
+        - build objection response bank stubs
+    public_article_focus:
+        - Make cold outreach reusable for agents and founders.
+        - Keep all three source layers visibly cited.
+        - Avoid agency-tool affiliate links in public copy.
+
+open_questions:
+    - Should a future v2 merge Mitchell Keller and Sam McKenna primitives from the earlier cold-email-contextual-outbound draft?
+    - Should reply-handling and same-day-call routing become a separate skill stacked above this one?
+    - Should objection-bank curation become a standalone evaluation skill?
+    - Should founder-led vs SDR-led outreach be split into two skills with shared primitives?

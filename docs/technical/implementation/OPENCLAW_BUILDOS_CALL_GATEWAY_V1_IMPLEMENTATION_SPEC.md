@@ -39,7 +39,10 @@ This is enough to prove the abstraction and start integration safely.
 The repo already has strong implementation patterns we can reuse:
 
 - user auth in web endpoints through `safeGetSession`
-- project/actor authorization through `ensure_actor_for_user` and `current_actor_has_project_access`
+- project/actor authorization through `ensure_actor_for_user` plus member-only
+  project access checks (`current_actor_has_project_member_access` for
+  session-scoped routes, or `actor_has_project_member_access` when validating a
+  durable agent/caller actor)
 - queue-backed long-running execution through `add_queue_job`, worker processors, and `queue.process(...)`
 - durable run/event modeling through Tree Agent
 - MCP-style request handling through the Google Calendar endpoint
@@ -461,7 +464,9 @@ Each tool call must still enforce:
 
 - `safeGetSession` patterns for human-facing routes
 - `ensure_actor_for_user` for user actor resolution
-- `current_actor_has_project_access` for project checks
+- member-only project checks for connector access:
+  `current_actor_has_project_member_access` in session-scoped routes and
+  `actor_has_project_member_access` in service-role gateway code
 - `load_fastchat_context.sql` for compact project snapshots
 - `ApiResponse` response helpers
 - Tree Agent event-table pattern

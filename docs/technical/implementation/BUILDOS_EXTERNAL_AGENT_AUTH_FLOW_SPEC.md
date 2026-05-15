@@ -32,6 +32,7 @@ Internally, that key maps to:
 - one `caller_key`
 - one hashed bearer token
 - one user-scoped permission policy
+- an effective project scope limited to owner/member projects for the authorizing actor
 
 So the public concept is:
 
@@ -50,6 +51,7 @@ This keeps the trust boundary explicit:
 - the human authorizes the connection in BuildOS
 - the external agent proves who it is with a BuildOS-issued secret
 - BuildOS decides what that caller can access
+- public project visibility does not expand external-agent access
 
 It also avoids a bad abstraction:
 
@@ -77,6 +79,9 @@ BuildOS then:
 - mints a bearer token
 - stores only `token_hash` and `token_prefix`
 - returns the raw bearer token exactly once
+
+Allowed projects must be selected from projects where the authorizing actor is
+an owner/member. Public projects are not eligible just because they are public.
 
 This bearer token is the `BuildOS key`.
 
@@ -247,6 +252,7 @@ It should not identify:
 - a whole OpenClaw deployment globally
 - the human user session directly
 - an anonymous external process
+- public-project read access
 
 That means the stable identity should be:
 
@@ -256,6 +262,22 @@ That means the stable identity should be:
 And the secret should be:
 
 - one BuildOS bearer token tied to that caller row
+
+## Agent Actors And Project Membership
+
+For v1 bearer-token integrations, the external caller is scoped through
+`external_agent_callers.policy` and audited through call sessions/tool
+executions. Project data is still only available where the authorizing actor is
+an owner/member.
+
+For durable first-class agents, create an `onto_actors.kind = 'agent'` row and
+grant it rows in `onto_project_members` just like a human collaborator. Use
+`onto_project_members.access` as the authorization field (`read`, `write`,
+`admin`) and `role_key` only as the product-facing role label.
+
+Service-role code must not treat service-role database access as permission. It
+should check the intended actor with `actor_has_project_member_access` before
+reading or mutating project content on behalf of an agent.
 
 ## Recommended User-Facing Language
 
@@ -284,6 +306,7 @@ This model gives us the right v1 properties:
 - project scoping at issuance time
 - auditability through call sessions
 - no direct Supabase credentials to the external agent
+- no accidental access to public projects outside the caller grant
 
 ## What Not To Do
 
