@@ -111,9 +111,32 @@ type TaskRow = {
 	created_by?: string | null;
 };
 
+type AssetRow = {
+	id: string;
+	project_id: string;
+	kind: string;
+	original_filename: string | null;
+	content_type: string | null;
+	file_size_bytes: number | string | null;
+	width: number | null;
+	height: number | null;
+	checksum_sha256: string | null;
+	alt_text: string | null;
+	caption: string | null;
+	ocr_status: string | null;
+	extraction_summary: string | null;
+	extracted_text: string | null;
+	created_at: string;
+	updated_at: string;
+	deleted_at: string | null;
+	storage_bucket?: string | null;
+	storage_path?: string | null;
+};
+
 type State = {
 	documents: DocumentRow[];
 	tasks: TaskRow[];
+	assets?: AssetRow[];
 	toolExecutions: Array<Record<string, unknown>>;
 	nextTaskId: number;
 	nextToolExecutionId: number;
@@ -462,6 +485,169 @@ class OntoTasksQueryBuilderMock {
 	}
 }
 
+class OntoAssetsQueryBuilderMock {
+	private idFilter: string | null = null;
+	private projectIdsFilter: string[] | null = null;
+	private kindFilter: string | null = null;
+	private ocrStatusFilter: string | null = null;
+	private deletedAtFilterApplied = false;
+	private searchTerm: string | null = null;
+	private orderBy: { field: string; ascending: boolean } | null = null;
+	private rangeBounds: { from: number; to: number } | null = null;
+
+	constructor(private readonly state: State) {}
+
+	select() {
+		return this;
+	}
+
+	eq(field: string, value: unknown) {
+		if (field === 'id' && typeof value === 'string') {
+			this.idFilter = value;
+		}
+		if (field === 'kind' && typeof value === 'string') {
+			this.kindFilter = value;
+		}
+		if (field === 'ocr_status' && typeof value === 'string') {
+			this.ocrStatusFilter = value;
+		}
+
+		return this;
+	}
+
+	in(field: string, value: unknown) {
+		if (field === 'project_id' && Array.isArray(value)) {
+			this.projectIdsFilter = value.filter(
+				(entry): entry is string => typeof entry === 'string'
+			);
+		}
+
+		return this;
+	}
+
+	is(field: string, value: unknown) {
+		if (field === 'deleted_at' && value === null) {
+			this.deletedAtFilterApplied = true;
+		}
+
+		return this;
+	}
+
+	or(filter: string) {
+		const match = filter.match(/%([^%]+)%/);
+		this.searchTerm = match?.[1]?.toLowerCase() ?? null;
+		return this;
+	}
+
+	order(field: string, options?: { ascending?: boolean }) {
+		this.orderBy = { field, ascending: options?.ascending !== false };
+		return this;
+	}
+
+	range(from: number, to: number) {
+		this.rangeBounds = { from, to };
+		return this;
+	}
+
+	maybeSingle() {
+		const rows = this.filteredRows();
+		return Promise.resolve({
+			data: rows[0] ? this.serialize(rows[0]) : null,
+			error: null
+		});
+	}
+
+	then<TResult1 = any, TResult2 = never>(
+		onfulfilled?:
+			| ((value: {
+					data: Record<string, unknown>[];
+					error: any;
+					count: number;
+			  }) => TResult1 | PromiseLike<TResult1>)
+			| null,
+		onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+	) {
+		return Promise.resolve(this.executeList()).then(onfulfilled, onrejected);
+	}
+
+	private matches(row: AssetRow): boolean {
+		if (this.idFilter !== null && row.id !== this.idFilter) return false;
+		if (this.projectIdsFilter !== null && !this.projectIdsFilter.includes(row.project_id)) {
+			return false;
+		}
+		if (this.kindFilter !== null && row.kind !== this.kindFilter) return false;
+		if (this.ocrStatusFilter !== null && row.ocr_status !== this.ocrStatusFilter) {
+			return false;
+		}
+		if (this.deletedAtFilterApplied && row.deleted_at !== null) return false;
+		if (this.searchTerm) {
+			const haystack = [
+				row.original_filename,
+				row.caption,
+				row.alt_text,
+				row.extraction_summary,
+				row.extracted_text
+			]
+				.filter((value): value is string => typeof value === 'string')
+				.join(' ')
+				.toLowerCase();
+			if (!haystack.includes(this.searchTerm)) return false;
+		}
+
+		return true;
+	}
+
+	private filteredRows() {
+		let rows = (this.state.assets ?? []).filter((asset) => this.matches(asset));
+		if (this.orderBy) {
+			const orderBy = this.orderBy;
+			const field = orderBy.field as keyof AssetRow;
+			rows = [...rows].sort((a, b) => {
+				const left = String(a[field] ?? '');
+				const right = String(b[field] ?? '');
+				return orderBy.ascending ? left.localeCompare(right) : right.localeCompare(left);
+			});
+		}
+		return rows;
+	}
+
+	private executeList() {
+		const rows = this.filteredRows();
+		const ranged = this.rangeBounds
+			? rows.slice(this.rangeBounds.from, this.rangeBounds.to + 1)
+			: rows;
+		return {
+			data: ranged.map((row) => this.serialize(row)),
+			error: null,
+			count: rows.length
+		};
+	}
+
+	private serialize(row: AssetRow) {
+		return {
+			id: row.id,
+			project_id: row.project_id,
+			kind: row.kind,
+			original_filename: row.original_filename,
+			content_type: row.content_type,
+			file_size_bytes: row.file_size_bytes,
+			width: row.width,
+			height: row.height,
+			checksum_sha256: row.checksum_sha256,
+			alt_text: row.alt_text,
+			caption: row.caption,
+			ocr_status: row.ocr_status,
+			extraction_summary: row.extraction_summary,
+			extracted_text: row.extracted_text,
+			created_at: row.created_at,
+			updated_at: row.updated_at,
+			deleted_at: row.deleted_at,
+			storage_bucket: row.storage_bucket ?? 'onto-assets',
+			storage_path: row.storage_path ?? 'projects/p/assets/a/original.png'
+		};
+	}
+}
+
 class AgentCallToolExecutionsQueryBuilderMock {
 	private action: 'select' | 'insert' | 'update' | null = null;
 	private filters = new Map<string, unknown>();
@@ -656,6 +842,10 @@ function createAdminMock(state: State) {
 				return new OntoTasksQueryBuilderMock(state);
 			}
 
+			if (table === 'onto_assets') {
+				return new OntoAssetsQueryBuilderMock(state);
+			}
+
 			if (table === 'agent_call_tool_executions') {
 				return new AgentCallToolExecutionsQueryBuilderMock(state);
 			}
@@ -720,6 +910,8 @@ describe('external tool gateway', () => {
 				'list_onto_documents',
 				'search_onto_documents',
 				'get_onto_document_details',
+				'search_onto_assets',
+				'get_onto_asset',
 				'search_ontology',
 				'list_calendar_events',
 				'get_calendar_event_details',
@@ -775,6 +967,8 @@ describe('external tool gateway', () => {
 				'get_onto_project_graph',
 				'get_document_tree',
 				'list_task_documents',
+				'search_onto_assets',
+				'get_onto_asset',
 				'get_linked_entities',
 				'list_calendar_events'
 			])
@@ -847,6 +1041,215 @@ describe('external tool gateway', () => {
 					tool_name: 'list_task_documents'
 				})
 			])
+		});
+	});
+
+	it('exposes image asset tools through scoped discovery without granting media URLs', async () => {
+		const { executeBuildosAgentGatewayTool, getBuildosAgentGatewayTools } = await import(
+			'./external-tool-gateway'
+		);
+		const scope = {
+			mode: 'read_only' as const,
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS]
+		};
+		const admin = createAdminMock({
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		});
+
+		const tools = getBuildosAgentGatewayTools(scope);
+		const searchResult = await executeBuildosAgentGatewayTool({
+			admin,
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope,
+			toolName: 'tool_search',
+			arguments: { query: 'image asset OCR', group: 'onto', kind: 'read', limit: 8 }
+		});
+		const schemaResult = await executeBuildosAgentGatewayTool({
+			admin,
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope,
+			toolName: 'tool_schema',
+			arguments: { op: 'onto.asset.search', include_schema: true }
+		});
+
+		expect(tools.map((tool) => tool.name)).toEqual(
+			expect.arrayContaining(['search_onto_assets', 'get_onto_asset'])
+		);
+		expect(searchResult).toMatchObject({
+			type: 'tool_search_results',
+			matches: expect.arrayContaining([
+				expect.objectContaining({
+					op: 'onto.asset.search',
+					tool_name: 'search_onto_assets',
+					entity: 'asset'
+				})
+			])
+		});
+		expect(schemaResult).toMatchObject({
+			type: 'tool_schema',
+			op: 'onto.asset.search',
+			callable_tool: 'search_onto_assets',
+			schema: {
+				properties: {
+					include_text_preview: expect.objectContaining({ type: 'boolean' })
+				}
+			}
+		});
+		const schemaJson = JSON.stringify(schemaResult.schema).toLowerCase();
+		expect(schemaJson).not.toContain('signed_url');
+		expect(schemaJson).not.toContain('storage_path');
+		expect(schemaJson).not.toContain('storage_bucket');
+	});
+
+	it('searches existing image assets as bounded metadata for external callers', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [],
+			tasks: [],
+			assets: [
+				{
+					id: '88888888-8888-8888-8888-888888888888',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					kind: 'image',
+					original_filename: 'invoice-screenshot.png',
+					content_type: 'image/png',
+					file_size_bytes: '2048',
+					width: 1200,
+					height: 900,
+					checksum_sha256:
+						'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+					alt_text: 'Invoice screenshot',
+					caption: 'April invoice',
+					ocr_status: 'complete',
+					extraction_summary: 'Invoice total and due date are visible.',
+					extracted_text: 'Invoice total $42.00 due May 30.',
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:10:00.000Z',
+					deleted_at: null,
+					storage_bucket: 'onto-assets',
+					storage_path: 'projects/hidden/raw.png'
+				},
+				{
+					id: '99999999-9999-9999-9999-999999999999',
+					project_id: '66666666-6666-6666-6666-666666666666',
+					kind: 'image',
+					original_filename: 'hidden.png',
+					content_type: 'image/png',
+					file_size_bytes: 512,
+					width: null,
+					height: null,
+					checksum_sha256:
+						'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+					alt_text: null,
+					caption: null,
+					ocr_status: 'complete',
+					extraction_summary: 'Hidden',
+					extracted_text: 'Hidden text',
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:20:00.000Z',
+					deleted_at: null
+				}
+			],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope: {
+				mode: 'read_only',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
+			},
+			toolName: 'search_onto_assets',
+			arguments: {
+				query: 'invoice',
+				include_text_preview: true
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.asset.search',
+			ok: true,
+			result: {
+				total: 1,
+				assets: [
+					expect.objectContaining({
+						id: '88888888-8888-8888-8888-888888888888',
+						project_name: 'Allowed Project',
+						file_size_bytes: 2048,
+						checksum_sha256_suffix: 'aaaaaaaaaaaa',
+						extracted_text_preview: 'Invoice total $42.00 due May 30.'
+					})
+				],
+				access: {
+					raw_pixels: false,
+					signed_urls: false
+				}
+			}
+		});
+		expect(JSON.stringify(result.result)).not.toContain('storage_path');
+		expect(JSON.stringify(result.result)).not.toContain('storage_bucket');
+	});
+
+	it('does not reveal scoped-out image assets through direct get', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock({
+				documents: [],
+				tasks: [],
+				assets: [
+					{
+						id: '99999999-9999-9999-9999-999999999999',
+						project_id: '66666666-6666-6666-6666-666666666666',
+						kind: 'image',
+						original_filename: 'hidden.png',
+						content_type: 'image/png',
+						file_size_bytes: 512,
+						width: null,
+						height: null,
+						checksum_sha256:
+							'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+						alt_text: null,
+						caption: null,
+						ocr_status: 'complete',
+						extraction_summary: 'Hidden',
+						extracted_text: 'Hidden text',
+						created_at: '2026-04-28T00:00:00.000Z',
+						updated_at: '2026-04-28T00:20:00.000Z',
+						deleted_at: null
+					}
+				],
+				toolExecutions: [],
+				nextTaskId: 1,
+				nextToolExecutionId: 1
+			}),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			scope: {
+				mode: 'read_only',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
+			},
+			toolName: 'get_onto_asset',
+			arguments: {
+				asset_id: '99999999-9999-9999-9999-999999999999'
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.asset.get',
+			ok: false,
+			error: {
+				code: 'NOT_FOUND',
+				message: 'Asset not found'
+			}
 		});
 	});
 

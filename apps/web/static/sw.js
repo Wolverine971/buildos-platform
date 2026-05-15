@@ -6,7 +6,7 @@
  */
 
 // Service Worker version - increment to force update
-const SW_VERSION = '1.2.0';
+const SW_VERSION = '1.2.1';
 
 function normalizeBadgeCount(value) {
 	const numeric = Number(value);

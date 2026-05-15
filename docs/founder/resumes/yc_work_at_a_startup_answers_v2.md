@@ -17,7 +17,7 @@ Iteration 2. Companion to [David_Wayne_Resume.md](./David_Wayne_Resume.md). For 
 
 **Long version:**
 
-> Senior full-stack + AI engineer (8 yrs). Shipped the integration layer at Curri (YC S19) connecting Lyft/Uber/DoorDash and four regional carriers. Currently founding BuildOS, an AI-native productivity platform with 80+ beta users. Former USMC Scout Sniper Team Leader.
+> Senior full-stack + AI engineer (8 yrs). Shipped the integration layer at Curri (YC S19) connecting Lyft/Uber/DoorDash and four regional carriers. Currently founding BuildOS, an AI-first project management platform that users and their agents connect to so they work from one shared source of truth. 80+ beta users. Former USMC Scout Sniper Team Leader.
 
 **Short version:**
 
@@ -37,6 +37,6 @@ Iteration 2. Companion to [David_Wayne_Resume.md](./David_Wayne_Resume.md). For 
 
 > I'm actually proud of two projects.
 >
-> Most recently, **BuildOS** — an AI-native productivity platform I've been building solo. Users do stream-of-consciousness "brain dumps" and the system extracts structured projects and tasks. It runs on a multi-LLM routing layer (OpenRouter primary, with OpenAI / Anthropic / Moonshot as fallbacks) that scores requests by complexity, latency, and cost. I built an agentic chat that reads and writes Google Calendar via tool use, daily-brief email generation, and a Redis-free Supabase job queue that powers the long-running LLM jobs. 80+ beta users so far. The most interesting work has been context engineering — figuring out the right tools, schemas, and context so LLM tool calls behave reliably in production.
+> Most recently, **BuildOS**, an AI-first project management platform that users and their agents connect to so they work from one shared source of truth. I've been building this solo. Users do stream-of-consciousness "brain dumps" and the system extracts structured projects and tasks. It runs on a multi-LLM routing layer (OpenRouter primary, with OpenAI / Anthropic / Moonshot as fallbacks) that scores requests by complexity, latency, and cost. I built an agentic chat that reads and writes Google Calendar via tool use, daily-brief email generation, and a Redis-free Supabase job queue that powers the long-running LLM jobs. 80+ beta users so far. The most interesting work has been context engineering — figuring out the right tools, schemas, and context so LLM tool calls behave reliably in production.
 >
 > Previously at **Curri (YC S19)**, I built and owned the third-party delivery integration layer — connecting seven partners (Lyft, Uber, DoorDash, Dispatch, Pronto, Material Drop, Superior) into the driver-search algorithm so any open delivery could fail over to an external network when no in-network driver was available. I reverse-engineered every partner's API by hand (public docs were typically incomplete), built the OAuth and credential-exchange flows, and designed a hybrid webhook + polling reconciliation pattern to maintain ground-truth state across partners with inconsistent event coverage. At scale it routed an estimated 100–200+ deliveries per day per partner.

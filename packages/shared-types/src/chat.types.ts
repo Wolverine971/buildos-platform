@@ -55,6 +55,13 @@ export interface SessionExtractedEntities {
 export type ChatMessage = Database['public']['Tables']['chat_messages']['Row'];
 export type ChatMessageInsert = Database['public']['Tables']['chat_messages']['Insert'];
 export type ChatMessageUpdate = Database['public']['Tables']['chat_messages']['Update'];
+export type ChatMessageAttachment =
+	Database['public']['Tables']['chat_message_attachments']['Row'];
+export type ChatMessageAttachmentInsert =
+	Database['public']['Tables']['chat_message_attachments']['Insert'];
+export type AgentChatMediaEvent = Database['public']['Tables']['agent_chat_media_events']['Row'];
+export type AgentChatMediaEventInsert =
+	Database['public']['Tables']['agent_chat_media_events']['Insert'];
 
 export type ChatToolExecution = Database['public']['Tables']['chat_tool_executions']['Row'];
 export type ChatToolExecutionInsert =
@@ -100,6 +107,89 @@ export type ChatContextType =
 export type ChatRole = 'user' | 'assistant' | 'system' | 'tool';
 export type ChatSessionStatus = 'active' | 'archived' | 'compressed';
 export type ToolCategory = 'list' | 'detail' | 'action' | 'calendar';
+
+export type ChatAttachmentKind = 'onto_asset' | 'voice_note_group' | 'document' | 'temporary_file';
+export type ChatAttachmentMediaType = 'image' | 'pdf' | 'audio' | 'video' | 'file';
+export type ChatAttachmentRole =
+	| 'attachment'
+	| 'inline'
+	| 'reference'
+	| 'cover_candidate'
+	| 'analysis_target';
+
+export interface ChatAttachmentRef {
+	attachment_kind: ChatAttachmentKind;
+	media_type: ChatAttachmentMediaType;
+	asset_id?: string;
+	temporary_attachment_id?: string;
+	project_id?: string | null;
+	storage_bucket?: string | null;
+	storage_path?: string | null;
+	file_name?: string | null;
+	content_type?: string | null;
+	file_size_bytes?: number | null;
+	width?: number | null;
+	height?: number | null;
+	checksum_sha256?: string | null;
+	ocr_status?: string | null;
+	extraction_summary?: string | null;
+	extracted_text_preview?: string | null;
+	role?: ChatAttachmentRole;
+	display_order?: number;
+	expires_at?: string | null;
+	metadata?: Record<string, unknown> | null;
+}
+
+export interface ChatImageAttachmentCreateRequest {
+	project_id?: string | null;
+	file_name: string;
+	content_type: string;
+	file_size_bytes: number;
+	checksum_sha256: string;
+	width?: number | null;
+	height?: number | null;
+	alt_text?: string | null;
+	caption?: string | null;
+	metadata?: Record<string, unknown> | null;
+}
+
+export interface ChatImageAttachmentAsset {
+	id: string;
+	project_id: string | null;
+	kind: string;
+	storage_bucket: string;
+	storage_path: string;
+	original_filename: string | null;
+	content_type: string;
+	file_size_bytes: number;
+	width: number | null;
+	height: number | null;
+	checksum_sha256: string | null;
+	ocr_status: string | null;
+	extraction_summary: string | null;
+	expires_at?: string | null;
+}
+
+export interface ChatImageAttachmentCaps {
+	max_image_attachments_per_turn: number;
+	max_file_size_bytes: number;
+	upload_window_seconds: number;
+	max_uploads_per_window: number;
+	max_upload_bytes_per_window: number;
+	project_storage_cap_bytes: number;
+	project_storage_used_bytes?: number;
+}
+
+export interface ChatImageAttachmentCreateResponse {
+	asset: ChatImageAttachmentAsset;
+	deduped: boolean;
+	upload: {
+		signed_url: string;
+		path: string;
+		token: string | null;
+	} | null;
+	caps: ChatImageAttachmentCaps;
+}
 
 /**
  * Metadata for system prompt customization

@@ -1820,7 +1820,7 @@ export class SmartLLMService {
 	async *streamText(options: {
 		messages: Array<{
 			role: string;
-			content: string;
+			content: unknown;
 			tool_calls?: any[];
 			tool_call_id?: string;
 			reasoning_content?: string;
@@ -1878,7 +1878,7 @@ export class SmartLLMService {
 
 		// Estimate total input length from all messages
 		const totalInputLength = options.messages.reduce(
-			(sum, msg) => sum + (msg.content?.length || 0),
+			(sum, msg) => sum + this.getContentLength(msg.content),
 			0
 		);
 		const estimatedLength = estimateResponseLength(

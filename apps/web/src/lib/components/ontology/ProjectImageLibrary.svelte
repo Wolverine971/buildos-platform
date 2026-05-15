@@ -122,7 +122,7 @@
 		<p class="text-xs text-muted-foreground">{emptyMessage}</p>
 	{:else}
 		<div class="space-y-2">
-			{#each visibleAssets.slice(0, compact ? 10 : visibleAssets.length) as asset}
+			{#each visibleAssets.slice(0, compact && !pickerMode ? 10 : visibleAssets.length) as asset}
 				<div
 					class="flex items-center justify-between gap-2 rounded border border-border bg-card px-2 py-1.5"
 				>

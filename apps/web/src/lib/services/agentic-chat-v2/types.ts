@@ -2,6 +2,7 @@
 import type {
 	ChatContextType,
 	ChatSession,
+	ChatAttachmentRef,
 	SkillActivityEvent,
 	ChatToolCall,
 	ChatToolResult,
@@ -15,11 +16,12 @@ import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { FastChatContextCache } from './context-cache';
 
 export type FastAgentStreamRequest = {
-	message: string;
+	message?: string;
 	session_id?: string;
 	context_type?: ChatContextType;
 	entity_id?: string;
 	ontologyEntityType?: string;
+	attachments?: ChatAttachmentRef[];
 	projectFocus?: ProjectFocus | null;
 	lastTurnContext?: LastTurnContext | null;
 	last_turn_context?: LastTurnContext | null;
@@ -87,6 +89,7 @@ export type FastAgentStreamEvent =
 export type FastChatHistoryMessage = {
 	role: 'user' | 'assistant' | 'system' | 'tool';
 	content: string;
+	attachments?: ChatAttachmentRef[];
 	tool_calls?: ChatToolCall[];
 	tool_call_id?: string;
 };

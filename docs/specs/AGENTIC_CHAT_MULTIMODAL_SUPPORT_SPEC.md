@@ -2,9 +2,10 @@
 
 # Agentic Chat Multimodal Support Spec
 
-**Date:** 2026-04-16  
-**Status:** Draft / parked for future implementation  
-**Owner:** Platform  
+**Date:** 2026-04-16
+**Last assessed:** 2026-05-15
+**Status:** Direction confirmed; Phase 1/2 image path implemented behind safeguards, pending browser/E2E/provider verification
+**Owner:** Platform
 **Scope:** BuildOS agent chat attachments, project asset context, multimodal model routing, and eventual image/PDF/audio/video reasoning.
 
 ## Summary
@@ -22,7 +23,177 @@ This matters because BuildOS is not only a chat UI. It is an operating system fo
 
 The first useful implementation should be image attachments in agent chat, backed by the existing `onto_assets` infrastructure. True model-level multimodal input should come after that path is stable.
 
-## Current Local State
+## 2026-05-14 Direction and De-risking Assessment
+
+### Product direction
+
+Multimodal support should be built as a native extension of `AGENTIC_CHAT`, not as a parallel upload/chat subsystem.
+
+The high-level direction is:
+
+1. Keep agent chat as the user-facing entry point.
+2. Add media as durable project context first.
+3. Use the same session, message, turn-run, prompt observability, tool, and policy surfaces where possible.
+4. Reuse `onto_assets` for project image storage, extraction, search, and linking.
+5. Add raw multimodal model perception only after the durable-context path is reliable.
+6. Make third-party agent access use the same scoped BuildOS asset APIs and external-agent policy model.
+
+The product constraint is important: BuildOS should remember and organize source material, not repeatedly re-upload blobs into model calls.
+
+### Current assessment
+
+At the 2026-05-14 assessment, the existing repo was well positioned for Phase 1 but not yet wired end-to-end.
+
+Already available:
+
+- `onto_assets` stores project-scoped image assets with private storage paths, file size, content type, dimensions, checksum slot, captions, OCR status, extracted text, extraction summary, and search vector.
+- `onto_asset_links` links assets to project ontology entities.
+- `/api/onto/assets` creates asset rows and signed upload URLs.
+- `/api/onto/assets/[id]/complete` verifies storage and queues OCR.
+- The OCR worker already sends image content to a vision-capable model and persists extracted text plus summary.
+- Ontology search already includes `image` as a searchable type.
+- Agent chat has turn runs, prompt snapshots, per-turn metadata, context-usage tracking, and a recent context-saturation/payload-hygiene layer.
+- External agent calls already have scoped callers, OAuth work in progress, operation allowlists, read/write modes, idempotent write auditing, and security event logging.
+
+Not yet available at that assessment:
+
+- Agent chat composer has no attachment tray, picker, paste, or drop support.
+- `UIMessage`, `FastAgentStreamRequest`, and `FastChatHistoryMessage` are still text-shaped.
+- `/api/agent/v2/stream` rejects attachment-only turns and persists only message text.
+- Recent history loading does not include attachment refs or OCR summaries.
+- `streamFastChat` only assembles text user messages.
+- `OpenRouterV2Service` currently flattens non-text input into text, so raw multimodal content arrays would not survive the provider boundary.
+- External agent public ops do not yet expose first-class asset upload/read/link operations.
+- `onto_assets.checksum_sha256` exists, but the current asset upload flow does not require checksum input or enforce dedupe.
+- There is no storage usage dashboard, quota table, or asset-specific abuse guard for rogue agents.
+
+### De-risking decisions
+
+Phase 1 should be intentionally narrow:
+
+- Supported input: project-scoped images only.
+- Supported sources: BuildOS web UI upload, paste, drop, and attach existing project image.
+- Model behavior: OCR/summary context only; no raw model perception required.
+- Persistence: project assets plus `chat_message_attachments`.
+- Third-party agents: read/search existing assets first; creating new assets should wait for quota, checksum, and idempotency safeguards.
+- General chat uploads: allow temporary, turn-scoped image attachments once the same upload, checksum, quota, and live-vision safeguards are in place. These float in the chat and do not become durable project context unless the user later saves or links them into a project.
+- UX standard: attachment handling should feel like a polished agent composer, with Codex-style drag/drop, compact image previews, clear processing states, and no heavy visual churn.
+
+This keeps the first slice inside known BuildOS architecture and avoids opening a broad file-ingestion surface before accounting and abuse controls exist.
+
+### Required safeguards before external-agent uploads
+
+Before any third-party agent can create media assets, BuildOS needs a media-ingestion control layer. At minimum:
+
+1. Require `checksum_sha256` for upload creation, and store it on `onto_assets`.
+2. Dedupe by `(project_id, checksum_sha256)` where possible: link the existing asset instead of creating a new one when the same image is re-uploaded.
+3. Use idempotency keys for media create/attach operations, matching the existing external write-audit model.
+4. Apply per-user, per-project, and per-external-caller upload limits for count and bytes over short windows.
+5. Apply hard per-project and per-user storage caps, with a visible usage summary.
+6. Separate upload quota from OCR/model-processing quota so a rogue caller cannot create unlimited extraction jobs.
+7. Limit OCR concurrency and reprocess frequency per asset.
+8. Treat read-only external connectors as unable to create new assets; they can search/read existing asset summaries only.
+9. Gate asset-creating ops behind explicit write scopes and an `assets.write`-style consent bundle.
+10. Log media ingestion events with source, caller ID, project ID, checksum, byte size, OCR status, and dedupe outcome.
+
+The expected rogue-agent failure mode is repeated upload of the same image or slight variants. Checksum dedupe handles exact repeats. Quotas, rate windows, OCR queue limits, and storage caps handle variants.
+
+### Storage awareness requirements
+
+The admin and user-facing surfaces should make media storage visible.
+
+Track at least:
+
+- total image count and bytes by user,
+- total image count and bytes by project,
+- bytes uploaded by source (`agent_chat_ui`, `external_agent`, future mobile/import paths),
+- bytes uploaded by external caller,
+- duplicate upload attempts,
+- OCR queued/completed/failed counts,
+- raw media sent to model counts after Phase 2,
+- estimated OCR/model media cost after Phase 2.
+
+Prompt snapshots and logs should store attachment IDs, metadata, and redacted media descriptors, not durable signed URLs.
+
+### Start-readiness assessment
+
+BuildOS is ready to start implementation of Phase 1 after the following defaults are treated as decided:
+
+1. Project-scoped image attachments ship first, with general-chat temporary attachments allowed as the non-durable analysis path.
+2. Dropped/pasted/selected images become durable `onto_assets` immediately when a project context exists; in general chat they become temporary signed-storage objects with bounded TTL and no project asset row.
+3. Upload and OCR begin before Send.
+4. The first model-facing behavior is OCR/summary context only.
+5. Attachment-only sends are allowed.
+6. Prompt snapshots store attachment references and bounded extracted text, not signed URLs.
+7. External agents can read/search existing assets before they can create assets.
+8. External-agent asset creation waits for checksum, dedupe, quota, storage accounting, and idempotency safeguards.
+
+Recommended first implementation order:
+
+1. Add schema and type foundation: `chat_message_attachments`, typed attachment refs, feature flags, and generated database types.
+2. Add the chat attachment upload wrapper or helper over `onto_assets`, including checksum capture, 4-image limit, and source metadata.
+3. Add composer tray/drop/paste UI with immediate upload/OCR queueing.
+4. Extend `/api/agent/v2/stream` validation and persistence for attachment refs.
+5. Load and render attachments after refresh.
+6. Add bounded attachment context into history and prompt assembly.
+7. Add storage/accounting telemetry and admin-visible counters.
+8. Add external-agent read/search asset tools only after the internal chat path is stable.
+
+Non-blocking follow-on work:
+
+- raw image perception,
+- PDFs,
+- videos,
+- external-agent asset creation,
+- broader media admin UI.
+
+### 2026-05-15 implementation checkpoint
+
+Phase 1 image attachments are now wired through the internal agent-chat path:
+
+- `chat_message_attachments` and `agent_chat_media_events` are introduced for message linkage and media telemetry.
+- Chat image creation requires SHA-256 checksums and can dedupe exact repeats by project/checksum.
+- Chat image creation enforces configurable upload-window count/byte caps plus a project image storage cap before creating a new asset.
+- The composer supports image attach/drop/paste with compact previews, upload/OCR states, bounded OCR-status polling, object URL cleanup, per-turn limits, and attachment-only sends.
+- `/api/agent/v2/stream` validates project-scoped image refs, persists message attachments, stores sanitized metadata, and adds bounded OCR/summary context.
+- Recent chat history can reconstruct attachment refs so refreshed messages render their attachment tiles.
+- Prompt snapshots store attachment IDs and bounded extracted text metadata, not signed URLs.
+- Admin chat media usage now has a first-pass API/panel for upload, dedupe, OCR, live-vision, storage, top-project, and event-mix visibility.
+
+Phase 2 current-turn image reasoning is now wired behind server-side safeguards:
+
+- The stream endpoint can sign current-turn image URLs in memory only and pass `text`/`image_url` content parts to OpenRouter V2.
+- Live vision is current-turn only, capped separately from durable upload limits, and falls back to OCR/summary text when signing, size gating, or provider start fails.
+- Signed URLs are short-lived, transformed to a bounded render width for provider payload control, and omitted from prompt snapshots and durable message metadata.
+- OpenRouter V2 preserves valid multimodal content arrays, routes image turns to the multimodal lane, keeps tool definitions/tool choice intact, and falls back to text/tool lanes when multimodal startup fails.
+- Attachment/OCR/media content is now explicitly marked as untrusted source material in both the system prompt and per-turn attachment context.
+
+External-agent read integration is now started:
+
+- `onto.asset.search` and `onto.asset.get` are in the supported read-op set and exposed as direct external gateway tools.
+- External asset tools return scoped metadata, project name, checksum suffix, OCR status, summary, and optional bounded OCR previews.
+- External asset tools intentionally do not return storage paths, storage buckets, signed URLs, or raw pixels.
+- Scoped-out assets are treated as not found through direct get.
+
+General-chat temporary image analysis is now supported:
+
+- The composer no longer requires a selected project before accepting an image.
+- In project context, uploads still create durable `onto_assets`, queue OCR, and persist as project-backed chat attachments.
+- In general chat, uploads create temporary signed-storage objects under the current user, enforce the same per-turn and upload-window limits, and return `temporary_file` attachment refs.
+- Temporary attachment refs carry only the storage pointer needed for current-turn validation/live vision; prompt snapshots sanitize that metadata and do not persist signed URLs.
+- Temporary images are verified from server-side storage before the stream endpoint accepts them, then raw image input is passed only through the existing live-vision safeguards and byte/render limits.
+
+Remaining before calling Phase 1/2 complete:
+
+- Browser-test the drag/drop composer flow against a local project chat.
+- Apply and verify the database migration in a Supabase environment.
+- Run an end-to-end image upload plus OCR completion check.
+- Run a live provider smoke test with `AGENT_CHAT_LIVE_VISION_ENABLED=true` and confirm prompt snapshots/logs contain asset IDs, not signed URL query strings.
+- Decide whether external agents should get asset-to-entity linking next, or whether that waits until the UI path has stronger asset-linking affordances.
+
+## Baseline Local State Before Phase 1/2 Implementation
+
+This section captures the starting point from the original assessment. See the implementation checkpoint above for the current code-path status.
 
 ### Chat is currently text-shaped
 
@@ -378,6 +549,28 @@ Supported v1 actions:
 - Attach existing project image.
 - Remove pending attachment before send.
 
+### Drag/drop behavior
+
+The composer should support a Codex-style drop target:
+
+- Dragging images over the chat/composer highlights the composer area with a clear drop affordance.
+- Dropping one or more images immediately validates, thumbnails, uploads, completes the asset, and queues OCR.
+- The drop should not block typing; users can keep composing while upload/OCR proceeds.
+- The drop zone should accept images only in Phase 1.
+- If a drop contains unsupported files, show a compact inline error and keep valid images.
+- If a drop exceeds the per-turn image limit, accept images up to the limit and show which files were skipped.
+- The image should appear in the attachment tray as soon as local validation passes, before upload finishes.
+
+Immediate OCR means:
+
+1. Client creates a project asset row and signed upload URL.
+2. Client uploads the file directly to storage.
+3. Client calls `/api/onto/assets/[id]/complete`.
+4. Server verifies the uploaded object and queues OCR.
+5. UI marks the tile as extracting text until OCR completes or fails.
+
+The OCR job should start before the user clicks Send whenever the upload has completed. Send attaches the already-created asset to the chat turn; it should not be the first moment BuildOS begins ingestion.
+
 Later actions:
 
 - Upload PDF.
@@ -392,13 +585,24 @@ Render pending attachments above or inside the composer, above the textarea.
 
 Each pending image should show:
 
-- thumbnail
+- small thumbnail preview
 - filename or short label
 - file size if useful
 - upload state
 - OCR state after upload completion
+- short OCR/extraction preview when available
 - remove button
 - optional "link to current task/doc/project" indicator
+
+Visual pattern:
+
+- Use compact horizontal tiles, not large cards.
+- Thumbnail at the left, text/status at the center, remove/action control at the right.
+- Keep tiles stable in height so upload progress and OCR snippets do not shift the composer.
+- When OCR completes, show a one-line snippet such as `Text found: "Email is required..."`.
+- When no text is found, show `No readable text found` only if useful for the turn.
+- Use concise status labels: `Uploading`, `Extracting text`, `Ready`, `OCR failed`.
+- Show progress for upload, but do not show noisy progress for OCR unless the user has sent the message and is waiting on it.
 
 States:
 
@@ -411,10 +615,20 @@ States:
 - OCR complete
 - OCR failed
 
-The user should be allowed to send before OCR completes. In that case, the agent can either:
+The user should be allowed to send before OCR completes. In Phase 1, the model receives the attachment ref and processing status, but not raw vision input. If OCR is still pending and the user asks a question that requires image contents, the assistant should explain that extraction is still running and continue once context is available in a follow-up turn. In Phase 2, the agent can optionally use live vision for the current turn when intent requires it.
 
-- use live vision for the current turn, or
-- explain that the asset is still processing if the turn requires OCR-only context.
+### Performance requirements
+
+The attachment UI must feel quick even for large images.
+
+- Generate local previews from object URLs, not base64 strings stored in chat state.
+- Revoke object URLs when an attachment is removed or the message is finalized.
+- Cap preview dimensions in the UI; do not render full-resolution images in the composer.
+- Upload directly to signed storage URLs; do not proxy full image bytes through the chat stream endpoint.
+- Limit concurrent uploads from the composer to 2.
+- Keep OCR asynchronous and poll or subscribe at a low cadence; avoid tight client polling.
+- Store only attachment refs and compact OCR previews in message state.
+- Never put signed upload, render, or storage URLs into durable prompt snapshots.
 
 ### Message list
 
@@ -423,10 +637,13 @@ User messages should show text plus attachments.
 Recommended pattern:
 
 - Keep message bubble text as-is.
-- Render attachments below the bubble, similar to the existing voice note panel.
-- Use thumbnails for images.
+- Render attachments below the bubble, similar to the existing voice note panel, but as compact image tiles.
+- Use small thumbnails for images.
 - Use compact chips for PDFs/videos.
 - Include OCR/processing status only when it affects the current turn.
+- If a message is sent while OCR is processing, keep the tile visible with `Extracting text`.
+- When OCR completes, update the tile to `Ready` and optionally show the one-line OCR/extraction preview.
+- If OCR fails, keep the attachment visible and show `OCR failed` with a retry affordance for users with project write access.
 
 Assistant messages can include asset-aware actions:
 
@@ -536,6 +753,8 @@ export type ChatAttachmentRef = {
 	file_size_bytes?: number | null;
 	render_url?: string | null;
 	thumbnail_url?: string | null;
+	upload_state?: 'local' | 'uploading' | 'uploaded' | 'failed' | null;
+	upload_progress?: number | null;
 	ocr_status?: 'pending' | 'processing' | 'complete' | 'failed' | 'skipped' | null;
 	extracted_text_preview?: string | null;
 	extraction_summary?: string | null;
@@ -602,10 +821,14 @@ Validation:
 Suggested v1 limits:
 
 - Max pending images per turn: 4
+- Max images accepted from one drag/drop or paste event: 4, including already pending images
+- Max concurrent image uploads from the composer: 2
 - Max image size: use current 25 MB `onto_assets` limit, but downscale before model send
 - Max raw image sends to model: 4
 - Max OCR context per asset in prompt: 2,000 chars unless explicitly requested
 - Max asset summary context for history: 500 chars per asset
+- Max OCR/extraction preview shown in UI: 180 chars
+- Max OCR reprocess attempts from chat UI: 1 manual retry per asset in a short window
 
 ### Message persistence
 
@@ -782,8 +1005,8 @@ The agent should be able to:
 
 Potential future tool names:
 
-- `asset.search`
-- `asset.get`
+- `onto.asset.search` / direct external tool `search_onto_assets`
+- `onto.asset.get` / direct external tool `get_onto_asset`
 - `asset.attach_to_entity`
 - `asset.analyze`
 - `asset.extract_tasks`
@@ -918,8 +1141,12 @@ Goal:
 
 Tasks:
 
-- Add composer attachment button/tray.
-- Add paste/drop upload support.
+- Add composer attachment button and compact attachment tray.
+- Add Codex-style paste/drop upload support.
+- Start upload and OCR immediately after drop/paste/file selection, before Send.
+- Add client-side limits for max 4 images per turn, max 4 per drop/paste event, and max 2 concurrent uploads.
+- Add lightweight local previews with object URLs and stable tile dimensions.
+- Add upload/OCR status states in the tray and message list.
 - Reuse existing `onto_assets` upload flow.
 - Add `UIMessage.attachments`.
 - Extend stream request with attachment refs.
@@ -933,12 +1160,20 @@ Tasks:
 Acceptance criteria:
 
 - User can upload an image in project chat and send it with a message.
+- User can drag a photo into the chat and see a compact preview tile immediately.
+- Upload starts immediately after drop/paste/file selection.
+- OCR is queued automatically after upload completion, without waiting for Send.
+- The composer remains usable while upload/OCR runs.
+- Dropping more than 4 images accepts up to the limit and clearly reports skipped files.
 - User can send an image without text.
 - Image appears under the user message after refresh.
+- Sent image messages show `Extracting text` while OCR is pending and `Ready` when OCR completes.
+- Completed OCR can surface a one-line preview snippet in the attachment tile.
 - Asset appears in the project image library.
 - OCR status eventually updates.
 - Agent receives a bounded attachment summary/OCR context.
 - No signed URLs are persisted in prompt snapshots.
+- The composer never stores full-resolution base64 image data in long-lived state.
 
 ### Phase 2: Current-turn visual reasoning
 
@@ -948,14 +1183,16 @@ Goal:
 
 Tasks:
 
-- Add multimodal model lane.
-- Add model capability filter for image input.
-- Generate short-lived signed render URL or base64 data URL.
-- Preserve content arrays through OpenRouter V2.
-- Add `raw_media_included` metadata to prompt snapshots.
-- Redact media URLs from logs/snapshots.
-- Add fallback to OCR-only context.
-- Add model/provider failure handling.
+- Add multimodal model lane. Implemented with an `openRouterV2.multimodal` route.
+- Add model capability filter for image input. Implemented with multimodal-capability filtering.
+- Generate short-lived signed render URL or base64 data URL. Implemented with short-lived, transformed signed URLs for current-turn images only.
+- Preserve content arrays through OpenRouter V2. Implemented for valid `text`/`image_url` content arrays.
+- Add `raw_media_included` metadata to prompt snapshots. Implemented with sanitized live-vision counts/flags only, never signed URLs.
+- Redact media URLs from logs/snapshots. Implemented by keeping signed URLs only in the in-memory provider request body.
+- Add fallback to OCR-only context. Implemented for signing failure, live-vision gating failure, and provider startup failure.
+- Add model/provider failure handling. Implemented: if the multimodal provider route cannot start, retry the turn as text/tool lane using OCR/summary context only.
+- Keep tool calling available in image turns. Covered by regression test for multimodal content plus tool definitions/tool choice.
+- Mark attachment-derived instructions as untrusted source material. Implemented in lite prompt safety rules and attachment context.
 
 Acceptance criteria:
 
@@ -1016,7 +1253,7 @@ Goal:
 
 Tasks:
 
-- Add asset read/search/fetch tools.
+- Add asset read/search/fetch tools. Started for external agents with `onto.asset.search` and `onto.asset.get`.
 - Add asset-to-entity linking tool.
 - Add asset analysis tool.
 - Add asset comparison tool.
@@ -1178,34 +1415,42 @@ Files can contain prompt injections or malicious content. Mitigation: untrusted-
 
 Trying to support image, PDF, audio, and video at once will sprawl. Mitigation: ship image context first, then raw image perception, then PDFs, then video.
 
-## Open Questions
+## Resolved Decisions and Open Questions
 
-1. Should global chat allow uploads before a project is selected?
-2. Should chat attachments always become project assets, or can they be temporary?
-3. Should the user explicitly choose whether an upload is linked to the current task/doc/project?
-4. Should assistant-created tasks automatically inherit the source attachment?
-5. Which multimodal model lane should be primary if Qwen3.6 Plus changes price/reliability?
-6. How should attachment deletion work across chat messages and project assets?
-7. Should OCR run before the model response, or should the first response use raw vision while OCR continues asynchronously?
-8. Should prompt snapshots store redacted content arrays or only attachment references?
-9. What is the admin UI for inspecting media-augmented turns?
-10. Should PDF support use OpenRouter parser plugins, local extraction, or both?
+### Resolved for Phase 1
 
-## Recommended First Slice
+1. Global/no-project uploads are deferred.
+2. Project-scoped image uploads become durable project assets.
+3. OCR starts as soon as upload completion is verified, before Send when possible.
+4. Phase 1 does not send raw image input to the model.
+5. Prompt snapshots store attachment references plus bounded text/summary context, not signed URLs or full media payloads.
+6. The initial image limit is 4 per turn/drop/paste, with 2 concurrent uploads from the composer.
+7. External-agent media creation is not part of the first internal chat slice.
+8. When the agent creates tasks from an attached image, the source image should be linked to the created tasks automatically.
+9. Deleting an attachment from chat unlinks it from the chat message only; deleting the underlying project asset is a separate explicit action.
+10. Checksum capture and exact duplicate detection should ship in the first implementation.
+11. Launch with storage visibility and config-driven caps first, then tune hard limits after usage data.
 
-Build Phase 1 only:
+### Still open
+
+1. After Phase 1, which multimodal model lane should be primary if Qwen3.6 Plus changes price or reliability?
+2. What should the admin UI for media-augmented turns show beyond counts, asset IDs, OCR status, and storage bytes?
+3. For PDF support later, should BuildOS prefer local extraction, OpenRouter parser plugins, or both?
+
+## Recommended Delivery Slice
+
+Phase 1/2 should still ship as a controlled image-only slice:
 
 - Project-scoped image attachments in agent chat.
 - Reuse `onto_assets`.
 - Add `chat_message_attachments`.
+- Build the polished drag/drop composer path first: compact preview tiles, immediate upload/OCR, stable processing states, and strict 4-image per-turn limit.
 - Render attachments in chat.
 - Include OCR/summary context in prompts.
-- No raw multimodal model input yet.
-
-Then build Phase 2:
-
 - Current-turn image perception through a multimodal OpenRouter lane.
 - Candidate model: `qwen/qwen3.6-plus`.
 - Fallback: OCR/summary context.
+- Keep signed media URLs out of message persistence, prompt snapshots, logs, and durable metadata.
+- Gate live vision behind server configuration until database migration, browser UI validation, OCR completion, and provider smoke tests pass.
 
 This path gives immediate product value while keeping the system aligned with BuildOS architecture.

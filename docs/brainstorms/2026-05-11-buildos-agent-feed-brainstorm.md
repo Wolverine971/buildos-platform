@@ -1,7 +1,7 @@
 ---
 date: 2026-05-11
 topic: buildos-agent-feed
-status: brainstorm — pre-planning
+status: brainstorm — pre-planning, amended after audit
 related:
     - docs/marketing/strategy/anti-ai-show-dont-tell-strategy.md
     - docs/marketing/anti-feed/blog-context.md
@@ -15,7 +15,7 @@ path: docs/brainstorms/2026-05-11-buildos-agent-feed-brainstorm.md
 
 **A President's Daily Brief for your projects.** A continuously-live, agent-curated feed that becomes BuildOS's home base — one surface where your projects, your agents, your connected signals, and your own notes converge. An assistant downloading you on all the moving pieces of every project running in parallel.
 
-It serves four uses at once: ambient awareness throughout the day, catch-up after time away, a control surface where you can talk back to your agents, and a continuously-live replacement for the morning daily brief.
+It serves four uses at once: ambient awareness throughout the day, catch-up after time away, a control surface where you can talk back to your agents, and an eventual live substrate for the morning daily brief.
 
 This is **the inverse of a social media feed**. Every item is about your reality, written by your agents on your behalf. No ads. No algorithm optimizing for someone else's attention metric. Designed to _minimize_ time-on-app, not maximize it. It is the practical embodiment of the "context surface across agents" positioning already drafted for the Connect Your Agents promo.
 
@@ -25,11 +25,11 @@ We considered four curation models. **AI-curated cards** (the firehose grouped i
 
 We considered four freshness models. **Hybrid live-attention + scheduled-ambient** won because the "needs you" use case must be real-time but the digest layer is too expensive to run on every event.
 
-We considered three action models. **All three coexist** (read + quick-action + inline thread + convert) won because the feed is meant to be a control surface, not a notification stream. A card is a full work object.
+We considered three action models. **All three coexist eventually** (read + quick-action + inline thread + convert) won because the feed is meant to be a control surface, not a notification stream. V1 should stop at read + quick-action + resolution state.
 
 ## Key Decisions
 
-- **Purpose: feed-first BuildOS.** Ambient + catch-up + control + brief-replacement. The daily brief becomes a snapshot of the feed at 8am, not a separate product.
+- **Purpose: brief-first BuildOS, feed-backed internally.** Ambient + catch-up + control. Product language should emphasize "briefing" and "decisions that need you"; the feed/card model is the implementation substrate.
 - **Sources (all first-class):** BuildOS internal events, external agents (Claude/ChatGPT/etc.) posting via API, connected signals (calendar/email/GitHub), and the user posting in directly.
 - **Curation:** AI-curated cards. Each card is a digestible summary, not a raw event.
 - **Visual anchor: project.** Project icon + color is the dominant visual identifier. Author (agent/you/system) is a secondary chip. Status (moving / stuck / quiet) is carried by Inkprint texture — `tx-bloom` for momentum, `tx-grain` for stuck, inked-down for quiet.
@@ -40,7 +40,75 @@ We considered three action models. **All three coexist** (read + quick-action + 
     - `MOVING` — work in progress. What advanced today. Read for awareness, no action needed.
     - `WATCHING` — quiet projects. Collapsed by default. A glance tells you something is cold.
 - **Cross-project home feed (default view) + project drill-in.** Tap a project chip on a card → enter that project's dedicated feed with momentum view. Same nav pattern as Instagram/Twitter, but the content is yours and the structure is sectioned, not chronological.
-- **Card = full work object.** Every card supports: read, quick-action buttons (Approve / Defer / Snooze / Done), inline thread (reply back to the posting agent), and convert (turn into a task / brain dump / calendar item).
+- **Card = full work object eventually.** V1 should support read + quick actions + resolution state. Inline thread and convert are high-value, but they are v2+ affordances because they expand scope and make cards feel inbox-like if added too early.
+
+## Post-Audit Amendments (2026-05-13)
+
+The strongest critique of this plan is that "agent-curated feed" can quietly become "another inbox where agents report that they did work." That risk should shape the data model and MVP, not just the copy.
+
+### Anti-Noise Product Contract
+
+BuildOS does not publish raw events. It publishes selected operational cards. A visible card must clear one of these bars:
+
+- The user must decide something.
+- A promised artifact is ready for approval.
+- A plan materially changed.
+- A deadline, risk, or blocker changed.
+- A conflict appeared between agents, projects, or prior decisions.
+
+Everything else is source material for project history, daily brief synthesis, or collapsed digest sections.
+
+### `DECISIONS NEEDED` Admission Rule
+
+A decision card must include:
+
+- Project or area.
+- Specific question.
+- Recommended default.
+- Deadline or freshness window.
+- Consequence of inaction.
+- One-tap outcomes that resolve it.
+- Citations/source references when summarizing facts.
+
+If an agent cannot produce those fields, it cannot post a decision card. It can only create a candidate.
+
+### Candidate-First Data Model
+
+V1 should model cards as an editorial pipeline, not a notification stream.
+
+Suggested states:
+
+- `candidate` — proposed by agent/system/user.
+- `published` — visible in the decision lane.
+- `merged` — folded into another card.
+- `resolved` — acted on or completed.
+- `suppressed` — too low signal, duplicate, stale, missing source, or outside scope.
+
+Suggested fields beyond the original table sketch:
+
+- `dedupe_key`
+- `decision_question`
+- `recommended_default`
+- `freshness_expires_at`
+- `consequence`
+- `source_refs`
+- `priority_score`
+- `trust_score_snapshot`
+- `suppression_reason`
+
+This is the product's defense against inbox creep. Agents propose; BuildOS edits.
+
+### Card Budget
+
+Start with a hard visible budget: 3 visible decision cards by default, 5 maximum. If there are more candidates, Briefer must rank, merge, or hold. Scarcity is part of the trust model.
+
+### Daily Brief Relationship
+
+Do not deprecate the existing daily brief in v1. The daily brief is already a useful delivery surface with email/audio/notification plumbing. In v1, unresolved decision cards and important resolved decisions should become ingredients in the morning brief. "Brief becomes snapshot of the feed" should wait until the feed is trusted.
+
+### Agent Write-Back Default
+
+Agent session summaries should land in memory/project history by default, not the visible feed. They become visible only when they satisfy the admission rule. "I worked on X" is not a card; "X is ready for your approval by 4pm, default is merge" is a card.
 
 ## The Frame: President's Daily Brief
 
@@ -122,13 +190,14 @@ WATCHING (3)
 
 Scope:
 
-- New `feed_items` table (project_id, author, status, payload_json, action_state, created_at, resolved_at)
+- New `feed_items` / `feed_card_candidates` model (project_id, author/source, state, payload_json, decision fields, dedupe_key, source_refs, action_state, freshness_expires_at, created_at, resolved_at)
 - Real-time push channel when BuildOS or an agent flags an item as `decisions_needed` (reuse the agent chat's SSE pattern)
 - Project-anchored visual card design (icon, color, status texture, signed author, action-language close)
 - Quick-action buttons (Approve / Defer / Snooze / Dismiss) — moves card out of `DECISIONS NEEDED`
 - Cross-project home feed view at `/feed` + per-project drill-in (`/projects/[id]/feed`)
-- Agent ingest endpoint: `POST /api/agent/v2/feed/post` — external agents can post into your feed via the same bearer-token pattern as the BuildOS Agent API
+- Agent ingest through the existing OAuth/MCP/agent-call path where possible — external agents create candidates first, not visible cards by default
 - PDB-register voice prompt locked in for any LLM-authored items (calm, declarative, action-language close)
+- Instrumentation for card quality: candidate-to-published ratio, dismiss/snooze rate, duplicate merge rate, resolution time, and time-to-caught-up
 
 Explicitly deferred to v2+:
 
@@ -139,6 +208,7 @@ Explicitly deferred to v2+:
 - Connected signals (calendar / email / GitHub) ingestion
 - Daily brief deprecation
 - Briefer mode (voice read-aloud)
+- Ambient card scheduling until the decision lane proves high-signal
 
 ## Card Archetypes (v1)
 
@@ -150,13 +220,14 @@ Explicitly deferred to v2+:
 ## Open Questions
 
 - **Card lifecycle between sections.** When does a `DECISIONS NEEDED` card become `MOVING` (after action? after first ack?) — and when does a `MOVING` card become `WATCHING` (after N hours quiet? project-aware threshold?). State machine needs definition.
-- **Daily brief.** If the feed replaces the brief, when do we sunset the morning email? Or does it stay as a daily snapshot of the home feed (still useful for offline / mobile / passive consumption)?
+- **Daily brief.** Do not sunset it in v1. The live decision lane should supply ingredients to the morning brief until usage data proves the feed can replace or reshape it.
 - **Live channel transport.** Reuse the agent chat's SSE pattern, or upgrade to a websocket for bidirectional push?
-- **Agent ingest auth.** Reuse the existing per-agent bearer-token model from the BuildOS Agent API, or design a new scope-limited token?
+- **Agent ingest auth.** Prefer the existing OAuth/MCP/agent-call model. Add feed/context operations and project allow-lists there before designing a parallel token system.
 - **Empty / quiet state.** When you have nothing in the feed, what does it show? This is a brand moment — opportunity to reinforce "a quiet feed is a good feed."
+- **Admission control.** What is the exact threshold between "candidate worth storing" and "visible card worth interrupting DJ"?
 
 ## Next Steps
 
-1. Run `/workflows:plan` on the MVP slice (`DECISIONS NEEDED` section only) to produce a step-by-step implementation plan.
+1. Run `/workflows:plan` on the MVP slice (`DECISIONS NEEDED` section only) to produce a step-by-step implementation plan, including candidate states and anti-noise instrumentation.
 2. Cross-reference with the Connect Your Agents promo work — the feed is the natural surface for "context across agents," and the promo copy should point at the feed once shipped.
 3. Mine this build for anti-feed cluster content. "I built a feed inside an anti-feed product — here's the PDB reframe" is itself a viral-grade post. The build process is the proof.

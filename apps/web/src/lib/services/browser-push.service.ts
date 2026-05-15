@@ -97,8 +97,13 @@ class BrowserPushService {
 		}
 
 		try {
-			this.registration = await navigator.serviceWorker.register('/sw.js');
+			this.registration = await navigator.serviceWorker.register('/sw.js', {
+				updateViaCache: 'none'
+			});
 			await navigator.serviceWorker.ready;
+			void this.registration.update().catch((error) => {
+				console.warn('[BrowserPush] Service worker update check failed:', error);
+			});
 			return this.registration;
 		} catch (error) {
 			console.error('Service worker registration failed:', error);

@@ -1,68 +1,70 @@
 ---
 title: "🎉 100th Episode: The End of the Line for Cold Calling (& What's Replacing it) -- with Sam McKenna"
 video_id: 5ln1cGTzXTg
-url: "https://www.youtube.com/watch?v=5ln1cGTzXTg"
+url: 'https://www.youtube.com/watch?v=5ln1cGTzXTg'
 channel: Insightly CRM by Unbounce
-channel_url: "https://www.youtube.com/@InsightlyCRM"
+channel_url: 'https://www.youtube.com/@InsightlyCRM'
 upload_date: 2024-04-30
-duration: "21:25"
+duration: '21:25'
 views: 765
 tags:
-  - cold calling
-  - b2b sales
-  - end of line for cold calling
-  - death of cold calling
-  - cold calling b2b sales
-  - cold calling in sales
-  - cold calling replacement
-  - outbound tips
-  - tips for outbound
-  - tips for b2b outbound
+    - cold calling
+    - b2b sales
+    - end of line for cold calling
+    - death of cold calling
+    - cold calling b2b sales
+    - cold calling in sales
+    - cold calling replacement
+    - outbound tips
+    - tips for outbound
+    - tips for b2b outbound
 timestamps:
-  - time: "0:00"
-    label: "Introduction"
-  - time: "1:15"
-    label: "Marketing the Death of Cold Calling"
-  - time: "2:52"
-    label: "Adapting to the Modern Buyer Journey"
-  - time: "5:38"
-    label: "Injecting SMYKM into Emails"
-  - time: "7:30"
-    label: "The Power of LinkedIn"
-  - time: "13:29"
-    label: "Importance of Authenticity"
-  - time: "15:18"
-    label: "Nurturing Leads"
+    - time: '0:00'
+      label: 'Introduction'
+    - time: '1:15'
+      label: 'Marketing the Death of Cold Calling'
+    - time: '2:52'
+      label: 'Adapting to the Modern Buyer Journey'
+    - time: '5:38'
+      label: 'Injecting SMYKM into Emails'
+    - time: '7:30'
+      label: 'The Power of LinkedIn'
+    - time: '13:29'
+      label: 'Importance of Authenticity'
+    - time: '15:18'
+      label: 'Nurturing Leads'
 description: |
-  Since the advent of the telephone, cold calling has been a staple in the world of B2B sales. For decades, call volume has served as a primary measure of a salesperson's success. But hold the phone—times (specifically, the buyer's journey) are changing!
-  
-  In the modern selling landscape, the old-school cold call is starting to feel a bit frosty. To cut through the noise, buyers need to see personalized outreach and authentic interactions with salespeople. 
-  
-  In this landmark 100th episode of Closing Time, Sam McKenna of #samsales Consulting offers a more effective and efficient sales methodology—one that feels less salesy and more intentional. So grab a cup of coffee (or bubbly) and tune in as we bid farewell to the era of cold calling. 
-  
-  Want to better align your go-to-market teams? Get a demo of Insightly's CRM today: https://bit.ly/3sITbqV
-  
-  Connect with Sam McKenna:
-  https://www.linkedin.com/in/samsalesli/
-  
-  Connect with Chip House:
-  https://www.linkedin.com/in/chiphouse/ 
-  
-  00:00 Introduction 
-  01:15 Marketing the Death of Cold Calling
-  02:52 Adapting to the Modern Buyer Journey
-  05:38 Injecting SMYKM into Emails
-  07:30 The Power of LinkedIn
-  13:29 Importance of Authenticity 
-  15:18 Nurturing Leads 
-  
-  #coldcalling #b2bsales #outbound
-transcribed_date: "2026-05-15"
+    Since the advent of the telephone, cold calling has been a staple in the world of B2B sales. For decades, call volume has served as a primary measure of a salesperson's success. But hold the phone—times (specifically, the buyer's journey) are changing!
+
+    In the modern selling landscape, the old-school cold call is starting to feel a bit frosty. To cut through the noise, buyers need to see personalized outreach and authentic interactions with salespeople. 
+
+    In this landmark 100th episode of Closing Time, Sam McKenna of #samsales Consulting offers a more effective and efficient sales methodology—one that feels less salesy and more intentional. So grab a cup of coffee (or bubbly) and tune in as we bid farewell to the era of cold calling. 
+
+    Want to better align your go-to-market teams? Get a demo of Insightly's CRM today: https://bit.ly/3sITbqV
+
+    Connect with Sam McKenna:
+    https://www.linkedin.com/in/samsalesli/
+
+    Connect with Chip House:
+    https://www.linkedin.com/in/chiphouse/ 
+
+    00:00 Introduction 
+    01:15 Marketing the Death of Cold Calling
+    02:52 Adapting to the Modern Buyer Journey
+    05:38 Injecting SMYKM into Emails
+    07:30 The Power of LinkedIn
+    13:29 Importance of Authenticity 
+    15:18 Nurturing Leads 
+
+    #coldcalling #b2bsales #outbound
+transcribed_date: '2026-05-15'
+path: docs/marketing/growth/research/youtube-transcripts/2026-05-15-sam-mckenna-show-me-you-know-me-closing-time.md
 ---
 
 # 🎉 100th Episode: The End of the Line for Cold Calling (& What's Replacing it) -- with Sam McKenna
 
 ## Metadata
+
 - **Channel**: [Insightly CRM by Unbounce](https://www.youtube.com/@InsightlyCRM)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=5ln1cGTzXTg)
 - **Duration**: 21:25
@@ -70,6 +72,7 @@ transcribed_date: "2026-05-15"
 - **Views**: 765
 
 ## Timestamps
+
 - 0:00 — Introduction
 - 1:15 — Marketing the Death of Cold Calling
 - 2:52 — Adapting to the Modern Buyer Journey

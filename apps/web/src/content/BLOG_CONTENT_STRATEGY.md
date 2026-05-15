@@ -4,6 +4,9 @@ lastModified: 2025-10-03
 status: active
 priority: high
 path: apps/web/src/content/BLOG_CONTENT_STRATEGY.md
+related_docs:
+    - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
+    - /docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
 ---
 
 # BuildOS Blog Content Strategy & Development Roadmap
@@ -174,7 +177,8 @@ path: apps/web/src/content/BLOG_CONTENT_STRATEGY.md
 - [ ] Research keyword opportunities (Ahrefs, SEMrush)
 - [ ] Identify competitor content to outrank
 - [ ] Define primary CTA (signup, feature trial, demo request)
-- [ ] Outline visual content needs (diagrams, screenshots, videos)
+- [ ] Outline visual content needs (real screenshots, diagrams, real screen recordings, or real founder footage)
+- [ ] Identify the receipt behind the post: real product screen, real workflow, real user/founder story, real code/product evidence, or clearly labeled concept
 
 **Writing:**
 
@@ -189,7 +193,7 @@ path: apps/web/src/content/BLOG_CONTENT_STRATEGY.md
 
 - [ ] SEO optimization (meta description, title tag, headings)
 - [ ] Add development notes section at end
-- [ ] Create visual assets (featured image, diagrams)
+- [ ] Create visual assets using real media only (featured image, diagrams, product screenshots)
 - [ ] Proofread and fact-check against codebase
 - [ ] Set `published: false` until final review
 
@@ -204,6 +208,28 @@ path: apps/web/src/content/BLOG_CONTENT_STRATEGY.md
 ---
 
 ## 🎨 Visual Content Production Queue
+
+### Visual Media Rule
+
+BuildOS blog visuals must follow `/docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md`:
+
+- no AI-generated images
+- no AI-generated videos
+- product visuals must be real screenshots or real screen recordings
+- founder/process videos must be real footage
+- diagrams and branded text cards are allowed when clearly explanatory
+
+The blog should make BuildOS feel material and proven, not synthetic.
+
+### Proof And Presence Rule
+
+Every major blog should answer:
+
+- What is the receipt?
+- What real workflow does this come from?
+- What can we show that makes the claim more believable?
+
+Do not turn the blog program into AI-assisted volume. Publish from real product evidence, technical work, customer language, or founder use.
 
 ### Diagrams Needed (Mermaid or Figma)
 
@@ -232,12 +258,16 @@ path: apps/web/src/content/BLOG_CONTENT_STRATEGY.md
 6. Goal creation interface
 7. Multi-project dashboard
 
+Screenshots should come from the actual app or a clearly labeled staging build with realistic data.
+
 ### Video Content Ideas
 
 1. "Your First Brain Dump: 60-Second Walkthrough"
 2. "Phase Generation Strategies Explained"
 3. "Daily Brief Customization Tutorial"
 4. "Brain Dump to Shipped Project in 2 Minutes"
+
+All video ideas require screen capture or real camera footage. Do not create AI-generated videos for blog or social distribution.
 
 ---
 
@@ -375,7 +405,7 @@ path: apps/web/src/content/BLOG_CONTENT_STRATEGY.md
 - [ ] **Clarity**: No jargon without explanation, examples for complex concepts
 - [ ] **Actionability**: Reader can apply learnings immediately
 - [ ] **SEO**: Title, meta description, headers, keywords optimized
-- [ ] **Visuals**: Featured image, at least 2 diagrams/screenshots
+- [ ] **Visuals**: Real featured image or branded card, plus at least 2 diagrams/screenshots; no AI-generated image/video assets
 - [ ] **Links**: 3-5 internal links, 1-2 external authoritative links
 - [ ] **CTA**: Clear next step for reader (signup, try feature, read related)
 - [ ] **Proofread**: No typos, grammar issues, formatting problems

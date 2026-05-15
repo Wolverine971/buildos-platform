@@ -112,10 +112,26 @@
 		if (message.type !== 'user') return false;
 		const content = message.content?.trim() ?? '';
 		if (!content) return false;
+		if (message.metadata?.attachment_only === true) return false;
 		return (
 			getLineCount(content) > USER_MESSAGE_PREVIEW_LINES ||
 			content.length > USER_MESSAGE_COLLAPSE_CHAR_THRESHOLD
 		);
+	}
+
+	function hasVisibleUserText(message: UIMessage): boolean {
+		return Boolean(message.content?.trim()) && message.metadata?.attachment_only !== true;
+	}
+
+	function attachmentPreviewUrl(
+		attachment: NonNullable<UIMessage['attachments']>[number]
+	): string | null {
+		const previewUrl = attachment.metadata?.preview_url;
+		if (typeof previewUrl === 'string') return previewUrl;
+		if (attachment.attachment_kind === 'onto_asset' && attachment.asset_id) {
+			return `/api/onto/assets/${attachment.asset_id}/render?width=160`;
+		}
+		return null;
 	}
 
 	function isUserMessageExpanded(messageId: string): boolean {
@@ -190,14 +206,58 @@
 					<div
 						class="bubble-send max-w-[88%] min-w-0 overflow-hidden rounded-lg border border-accent/30 bg-accent/5 p-3 text-sm font-medium text-foreground shadow-ink sm:max-w-[85%] sm:p-4"
 					>
-						<div
-							class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
-							class:user-message-content-collapsed={isCollapsibleUserMessage(
-								message
-							) && !isUserMessageExpanded(message.id)}
-						>
-							{message.content}
-						</div>
+						{#if message.attachments?.length}
+							<div class="mb-2 grid max-w-full gap-2 sm:grid-cols-2">
+								{#each message.attachments as attachment, index (attachment.asset_id ?? index)}
+									{@const previewUrl = attachmentPreviewUrl(attachment)}
+									<div
+										class="flex min-w-0 gap-2 rounded-lg border border-accent/20 bg-background/70 p-2"
+									>
+										{#if previewUrl}
+											<img
+												src={previewUrl}
+												alt={attachment.file_name ?? 'Attached image'}
+												class="h-14 w-14 shrink-0 rounded-md border border-border object-cover bg-muted"
+												loading="lazy"
+												decoding="async"
+											/>
+										{:else}
+											<div
+												class="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-[0.65rem] font-bold uppercase text-muted-foreground"
+											>
+												IMG
+											</div>
+										{/if}
+										<div class="min-w-0 flex-1">
+											<p class="truncate text-xs font-semibold">
+												{attachment.file_name ?? 'Attached image'}
+											</p>
+											<p
+												class="mt-1 truncate text-[0.68rem] text-muted-foreground"
+											>
+												{attachment.attachment_kind === 'temporary_file'
+													? 'Ready for visual analysis'
+													: attachment.ocr_status === 'complete'
+														? 'OCR ready'
+														: attachment.ocr_status
+															? `OCR ${attachment.ocr_status}`
+															: 'OCR queued'}
+											</p>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+						{#if hasVisibleUserText(message)}
+							<div
+								class="whitespace-pre-wrap break-words [overflow-wrap:anywhere] leading-relaxed"
+								class:user-message-content-collapsed={isCollapsibleUserMessage(
+									message
+								) && !isUserMessageExpanded(message.id)}
+							>
+								{message.content}
+							</div>
+						{/if}
 						<div class="message-footer mt-1">
 							{#if isCollapsibleUserMessage(message)}
 								<button

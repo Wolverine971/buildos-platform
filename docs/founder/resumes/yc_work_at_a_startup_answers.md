@@ -12,7 +12,7 @@ Companion to [David_Wayne_Resume.md](./David_Wayne_Resume.md).
 
 **Long version:**
 
-> Senior full-stack + AI engineer (8 yrs). Shipped the integration layer at Curri (YC S19) connecting Lyft/Uber/DoorDash and four regional carriers. Currently founding BuildOS, an AI-native productivity platform with 80+ beta users. Former USMC Scout Sniper Team Leader.
+> Senior full-stack + AI engineer (8 yrs). Shipped the integration layer at Curri (YC S19) connecting Lyft/Uber/DoorDash and four regional carriers. Currently founding BuildOS, an AI-first project management platform that users and their agents connect to so they work from one shared source of truth. 80+ beta users. Former USMC Scout Sniper Team Leader.
 
 **Short version:**
 
@@ -32,7 +32,7 @@ Companion to [David_Wayne_Resume.md](./David_Wayne_Resume.md).
 
 > At Curri (YC S19) I built and owned the third-party delivery integration layer — the system that let any open delivery dynamically fail over to an external network when no in-network driver was available. I integrated seven partners (Lyft, Uber, DoorDash, Dispatch, Pronto, Material Drop, Superior) into the driver-search algorithm, reverse-engineered every partner's API by hand because public docs were incomplete, and designed a hybrid webhook + polling reconciliation pattern to maintain ground-truth delivery state across partners with inconsistent event coverage. I built the OAuth/credential-exchange flows, pre-fetched pricing quotes so any delivery could be dispatched on demand, and shipped partner-specific contracts for each integration. At scale it routed an estimated 100–200+ deliveries per day per partner, recovering deliveries that would otherwise have lost money on small/unprofitable jobs or left customers stranded — including high-margin specialty equipment (box trucks, stake beds, flatbeds) the in-network fleet couldn't service.
 >
-> More recently, I've been building BuildOS solo — an AI-native productivity platform with a multi-LLM routing layer (OpenRouter primary, OpenAI/Anthropic/Moonshot fallbacks, scored by complexity/latency/cost), agentic chat that reads/writes Google Calendar via tool use, and a Redis-free Supabase job queue using `FOR UPDATE SKIP LOCKED`. 80+ beta users. The interesting work is context engineering — picking the right tools, schemas, and context so LLM tool calls behave reliably in production.
+> More recently, I've been building BuildOS solo. It's an AI-first project management platform that users and their agents connect to so they work from one shared source of truth, with a multi-LLM routing layer (OpenRouter primary, OpenAI/Anthropic/Moonshot fallbacks, scored by complexity/latency/cost), agentic chat that reads/writes Google Calendar via tool use, and a Redis-free Supabase job queue using `FOR UPDATE SKIP LOCKED`. 80+ beta users. The interesting work is context engineering — picking the right tools, schemas, and context so LLM tool calls behave reliably in production.
 
 ---
 
@@ -40,7 +40,7 @@ Companion to [David_Wayne_Resume.md](./David_Wayne_Resume.md).
 
 **What was wrong with the previous answers:**
 
-1. **BuildOS was missing.** The most current, impressive work — solo-built AI-native platform, 80+ beta users, multi-LLM routing, agentic chat — wasn't mentioned. For YC WAAS, founder + AI experience is exactly what YC startups want.
+1. **BuildOS was missing.** The most current, impressive work — solo-built AI-first project management platform, 80+ beta users, multi-LLM routing, agentic chat — wasn't mentioned. For YC WAAS, founder + AI experience is exactly what YC startups want.
 2. **AI/LLM expertise was hidden.** Every YC startup hiring in 2026 cares about this. Real depth in context engineering, agent harnesses, and MCP-style integration was invisible.
 3. **Curri story was too generic.** Old answer said "delivery service providers." Reality: 7 named partners, reverse-engineered APIs, 100–200+ deliveries/day per partner. Concrete > generic.
 4. **Typo in Q2** ("word directly" → "work directly").

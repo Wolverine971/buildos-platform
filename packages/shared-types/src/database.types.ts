@@ -354,6 +354,103 @@ export type Database = {
           },
         ]
       }
+      agent_chat_media_events: {
+        Row: {
+          asset_id: string | null
+          checksum_sha256: string | null
+          content_type: string | null
+          created_at: string
+          event_type: string
+          external_agent_caller_id: string | null
+          file_size_bytes: number | null
+          id: string
+          media_type: string
+          message_id: string | null
+          metadata: Json
+          project_id: string | null
+          session_id: string | null
+          source: string
+          user_id: string
+        }
+        Insert: {
+          asset_id?: string | null
+          checksum_sha256?: string | null
+          content_type?: string | null
+          created_at?: string
+          event_type: string
+          external_agent_caller_id?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          media_type?: string
+          message_id?: string | null
+          metadata?: Json
+          project_id?: string | null
+          session_id?: string | null
+          source?: string
+          user_id: string
+        }
+        Update: {
+          asset_id?: string | null
+          checksum_sha256?: string | null
+          content_type?: string | null
+          created_at?: string
+          event_type?: string
+          external_agent_caller_id?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          media_type?: string
+          message_id?: string | null
+          metadata?: Json
+          project_id?: string | null
+          session_id?: string | null
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_chat_media_events_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "onto_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_chat_media_events_external_agent_caller_id_fkey"
+            columns: ["external_agent_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_chat_media_events_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_chat_media_events_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_chat_media_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_chat_media_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_chat_sessions: {
         Row: {
           completed_at: string | null
@@ -2171,6 +2268,87 @@ export type Database = {
           },
           {
             foreignKeyName: "chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_message_attachments: {
+        Row: {
+          asset_id: string | null
+          attachment_kind: string
+          created_at: string
+          display_order: number
+          id: string
+          media_type: string
+          message_id: string
+          metadata: Json
+          project_id: string | null
+          role: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          asset_id?: string | null
+          attachment_kind: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          media_type: string
+          message_id: string
+          metadata?: Json
+          project_id?: string | null
+          role?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          asset_id?: string | null
+          attachment_kind?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          media_type?: string
+          message_id?: string
+          metadata?: Json
+          project_id?: string | null
+          role?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_message_attachments_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "onto_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_attachments_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_attachments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_attachments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_message_attachments_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"

@@ -7,6 +7,7 @@ import {
 	type JSONProfile,
 	MODEL_CATALOG,
 	OPENROUTER_V2_JSON_MODELS,
+	OPENROUTER_V2_MULTIMODAL_MODELS,
 	OPENROUTER_V2_TEXT_MODELS,
 	OPENROUTER_V2_TOOL_MODELS,
 	OPENROUTER_V2_TOOL_MODELS_EXACTO,
@@ -30,6 +31,8 @@ function laneDefaults(lane: ModelLane, exactoToolsEnabled: boolean): string[] {
 			return exactoToolsEnabled
 				? [...OPENROUTER_V2_TOOL_MODELS_EXACTO]
 				: [...OPENROUTER_V2_TOOL_MODELS];
+		case 'multimodal':
+			return [...OPENROUTER_V2_MULTIMODAL_MODELS];
 		default:
 			return [...OPENROUTER_V2_TEXT_MODELS];
 	}
@@ -51,6 +54,9 @@ function laneProfileModels(params: {
 		return ensureToolCompatibleModels(
 			selectTextModels(params.profile as TextProfile, params.estimatedLength ?? 1500)
 		);
+	}
+	if (params.lane === 'multimodal') {
+		return selectTextModels(params.profile as TextProfile, params.estimatedLength ?? 1500);
 	}
 	return selectTextModels(params.profile as TextProfile, params.estimatedLength ?? 1500);
 }
@@ -80,6 +86,9 @@ function isLaneCompatible(
 	}
 	if (lane === 'tool_calling') {
 		return profile.capabilities?.tools === true;
+	}
+	if (lane === 'multimodal') {
+		return profile.capabilities?.multimodal === true;
 	}
 	return true;
 }
@@ -174,6 +183,9 @@ export function resolveLaneReasoning(lane: ModelLane):
 	}
 	if (lane === 'json') {
 		return { effort: 'low', exclude: true };
+	}
+	if (lane === 'multimodal') {
+		return { exclude: true };
 	}
 	return undefined;
 }

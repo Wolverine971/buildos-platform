@@ -367,7 +367,11 @@ Each blog should generate multiple social angles:
 - one practical angle
 - one contrarian angle
 - one BuildOS-integrated angle
-- one excerpt or screenshot angle
+- one excerpt or real screenshot angle
+
+Media rule: follow `/docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md`. Do not use AI-generated images or AI-generated videos for blog or social assets.
+
+Presence rule: follow `/docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md`. The blog is the receipt, and social is the extraction layer. Do not invent a separate content persona to fill the calendar.
 
 ### Example: Google Calendar Skill
 
@@ -381,7 +385,7 @@ Social derivatives:
 - the most common auth mistake agents make
 - why recurring events break naive agent workflows
 - what BuildOS does differently with calendar context
-- screenshot carousel of the integration path
+- real screenshot carousel of the integration path
 
 ---
 
@@ -396,7 +400,7 @@ Focus on:
 - research
 - source gathering
 - technical outlining
-- screenshot collection
+- real screenshot collection
 - first-draft assembly
 
 ### DJ
@@ -413,7 +417,7 @@ Focus on:
 
 1. Pick the next cluster page.
 2. Create a research brief.
-3. Capture screenshots and technical notes.
+3. Capture real screenshots and technical notes.
 4. Draft the article.
 5. Add BuildOS integration framing.
 6. Publish the article.
@@ -446,7 +450,7 @@ For every major article, produce:
 1. one long-form blog post
 2. one short-form summary post
 3. three to five individual social posts
-4. one screenshot or carousel asset set
+4. one real screenshot or carousel asset set
 5. links to the next article in the progression
 
 This is how the library compounds instead of behaving like isolated content.

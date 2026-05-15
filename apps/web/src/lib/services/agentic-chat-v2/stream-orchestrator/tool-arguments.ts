@@ -65,7 +65,11 @@ export function normalizeToolCallDefaults(
 	_projectId?: string
 ): ChatToolCall {
 	const toolName = toolCall.function?.name?.trim() ?? '';
-	if (!isGatewaySchemaToolName(toolName) && !isGatewaySkillLoadToolName(toolName)) {
+	if (
+		!isGatewaySchemaToolName(toolName) &&
+		!isGatewaySkillLoadToolName(toolName) &&
+		!isGatewaySkillReferenceLoadToolName(toolName)
+	) {
 		return toolCall;
 	}
 
@@ -122,6 +126,40 @@ export function normalizeToolCallDefaults(
 			};
 		}
 
+		if (toolName === 'skill_reference_load') {
+			const skill =
+				typeof args.skill === 'string'
+					? args.skill.trim()
+					: typeof args.id === 'string'
+						? args.id.trim()
+						: typeof args.path === 'string'
+							? args.path.trim()
+							: '';
+			const reference =
+				typeof args.reference === 'string'
+					? args.reference.trim()
+					: typeof args.reference_id === 'string'
+						? args.reference_id.trim()
+						: typeof args.module === 'string'
+							? args.module.trim()
+							: '';
+			if (!skill || !reference) {
+				return toolCall;
+			}
+			const normalizedArgs = { ...args, skill, reference };
+			const serializedArgs = JSON.stringify(normalizedArgs);
+			if (toolCall.function.arguments === serializedArgs) {
+				return toolCall;
+			}
+			return {
+				...toolCall,
+				function: {
+					...toolCall.function,
+					arguments: serializedArgs
+				}
+			};
+		}
+
 		return toolCall;
 	}
 
@@ -155,6 +193,30 @@ export function normalizeToolCallDefaults(
 			return toolCall;
 		}
 		fallbackArgs.skill = skill;
+	}
+
+	if (toolName === 'skill_reference_load') {
+		const skill =
+			typeof fallbackArgs.skill === 'string'
+				? fallbackArgs.skill.trim()
+				: typeof fallbackArgs.id === 'string'
+					? fallbackArgs.id.trim()
+					: typeof fallbackArgs.path === 'string'
+						? fallbackArgs.path.trim()
+						: '';
+		const reference =
+			typeof fallbackArgs.reference === 'string'
+				? fallbackArgs.reference.trim()
+				: typeof fallbackArgs.reference_id === 'string'
+					? fallbackArgs.reference_id.trim()
+					: typeof fallbackArgs.module === 'string'
+						? fallbackArgs.module.trim()
+						: '';
+		if (!skill || !reference) {
+			return toolCall;
+		}
+		fallbackArgs.skill = skill;
+		fallbackArgs.reference = reference;
 	}
 
 	const serializedArgs = JSON.stringify(fallbackArgs);
@@ -541,6 +603,10 @@ function isGatewaySkillLoadToolName(toolName: string): boolean {
 	return toolName === 'skill_load';
 }
 
+function isGatewaySkillReferenceLoadToolName(toolName: string): boolean {
+	return toolName === 'skill_reference_load';
+}
+
 function buildGatewayFallbackArgs(toolName: string, rawArgs: string): Record<string, any> | null {
 	const recoveredObject = recoverToolArgumentObject(rawArgs);
 
@@ -572,6 +638,31 @@ function buildGatewayFallbackArgs(toolName: string, rawArgs: string): Record<str
 							: '';
 			if (skill) {
 				return { ...recoveredObject, skill };
+			}
+		}
+		return null;
+	}
+
+	if (isGatewaySkillReferenceLoadToolName(toolName)) {
+		if (recoveredObject) {
+			const skill =
+				typeof recoveredObject.skill === 'string'
+					? recoveredObject.skill.trim()
+					: typeof recoveredObject.id === 'string'
+						? recoveredObject.id.trim()
+						: typeof recoveredObject.path === 'string'
+							? recoveredObject.path.trim()
+							: '';
+			const reference =
+				typeof recoveredObject.reference === 'string'
+					? recoveredObject.reference.trim()
+					: typeof recoveredObject.reference_id === 'string'
+						? recoveredObject.reference_id.trim()
+						: typeof recoveredObject.module === 'string'
+							? recoveredObject.module.trim()
+							: '';
+			if (skill && reference) {
+				return { ...recoveredObject, skill, reference };
 			}
 		}
 		return null;

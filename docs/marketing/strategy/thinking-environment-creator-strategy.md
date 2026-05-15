@@ -5,6 +5,8 @@ status: draft
 owner: DJ Wayne
 related_docs:
     - /docs/marketing/strategy/anti-ai-show-dont-tell-strategy.md
+    - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
+    - /docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
     - /docs/marketing/recent-marketing-chat.md
     - /docs/marketing/customer-lingo-writer.md
     - /docs/philosophy/braindump-psychology.md
@@ -71,6 +73,27 @@ It implies:
 ---
 
 ## Visual Direction
+
+### Real media rule
+
+BuildOS should not be visualized with AI-generated images or AI-generated videos.
+
+For creator marketing, show:
+
+- actual BuildOS screenshots
+- actual screen recordings
+- real videos of DJ using BuildOS on creator workflows
+- real workspace photos
+- text cards and diagrams that clearly function as explainers
+
+The product should feel like a working surface because the viewer is seeing real work, not generated atmosphere.
+
+The proof posture is:
+
+- raw but not careless
+- selective but not obscure
+- specific enough to feel lived-in
+- grounded in a real project artifact
 
 ### Core visual idea
 
@@ -171,6 +194,8 @@ Use these repeatedly:
 
 Avoid:
 
+- AI-generated images or videos
+- synthetic desk, studio, office, or founder scenes
 - abstract AI imagery
 - robots, sparkles, and magic metaphors as the primary visual
 - generic charts with no project meaning
@@ -446,6 +471,12 @@ Why it works:
 
 - strongest authenticity signal
 - easiest source of infinite content
+- proves the product is not just a marketing concept
+
+Guardrail:
+
+- do not turn this into a daily founder-performance treadmill
+- show it when there is a real artifact, decision, mistake, or change worth seeing
 
 ---
 

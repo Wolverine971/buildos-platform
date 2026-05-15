@@ -46,6 +46,8 @@ export const BUILDOS_AGENT_READ_OPS = [
 	'onto.risk.list',
 	'onto.risk.search',
 	'onto.risk.get',
+	'onto.asset.search',
+	'onto.asset.get',
 	'onto.entity.relationships.get',
 	'onto.entity.links.get',
 	'onto.search',

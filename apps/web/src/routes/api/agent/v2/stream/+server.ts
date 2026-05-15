@@ -28,10 +28,12 @@ import {
 	getUserAgentFromHeaders
 } from '$lib/server/error-tracking';
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
+import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { normalizeTimingMetricSessionReference } from '$lib/services/agentic-chat/shared/timing-metrics';
 import type {
 	ChatContextType,
+	ChatAttachmentRef,
 	ChatToolCall,
 	ChatToolDefinition,
 	ChatToolResult,
@@ -55,13 +57,22 @@ import {
 } from '$lib/services/agentic-chat/state/agent-state-reconciliation-service';
 import {
 	createFastChatSessionService,
+	appendAttachmentContextToMessage,
+	assessLiveVisionImageEligibility,
+	buildAttachmentOnlyDisplayText,
+	buildLiveVisionContentParts,
 	buildFastContextUsageSnapshot,
+	createChatAttachmentRefFromAsset,
 	loadFastChatPromptContext,
 	normalizeFastContextType,
+	normalizeChatAttachmentRefs,
 	composeFastChatHistory,
 	resolveFastChatSurfaceProfileForTurn,
+	sanitizeAttachmentRefsForMetadata,
 	selectFastChatTools,
+	shouldUseLiveVisionForTurn,
 	streamFastChat,
+	type ChatAttachmentAssetRow,
 	type FastAgentStreamRequest,
 	type FastChatHistoryMessage
 } from '$lib/services/agentic-chat-v2';
@@ -120,6 +131,7 @@ import {
 } from '$lib/services/agentic-chat-v2/cancel-reason-channel';
 import { isRunningTurnUniqueViolation } from '$lib/services/agentic-chat-v2/turn-run-conflicts';
 import { sanitizeAssistantFinalText } from '$lib/services/agentic-chat-v2/stream-orchestrator/assistant-text-sanitization';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const logger = createLogger('API:AgentStreamV2');
 const FASTCHAT_STREAM_ENDPOINT = '/api/agent/v2/stream';
@@ -192,6 +204,44 @@ const FASTCHAT_CANCEL_WATCH_INTERVAL_MS = parsePositiveInt(
 	process.env.FASTCHAT_CANCEL_WATCH_INTERVAL_MS,
 	750
 );
+const FASTCHAT_MAX_IMAGE_ATTACHMENTS_PER_TURN = parsePositiveInt(
+	process.env.AGENT_CHAT_MAX_IMAGE_ATTACHMENTS_PER_TURN,
+	4
+);
+const FASTCHAT_ATTACHMENT_TEXT_MAX_CHARS = parsePositiveInt(
+	process.env.AGENT_CHAT_ATTACHMENT_TEXT_MAX_CHARS,
+	2200
+);
+const FASTCHAT_ATTACHMENT_CONTEXT_MAX_CHARS = parsePositiveInt(
+	process.env.AGENT_CHAT_ATTACHMENT_CONTEXT_MAX_CHARS,
+	7000
+);
+const FASTCHAT_LIVE_VISION_ENABLED = parseBooleanFlag(
+	process.env.AGENT_CHAT_LIVE_VISION_ENABLED,
+	false
+);
+const FASTCHAT_LIVE_VISION_MAX_IMAGE_ATTACHMENTS_PER_TURN = Math.min(
+	FASTCHAT_MAX_IMAGE_ATTACHMENTS_PER_TURN,
+	parsePositiveInt(process.env.AGENT_CHAT_LIVE_VISION_MAX_IMAGES_PER_TURN, 2)
+);
+const FASTCHAT_LIVE_VISION_MAX_IMAGE_BYTES = parsePositiveInt(
+	process.env.AGENT_CHAT_LIVE_VISION_MAX_IMAGE_BYTES,
+	8 * 1024 * 1024
+);
+const FASTCHAT_TEMP_IMAGE_MAX_BYTES = parsePositiveInt(
+	process.env.AGENT_CHAT_IMAGE_MAX_BYTES,
+	25 * 1024 * 1024
+);
+const FASTCHAT_LIVE_VISION_RENDER_WIDTH = parsePositiveInt(
+	process.env.AGENT_CHAT_LIVE_VISION_RENDER_WIDTH,
+	1600
+);
+const FASTCHAT_LIVE_VISION_SIGNED_URL_TTL_SECONDS = parsePositiveInt(
+	process.env.AGENT_CHAT_LIVE_VISION_SIGNED_URL_TTL_SECONDS,
+	900
+);
+const FASTCHAT_CHAT_ATTACHMENT_STORAGE_BUCKET = 'onto-assets';
+const FASTCHAT_TEMP_ATTACHMENT_PATH_PREFIX = 'users';
 
 type FastChatTurnAbortReason = FastChatCancelReason | 'timeout';
 
@@ -528,6 +578,362 @@ async function checkDailyBriefAccess(
 		}
 		return { allowed: false, reason: 'exception' };
 	}
+}
+
+function resolveChatAttachmentProjectId(
+	contextType: ChatContextType,
+	streamRequest: FastAgentStreamRequest
+): string | null {
+	const focusProjectId = streamRequest.projectFocus?.projectId?.trim();
+	if (focusProjectId) return focusProjectId;
+	if (contextType === 'project') {
+		const entityId = streamRequest.entity_id?.trim();
+		if (entityId) return entityId;
+	}
+	return null;
+}
+
+async function loadValidatedChatAttachments(params: {
+	supabase: any;
+	userId: string;
+	projectId: string | null;
+	attachments: ChatAttachmentRef[];
+	errorLogger?: ErrorLoggerService;
+}): Promise<
+	{ attachments: ChatAttachmentRef[]; assets: ChatAttachmentAssetRow[] } | { error: Response }
+> {
+	const projectAttachments = params.attachments.filter(
+		(attachment) => attachment.attachment_kind === 'onto_asset'
+	);
+	const temporaryAttachments = params.attachments.filter(
+		(attachment) => attachment.attachment_kind === 'temporary_file'
+	);
+
+	if (projectAttachments.length > 0 && !params.projectId) {
+		return {
+			error: ApiResponse.badRequest(
+				'Project image attachments require a project chat context'
+			)
+		};
+	}
+
+	const attachmentKeys = params.attachments.map((attachment) =>
+		attachment.attachment_kind === 'temporary_file'
+			? `temporary:${attachment.temporary_attachment_id ?? ''}`
+			: `asset:${attachment.asset_id ?? ''}`
+	);
+	if (
+		new Set(attachmentKeys).size !== attachmentKeys.length ||
+		attachmentKeys.some((key) => key.endsWith(':'))
+	) {
+		return { error: ApiResponse.badRequest('Duplicate chat attachments are not allowed') };
+	}
+
+	const projectAssetsById = new Map<string, ChatAttachmentAssetRow>();
+	if (projectAttachments.length > 0 && params.projectId) {
+		const accessResult = await checkProjectAccess(
+			params.supabase,
+			params.projectId,
+			params.errorLogger,
+			{
+				userId: params.userId,
+				endpoint: FASTCHAT_STREAM_ENDPOINT,
+				httpMethod: FASTCHAT_STREAM_METHOD
+			}
+		);
+
+		if (!accessResult.allowed) {
+			return { error: ApiResponse.forbidden('Access denied for the selected project.') };
+		}
+
+		const assetIds = projectAttachments.map((attachment) => String(attachment.asset_id));
+		const { data, error } = await params.supabase
+			.from('onto_assets')
+			.select(
+				'id, project_id, storage_bucket, storage_path, original_filename, content_type, file_size_bytes, width, height, checksum_sha256, ocr_status, extraction_summary, extracted_text'
+			)
+			.in('id', assetIds)
+			.eq('project_id', params.projectId)
+			.eq('kind', 'image')
+			.is('deleted_at', null);
+
+		if (error) {
+			return { error: ApiResponse.databaseError(error) };
+		}
+
+		for (const asset of (data ?? []) as ChatAttachmentAssetRow[]) {
+			projectAssetsById.set(asset.id, asset);
+		}
+		if (projectAssetsById.size !== assetIds.length) {
+			return {
+				error: ApiResponse.forbidden('One or more image attachments are unavailable')
+			};
+		}
+	}
+
+	const storageAdmin = temporaryAttachments.length > 0 ? createAdminSupabaseClient() : null;
+	const orderedAttachments: ChatAttachmentRef[] = [];
+	const orderedAssets: ChatAttachmentAssetRow[] = [];
+
+	for (const [index, attachment] of params.attachments.entries()) {
+		if (attachment.attachment_kind === 'onto_asset') {
+			const asset = projectAssetsById.get(String(attachment.asset_id));
+			if (!asset) {
+				return {
+					error: ApiResponse.forbidden('One or more image attachments are unavailable')
+				};
+			}
+			orderedAssets.push(asset);
+			orderedAttachments.push(
+				createChatAttachmentRefFromAsset(
+					asset,
+					{
+						...attachment,
+						display_order: attachment.display_order ?? index,
+						role: 'analysis_target'
+					},
+					{ maxExtractedTextChars: FASTCHAT_ATTACHMENT_TEXT_MAX_CHARS }
+				)
+			);
+			continue;
+		}
+
+		const temporaryAttachmentId = attachment.temporary_attachment_id?.trim();
+		const storageBucket = attachment.storage_bucket?.trim();
+		const storagePath = attachment.storage_path?.trim();
+		const contentType = attachment.content_type?.trim().toLowerCase() ?? '';
+		const fileSizeBytes = Number(attachment.file_size_bytes ?? 0);
+		const expectedPrefix = `${FASTCHAT_TEMP_ATTACHMENT_PATH_PREFIX}/${params.userId}/chat-temp/${temporaryAttachmentId}/`;
+		if (
+			!temporaryAttachmentId ||
+			storageBucket !== FASTCHAT_CHAT_ATTACHMENT_STORAGE_BUCKET ||
+			!storagePath ||
+			!storagePath.startsWith(expectedPrefix) ||
+			!contentType.startsWith('image/') ||
+			!Number.isFinite(fileSizeBytes) ||
+			fileSizeBytes <= 0 ||
+			fileSizeBytes > FASTCHAT_TEMP_IMAGE_MAX_BYTES
+		) {
+			return { error: ApiResponse.badRequest('Invalid temporary image attachment') };
+		}
+
+		const pathParts = storagePath.split('/');
+		const filename = pathParts.pop();
+		const folder = pathParts.join('/');
+		if (!filename || !storageAdmin) {
+			return { error: ApiResponse.badRequest('Invalid temporary image attachment') };
+		}
+		const { data: listed, error: listError } = await storageAdmin.storage
+			.from(storageBucket)
+			.list(folder, { limit: 1, search: filename });
+		if (listError) {
+			return {
+				error: ApiResponse.internalError(
+					listError,
+					'Failed to verify temporary image attachment'
+				)
+			};
+		}
+		if (!(listed ?? []).some((entry) => entry.name === filename)) {
+			return { error: ApiResponse.badRequest('Temporary image upload is not complete') };
+		}
+
+		const tempAsset: ChatAttachmentAssetRow = {
+			id: temporaryAttachmentId,
+			project_id: null,
+			storage_bucket: storageBucket,
+			storage_path: storagePath,
+			original_filename: attachment.file_name ?? null,
+			content_type: contentType,
+			file_size_bytes: fileSizeBytes,
+			width: attachment.width ?? null,
+			height: attachment.height ?? null,
+			checksum_sha256: attachment.checksum_sha256 ?? null,
+			ocr_status: 'skipped',
+			extraction_summary: null,
+			extracted_text: null
+		};
+		orderedAssets.push(tempAsset);
+		orderedAttachments.push({
+			...attachment,
+			attachment_kind: 'temporary_file',
+			media_type: 'image',
+			temporary_attachment_id: temporaryAttachmentId,
+			storage_bucket: storageBucket,
+			storage_path: storagePath,
+			ocr_status: 'skipped',
+			role: 'analysis_target',
+			display_order: attachment.display_order ?? index
+		});
+	}
+
+	return {
+		assets: orderedAssets,
+		attachments: orderedAttachments
+	};
+}
+
+type LiveVisionSignedImage = {
+	assetId: string;
+	signedUrl: string;
+};
+
+async function recordAgentChatMediaEvent(params: {
+	supabase: any;
+	userId: string;
+	projectId: string | null;
+	sessionId?: string | null;
+	messageId?: string | null;
+	asset: ChatAttachmentAssetRow;
+	eventType: 'live_vision_requested' | 'live_vision_failed';
+	metadata?: Record<string, unknown>;
+}): Promise<void> {
+	const { error } = await params.supabase.from('agent_chat_media_events').insert({
+		user_id: params.userId,
+		project_id: params.projectId,
+		session_id: params.sessionId ?? null,
+		message_id: params.messageId ?? null,
+		asset_id: params.asset.project_id ? params.asset.id : null,
+		source: 'agent_chat_ui',
+		event_type: params.eventType,
+		media_type: 'image',
+		content_type: params.asset.content_type,
+		file_size_bytes: params.asset.file_size_bytes,
+		checksum_sha256: params.asset.checksum_sha256,
+		metadata: {
+			...(params.metadata ?? {}),
+			...(params.asset.project_id ? {} : { temporary_attachment_id: params.asset.id })
+		}
+	});
+
+	if (error) {
+		logger.warn('Failed to record agent chat media event', {
+			error,
+			eventType: params.eventType,
+			assetId: params.asset.id
+		});
+	}
+}
+
+async function createLiveVisionSignedImages(params: {
+	supabase: any;
+	userId: string;
+	projectId: string | null;
+	sessionId: string;
+	assets: ChatAttachmentAssetRow[];
+	maxImages: number;
+	maxImageBytes: number;
+	renderWidth: number;
+	ttlSeconds: number;
+}): Promise<{
+	images: LiveVisionSignedImage[];
+	failedAssetIds: string[];
+	skippedByLimit: number;
+}> {
+	const candidates: ChatAttachmentAssetRow[] = [];
+	const failedAssetIds: string[] = [];
+	for (const asset of params.assets) {
+		const eligibility = assessLiveVisionImageEligibility(asset, {
+			maxBytes: params.maxImageBytes
+		});
+		if (!eligibility.eligible) {
+			failedAssetIds.push(asset.id);
+			await recordAgentChatMediaEvent({
+				supabase: params.supabase,
+				userId: params.userId,
+				projectId: params.projectId,
+				sessionId: params.sessionId,
+				asset,
+				eventType: 'live_vision_failed',
+				metadata: {
+					reason: eligibility.reason,
+					max_file_size_bytes: params.maxImageBytes
+				}
+			});
+			continue;
+		}
+		candidates.push(asset);
+	}
+	const selected = candidates.slice(0, Math.max(0, params.maxImages));
+	const images: LiveVisionSignedImage[] = [];
+	const storageAdmin = createAdminSupabaseClient();
+
+	for (const asset of selected) {
+		const bucket = asset.storage_bucket?.trim();
+		const path = asset.storage_path?.trim();
+		if (!bucket || !path) {
+			failedAssetIds.push(asset.id);
+			await recordAgentChatMediaEvent({
+				supabase: params.supabase,
+				userId: params.userId,
+				projectId: params.projectId,
+				sessionId: params.sessionId,
+				asset,
+				eventType: 'live_vision_failed',
+				metadata: { reason: 'missing_storage_pointer' }
+			});
+			continue;
+		}
+
+		let signedUrlResult: { data?: { signedUrl?: string } | null; error?: unknown } = {};
+		try {
+			const transform =
+				params.renderWidth > 0
+					? {
+							width: params.renderWidth
+						}
+					: undefined;
+			signedUrlResult = await (storageAdmin.storage as any)
+				.from(bucket)
+				.createSignedUrl(path, params.ttlSeconds, transform ? { transform } : undefined);
+		} catch (error) {
+			signedUrlResult = { error };
+		}
+
+		if (signedUrlResult.error || !signedUrlResult.data?.signedUrl) {
+			failedAssetIds.push(asset.id);
+			logger.warn('Failed to create live vision signed image URL', {
+				error: signedUrlResult.error,
+				assetId: asset.id,
+				sessionId: params.sessionId
+			});
+			await recordAgentChatMediaEvent({
+				supabase: params.supabase,
+				userId: params.userId,
+				projectId: params.projectId,
+				sessionId: params.sessionId,
+				asset,
+				eventType: 'live_vision_failed',
+				metadata: { reason: 'signed_url_failed' }
+			});
+			continue;
+		}
+
+		images.push({
+			assetId: asset.id,
+			signedUrl: signedUrlResult.data.signedUrl
+		});
+		await recordAgentChatMediaEvent({
+			supabase: params.supabase,
+			userId: params.userId,
+			projectId: params.projectId,
+			sessionId: params.sessionId,
+			asset,
+			eventType: 'live_vision_requested',
+			metadata: {
+				ttl_seconds: params.ttlSeconds,
+				render_width: params.renderWidth,
+				max_file_size_bytes: params.maxImageBytes,
+				mode: 'current_turn_visual_reasoning'
+			}
+		});
+	}
+
+	return {
+		images,
+		failedAssetIds,
+		skippedByLimit: Math.max(0, candidates.length - selected.length)
+	};
 }
 
 type FastChatContextShiftHint = {
@@ -2553,9 +2959,19 @@ export const POST: RequestHandler = async ({
 		return ApiResponse.badRequest('Invalid request body');
 	}
 
-	const message = streamRequest.message?.trim();
-	if (!message) {
-		return ApiResponse.badRequest('Message is required');
+	const message = typeof streamRequest.message === 'string' ? streamRequest.message.trim() : '';
+	const normalizedAttachmentInput = normalizeChatAttachmentRefs(streamRequest.attachments);
+	if (normalizedAttachmentInput.rejected > 0) {
+		return ApiResponse.badRequest('Unsupported or invalid chat attachment');
+	}
+	const requestAttachmentRefs = normalizedAttachmentInput.attachments;
+	if (!message && requestAttachmentRefs.length === 0) {
+		return ApiResponse.badRequest('Message or attachment is required');
+	}
+	if (requestAttachmentRefs.length > FASTCHAT_MAX_IMAGE_ATTACHMENTS_PER_TURN) {
+		return ApiResponse.badRequest(
+			`You can attach up to ${FASTCHAT_MAX_IMAGE_ATTACHMENTS_PER_TURN} images per message`
+		);
 	}
 	// Lite is the only prompt path (docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md).
 	// The request input `prompt_variant` is no longer read; every session is pinned to lite.
@@ -2583,6 +2999,38 @@ export const POST: RequestHandler = async ({
 				: null;
 
 	const initialContextType = normalizeFastContextType(streamRequest.context_type);
+	const attachmentProjectId = requestAttachmentRefs.length
+		? resolveChatAttachmentProjectId(initialContextType, streamRequest)
+		: null;
+	const attachmentValidation =
+		requestAttachmentRefs.length > 0
+			? await loadValidatedChatAttachments({
+					supabase,
+					userId,
+					projectId: attachmentProjectId,
+					attachments: requestAttachmentRefs,
+					errorLogger
+				})
+			: { attachments: [] as ChatAttachmentRef[], assets: [] as ChatAttachmentAssetRow[] };
+	if ('error' in attachmentValidation) {
+		return attachmentValidation.error;
+	}
+	const chatAttachmentRefs = attachmentValidation.attachments;
+	const chatAttachmentAssets = attachmentValidation.assets;
+	const liveVisionRequested = shouldUseLiveVisionForTurn({
+		message,
+		attachmentCount: chatAttachmentRefs.length,
+		liveVisionEnabled: FASTCHAT_LIVE_VISION_ENABLED
+	});
+	const liveVisionAttachmentCount = liveVisionRequested
+		? Math.min(chatAttachmentRefs.length, FASTCHAT_LIVE_VISION_MAX_IMAGE_ATTACHMENTS_PER_TURN)
+		: 0;
+	const storedUserMessageContent =
+		message || buildAttachmentOnlyDisplayText(chatAttachmentRefs.length);
+	const messageForModel = appendAttachmentContextToMessage(message, chatAttachmentRefs, {
+		maxChars: FASTCHAT_ATTACHMENT_CONTEXT_MAX_CHARS,
+		rawMediaPassedToModel: liveVisionAttachmentCount > 0
+	});
 	if (isDailyBriefContext(initialContextType)) {
 		const briefEntityId = streamRequest.entity_id?.trim();
 		if (!briefEntityId) {
@@ -2867,7 +3315,7 @@ export const POST: RequestHandler = async ({
 					session_id: timingMetricReference.session_id,
 					turn_run_id: turnRunId,
 					context_type: timingContextType,
-					message_length: message.length,
+					message_length: messageForModel.length,
 					message_received_at: new Date(requestStartedAtMs).toISOString(),
 					first_event_at: summary.first_event_at ?? null,
 					first_response_at: summary.first_response_at ?? null,
@@ -3268,7 +3716,7 @@ export const POST: RequestHandler = async ({
 			const toolSelectionStartedAtMs = Date.now();
 			const selectedSurfaceProfile = resolveFastChatSurfaceProfileForTurn({
 				contextType,
-				latestUserMessage: message
+				latestUserMessage: messageForModel
 			});
 			const tools = selectFastChatTools({
 				contextType,
@@ -3357,6 +3805,15 @@ export const POST: RequestHandler = async ({
 			if (streamRunId) {
 				userMessageMetadata.stream_run_id = streamRunId;
 			}
+			if (chatAttachmentRefs.length > 0) {
+				userMessageMetadata.attachment_count = chatAttachmentRefs.length;
+				userMessageMetadata.attachment_only = message.length === 0;
+				userMessageMetadata.live_vision_requested = liveVisionRequested;
+				userMessageMetadata.live_vision_attachment_count = liveVisionAttachmentCount;
+				userMessageMetadata.attachments = sanitizeAttachmentRefsForMetadata(
+					chatAttachmentRefs
+				) as unknown as Json;
+			}
 
 			turnRunId = uuidv4();
 			let turnRunInsertError: unknown = null;
@@ -3372,7 +3829,7 @@ export const POST: RequestHandler = async ({
 					entity_id: entityId ?? null,
 					project_id: timingProjectId ?? null,
 					gateway_enabled: gatewayEnabled,
-					request_message: message,
+					request_message: storedUserMessageContent,
 					status: 'running',
 					history_strategy: historyStrategy,
 					history_compressed: historyCompressed,
@@ -3400,7 +3857,7 @@ export const POST: RequestHandler = async ({
 					entityId,
 					projectId: timingProjectId,
 					activeTurnConflict,
-					requestMessageLength: message.length
+					requestMessageLength: storedUserMessageContent.length
 				};
 				if (activeTurnConflict) {
 					logger.info('FastChat turn insert skipped because a turn is already running', {
@@ -3465,19 +3922,28 @@ export const POST: RequestHandler = async ({
 				sessionId: session.id,
 				userId,
 				role: 'user',
-				content: message,
+				content: storedUserMessageContent,
 				metadata:
 					Object.keys(userMessageMetadata).length > 0 ? userMessageMetadata : undefined,
 				idempotencyKey: clientTurnId ? `turn:${clientTurnId}:user` : undefined
 			});
 			void userMessagePromise
-				.then((persistedUserMessage) => {
+				.then(async (persistedUserMessage) => {
 					if (persistedUserMessage?.id) {
 						queueTurnRunUpdate(
 							{ user_message_id: persistedUserMessage.id },
 							'link_turn_run_user_message',
 							{ messageId: persistedUserMessage.id }
 						);
+						if (chatAttachmentRefs.length > 0) {
+							await sessionService.persistMessageAttachments({
+								sessionId: session.id,
+								userId,
+								messageId: persistedUserMessage.id,
+								projectId: attachmentProjectId,
+								attachments: chatAttachmentRefs
+							});
+						}
 					}
 				})
 				.catch(() => {
@@ -3554,6 +4020,16 @@ export const POST: RequestHandler = async ({
 			let systemPrompt: string | undefined;
 			let litePromptEnvelope: LitePromptEnvelope | null = null;
 			let contextUsageSnapshot: ContextUsageSnapshot | null = null;
+			let currentTurnContent: string | OpenRouterContentPart[] = messageForModel;
+			let liveVisionPrepared = {
+				requested: liveVisionRequested,
+				enabled: FASTCHAT_LIVE_VISION_ENABLED,
+				imageCount: 0,
+				failedImageCount: 0,
+				skippedByLimit: 0,
+				assetIds: [] as string[],
+				failedAssetIds: [] as string[]
+			};
 			let contextCacheAgeSeconds = 0;
 			let promptContext:
 				| {
@@ -3746,10 +4222,53 @@ export const POST: RequestHandler = async ({
 					systemPrompt = litePromptEnvelope.systemPrompt;
 				}
 
+				if (liveVisionRequested && chatAttachmentAssets.length > 0) {
+					const liveVision = await createLiveVisionSignedImages({
+						supabase,
+						userId,
+						projectId: attachmentProjectId,
+						sessionId: session.id,
+						assets: chatAttachmentAssets,
+						maxImages: FASTCHAT_LIVE_VISION_MAX_IMAGE_ATTACHMENTS_PER_TURN,
+						maxImageBytes: FASTCHAT_LIVE_VISION_MAX_IMAGE_BYTES,
+						renderWidth: FASTCHAT_LIVE_VISION_RENDER_WIDTH,
+						ttlSeconds: FASTCHAT_LIVE_VISION_SIGNED_URL_TTL_SECONDS
+					});
+					currentTurnContent = buildLiveVisionContentParts({
+						text: messageForModel,
+						images: liveVision.images.map((image) => ({
+							...image,
+							detail: 'auto'
+						}))
+					});
+					liveVisionPrepared = {
+						requested: true,
+						enabled: FASTCHAT_LIVE_VISION_ENABLED,
+						imageCount: liveVision.images.length,
+						failedImageCount: liveVision.failedAssetIds.length,
+						skippedByLimit: liveVision.skippedByLimit,
+						assetIds: liveVision.images.map((image) => image.assetId),
+						failedAssetIds: liveVision.failedAssetIds
+					};
+					recordTurnEvent('prompt', 'live_vision_prepared', {
+						requested: liveVisionPrepared.requested,
+						enabled: liveVisionPrepared.enabled,
+						image_count: liveVisionPrepared.imageCount,
+						failed_image_count: liveVisionPrepared.failedImageCount,
+						skipped_by_limit: liveVisionPrepared.skippedByLimit,
+						max_images_per_turn: FASTCHAT_LIVE_VISION_MAX_IMAGE_ATTACHMENTS_PER_TURN,
+						max_image_file_size_bytes: FASTCHAT_LIVE_VISION_MAX_IMAGE_BYTES,
+						render_width: FASTCHAT_LIVE_VISION_RENDER_WIDTH,
+						signed_url_ttl_seconds: FASTCHAT_LIVE_VISION_SIGNED_URL_TTL_SECONDS,
+						asset_ids: liveVisionPrepared.assetIds,
+						failed_asset_ids: liveVisionPrepared.failedAssetIds
+					} as Json);
+				}
+
 				const usageSnapshot = buildFastContextUsageSnapshot({
 					systemPrompt,
 					history: historyForModel,
-					userMessage: message
+					userMessage: messageForModel
 				});
 				contextUsageSnapshot = usageSnapshot;
 				emitContextUsage(agentStream, usageSnapshot, {
@@ -3790,7 +4309,7 @@ export const POST: RequestHandler = async ({
 						const promptCostBreakdown = buildPromptCostBreakdown({
 							systemPrompt,
 							history: historyForModel,
-							userMessage: message,
+							userMessage: messageForModel,
 							tools
 						});
 						const promptToolSurfaceReport = buildToolSurfaceSizeReport({
@@ -3812,15 +4331,36 @@ export const POST: RequestHandler = async ({
 							promptVariant,
 							systemPrompt,
 							history: historyForModel,
-							message,
+							message: messageForModel,
 							tools,
 							requestPayload: {
+								message: storedUserMessageContent,
 								session_id: session.id,
 								client_turn_id: clientTurnId ?? null,
 								stream_run_id: streamRunId,
 								context_type: contextType,
 								entity_id: entityId ?? null,
 								project_focus: projectFocus ?? null,
+								attachments:
+									chatAttachmentRefs.length > 0
+										? sanitizeAttachmentRefsForMetadata(chatAttachmentRefs)
+										: [],
+								live_vision: {
+									requested: liveVisionPrepared.requested,
+									enabled: liveVisionPrepared.enabled,
+									raw_media_included: liveVisionPrepared.imageCount > 0,
+									image_count: liveVisionPrepared.imageCount,
+									failed_image_count: liveVisionPrepared.failedImageCount,
+									skipped_by_limit: liveVisionPrepared.skippedByLimit,
+									asset_ids: liveVisionPrepared.assetIds,
+									failed_asset_ids: liveVisionPrepared.failedAssetIds,
+									max_images_per_turn:
+										FASTCHAT_LIVE_VISION_MAX_IMAGE_ATTACHMENTS_PER_TURN,
+									max_image_file_size_bytes: FASTCHAT_LIVE_VISION_MAX_IMAGE_BYTES,
+									render_width: FASTCHAT_LIVE_VISION_RENDER_WIDTH,
+									signed_url_ttl_seconds:
+										FASTCHAT_LIVE_VISION_SIGNED_URL_TTL_SECONDS
+								},
 								prompt_variant: promptVariant,
 								voice_note_group_id: voiceGroupId ?? null,
 								prepared_prompt_id: preparedPromptId,
@@ -3917,7 +4457,7 @@ export const POST: RequestHandler = async ({
 					: FASTCHAT_GATEWAY_MAX_TOOL_ROUNDS;
 			const conversationHistoryForTools = [
 				...historyForModel,
-				{ role: 'user', content: message }
+				{ role: 'user', content: messageForModel }
 			] as ServiceContext['conversationHistory'];
 
 			const {
@@ -3945,7 +4485,8 @@ export const POST: RequestHandler = async ({
 				streamRunId,
 				clientTurnId,
 				history: historyForModel,
-				message,
+				message: messageForModel,
+				currentTurnContent,
 				signal: turnAbortController.signal,
 				systemPrompt,
 				maxToolRounds: Math.max(1, gatewayRoundCap),
@@ -4441,7 +4982,7 @@ export const POST: RequestHandler = async ({
 				if (!streamDetached) {
 					const cancelledLastTurnContext = buildLastTurnContext({
 						assistantText: assistantContent ?? '',
-						userMessage: message,
+						userMessage: storedUserMessageContent,
 						contextType: effectiveContextType,
 						entityId: effectiveEntityId,
 						contextShift: latestContextShift,
@@ -4630,7 +5171,7 @@ export const POST: RequestHandler = async ({
 
 			const lastTurnContext = buildLastTurnContext({
 				assistantText: persistedAssistantContent,
-				userMessage: message,
+				userMessage: storedUserMessageContent,
 				contextType: effectiveContextType,
 				entityId: effectiveEntityId,
 				contextShift: latestContextShift,
@@ -4667,7 +5208,7 @@ export const POST: RequestHandler = async ({
 					content: item.content,
 					...(item.tool_call_id ? { tool_call_id: item.tool_call_id } : {})
 				})),
-				{ role: 'user', content: message },
+				{ role: 'user', content: messageForModel },
 				...buildToolMessageSnapshotsForReconciliation(
 					normalizedExecutions,
 					executionToolSummaries

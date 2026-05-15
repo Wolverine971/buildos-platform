@@ -36,12 +36,26 @@
 		-webkit-tap-highlight-color: transparent;
 	}
 
-	input,
+	input:not([type='date']):not([type='datetime-local']):not([type='time']):not(
+			[type='month']
+		):not([type='week']),
 	textarea,
 	select {
 		font-size: max(16px, 1rem);
 		-webkit-appearance: none;
 		appearance: none;
+		touch-action: manipulation;
+	}
+
+	input[type='date'],
+	input[type='datetime-local'],
+	input[type='time'],
+	input[type='month'],
+	input[type='week'] {
+		font-size: max(16px, 1rem);
+		-webkit-appearance: auto;
+		appearance: auto;
+		color-scheme: light dark;
 		touch-action: manipulation;
 	}
 

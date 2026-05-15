@@ -1,0 +1,30 @@
+# docs/research/youtube-library/skill-drafts/build-quality-ui-ux/lineage.yaml
+name: build-quality-ui-ux
+runtime_skill_id: build_quality_ui_ux
+status: promoted-runtime-root
+created: 2026-05-15
+parent: null
+children:
+    - ui_ux_quality_review
+    - visual_craft_fundamentals
+    - accessibility_inclusive_ui_review
+    - marketing_site_design_review
+    - calm_software_design_review
+    - delightful_product_review
+    - design_system_architecture_review
+    - information_architecture_review
+    - usability_quick_research
+planned_children:
+    - ui_implementation_verification
+new_transcripts:
+    - docs/research/youtube-library/transcripts/2026-05-15_brad-frost_design-systems-product-outcomes.md
+    - docs/research/youtube-library/transcripts/2026-05-15_nathan-curtis_design-systems-roadmaps-backlogs.md
+    - docs/research/youtube-library/transcripts/2026-05-15_erika-hall_research-at-scale.md
+new_analyses:
+    - docs/research/youtube-library/analyses/2026-05-15_brad-frost_design-systems-product-outcomes_analysis.md
+    - docs/research/youtube-library/analyses/2026-05-15_nathan-curtis_design-systems-operations_analysis.md
+    - docs/research/youtube-library/analyses/2026-05-15_erika-hall_research-at-scale_analysis.md
+notes:
+    - Root skill is an architecture and routing layer, not a mega-checklist.
+    - Source-heavy detail lives in references and research docs.
+    - Information architecture and implementation verification are the next major source gaps.

@@ -144,7 +144,7 @@ The audit is sequential. Each step lists the **principle** (human view) followed
 
 - Tag the format the content is borrowing. If the answer is "none, it's original," flag as high-risk.
 - Verify the format has measurable evidence of working (e.g., 3+ accounts pulling >100K views with this format in the last 90 days).
-- Score brand fit per format on three dimensions: voice match, value match, audience match. Reject if any score \< 6/10.
+- Score brand fit per format on three dimensions: voice match, value match, audience match. Reject if any score &lt; 6/10.
 - Reject any format candidate that fails `slop-format-rejection` (see §7).
 - Cite primitive ID `format-recognition-audit` on findings.
 

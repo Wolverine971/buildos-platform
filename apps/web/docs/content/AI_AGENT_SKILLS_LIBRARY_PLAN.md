@@ -43,7 +43,7 @@ BuildOS should extend that model in a public-web direction:
 
 - indexed pages instead of repo-only skills
 - deeper research and implementation notes
-- screenshots and UI walkthroughs
+- real screenshots and UI walkthroughs
 - recommendation sections, not just instructions
 - explicit freshness signals
 - BuildOS-specific guidance for turning external activity into durable project context
@@ -58,7 +58,7 @@ Start inside the existing blog system and treat the first release as a new conte
 
 - draft and strategy docs in `apps/web/docs/content/`
 - published articles in `apps/web/src/content/blogs/agent-skills/`
-- screenshots and static assets in `apps/web/static/blogs/agent-skills/<slug>/`
+- real screenshots and static assets in `apps/web/static/blogs/agent-skills/<slug>/`
 
 This is the fastest path because the repo already has:
 
@@ -174,6 +174,10 @@ Those should share one metadata model and one linking system.
 
 Every skill article should follow a predictable template.
 
+Media rule: follow `/docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md`. Do not use AI-generated images or AI-generated videos. Use real screenshots, real screen recordings, real founder footage, or clearly explanatory diagrams/text cards.
+
+Presence rule: follow `/docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md`. Every article should have an implementation receipt: a tested workflow, a real UI path, real docs research, or a BuildOS integration example.
+
 ### Required Sections
 
 1. **What this skill does**
@@ -185,7 +189,7 @@ Every skill article should follow a predictable template.
 7. **How to use this in your own agent stack**
 8. **How BuildOS handles or benefits from this skill**
 9. **Step-by-step workflow**
-10. **Screenshots of key UI paths**
+10. **Real screenshots of key UI paths**
 11. **Common failure modes and edge cases**
 12. **Security and privacy recommendations**
 13. **Last updated / what changed**
@@ -197,7 +201,7 @@ Every skill article should follow a predictable template.
 - Recommendations should be explicit, not implied.
 - Include what to avoid, not just what to do.
 - Prefer operational guidance over generic summaries.
-- Where the UI matters, include screenshots with captions.
+- Where the UI matters, include real screenshots with captions.
 - Where the API matters, explain scopes, quotas, pagination, retries, and common error states.
 - The article must stand on its own for readers using other tools.
 - BuildOS sections should demonstrate the integrated implementation, not replace the generic guidance.
@@ -298,6 +302,8 @@ apps/web/static/blogs/agent-skills/<slug>/
 
 Keep screenshots named for stable UI steps, not ad hoc exports.
 
+Screenshots must come from the real UI or a clearly labeled staging build. Do not create AI-generated screenshots, diagrams that look like screenshots, or synthetic product walkthrough videos.
+
 ### 5. Publish The First 3 Cornerstone Skills
 
 Recommended first wave:
@@ -319,14 +325,14 @@ Use a two-track workflow: research first, publish second.
 1. Pick one skill cluster.
 2. Gather official docs, auth details, quotas, scopes, and edge cases.
 3. Test the workflow end to end.
-4. Capture screenshots while testing.
+4. Capture real screenshots while testing.
 5. Write recommendations based on actual tradeoffs.
 
 ### Publish Track
 
 1. Draft a planning brief in `apps/web/docs/content/`
 2. Draft the article in `apps/web/src/content/blogs/agent-skills/`
-3. Add screenshots to `apps/web/static/blogs/agent-skills/<slug>/`
+3. Add real screenshots to `apps/web/static/blogs/agent-skills/<slug>/`
 4. Verify metadata, internal links, and references
 5. Publish with a real `lastmod`
 6. Add follow-up stack links from adjacent skills

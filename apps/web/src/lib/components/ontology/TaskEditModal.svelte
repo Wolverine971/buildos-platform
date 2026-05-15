@@ -279,6 +279,10 @@
 	}
 
 	const detailsFormId = $derived(`task-edit-${taskId}-details`);
+	const titleInputId = $derived(`task-edit-${taskId}-title`);
+	const descriptionInputId = $derived(`task-edit-${taskId}-description`);
+	const startDateInputId = $derived(`task-edit-${taskId}-start-date`);
+	const dueDateInputId = $derived(`task-edit-${taskId}-due-date`);
 
 	const seriesMeta = $derived.by(() => {
 		if (!task?.props || typeof task.props !== 'object') return null;
@@ -837,7 +841,7 @@
 									<div class="space-y-2">
 										<div class="flex items-end justify-between gap-2 mb-2">
 											<label
-												for="title"
+												for={titleInputId}
 												class="block text-sm font-semibold text-foreground"
 											>
 												Title
@@ -862,7 +866,7 @@
 											</button>
 										</div>
 										<TextInput
-											id="title"
+											id={titleInputId}
 											bind:value={title}
 											inputmode="text"
 											enterkeyhint="next"
@@ -886,12 +890,12 @@
 
 									<FormField
 										label="Description"
-										labelFor="description"
+										labelFor={descriptionInputId}
 										uppercase={false}
 										showOptional={false}
 									>
 										<Textarea
-											id="description"
+											id={descriptionInputId}
 											bind:value={description}
 											enterkeyhint="next"
 											placeholder="Add the context, expected outcome, or handoff notes..."
@@ -1090,15 +1094,14 @@
 												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
 											>
 												<label
-													for="start-date"
+													for={startDateInputId}
 													class="text-xs font-medium text-muted-foreground"
 												>
 													Start
 												</label>
 												<TextInput
-													id="start-date"
+													id={startDateInputId}
 													type="datetime-local"
-													inputmode="numeric"
 													enterkeyhint="next"
 													bind:value={startAt}
 													disabled={isSaving}
@@ -1110,15 +1113,14 @@
 												class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-2"
 											>
 												<label
-													for="due-date"
+													for={dueDateInputId}
 													class="text-xs font-medium text-muted-foreground"
 												>
 													Due
 												</label>
 												<TextInput
-													id="due-date"
+													id={dueDateInputId}
 													type="datetime-local"
-													inputmode="numeric"
 													enterkeyhint="done"
 													bind:value={dueAt}
 													disabled={isSaving}

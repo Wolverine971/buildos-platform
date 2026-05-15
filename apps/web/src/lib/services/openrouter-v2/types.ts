@@ -1,12 +1,28 @@
 // apps/web/src/lib/services/openrouter-v2/types.ts
 
-export type ModelLane = 'text' | 'json' | 'tool_calling';
+export type ModelLane = 'text' | 'json' | 'tool_calling' | 'multimodal';
 
 export type OpenRouterChatRole = 'system' | 'user' | 'assistant' | 'tool';
 
+export type OpenRouterTextContentPart = {
+	type: 'text';
+	text: string;
+};
+
+export type OpenRouterImageUrlContentPart = {
+	type: 'image_url';
+	image_url: {
+		url: string;
+		detail?: 'auto' | 'low' | 'high';
+	};
+};
+
+export type OpenRouterContentPart = OpenRouterTextContentPart | OpenRouterImageUrlContentPart;
+export type OpenRouterMessageContent = string | OpenRouterContentPart[];
+
 export type OpenRouterChatMessage = {
 	role: OpenRouterChatRole | string;
-	content: unknown;
+	content: OpenRouterMessageContent | unknown;
 	tool_calls?: unknown[];
 	tool_call_id?: string;
 	reasoning_content?: string;

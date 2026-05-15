@@ -38,6 +38,7 @@ import {
 	validateProjectCreateArgs
 } from '../tools/core/project-create-args';
 import { loadSkill } from '../tools/skills/skill-load';
+import { loadSkillReference } from '../tools/skills/skill-reference-load';
 import { libriGetCapabilitySchema, libriOverview, libriSearchCapabilities } from '../tools/libri';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { dev } from '$app/environment';
@@ -53,6 +54,7 @@ import {
 const logger = createLogger('ToolExecutionService');
 const GATEWAY_TOOL_NAMES = new Set([
 	'skill_load',
+	'skill_reference_load',
 	'tool_search',
 	'tool_schema',
 	'libri_overview',
@@ -678,6 +680,27 @@ export class ToolExecutionService implements BaseService {
 				format: args.format === 'full' ? 'full' : 'short',
 				include_examples: args.include_examples !== false
 			});
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'skill_reference_load') {
+			const skill =
+				typeof args.skill === 'string'
+					? args.skill
+					: typeof args.id === 'string'
+						? args.id
+						: typeof args.path === 'string'
+							? args.path
+							: '';
+			const reference =
+				typeof args.reference === 'string'
+					? args.reference
+					: typeof args.reference_id === 'string'
+						? args.reference_id
+						: typeof args.module === 'string'
+							? args.module
+							: '';
+			const result = loadSkillReference(skill, reference);
 			return { success: true, data: result, toolName, toolCallId: 'gateway' };
 		}
 

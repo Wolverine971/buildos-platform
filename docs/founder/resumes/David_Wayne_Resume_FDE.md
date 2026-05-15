@@ -11,7 +11,7 @@ djwayne35@gmail.com · (202) 869-5478 · [github.com/Wolverine971](https://githu
 
 ## Summary
 
-Senior full-stack engineer with 8+ years shipping production systems, including substantial work on **DoD and federal programs** and a track record of building new products end-to-end as the only engineer in the room. Founder of **BuildOS**, an AI-native productivity platform built solo from scratch and shipped to 80+ beta users — full ownership of a TypeScript distributed system on Vercel + Railway with a Postgres-backed job queue and a multi-LLM routing layer. Prior delivery against federal customers — **DoD military justice case management, US Air Force intelligence knowledge portal, US Census Bureau search platform** — including direct demos and prototype iteration with government stakeholders. At Curri (YC S19) reverse-engineered seven third-party delivery APIs and owned the integration layer end-to-end. **Former US Marine Corps Scout Sniper Team Leader** with combat deployment experience; US citizen, eligible to obtain a US security clearance with sponsorship; comfortable traveling to customer sites.
+Senior full-stack engineer with 8+ years shipping production systems, including substantial work on **DoD and federal programs** and a track record of building new products end-to-end as the only engineer in the room. Founder of **BuildOS**, an AI-first project management platform that users and their agents connect to so they work from one shared source of truth. Built solo from scratch and shipped to 80+ beta users, with full ownership of a TypeScript distributed system on Vercel + Railway with a Postgres-backed job queue and a multi-LLM routing layer. Prior delivery against federal customers — **DoD military justice case management, US Air Force intelligence knowledge portal, US Census Bureau search platform** — including direct demos and prototype iteration with government stakeholders. At Curri (YC S19) reverse-engineered seven third-party delivery APIs and owned the integration layer end-to-end. **Former US Marine Corps Scout Sniper Team Leader** with combat deployment experience; US citizen, eligible to obtain a US security clearance with sponsorship; comfortable traveling to customer sites.
 
 ---
 
@@ -29,7 +29,7 @@ Senior full-stack engineer with 8+ years shipping production systems, including 
 
 ### BuildOS — Founder & Engineer · Mar 2025 – Present
 
-_AI-native productivity platform · [build-os.com](https://build-os.com) · 80+ beta users_
+_AI-first project management platform that users and their agents connect to so they work from one shared source of truth · [build-os.com](https://build-os.com) · 80+ beta users_
 
 - Designed and shipped the full platform solo: SvelteKit web app on Vercel, Node.js worker service on Railway, Turborepo monorepo (pnpm workspaces), Supabase Postgres with row-level security. Full ownership across product, design, and engineering.
 - Shipped the user-facing surface to 80+ beta users — brain-dump capture (text + voice), project and task views, a real-time streaming chat UI, daily-brief email composition, and SSE-driven progress for long-running jobs — and iterated continuously against direct user feedback.

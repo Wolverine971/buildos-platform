@@ -143,7 +143,9 @@ Claude Code command: use `/youtube-to-skill` when the source is a YouTube URL, t
 
 8. **Publish and atomize.**
     - Publish under `agent-skills`.
-    - Extract social posts, examples, and screenshots from the guide.
+    - Extract social posts, examples, and real screenshots from the guide.
+    - Do not use AI-generated images or AI-generated videos; follow `/docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md`.
+    - Start from implementation receipts, not content volume; follow `/docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md`.
 
 ## Immediate Next Skills To Outline
 

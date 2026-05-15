@@ -22,11 +22,14 @@
 	import AgentComposer from './AgentComposer.svelte';
 	import AgentAutomationWizard from './AgentAutomationWizard.svelte';
 	import AgentMessageList from './AgentMessageList.svelte';
+	import ProjectImageLibrary from '$lib/components/ontology/ProjectImageLibrary.svelte';
+	import type { OntologyImageAsset } from '$lib/components/ontology/image-assets/types';
 	import { SSEProcessor, type StreamCallbacks } from '$lib/utils/sse-processor';
 	import type {
 		ChatSession,
 		ChatContextType,
 		ChatRole,
+		ChatAttachmentRef,
 		AgentSSEMessage,
 		ContextUsageSnapshot,
 		AgentTimingSummary,
@@ -44,6 +47,7 @@
 		type ActivityEntry,
 		type ActivityType,
 		type AgentLoopState,
+		type AgentChatImageAttachment,
 		type AgentProjectSummary,
 		type AgentToAgentStep,
 		type DataMutationSummary,
@@ -118,6 +122,13 @@
 		projectFocus?: ProjectFocus | null;
 	}
 
+	const AGENT_CHAT_MAX_IMAGE_ATTACHMENTS = 4;
+	const AGENT_CHAT_MAX_IMAGE_BYTES = 25 * 1024 * 1024;
+	const AGENT_CHAT_MAX_CONCURRENT_IMAGE_UPLOADS = 2;
+	const AGENT_CHAT_OCR_POLL_INITIAL_DELAY_MS = 2500;
+	const AGENT_CHAT_OCR_POLL_MAX_DELAY_MS = 10_000;
+	const AGENT_CHAT_OCR_POLL_MAX_ATTEMPTS = 10;
+
 	interface ClientStreamTimingState {
 		runId: number;
 		sendStartedAtMs: number;
@@ -187,6 +198,14 @@
 		return projectFocus ?? defaultProjectFocus;
 	});
 
+	const attachmentProjectId = $derived.by(() => {
+		return (
+			resolvedProjectFocus?.projectId ??
+			(isProjectContext(selectedContextType) ? selectedEntityId : null) ??
+			null
+		);
+	});
+
 	// Device detection for mobile UX
 	// On mobile/touch devices, Enter should not send messages (allows natural line breaks)
 	const isTouchDevice = $derived(
@@ -203,6 +222,8 @@
 	let activeTransportStreamRunId = $state<string | null>(null);
 	let activeClientTurnId = $state<string | null>(null);
 	let inputValue = $state('');
+	let imageAttachments = $state<AgentChatImageAttachment[]>([]);
+	let showExistingImagePicker = $state(false);
 	let error = $state<string | null>(null);
 	let currentActivity = $state<string>('');
 	let userHasScrolled = $state(false);
@@ -214,6 +235,16 @@
 	let hasSentMessage = $state(false);
 	const pendingToolResults = new Map<string, PendingToolStatus>(); // Tool results that arrive before tool_call
 	const hiddenToolCallIds = new Set<string>();
+	const activeImagePreviewUrls = new Set<string>();
+	const imageUploadQueue: Array<() => Promise<void>> = [];
+	let activeImageUploadCount = 0;
+	let imageAttachmentUploadGeneration = 0;
+
+	const selectedAttachmentAssetIds = $derived.by(() =>
+		imageAttachments
+			.map((attachment) => attachment.assetId)
+			.filter((id): id is string => Boolean(id))
+	);
 
 	// Track setTimeout IDs for cleanup to prevent memory leaks
 	const pendingTimeouts = new Set<ReturnType<typeof setTimeout>>();
@@ -400,6 +431,9 @@
 	let sessionBootstrapController: AbortController | null = null;
 	let sessionBootstrapPromise: Promise<ChatSession | null> | null = null;
 	const isSessionBusy = $derived(isLoadingSession || isPreparingSession);
+	const canAttachExistingProjectImages = $derived(
+		Boolean(attachmentProjectId) && !isSessionBusy && !isStreaming
+	);
 	const sessionStatusLabel = $derived.by(() => {
 		if (isLoadingSession) return 'Loading session';
 		if (isPreparingSession) return 'Preparing session';
@@ -645,13 +679,31 @@
 	// Note: voice.isRecording is NOT included - clicking send while recording will
 	// stop the recording and auto-send after transcription completes.
 	// Streaming only blocks send on non-touch devices (touch uses Send & Stop).
+	const hasSendableImageAttachments = $derived(
+		imageAttachments.length > 0 &&
+			imageAttachments.every(
+				(attachment) =>
+					Boolean(attachment.assetId) &&
+					(attachment.status === 'ready' || attachment.status === 'deduped')
+			)
+	);
+	const hasBlockedImageAttachments = $derived(
+		imageAttachments.some(
+			(attachment) =>
+				attachment.status === 'hashing' ||
+				attachment.status === 'uploading' ||
+				attachment.status === 'processing' ||
+				attachment.status === 'error'
+		)
+	);
 	const isSendDisabled = $derived(
 		agentToAgentMode ||
 			!selectedContextType ||
 			isSessionBusy ||
 			activeRestoredTurnRunId !== null ||
 			isStartingStream ||
-			(!inputValue.trim() && !voice.isRecording) || // Allow send if recording (will get transcribed text)
+			hasBlockedImageAttachments ||
+			(!inputValue.trim() && !voice.isRecording && !hasSendableImageAttachments) || // Allow send if recording (will get transcribed text)
 			(isStreaming && !isTouchDevice) ||
 			voice.isInitializing ||
 			voice.isStopping ||
@@ -669,6 +721,10 @@
 		currentSession = null;
 		currentActivity = '';
 		inputValue = '';
+		imageAttachments = [];
+		showExistingImagePicker = false;
+		cancelQueuedImageUploads();
+		revokeAllImagePreviewUrls();
 		error = null;
 		userHasScrolled = false;
 		currentAssistantMessageId = null;
@@ -1665,6 +1721,9 @@
 			activeClientTurnId = null;
 		}
 		voice.cleanup();
+		imageAttachments = [];
+		cancelQueuedImageUploads();
+		revokeAllImagePreviewUrls();
 
 		// Clear any pending tool results to prevent memory leaks
 		pendingToolResults.clear();
@@ -1713,6 +1772,574 @@
 		}
 	}
 
+	function resolveAttachmentProjectId(): string | null {
+		return attachmentProjectId;
+	}
+
+	function updateImageAttachment(attachmentId: string, patch: Partial<AgentChatImageAttachment>) {
+		imageAttachments = imageAttachments.map((attachment) =>
+			attachment.id === attachmentId ? { ...attachment, ...patch } : attachment
+		);
+	}
+
+	function hasImageAttachment(attachmentId: string): boolean {
+		return imageAttachments.some((attachment) => attachment.id === attachmentId);
+	}
+
+	function revokePreviewUrl(url: string | null | undefined) {
+		if (!url || !activeImagePreviewUrls.has(url)) return;
+		URL.revokeObjectURL(url);
+		activeImagePreviewUrls.delete(url);
+	}
+
+	function revokeAllImagePreviewUrls() {
+		for (const url of activeImagePreviewUrls) {
+			URL.revokeObjectURL(url);
+		}
+		activeImagePreviewUrls.clear();
+	}
+
+	function cancelQueuedImageUploads() {
+		imageAttachmentUploadGeneration += 1;
+		imageUploadQueue.length = 0;
+	}
+
+	function scheduleNextImageUpload() {
+		if (activeImageUploadCount >= AGENT_CHAT_MAX_CONCURRENT_IMAGE_UPLOADS) return;
+		const nextUpload = imageUploadQueue.shift();
+		if (!nextUpload) return;
+
+		activeImageUploadCount += 1;
+		void nextUpload()
+			.catch((err) => {
+				if (dev) console.warn('[AgentChat] Image attachment upload failed:', err);
+			})
+			.finally(() => {
+				activeImageUploadCount = Math.max(0, activeImageUploadCount - 1);
+				scheduleNextImageUpload();
+			});
+	}
+
+	function enqueueImageUpload(task: () => Promise<void>) {
+		imageUploadQueue.push(task);
+		scheduleNextImageUpload();
+	}
+
+	function removeImageAttachment(attachmentId: string) {
+		const attachment = imageAttachments.find((item) => item.id === attachmentId);
+		revokePreviewUrl(attachment?.previewUrl);
+		imageAttachments = imageAttachments.filter((item) => item.id !== attachmentId);
+	}
+
+	function compactAttachmentText(value: unknown, maxChars = 1200): string | null {
+		if (typeof value !== 'string') return null;
+		const normalized = value.replace(/\s+/g, ' ').trim();
+		if (!normalized) return null;
+		return normalized.length <= maxChars
+			? normalized
+			: `${normalized.slice(0, Math.max(0, maxChars - 3))}...`;
+	}
+
+	function isTerminalOcrStatus(status: unknown): boolean {
+		return status === 'complete' || status === 'failed' || status === 'skipped';
+	}
+
+	function shouldPollOcrStatus(status: unknown): boolean {
+		return !isTerminalOcrStatus(status);
+	}
+
+	function describeAttachmentOcrStatus(status: unknown): string {
+		switch (status) {
+			case 'complete':
+				return 'OCR ready';
+			case 'failed':
+				return 'OCR failed';
+			case 'skipped':
+				return 'OCR skipped';
+			case 'processing':
+				return 'Extracting text...';
+			case 'pending':
+				return 'OCR queued';
+			default:
+				return 'OCR queued';
+		}
+	}
+
+	function applyImageAttachmentAssetSnapshot(attachmentId: string, asset: Record<string, any>) {
+		const current = imageAttachments.find((attachment) => attachment.id === attachmentId);
+		if (!current || current.assetId !== asset.id) return;
+		updateImageAttachment(attachmentId, {
+			status: current.status === 'deduped' ? 'deduped' : 'ready',
+			statusLabel: describeAttachmentOcrStatus(asset.ocr_status),
+			ocrStatus: asset.ocr_status ?? current.ocrStatus ?? 'pending',
+			extractionSummary: compactAttachmentText(asset.extraction_summary, 700),
+			extractedTextPreview: compactAttachmentText(asset.extracted_text)
+		});
+		applyMessageAttachmentAssetSnapshot(asset);
+	}
+
+	function assetRenderPreviewUrl(assetId: string): string {
+		return `/api/onto/assets/${assetId}/render?width=160`;
+	}
+
+	function applyMessageAttachmentAssetSnapshot(asset: Record<string, any>) {
+		if (!asset?.id) return;
+		const assetId = String(asset.id);
+		messages = messages.map((message) => {
+			if (!message.attachments?.length) return message;
+			let messageDidUpdate = false;
+			const attachments = message.attachments.map((attachment) => {
+				if (attachment.asset_id !== assetId) return attachment;
+				messageDidUpdate = true;
+				return {
+					...attachment,
+					file_name: asset.original_filename ?? attachment.file_name ?? null,
+					content_type: asset.content_type ?? attachment.content_type ?? null,
+					file_size_bytes: asset.file_size_bytes ?? attachment.file_size_bytes ?? null,
+					width: asset.width ?? attachment.width ?? null,
+					height: asset.height ?? attachment.height ?? null,
+					checksum_sha256: asset.checksum_sha256 ?? attachment.checksum_sha256 ?? null,
+					ocr_status: asset.ocr_status ?? attachment.ocr_status ?? null,
+					extraction_summary:
+						compactAttachmentText(asset.extraction_summary, 700) ??
+						attachment.extraction_summary ??
+						null,
+					extracted_text_preview:
+						compactAttachmentText(asset.extracted_text) ??
+						attachment.extracted_text_preview ??
+						null,
+					metadata: {
+						...(attachment.metadata ?? {}),
+						preview_url: assetRenderPreviewUrl(assetId)
+					}
+				};
+			});
+			return messageDidUpdate ? { ...message, attachments } : message;
+		});
+	}
+
+	function scheduleImageAttachmentOcrPoll(
+		attachmentId: string,
+		assetId: string,
+		ocrStatus: unknown,
+		attempt = 0
+	) {
+		if (!browser || !assetId || !shouldPollOcrStatus(ocrStatus)) return;
+		if (attempt >= AGENT_CHAT_OCR_POLL_MAX_ATTEMPTS) {
+			updateImageAttachment(attachmentId, {
+				statusLabel: 'OCR still running'
+			});
+			return;
+		}
+
+		const delay = Math.min(
+			AGENT_CHAT_OCR_POLL_MAX_DELAY_MS,
+			AGENT_CHAT_OCR_POLL_INITIAL_DELAY_MS + attempt * 1000
+		);
+		setTrackedTimeout(() => {
+			void pollImageAttachmentOcrStatus(attachmentId, assetId, attempt + 1);
+		}, delay);
+	}
+
+	async function pollImageAttachmentOcrStatus(
+		attachmentId: string,
+		assetId: string,
+		attempt: number
+	) {
+		const current = imageAttachments.find((attachment) => attachment.id === attachmentId);
+		if (!current || current.assetId !== assetId || !shouldPollOcrStatus(current.ocrStatus)) {
+			return;
+		}
+
+		try {
+			const response = await fetch(`/api/onto/assets/${assetId}`);
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error ?? 'Failed to refresh attachment OCR');
+			}
+			const asset = payload?.data?.asset;
+			if (!asset?.id || asset.id !== assetId) return;
+			applyImageAttachmentAssetSnapshot(attachmentId, asset);
+			scheduleImageAttachmentOcrPoll(attachmentId, assetId, asset.ocr_status, attempt);
+		} catch {
+			scheduleImageAttachmentOcrPoll(attachmentId, assetId, current.ocrStatus, attempt);
+		}
+	}
+
+	function scheduleMessageAttachmentOcrPoll(
+		messageId: string,
+		assetId: string,
+		ocrStatus: unknown,
+		attempt = 0
+	) {
+		if (!browser || !messageId || !assetId || !shouldPollOcrStatus(ocrStatus)) return;
+		if (attempt >= AGENT_CHAT_OCR_POLL_MAX_ATTEMPTS) return;
+		const delay = Math.min(
+			AGENT_CHAT_OCR_POLL_MAX_DELAY_MS,
+			AGENT_CHAT_OCR_POLL_INITIAL_DELAY_MS + attempt * 1000
+		);
+		setTrackedTimeout(() => {
+			void pollMessageAttachmentOcrStatus(messageId, assetId, attempt + 1);
+		}, delay);
+	}
+
+	async function pollMessageAttachmentOcrStatus(
+		messageId: string,
+		assetId: string,
+		attempt: number
+	) {
+		const message = messages.find((item) => item.id === messageId);
+		const attachment = message?.attachments?.find((item) => item.asset_id === assetId);
+		if (!attachment || !shouldPollOcrStatus(attachment.ocr_status)) return;
+
+		try {
+			const response = await fetch(`/api/onto/assets/${assetId}`);
+			const payload = await response.json().catch(() => null);
+			if (!response.ok) {
+				throw new Error(payload?.error ?? 'Failed to refresh attachment OCR');
+			}
+			const asset = payload?.data?.asset;
+			if (!asset?.id || asset.id !== assetId) return;
+			applyMessageAttachmentAssetSnapshot(asset);
+			scheduleMessageAttachmentOcrPoll(messageId, assetId, asset.ocr_status, attempt);
+		} catch {
+			scheduleMessageAttachmentOcrPoll(messageId, assetId, attachment.ocr_status, attempt);
+		}
+	}
+
+	async function computeSha256(file: File): Promise<string> {
+		const digest = await crypto.subtle.digest('SHA-256', await file.arrayBuffer());
+		return Array.from(new Uint8Array(digest))
+			.map((byte) => byte.toString(16).padStart(2, '0'))
+			.join('');
+	}
+
+	async function readImageDimensions(
+		file: File
+	): Promise<{ width: number; height: number } | null> {
+		if (typeof createImageBitmap !== 'undefined') {
+			const bitmap = await createImageBitmap(file);
+			const dimensions = { width: bitmap.width, height: bitmap.height };
+			bitmap.close();
+			return dimensions;
+		}
+		return null;
+	}
+
+	function isDuplicateAttachmentChecksum(attachmentId: string, checksum: string): boolean {
+		return imageAttachments.some(
+			(attachment) => attachment.id !== attachmentId && attachment.checksumSha256 === checksum
+		);
+	}
+
+	async function uploadImageAttachment(
+		attachmentId: string,
+		file: File,
+		projectId: string | null
+	) {
+		try {
+			if (!hasImageAttachment(attachmentId)) return;
+			updateImageAttachment(attachmentId, {
+				status: 'hashing',
+				statusLabel: 'Preparing image...'
+			});
+
+			const [checksumSha256, dimensions] = await Promise.all([
+				computeSha256(file),
+				readImageDimensions(file).catch(() => null)
+			]);
+
+			if (!hasImageAttachment(attachmentId)) return;
+			if (isDuplicateAttachmentChecksum(attachmentId, checksumSha256)) {
+				updateImageAttachment(attachmentId, {
+					status: 'error',
+					statusLabel: 'Duplicate image',
+					error: 'This image is already attached to the draft.',
+					checksumSha256
+				});
+				return;
+			}
+
+			if (!hasImageAttachment(attachmentId)) return;
+			updateImageAttachment(attachmentId, {
+				status: 'uploading',
+				statusLabel: 'Uploading...',
+				checksumSha256,
+				width: dimensions?.width ?? null,
+				height: dimensions?.height ?? null
+			});
+
+			const createResponse = await fetch('/api/agent/chat-attachments', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					project_id: projectId ?? null,
+					file_name: file.name || 'image',
+					content_type: file.type || 'image/jpeg',
+					file_size_bytes: file.size,
+					checksum_sha256: checksumSha256,
+					width: dimensions?.width ?? null,
+					height: dimensions?.height ?? null,
+					metadata: {
+						source_component: 'agent_chat_composer'
+					}
+				})
+			});
+			const createPayload = await createResponse.json().catch(() => null);
+			if (!createResponse.ok) {
+				throw new Error(createPayload?.error ?? 'Failed to create image attachment');
+			}
+
+			const asset = createPayload?.data?.asset;
+			if (!asset?.id) {
+				throw new Error('Attachment asset metadata missing from server response');
+			}
+
+			if (createPayload?.data?.upload?.signed_url) {
+				const uploadResponse = await fetch(createPayload.data.upload.signed_url, {
+					method: 'PUT',
+					headers: {
+						'Content-Type': file.type || 'application/octet-stream'
+					},
+					body: file
+				});
+				if (!uploadResponse.ok) {
+					throw new Error('Storage upload failed');
+				}
+
+				if (!asset.project_id || asset.kind === 'temporary_file') {
+					updateImageAttachment(attachmentId, {
+						status: 'ready',
+						statusLabel: 'Ready to analyze',
+						attachmentKind: 'temporary_file',
+						assetId: asset.id,
+						projectId: null,
+						storageBucket: asset.storage_bucket ?? null,
+						storagePath: asset.storage_path ?? null,
+						ocrStatus: asset.ocr_status ?? 'skipped',
+						expiresAt: asset.expires_at ?? null
+					});
+					return;
+				}
+
+				updateImageAttachment(attachmentId, {
+					status: 'processing',
+					statusLabel: 'Queueing OCR...',
+					attachmentKind: 'onto_asset',
+					assetId: asset.id,
+					projectId: asset.project_id,
+					storageBucket: asset.storage_bucket ?? null,
+					storagePath: asset.storage_path ?? null,
+					ocrStatus: asset.ocr_status ?? 'pending'
+				});
+
+				const completeResponse = await fetch(`/api/onto/assets/${asset.id}/complete`, {
+					method: 'POST'
+				});
+				const completePayload = await completeResponse.json().catch(() => null);
+				if (!completeResponse.ok) {
+					throw new Error(completePayload?.error ?? 'Failed to queue OCR');
+				}
+
+				const completedAsset = completePayload?.data?.asset ?? asset;
+				updateImageAttachment(attachmentId, {
+					status: 'ready',
+					statusLabel: describeAttachmentOcrStatus(completedAsset.ocr_status),
+					attachmentKind: 'onto_asset',
+					assetId: completedAsset.id,
+					projectId: completedAsset.project_id,
+					storageBucket: completedAsset.storage_bucket ?? null,
+					storagePath: completedAsset.storage_path ?? null,
+					ocrStatus: completedAsset.ocr_status ?? 'pending',
+					extractionSummary: compactAttachmentText(
+						completedAsset.extraction_summary,
+						700
+					),
+					extractedTextPreview: compactAttachmentText(completedAsset.extracted_text)
+				});
+				scheduleImageAttachmentOcrPoll(
+					attachmentId,
+					completedAsset.id,
+					completedAsset.ocr_status ?? 'pending'
+				);
+				return;
+			}
+
+			updateImageAttachment(attachmentId, {
+				status: 'deduped',
+				statusLabel:
+					asset.ocr_status === 'complete'
+						? 'Existing OCR ready'
+						: describeAttachmentOcrStatus(asset.ocr_status),
+				attachmentKind: 'onto_asset',
+				assetId: asset.id,
+				projectId: asset.project_id,
+				storageBucket: asset.storage_bucket ?? null,
+				storagePath: asset.storage_path ?? null,
+				ocrStatus: asset.ocr_status ?? 'pending',
+				extractionSummary: compactAttachmentText(asset.extraction_summary, 700),
+				extractedTextPreview: compactAttachmentText(asset.extracted_text)
+			});
+			scheduleImageAttachmentOcrPoll(attachmentId, asset.id, asset.ocr_status ?? 'pending');
+		} catch (err) {
+			const message =
+				err instanceof Error ? err.message : 'Failed to upload image attachment';
+			updateImageAttachment(attachmentId, {
+				status: 'error',
+				statusLabel: 'Upload failed',
+				error: message
+			});
+			toastService.error(message);
+		}
+	}
+
+	function handleImageAttachmentFiles(files: File[]) {
+		if (!browser) return;
+		const projectId = resolveAttachmentProjectId();
+
+		const imageFiles = files.filter((file) => file.type.startsWith('image/'));
+		if (imageFiles.length === 0) {
+			toastService.error('Drop an image file to attach it.');
+			return;
+		}
+		if (imageFiles.length < files.length) {
+			toastService.error(
+				'Only image files can be attached here; unsupported files were skipped.'
+			);
+		}
+
+		const remaining = AGENT_CHAT_MAX_IMAGE_ATTACHMENTS - imageAttachments.length;
+		if (remaining <= 0) {
+			toastService.error(
+				`Attach up to ${AGENT_CHAT_MAX_IMAGE_ATTACHMENTS} images per message.`
+			);
+			return;
+		}
+
+		const accepted = imageFiles.slice(0, remaining);
+		if (imageFiles.length > accepted.length) {
+			toastService.error(
+				`Only ${AGENT_CHAT_MAX_IMAGE_ATTACHMENTS} images can be attached at once.`
+			);
+		}
+
+		for (const file of accepted) {
+			if (file.size > AGENT_CHAT_MAX_IMAGE_BYTES) {
+				toastService.error(`${file.name || 'Image'} exceeds the 25MB limit.`);
+				continue;
+			}
+
+			const previewUrl = URL.createObjectURL(file);
+			activeImagePreviewUrls.add(previewUrl);
+			const attachmentId = crypto.randomUUID();
+			const uploadGeneration = imageAttachmentUploadGeneration;
+			imageAttachments = [
+				...imageAttachments,
+				{
+					id: attachmentId,
+					fileName: file.name || 'image',
+					contentType: file.type || 'image/jpeg',
+					fileSizeBytes: file.size,
+					previewUrl,
+					status: 'hashing',
+					statusLabel: 'Preparing image...'
+				}
+			];
+			enqueueImageUpload(async () => {
+				if (uploadGeneration !== imageAttachmentUploadGeneration) return;
+				await uploadImageAttachment(attachmentId, file, projectId);
+			});
+		}
+	}
+
+	function handleAttachExistingImage(asset: OntologyImageAsset) {
+		if (!asset?.id) return;
+		if (imageAttachments.length >= AGENT_CHAT_MAX_IMAGE_ATTACHMENTS) {
+			toastService.error(
+				`Attach up to ${AGENT_CHAT_MAX_IMAGE_ATTACHMENTS} images per message.`
+			);
+			return;
+		}
+		if (imageAttachments.some((attachment) => attachment.assetId === asset.id)) {
+			toastService.error('This image is already attached to the draft.');
+			return;
+		}
+
+		const attachmentId = crypto.randomUUID();
+		const previewUrl = assetRenderPreviewUrl(asset.id);
+		imageAttachments = [
+			...imageAttachments,
+			{
+				id: attachmentId,
+				fileName: asset.original_filename || asset.caption || 'Project image',
+				contentType: asset.content_type || 'image/jpeg',
+				fileSizeBytes: Number(asset.file_size_bytes ?? 0),
+				previewUrl,
+				status: 'ready',
+				statusLabel: describeAttachmentOcrStatus(asset.ocr_status),
+				attachmentKind: 'onto_asset',
+				assetId: asset.id,
+				projectId: asset.project_id,
+				storageBucket: asset.storage_bucket ?? null,
+				storagePath: asset.storage_path ?? null,
+				checksumSha256: asset.checksum_sha256 ?? undefined,
+				width: asset.width ?? null,
+				height: asset.height ?? null,
+				ocrStatus: asset.ocr_status ?? 'pending',
+				extractionSummary: compactAttachmentText(asset.extraction_summary, 700),
+				extractedTextPreview: compactAttachmentText(asset.extracted_text)
+			}
+		];
+		showExistingImagePicker = false;
+		scheduleImageAttachmentOcrPoll(attachmentId, asset.id, asset.ocr_status ?? 'pending');
+	}
+
+	function imageAttachmentToRef(
+		attachment: AgentChatImageAttachment,
+		index: number,
+		includePreviewUrl = false
+	): ChatAttachmentRef {
+		const isTemporary = attachment.attachmentKind === 'temporary_file' || !attachment.projectId;
+		const previewUrl =
+			includePreviewUrl && attachment.assetId
+				? isTemporary
+					? attachment.previewUrl
+					: assetRenderPreviewUrl(attachment.assetId)
+				: null;
+		return {
+			attachment_kind: isTemporary ? 'temporary_file' : 'onto_asset',
+			media_type: 'image',
+			asset_id: isTemporary ? undefined : attachment.assetId,
+			temporary_attachment_id: isTemporary ? attachment.assetId : undefined,
+			project_id: isTemporary ? null : (attachment.projectId ?? resolveAttachmentProjectId()),
+			storage_bucket: isTemporary ? (attachment.storageBucket ?? null) : null,
+			storage_path: isTemporary ? (attachment.storagePath ?? null) : null,
+			file_name: attachment.fileName,
+			content_type: attachment.contentType,
+			file_size_bytes: attachment.fileSizeBytes,
+			width: attachment.width ?? null,
+			height: attachment.height ?? null,
+			checksum_sha256: attachment.checksumSha256 ?? null,
+			ocr_status: attachment.ocrStatus ?? null,
+			extraction_summary: attachment.extractionSummary ?? null,
+			extracted_text_preview: attachment.extractedTextPreview ?? null,
+			role: 'analysis_target',
+			display_order: index,
+			expires_at: attachment.expiresAt ?? null,
+			metadata: previewUrl ? { preview_url: previewUrl } : null
+		};
+	}
+
+	function buildReadyImageAttachmentRefs(includePreviewUrl = false): ChatAttachmentRef[] {
+		return imageAttachments
+			.filter(
+				(attachment) =>
+					Boolean(attachment.assetId) &&
+					(attachment.status === 'ready' || attachment.status === 'deduped')
+			)
+			.map((attachment, index) => imageAttachmentToRef(attachment, index, includePreviewUrl));
+	}
+
 	function handleSelectSuggestion(text: string) {
 		if (isStreaming || isSessionBusy) return;
 		inputValue = text;
@@ -1759,7 +2386,7 @@
 			return;
 		}
 
-		if (inputValue.trim()) {
+		if (inputValue.trim() || hasSendableImageAttachments) {
 			voice.pendingSendAfterTranscription = false;
 			sendMessage();
 			return;
@@ -1774,8 +2401,24 @@
 	) {
 		const { senderType = 'user', suppressInputClear = false } = options;
 		const trimmed = (contentOverride ?? inputValue).trim();
+		const streamAttachmentRefs =
+			senderType === 'user' ? buildReadyImageAttachmentRefs(false) : [];
+		const optimisticAttachmentRefs =
+			senderType === 'user' ? buildReadyImageAttachmentRefs(true) : [];
+		const sentImageAttachments = imageAttachments;
 		const activeVoiceNoteGroupId = voice.noteGroupId;
-		if (!trimmed || voice.isInitializing || voice.isStopping || voice.isTranscribing) return;
+		if (
+			(!trimmed && streamAttachmentRefs.length === 0) ||
+			voice.isInitializing ||
+			voice.isStopping ||
+			voice.isTranscribing
+		) {
+			return;
+		}
+		if (senderType === 'user' && imageAttachments.length > streamAttachmentRefs.length) {
+			error = 'Wait for image upload and OCR queueing to finish, or remove failed images.';
+			return;
+		}
 		if (!selectedContextType) {
 			error = 'Select a focus before starting the conversation.';
 			return;
@@ -1841,12 +2484,25 @@
 				user_id: undefined, // Will be set by backend
 				type: senderType as UIMessage['type'],
 				role: 'user' as ChatRole,
-				content: trimmed,
+				content:
+					trimmed ||
+					(streamAttachmentRefs.length === 1
+						? 'Attached 1 image'
+						: `Attached ${streamAttachmentRefs.length} images`),
 				timestamp: now,
 				created_at: now.toISOString(),
+				attachments:
+					optimisticAttachmentRefs.length > 0 ? optimisticAttachmentRefs : undefined,
 				metadata: {
 					...(activeVoiceNoteGroupId
 						? { voice_note_group_id: activeVoiceNoteGroupId }
+						: {}),
+					...(optimisticAttachmentRefs.length > 0
+						? {
+								attachment_count: optimisticAttachmentRefs.length,
+								attachment_only: !trimmed,
+								attachments: optimisticAttachmentRefs
+							}
 						: {}),
 					client_turn_id: clientTurnId,
 					stream_run_id: transportStreamRunId
@@ -1854,9 +2510,20 @@
 			};
 
 			messages = [...messages, userMessage];
+			for (const attachment of optimisticAttachmentRefs) {
+				if (attachment.asset_id) {
+					scheduleMessageAttachmentOcrPoll(
+						userMessage.id,
+						attachment.asset_id,
+						attachment.ocr_status ?? 'pending'
+					);
+				}
+			}
 			hasSentMessage = true;
 			if (!suppressInputClear) {
 				inputValue = '';
+				imageAttachments = [];
+				showExistingImagePicker = false;
 			}
 			if (activeVoiceNoteGroupId) {
 				voice.noteGroupId = null;
@@ -1924,6 +2591,7 @@
 					context_type: requestContextType,
 					entity_id: requestEntityId,
 					ontologyEntityType: ontologyEntityType, // Pass entity type for ontology loading
+					attachments: streamAttachmentRefs,
 					projectFocus: requestProjectFocus,
 					lastTurnContext: lastTurnContext, // Pass last turn context for conversation continuity
 					stream_run_id: transportStreamRunId,
@@ -2028,6 +2696,9 @@
 				messages = messages.filter((m) => m.id !== failedUserMessageId);
 			}
 			inputValue = trimmed;
+			if (!suppressInputClear && sentImageAttachments.length > 0) {
+				imageAttachments = sentImageAttachments;
+			}
 		} finally {
 			isStartingStream = false;
 			if (currentStreamController === streamController) {
@@ -2485,6 +3156,9 @@
 			activeClientTurnId = null;
 		}
 		voice.cleanup();
+		imageAttachments = [];
+		cancelQueuedImageUploads();
+		revokeAllImagePreviewUrls();
 	});
 </script>
 
@@ -2567,6 +3241,25 @@
 		bind:this={composerContainer}
 		class="flex-shrink-0 overflow-visible bg-background/60 px-4 pt-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:px-5 sm:pt-3"
 	>
+		{#if showExistingImagePicker && attachmentProjectId}
+			<div
+				class="mb-2 max-h-72 overflow-y-auto rounded-xl border border-border bg-card p-3 shadow-ink tx tx-grid tx-weak"
+				aria-label="Attach existing project image"
+			>
+				<ProjectImageLibrary
+					projectId={attachmentProjectId}
+					limit={50}
+					compact={true}
+					pickerMode={true}
+					selectLabel="Attach"
+					excludedAssetIds={selectedAttachmentAssetIds}
+					showHeader={true}
+					title="Project images"
+					emptyMessage="No project images available yet."
+					onSelectAsset={handleAttachExistingImage}
+				/>
+			</div>
+		{/if}
 		<AgentComposer
 			bind:voiceInputRef={voice.ref}
 			bind:inputValue
@@ -2585,6 +3278,15 @@
 			disabled={isSessionBusy}
 			disabledReason={sessionStatusLabel}
 			vocabularyTerms={chatComposerVocabularyTerms}
+			{imageAttachments}
+			attachmentLimit={AGENT_CHAT_MAX_IMAGE_ATTACHMENTS}
+			onAttachmentFiles={handleImageAttachmentFiles}
+			canAttachExistingImages={canAttachExistingProjectImages}
+			onAttachExistingImages={() => {
+				if (!attachmentProjectId) return;
+				showExistingImagePicker = !showExistingImagePicker;
+			}}
+			onRemoveAttachment={removeImageAttachment}
 			onVoiceNoteSegmentSaved={voice.handleSegmentSaved.bind(voice)}
 			onVoiceNoteSegmentError={voice.handleSegmentError.bind(voice)}
 			onKeyDownHandler={handleKeyDown}

@@ -4,6 +4,7 @@ import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 type ToolArgumentParser = (rawArgs: unknown) => { args: Record<string, any>; error?: string };
 
 const MAX_MODEL_TOOL_PAYLOAD_CHARS = 6000;
+const MAX_MODEL_SKILL_PAYLOAD_CHARS = 20000;
 const MAX_TOOL_LIST_ITEMS = 20;
 const INTERNAL_PAYLOAD_KEYS = new Set(['search_vector']);
 
@@ -20,7 +21,12 @@ export function buildToolPayloadForModel(
 	}
 
 	const toolName = toolCall.function?.name?.trim();
-	if (toolName === 'tool_schema' || toolName === 'tool_search' || toolName === 'skill_load') {
+	if (
+		toolName === 'tool_schema' ||
+		toolName === 'tool_search' ||
+		toolName === 'skill_load' ||
+		toolName === 'skill_reference_load'
+	) {
 		return compactGatewayMetaPayload(basePayload);
 	}
 
@@ -95,23 +101,56 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 	}
 
 	if (type === 'skill') {
-		return applyToolPayloadSizeGuard({
-			type,
-			id: record.id ?? record.path,
-			name: record.name,
-			description: record.description ?? record.summary,
-			summary: record.summary,
-			when_to_use: Array.isArray(record.when_to_use) ? record.when_to_use.slice(0, 8) : [],
-			workflow: Array.isArray(record.workflow) ? record.workflow.slice(0, 10) : [],
-			related_ops: Array.isArray(record.related_ops) ? record.related_ops.slice(0, 12) : [],
-			guardrails: Array.isArray(record.guardrails) ? record.guardrails.slice(0, 8) : [],
-			markdown:
-				typeof record.markdown === 'string'
-					? toTextPreview(record.markdown, 1200)
-					: undefined,
-			examples: Array.isArray(record.examples) ? record.examples.slice(0, 4) : [],
-			notes: Array.isArray(record.notes) ? record.notes.slice(0, 6) : []
-		});
+		return applyToolPayloadSizeGuard(
+			{
+				type,
+				id: record.id ?? record.path,
+				name: record.name,
+				description: record.description ?? record.summary,
+				summary: record.summary,
+				parent_id: record.parent_id,
+				depth: record.depth,
+				when_to_use: Array.isArray(record.when_to_use)
+					? record.when_to_use.slice(0, 8)
+					: [],
+				workflow: Array.isArray(record.workflow) ? record.workflow.slice(0, 10) : [],
+				related_ops: Array.isArray(record.related_ops)
+					? record.related_ops.slice(0, 12)
+					: [],
+				child_skills: compactSkillLinkedResources(record.child_skills),
+				reference_modules: compactSkillLinkedResources(record.reference_modules),
+				guardrails: Array.isArray(record.guardrails) ? record.guardrails.slice(0, 8) : [],
+				markdown:
+					typeof record.markdown === 'string'
+						? toTextPreview(record.markdown, 16000)
+						: undefined,
+				examples: Array.isArray(record.examples) ? record.examples.slice(0, 4) : [],
+				notes: Array.isArray(record.notes) ? record.notes.slice(0, 6) : []
+			},
+			MAX_MODEL_SKILL_PAYLOAD_CHARS
+		);
+	}
+
+	if (type === 'skill_reference') {
+		return applyToolPayloadSizeGuard(
+			{
+				type,
+				skill_id: record.skill_id,
+				reference_id: record.reference_id,
+				name: record.name,
+				summary: record.summary,
+				when_to_load: Array.isArray(record.when_to_load)
+					? record.when_to_load.slice(0, 6)
+					: [],
+				path: record.path,
+				visibility: record.visibility,
+				content:
+					typeof record.content === 'string'
+						? toTextPreview(record.content, 16000)
+						: undefined
+			},
+			MAX_MODEL_SKILL_PAYLOAD_CHARS
+		);
 	}
 
 	if (type === 'capability') {
@@ -155,6 +194,20 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 	}
 
 	return applyToolPayloadSizeGuard(payload);
+}
+
+function compactSkillLinkedResources(value: unknown): Array<Record<string, unknown>> {
+	if (!Array.isArray(value)) return [];
+	return value.slice(0, 12).map((resource: Record<string, any>) => ({
+		id: resource?.id,
+		name: resource?.name,
+		summary: resource?.summary,
+		when_to_load: Array.isArray(resource?.when_to_load)
+			? resource.when_to_load.slice(0, 4)
+			: [],
+		path: resource?.path,
+		visibility: resource?.visibility
+	}));
 }
 
 function compactDirectToolPayload(toolName: string, payload: unknown): unknown {
@@ -758,16 +811,19 @@ function compactMarkdownOutline(outline: unknown): unknown {
 	};
 }
 
-function applyToolPayloadSizeGuard(payload: unknown): unknown {
+function applyToolPayloadSizeGuard(
+	payload: unknown,
+	maxChars = MAX_MODEL_TOOL_PAYLOAD_CHARS
+): unknown {
 	try {
 		const serialized = JSON.stringify(payload);
-		if (serialized.length <= MAX_MODEL_TOOL_PAYLOAD_CHARS) {
+		if (serialized.length <= maxChars) {
 			return payload;
 		}
 		return {
 			truncated: true,
 			original_length: serialized.length,
-			preview: `${serialized.slice(0, MAX_MODEL_TOOL_PAYLOAD_CHARS)}...`
+			preview: `${serialized.slice(0, maxChars)}...`
 		};
 	} catch {
 		return payload;

@@ -6,6 +6,7 @@ import type {
 	ChatToolResult,
 	ContextUsageSnapshot
 } from '@buildos/shared-types';
+import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
 import type { SmartLLMService } from '$lib/services/smart-llm-service';
 import type { FastChatHistoryMessage, FastAgentStreamUsage } from '../types';
 import { normalizeFastContextType } from '../prompt-builder';
@@ -78,6 +79,7 @@ type StreamFastChatParams = {
 	clientTurnId?: string | null;
 	history: FastChatHistoryMessage[];
 	message: string;
+	currentTurnContent?: string | OpenRouterContentPart[];
 	signal?: AbortSignal;
 	onDelta: (delta: string) => Promise<void> | void;
 	systemPrompt?: string;
@@ -94,6 +96,10 @@ type StreamFastChatParams = {
 	maxToolCalls?: number;
 	allowAutonomousRecovery?: boolean;
 	debugContext?: FastChatDebugContext;
+};
+
+type FastChatModelMessage = Omit<FastChatHistoryMessage, 'content'> & {
+	content: string | OpenRouterContentPart[];
 };
 
 export async function streamFastChat(params: StreamFastChatParams): Promise<{
@@ -120,10 +126,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			entityId: entityId ?? null
 		}).systemPrompt;
 
-	const messages: FastChatHistoryMessage[] = [
+	const messages: FastChatModelMessage[] = [
 		{ role: 'system', content: systemPrompt },
 		...history,
-		{ role: 'user', content: message }
+		{ role: 'user', content: params.currentTurnContent ?? message }
 	];
 	let promptDumpPath: string | null = null;
 	let finalAssistantText = '';

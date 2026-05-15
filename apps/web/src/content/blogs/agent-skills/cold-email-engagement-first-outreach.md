@@ -1,9 +1,9 @@
 ---
 title: 'Cold Email Engagement-First Outreach: An Agent Skill For 2026 Cold Campaigns'
-description: 'A source-lineaged agent skill for planning, drafting, auditing, and rewriting cold outreach campaigns. Distilled from three 2026 cold-email source analyses (Connor Murray, Aaron Shepherd, Austin Schneider) into one playbook with mode-selection, deliverability floor, front-end offer design, assumptive-language audit, two-mode cadence, and three-rate diagnostic.'
+description: 'A source-lineaged root combo skill for planning, drafting, auditing, and rewriting cold outreach. Distilled from seven cold-email source analyses into one master playbook for high-volume campaigns, strategic accounts, single-target relationship outreach, reply revival, investor fundraising, founder-led outreach, recruiting, PR, partnerships, and customer research.'
 author: 'DJ Wayne'
 date: '2026-05-14'
-lastmod: '2026-05-14'
+lastmod: '2026-05-15'
 changefreq: 'monthly'
 priority: '0.9'
 published: true
@@ -17,27 +17,31 @@ tags:
         'marketing-and-content',
         'buildos'
     ]
-readingTime: 13
-excerpt: 'Cold email in 2026 is not a writing problem. It is a system problem with four locked layers — deliverability infrastructure, persona-times-signal segmentation, a real front-end offer, and a short assumptive cadence. This skill turns those four layers into an agent-readable playbook with refusal conditions, mode-locked cadences, and a passive-language audit pass.'
+readingTime: 16
+excerpt: 'Cold email in 2026 is not one template. It is a mode router plus a drafting and audit system: deliverability floor, persona-times-signal segmentation, packaging, real artifact offers, researched bridges, reply routing, and mode-locked cadence.'
 skillId: 'sales-and-growth/cold-email-engagement-first-outreach'
 skillType: 'combo'
 skillCategory: 'sales-and-growth'
 providers: ['YouTube source analysis', 'BuildOS YouTube library']
 compatibleAgents: ['BuildOS-compatible agents', 'Claude Code', 'Codex', 'portable Agent Skills']
-stackWith:
-    ['cold-email-contextual-outbound', 'landing-page-scorecard-funnel', 'hook-craft-short-form']
-skillSource: 'docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/SKILL.md'
+stackWith: ['landing-page-scorecard-funnel', 'hook-craft-short-form']
+skillSource: 'apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_engagement_first_outreach/SKILL.md'
 lineagePath: 'docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/lineage.yaml'
 lineagePeople:
     - 'Connor Murray'
     - 'Aaron Shepherd'
     - 'Austin Schneider'
+    - 'Sam McKenna'
+    - 'Florin Tatulea'
+    - 'Steli Efti'
+    - 'Michael Seibel'
 lineageStats:
-    sources: 3
-    primitives: 15
-    sourceClaims: 16
-    edges: 31
-    candidateV2Sources: 1
+    sources: 7
+    primitives: 17
+    sourceClaims: 23
+    edges: 49
+    referenceModules: 5
+    integratedPriorSources: 1
 lineageSources:
     - title: '10 Years of Expert Cold Email Advice in 36 Minutes (B2B Sales)'
       creator: 'Connor Murray'
@@ -63,51 +67,86 @@ lineageSources:
       channelUrl: 'https://www.youtube.com/@InstantlyAI'
       sourceType: 'youtube_video'
       url: 'https://www.youtube.com/watch?v=h8u840Wm-BI'
+    - title: "The End of the Line for Cold Calling (& What's Replacing it)"
+      creator: 'Sam McKenna'
+      creatorType: 'Person'
+      creatorUrl: 'https://www.samsalesconsulting.com/'
+      channelName: 'Closing Time'
+      channelUrl: 'https://www.youtube.com/@InsightlyCRM'
+      sourceType: 'youtube_video'
+      url: 'https://www.youtube.com/watch?v=5ln1cGTzXTg'
+    - title: 'Cold Email Showdown: Rookie Sales Rep vs 10-Year Director'
+      creator: 'Florin Tatulea, Evan Greek, Jason Bay'
+      creatorType: 'Person'
+      channelName: "30 Minutes to President's Club"
+      channelUrl: 'https://www.youtube.com/@30MinutesToPresidentsClub'
+      sourceType: 'youtube_video'
+      url: 'https://www.youtube.com/watch?v=Ag-6pB51s5o'
+    - title: 'Get 457% more replies to your sales emails with the 1, 2, 3 hack'
+      creator: 'Steli Efti'
+      creatorType: 'Person'
+      creatorUrl: 'https://www.close.com/'
+      channelName: 'Close'
+      channelUrl: 'https://www.youtube.com/@close'
+      sourceType: 'youtube_video'
+      url: 'https://www.youtube.com/watch?v=hmuMkXntbH0'
+    - title: 'How To Cold Email Investors'
+      creator: 'Michael Seibel'
+      creatorType: 'Person'
+      creatorUrl: 'https://www.ycombinator.com/people/michael-seibel'
+      channelName: 'Y Combinator'
+      channelUrl: 'https://www.youtube.com/@ycombinator'
+      sourceType: 'youtube_video'
+      url: 'https://www.youtube.com/watch?v=A3MmYbH1hbs'
 path: apps/web/src/content/blogs/agent-skills/cold-email-engagement-first-outreach.md
 ---
 
 # Cold Email Engagement-First Outreach
 
-Use this skill when an agent needs to plan, draft, audit, or rewrite cold outreach to strangers — booked-call campaigns, founder-led outreach, recruiting outreach, partnership outreach, customer-research outreach. Cold email in 2026 is not a writing problem. It is a **system problem** with four interlocking layers — deliverability infrastructure, persona × signal segmentation, a real front-end offer, and a short assumptive cadence. The agent's job is to enforce that the layers exist _before_ it writes a single line.
+Use this skill when an agent needs to plan, draft, audit, or rewrite cold outreach to strangers: booked-call campaigns, founder-led outreach, recruiting outreach, investor fundraising, partnership outreach, podcast/PR pitches, and customer-research outreach. Cold email in 2026 is not one template. It is a **mode router plus a drafting and audit system** with seven interlocking layers: deliverability infrastructure, persona × signal segmentation, packaging, real artifact offers, researched bridges, reply routing, and mode-locked cadence. The agent's job is to enforce those layers _before_ it writes a single line.
 
 This skill is **not** for newsletter or list email, lifecycle email, or any message to people who already opted in. Those have different physics and belong in a different skill.
 
 ## Skill Composition
 
-This is a combo skill distilled from three 2026 cold-email source analyses. The pieces stack in a strict order.
+This is the root combo skill distilled from seven cold-email source analyses plus one earlier contextual-outbound draft. The root skill stays compact enough to use directly, then routes deeper work into reference modules for high-volume sending, strategic/single-target outreach, reply handling, and investor/founder/PR use cases.
 
-| Primitive                           | Job                                                                                                                                     | Primary source layer                          |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
-| Campaign mode selection             | Pick volume / strategic-account / single-targeted before drafting. Mode locks cadence and voice.                                        | Murray + Schneider                            |
-| Deliverability infrastructure floor | Verify SPF/DKIM/DMARC, per-inbox volume cap, warmup, complaint rate before anything ships.                                              | Schneider                                     |
-| Persona × signal segmentation       | Map every campaign to one persona × one narrowing signal. Reject mixed lists.                                                           | Schneider + Murray                            |
-| Coiled-spring prep                  | Move personalization upstream into pre-built lists, AI enrichment, and persona templates.                                               | Murray + Schneider                            |
-| Front-end offer design              | Wrap the core service in a free, specific, custom deliverable strangers will accept.                                                    | Shepherd + Schneider                          |
-| Three-paragraph body                | Strategic-mode body — who I am, why I'm relevant, what I want.                                                                          | Murray                                        |
-| Casual volume body                  | Volume-mode body — 2-3 word lowercase subject, no greeting, one-line offer.                                                             | Shepherd                                      |
-| Assumptive language replacement     | Audit every draft for passive CTAs and replace with assumptive directness.                                                              | Murray                                        |
-| Two-mode cadence                    | 4-touch AB strategic cadence vs 2-touch volume cadence + recycle.                                                                       | Murray + Schneider                            |
-| Three-rate tracking                 | Track open / reply / meeting-booked separately. Each diagnoses a different broken input.                                                | Murray + Schneider                            |
-| Back-end qualification              | For volume mode, gate calendar with a pre-call form. Quality filters on the back end.                                                   | Shepherd                                      |
-| Objection response bank             | Maintain base templates per common objection. Acknowledge-and-redirect, customize 1-2 lines.                                            | Murray                                        |
-| Target research depth               | Dig per persona type to harvest one anchor at Level 3+ on the specificity ladder.                                                       | Murray (strategic) + Shepherd (AI enrichment) |
-| Frame selection                     | Pick exactly one strategic premise from the eight named frames.                                                                         | Synthesized across all three sources          |
-| Email micro-anatomy                 | Subject → preview → anchor → bridge → offer → CTA → optional P.S. The bridge is the most important sentence.                            | Synthesized across all three sources          |
-| Psychology audit                    | Six named principles — reciprocity, specificity, pattern interrupt, low-friction yes, identity congruence, authority-without-arrogance. | Cross-cutting craft layer                     |
+| Primitive                           | Job                                                                                                        | Primary source layer                  |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Mode selection                      | Pick high-volume, strategic-account, single-target, reply-revival, or investor before drafting.            | Murray + Schneider + Seibel + Efti    |
+| Deliverability infrastructure floor | Verify SPF/DKIM/DMARC, warmup, complaint rate, inbox caps, and sender trust before anything ships.         | Schneider + Shepherd                  |
+| Persona × signal segmentation       | Map every campaign to one persona × one narrowing signal. Reject mixed lists.                              | Schneider + Murray                    |
+| Coiled-spring prep                  | Move personalization upstream into lists, enrichment columns, and persona templates.                       | Murray + Schneider                    |
+| Front-end offer design              | Wrap the core service in a free, specific, custom deliverable strangers will accept.                       | Shepherd + Schneider                  |
+| Packaging pass                      | Draft subject plus preview before the body. Make the email look internal, specific, and non-promotional.   | Tatulea + Jason Bay + McKenna         |
+| Authenticity bridge                 | Connect research to the business reason for outreach. Reject decorative personalization.                   | McKenna                               |
+| Proof slot                          | Add peer, customer, artifact, or situation proof only when credible and relevant.                          | Tatulea + Bay                         |
+| Artifact CTA                        | Ask for the smallest useful yes: note, snapshot, teardown, signals, ideas, or deck.                        | Shepherd + Schneider + Tatulea        |
+| Three-paragraph body                | Strategic-mode body: who I am, why I am relevant, what I want.                                             | Murray                                |
+| Casual volume body                  | Volume-mode body: short lowercase subject, no greeting, one-sentence artifact offer.                       | Shepherd                              |
+| Assumptive language replacement     | Audit every draft for passive CTAs and replace with direct reply-seeking language.                         | Murray                                |
+| Mode-locked cadence                 | Volume gets two touches then recycle. Strategic/single-target gets four max. Investor gets slow follow-up. | Murray + Schneider + Seibel + McKenna |
+| Three-rate tracking                 | Track open, reply, and meeting-booked separately. Add positive reply and complaint checks at volume.       | Murray + Schneider + Shepherd         |
+| Back-end qualification              | For volume mode, gate calendar with a pre-call form. Quality filters on the back end.                      | Shepherd                              |
+| Objection response bank             | Maintain templates for common objections. Acknowledge, contrast one gap, and ask the smallest next step.   | Murray + Efti                         |
+| Low-friction reply fork             | Use respectful numbered options to convert silence into routeable context.                                 | Efti                                  |
+| Investor outreach mode              | Use a short factual fundraising payload with no meeting-first ask.                                         | Seibel                                |
 
 ## When To Use
 
 - Launch a new cold outbound campaign (B2B sales, recruiting, partnerships, customer interviews).
 - Draft a single targeted cold email to a strategic prospect.
+- Write a founder-led peer note, investor email, podcast pitch, PR pitch, or recruiting outreach.
+- Revive a quiet thread with a respectful numbered reply fork.
 - Refresh a stalled sequence whose reply rate has dropped.
 - Audit an existing campaign by diagnosing open / reply / meeting-booked rates.
 - Design or test a front-end offer for a cold-list segment.
 - Pick the right voice register (formal SDR vs casual founder) for an audience.
-- Decide between 2-touch and 4-touch cadence for a given list scale.
+- Choose the right cadence for volume, strategic, single-target, reply-revival, or investor outreach.
 - Build the persona × industry × signal slicing for a segmented campaign.
 - Triage a domain-deliverability issue against a campaign plan.
 
-Do not use this skill for newsletter / list email, lifecycle email, support replies, customer onboarding email, or any audience that has already opted in. Pair it with the BuildOS [`cold-email-contextual-outbound`](/blogs/agent-skills/cold-email-contextual-outbound) skill if you need the worldview-research and buyer-language mining layers.
+Do not use this skill for newsletter / list email, lifecycle email, support replies, customer onboarding email, or any audience that has already opted in. The earlier contextual-outbound draft is now folded into this root skill through the source map and strategic/single-target reference module.
 
 ## Core Principles
 
@@ -115,9 +154,13 @@ Do not use this skill for newsletter / list email, lifecycle email, support repl
 
 **Relevance beats personalization.** Campaigns under 50 recipients average 5.8% reply rate vs 2.1% for campaigns over 1,000 — not because they're hand-crafted, but because tighter persona × signal slicing makes the offer more relevant. Slice the list, don't sprinkle observations on top.
 
+**Packaging is the first conversion point.** The subject and preview text decide whether the body gets read. Write both before the body, and reject anything that sounds promotional, vague, Title Cased, or like a mass sequence.
+
 **The offer is the thing.** Most cold email fails because the ask is too big for a stranger. Wrap the core service in a free, specific, custom front-end deliverable. "Worth a chat" is not an offer. "Free positioning audit" is.
 
 **Goal of every email is a response, not a meeting.** Yes, no, or objection. You cannot book from silence. Write language that pulls a reply.
+
+**Reply handling is part of the skill, not an afterthought.** The campaign should know what happens after yes, no, not now, wrong person, send info, and silence. A respectful no is more useful than a dead thread.
 
 **Volume is data; quality filters on the back end.** Send enough to get statistical signal, then use a pre-call form to keep unqualified prospects off the calendar. Don't try to qualify on the front end by reducing send volume — you lose the signal.
 
@@ -125,19 +168,23 @@ Do not use this skill for newsletter / list email, lifecycle email, support repl
 
 **Cadence is mode-locked.** Strategic accounts get 4 touches. Volume campaigns get 2 touches plus a recycle. Past those thresholds, the deliverability cost exceeds the marginal reply.
 
+**Investor email is a different mode.** Fundraising outreach needs a short factual company payload, a named founder sender, and a reply-first ask. Do not use sales cadence or meeting-first language with investors.
+
 **Refuse to ship if the floor isn't met.** No SPF/DKIM/DMARC, no warmup, no front-end offer, mixed personas — the skill refuses, names the gap, and asks the human to fix it before sending.
 
 ## Pillar 1: Campaign Mode
 
 Mode locks everything downstream. Pick one before drafting.
 
-| Mode                           | When to use                                                                                                             | Cadence                          | Voice register                                  |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ----------------------------------------------- |
-| **High-volume outbound**       | Agency-scale or wide-net founder outreach (>1,000 prospects per campaign).                                              | 2-touch + recycle non-responders | Casual, lowercase subject, no greeting          |
-| **Strategic-account outbound** | Named accounts, enterprise targets, partnership outreach, high-trust founder outreach (&lt;100 prospects per campaign). | 4-touch AB cadence               | Formal three-paragraph                          |
-| **Single targeted outreach**   | One specific recipient (recruiting, founder-to-founder, podcast pitch, customer interview).                             | 4-touch AB cadence               | Formal three-paragraph, with deep research line |
+| Mode                           | When to use                                                                                   | Cadence                                | Default CTA                                         |
+| ------------------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------- |
+| **High-volume offer test**     | Agency-scale or wide-net founder outreach, market testing, or more than 1,000 prospects.      | 2 touches, then recycle non-responders | Send/share more about a useful artifact             |
+| **Strategic-account sales**    | Named accounts, enterprise targets, partnerships, senior buyers, or fewer than 100 prospects. | 4 touches max, in-thread               | Availability ask or artifact offer                  |
+| **Single-target relationship** | One specific person: founder, creator, candidate, podcast host, customer interview, partner.  | 4 touches max, high research           | Send note/snapshot/sample or ask one small question |
+| **Reply revival / objection**  | Prospect went quiet, buyer state is unclear, or one of several objections is likely.          | One tactical fork after silence        | Reply with a number                                 |
+| **Investor fundraising**       | Cold email to angels, VCs, accelerators, or startup investors.                                | Short initial, slow follow-up          | Permission to send more / deck if in lane           |
 
-Volume and strategic disagree about almost everything tactically. Don't run one mode's tactics inside the other — long formal emails at volume torch deliverability; one-line casual emails at strategic accounts read as dismissive.
+Volume and strategic disagree about almost everything tactically. Reply revival and investor outreach differ even more. Don't run one mode's tactics inside another: long formal emails at volume hurt deliverability; one-line casual emails at strategic accounts read as dismissive; sales follow-up patterns in investor mode read as pressure.
 
 ## Pillar 2: Deliverability Infrastructure Floor
 
@@ -195,7 +242,20 @@ Loom videos and calendar links are not offers. Reject both.
 - First line: recipient first name on its own line, no greeting.
 - Body: one sentence with the front-end offer + low-friction ask ("would that be worth sharing more?").
 
-Both registers share these rules:
+**Reply revival / numbered fork** — one short reply after real silence:
+
+- Acknowledge uncertainty.
+- Offer 3–4 mutually exclusive options.
+- Include a dignified close-loop option.
+- Ask them to reply with the number.
+
+**Investor / fundraising register** — short factual payload:
+
+- Problem, solution, launch status, traction, market, team, contrarian insight.
+- No jargon, no long origin story, no meeting-first ask.
+- Sender is a named founder at the company domain.
+
+All registers share these rules:
 
 - Plain text, max 1–2 links.
 - Mobile-optimized — preview on a phone.
@@ -220,7 +280,7 @@ Audit every draft. The replacement set:
 | "Just nudging you on this."         | (Cut. Replace with one-line offer restatement.)          |
 | "Probably bad timing, but…"         | (Cut entirely.)                                          |
 
-## Pillar 7: Two-Mode Cadence
+## Pillar 7: Mode-Locked Cadence
 
 **Strategic / 4-touch AB cadence:**
 
@@ -243,13 +303,34 @@ Every follow-up redirects to the original. No fresh pitches.
 
 Past touch #2 in volume mode, the data is clear: email 3 = −20% replies, email 4+ = −55% replies and trains filters to flag the sender as bulk. Recycle the non-responders into a fresh-angle campaign instead.
 
-## Pillar 8: Three-Rate Tracking
+**Single-target / 4 touches max:**
 
-| Rate                             | Diagnoses                                      | Fix                                                                                    |
-| -------------------------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Open rate                        | Subject line, preview text, sender reputation. | Rewrite subject, write deliberate preview, increase warmup, raise follow-up frequency. |
-| Reply rate                       | Body craft, CTA, assumptive language.          | Replace passive phrasing, tighten the offer, shorten the body.                         |
-| Meeting-booked rate (of replies) | Why-I'm-relevant paragraph, persona fit.       | Re-segment, rewrite middle paragraph, refresh front-end offer.                         |
+- Keep the original thread.
+- Follow-ups point back to the original context.
+- Do not write a fresh pitch each time.
+- For senior executives, test Thursday, Friday, or weekend timing only when appropriate.
+
+**Reply revival / one fork:**
+
+- Send one numbered fork after meaningful silence.
+- Route based on the number.
+- Stop if they choose a close-loop or no-interest option.
+
+**Investor / slow follow-up:**
+
+- Send one concise initial.
+- Follow up slowly only if the fit remains relevant.
+- Do not send multiple quick follow-ups, especially after an open.
+
+## Pillar 8: Tracking Diagnostics
+
+| Rate                             | Diagnoses                                      | Fix                                                                         |
+| -------------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------- |
+| Open rate                        | Subject line, preview text, sender reputation. | Rewrite packaging, write deliberate preview, check deliverability.          |
+| Reply rate                       | Body craft, CTA, assumptive language.          | Replace passive phrasing, tighten the offer, shorten the body.              |
+| Positive reply rate              | Offer-market fit.                              | Re-segment, test a new pain/offer, and use more buyer-language mining.      |
+| Meeting-booked rate (of replies) | Reply handling, proof, and persona fit.        | Improve reply routes, qualification, and proof; do not push weak replies.   |
+| Spam complaints                  | List quality and offer mismatch.               | Stop sending, clean the list, narrow the segment, and verify sender health. |
 
 Optimizing a single composite rate hides which input is broken. Improvements of 1–2% at each stage compound; at SDR-team scale this can triple pipeline.
 
@@ -524,18 +605,21 @@ A few principles sit underneath every primitive:
 
 ## Generate A Campaign From Scratch
 
-1. Confirm campaign mode (volume / strategic / single-targeted).
+1. Confirm campaign mode (high-volume / strategic-account / single-target / reply-revival / investor).
 2. Verify deliverability infrastructure. Refuse to ship if floor not met.
 3. Segment the list (one persona × one signal).
 4. Build the persona prep: list, enrichment columns, base template.
 5. Design the front-end offer. Reject "worth a chat" framings and Loom/call-as-offer.
-6. Draft the body in the mode-appropriate register.
-7. Run the passive-language audit. Replace every hit.
-8. Plan the cadence (2-touch or 4-touch + recycle).
-9. Plan back-end qualification (if volume) — pre-call form fields.
-10. Set tracking baselines (open / reply / meeting-booked targets).
-11. Stub out the top 3 expected objections with acknowledge-and-redirect responses.
-12. Return a campaign bundle, not a single email.
+6. Run the packaging pass: subject line plus preview text before the body.
+7. Draft the body in the mode-appropriate register.
+8. Add proof only when it is credible and relevant.
+9. Run the passive-language audit. Replace every hit.
+10. Plan the cadence by mode.
+11. Build reply routes before sending.
+12. Plan back-end qualification (if volume) — pre-call form fields.
+13. Set tracking baselines (open / reply / positive reply / meeting-booked / complaints).
+14. Stub out the top 3 expected objections with acknowledge-and-redirect responses.
+15. Return a campaign bundle, not a single email.
 
 ## Generate A Single Targeted Email From Scratch
 
@@ -561,13 +645,15 @@ For one named recipient. Use this recipe when the cost of getting it wrong is th
 1. Identify the mode being run (or surface that no mode was set).
 2. Check the deliverability floor. Flag any gaps.
 3. Scan the list for mixed personas. Surface segmentation failures.
-4. Pull every passive-language hit in the existing body. Generate replacements.
-5. Count touches in the cadence. Flag any campaign past the 2 or 4 ceiling.
-6. Check every follow-up redirects to the original (versus opening a fresh pitch).
-7. Diagnose the broken rate (open, reply, or meeting-booked). Route to the matching fix.
-8. Identify the offer. If it's "a chat" or a Loom, flag it and surface a front-end offer alternative.
-9. Generate 3 rewrite candidates that fix the highest-impact gap first.
-10. Return a diagnostic report.
+4. Check subject plus preview text as a packaging pair.
+5. Pull every passive-language hit in the existing body. Generate replacements.
+6. Count touches in the cadence. Flag any campaign past the 2 or 4 ceiling.
+7. Check every follow-up redirects to the original (versus opening a fresh pitch).
+8. Diagnose the broken rate (open, reply, positive reply, meeting-booked, spam complaints). Route to the matching fix.
+9. Identify the offer. If it's "a chat" or a Loom, flag it and surface a front-end offer alternative.
+10. Check reply routes: yes, no, not now, wrong person, send info, objection, and silence.
+11. Generate 3 rewrite candidates that fix the highest-impact gap first.
+12. Return a diagnostic report.
 
 ## Output
 
@@ -580,9 +666,11 @@ When generating, return a **campaign bundle**:
 - Subject line + A/B alternate
 - Preview text
 - Email body (passive-language audit applied)
+- Proof slot or note that proof is unavailable
+- CTA and why it is the smallest useful yes
 - Cadence map (touches + days)
-- Tracking targets (open / reply / meeting-booked)
-- Top 3 objection response stubs
+- Reply routes and top objection responses
+- Tracking targets (open / reply / positive reply / meeting-booked / complaints)
 - Back-end pre-call form fields (if volume mode)
 - Refusal note if any pre-condition is not met
 
@@ -592,6 +680,10 @@ When auditing, return a **diagnostic report**:
 - Passive-language hits with replacements
 - Cadence violations
 - Offer gaps
+- Subject/preview packaging gaps
+- Missing bridge or unearned personal hook
+- Proof issue
+- Reply-routing gap
 - Segmentation gaps
 - Tracking gaps
 - 3 rewrite candidates ranked by impact
@@ -612,11 +704,13 @@ If a pre-condition fails — no deliverability floor, no front-end offer, mixed 
 
 - **No interest-based or passive CTAs.** Reject "worth a chat," "is this worth exploring," "if you're interested."
 - **No fake personalization.** Reject "fellow eagle," "saw we're both dog dads," "saw your recent post" without specific evidence.
+- **No fabricated proof.** Reject invented customer names, mutual contacts, metrics, or buyer-language claims.
 - **No campaigns without deliverability verification.** Refuse if SPF/DKIM/DMARC, warmup, or volume floor not met.
 - **No 7-touch (or longer) cadences.** 4 touches max strategic, 2 max volume.
 - **No follow-ups that don't redirect to the original.** Follow-ups point back, not pitch fresh.
 - **No "worth a chat" framed as the offer.** Offer must be a specific free deliverable.
 - **No Loom videos or calendar links as the offer.** Both have stopped earning replies in 2026.
+- **No unplanned preview text.** Subject and preview are the packaging pass; do not leave preview text to the client default.
 - **No mixed personas in one list.** One persona × one signal per campaign.
 - **No money-language in subject lines.** Dollar amounts and ROI words push to promo tab.
 - **No "Hey, just nudging you" follow-ups.** Reads as automation.
@@ -628,17 +722,24 @@ If a pre-condition fails — no deliverability floor, no front-end offer, mixed 
 - **No dishonest frame.** Don't invoke a mutual contact, customer reference, or insider knowledge that isn't real.
 - **No stacking offers in one email.** One offer, one CTA, one yes.
 - **No Calendly link in the first email.** Earn the reply before the calendar.
+- **No investor meeting-first cold emails.** Explain the company in plain language and invite a reply before asking for time.
 - **No flattery as the anchor.** "Loved your post" without a specific quoted detail is not an anchor.
 - **No invented research.** If you can't cite where you found the anchor, you didn't find it.
 - **Always ask the human for confirmation** before sending any outbound message, scheduling any meeting, or publishing any landing page tied to the campaign.
 
 ## Source Lineage
 
-This skill is distilled from three 2026 cold-email source layers.
+This skill is distilled from seven cold-email source layers plus one earlier contextual-outbound draft that has now been folded into the root skill.
 
 - [10 Years of Expert Cold Email Advice in 36 Minutes (B2B Sales)](https://www.youtube.com/watch?v=XLsAAnNaFOc) — Connor Murray, on the Higher Levels channel. Supplies the three-paragraph body, the assumptive-language replacement set, the coiled-spring prep system, the 4-touch AB cadence, the three-rate tracking diagnostic, the objection response bank, and the strategic vs. volume bucketing model.
 - [I Sent 1,500,000 Cold Emails Last Month, Here's What Works in 2026](https://www.youtube.com/watch?v=CFZuljj6DrU) — Aaron Shepherd (GrowthFlare). Supplies the volume-as-data thesis, the 70/30 Outlook/Google infrastructure math, the front-end offer design pattern, the casual / human-sounding script register, and the back-end pre-call form qualification.
 - [The New Way of Cold Emailing in 2026](https://www.youtube.com/watch?v=h8u840Wm-BI) — Austin Schneider (Instantly). Supplies the engagement-first frame, the AI-spam-filter-aware deliverability floor (5 inboxes per domain, 30–50/day each, two-week warmup), the under-50-recipient relevance arithmetic, the AI-enriched micro-targeting workflow, the 2-touch rule with non-responder recycling, and the value-as-deliverable rule.
+- [The End of the Line for Cold Calling (& What's Replacing it)](https://www.youtube.com/watch?v=5ln1cGTzXTg) — Sam McKenna. Supplies Show Me You Know Me research, executive attention, authenticity bridge, LinkedIn/public-content research, and thread-based nurture.
+- [Cold Email Showdown: Rookie Sales Rep vs 10-Year Director](https://www.youtube.com/watch?v=Ag-6pB51s5o) — Florin Tatulea, Evan Greek, and Jason Bay on 30 Minutes to President's Club. Supplies the packaging pass, subject plus preview review, mobile-readable formatting, proof slot, AI-assisted research, and artifact CTAs.
+- [Get 457% more replies to your sales emails with the 1, 2, 3 hack](https://www.youtube.com/watch?v=hmuMkXntbH0) — Steli Efti (Close). Supplies the low-friction numbered reply fork, ghosted-thread revival, objection-state routing, and the "no is better than silence" reply philosophy.
+- [How To Cold Email Investors](https://www.youtube.com/watch?v=A3MmYbH1hbs) — Michael Seibel (Y Combinator). Supplies the investor-mode schema, short factual fundraising payload, company-domain sender trust, no meeting-first investor CTA, and slow follow-up rule.
+
+The earlier BuildOS `cold-email-contextual-outbound` draft is no longer treated as a separate missing companion. Its useful primitives — worldview research, buyer-language mining, intro-offer testing, and same-day reply routing — are now integrated into the master source map and reference modules.
 
 This skill does **not** fold in Alex Hormozi's [Learn Email Marketing in 39 Minutes!](https://www.youtube.com/watch?v=pLhQOYMGa88), which addresses list/newsletter email to opted-in subscribers — a different audience with different physics. That source-analysis lives separately and may seed a future list-email skill.
 
@@ -649,4 +750,8 @@ Each source video is also published as a standalone deep-read post:
 - [Less Is More Cold Email: Lessons from Connor Murray](/blogs/source-analyses/connor-murray-cold-email-assumptive-cadence) — three-paragraph body, assumptive-language replacement, coiled-spring prep, 4-touch AB cadence, two-bucket outreach strategy.
 - [Volume, Front-End Offer, And Human-Sounding Scripts: Lessons from Aaron Shepherd](/blogs/source-analyses/aaron-shepherd-volume-front-end-offer) — volume-as-data thesis, infrastructure arithmetic, front-end offer test-drive pattern, casual script register.
 - [Engagement-First Cold Email: Lessons from Austin Schneider (Instantly)](/blogs/source-analyses/austin-schneider-engagement-first-cold-email-2026) — deliverability floor, under-50-recipient relevance math, two-touch rule, value-as-deliverable.
+- [Show Me You Know Me In The AI Era: Lessons from Sam McKenna](/blogs/source-analyses/sam-mckenna-show-me-you-know-me-ai-era) — executive research, authenticity bridge, LinkedIn/public-content research, and conversation value.
+- [Cold Email Showdown: Lessons from Florin Tatulea, Evan Greek, and Jason Bay](/blogs/source-analyses/florin-tatulea-reply-method-cold-email-showdown) — packaging pass, proof slot, mobile formatting, AI research ladder, artifact CTAs.
+- [Low-Friction Replies: Lessons from Steli Efti](/blogs/source-analyses/steli-efti-low-friction-replies-123) — numbered reply forks, silence recovery, objection-state routing.
+- [How To Cold Email Investors: Lessons from Michael Seibel](/blogs/source-analyses/michael-seibel-cold-email-investors) — fundraising payload, investor sender trust, no meeting-first investor ask.
 - [Newsletter Email Marketing in 39 Minutes: Lessons from Alex Hormozi](/blogs/source-analyses/hormozi-newsletter-email-marketing-39-minutes) — _separate scope:_ list/newsletter email, not cold outreach. Included for craft-fundamentals reference.

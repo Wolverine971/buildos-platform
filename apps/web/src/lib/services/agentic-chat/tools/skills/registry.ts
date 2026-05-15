@@ -1,14 +1,38 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/registry.ts
 import { projectAuditSkill } from './audit.skill';
 import { calendarSkill } from './calendar.skill';
+import {
+	coldEmailDeliverabilityReadinessSkill,
+	coldEmailEngagementFirstOutreachSkill,
+	coldEmailIcpSignalDesignSkill,
+	coldEmailLearningReviewSkill,
+	coldEmailOfferLabSkill,
+	coldEmailOutreachCompilerSkill,
+	coldEmailReplyOsSkill,
+	coldEmailResearchAnchorsSkill,
+	coldEmailTasteReviewSkill
+} from './cold-email-outreach.skill';
 import { documentSkill } from './document.skill';
 import { projectForecastSkill } from './forecast.skill';
 import { libriSkill } from './libri.skill';
 import { peopleSkill } from './people.skill';
 import { planSkill } from './plan.skill';
 import { projectCreateSkill } from './project-create.skill';
+import { taskStateUpdatesSkill } from './task-state-updates.skill';
 import { taskSkill } from './task.skill';
 import type { SkillDefinition } from './types';
+import {
+	accessibilityInclusiveUiReviewSkill,
+	buildQualityUiUxSkill,
+	calmSoftwareDesignReviewSkill,
+	delightfulProductReviewSkill,
+	designSystemArchitectureReviewSkill,
+	informationArchitectureReviewSkill,
+	marketingSiteDesignReviewSkill,
+	uiUxQualityReviewSkill,
+	usabilityQuickResearchSkill,
+	visualCraftFundamentalsSkill
+} from './ui-ux.skill';
 import { isLibriIntegrationEnabled } from '$lib/services/agentic-chat/tools/libri';
 
 const ALL_SKILLS: SkillDefinition[] = [
@@ -17,7 +41,27 @@ const ALL_SKILLS: SkillDefinition[] = [
 	planSkill,
 	projectCreateSkill,
 	taskSkill,
+	taskStateUpdatesSkill,
 	peopleSkill,
+	buildQualityUiUxSkill,
+	uiUxQualityReviewSkill,
+	visualCraftFundamentalsSkill,
+	accessibilityInclusiveUiReviewSkill,
+	marketingSiteDesignReviewSkill,
+	calmSoftwareDesignReviewSkill,
+	delightfulProductReviewSkill,
+	designSystemArchitectureReviewSkill,
+	informationArchitectureReviewSkill,
+	usabilityQuickResearchSkill,
+	coldEmailEngagementFirstOutreachSkill,
+	coldEmailIcpSignalDesignSkill,
+	coldEmailOfferLabSkill,
+	coldEmailResearchAnchorsSkill,
+	coldEmailOutreachCompilerSkill,
+	coldEmailTasteReviewSkill,
+	coldEmailDeliverabilityReadinessSkill,
+	coldEmailReplyOsSkill,
+	coldEmailLearningReviewSkill,
 	libriSkill,
 	projectAuditSkill,
 	projectForecastSkill
@@ -58,6 +102,21 @@ export function getSkillByPath(path: string): SkillDefinition | undefined {
 
 export function listAllSkills(): SkillDefinition[] {
 	return [...getEnabledSkills()];
+}
+
+export function listRootSkills(): SkillDefinition[] {
+	return getEnabledSkills().filter((skill) => !skill.parentId);
+}
+
+export function listChildSkills(): SkillDefinition[] {
+	return getEnabledSkills().filter((skill) => Boolean(skill.parentId));
+}
+
+export function listChildSkillsForSkill(skillOrId: SkillDefinition | string): SkillDefinition[] {
+	const parentId = typeof skillOrId === 'string' ? skillOrId : skillOrId.id;
+	return getEnabledSkills()
+		.filter((skill) => skill.parentId === parentId)
+		.sort((a, b) => a.id.localeCompare(b.id));
 }
 
 export function isRegisteredSkillReference(reference: string): boolean {

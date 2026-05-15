@@ -1,9 +1,10 @@
 // apps/web/src/routes/api/onto/assets/server.test.ts
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { ensureProjectAccessMock, getFileExtensionMock } = vi.hoisted(() => ({
+const { ensureProjectAccessMock, getFileExtensionMock, adminSignedUploadMock } = vi.hoisted(() => ({
 	ensureProjectAccessMock: vi.fn(),
-	getFileExtensionMock: vi.fn(() => 'png')
+	getFileExtensionMock: vi.fn(() => 'png'),
+	adminSignedUploadMock: vi.fn()
 }));
 
 vi.mock('./shared', () => ({
@@ -15,6 +16,16 @@ vi.mock('./shared', () => ({
 		if (!Number.isFinite(parsed)) return fallback;
 		return Math.max(1, Math.floor(parsed));
 	})
+}));
+
+vi.mock('$lib/supabase/admin', () => ({
+	createAdminSupabaseClient: vi.fn(() => ({
+		storage: {
+			from: vi.fn(() => ({
+				createSignedUploadUrl: adminSignedUploadMock
+			}))
+		}
+	}))
 }));
 
 import { GET, POST } from './+server';
@@ -73,19 +84,7 @@ function createCreateSupabase(insertedAsset: AssetRow) {
 		from: vi.fn((table: string) => {
 			if (table === 'onto_assets') return assetsTable;
 			throw new Error(`Unexpected table: ${table}`);
-		}),
-		storage: {
-			from: vi.fn(() => ({
-				createSignedUploadUrl: vi.fn().mockResolvedValue({
-					data: {
-						signedUrl: 'https://storage.example/upload',
-						path: insertedAsset.storage_path,
-						token: 'upload-token'
-					},
-					error: null
-				})
-			}))
-		}
+		})
 	};
 }
 
@@ -100,6 +99,14 @@ describe('/api/onto/assets', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		ensureProjectAccessMock.mockResolvedValue({ actorId: 'actor-1' });
+		adminSignedUploadMock.mockResolvedValue({
+			data: {
+				signedUrl: 'https://storage.example/upload',
+				path: 'projects/project-1/assets/asset-created/original.png',
+				token: 'upload-token'
+			},
+			error: null
+		});
 	});
 
 	it('GET returns 401 when unauthenticated', async () => {

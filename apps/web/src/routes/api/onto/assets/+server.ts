@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ensureProjectAccess, getFileExtension, isEntityKind, parsePositiveInt } from './shared';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const MAX_IMAGE_SIZE_BYTES = 25 * 1024 * 1024; // 25MB
 
@@ -177,8 +178,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.databaseError(insertError);
 	}
 
-	const { data: uploadData, error: uploadError } = await locals.supabase.storage
-		.from('onto-assets')
+	// Project write access is validated above; use the admin client only for
+	// Storage signed-upload token creation to avoid Storage RLS object-insert
+	// failures while keeping the database asset row user-scoped.
+	const { data: uploadData, error: uploadError } = await createAdminSupabaseClient()
+		.storage.from('onto-assets')
 		.createSignedUploadUrl(storagePath);
 
 	if (uploadError || !uploadData?.signedUrl) {

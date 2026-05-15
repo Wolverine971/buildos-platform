@@ -7,7 +7,7 @@ No crypto, no heavy infra jobs. No jobs that require ice security clearance.
 
 # Job Search Roundup
 
-_Last updated: 2026-05-09_
+_Last updated: 2026-05-15_
 
 ---
 
@@ -109,12 +109,12 @@ _Verified live 2026-05-09. Filter: commercial + sponsor-eligible clearance postu
 
 ### Tier B — Maybe (one-screen-first or comp-negotiation required)
 
-| Company              | Role                                           | Location            | Open question                                                |
-| -------------------- | ---------------------------------------------- | ------------------- | ------------------------------------------------------------ |
-| Scale AI             | Senior SWE, Customer-Facing — Federal          | DC                  | Confirm Secret-only (sponsorable interim) vs TS/SCI required |
-| Two Six Technologies | Lead Full-Stack Engineer                       | Arlington (on-site) | Negotiate above $173K Lead band toward $200K+                |
-| HawkEye 360          | Senior Software Engineer — Architecture        | Herndon VA          | Verify clearance language per posting; comp tops at $210K    |
-| Saronic              | Senior Full Stack Engineer (Austin) — fallback | Austin TX           | Apply if DC FDE doesn't move                                 |
+| Company              | Role                                           | Location            | Open question                                                                                                                                                   |
+| -------------------- | ---------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scale AI             | Senior SWE, Customer-Facing — Federal          | DC                  | ~~Confirm clearance posture~~ — applied 2026-05-15 to Senior SWE Public Sector; JD says "deployment on classified networks" but no upfront active-clearance bar |
+| Two Six Technologies | Lead Full-Stack Engineer                       | Arlington (on-site) | Negotiate above $173K Lead band toward $200K+                                                                                                                   |
+| HawkEye 360          | Senior Software Engineer — Architecture        | Herndon VA          | Verify clearance language per posting; comp tops at $210K                                                                                                       |
+| Saronic              | Senior Full Stack Engineer (Austin) — fallback | Austin TX           | Apply if DC FDE doesn't move                                                                                                                                    |
 
 ### Cut from defense batch
 
@@ -124,7 +124,7 @@ _Verified live 2026-05-09. Filter: commercial + sponsor-eligible clearance postu
 - **Helsing AI Engineer (DC)** — requires active Secret+ clearance held today.
 - **True Anomaly Senior/Staff Platform Engineer AI** — requires "currently hold or have previously held" clearance. DC office is non-engineering anyway.
 - **Primer AI Senior FDE / Forward Deployed AI Engineer** — TS/SCI required upfront. (Other Primer commercial roles may exist; manual board scan needed.)
-- **Scale AI Senior SWE Federal** — requires active Secret minimum. Listed in Tier B since Secret is sponsorable on faster timeline than TS, but verify per posting.
+- **Scale AI Senior SWE Federal** — earlier posting required active Secret minimum. Listed in Tier B since Secret is sponsorable on faster timeline than TS. **Update 2026-05-15:** the Senior SWE Public Sector JD verified live did not gate on active clearance upfront; applied that day.
 
 **Geography (no DC office, on-site outside commute):**
 
@@ -361,27 +361,28 @@ Right shape but at least one critical unknown. Send a short note before drafting
 
 _Fill in as you apply — flag which ones to pursue via warm YC-alum intro instead of cold apply._
 
-| Company       | Role                                          | Status | Channel |
-| ------------- | --------------------------------------------- | ------ | ------- |
-| Saronic       | Senior FDE (Washington DC)                    |        |         |
-| Palantir      | FDSE — US Government (DC/Tysons)              |        |         |
-| Mercury       | Senior SWE, AI Engineering                    |        |         |
-| Pomelo        | Staff SWE, Patient Experience                 |        |         |
-| Picogrid      | Senior SWE, Legion Platform (DC)              |        |         |
-| Shield AI     | Senior SWE (Arlington)                        |        |         |
-| Linear        | Senior/Staff Product Engineer, AI             |        |         |
-| Replit        | Senior SWE, Agent Platform                    |        |         |
-| Mercury       | Senior SWE, Banking Integration Platform      |        |         |
-| Vannevar Labs | Senior SWE Fullstack, Mission Agents (Remote) |        |         |
-| Anduril       | Senior Full-Stack SWE (Costa Mesa)            |        |         |
-| Vercel        | Forward Deployed Engineer, v0                 |        |         |
-| Braintrust    | SWE, Product (or Open Source Eng)             |        |         |
-| Protege       | Software Engineer (mid–staff)                 |        |         |
-| GitButler     | Senior TypeScript Developer                   |        |         |
-| Hex           | SWE, Backend (Product)                        |        |         |
-| Cognition     | Full-Stack Engineer                           |        |         |
-| Resend        | Backend Engineer, Core Sending                |        |         |
-|               |                                               |        |         |
+| Company       | Role                                           | Status                 | Channel                            |
+| ------------- | ---------------------------------------------- | ---------------------- | ---------------------------------- |
+| Saronic       | Senior FDE (Washington DC)                     |                        |                                    |
+| Palantir      | FDSE — US Government (DC/Tysons)               |                        |                                    |
+| Mercury       | Senior SWE, AI Engineering                     |                        |                                    |
+| Pomelo        | Staff SWE, Patient Experience                  |                        |                                    |
+| Picogrid      | Senior SWE, Legion Platform (DC)               |                        |                                    |
+| Shield AI     | Senior SWE (Arlington)                         |                        |                                    |
+| Linear        | Senior/Staff Product Engineer, AI              |                        |                                    |
+| Replit        | Senior SWE, Agent Platform                     |                        |                                    |
+| Mercury       | Senior SWE, Banking Integration Platform       |                        |                                    |
+| Vannevar Labs | Senior SWE Fullstack, Mission Agents (Remote)  |                        |                                    |
+| Anduril       | Senior Full-Stack SWE (Costa Mesa)             |                        |                                    |
+| Vercel        | Forward Deployed Engineer, v0                  |                        |                                    |
+| Braintrust    | SWE, Product (or Open Source Eng)              |                        |                                    |
+| Protege       | Software Engineer (mid–staff)                  |                        |                                    |
+| GitButler     | Senior TypeScript Developer                    |                        |                                    |
+| Hex           | SWE, Backend (Product)                         |                        |                                    |
+| Cognition     | Full-Stack Engineer                            |                        |                                    |
+| Resend        | Backend Engineer, Core Sending                 |                        |                                    |
+| Scale AI      | Senior SWE, Public Sector (SF/NYC/DC/St.Louis) | **Applied 2026-05-15** | Cold apply · FederalAgentic resume |
+|               |                                                |                        |                                    |
 
 ---
 

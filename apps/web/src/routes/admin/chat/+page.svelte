@@ -12,7 +12,9 @@
 		Clock,
 		CheckCircle,
 		XCircle,
-		Sparkles
+		Sparkles,
+		Image,
+		HardDrive
 	} from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -91,12 +93,67 @@
 		hasTurnTelemetry: boolean;
 	};
 
+	type ChatMediaUsage = {
+		kpis: {
+			totalEvents: number;
+			uploadRequests: number;
+			uploadDedupes: number;
+			duplicateAttemptRate: number;
+			uploadedBytes: number;
+			attachmentLinks: number;
+			ocrQueued: number;
+			ocrFailed: number;
+			ocrFailureRate: number;
+			liveVisionRequests: number;
+			liveVisionFailures: number;
+			liveVisionFailureRate: number;
+			currentImageAssets: number;
+			currentImageStorageBytes: number;
+			averageImageBytes: number;
+		};
+		by_event_type: Array<{ event_type: string; count: number; bytes: number }>;
+		by_source: Array<{ source: string; count: number; bytes: number }>;
+		top_projects: Array<{
+			project_id: string;
+			project_name: string | null;
+			event_count: number;
+			upload_count: number;
+			upload_bytes: number;
+			dedupe_count: number;
+			live_vision_requests: number;
+			live_vision_failures: number;
+			current_image_count: number;
+			current_storage_bytes: number;
+		}>;
+		recent_events: Array<{
+			id: string | null;
+			created_at: string | null;
+			event_type: string;
+			source: string;
+			project_id: string | null;
+			project_name: string | null;
+			asset_id: string | null;
+			media_type: string | null;
+			content_type: string | null;
+			file_size_bytes: number;
+			checksum_sha256_suffix: string | null;
+		}>;
+		data_health: {
+			rows: {
+				mediaEvents: number;
+				imageAssets: number;
+			};
+			truncated: Record<string, boolean>;
+		};
+	};
+
 	let isLoading = $state(true);
 	let error = $state<string | null>(null);
 	let selectedTimeframe = $state<DashboardTimeframe>('7d');
 	let autoRefresh = $state(false);
 	let llmRefreshKey = $state(0);
 	let llmDays = $derived(timeframeToDays(selectedTimeframe));
+	let mediaUsageError = $state<string | null>(null);
 
 	// Dashboard KPIs
 	let dashboardKPIs = $state({
@@ -189,6 +246,10 @@
 	let hasTruncatedDashboardData = $derived(
 		Object.values(dataHealth.truncated ?? {}).some(Boolean)
 	);
+	let mediaUsage = $state<ChatMediaUsage>(createEmptyMediaUsage());
+	let hasTruncatedMediaData = $derived(
+		Object.values(mediaUsage.data_health.truncated ?? {}).some(Boolean)
+	);
 
 	// Load data on mount and when timeframe changes
 	$effect(() => {
@@ -231,11 +292,13 @@
 		if (!browser) return;
 		isLoading = true;
 		error = null;
+		mediaUsageError = null;
 
 		try {
-			const response = await fetch(
-				`/api/admin/chat/dashboard?timeframe=${selectedTimeframe}`
-			);
+			const [response, mediaResponse] = await Promise.all([
+				fetch(`/api/admin/chat/dashboard?timeframe=${selectedTimeframe}`),
+				fetch(`/api/admin/chat/media?timeframe=${selectedTimeframe}`)
+			]);
 
 			if (!response.ok) {
 				throw new Error('Failed to load dashboard data');
@@ -255,12 +318,56 @@
 			} else {
 				throw new Error(data.message || 'Failed to load dashboard');
 			}
+
+			if (mediaResponse.ok) {
+				const mediaData = await mediaResponse.json();
+				if (mediaData.success) {
+					mediaUsage = mediaData.data;
+				} else {
+					mediaUsageError = mediaData.message || 'Failed to load media usage';
+				}
+			} else {
+				mediaUsageError = 'Failed to load media usage';
+			}
 		} catch (err) {
 			console.error('Error loading chat dashboard:', err);
 			error = err instanceof Error ? err.message : 'Failed to load dashboard';
 		} finally {
 			isLoading = false;
 		}
+	}
+
+	function createEmptyMediaUsage(): ChatMediaUsage {
+		return {
+			kpis: {
+				totalEvents: 0,
+				uploadRequests: 0,
+				uploadDedupes: 0,
+				duplicateAttemptRate: 0,
+				uploadedBytes: 0,
+				attachmentLinks: 0,
+				ocrQueued: 0,
+				ocrFailed: 0,
+				ocrFailureRate: 0,
+				liveVisionRequests: 0,
+				liveVisionFailures: 0,
+				liveVisionFailureRate: 0,
+				currentImageAssets: 0,
+				currentImageStorageBytes: 0,
+				averageImageBytes: 0
+			},
+			by_event_type: [],
+			by_source: [],
+			top_projects: [],
+			recent_events: [],
+			data_health: {
+				rows: {
+					mediaEvents: 0,
+					imageAssets: 0
+				},
+				truncated: {}
+			}
+		};
 	}
 
 	function formatNumber(num: number): string {
@@ -292,6 +399,14 @@
 			notation: 'compact',
 			maximumFractionDigits: 1
 		}).format(Number.isFinite(num) ? num : 0);
+	}
+
+	function formatBytes(bytes: number): string {
+		const value = Number.isFinite(bytes) ? Math.max(0, bytes) : 0;
+		if (value < 1024) return `${Math.round(value)} B`;
+		if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+		if (value < 1024 * 1024 * 1024) return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+		return `${(value / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 	}
 
 	function trendPrefix(trend: Trend): string {
@@ -543,6 +658,33 @@
 		</div>
 	{/if}
 
+	{#if mediaUsageError}
+		<div
+			class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
+			role="status"
+		>
+			<div class="flex items-center gap-2">
+				<Image class="h-5 w-5 text-amber-500 shrink-0" />
+				<p class="text-sm text-amber-700 dark:text-amber-300">{mediaUsageError}</p>
+			</div>
+		</div>
+	{/if}
+
+	{#if hasTruncatedMediaData}
+		<div
+			class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
+			role="status"
+		>
+			<div class="flex items-center gap-2">
+				<HardDrive class="h-5 w-5 text-amber-500 shrink-0" />
+				<p class="text-sm text-amber-700 dark:text-amber-300">
+					Media usage queries hit their row limit. Storage and upload counts may be
+					undercounted for this period.
+				</p>
+			</div>
+		</div>
+	{/if}
+
 	{#if isLoading}
 		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
 			{#each Array(8) as _}
@@ -775,6 +917,170 @@
 				</div>
 				<div class="mt-1 text-xs text-muted-foreground">
 					{formatPercentage(dashboardKPIs.historyCompressionRate)} compressed
+				</div>
+			</div>
+		</div>
+
+		<!-- Multimodal Media Usage -->
+		<div
+			class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-frame tx-weak mb-6"
+		>
+			<div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between mb-4">
+				<div>
+					<h3 class="text-sm font-semibold text-foreground">Multimodal Media</h3>
+					<p class="text-xs text-muted-foreground">
+						Project image storage, chat upload pressure, OCR, and live-vision events
+					</p>
+				</div>
+				<div class="text-xs text-muted-foreground">
+					{formatNumber(mediaUsage.data_health.rows.mediaEvents)} events • {formatNumber(
+						mediaUsage.data_health.rows.imageAssets
+					)}
+					current images
+				</div>
+			</div>
+
+			<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+				<div class="rounded-lg border border-border bg-muted/30 p-3">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								Storage
+							</p>
+							<p class="text-xl font-bold text-sky-500 mt-1">
+								{formatBytes(mediaUsage.kpis.currentImageStorageBytes)}
+							</p>
+						</div>
+						<HardDrive class="h-6 w-6 text-sky-500 shrink-0" />
+					</div>
+					<p class="text-xs text-muted-foreground mt-2">
+						{formatNumber(mediaUsage.kpis.currentImageAssets)} images • avg {formatBytes(
+							mediaUsage.kpis.averageImageBytes
+						)}
+					</p>
+				</div>
+
+				<div class="rounded-lg border border-border bg-muted/30 p-3">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								Uploads
+							</p>
+							<p class="text-xl font-bold text-emerald-500 mt-1">
+								{formatNumber(mediaUsage.kpis.uploadRequests)}
+							</p>
+						</div>
+						<Image class="h-6 w-6 text-emerald-500 shrink-0" />
+					</div>
+					<p class="text-xs text-muted-foreground mt-2">
+						{formatBytes(mediaUsage.kpis.uploadedBytes)} new bytes • {formatPercentage(
+							mediaUsage.kpis.duplicateAttemptRate
+						)}
+						dedupe rate
+					</p>
+				</div>
+
+				<div class="rounded-lg border border-border bg-muted/30 p-3">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">OCR</p>
+							<p class="text-xl font-bold text-amber-500 mt-1">
+								{formatNumber(mediaUsage.kpis.ocrQueued)}
+							</p>
+						</div>
+						<CheckCircle class="h-6 w-6 text-amber-500 shrink-0" />
+					</div>
+					<p class="text-xs text-muted-foreground mt-2">
+						{formatNumber(mediaUsage.kpis.ocrFailed)} failed • {formatPercentage(
+							mediaUsage.kpis.ocrFailureRate
+						)}
+						failure rate
+					</p>
+				</div>
+
+				<div class="rounded-lg border border-border bg-muted/30 p-3">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="text-xs uppercase tracking-wide text-muted-foreground">
+								Live Vision
+							</p>
+							<p class="text-xl font-bold text-purple-500 mt-1">
+								{formatNumber(mediaUsage.kpis.liveVisionRequests)}
+							</p>
+						</div>
+						<Sparkles class="h-6 w-6 text-purple-500 shrink-0" />
+					</div>
+					<p class="text-xs text-muted-foreground mt-2">
+						{formatNumber(mediaUsage.kpis.liveVisionFailures)} failed • {formatPercentage(
+							mediaUsage.kpis.liveVisionFailureRate
+						)}
+						failure rate
+					</p>
+				</div>
+			</div>
+
+			<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+				<div class="lg:col-span-2">
+					<h4
+						class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3"
+					>
+						Top Projects By Image Storage
+					</h4>
+					{#if mediaUsage.top_projects.length > 0}
+						<div class="space-y-3">
+							{#each mediaUsage.top_projects.slice(0, 5) as project}
+								<div class="flex items-center justify-between gap-3">
+									<div class="min-w-0 flex-1">
+										<div class="text-sm font-medium text-foreground truncate">
+											{project.project_name ?? project.project_id}
+										</div>
+										<div class="text-xs text-muted-foreground">
+											{formatNumber(project.current_image_count)} images • {formatNumber(
+												project.upload_count
+											)}
+											uploads • {formatNumber(project.dedupe_count)} dedupes
+										</div>
+									</div>
+									<div class="text-right shrink-0">
+										<div class="text-sm font-bold text-sky-500">
+											{formatBytes(project.current_storage_bytes)}
+										</div>
+										<div class="text-xs text-muted-foreground">
+											{formatNumber(project.live_vision_requests)} vision
+										</div>
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-muted-foreground text-center py-4 text-sm">
+							No media project usage yet
+						</p>
+					{/if}
+				</div>
+
+				<div>
+					<h4
+						class="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3"
+					>
+						Event Mix
+					</h4>
+					{#if mediaUsage.by_event_type.length > 0}
+						<div class="space-y-2">
+							{#each mediaUsage.by_event_type.slice(0, 6) as row}
+								<div class="flex items-center justify-between gap-2 text-sm">
+									<span class="text-foreground truncate">{row.event_type}</span>
+									<span class="text-muted-foreground shrink-0">
+										{formatNumber(row.count)}
+									</span>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-muted-foreground text-center py-4 text-sm">
+							No media events yet
+						</p>
+					{/if}
 				</div>
 			</div>
 		</div>

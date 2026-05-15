@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/skill-load.ts
 import { getToolRegistry } from '../registry/tool-registry';
-import { getSkillByReference } from './registry';
-import type { SkillDefinition, SkillHelpPayload } from './types';
+import { getSkillByReference, listChildSkillsForSkill } from './registry';
+import type { SkillDefinition, SkillHelpPayload, SkillLinkedResourcePayload } from './types';
 
 export type SkillLoadFormat = 'short' | 'full';
 
@@ -32,12 +32,39 @@ function renderExamples(skill: SkillDefinition): string {
 	].join('\n');
 }
 
-function renderSkillMarkdown(skill: SkillDefinition): string {
+function renderLinkedResourcesSection(
+	title: string,
+	resources: SkillLinkedResourcePayload[]
+): string {
+	if (!resources?.length) return '';
+	return [
+		`## ${title}`,
+		...resources.map((resource) => {
+			const details = [
+				resource.summary,
+				resource.when_to_load.length > 0
+					? `Load when: ${resource.when_to_load.join(' ')}`
+					: '',
+				resource.path ? `Path: \`${resource.path}\`` : '',
+				resource.visibility ? `Visibility: ${resource.visibility}` : ''
+			].filter((part) => part.length > 0);
+			return `- \`${resource.id}\`: ${details.join(' ')}`;
+		})
+	].join('\n');
+}
+
+function renderSkillMarkdown(
+	skill: SkillDefinition,
+	childSkills: SkillLinkedResourcePayload[],
+	referenceModules: SkillLinkedResourcePayload[]
+): string {
 	const sections = [
 		`# ${skill.name}`,
 		skill.summary,
 		renderBulletSection('When to Use', skill.whenToUse),
 		renderNumberedSection('Workflow', skill.workflow),
+		renderLinkedResourcesSection('Child Skills', childSkills),
+		renderLinkedResourcesSection('Reference Modules', referenceModules),
 		skill.relatedOps.length > 0
 			? ['## Related Tools', ...skill.relatedOps.map((op) => `- \`${op}\``)].join('\n')
 			: '',
@@ -49,12 +76,51 @@ function renderSkillMarkdown(skill: SkillDefinition): string {
 	return sections.join('\n\n');
 }
 
+function mapLinkedResource(
+	resource: NonNullable<SkillDefinition['childSkills']>[number]
+): SkillLinkedResourcePayload {
+	const payload: SkillLinkedResourcePayload = {
+		id: resource.id,
+		summary: resource.summary,
+		when_to_load: resource.whenToLoad
+	};
+	if (resource.name) payload.name = resource.name;
+	if (resource.path) payload.path = resource.path;
+	if (resource.visibility) payload.visibility = resource.visibility;
+	return payload;
+}
+
+function mapRegisteredChildSkill(skill: SkillDefinition): SkillLinkedResourcePayload {
+	return {
+		id: skill.id,
+		name: skill.name,
+		summary: skill.summary,
+		when_to_load: skill.whenToUse.slice(0, 4)
+	};
+}
+
+function mergeLinkedResourcePayloads(
+	explicitResources: SkillLinkedResourcePayload[],
+	inferredResources: SkillLinkedResourcePayload[]
+): SkillLinkedResourcePayload[] {
+	const resourcesById = new Map<string, SkillLinkedResourcePayload>();
+	for (const resource of [...inferredResources, ...explicitResources]) {
+		resourcesById.set(resource.id, resource);
+	}
+	return [...resourcesById.values()].sort((a, b) => a.id.localeCompare(b.id));
+}
+
 export function buildSkillLoadPayload(
 	skill: SkillDefinition,
 	version: string,
 	format: SkillLoadFormat,
 	includeExamples: boolean
 ): SkillHelpPayload {
+	const childSkillPayloads = mergeLinkedResourcePayloads(
+		skill.childSkills?.map(mapLinkedResource) ?? [],
+		listChildSkillsForSkill(skill).map(mapRegisteredChildSkill)
+	);
+	const referenceModulePayloads = skill.referenceModules?.map(mapLinkedResource) ?? [];
 	const payload: SkillHelpPayload = {
 		type: 'skill',
 		id: skill.id,
@@ -69,6 +135,22 @@ export function buildSkillLoadPayload(
 		related_ops: skill.relatedOps
 	};
 
+	if (skill.parentId) {
+		payload.parent_id = skill.parentId;
+	}
+
+	if (typeof skill.depth === 'number') {
+		payload.depth = skill.depth;
+	}
+
+	if (childSkillPayloads.length) {
+		payload.child_skills = childSkillPayloads;
+	}
+
+	if (referenceModulePayloads.length) {
+		payload.reference_modules = referenceModulePayloads;
+	}
+
 	if (skill.guardrails?.length) {
 		payload.guardrails = skill.guardrails;
 	}
@@ -82,10 +164,14 @@ export function buildSkillLoadPayload(
 	}
 
 	if (format === 'full') {
-		payload.markdown = renderSkillMarkdown({
-			...skill,
-			examples: includeExamples ? skill.examples : undefined
-		});
+		payload.markdown = renderSkillMarkdown(
+			{
+				...skill,
+				examples: includeExamples ? skill.examples : undefined
+			},
+			childSkillPayloads,
+			referenceModulePayloads
+		);
 	}
 
 	return payload;

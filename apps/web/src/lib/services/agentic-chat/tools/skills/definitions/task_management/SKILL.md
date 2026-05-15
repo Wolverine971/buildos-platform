@@ -5,6 +5,20 @@ legacy_paths:
     - onto.task.skill
     - task.skill
     - tasks.skill
+child_skills:
+    - id: task_state_updates
+      name: Task State Updates
+      summary: Focused child skill for mapping user progress language to safe task state updates.
+      when_to_load:
+          - When the user reports task progress, completion, or blocking and state mapping is the main risk.
+      path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/task_state_updates/SKILL.md
+reference_modules:
+    - id: task_management.state_coverage
+      name: Task State Coverage
+      summary: Extra examples for mapping progress language to task state updates without emitting description-only writes.
+      when_to_load:
+          - When task status mapping is ambiguous or a previous update omitted state_key.
+      path: references/state-coverage.md
 path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/task_management/SKILL.md
 ---
 

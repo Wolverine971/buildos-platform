@@ -17,7 +17,7 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs/agent-skills/cold-email-engagement-first-outreach</loc>
-    <lastmod>2026-05-14</lastmod>
+    <lastmod>2026-05-15</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.9</priority>
   </url>
@@ -280,6 +280,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://build-os.com/blogs/source-analyses/30mpc-multithreading-buying-committee</loc>
+    <lastmod>2026-05-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/blogs/source-analyses/aaron-shepherd-volume-front-end-offer</loc>
     <lastmod>2026-05-14</lastmod>
     <changefreq>monthly</changefreq>
@@ -298,8 +304,20 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://build-os.com/blogs/source-analyses/becc-holland-personalization-to-relevance</loc>
+    <lastmod>2026-05-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/blogs/source-analyses/connor-murray-cold-email-assumptive-cadence</loc>
     <lastmod>2026-05-14</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/blogs/source-analyses/craig-elias-trigger-event-selling</loc>
+    <lastmod>2026-05-15</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -330,6 +348,12 @@
   <url>
     <loc>https://build-os.com/blogs/source-analyses/designspo-visual-hierarchy</loc>
     <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/blogs/source-analyses/florin-tatulea-reply-method-cold-email-showdown</loc>
+    <lastmod>2026-05-15</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -382,8 +406,44 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://build-os.com/blogs/source-analyses/lincoln-murphy-ideal-customer-profile-framework</loc>
+    <lastmod>2026-05-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/blogs/source-analyses/mark-roberge-science-of-scaling-segment-tiering</loc>
+    <lastmod>2026-05-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/blogs/source-analyses/michael-seibel-cold-email-investors</loc>
+    <lastmod>2026-05-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/blogs/source-analyses/nesrine-changuel-delightful-products-framework</loc>
     <lastmod>2026-05-04</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/blogs/source-analyses/sam-mckenna-show-me-you-know-me-ai-era</loc>
+    <lastmod>2026-05-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/blogs/source-analyses/steli-efti-low-friction-replies-123</loc>
+    <lastmod>2026-05-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://build-os.com/blogs/source-analyses/underscore-vc-minimum-viable-segment</loc>
+    <lastmod>2026-05-15</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -425,7 +485,7 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs/agent-skills</loc>
-    <lastmod>2026-05-14</lastmod>
+    <lastmod>2026-05-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -461,7 +521,7 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs/source-analyses</loc>
-    <lastmod>2026-05-14</lastmod>
+    <lastmod>2026-05-15</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>

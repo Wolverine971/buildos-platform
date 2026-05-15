@@ -11,7 +11,7 @@ djwayne35@gmail.com · (202) 869-5478 · [github.com/Wolverine971](https://githu
 
 ## Summary
 
-Senior software engineer with 8+ years shipping production systems, with the last year focused on **AI agent platforms, LLM routing infrastructure, and agent harness design**. Founder of **BuildOS**, an AI-native platform built around a multi-LLM routing layer with provider fallback (OpenRouter, OpenAI, Anthropic, Moonshot), an agentic chat with tool calling and MCP-style external-agent integration, and a Supabase-native distributed job queue. Three years of prior experience on **DoD and federal programs** — US Air Force intelligence knowledge graph, DoD military justice case-management system, US Census Bureau search platform. Former US Marine Corps Scout Sniper Team Leader; US citizen.
+Senior software engineer with 8+ years shipping production systems, with the last year focused on **AI agent platforms, LLM routing infrastructure, and agent harness design**. Founder of **BuildOS**, an AI-first project management platform that users and their agents connect to so they work from one shared source of truth. Built around a multi-LLM routing layer with provider fallback (OpenRouter, OpenAI, Anthropic, Moonshot), an agentic chat with tool calling and MCP-style external-agent integration, and a Supabase-native distributed job queue. Three years of prior experience on **DoD and federal programs** — US Air Force intelligence knowledge graph, DoD military justice case-management system, US Census Bureau search platform. Former US Marine Corps Scout Sniper Team Leader; US citizen.
 
 ---
 
@@ -30,7 +30,7 @@ Senior software engineer with 8+ years shipping production systems, with the las
 
 ### BuildOS — Founder & Engineer · Mar 2025 – Present
 
-_AI-native productivity platform · [build-os.com](https://build-os.com) · 80+ beta users_
+_AI-first project management platform that users and their agents connect to so they work from one shared source of truth · [build-os.com](https://build-os.com) · 80+ beta users_
 
 - Designed and shipped the full platform solo: SvelteKit web app on Vercel, Node.js worker on Railway, Turborepo monorepo (pnpm workspaces), Supabase Postgres with row-level security. Distributed across two services with a shared queue, shared types, and a shared LLM layer.
 - Built a **multi-LLM routing layer** (`packages/smart-llm`) that scores requests by task complexity, latency, and cost and routes across OpenRouter (primary) with OpenAI / Anthropic / Moonshot as direct fallbacks. Supports streaming, tool calling, JSON mode, and prompt caching. Consumed as a shared package by both the web app and the worker service.

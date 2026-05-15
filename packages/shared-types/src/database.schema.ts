@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-05-15T02:53:35.216Z
+// Generated on: 2026-05-15T18:18:55.274Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -75,6 +75,23 @@ export type DatabaseSchema = {
 		tokens_used: number | null;
 		tool_call_id: string | null;
 		tool_calls: Json | null;
+		user_id: string;
+	};
+	agent_chat_media_events: {
+		asset_id: string | null;
+		checksum_sha256: string | null;
+		content_type: string | null;
+		created_at: string;
+		event_type: string;
+		external_agent_caller_id: string | null;
+		file_size_bytes: number | null;
+		id: string;
+		media_type: string;
+		message_id: string | null;
+		metadata: Json;
+		project_id: string | null;
+		session_id: string | null;
+		source: string;
 		user_id: string;
 	};
 	agent_chat_sessions: {
@@ -519,6 +536,20 @@ export type DatabaseSchema = {
 		tool_name: string | null;
 		tool_result: Json | null;
 		total_tokens: number | null;
+		user_id: string;
+	};
+	chat_message_attachments: {
+		asset_id: string | null;
+		attachment_kind: string;
+		created_at: string;
+		display_order: number;
+		id: string;
+		media_type: string;
+		message_id: string;
+		metadata: Json;
+		project_id: string | null;
+		role: string;
+		session_id: string;
 		user_id: string;
 	};
 	chat_operations: {
@@ -3169,6 +3200,7 @@ export const tableNames = [
 	'agent_call_sessions',
 	'agent_call_tool_executions',
 	'agent_chat_messages',
+	'agent_chat_media_events',
 	'agent_chat_sessions',
 	'agent_executions',
 	'agent_plans',
@@ -3196,6 +3228,7 @@ export const tableNames = [
 	'chat_compressions',
 	'chat_context_cache',
 	'chat_messages',
+	'chat_message_attachments',
 	'chat_operations',
 	'chat_prompt_eval_assertions',
 	'chat_prompt_eval_runs',

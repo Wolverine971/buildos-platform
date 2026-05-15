@@ -903,6 +903,242 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(requestBodies[0]?.stream_options).toEqual({ include_usage: true });
 	});
 
+	it('preserves multimodal content arrays and routes image turns to the multimodal lane', async () => {
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+			return createSseResponse([
+				JSON.stringify({
+					id: 'stream-vision',
+					model: ACTIVE_EXPERIMENT_MODEL,
+					choices: [{ delta: { content: 'I can inspect this image.' } }]
+				}),
+				JSON.stringify({
+					choices: [{ delta: {}, finish_reason: 'stop' }],
+					usage: {
+						prompt_tokens: 100,
+						completion_tokens: 8,
+						total_tokens: 108
+					}
+				}),
+				'[DONE]'
+			]);
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createService();
+		const events = [];
+
+		for await (const event of service.streamText({
+			messages: [
+				{
+					role: 'user',
+					content: [
+						{ type: 'text', text: 'Inspect this screenshot.' },
+						{
+							type: 'image_url',
+							image_url: { url: 'https://signed.example/image.png' }
+						}
+					]
+				}
+			],
+			userId: 'user_1'
+		})) {
+			events.push(event);
+		}
+
+		expect(events.find((event) => event.type === 'done')).toMatchObject({ type: 'done' });
+		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(requestBodies[0]?.models).toEqual(['google/gemini-3.1-flash-lite-preview']);
+		expect(requestBodies[0]?.messages[0]?.content).toEqual([
+			{ type: 'text', text: 'Inspect this screenshot.' },
+			{ type: 'image_url', image_url: { url: 'https://signed.example/image.png' } }
+		]);
+		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
+		expect(requestBodies[0]?.provider).toEqual({
+			allow_fallbacks: true,
+			require_parameters: true
+		});
+	});
+
+	it('preserves tool calling while routing image turns through the multimodal lane', async () => {
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+			return createSseResponse([
+				JSON.stringify({
+					id: 'stream-vision-tool',
+					model: ACTIVE_EXPERIMENT_MODEL,
+					choices: [
+						{
+							delta: {
+								tool_calls: [
+									{
+										index: 0,
+										id: 'call_create_task',
+										type: 'function',
+										function: {
+											name: 'create_onto_task',
+											arguments: '{"title":"From image"}'
+										}
+									}
+								]
+							},
+							finish_reason: 'tool_calls'
+						}
+					]
+				}),
+				JSON.stringify({
+					choices: [{ delta: {}, finish_reason: 'tool_calls' }],
+					usage: {
+						prompt_tokens: 120,
+						completion_tokens: 12,
+						total_tokens: 132
+					}
+				}),
+				'[DONE]'
+			]);
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createService();
+		const events = [];
+
+		for await (const event of service.streamText({
+			messages: [
+				{
+					role: 'user',
+					content: [
+						{ type: 'text', text: 'Turn the screenshot into a task.' },
+						{
+							type: 'image_url',
+							image_url: { url: 'https://signed.example/task.png' }
+						}
+					]
+				}
+			],
+			tools: [
+				{
+					type: 'function',
+					function: {
+						name: 'create_onto_task',
+						description: 'Create a task.',
+						parameters: {
+							type: 'object',
+							properties: {
+								title: { type: 'string' }
+							},
+							required: ['title']
+						}
+					}
+				}
+			],
+			tool_choice: 'auto',
+			userId: 'user_1'
+		})) {
+			events.push(event);
+		}
+
+		const toolEvent = events.find((event) => event.type === 'tool_call');
+		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(requestBodies[0]?.models).toEqual(['google/gemini-3.1-flash-lite-preview']);
+		expect(requestBodies[0]?.messages[0]?.content).toEqual([
+			{ type: 'text', text: 'Turn the screenshot into a task.' },
+			{ type: 'image_url', image_url: { url: 'https://signed.example/task.png' } }
+		]);
+		expect(requestBodies[0]?.tools).toHaveLength(1);
+		expect(requestBodies[0]?.tool_choice).toBe('auto');
+		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
+		expect(requestBodies[0]?.provider).toEqual({
+			allow_fallbacks: true,
+			require_parameters: true
+		});
+		expect(toolEvent).toMatchObject({
+			type: 'tool_call',
+			tool_call: {
+				id: 'call_create_task',
+				type: 'function',
+				function: {
+					name: 'create_onto_task',
+					arguments: '{"title":"From image"}'
+				}
+			}
+		});
+		expect(JSON.parse((toolEvent as any).tool_call.function.arguments)).toEqual({
+			title: 'From image'
+		});
+	});
+
+	it('falls back to OCR-only text when the multimodal route cannot start', async () => {
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+			if (requestBodies.length <= 2) {
+				return new Response(
+					JSON.stringify({ error: { message: 'vision route unavailable' } }),
+					{ status: 400, headers: { 'content-type': 'application/json' } }
+				);
+			}
+			return createSseResponse([
+				JSON.stringify({
+					id: 'stream-text-fallback',
+					model: ACTIVE_EXPERIMENT_MODEL,
+					choices: [{ delta: { content: 'Using OCR context instead.' } }]
+				}),
+				JSON.stringify({
+					choices: [{ delta: {}, finish_reason: 'stop' }],
+					usage: {
+						prompt_tokens: 50,
+						completion_tokens: 5,
+						total_tokens: 55
+					}
+				}),
+				'[DONE]'
+			]);
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createService();
+		const events = [];
+
+		for await (const event of service.streamText({
+			messages: [
+				{
+					role: 'user',
+					content: [
+						{ type: 'text', text: 'Inspect this screenshot.\nOCR: Settings' },
+						{
+							type: 'image_url',
+							image_url: { url: 'https://signed.example/image.png' }
+						}
+					]
+				}
+			],
+			userId: 'user_1'
+		})) {
+			events.push(event);
+		}
+
+		expect(events.some((event) => event.type === 'text')).toBe(true);
+		expect(requestBodies[0]?.messages[0]?.content).toEqual([
+			{ type: 'text', text: 'Inspect this screenshot.\nOCR: Settings' },
+			{ type: 'image_url', image_url: { url: 'https://signed.example/image.png' } }
+		]);
+		expect(requestBodies[2]?.messages[0]?.content).toBe(
+			'Inspect this screenshot.\nOCR: Settings'
+		);
+		expect(requestBodies[2]?.reasoning).toEqual({ exclude: true });
+	});
+
 	it('includes Qwen fallback models for profiled tool-calling streams', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {

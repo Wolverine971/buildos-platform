@@ -35,10 +35,16 @@
 
 ## Access helpers
 
-- `current_actor_has_project_access(project_id, access)` is the primary check for read/write/admin.
+- `current_actor_has_project_access(project_id, access)` is the public-aware check for read/write/admin.
     - Grants service-role access.
     - Grants public read access for `is_public` projects.
     - Grants admin, owner, or member access based on `onto_project_members.access`.
+- `current_actor_has_project_member_access(project_id, access)` is the internal collaboration check for the current actor.
+    - Does not grant public project reads.
+    - Use this for internal project APIs that return documents, members, archived data, or private project context.
+- `actor_has_project_member_access(actor_id, project_id, access)` is the explicit actor check for service-role code, workers, and durable agent principals.
+    - Does not grant public project reads.
+    - Does not treat service-role access as authorization by itself.
 - `current_actor_is_project_member(project_id)` checks owner or active membership, ignoring access tiers.
 
 ## RLS enforcement and client types
@@ -50,12 +56,13 @@
 ## RLS policy patterns (ontology tables)
 
 - `onto_projects`
-    - SELECT: members, admins, and public projects.
+    - SELECT: members and admins through member-only RLS.
+    - Public/example project reads go through explicit public routes that shape the payload.
     - INSERT: `created_by = current_actor_id()` (or admin).
     - UPDATE: member write access (or admin).
     - DELETE: member admin access (or admin).
 - Project child tables (goals/tasks/risks/etc.)
-    - SELECT: `current_actor_has_project_access(project_id, 'read')` (or admin or public).
+    - SELECT: `current_actor_has_project_member_access(project_id, 'read')` (or admin).
     - INSERT/UPDATE/DELETE: write access (or admin).
 - `onto_project_logs`
     - SELECT: `current_actor_is_project_member(project_id)` (membership-based).
@@ -95,7 +102,8 @@
 
 - Missing `onto_actors` row: `current_actor_id()` returns null and RLS denies access.
 - Membership gaps: if owner membership is missing or `removed_at` is set, access and logs disappear.
-- Public projects: `is_public` grants read access to project data, but logs still require membership.
+- Public projects: `is_public` must not grant collaboration-table/RPC reads. Use explicit public routes for example projects and published pages.
+- Public projects: public read is not collaboration access. Do not use the public-aware helper for internal document trees, member lists, archived content, logs, full project payloads, graph payloads, comments, assets, snapshots, or connector project scopes.
 - `onto_assignments`/`onto_permissions` are not enforced by RLS; assuming they grant access will cause confusion.
 - Service-role usage in user-facing flows can mask real RLS failures and create auth drift.
 - RPC drift: `log_project_change` is not present in the database; avoid referencing it in code or docs.
@@ -104,7 +112,7 @@
 
 - Verify `ensure_actor_for_user` ran for the session user and `current_actor_id()` resolves.
 - Confirm the user has an active membership row for the project (`removed_at` is null) or owns the project.
-- Check that `project_logs_select_member` uses `current_actor_is_project_member` after the access fix migration.
+- Check that `project_logs_select_member` uses `current_actor_has_project_member_access(project_id, 'read')` after the access fix migration.
 - Confirm logs exist in `onto_project_logs` for the project.
 - For admin/global views, use service-role clients or admin policies; user-scoped clients only see member projects.
 
@@ -115,6 +123,8 @@
 - `packages/shared-types/src/functions/ensure_actor_for_user.sql:4` - Actor creation for authenticated users.
 - `packages/shared-types/src/functions/current_actor_id.sql:4` - Actor lookup used by RLS.
 - `packages/shared-types/src/functions/current_actor_has_project_access.sql:4` - Project access helper (read/write/admin).
+- `packages/shared-types/src/functions/current_actor_has_project_member_access.sql:4` - Internal current-actor member access helper.
+- `packages/shared-types/src/functions/actor_has_project_member_access.sql:4` - Explicit actor member access helper for service-role and agent-principal code.
 - `packages/shared-types/src/functions/current_actor_is_project_member.sql:4` - Membership-only helper.
 - `packages/shared-types/src/functions/is_admin.sql:4` - Admin checks.
 - `supabase/migrations/20260320000000_project_sharing_membership.sql:11` - `onto_project_members` and `onto_project_invites` tables.
@@ -122,6 +132,7 @@
 - `supabase/migrations/20260320000000_project_sharing_membership.sql:255` - Owner membership trigger.
 - `supabase/migrations/20260320000000_project_sharing_membership.sql:660` - RLS policies for logs/members/invites.
 - `supabase/migrations/20260320000002_project_sharing_access_fixes.sql:392` - RLS adjustments for logs and members.
+- `supabase/migrations/20260514001000_tighten_public_project_internal_access.sql:1` - Removes project-wide public read from internal collaboration RLS and RPC surfaces.
 - `packages/shared-types/src/functions/accept_project_invite.sql:4` - Invite acceptance flow.
 - `packages/shared-types/src/functions/accept_project_invite_by_id.sql:4` - Invite acceptance by ID.
 - `packages/shared-types/src/functions/decline_project_invite.sql:4` - Invite decline flow.

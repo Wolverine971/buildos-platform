@@ -4,6 +4,7 @@ import type {
 	ChatContextType,
 	ChatMessage,
 	ChatMessageInsert,
+	ChatAttachmentRef,
 	ChatSession,
 	ChatSessionInsert,
 	ChatSessionUpdate,
@@ -15,6 +16,11 @@ import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
 import type { FastChatHistoryMessage, FastAgentStreamUsage } from './types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
+import {
+	buildAttachmentContextBlock,
+	createChatAttachmentRefFromAsset,
+	type ChatAttachmentAssetRow
+} from './attachments';
 
 const logger = createLogger('FastChatSession');
 
@@ -49,6 +55,14 @@ type AttachVoiceNoteParams = {
 	messageId: string;
 };
 
+type PersistMessageAttachmentsParams = {
+	sessionId: string;
+	userId: string;
+	messageId: string;
+	projectId?: string | null;
+	attachments: ChatAttachmentRef[];
+};
+
 type FastChatSessionServiceOptions = {
 	errorLogger?: ErrorLoggerService;
 	endpoint?: string;
@@ -68,6 +82,18 @@ type RecentChatMessageRow = Pick<
 	ChatMessage,
 	'id' | 'role' | 'content' | 'metadata' | 'created_at'
 >;
+
+type ChatMessageAttachmentRow = {
+	message_id: string;
+	asset_id: string | null;
+	project_id: string | null;
+	attachment_kind: string;
+	media_type: string;
+	role: string | null;
+	display_order: number | null;
+	metadata: Record<string, unknown> | null;
+	asset: ChatAttachmentAssetRow | ChatAttachmentAssetRow[] | null;
+};
 
 export type InterruptedToolExecutionSummaryRow = {
 	message_id: string | null;
@@ -105,6 +131,32 @@ function previewText(value: unknown, maxLength: number): string | null {
 function stringifyPreview(value: unknown, maxLength: number): string | null {
 	const text = typeof value === 'string' ? value : JSON.stringify(value);
 	return previewText(text, maxLength);
+}
+
+function normalizeAttachmentAsset(
+	value: ChatMessageAttachmentRow['asset']
+): ChatAttachmentAssetRow | null {
+	if (!value) return null;
+	return Array.isArray(value) ? (value[0] ?? null) : value;
+}
+
+function attachmentMetadata(attachment: ChatAttachmentRef): Record<string, unknown> {
+	return {
+		temporary_attachment_id: attachment.temporary_attachment_id ?? null,
+		storage_bucket: attachment.storage_bucket ?? null,
+		storage_path: attachment.storage_path ?? null,
+		file_name: attachment.file_name ?? null,
+		content_type: attachment.content_type ?? null,
+		file_size_bytes: attachment.file_size_bytes ?? null,
+		width: attachment.width ?? null,
+		height: attachment.height ?? null,
+		checksum_sha256: attachment.checksum_sha256 ?? null,
+		ocr_status: attachment.ocr_status ?? null,
+		extraction_summary: attachment.extraction_summary ?? null,
+		extracted_text_preview: attachment.extracted_text_preview ?? null,
+		expires_at: attachment.expires_at ?? null,
+		...(attachment.metadata ?? {})
+	};
 }
 
 function summarizeStructuredData(value: unknown): string | null {
@@ -436,6 +488,102 @@ export function createFastChatSessionService(
 			.slice()
 			.reverse()
 			.filter((msg): msg is RecentChatMessageRow => allowedRoles.has(msg.role));
+		const messageIds = orderedMessages
+			.map((msg) => msg.id)
+			.filter((id): id is string => Boolean(id));
+		const attachmentsByMessageId = new Map<string, ChatAttachmentRef[]>();
+		if (messageIds.length > 0) {
+			const { data: attachmentRows, error: attachmentError } = await (supabase as any)
+				.from('chat_message_attachments')
+				.select(
+					'message_id, asset_id, project_id, attachment_kind, media_type, role, display_order, metadata, asset:onto_assets(id, project_id, original_filename, content_type, file_size_bytes, width, height, checksum_sha256, ocr_status, extraction_summary, extracted_text)'
+				)
+				.in('message_id', messageIds)
+				.eq('session_id', sessionId)
+				.order('display_order', { ascending: true })
+				.limit(limit * 8);
+
+			if (attachmentError) {
+				logger.warn('Failed to load chat message attachments', {
+					error: attachmentError,
+					sessionId
+				});
+				logFastChatSessionError({
+					error: attachmentError,
+					operationType: 'fastchat_message_attachments_load',
+					tableName: 'chat_message_attachments',
+					recordId: sessionId,
+					metadata: {
+						sessionId,
+						messageCount: messageIds.length
+					}
+				});
+			} else {
+				for (const row of (attachmentRows ?? []) as ChatMessageAttachmentRow[]) {
+					if (!row.message_id) continue;
+					if (row.media_type !== 'image') continue;
+					const existing = attachmentsByMessageId.get(row.message_id) ?? [];
+					if (row.attachment_kind === 'temporary_file') {
+						const metadata = row.metadata ?? {};
+						const temporaryAttachmentId =
+							typeof metadata.temporary_attachment_id === 'string'
+								? metadata.temporary_attachment_id
+								: null;
+						if (!temporaryAttachmentId) continue;
+						existing.push({
+							attachment_kind: 'temporary_file',
+							media_type: 'image',
+							temporary_attachment_id: temporaryAttachmentId,
+							project_id: null,
+							file_name:
+								typeof metadata.file_name === 'string' ? metadata.file_name : null,
+							content_type:
+								typeof metadata.content_type === 'string'
+									? metadata.content_type
+									: null,
+							file_size_bytes:
+								typeof metadata.file_size_bytes === 'number'
+									? metadata.file_size_bytes
+									: null,
+							width: typeof metadata.width === 'number' ? metadata.width : null,
+							height: typeof metadata.height === 'number' ? metadata.height : null,
+							checksum_sha256:
+								typeof metadata.checksum_sha256 === 'string'
+									? metadata.checksum_sha256
+									: null,
+							ocr_status: 'skipped',
+							role: row.role === 'analysis_target' ? 'analysis_target' : 'attachment',
+							display_order: row.display_order ?? existing.length,
+							expires_at:
+								typeof metadata.expires_at === 'string'
+									? metadata.expires_at
+									: null,
+							metadata: null
+						});
+						attachmentsByMessageId.set(row.message_id, existing);
+						continue;
+					}
+					if (row.attachment_kind !== 'onto_asset') continue;
+					const asset = normalizeAttachmentAsset(row.asset);
+					if (!asset) continue;
+					existing.push(
+						createChatAttachmentRefFromAsset(
+							asset,
+							{
+								role:
+									row.role === 'analysis_target'
+										? 'analysis_target'
+										: 'attachment',
+								display_order: row.display_order ?? existing.length,
+								metadata: row.metadata ?? null
+							},
+							{ maxExtractedTextChars: 1600 }
+						)
+					);
+					attachmentsByMessageId.set(row.message_id, existing);
+				}
+			}
+		}
 		const interruptedMessageIds = orderedMessages
 			.filter(isInterruptedAssistantMessage)
 			.map((msg) => msg.id)
@@ -478,10 +626,15 @@ export function createFastChatSessionService(
 		}
 
 		return orderedMessages.flatMap((msg) => {
+			const attachments = attachmentsByMessageId.get(msg.id) ?? [];
+			const attachmentContext = buildAttachmentContextBlock(attachments, { maxChars: 5000 });
 			const historyMessages: FastChatHistoryMessage[] = [
 				{
 					role: msg.role as FastChatHistoryMessage['role'],
-					content: msg.content
+					content: attachmentContext
+						? `${msg.content}\n\n${attachmentContext}`
+						: msg.content,
+					attachments: attachments.length > 0 ? attachments : undefined
 				}
 			];
 			if (isInterruptedAssistantMessage(msg)) {
@@ -583,6 +736,116 @@ export function createFastChatSessionService(
 		}
 
 		return data;
+	}
+
+	async function persistMessageAttachments(
+		params: PersistMessageAttachmentsParams
+	): Promise<void> {
+		const { sessionId, userId, messageId, projectId, attachments } = params;
+		if (!attachments.length) return;
+
+		const rows = attachments
+			.filter(
+				(attachment) =>
+					attachment.media_type === 'image' &&
+					((attachment.attachment_kind === 'onto_asset' && attachment.asset_id) ||
+						(attachment.attachment_kind === 'temporary_file' &&
+							attachment.temporary_attachment_id))
+			)
+			.map((attachment, index) => ({
+				message_id: messageId,
+				session_id: sessionId,
+				user_id: userId,
+				project_id: attachment.project_id ?? projectId ?? null,
+				asset_id: attachment.attachment_kind === 'onto_asset' ? attachment.asset_id : null,
+				attachment_kind: attachment.attachment_kind,
+				media_type: attachment.media_type,
+				role: attachment.role ?? 'attachment',
+				display_order: attachment.display_order ?? index,
+				metadata: attachmentMetadata(attachment)
+			}));
+
+		if (rows.length === 0) return;
+
+		const assetRows = rows.filter((row) => row.asset_id);
+		const temporaryRows = rows.filter((row) => !row.asset_id);
+
+		let persistError: unknown = null;
+		if (assetRows.length > 0) {
+			const { error } = await (supabase as any)
+				.from('chat_message_attachments')
+				.upsert(assetRows, { onConflict: 'message_id,asset_id' });
+			persistError = error ?? null;
+		}
+
+		if (!persistError && temporaryRows.length > 0) {
+			const { error: deleteError } = await (supabase as any)
+				.from('chat_message_attachments')
+				.delete()
+				.eq('message_id', messageId)
+				.eq('attachment_kind', 'temporary_file');
+			if (deleteError) {
+				persistError = deleteError;
+			} else {
+				const { error: insertError } = await (supabase as any)
+					.from('chat_message_attachments')
+					.insert(temporaryRows);
+				persistError = insertError ?? null;
+			}
+		}
+
+		if (persistError) {
+			logger.warn('Failed to persist chat message attachments', {
+				error: persistError,
+				sessionId,
+				messageId
+			});
+			logFastChatSessionError({
+				error: persistError,
+				operationType: 'fastchat_message_attachments_persist',
+				userId,
+				tableName: 'chat_message_attachments',
+				recordId: messageId,
+				metadata: {
+					sessionId,
+					messageId,
+					attachmentCount: rows.length
+				}
+			});
+			return;
+		}
+
+		const { error: eventError } = await (supabase as any)
+			.from('agent_chat_media_events')
+			.insert(
+				rows.map((row) => ({
+					user_id: userId,
+					project_id: row.project_id,
+					session_id: sessionId,
+					message_id: messageId,
+					asset_id: row.asset_id,
+					source: 'agent_chat_ui',
+					event_type: 'attachment_linked',
+					media_type: row.media_type,
+					content_type: row.metadata.content_type ?? null,
+					file_size_bytes: row.metadata.file_size_bytes ?? null,
+					checksum_sha256: row.metadata.checksum_sha256 ?? null,
+					metadata: {
+						display_order: row.display_order,
+						role: row.role,
+						file_name: row.metadata.file_name ?? null,
+						temporary_attachment_id: row.metadata.temporary_attachment_id ?? null
+					}
+				}))
+			);
+
+		if (eventError) {
+			logger.warn('Failed to persist chat attachment media events', {
+				error: eventError,
+				sessionId,
+				messageId
+			});
+		}
 	}
 
 	async function updateSessionContext(params: UpdateSessionContextParams): Promise<ChatSession> {
@@ -692,6 +955,7 @@ export function createFastChatSessionService(
 		resolveSession,
 		loadRecentMessages,
 		persistMessage,
+		persistMessageAttachments,
 		updateSessionContext,
 		attachVoiceNoteGroup
 	};

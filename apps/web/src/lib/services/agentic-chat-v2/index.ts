@@ -13,5 +13,6 @@ export { createFastChatSessionService } from './session-service';
 export { streamFastChat } from './stream-orchestrator/index';
 export { FASTCHAT_LIMITS } from './limits';
 export { composeFastChatHistory } from './history-composer';
+export * from './attachments';
 export * from './prompt-variant';
 export * from './types';

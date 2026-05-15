@@ -180,4 +180,82 @@ describe('buildToolPayloadForModel', () => {
 			})
 		);
 	});
+
+	it('preserves skill depth indexes and deliberate full-skill markdown', () => {
+		const markdown = `# Cold Email Outreach\n\n${'Use the root skill first. '.repeat(180)}`;
+		const payload = buildToolPayloadForModel(
+			toolCall('skill_load'),
+			toolResult({
+				type: 'skill',
+				id: 'cold_email_outreach',
+				name: 'Cold Email Outreach',
+				summary: 'Root cold outreach playbook.',
+				parent_id: 'marketing',
+				depth: 0,
+				when_to_use: ['Plan a cold campaign.'],
+				workflow: ['1) Choose mode.'],
+				child_skills: [
+					{
+						id: 'cold_email_outreach.offer_crafting',
+						summary: 'Deep offer-crafting playbook.',
+						when_to_load: ['When the core offer needs design or repair.'],
+						path: 'skills/cold_email_outreach/offer_crafting/SKILL.md'
+					}
+				],
+				reference_modules: [
+					{
+						id: 'cold_email_outreach.source_map',
+						summary: 'Source provenance and conflict resolution.',
+						when_to_load: ['When source-level detail is needed.'],
+						path: 'references/source-map.md',
+						visibility: 'internal'
+					}
+				],
+				markdown
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.parent_id).toBe('marketing');
+		expect(payload.depth).toBe(0);
+		expect(payload.child_skills[0]).toEqual(
+			expect.objectContaining({
+				id: 'cold_email_outreach.offer_crafting',
+				path: 'skills/cold_email_outreach/offer_crafting/SKILL.md'
+			})
+		);
+		expect(payload.reference_modules[0]).toEqual(
+			expect.objectContaining({
+				id: 'cold_email_outreach.source_map',
+				visibility: 'internal'
+			})
+		);
+		expect(payload.markdown.length).toBeGreaterThan(1200);
+		expect(payload.markdown).toContain('Use the root skill first.');
+	});
+
+	it('preserves skill reference module content and metadata', () => {
+		const content = `# Task State Coverage\n\n${'Include state_key when progress changed. '.repeat(120)}`;
+		const payload = buildToolPayloadForModel(
+			toolCall('skill_reference_load'),
+			toolResult({
+				type: 'skill_reference',
+				skill_id: 'task_management',
+				reference_id: 'task_management.state_coverage',
+				name: 'Task State Coverage',
+				summary: 'Extra task state mapping examples.',
+				when_to_load: ['When progress language is ambiguous.'],
+				path: 'references/state-coverage.md',
+				content
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.type).toBe('skill_reference');
+		expect(payload.skill_id).toBe('task_management');
+		expect(payload.reference_id).toBe('task_management.state_coverage');
+		expect(payload.path).toBe('references/state-coverage.md');
+		expect(payload.content.length).toBeGreaterThan(1200);
+		expect(payload.content).toContain('Include state_key when progress changed.');
+	});
 });

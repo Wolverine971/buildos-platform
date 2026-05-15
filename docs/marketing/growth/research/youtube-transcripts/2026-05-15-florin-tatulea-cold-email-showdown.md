@@ -1,73 +1,75 @@
 ---
-title: "Cold Email Showdown: Rookie Sales Rep vs 10-Year Director"
+title: 'Cold Email Showdown: Rookie Sales Rep vs 10-Year Director'
 video_id: Ag-6pB51s5o
-url: "https://www.youtube.com/watch?v=Ag-6pB51s5o"
+url: 'https://www.youtube.com/watch?v=Ag-6pB51s5o'
 channel: 30 Minutes to President’s Club
-channel_url: "https://www.youtube.com/@30MPC"
+channel_url: 'https://www.youtube.com/@30MPC'
 upload_date: 2026-01-06
-duration: "36:01"
+duration: '36:01'
 views: 5019
 tags:
-  - 30mpc
-  - 30 Minutes to Presidents Club
-  - Nick Cegelski
-  - Armand Farrokh
-  - B2B Sales Podcast
-  - 30 Minutes to President's Club
-  - Enterprise Sales
+    - 30mpc
+    - 30 Minutes to Presidents Club
+    - Nick Cegelski
+    - Armand Farrokh
+    - B2B Sales Podcast
+    - 30 Minutes to President's Club
+    - Enterprise Sales
 timestamps:
-  - time: "0:00"
-    label: "Intro: Rookie vs 10-Year Sales Director"
-  - time: "2:44"
-    label: "Cold Email Judging Criteria/Best Practices"
-  - time: "4:53"
-    label: "Round 1: B2B Goods"
-  - time: "13:02"
-    label: "Round 2: B2C Services"
-  - time: "20:05"
-    label: "Round 3: B2B SaaS"
-  - time: "33:43"
-    label: "Key Takeaways/Lessons Learned"
+    - time: '0:00'
+      label: 'Intro: Rookie vs 10-Year Sales Director'
+    - time: '2:44'
+      label: 'Cold Email Judging Criteria/Best Practices'
+    - time: '4:53'
+      label: 'Round 1: B2B Goods'
+    - time: '13:02'
+      label: 'Round 2: B2C Services'
+    - time: '20:05'
+      label: 'Round 3: B2B SaaS'
+    - time: '33:43'
+      label: 'Key Takeaways/Lessons Learned'
 description: |
-  We put Evan Greek (Rookie Commercial AE at Gong) and Florin Tatulea (Seasoned Head of Sales Development at Common Room) in a cold email cage match: 10 minutes per round, weird prompts, and you have to write something that would actually get a reply. 
-  
-  Evan and Florin show how they use AI in real time to research accounts and draft highly personalized emails in minutes (not hours), then do the human edits for finishing touches.
-  
-  Jason Bay (CEO at Outbound Squad) judges based on The Reply Method framework: https://www.30mpc.com/course/cold-email-course.
-  
-  📧 Get $60 off Jason Bay's Cold Email AI Course with code "showdown": https://shop.30mpc.com/30mpc-the-reply-method-cold-email-course?coupon=showdown
-  
-  Timestamps:
-  00:00 Intro: Rookie vs 10-Year Sales Director
-  
-  2:44 Cold Email Judging Criteria/Best Practices
-  
-  4:53 Round 1: B2B Goods 
-  
-  13:02 Round 2: B2C Services
-  
-  20:05 Round 3: B2B SaaS
-  
-  33:43 Key Takeaways/Lessons Learned 
-  
-  These Courses Will Get You to President’s Club:
-  
-  👥 Leadership Course: https://bit.ly/4o8KtMT
-  📧 Cold Email Course: http://bit.ly/44K6jy3
-  ☎️ Cold Call Course: https://bit.ly/4jqQ4w2
-  🔮 Discovery Course: https://bit.ly/4cQYaM8
-  🛠️ Free Toolkits: http://bit.ly/4nZwvO5
-  
-  Get More Tactics
-  
-  Join our weekly newsletter – https://hubs.li/Q02NJQ8p0
-  Things you can steal and use today – https://linktr.ee/30mpc_youtube
-transcribed_date: "2026-05-15"
+    We put Evan Greek (Rookie Commercial AE at Gong) and Florin Tatulea (Seasoned Head of Sales Development at Common Room) in a cold email cage match: 10 minutes per round, weird prompts, and you have to write something that would actually get a reply. 
+
+    Evan and Florin show how they use AI in real time to research accounts and draft highly personalized emails in minutes (not hours), then do the human edits for finishing touches.
+
+    Jason Bay (CEO at Outbound Squad) judges based on The Reply Method framework: https://www.30mpc.com/course/cold-email-course.
+
+    📧 Get $60 off Jason Bay's Cold Email AI Course with code "showdown": https://shop.30mpc.com/30mpc-the-reply-method-cold-email-course?coupon=showdown
+
+    Timestamps:
+    00:00 Intro: Rookie vs 10-Year Sales Director
+
+    2:44 Cold Email Judging Criteria/Best Practices
+
+    4:53 Round 1: B2B Goods 
+
+    13:02 Round 2: B2C Services
+
+    20:05 Round 3: B2B SaaS
+
+    33:43 Key Takeaways/Lessons Learned 
+
+    These Courses Will Get You to President’s Club:
+
+    👥 Leadership Course: https://bit.ly/4o8KtMT
+    📧 Cold Email Course: http://bit.ly/44K6jy3
+    ☎️ Cold Call Course: https://bit.ly/4jqQ4w2
+    🔮 Discovery Course: https://bit.ly/4cQYaM8
+    🛠️ Free Toolkits: http://bit.ly/4nZwvO5
+
+    Get More Tactics
+
+    Join our weekly newsletter – https://hubs.li/Q02NJQ8p0
+    Things you can steal and use today – https://linktr.ee/30mpc_youtube
+transcribed_date: '2026-05-15'
+path: docs/marketing/growth/research/youtube-transcripts/2026-05-15-florin-tatulea-cold-email-showdown.md
 ---
 
 # Cold Email Showdown: Rookie Sales Rep vs 10-Year Director
 
 ## Metadata
+
 - **Channel**: [30 Minutes to President’s Club](https://www.youtube.com/@30MPC)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=Ag-6pB51s5o)
 - **Duration**: 36:01
@@ -75,6 +77,7 @@ transcribed_date: "2026-05-15"
 - **Views**: 5,019
 
 ## Timestamps
+
 - 0:00 — Intro: Rookie vs 10-Year Sales Director
 - 2:44 — Cold Email Judging Criteria/Best Practices
 - 4:53 — Round 1: B2B Goods

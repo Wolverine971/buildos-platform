@@ -242,10 +242,10 @@
 			"posts": {
 				"cold-email-engagement-first-outreach": {
 					"title": "Cold Email Engagement-First Outreach: An Agent Skill For 2026 Cold Campaigns",
-					"description": "A source-lineaged agent skill for planning, drafting, auditing, and rewriting cold outreach campaigns. Distilled from three 2026 cold-email source analyses (Connor Murray, Aaron Shepherd, Austin Schneider) into one playbook with mode-selection, deliverability floor, front-end offer design, assumptive-language audit, two-mode cadence, and three-rate diagnostic.",
+					"description": "A source-lineaged root combo skill for planning, drafting, auditing, and rewriting cold outreach. Distilled from seven cold-email source analyses into one master playbook for high-volume campaigns, strategic accounts, single-target relationship outreach, reply revival, investor fundraising, founder-led outreach, recruiting, PR, partnerships, and customer research.",
 					"author": "DJ Wayne",
 					"date": "2026-05-14",
-					"lastmod": "2026-05-14",
+					"lastmod": "2026-05-15",
 					"changefreq": "monthly",
 					"priority": "0.9",
 					"published": true,
@@ -258,8 +258,8 @@
 						"marketing-and-content",
 						"buildos"
 					],
-					"readingTime": 13,
-					"excerpt": "Cold email in 2026 is not a writing problem. It is a system problem with four locked layers — deliverability infrastructure, persona-times-signal segmentation, a real front-end offer, and a short assumptive cadence. This skill turns those four layers into an agent-readable playbook with refusal conditions, mode-locked cadences, and a passive-language audit pass.",
+					"readingTime": 16,
+					"excerpt": "Cold email in 2026 is not one template. It is a mode router plus a drafting and audit system: deliverability floor, persona-times-signal segmentation, packaging, real artifact offers, researched bridges, reply routing, and mode-locked cadence.",
 					"skillId": "sales-and-growth/cold-email-engagement-first-outreach",
 					"skillType": "combo",
 					"skillCategory": "sales-and-growth",
@@ -270,20 +270,25 @@
 						"Codex",
 						"portable Agent Skills"
 					],
-					"stackWith": [
-						"cold-email-contextual-outbound",
-						"landing-page-scorecard-funnel",
-						"hook-craft-short-form"
-					],
-					"skillSource": "docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/SKILL.md",
+					"stackWith": ["landing-page-scorecard-funnel", "hook-craft-short-form"],
+					"skillSource": "apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_engagement_first_outreach/SKILL.md",
 					"lineagePath": "docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/lineage.yaml",
-					"lineagePeople": ["Connor Murray", "Aaron Shepherd", "Austin Schneider"],
+					"lineagePeople": [
+						"Connor Murray",
+						"Aaron Shepherd",
+						"Austin Schneider",
+						"Sam McKenna",
+						"Florin Tatulea",
+						"Steli Efti",
+						"Michael Seibel"
+					],
 					"lineageStats": {
-						"sources": 3,
-						"primitives": 15,
-						"sourceClaims": 16,
-						"edges": 31,
-						"candidateV2Sources": 1
+						"sources": 7,
+						"primitives": 17,
+						"sourceClaims": 23,
+						"edges": 49,
+						"referenceModules": 5,
+						"integratedPriorSources": 1
 					},
 					"lineageSources": [
 						{
@@ -315,6 +320,45 @@
 							"channelUrl": "https://www.youtube.com/@InstantlyAI",
 							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=h8u840Wm-BI"
+						},
+						{
+							"title": "The End of the Line for Cold Calling (& What's Replacing it)",
+							"creator": "Sam McKenna",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.samsalesconsulting.com/",
+							"channelName": "Closing Time",
+							"channelUrl": "https://www.youtube.com/@InsightlyCRM",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=5ln1cGTzXTg"
+						},
+						{
+							"title": "Cold Email Showdown: Rookie Sales Rep vs 10-Year Director",
+							"creator": "Florin Tatulea, Evan Greek, Jason Bay",
+							"creatorType": "Person",
+							"channelName": "30 Minutes to President's Club",
+							"channelUrl": "https://www.youtube.com/@30MinutesToPresidentsClub",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=Ag-6pB51s5o"
+						},
+						{
+							"title": "Get 457% more replies to your sales emails with the 1, 2, 3 hack",
+							"creator": "Steli Efti",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.close.com/",
+							"channelName": "Close",
+							"channelUrl": "https://www.youtube.com/@close",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=hmuMkXntbH0"
+						},
+						{
+							"title": "How To Cold Email Investors",
+							"creator": "Michael Seibel",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.ycombinator.com/people/michael-seibel",
+							"channelName": "Y Combinator",
+							"channelUrl": "https://www.youtube.com/@ycombinator",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=A3MmYbH1hbs"
 						}
 					],
 					"path": "apps/web/src/content/blogs/agent-skills/cold-email-engagement-first-outreach.md",
@@ -2163,6 +2207,81 @@
 				"color": "gray"
 			},
 			"posts": {
+				"30mpc-multithreading-buying-committee": {
+					"title": "Multithreading and the Buying Committee: Lessons from 30MPC and Brent Adamson",
+					"description": "A deep read of the 30 Minutes to President's Club multithreading playbook and Brent Adamson's Mobilizer typology — the Golden Path (Champion → Department Leads → Power), why the rep who gets to power first wins the deal, the buyer-benefit framing that earns stakeholder loop-ins, and the 6.8-buyer committee data from Gartner that makes solo-decision-maker outreach a 2010s artifact.",
+					"author": "DJ Wayne",
+					"date": "2026-05-15",
+					"lastmod": "2026-05-15",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"buying-committee",
+						"multithreading",
+						"mobilizer",
+						"champion",
+						"sales-and-growth"
+					],
+					"readingTime": 8,
+					"excerpt": "A modern B2B purchase is decided by 6 to 11 people, not one. The rep who gets to power first wins the deal — but only if they earn the loop-in by framing it as protecting the buyer from internal collapse, not accelerating the seller's close. 30MPC's Golden Path and Brent Adamson's Mobilizer / Talker / Blocker typology give the practical map. Cold outreach to a single contact in a 7-person committee is gambling.",
+					"sourceTitle": "The Multithreading Playbook + Mobilizer Typology",
+					"sourceCreator": "30 Minutes to President's Club (Nick Cegelski, Armand Farrokh) + Brent Adamson",
+					"sourceUrl": "https://www.30mpc.com/newsletter/how-to-multithread-and-get-to-power-in-sales",
+					"sourceChannelUrl": "https://www.30mpc.com/",
+					"lineagePeople": [
+						"Nick Cegelski",
+						"Armand Farrokh",
+						"Brent Adamson",
+						"John McMahon"
+					],
+					"lineageSources": [
+						{
+							"title": "How to Multithread and Get to Power in Sales",
+							"creator": "30 Minutes to President's Club",
+							"creatorType": "Organization",
+							"creatorUrl": "https://www.30mpc.com/",
+							"channelName": "30MPC",
+							"channelUrl": "https://www.30mpc.com/",
+							"sourceType": "newsletter",
+							"url": "https://www.30mpc.com/newsletter/how-to-multithread-and-get-to-power-in-sales"
+						},
+						{
+							"title": "How to Sell to a Challenger Customer (Sales Hacker Podcast Ep. 282)",
+							"creator": "Brent Adamson",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.linkedin.com/in/brentadamson",
+							"channelName": "Sales Hacker",
+							"channelUrl": "https://www.saleshacker.com/",
+							"sourceType": "podcast",
+							"url": "https://www.youtube.com/watch?v=8-zT8Cu6tkQ"
+						},
+						{
+							"title": "The B2B Buying Journey (Research Hub)",
+							"creator": "Gartner",
+							"creatorType": "Organization",
+							"sourceType": "research",
+							"url": "https://www.gartner.com/en/sales/insights/b2b-buying-journey"
+						},
+						{
+							"title": "Masters of MEDDICC Season 1 Episode 5 — John McMahon",
+							"creator": "John McMahon",
+							"creatorType": "Person",
+							"sourceType": "podcast",
+							"url": "https://meddicc.com/meddicc-media/masters-of-meddicc-s1-ep5-john-mcmahon"
+						}
+					],
+					"relatedSkills": [
+						"cold-email-engagement-first-outreach",
+						"cold-email-icp-signal-design"
+					],
+					"path": "apps/web/src/content/blogs/source-analyses/30mpc-multithreading-buying-committee.md",
+					"slug": "30mpc-multithreading-buying-committee",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/30mpc-multithreading-buying-committee.md"
+				},
 				"aaron-shepherd-volume-front-end-offer": {
 					"title": "Volume, Front-End Offer, And Human-Sounding Scripts: Lessons from Aaron Shepherd",
 					"description": "A deep read of Aaron Shepherd's \"I Sent 1,500,000 Cold Emails Last Month, Here's What Works in 2026\" — the volume-as-data thesis, the 70/30 Outlook-Google domain infrastructure, the front-end-offer test-drive, and the human-sounding script discipline.",
@@ -2293,6 +2412,61 @@
 					"category": "source-analyses",
 					"filePath": "src/content/blogs/source-analyses/austin-schneider-engagement-first-cold-email-2026.md"
 				},
+				"becc-holland-personalization-to-relevance": {
+					"title": "Personalization vs. Relevance: Lessons from Becc Holland (Flip the Script)",
+					"description": "A deep read of Becc Holland's relevance framework — the four relevance types (Firmographic, Demographic, Technographic, Trigger-based), the three trigger sub-types (Inbound, Postbound, Bridgebound), and the \"if you can send it to two people, it's relevance not personalization\" test that separates real research from decorative AI-generated openers.",
+					"author": "DJ Wayne",
+					"date": "2026-05-15",
+					"lastmod": "2026-05-15",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"icp",
+						"signal-design",
+						"relevance",
+						"personalization",
+						"sales-and-growth"
+					],
+					"readingTime": 6,
+					"excerpt": "Becc Holland's framework cuts through the personalization-vs-template debate that AI made worse. Personalization is 1:1 — research no other prospect can use. Relevance is 1:many — a real reason this message fits a class of buyers right now. Cold outreach that confuses the two ships decorative \"I saw you went to State\" openers attached to commodity offers. The fix is to grade your hook against four relevance types, anchored in a trigger.",
+					"sourceTitle": "Hooking Relevance with Personalization in Competitive Prospecting",
+					"sourceCreator": "Becc Holland (Flip the Script) on 30 Minutes to President's Club",
+					"sourceUrl": "https://podcasts.apple.com/us/podcast/31-sell-hooking-relevance-with-personalization-in/id1510861233?i=1000502579117",
+					"sourceChannelUrl": "https://www.flipthescript.com/",
+					"lineagePeople": ["Becc Holland", "Nick Cegelski", "Armand Farrokh"],
+					"lineageSources": [
+						{
+							"title": "31 (Sell): Hooking Relevance with Personalization in Competitive Prospecting",
+							"creator": "Becc Holland",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.linkedin.com/in/beccholland-flipthescript",
+							"channelName": "30 Minutes to President's Club",
+							"channelUrl": "https://www.30mpc.com/",
+							"sourceType": "podcast",
+							"url": "https://podcasts.apple.com/us/podcast/31-sell-hooking-relevance-with-personalization-in/id1510861233?i=1000502579117"
+						},
+						{
+							"title": "How to Hook Personalization to Relevance (webinar)",
+							"creator": "Becc Holland",
+							"creatorType": "Person",
+							"channelName": "Flip the Script",
+							"channelUrl": "https://www.flipthescript.com/",
+							"sourceType": "webinar",
+							"url": "https://www.flipthescript.com/personalization-to-relevance-webinar"
+						}
+					],
+					"relatedSkills": [
+						"cold-email-engagement-first-outreach",
+						"cold-email-icp-signal-design"
+					],
+					"path": "apps/web/src/content/blogs/source-analyses/becc-holland-personalization-to-relevance.md",
+					"slug": "becc-holland-personalization-to-relevance",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/becc-holland-personalization-to-relevance.md"
+				},
 				"connor-murray-cold-email-assumptive-cadence": {
 					"title": "Less Is More Cold Email: Lessons from Connor Murray",
 					"description": "A deep read of Connor Murray's \"10 Years of Expert Cold Email Advice in 36 Minutes\" — the three-paragraph body, assumptive language replacement, the coiled-spring prep system, and the AB follow-up cadence that turns a 10-email day into a 100-email day.",
@@ -2335,6 +2509,59 @@
 					"slug": "connor-murray-cold-email-assumptive-cadence",
 					"category": "source-analyses",
 					"filePath": "src/content/blogs/source-analyses/connor-murray-cold-email-assumptive-cadence.md"
+				},
+				"craig-elias-trigger-event-selling": {
+					"title": "Trigger Event Selling: Lessons from Craig Elias",
+					"description": "A deep read of Craig Elias's \"Shift Selling\" framework — the A/B/C trigger taxonomy (Awareness, Bad experience, Change), why prospects need three events to actually buy, the 75% win-rate first-in advantage, and how to systematically monitor for buying moments instead of guessing at timing.",
+					"author": "DJ Wayne",
+					"date": "2026-05-15",
+					"lastmod": "2026-05-15",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"trigger-events",
+						"icp",
+						"signal-design",
+						"timing",
+						"sales-and-growth"
+					],
+					"readingTime": 8,
+					"excerpt": "Craig Elias literally wrote the book on trigger-event selling. His thesis: prospects do not buy because your email arrives — they buy because something in their world broke. There are three event types (Awareness, Bad experience, Change), buyers need three events stacked to actually transact, and the vendor who arrives first wins 74% of the deals. Cold outreach without trigger thinking is luck.",
+					"sourceTitle": "Shift Selling: Turn Your Prospects into Customers",
+					"sourceCreator": "Craig Elias (SHiFT Selling)",
+					"sourceUrl": "https://www.youtube.com/watch?v=KuRUanwNzSc",
+					"sourceChannelUrl": "https://www.youtube.com/@Badgermaps",
+					"lineagePeople": ["Craig Elias", "Steve Benson"],
+					"lineageSources": [
+						{
+							"title": "Shift Selling: Turn Your Prospects into Customers",
+							"creator": "Craig Elias",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.linkedin.com/in/craigelias",
+							"channelName": "Badger Maps (Outside Sales Talk)",
+							"channelUrl": "https://www.youtube.com/@Badgermaps",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=KuRUanwNzSc"
+						},
+						{
+							"title": "SHiFT! Harness the Trigger Events That Turn Prospects into Customers",
+							"creator": "Craig Elias and Tibor Shanto",
+							"creatorType": "Person",
+							"sourceType": "book",
+							"url": "https://shiftselling.com/book/friends/"
+						}
+					],
+					"relatedSkills": [
+						"cold-email-engagement-first-outreach",
+						"cold-email-icp-signal-design"
+					],
+					"path": "apps/web/src/content/blogs/source-analyses/craig-elias-trigger-event-selling.md",
+					"slug": "craig-elias-trigger-event-selling",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/craig-elias-trigger-event-selling.md"
 				},
 				"daniel-priestley-1m-landing-page": {
 					"title": "The $1 Million Landing Page: Lessons from Daniel Priestley",
@@ -2551,6 +2778,54 @@
 					"slug": "designspo-visual-hierarchy",
 					"category": "source-analyses",
 					"filePath": "src/content/blogs/source-analyses/designspo-visual-hierarchy.md"
+				},
+				"florin-tatulea-reply-method-cold-email-showdown": {
+					"title": "Reply-Method Cold Email: Lessons from Florin Tatulea and 30MPC",
+					"description": "A deep read of the 30 Minutes to President's Club cold email showdown with Florin Tatulea, Evan Greek, and Jason Bay: packaging, subject-plus-preview, mobile-readable body copy, personality, social proof, AI-assisted research, and soft offer CTAs.",
+					"author": "DJ Wayne",
+					"date": "2026-05-15",
+					"lastmod": "2026-05-15",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"reply-method",
+						"florin-tatulea",
+						"30mpc",
+						"b2b-sales",
+						"sales-and-growth",
+						"marketing-and-content"
+					],
+					"readingTime": 12,
+					"excerpt": "The 30MPC cold email showdown is useful because it makes cold email judgment visible. Jason Bay grades packaging, body, and style while Florin Tatulea and Evan Greek draft live against weird prompts. The strongest transferable ideas: subject plus preview is the open mechanism, mobile-readable formatting matters, social proof lifts reply likelihood, AI is useful for research and ideation but not final judgment, and the CTA should often offer a small deliverable instead of asking for a meeting.",
+					"sourceTitle": "Cold Email Showdown: Rookie Sales Rep vs 10-Year Director",
+					"sourceCreator": "Florin Tatulea, Evan Greek, Jason Bay, 30 Minutes to President's Club",
+					"sourceUrl": "https://www.youtube.com/watch?v=Ag-6pB51s5o",
+					"sourceChannelUrl": "https://www.youtube.com/@30MPC",
+					"lineagePeople": [
+						"Florin Tatulea",
+						"Evan Greek",
+						"Jason Bay",
+						"30 Minutes to President's Club"
+					],
+					"lineageSources": [
+						{
+							"title": "Cold Email Showdown: Rookie Sales Rep vs 10-Year Director",
+							"creator": "30 Minutes to President's Club",
+							"creatorType": "Organization",
+							"channelName": "30 Minutes to President's Club",
+							"channelUrl": "https://www.youtube.com/@30MPC",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=Ag-6pB51s5o"
+						}
+					],
+					"relatedSkills": ["cold-email-engagement-first-outreach"],
+					"path": "apps/web/src/content/blogs/source-analyses/florin-tatulea-reply-method-cold-email-showdown.md",
+					"slug": "florin-tatulea-reply-method-cold-email-showdown",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/florin-tatulea-reply-method-cold-email-showdown.md"
 				},
 				"hormozi-newsletter-email-marketing-39-minutes": {
 					"title": "Newsletter Email Marketing in 39 Minutes: Lessons from Alex Hormozi",
@@ -2942,6 +3217,153 @@
 					"category": "source-analyses",
 					"filePath": "src/content/blogs/source-analyses/kole-jain-7-ui-ux-mistakes-beginner.md"
 				},
+				"lincoln-murphy-ideal-customer-profile-framework": {
+					"title": "Ideal Customer Profile: Lessons from Lincoln Murphy",
+					"description": "A deep read of Lincoln Murphy's canonical ICP framework — the seven dimensions (Ready, Willing, Able, Success Potential, Acquisition Efficiency, Ascension, Advocacy), the six fit types inside Success Potential, why the ICP describes a situation rather than a permanent customer type, and how it differs from a buyer persona.",
+					"author": "DJ Wayne",
+					"date": "2026-05-15",
+					"lastmod": "2026-05-15",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"icp",
+						"segmentation",
+						"signal-design",
+						"sales-and-growth"
+					],
+					"readingTime": 7,
+					"excerpt": "Lincoln Murphy's ICP is the framework most other ICP frameworks descend from. It is not a buyer persona, not a list of titles, not a TAM number. It is a seven-dimension description of the customer who can succeed with your product right now — and the six fit types that decide whether they can succeed at all. Cold outreach without this is a list, not an ICP.",
+					"sourceTitle": "The Ideal Customer Profile (ICP) Framework",
+					"sourceCreator": "Lincoln Murphy (Sixteen Ventures)",
+					"sourceUrl": "https://www.sixteenventures.com/ideal-customer-profile/",
+					"sourceChannelUrl": "https://www.sixteenventures.com/",
+					"lineagePeople": ["Lincoln Murphy"],
+					"lineageSources": [
+						{
+							"title": "The Ideal Customer Profile (ICP) Framework",
+							"creator": "Lincoln Murphy",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.sixteenventures.com/about",
+							"channelName": "Sixteen Ventures",
+							"channelUrl": "https://www.sixteenventures.com/",
+							"sourceType": "blog",
+							"url": "https://www.sixteenventures.com/ideal-customer-profile/"
+						}
+					],
+					"relatedSkills": [
+						"cold-email-engagement-first-outreach",
+						"cold-email-icp-signal-design"
+					],
+					"path": "apps/web/src/content/blogs/source-analyses/lincoln-murphy-ideal-customer-profile-framework.md",
+					"slug": "lincoln-murphy-ideal-customer-profile-framework",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/lincoln-murphy-ideal-customer-profile-framework.md"
+				},
+				"mark-roberge-science-of-scaling-segment-tiering": {
+					"title": "Science of Scaling: Lessons from Mark Roberge",
+					"description": "A deep read of Mark Roberge's revenue-growth framework — the aha-moment formula (\"P% of customers achieve E events every T days\"), the Green/Yellow/Red segment tiering, the Quality-x-Engagement lead grid, and why retention beats growth as the leading indicator of product-market fit.",
+					"author": "DJ Wayne",
+					"date": "2026-05-15",
+					"lastmod": "2026-05-15",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"icp",
+						"segment-scoring",
+						"product-market-fit",
+						"sales-and-growth"
+					],
+					"readingTime": 8,
+					"excerpt": "Mark Roberge's thesis is that most series-C failures are caused by scaling sales on top of an unfinished product-market-fit measurement. The fix is a single retention formula (\"P% of customers achieve E events every T days\") that becomes the leading indicator, a Green/Yellow/Red view of which segments actually have PMF, and a Quality × Engagement grid that rewards demo requests over ebook downloads. Cold outreach without a segment tier is wasted budget.",
+					"sourceTitle": "A Step-by-Step Guide to Revenue Growth (SaaStr Annual)",
+					"sourceCreator": "Mark Roberge (Stage 2 Capital / HBS)",
+					"sourceUrl": "https://www.youtube.com/watch?v=aIAbNeqn9K8",
+					"sourceChannelUrl": "https://www.youtube.com/@Saastr",
+					"lineagePeople": ["Mark Roberge"],
+					"lineageSources": [
+						{
+							"title": "A Step-by-Step Guide to Revenue Growth with Mark Roberge, Harvard Business School",
+							"creator": "Mark Roberge",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.hbs.edu/faculty/Pages/profile.aspx?facId=1062358",
+							"channelName": "SaaStr AI",
+							"channelUrl": "https://www.youtube.com/@Saastr",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=aIAbNeqn9K8"
+						},
+						{
+							"title": "The Sales Acceleration Formula",
+							"creator": "Mark Roberge",
+							"creatorType": "Person",
+							"sourceType": "book",
+							"url": "https://www.markroberge.com/"
+						},
+						{
+							"title": "Stage 2 Capital — Science of Scaling",
+							"creator": "Mark Roberge",
+							"creatorType": "Person",
+							"sourceType": "web_page",
+							"url": "https://www.stage2.capital/science-of-scaling-book"
+						}
+					],
+					"relatedSkills": [
+						"cold-email-engagement-first-outreach",
+						"cold-email-icp-signal-design"
+					],
+					"path": "apps/web/src/content/blogs/source-analyses/mark-roberge-science-of-scaling-segment-tiering.md",
+					"slug": "mark-roberge-science-of-scaling-segment-tiering",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/mark-roberge-science-of-scaling-segment-tiering.md"
+				},
+				"michael-seibel-cold-email-investors": {
+					"title": "Cold Emailing Investors: Lessons from Michael Seibel",
+					"description": "A deep read of Michael Seibel and Y Combinator on cold-emailing investors: short factual emails, no jargon, company-address credibility, optional deck discipline, tracking opens, no immediate meeting ask, and the right order of operations for starting an investor conversation.",
+					"author": "DJ Wayne",
+					"date": "2026-05-15",
+					"lastmod": "2026-05-15",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"fundraising",
+						"investor-outreach",
+						"y-combinator",
+						"michael-seibel",
+						"sales-and-growth",
+						"marketing-and-content"
+					],
+					"readingTime": 8,
+					"excerpt": "Michael Seibel reframes investor cold email around one goal: get the investor to understand enough to reply. The first email should not try to secure an investment, force a meeting, or tell a long origin story. It should take less than a minute to read, explain what the company does in simple language, show raw facts that matter to investors, and invite the back-and-forth.",
+					"sourceTitle": "How To Cold Email Investors",
+					"sourceCreator": "Michael Seibel / Y Combinator",
+					"sourceUrl": "https://www.youtube.com/watch?v=A3MmYbH1hbs",
+					"sourceChannelUrl": "https://www.youtube.com/@ycombinator",
+					"lineagePeople": ["Michael Seibel", "Y Combinator"],
+					"lineageSources": [
+						{
+							"title": "How To Cold Email Investors",
+							"creator": "Michael Seibel",
+							"creatorType": "Person",
+							"channelName": "Y Combinator",
+							"channelUrl": "https://www.youtube.com/@ycombinator",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=A3MmYbH1hbs"
+						}
+					],
+					"relatedSkills": ["cold-email-engagement-first-outreach"],
+					"path": "apps/web/src/content/blogs/source-analyses/michael-seibel-cold-email-investors.md",
+					"slug": "michael-seibel-cold-email-investors",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/michael-seibel-cold-email-investors.md"
+				},
 				"nesrine-changuel-delightful-products-framework": {
 					"title": "Building Delightful Products: Nesrine Changuel's 4-Step Framework",
 					"description": "A deep read of Nesrine Changuel on Lenny's Podcast — the 4-step Delight Model, the three pillars (remove friction, anticipate needs, exceed expectations), the 50/40/10 roadmap rule, and why anti-delight destroys trust faster than no delight.",
@@ -2983,11 +3405,148 @@
 					"slug": "nesrine-changuel-delightful-products-framework",
 					"category": "source-analyses",
 					"filePath": "src/content/blogs/source-analyses/nesrine-changuel-delightful-products-framework.md"
+				},
+				"sam-mckenna-show-me-you-know-me-ai-era": {
+					"title": "AI-Era Show Me You Know Me: Lessons from Sam McKenna",
+					"description": "A deep read of Sam McKenna on why seller-centered cold calling and spray-and-pray email underperform modern buyer behavior, and how Show Me You Know Me research, LinkedIn signals, authentic personal connection, thread-based nurturing, and buyer-timed follow-up create executive replies.",
+					"author": "DJ Wayne",
+					"date": "2026-05-15",
+					"lastmod": "2026-05-15",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"show-me-you-know-me",
+						"executive-outreach",
+						"b2b-sales",
+						"sales-and-growth",
+						"marketing-and-content"
+					],
+					"readingTime": 10,
+					"excerpt": "Sam McKenna frames the modern outbound problem as a buyer-journey problem, not a channel problem. Cold calls interrupt. Spray-and-pray email signals seller self-interest. Show Me You Know Me earns the right to the meeting by proving the seller invested real attention before asking for time. The strongest ideas here are going higher in the org, using LinkedIn and public interviews as research surfaces, making personal hooks feel authentic instead of pasted, and nurturing replies in the original thread when executives are actually working.",
+					"sourceTitle": "100th Episode: The End of the Line for Cold Calling (& What's Replacing it) -- with Sam McKenna",
+					"sourceCreator": "Sam McKenna",
+					"sourceUrl": "https://www.youtube.com/watch?v=5ln1cGTzXTg",
+					"sourceChannelUrl": "https://www.youtube.com/@InsightlyCRM",
+					"lineagePeople": ["Sam McKenna", "Insightly CRM by Unbounce"],
+					"lineageSources": [
+						{
+							"title": "100th Episode: The End of the Line for Cold Calling (& What's Replacing it) -- with Sam McKenna",
+							"creator": "Sam McKenna",
+							"creatorType": "Person",
+							"channelName": "Insightly CRM by Unbounce",
+							"channelUrl": "https://www.youtube.com/@InsightlyCRM",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=5ln1cGTzXTg"
+						}
+					],
+					"relatedSkills": ["cold-email-engagement-first-outreach"],
+					"path": "apps/web/src/content/blogs/source-analyses/sam-mckenna-show-me-you-know-me-ai-era.md",
+					"slug": "sam-mckenna-show-me-you-know-me-ai-era",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/sam-mckenna-show-me-you-know-me-ai-era.md"
+				},
+				"steli-efti-low-friction-replies-123": {
+					"title": "Low-Friction Replies: Lessons from Steli Efti",
+					"description": "A deep read of Steli Efti and Close on the 1-2-3 email hack: why silence is the enemy, how reply-with-a-number options reduce buyer friction, where the tactic fits in top-of-funnel qualification and ghosted follow-up, and how to use it without becoming gimmicky.",
+					"author": "DJ Wayne",
+					"date": "2026-05-15",
+					"lastmod": "2026-05-15",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"reply-handling",
+						"follow-up",
+						"steli-efti",
+						"close",
+						"sales-and-growth",
+						"marketing-and-content"
+					],
+					"readingTime": 9,
+					"excerpt": "Steli Efti starts from a blunt operating truth: the worst cold-email outcome is silence. The 1-2-3 hack works by turning a vague reply burden into a finite choice. Instead of asking the buyer to compose a thoughtful answer, the email names three or four plausible situations and asks them to reply with a number. Used carefully, this becomes a qualification tool, a dead-lead revival tool, and an objection-discovery tool.",
+					"sourceTitle": "Get 457% more replies to your sales emails with the 1, 2, 3 hack",
+					"sourceCreator": "Steli Efti / Close",
+					"sourceUrl": "https://www.youtube.com/watch?v=hmuMkXntbH0",
+					"sourceChannelUrl": "https://www.youtube.com/@closecrm",
+					"lineagePeople": ["Steli Efti", "Close"],
+					"lineageSources": [
+						{
+							"title": "Get 457% more replies to your sales emails with the 1, 2, 3 hack",
+							"creator": "Steli Efti",
+							"creatorType": "Person",
+							"channelName": "Close",
+							"channelUrl": "https://www.youtube.com/@closecrm",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=hmuMkXntbH0"
+						}
+					],
+					"relatedSkills": ["cold-email-engagement-first-outreach"],
+					"path": "apps/web/src/content/blogs/source-analyses/steli-efti-low-friction-replies-123.md",
+					"slug": "steli-efti-low-friction-replies-123",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/steli-efti-low-friction-replies-123.md"
+				},
+				"underscore-vc-minimum-viable-segment": {
+					"title": "Minimum Viable Segment: Lessons from Underscore VC (Michael Skok)",
+					"description": "A deep read of the Minimum Viable Segment (MVS) framework from Underscore VC and Michael Skok — the three criteria a segment must meet (Common Needs, Dominability, Viability with MVP), the disqualifiers that pull a segment out of scope, and why divergent needs are the real reason MVPs fail to land.",
+					"author": "DJ Wayne",
+					"date": "2026-05-15",
+					"lastmod": "2026-05-15",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"cold-email",
+						"icp",
+						"segmentation",
+						"minimum-viable-segment",
+						"product-strategy"
+					],
+					"readingTime": 6,
+					"excerpt": "Most early-stage outreach fails not because the email was bad but because the segment was incoherent. The Minimum Viable Segment framework says a segment is valid only if it passes three tests: customers share a common need, the segment is small enough to dominate, and your current product can serve it without divergent customization. Cold outreach run against a segment that fails any of these is wasted.",
+					"sourceTitle": "Minimum Viable Segment (MVS) Framework",
+					"sourceCreator": "Underscore VC (Lily Lyman, Gabrielle McCarthy); concept by Michael Skok",
+					"sourceUrl": "https://underscore.vc/resources/minimum-viable-segment/",
+					"sourceChannelUrl": "https://underscore.vc/",
+					"lineagePeople": ["Lily Lyman", "Gabrielle McCarthy", "Michael Skok"],
+					"lineageSources": [
+						{
+							"title": "Minimum Viable Segment (MVS) Framework",
+							"creator": "Underscore VC",
+							"creatorType": "Organization",
+							"creatorUrl": "https://underscore.vc/",
+							"channelName": "Underscore VC",
+							"channelUrl": "https://underscore.vc/",
+							"sourceType": "framework_page",
+							"url": "https://underscore.vc/resources/minimum-viable-segment/"
+						},
+						{
+							"title": "Startup Secrets",
+							"creator": "Michael Skok",
+							"creatorType": "Person",
+							"sourceType": "curriculum",
+							"url": "https://www.startupsecrets.com/"
+						}
+					],
+					"relatedSkills": [
+						"cold-email-engagement-first-outreach",
+						"cold-email-icp-signal-design"
+					],
+					"path": "apps/web/src/content/blogs/source-analyses/underscore-vc-minimum-viable-segment.md",
+					"slug": "underscore-vc-minimum-viable-segment",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/underscore-vc-minimum-viable-segment.md"
 				}
 			}
 		}
 	},
-	"generatedAt": "2026-05-15T02:53:36.308Z",
-	"totalPosts": 88,
+	"generatedAt": "2026-05-15T20:14:48.577Z",
+	"totalPosts": 98,
 	"totalCategories": 8
 }

@@ -190,6 +190,7 @@ export function isReadLikeOperation(name: string): boolean {
 		normalized === 'tool_search' ||
 		normalized === 'tool_schema' ||
 		normalized === 'skill_load' ||
+		normalized === 'skill_reference_load' ||
 		normalized === 'web_visit' ||
 		normalized.startsWith('get_') ||
 		normalized.startsWith('list_') ||
@@ -202,14 +203,15 @@ export function isReadLikeOperation(name: string): boolean {
 	);
 }
 
-// Gateway-discovery tools resolve which other tools/skills are available;
-// they do not gather evidence the model can use to answer. Used by
-// buildRoundToolPattern to keep discovery rounds out of read-loop counting.
+// Gateway-discovery/context tools resolve tool, skill, schema, or reference
+// guidance. They are not workspace data reads, so keep them out of repeated
+// read-loop counting.
 // web_visit is intentionally NOT in this set — it fetches real content.
 const DISCOVERY_TOOL_NAMES: ReadonlySet<string> = new Set([
 	'tool_search',
 	'tool_schema',
-	'skill_load'
+	'skill_load',
+	'skill_reference_load'
 ]);
 
 export function isDiscoveryToolName(name: string): boolean {

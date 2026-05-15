@@ -498,8 +498,8 @@
 				<div
 					class="hidden md:flex items-center justify-center flex-1 gap-6 text-xs text-muted-foreground"
 				>
-					<a class="hover:text-foreground transition" href="/#how">How it works</a>
-					<a class="hover:text-foreground transition" href="/#stack">Under the hood</a>
+					<a class="hover:text-foreground transition" href="/#loop">How it works</a>
+					<a class="hover:text-foreground transition" href="/#agents">Agent context</a>
 				</div>
 			{/if}
 			<!-- Right side -->
@@ -1095,18 +1095,18 @@
 				<!-- Mobile auth menu for non-authenticated users -->
 				<div class="px-2 pt-1.5 pb-3 space-y-1">
 					<a
-						href="/#how"
-						onclick={() => handleMenuItemClick('/#how')}
+						href="/#loop"
+						onclick={() => handleMenuItemClick('/#loop')}
 						class="block px-3 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
 					>
 						How it works
 					</a>
 					<a
-						href="/#stack"
-						onclick={() => handleMenuItemClick('/#stack')}
+						href="/#agents"
+						onclick={() => handleMenuItemClick('/#agents')}
 						class="block px-3 py-2 text-sm font-bold text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
 					>
-						Under the hood
+						Agent context
 					</a>
 					<div class="border-t border-border my-2"></div>
 					<button

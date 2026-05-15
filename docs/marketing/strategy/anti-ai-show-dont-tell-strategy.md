@@ -7,6 +7,8 @@ related_docs:
     - /docs/marketing/recent-marketing-chat.md
     - /docs/marketing/brand/brand-guide-1-pager.md
     - /docs/marketing/strategy/adhd-productivity-os-strategy.md
+    - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
+    - /docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
 path: docs/marketing/strategy/anti-ai-show-dont-tell-strategy.md
 ---
 
@@ -32,6 +34,18 @@ The strategic message is:
 **You can start building context now, or you can wait a few more months for the next "perfect" tool.**
 
 That is honest, grounded, and strong because it frames BuildOS as the practical choice for people who want progress instead of more waiting.
+
+The media rule is part of the strategy:
+
+**No AI-generated images. No AI-generated videos.**
+
+BuildOS should be demonstrated with real screenshots, real screen recordings, and real footage of DJ using the product. The point is to make BuildOS feel material, not synthetic.
+
+The broader presence rule is:
+
+**Receipts over vibes. Screens over scenes. Work over spectacle.**
+
+Do not make BuildOS look like a terminally online content machine. Make it feel like selective proof from a real working product.
 
 ---
 
@@ -188,6 +202,52 @@ They want:
 The emotional outcome is:
 
 **calmer execution**
+
+### 6. Real media only
+
+Do not use AI-generated images or AI-generated videos in BuildOS marketing.
+
+This includes:
+
+- no generated product shots
+- no generated promo videos
+- no generated founder footage
+- no generated office, desk, or workspace scenes
+- no fake UI passed off as the product
+
+Use:
+
+- real screenshots of BuildOS
+- real screen recordings
+- real videos of DJ using BuildOS
+- real workspace photography
+- diagrams and text cards that are clearly explanatory
+
+This is the practical version of "show, do not tell." BuildOS should not need synthetic atmosphere to feel real.
+
+### 7. Selective proof beats online volume
+
+AI has made content production cheap.
+
+That means volume is no longer a status signal. In many contexts, it reads as desperation, automation, or lack of taste.
+
+BuildOS should post from real work:
+
+- one actual screen
+- one clear transformation
+- one founder judgment
+- one project changing over time
+- one useful receipt behind a claim
+
+Avoid:
+
+- posting just to feed a cadence
+- turning every thought into content
+- fake vulnerability
+- generic "founder lessons"
+- overproduced clips that hide the product
+
+The posture is not silence. It is restraint with evidence.
 
 ---
 

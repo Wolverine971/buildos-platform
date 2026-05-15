@@ -11,7 +11,7 @@ djwayne35@gmail.com · (202) 869-5478 · [github.com/Wolverine971](https://githu
 
 ## Summary
 
-Senior full-stack engineer with 8+ years shipping production web applications. Deep React and TypeScript work in complex codebases, plus heavy experience in enterprise integrations and AI systems. Founder of **BuildOS**, an AI-native productivity platform built on a multi-LLM routing layer, agentic Calendar/MCP integration, and a custom Supabase-native job queue. At Curri rebuilt the React-based live operations console and owned the integration layer that connected Curri's delivery network to Lyft, Uber, DoorDash, and four regional partners. Former US Marine Corps Scout Sniper Team Leader.
+Senior full-stack engineer with 8+ years shipping production web applications. Deep React and TypeScript work in complex codebases, plus heavy experience in enterprise integrations and AI systems. Founder of **BuildOS**, an AI-first project management platform that users and their agents connect to so they work from one shared source of truth. Built on a multi-LLM routing layer, agentic Calendar/MCP integration, and a custom Supabase-native job queue. At Curri rebuilt the React-based live operations console and owned the integration layer that connected Curri's delivery network to Lyft, Uber, DoorDash, and four regional partners. Former US Marine Corps Scout Sniper Team Leader.
 
 ---
 
@@ -29,7 +29,7 @@ Senior full-stack engineer with 8+ years shipping production web applications. D
 
 ### BuildOS | Founder & Engineer · Mar 2025 – Present
 
-_AI-native productivity platform · [build-os.com](https://build-os.com) · 80+ beta users_
+_AI-first project management platform that users and their agents connect to so they work from one shared source of truth · [build-os.com](https://build-os.com) · 80+ beta users_
 
 - Designed and shipped the full platform solo: SvelteKit on Vercel, Node worker on Railway, Turborepo monorepo, Supabase Postgres with row-level security.
 - **Shipped the full user-facing surface to 80+ beta users**: brain-dump capture (text + voice), project and task views, a real-time streaming chat UI, daily-brief email composition, and SSE-driven progress for long-running LLM jobs.

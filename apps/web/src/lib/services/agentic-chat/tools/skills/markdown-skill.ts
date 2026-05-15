@@ -1,6 +1,11 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/markdown-skill.ts
 import { parse as parseYaml } from 'yaml';
-import type { SkillDefinition, SkillExample } from './types';
+import type {
+	SkillDefinition,
+	SkillExample,
+	SkillLinkedResource,
+	SkillResourceVisibility
+} from './types';
 
 type MarkdownSkillOptions = {
 	id: string;
@@ -10,7 +15,11 @@ type MarkdownSkillOptions = {
 type MarkdownSkillFrontmatter = {
 	name?: unknown;
 	description?: unknown;
+	parent_id?: unknown;
+	depth?: unknown;
 	legacy_paths?: unknown;
+	child_skills?: unknown;
+	reference_modules?: unknown;
 };
 
 function extractFrontmatter(markdown: string): {
@@ -75,6 +84,53 @@ function parseStringArray(value: unknown): string[] {
 		.filter((item): item is string => typeof item === 'string')
 		.map((item) => item.trim())
 		.filter((item) => item.length > 0);
+}
+
+function parseStringList(value: unknown): string[] {
+	if (typeof value === 'string') {
+		const trimmed = value.trim();
+		return trimmed.length > 0 ? [trimmed] : [];
+	}
+	return parseStringArray(value);
+}
+
+function parseOptionalString(value: unknown): string | undefined {
+	return typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function parseOptionalNumber(value: unknown): number | undefined {
+	if (typeof value === 'number' && Number.isFinite(value)) return value;
+	if (typeof value !== 'string') return undefined;
+	const parsed = Number(value.trim());
+	return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseVisibility(value: unknown): SkillResourceVisibility | undefined {
+	const normalized = parseOptionalString(value);
+	return normalized === 'public' || normalized === 'internal' ? normalized : undefined;
+}
+
+function parseLinkedResources(value: unknown): SkillLinkedResource[] {
+	if (!Array.isArray(value)) return [];
+
+	return value
+		.map((item): SkillLinkedResource | null => {
+			if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+			const record = item as Record<string, unknown>;
+			const id = parseOptionalString(record.id);
+			const summary = parseOptionalString(record.summary ?? record.description);
+			if (!id || !summary) return null;
+
+			return {
+				id,
+				name: parseOptionalString(record.name),
+				summary,
+				whenToLoad: parseStringList(record.when_to_load ?? record.whenToLoad),
+				path: parseOptionalString(record.path),
+				visibility: parseVisibility(record.visibility)
+			};
+		})
+		.filter((item): item is SkillLinkedResource => Boolean(item));
 }
 
 function parseListItems(lines: string[], marker: RegExp): string[] {
@@ -219,11 +275,16 @@ export function defineMarkdownSkill({ id, markdown }: MarkdownSkillOptions): Ski
 	const guardrails = parseBulletList(sections['guardrails'] ?? []);
 	const examples = parseExamples(sections['examples'] ?? []);
 	const notes = parseBulletList(sections['notes'] ?? []);
+	const parentId = parseOptionalString(frontmatter.parent_id);
+	const depth = parseOptionalNumber(frontmatter.depth);
+	const childSkills = parseLinkedResources(frontmatter.child_skills);
+	const referenceModules = parseLinkedResources(frontmatter.reference_modules);
 
-	return {
+	const skill: SkillDefinition = {
 		id,
 		name: frontmatter.name.trim(),
 		summary: frontmatter.description.trim(),
+		bodyLineCount: body.split(/\r?\n/).length,
 		legacyPaths: parseStringArray(frontmatter.legacy_paths),
 		relatedOps: parseRelatedOps(sections['related tools'] ?? []),
 		whenToUse: parseBulletList(sections['when to use'] ?? []),
@@ -232,4 +293,11 @@ export function defineMarkdownSkill({ id, markdown }: MarkdownSkillOptions): Ski
 		examples: examples.length > 0 ? examples : undefined,
 		notes: notes.length > 0 ? notes : undefined
 	};
+
+	if (parentId) skill.parentId = parentId;
+	if (typeof depth === 'number') skill.depth = depth;
+	if (childSkills.length > 0) skill.childSkills = childSkills;
+	if (referenceModules.length > 0) skill.referenceModules = referenceModules;
+
+	return skill;
 }

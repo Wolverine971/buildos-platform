@@ -1,93 +1,95 @@
 ---
-title: "How To Cold Email Investors - Michael Seibel"
+title: 'How To Cold Email Investors - Michael Seibel'
 video_id: A3MmYbH1hbs
-url: "https://www.youtube.com/watch?v=A3MmYbH1hbs"
+url: 'https://www.youtube.com/watch?v=A3MmYbH1hbs'
 channel: Y Combinator
-channel_url: "https://www.youtube.com/@ycombinator"
+channel_url: 'https://www.youtube.com/@ycombinator'
 upload_date: 2019-09-24
-duration: "07:52"
+duration: '07:52'
 views: 124101
 tags:
-  - YC
-  - Y Combinator
-  - Michael Seibel
-  - Socialcam
-  - Twitch
-  - Justin.tv
-  - YC Partner
-  - YC CEO
-  - Michael
-  - Seibel
-  - CEO
-  - Partner
-  - Emailing Investors
-  - Cold Emailing
-  - Cold Emailing Investors
-  - How to Email Investors
-  - How to Cold Email Investors
+    - YC
+    - Y Combinator
+    - Michael Seibel
+    - Socialcam
+    - Twitch
+    - Justin.tv
+    - YC Partner
+    - YC CEO
+    - Michael
+    - Seibel
+    - CEO
+    - Partner
+    - Emailing Investors
+    - Cold Emailing
+    - Cold Emailing Investors
+    - How to Email Investors
+    - How to Cold Email Investors
 timestamps:
-  - time: "0:00"
-    label: "Intro"
-  - time: "0:17"
-    label: "Make it short, i.e. 60 seconds or less to read"
-  - time: "0:58"
-    label: "Interested in: the problem you're trying to solve, what your solution is, have you launched, do you have growth, how big you think the market could be, do you have cofounders, are you technical, and do you know something about the problem that you think is controversial."
-  - time: "1:38"
-    label: "Not interested in: a long history of how you came up with the idea or jargon (see: customer pitch vs investor pitch"
-  - time: "2:17"
-    label: "Send your email from a company email address with your name in it"
-  - time: "3:05"
-    label: "Decks aren't required but use a common format if including one"
-  - time: "4:02"
-    label: "Track opens"
-  - time: "4:14"
-    label: "Don't make it long"
-  - time: "5:27"
-    label: "Don't immediately request an in-person meeting"
-  - time: "6:04"
-    label: "Don't send multiple follow-ups quickly"
-  - time: "6:26"
-    label: "Don't forget to describe what your company does"
+    - time: '0:00'
+      label: 'Intro'
+    - time: '0:17'
+      label: 'Make it short, i.e. 60 seconds or less to read'
+    - time: '0:58'
+      label: "Interested in: the problem you're trying to solve, what your solution is, have you launched, do you have growth, how big you think the market could be, do you have cofounders, are you technical, and do you know something about the problem that you think is controversial."
+    - time: '1:38'
+      label: 'Not interested in: a long history of how you came up with the idea or jargon (see: customer pitch vs investor pitch'
+    - time: '2:17'
+      label: 'Send your email from a company email address with your name in it'
+    - time: '3:05'
+      label: "Decks aren't required but use a common format if including one"
+    - time: '4:02'
+      label: 'Track opens'
+    - time: '4:14'
+      label: "Don't make it long"
+    - time: '5:27'
+      label: "Don't immediately request an in-person meeting"
+    - time: '6:04'
+      label: "Don't send multiple follow-ups quickly"
+    - time: '6:26'
+      label: "Don't forget to describe what your company does"
 description: |
-  Y Combinator CEO and Partner Michael Seibel on how to cold email investors.
-  
-  https://twitter.com/mwseibel
-  
-  Y Combinator invests a small amount of money ($150k) in a large number of startups (recently 200), twice a year. 
-  
-  Learn more about YC and apply for funding here: https://www.ycombinator.com/apply/
-  
-  ***
-  
-  Topics
-  
-  00:00 - Intro
-  
-  00:17 - Make it short, i.e. 60 seconds or less to read
-  
-  00:58 - Interested in: the problem you're trying to solve, what your solution is, have you launched, do you have growth, how big you think the market could be, do you have cofounders, are you technical, and do you know something about the problem that you think is controversial.
-  
-  1:38 - Not interested in: a long history of how you came up with the idea or jargon (see: customer pitch vs investor pitch - https://www.youtube.com/watch?v=pQnOBHNKlgs)
-  
-  2:17 - Send your email from a company email address with your name in it
-  
-  3:05 - Decks aren't required but use a common format if including one
-  
-  4:02 - Track opens
-  
-  4:14 - Don't make it long
-  
-  5:27 - Don't immediately request an in-person meeting
-  
-  6:04 - Don't send multiple follow-ups quickly
-  
-  6:26 - Don't forget to describe what your company does
-transcribed_date: "2026-05-15"
+    Y Combinator CEO and Partner Michael Seibel on how to cold email investors.
+
+    https://twitter.com/mwseibel
+
+    Y Combinator invests a small amount of money ($150k) in a large number of startups (recently 200), twice a year. 
+
+    Learn more about YC and apply for funding here: https://www.ycombinator.com/apply/
+
+    ***
+
+    Topics
+
+    00:00 - Intro
+
+    00:17 - Make it short, i.e. 60 seconds or less to read
+
+    00:58 - Interested in: the problem you're trying to solve, what your solution is, have you launched, do you have growth, how big you think the market could be, do you have cofounders, are you technical, and do you know something about the problem that you think is controversial.
+
+    1:38 - Not interested in: a long history of how you came up with the idea or jargon (see: customer pitch vs investor pitch - https://www.youtube.com/watch?v=pQnOBHNKlgs)
+
+    2:17 - Send your email from a company email address with your name in it
+
+    3:05 - Decks aren't required but use a common format if including one
+
+    4:02 - Track opens
+
+    4:14 - Don't make it long
+
+    5:27 - Don't immediately request an in-person meeting
+
+    6:04 - Don't send multiple follow-ups quickly
+
+    6:26 - Don't forget to describe what your company does
+transcribed_date: '2026-05-15'
+path: docs/marketing/growth/research/youtube-transcripts/2026-05-15-michael-seibel-how-to-cold-email-investors.md
 ---
 
 # How To Cold Email Investors - Michael Seibel
 
 ## Metadata
+
 - **Channel**: [Y Combinator](https://www.youtube.com/@ycombinator)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=A3MmYbH1hbs)
 - **Duration**: 07:52
@@ -95,6 +97,7 @@ transcribed_date: "2026-05-15"
 - **Views**: 124,101
 
 ## Timestamps
+
 - 0:00 — Intro
 - 0:17 — Make it short, i.e. 60 seconds or less to read
 - 0:58 — Interested in: the problem you're trying to solve, what your solution is, have you launched, do you have growth, how big you think the market could be, do you have cofounders, are you technical, and do you know something about the problem that you think is controversial.

@@ -13,6 +13,7 @@ import { GATEWAY_TOOL_DEFINITIONS } from './definitions/gateway';
 
 const GATEWAY_DISCOVERY_TOOL_NAMES = [
 	'skill_load',
+	'skill_reference_load',
 	'libri_overview',
 	'libri_search_capabilities',
 	'libri_get_capability_schema',

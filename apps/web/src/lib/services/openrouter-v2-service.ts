@@ -33,6 +33,7 @@ import {
 import type {
 	ModelLane,
 	OpenRouterChatMessage,
+	OpenRouterContentPart,
 	OpenRouterChatResponse,
 	OpenRouterProviderConfig,
 	OpenRouterToolCall,
@@ -177,9 +178,47 @@ function contentToText(content: unknown): string {
 	return extractVisibleText(content) ?? '';
 }
 
-function normalizeMessageContent(content: unknown): string {
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function normalizeOpenRouterContentPart(part: unknown): OpenRouterContentPart | null {
+	if (!isRecord(part)) return null;
+	if (part.type === 'text') {
+		return typeof part.text === 'string' ? { type: 'text', text: part.text } : null;
+	}
+	if (part.type === 'image_url' && isRecord(part.image_url)) {
+		const url = part.image_url.url;
+		if (typeof url !== 'string' || url.trim().length === 0) return null;
+		const detail = part.image_url.detail;
+		return {
+			type: 'image_url',
+			image_url: {
+				url: url.trim(),
+				...(detail === 'low' || detail === 'high' || detail === 'auto' ? { detail } : {})
+			}
+		};
+	}
+	return null;
+}
+
+function normalizeOpenRouterContentParts(content: unknown): OpenRouterContentPart[] | null {
+	if (!Array.isArray(content) || content.length === 0) return null;
+	const parts = content
+		.map((part) => normalizeOpenRouterContentPart(part))
+		.filter((part): part is OpenRouterContentPart => Boolean(part));
+	if (parts.length !== content.length) return null;
+	if (!parts.some((part) => part.type !== 'text')) return null;
+	return parts;
+}
+
+function normalizeMessageContent(content: unknown): string | OpenRouterContentPart[] {
 	if (typeof content === 'string') {
 		return content;
+	}
+	const contentParts = normalizeOpenRouterContentParts(content);
+	if (contentParts) {
+		return contentParts;
 	}
 	const asText = contentToText(content);
 	if (asText.trim().length > 0) {
@@ -193,6 +232,22 @@ function normalizeMessageContent(content: unknown): string {
 	} catch {
 		return String(content);
 	}
+}
+
+function hasMultimodalContent(messages: Array<{ content: unknown }>): boolean {
+	return messages.some((message) => {
+		const normalized = normalizeMessageContent(message.content);
+		return Array.isArray(normalized) && normalized.some((part) => part.type !== 'text');
+	});
+}
+
+function estimateMessageContentLength(content: unknown): number {
+	const normalized = normalizeMessageContent(content);
+	if (typeof normalized === 'string') return normalized.length;
+	return normalized.reduce((sum, part) => {
+		if (part.type === 'text') return sum + part.text.length;
+		return sum + 1200;
+	}, 0);
 }
 
 function normalizeMessages(
@@ -213,6 +268,34 @@ function normalizeMessages(
 			? { reasoning_content: message.reasoning_content }
 			: {})
 	}));
+}
+
+function stripMultimodalContentFromMessages(
+	messages: OpenRouterChatMessage[]
+): OpenRouterChatMessage[] {
+	return messages.map((message) => {
+		const normalized = normalizeMessageContent(message.content);
+		if (!Array.isArray(normalized)) {
+			return {
+				...message,
+				content: normalized
+			};
+		}
+		const text = normalized
+			.filter(
+				(part): part is Extract<OpenRouterContentPart, { type: 'text' }> =>
+					part.type === 'text'
+			)
+			.map((part) => part.text)
+			.join('\n')
+			.trim();
+		return {
+			...message,
+			content:
+				text ||
+				'[Raw image input omitted because the multimodal route was unavailable. Use the available attachment metadata and OCR context.]'
+		};
+	});
 }
 
 function normalizeTools(tools: any[] | undefined): any[] {
@@ -595,7 +678,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 	}
 
 	private resolveOpenRouterProviderConfig(lane: ModelLane): OpenRouterProviderConfig {
-		if (lane === 'json' || lane === 'tool_calling') {
+		if (lane === 'json' || lane === 'tool_calling' || lane === 'multimodal') {
 			return {
 				allow_fallbacks: true,
 				require_parameters: true
@@ -1384,7 +1467,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 	async *streamText(options: {
 		messages: Array<{
 			role: string;
-			content: string;
+			content: unknown;
 			tool_calls?: any[];
 			tool_call_id?: string;
 			reasoning_content?: string;
@@ -1413,9 +1496,14 @@ export class OpenRouterV2Service extends SmartLLMService {
 		projectId?: string;
 	}): AsyncGenerator<OpenRouterStreamEvent> {
 		const needsTools = Array.isArray(options.tools) && options.tools.length > 0;
-		const lane: ModelLane = needsTools ? 'tool_calling' : 'text';
+		const containsMultimodalContent = hasMultimodalContent(options.messages);
+		const lane: ModelLane = containsMultimodalContent
+			? 'multimodal'
+			: needsTools
+				? 'tool_calling'
+				: 'text';
 		const totalInputLength = options.messages.reduce(
-			(sum, message) => sum + (message.content?.length || 0),
+			(sum, message) => sum + estimateMessageContentLength(message.content),
 			0
 		);
 		const laneModels = this.resolveModels(lane, options.model, options.models, {
@@ -1482,15 +1570,75 @@ export class OpenRouterV2Service extends SmartLLMService {
 			}
 		}
 
+		if (!streamResponse && lane === 'multimodal') {
+			fallbackReason = lastError?.message;
+			const fallbackLane: ModelLane = needsTools ? 'tool_calling' : 'text';
+			const fallbackMessages = stripMultimodalContentFromMessages(requestMessages);
+			const fallbackLaneModels = this.resolveModels(
+				fallbackLane,
+				options.model,
+				options.models,
+				{
+					profile: options.profile,
+					estimatedLength: estimateResponseLength(
+						totalInputLength > 0 ? 'x'.repeat(Math.min(totalInputLength, 5001)) : ''
+					)
+				}
+			);
+			for (let attempt = 0; attempt < Math.max(fallbackLaneModels.length, 1); attempt++) {
+				const model =
+					fallbackLaneModels[attempt] || fallbackLaneModels[0] || ACTIVE_EXPERIMENT_MODEL;
+				const models = [
+					model,
+					...fallbackLaneModels.slice(attempt + 1).filter((entry) => entry !== model)
+				];
+				resolvedModel = model;
+				openRouterModelsAttempted.add(model);
+				providersAttempted.add('openrouter');
+
+				try {
+					streamResponse = await this.client.openChatCompletionStream({
+						model,
+						models,
+						messages: fallbackMessages,
+						tools: requestTools,
+						tool_choice: needsTools ? options.tool_choice || 'auto' : undefined,
+						temperature: options.temperature ?? (needsTools ? 0.2 : 0.7),
+						max_tokens: options.maxTokens ?? 2000,
+						reasoning: resolveLaneReasoning(fallbackLane),
+						provider: this.resolveOpenRouterProviderConfig(fallbackLane),
+						timeoutMs: this.resolveTimeout(undefined),
+						signal: options.signal
+					});
+					requestModelForStartedStream = model;
+					routingModelsForStartedStream = models;
+					startedStreamAttempt = maxAttempts + attempt + 1;
+					break;
+				} catch (error) {
+					if (isAbortError(error)) {
+						return;
+					}
+					lastError = error instanceof Error ? error : new Error(String(error));
+					if (attempt >= fallbackLaneModels.length - 1) {
+						break;
+					}
+				}
+			}
+		}
+
 		if (!streamResponse) {
 			fallbackReason = lastError?.message;
 			let directFallbackError: Error | null = null;
+			const directFallbackMessages =
+				lane === 'multimodal'
+					? stripMultimodalContentFromMessages(requestMessages)
+					: requestMessages;
 			for (const route of this.resolveDirectFallbackRoutes()) {
 				providersAttempted.add(route.provider);
 				try {
 					streamResponse = await this.requestDirectChatCompletion({
 						route,
-						messages: requestMessages,
+						messages: directFallbackMessages,
 						tools: requestTools,
 						tool_choice: needsTools ? options.tool_choice || 'auto' : undefined,
 						temperature: options.temperature ?? (needsTools ? 0.2 : 0.7),

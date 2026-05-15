@@ -1,5 +1,5 @@
 // apps/web/src/lib/components/agent/agent-chat.types.ts
-import type { ChatRole } from '@buildos/shared-types';
+import type { ChatAttachmentRef, ChatRole } from '@buildos/shared-types';
 
 export type ActivityType =
 	| 'tool_call'
@@ -43,6 +43,38 @@ export interface UIMessage {
 	timestamp: Date;
 	tool_calls?: any;
 	tool_call_id?: string;
+	attachments?: ChatAttachmentRef[];
+}
+
+export type AgentChatImageAttachmentStatus =
+	| 'hashing'
+	| 'uploading'
+	| 'processing'
+	| 'ready'
+	| 'deduped'
+	| 'error';
+
+export interface AgentChatImageAttachment {
+	id: string;
+	fileName: string;
+	contentType: string;
+	fileSizeBytes: number;
+	previewUrl: string;
+	status: AgentChatImageAttachmentStatus;
+	statusLabel: string;
+	attachmentKind?: 'onto_asset' | 'temporary_file';
+	error?: string | null;
+	assetId?: string;
+	projectId?: string | null;
+	storageBucket?: string | null;
+	storagePath?: string | null;
+	checksumSha256?: string;
+	width?: number | null;
+	height?: number | null;
+	ocrStatus?: string | null;
+	extractionSummary?: string | null;
+	extractedTextPreview?: string | null;
+	expiresAt?: string | null;
 }
 
 export interface ThinkingBlockMessage extends UIMessage {

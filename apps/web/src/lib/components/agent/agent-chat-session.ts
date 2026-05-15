@@ -1,6 +1,7 @@
 // apps/web/src/lib/components/agent/agent-chat-session.ts
 import { dev } from '$app/environment';
 import type {
+	ChatAttachmentRef,
 	ChatContextType,
 	ChatRole,
 	ChatSession,
@@ -31,6 +32,7 @@ type LoadedChatMessage = {
 	content: string;
 	created_at: string;
 	metadata?: Record<string, any>;
+	attachments?: ChatAttachmentRef[];
 	tool_calls?: any;
 	tool_call_id?: string;
 };
@@ -631,6 +633,7 @@ function mapLoadedMessageToUI(msg: LoadedChatMessage): UIMessage {
 		timestamp: new Date(msg.created_at),
 		created_at: msg.created_at,
 		metadata: msg.metadata as Record<string, any> | undefined,
+		attachments: Array.isArray(msg.attachments) ? msg.attachments : undefined,
 		tool_calls: msg.tool_calls,
 		tool_call_id: msg.tool_call_id
 	};

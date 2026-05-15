@@ -5,6 +5,7 @@ import {
 	ACTIVE_EXPERIMENT_MODEL,
 	AGENT_STATE_RECONCILIATION_MODEL,
 	OPENROUTER_V2_JSON_MODELS,
+	OPENROUTER_V2_MULTIMODAL_MODELS,
 	OPENROUTER_V2_TEXT_MODELS,
 	OPENROUTER_V2_TOOL_MODELS,
 	OPENROUTER_V2_TOOL_MODELS_EXACTO
@@ -28,6 +29,12 @@ describe('resolveLaneModels', () => {
 		const result = resolveLaneModels({ lane: 'json' });
 
 		expect(result).toEqual([...OPENROUTER_V2_JSON_MODELS]);
+	});
+
+	it('returns multimodal lane defaults for image-capable turns', () => {
+		const result = resolveLaneModels({ lane: 'multimodal' });
+
+		expect(result).toEqual([...OPENROUTER_V2_MULTIMODAL_MODELS]);
 	});
 
 	it('uses exacto defaults for tool lane when enabled', () => {
@@ -118,5 +125,9 @@ describe('resolveLaneReasoning', () => {
 
 	it('returns low-effort hidden reasoning for json lane', () => {
 		expect(resolveLaneReasoning('json')).toEqual({ effort: 'low', exclude: true });
+	});
+
+	it('excludes reasoning traces for multimodal lane', () => {
+		expect(resolveLaneReasoning('multimodal')).toEqual({ exclude: true });
 	});
 });

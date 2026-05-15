@@ -136,6 +136,93 @@ const EXTERNAL_DISCOVERY_TOOL_NAMES = new Set<BuildosAgentDiscoveryToolName>([
 	'tool_schema'
 ]);
 
+const EXTERNAL_ASSET_TEXT_PREVIEW_MAX_CHARS = 2000;
+const EXTERNAL_ASSET_SUMMARY_MAX_CHARS = 700;
+const EXTERNAL_ASSET_SELECT =
+	'id, project_id, kind, original_filename, content_type, file_size_bytes, width, height, checksum_sha256, alt_text, caption, ocr_status, extraction_summary, extracted_text, created_at, updated_at, deleted_at';
+const EXTERNAL_ASSET_OCR_STATUSES = new Set([
+	'pending',
+	'processing',
+	'complete',
+	'failed',
+	'skipped'
+]);
+
+const EXTERNAL_CUSTOM_OPS: Partial<Record<BuildosAgentAllowedOp, RegistryOp>> = {
+	'onto.asset.search': {
+		op: 'onto.asset.search',
+		tool_name: 'search_onto_assets',
+		description:
+			'Search existing project image assets by filename, OCR text, extraction summary, caption, and alt text. This is read-only and never uploads media, returns storage paths, or creates signed URLs.',
+		parameters_schema: {
+			type: 'object',
+			additionalProperties: false,
+			properties: {
+				query: {
+					type: 'string',
+					description:
+						'Optional search query for filename, caption, alt text, OCR summary, or OCR text. Omit to list recent image assets.'
+				},
+				project_id: {
+					type: 'string',
+					description: 'Optional project UUID. Must be inside the granted call scope.'
+				},
+				ocr_status: {
+					type: 'string',
+					enum: ['pending', 'processing', 'complete', 'failed', 'skipped'],
+					description: 'Optional OCR status filter.'
+				},
+				include_text_preview: {
+					type: 'boolean',
+					description:
+						'When true, include a bounded OCR text preview. Defaults to false for search results.'
+				},
+				limit: {
+					type: 'number',
+					minimum: 1,
+					maximum: 50,
+					description: 'Maximum number of assets to return. Defaults to 12.'
+				},
+				offset: {
+					type: 'number',
+					minimum: 0,
+					description: 'Pagination offset. Defaults to 0.'
+				}
+			}
+		},
+		group: 'onto',
+		kind: 'read',
+		entity: 'asset',
+		action: 'search'
+	},
+	'onto.asset.get': {
+		op: 'onto.asset.get',
+		tool_name: 'get_onto_asset',
+		description:
+			'Get read-only metadata and bounded OCR context for an existing project image asset. This never returns storage paths or signed media URLs.',
+		parameters_schema: {
+			type: 'object',
+			additionalProperties: false,
+			required: ['asset_id'],
+			properties: {
+				asset_id: {
+					type: 'string',
+					description: 'Image asset UUID.'
+				},
+				include_text_preview: {
+					type: 'boolean',
+					description:
+						'When true, include a bounded OCR text preview. Defaults to true for get.'
+				}
+			}
+		},
+		group: 'onto',
+		kind: 'read',
+		entity: 'asset',
+		action: 'get'
+	}
+};
+
 const CORE_ENTITY_CONFIG: Record<
 	ExternalEntityKind,
 	{
@@ -538,6 +625,8 @@ const EXTERNAL_OP_HANDLERS: Record<
 	'onto.risk.list': listRisks,
 	'onto.risk.search': searchRisks,
 	'onto.risk.get': getRisk,
+	'onto.asset.search': searchAssets,
+	'onto.asset.get': getAsset,
 	'onto.entity.relationships.get': getEntityRelationships,
 	'onto.entity.links.get': getLinkedEntities,
 	'onto.search': searchOntology,
@@ -718,6 +807,90 @@ function truncateText(content: string | null | undefined, maxChars: number) {
 	return {
 		content: safeContent.slice(0, maxChars),
 		truncated: true
+	};
+}
+
+function normalizeAssetText(value: unknown, maxChars: number): string | null {
+	if (typeof value !== 'string') return null;
+	const normalized = value.replace(/\s+/g, ' ').trim();
+	if (!normalized) return null;
+	if (normalized.length <= maxChars) return normalized;
+	return `${normalized.slice(0, Math.max(0, maxChars - 3))}...`;
+}
+
+function normalizeOptionalAssetOcrStatus(value: unknown): string | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+	if (typeof value !== 'string') {
+		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'ocr_status must be a string');
+	}
+	const normalized = value.trim().toLowerCase();
+	if (!EXTERNAL_ASSET_OCR_STATUSES.has(normalized)) {
+		throw new ExternalToolGatewayError(
+			'VALIDATION_ERROR',
+			'ocr_status must be one of: pending, processing, complete, failed, skipped'
+		);
+	}
+	return normalized;
+}
+
+function readNullableString(value: unknown): string | null {
+	return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function readNullableNumber(value: unknown): number | null {
+	if (typeof value === 'number' && Number.isFinite(value)) return value;
+	if (typeof value === 'string' && value.trim()) {
+		const parsed = Number(value);
+		return Number.isFinite(parsed) ? parsed : null;
+	}
+	return null;
+}
+
+function checksumSuffix(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const normalized = value.trim().toLowerCase();
+	if (!/^[a-f0-9]{64}$/.test(normalized)) return null;
+	return normalized.slice(-12);
+}
+
+function serializeExternalAsset(
+	row: Record<string, unknown>,
+	projectMap: Map<string, OntologyProjectSummary>,
+	options: { includeTextPreview?: boolean } = {}
+): Record<string, unknown> {
+	const projectId = typeof row.project_id === 'string' ? row.project_id : '';
+	const extractedText = typeof row.extracted_text === 'string' ? row.extracted_text : '';
+	return {
+		id: readNullableString(row.id),
+		project_id: projectId || null,
+		project_name: projectMap.get(projectId)?.name ?? null,
+		kind: readNullableString(row.kind) ?? 'image',
+		file_name: readNullableString(row.original_filename),
+		content_type: readNullableString(row.content_type),
+		file_size_bytes: readNullableNumber(row.file_size_bytes),
+		width: readNullableNumber(row.width),
+		height: readNullableNumber(row.height),
+		checksum_sha256_suffix: checksumSuffix(row.checksum_sha256),
+		ocr_status: readNullableString(row.ocr_status),
+		caption: normalizeAssetText(row.caption, EXTERNAL_ASSET_SUMMARY_MAX_CHARS),
+		alt_text: normalizeAssetText(row.alt_text, EXTERNAL_ASSET_SUMMARY_MAX_CHARS),
+		extraction_summary: normalizeAssetText(
+			row.extraction_summary,
+			EXTERNAL_ASSET_SUMMARY_MAX_CHARS
+		),
+		has_extracted_text: extractedText.trim().length > 0,
+		...(options.includeTextPreview
+			? {
+					extracted_text_preview: normalizeAssetText(
+						extractedText,
+						EXTERNAL_ASSET_TEXT_PREVIEW_MAX_CHARS
+					)
+				}
+			: {}),
+		created_at: readNullableString(row.created_at),
+		updated_at: readNullableString(row.updated_at),
+		media_access:
+			'metadata_and_bounded_ocr_only; storage paths and signed media URLs are intentionally not exposed through external agent tools'
 	};
 }
 
@@ -4627,6 +4800,136 @@ async function searchOntology(context: ToolExecutionContext, args: Record<string
 	]);
 }
 
+async function searchAssets(context: ToolExecutionContext, args: Record<string, unknown>) {
+	const query = typeof args.query === 'string' ? args.query.trim() : '';
+	const limit = clampLimit(args.limit, 12, 1, 50);
+	const offset = normalizeOffset(args.offset);
+	const ocrStatus = normalizeOptionalAssetOcrStatus(args.ocr_status);
+	const includeTextPreview = args.include_text_preview === true;
+	const visible = await loadVisibleProjects(context);
+	let projectIds = getProjectIdsForVisibleContext(visible);
+
+	if (args.project_id !== undefined) {
+		const project = assertAccessibleProject(visible.projectMap, args.project_id);
+		projectIds = [project.id];
+	}
+
+	if (projectIds.length === 0) {
+		return {
+			query: query || null,
+			assets: [],
+			total: 0,
+			pagination: buildPaginationForRows(offset, limit, 0, 0),
+			access: {
+				media: 'metadata_and_bounded_ocr_only',
+				raw_pixels: false,
+				signed_urls: false
+			}
+		};
+	}
+
+	let dbQuery = context.admin
+		.from('onto_assets')
+		.select(EXTERNAL_ASSET_SELECT, { count: 'exact' })
+		.in('project_id', projectIds)
+		.eq('kind', 'image')
+		.is('deleted_at', null);
+
+	if (ocrStatus) {
+		dbQuery = dbQuery.eq('ocr_status', ocrStatus);
+	}
+
+	const filter = buildSearchFilter(query, [
+		'original_filename',
+		'caption',
+		'alt_text',
+		'extraction_summary',
+		'extracted_text'
+	]);
+	if (filter) {
+		dbQuery = dbQuery.or(filter);
+	}
+
+	const { data, error, count } = await dbQuery
+		.order('updated_at', { ascending: false })
+		.range(offset, offset + limit - 1);
+
+	if (error) {
+		throw new ExternalToolGatewayError(
+			'INTERNAL',
+			error.message || 'Failed to search image assets'
+		);
+	}
+
+	const rows = Array.isArray(data)
+		? data.filter(
+				(row): row is Record<string, unknown> =>
+					Boolean(row) && typeof row === 'object' && !Array.isArray(row)
+			)
+		: [];
+	const assets = rows.map((row) =>
+		serializeExternalAsset(row, visible.projectMap, { includeTextPreview })
+	);
+	const total = typeof count === 'number' ? count : assets.length;
+
+	return {
+		query: query || null,
+		assets,
+		total,
+		pagination: buildPaginationForRows(offset, limit, total, assets.length),
+		access: {
+			media: 'metadata_and_bounded_ocr_only',
+			raw_pixels: false,
+			signed_urls: false
+		}
+	};
+}
+
+async function getAsset(context: ToolExecutionContext, args: Record<string, unknown>) {
+	const assetId = assertValidId(args.asset_id, 'asset_id');
+	const includeTextPreview = args.include_text_preview !== false;
+	const visible = await loadVisibleProjects(context);
+	const projectIds = getProjectIdsForVisibleContext(visible);
+
+	if (projectIds.length === 0) {
+		throw new ExternalToolGatewayError('NOT_FOUND', 'Asset not found');
+	}
+
+	const { data, error } = await context.admin
+		.from('onto_assets')
+		.select(EXTERNAL_ASSET_SELECT)
+		.eq('id', assetId)
+		.in('project_id', projectIds)
+		.eq('kind', 'image')
+		.is('deleted_at', null)
+		.maybeSingle();
+
+	if (error) {
+		throw new ExternalToolGatewayError(
+			'INTERNAL',
+			error.message || 'Failed to load image asset'
+		);
+	}
+
+	if (!data || typeof data !== 'object' || Array.isArray(data)) {
+		throw new ExternalToolGatewayError('NOT_FOUND', 'Asset not found');
+	}
+
+	const projectId = (data as Record<string, unknown>).project_id;
+	assertVisibleEntityProject(visible.projectMap, projectId);
+
+	return {
+		asset: serializeExternalAsset(data as Record<string, unknown>, visible.projectMap, {
+			includeTextPreview
+		}),
+		access: {
+			media: 'metadata_and_bounded_ocr_only',
+			raw_pixels: false,
+			signed_urls: false
+		}
+	};
+}
+
 async function searchEntitiesByType(
 	context: ToolExecutionContext,
 	args: Record<string, unknown>,
@@ -4906,7 +5209,7 @@ function buildExternalGatewayRegistry(scope: AgentCallScope): ExternalGatewayReg
 	const ops: Record<string, ExternalGatewayRegistryEntry> = {};
 
 	for (const op of allowedOps) {
-		const entry = internalRegistry.ops[op];
+		const entry = internalRegistry.ops[op] ?? EXTERNAL_CUSTOM_OPS[op];
 		const handler = EXTERNAL_OP_HANDLERS[op];
 		if (!entry || !handler) continue;
 		const parametersSchema =
@@ -5471,6 +5774,129 @@ function buildDirectToolGatewayArguments(
 	};
 }
 
+function normalizeToolSearchFilterArgs(args: Record<string, unknown> | undefined): {
+	query: string;
+	group?: 'onto' | 'util' | 'cal';
+	kind?: 'read' | 'write';
+	entity?: string;
+	capability?: string;
+	limit: number;
+} {
+	return {
+		query: typeof args?.query === 'string' ? args.query.trim() : '',
+		capability:
+			typeof args?.capability === 'string' && args.capability.trim()
+				? args.capability.trim()
+				: undefined,
+		group:
+			args?.group === 'onto' || args?.group === 'util' || args?.group === 'cal'
+				? (args.group as 'onto' | 'util' | 'cal')
+				: undefined,
+		kind:
+			args?.kind === 'read' || args?.kind === 'write'
+				? (args.kind as 'read' | 'write')
+				: undefined,
+		entity:
+			typeof args?.entity === 'string' && args.entity.trim() ? args.entity.trim() : undefined,
+		limit: clampLimit(args?.limit, 8, 1, 25)
+	};
+}
+
+function scoreExternalRegistryEntry(entry: RegistryOp, query: string): number {
+	const normalizedQuery = query.trim().toLowerCase();
+	if (!normalizedQuery) return 1;
+
+	const haystack = [
+		entry.op,
+		entry.tool_name,
+		entry.description,
+		entry.group,
+		entry.kind,
+		entry.entity,
+		entry.action
+	]
+		.filter((value): value is string => typeof value === 'string' && value.length > 0)
+		.join(' ')
+		.toLowerCase();
+	const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
+	let score = 0;
+
+	if (entry.op.toLowerCase() === normalizedQuery) score += 200;
+	if (entry.op.toLowerCase().includes(normalizedQuery)) score += 100;
+	if (entry.tool_name.toLowerCase().includes(normalizedQuery)) score += 60;
+	for (const token of tokens) {
+		if (haystack.includes(token)) score += 20;
+	}
+
+	return score;
+}
+
+function buildExternalToolSearchMatch(
+	entry: ExternalGatewayRegistryEntry
+): Record<string, unknown> {
+	return {
+		op: entry.op,
+		summary: summarizeDescription(buildExternalToolDescription(entry)),
+		group: entry.group,
+		kind: entry.kind,
+		entity: entry.entity,
+		action: entry.action,
+		tool_name: entry.tool_name,
+		related_skills: []
+	};
+}
+
+function mergeScopedToolSearchMatches(params: {
+	payloadMatches: unknown[];
+	registry: ExternalGatewayRegistry;
+	args: Record<string, unknown> | undefined;
+}): Record<string, unknown>[] {
+	const filters = normalizeToolSearchFilterArgs(params.args);
+	const internalRegistry = getToolRegistry();
+	const scopedInternalMatches = params.payloadMatches.filter((match) => {
+		const op =
+			typeof (match as { op?: unknown }).op === 'string' ? (match as { op: string }).op : '';
+		return Boolean(op) && Boolean(params.registry.ops[op]);
+	}) as Record<string, unknown>[];
+	const existingOps = new Set(
+		scopedInternalMatches
+			.map((match) => match.op)
+			.filter((op): op is string => typeof op === 'string' && op.length > 0)
+	);
+
+	const customMatches = filters.capability
+		? []
+		: Object.values(params.registry.ops)
+				.filter((entry) => !internalRegistry.ops[entry.op])
+				.filter((entry) => {
+					if (existingOps.has(entry.op)) return false;
+					if (filters.group && entry.group !== filters.group) return false;
+					if (filters.kind && entry.kind !== filters.kind) return false;
+					if (filters.entity && entry.entity !== filters.entity) return false;
+					return true;
+				})
+				.map((entry) => ({
+					entry,
+					score: scoreExternalRegistryEntry(entry, filters.query)
+				}))
+				.filter(({ score }) => score > 0)
+				.sort((a, b) => {
+					if (b.score !== a.score) return b.score - a.score;
+					if (a.entry.kind !== b.entry.kind)
+						return a.entry.kind.localeCompare(b.entry.kind);
+					return a.entry.op.localeCompare(b.entry.op);
+				})
+				.map(({ entry }) => buildExternalToolSearchMatch(entry));
+
+	return [...scopedInternalMatches, ...customMatches].slice(0, filters.limit);
+}
+
+function findKnownExternalCustomTool(toolName: string): RegistryOp | null {
+	return (
+		Object.values(EXTERNAL_CUSTOM_OPS).find((entry) => entry?.tool_name === toolName) ?? null
+	);
+}
+
 export async function executeBuildosAgentGatewayTool(params: {
 	admin: any;
 	userId: string;
@@ -5498,41 +5924,20 @@ export async function executeBuildosAgentGatewayTool(params: {
 			) as Record<string, unknown>;
 		case 'tool_search': {
 			const registry = buildExternalGatewayRegistry(params.scope);
+			const filters = normalizeToolSearchFilterArgs(params.arguments);
 			const payload = searchToolRegistry({
-				query:
-					typeof params.arguments?.query === 'string'
-						? params.arguments.query
-						: undefined,
-				capability:
-					typeof params.arguments?.capability === 'string'
-						? params.arguments.capability
-						: undefined,
-				group:
-					params.arguments?.group === 'onto' ||
-					params.arguments?.group === 'util' ||
-					params.arguments?.group === 'cal'
-						? (params.arguments.group as 'onto' | 'util' | 'cal')
-						: undefined,
-				kind:
-					params.arguments?.kind === 'read' || params.arguments?.kind === 'write'
-						? (params.arguments.kind as 'read' | 'write')
-						: undefined,
-				entity:
-					typeof params.arguments?.entity === 'string'
-						? params.arguments.entity
-						: undefined,
-				limit:
-					typeof params.arguments?.limit === 'number' ? params.arguments.limit : undefined
+				query: filters.query || undefined,
+				capability: filters.capability,
+				group: filters.group,
+				kind: filters.kind,
+				entity: filters.entity,
+				limit: filters.limit
 			}) as Record<string, unknown>;
-			const matches = Array.isArray(payload.matches)
-				? payload.matches.filter((match) => {
-						const op =
-							typeof (match as { op?: unknown }).op === 'string'
-								? (match as { op: string }).op
-								: '';
-						return Boolean(op) && Boolean(registry.ops[op]);
-					})
-				: [];
+			const matches = mergeScopedToolSearchMatches({
+				payloadMatches: Array.isArray(payload.matches) ? payload.matches : [],
+				registry,
+				args: params.arguments
+			});
 			return {
 				...payload,
 				version: registry.version,
@@ -5580,6 +5985,21 @@ export async function executeBuildosAgentGatewayTool(params: {
 			...params,
 			arguments: buildDirectToolGatewayArguments(directEntry, params.arguments)
 		});
+	}
+
+	const customEntry = findKnownExternalCustomTool(params.toolName);
+	if (customEntry && isSupportedOp(customEntry.op)) {
+		return buildExecError(
+			customEntry.op,
+			'FORBIDDEN',
+			`Tool ${params.toolName} is outside the granted BuildOS call scope`,
+			customEntry.op,
+			{
+				granted_scope_mode: params.scope.mode,
+				required_scope_mode: requiredScopeModeForOp(customEntry.op),
+				allowed_ops: params.scope.allowed_ops ?? defaultAllowedOpsForMode(params.scope.mode)
+			}
+		);
 	}
 
 	const registryEntry = getToolRegistry().byToolName[params.toolName];

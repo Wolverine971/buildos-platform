@@ -4,14 +4,39 @@ export interface SkillExample {
 	next_steps: string[];
 }
 
+export type SkillResourceVisibility = 'public' | 'internal';
+
+export interface SkillLinkedResource {
+	id: string;
+	name?: string;
+	summary: string;
+	whenToLoad: string[];
+	path?: string;
+	visibility?: SkillResourceVisibility;
+}
+
+export interface SkillLinkedResourcePayload {
+	id: string;
+	name?: string;
+	summary: string;
+	when_to_load: string[];
+	path?: string;
+	visibility?: SkillResourceVisibility;
+}
+
 export interface SkillDefinition {
 	id: string;
 	name: string;
 	summary: string;
+	parentId?: string;
+	depth?: number;
+	bodyLineCount?: number;
 	legacyPaths: string[];
 	relatedOps: string[];
 	whenToUse: string[];
 	workflow: string[];
+	childSkills?: SkillLinkedResource[];
+	referenceModules?: SkillLinkedResource[];
 	guardrails?: string[];
 	examples?: SkillExample[];
 	notes?: string[];
@@ -25,11 +50,15 @@ export interface SkillHelpPayload {
 	version: string;
 	description: string;
 	summary: string;
+	parent_id?: string;
+	depth?: number;
 	legacy_paths?: string[];
 	markdown?: string;
 	when_to_use: string[];
 	workflow: string[];
 	related_ops: string[];
+	child_skills?: SkillLinkedResourcePayload[];
+	reference_modules?: SkillLinkedResourcePayload[];
 	guardrails?: string[];
 	examples?: SkillExample[];
 	notes?: string[];

@@ -41,6 +41,30 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	{
 		type: 'function',
 		function: {
+			name: 'skill_reference_load',
+			description:
+				'Load one reference module declared by a BuildOS skill. Use only after skill_load exposes reference_modules and the current task needs deeper source, template, example, or edge-case detail.',
+			parameters: {
+				type: 'object',
+				properties: {
+					skill: {
+						type: 'string',
+						description:
+							'Canonical root skill id or legacy skill alias that declared the reference module.'
+					},
+					reference: {
+						type: 'string',
+						description:
+							'Declared reference module id or path from the skill_load reference_modules index.'
+					}
+				},
+				required: ['skill', 'reference']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
 			name: 'libri_overview',
 			description:
 				'Return the Libri domain/capability overview from the cached Libri manifest, including stable domain ids such as books, people, and youtube_videos.',

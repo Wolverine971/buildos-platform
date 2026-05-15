@@ -1,13 +1,144 @@
 # docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/lineage.yaml
-lineage_version: 0.1
-updated: 2026-05-14
+lineage_version: 0.3
+updated: 2026-05-15
+changelog:
+    - version: 0.3
+      date: 2026-05-15
+      summary: Deepened cold_email_icp_signal_design child skill with seven new source layers (Elias, Holland, Murphy, Roberge, Underscore VC, 30MPC + Adamson + McMahon + Gartner, plus existing Ash Maurya inventory). Added three child-skill reference modules (signal-scoring-rubric, buying-committee-map, segment-examples).
+    - version: 0.2
+      date: 2026-05-15
+      summary: Initial seven-source v2 synthesis (Murray, Shepherd, Schneider, McKenna, Tatulea, Efti, Seibel).
 
 root_skill:
     id: cold-email-engagement-first-outreach
     name: Cold Email Engagement-First Outreach
     path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/SKILL.md
     status: draft
-    summary: Plan, draft, audit, and rewrite cold outreach campaigns that pass 2026 inbox filters and earn replies through relevance, real value, and a short assumptive cadence.
+    summary: Root combo skill for cold outreach. It routes between volume, strategic, single-target, reply-revival, investor, founder-led, recruiting, PR, partnership, and customer-research use cases.
+
+runtime_skill:
+    id: cold_email_engagement_first_outreach
+    name: Cold Email Engagement-First Outreach
+    path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_engagement_first_outreach/SKILL.md
+    status: registered
+    summary: BuildOS agentic-chat runtime skill. The public blog points to this file as the core skill source, while this lineage file preserves the research provenance.
+
+child_skills:
+    - id: cold_email_icp_signal_design
+      name: Cold Email ICP and Signal Design
+      path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_icp_signal_design/SKILL.md
+      status: deepened
+      deepened_date: 2026-05-15
+      summary: Defines the right person, right moment, segment, signal, buying committee map, and disqualifiers before any anchor, offer, or draft work. Returns a graded segment definition ready for the outreach compiler.
+      reference_modules:
+          - id: cold_email_icp_signal_design.signal_scoring_rubric
+            path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_icp_signal_design/references/signal-scoring-rubric.md
+            use_when: Grading a candidate signal for outreach approval; choosing between competing signals.
+          - id: cold_email_icp_signal_design.buying_committee_map
+            path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_icp_signal_design/references/buying-committee-map.md
+            use_when: Approving a B2B segment that needs a stakeholder map; choosing who to write first; classifying a reply by role.
+          - id: cold_email_icp_signal_design.segment_examples
+            path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_icp_signal_design/references/segment-examples.md
+            use_when: Grading a candidate segment; showing weak/acceptable/strong examples; walking through the disqualifier checklist.
+      sources:
+          - id: source.elias.shift-selling-trigger-events
+            type: youtube_analysis
+            title: Shift Selling - Turn Your Prospects into Customers
+            creator: Craig Elias (SHiFT Selling)
+            url: https://www.youtube.com/watch?v=KuRUanwNzSc
+            local_path: docs/marketing/growth/research/youtube-transcripts/2026-05-15-craig-elias-shift-selling-trigger-events.md
+            analysis_path: apps/web/src/content/blogs/source-analyses/craig-elias-trigger-event-selling.md
+            governs: A/B/C trigger families, three-event buying model, first-in 75% win, six monitoring surfaces
+          - id: source.holland.relevance-taxonomy
+            type: podcast_analysis
+            title: Hooking Relevance with Personalization in Competitive Prospecting (30MPC Ep 31)
+            creator: Becc Holland (Flip the Script)
+            url: https://podcasts.apple.com/us/podcast/31-sell-hooking-relevance-with-personalization-in/id1510861233?i=1000502579117
+            analysis_path: apps/web/src/content/blogs/source-analyses/becc-holland-personalization-to-relevance.md
+            governs: Four-type relevance taxonomy, three trigger sub-types (inbound/postbound/bridgebound), send-to-two-people test
+          - id: source.murphy.icp-framework
+            type: framework_page_analysis
+            title: The Ideal Customer Profile (ICP) Framework
+            creator: Lincoln Murphy (Sixteen Ventures)
+            url: https://www.sixteenventures.com/ideal-customer-profile/
+            analysis_path: apps/web/src/content/blogs/source-analyses/lincoln-murphy-ideal-customer-profile-framework.md
+            governs: Seven-dimension ICP rubric, six Success Potential fit types, ICP-then-persona ordering
+          - id: source.roberge.science-of-scaling
+            type: youtube_analysis
+            title: A Step-by-Step Guide to Revenue Growth (SaaStr Annual)
+            creator: Mark Roberge (Stage 2 Capital / HBS)
+            url: https://www.youtube.com/watch?v=aIAbNeqn9K8
+            local_path: docs/marketing/growth/research/youtube-transcripts/2026-05-15-mark-roberge-science-of-scaling-hbs.md
+            analysis_path: apps/web/src/content/blogs/source-analyses/mark-roberge-science-of-scaling-segment-tiering.md
+            governs: Leading Indicator of Retention formula, Green/Yellow/Red segment tiering, Quality x Engagement grid
+          - id: source.underscore.minimum-viable-segment
+            type: framework_page_analysis
+            title: Minimum Viable Segment (MVS) Framework
+            creator: Underscore VC / Michael Skok
+            url: https://underscore.vc/resources/minimum-viable-segment/
+            analysis_path: apps/web/src/content/blogs/source-analyses/underscore-vc-minimum-viable-segment.md
+            governs: Common Needs / Dominability / Viability gate, channel reachability, shared vocabulary
+          - id: source.30mpc-adamson-mcmahon-gartner.buying-committee
+            type: composite_analysis
+            title: Multithreading and the Buying Committee
+            creator: 30 Minutes to President's Club + Brent Adamson + John McMahon + Gartner
+            primary_url: https://www.30mpc.com/newsletter/how-to-multithread-and-get-to-power-in-sales
+            analysis_path: apps/web/src/content/blogs/source-analyses/30mpc-multithreading-buying-committee.md
+            governs: Golden Path (Top-Down vs Bottom-Up), Mobilizer/Talker/Blocker, McMahon Champion test, 6.8-buyer committee data
+          - id: source.maurya.personas-fail
+            type: youtube_analysis_existing
+            title: Why Startup Personas FAIL and What to Do Instead
+            creator: Ash Maurya (LEANFoundry)
+            url: https://www.youtube.com/watch?v=KjCjFuvTUGw
+            local_path: docs/marketing/growth/research/youtube-transcripts/2026-04-28-ash-maurya-personas-fail-do-this-instead.md
+            analysis_path: docs/marketing/growth/research/youtube-transcripts/2026-04-28-ash-maurya-personas-fail-do-this-instead-ANALYSIS.md
+            governs: Anti-persona thesis, switching-trigger taxonomy, job-based ICP (trigger x outcome x current solution)
+
+reference_modules:
+    - id: reference.source-map
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/source-map.md
+      use_when: Trace rules back to source layers, resolve source conflicts, or find the deeper local analysis.
+
+    - id: reference.high-volume-and-deliverability
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/high-volume-and-deliverability.md
+      use_when: Launching high-volume cold email, testing offers at scale, diagnosing deliverability, cleaning lists, or designing back-end qualification.
+
+    - id: reference.strategic-and-single-target
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/strategic-and-single-target.md
+      use_when: Writing named-account, executive, founder-to-founder, recruiting, podcast, PR, or other high-research one-recipient outreach.
+
+    - id: reference.reply-handling
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/reply-handling.md
+      use_when: Handling replies, objections, silence, numbered forks, same-day routing, and reply-to-call conversion.
+
+    - id: reference.investor-founder-pr
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/investor-founder-pr.md
+      use_when: Drafting investor fundraising email, founder-led peer outreach, recruiting, PR, podcast, partnership, or customer-research outreach.
+
+internal_reference_modules:
+    - id: reference.internal-outreach-operating-system
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/internal-outreach-operating-system.md
+      visibility: internal
+      publish: false
+      use_when: Private internal blueprint for designing the full market-learning and relationship-starting outreach operating system. Do not publish externally without review.
+
+    - id: reference.internal-skill-architecture
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/internal-skill-architecture.md
+      visibility: internal
+      publish: false
+      use_when: Private map for organizing the outreach operating system into root skills, child skills, and tangential relationship-building skills. Do not publish externally without review.
+
+    - id: reference.internal-child-skill-source-development-plan
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/internal-child-skill-source-development-plan.md
+      visibility: internal
+      publish: false
+      use_when: Private sourcing plan for agents assigned to deepen cold email child skills with source-backed workflows, rubrics, examples, and lineage. Do not publish externally without review.
+
+    - id: reference.internal-source-acquisition-queue
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/internal-source-acquisition-queue.md
+      visibility: internal
+      publish: false
+      use_when: Private queue of experts, books, websites, YouTube/videos, official docs, and specialty sources to grab for fully building the cold email architecture. Do not publish externally without review.
 
 sources:
     - id: source.murray.10-years-cold-email
@@ -59,6 +190,68 @@ sources:
           - 2-touch rule + non-responder recycle
           - value-as-deliverable rule (no Loom, no calendar)
 
+    - id: source.mckenna.closing-time-smykm
+      type: youtube_analysis
+      title: The End of the Line for Cold Calling (& What's Replacing it)
+      creator: Sam McKenna (Closing Time / Insightly CRM)
+      url: https://www.youtube.com/watch?v=5ln1cGTzXTg
+      local_path: docs/marketing/growth/research/youtube-transcripts/2026-05-15-sam-mckenna-show-me-you-know-me-closing-time.md
+      analysis_path: apps/web/src/content/blogs/source-analyses/sam-mckenna-show-me-you-know-me-ai-era.md
+      source_role: v2_secondary
+      used_for:
+          - executive research workflow
+          - authenticity bridge
+          - LinkedIn and public-content research surfaces
+          - thread-based nurture
+          - buyer-timed executive follow-up
+          - conversation value beyond booked meetings
+
+    - id: source.tatulea.30mpc-cold-email-showdown
+      type: youtube_analysis
+      title: 'Cold Email Showdown: Rookie Sales Rep vs 10-Year Director'
+      creator: "Florin Tatulea, Evan Greek, Jason Bay, 30 Minutes to President's Club"
+      url: https://www.youtube.com/watch?v=Ag-6pB51s5o
+      local_path: docs/marketing/growth/research/youtube-transcripts/2026-05-15-florin-tatulea-cold-email-showdown.md
+      analysis_path: apps/web/src/content/blogs/source-analyses/florin-tatulea-reply-method-cold-email-showdown.md
+      source_role: v2_secondary
+      used_for:
+          - subject-plus-preview packaging
+          - internal-looking subject lines
+          - mobile-readable body formatting
+          - proof slot
+          - artifact CTA
+          - AI-assisted research ladder
+
+    - id: source.efti.123-reply-hack
+      type: youtube_analysis
+      title: Get 457% more replies to your sales emails with the 1, 2, 3 hack
+      creator: Steli Efti (Close)
+      url: https://www.youtube.com/watch?v=hmuMkXntbH0
+      local_path: docs/marketing/growth/research/youtube-transcripts/2026-05-15-steli-efti-1-2-3-email-hack.md
+      analysis_path: apps/web/src/content/blogs/source-analyses/steli-efti-low-friction-replies-123.md
+      source_role: v2_secondary
+      used_for:
+          - low-friction numbered reply fork
+          - ghosted-thread revival
+          - top-of-funnel qualification fork
+          - objection-state routing
+          - no-is-better-than-silence reply philosophy
+
+    - id: source.seibel.cold-email-investors
+      type: youtube_analysis
+      title: How To Cold Email Investors
+      creator: Michael Seibel (Y Combinator)
+      url: https://www.youtube.com/watch?v=A3MmYbH1hbs
+      local_path: docs/marketing/growth/research/youtube-transcripts/2026-05-15-michael-seibel-how-to-cold-email-investors.md
+      analysis_path: apps/web/src/content/blogs/source-analyses/michael-seibel-cold-email-investors.md
+      source_role: v2_secondary
+      used_for:
+          - investor outreach mode
+          - short factual fundraising payload
+          - no meeting-first investor CTA
+          - company-domain sender trust
+          - no rapid investor follow-up
+
 excluded_sources:
     - id: source.hormozi.email-marketing-39-min
       title: Learn Email Marketing in 39 Minutes!
@@ -68,12 +261,12 @@ excluded_sources:
       analysis_path: apps/web/src/content/blogs/source-analyses/hormozi-newsletter-email-marketing-39-minutes.md
       exclusion_reason: Hormozi covers list/newsletter email to opted-in subscribers, not cold outreach to strangers. Different audience physics. Source-analysis kept separately and may seed a future list-email skill.
 
-candidate_v2_sources:
+integrated_prior_sources:
     - id: skill.cold-email-contextual-outbound
       title: Cold Email Contextual Outbound
       creator: BuildOS YouTube Library (earlier draft)
       local_path: docs/research/youtube-library/skill-drafts/cold-email-contextual-outbound/SKILL.md
-      possible_use: Earlier cold-email skill draft from Mitchell Keller + Sam McKenna sources. Merge contextual-outbound primitives (worldview research, mining buyer language, intro-offer testing) into a v2.
+      integrated_use: 'Earlier cold-email skill draft from Mitchell Keller + Sam McKenna sources. Its contextual-outbound primitives are now folded into the root skill and references: worldview research, buyer-language mining, intro-offer testing, and same-day reply routing.'
 
 nodes:
     - id: skill.cold-email-engagement-first-outreach
@@ -136,6 +329,36 @@ nodes:
       name: Objection Response Bank
       summary: Maintain base templates per common objection. Acknowledge-and-redirect. Customize 1-2 lines per send.
 
+    - id: primitive.packaging-pass
+      type: primitive_skill
+      name: Packaging Pass
+      summary: Score subject line plus preview text before body quality. The open mechanism should look internal, specific, and non-promotional.
+
+    - id: primitive.authenticity-bridge
+      type: primitive_skill
+      name: Authenticity Bridge
+      summary: Connect any research or personal hook to the business reason for writing. Reject decorative personalization and AI snippets that do not semantically fit.
+
+    - id: primitive.proof-slot
+      type: primitive_skill
+      name: Proof Slot
+      summary: Include relevant peer, customer, artifact, or situation proof when credible. Proof should show the sender has seen a similar problem before.
+
+    - id: primitive.artifact-cta
+      type: primitive_skill
+      name: Artifact CTA
+      summary: Ask for the smallest useful yes by offering to send a sample, snapshot, teardown, signals, ideas, or deck rather than defaulting to a meeting.
+
+    - id: primitive.low-friction-reply-fork
+      type: primitive_skill
+      name: Low-Friction Reply Fork
+      summary: Use respectful numbered options to convert silence into context, route objections, or qualify the buyer's current state.
+
+    - id: primitive.investor-outreach-mode
+      type: primitive_skill
+      name: Investor Outreach Mode
+      summary: Fundraising-specific cold email schema with a short factual payload, simple language, company-domain sender trust, no meeting-first ask, and slow follow-up.
+
     - id: guardrail.no-passive-cta
       type: guardrail
       name: No Passive CTA
@@ -170,6 +393,16 @@ nodes:
       type: guardrail
       name: No Money Language In Subject
       summary: Dollar words and ROI numbers in subject pushes the email to the promo tab.
+
+    - id: guardrail.no-unbridged-personalization
+      type: guardrail
+      name: No Unbridged Personalization
+      summary: Reject personal or public-context hooks that do not connect honestly to the reason for outreach.
+
+    - id: guardrail.no-investor-meeting-first
+      type: guardrail
+      name: No Investor Meeting-First Ask
+      summary: Investor cold email must explain the company first and invite reply before asking for a meeting.
 
     - id: output.campaign-bundle
       type: output_artifact
@@ -289,6 +522,45 @@ source_claims:
       used_for:
           - primitive.coiled-spring-prep
 
+    - id: claim.mckenna.executive-research
+      source_id: source.mckenna.closing-time-smykm
+      summary: Senior buyers publish enough public context on LinkedIn, interviews, posts, and profiles for a seller to earn attention with real research instead of interruption.
+      used_for:
+          - primitive.authenticity-bridge
+          - guardrail.no-unbridged-personalization
+
+    - id: claim.mckenna.thread-nurture
+      source_id: source.mckenna.closing-time-smykm
+      summary: Strategic executive outreach should preserve the researched thread and can test buyer-timed follow-ups such as Thursday, Friday, or weekend sends.
+      used_for:
+          - primitive.two-mode-cadence
+
+    - id: claim.tatulea.packaging
+      source_id: source.tatulea.30mpc-cold-email-showdown
+      summary: 'Cold email should be judged first on packaging: subject line plus preview text should look internal, specific, and worth opening.'
+      used_for:
+          - primitive.packaging-pass
+
+    - id: claim.tatulea.proof-artifact
+      source_id: source.tatulea.30mpc-cold-email-showdown
+      summary: Relevant social proof and concrete artifacts such as samples, snapshots, signals, or ideas create a smaller yes than a hard meeting ask.
+      used_for:
+          - primitive.proof-slot
+          - primitive.artifact-cta
+
+    - id: claim.efti.reply-fork
+      source_id: source.efti.123-reply-hack
+      summary: Numbered reply options lower the friction of responding and can turn silence, uncertainty, or objections into routeable buyer context.
+      used_for:
+          - primitive.low-friction-reply-fork
+
+    - id: claim.seibel.investor-mode
+      source_id: source.seibel.cold-email-investors
+      summary: Investor cold email should be short, factual, jargon-free, sent from a named company email address, and designed to start a back-and-forth rather than force a meeting.
+      used_for:
+          - primitive.investor-outreach-mode
+          - guardrail.no-investor-meeting-first
+
 edges:
     - from: skill.cold-email-engagement-first-outreach
       to: primitive.deliverability-infrastructure-floor
@@ -356,6 +628,42 @@ edges:
       confidence: 0.85
       rationale: Objection handling is part of the operating system, not a one-off.
 
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.packaging-pass
+      type: composed_of
+      confidence: 0.9
+      rationale: Subject plus preview determines whether the body is ever read.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.authenticity-bridge
+      type: composed_of
+      confidence: 0.9
+      rationale: Single-target and executive outreach require researched anchors to connect honestly to the reason for writing.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.proof-slot
+      type: composed_of
+      confidence: 0.85
+      rationale: Relevant proof shows the sender has seen a similar situation before and reduces buyer risk.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.artifact-cta
+      type: composed_of
+      confidence: 0.9
+      rationale: Many cold recipients will accept a useful artifact before they will accept a meeting.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.low-friction-reply-fork
+      type: composed_of
+      confidence: 0.85
+      rationale: The skill needs a reply-revival branch for silence, objections, and buyer-state ambiguity.
+
+    - from: skill.cold-email-engagement-first-outreach
+      to: primitive.investor-outreach-mode
+      type: composed_of
+      confidence: 0.85
+      rationale: Fundraising outreach has different payload, CTA, and follow-up rules than sales outreach.
+
     - from: primitive.deliverability-infrastructure-floor
       to: claim.schneider.deliverability-floor
       type: cites
@@ -403,6 +711,54 @@ edges:
       type: cites
       confidence: 0.9
       rationale: AI enrichment columns are the 2026 version of the same upstream-personalization move.
+
+    - from: primitive.packaging-pass
+      to: claim.tatulea.packaging
+      type: cites
+      confidence: 0.9
+      rationale: The 30MPC judging framework names packaging as the first evaluation surface.
+
+    - from: primitive.authenticity-bridge
+      to: claim.mckenna.executive-research
+      type: cites
+      confidence: 0.9
+      rationale: McKenna's SMYKM method requires public-context research to be authentic and recipient-specific.
+
+    - from: primitive.proof-slot
+      to: claim.tatulea.proof-artifact
+      type: cites
+      confidence: 0.85
+      rationale: The live judging repeatedly rewards proof and concrete next-step artifacts.
+
+    - from: primitive.artifact-cta
+      to: claim.tatulea.proof-artifact
+      type: cites
+      confidence: 0.85
+      rationale: Samples, snapshots, signals, and ideas are smaller asks than meetings.
+
+    - from: primitive.low-friction-reply-fork
+      to: claim.efti.reply-fork
+      type: cites
+      confidence: 0.9
+      rationale: Steli Efti's 1-2-3 hack directly supplies the reply fork mechanism.
+
+    - from: primitive.investor-outreach-mode
+      to: claim.seibel.investor-mode
+      type: cites
+      confidence: 0.95
+      rationale: Seibel's YC source directly defines investor cold-email payload and guardrails.
+
+    - from: guardrail.no-unbridged-personalization
+      to: claim.mckenna.executive-research
+      type: cites
+      confidence: 0.9
+      rationale: McKenna's critique of bad personalization at scale motivates the bridge guardrail.
+
+    - from: guardrail.no-investor-meeting-first
+      to: claim.seibel.investor-mode
+      type: cites
+      confidence: 0.95
+      rationale: Seibel explicitly rejects meeting-first investor cold emails before the company is explained.
 
     - from: primitive.front-end-offer-design
       to: claim.shepherd.front-end-offer
@@ -502,24 +858,26 @@ edges:
 
 operational_map:
     generation_order:
-        - confirm campaign mode
+        - confirm campaign mode (volume, strategic, single-target, reply-revival, investor)
         - verify deliverability infrastructure
         - segment list (persona x signal)
         - build persona prep (lists + templates + AI enrichment)
         - design front-end offer
+        - run packaging pass (subject + preview)
         - draft body (mode-dependent register)
+        - add proof slot and artifact CTA when credible
         - replace passive language
-        - plan cadence (2-touch or 4-touch)
+        - audit authenticity bridge
+        - plan cadence by mode
+        - build reply routes (objection bank or low-friction reply fork)
         - plan back-end qualification (if volume)
         - set up tracking baselines
-        - build objection response bank stubs
     public_article_focus:
         - Make cold outreach reusable for agents and founders.
-        - Keep all three source layers visibly cited.
+        - Keep all source layers visibly cited.
         - Avoid agency-tool affiliate links in public copy.
 
 open_questions:
-    - Should a future v2 merge Mitchell Keller and Sam McKenna primitives from the earlier cold-email-contextual-outbound draft?
-    - Should reply-handling and same-day-call routing become a separate skill stacked above this one?
+    - Should the public agent-skill article be updated from the earlier v1 source set to this master v2 combo skill?
     - Should objection-bank curation become a standalone evaluation skill?
     - Should founder-led vs SDR-led outreach be split into two skills with shared primitives?

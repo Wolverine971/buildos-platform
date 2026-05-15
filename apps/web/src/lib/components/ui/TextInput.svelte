@@ -20,6 +20,7 @@
 		enterkeyhint?: 'enter' | 'done' | 'go' | 'next' | 'previous' | 'search' | 'send';
 		type?: string;
 		class?: string;
+		onclick?: (event: MouseEvent) => void;
 		oninput?: (event: Event) => void;
 	}
 
@@ -44,25 +45,32 @@
 		enterkeyhint = undefined,
 		type = 'text',
 		class: className = '',
+		onclick,
 		oninput,
 		...restProps
 	}: TextInputProps & Omit<HTMLInputAttributes, 'size' | 'id'> = $props();
 
+	let inputElement = $state<HTMLInputElement | undefined>(undefined);
+
 	const errorId = $derived(`${id}-error`);
 	const helperId = $derived(`${id}-helper`);
+	const nativePickerInputTypes = ['date', 'datetime-local', 'time', 'month', 'week'];
+	const usesNativePicker = $derived(nativePickerInputTypes.includes(type));
 
 	// Smart inputmode detection based on type if not explicitly provided
 	let computedInputmode = $derived(
-		inputmode ||
-			(type === 'email'
-				? 'email'
-				: type === 'tel'
-					? 'tel'
-					: type === 'url'
-						? 'url'
-						: type === 'number'
-							? 'numeric'
-							: undefined)
+		usesNativePicker
+			? undefined
+			: inputmode ||
+					(type === 'email'
+						? 'email'
+						: type === 'tel'
+							? 'tel'
+							: type === 'url'
+								? 'url'
+								: type === 'number'
+									? 'numeric'
+									: undefined)
 	);
 
 	// Default enterkeyhint to 'next' for better form flow (can be overridden)
@@ -134,6 +142,7 @@
 
 			// Text color
 			'text-foreground',
+			usesNativePicker && 'cursor-pointer',
 
 			// Position relative for proper stacking (above GRID texture)
 			'relative z-10',
@@ -155,6 +164,24 @@
 			iconSizes[size]
 		)
 	);
+
+	function openNativePicker() {
+		if (!usesNativePicker || disabled || !inputElement || inputElement.readOnly) return;
+
+		try {
+			inputElement.showPicker?.();
+		} catch {
+			// Some browsers throw when showPicker is unavailable or not user-activated.
+			// The normal native tap/click behavior still handles those cases.
+		}
+	}
+
+	function handleClick(event: MouseEvent) {
+		onclick?.(event);
+		if (!event.defaultPrevented) {
+			openNativePicker();
+		}
+	}
 </script>
 
 <!-- Outer wrapper with dithering texture (inputs can't have ::before pseudo-elements) -->
@@ -167,6 +194,7 @@
 	{/if}
 
 	<input
+		bind:this={inputElement}
 		{id}
 		bind:value
 		{type}
@@ -177,6 +205,7 @@
 		aria-required={required}
 		aria-describedby={error && errorMessage ? errorId : helperText ? helperId : undefined}
 		class={inputClasses}
+		onclick={handleClick}
 		{oninput}
 		{...restProps}
 	/>
@@ -198,10 +227,23 @@
 
 <style>
 	/* Ensure consistent rendering across browsers */
-	input {
+	input:not([type='date']):not([type='datetime-local']):not([type='time']):not(
+			[type='month']
+		):not([type='week']) {
 		-webkit-appearance: none;
 		-moz-appearance: none;
 		appearance: none;
+	}
+
+	input[type='date'],
+	input[type='datetime-local'],
+	input[type='time'],
+	input[type='month'],
+	input[type='week'] {
+		-webkit-appearance: auto;
+		-moz-appearance: auto;
+		appearance: auto;
+		color-scheme: light dark;
 	}
 
 	/* Remove spinner buttons from number inputs */

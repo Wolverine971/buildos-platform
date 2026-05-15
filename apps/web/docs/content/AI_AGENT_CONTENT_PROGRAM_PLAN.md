@@ -96,7 +96,7 @@ Every draft should also have this working metadata in the draft body:
 
 Every publishable article should also be reviewed for:
 
-- screenshot needs
+- real screenshot needs
 - provider-doc research trail
 - last-reviewed date
 - BuildOS implementation note
@@ -301,11 +301,15 @@ That is enough to define the lane.
 
 ## Per-Article Deliverables
 
+Media rule: follow `/docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md`. This program should not use AI-generated images or AI-generated videos. Use real screenshots, real screen recordings, real founder footage, or clearly explanatory diagrams/text cards.
+
+Presence rule: follow `/docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md`. These articles should grow from real implementation work, tested workflows, and receipts, not abstract AI content volume.
+
 For every article we publish in this program, we should aim to produce:
 
 - the blog post itself
 - 4 to 8 social posts
-- screenshots where relevant
+- real screenshots where relevant
 - a visible freshness signal
 - a short BuildOS CTA
 
@@ -315,7 +319,7 @@ Recommended social slices:
 - one practical post
 - one opinionated or contrarian post
 - one BuildOS implementation angle
-- one screenshot or carousel angle
+- one real screenshot or carousel angle
 
 ---
 

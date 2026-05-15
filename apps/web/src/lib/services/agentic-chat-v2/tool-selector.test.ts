@@ -19,6 +19,7 @@ describe('selectFastChatTools', () => {
 		const names = tools.map((tool) => tool.function?.name).filter(Boolean);
 
 		expect(names).toContain('skill_load');
+		expect(names).toContain('skill_reference_load');
 		expect(names).toContain('tool_search');
 		expect(names).toContain('tool_schema');
 		expect(names).toContain('change_chat_context');

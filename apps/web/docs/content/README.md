@@ -4,6 +4,10 @@
 
 > **Purpose:** This folder contains content strategy documents for BuildOS blog, positioning, and content planning. For brand strategy and messaging, see [Brand Documentation](/docs/marketing/brand/).
 
+Media rule: all BuildOS content planning follows `/docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md`. No AI-generated images or videos; use real screenshots, screen recordings, founder footage, workspace photos, or clearly explanatory graphics.
+
+Presence rule: all BuildOS content planning follows `/docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md`. Receipts over vibes; start from a real artifact before expanding into posts.
+
 ---
 
 ## Quick Navigation
@@ -74,7 +78,7 @@ Planning document for a public BuildOS skills library aimed at AI agents and tec
 
 - infrastructure recommendations using the existing blog system
 - article structure and metadata strategy
-- freshness and screenshot workflow
+- freshness and real screenshot workflow
 - phased rollout from blog category to dedicated skills hub
 
 ---

@@ -82,7 +82,11 @@ describe('round analysis helpers', () => {
 		const pattern = buildRoundToolPattern([
 			createToolCall('tool_search', { query: 'search project' }),
 			createToolCall('tool_schema', { op: 'x.search.project' }),
-			createToolCall('skill_load', { id: 'plan_management' })
+			createToolCall('skill_load', { id: 'plan_management' }),
+			createToolCall('skill_reference_load', {
+				skill: 'task_management',
+				reference: 'task_management.state_coverage'
+			})
 		]);
 
 		expect(pattern).toEqual({

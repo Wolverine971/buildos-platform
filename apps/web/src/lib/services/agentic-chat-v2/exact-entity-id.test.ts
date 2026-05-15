@@ -23,5 +23,6 @@ describe('exact-entity-id helpers', () => {
 		expect(shouldCollectExactEntityReferencesFromToolName('tool_schema')).toBe(false);
 		expect(shouldCollectExactEntityReferencesFromToolName('tool_search')).toBe(false);
 		expect(shouldCollectExactEntityReferencesFromToolName('skill_load')).toBe(false);
+		expect(shouldCollectExactEntityReferencesFromToolName('skill_reference_load')).toBe(false);
 	});
 });
