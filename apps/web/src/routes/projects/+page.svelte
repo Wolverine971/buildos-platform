@@ -241,6 +241,7 @@
 	);
 
 	type OwnershipFilter = 'all' | 'owned' | 'shared';
+	const OWNERSHIP_FILTER_OPTIONS: readonly OwnershipFilter[] = ['all', 'owned', 'shared'];
 
 	let searchQuery = $state('');
 	let selectedStates = $state<ProjectState[]>([]);
@@ -843,7 +844,7 @@
 									<div
 										class="inline-flex rounded-md bg-muted p-0.5 text-xs font-semibold"
 									>
-										{#each ['all', 'owned', 'shared'] as const as option (option)}
+										{#each OWNERSHIP_FILTER_OPTIONS as option (option)}
 											<button
 												type="button"
 												class="px-3 py-1 rounded transition pressable {selectedOwnership ===
