@@ -18,9 +18,14 @@
 
 	// Register Cytoscape plugins once
 	const CYTOSCAPE_PLUGINS_KEY = '__buildos_tree_agent_cytoscape_registered__';
-	if (!(cytoscape as any)[CYTOSCAPE_PLUGINS_KEY]) {
-		cytoscape.use(dagre);
-		(cytoscape as any)[CYTOSCAPE_PLUGINS_KEY] = true;
+	const cytoscapePluginRegistry = cytoscape as unknown as Record<string, unknown>;
+	const registerCytoscapeExtension = (extension: unknown) => {
+		(cytoscape as unknown as { use: (extension: unknown) => void }).use(extension);
+	};
+
+	if (!cytoscapePluginRegistry[CYTOSCAPE_PLUGINS_KEY]) {
+		registerCytoscapeExtension(dagre);
+		cytoscapePluginRegistry[CYTOSCAPE_PLUGINS_KEY] = true;
 	}
 
 	interface Props {

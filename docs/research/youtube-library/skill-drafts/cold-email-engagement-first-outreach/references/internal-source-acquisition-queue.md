@@ -20,7 +20,13 @@ Acquisition pass completed 2026-05-15. The source archive now lives at:
 docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/manifest.md
 ```
 
-Archive summary: 53 web snapshots, 13 PDFs, and 3 additional YouTube transcripts from the source-materials acquisition pass. The broader resource inventory tracks 7 total 2026-05-15 transcript pulls for the v2 buildout. Remaining gaps are mostly legitimate book/manual extractions, blocked Muck Rack web pages, one moved Lavender article, one moved Joel Klettke PDF, and optional unresolved transcript targets. Muck Rack PDFs were captured and sanity-checked with `pdfinfo`.
+Archive summary: 53 web snapshots and 13 PDFs were converted into cleaned Markdown source cards, with source URL metadata stored separately. Raw HTML snapshots and raw PDF binaries were removed after conversion. The broader resource inventory tracks 7 total 2026-05-15 transcript pulls for the v2 buildout. Remaining gaps are mostly legitimate book/manual extractions, blocked Muck Rack web pages, one moved Lavender article, one moved Joel Klettke PDF, and optional unresolved transcript targets.
+
+Cleaned corpus entry points:
+
+- `docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/cleaned/INDEX.md`
+- `docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/cleaned/SYNTHESIS.md`
+- `docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/metadata/sources.json`
 
 This document is the source-acquisition layer for fully building the cold email architecture. It complements:
 
@@ -159,13 +165,13 @@ Already local:
 
 Grab next:
 
-| Priority | Source                                                  | URL / Location                                                                                                       | Status              | Extract                                                                     |
-| -------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------- |
-| P0       | Jason Bay / Outbound Squad executive cold email episode | https://www.outboundsquad.com/podcast/jason-bay-364                                                                  | verified-2026-05-15 | Executive outreach standards, meeting ask threshold, account research.      |
-| P0       | Lavender teardown series                                | https://www.lavender.ai/blog/email-teardown-1                                                                        | verified-2026-05-15 | Before/after examples, internal-looking subject, anchor-to-problem rewrite. |
+| Priority | Source                                                  | URL / Location                                                                                                       | Status                    | Extract                                                                     |
+| -------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------- |
+| P0       | Jason Bay / Outbound Squad executive cold email episode | https://www.outboundsquad.com/podcast/jason-bay-364                                                                  | verified-2026-05-15       | Executive outreach standards, meeting ask threshold, account research.      |
+| P0       | Lavender teardown series                                | https://www.lavender.ai/blog/email-teardown-1                                                                        | verified-2026-05-15       | Before/after examples, internal-looking subject, anchor-to-problem rewrite. |
 | P1       | Muck Rack media pitching guide                          | https://muckrack.com/guides/media-pitching                                                                           | PDF acquired; web blocked | Journalist beat research, respectful follow-up, audience protection.        |
-| P1       | Greenhouse sourcing best practices                      | https://support.greenhouse.io/hc/en-us/articles/4984925187611-Sourcing-Automation-email-best-practices-and-templates | verified-2026-05-15 | Candidate source context, role relevance, recruiting copy limits.           |
-| P2       | Justin Jackson cold email / DM guidance                 | Existing resource inventory                                                                                          | verified-prior      | Creator-recipient perspective, avoid hidden sales motives.                  |
+| P1       | Greenhouse sourcing best practices                      | https://support.greenhouse.io/hc/en-us/articles/4984925187611-Sourcing-Automation-email-best-practices-and-templates | verified-2026-05-15       | Candidate source context, role relevance, recruiting copy limits.           |
+| P2       | Justin Jackson cold email / DM guidance                 | Existing resource inventory                                                                                          | verified-prior            | Creator-recipient perspective, avoid hidden sales motives.                  |
 
 Artifacts to build:
 
@@ -356,9 +362,9 @@ Use for:
 
 Grab:
 
-- Muck Rack guide to pitching PDF from `source-materials/pdf/muckrack-guide-to-pitching.pdf` (acquired).
-- Muck Rack successful pitch checklist PDF from `source-materials/pdf/muckrack-successful-pitch-checklist.pdf` (acquired).
-- Muck Rack AI prompts for PR pros PDF from `source-materials/pdf/muckrack-ai-prompts-pr-pros.pdf` (acquired).
+- Muck Rack guide to pitching source card from `source-materials/cleaned/pdf/muckrack-guide-to-pitching.md` (acquired).
+- Muck Rack successful pitch checklist source card from `source-materials/cleaned/pdf/muckrack-successful-pitch-checklist.md` (acquired).
+- Muck Rack AI prompts for PR pros source card from `source-materials/cleaned/pdf/muckrack-ai-prompts-pr-pros.md` (acquired).
 - Muck Rack pitching best-practices web page if manual/browser retrieval is needed; the help-center URL returned 403 during acquisition.
 - Muck Rack media pitching web page if manual/browser retrieval is needed; the guide URL returned 403 during acquisition, but the PDF was captured.
 - Kai Davis podcast guest pitch article from `resource-inventory.md`.
@@ -427,15 +433,15 @@ Already pulled:
 
 Resolve / pull next:
 
-| Priority | Source                     | Target                                                                              | Status                                                | Use                                          |
-| -------- | -------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------- | -------------------------------------------- |
+| Priority | Source                     | Target                                                                              | Status                                             | Use                                                                            |
+| -------- | -------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------ |
 | P0       | Jason Bay / Outbound Squad | `Execs don't take meetings from cold emails unless...`                              | page-acquired-2026-05-15 / transcript-not-captured | Strategic executive outreach; use page until a podcast transcript is resolved. |
-| P0       | Lavender / Will Allred     | Pick one current subject-line or teardown video; fallback to Lavender teardown blog | to-resolve                                            | Subject/preview and taste.                   |
-| P1       | Becc Holland               | Current public relevance / trigger talk                                             | to-resolve                                            | ICP signal and personalization-to-relevance. |
-| P1       | April Dunford              | Lenny or ProductLed sales-pitch episode                                             | to-resolve / local-adjacent                           | OfferLab and compiler.                       |
-| P1       | Bob Moesta                 | Demand-Side Sales interview/talk                                                    | to-resolve                                            | OfferLab, ICP, buyer progress.               |
-| P1       | Chris Voss                 | Objection / negotiation interview                                                   | to-resolve                                            | Reply OS.                                    |
-| P2       | Trent Dressel              | Specific cold email / objection video                                               | unresolved-target                                     | Prospecting practice, mostly adjacent.       |
+| P0       | Lavender / Will Allred     | Pick one current subject-line or teardown video; fallback to Lavender teardown blog | to-resolve                                         | Subject/preview and taste.                                                     |
+| P1       | Becc Holland               | Current public relevance / trigger talk                                             | to-resolve                                         | ICP signal and personalization-to-relevance.                                   |
+| P1       | April Dunford              | Lenny or ProductLed sales-pitch episode                                             | to-resolve / local-adjacent                        | OfferLab and compiler.                                                         |
+| P1       | Bob Moesta                 | Demand-Side Sales interview/talk                                                    | to-resolve                                         | OfferLab, ICP, buyer progress.                                                 |
+| P1       | Chris Voss                 | Objection / negotiation interview                                                   | to-resolve                                         | Reply OS.                                                                      |
+| P2       | Trent Dressel              | Specific cold email / objection video                                               | unresolved-target                                  | Prospecting practice, mostly adjacent.                                         |
 
 ## Source Analysis Template
 

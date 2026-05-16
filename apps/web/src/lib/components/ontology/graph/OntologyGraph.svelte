@@ -34,10 +34,14 @@
 
 	// Register Cytoscape plugins once
 	const CYTOSCAPE_PLUGINS_KEY = '__buildos_cytoscape_layouts_registered__';
+	const registerCytoscapeExtension = (extension: unknown) => {
+		(cytoscape as unknown as { use: (extension: unknown) => void }).use(extension);
+	};
+
 	if (!(cytoscape as unknown as Record<string, unknown>)[CYTOSCAPE_PLUGINS_KEY]) {
-		cytoscape.use(dagre);
-		cytoscape.use(cola);
-		cytoscape.use(coseBilkent);
+		registerCytoscapeExtension(dagre);
+		registerCytoscapeExtension(cola);
+		registerCytoscapeExtension(coseBilkent);
 		(cytoscape as unknown as Record<string, unknown>)[CYTOSCAPE_PLUGINS_KEY] = true;
 	}
 

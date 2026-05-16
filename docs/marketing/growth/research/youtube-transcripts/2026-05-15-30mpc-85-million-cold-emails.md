@@ -1,124 +1,126 @@
 ---
-title: "We Analyzed 85 MILLION Cold Emails: This is How You GUARANTEE Replies"
+title: 'We Analyzed 85 MILLION Cold Emails: This is How You GUARANTEE Replies'
 video_id: EDbuEGO01uM
-url: "https://www.youtube.com/watch?v=EDbuEGO01uM"
+url: 'https://www.youtube.com/watch?v=EDbuEGO01uM'
 channel: 30 Minutes to President’s Club
-channel_url: "https://www.youtube.com/@30MPC"
+channel_url: 'https://www.youtube.com/@30MPC'
 upload_date: 2025-07-22
-duration: "40:11"
+duration: '40:11'
 views: 3895
 tags:
-  - 30mpc
-  - 30 Minutes to Presidents Club
-  - Nick Cegelski
-  - Armand Farrokh
-  - B2B Sales Podcast
-  - 30 Minutes to President's Club
-  - Enterprise Sales
-  - cold emails
-  - cold email
-  - sending cold emails
-  - how to send cold emails
-  - how to write cold emails
-  - cold email sales
-  - cold email script
-  - cold email tips
-  - smma cold email
-  - cold email scripts
-  - cold emails that get opened
-  - how to cold email
-  - cold email for job
+    - 30mpc
+    - 30 Minutes to Presidents Club
+    - Nick Cegelski
+    - Armand Farrokh
+    - B2B Sales Podcast
+    - 30 Minutes to President's Club
+    - Enterprise Sales
+    - cold emails
+    - cold email
+    - sending cold emails
+    - how to send cold emails
+    - how to write cold emails
+    - cold email sales
+    - cold email script
+    - cold email tips
+    - smma cold email
+    - cold email scripts
+    - cold emails that get opened
+    - how to cold email
+    - cold email for job
 timestamps:
-  - time: "0:00"
-    label: "Intro"
-  - time: "0:37"
-    label: "Agenda"
-  - time: "2:09"
-    label: "Cold Email Length"
-  - time: "3:18"
-    label: "Cold Email Clutter"
-  - time: "4:32"
-    label: "Email Content"
-  - time: "6:54"
-    label: "Cold Email Language"
-  - time: "14:20"
-    label: "Email Example"
-  - time: "15:46"
-    label: "Personalization"
-  - time: "18:06"
-    label: "Cold Email Replies"
-  - time: "18:55"
-    label: "How to Stack Cold Emails"
-  - time: "20:03"
-    label: "Stacking Personalization"
-  - time: "21:48"
-    label: "Segmentation vs Personalization"
-  - time: "22:45"
-    label: "Different Layers of Personalization"
-  - time: "23:32"
-    label: "Example Email"
-  - time: "24:42"
-    label: "Cold Email CTAs"
-  - time: "27:11"
-    label: "The Buyer Perspective"
-  - time: "29:23"
-    label: "Types of Offers"
-  - time: "37:03"
-    label: "Recap"
-  - time: "38:46"
-    label: "Offer"
+    - time: '0:00'
+      label: 'Intro'
+    - time: '0:37'
+      label: 'Agenda'
+    - time: '2:09'
+      label: 'Cold Email Length'
+    - time: '3:18'
+      label: 'Cold Email Clutter'
+    - time: '4:32'
+      label: 'Email Content'
+    - time: '6:54'
+      label: 'Cold Email Language'
+    - time: '14:20'
+      label: 'Email Example'
+    - time: '15:46'
+      label: 'Personalization'
+    - time: '18:06'
+      label: 'Cold Email Replies'
+    - time: '18:55'
+      label: 'How to Stack Cold Emails'
+    - time: '20:03'
+      label: 'Stacking Personalization'
+    - time: '21:48'
+      label: 'Segmentation vs Personalization'
+    - time: '22:45'
+      label: 'Different Layers of Personalization'
+    - time: '23:32'
+      label: 'Example Email'
+    - time: '24:42'
+      label: 'Cold Email CTAs'
+    - time: '27:11'
+      label: 'The Buyer Perspective'
+    - time: '29:23'
+      label: 'Types of Offers'
+    - time: '37:03'
+      label: 'Recap'
+    - time: '38:46'
+      label: 'Offer'
 description: |
-  👥 Leadership Course: https://bit.ly/4o8KtMT
-  📧 Cold Email Course: http://bit.ly/44K6jy3 
-  ☎️ Cold Call Course: https://bit.ly/4jqQ4w2
-  🔮 Discovery Course: https://bit.ly/4cQYaM8
-  🛠️ Free Toolkits: http://bit.ly/4nZwvO5
-   Huge Announcement 👉 Our next course is here: The Reply Method for Double Digit Replies
-  
-  Learn more + get free toolkits here: https://www.30mpc.com/course/cold-email-course
-  
-  What you need to know:
-  
-  A great cold email system gets you more replies, from better prospects, in less time — and it works even when you're not perfect.
-  
-  That’s what this course teaches: how to write cold emails that feel personal, without spending hours customizing. How to craft offers that actually get responses. How to sequence, follow up, and stand out in crowded inboxes.
-  
-  Teams that master this skill consistently book more meetings than teams that don’t — no matter the industry.
-  
-  If you don’t have a system, cold email becomes a grind with diminishing returns.
-  
-  If you do, it becomes your most consistent pipeline lever.
-  
-  —
-  
-  We analyzed 85 million cold emails with Gong to find what actually gets replies in 2025. In this episode, Nick and Jason break down the exact cold email structure, CTAs, and personalization tactics top reps are using to book more meetings.
-  
-  🎙️ ACTIONABLE TAKEAWAYS:
-  
-  - Use The Reply Method framework: 4-sentence emails under 100 words outperform longer messages—make it skimmable, mobile-first, and frictionless to reply.
-  - Avoid pitch language: Buzzwords and product-first copy reduce replies by up to 57%. Lead with problems your buyer already cares about, then layer in social proof.
-  - Personalize to the company or activity: Personalization = 5x replies, but not all types are equal—company and activity-based personalization outperform personal trivia.
-  - Offer something valuable in your CTA: Replace “Are you free?” with a compelling offer—benchmarking, expert insights, or 1:1 value that justifies a meeting even if they don’t buy.
-  
-  RESOURCES DISCUSSED:
-  
-  ChatGPT Prompts - https://www.30mpc.com/blog/jason-bay-s-cold-email-chatgpt-prompts
-  
-  Cold Email Course $50 off - https://www.30mpc.com/course/cold-email-course (discount auto applied at checkout)
-  
-  Join our weekly newsletter - https://hubs.li/Q02NJQmg0
-  
-  Things you can steal - https://linktr.ee/30mpc
-  
-  Save $50 on any 30MPC course - https://www.30mpc.com/courses) with code “YOUTUBE”
-  
-  Free Sales Templates, Scripts and Guides - https://www.30mpc.com/toolkit)
-transcribed_date: "2026-05-15"
+    👥 Leadership Course: https://bit.ly/4o8KtMT
+    📧 Cold Email Course: http://bit.ly/44K6jy3 
+    ☎️ Cold Call Course: https://bit.ly/4jqQ4w2
+    🔮 Discovery Course: https://bit.ly/4cQYaM8
+    🛠️ Free Toolkits: http://bit.ly/4nZwvO5
+     Huge Announcement 👉 Our next course is here: The Reply Method for Double Digit Replies
+
+    Learn more + get free toolkits here: https://www.30mpc.com/course/cold-email-course
+
+    What you need to know:
+
+    A great cold email system gets you more replies, from better prospects, in less time — and it works even when you're not perfect.
+
+    That’s what this course teaches: how to write cold emails that feel personal, without spending hours customizing. How to craft offers that actually get responses. How to sequence, follow up, and stand out in crowded inboxes.
+
+    Teams that master this skill consistently book more meetings than teams that don’t — no matter the industry.
+
+    If you don’t have a system, cold email becomes a grind with diminishing returns.
+
+    If you do, it becomes your most consistent pipeline lever.
+
+    —
+
+    We analyzed 85 million cold emails with Gong to find what actually gets replies in 2025. In this episode, Nick and Jason break down the exact cold email structure, CTAs, and personalization tactics top reps are using to book more meetings.
+
+    🎙️ ACTIONABLE TAKEAWAYS:
+
+    - Use The Reply Method framework: 4-sentence emails under 100 words outperform longer messages—make it skimmable, mobile-first, and frictionless to reply.
+    - Avoid pitch language: Buzzwords and product-first copy reduce replies by up to 57%. Lead with problems your buyer already cares about, then layer in social proof.
+    - Personalize to the company or activity: Personalization = 5x replies, but not all types are equal—company and activity-based personalization outperform personal trivia.
+    - Offer something valuable in your CTA: Replace “Are you free?” with a compelling offer—benchmarking, expert insights, or 1:1 value that justifies a meeting even if they don’t buy.
+
+    RESOURCES DISCUSSED:
+
+    ChatGPT Prompts - https://www.30mpc.com/blog/jason-bay-s-cold-email-chatgpt-prompts
+
+    Cold Email Course $50 off - https://www.30mpc.com/course/cold-email-course (discount auto applied at checkout)
+
+    Join our weekly newsletter - https://hubs.li/Q02NJQmg0
+
+    Things you can steal - https://linktr.ee/30mpc
+
+    Save $50 on any 30MPC course - https://www.30mpc.com/courses) with code “YOUTUBE”
+
+    Free Sales Templates, Scripts and Guides - https://www.30mpc.com/toolkit)
+transcribed_date: '2026-05-15'
+path: docs/marketing/growth/research/youtube-transcripts/2026-05-15-30mpc-85-million-cold-emails.md
 ---
 
 # We Analyzed 85 MILLION Cold Emails: This is How You GUARANTEE Replies
 
 ## Metadata
+
 - **Channel**: [30 Minutes to President’s Club](https://www.youtube.com/@30MPC)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=EDbuEGO01uM)
 - **Duration**: 40:11
@@ -126,6 +128,7 @@ transcribed_date: "2026-05-15"
 - **Views**: 3,895
 
 ## Timestamps
+
 - 0:00 — Intro
 - 0:37 — Agenda
 - 2:09 — Cold Email Length

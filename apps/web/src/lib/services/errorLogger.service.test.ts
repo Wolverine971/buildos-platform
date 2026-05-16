@@ -23,7 +23,11 @@ type UserRow = {
 };
 
 class FakeQuery<T extends Record<string, any>>
-	implements PromiseLike<{ data: T[] | T | null; error: null }>
+	implements
+		PromiseLike<{
+			data: T[] | T | null;
+			error: null;
+		}>
 {
 	private filters: Array<(row: T) => boolean> = [];
 	private orderColumn: string | null = null;

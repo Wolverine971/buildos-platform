@@ -1,49 +1,51 @@
 ---
-title: "Cold Email: Steal these 3 subject line formulas for 57%+ open rates with Belal Batrawy"
+title: 'Cold Email: Steal these 3 subject line formulas for 57%+ open rates with Belal Batrawy'
 video_id: ZQzX4uTV87Y
-url: "https://www.youtube.com/watch?v=ZQzX4uTV87Y"
+url: 'https://www.youtube.com/watch?v=ZQzX4uTV87Y'
 channel: Jason Bay
-channel_url: "https://www.youtube.com/@jasondbay"
+channel_url: 'https://www.youtube.com/@jasondbay'
 upload_date: 2021-02-10
-duration: "55:20"
+duration: '55:20'
 views: 8774
 timestamps:
-  - time: "0:00"
-    label: "<Untitled Chapter 1>"
-  - time: "3:52"
-    label: "What Is Your Biggest Challenge with Subject Lines"
-  - time: "4:06"
-    label: "What's Your Biggest Challenge with Writing Subject Lines"
-  - time: "5:15"
-    label: "Subject and Preview Line"
-  - time: "8:58"
-    label: "How Do You Define whether an Email Is Personalized or Not a Personalized Email"
-  - time: "21:13"
-    label: "Pattern Interrupt"
-  - time: "34:04"
-    label: "Negative Subject Lines"
-  - time: "38:14"
-    label: "Alienating the Person"
-  - time: "49:46"
-    label: "Copywriting Resources That You Recommend"
+    - time: '0:00'
+      label: '<Untitled Chapter 1>'
+    - time: '3:52'
+      label: 'What Is Your Biggest Challenge with Subject Lines'
+    - time: '4:06'
+      label: "What's Your Biggest Challenge with Writing Subject Lines"
+    - time: '5:15'
+      label: 'Subject and Preview Line'
+    - time: '8:58'
+      label: 'How Do You Define whether an Email Is Personalized or Not a Personalized Email'
+    - time: '21:13'
+      label: 'Pattern Interrupt'
+    - time: '34:04'
+      label: 'Negative Subject Lines'
+    - time: '38:14'
+      label: 'Alienating the Person'
+    - time: '49:46'
+      label: 'Copywriting Resources That You Recommend'
 description: |
-  Use these subject lines to dramatically increase your cold email open rates.
-  
-  Make sure to subscribe to the Outbound Squad Podcast here:
-  https://link.chtbl.com/outbound-squad-youtube
-  
-  Connect with Belal Batrawy on LinkedIn here: https://www.linkedin.com/in/belbatrawy/
-  
-  Want more?
-  ▶︎ Connect with Jason Bay on LinkedIn here for daily content: https://www.linkedin.com/in/jasondbay/
-  ▶︎ If you're a rep, check out Outbound Squad: https://outboundsquad.com/outbound-squad
-  ▶︎ If you're a sales leader, check out the Outbound Accelerator here: https://outboundsquad.com/for-companies
-transcribed_date: "2026-05-15"
+    Use these subject lines to dramatically increase your cold email open rates.
+
+    Make sure to subscribe to the Outbound Squad Podcast here:
+    https://link.chtbl.com/outbound-squad-youtube
+
+    Connect with Belal Batrawy on LinkedIn here: https://www.linkedin.com/in/belbatrawy/
+
+    Want more?
+    ▶︎ Connect with Jason Bay on LinkedIn here for daily content: https://www.linkedin.com/in/jasondbay/
+    ▶︎ If you're a rep, check out Outbound Squad: https://outboundsquad.com/outbound-squad
+    ▶︎ If you're a sales leader, check out the Outbound Accelerator here: https://outboundsquad.com/for-companies
+transcribed_date: '2026-05-15'
+path: docs/marketing/growth/research/youtube-transcripts/2026-05-15-jason-bay-belal-batrawy-subject-line-formulas.md
 ---
 
 # Cold Email: Steal these 3 subject line formulas for 57%+ open rates with Belal Batrawy
 
 ## Metadata
+
 - **Channel**: [Jason Bay](https://www.youtube.com/@jasondbay)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=ZQzX4uTV87Y)
 - **Duration**: 55:20
@@ -51,6 +53,7 @@ transcribed_date: "2026-05-15"
 - **Views**: 8,774
 
 ## Timestamps
+
 - 0:00 — <Untitled Chapter 1>
 - 3:52 — What Is Your Biggest Challenge with Subject Lines
 - 4:06 — What's Your Biggest Challenge with Writing Subject Lines

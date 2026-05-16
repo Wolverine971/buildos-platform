@@ -524,11 +524,7 @@ Then in each admin route:
 ### Pattern D: Parallel Loading for Related Components
 
 ```svelte
-{#await Promise.all([
-  import('./ComponentA.svelte'),
-  import('./ComponentB.svelte'),
-  import('./ComponentC.svelte')
-])}
+{#await Promise.all( [import('./ComponentA.svelte'), import('./ComponentB.svelte'), import('./ComponentC.svelte')] )}
 	<LoadingSkeleton />
 {:then [ModA, ModB, ModC]}
 	<svelte:component this={ModA.default} />

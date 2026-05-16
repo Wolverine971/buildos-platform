@@ -144,7 +144,19 @@ internal_reference_modules:
       path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/manifest.md
       visibility: internal
       publish: false
-      use_when: Private manifest for the 2026-05-15 source acquisition archive, including acquired web snapshots, PDFs, transcripts, blocked captures, manual book extraction gaps, and recommended analysis order. Do not publish externally without review.
+      use_when: Private manifest for the cleaned 2026-05-15 source corpus, including Markdown source cards, source URL metadata, transcripts, blocked captures, manual book extraction gaps, and recommended analysis order. Do not publish externally without review.
+
+    - id: reference.internal-cleaned-source-corpus
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/cleaned/INDEX.md
+      visibility: internal
+      publish: false
+      use_when: Private cleaned source corpus index for the cold email architecture. Use this instead of raw HTML or PDF artifacts when assigning source analysis or deepening child skills.
+
+    - id: reference.internal-cleaned-source-synthesis
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/cleaned/SYNTHESIS.md
+      visibility: internal
+      publish: false
+      use_when: Distilled synthesis of the cleaned source corpus. Read before individual source cards when updating the root cold email skill or child skills.
 
 sources:
     - id: source.murray.10-years-cold-email

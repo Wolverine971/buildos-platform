@@ -1,77 +1,79 @@
 ---
 title: "Cold Email: Ignore this webinar if you don't want to double your reply rates"
 video_id: _0K91ESIa94
-url: "https://www.youtube.com/watch?v=_0K91ESIa94"
+url: 'https://www.youtube.com/watch?v=_0K91ESIa94'
 channel: Jason Bay
-channel_url: "https://www.youtube.com/@jasondbay"
+channel_url: 'https://www.youtube.com/@jasondbay'
 upload_date: 2021-12-23
-duration: "55:48"
+duration: '55:48'
 views: 764
 timestamps:
-  - time: "0:00"
-    label: "<Untitled Chapter 1>"
-  - time: "0:04"
-    label: "Introductions"
-  - time: "0:18"
-    label: "David Youngblood"
-  - time: "2:09"
-    label: "Cutting through the Noise"
-  - time: "2:18"
-    label: "What Does It Take To Cut through the Noise"
-  - time: "4:01"
-    label: "What Is Personalization"
-  - time: "6:58"
-    label: "When and When Not To Automate"
-  - time: "8:33"
-    label: "Pattern Detection"
-  - time: "10:22"
-    label: "Segmentation"
-  - time: "11:28"
-    label: "Situational Sequences"
-  - time: "17:03"
-    label: "Reworking Old Accounts"
-  - time: "21:13"
-    label: "Examples"
-  - time: "23:33"
-    label: "High Personalization Sequence"
-  - time: "24:03"
-    label: "Outbound Cold Sequence"
-  - time: "27:45"
-    label: "Tier Two Sequences"
-  - time: "27:49"
-    label: "Dynamic Sequences"
-  - time: "29:27"
-    label: "Open Sequences"
-  - time: "30:14"
-    label: "Number of Touches in the Sequence"
-  - time: "34:09"
-    label: "What Is a Typical Open Rate for You"
-  - time: "34:16"
-    label: "A Typical Open Rate"
-  - time: "40:26"
-    label: "Email Signature"
-  - time: "43:46"
-    label: "Tips for Chat"
-  - time: "46:39"
-    label: "Dynamic Sequencing"
-  - time: "48:52"
-    label: "Any Recommendation on How Many People from a Specific Company You Should Address at the Same Time"
-  - time: "51:14"
-    label: "Never Be Afraid To Go Top Down"
+    - time: '0:00'
+      label: '<Untitled Chapter 1>'
+    - time: '0:04'
+      label: 'Introductions'
+    - time: '0:18'
+      label: 'David Youngblood'
+    - time: '2:09'
+      label: 'Cutting through the Noise'
+    - time: '2:18'
+      label: 'What Does It Take To Cut through the Noise'
+    - time: '4:01'
+      label: 'What Is Personalization'
+    - time: '6:58'
+      label: 'When and When Not To Automate'
+    - time: '8:33'
+      label: 'Pattern Detection'
+    - time: '10:22'
+      label: 'Segmentation'
+    - time: '11:28'
+      label: 'Situational Sequences'
+    - time: '17:03'
+      label: 'Reworking Old Accounts'
+    - time: '21:13'
+      label: 'Examples'
+    - time: '23:33'
+      label: 'High Personalization Sequence'
+    - time: '24:03'
+      label: 'Outbound Cold Sequence'
+    - time: '27:45'
+      label: 'Tier Two Sequences'
+    - time: '27:49'
+      label: 'Dynamic Sequences'
+    - time: '29:27'
+      label: 'Open Sequences'
+    - time: '30:14'
+      label: 'Number of Touches in the Sequence'
+    - time: '34:09'
+      label: 'What Is a Typical Open Rate for You'
+    - time: '34:16'
+      label: 'A Typical Open Rate'
+    - time: '40:26'
+      label: 'Email Signature'
+    - time: '43:46'
+      label: 'Tips for Chat'
+    - time: '46:39'
+      label: 'Dynamic Sequencing'
+    - time: '48:52'
+      label: 'Any Recommendation on How Many People from a Specific Company You Should Address at the Same Time'
+    - time: '51:14'
+      label: 'Never Be Afraid To Go Top Down'
 description: |
-  Make sure to subscribe to the Outbound Squad Podcast here:
-  https://link.chtbl.com/outbound-squad-youtube
-  
-  Want more?
-  ▶︎ Connect with Jason Bay on LinkedIn here for daily content: https://www.linkedin.com/in/jasondbay/
-  ▶︎ If you're a rep, check out Outbound Squad: https://outboundsquad.com/outbound-squad
-  ▶︎ If you're a sales leader, check out the Outbound Accelerator here: https://outboundsquad.com/for-companies
-transcribed_date: "2026-05-15"
+    Make sure to subscribe to the Outbound Squad Podcast here:
+    https://link.chtbl.com/outbound-squad-youtube
+
+    Want more?
+    ▶︎ Connect with Jason Bay on LinkedIn here for daily content: https://www.linkedin.com/in/jasondbay/
+    ▶︎ If you're a rep, check out Outbound Squad: https://outboundsquad.com/outbound-squad
+    ▶︎ If you're a sales leader, check out the Outbound Accelerator here: https://outboundsquad.com/for-companies
+transcribed_date: '2026-05-15'
+path: docs/marketing/growth/research/youtube-transcripts/2026-05-15-jason-bay-cold-email-double-reply-rates.md
 ---
 
 # Cold Email: Ignore this webinar if you don't want to double your reply rates
 
 ## Metadata
+
 - **Channel**: [Jason Bay](https://www.youtube.com/@jasondbay)
 - **Video**: [Watch on YouTube](https://www.youtube.com/watch?v=_0K91ESIa94)
 - **Duration**: 55:48
@@ -79,6 +81,7 @@ transcribed_date: "2026-05-15"
 - **Views**: 764
 
 ## Timestamps
+
 - 0:00 — <Untitled Chapter 1>
 - 0:04 — Introductions
 - 0:18 — David Youngblood

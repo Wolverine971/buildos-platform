@@ -26,7 +26,15 @@ Acquired archive:
 docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/manifest.md
 ```
 
-As of 2026-05-15, the archive contains 53 web snapshots, 13 PDFs, and 3 newly pulled YouTube transcripts. Remaining gaps are mostly manual book extractions, blocked Muck Rack web pages, one moved Lavender article, one moved Joel Klettke PDF, and optional unresolved transcript targets. Muck Rack PDFs were captured and sanity-checked with `pdfinfo`.
+As of 2026-05-15, the archive has been cleaned: 53 web snapshots and 13 PDFs were converted into Markdown source cards, with source URL metadata stored separately. Raw HTML snapshots and raw PDF binaries were removed after conversion. The broader resource inventory tracks 7 total 2026-05-15 transcript pulls for the v2 buildout. Remaining gaps are mostly manual book extractions, blocked Muck Rack web pages, one moved Lavender article, one moved Joel Klettke PDF, and optional unresolved transcript targets.
+
+Cleaned corpus:
+
+```text
+docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/cleaned/INDEX.md
+docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/cleaned/SYNTHESIS.md
+docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/metadata/sources.json
+```
 
 ## Priority Order
 
