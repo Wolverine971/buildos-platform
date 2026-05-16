@@ -8243,8 +8243,8 @@ snapshots:
 
   autoprefixer@10.4.21(postcss@8.5.6):
     dependencies:
-      browserslist: 4.26.2
-      caniuse-lite: 1.0.30001745
+      browserslist: 4.28.2
+      caniuse-lite: 1.0.30001792
       fraction.js: 4.3.7
       normalize-range: 0.1.2
       picocolors: 1.1.1

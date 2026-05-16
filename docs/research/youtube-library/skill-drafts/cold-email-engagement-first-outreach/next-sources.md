@@ -8,7 +8,9 @@ path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-out
 
 # Cold Email Skill — Next Sources To Pull
 
-The v1 skill is built from three 2026 cold-outreach videos (Connor Murray, Aaron Shepherd, Austin Schneider). That covers the **system layer** — infrastructure, segmentation, offer, cadence — but several sub-topics are thin or skipped entirely. This doc is the shopping list for the next research pass.
+The v1 skill is built from three 2026 cold-outreach videos (Connor Murray, Aaron Shepherd, Austin Schneider). That covers the **system layer** — infrastructure, segmentation, offer, cadence — but several sub-topics are thin or skipped entirely. This doc is the historical shopping list that kicked off the next research pass.
+
+2026-05-15 update: the active corpus now lives in `source-materials/cleaned/INDEX.md` and `source-materials/cleaned/SYNTHESIS.md`. Use those cleaned files as the canonical source set. Do not pull generic copywriting homepages, admin-only deliverability pages, testing-tool guides, or legacy template PDFs unless a narrow follow-on task explicitly needs them.
 
 ## How to use this doc
 
@@ -44,7 +46,6 @@ These cover the biggest gaps and have the most signal-per-minute.
 ### Subject line craft
 
 - [ ] **Will Allred (Lavender) — any recent subject line research video.** Lavender publishes reply-rate data on subject lines. Channel: `@trylavender` on YouTube. Look for "subject line" or "cold email tear-down" videos.
-- [ ] **Eddie Shleyner — VeryGoodCopy archive.** `verygoodcopy.com`. Micro-essays on copywriting craft. Search for "subject line," "open rate," "preview text." Not cold-email-specific but every essay transfers.
 - [ ] **Lavender blog — subject line research posts.** `lavender.ai/blog`. They've published multiple data-driven posts on subject patterns.
 
 ### Reply handling + objection conversion
@@ -83,8 +84,6 @@ Useful for breadth but less acute gaps.
 ### Deliverability deep-dive
 
 - [ ] **Postmark blog — engineering-grade deliverability content.** `postmarkapp.com/blog`. The technical floor at a more rigorous level than Schneider's video.
-- [ ] **Maildoso blog — deliverability for cold senders specifically.**
-- [ ] **Glock Apps blog — inbox placement testing.**
 
 ### Investor / fundraising outreach
 
@@ -106,7 +105,6 @@ Worth pulling if/when the skill expands into adjacent use cases.
 
 ### Voice & register craft (cross-cutting)
 
-- [ ] **Eddie Shleyner — VeryGoodCopy archive** (already in Tier 1) — generally applicable.
 - [ ] **Joel Klettke — B2B copywriting content.** Case-study language specifically.
 
 ## Strategy for finding more sources

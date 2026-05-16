@@ -53,11 +53,11 @@ Added in 2026-05 for the `cold_email_icp_signal_design` child skill. These layer
 The concrete resource queues live in `resource-inventory.md` and `references/internal-source-acquisition-queue.md`. They include:
 
 - Lavender subject-line and benchmark material.
-- Close/Steli follow-up PDFs and articles.
+- Close/Steli follow-up articles and transcripts.
 - Cognism multi-channel outbound reports.
 - Cialdini, Chris Voss, and Daniel Pink psychology sources.
 - Predictable Revenue and StoryBrand foundational sources.
-- Postmark, Maildoso, and GlockApps deliverability sources.
+- Google, Yahoo, Microsoft Outlook, Postmark, FTC, ICO, and CRTC deliverability/compliance sources.
 - YC, NFX, and related investor-outreach material.
 - Recruiting, PR, podcast, and voice/register specialty sources.
 

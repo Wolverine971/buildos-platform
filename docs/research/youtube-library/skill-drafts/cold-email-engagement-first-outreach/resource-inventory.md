@@ -19,7 +19,7 @@ The source acquisition pass now has a local archive manifest:
 docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/manifest.md
 ```
 
-Archive summary: 53 web snapshots and 13 PDFs were converted into cleaned Markdown source cards, with source URL metadata stored separately. Raw HTML snapshots and raw PDF binaries were removed after conversion. Combined with the earlier 2026-05-15 transcript pulls already listed here, this inventory now tracks 7 newly pulled transcripts for the v2 cold email buildout. Use the manifest and cleaned corpus index as the operational entry points for acquired files, failed captures, manual book extractions, and next analysis batches.
+Archive summary: the source corpus was pruned to 31 active web-source Markdown cards and 7 active PDF-source Markdown cards. 28 low-value cards were removed from the active corpus; their URLs and pruning reasons remain in `source-materials/metadata/sources.json`. Raw HTML snapshots and raw PDF binaries were removed after conversion. Combined with the earlier 2026-05-15 transcript pulls already listed here, this inventory now tracks 7 newly pulled transcripts for the v2 cold email buildout. Use the manifest, cleaned corpus index, and cleaned synthesis as the operational entry points for acquired files, manual book extractions, and next analysis batches.
 
 Status legend:
 
@@ -27,6 +27,8 @@ Status legend:
 - `pulled-2026-05-15`: transcript pulled into the repo during this pass.
 - `external-confirmed`: URL exists and is ready for source analysis or manual extraction.
 - `acquired-2026-05-15`: source file or transcript was captured in the local source archive.
+- `active-cleaned-2026-05-15`: source survived pruning and has an active Markdown card.
+- `pruned-2026-05-15`: source was removed from the active corpus; keep only URL metadata and pruning reason.
 - `transcript-pulled-2026-05-15`: a related video page was confirmed and a local transcript was captured.
 - `missing-2026-05-15`: URL failed during acquisition and needs a replacement source.
 - `unresolved-target`: backlog item is useful, but still needs a specific video/article URL chosen.
@@ -89,8 +91,6 @@ Excluded from cold outreach synthesis unless building a separate list-email skil
 | Lavender Inbox Triage                              | Knowledge base      | https://help.lavender.ai/en/articles/5325618-inbox-triage-a-cold-email-mindset                    | missing-2026-05-15           | Previously listed URL returned 404 during acquisition; find a current replacement before using this source.                                              |
 | Lavender YouTube channel `@trylavender`            | YouTube channel     | https://www.youtube.com/@trylavender                                                              | unresolved-target            | Pick a specific recent subject-line or teardown video if a transcript-backed source is needed.                                                           |
 | LavenderLand subject-line video with Belal Batrawy | Video page          | https://land.lavender.ai/media/cold-email-subject-lines-with-belal-batrawy-get-your-emails-opened | transcript-pulled-2026-05-15 | Local YouTube transcript now exists at `docs/marketing/growth/research/youtube-transcripts/2026-05-15-jason-bay-belal-batrawy-subject-line-formulas.md`. |
-| Eddie Shleyner / VeryGoodCopy archive              | Copywriting archive | https://www.verygoodcopy.com/                                                                     | external-confirmed           | Voice/register craft, microcopy, subject-line texture, concise copy rhythm. Search inside archive for email, subject line, and preview text.             |
-| VeryGoodCopy HubSpot cold-email story              | Blog                | https://www.verygoodcopy.com/verygoodcopy-blog-3/hubspot-did-not-hire-me                          | external-confirmed           | Personal cold outreach story; useful for "specific, human, low-ego" register.                                                                            |
 
 ### Reply Handling And Objection Conversion
 
@@ -101,9 +101,6 @@ Excluded from cold outreach synthesis unless building a separate list-email skil
 | Close Hail Mary / dead leads article   | Blog                 | https://close.com/blog/hail-mary-email-dead-leads                                         | external-confirmed | Using low-friction replies to surface hidden objections and revive old/no-response leads.              |
 | Close cold email follow-up plan        | Blog                 | https://www.close.com/blog/cold-email-follow-up-plan/                                     | external-confirmed | Cold email follow-up timing, modified reframe follow-ups, stopping rules for cold prospects.           |
 | Close sales follow-up guide            | Blog                 | https://www.close.com/blog/follow-up                                                      | external-confirmed | Follow-up philosophy, 1-2-7 cadence, short follow-up templates, value in every touch.                  |
-| Close follow-up formula resource       | Ebook / landing page | https://www.close.com/resources/followup                                                  | external-confirmed | More durable follow-up principles, use for same-day routing and reply handling if ebook is downloaded. |
-| Close Follow-Up Formula PDF            | PDF                  | https://resource-downloads.close.com/resources/steli_efti-the_follow_up_formula-ebook.pdf | external-confirmed | Download/summarize for fuller Steli follow-up doctrine.                                                |
-| Close Cold Email Hacks PDF             | PDF                  | https://resource-downloads.close.com/resources/cold-email-hacks.pdf                       | external-confirmed | Candidate source for cold-email-specific scripts and older Close doctrine.                             |
 | Sam McKenna Closing Time transcript    | YouTube transcript   | https://www.youtube.com/watch?v=5ln1cGTzXTg                                               | pulled-2026-05-15  | AI-era SMYKM, buyer numbness to scaled outreach, LinkedIn as signal, authentic touches.                |
 | Closing Time transcript page           | Podcast transcript   | https://www.listennotes.com/podcasts/closing-time-quick/show-me-you-know-me-y2NC4p1nS-f/  | external-confirmed | Backup transcript and summary metadata for the same Sam McKenna theme.                                 |
 
@@ -156,15 +153,19 @@ Excluded from cold outreach synthesis unless building a separate list-email skil
 
 ### Deliverability Deep-Dive
 
-| Resource                                 | Type          | URL                                                                           | Status             | Extract for v2                                                                                                   |
-| ---------------------------------------- | ------------- | ----------------------------------------------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| Postmark deliverability guides           | Guide hub     | https://postmarkapp.com/guides/deliverability                                 | external-confirmed | SPF/DKIM/DMARC, bounces, SMTP, domain warmup, transactional-grade rigor.                                         |
-| Postmark delivery troubleshooting        | Support guide | https://postmarkapp.com/support/article/troubleshooting-email-delivery-issues | external-confirmed | Diagnose infrastructure, sending practices, and content problems.                                                |
-| Maildoso cold email deliverability guide | Blog guide    | https://maildoso.ai/blog/guides/deliverability-guide                          | external-confirmed | Cold-sender-specific constraints: plain text, no open tracking, signatures, warmup ratios, campaign variability. |
-| Maildoso product/home page               | Website       | https://maildoso.ai/                                                          | external-confirmed | Cold-email infrastructure positioning and health-score mechanics.                                                |
-| GlockApps inbox placement tutorial       | Tutorial      | https://glockapps.com/tutorials/test-inbox-placement-and-test-spam-score/     | external-confirmed | Seed-list inbox placement, spam-score test, report interpretation, action steps.                                 |
-| GlockApps help: tests and deliverability | Help article  | https://qa.glockapps.com/help/art/email-tests-deliverability/                 | external-confirmed | Clarifies seed testing limits and whether tests harm deliverability.                                             |
-| GlockApps deliverability guide PDF       | PDF           | https://glockapps.com/files/email-deliverability-ultimate-guide.pdf           | external-confirmed | Candidate document for a more technical deliverability reference layer.                                          |
+Use this layer as a launch-gate and compliance layer, not as a grab bag of testing tricks or postmaster portal administration. The active corpus keeps official provider/regulator pages and one practical secondary explainer.
+
+| Resource                         | Type              | URL                                                                                                                                                | Status                    | Extract for v2                                                                           |
+| -------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------------------------------------- |
+| Google email sender guidelines   | Official provider | https://support.google.com/a/answer/81126                                                                                                          | active-cleaned-2026-05-15 | Gmail/Workspace sender requirements, authentication, unsubscribe, and spam-rate limits.  |
+| Google sender guidelines FAQ     | Official provider | https://support.google.com/a/answer/14229414                                                                                                       | active-cleaned-2026-05-15 | Bulk-sender clarifications and mitigation rules.                                         |
+| Yahoo Sender Hub best practices  | Official provider | https://senders.yahooinc.com/best-practices/                                                                                                       | active-cleaned-2026-05-15 | Yahoo sender requirements, authentication, reputation, and complaint boundaries.          |
+| Yahoo Sender Hub FAQ             | Official provider | https://senders.yahooinc.com/faqs/                                                                                                                 | active-cleaned-2026-05-15 | One-click unsubscribe and sender requirement clarifications.                             |
+| Microsoft Outlook Postmaster     | Official provider | https://sendersupport.olc.protection.outlook.com/                                                                                                  | active-cleaned-2026-05-15 | Outlook sender support and sender reputation overview.                                   |
+| Postmark deliverability guides   | Secondary guide   | https://postmarkapp.com/guides/deliverability                                                                                                      | active-cleaned-2026-05-15 | Practical SPF/DKIM/DMARC, bounce, and deliverability explanations.                       |
+| FTC CAN-SPAM guide               | Regulator         | https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business                                                             | active-cleaned-2026-05-15 | U.S. commercial email sender identity, subject/header, opt-out, and address requirements. |
+| ICO electronic mail guidance     | Regulator         | https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guide-to-pecr/electronic-and-telephone-marketing/ | active-cleaned-2026-05-15 | UK PECR electronic mail marketing boundaries.                                            |
+| CRTC CASL FAQ                    | Regulator         | https://www.crtc.gc.ca/eng/com500/faq500.htm                                                                                                       | active-cleaned-2026-05-15 | Canadian consent and anti-spam basics.                                                   |
 
 ### Investor / Fundraising Outreach
 
@@ -184,7 +185,6 @@ Excluded from cold outreach synthesis unless building a separate list-email skil
 | Resource                                 | Type          | URL                                                                | Status             | Extract for v2                                                                                  |
 | ---------------------------------------- | ------------- | ------------------------------------------------------------------ | ------------------ | ----------------------------------------------------------------------------------------------- |
 | RecruitingDaily cold outreach checklist  | Blog          | https://recruitingdaily.com/cold-outreach-email-six-elements-need/ | external-confirmed | Recruiting-specific norms: sender identity, length, candidate-focused pitch, subject-line data. |
-| Puzzle Inbox recruiting cold email guide | Blog          | https://puzzleinbox.com/blog/cold-email-for-recruiting/            | external-confirmed | Modern recruiting outreach mechanics; optional because it is vendor content.                    |
 | Recruiter ops content                    | Search target | n/a                                                                | unresolved-target  | Defer unless the skill explicitly supports recruiting sequences.                                |
 
 ### PR / Podcast Pitch Outreach
@@ -194,19 +194,15 @@ Excluded from cold outreach synthesis unless building a separate list-email skil
 | Justin Jackson: Advice for Sending Cold Emails and DMs | Blog    | https://justinjackson.ca/cold-email                                             | external-confirmed | Founder/creator recipient perspective: create connection, ask small, avoid hidden sales motive. |
 | Justin Jackson / MegaMaker archive                     | Website | https://megamaker.co/                                                           | external-confirmed | Background on audience/community; not yet a specific PR source.                                 |
 | Kai Davis podcast pitch article                        | Blog    | https://www.kaidavis.com/articles/podcast-outreach-email/                       | external-confirmed | Podcast guest pitch craft; older but focused and practitioner-oriented.                         |
-| CastFox 2026 podcast guest pitch guide                 | Blog    | https://www.castfox.net/blog/podcast-guest-pitch-template-35-percent-reply-rate | external-confirmed | Current podcast outreach structure; vendor content, so triangulate before using claims.         |
-| Puzzle Inbox podcast guest outreach guide              | Blog    | https://puzzleinbox.com/blog/cold-email-for-podcast-guest-outreach              | external-confirmed | Optional current PR/podcast playbook; vendor content.                                           |
 
 ### Voice And Register Craft
 
 | Resource                                             | Type           | URL                                                                                                              | Status             | Extract for v2                                                                                   |
 | ---------------------------------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------ |
-| Eddie Shleyner / VeryGoodCopy archive                | Website        | https://www.verygoodcopy.com/                                                                                    | external-confirmed | Copy rhythm, restraint, voice, specificity.                                                      |
 | Joel Klettke / Orbit Media case-study webinar        | Webinar page   | https://www.orbitmedia.com/events/ww-case-studies/                                                               | external-confirmed | Customer story extraction and proof language.                                                    |
 | Joel Klettke / Agency Journey interview              | Blog/podcast   | https://www.zenpilot.com/blog/what-makes-a-great-agency-case-study-with-joel-klettke                             | external-confirmed | Case-study language, sales-sheet reuse, customer proof assets.                                   |
 | Joel Klettke / Siege Media SEO copywriting interview | Blog/interview | https://www.siegemedia.com/creation/copywriting                                                                  | external-confirmed | Customer interviews and voice-of-customer research as B2B copy foundation.                       |
 | Joel Klettke Case Study Blueprint                    | PDF            | https://www.contentjam.com/wp-content/uploads/2014/10/JoelKlettke-Case-Study-Blueprint.pdf                       | external-confirmed | Interview flow and case-study proof structure.                                                   |
-| Joel Klettke headline formula sheet                  | PDF            | https://businesscasualcopywriting.com/wp-content/uploads/2021/08/Joel-Klettkes-Headline-Formulas-Cheat-Sheet.pdf | external-confirmed | Optional headline/subject inspiration; use carefully so cold email does not become copywriterly. |
 
 ## Suggested First Synthesis Batch
 
@@ -214,7 +210,7 @@ Use this order for the next pass because it fills the biggest v1 gaps without ex
 
 1. `pulled-2026-05-15` transcripts: Sam McKenna Closing Time, Florin/30MPC showdown, Steli 1-2-3, Michael Seibel investor email, Jason Bay reply-rate webinar, Jason Bay/Belal subject lines, and 30MPC 85M cold emails.
 2. Lavender Benchmark Report + subject-line article + Cold Email 101 + teardown #1. Do not use the older Inbox Triage URL until a replacement is found.
-3. Close cold-email follow-up plan + Hail Mary / dead-leads article + Follow-Up Formula PDF.
+3. Close cold-email follow-up plan + Hail Mary / dead-leads article + Steli 1-2-3 transcript.
 4. Cognism State of Outbound 2026.
 5. Cialdini / Voss / Pink book layer for explicit psychology primitives.
 6. Predictable Revenue + StoryBrand as foundational frame only.

@@ -20,7 +20,7 @@ Acquisition pass completed 2026-05-15. The source archive now lives at:
 docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/manifest.md
 ```
 
-Archive summary: 53 web snapshots and 13 PDFs were converted into cleaned Markdown source cards, with source URL metadata stored separately. Raw HTML snapshots and raw PDF binaries were removed after conversion. The broader resource inventory tracks 7 total 2026-05-15 transcript pulls for the v2 buildout. Remaining gaps are mostly legitimate book/manual extractions, blocked Muck Rack web pages, one moved Lavender article, one moved Joel Klettke PDF, and optional unresolved transcript targets.
+Archive summary: the source corpus was pruned to 31 active web-source Markdown cards and 7 active PDF-source Markdown cards. 28 low-value source cards were removed from the active corpus; their URLs and pruning reasons remain in `source-materials/metadata/sources.json`. Raw HTML snapshots and raw PDF binaries were removed after conversion. The broader resource inventory tracks 7 total 2026-05-15 transcript pulls for the v2 buildout. Remaining gaps are mostly legitimate book/manual extractions, a current journalist/producer perspective for PR/podcast outreach, one moved Lavender article, one moved Joel Klettke PDF, and optional unresolved transcript targets.
 
 Cleaned corpus entry points:
 
@@ -66,10 +66,10 @@ Reasoning: deliverability and compliance can block sending. Copy/taste protects 
 | Austin Schneider / Instantly        | Engagement-first sending            | Existing YouTube transcript and analysis                       | Microsegments, deliverability floor, 2-touch recycle                | local-analyzed                            |
 | Sam McKenna                         | Research-led outreach               | Existing Apollo and Closing Time transcripts                   | SMYKM, executive research, authenticity bridges                     | local-analyzed                            |
 | Florin Tatulea                      | Cold email and sequencing           | Existing 30MPC transcript; pclub course page                   | Buyer-relevant copy, sequencing, proof, objection neutralization    | local-analyzed / verified-2026-05-15      |
-| Jason Bay / Outbound Squad          | Executive outbound                  | Outbound Squad podcast pages, 30MPC judging, templates         | Strategic account outreach, exec-level asks, above/below power line | verified-2026-05-15                       |
+| Jason Bay / Outbound Squad          | Executive outbound                  | Existing webinar and subject-line transcripts; resolve full transcripts only | Strategic account outreach, exec-level asks, above/below power line | local-analyzed / to-resolve               |
 | Will Allred / Lavender              | Email quality and inbox psychology  | Lavender benchmark, teardowns, subject material                | Subject/preview, taste review, internal-looking email               | verified-2026-05-15                       |
-| Steli Efti / Close                  | Follow-up and reply conversion      | Existing 1-2-3 transcript plus Close articles/PDFs             | Reply OS, numbered forks, dead-lead revival                         | local-analyzed / verified-2026-05-15      |
-| Gong Labs                           | Objection and follow-up             | Gong objection/follow-up articles                              | Reply routing, objection reframes, post-reply follow-up             | verified-2026-05-15                       |
+| Steli Efti / Close                  | Follow-up and reply conversion      | Existing 1-2-3 transcript plus active Close articles           | Reply OS, numbered forks, dead-lead revival                         | local-analyzed / verified-2026-05-15      |
+| Gong Labs                           | Objection handling                  | Gong objection article                                         | Reply routing, objection reframes, post-reply judgment              | verified-2026-05-15                       |
 | Becc Holland / Flip the Script      | Relevance and triggers              | Existing local analysis; resolve extra public source if needed | Relevance taxonomy, send-to-two test, triggers                      | local-analyzed                            |
 | Craig Elias / SHiFT Selling         | Trigger-event selling               | Existing local transcript and analysis                         | Trigger taxonomy, timing thesis                                     | local-analyzed                            |
 | Mark Roberge                        | Segment scaling                     | Existing local transcript and analysis                         | Segment tiering, leading indicators, PMF discipline                 | local-analyzed                            |
@@ -86,9 +86,9 @@ Reasoning: deliverability and compliance can block sending. Copy/taste protects 
 | Gem                                 | Recruiting outreach                 | Passive talent cold email guide                                | Candidate-centered outreach                                         | verified-2026-05-15                       |
 | Greenhouse                          | Recruiting sequencing               | Sourcing automation best practices                             | Recruiting sequence length, CTA clarity, templates                  | verified-2026-05-15                       |
 | Google Workspace / Gmail            | Sender requirements                 | Official sender guidelines and FAQ                             | Deliverability hard requirements                                    | official-current                          |
-| Yahoo Sender Hub                    | Sender requirements                 | Sender best practices, FAQ, error codes, CFL                   | Deliverability hard requirements and complaint loops                | official-current                          |
-| Microsoft Outlook Postmaster        | Sender requirements                 | Postmaster, SNDS, sender support docs                          | Outlook deliverability, SNDS, bulk sender requirements              | official-current                          |
-| M3AAWG / Spamhaus / DMARC.org       | Anti-abuse standards                | Best practices, DNS/auth standards                             | Technical deliverability baseline                                   | official-current                          |
+| Yahoo Sender Hub                    | Sender requirements                 | Sender best practices and FAQ                                  | Deliverability hard requirements and complaint boundaries           | official-current                          |
+| Microsoft Outlook Postmaster        | Sender requirements                 | Postmaster sender support docs                                 | Outlook deliverability and sender reputation overview               | official-current                          |
+| Postmark                             | Practical deliverability            | Deliverability guide hub                                        | Plain-language SPF/DKIM/DMARC, bounce, and sender reputation support | verified-2026-05-15                       |
 
 ## Child Skill Source Queues
 
@@ -199,8 +199,6 @@ Grab next:
 | P0       | Florin Tatulea / pclub Cold Email Conversion Machine | https://www.pclub.io/courses/the-cold-email-conversion-machine                   | verified-2026-05-15                  | Trigger/current state/ideal state/CTA, short choppy copy, proof, objections, sequencing. |
 | P0       | Lavender benchmark and teardowns                     | https://www.lavender.ai/blog/the-cold-email-benchmark-report and teardown series | verified-prior / verified-2026-05-15 | Subject/preview, length, recipient inbox psychology, quality scoring.                    |
 | P1       | Jason Bay / Outbound Squad resources                 | https://www.outboundsquad.com/                                                   | verified-2026-05-15                  | Executive outbound, above/below power line sequence structure.                           |
-| P1       | VeryGoodCopy archive                                 | https://www.verygoodcopy.com/                                                    | verified-prior                       | Concision, voice, restraint; use for taste, not cold email doctrine.                     |
-| P2       | Close Cold Email Hacks PDF                           | Existing resource inventory URL                                                  | verified-prior                       | Legacy Close scripts; use only if still aligned with current taste.                      |
 
 Artifacts to build:
 
@@ -227,7 +225,6 @@ Grab next:
 | -------- | ---------------------------------- | -------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------------------------------ |
 | P0       | Lavender teardown series           | https://www.lavender.ai/blog/email-teardown-1                                          | verified-2026-05-15 | Before/after quality deltas, internal-email subject, "them > you" tests. |
 | P0       | Florin Tatulea / pclub course page | https://www.pclub.io/courses/the-cold-email-conversion-machine                         | verified-2026-05-15 | Generic, over-personalized, buyer-decision, prospect-word rules.         |
-| P1       | Eddie Shleyner / VeryGoodCopy      | https://www.verygoodcopy.com/                                                          | verified-prior      | Editorial taste, specificity, rhythm, plain copy craft.                  |
 | P1       | FTC CAN-SPAM guide                 | https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business | official-current    | Deceptive subject/header, opt-out and sender identity guardrails.        |
 
 Artifacts to build:
@@ -249,13 +246,9 @@ Grab next before any deep rewrite:
 | P0       | Google email sender guidelines           | https://support.google.com/a/answer/81126             | official-current / verified-2026-05-15 | SPF/DKIM, PTR, TLS, Postmaster spam rate, 5,000/day threshold.           |
 | P0       | Google sender guidelines FAQ             | https://support.google.com/a/answer/14229414          | official-current / verified-2026-05-15 | Bulk sender classification, alignment, mitigation requirements.          |
 | P0       | Yahoo Sender Hub best practices          | https://senders.yahooinc.com/best-practices/          | official-current / verified-2026-05-15 | SPF/DKIM/DMARC, segregation, opt-in, reputation, CAN-SPAM references.    |
-| P0       | Yahoo Sender Hub FAQ / CFL / error codes | https://senders.yahooinc.com/faqs/                    | official-current / verified-2026-05-15 | One-click unsubscribe, complaint feedback loop, authentication failures. |
-| P0       | Microsoft Outlook Postmaster             | https://sendersupport.olc.protection.outlook.com/     | official-current / verified-2026-05-15 | High-volume sender requirements, SNDS, blocking/junking diagnostics.     |
-| P0       | M3AAWG sender docs                       | https://www.m3aawg.org/documents-for-senders-and-esps | official-current / verified-2026-05-15 | Anti-abuse and sender best practices.                                    |
-| P0       | DMARC.org resources and specs            | https://dmarc.org/resources/                          | official-current / verified-2026-05-15 | DMARC learning and standards links.                                      |
+| P0       | Yahoo Sender Hub FAQ                     | https://senders.yahooinc.com/faqs/                    | official-current / verified-2026-05-15 | One-click unsubscribe and sender requirement clarifications.             |
+| P0       | Microsoft Outlook Postmaster             | https://sendersupport.olc.protection.outlook.com/     | official-current / verified-2026-05-15 | Outlook sender support and sender reputation overview.                   |
 | P1       | Postmark deliverability guides           | https://postmarkapp.com/guides/deliverability         | verified-2026-05-15                    | SPF/DKIM/DMARC explanations, bounces, warmup, troubleshooting.           |
-| P1       | GlockApps inbox placement guide          | Existing resource inventory URL                       | verified-prior                         | Seed-list and spam score test interpretation.                            |
-| P1       | Maildoso cold deliverability guide       | Existing resource inventory URL                       | directional-vendor                     | Cold-email-specific sending operations; triangulate.                     |
 
 Artifacts to build:
 
@@ -283,9 +276,7 @@ Grab next:
 | -------- | ---------------------------------------- | ------------------------------------------------------ | ------------------- | ------------------------------------------------------------------ |
 | P0       | Close 1-2-3 update article               | Existing resource inventory URL                        | verified-prior      | Current interpretation of numbered reply forks.                    |
 | P0       | Close Hail Mary / dead leads             | Existing resource inventory URL                        | verified-prior      | Reviving silence and surfacing hidden objections.                  |
-| P0       | Close follow-up formula PDF              | Existing resource inventory URL                        | verified-prior      | Follow-up doctrine and stopping rules.                             |
 | P1       | Gong objection handling techniques       | https://www.gong.io/blog/objection-handling-techniques | verified-2026-05-15 | Permission, reframe, closure without leading.                      |
-| P1       | Gong sales follow-up emails              | https://www.gong.io/blog/sales-email-follow-up         | verified-2026-05-15 | No-show, post-call, decision-maker, proposal follow-up routes.     |
 | P1       | Chris Voss, `Never Split the Difference` | Official book page / legitimate copy                   | manual-book-extract | Labeling, calibrated questions, tactical empathy; adapt carefully. |
 
 Artifacts to build:
@@ -364,12 +355,10 @@ Grab:
 
 - Muck Rack guide to pitching source card from `source-materials/cleaned/pdf/muckrack-guide-to-pitching.md` (acquired).
 - Muck Rack successful pitch checklist source card from `source-materials/cleaned/pdf/muckrack-successful-pitch-checklist.md` (acquired).
-- Muck Rack AI prompts for PR pros source card from `source-materials/cleaned/pdf/muckrack-ai-prompts-pr-pros.md` (acquired).
 - Muck Rack pitching best-practices web page if manual/browser retrieval is needed; the help-center URL returned 403 during acquisition.
 - Muck Rack media pitching web page if manual/browser retrieval is needed; the guide URL returned 403 during acquisition, but the PDF was captured.
 - Kai Davis podcast guest pitch article from `resource-inventory.md`.
 - Justin Jackson cold email/DM guidance from `resource-inventory.md`.
-- CastFox/Puzzle Inbox podcast articles as directional, not governing.
 
 Use for:
 
@@ -410,7 +399,6 @@ Use legitimate copies or official excerpts. Do not rely on unauthorized PDFs.
 | P1       | `Never Split the Difference`                | Chris Voss                | Reply OS                        | Labels, calibrated questions, tactical empathy.                     |
 | P1       | `To Sell Is Human`                          | Daniel Pink               | Taste Review                    | Attunement, buoyancy, clarity.                                      |
 | P1       | `Predictable Revenue`                       | Aaron Ross, Marylou Tyler | Root, ICP                       | Outbound system design and role specialization.                     |
-| P1       | `Fanatical Prospecting`                     | Jeb Blount                | Root, Cadence                   | Prospecting discipline; use carefully to avoid pressure-heavy tone. |
 | P2       | `Building a StoryBrand`                     | Donald Miller             | OfferLab, Compiler              | Buyer-as-hero framing; use lightly.                                 |
 | P2       | `Made to Stick`                             | Chip Heath, Dan Heath     | Compiler, Taste Review          | Concrete, credible, memorable messaging.                            |
 | P2       | `Trustworthy Online Controlled Experiments` | Kohavi, Tang, Xu          | Learning Review                 | Experiment design rigor.                                            |
@@ -435,7 +423,6 @@ Resolve / pull next:
 
 | Priority | Source                     | Target                                                                              | Status                                             | Use                                                                            |
 | -------- | -------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------ |
-| P0       | Jason Bay / Outbound Squad | `Execs don't take meetings from cold emails unless...`                              | page-acquired-2026-05-15 / transcript-not-captured | Strategic executive outreach; use page until a podcast transcript is resolved. |
 | P0       | Lavender / Will Allred     | Pick one current subject-line or teardown video; fallback to Lavender teardown blog | to-resolve                                         | Subject/preview and taste.                                                     |
 | P1       | Becc Holland               | Current public relevance / trigger talk                                             | to-resolve                                         | ICP signal and personalization-to-relevance.                                   |
 | P1       | April Dunford              | Lenny or ProductLed sales-pitch episode                                             | to-resolve / local-adjacent                        | OfferLab and compiler.                                                         |
@@ -467,11 +454,11 @@ For each acquired source, produce:
 
 ### Batch 1: Deliverability And Compliance
 
-Grab and analyze Google, Yahoo, Microsoft, M3AAWG, DMARC.org, FTC, ICO, and CRTC. This should produce the deliverability readiness and compliance boundary references.
+Grab and analyze active Google, Yahoo, Microsoft Outlook Postmaster, Postmark, FTC, ICO, and CRTC source cards. This should produce the deliverability readiness and compliance boundary references.
 
 ### Batch 2: Compiler And Taste
 
-Analyze Lavender benchmark/teardowns, Florin/pclub page, Jason Bay executive source, VeryGoodCopy, and Close cold email PDFs. This should produce draft templates, taste scorecard, subject/preview rules, and bad-to-good examples.
+Analyze Lavender benchmark/teardowns, Florin/pclub page, existing Jason Bay transcripts, and active Close articles/transcripts. This should produce draft templates, taste scorecard, subject/preview rules, and bad-to-good examples.
 
 ### Batch 3: ICP And Offer
 
@@ -479,7 +466,7 @@ Extract April Dunford, Bob Moesta, Rob Fitzpatrick, Challenger Customer, and exi
 
 ### Batch 4: Reply OS And Learning Review
 
-Analyze Close follow-up materials, Gong objection/follow-up, Cognism, Lavender benchmark, Mailshake report, and experiment-design sources. This should produce reply taxonomy, SLA matrix, decision thresholds, and learning memo.
+Analyze active Close follow-up/reply materials, Gong objection handling, Cognism, Lavender benchmark, Mailshake report, and experiment-design sources. This should produce reply taxonomy, SLA matrix, decision thresholds, and learning memo.
 
 ### Batch 5: Specialty Modes
 

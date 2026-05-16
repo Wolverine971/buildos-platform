@@ -315,9 +315,8 @@ Source material to find:
 - Current Google sender requirements.
 - Current Yahoo sender requirements.
 - Microsoft/Outlook sender guidance.
-- SPF, DKIM, and DMARC official or standards-based docs.
-- M3AAWG and Spamhaus sender reputation guidance.
-- ESP and deliverability vendor docs from Postmark, SendGrid, Mailgun, HubSpot, Instantly, Smartlead, or similar, treated directionally.
+- Official provider guidance for authentication, sender reputation, unsubscribe, and complaint thresholds.
+- One practical secondary explainer, such as Postmark, to clarify implementation details.
 - Internal domain/inbox performance data if available.
 
 Questions to answer:
@@ -338,10 +337,10 @@ Artifacts to add:
 
 First search prompts:
 
-- `Google sender requirements 2026 SPF DKIM DMARC spam rate`
+- `Google sender requirements 2026 SPF DKIM DMARC complaint rate`
 - `Yahoo sender requirements DMARC unsubscribe bulk sender`
 - `Microsoft Outlook sender reputation best practices`
-- `M3AAWG sender best practices email authentication`
+- `Postmark deliverability guide SPF DKIM DMARC bounces`
 
 Important: verify these sources at the time of sourcing. Do not rely on stale requirements.
 
