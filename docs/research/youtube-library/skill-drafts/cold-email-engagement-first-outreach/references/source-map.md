@@ -63,6 +63,20 @@ The concrete resource queues live in `resource-inventory.md` and `references/int
 
 Treat unprocessed external resources as supporting context, not governing rules, until they have a local analysis or are explicitly synthesized.
 
+## Tactical Gap-Fill Sources
+
+Added 2026-05-16 to close the highest-value gaps without broad scraping:
+
+| Layer               | Source card                                                                                                                                | Governs                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| OfferLab / compiler | `source-materials/cleaned/pdf/april-dunford-sales-pitch-structure.md`                                                                      | Buyer-choice framing, alternatives, differentiated value, proof restraint |
+| ICP / OfferLab      | `source-materials/cleaned/web/bob-moesta-demand-side-sales-talk.md`                                                                        | Struggling moment, buyer progress timeline, demand-side reason-now        |
+| Research / OfferLab | `source-materials/cleaned/web/mom-test-publisher-page.md`                                                                                  | False positives, past behavior, customer-research ask integrity           |
+| Strategic accounts  | `source-materials/cleaned/web/challenger-customer-profiles.md`                                                                             | Mobilizer/Talker/Blocker, internal-consensus artifact offers              |
+| Reply OS            | `source-materials/cleaned/pdf/black-swan-leadership-guide-tactical-empathy.md`                                                             | Label -> calibrated question replies, tactical empathy for objections     |
+| PR/podcast          | `source-materials/cleaned/web/muckrack-state-of-journalism-2025.md` and `source-materials/cleaned/web/pr-news-state-of-journalism-2025.md` | Journalist workload, source packets, audience-first pitch standard        |
+| Deliverability      | `references/deliverability-provider-requirement-matrix.md`                                                                                 | Pass / blocked / manual-only sender-readiness decisions                   |
+
 ## Conflict Resolution
 
 Use mode to resolve source conflicts:

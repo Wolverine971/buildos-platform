@@ -106,6 +106,7 @@ Include:
 - Why your angle fits that audience now.
 - 2-3 concrete topic angles.
 - Proof you will not waste the host/editor's time.
+- A compact source packet, data point, quote, visual, or expert availability when useful.
 - Small CTA: "want the angle list?"
 
 Avoid:
@@ -114,6 +115,14 @@ Avoid:
 - Long bio first.
 - Generic founder story.
 - Hidden sales motive.
+- Social DMs unless the journalist/host has invited that channel.
+
+Current media-relations context from Muck Rack and PR News:
+
+- Journalists and producers are operating under time pressure and audience fragmentation.
+- Pitches should reduce evaluation work: clear beat fit, real angle, useful source packet, concise summary.
+- A pitch should inspire a story for the recipient's audience, not demand attention for the sender.
+- Follow-up should be minimal and additive.
 
 ## Partnerships and Customer Research
 
@@ -128,6 +137,7 @@ Customer research:
 - Be honest that it is research.
 - Offer a useful counter-gift: summary, benchmark, early access, donation, or artifact.
 - Do not disguise research as a sales call.
+- Ask about real behavior, current workflow, and recent decisions rather than hypothetical interest.
 
 ## Specialty Mode Guardrails
 

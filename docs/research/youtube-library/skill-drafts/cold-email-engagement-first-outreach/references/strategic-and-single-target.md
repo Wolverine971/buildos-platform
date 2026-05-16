@@ -16,6 +16,9 @@ Read this when the recipient is high-value, named, senior, or relationship-sensi
 - Connor Murray: three-part strategic body, assumptive language, 4-touch cadence.
 - Florin Tatulea / 30MPC: packaging, proof, artifact CTA, AI-assisted research.
 - Sam McKenna Apollo analysis: hyper-specific subject, preview, objection preemption, respectful CTA.
+- April Dunford: buyer-choice pitch, alternatives, differentiated value, proof.
+- Bob Moesta: struggling moment, buyer-progress timeline, current workaround.
+- Challenger Customer: Mobilizer/Talker/Blocker and internal-consensus enablement.
 
 ## Research Bar
 
@@ -81,6 +84,15 @@ Use this order:
 4. Proof: peer, customer, artifact, or "seen this before."
 5. Offer/artifact: what you can send or do.
 6. CTA: smallest useful yes.
+
+For strategic B2B, the artifact should be useful enough for a Mobilizer to forward internally:
+
+- Diagnostic.
+- Risk map.
+- Tradeoff memo.
+- Benchmark cut.
+- Buying-committee question set.
+- Internal narrative draft.
 
 For a more formal enterprise note, use Connor Murray's three-part body:
 
@@ -162,3 +174,15 @@ Use:
 - "This may not be a priority this quarter; if so, I can send the benchmark and close the loop."
 
 Do not preempt three objections. One is enough.
+
+## Buyer-Choice Bridge
+
+Use the Dunford/Moesta frame when the offer is more than a quick artifact:
+
+```text
+When teams hit [struggling moment], they usually choose between [alternative A] and [alternative B].
+The tradeoff I noticed is [specific tradeoff].
+I can send the short note if useful.
+```
+
+This keeps the outreach buyer-centered. Avoid feature walkthroughs, full pitch decks, and "we help" claims before the buyer's current choice is clear.

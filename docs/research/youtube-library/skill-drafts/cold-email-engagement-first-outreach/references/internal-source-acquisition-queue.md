@@ -20,7 +20,7 @@ Acquisition pass completed 2026-05-15. The source archive now lives at:
 docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/manifest.md
 ```
 
-Archive summary: the source corpus was pruned to 31 active web-source Markdown cards and 7 active PDF-source Markdown cards. 28 low-value source cards were removed from the active corpus; their URLs and pruning reasons remain in `source-materials/metadata/sources.json`. Raw HTML snapshots and raw PDF binaries were removed after conversion. The broader resource inventory tracks 7 total 2026-05-15 transcript pulls for the v2 buildout. Remaining gaps are mostly legitimate book/manual extractions, a current journalist/producer perspective for PR/podcast outreach, one moved Lavender article, one moved Joel Klettke PDF, and optional unresolved transcript targets.
+Archive summary: the source corpus now has 36 active web-source Markdown cards and 9 active PDF-source Markdown cards after the 2026-05-16 tactical gap-fill pass. 28 low-value source cards were removed from the active corpus; their URLs and pruning reasons remain in `source-materials/metadata/sources.json`. Raw HTML snapshots and raw PDF binaries were removed after conversion. The broader resource inventory tracks 7 total 2026-05-15 transcript pulls for the v2 buildout. Remaining gaps are mostly deeper manual book extractions, async reply examples, one moved Lavender article, one moved Joel Klettke PDF, and optional unresolved transcript targets.
 
 Cleaned corpus entry points:
 
@@ -59,36 +59,36 @@ Reasoning: deliverability and compliance can block sending. Copy/taste protects 
 
 ## Expert And SME Roster
 
-| Expert / Institution                | Primary Domain                      | Best Source Type To Grab                                       | Use For                                                             | Status                                    |
-| ----------------------------------- | ----------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | ----------------------------------------- |
-| Connor Murray / Higher Levels       | Strategic cold email                | Existing YouTube transcript and analysis                       | Three-part strategic body, cadence, assumptive language             | local-analyzed                            |
-| Aaron Shepherd / GrowthFlare        | High-volume cold email              | Existing YouTube transcript and analysis                       | Volume testing, infrastructure arithmetic, front-end offers         | local-analyzed                            |
-| Austin Schneider / Instantly        | Engagement-first sending            | Existing YouTube transcript and analysis                       | Microsegments, deliverability floor, 2-touch recycle                | local-analyzed                            |
-| Sam McKenna                         | Research-led outreach               | Existing Apollo and Closing Time transcripts                   | SMYKM, executive research, authenticity bridges                     | local-analyzed                            |
-| Florin Tatulea                      | Cold email and sequencing           | Existing 30MPC transcript; pclub course page                   | Buyer-relevant copy, sequencing, proof, objection neutralization    | local-analyzed / verified-2026-05-15      |
-| Jason Bay / Outbound Squad          | Executive outbound                  | Existing webinar and subject-line transcripts; resolve full transcripts only | Strategic account outreach, exec-level asks, above/below power line | local-analyzed / to-resolve               |
-| Will Allred / Lavender              | Email quality and inbox psychology  | Lavender benchmark, teardowns, subject material                | Subject/preview, taste review, internal-looking email               | verified-2026-05-15                       |
-| Steli Efti / Close                  | Follow-up and reply conversion      | Existing 1-2-3 transcript plus active Close articles           | Reply OS, numbered forks, dead-lead revival                         | local-analyzed / verified-2026-05-15      |
-| Gong Labs                           | Objection handling                  | Gong objection article                                         | Reply routing, objection reframes, post-reply judgment              | verified-2026-05-15                       |
-| Becc Holland / Flip the Script      | Relevance and triggers              | Existing local analysis; resolve extra public source if needed | Relevance taxonomy, send-to-two test, triggers                      | local-analyzed                            |
-| Craig Elias / SHiFT Selling         | Trigger-event selling               | Existing local transcript and analysis                         | Trigger taxonomy, timing thesis                                     | local-analyzed                            |
-| Mark Roberge                        | Segment scaling                     | Existing local transcript and analysis                         | Segment tiering, leading indicators, PMF discipline                 | local-analyzed                            |
-| Lincoln Murphy                      | ICP fit                             | Existing local analysis                                        | Seven-dimension ICP, success potential                              | local-analyzed                            |
-| Michael Skok / Underscore VC        | Minimum Viable Segment              | Existing local analysis                                        | MVS gates, dominability, channel reachability                       | local-analyzed                            |
-| Brent Adamson / Challenger Customer | Buying committee                    | Book/manual extract plus existing local committee analysis     | Mobilizers, blockers, complex buying groups                         | manual-book-extract / local-analyzed      |
-| April Dunford                       | Positioning and sales pitch         | Existing local analysis plus books                             | Offer framing, differentiated story, sales pitch structure          | local-analyzed / manual-book-extract      |
-| Bob Moesta                          | Jobs-to-be-Done / demand-side sales | `Demand-Side Sales 101` book/site                              | Buyer progress, switching moments, offer/ICP language               | verified-2026-05-15 / manual-book-extract |
-| Rob Fitzpatrick                     | Customer discovery                  | `The Mom Test` book/site                                       | Customer interview quality, buyer-language mining                   | verified-2026-05-15 / manual-book-extract |
-| Joel Klettke                        | Voice-of-customer and proof         | Case-study interviews, proof assets                            | Proof asset selection, case-study language                          | verified-prior                            |
-| Michael Seibel / YC                 | Investor cold email                 | Existing transcript and YC page                                | Short factual investor payload, no meeting-first ask                | local-analyzed                            |
-| Aaron Harris / YC                   | Fundraising email                   | YC transcript page                                             | Investor-fit research, direct ask, no deck dump                     | verified-prior                            |
-| Muck Rack / Michael Smart           | PR pitching                         | Muck Rack guide, pitch examples, State of Journalism           | PR/podcast mode, journalist audience protection                     | verified-2026-05-15                       |
-| Gem                                 | Recruiting outreach                 | Passive talent cold email guide                                | Candidate-centered outreach                                         | verified-2026-05-15                       |
-| Greenhouse                          | Recruiting sequencing               | Sourcing automation best practices                             | Recruiting sequence length, CTA clarity, templates                  | verified-2026-05-15                       |
-| Google Workspace / Gmail            | Sender requirements                 | Official sender guidelines and FAQ                             | Deliverability hard requirements                                    | official-current                          |
-| Yahoo Sender Hub                    | Sender requirements                 | Sender best practices and FAQ                                  | Deliverability hard requirements and complaint boundaries           | official-current                          |
-| Microsoft Outlook Postmaster        | Sender requirements                 | Postmaster sender support docs                                 | Outlook deliverability and sender reputation overview               | official-current                          |
-| Postmark                             | Practical deliverability            | Deliverability guide hub                                        | Plain-language SPF/DKIM/DMARC, bounce, and sender reputation support | verified-2026-05-15                       |
+| Expert / Institution                | Primary Domain                      | Best Source Type To Grab                                                     | Use For                                                              | Status                                  |
+| ----------------------------------- | ----------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------- |
+| Connor Murray / Higher Levels       | Strategic cold email                | Existing YouTube transcript and analysis                                     | Three-part strategic body, cadence, assumptive language              | local-analyzed                          |
+| Aaron Shepherd / GrowthFlare        | High-volume cold email              | Existing YouTube transcript and analysis                                     | Volume testing, infrastructure arithmetic, front-end offers          | local-analyzed                          |
+| Austin Schneider / Instantly        | Engagement-first sending            | Existing YouTube transcript and analysis                                     | Microsegments, deliverability floor, 2-touch recycle                 | local-analyzed                          |
+| Sam McKenna                         | Research-led outreach               | Existing Apollo and Closing Time transcripts                                 | SMYKM, executive research, authenticity bridges                      | local-analyzed                          |
+| Florin Tatulea                      | Cold email and sequencing           | Existing 30MPC transcript; pclub course page                                 | Buyer-relevant copy, sequencing, proof, objection neutralization     | local-analyzed / verified-2026-05-15    |
+| Jason Bay / Outbound Squad          | Executive outbound                  | Existing webinar and subject-line transcripts; resolve full transcripts only | Strategic account outreach, exec-level asks, above/below power line  | local-analyzed / to-resolve             |
+| Will Allred / Lavender              | Email quality and inbox psychology  | Lavender benchmark, teardowns, subject material                              | Subject/preview, taste review, internal-looking email                | verified-2026-05-15                     |
+| Steli Efti / Close                  | Follow-up and reply conversion      | Existing 1-2-3 transcript plus active Close articles                         | Reply OS, numbered forks, dead-lead revival                          | local-analyzed / verified-2026-05-15    |
+| Gong Labs                           | Objection handling                  | Gong objection article                                                       | Reply routing, objection reframes, post-reply judgment               | verified-2026-05-15                     |
+| Becc Holland / Flip the Script      | Relevance and triggers              | Existing local analysis; resolve extra public source if needed               | Relevance taxonomy, send-to-two test, triggers                       | local-analyzed                          |
+| Craig Elias / SHiFT Selling         | Trigger-event selling               | Existing local transcript and analysis                                       | Trigger taxonomy, timing thesis                                      | local-analyzed                          |
+| Mark Roberge                        | Segment scaling                     | Existing local transcript and analysis                                       | Segment tiering, leading indicators, PMF discipline                  | local-analyzed                          |
+| Lincoln Murphy                      | ICP fit                             | Existing local analysis                                                      | Seven-dimension ICP, success potential                               | local-analyzed                          |
+| Michael Skok / Underscore VC        | Minimum Viable Segment              | Existing local analysis                                                      | MVS gates, dominability, channel reachability                        | local-analyzed                          |
+| Brent Adamson / Challenger Customer | Buying committee                    | Challenger profile card plus existing local committee analysis               | Mobilizers, blockers, complex buying groups                          | acquired-gap-fill / manual-book-extract |
+| April Dunford                       | Positioning and sales pitch         | Business of Software sales-pitch PDF plus books                              | Offer framing, differentiated story, sales pitch structure           | acquired-gap-fill / manual-book-extract |
+| Bob Moesta                          | Jobs-to-be-Done / demand-side sales | Business of Software talk plus `Demand-Side Sales 101` site                  | Buyer progress, switching moments, offer/ICP language                | acquired-gap-fill / manual-book-extract |
+| Rob Fitzpatrick                     | Customer discovery                  | Mom Test site plus publisher card                                            | Customer interview quality, buyer-language mining                    | acquired-gap-fill / manual-book-extract |
+| Joel Klettke                        | Voice-of-customer and proof         | Case-study interviews, proof assets                                          | Proof asset selection, case-study language                           | verified-prior                          |
+| Michael Seibel / YC                 | Investor cold email                 | Existing transcript and YC page                                              | Short factual investor payload, no meeting-first ask                 | local-analyzed                          |
+| Aaron Harris / YC                   | Fundraising email                   | YC transcript page                                                           | Investor-fit research, direct ask, no deck dump                      | verified-prior                          |
+| Muck Rack / Michael Smart           | PR pitching                         | Muck Rack guide, checklist, State of Journalism, PR News context             | PR/podcast mode, journalist audience protection                      | acquired-gap-fill                       |
+| Gem                                 | Recruiting outreach                 | Passive talent cold email guide                                              | Candidate-centered outreach                                          | verified-2026-05-15                     |
+| Greenhouse                          | Recruiting sequencing               | Sourcing automation best practices                                           | Recruiting sequence length, CTA clarity, templates                   | verified-2026-05-15                     |
+| Google Workspace / Gmail            | Sender requirements                 | Official sender guidelines and FAQ                                           | Deliverability hard requirements                                     | official-current                        |
+| Yahoo Sender Hub                    | Sender requirements                 | Sender best practices and FAQ                                                | Deliverability hard requirements and complaint boundaries            | official-current                        |
+| Microsoft Outlook Postmaster        | Sender requirements                 | Postmaster sender support docs                                               | Outlook deliverability and sender reputation overview                | official-current                        |
+| Postmark                            | Practical deliverability            | Deliverability guide hub                                                     | Plain-language SPF/DKIM/DMARC, bounce, and sender reputation support | verified-2026-05-15                     |
 
 ## Child Skill Source Queues
 
@@ -108,12 +108,12 @@ Already local:
 
 Grab next:
 
-| Priority | Source                                          | URL / Location                            | Status                                    | Extract                                                                         |
-| -------- | ----------------------------------------------- | ----------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------- |
-| P0       | Brent Adamson et al., `The Challenger Customer` | Book / official publisher page            | manual-book-extract                       | Mobilizer vs talker vs blocker, buying committee dynamics, consensus risk.      |
-| P0       | Bob Moesta, `Demand-Side Sales 101`             | https://www.demandsidesales.com/          | verified-2026-05-15 / manual-book-extract | Buyer progress, switching forces, demand-side language.                         |
-| P1       | Gartner buying group research                   | Gartner public resources where accessible | to-resolve                                | Buying committee size, consensus, complex B2B buying behavior.                  |
-| P1       | 6sense / Demandbase / Cognism intent-data docs  | vendor docs                               | directional-vendor                        | Signal categories and account scoring patterns; do not use benchmarks as truth. |
+| Priority | Source                                          | URL / Location                                                                         | Status                                  | Extract                                                                         |
+| -------- | ----------------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------- |
+| P0       | Brent Adamson et al., `The Challenger Customer` | `source-materials/cleaned/web/challenger-customer-profiles.md`; book remains optional  | acquired-gap-fill / manual-book-extract | Mobilizer vs talker vs blocker, buying committee dynamics, consensus risk.      |
+| P0       | Bob Moesta, `Demand-Side Sales 101`             | `source-materials/cleaned/web/bob-moesta-demand-side-sales-talk.md` plus official site | acquired-gap-fill / manual-book-extract | Buyer progress, switching forces, demand-side language.                         |
+| P1       | Gartner buying group research                   | Gartner public resources where accessible                                              | to-resolve                              | Buying committee size, consensus, complex B2B buying behavior.                  |
+| P1       | 6sense / Demandbase / Cognism intent-data docs  | vendor docs                                                                            | directional-vendor                      | Signal categories and account scoring patterns; do not use benchmarks as truth. |
 
 Artifacts to build:
 
@@ -136,13 +136,13 @@ Already local:
 
 Grab next:
 
-| Priority | Source                                               | URL / Location                           | Status                                    | Extract                                                            |
-| -------- | ---------------------------------------------------- | ---------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------ |
-| P0       | April Dunford, `Sales Pitch` and `Obviously Awesome` | Official books / existing local analysis | manual-book-extract / local-analyzed      | Category, alternatives, differentiated value, buyer-context story. |
-| P0       | Bob Moesta, `Demand-Side Sales 101`                  | https://www.demandsidesales.com/         | verified-2026-05-15 / manual-book-extract | Offer as help making progress, not seller-centered pitch.          |
-| P0       | Rob Fitzpatrick, `The Mom Test`                      | https://www.momtestbook.com/             | verified-2026-05-15 / manual-book-extract | Asking for reality, avoiding compliments, buyer-language inputs.   |
-| P1       | Joel Klettke case-study and VOC materials            | Existing resource inventory links        | verified-prior                            | Proof creation, approved claim language, customer quotes.          |
-| P2       | Donald Miller / StoryBrand                           | Existing resource inventory links        | verified-prior                            | Recipient as hero; use lightly, not as full funnel doctrine.       |
+| Priority | Source                                               | URL / Location                                                                                                | Status                                  | Extract                                                            |
+| -------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------ |
+| P0       | April Dunford, `Sales Pitch` and `Obviously Awesome` | `source-materials/cleaned/pdf/april-dunford-sales-pitch-structure.md`; books remain optional                  | acquired-gap-fill / manual-book-extract | Category, alternatives, differentiated value, buyer-context story. |
+| P0       | Bob Moesta, `Demand-Side Sales 101`                  | `source-materials/cleaned/web/bob-moesta-demand-side-sales-talk.md` plus official site                        | acquired-gap-fill / manual-book-extract | Offer as help making progress, not seller-centered pitch.          |
+| P0       | Rob Fitzpatrick, `The Mom Test`                      | `source-materials/cleaned/web/mom-test-book.md` and `source-materials/cleaned/web/mom-test-publisher-page.md` | acquired-gap-fill / manual-book-extract | Asking for reality, avoiding compliments, buyer-language inputs.   |
+| P1       | Joel Klettke case-study and VOC materials            | Existing resource inventory links                                                                             | verified-prior                          | Proof creation, approved claim language, customer quotes.          |
+| P2       | Donald Miller / StoryBrand                           | Existing resource inventory links                                                                             | verified-prior                          | Recipient as hero; use lightly, not as full funnel doctrine.       |
 
 Artifacts to build:
 
@@ -165,13 +165,14 @@ Already local:
 
 Grab next:
 
-| Priority | Source                                                  | URL / Location                                                                                                       | Status                    | Extract                                                                     |
-| -------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------- |
-| P0       | Jason Bay / Outbound Squad executive cold email episode | https://www.outboundsquad.com/podcast/jason-bay-364                                                                  | verified-2026-05-15       | Executive outreach standards, meeting ask threshold, account research.      |
-| P0       | Lavender teardown series                                | https://www.lavender.ai/blog/email-teardown-1                                                                        | verified-2026-05-15       | Before/after examples, internal-looking subject, anchor-to-problem rewrite. |
-| P1       | Muck Rack media pitching guide                          | https://muckrack.com/guides/media-pitching                                                                           | PDF acquired; web blocked | Journalist beat research, respectful follow-up, audience protection.        |
-| P1       | Greenhouse sourcing best practices                      | https://support.greenhouse.io/hc/en-us/articles/4984925187611-Sourcing-Automation-email-best-practices-and-templates | verified-2026-05-15       | Candidate source context, role relevance, recruiting copy limits.           |
-| P2       | Justin Jackson cold email / DM guidance                 | Existing resource inventory                                                                                          | verified-prior            | Creator-recipient perspective, avoid hidden sales motives.                  |
+| Priority | Source                                                  | URL / Location                                                                                                                          | Status                    | Extract                                                                     |
+| -------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | --------------------------------------------------------------------------- |
+| P0       | Jason Bay / Outbound Squad executive cold email episode | https://www.outboundsquad.com/podcast/jason-bay-364                                                                                     | verified-2026-05-15       | Executive outreach standards, meeting ask threshold, account research.      |
+| P0       | Lavender teardown series                                | https://www.lavender.ai/blog/email-teardown-1                                                                                           | verified-2026-05-15       | Before/after examples, internal-looking subject, anchor-to-problem rewrite. |
+| P1       | Muck Rack media pitching guide                          | https://muckrack.com/guides/media-pitching                                                                                              | PDF acquired; web blocked | Journalist beat research, respectful follow-up, audience protection.        |
+| P1       | Muck Rack State of Journalism 2025 + PR News analysis   | `source-materials/cleaned/web/muckrack-state-of-journalism-2025.md`; `source-materials/cleaned/web/pr-news-state-of-journalism-2025.md` | acquired-gap-fill         | Current journalist workload, trust, and audience-first pitch standards.     |
+| P1       | Greenhouse sourcing best practices                      | https://support.greenhouse.io/hc/en-us/articles/4984925187611-Sourcing-Automation-email-best-practices-and-templates                    | verified-2026-05-15       | Candidate source context, role relevance, recruiting copy limits.           |
+| P2       | Justin Jackson cold email / DM guidance                 | Existing resource inventory                                                                                                             | verified-prior            | Creator-recipient perspective, avoid hidden sales motives.                  |
 
 Artifacts to build:
 
@@ -241,14 +242,14 @@ Purpose: replace generic deliverability advice with official, current requiremen
 
 Grab next before any deep rewrite:
 
-| Priority | Source                                   | URL / Location                                        | Status                                 | Extract                                                                  |
-| -------- | ---------------------------------------- | ----------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------ |
-| P0       | Google email sender guidelines           | https://support.google.com/a/answer/81126             | official-current / verified-2026-05-15 | SPF/DKIM, PTR, TLS, Postmaster spam rate, 5,000/day threshold.           |
-| P0       | Google sender guidelines FAQ             | https://support.google.com/a/answer/14229414          | official-current / verified-2026-05-15 | Bulk sender classification, alignment, mitigation requirements.          |
-| P0       | Yahoo Sender Hub best practices          | https://senders.yahooinc.com/best-practices/          | official-current / verified-2026-05-15 | SPF/DKIM/DMARC, segregation, opt-in, reputation, CAN-SPAM references.    |
-| P0       | Yahoo Sender Hub FAQ                     | https://senders.yahooinc.com/faqs/                    | official-current / verified-2026-05-15 | One-click unsubscribe and sender requirement clarifications.             |
-| P0       | Microsoft Outlook Postmaster             | https://sendersupport.olc.protection.outlook.com/     | official-current / verified-2026-05-15 | Outlook sender support and sender reputation overview.                   |
-| P1       | Postmark deliverability guides           | https://postmarkapp.com/guides/deliverability         | verified-2026-05-15                    | SPF/DKIM/DMARC explanations, bounces, warmup, troubleshooting.           |
+| Priority | Source                          | URL / Location                                    | Status                                 | Extract                                                               |
+| -------- | ------------------------------- | ------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------- |
+| P0       | Google email sender guidelines  | https://support.google.com/a/answer/81126         | official-current / verified-2026-05-15 | SPF/DKIM, PTR, TLS, Postmaster spam rate, 5,000/day threshold.        |
+| P0       | Google sender guidelines FAQ    | https://support.google.com/a/answer/14229414      | official-current / verified-2026-05-15 | Bulk sender classification, alignment, mitigation requirements.       |
+| P0       | Yahoo Sender Hub best practices | https://senders.yahooinc.com/best-practices/      | official-current / verified-2026-05-15 | SPF/DKIM/DMARC, segregation, opt-in, reputation, CAN-SPAM references. |
+| P0       | Yahoo Sender Hub FAQ            | https://senders.yahooinc.com/faqs/                | official-current / verified-2026-05-15 | One-click unsubscribe and sender requirement clarifications.          |
+| P0       | Microsoft Outlook Postmaster    | https://sendersupport.olc.protection.outlook.com/ | official-current / verified-2026-05-15 | Outlook sender support and sender reputation overview.                |
+| P1       | Postmark deliverability guides  | https://postmarkapp.com/guides/deliverability     | verified-2026-05-15                    | SPF/DKIM/DMARC explanations, bounces, warmup, troubleshooting.        |
 
 Artifacts to build:
 
@@ -272,12 +273,12 @@ Already local:
 
 Grab next:
 
-| Priority | Source                                   | URL / Location                                         | Status              | Extract                                                            |
-| -------- | ---------------------------------------- | ------------------------------------------------------ | ------------------- | ------------------------------------------------------------------ |
-| P0       | Close 1-2-3 update article               | Existing resource inventory URL                        | verified-prior      | Current interpretation of numbered reply forks.                    |
-| P0       | Close Hail Mary / dead leads             | Existing resource inventory URL                        | verified-prior      | Reviving silence and surfacing hidden objections.                  |
-| P1       | Gong objection handling techniques       | https://www.gong.io/blog/objection-handling-techniques | verified-2026-05-15 | Permission, reframe, closure without leading.                      |
-| P1       | Chris Voss, `Never Split the Difference` | Official book page / legitimate copy                   | manual-book-extract | Labeling, calibrated questions, tactical empathy; adapt carefully. |
+| Priority | Source                                   | URL / Location                                                                                        | Status                                  | Extract                                                            |
+| -------- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------ |
+| P0       | Close 1-2-3 update article               | Existing resource inventory URL                                                                       | verified-prior                          | Current interpretation of numbered reply forks.                    |
+| P0       | Close Hail Mary / dead leads             | Existing resource inventory URL                                                                       | verified-prior                          | Reviving silence and surfacing hidden objections.                  |
+| P1       | Gong objection handling techniques       | https://www.gong.io/blog/objection-handling-techniques                                                | verified-2026-05-15                     | Permission, reframe, closure without leading.                      |
+| P1       | Chris Voss / Black Swan tactical empathy | `source-materials/cleaned/pdf/black-swan-leadership-guide-tactical-empathy.md`; book remains optional | acquired-gap-fill / manual-book-extract | Labeling, calibrated questions, tactical empathy; adapt carefully. |
 
 Artifacts to build:
 
@@ -355,6 +356,8 @@ Grab:
 
 - Muck Rack guide to pitching source card from `source-materials/cleaned/pdf/muckrack-guide-to-pitching.md` (acquired).
 - Muck Rack successful pitch checklist source card from `source-materials/cleaned/pdf/muckrack-successful-pitch-checklist.md` (acquired).
+- Muck Rack State of Journalism 2025 source card from `source-materials/cleaned/web/muckrack-state-of-journalism-2025.md` (acquired).
+- PR News 2025 media-relations source card from `source-materials/cleaned/web/pr-news-state-of-journalism-2025.md` (acquired).
 - Muck Rack pitching best-practices web page if manual/browser retrieval is needed; the help-center URL returned 403 during acquisition.
 - Muck Rack media pitching web page if manual/browser retrieval is needed; the guide URL returned 403 during acquisition, but the PDF was captured.
 - Kai Davis podcast guest pitch article from `resource-inventory.md`.
@@ -388,21 +391,21 @@ Important: do not turn this into legal advice. Route high-risk campaigns to lega
 
 Use legitimate copies or official excerpts. Do not rely on unauthorized PDFs.
 
-| Priority | Book                                        | Author(s)                 | Feed Skill                      | Extract                                                             |
-| -------- | ------------------------------------------- | ------------------------- | ------------------------------- | ------------------------------------------------------------------- |
-| P0       | `Sales Pitch`                               | April Dunford             | OfferLab, Compiler              | Sales story, alternatives, differentiated value, buyer context.     |
-| P0       | `Obviously Awesome`                         | April Dunford             | OfferLab, ICP                   | Positioning, category choice, best-fit buyers.                      |
-| P0       | `Demand-Side Sales 101`                     | Bob Moesta, Greg Engle    | ICP, OfferLab, Research Anchors | Buyer progress, switching forces, demand-side questions.            |
-| P0       | `The Challenger Customer`                   | Brent Adamson et al.      | ICP, Strategic Outreach         | Mobilizers, blockers, buying group consensus.                       |
-| P0       | `The Mom Test`                              | Rob Fitzpatrick           | Buyer-Language Mining, OfferLab | Useful customer questions, avoiding false positives.                |
-| P1       | `Influence`                                 | Robert Cialdini           | Taste Review, OfferLab          | Reciprocity, authority, social proof; apply ethically.              |
-| P1       | `Never Split the Difference`                | Chris Voss                | Reply OS                        | Labels, calibrated questions, tactical empathy.                     |
-| P1       | `To Sell Is Human`                          | Daniel Pink               | Taste Review                    | Attunement, buoyancy, clarity.                                      |
-| P1       | `Predictable Revenue`                       | Aaron Ross, Marylou Tyler | Root, ICP                       | Outbound system design and role specialization.                     |
-| P2       | `Building a StoryBrand`                     | Donald Miller             | OfferLab, Compiler              | Buyer-as-hero framing; use lightly.                                 |
-| P2       | `Made to Stick`                             | Chip Heath, Dan Heath     | Compiler, Taste Review          | Concrete, credible, memorable messaging.                            |
-| P2       | `Trustworthy Online Controlled Experiments` | Kohavi, Tang, Xu          | Learning Review                 | Experiment design rigor.                                            |
-| P2       | `Lean Analytics`                            | Croll, Yoskovitz          | Learning Review                 | Metrics and stage-appropriate learning.                             |
+| Priority | Book                                        | Author(s)                 | Feed Skill                      | Extract                                                         |
+| -------- | ------------------------------------------- | ------------------------- | ------------------------------- | --------------------------------------------------------------- |
+| P0       | `Sales Pitch`                               | April Dunford             | OfferLab, Compiler              | Sales story, alternatives, differentiated value, buyer context. |
+| P0       | `Obviously Awesome`                         | April Dunford             | OfferLab, ICP                   | Positioning, category choice, best-fit buyers.                  |
+| P0       | `Demand-Side Sales 101`                     | Bob Moesta, Greg Engle    | ICP, OfferLab, Research Anchors | Buyer progress, switching forces, demand-side questions.        |
+| P0       | `The Challenger Customer`                   | Brent Adamson et al.      | ICP, Strategic Outreach         | Mobilizers, blockers, buying group consensus.                   |
+| P0       | `The Mom Test`                              | Rob Fitzpatrick           | Buyer-Language Mining, OfferLab | Useful customer questions, avoiding false positives.            |
+| P1       | `Influence`                                 | Robert Cialdini           | Taste Review, OfferLab          | Reciprocity, authority, social proof; apply ethically.          |
+| P1       | `Never Split the Difference`                | Chris Voss                | Reply OS                        | Labels, calibrated questions, tactical empathy.                 |
+| P1       | `To Sell Is Human`                          | Daniel Pink               | Taste Review                    | Attunement, buoyancy, clarity.                                  |
+| P1       | `Predictable Revenue`                       | Aaron Ross, Marylou Tyler | Root, ICP                       | Outbound system design and role specialization.                 |
+| P2       | `Building a StoryBrand`                     | Donald Miller             | OfferLab, Compiler              | Buyer-as-hero framing; use lightly.                             |
+| P2       | `Made to Stick`                             | Chip Heath, Dan Heath     | Compiler, Taste Review          | Concrete, credible, memorable messaging.                        |
+| P2       | `Trustworthy Online Controlled Experiments` | Kohavi, Tang, Xu          | Learning Review                 | Experiment design rigor.                                        |
+| P2       | `Lean Analytics`                            | Croll, Yoskovitz          | Learning Review                 | Metrics and stage-appropriate learning.                         |
 
 ## Videos / Podcasts To Pull Or Resolve
 
@@ -421,14 +424,14 @@ Already pulled:
 
 Resolve / pull next:
 
-| Priority | Source                     | Target                                                                              | Status                                             | Use                                                                            |
-| -------- | -------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------ |
-| P0       | Lavender / Will Allred     | Pick one current subject-line or teardown video; fallback to Lavender teardown blog | to-resolve                                         | Subject/preview and taste.                                                     |
-| P1       | Becc Holland               | Current public relevance / trigger talk                                             | to-resolve                                         | ICP signal and personalization-to-relevance.                                   |
-| P1       | April Dunford              | Lenny or ProductLed sales-pitch episode                                             | to-resolve / local-adjacent                        | OfferLab and compiler.                                                         |
-| P1       | Bob Moesta                 | Demand-Side Sales interview/talk                                                    | to-resolve                                         | OfferLab, ICP, buyer progress.                                                 |
-| P1       | Chris Voss                 | Objection / negotiation interview                                                   | to-resolve                                         | Reply OS.                                                                      |
-| P2       | Trent Dressel              | Specific cold email / objection video                                               | unresolved-target                                  | Prospecting practice, mostly adjacent.                                         |
+| Priority | Source                 | Target                                                                              | Status                                  | Use                                          |
+| -------- | ---------------------- | ----------------------------------------------------------------------------------- | --------------------------------------- | -------------------------------------------- |
+| P0       | Lavender / Will Allred | Pick one current subject-line or teardown video; fallback to Lavender teardown blog | to-resolve                              | Subject/preview and taste.                   |
+| P1       | Becc Holland           | Current public relevance / trigger talk                                             | to-resolve                              | ICP signal and personalization-to-relevance. |
+| P1       | April Dunford          | Additional Lenny or ProductLed sales-pitch episode if more examples are needed      | optional-to-resolve / gap-fill-acquired | OfferLab and compiler.                       |
+| P1       | Bob Moesta             | Additional Demand-Side Sales interview/talk if more examples are needed             | optional-to-resolve / gap-fill-acquired | OfferLab, ICP, buyer progress.               |
+| P1       | Chris Voss             | Additional objection / negotiation interview if async examples are needed           | optional-to-resolve / gap-fill-acquired | Reply OS.                                    |
+| P2       | Trent Dressel          | Specific cold email / objection video                                               | unresolved-target                       | Prospecting practice, mostly adjacent.       |
 
 ## Source Analysis Template
 

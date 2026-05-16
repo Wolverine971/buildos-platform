@@ -23,6 +23,15 @@ Primary source layers:
 - Steli Efti / Close: low-friction numbered reply fork, ghosted-thread revival, no-is-better-than-silence philosophy.
 - Michael Seibel / Y Combinator: investor-mode payload, no meeting-first investor CTA, named founder sender, slow follow-up.
 
+Tactical gap-fill source cards added 2026-05-16:
+
+- April Dunford / Business of Software: buyer-choice sales pitch structure for OfferLab and compiler.
+- Bob Moesta / Business of Software: demand-side buyer progress and struggling moments.
+- Challenger Inc: Mobilizer/Talker/Blocker buying-group logic.
+- Black Swan Group: tactical empathy for objections and tense replies.
+- Muck Rack + PR News 2025: journalist workload, source packet, and audience-first media pitch standards.
+- Deliverability child skill: `../cold_email_deliverability_readiness/references/provider-requirement-matrix.md` for pass/blocked/manual-only sender-readiness decisions.
+
 Integrated prior source:
 
 - `docs/research/youtube-library/skill-drafts/cold-email-contextual-outbound/SKILL.md`: buyer-language mining, worldview research, intro-offer testing, same-day reply routing.

@@ -59,9 +59,10 @@ The job: turn a broad target idea into one persona × one narrowing signal with 
 4. **Identify the buying committee** using [references/buying-committee-map.md](references/buying-committee-map.md). For B2B, name Champion, Economic Buyer, User, and Blocker; choose Top-Down or Bottom-Up Golden Path; tag Mobilizer probability.
 5. **Apply the six fit-type disqualifiers** (Lincoln Murphy): Technical, Functional, Resource, Competence, Experience, Cultural.
 6. **Verify the switching-trigger type** (Ash Maurya): bad experience, change in circumstance, or awareness event. Cross-check against the Holland sub-type and Elias family. If they disagree, the trigger is ambiguous.
-7. **Tier the segment** (Mark Roberge): Green (PMF measured), Yellow (experiment only), Red (do not write). Reject Red segments. Run Yellow segments only as one-variable experiments.
-8. **Run the full disqualifier checklist** in [references/segment-examples.md](references/segment-examples.md). Any single fail in Fit / MVS / Signal / Committee blocks the segment from campaign mode.
-9. **Return the segment definition, signal grade, committee map, disqualifier results, and verdict.**
+7. **Name the buyer-progress thesis** (Moesta): what struggle, current workaround, or desired progress makes this signal matter now.
+8. **Tier the segment** (Mark Roberge): Green (PMF measured), Yellow (experiment only), Red (do not write). Reject Red segments. Run Yellow segments only as one-variable experiments.
+9. **Run the full disqualifier checklist** in [references/segment-examples.md](references/segment-examples.md). Any single fail in Fit / MVS / Signal / Committee blocks the segment from campaign mode.
+10. **Return the segment definition, signal grade, committee map, disqualifier results, and verdict.**
 
 ## Output Contract
 
@@ -78,6 +79,7 @@ signal:
     switching_trigger_type: bad_experience | change_in_circumstance | awareness | null
     freshness_days: integer
     why_now: one-sentence thesis linking signal → pain → buying motion
+buyer_progress_thesis: current struggle or workaround this signal suggests
 signal_scorecard:
     freshness: 0 | 1 | 2
     reliability: 0 | 1 | 2
@@ -168,5 +170,7 @@ This skill draws from:
 - **30MPC + Brent Adamson + John McMahon + Gartner** — buying committee map, Golden Path, Mobilizer/Talker/Blocker, McMahon Champion test, 6.8-buyer committee data.
 - **Jen Abel** — no-mid-market rule, tier-1 logos as early adopters, discounting as inverted disqualifier signal.
 - **April Dunford** — alternatives-naming, trade-off-led positioning as input to segment definition.
+- **Bob Moesta** — buyer progress, struggling moments, current workaround, and demand-side timing.
+- **Rob Fitzpatrick** — false-positive avoidance and past-behavior evidence for research-mode outreach.
 
 Full provenance is in the source analyses under `apps/web/src/content/blogs/source-analyses/` and the root [source-map.md](../cold_email_engagement_first_outreach/references/source-map.md).

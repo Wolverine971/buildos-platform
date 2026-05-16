@@ -59,7 +59,7 @@ child_skills:
 reference_modules:
     - id: cold_email_engagement_first_outreach.source_map
       name: Cold Email Source Map
-      summary: Runtime source map for the seven-source master skill and local research lineage.
+      summary: Runtime source map for the cleaned source corpus, foundational source layers, tactical gap-fill sources, and local research lineage.
       when_to_load:
           - When the agent needs provenance, source conflicts, or links to deeper research documents.
       path: references/source-map.md
@@ -87,7 +87,7 @@ reference_modules:
       visibility: internal
     - id: cold_email_engagement_first_outreach.source_acquisition_queue
       name: Source Acquisition Queue
-      summary: Internal queue of experts, books, sites, videos, and official documents to grab for the full cold email architecture.
+      summary: Internal corpus status and remaining queue for experts, books, sites, videos, and official documents behind the full cold email architecture.
       when_to_load:
           - When an agent needs to collect or assign source materials for deepening the cold email architecture.
       path: references/source-acquisition-queue.md

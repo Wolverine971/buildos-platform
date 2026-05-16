@@ -6,6 +6,14 @@ depth: 1
 legacy_paths:
     - cold_email_outreach.deliverability
     - cold_email_outreach.sender_readiness
+reference_modules:
+    - id: cold_email_deliverability_readiness.provider_requirement_matrix
+      name: Provider Requirement Matrix
+      summary: Current provider, sender, and compliance gates for pass/blocked/manual-only readiness decisions.
+      when_to_load:
+          - When deciding whether scaled cold email is allowed, blocked, or manual-only.
+      path: references/provider-requirement-matrix.md
+      visibility: internal
 path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_deliverability_readiness/SKILL.md
 ---
 
@@ -24,10 +32,11 @@ Use this child skill when scaled sending, cold domains, inbox health, or low ope
 ## Workflow
 
 1. Identify sender identity, domains, inboxes, and planned volume.
-2. Check SPF, DKIM, DMARC, warmup, rotation, bounce risk, and complaint history.
-3. Apply conservative caps: about 30 emails per inbox per day to start, 50 max without evidence, 5 inboxes per domain, about 250 per domain per day.
-4. Decide status: pass, blocked, or manual-only.
-5. Return required fixes before scale.
+2. Load `references/provider-requirement-matrix.md` when making a scaled-send readiness decision.
+3. Check SPF, DKIM, DMARC, sender identity, unsubscribe/suppression, warmup, bounce risk, complaint history, recipient geography, and consent posture.
+4. Apply conservative caps: about 30 emails per inbox per day to start, 50 max without evidence, 5 inboxes per domain, about 250 per domain per day.
+5. Decide status: pass, blocked, or manual-only.
+6. Return required fixes before scale.
 
 ## Output Contract
 

@@ -98,4 +98,20 @@ describe('skill reference loading', () => {
 			'qualified conversations per unit of market trust consumed'
 		);
 	});
+
+	it('loads the LinkedIn company page growth playbook reference', () => {
+		const result = loadSkillReference(
+			'linkedin-company-page-growth',
+			'linkedin_company_page_growth.playbook'
+		) as Record<string, unknown>;
+
+		expect(result.type).toBe('skill_reference');
+		expect(result.skill_id).toBe('linkedin_company_page_growth');
+		expect(result.reference_id).toBe('linkedin_company_page_growth.playbook');
+		expect(result.visibility).toBe('internal');
+		expect(result.path).toBe('references/growth-playbook.md');
+		expect(result.content).toContain('# LinkedIn Company Page Growth Playbook');
+		expect(result.content).toContain('BuildOS-Specific Strategy');
+		expect(result.content).toContain('LinkedIn Pages Best Practices');
+	});
 });

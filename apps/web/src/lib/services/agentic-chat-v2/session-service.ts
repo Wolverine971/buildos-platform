@@ -106,6 +106,18 @@ export type InterruptedToolExecutionSummaryRow = {
 	result: Json | null;
 };
 
+export type LoadedSkillExecutionSummaryRow = InterruptedToolExecutionSummaryRow;
+
+type LoadedSkillSummary = {
+	id: string;
+	name: string | null;
+	parentId: string | null;
+	depth: number | null;
+	format: string | null;
+	summary: string | null;
+	materializedTools: string[];
+};
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -128,9 +140,81 @@ function previewText(value: unknown, maxLength: number): string | null {
 	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
 }
 
+function truncateBlock(value: string, maxLength: number): string {
+	if (value.length <= maxLength) return value;
+	return `${value.slice(0, Math.max(0, maxLength - 3))}...`;
+}
+
 function stringifyPreview(value: unknown, maxLength: number): string | null {
 	const text = typeof value === 'string' ? value : JSON.stringify(value);
 	return previewText(text, maxLength);
+}
+
+function stringArray(value: unknown): string[] {
+	if (!Array.isArray(value)) return [];
+	return value.filter(
+		(item): item is string => typeof item === 'string' && item.trim().length > 0
+	);
+}
+
+function extractLoadedSkillSummary(row: LoadedSkillExecutionSummaryRow): LoadedSkillSummary | null {
+	if (!row.success || row.tool_name !== 'skill_load' || !isRecord(row.result)) return null;
+	if (row.result.type !== 'skill' || typeof row.result.id !== 'string') return null;
+	const id = row.result.id.trim();
+	if (!id) return null;
+	const parentId = typeof row.result.parent_id === 'string' ? row.result.parent_id.trim() : null;
+	return {
+		id,
+		name: typeof row.result.name === 'string' ? row.result.name.trim() : null,
+		parentId: parentId || null,
+		depth: typeof row.result.depth === 'number' ? row.result.depth : null,
+		format: typeof row.result.format === 'string' ? row.result.format : null,
+		summary: previewText(row.result.summary ?? row.result.description, 220),
+		materializedTools: stringArray(row.result.materialized_tools).slice(0, 8)
+	};
+}
+
+function formatLoadedSkillSummaryLine(skill: LoadedSkillSummary): string {
+	const relation = skill.parentId ? `child of \`${skill.parentId}\`` : 'root';
+	const details = [relation, skill.format ? `format: ${skill.format}` : null].filter(
+		(part): part is string => Boolean(part)
+	);
+	const tools =
+		skill.materializedTools.length > 0
+			? ` Tools exposed: ${skill.materializedTools.map((tool) => `\`${tool}\``).join(', ')}.`
+			: '';
+	const label = skill.name ? ` ${skill.name}.` : '';
+	const summary = skill.summary ? ` ${skill.summary}` : label;
+	return `- \`${skill.id}\` (${details.join('; ')}):${summary}${tools}`;
+}
+
+export function buildLoadedSkillHistorySummary(
+	executions: LoadedSkillExecutionSummaryRow[],
+	maxSkills = 8
+): string | null {
+	if (!Array.isArray(executions) || executions.length === 0) return null;
+	const loadedSkillsById = new Map<string, LoadedSkillSummary>();
+	for (const row of executions) {
+		const loadedSkill = extractLoadedSkillSummary(row);
+		if (!loadedSkill) continue;
+		if (loadedSkillsById.has(loadedSkill.id)) {
+			loadedSkillsById.delete(loadedSkill.id);
+		}
+		loadedSkillsById.set(loadedSkill.id, loadedSkill);
+	}
+	const loadedSkills = Array.from(loadedSkillsById.values()).slice(-Math.max(1, maxSkills));
+	if (loadedSkills.length === 0) return null;
+
+	const lines = [
+		'Previously loaded skills in this session:',
+		...loadedSkills.map(formatLoadedSkillSummaryLine),
+		[
+			'Use this as a skill-continuity ledger.',
+			'Do not call skill_load again just to rediscover one of these summaries, child indexes, or related tools.',
+			'Reload only when the current turn needs full markdown/examples or a different child/reference not listed here.'
+		].join(' ')
+	];
+	return truncateBlock(lines.join('\n'), 2400);
 }
 
 function normalizeAttachmentAsset(
@@ -491,6 +575,7 @@ export function createFastChatSessionService(
 		const messageIds = orderedMessages
 			.map((msg) => msg.id)
 			.filter((id): id is string => Boolean(id));
+		const messageOrderById = new Map(messageIds.map((id, index) => [id, index]));
 		const attachmentsByMessageId = new Map<string, ChatAttachmentRef[]>();
 		if (messageIds.length > 0) {
 			const { data: attachmentRows, error: attachmentError } = await (supabase as any)
@@ -625,7 +710,58 @@ export function createFastChatSessionService(
 			}
 		}
 
-		return orderedMessages.flatMap((msg) => {
+		let loadedSkillHistorySummary: string | null = null;
+		const assistantMessageIds = orderedMessages
+			.filter((msg) => msg.role === 'assistant')
+			.map((msg) => msg.id)
+			.filter((id): id is string => Boolean(id));
+		if (assistantMessageIds.length > 0) {
+			const { data: skillExecutionRows, error: skillExecutionError } = await supabase
+				.from('chat_tool_executions')
+				.select(
+					'message_id, tool_name, gateway_op, sequence_index, success, error_message, arguments, result'
+				)
+				.in('message_id', assistantMessageIds)
+				.eq('tool_name', 'skill_load')
+				.eq('success', true)
+				.order('sequence_index', { ascending: true })
+				.limit(limit * 6);
+
+			if (skillExecutionError) {
+				logger.warn('Failed to load completed skill history', {
+					error: skillExecutionError,
+					sessionId
+				});
+				logFastChatSessionError({
+					error: skillExecutionError,
+					operationType: 'fastchat_loaded_skill_history_load',
+					tableName: 'chat_tool_executions',
+					recordId: sessionId,
+					metadata: {
+						sessionId,
+						messageCount: assistantMessageIds.length,
+						limit
+					}
+				});
+			} else {
+				const orderedSkillExecutionRows = (
+					(skillExecutionRows ?? []) as LoadedSkillExecutionSummaryRow[]
+				)
+					.slice()
+					.sort((a, b) => {
+						const aMessageOrder =
+							messageOrderById.get(a.message_id ?? '') ?? Number.MAX_SAFE_INTEGER;
+						const bMessageOrder =
+							messageOrderById.get(b.message_id ?? '') ?? Number.MAX_SAFE_INTEGER;
+						if (aMessageOrder !== bMessageOrder) return aMessageOrder - bMessageOrder;
+						return (a.sequence_index ?? 0) - (b.sequence_index ?? 0);
+					});
+				loadedSkillHistorySummary =
+					buildLoadedSkillHistorySummary(orderedSkillExecutionRows);
+			}
+		}
+
+		const historyMessages = orderedMessages.flatMap((msg) => {
 			const attachments = attachmentsByMessageId.get(msg.id) ?? [];
 			const attachmentContext = buildAttachmentContextBlock(attachments, { maxChars: 5000 });
 			const historyMessages: FastChatHistoryMessage[] = [
@@ -650,6 +786,15 @@ export function createFastChatSessionService(
 			}
 			return historyMessages;
 		});
+
+		if (loadedSkillHistorySummary) {
+			historyMessages.push({
+				role: 'system',
+				content: loadedSkillHistorySummary
+			});
+		}
+
+		return historyMessages;
 	}
 
 	async function persistMessage(params: PersistMessageParams): Promise<ChatMessage | null> {

@@ -53,3 +53,4 @@ Existing access-control tables (`onto_assignments`, `onto_permissions`) are not 
 - Ownership remains immutable (`created_by`), with future optional `owner_actor_id` for transfer.
 - Invite acceptance ties to authenticated users; no pre-creation of actors.
 - Membership tables, RLS policies, log actor attribution, invite flow, share UI, and member/invite management actions are implemented.
+- 2026-05-14 update: `current_actor_has_project_access` remains the legacy public-aware helper for explicitly public routes. Internal collaboration APIs, RLS policies, and external-agent project scopes should use member-only helpers (`current_actor_has_project_member_access` or explicit `actor_has_project_member_access`) so public project visibility does not expose private documents, members, archived content, logs, graph payloads, or connector access.

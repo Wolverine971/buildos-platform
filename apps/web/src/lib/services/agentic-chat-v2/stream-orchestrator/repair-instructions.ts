@@ -40,6 +40,15 @@ export function buildProjectCreateNoExecutionRepairInstruction(): string {
 	].join(' ');
 }
 
+export function buildToolRoundBudgetSynthesisInstruction(): string {
+	return [
+		'The tool-round budget for this turn is exhausted.',
+		'Do not request more tools, schemas, skills, searches, or reads.',
+		'Answer from the evidence and context already loaded.',
+		'If a fact you were about to fetch is still missing, state that limitation briefly and give the best next step instead of continuing tool coordination.'
+	].join(' ');
+}
+
 export function shouldRepairGatewayMutationNoExecution(params: {
 	gatewayModeActive: boolean;
 	contextType: string;

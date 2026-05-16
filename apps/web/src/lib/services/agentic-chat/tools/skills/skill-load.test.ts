@@ -163,6 +163,16 @@ describe('skill loading', () => {
 		expect(result.parent_id).toBe('cold_email_engagement_first_outreach');
 		expect(result.markdown).toContain('# Cold Email OfferLab');
 		expect(result.markdown).toContain('smallest useful yes');
+
+		const researchAnchors = getSkillById('cold_email_research_anchors');
+		expect(researchAnchors?.relatedOps).toEqual(
+			expect.arrayContaining(['util.web.visit', 'util.web.search'])
+		);
+
+		const researchResult = loadSkill('cold_email_research_anchors', {
+			format: 'short'
+		}) as Record<string, unknown>;
+		expect(researchResult.materialized_tools).toEqual(['web_search', 'web_visit']);
 	});
 
 	it('registers build quality UI/UX as a source-backed root with loadable child skills', () => {
@@ -208,6 +218,37 @@ describe('skill loading', () => {
 		expect(result.markdown).toContain('design_system_architecture_review');
 		expect(result.markdown).toContain('## Reference Modules');
 		expect(result.markdown).toContain('build_quality_ui_ux.source_map');
+	});
+
+	it('registers LinkedIn company page growth as a source-backed root skill', () => {
+		const root = getSkillById('linkedin_company_page_growth');
+
+		expect(root).toBeDefined();
+		expect(root?.name).toBe('LinkedIn Company Page Growth');
+		expect(root?.legacyPaths).toEqual(
+			expect.arrayContaining(['linkedin-company-page-growth', 'linkedin_growth'])
+		);
+		expect(root?.relatedOps).toEqual(
+			expect.arrayContaining(['util.web.search', 'util.web.visit'])
+		);
+		expect(root?.referenceModules?.map((module) => module.id)).toContain(
+			'linkedin_company_page_growth.playbook'
+		);
+		expect(root?.whenToUse.join(' ')).toContain('grow a LinkedIn company account');
+		expect(listRootSkills().map((skill) => skill.id)).toContain('linkedin_company_page_growth');
+
+		const result = loadSkill('linkedin-company-page-growth', {
+			format: 'full',
+			include_examples: true
+		}) as Record<string, unknown>;
+
+		expect(result.type).toBe('skill');
+		expect(result.id).toBe('linkedin_company_page_growth');
+		expect(result.materialized_tools).toEqual(['web_search', 'web_visit']);
+		expect(typeof result.markdown).toBe('string');
+		expect(result.markdown).toContain('# LinkedIn Company Page Growth');
+		expect(result.markdown).toContain('## Reference Modules');
+		expect(result.markdown).toContain('linkedin_company_page_growth.playbook');
 	});
 
 	it('registers UI/UX child skills with the root parent id', () => {

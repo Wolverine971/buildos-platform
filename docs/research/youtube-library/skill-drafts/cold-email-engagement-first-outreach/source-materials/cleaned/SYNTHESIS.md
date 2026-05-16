@@ -49,7 +49,11 @@ Implications:
 Active sources:
 
 - `cleaned/web/demand-side-sales.md` - Bob Moesta demand-side sales entry point.
+- `cleaned/web/bob-moesta-demand-side-sales-talk.md` - Transcript-backed demand-side sales talk.
 - `cleaned/web/mom-test-book.md` - Rob Fitzpatrick book/source metadata for customer-discovery rules.
+- `cleaned/web/mom-test-publisher-page.md` - Official publisher framing for false-positive avoidance.
+- `cleaned/pdf/april-dunford-sales-pitch-structure.md` - Buyer-choice sales pitch structure.
+- `cleaned/web/challenger-customer-profiles.md` - Mobilizer/Talker/Blocker buying-group profiles.
 - `cleaned/pdf/lean-analytics-sneak-peek.md` - Partial official excerpt; full book remains manual.
 - `cleaned/pdf/predictable-revenue-methodology.md` - Outbound system and specialization primer.
 - `cleaned/pdf/sahil-bloom-cold-email-thread.md` - Founder/operator cold email checklist and examples.
@@ -61,6 +65,8 @@ Implications:
 - ICP is a fit, timing, channel-reachability, and success-potential decision, not a persona label.
 - Strong signals explain why now. Weak signals are generic firmographics or stale events.
 - OfferLab should prefer a useful artifact, diagnostic, intro, teardown, shortlist, or permission ask before defaulting to a meeting.
+- OfferLab should frame the artifact around buyer progress, tradeoffs, alternatives, and evidence rather than product features.
+- Strategic account outreach should prefer mobilizer-enabling artifacts when the recipient must persuade an internal buying group.
 - Experiment sources belong in the learning loop: outreach should graduate, pause, recycle, or narrow based on evidence.
 
 ### Compiler, Taste, And Sequence
@@ -77,6 +83,7 @@ Active sources:
 - `cleaned/web/close-cold-email-follow-up-plan.md` - Cold follow-up timing and structure.
 - `cleaned/web/close-follow-up.md` - Follow-up philosophy and cadence.
 - `cleaned/web/gong-objection-handling-techniques.md` - Objection categories and response patterns.
+- `cleaned/pdf/black-swan-leadership-guide-tactical-empathy.md` - Tactical empathy tools for tense or ambiguous replies.
 - `cleaned/web/cognism-state-of-outbound-2026.md` - Outbound channel mix and current market context.
 - `cleaned/pdf/mailshake-state-of-cold-email-2025.md` - Cold email benchmarks; triangulate before using as governing truth.
 
@@ -103,6 +110,7 @@ Implications:
 - Numbered reply forks can lower cognitive load when used sparingly.
 - Same-day routing matters because replies are scarce trust signals.
 - A clear no is useful data; silence is ambiguous.
+- Objection replies should usually label the concern, ask one calibrated question, and preserve a dignified exit.
 
 ### Specialty Modes
 
@@ -118,12 +126,15 @@ Active sources:
 - `cleaned/web/kai-davis-podcast-outreach-email.md` - Podcast guest pitch craft.
 - `cleaned/pdf/muckrack-guide-to-pitching.md` - Media pitching guide; use as PR/podcast-mode source.
 - `cleaned/pdf/muckrack-successful-pitch-checklist.md` - Pitch checklist; use as PR/podcast-mode quality control.
+- `cleaned/web/muckrack-state-of-journalism-2025.md` - Current journalist workload/trust context.
+- `cleaned/web/pr-news-state-of-journalism-2025.md` - Current media-relations interpretation and audience-first pitch guidance.
 
 Implications:
 
 - Investor mode should stay factual, short, and non-hype.
 - Recruiting mode should be candidate-centered and honest about role relevance.
 - PR/podcast mode should protect the recipient's audience.
+- Media outreach should reduce evaluation work: clear beat fit, real angle, credible source packet, and minimal follow-up.
 - Founder/creator outreach should avoid hidden sales motives and make the small ask obvious.
 
 ## What Was Removed
@@ -139,11 +150,11 @@ URLs and reasons are preserved in `source-materials/metadata/sources.json`.
 
 ## Missing Or Weak After Pruning
 
-- OfferLab still needs legitimate/manual extraction from April Dunford, Bob Moesta, Rob Fitzpatrick, and possibly StoryBrand or Made to Stick.
-- Buying committee and mobilizer logic still depends mostly on existing local analyses; Challenger Customer manual extraction would strengthen it.
-- Reply OS could use a legitimate Chris Voss extraction or a better source on tactical empathy applied to async replies.
-- Deliverability now has the right level of source material, but the actual provider requirement matrix still needs to be synthesized.
-- PR/podcast mode is better after pruning but still needs a current journalist/producer perspective beyond vendor material.
+- OfferLab is materially stronger after the tactical gap-fill, but full/manual book extraction from April Dunford, Bob Moesta, Rob Fitzpatrick, StoryBrand, or Made to Stick would still deepen examples.
+- Buying committee and mobilizer logic is now supported by a Challenger profile source card; full Challenger Customer extraction would still strengthen strategic-account examples.
+- Reply OS now has a legitimate Black Swan tactical empathy source; it still needs async-email-specific examples.
+- Deliverability now has the right source material and a provider requirement matrix at `references/deliverability-provider-requirement-matrix.md`.
+- PR/podcast mode now has current journalist-relations context; a producer/host interview source would still deepen podcast-specific judgment.
 
 ## Use Rule
 

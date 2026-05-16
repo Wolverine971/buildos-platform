@@ -24,12 +24,15 @@ Use this child skill when the core inputs are ready and the user wants the finis
 
 1. Restate the mode and why it is the right mode.
 2. Confirm the input chain: person, moment, reason, offer, ask, follow-up.
-3. Draft subject and preview before body.
-4. Draft the email in the mode-appropriate register.
-5. Add proof only if credible and relevant.
-6. Replace passive language and remove extra CTAs.
-7. Attach cadence, reply routes, and tracking targets.
-8. Return refusal notes for any precondition that remains weak.
+3. Confirm the offer is artifact-first, buyer-progress-oriented, and alternatives-aware.
+4. Draft subject and preview before body.
+5. Draft the email in the mode-appropriate register.
+6. Add proof only if credible, relevant, approved, and claim-matched.
+7. For PR/podcast, package beat fit, audience reason, and source packet or angle list.
+8. For strategic B2B, package the artifact so a Mobilizer could forward it internally.
+9. Replace passive language and remove extra CTAs.
+10. Attach cadence, reply routes, and tracking targets.
+11. Return refusal notes for any precondition that remains weak.
 
 ## Output Contract
 
@@ -39,6 +42,7 @@ Use this child skill when the core inputs are ready and the user wants the finis
 - Email body
 - Proof slot or proof gap
 - CTA and why it is the smallest useful yes
+- Buyer progress / alternative being addressed
 - Cadence map
 - Reply routes
 - Tracking targets
@@ -50,3 +54,5 @@ Use this child skill when the core inputs are ready and the user wants the finis
 - Do not use multiple CTAs.
 - Do not leave preview text to chance.
 - Do not turn an artifact offer into a meeting-first ask.
+- Do not compile PR/podcast outreach without audience fit.
+- Do not compile strategic B2B outreach without a recipient or internal-consensus logic.

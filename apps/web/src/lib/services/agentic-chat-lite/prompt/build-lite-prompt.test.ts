@@ -144,6 +144,9 @@ describe('buildLitePromptEnvelope', () => {
 			'Root skills are the default. Do not load child skills or reference modules automatically after loading a root skill'
 		);
 		expect(envelope.systemPrompt).toContain(
+			'If history includes a previously loaded skills ledger, treat those skills as already discovered.'
+		);
+		expect(envelope.systemPrompt).toContain(
 			'Root skills may expose child skills or reference modules as optional depth handles.'
 		);
 		expect(envelope.systemPrompt).toContain('Root skill catalog');

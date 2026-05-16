@@ -44,6 +44,7 @@ import {
 	buildGatewayRequiredFieldRepairInstruction,
 	buildProjectCreateNoExecutionRepairInstruction,
 	buildReadLoopRepairInstruction,
+	buildToolRoundBudgetSynthesisInstruction,
 	buildToolValidationRepairInstruction,
 	enforceMutationOutcomeIntegrity,
 	hasGatewayCreateFieldNoProgressFailure,
@@ -1158,6 +1159,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 				markToolLimitReached('repetition');
 				break;
+			}
+			if (gatewayModeActive && toolRounds >= maxToolRounds) {
+				queueRepairInstruction(buildToolRoundBudgetSynthesisInstruction());
+				forceNoToolSynthesisPass = true;
 			}
 			flushRepairInstructions();
 

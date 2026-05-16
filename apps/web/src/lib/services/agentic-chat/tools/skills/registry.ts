@@ -15,6 +15,7 @@ import {
 import { documentSkill } from './document.skill';
 import { projectForecastSkill } from './forecast.skill';
 import { libriSkill } from './libri.skill';
+import { linkedinCompanyPageGrowthSkill } from './linkedin-company-page-growth.skill';
 import { peopleSkill } from './people.skill';
 import { planSkill } from './plan.skill';
 import { projectCreateSkill } from './project-create.skill';
@@ -62,6 +63,7 @@ const ALL_SKILLS: SkillDefinition[] = [
 	coldEmailDeliverabilityReadinessSkill,
 	coldEmailReplyOsSkill,
 	coldEmailLearningReviewSkill,
+	linkedinCompanyPageGrowthSkill,
 	libriSkill,
 	projectAuditSkill,
 	projectForecastSkill

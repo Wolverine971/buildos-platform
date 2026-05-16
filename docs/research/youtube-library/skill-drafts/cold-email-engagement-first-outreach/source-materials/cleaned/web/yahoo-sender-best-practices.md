@@ -87,8 +87,6 @@ Please refer to our FAQs and the additional recommendations below for more infor
 
 - Following these recommendations should provide senders with a consistent reputation for their domain, regardless of which IP mail is sent from.
 
-- For more information, see our FAQ, M3AAWG, DMARC.org, DKIM.org, and OpenSPF.org.
-
 - Don't send bulk/marketing email from the same IPs you use to send user mail, transactional mail, alerts, etc.
 
 - Each IP and DKIM domain has a reputation, which can impact the delivery of your email.

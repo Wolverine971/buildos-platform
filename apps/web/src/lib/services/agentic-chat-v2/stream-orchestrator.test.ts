@@ -125,6 +125,86 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.finalAssistantText).toBe('Created the January milestone.');
 	});
 
+	it('synthesizes instead of showing the safety-limit notice after the final discovery round', async () => {
+		let streamInvocation = 0;
+		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					toolNames: (params.tools ?? [])
+						.map((tool: ChatToolDefinition) => tool.function?.name)
+						.filter((name: string | undefined): name is string => Boolean(name))
+				});
+
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'tool_search',
+							{ query: 'web search and fetch content', capability: 'web_research' },
+							'tool_search:web'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (params.tools) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'web_visit',
+							{ url: 'https://example.com', max_chars: 8000 },
+							'web_visit:late'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'I can draft from the loaded context.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			return {
+				tool_call_id: call.id,
+				result: {
+					type: 'tool_search_results',
+					matches: [{ op: 'util.web.visit', tool_name: 'web_visit' }]
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Draft outreach after checking this URL.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema']),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 1
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(2);
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(streamParams[1]?.toolChoice).toBeUndefined();
+		expect(streamParams[1]?.toolNames).toEqual([]);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe('I can draft from the loaded context.');
+		expect(result.finalAssistantText).not.toContain('safety limit');
+		expect(result.llmPasses?.[1]?.forcedNoToolSynthesis).toBe(true);
+	});
+
 	it('validates direct tool arguments before execution and retries after repair', async () => {
 		let streamInvocation = 0;
 		let repairPassMessages: FastChatHistoryMessage[] | undefined;

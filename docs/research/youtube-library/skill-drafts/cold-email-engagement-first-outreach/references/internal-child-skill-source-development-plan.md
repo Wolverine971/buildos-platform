@@ -4,7 +4,7 @@ skill: cold-email-engagement-first-outreach
 reference: internal-child-skill-source-development-plan
 visibility: internal
 publish: false
-purpose: Private research and source-acquisition plan for turning cold email child skill stubs into source-backed deep skills.
+purpose: Private research and source-acquisition plan for maintaining and deepening source-backed cold email child skills.
 path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/internal-child-skill-source-development-plan.md
 ---
 
@@ -12,7 +12,7 @@ path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-out
 
 Status: private internal planning document. Do not publish publicly without a separate review and redaction pass.
 
-This document is for an agent assigned to deepen one cold email child skill at a time. The root skill should remain good enough to plan, draft, audit, and route cold outreach on its own. Child skills should become deep source-backed modules for the cases where one part of the workflow needs serious work.
+This document is for an agent assigned to deepen one cold email child skill at a time. The root skill should remain good enough to plan, draft, audit, and route cold outreach on its own. Child skills should stay deep source-backed modules for the cases where one part of the workflow needs serious work.
 
 The root sequence stays:
 

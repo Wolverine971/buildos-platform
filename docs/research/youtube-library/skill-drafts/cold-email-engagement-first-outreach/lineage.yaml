@@ -103,6 +103,10 @@ reference_modules:
       path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/high-volume-and-deliverability.md
       use_when: Launching high-volume cold email, testing offers at scale, diagnosing deliverability, cleaning lists, or designing back-end qualification.
 
+    - id: reference.deliverability-provider-requirement-matrix
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/deliverability-provider-requirement-matrix.md
+      use_when: Making pass / blocked / manual-only sender-readiness decisions from official provider and compliance source cards.
+
     - id: reference.strategic-and-single-target
       path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/strategic-and-single-target.md
       use_when: Writing named-account, executive, founder-to-founder, recruiting, podcast, PR, or other high-research one-recipient outreach.

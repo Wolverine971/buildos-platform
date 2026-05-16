@@ -15,6 +15,9 @@ Read this when the user is launching a large cold campaign, testing offers at sc
 - Austin Schneider / Instantly: engagement-first infrastructure and 2-touch volume cadence.
 - Aaron Shepherd / GrowthFlare: volume-as-data, front-end offers, casual scripts, back-end qualification.
 - Mitchell Keller: infrastructure redundancy, offer testing, list hygiene, speed-to-reply.
+- Provider requirement matrix: official Google/Yahoo/Microsoft plus FTC/ICO/CRTC readiness gates.
+
+When making pass / blocked / manual-only decisions, read `references/deliverability-provider-requirement-matrix.md`.
 
 ## High-Volume Operating Model
 
@@ -33,7 +36,10 @@ High-volume outreach is not "spray and pray." It is instrumented market testing:
 Minimum floor:
 
 - SPF, DKIM, DMARC configured.
+- Sender identity accurate and non-deceptive.
+- Unsubscribe/suppression path for commercial volume.
 - Spam complaints under 0.1%.
+- Recipient geography and consent posture known.
 - Max 5 inboxes per domain.
 - Start around 30 emails per inbox per day.
 - Do not exceed 50 per inbox per day without evidence.

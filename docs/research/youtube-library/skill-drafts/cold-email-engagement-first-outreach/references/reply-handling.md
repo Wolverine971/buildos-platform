@@ -16,6 +16,7 @@ Read this when a prospect replies, goes silent, objects, asks for information, o
 - Connor Murray: objection response bank and acknowledge-and-redirect.
 - Mitchell Keller: speed-to-reply and reply-to-call routing.
 - Sam McKenna: good-no relationship value and thread nurture.
+- Black Swan Group: tactical empathy, labels, summaries, and calibrated questions.
 
 ## Principle
 
@@ -89,9 +90,9 @@ Build templates for:
 Template structure:
 
 1. Acknowledge the objection.
-2. Name the valid reason behind it.
+2. Label the valid reason behind it.
 3. Add one specific contrast, proof, or artifact.
-4. Ask the smallest next question.
+4. Ask the smallest calibrated question.
 
 Example:
 
@@ -102,6 +103,18 @@ The gap I usually see is not coverage; it is whether reps can see [specific sign
 
 I can send the 3-signal snapshot and you can decide if it is redundant. Worth sending?
 ```
+
+Tactical empathy pattern:
+
+```text
+Sounds like [concern] is the blocker.
+
+[One short answer or the promised artifact.]
+
+What would need to be true for this to be worth revisiting?
+```
+
+Use this for skeptical, tense, or ambiguous replies. Do not overuse "sounds like" if it would feel scripted.
 
 ## Same-Day Routing
 
@@ -145,3 +158,13 @@ Good follow-up assets:
 - Two specific time options.
 
 Avoid generic "checking in."
+
+## Angry Or Opt-Out Replies
+
+Use a short dignified close:
+
+```text
+Understood. I will not follow up.
+```
+
+Do not defend, debate, explain intent, or ask one more question after an opt-out.

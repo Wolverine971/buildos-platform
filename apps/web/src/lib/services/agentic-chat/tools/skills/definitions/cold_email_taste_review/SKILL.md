@@ -26,10 +26,16 @@ Use this child skill when reputation risk is the main question.
 1. Identify the mode and trust level.
 2. Check whether the anchor is earned and bridged.
 3. Check whether the offer is useful before a meeting.
-4. Check proof integrity and claim safety.
-5. Check voice: serious human, not marketing automation.
-6. Assign verdict: pass, revise, or do not send.
-7. Return the highest-risk line and the smallest fix.
+4. Check whether the ask helps the buyer make progress, not just the sender get time.
+5. Check proof integrity and claim safety.
+6. Check mode-specific dignity:
+    - PR/podcast protects the audience.
+    - Recruiting is candidate-centered.
+    - Research is honest about research intent.
+    - Investor mode is factual and non-hype.
+7. Check voice: serious human, not marketing automation.
+8. Assign verdict: pass, revise, or do not send.
+9. Return the highest-risk line and the smallest fix.
 
 ## Output Contract
 
@@ -39,6 +45,7 @@ Use this child skill when reputation risk is the main question.
 - Specificity issue
 - Bridge issue
 - Proof issue
+- Mode-specific trust issue
 - Ask/trust mismatch
 - Rewrite guidance
 
@@ -48,3 +55,5 @@ Use this child skill when reputation risk is the main question.
 - Do not let fake personalization survive because the copy is fluent.
 - Do not approve unsupported metrics or customer claims.
 - Do not ignore the recipient's dignity when they say no.
+- Do not approve media outreach that serves the sender but not the recipient's audience.
+- Do not approve feature-first copy when the stated offer is a buyer-choice artifact.

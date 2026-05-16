@@ -57,6 +57,7 @@ export interface SkillHelpPayload {
 	when_to_use: string[];
 	workflow: string[];
 	related_ops: string[];
+	materialized_tools?: string[];
 	child_skills?: SkillLinkedResourcePayload[];
 	reference_modules?: SkillLinkedResourcePayload[];
 	guardrails?: string[];

@@ -1,0 +1,45 @@
+---
+doc_type: skill-reference
+skill: cold_email_deliverability_readiness
+reference: provider-requirement-matrix
+visibility: internal
+publish: false
+created: 2026-05-16
+source_snapshot: 2026-05-15
+purpose: Tactical provider, sender, and compliance matrix for cold email deliverability readiness.
+path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_deliverability_readiness/references/provider-requirement-matrix.md
+---
+
+# Provider Requirement Matrix
+
+Use this when volume, cold domains, sender trust, or compliance boundaries matter. Recheck official provider/regulator sources before operational send recommendations because requirements change.
+
+## Provider Matrix
+
+| Area                  | Google/Gmail                                                                                | Yahoo                                                                             | Microsoft Outlook                                                          | Cold Email Decision                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Bulk threshold        | 5,000+ messages/day to personal Gmail from same primary domain triggers bulk-sender status. | Treat high volume as needing authentication, reputation, and unsubscribe hygiene. | 5,000+ messages/day to Outlook.com domains triggers stricter requirements. | If near 5,000/day to any major mailbox provider, run full bulk-sender readiness before scale.        |
+| SPF                   | Required for bulk senders.                                                                  | Required/best practice.                                                           | Required for high-volume senders.                                          | Block scale until SPF passes for every sending domain/provider.                                      |
+| DKIM                  | Required for bulk senders.                                                                  | Required/best practice.                                                           | Required for high-volume senders.                                          | Block scale until DKIM signs correctly.                                                              |
+| DMARC                 | Required for bulk senders with at least `p=none`; From alignment matters.                   | Required/best practice.                                                           | Required for high-volume senders.                                          | Block scale until DMARC exists and aligns with sender identity.                                      |
+| Forward/reverse DNS   | Google requires valid PTR and matching forward DNS for sending IPs.                         | Sender infrastructure should identify sending sources clearly.                    | Sender reputation depends on clean authenticated infrastructure.           | For shared ESPs, verify provider handles this. For owned infrastructure, block until DNS is correct. |
+| TLS                   | Google requires TLS for bulk senders.                                                       | Use modern authenticated mail infrastructure.                                     | Use compliant authenticated mail infrastructure.                           | Block if sender cannot confirm TLS support through ESP/MTA.                                          |
+| Header accuracy       | Google flags malformed or deceptive headers/content.                                        | Sender identity and message authenticity matter.                                  | Authentication and non-deceptive identity matter.                          | Reject deceptive From, Re:, Fwd:, hidden content, spoofed identity, or unclear sender.               |
+| One-click unsubscribe | Required for marketing/promotional bulk mail and must be honored quickly.                   | Required/recommended for bulk and commercial senders.                             | High-volume senders should support compliant unsubscribe practices.        | For scaled cold campaigns, include unsubscribe handling and suppression workflow.                    |
+| Complaint rate        | Google says keep user-reported rate below 0.1% and avoid 0.3% or higher.                    | Complaints affect reputation and delivery.                                        | Reputation/complaints affect junking and blocking.                         | Stop or narrow if complaints rise. Do not increase volume to compensate.                             |
+
+## Compliance Boundary Matrix
+
+| Region/Source               | Baseline Requirements                                                                                                                       | Cold Email Decision                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| FTC CAN-SPAM, United States | Accurate header/from info, non-deceptive subject, clear sender identity, physical postal address, clear opt-out, timely opt-out processing. | No deceptive packaging. Include required identity/opt-out mechanics for commercial email.                       |
+| ICO PECR, UK                | Electronic mail marketing rules distinguish consent, soft opt-in, corporate subscribers, and individual subscribers.                        | If UK/EU recipients are involved and consent basis is unclear, route to legal/compliance review or manual-only. |
+| CRTC CASL, Canada           | Consent, identification, and unsubscribe requirements apply; rules are stricter than U.S. CAN-SPAM.                                         | If Canadian recipients are involved and consent basis is unclear, block scale until reviewed.                   |
+
+## Pass / Block / Manual-Only
+
+Pass for scaled sending only when SPF, DKIM, DMARC, sender identity, unsubscribe/suppression, bounce/complaint monitoring, list source, recipient geography, and consent posture are known.
+
+Block scale for missing authentication, spoofed or unclear identity, no opt-out/suppression path, unknown risky geography, complaint/bounce spikes, or attempts to fix low replies by increasing volume.
+
+Manual-only is acceptable for one-off strategic, investor, or relationship emails where volume is negligible and the sender is real.

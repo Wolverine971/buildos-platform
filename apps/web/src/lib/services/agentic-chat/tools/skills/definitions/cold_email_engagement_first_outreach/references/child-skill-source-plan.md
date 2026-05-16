@@ -144,7 +144,7 @@ Questions:
 
 ### `cold_email_deliverability_readiness`
 
-Find current official sources for Google, Yahoo, Microsoft/Outlook, SPF, DKIM, DMARC, M3AAWG, and Spamhaus. Use ESP/vendor sources only as directional practical guidance.
+Find current official sources for Google, Yahoo, Microsoft/Outlook, and applicable regulator guidance. Use one practical secondary deliverability explainer, such as Postmark, only to clarify implementation details.
 
 Build:
 
@@ -153,6 +153,7 @@ Build:
 - Pass/blocked/manual-only decision tree.
 - Conservative send-volume table.
 - Monitoring and troubleshooting playbook.
+- Provider requirement matrix. Current runtime matrix exists at `../cold_email_deliverability_readiness/references/provider-requirement-matrix.md`; update it instead of duplicating provider rules.
 
 Questions:
 

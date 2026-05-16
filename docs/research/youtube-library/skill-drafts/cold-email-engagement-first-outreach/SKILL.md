@@ -23,13 +23,14 @@ Use this root skill by default. Load a reference module only when the request ne
 
 - `references/source-map.md`: source provenance, conflict resolution, and the full local research map.
 - `references/high-volume-and-deliverability.md`: volume campaigns, deliverability, list hygiene, offer tests, and back-end qualification.
+- `references/deliverability-provider-requirement-matrix.md`: provider, sender, and compliance gates for pass/blocked/manual-only readiness decisions.
 - `references/strategic-and-single-target.md`: named-account, executive, founder-to-founder, recruiting, podcast/PR, and other high-research one-recipient outreach.
 - `references/reply-handling.md`: objection handling, reply revival, numbered forks, same-day routing, and reply-to-call conversion.
 - `references/investor-founder-pr.md`: investor fundraising, founder-led peer outreach, recruiting, PR, podcast, partnerships, and customer research.
 - `references/internal-outreach-operating-system.md`: internal-only blueprint for designing the full market-learning and relationship-starting operating system. Do not publish externally without review.
 - `references/internal-skill-architecture.md`: internal-only map for separating root skills, child skills, and tangential relationship-building skills. Do not publish externally without review.
-- `references/internal-child-skill-source-development-plan.md`: internal-only sourcing plan for turning cold email child skill stubs into source-backed deep skills. Do not publish externally without review.
-- `references/internal-source-acquisition-queue.md`: internal-only queue of experts, books, sites, videos, and official documents to grab for the full cold email architecture. Do not publish externally without review.
+- `references/internal-child-skill-source-development-plan.md`: internal-only sourcing plan for maintaining and deepening source-backed cold email child skills. Do not publish externally without review.
+- `references/internal-source-acquisition-queue.md`: internal-only corpus status and remaining queue for experts, books, sites, videos, and official documents behind the full cold email architecture. Do not publish externally without review.
 
 ## Required Inputs
 

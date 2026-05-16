@@ -110,6 +110,18 @@ function mergeLinkedResourcePayloads(
 	return [...resourcesById.values()].sort((a, b) => a.id.localeCompare(b.id));
 }
 
+function resolveRelatedOpToolNames(relatedOps: string[]): string[] {
+	const registry = getToolRegistry();
+	const toolNames = new Set<string>();
+	for (const op of relatedOps) {
+		const toolName = registry.ops[op]?.tool_name;
+		if (toolName) {
+			toolNames.add(toolName);
+		}
+	}
+	return Array.from(toolNames).sort((a, b) => a.localeCompare(b));
+}
+
 export function buildSkillLoadPayload(
 	skill: SkillDefinition,
 	version: string,
@@ -132,8 +144,13 @@ export function buildSkillLoadPayload(
 		legacy_paths: skill.legacyPaths,
 		when_to_use: skill.whenToUse,
 		workflow: skill.workflow.map((step, index) => `${index + 1}) ${step}`),
-		related_ops: skill.relatedOps
+		related_ops: skill.relatedOps,
+		materialized_tools: resolveRelatedOpToolNames(skill.relatedOps)
 	};
+
+	if (payload.materialized_tools?.length === 0) {
+		delete payload.materialized_tools;
+	}
 
 	if (skill.parentId) {
 		payload.parent_id = skill.parentId;
