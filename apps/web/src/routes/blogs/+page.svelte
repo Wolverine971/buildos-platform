@@ -244,18 +244,20 @@
 					class="block bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
 				>
 					<div class="p-5 sm:p-7">
-						<div class="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+						<div
+							class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground mb-3"
+						>
 							<span
-								class="px-2 py-0.5 bg-accent/10 text-accent rounded-full font-medium"
+								class="shrink-0 px-2 py-0.5 bg-accent/10 text-accent rounded-full font-medium"
 							>
 								{data.categories[featuredPost.category as BlogCategory]?.name ??
 									featuredPost.category}
 							</span>
-							<span class="flex items-center gap-1">
+							<span class="flex shrink-0 items-center gap-1">
 								<Calendar class="w-3 h-3" />
 								{formatBlogDate(featuredPost.date)}
 							</span>
-							<span class="flex items-center gap-1">
+							<span class="flex shrink-0 items-center gap-1">
 								<Clock class="w-3 h-3" />
 								{featuredPost.readingTime} min read
 							</span>
@@ -267,7 +269,7 @@
 							{featuredPost.title}
 						</h2>
 
-						<p class="text-sm sm:text-base text-muted-foreground mb-4 max-w-2xl">
+						<p class="text-sm sm:text-base text-muted-foreground leading-relaxed mb-4">
 							{featuredPost.description}
 						</p>
 
@@ -296,14 +298,14 @@
 							>
 								<div class="p-4 sm:p-5 flex flex-col flex-1">
 									<div
-										class="flex items-center gap-2 text-xs text-muted-foreground mb-3"
+										class="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-muted-foreground mb-3"
 									>
 										<span
-											class="px-2 py-0.5 bg-muted text-muted-foreground rounded-full font-medium"
+											class="shrink-0 px-2 py-0.5 bg-muted text-muted-foreground rounded-full font-medium"
 										>
 											{categoryName}
 										</span>
-										<span class="flex items-center gap-1">
+										<span class="flex shrink-0 items-center gap-1">
 											<Calendar class="w-3 h-3" />
 											{formatBlogDate(post.date)}
 										</span>

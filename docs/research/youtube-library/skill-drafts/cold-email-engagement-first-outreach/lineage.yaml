@@ -140,6 +140,12 @@ internal_reference_modules:
       publish: false
       use_when: Private queue of experts, books, websites, YouTube/videos, official docs, and specialty sources to grab for fully building the cold email architecture. Do not publish externally without review.
 
+    - id: reference.internal-source-materials-manifest
+      path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/manifest.md
+      visibility: internal
+      publish: false
+      use_when: Private manifest for the 2026-05-15 source acquisition archive, including acquired web snapshots, PDFs, transcripts, blocked captures, manual book extraction gaps, and recommended analysis order. Do not publish externally without review.
+
 sources:
     - id: source.murray.10-years-cold-email
       type: youtube_analysis

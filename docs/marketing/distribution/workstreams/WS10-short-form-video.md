@@ -21,6 +21,10 @@ last_updated: 2026-04-27
 
 Build a founder-led TikTok presence that **demonstrates** the anti-feed thesis from WS09 — two scripts per cluster blog, receipts-first, no clip-farm tactics — so the platform that manufactures virality becomes the place where BuildOS shows the alternative.
 
+Media rule: **zero AI-generated videos and zero AI-generated images.** WS10 uses founder-on-camera footage, real screen recordings, real product screenshots, real workspace clips, and text/diagram overlays only.
+
+Presence rule: **raw proof beats polished bloat.** These videos should feel like dispatches from the work, not like a founder trying to become a content farm.
+
 ## Why this is a work stream
 
 WS09 treats TikTok extraction as a line item in each publish kit. But short-form video has enough of its own operational surface area — counter-positioning rules, script formats, posting cadence, anti-clip-farm guardrails, measurement rubric — that it warrants its own file. WS10 is the execution home; WS09 remains the content source.
@@ -66,6 +70,7 @@ Before drafting any TikTok for this work stream, load:
 
 - Paid promotion, boosts, or Spark Ads
 - Working with clippers, clipping agencies, or Discord campaign servers
+- AI-generated videos, AI-generated images, AI avatars, synthetic B-roll, or fake product footage
 - Trend-jacking with no vocabulary connection to the cluster
 - Buying equipment beyond what a phone + clip-on mic already provides
 - Instagram carousel content (that's WS09 publish kit extraction, not WS10)
@@ -80,6 +85,8 @@ Every TikTok produced under WS10 must satisfy the rejection rubric in [T50](#t50
 4. **No clip-farm tactics.** No buying views, no payola, no bought boosts, no trend audio.
 5. **Chosen-input CTA.** "Read the piece," "try a brain dump," "send this to someone." Never "follow for more."
 6. **Same pacing as a calm blog.** No fast cuts. The aesthetic is "thinking environment," not "engagement farm."
+7. **Real media only.** No AI-generated video, no AI-generated image, no synthetic workspace, no fake UI.
+8. **Receipt first.** Every video starts from a real artifact: screen, project, workflow, source, or founder observation from actual use.
 
 A script that fails any of these doesn't ship. The point is not to win TikTok on its own terms — it's to demonstrate that the anti-feed alternative works on a platform that punishes it.
 
@@ -185,13 +192,13 @@ See [RECURRING §TikTok cadence](../RECURRING.md#tiktok-cadence-t49).
 
 ### T50 — Counter-positioning rubric
 
-A single doc that every TikTok script must pass before recording. Codifies the six rules in this file's [Counter-positioning](#counter-positioning-what-makes-this-work-stream-different) section, plus edge cases.
+A single doc that every TikTok script must pass before recording. Codifies the eight rules in this file's [Counter-positioning](#counter-positioning-what-makes-this-work-stream-different) section, plus edge cases.
 
 **Output:** `docs/marketing/social-media/tiktok/counter-positioning-rubric.md`
 
 **Contents:**
 
-1. The 6 rejection rules (expanded with examples of what passes and fails each)
+1. The 8 rejection rules (expanded with examples of what passes and fails each)
 2. Trend-audio policy: never, with reasoning
 3. Posting-cadence policy: no bulk-scheduling, no buffering 20 videos for daily posts — that's clip-farm-shaped behavior
 4. Comments policy: respond to any comment that engages the thesis; ignore or block hostile troll patterns; never argue with bots

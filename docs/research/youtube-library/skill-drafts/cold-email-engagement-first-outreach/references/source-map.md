@@ -50,7 +50,7 @@ Added in 2026-05 for the `cold_email_icp_signal_design` child skill. These layer
 
 ## External Resource Queue
 
-The concrete resource queue lives in `resource-inventory.md`. It includes:
+The concrete resource queues live in `resource-inventory.md` and `references/internal-source-acquisition-queue.md`. They include:
 
 - Lavender subject-line and benchmark material.
 - Close/Steli follow-up PDFs and articles.

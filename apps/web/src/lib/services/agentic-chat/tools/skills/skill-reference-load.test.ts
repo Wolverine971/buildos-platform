@@ -94,6 +94,8 @@ describe('skill reference loading', () => {
 		expect(result.path).toBe('references/source-acquisition-queue.md');
 		expect(result.content).toContain('## Batch 1: Deliverability And Compliance');
 		expect(result.content).toContain('Lavender benchmark');
-		expect(result.content).toContain('qualified conversations per unit of market trust consumed');
+		expect(result.content).toContain(
+			'qualified conversations per unit of market trust consumed'
+		);
 	});
 });

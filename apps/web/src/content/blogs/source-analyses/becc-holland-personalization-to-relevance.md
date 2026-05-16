@@ -126,7 +126,7 @@ The cost of mislabeling is wasted effort. A team that thinks it is doing persona
 - **Podcast-only primary source.** The 30MPC episode is the cleanest articulation; her own Flip the Script webinar page hints at the framework but does not lay it out in full. Cite the podcast as the primary; her webinar as the brand source.
 - **2020-vintage framework, still current.** Holland's framework was articulated before the LLM-generated-opener boom, but the "send to two people" test ages well — if anything, AI made it more important.
 - **Sales-team framing.** Holland's primary audience is SDRs and AEs. Founder-led, recruiting, investor, PR, and customer-research outreach all use the framework, but the relevance vocabulary may translate (e.g., "Bridgebound" in PR context = a recent piece of editorial coverage that suggests the journalist's beat).
-- **No formal data behind the rank order of relevance types.** The ranking (firmographic &lt; demographic &lt; technographic &lt; trigger) is practitioner consensus, not experimental.
+- **No formal data behind the rank order of relevance types.** The ranking (firmographic &#60; demographic &#60; technographic &#60; trigger) is practitioner consensus, not experimental.
 
 ## Source
 

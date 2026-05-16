@@ -216,17 +216,17 @@
 						<article class="group">
 							<a
 								href="/blogs/{post.category}/{post.slug}"
-								class="block bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
+								class="flex h-full flex-col bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
 							>
-								<div class="p-4 sm:p-5">
+								<div class="flex flex-1 flex-col p-4 sm:p-5">
 									<div
-										class="flex items-center gap-2 text-xs text-muted-foreground mb-3"
+										class="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-muted-foreground mb-3"
 									>
-										<span class="flex items-center gap-1">
+										<span class="flex shrink-0 items-center gap-1">
 											<Calendar class="w-3 h-3" />
 											{formatBlogDate(post.date)}
 										</span>
-										<span class="flex items-center gap-1">
+										<span class="flex shrink-0 items-center gap-1">
 											<Clock class="w-3 h-3" />
 											{post.readingTime} min
 										</span>
@@ -255,7 +255,7 @@
 									{/if}
 
 									<span
-										class="inline-flex items-center gap-1 text-xs text-accent font-medium"
+										class="mt-auto inline-flex items-center gap-1 text-xs text-accent font-medium"
 									>
 										Read article <ArrowRight class="w-3 h-3" />
 									</span>

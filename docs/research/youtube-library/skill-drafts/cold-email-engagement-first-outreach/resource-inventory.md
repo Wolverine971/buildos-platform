@@ -11,11 +11,24 @@ path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-out
 
 This file converts `next-sources.md` from a shopping list into a concrete resource queue for the next synthesis pass.
 
+## 2026-05-15 Acquisition Archive
+
+The source acquisition pass now has a local archive manifest:
+
+```text
+docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/manifest.md
+```
+
+Archive summary: 53 web snapshots, 13 PDFs, and 3 additional YouTube transcripts were captured in the source-materials acquisition pass. Combined with the earlier 2026-05-15 transcript pulls already listed here, this inventory now tracks 7 newly pulled transcripts for the v2 cold email buildout. Use the manifest as the operational index for acquired files, failed captures, manual book extractions, and next analysis batches.
+
 Status legend:
 
 - `local-existing`: already in the repo before this pass.
 - `pulled-2026-05-15`: transcript pulled into the repo during this pass.
 - `external-confirmed`: URL exists and is ready for source analysis or manual extraction.
+- `acquired-2026-05-15`: source file or transcript was captured in the local source archive.
+- `transcript-pulled-2026-05-15`: a related video page was confirmed and a local transcript was captured.
+- `missing-2026-05-15`: URL failed during acquisition and needs a replacement source.
 - `unresolved-target`: backlog item is useful, but still needs a specific video/article URL chosen.
 - `optional-adjacent`: useful if the skill expands into adjacent modes.
 
@@ -27,6 +40,9 @@ Status legend:
 | Multi-channel / practitioner writing  | Florin Tatulea + Evan Greek, 30MPC: "Cold Email Showdown: Rookie Sales Rep vs 10-Year Director" | https://www.youtube.com/watch?v=Ag-6pB51s5o | `docs/marketing/growth/research/youtube-transcripts/2026-05-15-florin-tatulea-cold-email-showdown.md`           | pulled-2026-05-15 | Live drafting against weird prompts; useful for context-first cold email, account research, and AI-assisted draft refinement.  |
 | Reply handling / low-friction replies | Steli Efti / Close: "Get 457% more replies to your sales emails with the 1, 2, 3 hack"          | https://www.youtube.com/watch?v=hmuMkXntbH0 | `docs/marketing/growth/research/youtube-transcripts/2026-05-15-steli-efti-1-2-3-email-hack.md`                  | pulled-2026-05-15 | Directly supports reply-handling and "no is better than silence" mechanics.                                                    |
 | Investor outreach                     | Michael Seibel / YC: "How To Cold Email Investors"                                              | https://www.youtube.com/watch?v=A3MmYbH1hbs | `docs/marketing/growth/research/youtube-transcripts/2026-05-15-michael-seibel-how-to-cold-email-investors.md`   | pulled-2026-05-15 | Concise fundraising-specific cold email rules: short, clear, credible, no premature meeting ask.                               |
+| Reply-rate improvement / webinar      | Jason Bay: "Cold Email: Ignore this webinar if you don't want to double your reply rates"       | https://www.youtube.com/watch?v=_0K91ESIa94 | `docs/marketing/growth/research/youtube-transcripts/2026-05-15-jason-bay-cold-email-double-reply-rates.md`      | pulled-2026-05-15 | Webinar-length source for reply-rate improvement, relevance, and executive-style cold email judgment.                          |
+| Subject-line formulas                 | Jason Bay + Belal Batrawy: "Steal these 3 subject line formulas..."                            | https://www.youtube.com/watch?v=ZQzX4uTV87Y | `docs/marketing/growth/research/youtube-transcripts/2026-05-15-jason-bay-belal-batrawy-subject-line-formulas.md` | pulled-2026-05-15 | Transcript-backed subject-line source that complements the Lavender subject-line article.                                      |
+| Large-sample email patterns           | 30MPC: "We Analyzed 85 MILLION Cold Emails..."                                                  | https://www.youtube.com/watch?v=EDbuEGO01uM | `docs/marketing/growth/research/youtube-transcripts/2026-05-15-30mpc-85-million-cold-emails.md`                 | pulled-2026-05-15 | Large-sample cold email pattern source for compiler and taste-layer analysis.                                                  |
 
 Commands used:
 
@@ -35,6 +51,9 @@ python3 scripts/youtube-transcript.py "https://www.youtube.com/watch?v=5ln1cGTzX
 python3 scripts/youtube-transcript.py "https://www.youtube.com/watch?v=Ag-6pB51s5o" -o docs/marketing/growth/research/youtube-transcripts/2026-05-15-florin-tatulea-cold-email-showdown.md
 python3 scripts/youtube-transcript.py "https://www.youtube.com/watch?v=hmuMkXntbH0" -o docs/marketing/growth/research/youtube-transcripts/2026-05-15-steli-efti-1-2-3-email-hack.md
 python3 scripts/youtube-transcript.py "https://www.youtube.com/watch?v=A3MmYbH1hbs" -o docs/marketing/growth/research/youtube-transcripts/2026-05-15-michael-seibel-how-to-cold-email-investors.md
+python3 scripts/youtube-transcript.py "https://www.youtube.com/watch?v=_0K91ESIa94" -o docs/marketing/growth/research/youtube-transcripts/2026-05-15-jason-bay-cold-email-double-reply-rates.md
+python3 scripts/youtube-transcript.py "https://www.youtube.com/watch?v=ZQzX4uTV87Y" -o docs/marketing/growth/research/youtube-transcripts/2026-05-15-jason-bay-belal-batrawy-subject-line-formulas.md
+python3 scripts/youtube-transcript.py "https://www.youtube.com/watch?v=EDbuEGO01uM" -o docs/marketing/growth/research/youtube-transcripts/2026-05-15-30mpc-85-million-cold-emails.md
 ```
 
 Note: Aaron Harris's YC fundraising source has a full transcript on the YC page, so it is captured below as an external transcript source rather than duplicated locally.
@@ -67,9 +86,9 @@ Excluded from cold outreach synthesis unless building a separate list-email skil
 | Lavender Cold Email Benchmark Report, Will Allred  | Data/blog           | https://www.lavender.ai/blog/the-cold-email-benchmark-report                                      | external-confirmed | Persona/department benchmark table, content insights, quality lift from high-scoring emails, reply-rate segmentation.                        |
 | Lavender subject line article                      | Blog                | https://www.lavender.ai/blog/cold-email-subject-line-tips                                         | external-confirmed | Subject-line do/don't list, preview-text importance, neutral/internal-email frame, data points on questions/numbers/punctuation.             |
 | Lavender Cold Email 101                            | Blog                | https://www.lavender.ai/blog/cold-email-101                                                       | external-confirmed | Cold email as a valid conversation invite, reason-for-showing-up logic, short email constraints.                                             |
-| Lavender Inbox Triage                              | Knowledge base      | https://help.lavender.ai/en/articles/5325618-inbox-triage-a-cold-email-mindset                    | external-confirmed | Recipient inbox triage model, relevance tests, personalization prompts.                                                                      |
+| Lavender Inbox Triage                              | Knowledge base      | https://help.lavender.ai/en/articles/5325618-inbox-triage-a-cold-email-mindset                    | missing-2026-05-15 | Previously listed URL returned 404 during acquisition; find a current replacement before using this source.                                   |
 | Lavender YouTube channel `@trylavender`            | YouTube channel     | https://www.youtube.com/@trylavender                                                              | unresolved-target  | Pick a specific recent subject-line or teardown video if a transcript-backed source is needed.                                               |
-| LavenderLand subject-line video with Belal Batrawy | Video page          | https://land.lavender.ai/media/cold-email-subject-lines-with-belal-batrawy-get-your-emails-opened | external-confirmed | Candidate substitute if no current Will Allred YouTube subject-line video is found.                                                          |
+| LavenderLand subject-line video with Belal Batrawy | Video page          | https://land.lavender.ai/media/cold-email-subject-lines-with-belal-batrawy-get-your-emails-opened | transcript-pulled-2026-05-15 | Local YouTube transcript now exists at `docs/marketing/growth/research/youtube-transcripts/2026-05-15-jason-bay-belal-batrawy-subject-line-formulas.md`. |
 | Eddie Shleyner / VeryGoodCopy archive              | Copywriting archive | https://www.verygoodcopy.com/                                                                     | external-confirmed | Voice/register craft, microcopy, subject-line texture, concise copy rhythm. Search inside archive for email, subject line, and preview text. |
 | VeryGoodCopy HubSpot cold-email story              | Blog                | https://www.verygoodcopy.com/verygoodcopy-blog-3/hubspot-did-not-hire-me                          | external-confirmed | Personal cold outreach story; useful for "specific, human, low-ego" register.                                                                |
 
@@ -193,8 +212,8 @@ Excluded from cold outreach synthesis unless building a separate list-email skil
 
 Use this order for the next pass because it fills the biggest v1 gaps without exploding scope:
 
-1. `pulled-2026-05-15` transcripts: Sam McKenna Closing Time, Florin/30MPC showdown, Steli 1-2-3, Michael Seibel investor email.
-2. Lavender Benchmark Report + subject-line article + Inbox Triage.
+1. `pulled-2026-05-15` transcripts: Sam McKenna Closing Time, Florin/30MPC showdown, Steli 1-2-3, Michael Seibel investor email, Jason Bay reply-rate webinar, Jason Bay/Belal subject lines, and 30MPC 85M cold emails.
+2. Lavender Benchmark Report + subject-line article + Cold Email 101 + teardown #1. Do not use the older Inbox Triage URL until a replacement is found.
 3. Close cold-email follow-up plan + Hail Mary / dead-leads article + Follow-Up Formula PDF.
 4. Cognism State of Outbound 2026.
 5. Cialdini / Voss / Pink book layer for explicit psychology primitives.
@@ -204,6 +223,7 @@ Use this order for the next pass because it fills the biggest v1 gaps without ex
 ## Still Unresolved
 
 - Pick one specific current Lavender/Will Allred or `@trylavender` subject-line teardown video if a video transcript is required. The strongest currently confirmed Lavender source is the 2026 benchmark report by Will Allred, not a YouTube transcript.
+- Find the current replacement for the old Lavender Inbox Triage article; the listed help-center URL returned 404 on 2026-05-15.
 - Pick one specific Trent Dressel video for cold-call/objection handling. His channel is relevant, but the best cold-email-specific source was not resolved in this pass.
 - Resolve a canonical Mark Suster / Both Sides of the Table source for cold investor outreach or warm intro dynamics. The YC sources are stronger and already concrete.
 - Treat vendor blogs with performance claims as directional unless triangulated with primary data or multiple practitioner sources.

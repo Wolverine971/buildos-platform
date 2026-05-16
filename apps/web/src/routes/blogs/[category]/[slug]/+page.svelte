@@ -423,7 +423,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+	<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 		<!-- Breadcrumb -->
 		<nav
 			class="flex items-center gap-1.5 text-xs text-muted-foreground py-4 border-b border-border"
@@ -437,23 +437,25 @@
 
 		<!-- Article Header -->
 		<header class="pt-8 sm:pt-12 pb-6 sm:pb-8">
-			<div class="flex items-center gap-3 text-xs text-muted-foreground mb-4">
+			<div
+				class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground mb-4"
+			>
 				<span
-					class="px-2 py-0.5 bg-accent/10 text-accent rounded-full font-medium border border-accent/20"
+					class="shrink-0 px-2 py-0.5 bg-accent/10 text-accent rounded-full font-medium border border-accent/20"
 				>
 					{categoryDisplayName}
 				</span>
-				<span class="flex items-center gap-1">
+				<span class="flex shrink-0 items-center gap-1">
 					<Calendar class="w-3 h-3" />
 					Published {formattedDate}
 				</span>
 				{#if showUpdatedDate}
-					<span class="flex items-center gap-1">
+					<span class="flex shrink-0 items-center gap-1">
 						<History class="w-3 h-3" />
 						Updated {formattedLastmod}
 					</span>
 				{/if}
-				<span class="flex items-center gap-1">
+				<span class="flex shrink-0 items-center gap-1">
 					<Clock class="w-3 h-3" />
 					{data.post.readingTime} min read
 				</span>
@@ -473,15 +475,19 @@
 				{data.post.description}
 			</p>
 
-			<div class="mt-4 flex items-center justify-between">
-				<span class="text-xs text-muted-foreground">
+			<div
+				class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
+			>
+				<span
+					class="inline-flex shrink-0 whitespace-nowrap text-xs text-muted-foreground sm:pt-1"
+				>
 					By <span class="font-medium text-foreground"
 						>{data.post.author || 'BuildOS Team'}</span
 					>
 				</span>
 
 				{#if data.post.tags.length > 0}
-					<div class="flex flex-wrap gap-1.5">
+					<div class="flex min-w-0 flex-wrap gap-1.5 sm:justify-end">
 						{#each data.post.tags as tag}
 							<span
 								class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground"
@@ -642,7 +648,7 @@
 	<!-- Related Articles -->
 	{#if data.relatedPosts && data.relatedPosts.length > 0}
 		<section class="border-t border-border bg-muted/30 py-8 sm:py-10">
-			<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+			<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 				<h2 class="text-base font-semibold text-foreground mb-4">Related Articles</h2>
 
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
