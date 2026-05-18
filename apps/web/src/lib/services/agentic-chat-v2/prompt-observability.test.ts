@@ -1,7 +1,10 @@
 // apps/web/src/lib/services/agentic-chat-v2/prompt-observability.test.ts
 import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolDefinition, ChatToolResult } from '@buildos/shared-types';
-import { LITE_PROMPT_VARIANT } from '$lib/services/agentic-chat-lite/prompt';
+import {
+	buildLitePromptEnvelope,
+	LITE_PROMPT_VARIANT
+} from '$lib/services/agentic-chat-lite/prompt';
 import {
 	buildPromptSnapshotRow,
 	buildPromptSnapshotSections,
@@ -213,6 +216,52 @@ describe('prompt observability helpers', () => {
 		expect(breakdown.provider_payload_estimate.chars).toBeGreaterThan(
 			breakdown.model_messages.chars
 		);
+	});
+
+	it('estimates costs for current lite markdown prompt sections', () => {
+		const tools: ChatToolDefinition[] = [
+			{
+				type: 'function',
+				function: {
+					name: 'get_project_overview',
+					description: 'Get a compact project overview',
+					parameters: {
+						type: 'object',
+						properties: {
+							project_id: { type: 'string' }
+						}
+					}
+				}
+			}
+		];
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			projectId: 'project-123',
+			entityId: 'project-123',
+			projectName: 'Launch',
+			data: {
+				project: { id: 'project-123', name: 'Launch', state_key: 'active' },
+				tasks: [{ id: 'task-1', project_id: 'project-123', title: 'Ship telemetry fix' }]
+			},
+			tools
+		});
+
+		const breakdown = buildPromptCostBreakdown({
+			systemPrompt: envelope.systemPrompt,
+			history: [],
+			userMessage: 'What is the current prompt cost?',
+			tools
+		});
+
+		expect(breakdown.sections.capabilities_skills_tools.chars).toBeGreaterThan(0);
+		expect(breakdown.sections.operating_strategy.chars).toBeGreaterThan(0);
+		expect(breakdown.sections.safety_data_rules.chars).toBeGreaterThan(0);
+		expect(breakdown.sections.focus_purpose.chars).toBeGreaterThan(0);
+		expect(breakdown.sections.location_loaded_context.chars).toBeGreaterThan(0);
+		expect(breakdown.sections.context_inventory_retrieval.chars).toBeGreaterThan(0);
+		expect(breakdown.sections.skill_catalog.chars).toBeGreaterThan(0);
+		expect(breakdown.sections.tools_text_block.chars).toBeGreaterThan(0);
+		expect(breakdown.sections.context_payload.chars).toBeGreaterThan(0);
 	});
 
 	it('extracts canonical tool metadata for schema and direct tool calls', () => {

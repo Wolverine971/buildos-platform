@@ -4,12 +4,61 @@ const CLIENT_ERROR_REPORT_ENDPOINT = '/api/error-tracking/client';
 const KNOWN_NON_ACTIONABLE_PATHS = new Set([
 	'/.well-known/apple-app-site-association',
 	'/.well-known/assetlinks.json',
+	'/.well-known/ai-plugin.json',
+	'/.well-known/dnt-policy.txt',
+	'/.well-known/gpc.json',
+	'/.well-known/jwks.json',
+	'/.well-known/security.txt',
 	'/.well-known/traffic-advice',
+	'/.well-known/trust.txt',
 	'/.env',
+	'/.astro/manifest.json',
+	'/.next/build-manifest.json',
+	'/.vite/manifest.json',
+	'/__/firebase/init.json',
+	'/__env.js',
 	'/ads.txt',
+	'/api/openapi.json',
+	'/app-ads.txt',
+	'/app-config.json',
 	'/apple-app-site-association',
+	'/asset-manifest.json',
+	'/assets/manifest.json',
+	'/atom.xml',
+	'/build-manifest.json',
+	'/build/manifest.json',
+	'/config.js',
+	'/dist/.vite/manifest.json',
+	'/dist/manifest.json',
+	'/env.js',
+	'/env.json',
+	'/feed.xml',
+	'/feeds/all.atom.xml',
+	'/firebase-config.json',
+	'/firebase-service-account.json',
+	'/gcp-credentials.json',
+	'/google-credentials.json',
+	'/google-service-account.json',
+	'/index.xml',
+	'/key.json',
+	'/keys/service-account.json',
 	'/magento_version',
+	'/manifest.json',
+	'/manifest.webmanifest',
+	'/_next/build-manifest.json',
+	'/_next/static/buildmanifest.js',
+	'/_nuxt/builds/latest.json',
+	'/_nuxt/manifest.json',
 	'/release_notes.txt',
+	'/runtime-config.js',
+	'/sa.json',
+	'/service-account.json',
+	'/serviceaccountkey.json',
+	'/settings.json',
+	'/static/manifest.json',
+	'/stats.json',
+	'/swagger.json',
+	'/webpack-stats.json',
 	'/wp-login.php',
 	'/xmlrpc.php'
 ]);
@@ -22,6 +71,20 @@ const KNOWN_NON_ACTIONABLE_SUBSTRINGS = [
 	'/wp-content/',
 	'/wp-json/',
 	'/wordpress/'
+];
+
+const KNOWN_NON_ACTIONABLE_PATTERNS = [
+	/^\/api\/(?:swagger|openapi)\.(?:json|ya?ml)$/i,
+	/^\/(?:__env|env|runtime-config|app-config|firebase-config|settings)\.(?:js|json)$/i,
+	/^\/(?:keys\/)?(?:service-account|serviceaccountkey|firebase-service-account|google-service-account|google-credentials|gcp-credentials|key|sa)\.json$/i,
+	/^\/(?:assets\/|static\/|dist\/|build\/)?(?:asset-)?manifest\.json$/i,
+	/^\/(?:_next|\.next)\/(?:build-manifest\.json|static\/buildmanifest\.js)$/i,
+	/^\/(?:_nuxt|\.nuxt)\/(?:manifest\.json|builds\/latest\.json)$/i,
+	/^\/(?:\.astro|\.vite|dist\/\.vite)\/manifest\.json$/i,
+	/^\/(?:webpack-stats|stats)\.json$/i,
+	/^\/(?:feed|atom|index)\.xml$/i,
+	/^\/feeds\/[^/]+\.atom\.xml$/i,
+	/^\/\.well-known\/(?:ai-plugin|dnt-policy|gpc|jwks|security|trust)\.(?:json|txt)$/i
 ];
 
 const PRIVATE_CONFIG_PROBE_PREFIXES = [
@@ -164,6 +227,10 @@ export function isIgnorableProbePath(pathname: string | null | undefined): boole
 	}
 
 	if (KNOWN_NON_ACTIONABLE_PATHS.has(lowerPath)) {
+		return true;
+	}
+
+	if (KNOWN_NON_ACTIONABLE_PATTERNS.some((pattern) => pattern.test(lowerPath))) {
 		return true;
 	}
 

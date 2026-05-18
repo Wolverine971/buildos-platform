@@ -12,6 +12,8 @@ import {
 import { GATEWAY_TOOL_DEFINITIONS } from './definitions/gateway';
 
 const GATEWAY_DISCOVERY_TOOL_NAMES = [
+	'domain_search',
+	'skill_search',
 	'skill_load',
 	'skill_reference_load',
 	'libri_overview',

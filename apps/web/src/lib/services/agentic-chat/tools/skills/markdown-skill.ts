@@ -17,6 +17,7 @@ type MarkdownSkillFrontmatter = {
 	description?: unknown;
 	parent_id?: unknown;
 	depth?: unknown;
+	preserve_markdown?: unknown;
 	legacy_paths?: unknown;
 	child_skills?: unknown;
 	reference_modules?: unknown;
@@ -105,6 +106,12 @@ function parseOptionalNumber(value: unknown): number | undefined {
 	return Number.isFinite(parsed) ? parsed : undefined;
 }
 
+function parseOptionalBoolean(value: unknown): boolean {
+	if (typeof value === 'boolean') return value;
+	if (typeof value !== 'string') return false;
+	return value.trim().toLowerCase() === 'true';
+}
+
 function parseVisibility(value: unknown): SkillResourceVisibility | undefined {
 	const normalized = parseOptionalString(value);
 	return normalized === 'public' || normalized === 'internal' ? normalized : undefined;
@@ -191,6 +198,16 @@ function parseRelatedOps(lines: string[]): string[] {
 			return typeof codeValue === 'string' ? codeValue.trim() : item.trim();
 		})
 		.filter((item) => item.length > 0);
+}
+
+function parseWorkflowSections(sections: Record<string, string[]>): string[] {
+	const directWorkflow = parseOrderedList(sections['workflow'] ?? []);
+	if (directWorkflow.length > 0) return directWorkflow;
+
+	return Object.entries(sections).flatMap(([heading, lines]) => {
+		if (!heading.startsWith('workflow') && !heading.endsWith('workflow')) return [];
+		return parseOrderedList(lines);
+	});
 }
 
 function parseExamples(lines: string[]): SkillExample[] {
@@ -285,10 +302,12 @@ export function defineMarkdownSkill({ id, markdown }: MarkdownSkillOptions): Ski
 		name: frontmatter.name.trim(),
 		summary: frontmatter.description.trim(),
 		bodyLineCount: body.split(/\r?\n/).length,
+		sourceMarkdown: body,
+		preserveMarkdown: parseOptionalBoolean(frontmatter.preserve_markdown),
 		legacyPaths: parseStringArray(frontmatter.legacy_paths),
 		relatedOps: parseRelatedOps(sections['related tools'] ?? []),
 		whenToUse: parseBulletList(sections['when to use'] ?? []),
-		workflow: parseOrderedList(sections['workflow'] ?? []),
+		workflow: parseWorkflowSections(sections),
 		guardrails: guardrails.length > 0 ? guardrails : undefined,
 		examples: examples.length > 0 ? examples : undefined,
 		notes: notes.length > 0 ? notes : undefined

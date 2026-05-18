@@ -80,6 +80,16 @@ describe('round analysis helpers', () => {
 
 	it('excludes pure gateway-discovery tools from read-op counting', () => {
 		const pattern = buildRoundToolPattern([
+			createToolCall('domain_search', { query: 'linkedin company page growth' }),
+			createToolCall('domain_load', { domain: 'marketing.linkedin_company_page_growth' }),
+			createToolCall('skill_search', { domain: 'marketing.youtube_growth', query: 'script' }),
+			createToolCall('resource_search', {
+				domain: 'product_and_design.ui_ux_quality',
+				query: 'source map'
+			}),
+			createToolCall('resource_load', {
+				resource: 'build_quality_ui_ux.source_map'
+			}),
 			createToolCall('tool_search', { query: 'search project' }),
 			createToolCall('tool_schema', { op: 'x.search.project' }),
 			createToolCall('skill_load', { id: 'plan_management' }),

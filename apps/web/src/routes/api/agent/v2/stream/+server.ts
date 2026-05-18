@@ -85,6 +85,16 @@ import {
 	type LitePromptVariant
 } from '$lib/services/agentic-chat-lite/prompt';
 import {
+	renderDomainSensingPromptBlock,
+	senseDomains
+} from '$lib/services/agentic-chat/tools/domains/domain-sensing';
+import {
+	getActiveDomainIds,
+	getNewDomainResearchBacklogEntries,
+	mergeDomainSessionState,
+	readDomainSessionState
+} from '$lib/services/agentic-chat/tools/domains/domain-session-state';
+import {
 	buildEntityResolutionHint,
 	extractExplicitEntityMentionsFromText
 } from '$lib/services/agentic-chat-v2/entity-resolution';
@@ -3686,6 +3696,16 @@ export const POST: RequestHandler = async ({
 			const conversationSummary =
 				typeof session.summary === 'string' ? session.summary : null;
 			const sessionMetadata = (session.agent_metadata ?? {}) as Record<string, any>;
+			const previousDomainState = readDomainSessionState(
+				sessionMetadata.fastchat_domain_state
+			);
+			const priorDomainIds = getActiveDomainIds(previousDomainState);
+			const turnDomainSensing = senseDomains({
+				currentUserMessage: messageForModel,
+				conversationSummary,
+				priorDomainIds,
+				limit: 3
+			});
 			const recentContextShiftHint = readRecentContextShiftHint(sessionMetadata);
 			const bypassContextCacheForShiftHint = shouldBypassContextCacheForShiftHint({
 				requestContextType: contextType,
@@ -4217,9 +4237,73 @@ export const POST: RequestHandler = async ({
 						...promptContext,
 						tools,
 						productSurface: FASTCHAT_STREAM_ENDPOINT,
-						conversationPosition: `live stream turn ${streamRunId}`
+						conversationPosition: `live stream turn ${streamRunId}`,
+						currentUserMessage: messageForModel,
+						priorDomainIds,
+						domainSensingResult: turnDomainSensing
 					});
 					systemPrompt = litePromptEnvelope.systemPrompt;
+				} else {
+					const domainPromptBlock = renderDomainSensingPromptBlock(turnDomainSensing);
+					if (domainPromptBlock && !systemPrompt.includes('## Active Domain Signals')) {
+						systemPrompt = `${systemPrompt}\n\n${domainPromptBlock}`;
+						if (litePromptEnvelope) {
+							litePromptEnvelope = {
+								...litePromptEnvelope,
+								systemPrompt
+							};
+						}
+					}
+				}
+
+				if (turnDomainSensing) {
+					const nextDomainState = mergeDomainSessionState(
+						previousDomainState,
+						turnDomainSensing,
+						{
+							turnRunId,
+							streamRunId,
+							now: new Date()
+						}
+					);
+					void updateAgentMetadata(
+						supabase,
+						session.id,
+						{
+							fastchat_domain_state: nextDomainState
+						},
+						{
+							errorLogger,
+							userId,
+							projectId: projectIdForLogs
+						}
+					);
+					const newResearchBacklogEntries = getNewDomainResearchBacklogEntries(
+						nextDomainState,
+						previousDomainState
+					);
+					recordTurnEvent('prompt', 'domain_sensing_applied', {
+						source: turnDomainSensing.source,
+						domain_ids: turnDomainSensing.active_domains.map((domain) => domain.id),
+						recommended_skill_ids: turnDomainSensing.recommended_skill_ids,
+						coverage_gap_skill_ids: turnDomainSensing.coverage_gap_skill_ids,
+						coverage_gap_resource_ids: turnDomainSensing.coverage_gap_resource_ids,
+						research_backlog_ids: nextDomainState.research_backlog.map(
+							(entry) => entry.id
+						)
+					} as Json);
+					if (newResearchBacklogEntries.length > 0) {
+						recordTurnEvent('prompt', 'domain_research_backlog_queued', {
+							entries: newResearchBacklogEntries.map((entry) => ({
+								id: entry.id,
+								kind: entry.kind,
+								priority: entry.priority,
+								domain_ids: entry.domain_ids,
+								missing_skill_id: entry.missing_skill_id ?? null,
+								missing_resource_id: entry.missing_resource_id ?? null
+							}))
+						} as Json);
+					}
 				}
 
 				if (liveVisionRequested && chatAttachmentAssets.length > 0) {

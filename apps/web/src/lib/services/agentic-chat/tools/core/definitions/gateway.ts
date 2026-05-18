@@ -12,6 +12,93 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	{
 		type: 'function',
 		function: {
+			name: 'domain_search',
+			description: 'Find subject domains.',
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'domain_load',
+			description: 'Load one domain card.',
+			parameters: {
+				type: 'object',
+				properties: {
+					domain: {
+						type: 'string',
+						description: 'Domain id.'
+					}
+				},
+				required: ['domain']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'skill_search',
+			description: 'Find BuildOS skills.',
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string'
+					},
+					domain: {
+						type: 'string'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'resource_search',
+			description: 'Find domain resources.',
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string'
+					},
+					domain: {
+						type: 'string'
+					},
+					skill: {
+						type: 'string'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'resource_load',
+			description: 'Load one resource.',
+			parameters: {
+				type: 'object',
+				properties: {
+					resource: {
+						type: 'string'
+					}
+				},
+				required: ['resource']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
 			name: 'skill_load',
 			description:
 				'Load one BuildOS skill playbook by skill id. Use this when the task is multi-step, stateful, or easy to get wrong and you need workflow guidance before choosing tools.',

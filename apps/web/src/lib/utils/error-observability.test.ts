@@ -33,7 +33,24 @@ describe('error observability filters', () => {
 		expect(isIgnorableProbePath('/.well-known/traffic-advice')).toBe(true);
 		expect(isIgnorableProbePath('/ads.txt')).toBe(true);
 		expect(isIgnorableProbePath('/wp-json/gravitysmtp/v1/tests/mock-data')).toBe(true);
+		expect(isIgnorableProbePath('/env.json')).toBe(true);
+		expect(isIgnorableProbePath('/__env.js')).toBe(true);
+		expect(isIgnorableProbePath('/runtime-config.js')).toBe(true);
+		expect(isIgnorableProbePath('/__/firebase/init.json')).toBe(true);
+		expect(isIgnorableProbePath('/firebase-config.json')).toBe(true);
+		expect(isIgnorableProbePath('/api/openapi.json')).toBe(true);
+		expect(isIgnorableProbePath('/swagger.json')).toBe(true);
+		expect(isIgnorableProbePath('/.well-known/jwks.json')).toBe(true);
+		expect(isIgnorableProbePath('/keys/service-account.json')).toBe(true);
+		expect(isIgnorableProbePath('/serviceAccountKey.json')).toBe(true);
+		expect(isIgnorableProbePath('/_next/static/buildManifest.js')).toBe(true);
+		expect(isIgnorableProbePath('/_nuxt/builds/latest.json')).toBe(true);
+		expect(isIgnorableProbePath('/manifest.webmanifest')).toBe(true);
+		expect(isIgnorableProbePath('/feed.xml')).toBe(true);
+		expect(isIgnorableProbePath('/.well-known/security.txt')).toBe(true);
 		expect(isIgnorableProbePath('/brain-bolt-80.png')).toBe(false);
+		expect(isIgnorableProbePath('/site.webmanifest')).toBe(false);
+		expect(isIgnorableProbePath('/openapi.json')).toBe(false);
 	});
 
 	it('recognizes private config probe paths without treating normal assets as probes', () => {
@@ -92,6 +109,24 @@ describe('error observability filters', () => {
 		expect(
 			shouldPersistGenericErrorEvent({
 				operation: 'hooks.handle_error',
+				pathname: '/env.json',
+				status: 404,
+				routeId: null
+			})
+		).toBe(false);
+
+		expect(
+			shouldPersistGenericErrorEvent({
+				operation: 'hooks.handle_error',
+				pathname: '/_next/static/buildManifest.js',
+				status: 404,
+				routeId: null
+			})
+		).toBe(false);
+
+		expect(
+			shouldPersistGenericErrorEvent({
+				operation: 'hooks.handle_error',
 				pathname: '/brain-bolt-80.png',
 				status: 404,
 				routeId: null
@@ -127,6 +162,17 @@ describe('error observability filters', () => {
 			shouldDisplayPersistedErrorLog({
 				endpoint: '/wp-admin/setup-config.php',
 				error_message: 'Not found: /wp-admin/setup-config.php',
+				operation_type: 'hooks.handle_error',
+				metadata: {
+					routeId: null
+				}
+			})
+		).toBe(false);
+
+		expect(
+			shouldDisplayPersistedErrorLog({
+				endpoint: '/env.json',
+				error_message: 'Not found: /env.json',
 				operation_type: 'hooks.handle_error',
 				metadata: {
 					routeId: null

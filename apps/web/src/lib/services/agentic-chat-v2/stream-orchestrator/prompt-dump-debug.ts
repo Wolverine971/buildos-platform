@@ -253,6 +253,16 @@ function formatLitePromptDumpBlock(debugContext?: FastChatDebugContext): string[
 
 function formatPromptCostBreakdown(cost: PromptCostBreakdown): string[] {
 	const sectionOrder = [
+		'lite_preamble',
+		'identity_mission',
+		'capabilities_skills_tools',
+		'tool_surface_dynamic',
+		'operating_strategy',
+		'safety_data_rules',
+		'focus_purpose',
+		'location_loaded_context',
+		'timeline_recent_activity',
+		'context_inventory_retrieval',
 		'instructions',
 		'context',
 		'tools_text_block',
@@ -265,6 +275,12 @@ function formatPromptCostBreakdown(cost: PromptCostBreakdown): string[] {
 		'history',
 		'user'
 	];
+	const orderedKeys = [
+		...sectionOrder,
+		...Object.keys(cost.sections)
+			.filter((key) => !sectionOrder.includes(key))
+			.sort((a, b) => a.localeCompare(b))
+	];
 
 	return [
 		formatPromptCostLine('system_prompt', cost.system_prompt),
@@ -273,7 +289,7 @@ function formatPromptCostBreakdown(cost: PromptCostBreakdown): string[] {
 		formatPromptCostLine('provider_payload_estimate', cost.provider_payload_estimate),
 		'',
 		'Sections:',
-		...sectionOrder.map((key) =>
+		...orderedKeys.map((key) =>
 			formatPromptCostLine(`  ${key}`, cost.sections[key] ?? { chars: 0, est_tokens: 0 })
 		)
 	];

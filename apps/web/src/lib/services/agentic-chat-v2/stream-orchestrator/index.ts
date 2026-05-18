@@ -124,7 +124,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		params.systemPrompt ??
 		buildLitePromptEnvelope({
 			contextType: normalizedContext,
-			entityId: entityId ?? null
+			entityId: entityId ?? null,
+			currentUserMessage: message
 		}).systemPrompt;
 
 	const messages: FastChatModelMessage[] = [
@@ -307,7 +308,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		);
 		messages.push({
 			role: 'system',
-			content: `${reason} Direct tools now available for the rest of this turn: ${materialized.addedToolNames.join(', ')}. Call them directly by name.`
+			content: `${reason} Additional tools now available for the rest of this turn: ${materialized.addedToolNames.join(', ')}. Call them directly by name.`
 		});
 		return materialized.addedToolNames;
 	};

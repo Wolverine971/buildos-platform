@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-lite/prompt/types.ts
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
+import type { DomainSensingResult } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 
 /**
  * Shared context shape used by both the Lite prompt builder and the data loaders
@@ -29,6 +30,7 @@ export type LitePromptSectionId =
 	| 'operating_strategy'
 	| 'safety_data_rules'
 	| 'capabilities_skills_tools'
+	| 'active_domain_signals'
 	| 'focus_purpose'
 	| 'location_loaded_context'
 	| 'timeline_recent_activity'
@@ -141,6 +143,9 @@ export type LitePromptInput = MasterPromptContext & {
 	timezone?: string | null;
 	productSurface?: string | null;
 	conversationPosition?: string | null;
+	currentUserMessage?: string | null;
+	priorDomainIds?: string[] | null;
+	domainSensingResult?: DomainSensingResult | null;
 	retrievalMap?: LitePromptRetrievalMapInput | null;
 	tools?: ChatToolDefinition[] | null;
 };

@@ -22,8 +22,13 @@ export function buildToolPayloadForModel(
 
 	const toolName = toolCall.function?.name?.trim();
 	if (
+		toolName === 'domain_search' ||
+		toolName === 'domain_load' ||
 		toolName === 'tool_schema' ||
 		toolName === 'tool_search' ||
+		toolName === 'skill_search' ||
+		toolName === 'resource_search' ||
+		toolName === 'resource_load' ||
 		toolName === 'skill_load' ||
 		toolName === 'skill_reference_load'
 	) {
@@ -151,6 +156,159 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 			},
 			MAX_MODEL_SKILL_PAYLOAD_CHARS
 		);
+	}
+
+	if (type === 'domain_search_results') {
+		return applyToolPayloadSizeGuard({
+			type,
+			query: record.query,
+			total_matches: record.total_matches,
+			materialized_tools: Array.isArray(record.materialized_tools)
+				? record.materialized_tools.slice(0, 4)
+				: [],
+			matches: Array.isArray(record.matches)
+				? record.matches.slice(0, 8).map((match: Record<string, any>) => ({
+						domain_id: match?.domain_id,
+						name: match?.name,
+						confidence: match?.confidence,
+						coverage_status: match?.coverage_status,
+						parent_ids: Array.isArray(match?.parent_ids)
+							? match.parent_ids.slice(0, 4)
+							: [],
+						aliases_hit: Array.isArray(match?.aliases_hit)
+							? match.aliases_hit.slice(0, 5)
+							: [],
+						skill_ids: Array.isArray(match?.skill_ids)
+							? match.skill_ids.slice(0, 10)
+							: [],
+						related_domain_ids: Array.isArray(match?.related_domain_ids)
+							? match.related_domain_ids.slice(0, 6)
+							: [],
+						next_step: match?.next_step
+					}))
+				: [],
+			next_step: record.next_step
+		});
+	}
+
+	if (type === 'domain') {
+		return applyToolPayloadSizeGuard({
+			type,
+			domain_id: record.domain_id,
+			name: record.name,
+			summary: record.summary,
+			coverage_status: record.coverage_status,
+			parent_ids: Array.isArray(record.parent_ids) ? record.parent_ids.slice(0, 4) : [],
+			child_domains: Array.isArray(record.child_domains)
+				? record.child_domains.slice(0, 8)
+				: [],
+			related_domain_ids: Array.isArray(record.related_domain_ids)
+				? record.related_domain_ids.slice(0, 8)
+				: [],
+			boundaries: Array.isArray(record.boundaries) ? record.boundaries.slice(0, 8) : [],
+			capability_ids: Array.isArray(record.capability_ids)
+				? record.capability_ids.slice(0, 8)
+				: [],
+			skills: Array.isArray(record.skills) ? record.skills.slice(0, 12) : [],
+			recommended_skill_stacks: Array.isArray(record.recommended_skill_stacks)
+				? record.recommended_skill_stacks.slice(0, 6).map((stack: Record<string, any>) => ({
+						id: stack?.id,
+						name: stack?.name,
+						use_when: stack?.use_when,
+						skill_ids: Array.isArray(stack?.skill_ids)
+							? stack.skill_ids.slice(0, 8)
+							: []
+					}))
+				: [],
+			resources: Array.isArray(record.resources) ? record.resources.slice(0, 8) : [],
+			gaps: Array.isArray(record.gaps) ? record.gaps.slice(0, 8) : [],
+			notes: Array.isArray(record.notes) ? record.notes.slice(0, 6) : [],
+			materialized_tools: Array.isArray(record.materialized_tools)
+				? record.materialized_tools.slice(0, 4)
+				: [],
+			next_step: record.next_step
+		});
+	}
+
+	if (type === 'skill_search_results') {
+		return applyToolPayloadSizeGuard({
+			type,
+			query: record.query,
+			filters: record.filters,
+			total_matches: record.total_matches,
+			matches: Array.isArray(record.matches)
+				? record.matches.slice(0, 8).map((match: Record<string, any>) => ({
+						skill_id: match?.skill_id,
+						name: match?.name,
+						parent_id: match?.parent_id,
+						depth: match?.depth,
+						confidence: match?.confidence,
+						summary:
+							typeof match?.summary === 'string'
+								? toTextPreview(match.summary, 260)
+								: match?.summary,
+						when_to_use: Array.isArray(match?.when_to_use)
+							? match.when_to_use.slice(0, 4)
+							: [],
+						related_ops: Array.isArray(match?.related_ops)
+							? match.related_ops.slice(0, 8)
+							: [],
+						load_hint: match?.load_hint
+					}))
+				: [],
+			next_step: record.next_step
+		});
+	}
+
+	if (type === 'resource_search_results') {
+		return applyToolPayloadSizeGuard({
+			type,
+			query: record.query,
+			filters: record.filters,
+			total_matches: record.total_matches,
+			materialized_tools: Array.isArray(record.materialized_tools)
+				? record.materialized_tools.slice(0, 4)
+				: [],
+			matches: Array.isArray(record.matches)
+				? record.matches.slice(0, 8).map((match: Record<string, any>) => ({
+						resource_id: match?.resource_id,
+						kind: match?.kind,
+						title: match?.title,
+						confidence: match?.confidence,
+						summary:
+							typeof match?.summary === 'string'
+								? toTextPreview(match.summary, 260)
+								: match?.summary,
+						when_to_load: Array.isArray(match?.when_to_load)
+							? match.when_to_load.slice(0, 4)
+							: [],
+						domain_ids: Array.isArray(match?.domain_ids)
+							? match.domain_ids.slice(0, 6)
+							: [],
+						skill_ids: Array.isArray(match?.skill_ids)
+							? match.skill_ids.slice(0, 6)
+							: [],
+						skill_id: match?.skill_id,
+						path: match?.path,
+						visibility: match?.visibility
+					}))
+				: [],
+			next_step: record.next_step
+		});
+	}
+
+	if (type === 'resource') {
+		return applyToolPayloadSizeGuard({
+			type,
+			resource_id: record.resource_id,
+			kind: record.kind,
+			title: record.title,
+			summary: record.summary,
+			when_to_load: Array.isArray(record.when_to_load) ? record.when_to_load.slice(0, 6) : [],
+			domain_ids: Array.isArray(record.domain_ids) ? record.domain_ids.slice(0, 6) : [],
+			skill_ids: Array.isArray(record.skill_ids) ? record.skill_ids.slice(0, 6) : [],
+			message: record.message
+		});
 	}
 
 	if (type === 'capability') {

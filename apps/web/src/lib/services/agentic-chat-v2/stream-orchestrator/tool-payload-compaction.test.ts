@@ -258,4 +258,171 @@ describe('buildToolPayloadForModel', () => {
 		expect(payload.content.length).toBeGreaterThan(1200);
 		expect(payload.content).toContain('Include state_key when progress changed.');
 	});
+
+	it('preserves compact domain discovery metadata', () => {
+		const payload = buildToolPayloadForModel(
+			toolCall('domain_load'),
+			toolResult({
+				type: 'domain',
+				domain_id: 'marketing.linkedin_company_page_growth',
+				name: 'LinkedIn Company Page Growth',
+				summary: 'Grow a LinkedIn Company Page.',
+				coverage_status: 'strong',
+				parent_ids: ['marketing'],
+				child_domains: [],
+				related_domain_ids: ['sales_and_growth'],
+				boundaries: ['Company Pages, not primarily personal accounts.'],
+				capability_ids: ['planning', 'web_research'],
+				skills: [
+					{
+						id: 'linkedin_company_page_growth',
+						use_when: 'Company Page growth work'
+					}
+				],
+				recommended_skill_stacks: [
+					{
+						id: 'linkedin_growth_plan',
+						name: 'LinkedIn Growth Plan',
+						use_when: 'Planning a Page growth motion',
+						skill_ids: ['linkedin_company_page_growth']
+					}
+				],
+				resources: [],
+				gaps: [],
+				materialized_tools: ['resource_search'],
+				next_step: 'Load a linked skill only when needed.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload).toMatchObject({
+			type: 'domain',
+			domain_id: 'marketing.linkedin_company_page_growth',
+			coverage_status: 'strong'
+		});
+		expect(payload.skills[0]).toEqual(
+			expect.objectContaining({ id: 'linkedin_company_page_growth' })
+		);
+		expect(payload.recommended_skill_stacks[0]).toEqual(
+			expect.objectContaining({ id: 'linkedin_growth_plan' })
+		);
+		expect(payload.materialized_tools).toEqual(['resource_search']);
+		expect(payload.boundaries[0]).toContain('Company Pages');
+	});
+
+	it('preserves compact skill search metadata', () => {
+		const payload = buildToolPayloadForModel(
+			toolCall('skill_search'),
+			toolResult({
+				type: 'skill_search_results',
+				query: 'video script',
+				filters: {
+					domain: 'marketing.youtube_growth'
+				},
+				total_matches: 1,
+				matches: [
+					{
+						skill_id: 'viral_video_script_structure',
+						name: 'Viral Video Script Structure',
+						parent_id: 'content_strategy_beyond_blogging',
+						depth: 1,
+						confidence: 0.82,
+						summary: 'Write or audit video scripts.'.repeat(40),
+						when_to_use: ['When scripting videos.'],
+						related_ops: [],
+						load_hint: 'Load only when this child skill is the specific needed lens.'
+					}
+				],
+				next_step: 'Pick the most relevant root skill by default.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload).toMatchObject({
+			type: 'skill_search_results',
+			query: 'video script'
+		});
+		expect(payload.matches[0]).toEqual(
+			expect.objectContaining({
+				skill_id: 'viral_video_script_structure',
+				parent_id: 'content_strategy_beyond_blogging'
+			})
+		);
+		expect(payload.matches[0].summary.length).toBeLessThan(320);
+	});
+
+	it('preserves compact resource search metadata', () => {
+		const payload = buildToolPayloadForModel(
+			toolCall('resource_search'),
+			toolResult({
+				type: 'resource_search_results',
+				query: 'source map',
+				filters: {
+					domain: 'product_and_design.ui_ux_quality'
+				},
+				total_matches: 1,
+				materialized_tools: ['resource_load'],
+				matches: [
+					{
+						resource_id: 'build_quality_ui_ux.source_map',
+						kind: 'skill_reference',
+						title: 'UI/UX Source Map',
+						confidence: 0.72,
+						summary: 'Source inventory and provenance.'.repeat(40),
+						when_to_load: ['When checking source provenance.'],
+						domain_ids: ['product_and_design.ui_ux_quality'],
+						skill_ids: ['build_quality_ui_ux'],
+						skill_id: 'build_quality_ui_ux',
+						path: 'references/source-map.md',
+						visibility: 'internal'
+					}
+				],
+				next_step: 'Load only when source detail would change the answer.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload).toMatchObject({
+			type: 'resource_search_results',
+			query: 'source map',
+			materialized_tools: ['resource_load']
+		});
+		expect(payload.matches[0]).toEqual(
+			expect.objectContaining({
+				resource_id: 'build_quality_ui_ux.source_map',
+				kind: 'skill_reference',
+				skill_id: 'build_quality_ui_ux',
+				visibility: 'internal'
+			})
+		);
+		expect(payload.matches[0].summary.length).toBeLessThan(320);
+	});
+
+	it('preserves compact domain resource metadata', () => {
+		const payload = buildToolPayloadForModel(
+			toolCall('resource_load'),
+			toolResult({
+				type: 'resource',
+				resource_id: 'youtube_library.marketing_and_content_combo_index',
+				kind: 'domain_resource',
+				title: 'Marketing and Content Skill Combo Index',
+				summary: 'Internal source map for marketing/content skill coverage.',
+				when_to_load: ['When expanding the marketing/content skill family.'],
+				domain_ids: ['marketing.content_strategy'],
+				skill_ids: ['content_strategy_beyond_blogging'],
+				message:
+					'This resource is indexed for routing, but no bundled content loader is registered yet.',
+				extra_large_field: 'x'.repeat(2000)
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload).toMatchObject({
+			type: 'resource',
+			resource_id: 'youtube_library.marketing_and_content_combo_index',
+			kind: 'domain_resource'
+		});
+		expect(payload.message).toContain('indexed for routing');
+		expect(JSON.stringify(payload)).not.toContain('extra_large_field');
+	});
 });

@@ -20,8 +20,13 @@ describe('exact-entity-id helpers', () => {
 	it('does not mine referents from schema/search/skill meta-tools', () => {
 		expect(shouldCollectExactEntityReferencesFromToolName('update_onto_task')).toBe(true);
 		expect(shouldCollectExactEntityReferencesFromToolName('create_onto_document')).toBe(true);
+		expect(shouldCollectExactEntityReferencesFromToolName('domain_search')).toBe(false);
+		expect(shouldCollectExactEntityReferencesFromToolName('domain_load')).toBe(false);
 		expect(shouldCollectExactEntityReferencesFromToolName('tool_schema')).toBe(false);
 		expect(shouldCollectExactEntityReferencesFromToolName('tool_search')).toBe(false);
+		expect(shouldCollectExactEntityReferencesFromToolName('skill_search')).toBe(false);
+		expect(shouldCollectExactEntityReferencesFromToolName('resource_search')).toBe(false);
+		expect(shouldCollectExactEntityReferencesFromToolName('resource_load')).toBe(false);
 		expect(shouldCollectExactEntityReferencesFromToolName('skill_load')).toBe(false);
 		expect(shouldCollectExactEntityReferencesFromToolName('skill_reference_load')).toBe(false);
 	});

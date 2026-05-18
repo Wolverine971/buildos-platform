@@ -251,6 +251,54 @@ describe('skill loading', () => {
 		expect(result.markdown).toContain('linkedin_company_page_growth.playbook');
 	});
 
+	it('registers marketing content as one root skill with loadable child playbooks', () => {
+		const root = getSkillById('content_strategy_beyond_blogging');
+
+		expect(root).toBeDefined();
+		expect(root?.name).toBe('Content Strategy Beyond Blogging');
+		expect(root?.legacyPaths).toEqual(
+			expect.arrayContaining(['content-strategy-beyond-blogging'])
+		);
+		expect(listRootSkills().map((skill) => skill.id)).toContain(
+			'content_strategy_beyond_blogging'
+		);
+		expect(listRootSkills().map((skill) => skill.id)).not.toContain('hook_craft_short_form');
+
+		const childIds = listChildSkillsForSkill('content_strategy_beyond_blogging').map(
+			(skill) => skill.id
+		);
+		expect(childIds).toEqual(
+			expect.arrayContaining([
+				'hook_craft_short_form',
+				'viral_video_script_structure',
+				'story_driven_content_craft',
+				'algorithm_aware_publishing'
+			])
+		);
+
+		const rootPayload = loadSkill('content-strategy-beyond-blogging', {
+			format: 'full',
+			include_examples: true
+		}) as Record<string, unknown>;
+
+		expect(rootPayload.type).toBe('skill');
+		expect(rootPayload.id).toBe('content_strategy_beyond_blogging');
+		expect(rootPayload.markdown).toContain('## Core Principles');
+		expect(rootPayload.markdown).toContain('## Strategy Workflow');
+		expect(rootPayload.markdown).toContain('## Child Skills');
+		expect(rootPayload.markdown).toContain('hook_craft_short_form');
+
+		const childPayload = loadSkill('hook-craft-short-form', {
+			format: 'full',
+			include_examples: true
+		}) as Record<string, unknown>;
+
+		expect(childPayload.type).toBe('skill');
+		expect(childPayload.parent_id).toBe('content_strategy_beyond_blogging');
+		expect(childPayload.depth).toBe(1);
+		expect(childPayload.markdown).toContain('## The Four Pillars');
+	});
+
 	it('registers UI/UX child skills with the root parent id', () => {
 		const designSystem = getSkillById('design_system_architecture_review');
 

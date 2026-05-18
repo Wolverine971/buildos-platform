@@ -33,6 +33,9 @@ import type { ChatMessage, ChatToolCall, ChatToolDefinition } from '@buildos/sha
 import { CHAT_TOOL_DEFINITIONS, TOOL_METADATA } from '../tools/core/definitions';
 import { searchToolRegistry } from '../tools/registry/tool-search';
 import { getToolSchema } from '../tools/registry/tool-schema';
+import { loadDomain, searchDomains } from '../tools/domains/domain-load';
+import { loadResource, searchResources } from '../tools/resources/resource-registry';
+import { searchSkills } from '../tools/skills/skill-search';
 import {
 	normalizeProjectCreateArgs,
 	validateProjectCreateArgs
@@ -53,6 +56,11 @@ import {
 
 const logger = createLogger('ToolExecutionService');
 const GATEWAY_TOOL_NAMES = new Set([
+	'domain_search',
+	'domain_load',
+	'skill_search',
+	'resource_search',
+	'resource_load',
 	'skill_load',
 	'skill_reference_load',
 	'tool_search',
@@ -667,6 +675,60 @@ export class ToolExecutionService implements BaseService {
 		availableTools: ChatToolDefinition[],
 		options: ToolExecutionOptions
 	): Promise<ToolExecutionResult> {
+		if (toolName === 'domain_search') {
+			const result = searchDomains({
+				query: typeof args.query === 'string' ? args.query : undefined,
+				limit: typeof args.limit === 'number' ? args.limit : undefined
+			});
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'domain_load') {
+			const domain =
+				typeof args.domain === 'string'
+					? args.domain
+					: typeof args.id === 'string'
+						? args.id
+						: typeof args.domain_id === 'string'
+							? args.domain_id
+							: '';
+			const result = loadDomain(domain);
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'skill_search') {
+			const result = searchSkills({
+				query: typeof args.query === 'string' ? args.query : undefined,
+				domain: typeof args.domain === 'string' ? args.domain : undefined,
+				capability: typeof args.capability === 'string' ? args.capability : undefined,
+				limit: typeof args.limit === 'number' ? args.limit : undefined
+			});
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'resource_search') {
+			const result = searchResources({
+				query: typeof args.query === 'string' ? args.query : undefined,
+				domain: typeof args.domain === 'string' ? args.domain : undefined,
+				skill: typeof args.skill === 'string' ? args.skill : undefined,
+				limit: typeof args.limit === 'number' ? args.limit : undefined
+			});
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'resource_load') {
+			const resource =
+				typeof args.resource === 'string'
+					? args.resource
+					: typeof args.id === 'string'
+						? args.id
+						: typeof args.resource_id === 'string'
+							? args.resource_id
+							: '';
+			const result = loadResource(resource);
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
 		if (toolName === 'skill_load') {
 			const skill =
 				typeof args.skill === 'string'

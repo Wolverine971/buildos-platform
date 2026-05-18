@@ -115,9 +115,10 @@ describe('buildLitePromptEnvelope', () => {
 			'You are a proactive project assistant for BuildOS'
 		);
 		expect(envelope.systemPrompt).toContain(
-			'Think in three layers. They work together in sequence:'
+			'Think in five layers. They work together in sequence:'
 		);
 		expect(envelope.systemPrompt).toContain('Loaded scope:');
+		expect(envelope.systemPrompt).not.toContain('## Active Domain Signals');
 		expect(envelope.systemPrompt).toContain('Actionable loaded context index (bounded):');
 		expect(envelope.systemPrompt).not.toContain('Loaded context payload');
 		expect(envelope.systemPrompt).not.toContain('"recent_activity": [');
@@ -147,7 +148,13 @@ describe('buildLitePromptEnvelope', () => {
 			'If history includes a previously loaded skills ledger, treat those skills as already discovered.'
 		);
 		expect(envelope.systemPrompt).toContain(
-			'Root skills may expose child skills or reference modules as optional depth handles.'
+			'Root skills and loaded domains may expose child skills, reference modules, or resource handles as optional depth.'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'Use domains to orient the conversation, not to preload everything.'
+		);
+		expect(envelope.systemPrompt).toContain(
+			'Use resource_search only after it is exposed by a loaded domain or skill-linked resource path.'
 		);
 		expect(envelope.systemPrompt).toContain('Root skill catalog');
 		expect(envelope.systemPrompt).toContain('Registered child skills');
@@ -167,6 +174,8 @@ describe('buildLitePromptEnvelope', () => {
 		);
 		expect(envelope.systemPrompt).not.toContain('"parameters"');
 		expect(envelope.toolsSummary.discoveryTools).toEqual([
+			'domain_search',
+			'skill_search',
 			'skill_load',
 			'skill_reference_load',
 			'tool_search',
@@ -183,6 +192,35 @@ describe('buildLitePromptEnvelope', () => {
 			'2026-04-14: task "Finish onboarding (Launch Alpha)", updated, today.'
 		);
 		expect(envelope.systemPrompt).not.toContain('No recent project changes are loaded.');
+	});
+
+	it('injects compact active-domain signals when the current message names a domain', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			currentUserMessage: 'I want to grow my YouTube audience.'
+		});
+
+		expect(envelope.sections.map((section) => section.id)).toContain('active_domain_signals');
+		const section = envelope.sections.find((item) => item.id === 'active_domain_signals');
+		expect(section?.content).toContain('marketing.youtube_growth');
+		expect(section?.content).toContain('content_strategy_beyond_blogging');
+		expect(section?.content).toContain('youtube_channel_diagnostics');
+		expect(envelope.systemPrompt).toContain('## Active Domain Signals');
+	});
+
+	it('uses prior domain ids for ambiguous follow-up turns', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'global',
+			entityId: null,
+			currentUserMessage: 'Ok, make the plan.',
+			priorDomainIds: ['marketing.youtube_growth']
+		});
+
+		const section = envelope.sections.find((item) => item.id === 'active_domain_signals');
+		expect(section?.content).toContain('Source: session_state');
+		expect(section?.content).toContain('marketing.youtube_growth');
+		expect(section?.content).toContain('content_strategy_beyond_blogging');
 	});
 
 	it('renders project intelligence signals when prewarm provides them', () => {

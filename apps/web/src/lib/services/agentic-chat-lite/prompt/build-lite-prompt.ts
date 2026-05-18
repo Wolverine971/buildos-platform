@@ -2,6 +2,10 @@
 import type { ChatContextType, ChatToolDefinition } from '@buildos/shared-types';
 import { estimateTokensFromText } from '$lib/services/agentic-chat-v2/context-usage';
 import { getGatewaySurfaceForContextType } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import {
+	renderDomainSensingPromptContent,
+	senseDomains
+} from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import { extractToolNamesFromDefinitions } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
 import { listChildSkills, listRootSkills } from '$lib/services/agentic-chat/tools/skills/registry';
@@ -27,6 +31,10 @@ import {
 } from './types';
 
 const DISCOVERY_TOOL_NAMES = new Set([
+	'domain_search',
+	'skill_search',
+	'resource_search',
+	'resource_load',
 	'skill_load',
 	'skill_reference_load',
 	'tool_search',
@@ -123,6 +131,7 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 	const timeline = buildTimelineSummary(input, focus, dataSummary, projectDigest);
 	const retrievalMap = buildRetrievalMap(input.retrievalMap ?? null, focus, dataSummary);
 	const toolsSummary = buildToolsSummary(input.contextType, input.tools ?? null);
+	const domainSignalSection = buildActiveDomainSignalsSection(input);
 	const contextInventory: LitePromptContextInventory = {
 		focus,
 		dataSummary,
@@ -139,6 +148,7 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 		buildIdentityMissionSection(),
 		buildCapabilitiesSkillsToolsSection(),
 		buildToolSurfaceDynamicSection(toolsSummary),
+		...(domainSignalSection ? [domainSignalSection] : []),
 		buildOperatingStrategySection(),
 		buildSafetyDataRulesSection(input.data ?? null),
 		buildFocusPurposeSection(focus, projectDigest, input.data ?? null),
@@ -432,6 +442,9 @@ function buildOperatingStrategySection(): LitePromptSection {
 			'- Start with the loaded context. If the loaded context is enough, answer without extra tool calls.',
 			'- Before any tool call, open the turn with a 1-2 sentence lead-in describing what you are about to do. Lead-ins are intent only; do not claim outcomes until tool results are back.',
 			'- Use direct tools first when they fit. Use discovery tools (tool_search, tool_schema) only when the exact operation or schema is missing.',
+			'- Use domain_search when the user enters a subject area or niche and the relevant skill family is unclear. After domain_search makes domain_load available, use domain_load when boundaries, linked skills, or coverage gaps would help route the work.',
+			'- Use skill_search when the active domain is known but the exact skill is unclear; pass domain when available. Prefer root skills unless a child skill is clearly the needed narrow lens.',
+			'- Use resource_search only after it is exposed by a loaded domain or skill-linked resource path. Use resource_load only for a matched resource when source detail, examples, templates, or provenance would materially improve the answer.',
 			"- Load a skill with skill_load only when the workflow is two or more related writes or required fields are uncertain; default to format: short and request include_examples: true only after a prior failure on the same op. Skill choice follows from the capability that matches the user's intent.",
 			'- If history includes a previously loaded skills ledger, treat those skills as already discovered. Do not reload the same skill just to recover its summary, child index, or related tools; reload only when the full markdown/examples are needed for this turn.',
 			'- Root skills are the default. Do not load child skills or reference modules automatically after loading a root skill; load deeper material only when the current request needs niche, mode-specific, or high-context guidance.',
@@ -442,6 +455,32 @@ function buildOperatingStrategySection(): LitePromptSection {
 			'- After a tool call, anchor the next step in what the tool actually returned: what changed, where the runtime is now, and what should happen next.',
 			'- Keep scratch reasoning private. Your user-facing response must be direct prose for the user — never a plan, checklist, or paraphrase of these instructions.'
 		].join('\n')
+	});
+}
+
+function buildActiveDomainSignalsSection(input: LitePromptInput): LitePromptSection | null {
+	const content = renderDomainSensingPromptContent(
+		input.domainSensingResult !== undefined
+			? input.domainSensingResult
+			: senseDomains({
+					currentUserMessage: input.currentUserMessage,
+					conversationSummary: input.conversationSummary,
+					priorDomainIds: input.priorDomainIds,
+					limit: 3
+				})
+	);
+	if (!content) return null;
+
+	return makeSection({
+		id: 'active_domain_signals',
+		title: 'Active Domain Signals',
+		kind: 'dynamic',
+		source: 'lite.domain_sensing',
+		slots: {
+			hasCurrentUserMessage: Boolean(input.currentUserMessage?.trim()),
+			hasConversationSummary: Boolean(input.conversationSummary?.trim())
+		},
+		content
 	});
 }
 
@@ -475,12 +514,15 @@ function buildCapabilitiesSkillsToolsSection(): LitePromptSection {
 		kind: 'static',
 		source: 'lite.static_capability_skill_catalog',
 		content: [
-			'Think in three layers. They work together in sequence:',
+			'Think in five layers. They work together in sequence:',
 			'',
-			'1. Capability - what BuildOS can do for the user.',
-			'2. Skill - workflow guidance for doing that work well. Skill metadata is preloaded in this prompt; call skill_load when the task is multi-step or easy to get wrong and you need the full markdown playbook.',
-			'3. Tool / Op - the exact execution surface. The current tool names are listed in Current Tool Surface below.',
-			'Root skills may expose child skills or reference modules as optional depth handles. Treat those as indexes, not automatic context. Use skill_reference_load only for declared reference modules.',
+			'1. Domain - the subject territory or niche the user is operating in.',
+			'2. Capability - what BuildOS can do for the user.',
+			'3. Skill - workflow guidance for doing that work well. Skill metadata is preloaded in this prompt; call skill_load when the task is multi-step or easy to get wrong and you need the full markdown playbook.',
+			'4. Tool / Op - the exact execution surface. The current tool names are listed in Current Tool Surface below.',
+			'5. Resource - supporting reference material, examples, source maps, or deeper evidence.',
+			'Root skills and loaded domains may expose child skills, reference modules, or resource handles as optional depth. Treat those as indexes, not automatic context. Use skill_reference_load or resource_load only for declared/matched resources.',
+			'Use domains to orient the conversation, not to preload everything. When domain coverage is partial, help with what is available and treat gaps as routing signal rather than invented expertise.',
 			'',
 			'Capabilities:',
 			formatBullets(capabilities, 'No capabilities are registered.'),

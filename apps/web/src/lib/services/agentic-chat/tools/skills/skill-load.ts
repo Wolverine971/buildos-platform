@@ -76,6 +76,24 @@ function renderSkillMarkdown(
 	return sections.join('\n\n');
 }
 
+function renderPreservedSkillMarkdown(
+	skill: SkillDefinition,
+	childSkills: SkillLinkedResourcePayload[],
+	referenceModules: SkillLinkedResourcePayload[]
+): string {
+	const body = skill.sourceMarkdown?.trim();
+	const sections = [
+		body ?? renderSkillMarkdown(skill, childSkills, referenceModules),
+		renderLinkedResourcesSection('Child Skills', childSkills),
+		renderLinkedResourcesSection('Reference Modules', referenceModules),
+		skill.relatedOps.length > 0
+			? ['## Related Tools', ...skill.relatedOps.map((op) => `- \`${op}\``)].join('\n')
+			: ''
+	].filter((section) => section.length > 0);
+
+	return sections.join('\n\n');
+}
+
 function mapLinkedResource(
 	resource: NonNullable<SkillDefinition['childSkills']>[number]
 ): SkillLinkedResourcePayload {
@@ -181,14 +199,17 @@ export function buildSkillLoadPayload(
 	}
 
 	if (format === 'full') {
-		payload.markdown = renderSkillMarkdown(
-			{
-				...skill,
-				examples: includeExamples ? skill.examples : undefined
-			},
-			childSkillPayloads,
-			referenceModulePayloads
-		);
+		const markdownSkill = {
+			...skill,
+			examples: includeExamples ? skill.examples : undefined
+		};
+		payload.markdown = skill.preserveMarkdown
+			? renderPreservedSkillMarkdown(
+					markdownSkill,
+					childSkillPayloads,
+					referenceModulePayloads
+				)
+			: renderSkillMarkdown(markdownSkill, childSkillPayloads, referenceModulePayloads);
 	}
 
 	return payload;

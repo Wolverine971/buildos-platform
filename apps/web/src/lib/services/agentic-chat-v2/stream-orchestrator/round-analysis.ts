@@ -189,6 +189,11 @@ export function isReadLikeOperation(name: string): boolean {
 	return (
 		normalized === 'tool_search' ||
 		normalized === 'tool_schema' ||
+		normalized === 'domain_search' ||
+		normalized === 'domain_load' ||
+		normalized === 'skill_search' ||
+		normalized === 'resource_search' ||
+		normalized === 'resource_load' ||
 		normalized === 'skill_load' ||
 		normalized === 'skill_reference_load' ||
 		normalized === 'web_visit' ||
@@ -208,6 +213,11 @@ export function isReadLikeOperation(name: string): boolean {
 // read-loop counting.
 // web_visit is intentionally NOT in this set — it fetches real content.
 const DISCOVERY_TOOL_NAMES: ReadonlySet<string> = new Set([
+	'domain_search',
+	'domain_load',
+	'skill_search',
+	'resource_search',
+	'resource_load',
 	'tool_search',
 	'tool_schema',
 	'skill_load',

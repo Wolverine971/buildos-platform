@@ -18,6 +18,11 @@ describe('selectFastChatTools', () => {
 		const tools = selectFastChatTools({ contextType: 'global' });
 		const names = tools.map((tool) => tool.function?.name).filter(Boolean);
 
+		expect(names).toContain('domain_search');
+		expect(names).not.toContain('domain_load');
+		expect(names).toContain('skill_search');
+		expect(names).not.toContain('resource_search');
+		expect(names).not.toContain('resource_load');
 		expect(names).toContain('skill_load');
 		expect(names).toContain('skill_reference_load');
 		expect(names).toContain('tool_search');
@@ -150,5 +155,20 @@ describe('selectFastChatTools', () => {
 				materialized_tools: ['get_project_overview', 'search_project', '']
 			})
 		).toEqual(['get_project_overview', 'search_project']);
+
+		expect(
+			extractGatewayMaterializedToolNames({
+				type: 'domain',
+				domain_id: 'product_and_design.ui_ux_quality',
+				materialized_tools: ['resource_search']
+			})
+		).toEqual(['resource_search']);
+
+		expect(
+			extractGatewayMaterializedToolNames({
+				type: 'resource_search_results',
+				materialized_tools: ['resource_load']
+			})
+		).toEqual(['resource_load']);
 	});
 });
