@@ -38,6 +38,8 @@ These define what BuildOS is, who it's for, and how to talk about it.
 | ------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
 | [Marketing Strategy 2026](strategy/buildos-marketing-strategy-2026.md)                     | Master strategy. Positioning, audience order, channel roles, solo-founder operating model                         |
 | [Anti-AI Show-Don't-Tell Strategy](strategy/anti-ai-show-dont-tell-strategy.md)            | Core positioning thesis. Lead with relief, not AI. "AI is the engine, not the headline"                           |
+| [BuildOS Real Media Policy](brand/BUILDOS_REAL_MEDIA_POLICY.md)                            | Media rule. Zero AI-generated images/videos; use real screenshots, real recordings, and real founder footage      |
+| [BuildOS Proof And Presence Doctrine](brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md)        | Raw proof doctrine. Receipts over vibes, screens over scenes, selective presence over online volume               |
 | [Thinking Environment Creator Strategy](strategy/thinking-environment-creator-strategy.md) | Audience-first strategy. Authors and YouTubers as primary wedge, visual direction, demo library                   |
 | [Guerrilla Content Doctrine](strategy/buildos-guerrilla-content-doctrine.md)               | Content operating doctrine for a one-person team. Content lanes, cadence, decision rules                          |
 | [How to Explain BuildOS](strategy/how-to-explain-buildos-2026-05-11.md)                    | Spoken-word companion. 17 modular talking points, two persona flows, market story, sentences DJ can say in person |
@@ -51,18 +53,23 @@ These define what BuildOS is, who it's for, and how to talk about it.
 - **Strategic enemy:** Tool sprawl, stateless chat, blank-page chaos, productivity theater
 - **Primary wedge:** Authors and YouTubers
 - **Anti-AI stance:** Do not lead with AI in marketing. Sell relief, not intelligence
+- **Real media stance:** No AI-generated images or videos. Show BuildOS through real product screenshots, screen recordings, and founder footage
+- **Proof stance:** Receipts over vibes, screens over scenes, work over spectacle
+- **Presence stance:** Be less terminally online and more operationally present. Publish selective proof from the work, not hollow volume for the algorithm
 
 ---
 
 ## 2. Brand & Voice
 
-| Document                                                        | What It Does                                                               |
-| --------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| [Brand Architecture](brand/BUILDOS_BRAND_ARCHITECTURE.md)       | Canonical category, phrase roles, anti-AI posture, campaign abstraction    |
-| [Brand Guide 1-Pager](brand/brand-guide-1-pager.md)             | Quick reference for messaging, voice, visual direction, terms to use/avoid |
-| [Brand Audit Framework](brand/BUILDOS_BRAND_AUDIT_FRAMEWORK.md) | Internal brand audit workflow and remediation order                        |
-| [Brand Aesthetic](brand/BUILDOS_BRAND_AESTHETIC_COMPLETE.md)    | Full visual identity reference                                             |
-| [Zoom Messaging Guide](brand/ZOOM_MESSAGING_GUIDE.md)           | Project Lens positioning and "zoom in/out" concept                         |
+| Document                                                                    | What It Does                                                                                         |
+| --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| [Brand Architecture](brand/BUILDOS_BRAND_ARCHITECTURE.md)                   | Canonical category, phrase roles, anti-AI posture, campaign abstraction                              |
+| [Brand Guide 1-Pager](brand/brand-guide-1-pager.md)                         | Quick reference for messaging, voice, visual direction, terms to use/avoid                           |
+| [Real Media Policy](brand/BUILDOS_REAL_MEDIA_POLICY.md)                     | Source of truth for screenshots, screen recordings, founder footage, and the no-synthetic-media rule |
+| [Proof And Presence Doctrine](brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md) | Source of truth for raw proof, selective posting, and "receipts over vibes"                          |
+| [Brand Audit Framework](brand/BUILDOS_BRAND_AUDIT_FRAMEWORK.md)             | Internal brand audit workflow and remediation order                                                  |
+| [Brand Aesthetic](brand/BUILDOS_BRAND_AESTHETIC_COMPLETE.md)                | Full visual identity reference                                                                       |
+| [Zoom Messaging Guide](brand/ZOOM_MESSAGING_GUIDE.md)                       | Project Lens positioning and "zoom in/out" concept                                                   |
 
 ---
 
@@ -168,10 +175,12 @@ If starting from scratch, read in this order:
 3. Brand Architecture
 4. Marketing Strategy 2026
 5. Anti-AI Show-Don't-Tell Strategy
-6. Brand Guide 1-Pager
-7. Guerrilla Content Doctrine
-8. 6-Week Guerrilla Seed Campaign
-9. Collaboration Pivot Carousel (for format reference only)
+6. Real Media Policy
+7. Proof And Presence Doctrine
+8. Brand Guide 1-Pager
+9. Guerrilla Content Doctrine
+10. 6-Week Guerrilla Seed Campaign
+11. Collaboration Pivot Carousel (for format reference only)
 
 ---
 

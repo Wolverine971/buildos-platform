@@ -5,6 +5,8 @@
 > **Status Note (April 2026):** Historical / partial strategy.
 > This document contains useful format ideas, but its ADHD-first front door and blue/yellow visual system are not current canon.
 > Check `../brand/BUILDOS_BRAND_ARCHITECTURE.md`, `../brand/brand-guide-1-pager.md`, and `../START_HERE.md` before reusing this directly.
+> Media rule: follow `../brand/BUILDOS_REAL_MEDIA_POLICY.md`. No AI-generated images or videos; use real screenshots, screen recordings, founder footage, workspace photos, or clearly explanatory graphics.
+> Presence rule: follow `../brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md`. Raw proof beats polished bloat; start from the real artifact.
 
 ## Profile Setup
 
@@ -149,7 +151,9 @@ Slide 5: Update: "I actually did the things!"
 - Real desk setups (messy is ok!)
 - Authentic working moments
 - No stock photos
+- No AI-generated images or videos
 - User-generated content preferred
+- Raw but not careless: clean enough to understand, real enough to trust
 
 ---
 
@@ -181,6 +185,8 @@ Text: "Me with one simple tool getting more done"
 - Real organization
 - Real calendar booking
 - Real relief
+
+Use actual screen recordings or real camera footage. Do not create AI-generated reels.
 
 ---
 

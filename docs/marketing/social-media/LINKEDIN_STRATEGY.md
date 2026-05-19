@@ -5,6 +5,8 @@
 > **Status Note (April 2026):** Historical / partial strategy.
 > This document is still useful for founder voice and thought-leadership tactics, but its context-engineering-first framing is not the current public category.
 > Check `../brand/BUILDOS_BRAND_ARCHITECTURE.md`, `../brand/brand-guide-1-pager.md`, and `../START_HERE.md` before using it as source-of-truth.
+> Media rule: follow `../brand/BUILDOS_REAL_MEDIA_POLICY.md`. No AI-generated images or videos; use real screenshots, screen recordings, founder footage, workspace photos, or clearly explanatory graphics.
+> Presence rule: follow `../brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md`. Receipts over vibes; use LinkedIn for real founder judgment and project evidence, not corporate thought-leadership volume.
 
 > **Purpose:** Position DJ as a thought leader in context engineering and AI productivity while building awareness for BuildOS
 
@@ -113,6 +115,8 @@ Let's connect if you're thinking about context, AI, or building in public.
 ### Banner Image
 
 Visual showing: `Scattered thoughts → [BuildOS] → Organized context with AI`
+
+Use a real BuildOS screenshot, real founder/workspace photo, or Inkprint graphic. Do not use an AI-generated banner image.
 
 ---
 

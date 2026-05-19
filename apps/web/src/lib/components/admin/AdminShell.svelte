@@ -56,6 +56,7 @@
 		'/admin/chat/sessions',
 		'/admin/chat/costs',
 		'/admin/chat/timing',
+		'/admin/chat/domains',
 		'/admin/ontology/graph',
 		'/admin/ontology/public-pages'
 	];

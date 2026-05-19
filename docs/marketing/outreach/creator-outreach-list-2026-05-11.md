@@ -133,7 +133,7 @@ The other 15 are real targets too — these five just have the tightest opener a
 - **Handles:** [youtube.com/@HowMoneyWorks](https://www.youtube.com/@HowMoneyWorks), sister channel [@HowHistoryWorks](https://www.youtube.com/@HowHistoryWorks), [@DarinSoat](https://x.com/darinsoat)
 - **Audience size:** ~800K subs, ~20K/month growth in 2025, 6.3M views/30 days
 - **Format / current project:** 10-15 min finance essays on wealth myths, market structure. Operates Works Media Group as a 2-channel media company.
-- **Contact path:** Public-facing address on the Works Media Group domain — appears in databases as **d\***@worksmedia.group**. **DJ should manually confirm the exact business email via YouTube About → "View email address" reveal before sending.\*\* This is the only YouTuber on the list where I couldn't 100% verify a direct address (reCAPTCHA gate).
+- **Contact path:** **sponsors@worksmedia.group** — confirmed via YouTube About tab.
 - **Pain signal (the hook):** On Rational Reminder Podcast Ep 276 he described his research approach as _"keeping my head in financial news + constantly referring back to HBR reports."_ Two channels off overlapping research = same HBR report cited across multiple videos. Source: [rationalreminder.ca/podcast/276](https://rationalreminder.ca/podcast/276).
 - **Personalization angle:** _"Saw your Rational Reminder convo about constantly referring back to HBR reports. Two channels off the same financial research means the same paper shows up in three different videos. BuildOS is where both channels live in one persistent project your AI tools can read across."_
 - **Source URLs:** youtube.com/@HowMoneyWorks · rationalreminder.ca/podcast/276 · x.com/darinsoat · linkedin.com/in/darinsoat
@@ -152,12 +152,12 @@ The other 15 are real targets too — these five just have the tightest opener a
 
 ---
 
-### 10. Branch Education (Teddy Tablante) — Engineering 3D-animation explainers, 177K subs — **EMAIL UNVERIFIED**
+### 10. Branch Education (Teddy Tablante) — Engineering 3D-animation explainers, 177K subs
 
 - **Handles:** [youtube.com/brancheducation](https://www.youtube.com/brancheducation) (177K subs), [@TeddyTablante](https://x.com/TeddyTablante), [branch.education](https://branch.education/), [patreon.com/brancheducation](https://www.patreon.com/brancheducation)
 - **Audience size:** 177K subs, 17M total views
 - **Format / current project:** 15-25 min videos with high-fidelity 3D animations explaining how technology works — smartphones, SSDs, microchips, ion implanters. Each video is months of research + Blender modeling.
-- **Contact path:** **NO PUBLIC BUSINESS EMAIL VERIFIED.** Contact form at [branch.education/contact](https://branch.education/contact). Branch Education is a real LLC with Patreon and Stripe customers, so the YouTube business email almost certainly exists — open the channel About tab and click "View email address" to confirm. Included because the fit is unusually strong.
+- **Contact path:** **teddy@branch.education** — confirmed via YouTube About tab.
 - **Pain signal (the hook):** His Inspiring Computing interview describes his solo pipeline: engineering research → Blender 3D modeling → script → animation → editing. Months-long production cycle on technical topics with constant cross-referencing between physical mechanism research and 3D model accuracy. Source: [inspiringcomputing.com/2107763/episodes/15238107](https://www.inspiringcomputing.com/2107763/episodes/15238107).
 - **Personalization angle:** _"Saw your Inspiring Computing interview. Solo research → Blender → script → animate → edit cycle on engineering topics is the pure case for one persistent project per video. BuildOS is where the entire pipeline lives — research, Blender notes, script revisions, B-roll references, all in one place AI can read from."_
 - **Source URLs:** youtube.com/brancheducation · branch.education/about-1 · inspiringcomputing.com/2107763/episodes/15238107 · x.com/TeddyTablante · patreon.com/brancheducation
@@ -313,8 +313,8 @@ The other 15 are real targets too — these five just have the tightest opener a
 
 ## Caveats and verification needed
 
-1. **Branch Education (#10):** business email is behind YouTube's reCAPTCHA gate. Open the channel About tab manually, click "View email address," confirm before sending.
-2. **How Money Works (#8):** likely `darin@worksmedia.group` or `hello@worksmedia.group`. Same YouTube About-tab confirmation step recommended.
+1. **Branch Education (#10):** `teddy@branch.education` confirmed via About tab.
+2. **How Money Works (#8):** `sponsors@worksmedia.group` confirmed via About tab. Goes to the sponsorship inbox, not Darin directly — the opener should be clear it's a product pitch, not a sponsor pitch.
 3. **CJ Gustafson (#13):** no public direct email. Use the typeform or LinkedIn DM. The career-pivot opener still works.
 4. **Asianometry (#9):** `business@asianometry.com` is indexed but ideally confirm via channel About tab.
 5. **Simon K. Jones (#3) and Dominic de Souza (#2):** Substack DM only. That's a real path on Substack and works — but expect a slower reply than email.
@@ -332,9 +332,9 @@ The other 15 are real targets too — these five just have the tightest opener a
 | 5   | Valorie C. Clark    | Author    | thevalorieclark@gmail.com        | not sent | —         | —     | —                     |
 | 6   | Joeri Schasfoort    | YouTuber  | info@moneymacro.net              | not sent | —         | —     | —                     |
 | 7   | Atrocity Guide      | YouTuber  | AtrocityGuide@nanozebra.com      | not sent | —         | —     | top-5 send            |
-| 8   | Darin Soat          | YouTuber  | worksmedia.group (verify)        | not sent | —         | —     | confirm email first   |
+| 8   | Darin Soat          | YouTuber  | sponsors@worksmedia.group        | not sent | —         | —     | —                     |
 | 9   | Jon Y (Asianometry) | YouTuber  | business@asianometry.com         | not sent | —         | —     | confirm via About tab |
-| 10  | Teddy Tablante      | YouTuber  | UNVERIFIED                       | not sent | —         | —     | confirm via About tab |
+| 10  | Teddy Tablante      | YouTuber  | teddy@branch.education           | not sent | —         | —     | —                     |
 | 11  | The Curbsiders      | Podcaster | thecurbsiders@gmail.com          | not sent | —         | —     | —                     |
 | 12  | Robby Russell       | Podcaster | robby@planetargon.com            | not sent | —         | —     | top-5 send            |
 | 13  | CJ Gustafson        | Podcaster | typeform / LinkedIn              | not sent | —         | —     | LinkedIn DM           |

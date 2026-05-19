@@ -64,11 +64,21 @@ export type DomainResearchQueueCandidate = {
 	budget: DomainResearchBudget;
 };
 
-export type DomainResearchQueueStoredRow = Omit<DomainResearchQueueCandidate, 'status'> & {
+export type DomainResearchQueueRowCore = Omit<DomainResearchQueueCandidate, 'status'> & {
 	status: DomainResearchQueueStatus;
 };
 
-export type DomainResearchQueueUpsertRow = DomainResearchQueueStoredRow;
+export type DomainResearchQueueUpsertRow = DomainResearchQueueRowCore;
+
+export type DomainResearchQueueStoredRow = DomainResearchQueueRowCore & {
+	id: string;
+	claimed_at: string | null;
+	claimed_by: string | null;
+	completed_at: string | null;
+	result: Record<string, unknown> | null;
+	created_at: string;
+	updated_at: string;
+};
 
 export type DomainResearchQueuePromotionPlan = {
 	rows: DomainResearchQueueUpsertRow[];
@@ -218,7 +228,7 @@ function sourceSessionIdsFromEvidence(evidence: DomainResearchQueueEvidence[]): 
 
 function additionalOccurrencesForCandidate(
 	candidate: DomainResearchQueueCandidate,
-	existing: DomainResearchQueueStoredRow
+	existing: DomainResearchQueueRowCore
 ): number {
 	const existingSessionIds = new Set(existing.source_session_ids);
 	let total = 0;
@@ -241,7 +251,7 @@ function additionalOccurrencesForCandidate(
 
 function mergeCandidateWithStoredRow(
 	candidate: DomainResearchQueueCandidate,
-	existing: DomainResearchQueueStoredRow
+	existing: DomainResearchQueueRowCore
 ): DomainResearchQueueUpsertRow {
 	const evidence = mergeEvidence(existing.evidence, candidate.evidence);
 	const userIds = userIdsFromEvidence(evidence);
@@ -345,7 +355,7 @@ export function buildDomainResearchQueueCandidatesFromSessionRows(
 
 export function buildDomainResearchQueuePromotionPlan(
 	candidates: DomainResearchQueueCandidate[],
-	existingRows: DomainResearchQueueStoredRow[] = []
+	existingRows: DomainResearchQueueRowCore[] = []
 ): DomainResearchQueuePromotionPlan {
 	const existingByKey = new Map(existingRows.map((row) => [row.queue_key, row]));
 	const rows: DomainResearchQueueUpsertRow[] = [];
@@ -423,7 +433,7 @@ export async function promoteDomainResearchQueueCandidates(
 
 	const plan = buildDomainResearchQueuePromotionPlan(
 		mergedCandidates,
-		(existingRows ?? []) as DomainResearchQueueStoredRow[]
+		(existingRows ?? []) as DomainResearchQueueRowCore[]
 	);
 	if (plan.rows.length > 0) {
 		const { error: upsertError } = await supabase

@@ -939,7 +939,7 @@ export function categorizeTasks(
 			// Check overdue first (only for tasks with due dates)
 			if (dueDateStr && dueDateStr < todayStr) {
 				overdueTasks.push(task);
-			} else if (dueDateStr === todayStr) {
+			} else if (dueDateStr === todayStr || startDateStr === todayStr) {
 				todaysTasks.push(task);
 			} else {
 				// Upcoming: due_at in next 7 days OR start_at in next 7 days (per spec)
@@ -1611,6 +1611,7 @@ export class OntologyBriefDataLoader {
 			.or(projectAccessFilter)
 			.in('state_key', ['planning', 'active'])
 			.is('deleted_at', null)
+			.is('archived_at', null)
 			.order('updated_at', { ascending: false });
 
 		if (projectsError) {
@@ -1820,21 +1821,24 @@ export class OntologyBriefDataLoader {
 					'id, title, project_id, state_key, type_key, priority, due_at, start_at, updated_at, created_at'
 				)
 				.in('project_id', projectIds)
-				.is('deleted_at', null),
+				.is('deleted_at', null)
+				.is('archived_at', null),
 			this.supabase
 				.from('onto_goals')
 				.select(
 					'id, name, project_id, state_key, created_at, target_date, description, updated_at, completed_at, type_key'
 				)
 				.in('project_id', projectIds)
-				.is('deleted_at', null),
+				.is('deleted_at', null)
+				.is('archived_at', null),
 			this.supabase
 				.from('onto_plans')
 				.select(
 					'id, project_id, name, state_key, type_key, description, created_at, updated_at, facet_context, facet_scale, facet_stage'
 				)
 				.in('project_id', projectIds)
-				.is('deleted_at', null),
+				.is('deleted_at', null)
+				.is('archived_at', null),
 			this.supabase
 				.from('onto_milestones')
 				.select(
@@ -1842,6 +1846,7 @@ export class OntologyBriefDataLoader {
 				)
 				.in('project_id', projectIds)
 				.is('deleted_at', null)
+				.is('archived_at', null)
 				.not('state_key', 'in', '(completed,missed)'), // Only fetch active milestones
 			this.supabase
 				.from('onto_risks')
@@ -1849,14 +1854,16 @@ export class OntologyBriefDataLoader {
 					'id, project_id, title, impact, state_key, created_at, updated_at, probability, content, type_key'
 				)
 				.in('project_id', projectIds)
-				.is('deleted_at', null),
+				.is('deleted_at', null)
+				.is('archived_at', null),
 			this.supabase
 				.from('onto_documents')
 				.select(
 					'id, project_id, title, description, state_key, type_key, created_at, updated_at'
 				)
 				.in('project_id', projectIds)
-				.is('deleted_at', null),
+				.is('deleted_at', null)
+				.is('archived_at', null),
 			this.supabase
 				.from('onto_requirements')
 				.select('id, project_id, text, created_at, updated_at, priority, type_key')
@@ -2004,7 +2011,8 @@ export class OntologyBriefDataLoader {
 			.select('id, name, state_key, updated_at, created_by')
 			.or(projectAccessFilter)
 			.eq('state_key', 'paused')
-			.is('deleted_at', null);
+			.is('deleted_at', null)
+			.is('archived_at', null);
 
 		if (projectError) {
 			console.warn('[OntologyBriefDataLoader] Error loading paused projects:', projectError);

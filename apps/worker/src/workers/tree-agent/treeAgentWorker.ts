@@ -307,12 +307,16 @@ async function appendScratchpad(docId: string, entry: string) {
 		.from('onto_documents')
 		.select('content')
 		.eq('id', docId)
+		.is('deleted_at', null)
+		.is('archived_at', null)
 		.maybeSingle();
 	const nextContent = `${existing?.content ?? ''}\n${entry}`;
 	await adminSb
 		.from('onto_documents')
 		.update({ content: nextContent, updated_at: nowIso() })
-		.eq('id', docId);
+		.eq('id', docId)
+		.is('deleted_at', null)
+		.is('archived_at', null);
 }
 
 async function loadScratchpadContent(docId: string): Promise<string> {
@@ -321,6 +325,8 @@ async function loadScratchpadContent(docId: string): Promise<string> {
 		.from('onto_documents')
 		.select('content')
 		.eq('id', docId)
+		.is('deleted_at', null)
+		.is('archived_at', null)
 		.maybeSingle();
 	return (data?.content ?? '') as string;
 }
@@ -1062,6 +1068,8 @@ async function collectChildSummaries(params: {
 							.from('onto_documents')
 							.select('id, title, content')
 							.in('id', docIds)
+							.is('deleted_at', null)
+							.is('archived_at', null)
 					).data ?? [])
 				: [];
 

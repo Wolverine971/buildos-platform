@@ -13,6 +13,7 @@ const MAX_ICON_ELEMENTS = 26;
 const PROJECT_ICON_GENERATION_ENABLED =
 	String(process.env.ENABLE_PROJECT_ICON_GENERATION ?? 'false').toLowerCase() === 'true';
 const PROJECT_ICON_GENERATION_DISABLED_MESSAGE = 'Project image generation is temporarily disabled';
+const ACTIVE_PROJECT_STATES = new Set(['planning', 'active']);
 
 const ALLOWED_TAGS = [
 	'svg',
@@ -495,6 +496,26 @@ async function markGenerationFailed(
 	}
 }
 
+async function markGenerationCancelled(
+	generationId: string,
+	projectId: string,
+	reason: string
+): Promise<void> {
+	const { error } = await supabase
+		.from('onto_project_icon_generations')
+		.update({
+			status: 'cancelled',
+			error_message: reason,
+			completed_at: new Date().toISOString()
+		})
+		.eq('id', generationId)
+		.eq('project_id', projectId);
+
+	if (error) {
+		throw new Error(`Failed to persist generation cancellation state: ${error.message}`);
+	}
+}
+
 export async function processProjectIconJob(
 	job: ProcessingJob<ProjectIconGenerationJobMetadata>
 ): Promise<ProjectIconGenerationResult> {
@@ -577,6 +598,31 @@ export async function processProjectIconJob(
 				skipped: true,
 				reason: 'cancelled'
 			};
+		}
+
+		stage = 'load_project_lifecycle';
+		const { data: projectLifecycle, error: projectLifecycleError } = await supabase
+			.from('onto_projects')
+			.select('state_key, deleted_at, archived_at')
+			.eq('id', projectId)
+			.maybeSingle();
+		if (projectLifecycleError) {
+			throw new Error(`Failed to load project lifecycle: ${projectLifecycleError.message}`);
+		}
+		if (!projectLifecycle || projectLifecycle.deleted_at || projectLifecycle.archived_at) {
+			const reason = 'project_archived';
+			await job.log(`Project icon generation skipped (${reason})`);
+			await markGenerationFailed(generationId, projectId, reason);
+			return { success: true, projectId, generationId, skipped: true, reason };
+		}
+		if (
+			triggerSource === 'auto' &&
+			!ACTIVE_PROJECT_STATES.has(String(projectLifecycle.state_key))
+		) {
+			const reason = `project_${String(projectLifecycle.state_key || 'inactive')}`;
+			await job.log(`Auto project icon generation skipped (${reason})`);
+			await markGenerationCancelled(generationId, projectId, reason);
+			return { success: true, projectId, generationId, skipped: true, reason };
 		}
 
 		stage = 'mark_processing';
@@ -777,7 +823,9 @@ export async function processProjectIconJob(
 					icon_generation_source: source,
 					icon_generation_prompt: imagePromptQuery
 				})
-				.eq('id', projectId);
+				.eq('id', projectId)
+				.is('deleted_at', null)
+				.is('archived_at', null);
 			if (projectUpdateError) {
 				throw new Error(`Failed to apply icon to project: ${projectUpdateError.message}`);
 			}

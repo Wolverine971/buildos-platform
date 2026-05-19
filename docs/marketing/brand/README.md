@@ -12,6 +12,8 @@
 docs/marketing/brand/BUILDOS_BRAND_ARCHITECTURE.md
 docs/marketing/strategy/buildos-marketing-strategy-2026.md
 docs/marketing/brand/brand-guide-1-pager.md
+docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
+docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
 docs/marketing/brand/BUILDOS_BRAND_AUDIT_FRAMEWORK.md
 docs/marketing/strategy/buildos-guerrilla-content-doctrine.md
 docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md
@@ -27,14 +29,16 @@ Keep older brand documents as reference, not source of truth.
 
 ### Current Strategy And Positioning
 
-| Document                                                                                                         | Purpose                 | When to Use                                   |
-| ---------------------------------------------------------------------------------------------------------------- | ----------------------- | --------------------------------------------- |
-| [**BuildOS Brand Architecture**](BUILDOS_BRAND_ARCHITECTURE.md)                                                  | Canonical hierarchy     | Category, phrase roles, anti-AI posture       |
-| [**BuildOS Marketing Strategy 2026**](../strategy/buildos-marketing-strategy-2026.md)                            | Current master strategy | Positioning, audience order, channel roles    |
-| [**BuildOS Brand Guide**](brand-guide-1-pager.md)                                                                | Current quick reference | Messaging, terms, tone, visual direction      |
-| [**BuildOS Brand Audit Framework**](BUILDOS_BRAND_AUDIT_FRAMEWORK.md)                                            | Alignment workflow      | Surface audits, remediation order, governance |
-| [**BuildOS Guerrilla Content Doctrine**](../strategy/buildos-guerrilla-content-doctrine.md)                      | Strategic logic         | Solo-founder doctrine, sequencing, tradeoffs  |
-| [**6-Week Guerrilla Seed Campaign**](../social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md) | Current execution plan  | Weekly content planning and posting           |
+| Document                                                                                                         | Purpose                 | When to Use                                       |
+| ---------------------------------------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------- |
+| [**BuildOS Brand Architecture**](BUILDOS_BRAND_ARCHITECTURE.md)                                                  | Canonical hierarchy     | Category, phrase roles, anti-AI posture           |
+| [**BuildOS Marketing Strategy 2026**](../strategy/buildos-marketing-strategy-2026.md)                            | Current master strategy | Positioning, audience order, channel roles        |
+| [**BuildOS Brand Guide**](brand-guide-1-pager.md)                                                                | Current quick reference | Messaging, terms, tone, visual direction          |
+| [**BuildOS Real Media Policy**](BUILDOS_REAL_MEDIA_POLICY.md)                                                    | Media rules             | Zero AI-generated images/videos, real proof       |
+| [**BuildOS Proof And Presence Doctrine**](BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md)                                | Presence doctrine       | Receipts over vibes, raw proof, selective posting |
+| [**BuildOS Brand Audit Framework**](BUILDOS_BRAND_AUDIT_FRAMEWORK.md)                                            | Alignment workflow      | Surface audits, remediation order, governance     |
+| [**BuildOS Guerrilla Content Doctrine**](../strategy/buildos-guerrilla-content-doctrine.md)                      | Strategic logic         | Solo-founder doctrine, sequencing, tradeoffs      |
+| [**6-Week Guerrilla Seed Campaign**](../social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md) | Current execution plan  | Weekly content planning and posting               |
 
 ### Supporting Brand Documents
 
@@ -68,6 +72,10 @@ Keep older brand documents as reference, not source of truth.
 
 Phrase roles and anti-AI interpretation now live in [BuildOS Brand Architecture](BUILDOS_BRAND_ARCHITECTURE.md).
 
+The visual and video policy lives in [BuildOS Real Media Policy](BUILDOS_REAL_MEDIA_POLICY.md): no AI-generated images or videos; use real product screenshots, real screen recordings, real founder footage, and clearly marked explanatory graphics.
+
+The broader presence doctrine lives in [BuildOS Proof And Presence Doctrine](BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md): receipts over vibes, screens over scenes, work over spectacle.
+
 If a message breaks that order without a good reason, check the newer docs before shipping it.
 
 ---
@@ -79,8 +87,10 @@ If a message breaks that order without a good reason, check the newer docs befor
 1. Start with [BuildOS Marketing Strategy 2026](../strategy/buildos-marketing-strategy-2026.md)
 2. Check [BuildOS Brand Architecture](BUILDOS_BRAND_ARCHITECTURE.md) for phrase roles and hierarchy
 3. Use [BuildOS Brand Guide](brand-guide-1-pager.md) as the quick reference
-4. Use the [6-Week Guerrilla Seed Campaign](../social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md) for hook and asset planning
-5. Check [Zoom Messaging Guide](ZOOM_MESSAGING_GUIDE.md) only for feature-level copy
+4. Check [BuildOS Real Media Policy](BUILDOS_REAL_MEDIA_POLICY.md) before creating any visual or video asset
+5. Check [BuildOS Proof And Presence Doctrine](BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md) before planning a content series, founder post, or proof asset
+6. Use the [6-Week Guerrilla Seed Campaign](../social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md) for hook and asset planning
+7. Check [Zoom Messaging Guide](ZOOM_MESSAGING_GUIDE.md) only for feature-level copy
 
 ### For Strategy Decisions
 

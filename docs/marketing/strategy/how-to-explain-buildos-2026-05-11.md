@@ -1,13 +1,15 @@
 ---
 title: 'How to Explain BuildOS — Talking Points, Personas, Market Story'
 created: 2026-05-11
-last_updated: 2026-05-13
+last_updated: 2026-05-15
 status: draft-for-review
 owner: DJ Wayne
 related_docs:
     - /docs/marketing/strategy/buildos-positioning-and-homepage-rewrite-2026-05-07.md
     - /docs/marketing/strategy/buildos-marketing-strategy-2026.md
     - /docs/marketing/strategy/anti-ai-show-dont-tell-strategy.md
+    - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
+    - /docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
 path: docs/marketing/strategy/how-to-explain-buildos-2026-05-11.md
 ---
 
@@ -18,6 +20,10 @@ A working synthesis of how to explain BuildOS in conversation — to a creator, 
 The answers are not new. They are scattered across the positioning doc, the philosophy in §1, the connect-your-agents spec, and the LinkedIn go-between angle. This doc compresses them into something quotable, organized as **modular talking points** that can be assembled into persona-specific flows.
 
 **Use this doc as a deck of cards, not a script.** Pull the talking points that fit your listener. The personas below show common combinations.
+
+Presentation constraint: when showing BuildOS, use real product screenshots, real screen recordings, or real footage of DJ using the product. Do not use AI-generated images or AI-generated videos to represent BuildOS.
+
+Presence constraint: when talking about BuildOS publicly, lead with receipts over vibes. A real screen, project, decision, or founder workflow should carry more weight than a polished claim.
 
 ---
 
@@ -111,6 +117,14 @@ Agents have to ask permission to read or write your project state. You scope wha
 ### TP17 — The defensibility line
 
 > "An agent can clone a workflow in a weekend. It can't clone a worldview. The moat is the shared context layer — and the user controls it."
+
+### TP18 — Real media as proof
+
+BuildOS should be shown through the actual product and the actual founder workflow: real screenshots, real screen recordings, real videos of DJ using it. No AI-generated images. No AI-generated videos. The medium is part of the message: BuildOS is real work, not synthetic spectacle.
+
+### TP19 — Less online, more present
+
+BuildOS should not feel like a terminally online content machine. It should feel like selective proof from a real operating surface. The status signal is restraint plus evidence: fewer hollow posts, more screens, artifacts, and decisions from the work.
 
 ---
 
@@ -221,6 +235,14 @@ The doc is one thing. **You explaining BuildOS in conversation** is another. Pic
 > "It's the system of record for what I'm working on, that my AI agents can also read from."
 
 This sentence works for a creator, a builder, and a VC. Same sentence, different emphasis.
+
+### The media-proof line
+
+> "I'm not going to show BuildOS with AI-generated product shots or videos. I want people to see the real screen and the real workflow."
+
+### The presence line
+
+> "I don't want BuildOS to feel like a content machine. I want it to feel like dispatches from the actual work."
 
 ---
 

@@ -14,6 +14,18 @@ We looked at Hex's public media kit and it's exceptionally tight. This doc captu
 
 The headline: Hex shipped **~7 cards on a public Notion page**, not 50 assets on a custom site. They won by committing hard to one visual system and reusing it everywhere.
 
+BuildOS has one extra constraint:
+
+**No AI-generated images. No AI-generated videos.**
+
+The press kit should make BuildOS feel material through real product screenshots, real founder photos, real workspace photography, and Inkprint-native design assets. Do not fill asset gaps with synthetic people, synthetic offices, generated product shots, or generated videos.
+
+It also has one presence principle:
+
+**Receipts over vibes.**
+
+The media kit should feel like a real company with real artifacts, not a press shell built from synthetic atmosphere.
+
 ---
 
 ## What Hex is doing
@@ -77,12 +89,14 @@ Plus add (BuildOS-specific):
 - Instagram carousel template (square + 4:5)
 - LinkedIn post background template
 
-### 4. Generation pipeline (where BuildOS can leapfrog Hex)
+### 4. Export pipeline (where BuildOS can leapfrog Hex)
 
 - **One Figma file** with variables for color / texture / wordmark slot. Every static asset is one frame export.
-- **`/api/og` route in SvelteKit** using Satori + the Inkprint background SVG, so blog posts and product pages auto-generate branded OG cards on demand.
+- **`/api/og` route in SvelteKit** using Satori + the Inkprint background SVG, so blog posts and product pages render branded OG cards on demand.
 - **`pnpm gen:media` script** that re-exports the static set when tokens change.
 - **One reusable Inkprint background SVG** committed to the repo so it never drifts across surfaces.
+
+This pipeline is for deterministic exports from real brand components and real product screenshots. It is not an AI image/video generation pipeline.
 
 ### 5. Delivery: copy Hex exactly
 
@@ -110,6 +124,8 @@ Plus add (BuildOS-specific):
 
 ## Related docs
 
+- `docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md` — no AI-generated images/videos; real media rules
+- `docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md` — receipts over vibes; raw proof rules
 - `apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md` — design system reference
 - `docs/marketing/brand/BRAND_ASSET_INVENTORY.md` — current asset inventory
 - `docs/marketing/brand/BUILDOS_BRAND_AESTHETIC_COMPLETE.md` — aesthetic guidelines

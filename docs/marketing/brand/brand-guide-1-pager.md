@@ -7,6 +7,8 @@ related_docs:
     - /docs/marketing/strategy/buildos-marketing-strategy-2026.md
     - /docs/marketing/strategy/buildos-guerrilla-content-doctrine.md
     - /docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md
+    - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
+    - /docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
 path: docs/marketing/brand/brand-guide-1-pager.md
 ---
 
@@ -145,6 +147,9 @@ Unlike traditional productivity tools that expect the user to maintain the syste
 - keep claims honest and specific
 - focus on progress and relief
 - do not over-narrate the technology
+- start from a real artifact before making the post
+- prefer selective, high-signal proof over constant online presence
+- be raw but not careless
 
 ---
 
@@ -236,6 +241,26 @@ If the proof is weak, the message will feel weak.
 
 ## Visual Direction
 
+### Real Media Rule
+
+BuildOS marketing uses **zero AI-generated images** and **zero AI-generated videos**.
+
+Every product visual should come from one of these sources:
+
+- actual BuildOS screenshots
+- actual BuildOS screen recordings
+- real footage of DJ using BuildOS
+- real workspace photos
+- Inkprint text cards or diagrams that are clearly explanatory
+
+This is the counterposition: while AI companies sell synthetic spectacle, BuildOS shows the real tool, real work, and real founder workflow.
+
+The adjacent presence rule:
+
+**Receipts over vibes. Screens over scenes. Work over spectacle.**
+
+BuildOS should feel like dispatches from the workbench, not a content farm.
+
 ### Show
 
 - working surfaces
@@ -244,9 +269,20 @@ If the proof is weak, the message will feel weak.
 - before/after cards
 - one current focus area
 - connected assets inside a project
+- screenshots of the actual product
+- screen recordings of actual workflows
+- founder footage from real BuildOS use
+- the same project changing over time
+- receipts behind any major claim
 
 ### Avoid
 
+- AI-generated imagery
+- AI-generated videos
+- synthetic founder footage or fake workspace scenes
+- hollow posting volume
+- fake urgency or fake social proof
+- trend-chasing with no product receipt
 - robot imagery
 - sparkle-AI tropes
 - sterile dashboards

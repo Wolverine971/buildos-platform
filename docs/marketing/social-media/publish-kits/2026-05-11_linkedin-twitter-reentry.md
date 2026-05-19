@@ -2,9 +2,9 @@
 
 # LinkedIn + Twitter Re-Entry — Three Post Pairs
 
-**Date:** 2026-05-11
+**Date:** 2026-05-11 (drafted), 2026-05-13 (status update)
 **Platforms:** LinkedIn (primary), Twitter (native pair per post)
-**Status:** Drafts, awaiting review
+**Status:** Pair 2 shipped 2026-05-13. Pair 1 = next up. Pair 3 = queued.
 **Author:** DJ Wayne
 **Producer:** growth-analyst agent
 **Source brief:** "fire up the growth analyst and lets draft up a post for linkedin and twitter" (2026-05-11)
@@ -62,6 +62,22 @@ Productivity software sells you the feeling of being organized. Not actually bei
 
 I've fallen for the trade for ten years.
 ```
+
+**Optional product callout (mirrors the Pair 2 "It needs BuildOS." landing — add as a final beat if you want to keep the explicit product-name pattern across the kit):**
+
+```
+So I built the one I actually wanted.
+
+BuildOS.
+```
+
+Or tighter, one line:
+
+```
+That's why BuildOS exists.
+```
+
+Use only if the pattern of naming BuildOS at the end feels right two posts in a row. Skipping it keeps Pair 1 as pure voice / no product, which is the original posture and lets Pair 2's BuildOS line land harder by contrast.
 
 **Pairing note:** LinkedIn carries the confession + reframe; Twitter compresses to the hook + the second-beat punch. Same accusation, tweet just lands faster.
 

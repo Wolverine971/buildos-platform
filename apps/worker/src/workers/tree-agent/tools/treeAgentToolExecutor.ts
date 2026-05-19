@@ -235,7 +235,6 @@ async function getAccessibleProjectIds(params: {
 }): Promise<Set<string>> {
 	const { supabase, actorId, workspaceProjectId, contextProjectId } = params;
 	const allowed = new Set<string>();
-	if (workspaceProjectId) allowed.add(workspaceProjectId);
 
 	const { data: memberships } = await supabase
 		.from('onto_project_members')
@@ -244,16 +243,32 @@ async function getAccessibleProjectIds(params: {
 		.is('removed_at', null);
 
 	const membershipIds = new Set<string>();
+	const candidateProjectIds = new Set<string>();
+	if (workspaceProjectId) candidateProjectIds.add(workspaceProjectId);
 	for (const row of memberships ?? []) {
 		if (row.project_id) {
-			allowed.add(row.project_id);
+			candidateProjectIds.add(row.project_id);
 			membershipIds.add(row.project_id);
 		}
 	}
 
 	// Only allow a context project if the actor is a member.
 	if (contextProjectId && membershipIds.has(contextProjectId)) {
-		allowed.add(contextProjectId);
+		candidateProjectIds.add(contextProjectId);
+	}
+
+	const candidateIds = Array.from(candidateProjectIds);
+	if (!candidateIds.length) return allowed;
+
+	const { data: visibleProjects } = await supabase
+		.from('onto_projects')
+		.select('id')
+		.in('id', candidateIds)
+		.is('deleted_at', null)
+		.is('archived_at', null);
+
+	for (const project of visibleProjects ?? []) {
+		if (project.id) allowed.add(project.id);
 	}
 
 	return allowed;
@@ -384,48 +399,61 @@ type EntityTableName = keyof Pick<
 
 const ENTITY_KIND_CONFIG: Record<
 	EntityKind,
-	{ table: EntityTableName; projectField?: string; select: string; labelField: string }
+	{
+		table: EntityTableName;
+		projectField?: string;
+		select: string;
+		labelField: string;
+		hasArchivedAt?: boolean;
+	}
 > = {
 	project: {
 		table: 'onto_projects',
 		select: 'id, name, description, state_key, type_key, updated_at',
-		labelField: 'name'
+		labelField: 'name',
+		hasArchivedAt: true
 	},
 	task: {
 		table: 'onto_tasks',
 		projectField: 'project_id',
 		select: 'id, project_id, title, description, state_key, type_key, priority, due_at, updated_at',
-		labelField: 'title'
+		labelField: 'title',
+		hasArchivedAt: true
 	},
 	document: {
 		table: 'onto_documents',
 		projectField: 'project_id',
 		select: 'id, project_id, title, description, state_key, type_key, updated_at',
-		labelField: 'title'
+		labelField: 'title',
+		hasArchivedAt: true
 	},
 	goal: {
 		table: 'onto_goals',
 		projectField: 'project_id',
 		select: 'id, project_id, name, description, state_key, target_date, updated_at',
-		labelField: 'name'
+		labelField: 'name',
+		hasArchivedAt: true
 	},
 	plan: {
 		table: 'onto_plans',
 		projectField: 'project_id',
 		select: 'id, project_id, name, description, state_key, type_key, updated_at',
-		labelField: 'name'
+		labelField: 'name',
+		hasArchivedAt: true
 	},
 	milestone: {
 		table: 'onto_milestones',
 		projectField: 'project_id',
 		select: 'id, project_id, title, description, state_key, due_at, updated_at',
-		labelField: 'title'
+		labelField: 'title',
+		hasArchivedAt: true
 	},
 	risk: {
 		table: 'onto_risks',
 		projectField: 'project_id',
 		select: 'id, project_id, title, impact, state_key, probability, updated_at',
-		labelField: 'title'
+		labelField: 'title',
+		hasArchivedAt: true
 	},
 	requirement: {
 		table: 'onto_requirements',
@@ -451,11 +479,16 @@ async function getEntityProjectId(
 	if (!config.projectField) return null;
 	const projectField = config.projectField;
 
-	const { data } = await ctx.supabase
+	let query = ctx.supabase
 		.from(config.table)
 		.select(projectField)
 		.eq('id', entityId)
-		.maybeSingle();
+		.is('deleted_at', null);
+	if (config.hasArchivedAt) {
+		query = query.is('archived_at', null);
+	}
+
+	const { data } = await query.maybeSingle();
 
 	return (data as Record<string, unknown> | null)?.[projectField] as string | null;
 }
@@ -467,11 +500,16 @@ async function fetchEntitiesByKind(
 ): Promise<Array<Record<string, unknown>>> {
 	if (!ids.length) return [];
 	const config = ENTITY_KIND_CONFIG[kind];
-	const { data, error } = await ctx.supabase
+	let query = ctx.supabase
 		.from(config.table)
 		.select(config.select)
 		.in('id', ids)
+		.is('deleted_at', null)
 		.limit(Math.min(ids.length, 200));
+	if (config.hasArchivedAt) {
+		query = query.is('archived_at', null);
+	}
+	const { data, error } = await query;
 	if (error) throw error;
 
 	const rows = (data ?? []) as unknown as Array<Record<string, unknown>>;
@@ -599,6 +637,7 @@ async function executeToolCall(
 						'id, name, description, state_key, type_key, updated_at, facet_scale, facet_stage, facet_context'
 					)
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.order('updated_at', { ascending: false })
 					.limit(limit);
 
@@ -623,6 +662,7 @@ async function executeToolCall(
 					.from('onto_projects')
 					.select('id, name, description, state_key, type_key, updated_at')
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.or(`name.ilike.%${search}%,description.ilike.%${search}%`)
 					.order('updated_at', { ascending: false })
 					.limit(limit);
@@ -649,27 +689,33 @@ async function executeToolCall(
 					.from('onto_projects')
 					.select('*')
 					.eq('id', projectId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (projectError) throw projectError;
 				if (!project) return { name: tool.name, ok: false, error: 'project not found' };
 
 				const countTables = [
-					'onto_tasks',
-					'onto_documents',
-					'onto_goals',
-					'onto_plans',
-					'onto_milestones',
-					'onto_risks',
-					'onto_requirements'
+					{ table: 'onto_tasks', hasArchivedAt: true },
+					{ table: 'onto_documents', hasArchivedAt: true },
+					{ table: 'onto_goals', hasArchivedAt: true },
+					{ table: 'onto_plans', hasArchivedAt: true },
+					{ table: 'onto_milestones', hasArchivedAt: true },
+					{ table: 'onto_risks', hasArchivedAt: true },
+					{ table: 'onto_requirements', hasArchivedAt: false }
 				] as const;
 
 				const counts: Record<string, number> = {};
-				for (const table of countTables) {
-					const { count } = await ctx.supabase
+				for (const { table, hasArchivedAt } of countTables) {
+					let countQuery = ctx.supabase
 						.from(table)
 						.select('id', { count: 'exact', head: true })
 						.eq('project_id', projectId)
 						.is('deleted_at', null);
+					if (hasArchivedAt) {
+						countQuery = countQuery.is('archived_at', null);
+					}
+					const { count } = await countQuery;
 					counts[table] = count ?? 0;
 				}
 
@@ -708,12 +754,15 @@ async function executeToolCall(
 						.from('onto_projects')
 						.select('*')
 						.eq('id', projectId)
+						.is('deleted_at', null)
+						.is('archived_at', null)
 						.maybeSingle(),
 					ctx.supabase
 						.from('onto_tasks')
 						.select('*')
 						.eq('project_id', projectId)
 						.is('deleted_at', null)
+						.is('archived_at', null)
 						.order('updated_at', { ascending: false })
 						.limit(maxPerType),
 					ctx.supabase
@@ -721,6 +770,7 @@ async function executeToolCall(
 						.select('*')
 						.eq('project_id', projectId)
 						.is('deleted_at', null)
+						.is('archived_at', null)
 						.order('updated_at', { ascending: false })
 						.limit(maxPerType),
 					ctx.supabase
@@ -728,24 +778,28 @@ async function executeToolCall(
 						.select('*')
 						.eq('project_id', projectId)
 						.is('deleted_at', null)
+						.is('archived_at', null)
 						.limit(maxPerType),
 					ctx.supabase
 						.from('onto_plans')
 						.select('*')
 						.eq('project_id', projectId)
 						.is('deleted_at', null)
+						.is('archived_at', null)
 						.limit(maxPerType),
 					ctx.supabase
 						.from('onto_milestones')
 						.select('*')
 						.eq('project_id', projectId)
 						.is('deleted_at', null)
+						.is('archived_at', null)
 						.limit(maxPerType),
 					ctx.supabase
 						.from('onto_risks')
 						.select('*')
 						.eq('project_id', projectId)
 						.is('deleted_at', null)
+						.is('archived_at', null)
 						.limit(maxPerType),
 					ctx.supabase
 						.from('onto_requirements')
@@ -807,6 +861,7 @@ async function executeToolCall(
 					.from('onto_documents')
 					.select('id, project_id, title, description, type_key, state_key, updated_at')
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.order('updated_at', { ascending: false })
 					.limit(limit);
 
@@ -835,6 +890,7 @@ async function executeToolCall(
 					.from('onto_documents')
 					.select('id, project_id, title, description, type_key, state_key, updated_at')
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
 					.order('updated_at', { ascending: false })
 					.limit(limit);
@@ -860,6 +916,8 @@ async function executeToolCall(
 					.from('onto_documents')
 					.select('*')
 					.eq('id', documentId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (error) throw error;
 				if (!data) return { name: tool.name, ok: false, error: 'document not found' };
@@ -880,6 +938,7 @@ async function executeToolCall(
 						'id, project_id, title, description, state_key, type_key, priority, due_at, updated_at'
 					)
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.order('updated_at', { ascending: false })
 					.limit(limit);
 
@@ -908,6 +967,7 @@ async function executeToolCall(
 						'id, project_id, title, description, state_key, type_key, priority, due_at, updated_at'
 					)
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
 					.order('updated_at', { ascending: false })
 					.limit(limit);
@@ -933,6 +993,8 @@ async function executeToolCall(
 					.from('onto_tasks')
 					.select('*')
 					.eq('id', taskId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (error) throw error;
 				if (!data) return { name: tool.name, ok: false, error: 'task not found' };
@@ -951,6 +1013,7 @@ async function executeToolCall(
 					.from('onto_goals')
 					.select('id, project_id, name, description, state_key, target_date, updated_at')
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.order('updated_at', { ascending: false })
 					.limit(limit);
 				if (projectId) {
@@ -972,6 +1035,8 @@ async function executeToolCall(
 					.from('onto_goals')
 					.select('*')
 					.eq('id', goalId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (error) throw error;
 				if (!data) return { name: tool.name, ok: false, error: 'goal not found' };
@@ -990,6 +1055,7 @@ async function executeToolCall(
 					.from('onto_plans')
 					.select('id, project_id, name, description, state_key, type_key, updated_at')
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.order('updated_at', { ascending: false })
 					.limit(limit);
 				if (projectId) {
@@ -1011,6 +1077,8 @@ async function executeToolCall(
 					.from('onto_plans')
 					.select('*')
 					.eq('id', planId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (error) throw error;
 				if (!data) return { name: tool.name, ok: false, error: 'plan not found' };
@@ -1029,6 +1097,7 @@ async function executeToolCall(
 					.from('onto_milestones')
 					.select('id, project_id, title, description, state_key, due_at, updated_at')
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.order('due_at', { ascending: true })
 					.limit(limit);
 				if (projectId) {
@@ -1052,6 +1121,8 @@ async function executeToolCall(
 					.from('onto_milestones')
 					.select('*')
 					.eq('id', milestoneId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (error) throw error;
 				if (!data) return { name: tool.name, ok: false, error: 'milestone not found' };
@@ -1071,6 +1142,7 @@ async function executeToolCall(
 					.from('onto_risks')
 					.select('id, project_id, title, impact, state_key, probability, updated_at')
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.order('updated_at', { ascending: false })
 					.limit(limit);
 				if (projectId) {
@@ -1093,6 +1165,8 @@ async function executeToolCall(
 					.from('onto_risks')
 					.select('*')
 					.eq('id', riskId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (error) throw error;
 				if (!data) return { name: tool.name, ok: false, error: 'risk not found' };
@@ -1154,6 +1228,8 @@ async function executeToolCall(
 					.from('onto_tasks')
 					.select('project_id')
 					.eq('id', taskId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (taskError) throw taskError;
 				if (!task?.project_id || !ctx.allowedProjects.has(task.project_id)) {
@@ -1176,7 +1252,8 @@ async function executeToolCall(
 					.from('onto_documents')
 					.select('*')
 					.in('id', docIds)
-					.is('deleted_at', null);
+					.is('deleted_at', null)
+					.is('archived_at', null);
 				if (docError) throw docError;
 
 				const docMap = new Map((docs ?? []).map((d) => [d.id, d]));
@@ -1308,6 +1385,7 @@ async function executeToolCall(
 									)
 									.in('project_id', projectIds)
 									.is('deleted_at', null)
+									.is('archived_at', null)
 									.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
 									.order('updated_at', { ascending: false })
 									.limit(limit)
@@ -1320,6 +1398,7 @@ async function executeToolCall(
 									)
 									.in('project_id', projectIds)
 									.is('deleted_at', null)
+									.is('archived_at', null)
 									.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
 									.order('updated_at', { ascending: false })
 									.limit(limit)
@@ -1332,6 +1411,7 @@ async function executeToolCall(
 									)
 									.in('project_id', projectIds)
 									.is('deleted_at', null)
+									.is('archived_at', null)
 									.or(`name.ilike.%${search}%,description.ilike.%${search}%`)
 									.order('updated_at', { ascending: false })
 									.limit(limit)
@@ -1344,6 +1424,7 @@ async function executeToolCall(
 									)
 									.in('project_id', projectIds)
 									.is('deleted_at', null)
+									.is('archived_at', null)
 									.or(`name.ilike.%${search}%,description.ilike.%${search}%`)
 									.order('updated_at', { ascending: false })
 									.limit(limit)
@@ -1356,6 +1437,7 @@ async function executeToolCall(
 									)
 									.in('project_id', projectIds)
 									.is('deleted_at', null)
+									.is('archived_at', null)
 									.or(`title.ilike.%${search}%,description.ilike.%${search}%`)
 									.order('updated_at', { ascending: false })
 									.limit(limit)
@@ -1368,6 +1450,7 @@ async function executeToolCall(
 									)
 									.in('project_id', projectIds)
 									.is('deleted_at', null)
+									.is('archived_at', null)
 									.or(`title.ilike.%${search}%,content.ilike.%${search}%`)
 									.order('updated_at', { ascending: false })
 									.limit(limit)
@@ -1485,6 +1568,8 @@ async function executeToolCall(
 					.from('onto_projects')
 					.update(updatePayload)
 					.eq('id', projectId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.select('*')
 					.maybeSingle();
 				if (error) throw error;
@@ -1512,6 +1597,8 @@ async function executeToolCall(
 						.from('onto_documents')
 						.select('id, project_id')
 						.eq('id', args.parent_document_id)
+						.is('deleted_at', null)
+						.is('archived_at', null)
 						.maybeSingle();
 					if (!parent?.id || parent.project_id !== projectId) {
 						return {
@@ -1556,6 +1643,8 @@ async function executeToolCall(
 					.from('onto_documents')
 					.select('project_id')
 					.eq('id', documentId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (!doc?.project_id || !ctx.allowedProjects.has(doc.project_id)) {
 					return { name: tool.name, ok: false, error: 'unauthorized document' };
@@ -1578,6 +1667,8 @@ async function executeToolCall(
 					.from('onto_documents')
 					.update(updatePayload)
 					.eq('id', documentId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.select('id, title, updated_at')
 					.maybeSingle();
 				if (error) throw error;
@@ -1637,6 +1728,8 @@ async function executeToolCall(
 					.from('onto_tasks')
 					.select('project_id')
 					.eq('id', taskId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (!task?.project_id || !ctx.allowedProjects.has(task.project_id)) {
 					return { name: tool.name, ok: false, error: 'unauthorized task' };
@@ -1659,6 +1752,8 @@ async function executeToolCall(
 					.from('onto_tasks')
 					.update(updatePayload)
 					.eq('id', taskId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.select('id, title, updated_at')
 					.maybeSingle();
 				if (error) throw error;
@@ -1716,6 +1811,8 @@ async function executeToolCall(
 					.from('onto_goals')
 					.select('project_id')
 					.eq('id', goalId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (!goal?.project_id || !ctx.allowedProjects.has(goal.project_id)) {
 					return { name: tool.name, ok: false, error: 'unauthorized goal' };
@@ -1739,6 +1836,8 @@ async function executeToolCall(
 					.from('onto_goals')
 					.update(updatePayload)
 					.eq('id', goalId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.select('id, name, updated_at')
 					.maybeSingle();
 				if (error) throw error;
@@ -1791,6 +1890,8 @@ async function executeToolCall(
 					.from('onto_plans')
 					.select('project_id')
 					.eq('id', planId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (!plan?.project_id || !ctx.allowedProjects.has(plan.project_id)) {
 					return { name: tool.name, ok: false, error: 'unauthorized plan' };
@@ -1813,6 +1914,8 @@ async function executeToolCall(
 					.from('onto_plans')
 					.update(updatePayload)
 					.eq('id', planId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.select('id, name, updated_at')
 					.maybeSingle();
 				if (error) throw error;
@@ -1867,6 +1970,8 @@ async function executeToolCall(
 					.from('onto_milestones')
 					.select('project_id')
 					.eq('id', milestoneId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (!milestone?.project_id || !ctx.allowedProjects.has(milestone.project_id)) {
 					return { name: tool.name, ok: false, error: 'unauthorized milestone' };
@@ -1890,6 +1995,8 @@ async function executeToolCall(
 					.from('onto_milestones')
 					.update(updatePayload)
 					.eq('id', milestoneId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.select('id, title, updated_at')
 					.maybeSingle();
 				if (error) throw error;
@@ -1941,6 +2048,8 @@ async function executeToolCall(
 					.from('onto_risks')
 					.select('project_id')
 					.eq('id', riskId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (!risk?.project_id || !ctx.allowedProjects.has(risk.project_id)) {
 					return { name: tool.name, ok: false, error: 'unauthorized risk' };
@@ -1965,6 +2074,8 @@ async function executeToolCall(
 					.from('onto_risks')
 					.update(updatePayload)
 					.eq('id', riskId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.select('id, title, updated_at')
 					.maybeSingle();
 				if (error) throw error;
@@ -2050,6 +2161,8 @@ async function executeToolCall(
 					.from('onto_tasks')
 					.select('id, project_id, title')
 					.eq('id', taskId)
+					.is('deleted_at', null)
+					.is('archived_at', null)
 					.maybeSingle();
 				if (taskError) throw taskError;
 				if (!task?.project_id || !ctx.allowedProjects.has(task.project_id)) {
@@ -2069,6 +2182,8 @@ async function executeToolCall(
 						.from('onto_documents')
 						.select('id, project_id')
 						.eq('id', documentId)
+						.is('deleted_at', null)
+						.is('archived_at', null)
 						.maybeSingle();
 					if (!existingDoc?.id || existingDoc.project_id !== task.project_id) {
 						return {

@@ -61,10 +61,15 @@ describe('generateProjectNextStepsForBrief', () => {
 			nextStepShort: 'Do the next useful thing',
 			nextStepLong: 'Focus on the highest-leverage next action for this project.'
 		});
+		const updateQuery = {
+			eq: vi.fn().mockReturnThis(),
+			in: vi.fn().mockReturnThis(),
+			is: vi.fn().mockReturnThis(),
+			select: vi.fn().mockReturnThis(),
+			maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'project-1' }, error: null })
+		};
 		mocks.supabaseFrom.mockReturnValue({
-			update: vi.fn().mockReturnValue({
-				eq: vi.fn().mockResolvedValue({ error: null })
-			})
+			update: vi.fn().mockReturnValue(updateQuery)
 		});
 	});
 
@@ -109,5 +114,28 @@ describe('generateProjectNextStepsForBrief', () => {
 		expect(result.results).toHaveLength(0);
 		expect(result.failed).toBe(1);
 		expect(result.skipped).toBe(0);
+	});
+
+	it('skips paused projects instead of generating next steps', async () => {
+		const result = await generateProjectNextStepsForBrief(
+			[
+				createProject('1', {
+					project: { ...createProject('1').project, state_key: 'paused' }
+				})
+			],
+			{
+				userId: 'user-1',
+				briefDate: '2026-05-05',
+				timezone: 'America/New_York',
+				maxProjects: 1,
+				concurrency: 1,
+				perProjectTimeoutMs: 1000
+			}
+		);
+
+		expect(result.results).toHaveLength(0);
+		expect(result.failed).toBe(0);
+		expect(result.skipped).toBe(1);
+		expect(mocks.getJSONResponse).not.toHaveBeenCalled();
 	});
 });

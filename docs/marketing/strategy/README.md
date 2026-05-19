@@ -12,20 +12,24 @@ Use this folder for current positioning, audience, content doctrine, and lifecyc
 2. [BuildOS Welcome Sequence](./buildos-welcome-sequence.md)
 3. [BuildOS Guerrilla Content Doctrine](./buildos-guerrilla-content-doctrine.md)
 4. [Anti-AI Show-Don't-Tell Strategy](./anti-ai-show-dont-tell-strategy.md)
-5. [How to Explain BuildOS](./how-to-explain-buildos-2026-05-11.md) — spoken-word companion; modular talking points and persona flows
+5. [BuildOS Real Media Policy](../brand/BUILDOS_REAL_MEDIA_POLICY.md) — zero AI-generated images/videos; real screenshots, real footage, real product proof
+6. [BuildOS Proof And Presence Doctrine](../brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md) — receipts over vibes, screens over scenes, selective presence over online volume
+7. [How to Explain BuildOS](./how-to-explain-buildos-2026-05-11.md) — spoken-word companion; modular talking points and persona flows
 
-The five docs above are the fastest path to the current strategy stack.
+The seven docs above are the fastest path to the current strategy stack.
 
 ## Document Map
 
 ### Current Operating Docs
 
-| Document                                                                      | Use It For                                                  |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| [BuildOS Marketing Strategy 2026](./buildos-marketing-strategy-2026.md)       | Current master positioning, audience order, channel roles   |
-| [BuildOS Welcome Sequence](./buildos-welcome-sequence.md)                     | Signup-to-activation lifecycle messaging and email sequence |
-| [BuildOS Guerrilla Content Doctrine](./buildos-guerrilla-content-doctrine.md) | Why the current content motion works                        |
-| [Anti-AI Show-Don't-Tell Strategy](./anti-ai-show-dont-tell-strategy.md)      | Relief-first positioning and anti-hype framing              |
+| Document                                                                               | Use It For                                                  |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| [BuildOS Marketing Strategy 2026](./buildos-marketing-strategy-2026.md)                | Current master positioning, audience order, channel roles   |
+| [BuildOS Welcome Sequence](./buildos-welcome-sequence.md)                              | Signup-to-activation lifecycle messaging and email sequence |
+| [BuildOS Guerrilla Content Doctrine](./buildos-guerrilla-content-doctrine.md)          | Why the current content motion works                        |
+| [Anti-AI Show-Don't-Tell Strategy](./anti-ai-show-dont-tell-strategy.md)               | Relief-first positioning and anti-hype framing              |
+| [BuildOS Real Media Policy](../brand/BUILDOS_REAL_MEDIA_POLICY.md)                     | Real-media rule: no AI-generated images or videos           |
+| [BuildOS Proof And Presence Doctrine](../brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md) | Raw-proof rule: receipts over vibes and selective presence  |
 
 ### Supporting Strategy Docs
 

@@ -7,6 +7,8 @@ related_docs:
     - /docs/marketing/strategy/buildos-marketing-strategy-2026.md
     - /docs/marketing/strategy/buildos-guerrilla-content-doctrine.md
     - /docs/marketing/brand/brand-guide-1-pager.md
+    - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
+    - /docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
     - /docs/marketing/social-media/twitter-voice-buildos.md
     - /docs/marketing/social-media/LINKEDIN_STRATEGY.md
     - /docs/marketing/social-media/instagram-strategy.md
@@ -49,6 +51,8 @@ Each week gets:
 - one audience
 - one hero proof asset
 
+The hero proof asset must be based on real media: actual BuildOS screenshots, actual screen recordings, or real footage of DJ using BuildOS.
+
 ### Rule 2
 
 Use the same thesis across LinkedIn, X, and Instagram.
@@ -75,6 +79,27 @@ If time is tight, ship in this order:
 2. X post
 3. LinkedIn post
 4. Instagram carousel or reel
+
+### Rule 5
+
+No AI-generated images or AI-generated videos.
+
+Use real product screenshots, real screen recordings, real founder footage, real workspace photos, or Inkprint text/diagram cards. The whole campaign is weaker if the proof feels synthetic.
+
+### Rule 6
+
+Receipts over vibes.
+
+Before creating a hook set, identify the artifact:
+
+- real screenshot
+- real screen recording
+- real project
+- real founder lesson
+- real workflow change
+- real thing that got cut, fixed, or shipped
+
+If the week has no artifact, the first task is to make or capture one.
 
 ---
 

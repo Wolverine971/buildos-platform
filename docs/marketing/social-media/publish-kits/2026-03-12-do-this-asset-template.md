@@ -5,6 +5,8 @@ status: current
 owner: DJ Wayne
 related_docs:
     - /docs/marketing/brand/brand-guide-1-pager.md
+    - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
+    - /docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
     - /docs/marketing/social-media/publish-kits/2026-03-12-week-1-day-1-execution.md
     - /docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md
 path: docs/marketing/social-media/publish-kits/2026-03-12-do-this-asset-template.md
@@ -206,6 +208,30 @@ Not:
 
 ## Background Recommendation
 
+### Real Media Rule
+
+Do not use AI-generated images or AI-generated videos for this asset.
+
+Use:
+
+- a real BuildOS screenshot
+- a real workspace photo
+- a real still from founder footage
+- an Inkprint texture or typography-led card
+
+The asset should feel like evidence from a working company, not generated atmosphere.
+
+### Proof Rule
+
+The best version of this asset starts from a receipt:
+
+- an actual BuildOS screen
+- an actual messy input
+- an actual project before/after
+- an actual founder workflow
+
+Do not make a polished card that only states the thesis. The visual should prove it.
+
 ### Best Option
 
 Use a **darkened working-surface background**.
@@ -244,6 +270,7 @@ That is better than generic stock photos.
 
 ### Avoid
 
+- AI-generated backgrounds, people, desks, offices, or product scenes
 - nature scenery unless it directly supports the message
 - generic office stock imagery
 - bright busy screenshots behind text
@@ -300,7 +327,7 @@ What it looks like:
 Visual idea:
 
 - `INSTEAD OF THIS` side: small stacked windows, notes, docs, chat bubbles, checklist fragments
-- `DO THIS` side: one calm project view with structure and one visible next move
+- `DO THIS` side: one calm real BuildOS screenshot or clearly labeled concept panel with structure and one visible next move
 
 Why it works:
 
@@ -331,6 +358,7 @@ Why it works:
 Use this when:
 
 - you have a screenshot that already looks calm and legible
+- the screenshot comes from the actual product or a clearly labeled staging build
 
 ---
 
@@ -378,7 +406,7 @@ For day one, make this:
 - two-column layout
 - darkened desk or writing-table background
 - small fragmented overlays behind `INSTEAD OF THIS`
-- one clean BuildOS screenshot or mock panel behind `DO THIS`
+- one clean BuildOS screenshot behind `DO THIS`, or a clearly labeled concept panel if the product surface is not ready
 
 That gives you:
 
@@ -399,3 +427,5 @@ If someone only looks at this card for two seconds, they should understand:
 - that BuildOS is about a better working system
 
 If it only looks pretty, it failed.
+
+If it has no receipt, it is a draft, not the final asset.

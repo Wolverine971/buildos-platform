@@ -353,10 +353,14 @@ Examples of reusable X hooks:
 
 Turn strong tweets into:
 
-- screenshot posts
+- real screenshot posts
 - short demo clips
 - Instagram carousels
 - LinkedIn posts
+
+Media rule: no AI-generated images or videos. Use actual product screenshots, screen recordings, founder footage, or text/diagram cards.
+
+Presence rule: receipts over vibes. Do not post just to look online. Start from a real screen, project, decision, or founder observation that came from the work.
 
 ### Conversation Targets
 
@@ -392,6 +396,8 @@ Weekly structure:
 - 1 build-in-public post
 - 1 optional extra post from whatever got traction
 
+If the proof post does not exist yet, capture the proof before adding more takes.
+
 ---
 
 ## Metrics That Matter
@@ -415,3 +421,5 @@ Do not overvalue impressions without qualified response.
 3. Keep ADHD as a supporting lane, not the main lane.
 4. Prefer concrete workflow takes over abstract philosophy.
 5. Use proof whenever possible.
+6. Do not use AI-generated image or video assets as proof.
+7. Be selectively present, not terminally online.

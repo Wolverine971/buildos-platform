@@ -174,6 +174,7 @@ Never output JSON.`;
 
 	static buildUserPrompt(input: OntologyAnalysisPromptInput): string {
 		const { date, timezone, briefData, holidays, projectBriefContents } = input;
+		const recentlyPausedProjects = briefData.recentlyPausedProjects ?? [];
 
 		let prompt = `Generate a goal-oriented daily brief analysis.
 
@@ -183,7 +184,7 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 
 ## Overview Stats
 - Active Projects: ${briefData.projects.length}
-- Recently Paused Projects: ${briefData.recentlyPausedProjects.length}
+- Recently Paused Projects: ${recentlyPausedProjects.length}
 - Tasks Today: ${briefData.todaysTasks.length}
 - Recently Updated Tasks (7d): ${briefData.recentlyUpdatedTasks?.length ?? 0}
 - Upcoming Tasks (next 7d): ${briefData.upcomingTasks?.length ?? 0}
@@ -197,10 +198,10 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 
 `;
 
-		if (briefData.recentlyPausedProjects.length > 0) {
+		if (recentlyPausedProjects.length > 0) {
 			prompt += `## Recently Paused Projects\n`;
 			prompt += `These projects are informational only. Do not infer tasks, risks, or next actions from them because paused project data is intentionally excluded.\n`;
-			for (const project of briefData.recentlyPausedProjects.slice(0, 5)) {
+			for (const project of recentlyPausedProjects.slice(0, 5)) {
 				prompt += `- ${project.projectName} paused at ${project.pausedAt}\n`;
 			}
 			prompt += '\n';
@@ -441,6 +442,7 @@ Do NOT include a heading—start directly with content.
 
 	static buildUserPrompt(input: OntologyAnalysisPromptInput): string {
 		const { date, timezone, briefData, holidays, projectBriefContents } = input;
+		const recentlyPausedProjects = briefData.recentlyPausedProjects ?? [];
 
 		// Calculate aggregate stats
 		const activeGoals = briefData.goals.filter(
@@ -459,7 +461,7 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 
 ## Quick Stats
 - Projects: ${briefData.projects.length}
-- Recently Paused Projects: ${briefData.recentlyPausedProjects.length}
+- Recently Paused Projects: ${recentlyPausedProjects.length}
 - Tasks Today: ${briefData.todaysTasks.length}
 - Recently Updated (7d): ${briefData.recentlyUpdatedTasks?.length ?? 0}
 - Upcoming (next 7d): ${briefData.upcomingTasks?.length ?? 0}
@@ -480,10 +482,10 @@ ${holidays && holidays.length > 0 ? `Holidays: ${holidays.join(', ')}\n` : ''}
 
 `;
 
-		if (briefData.recentlyPausedProjects.length > 0) {
+		if (recentlyPausedProjects.length > 0) {
 			prompt += `## Recently Paused Projects\n`;
 			prompt += `Mention these only as paused context. They are excluded from active project, task, goal, and calendar analysis.\n`;
-			for (const project of briefData.recentlyPausedProjects.slice(0, 5)) {
+			for (const project of recentlyPausedProjects.slice(0, 5)) {
 				prompt += `- ${project.projectName} paused at ${project.pausedAt}\n`;
 			}
 			prompt += '\n';
@@ -580,13 +582,15 @@ Rules:
 - Do not invent events, documents, goals, plans, or task status.
 - Be concrete and name the work that changed.
 - Keep the briefMarkdown under 220 words.
+- Return the project-level next step in nextStepShort/nextStepLong. If the existing next step is still right, refine it; if it is stale, replace it.
 - Return JSON only with this shape:
 {
   "briefMarkdown": "Markdown brief beginning with the project heading",
   "statusLine": "One-sentence project status",
   "recentChangeSummary": "One sentence about what changed, or empty string",
   "calendarSummary": "One sentence about calendar commitments, or empty string",
-  "nextAction": "One concrete next action, or empty string"
+  "nextStepShort": "<=120 chars, one concrete next action, or empty string",
+  "nextStepLong": "2-4 sentences, <=600 chars with reasoning and useful entity references, or empty string"
 }`;
 	}
 
@@ -724,7 +728,9 @@ Write the JSON response now. The briefMarkdown should use this structure when da
 ### Blockers
 ### Next Steps
 
-Omit empty sections.`;
+Omit empty sections.
+
+Also return nextStepShort and nextStepLong as the persisted project next step. Anchor it in goals, plans, milestones, active tasks, recent changes, and calendar commitments.`;
 
 		return prompt;
 	}
@@ -778,6 +784,7 @@ Be specific about their actual work - no placeholders.`;
 
 	static buildUserPrompt(input: OntologyReengagementPromptInput): string {
 		const { date, timezone, daysSinceLastLogin, lastLoginDate, briefData } = input;
+		const recentlyPausedProjects = briefData.recentlyPausedProjects ?? [];
 
 		const activeGoals = briefData.goals.filter(
 			(g) => g.goal.state_key !== 'achieved' && g.goal.state_key !== 'abandoned'
@@ -795,7 +802,7 @@ Last login: ${lastLoginDate}
 
 ## Quick Stats
 - Active Projects: ${briefData.projects.length}
-- Recently Paused Projects: ${briefData.recentlyPausedProjects.length}
+- Recently Paused Projects: ${recentlyPausedProjects.length}
 - Pending Tasks: ${briefData.todaysTasks.length + briefData.overdueTasks.length}
 - Overdue: ${briefData.overdueTasks.length}
 - Blocked: ${briefData.blockedTasks.length}
@@ -808,10 +815,10 @@ Last login: ${lastLoginDate}
 
 `;
 
-		if (briefData.recentlyPausedProjects.length > 0) {
+		if (recentlyPausedProjects.length > 0) {
 			prompt += `## Recently Paused Projects\n`;
 			prompt += `Mention these only as paused context. They are excluded from active work analysis.\n`;
-			for (const project of briefData.recentlyPausedProjects.slice(0, 5)) {
+			for (const project of recentlyPausedProjects.slice(0, 5)) {
 				prompt += `- ${project.projectName} paused at ${project.pausedAt}\n`;
 			}
 			prompt += '\n';

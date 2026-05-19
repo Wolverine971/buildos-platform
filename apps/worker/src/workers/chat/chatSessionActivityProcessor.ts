@@ -62,6 +62,8 @@ interface SessionChangeSummary {
 
 type GoalSummary = NonNullable<NextStepGenerationContext['goals']>[number];
 
+const ACTIVE_PROJECT_STATES = ['planning', 'active'] as const;
+
 interface TaskSummary {
 	id: string;
 	title: string;
@@ -420,9 +422,12 @@ async function generateNextSteps(
 	// Get project info
 	const { data: project } = await supabase
 		.from('onto_projects')
-		.select('name, description, type_key, next_step_short, next_step_long')
+		.select('name, description, type_key, state_key, next_step_short, next_step_long')
 		.eq('id', projectId)
-		.single();
+		.in('state_key', ACTIVE_PROJECT_STATES)
+		.is('deleted_at', null)
+		.is('archived_at', null)
+		.maybeSingle();
 
 	if (!project) {
 		return null;
@@ -434,11 +439,15 @@ async function generateNextSteps(
 				.from('onto_goals')
 				.select('id, name, type_key, props')
 				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.is('archived_at', null)
 				.limit(10),
 			supabase
 				.from('onto_tasks')
 				.select('id, title, state_key, completed_at')
 				.eq('project_id', projectId)
+				.is('deleted_at', null)
+				.is('archived_at', null)
 				.not('completed_at', 'is', null)
 				.order('completed_at', { ascending: false })
 				.limit(6),
@@ -926,7 +935,10 @@ async function updateProjectNextStep(
 			next_step_source: 'ai',
 			updated_at: new Date().toISOString()
 		})
-		.eq('id', projectId);
+		.eq('id', projectId)
+		.in('state_key', ACTIVE_PROJECT_STATES)
+		.is('deleted_at', null)
+		.is('archived_at', null);
 
 	if (error) {
 		throw new Error(`Failed to update project next step: ${error.message}`);

@@ -19,6 +19,14 @@ BuildOS is not just software—it's **context infrastructure for empire builders
 
 The Inkprint Design System already established the foundation. This document elevates it into a complete brand universe with **reason behind every choice**.
 
+Media constraint:
+
+**BuildOS marketing uses zero AI-generated images and zero AI-generated videos.** The aesthetic must be expressed through real product screenshots, real screen recordings, real founder/workspace photography, and deterministic Inkprint graphics. Synthetic visuals make the product feel less material, which breaks the brand.
+
+Presence constraint:
+
+**Receipts over vibes. Screens over scenes. Work over spectacle.** The aesthetic should support raw proof, not bury it under polish.
+
 ---
 
 ## Part 1: The Founder DNA → Design DNA
@@ -247,6 +255,39 @@ The accent color (`hsl(24 80% 55%)`) is **warm amber-orange** because:
 - **Dark Mode = "Ink Room"** — Near-black, textures switch to screen blend
 
 Both should feel like **the same printed artifact under different lighting** — not two different brands.
+
+### Real Media, Not Synthetic Atmosphere
+
+The Inkprint system should make real screenshots and real footage feel coherent. It should not become a wrapper for AI-generated images or videos.
+
+Use:
+
+- actual product screenshots
+- actual screen recordings
+- real photos or videos of DJ using BuildOS
+- real workspace photography
+- diagrams and text cards made from the brand system
+
+Avoid:
+
+- AI-generated images
+- AI-generated videos
+- generated desk, office, studio, or founder scenes
+- synthetic product walkthroughs
+- mock UI presented as product proof
+
+### Raw But Not Careless
+
+BuildOS should look handled, not overproduced.
+
+That means:
+
+- product surfaces can show dense real work
+- screenshots can include realistic rough edges if they clarify the workflow
+- founder footage can feel direct and low-production
+- text cards should be edited tightly even when the source material is raw
+
+Do not confuse rawness with neglect. The work can feel unpolished without feeling sloppy.
 
 ---
 

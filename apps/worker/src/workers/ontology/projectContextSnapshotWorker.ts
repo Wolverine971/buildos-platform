@@ -6,6 +6,7 @@ import { supabase } from '../../lib/supabase';
 const SNAPSHOT_VERSION = 1;
 const SNAPSHOT_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const AUTO_ICON_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
+const ACTIVE_PROJECT_STATES = new Set(['planning', 'active']);
 const PROJECT_ICON_GENERATION_ENABLED =
 	String(process.env.ENABLE_PROJECT_ICON_GENERATION ?? 'false').toLowerCase() === 'true';
 
@@ -420,6 +421,43 @@ export async function processProjectContextSnapshotJob(
 			throw new Error('projectId is required');
 		}
 
+		const { data: projectRow, error: projectError } = await supabase
+			.from('onto_projects')
+			.select(
+				'doc_structure, updated_at, description, icon_svg, state_key, deleted_at, archived_at'
+			)
+			.eq('id', projectId)
+			.maybeSingle();
+
+		if (projectError) {
+			throw new Error(`Failed to load project lifecycle: ${projectError.message}`);
+		}
+
+		if (!projectRow) {
+			throw new Error('Project not found or access denied');
+		}
+
+		const projectSkipReason =
+			projectRow.deleted_at || projectRow.archived_at
+				? 'project_archived'
+				: !ACTIVE_PROJECT_STATES.has(String(projectRow.state_key))
+					? `project_${String(projectRow.state_key || 'inactive')}`
+					: null;
+
+		if (projectSkipReason) {
+			await job.log(`Snapshot skipped for inactive project (${projectSkipReason})`);
+			await supabase.from('project_context_snapshot_metrics').insert({
+				project_id: projectId,
+				snapshot_version: SNAPSHOT_VERSION,
+				status: 'skipped',
+				duration_ms: Date.now() - start,
+				computed_at: new Date().toISOString(),
+				queue_job_id: job.id,
+				error_message: projectSkipReason
+			});
+			return { success: true, projectId, skipped: true, reason: projectSkipReason };
+		}
+
 		const { data: existing, error: existingError } = await supabase
 			.from('project_context_snapshot')
 			.select('computed_at')
@@ -471,16 +509,6 @@ export async function processProjectContextSnapshotJob(
 			insights: Array.isArray(payload.insights) ? payload.insights : [],
 			edges: Array.isArray(payload.edges) ? payload.edges : []
 		};
-
-		const { data: projectRow, error: projectError } = await supabase
-			.from('onto_projects')
-			.select('doc_structure, updated_at, description, icon_svg')
-			.eq('id', projectId)
-			.maybeSingle();
-
-		if (projectError) {
-			throw new Error(`Failed to load project doc_structure: ${projectError.message}`);
-		}
 
 		const facets = {
 			context: graph.project.facet_context ?? null,

@@ -8,6 +8,8 @@ related_docs:
     - /docs/marketing/brand/brand-guide-1-pager.md
     - /docs/marketing/strategy/buildos-guerrilla-content-doctrine.md
     - /docs/marketing/brand/BUILDOS_BRAND_AESTHETIC_COMPLETE.md
+    - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
+    - /docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
 path: docs/marketing/brand/BUILDOS_BRAND_ARCHITECTURE.md
 ---
 
@@ -47,6 +49,18 @@ BuildOS is not anti-AI as a product.
 
 BuildOS is anti-AI-hype as a market posture and anti-AI-theater as a design instinct.
 
+The visual rule is explicit:
+
+**BuildOS marketing uses zero AI-generated images and zero AI-generated videos.**
+
+Use real screenshots, real screen recordings, real founder footage, and real workspace photography. AI can help with text seeds and planning, but it cannot manufacture BuildOS visuals or video.
+
+The presence rule is also explicit:
+
+**Receipts over vibes. Screens over scenes. Work over spectacle.**
+
+BuildOS should feel less like a terminally online content machine and more like selective dispatches from a serious tool being used on real work.
+
 ### What that means
 
 - do not lead with AI as the main headline
@@ -54,6 +68,9 @@ BuildOS is anti-AI-hype as a market posture and anti-AI-theater as a design inst
 - do not use spectacle to compensate for weak proof
 - do not imply the user should hand over judgment
 - do not make the interface feel like an AI demo
+- do not show BuildOS through synthetic product shots, AI-generated B-roll, fake founder footage, or artificial workspace scenes
+- do not create hollow volume just to appear active
+- do not overproduce away the realness of the work
 
 ### What to lead with instead
 
@@ -63,6 +80,10 @@ BuildOS is anti-AI-hype as a market posture and anti-AI-theater as a design inst
 - structure
 - continuity
 - visible before / after proof
+- actual product surfaces
+- real footage of the founder using the tool
+- raw but edited founder judgment
+- project continuity over time
 - serious tool energy
 
 ### Working translation
@@ -71,6 +92,9 @@ AI is the mechanism.
 It is not the mascot.
 It is not the aesthetic.
 It is not the category.
+It is not the media layer.
+
+The media layer is proof.
 
 ---
 

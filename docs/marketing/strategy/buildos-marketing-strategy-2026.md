@@ -9,6 +9,9 @@ related_docs:
     - /docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md
     - /docs/marketing/strategy/thinking-environment-creator-strategy.md
     - /docs/marketing/strategy/anti-ai-show-dont-tell-strategy.md
+    - /docs/marketing/strategy/how-to-explain-buildos-2026-05-11.md
+    - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
+    - /docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
 path: docs/marketing/strategy/buildos-marketing-strategy-2026.md
 ---
 
@@ -61,6 +64,9 @@ That means:
 - lead with relief, not hype
 - lead with replacement, not addition
 - lead with creators whose workflows are easy to show
+- use real screenshots, real screen recordings, and real founder footage
+- use zero AI-generated images and zero AI-generated videos
+- build presence through receipts, not constant online volume
 
 ---
 
@@ -211,6 +217,15 @@ The fastest way to explain BuildOS is a transformation:
 - stuck chapter -> revision plan
 - video idea mess -> production pipeline
 
+The proof must come from real media:
+
+- actual BuildOS screenshots
+- actual screen recordings
+- real videos of DJ using the product
+- real workspace photos
+
+Do not use AI-generated images or AI-generated videos to represent BuildOS.
+
 ### 2. Replacement beats addition
 
 People do not want another tab.
@@ -242,6 +257,21 @@ Every week should have:
 
 This keeps the campaign coherent and sustainable.
 
+### 6. Selective presence beats terminally online volume
+
+Do not make BuildOS feel like it is posting because the algorithm demands tribute.
+
+BuildOS should feel like selective dispatches from the work:
+
+- real product surfaces
+- real founder judgment
+- real projects changing over time
+- real constraints and tradeoffs
+
+The strategy is not to disappear.
+
+The strategy is to make each appearance feel grounded in evidence.
+
 ---
 
 ## Content Strategy
@@ -265,6 +295,13 @@ Use:
 - workflow teardowns
 - screen recordings
 - before/after screenshots
+
+Media rule:
+
+- screenshots and screen recordings must come from the actual product
+- videos must be real footage or screen capture
+- diagrams and text cards are allowed when clearly explanatory
+- AI-generated images and AI-generated videos are not allowed
 
 Target share:
 
@@ -408,6 +445,21 @@ Ask for:
 - opening lines
 
 Then refine manually.
+
+### Presence Rule
+
+Publish from artifacts.
+
+Before drafting a post, identify the receipt:
+
+- screenshot
+- screen recording
+- real project
+- bug or design change
+- customer permissioned story
+- founder workflow
+
+If there is no receipt, either capture one or make the post explicitly conceptual.
 
 ---
 

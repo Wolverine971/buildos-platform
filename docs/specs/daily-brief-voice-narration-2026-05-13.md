@@ -590,6 +590,10 @@ Also add `generate_brief_audio` to the job type log list.
 
 Alpha must not let multiple Kokoro syntheses run at once.
 
+Implementation update for the Railway Hobby alpha: local Kokoro/ONNX synthesis can exceed the queue timeout and is not reliable enough as the default provider. The worker should support `BRIEF_AUDIO_TTS_PROVIDER=openai | kokoro | auto` and default to backend OpenAI TTS when `PRIVATE_OPENAI_API_KEY` or `OPENAI_API_KEY` is configured. Keep Kokoro available behind `BRIEF_AUDIO_TTS_PROVIDER=kokoro` for a larger worker or a later dedicated audio service.
+
+The OpenAI alpha path must still generate and upload a real MP3 from the worker, not use browser speech synthesis. Use `BRIEF_AUDIO_OPENAI_MODEL=gpt-4o-mini-tts` and `BRIEF_AUDIO_OPENAI_VOICE=onyx` by default. This is not the same voice embedding as Kokoro `am_onyx`, but it avoids the stuck "Generating audio narration" state on Hobby infrastructure and gives users a backend-generated play button immediately.
+
 Locked alpha deployment:
 
 - Keep `generate_brief_audio` registered in the worker.

@@ -16,6 +16,10 @@
 
 **Be real, don't be too professional. Speak in your real voice.**
 
+For visuals or video, follow `../brand/BUILDOS_REAL_MEDIA_POLICY.md`: no AI-generated images or videos; use real screenshots, screen recordings, founder footage, workspace photos, or clear explanatory graphics.
+
+For presence, follow `../brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md`: post from receipts, not from the need to appear busy online.
+
 ### Inspiration
 
 Jim Bisenius post (personal storytelling + business lessons):

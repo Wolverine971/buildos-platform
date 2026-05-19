@@ -37,7 +37,7 @@ Public pages compound across every other channel: SEO surface, LLM citation surf
 | T22  | Phase 4 — clone-as-template            | C    | 3    | 1–2 wk         | ⚪            | inline below                                                                               |
 | T29  | Phase 5 — discovery gallery            | C    | 4    | 2 wk           | ⚪            | inline below                                                                               |
 | T30  | `/@username/project-name` migration    | C    | 4    | 1 wk           | ⚪            | inline below                                                                               |
-| T31  | Phase 6 — social layer                 | C    | 4+   | multi-wk       | ⏸             | inline below                                                                               |
+| T31  | Phase 6 — social layer                 | C    | 4+   | multi-wk       | ⏸            | inline below                                                                               |
 
 ## Required reading
 

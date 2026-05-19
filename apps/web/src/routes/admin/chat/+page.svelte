@@ -14,7 +14,8 @@
 		XCircle,
 		Sparkles,
 		Image,
-		HardDrive
+		HardDrive,
+		Network
 	} from 'lucide-svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -598,6 +599,19 @@
 				<div>
 					<h3 class="text-base font-semibold text-foreground">Tools</h3>
 					<p class="text-sm text-muted-foreground">Tool usage</p>
+				</div>
+			</div>
+		</a>
+
+		<a
+			href="/admin/chat/domains"
+			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
+		>
+			<div class="flex items-center gap-3">
+				<Network class="h-7 w-7 text-sky-500 shrink-0" />
+				<div>
+					<h3 class="text-base font-semibold text-foreground">Domains</h3>
+					<p class="text-sm text-muted-foreground">Research queue</p>
 				</div>
 			</div>
 		</a>

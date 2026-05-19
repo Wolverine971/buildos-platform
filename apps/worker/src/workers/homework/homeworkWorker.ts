@@ -41,6 +41,7 @@ async function loadScratchpadContent(runId: string): Promise<string | null> {
 		.select('content')
 		.contains('props', { homework_run_id: runId, doc_role: 'scratchpad' })
 		.is('deleted_at', null)
+		.is('archived_at', null)
 		.order('updated_at', { ascending: false })
 		.limit(1)
 		.maybeSingle();

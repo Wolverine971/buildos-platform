@@ -133,13 +133,15 @@ shadow-ink-inner    /* Inputs, insets */
 
 ---
 
-## The Five Laws
+## The Seven Laws
 
 1. **Readability > Texture** — Remove texture if it hurts reading
 2. **One Texture Per Surface** — No stacking
 3. **Consistent Meaning** — Pulse = urgency everywhere
 4. **Semantic Tokens Only** — No random colors
 5. **Printed, Not Plastic** — Crisp edges, no neon
+6. **Real Media Only** — No AI-generated images or videos; use real screenshots, screen recordings, founder footage, and workspace photos
+7. **Receipts Over Vibes** — The strongest brand asset is a real artifact that proves the claim
 
 ---
 

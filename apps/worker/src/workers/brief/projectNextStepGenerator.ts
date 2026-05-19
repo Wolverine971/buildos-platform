@@ -53,6 +53,8 @@ If data is sparse, suggest the most impactful planning/clarification action. Nev
 const DEFAULT_MAX_PROJECTS_PER_BRIEF = 8;
 const DEFAULT_CONCURRENCY = 3;
 const DEFAULT_PER_PROJECT_TIMEOUT_MS = 20_000;
+const ACTIVE_PROJECT_STATES = ['planning', 'active'] as const;
+const ACTIVE_PROJECT_STATE_SET = new Set<string>(ACTIVE_PROJECT_STATES);
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
 	let timeout: NodeJS.Timeout | null = null;
@@ -216,6 +218,10 @@ async function generateNextStepForProject(
 	goals: GoalProgress[],
 	options: GenerateOptions
 ): Promise<NextStepResult | null> {
+	if (!ACTIVE_PROJECT_STATE_SET.has(project.project.state_key)) {
+		return null;
+	}
+
 	const categories = categorizeTasks(project.tasks, options.briefDate, options.timezone);
 	const upcomingMilestones = project.milestones
 		.filter((m) => m.state_key !== 'completed' && m.state_key !== 'missed')
@@ -267,7 +273,7 @@ async function generateNextStepForProject(
 		const nextStepShort = sanitizeShort(response.nextStepShort);
 		const nextStepLong = sanitizeLong(response.nextStepLong);
 
-		const { error } = await supabase
+		const { data: persistedProject, error } = await supabase
 			.from('onto_projects')
 			.update({
 				next_step_short: nextStepShort,
@@ -276,7 +282,12 @@ async function generateNextStepForProject(
 				next_step_updated_at: new Date().toISOString(),
 				updated_at: new Date().toISOString()
 			})
-			.eq('id', project.project.id);
+			.eq('id', project.project.id)
+			.in('state_key', ACTIVE_PROJECT_STATES)
+			.is('deleted_at', null)
+			.is('archived_at', null)
+			.select('id')
+			.maybeSingle();
 
 		if (error) {
 			console.warn(
@@ -295,7 +306,7 @@ async function generateNextStepForProject(
 			projectId: project.project.id,
 			nextStepShort,
 			nextStepLong,
-			persisted: !error
+			persisted: Boolean(persistedProject) && !error
 		};
 	} catch (err) {
 		console.error('[NextStep][Brief] LLM generation failed:', err);
@@ -336,7 +347,10 @@ export async function generateProjectNextStepsForBrief(
 	const maxProjects = Math.max(0, options.maxProjects ?? DEFAULT_MAX_PROJECTS_PER_BRIEF);
 	const concurrency = Math.max(1, options.concurrency ?? DEFAULT_CONCURRENCY);
 
-	const sortedProjects = [...projects].sort((a, b) => {
+	const activeProjects = projects.filter((project) =>
+		ACTIVE_PROJECT_STATE_SET.has(project.project.state_key)
+	);
+	const sortedProjects = [...activeProjects].sort((a, b) => {
 		const priorityDelta = getNextStepPriority(b, options) - getNextStepPriority(a, options);
 		if (priorityDelta !== 0) return priorityDelta;
 
@@ -345,7 +359,7 @@ export async function generateProjectNextStepsForBrief(
 		return bUpdated - aUpdated;
 	});
 	const projectsToProcess = sortedProjects.slice(0, maxProjects);
-	const skipped = Math.max(0, sortedProjects.length - projectsToProcess.length);
+	const skipped = Math.max(0, projects.length - projectsToProcess.length);
 	const total = projectsToProcess.length;
 
 	if (total === 0) {

@@ -20,6 +20,20 @@
 | **Social Templates** | Missing                    | High     |
 | **Print Collateral** | Missing                    | Medium   |
 
+## Real Media Constraint
+
+All brand assets must follow [BuildOS Real Media Policy](BUILDOS_REAL_MEDIA_POLICY.md):
+
+- no AI-generated images
+- no AI-generated videos
+- no synthetic product shots, founder photos, workspace scenes, or promotional B-roll
+- product visuals must use real screenshots or real screen recordings
+- photography must come from real founder, workspace, customer, or product usage contexts
+
+AI can help draft text, briefs, and layouts. It cannot create the image or video asset.
+
+Presence rule: every priority asset should have a receipt behind it. Prefer real product screens, real founder/workspace photography, or an explicit explanatory diagram over a polished but proof-free graphic.
+
 ---
 
 ## 1. Logo & Wordmark
@@ -197,10 +211,13 @@ Common icons:
 ### Recommended Style
 
 - Screenshots should show real UI, not mockups
+- Screen recordings should show real workflows, not simulated product animations
+- Founder/workspace visuals should be real photos or real video stills
 - Textures visible in backgrounds
 - Amber accent prominent
 - Show high information density (not whitewashed)
 - Dark mode and light mode variants
+- No AI-generated imagery or video
 
 ---
 
@@ -229,6 +246,8 @@ Common icons:
 - Amber accent for highlights
 - Micro-label pattern for categories
 - Paper-like backgrounds
+- Use real screenshots, real workspace photos, or deterministic Inkprint graphics
+- Do not use AI-generated backgrounds, people, product scenes, or video frames
 
 ---
 

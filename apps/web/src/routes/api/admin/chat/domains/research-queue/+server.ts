@@ -41,9 +41,7 @@ function parseLimit(value: string | null): number {
 }
 
 function parseStatus(value: string | null): QueueStatusFilter {
-	return QUEUE_STATUSES.has(value as QueueStatusFilter)
-		? (value as QueueStatusFilter)
-		: 'all';
+	return QUEUE_STATUSES.has(value as QueueStatusFilter) ? (value as QueueStatusFilter) : 'all';
 }
 
 function parseKind(value: string | null): QueueKindFilter {
@@ -56,7 +54,16 @@ function parsePriority(value: string | null): QueuePriorityFilter {
 		: 'all';
 }
 
-function statusCounts(rows: DomainResearchQueueStoredRow[]): Record<DomainResearchQueueStatus, number> {
+function normalizeSearchForFilter(value: string): string {
+	return value
+		.replace(/[%*,()]/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+function statusCounts(
+	rows: DomainResearchQueueStoredRow[]
+): Record<DomainResearchQueueStatus, number> {
 	const counts: Record<DomainResearchQueueStatus, number> = {
 		queued: 0,
 		researching: 0,
@@ -91,7 +98,7 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 	const status = parseStatus(url.searchParams.get('status'));
 	const kind = parseKind(url.searchParams.get('kind'));
 	const priority = parsePriority(url.searchParams.get('priority'));
-	const search = url.searchParams.get('search')?.trim() ?? '';
+	const search = normalizeSearchForFilter(url.searchParams.get('search') ?? '');
 	const limit = parseLimit(url.searchParams.get('limit'));
 	const db = supabase as unknown as { from: (table: string) => any };
 
@@ -133,16 +140,14 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		if (kind !== 'all') query = query.eq('kind', kind);
 		if (priority !== 'all') query = query.eq('priority', priority);
 		if (search) {
-			const escaped = search.replace(/[%_,]/g, (char) => `\\${char}`);
 			query = query.or(
-				`queue_key.ilike.%${escaped}%,user_need.ilike.%${escaped}%,summary.ilike.%${escaped}%`
+				`queue_key.ilike.%${search}%,user_need.ilike.%${search}%,summary.ilike.%${search}%`
 			);
 		}
 
 		const { data, error, count } = await query
-			.order('status', { ascending: true })
-			.order('priority', { ascending: true })
 			.order('last_seen_at', { ascending: false })
+			.order('occurrences', { ascending: false })
 			.range(0, limit - 1);
 
 		if (error) throw error;

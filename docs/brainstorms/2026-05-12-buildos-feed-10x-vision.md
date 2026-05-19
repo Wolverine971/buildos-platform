@@ -1,7 +1,7 @@
 ---
 date: 2026-05-12
 topic: buildos-feed-10x-vision
-status: brainstorm — ceiling state, north-star experience
+status: brainstorm — ceiling state, north-star experience, amended after audit
 companion_to: docs/brainstorms/2026-05-11-buildos-agent-feed-brainstorm.md
 path: docs/brainstorms/2026-05-12-buildos-feed-10x-vision.md
 ---
@@ -67,6 +67,21 @@ The ceiling state is not measured in features. It's measured in what the user _b
 - **Present in his own life.** The brief minimizes time-on-app so he can be where he actually is — at the dinner table, on a walk, in a conversation. The brief gives him back his hours.
 
 This is the opposite of social media's emotional payoff. Social feeds make you feel **stimulated and behind**. The BuildOS brief makes you feel **calm and ahead**.
+
+## Audit Guardrail: The 10x Version Must Stay Quiet
+
+The ceiling vision only works if the system is radically selective. "Chief of staff in a box" does not mean every agent reports every completed task. It means BuildOS absorbs the noise, edits it, and surfaces the few things that change the user's next move.
+
+Product rule: every new surface, agent, digest, and modality must preserve the user's ability to reach "caught up." If a feature increases checking behavior without increasing decision quality, it weakens the product.
+
+Implications:
+
+- External agents write to memory/project history by default, not the visible brief.
+- Briefer is an editor-in-chief, not a notification router.
+- `MOVING` is a compressed confidence signal, not a reverse-chronological activity log.
+- `WATCHING` is an exception report, not a guilt list for every quiet project.
+- Morning, audio, watch, widget, and email editions are alternate renderings of the same selected briefing, not additional inboxes.
+- The best 10x state may show fewer cards than the MVP, because the editorial layer got better.
 
 ---
 
@@ -233,7 +248,7 @@ It is also the version that lets BuildOS _out-position_ the entire AI productivi
 
 1. Sit with this overnight. The ceiling state should be felt before it's planned.
 2. Decide whether the MVP plan (`DECISIONS NEEDED` only, ~2 weeks) is the right next step, or whether to plan against the **2x cut** instead (~4 weeks, much more magic). The 2x cut is where DJ would start telling other people about it.
-3. If the 10x vision lands, update the BuildOS positioning docs — "chief of staff" is a category-creating frame that goes well beyond the feed feature.
+3. If the 10x vision lands, update the BuildOS positioning docs — "chief of staff" is a category-creating frame that goes well beyond the feed feature, but it should be earned through quiet judgment rather than more visible AI activity.
 4. Mine the 10x doc for content. "Here's what I'm actually building" with this kind of vision is itself a flagship anti-feed cluster post.
 
 ffmpeg -i ~/Desktop/david-reference.m4a -vn -ac 1 -ar 24000

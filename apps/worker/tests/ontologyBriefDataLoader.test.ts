@@ -658,6 +658,37 @@ describe('categorizeTasks', () => {
 		expect(result.todaysTasks[0].id).toBe('task-1');
 	});
 
+	it('should categorize tasks starting today as today work', () => {
+		const tasks = [
+			createMockTask({
+				id: 'task-1',
+				start_at: '2025-12-17T14:00:00Z',
+				state_key: 'todo'
+			})
+		];
+
+		const result = categorizeTasks(tasks, briefDate, timezone);
+		expect(result.todaysTasks).toHaveLength(1);
+		expect(result.todaysTasks[0].id).toBe('task-1');
+		expect(result.upcomingTasks).toHaveLength(0);
+	});
+
+	it('should categorize tasks starting today with a later due date as today work', () => {
+		const tasks = [
+			createMockTask({
+				id: 'task-1',
+				start_at: '2025-12-17T14:00:00Z',
+				due_at: '2025-12-20T14:00:00Z',
+				state_key: 'todo'
+			})
+		];
+
+		const result = categorizeTasks(tasks, briefDate, timezone);
+		expect(result.todaysTasks).toHaveLength(1);
+		expect(result.todaysTasks[0].id).toBe('task-1');
+		expect(result.upcomingTasks).toHaveLength(0);
+	});
+
 	it('should categorize overdue tasks', () => {
 		const tasks = [
 			createMockTask({

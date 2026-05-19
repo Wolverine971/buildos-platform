@@ -113,7 +113,7 @@ create index if not exists idx_onto_task_assignees_project_assignee
 
 ### RLS policies
 
-- `SELECT`: `current_actor_has_project_access(project_id, 'read')`
+- `SELECT`: `current_actor_has_project_member_access(project_id, 'read')`
 - `INSERT/DELETE`: `current_actor_has_project_access(project_id, 'write')`
 - `WITH CHECK`: `assigned_by_actor_id = current_actor_id()`
 - Service role: full access

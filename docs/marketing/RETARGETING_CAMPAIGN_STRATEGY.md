@@ -55,6 +55,8 @@ The pilot exists to answer three questions:
     - No placeholder testimonials
     - No attributed quotes unless the user explicitly approved it
     - No "someone said..." copy if it cannot be traced to a real person and a saved permission state
+    - No AI-generated images or videos as proof; use real product screenshots, real screen recordings, or no visual at all
+    - No fake momentum, fake scarcity, or fake "everyone is using this" posture
 
 2. **Lead with honesty**
     - Acknowledge that the early product was not strong enough

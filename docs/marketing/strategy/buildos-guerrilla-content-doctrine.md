@@ -8,6 +8,8 @@ related_docs:
     - /docs/marketing/strategy/thinking-environment-creator-strategy.md
     - /docs/marketing/strategy/anti-ai-show-dont-tell-strategy.md
     - /docs/marketing/brand/brand-guide-1-pager.md
+    - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
+    - /docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
     - /docs/marketing/social-media/twitter-voice-buildos.md
     - /docs/marketing/content/drafts/why-i-built-buildos.md
 path: docs/marketing/strategy/buildos-guerrilla-content-doctrine.md
@@ -64,10 +66,32 @@ The anti-AI strategy is correct:
 - do not lead with feature lists
 - do not ask people to adopt another tool
 - lead with relief, replacement, and visible outcomes
+- use real screenshots, real screen recordings, and real founder footage
+- never use AI-generated images or AI-generated videos
 
 That is the right acquisition posture in an exhausted market.
 
-#### 3. The founder story is a trust asset
+#### 3. The raw proof angle is strategically right
+
+The status game is shifting.
+
+In a synthetic-content market, being too polished and too online can read as low signal. The stronger move is not to disappear. It is to be selective, raw, and receipt-backed.
+
+BuildOS should feel like:
+
+- dispatches from the workbench
+- real product evidence
+- a founder using the tool on live work
+- a project getting clearer over time
+
+Not:
+
+- AI-generated bloat
+- a faceless content machine
+- startup hype theater
+- rawness performed for engagement
+
+#### 4. The founder story is a trust asset
 
 The founder narrative is useful because it explains:
 
@@ -226,6 +250,8 @@ Win by building the underlying content apparatus:
 - audience pain library
 - founder story bank
 - screenshot bank
+- real screen-recording bank
+- real founder footage bank
 - proof bank
 
 If you own the apparatus, posting gets easier every week instead of harder.
@@ -325,6 +351,10 @@ The value is that the project keeps its memory.
 
 This can replace scattered tools instead of adding one more tab.
 
+### Belief 5
+
+BuildOS is real work, not synthetic spectacle.
+
 If a post does not reinforce at least one of those beliefs, it is probably off-strategy.
 
 ---
@@ -342,12 +372,21 @@ Use:
 - before/after screenshots
 - inside-the-product moments
 - stack replacement examples
+- real screen recordings
+- founder videos using the actual product
 
 Why it matters:
 
 - it fights AI fatigue with proof
 - it reduces explanation burden
 - it is the easiest content to repurpose
+
+Non-negotiable:
+
+- no AI-generated images
+- no AI-generated videos
+- no synthetic product shots or fake workspace B-roll
+- no mock UI presented as product proof
 
 Target share of output:
 
@@ -416,6 +455,22 @@ Each week starts with one core asset:
 - one before/after carousel
 - one real project teardown
 - one founder story moment
+
+That core asset must be based on real media: actual product screenshots, actual screen recordings, or real founder footage.
+
+### Rule 1A: Start from receipts
+
+Do not start from "what should I post?"
+
+Start from:
+
+- what did I use BuildOS for this week?
+- what screen proves the point?
+- what changed in the project?
+- what did I cut, fix, or learn?
+- what real artifact can I show?
+
+The post is downstream of the receipt.
 
 Then that asset becomes multiple posts.
 
@@ -594,6 +649,8 @@ Those three core ideas should usually be:
 
 If energy is low, never skip the demonstration post first.
 Skip everything else before that.
+
+Do not raise the cadence by lowering the proof bar. Higher volume is only useful when the receipts are already there.
 
 ---
 

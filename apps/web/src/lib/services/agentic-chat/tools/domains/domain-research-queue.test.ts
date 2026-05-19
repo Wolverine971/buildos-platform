@@ -5,7 +5,8 @@ import { mergeDomainSessionState, type DomainSessionState } from './domain-sessi
 import {
 	buildDomainResearchQueuePromotionPlan,
 	buildDomainResearchQueueCandidatesFromSessionRows,
-	buildDomainResearchQueueCandidatesFromSessionState
+	buildDomainResearchQueueCandidatesFromSessionState,
+	promoteDomainResearchQueueCandidates
 } from './domain-research-queue';
 
 function domainState(message: string, now: string): DomainSessionState {
@@ -142,6 +143,46 @@ describe('domain research queue candidates', () => {
 		);
 		expect(terminalPlan.rows).toEqual([]);
 		expect(terminalPlan.skipped_terminal_queue_keys).toEqual([candidate.queue_key]);
+	});
+
+	it('selects existing queue rows before upserting promotions', async () => {
+		const state = domainState(
+			'I want to grow my YouTube audience.',
+			'2026-05-17T12:00:00.000Z'
+		);
+		const candidates = buildDomainResearchQueueCandidatesFromSessionState(state, {
+			sessionId: '11111111-1111-4111-8111-111111111111',
+			userId: '22222222-2222-4222-8222-222222222222'
+		});
+		const upserts: Array<{
+			rows: unknown[];
+			options: Record<string, unknown>;
+		}> = [];
+		const selectedQueueKeys: string[][] = [];
+		const supabase = {
+			from: (table: 'domain_research_queue') => {
+				expect(table).toBe('domain_research_queue');
+				return {
+					select: () => ({
+						in: async (_column: string, values: string[]) => {
+							selectedQueueKeys.push(values);
+							return { data: [], error: null };
+						}
+					}),
+					upsert: async (rows: unknown[], options: Record<string, unknown>) => {
+						upserts.push({ rows, options });
+						return { error: null };
+					}
+				};
+			}
+		};
+
+		const result = await promoteDomainResearchQueueCandidates(supabase, candidates);
+
+		expect(selectedQueueKeys[0]).toContain('skill:youtube_channel_diagnostics');
+		expect(upserts[0]?.options).toEqual({ onConflict: 'queue_key' });
+		expect(result.promoted_count).toBe(candidates.length);
+		expect(result.inserted_queue_keys).toContain('skill:youtube_channel_diagnostics');
 	});
 
 	it('returns no candidates when there is no domain research backlog', () => {

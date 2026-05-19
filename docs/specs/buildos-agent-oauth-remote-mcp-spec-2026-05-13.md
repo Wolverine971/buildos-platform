@@ -2,7 +2,7 @@
 
 # BuildOS Agent OAuth + Remote MCP Spec
 
-**Status:** Draft implementation spec  
+**Status:** Draft implementation spec; local Claude OAuth/MCP slice implemented, pending migration/deploy/Claude validation
 **Author:** Codex  
 **Date:** 2026-05-13  
 **Scope:** OAuth-backed remote connector flow for Claude browser first, then other cloud-hosted agent clients
@@ -35,12 +35,12 @@ Captured on 2026-05-13:
 1. **First target:** Claude browser / claude.ai custom connector.
 2. **Connector identity:** BuildOS MCP. Treat this as a dedicated MCP connector, not as a generic REST API.
 3. **Public connector URL:** use `https://build-os.com/mcp/buildos` as the canonical public connector URL.
-4. **Current URL status:** checked on 2026-05-13. `https://build-os.com/mcp/buildos` and `https://build-os.com/api/agent-call/mcp` both return `404`; implementation still needs to add the route.
+4. **Current URL status:** checked on 2026-05-13. Production `https://build-os.com/mcp/buildos` and `https://build-os.com/api/agent-call/mcp` returned `404` before deployment. The local app now implements `/mcp/buildos`; production will continue returning `404` until this work is migrated and deployed.
 5. **Default grant:** default to `read_only`.
 6. **Write support:** include write permissions in the consent UI and public connector capability set, but do not enable writes by default.
 7. **Public posture:** build this as a public connector, with branding, support docs, privacy posture, OAuth, revocation, and Claude directory-readiness in mind.
 8. **Support email:** list `dj@build-os.com` for connector support and review contact.
-9. **Privacy policy URL:** use `https://build-os.com/privacy`; production currently returns `200`, but the policy should be updated before public directory submission to mention third-party agent connectors and OAuth grants explicitly.
+9. **Privacy policy URL:** use `https://build-os.com/privacy`; production currently returns `200`, and the page has been updated in the app to mention third-party agent connectors, scoped access, OAuth grants, token hashes, and revocation.
 10. **Logo/icon:** use the brain bolt icon. Existing public candidates:
     - `https://build-os.com/brain-bolt-80.png` square 80x80 PNG, currently returns `200`
     - `https://build-os.com/brain-bolt.png` larger transparent PNG, currently returns `200`
@@ -58,16 +58,16 @@ Research refreshed on 2026-05-13 against Claude and MCP docs:
 5. Claude Code is different from Claude browser: it uses local loopback redirects through its own client metadata document. Do not use Claude Code behavior as the first implementation target.
 6. Claude sends PKCE `S256` on OAuth authorization requests. BuildOS must advertise and enforce `code_challenge_methods_supported: ["S256"]`.
 7. Claude discovers auth through a `401` response with a `WWW-Authenticate` header pointing to protected resource metadata. The metadata `resource` must match the connector URL exactly, including the path.
-8. Scope selection matters: if BuildOS omits the `scope` value in the `WWW-Authenticate` challenge, Claude may request the scopes advertised by protected resource metadata. To make read-only the default, challenge with `scope="buildos.read"` and reserve write scopes for explicit upgrade/consent.
+8. Scope selection matters: if BuildOS omits the `scope` value in the `WWW-Authenticate` challenge, Claude may request the scopes advertised by protected resource metadata. To make read-only the default while preserving long-lived connector sessions, challenge with `scope="buildos.read offline_access"` and reserve write scopes for explicit upgrade/consent.
 9. For high-traffic public directory connectors, Claude recommends Client ID Metadata Documents or Anthropic-held credentials over DCR, because DCR can create a new registered client per fresh connection.
 10. Public directory review requires OAuth for authenticated services, clear docs, privacy/support links, reviewer test credentials, and tool annotations.
 11. Tools must split read and write behavior. A mixed catch-all `api_request` style tool is rejected; BuildOS should expose narrow purpose-built read tools and separate write tools.
 
-## 1.3 Connector Naming Recommendation
+## 1.3 Connector Naming Convention
 
 Claude's public directory mostly presents connectors by product or service name, not by protocol name. Examples in the directory include `Asana`, `Airtable`, `Atlassian Rovo`, `Attio`, `AWS Marketplace`, and `Adobe Experience Manager`; the MCP detail is shown in docs and infrastructure rather than the visible product name.
 
-Recommendation:
+Decision:
 
 - public directory/listing name: `BuildOS`
 - setup/help docs phrase: `BuildOS Connector`
@@ -101,7 +101,7 @@ Use `BuildOS Connector` when speaking to normal users. Use `BuildOS MCP` in deve
     - most users do not know MCP
     - current directory naming patterns do not generally append `MCP` to product names
 
-Final practical answer: public-facing name should be `BuildOS Connector`; technical identity should remain `BuildOS MCP`.
+Final convention: public-facing name is `BuildOS Connector`; technical identity remains `BuildOS MCP`.
 
 ## 2. Important Answer: Do We Need Google Cloud Console?
 
@@ -137,7 +137,7 @@ For the BuildOS agent OAuth server itself, the setup is inside BuildOS:
     - implementation route: `apps/web/src/routes/mcp/buildos/+server.ts`
     - must be public HTTPS
     - must not require browser cookies for tool calls
-    - currently not implemented; production returns `404`
+    - implemented locally; production needs migration/deploy before it will respond
 
 3. Decide the default grant:
     - decided: `read_only`
@@ -160,14 +160,14 @@ For the BuildOS agent OAuth server itself, the setup is inside BuildOS:
     - implementation should still start with a private/dev connector until the end-to-end flow is stable
     - then harden for public/directory submission
 
-6. Update the privacy policy before public directory submission:
+6. Keep the privacy policy ready for public directory submission:
     - current route exists: `https://build-os.com/privacy`
-    - add an explicit "Third-party AI connectors and agents" section
-    - disclose that users can connect Claude, ChatGPT, OpenClaw, Codex, or custom clients
-    - disclose that connected agents can read selected BuildOS projects/tasks/docs according to the approved scope
-    - disclose that write access is optional and explicit
-    - disclose that OAuth grants, access logs, and audit records are stored for security/revocation
-    - explain revocation and deletion behavior
+    - includes an explicit "Third-party AI connectors and agents" section
+    - discloses that users can connect Claude, ChatGPT, OpenClaw, Codex, or custom clients
+    - discloses that connected agents can read selected BuildOS projects/tasks/docs according to the approved scope
+    - discloses that write access is optional and explicit
+    - discloses that OAuth grants, access logs, token hashes, and audit records are stored for security/revocation
+    - explains revocation behavior
     - keep `dj@build-os.com` as the contact address
 
 ### Probably Not Required
@@ -212,6 +212,7 @@ For ChatGPT Actions:
     - project scope
     - read/write mode
     - write-op whitelist
+    - reminder that public projects are not automatically available to the connector
 7. User approves.
 8. BuildOS creates or updates an OAuth-backed external caller.
 9. BuildOS redirects back to client with an auth code.
@@ -247,6 +248,37 @@ OAuth grants should create or reference the same conceptual object already used 
 
 OAuth changes how the connector obtains credentials. It should not change what the connector is allowed to do.
 
+### 5.1.1 Project Access Boundary
+
+The connector grant is not the only gate. Effective connector access is:
+
+```text
+owner/member project access for the authorizing actor
+AND
+external caller grant scope
+AND
+allowed operation set
+```
+
+Public project visibility must not count as connector access. A project that is
+public on a public page is still invisible to Claude, ChatGPT, OpenClaw, or any
+other connected agent unless the authorizing actor is an owner/member and the
+grant permits that project.
+
+Implementation guidance:
+
+- Browser/session routes should use `current_actor_has_project_member_access`
+  for internal project APIs.
+- Service-role gateway code should use an explicit actor check such as
+  `actor_has_project_member_access` rather than relying on service-role bypass.
+- Public-page endpoints should remain separate from connector/internal endpoints
+  and should return shaped public payloads only.
+- Tool lists and tool descriptions should tell agents that scoped projects are
+  granted collaborator projects, not public-project inventory.
+
+See `docs/technical/project-access-and-agent-auth-model.md` for the shared
+engineering model.
+
 ### 5.2 Add Remote MCP Facade
 
 Add a remote MCP facade over the existing agent-call tool layer.
@@ -268,7 +300,7 @@ The MCP facade should:
 - preserve audit behavior
 - mark read-only tools with MCP read-only annotations where supported
 - mark write/destructive tools with the appropriate MCP safety annotations
-- return `401` with `WWW-Authenticate: Bearer resource_metadata="https://build-os.com/.well-known/oauth-protected-resource/mcp/buildos", scope="buildos.read"` when unauthenticated
+- return `401` with `WWW-Authenticate: Bearer resource_metadata="https://build-os.com/.well-known/oauth-protected-resource/mcp/buildos", scope="buildos.read offline_access"` when unauthenticated
 - keep the protected resource metadata `resource` value exactly equal to `https://build-os.com/mcp/buildos`
 - prefer Streamable HTTP transport; add SSE only if Claude testing proves it is needed
 
@@ -497,6 +529,8 @@ UI requirements:
     - all projects or selected projects
     - read only or read/write
     - write-op bundle
+- define "all projects" as all projects where the user is owner/member, not all
+  public projects
 - default to least privilege
 - default selected grant is `read_only`
 - include a visible write-access section:
@@ -537,6 +571,9 @@ Reuse Agent Keys permission bundle language:
     - grant revoked
     - token reuse detected
     - invalid redirect/client attempts
+16. Public project visibility never expands connector access.
+17. Service-role code must authorize the intended actor/caller explicitly before
+    reading project content.
 
 ## 10. MCP Tool Mapping
 
@@ -558,6 +595,7 @@ For each MCP tool:
 - read-only tools must be annotated with `readOnlyHint: true`
 - write/destructive tools must have the applicable safety/destructive annotations
 - write tools should keep existing policy checks and audit behavior
+- descriptions should state that only caller-approved owner/member projects are visible
 - read-only grants should either omit write tools from `tools/list` or return a clear permission-denied response if a write is attempted; omitting them is the better Claude UX
 - do not expose a generic mixed read/write `api_request` tool
 
@@ -589,6 +627,14 @@ Tasks:
 - add tests for read tool, denied write, and safety annotations
 - use bearer auth only as a local/internal test shim; public Claude flow should be OAuth
 
+Local implementation status on 2026-05-13:
+
+- `/mcp/buildos` exists and supports MCP JSON-RPC `initialize`, `tools/list`, `tools/call`, and `notifications/initialized`.
+- unauthenticated MCP requests return a `WWW-Authenticate` challenge pointing to BuildOS protected resource metadata.
+- tool calls map through the existing BuildOS public tool registry and external tool gateway.
+- read/write surface is derived from the OAuth-backed caller policy.
+- focused tests cover the OAuth challenge path; fuller read/write gateway integration tests are still recommended before public submission.
+
 ### Phase 2: Claude OAuth Flow
 
 Goal: Claude browser can connect through OAuth.
@@ -600,12 +646,20 @@ Tasks:
 - support Client ID Metadata Documents if feasible, because this is cleaner for public Claude directory traffic
 - keep static client ID/secret support as fallback because Claude custom connector settings allow advanced OAuth credentials
 - add metadata endpoints
-- add a `401` auth challenge from `/mcp/buildos` with resource metadata and default `scope="buildos.read"`
+- add a `401` auth challenge from `/mcp/buildos` with resource metadata and default `scope="buildos.read offline_access"`
 - add `authorize`, `token`, and `revoke`
 - add consent UI
 - create OAuth-backed `external_agent_callers`
 - wire MCP auth to OAuth access tokens
 - use Claude callback URL during validation: `https://claude.ai/api/mcp/auth_callback`
+
+Local implementation status on 2026-05-13:
+
+- OAuth tables are defined in `supabase/migrations/20260513000001_agent_oauth_remote_mcp.sql`.
+- metadata endpoints, dynamic client registration, authorization, token exchange, refresh, and revocation are implemented.
+- Client ID Metadata Document support is included for restricted Claude/Anthropic metadata hosts.
+- consent UI defaults to read-only, offers explicit read/write, supports all or selected project access, and uses the brain bolt icon.
+- access and refresh tokens are opaque and stored only as hashes.
 
 ### Phase 3: Token Rotation + Security Hardening
 
@@ -617,6 +671,12 @@ Tasks:
 - security event logging
 - admin observability
 - rate limits
+
+Local implementation status on 2026-05-13:
+
+- refresh token rotation and token/grant revocation are implemented.
+- grant authorization and authorization-code exchange security events are implemented.
+- remaining hardening: refresh/revoke/failure-path security events, token reuse detection, rate limits, admin visibility, and user-facing revocation UX for OAuth grants.
 
 ### Phase 4: Dynamic Client Registration
 
@@ -632,6 +692,12 @@ Tasks:
 - add Client ID Metadata Document support if Phase 2 did not include it
 - decide whether public directory launch uses CIMD or Anthropic-held credentials
 
+Local implementation status on 2026-05-13:
+
+- `/oauth/register` is implemented for public PKCE clients.
+- restricted Client ID Metadata Document bootstrap is implemented for Claude/Anthropic-hosted metadata documents.
+- public directory launch still needs the final Anthropic review posture decision: CIMD versus Anthropic-held credentials.
+
 ### Phase 5: Product Polish
 
 Tasks:
@@ -642,7 +708,13 @@ Tasks:
 - add screenshots or short demo
 - publish privacy/support connector docs
 - create a test BuildOS account with sample data for external review
-- update `https://build-os.com/privacy` with connector/OAuth disclosure before submission
+- keep `https://build-os.com/privacy` in sync with connector/OAuth behavior before submission
+
+Local implementation status on 2026-05-13:
+
+- OAuth-backed callers appear in Agent Keys as connector grants instead of pasteable bearer keys.
+- Agent Keys revocation now also revokes OAuth grant and token rows when present.
+- A separate Connected Apps tab remains optional product polish, not a blocker for the first Claude validation pass.
 
 ### Phase 5.1: Reviewer Test Account
 
@@ -752,15 +824,10 @@ Do not launch ChatGPT Developer Mode in the same first slice. The first implemen
 
 ## 15. Open Decisions
 
-1. Build DCR only first, or include Client ID Metadata Document support in the first OAuth slice?
-2. Access token format: opaque token with hash lookup, or signed JWT with revocation table?
-3. Should OAuth-backed grants appear inside Agent Keys or a separate Connected Apps tab?
-4. Should read-only grants omit write tools entirely, or show them with permission-denied behavior?
-5. Should the privacy policy update be shipped as a normal site update or held until the connector route exists?
-6. What password/auth flow should the Claude reviewer test account use?
-7. Should the reviewer account email be `claude-review@build-os.com`, `review+claude@build-os.com`, or something else?
-8. Should the public Claude directory connector use Client ID Metadata Documents or Anthropic-held client credentials?
-9. Do we need a larger square logo asset for Claude review, or is `brain-bolt-80.png` sufficient?
+1. What password/auth flow should the Claude reviewer test account use?
+2. Should the reviewer account email be `claude-review@build-os.com`, `review+claude@build-os.com`, or something else?
+3. Should the public Claude directory connector use Client ID Metadata Documents or Anthropic-held client credentials?
+4. Do we need a larger square logo asset for Claude review, or is `brain-bolt-80.png` sufficient?
 
 ## 16. Recommendation
 

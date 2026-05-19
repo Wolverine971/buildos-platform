@@ -1,7 +1,7 @@
 ---
 date: 2026-05-13
 topic: cross-agent-context-layer
-status: brainstorm — design + phasing
+status: brainstorm — design + phasing, amended after implementation audit
 companion_to:
     - docs/brainstorms/2026-05-11-buildos-agent-feed-brainstorm.md
     - docs/brainstorms/2026-05-12-buildos-feed-10x-vision.md
@@ -104,34 +104,51 @@ Librarian queries Gmail / Calendar / GitHub on the agent's behalf and returns a 
 BuildOS exposes an **MCP (Model Context Protocol) server**. This is the right bet because:
 
 - MCP is rapidly becoming the cross-agent standard (Cursor, Claude Desktop, Claude.ai, VS Code, ChatGPT surfaces, plus custom agents all support it).
-- We get distribution into every major agent surface essentially for free.
+- We get a distribution tailwind into major agent surfaces without inventing a one-off integration for each one.
 - We don't have to invent or document a custom API — agents already know how to consume MCP.
 - The protocol has discovery built in, so agents can introspect what resources are available.
+
+### Implementation audit (2026-05-13)
+
+This layer is not greenfield in the current repo.
+
+- BuildOS already has a remote MCP route at `/mcp/buildos` backed by the agent-call connector.
+- The current MCP implementation exposes initialize, `tools/list`, and `tools/call`; it does not yet expose MCP resources/prompts.
+- OAuth-backed connector grants already exist, with read/write scope modes, allowed operations, allowed project IDs, grant status, caller status, and token validation.
+- `project_context_snapshot` already exists and should be the fast path for project briefings.
+
+So Phase 0 should be "extend existing MCP/OAuth/agent-call," not "stand up a new MCP server."
+
+For v1 compatibility, prefer **tools first** even when the conceptual model is a resource. A `get_project_briefing` tool is easier to ship against the current connector than a full MCP resource implementation. Resources/prompts can come after the caller matrix proves they are worth the protocol surface area.
 
 ### Server shape
 
 **Resources (read paths):**
 
-| Resource                                   | Returns                                         |
-| ------------------------------------------ | ----------------------------------------------- |
-| `buildos://projects/active`                | List of active projects (handles + one-liners)  |
-| `buildos://project/{handle}`               | Full briefed project context                    |
-| `buildos://voice/{surface}`                | Voice guide + samples for a surface             |
-| `buildos://beliefs?topic={topic}`          | DJ's stated positions on a topic                |
-| `buildos://memory?q={query}`               | Semantic search synthesis                       |
-| `buildos://feed/current`                   | Current feed state (DECISIONS / MOVING / WATCH) |
-| `buildos://calendar/today`                 | Today's commitments, briefed                    |
-| `buildos://patterns/similar?context={...}` | Past situations matching current shape          |
+| Resource                                   | Returns                                            |
+| ------------------------------------------ | -------------------------------------------------- |
+| `buildos://projects/active`                | List of active projects (handles + one-liners)     |
+| `buildos://project/{handle}`               | Full briefed project context                       |
+| `buildos://voice/{surface}`                | Voice guide + samples for a surface                |
+| `buildos://beliefs?topic={topic}`          | DJ's stated positions on a topic                   |
+| `buildos://memory?q={query}`               | Semantic search synthesis                          |
+| `buildos://feed/current`                   | Current feed state (DECISIONS / MOVING / WATCHING) |
+| `buildos://calendar/today`                 | Today's commitments, briefed                       |
+| `buildos://patterns/similar?context={...}` | Past situations matching current shape             |
 
-**Tools (write paths):**
+**Tools (v1-compatible API surface):**
 
-| Tool                | Effect                                               |
-| ------------------- | ---------------------------------------------------- |
-| `post_card`         | Agent posts a card into the feed                     |
-| `summarize_session` | Agent ends session with a written-back summary card  |
-| `claim_work`        | Agent claims a piece of work to prevent duplication  |
-| `release_work`      | Agent releases its claim                             |
-| `request_decision`  | Agent surfaces a question to DJ via DECISIONS NEEDED |
+| Tool                   | Effect                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------- |
+| `get_project_briefing` | Returns a compact project briefing backed by cached context                             |
+| `get_voice_guide`      | Returns a voice/style guide for a surface                                               |
+| `post_card`            | Agent proposes a feed card candidate                                                    |
+| `summarize_session`    | Agent writes a session summary to memory/project history; visible card only if admitted |
+| `claim_work`           | Agent claims a piece of work to prevent duplication                                     |
+| `release_work`         | Agent releases its claim                                                                |
+| `request_decision`     | Agent surfaces a question to DJ via DECISIONS NEEDED                                    |
+
+Write tools should create candidates or memory entries by default. They should not be direct publish rights to the visible feed.
 
 **Prompts (reusable templates):**
 
@@ -147,6 +164,8 @@ Not every query needs an LLM call.
 
 - **Fast path (cached briefings)**: Simple resource queries return pre-generated briefings. `buildos://project/payments` returns the most recent project briefing, regenerated when triggering events fire (new card, decision made, brain dump on this project). Cheap, fast, predictable. Most queries hit this path.
 - **Slow path (Librarian synthesis)**: Novel queries route through an LLM. "What does DJ think about [topic]?" requires synthesis across multiple sources. Cached after first run with a sensible TTL.
+
+Implementation note: use the existing `project_context_snapshot` table/worker as the first fast path. Add a thin Librarian prose/citation layer on top before introducing a new cache.
 
 ### System shape
 
@@ -205,7 +224,7 @@ Two disciplines that matter:
 
 ## Auth & Scoping
 
-Extend the existing BuildOS Agent API bearer-token pattern (DJ already has this). Add scopes:
+Extend the existing BuildOS Agent API / OAuth connector permission model (DJ already has this). Conceptually, the product needs these grants:
 
 | Scope          | Grants                                  |
 | -------------- | --------------------------------------- |
@@ -214,13 +233,15 @@ Extend the existing BuildOS Agent API bearer-token pattern (DJ already has this)
 | `coordinate`   | Claim / release work, request decisions |
 | `full`         | All of the above                        |
 
-**Per-agent tokens.** One token per external agent, so DJ can revoke individually. Suggested defaults:
+Map those concepts onto the existing OAuth/agent-call machinery first: `buildos.read`, `buildos.write`, allowed ops, allowed project IDs, caller status, and grant status. Add specific operations such as `context.project.read`, `context.voice.read`, `feed.card.propose`, `feed.decision.request`, `work.claim`, and `work.release` rather than minting a second bearer-token scheme.
 
-- **Engineering token** (for Cursor): full read on engineering projects, voice export for code/PR; no marketing or personal scope.
-- **Writing token** (for Claude.ai): voice + style, recent posts, blog drafts; no engineering internals.
-- **Personal assistant token**: calendar, communications context; no engineering.
+**Per-agent grants.** One grant per external agent, so DJ can revoke individually. Suggested defaults:
 
-Defense in depth — if a token leaks, the blast radius is limited to that surface.
+- **Engineering grant** (for Cursor): full read on engineering projects, voice export for code/PR; no marketing or personal scope.
+- **Writing grant** (for Claude.ai): voice + style, recent posts, blog drafts; no engineering internals.
+- **Personal assistant grant**: calendar, communications context; no engineering.
+
+Defense in depth — if a connector credential leaks, the blast radius is limited to that surface.
 
 ---
 
@@ -228,25 +249,26 @@ Defense in depth — if a token leaks, the blast radius is limited to that surfa
 
 ### Phase 0 (week 1): MCP scaffold
 
-- Stand up an MCP server endpoint on the BuildOS web app (`/mcp` route, SvelteKit handler).
-- Implement one resource end-to-end: `buildos://projects/active`.
-- Wire existing bearer-token auth with one scope: `read:context`.
-- Verify DJ can connect Cursor / Claude Desktop and see his active projects.
+- Extend the existing BuildOS MCP endpoint (`/mcp/buildos`) rather than creating a new route.
+- Implement one read tool end-to-end: `get_active_projects` or `get_project_briefing`.
+- Back project briefing with existing project/context data and citations; use `project_context_snapshot` when available.
+- Wire through the existing OAuth connector grant model with a read operation, project allow-list, and caller status checks.
+- Verify DJ can connect at least one real surface and retrieve a briefing.
 
 This phase exists to **prove the wire works**. Nothing else.
 
 ### Phase 1 (weeks 2–3): the two highest-value reads
 
-- `buildos://project/{handle}` — full project briefing (Librarian-mediated, slow path with caching).
-- `buildos://voice/{surface}` — voice export with examples and taboos.
+- `get_project_briefing` / `buildos://project/{handle}` — full project briefing (Librarian-mediated, fast path from cached snapshot when possible).
+- `get_voice_guide` / `buildos://voice/{surface}` — voice export with examples and taboos.
 
 These two cover ~80% of daily use. After this phase, DJ can have Cursor open a project session with full context loaded, and Claude.ai can draft in his voice without re-teaching every time. **This is the demo that makes people say "wait, I want this."**
 
 ### Phase 2 (weeks 3–4): write-back closes the loop
 
-- `summarize_session` tool — every agent session ends with a card posted back.
-- `post_card` tool — agents can surface things into the feed proactively.
-- Cards from external agents land in the same feed as Briefer's cards. The feed starts compounding.
+- `summarize_session` tool — every agent session can write a compact session summary back to memory/project history.
+- `post_card` / `request_decision` tool — agents can propose feed cards proactively.
+- Cards from external agents land in the candidate queue first. Briefer/admission rules decide what becomes visible.
 
 This is the phase where BuildOS stops being one-way storage and starts being a living context surface.
 
@@ -277,18 +299,19 @@ The promo doc should get a follow-up edit once this is live, pointing to the wor
 ## Open Questions
 
 - **Librarian voice.** Briefer has a register and a personality. Does the Librarian? Or is it utility code with no personality, designed to be invisible? Argument either way — invisible is more honest as a serving layer; named gives the system a consistent face.
-- **Relationship to the existing BuildOS Agent API.** DJ already has a working API for connecting his BuildOS agent. Does the MCP server wrap that, replace it, or live alongside? Recommend: MCP server wraps and supersedes; existing endpoints stay as compatibility surface for one quarter.
+- **Relationship to the existing BuildOS Agent API.** DJ already has a working API and OAuth-backed remote MCP connector path. Recommendation after audit: MCP should wrap and extend the existing agent-call gateway; existing endpoints stay as compatibility surface until usage proves migration is safe.
 - **Cache staleness.** How stale can a project briefing be before it misleads? Regenerate on triggering events (new card, decision made, brain dump tagged to project) plus a hard TTL ceiling (60min?).
 - **Discovery.** MCP has a built-in discovery protocol. Should BuildOS publish a "starter pack" of recommended resources for each agent surface (Cursor vs Claude.ai vs ChatGPT)? Lower onboarding friction.
 - **Rate limits.** Some agents will query aggressively (every keystroke). Need a cheap cache layer and per-token quota.
 - **Multi-user future.** Everything here assumes single-user (DJ). When BuildOS has teams, the layer needs scoping by user + workspace. Worth designing the table schema with this in mind even if we don't expose it yet.
 - **Privacy red lines.** What never leaves BuildOS, even with the right scope? Personal communications? Financial details? Need a hard allow-list for what each scope can return, not just a deny-list.
+- **Feed write admission.** Which tool calls can create visible cards, and which can only create candidates or project history? This boundary is the difference between a context layer and a noisy inbox.
 
 ---
 
 ## Next Steps
 
-1. **Lock the MVP wedge.** Phase 0 + Phase 1 is the demoable slice (~3 weeks). Decide whether to ship in parallel with the feed MVP (`DECISIONS NEEDED` lane) or sequence them. Recommend parallel — they reinforce each other and the demo story.
+1. **Lock the MVP wedge.** Phase 0 + Phase 1 is the demoable slice, but keep it narrower than originally proposed: one read tool, one project briefing path, one real caller surface. Run it in parallel with the feed only if it reuses the existing MCP/OAuth/agent-call route.
 2. **Sketch the Librarian's first prompt.** What does the system prompt look like that takes a query + relevant BuildOS data and produces a briefing? This is the single most consequential piece of LLM design in the layer.
 3. **Pick the first two voice surfaces.** LinkedIn and code-PR are the highest-frequency. Worth getting the voice/style export right for those two before adding more.
 4. **Update the Connect Your Agents promo doc** with a footnote pointing to this brainstorm — they're the same project from different angles.

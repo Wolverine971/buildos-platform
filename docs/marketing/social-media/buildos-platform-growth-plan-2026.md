@@ -6,6 +6,8 @@ owner: DJ Wayne
 related_docs:
     - /docs/marketing/strategy/buildos-marketing-strategy-2026.md
     - /docs/marketing/brand/brand-guide-1-pager.md
+    - /docs/marketing/brand/BUILDOS_REAL_MEDIA_POLICY.md
+    - /docs/marketing/brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md
     - /docs/marketing/social-media/publish-kits/2026-03-12-buildos-guerrilla-seed-campaign.md
     - /docs/marketing/social-media/twitter-strategy.md
     - /docs/marketing/social-media/LINKEDIN_STRATEGY.md
@@ -57,6 +59,36 @@ Growth on all three platforms should come from the same core loop:
 Do not run three unrelated strategies.
 
 Run one thesis across three platforms with different packaging.
+
+## Shared Media Rule
+
+BuildOS uses **zero AI-generated images** and **zero AI-generated videos** across Instagram, LinkedIn, and X.
+
+Approved media:
+
+- real BuildOS screenshots
+- real BuildOS screen recordings
+- real videos of DJ using BuildOS
+- real workspace photos
+- Inkprint text cards or diagrams
+
+The point is to counter synthetic AI marketing with material proof.
+
+## Shared Presence Rule
+
+BuildOS should not behave like a terminally online content machine.
+
+Across platforms, the posture is:
+
+**Receipts over vibes. Screens over scenes. Work over spectacle.**
+
+That means:
+
+- start with a real artifact before creating the post
+- publish selective proof, not hollow volume
+- prefer one useful screen recording over five generic takes
+- show the same project compounding over time
+- let rawness signal actual work, not lack of editing
 
 ---
 
@@ -125,6 +157,7 @@ Make people feel the mess -> clarity transformation fast enough that they:
 - before/after visual contrast
 - "do this instead of this" cards
 - real product screenshots with clear labels
+- real screen recordings and founder footage
 - workflow transformation
 - emotionally relieving copy
 
@@ -258,7 +291,7 @@ Test hooks quickly, sharpen the enemy, and create repetition around BuildOS’s 
 1. publish short hook-led posts tied to the weekly thesis
 2. test 2-3 versions of the same idea
 3. engage under posts where your audience is already talking about Claude, ChatGPT, agents, toolchains, AI workflow pain, and tool sprawl
-4. convert strong tweets into screenshots, longer posts, or carousel seeds
+4. convert strong tweets into real screenshots, longer posts, or carousel seeds
 5. repeat the winning hooks until they stop working
 
 ### What To Measure
@@ -329,6 +362,8 @@ Prioritize:
 - 2 LinkedIn posts
 - 2 Instagram feed posts
 - stories layered on top
+
+Do not increase cadence by lowering the proof bar. If there are no receipts, capture the work first.
 
 ---
 

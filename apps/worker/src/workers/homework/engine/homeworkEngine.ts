@@ -235,7 +235,8 @@ async function getAccessibleProjectIds(
 		.select('id')
 		.in('id', candidateProjectIds)
 		.or(accessScopeFilter)
-		.is('deleted_at', null);
+		.is('deleted_at', null)
+		.is('archived_at', null);
 
 	scopedProjects?.forEach((project) => {
 		if (project?.id) {
@@ -298,6 +299,8 @@ async function ensureWorkspaceProject(
 		.from('onto_projects')
 		.select('id')
 		.contains('props', { homework_workspace: true, user_id: userId })
+		.is('deleted_at', null)
+		.is('archived_at', null)
 		.order('created_at', { ascending: false })
 		.limit(1)
 		.maybeSingle();
@@ -398,6 +401,7 @@ async function ensureWorkspaceDocs(params: {
 		.contains('props', { homework_run_id: run.id, doc_role: 'scratchpad' })
 		.eq('project_id', projectId)
 		.is('deleted_at', null)
+		.is('archived_at', null)
 		.order('created_at', { ascending: false })
 		.limit(1)
 		.maybeSingle();
@@ -479,6 +483,7 @@ async function ensureExecutorScratchpad(params: {
 			branch_id: branchId
 		})
 		.is('deleted_at', null)
+		.is('archived_at', null)
 		.limit(1)
 		.maybeSingle();
 
@@ -590,6 +595,7 @@ async function fetchExecutorScratchpadSummaries(
 		.select('id, title, props, updated_at, content')
 		.contains('props', { homework_run_id: runId, doc_role: 'scratchpad_exec' })
 		.is('deleted_at', null)
+		.is('archived_at', null)
 		.order('updated_at', { ascending: false })
 		.limit(limit);
 
@@ -734,6 +740,7 @@ async function executeToolCall(params: {
 					.select('id, name, state_key, type_key, created_at')
 					.in('id', ids)
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.order('created_at', { ascending: false })
 					.limit(limit);
 				if (error) throw error;
@@ -749,6 +756,7 @@ async function executeToolCall(params: {
 					.select('*')
 					.eq('id', projectId)
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.single();
 				if (error) throw error;
 				const result = data
@@ -763,6 +771,7 @@ async function executeToolCall(params: {
 					.from('onto_documents')
 					.select('id, title, type_key, state_key, project_id, updated_at')
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.order('updated_at', { ascending: false })
 					.limit(limit);
 				if (args.project_id) {
@@ -788,6 +797,7 @@ async function executeToolCall(params: {
 					.select('id, title, type_key, state_key, project_id')
 					.ilike('title', `%${search}%`)
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.order('updated_at', { ascending: false })
 					.limit(limit);
 				if (args.project_id) {
@@ -815,6 +825,7 @@ async function executeToolCall(params: {
 					)
 					.eq('id', documentId)
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.single();
 				if (error) throw error;
 				if (data?.project_id && !allowedProjects.has(data.project_id)) {
@@ -928,6 +939,7 @@ async function executeToolCall(params: {
 					.select('project_id')
 					.eq('id', documentId)
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.single();
 				if (target?.project_id && !allowedProjects.has(target.project_id)) {
 					return { name: tool.name, ok: false, error: 'unauthorized project' };
@@ -947,6 +959,7 @@ async function executeToolCall(params: {
 					.update(updatePayload)
 					.eq('id', documentId)
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.select('id, title')
 					.single();
 				if (error) throw error;
@@ -964,6 +977,7 @@ async function executeToolCall(params: {
 					.from('onto_tasks')
 					.select('id, title, state_key, project_id, updated_at')
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.order('updated_at', { ascending: false })
 					.limit(limit);
 				if (args.project_id) {
@@ -992,6 +1006,7 @@ async function executeToolCall(params: {
 					)
 					.eq('id', taskId)
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.single();
 				if (error) throw error;
 				if (data?.project_id && !allowedProjects.has(data.project_id)) {
@@ -1061,6 +1076,7 @@ async function executeToolCall(params: {
 					.select('project_id')
 					.eq('id', taskId)
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.single();
 				if (task?.project_id && !allowedProjects.has(task.project_id)) {
 					return { name: tool.name, ok: false, error: 'unauthorized project' };
@@ -1079,6 +1095,7 @@ async function executeToolCall(params: {
 					.update(updatePayload)
 					.eq('id', taskId)
 					.is('deleted_at', null)
+					.is('archived_at', null)
 					.select('id, title')
 					.single();
 				if (error) throw error;
@@ -1212,6 +1229,8 @@ async function runExecutorTask(params: {
 			.from('onto_documents')
 			.select('content')
 			.eq('id', params.execScratchpadId)
+			.is('deleted_at', null)
+			.is('archived_at', null)
 			.single();
 		const prior = existing?.content ?? '';
 		await supabase
@@ -1222,7 +1241,9 @@ async function runExecutorTask(params: {
 					`### Objective\n${task.objective}\n`,
 				updated_at: timestamp
 			})
-			.eq('id', params.execScratchpadId);
+			.eq('id', params.execScratchpadId)
+			.is('deleted_at', null)
+			.is('archived_at', null);
 	}
 
 	return { title: task.title, results: executed.results, artifacts: executed.artifacts };
@@ -1261,6 +1282,8 @@ export async function runHomeworkIteration(params: {
 		.from('onto_documents')
 		.select('content')
 		.eq('id', scratchpadId)
+		.is('deleted_at', null)
+		.is('archived_at', null)
 		.single();
 
 	const scratchpadContent = scratchpad?.content ?? '';
@@ -1456,7 +1479,9 @@ export async function runHomeworkIteration(params: {
 			content: (scratchpadContent ?? '') + entry,
 			updated_at: new Date().toISOString()
 		})
-		.eq('id', scratchpadId);
+		.eq('id', scratchpadId)
+		.is('deleted_at', null)
+		.is('archived_at', null);
 
 	const progressMade =
 		toolResults.some((r) => r.ok) ||

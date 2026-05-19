@@ -45,6 +45,14 @@
     - Current quick reference for messaging, voice, and visual direction
     - Category, promise, differentiator, terms to use and avoid
 
+- **[BuildOS Real Media Policy](brand/BUILDOS_REAL_MEDIA_POLICY.md)** ⭐
+    - Current source of truth for visual/video proof
+    - Zero AI-generated images or videos; use real screenshots, screen recordings, founder footage, and clearly marked explanatory graphics
+
+- **[BuildOS Proof And Presence Doctrine](brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md)** ⭐
+    - Current source of truth for raw proof and selective founder presence
+    - Receipts over vibes, screens over scenes, work over spectacle
+
 - **[BuildOS Guerrilla Content Doctrine](strategy/buildos-guerrilla-content-doctrine.md)** ⭐
     - Strategic logic behind the current move
     - Content doctrine, sequencing, and positioning tradeoffs
@@ -145,6 +153,14 @@
 - **[BuildOS Brand Personality Profile](brand/buildos-brand-personality-profile.md)** ✅
     - Complete personality analysis with customer testimonials
     - Communication guidelines and implementation strategies
+
+- **[BuildOS Real Media Policy](brand/BUILDOS_REAL_MEDIA_POLICY.md)** ✅
+    - Codifies the no-synthetic-media position
+    - Required before creating product screenshots, reels, founder videos, social graphics, or media-kit assets
+
+- **[BuildOS Proof And Presence Doctrine](brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md)** ✅
+    - Codifies the broader raw proof posture
+    - Use when deciding whether a post feels like evidence from the work or hollow online volume
 
 - **[Communication Guide](brand/communication-guide.md)** ✅
     - Personal communication preferences for DJ Wayne
