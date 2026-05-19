@@ -273,6 +273,7 @@ describe('buildToolPayloadForModel', () => {
 				related_domain_ids: ['sales_and_growth'],
 				boundaries: ['Company Pages, not primarily personal accounts.'],
 				capability_ids: ['planning', 'web_research'],
+				work_capability_ids: ['linkedin_company_page_growth_plan'],
 				skills: [
 					{
 						id: 'linkedin_company_page_growth',
@@ -289,7 +290,7 @@ describe('buildToolPayloadForModel', () => {
 				],
 				resources: [],
 				gaps: [],
-				materialized_tools: ['resource_search'],
+				materialized_tools: ['work_capability_load', 'resource_search'],
 				next_step: 'Load a linked skill only when needed.'
 			}),
 			parseArgs
@@ -306,8 +307,94 @@ describe('buildToolPayloadForModel', () => {
 		expect(payload.recommended_skill_stacks[0]).toEqual(
 			expect.objectContaining({ id: 'linkedin_growth_plan' })
 		);
-		expect(payload.materialized_tools).toEqual(['resource_search']);
+		expect(payload.work_capability_ids).toEqual(['linkedin_company_page_growth_plan']);
+		expect(payload.materialized_tools).toEqual(['work_capability_load', 'resource_search']);
 		expect(payload.boundaries[0]).toContain('Company Pages');
+	});
+
+	it('preserves compact work capability search metadata', () => {
+		const payload = buildToolPayloadForModel(
+			toolCall('work_capability_search'),
+			toolResult({
+				type: 'work_capability_search_results',
+				query: 'youtube growth',
+				filters: {
+					domain: 'marketing.youtube_growth',
+					buildos_capability: null
+				},
+				total_matches: 1,
+				materialized_tools: ['work_capability_load'],
+				matches: [
+					{
+						work_capability_id: 'youtube_growth_strategy_plan',
+						name: 'YouTube Growth Strategy Plan',
+						confidence: 0.91,
+						summary: 'Plan channel positioning and content cadence.'.repeat(40),
+						domain_ids: ['marketing.youtube_growth', 'creator_growth'],
+						buildos_capability_ids: ['planning', 'documents'],
+						default_skill_id: 'content_strategy_beyond_blogging',
+						skill_ids: [
+							'content_strategy_beyond_blogging',
+							'algorithm_aware_publishing',
+							'viral_video_script_structure'
+						],
+						coverage_status: 'partial',
+						load_hint: 'Load this work capability.'
+					}
+				],
+				next_step: 'Pick the closest outcome.'
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload).toMatchObject({
+			type: 'work_capability_search_results',
+			query: 'youtube growth',
+			materialized_tools: ['work_capability_load']
+		});
+		expect(payload.matches[0]).toEqual(
+			expect.objectContaining({
+				work_capability_id: 'youtube_growth_strategy_plan',
+				default_skill_id: 'content_strategy_beyond_blogging'
+			})
+		);
+		expect(payload.matches[0].summary.length).toBeLessThan(360);
+	});
+
+	it('preserves compact work capability card metadata', () => {
+		const payload = buildToolPayloadForModel(
+			toolCall('work_capability_load'),
+			toolResult({
+				type: 'work_capability',
+				id: 'cold_email_campaign_build',
+				name: 'Cold Email Campaign Build',
+				summary: 'Build a cold email campaign.',
+				domain_ids: ['sales_and_growth.cold_email'],
+				buildos_capability_ids: ['planning', 'people_context', 'documents'],
+				when_to_use: ['When the user needs a campaign build.'],
+				example_requests: ['Build a campaign for founders.'],
+				default_skill_id: 'cold_email_engagement_first_outreach',
+				skill_ids: ['cold_email_engagement_first_outreach', 'cold_email_icp_signal_design'],
+				resource_ids: [],
+				tool_hints: ['create_onto_document'],
+				outputs: ['ICP and signal definition', 'campaign copy'],
+				evaluation_criteria: ['The outreach is specific.'],
+				coverage_status: 'strong',
+				gaps: [],
+				materialized_tools: ['skill_load'],
+				next_step: 'Load the root skill only when needed.',
+				extra_large_field: 'x'.repeat(2000)
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload).toMatchObject({
+			type: 'work_capability',
+			id: 'cold_email_campaign_build',
+			materialized_tools: ['skill_load']
+		});
+		expect(payload.tool_hints).toEqual(['create_onto_document']);
+		expect(JSON.stringify(payload)).not.toContain('extra_large_field');
 	});
 
 	it('preserves compact skill search metadata', () => {

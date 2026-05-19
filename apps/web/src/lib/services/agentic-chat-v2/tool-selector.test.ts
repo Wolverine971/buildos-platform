@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
 	extractGatewayMaterializedToolNames,
-	getGatewaySurfaceForProfile
+	getGatewaySurfaceForProfile,
+	materializeGatewayTools
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
 import { selectFastChatTools } from './tool-selector';
 
@@ -20,6 +21,8 @@ describe('selectFastChatTools', () => {
 
 		expect(names).toContain('domain_search');
 		expect(names).not.toContain('domain_load');
+		expect(names).not.toContain('work_capability_search');
+		expect(names).not.toContain('work_capability_load');
 		expect(names).toContain('skill_search');
 		expect(names).not.toContain('resource_search');
 		expect(names).not.toContain('resource_load');
@@ -35,6 +38,19 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('search_onto_projects');
 		expect(names).not.toContain('list_onto_tasks');
 		expect(names).not.toContain('resolve_libri_resource');
+	});
+
+	it('materializes work capability gateway tools without preloading them', () => {
+		const currentTools = selectFastChatTools({ contextType: 'global' });
+		const materialized = materializeGatewayTools(currentTools, [
+			'work_capability_search',
+			'work_capability_load'
+		]);
+
+		expect(materialized.addedToolNames).toEqual([
+			'work_capability_search',
+			'work_capability_load'
+		]);
 	});
 
 	it('keeps project context on the basic read profile', () => {
@@ -160,9 +176,9 @@ describe('selectFastChatTools', () => {
 			extractGatewayMaterializedToolNames({
 				type: 'domain',
 				domain_id: 'product_and_design.ui_ux_quality',
-				materialized_tools: ['resource_search']
+				materialized_tools: ['work_capability_load', 'resource_search']
 			})
-		).toEqual(['resource_search']);
+		).toEqual(['work_capability_load', 'resource_search']);
 
 		expect(
 			extractGatewayMaterializedToolNames({

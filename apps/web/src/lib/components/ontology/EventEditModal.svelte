@@ -517,15 +517,6 @@
 							class="space-y-3 sm:space-y-4"
 						>
 							<Card variant="elevated" class="wt-paper">
-								{#if hasCalendarLink}
-									<CardHeader variant="accent" texture="strip">
-										<div
-											class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end"
-										>
-											<Badge variant="success" size="sm">Synced</Badge>
-										</div>
-									</CardHeader>
-								{/if}
 								<CardBody class="space-y-4">
 									<FormField
 										label="Event Title"
@@ -702,15 +693,12 @@
 										<p
 											class="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground"
 										>
-											Controls
+											Overview
 										</p>
 										<h3 class="mt-1 text-sm font-semibold text-foreground">
-											Event operations
+											Schedule, record, and links
 										</h3>
 									</div>
-									{#if hasCalendarLink}
-										<Badge variant="success" size="sm">Synced</Badge>
-									{/if}
 								</div>
 							</CardHeader>
 							<CardBody padding="none">

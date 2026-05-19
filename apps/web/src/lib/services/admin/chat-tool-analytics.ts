@@ -382,7 +382,14 @@ const normalizeToolCategory = (row: ToolExecutionAnalyticsRow): string => {
 	const toolName = asOptionalText(row.tool_name);
 	if (!toolName) return UNKNOWN;
 	if (toolName === 'skill_load') return 'gateway_skill';
-	if (toolName === 'tool_search' || toolName === 'tool_schema') return 'gateway_discovery';
+	if (
+		toolName === 'tool_search' ||
+		toolName === 'tool_schema' ||
+		toolName === 'work_capability_search' ||
+		toolName === 'work_capability_load'
+	) {
+		return 'gateway_discovery';
+	}
 	if (asOptionalText(row.gateway_op)) return 'gateway_execution';
 	return UNKNOWN;
 };

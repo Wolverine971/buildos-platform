@@ -36,6 +36,7 @@ import { getToolSchema } from '../tools/registry/tool-schema';
 import { loadDomain, searchDomains } from '../tools/domains/domain-load';
 import { loadResource, searchResources } from '../tools/resources/resource-registry';
 import { searchSkills } from '../tools/skills/skill-search';
+import { loadWorkCapability, searchWorkCapabilities } from '../tools/work-capabilities';
 import {
 	normalizeProjectCreateArgs,
 	validateProjectCreateArgs
@@ -58,6 +59,8 @@ const logger = createLogger('ToolExecutionService');
 const GATEWAY_TOOL_NAMES = new Set([
 	'domain_search',
 	'domain_load',
+	'work_capability_search',
+	'work_capability_load',
 	'skill_search',
 	'resource_search',
 	'resource_load',
@@ -693,6 +696,34 @@ export class ToolExecutionService implements BaseService {
 							? args.domain_id
 							: '';
 			const result = loadDomain(domain);
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'work_capability_search') {
+			const result = searchWorkCapabilities({
+				query: typeof args.query === 'string' ? args.query : undefined,
+				domain: typeof args.domain === 'string' ? args.domain : undefined,
+				buildosCapability:
+					typeof args.buildosCapability === 'string'
+						? args.buildosCapability
+						: typeof args.buildos_capability === 'string'
+							? args.buildos_capability
+							: undefined,
+				limit: typeof args.limit === 'number' ? args.limit : undefined
+			});
+			return { success: true, data: result, toolName, toolCallId: 'gateway' };
+		}
+
+		if (toolName === 'work_capability_load') {
+			const workCapability =
+				typeof args.workCapability === 'string'
+					? args.workCapability
+					: typeof args.work_capability === 'string'
+						? args.work_capability
+						: typeof args.id === 'string'
+							? args.id
+							: '';
+			const result = loadWorkCapability(workCapability);
 			return { success: true, data: result, toolName, toolCallId: 'gateway' };
 		}
 

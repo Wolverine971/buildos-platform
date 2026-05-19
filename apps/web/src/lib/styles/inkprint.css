@@ -7,19 +7,19 @@
 
 :root {
 	/* Paper & Ink base (light mode = paper studio) */
-	--background: 40 20% 98%; /* warm paper white */
+	--background: 40 15% 98%; /* warm paper white — saturation pulled in from 20 */
 	--foreground: 240 10% 10%; /* deep ink black */
 
 	/* Card surfaces */
-	--card: 40 15% 96%;
+	--card: 40 12% 94%; /* darker (was L96) so cards have presence without the old peach */
 	--card-foreground: 240 10% 10%;
 
 	/* Muted surfaces */
-	--muted: 40 10% 92%;
+	--muted: 40 12% 90%; /* nudged darker to keep tier separation from card */
 	--muted-foreground: 240 5% 45%;
 
 	/* Border */
-	--border: 40 10% 85%;
+	--border: 40 10% 82%; /* slightly darker so borders survive on the new lighter bg */
 
 	/* Accent (BuildOS signal color) */
 	--accent: 24 80% 55%; /* warm orange-amber */
@@ -29,19 +29,19 @@
 	--ring: 24 80% 55%;
 
 	/* Destructive (danger/error states) */
-	--destructive: 0 72% 51%; /* red-600 equivalent */
+	--destructive: 6 70% 52%; /* warm-shifted red (less candy, more terracotta) */
 	--destructive-foreground: 0 0% 100%;
 
 	/* Warning (caution/alert states) */
-	--warning: 38 92% 50%; /* amber-500 equivalent */
-	--warning-foreground: 0 0% 100%;
+	--warning: 45 95% 52%; /* true yellow — pushed away from accent's amber hue */
+	--warning-foreground: 30 10% 12%; /* dark ink — white is unreadable on yellow */
 
 	/* Success (positive/completed states) */
-	--success: 160 84% 39%; /* emerald-600 equivalent */
+	--success: 150 55% 42%; /* warm-shifted sage green */
 	--success-foreground: 0 0% 100%;
 
 	/* Info (status indicator - informational/neutral states) */
-	--info: 217 91% 60%; /* blue-600 equivalent */
+	--info: 200 60% 52%; /* teal-leaning, less candy blue, sits with warm paper */
 	--info-foreground: 0 0% 100%;
 
 	/* Inkprint texture base color */
@@ -56,19 +56,19 @@
 
 .dark {
 	/* Ink room (dark mode) - warm charcoal to match light mode's warm paper */
-	--background: 30 6% 11%;
+	--background: 32 4% 11%; /* dialed saturation down so textures + accent pop clearer */
 	--foreground: 40 10% 92%; /* off-white */
 
 	/* Card surfaces */
-	--card: 30 6% 15%;
+	--card: 32 5% 15%;
 	--card-foreground: 40 10% 92%;
 
 	/* Muted surfaces */
-	--muted: 30 6% 19%;
+	--muted: 32 5% 19%;
 	--muted-foreground: 40 5% 58%;
 
 	/* Border */
-	--border: 30 6% 24%;
+	--border: 32 5% 24%;
 
 	/* Accent (glows slightly in dark) */
 	--accent: 24 85% 58%;
@@ -78,19 +78,19 @@
 	--ring: 24 85% 58%;
 
 	/* Destructive (brighter in dark mode for visibility) */
-	--destructive: 0 72% 55%;
+	--destructive: 6 72% 58%;
 	--destructive-foreground: 0 0% 100%;
 
 	/* Warning (brighter in dark mode) */
-	--warning: 38 92% 55%;
+	--warning: 45 90% 58%;
 	--warning-foreground: 30 6% 11%;
 
 	/* Success (brighter in dark mode) */
-	--success: 160 84% 45%;
+	--success: 150 50% 50%;
 	--success-foreground: 0 0% 100%;
 
 	/* Info (brighter in dark mode) */
-	--info: 217 91% 65%;
+	--info: 200 55% 60%;
 	--info-foreground: 0 0% 100%;
 
 	/* Dark mode texture ink */

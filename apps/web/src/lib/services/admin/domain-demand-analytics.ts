@@ -3,6 +3,10 @@ import {
 	readDomainSessionState,
 	type DomainResearchBacklogEntry
 } from '$lib/services/agentic-chat/tools/domains/domain-session-state';
+import {
+	buildDomainResearchQueueCandidatesFromSessionRows,
+	type DomainResearchQueueCandidate
+} from '$lib/services/agentic-chat/tools/domains/domain-research-queue';
 import type { DomainCoverageStatus } from '$lib/services/agentic-chat/tools/domains/types';
 
 export interface DomainDemandSessionRow {
@@ -78,6 +82,7 @@ export interface DomainDemandAnalyticsPayload {
 	};
 	domains: DomainDemandMetric[];
 	research_backlog: DomainResearchBacklogMetric[];
+	research_queue_candidates: DomainResearchQueueCandidate[];
 	coverage_gaps: DomainCoverageGapMetric[];
 }
 
@@ -174,6 +179,7 @@ function hasDomainStateSignal(state: ReturnType<typeof readDomainSessionState>):
 	if (!state) return false;
 	return (
 		state.active_domains.length > 0 ||
+		state.active_work_capabilities.length > 0 ||
 		state.coverage_gaps.length > 0 ||
 		state.research_backlog.length > 0 ||
 		state.recent_observations.length > 0
@@ -409,6 +415,7 @@ export function buildDomainDemandAnalytics(
 		},
 		domains,
 		research_backlog: researchBacklog,
+		research_queue_candidates: buildDomainResearchQueueCandidatesFromSessionRows(rows),
 		coverage_gaps: coverageGaps
 	};
 }

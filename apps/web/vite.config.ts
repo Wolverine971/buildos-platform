@@ -20,6 +20,22 @@ export default defineConfig(({ mode }) => {
 		.map((h) => h.trim())
 		.filter(Boolean);
 
+	// CodeMirror extensions rely on instanceof checks across packages; keep the
+	// lazy-loaded editor on one resolved dependency graph in dev.
+	const codemirrorPackages = [
+		'@codemirror/autocomplete',
+		'@codemirror/commands',
+		'@codemirror/lang-css',
+		'@codemirror/lang-html',
+		'@codemirror/lang-javascript',
+		'@codemirror/lang-markdown',
+		'@codemirror/language',
+		'@codemirror/lint',
+		'@codemirror/search',
+		'@codemirror/state',
+		'@codemirror/view'
+	];
+
 	return {
 		plugins: [
 			sveltekit(),
@@ -90,12 +106,14 @@ export default defineConfig(({ mode }) => {
 						new URL('./src/lib/icons/lucide.ts', import.meta.url)
 					)
 				}
-			]
+			],
+			dedupe: codemirrorPackages
 		},
 
 		// Enhanced dependency optimization
 		optimizeDeps: {
 			include: [
+				...codemirrorPackages,
 				'date-fns',
 				'marked',
 				'sanitize-html',

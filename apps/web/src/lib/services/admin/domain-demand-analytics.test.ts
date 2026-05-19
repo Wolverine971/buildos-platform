@@ -88,6 +88,18 @@ describe('buildDomainDemandAnalytics', () => {
 		expect(backlog?.domain_ids).toContain('marketing.youtube_growth');
 		expect(backlog?.user_need).toContain('diagnose channel growth blockers');
 
+		const queueCandidate = payload.research_queue_candidates.find(
+			(candidate) => candidate.queue_key === 'skill:youtube_channel_diagnostics'
+		);
+		expect(queueCandidate).toMatchObject({
+			kind: 'skill',
+			status: 'queued',
+			missing_skill_id: 'youtube_channel_diagnostics',
+			budget: expect.objectContaining({
+				idempotencyKey: 'skill:youtube_channel_diagnostics'
+			})
+		});
+
 		expect(payload.coverage_gaps).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({

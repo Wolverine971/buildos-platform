@@ -23,6 +23,14 @@ describe('domain sensing', () => {
 				'viral_video_script_structure'
 			])
 		);
+		expect(result?.active_domains[0]?.work_capability_ids).toEqual(
+			expect.arrayContaining(['youtube_growth_strategy_plan', 'youtube_video_improvement'])
+		);
+		expect(result?.candidate_work_capability_ids).toContain('youtube_growth_strategy_plan');
+		expect(result?.candidate_work_capabilities[0]).toMatchObject({
+			id: 'youtube_growth_strategy_plan',
+			default_skill_id: 'content_strategy_beyond_blogging'
+		});
 		expect(result?.coverage_gap_skill_ids).toContain('youtube_channel_diagnostics');
 	});
 
@@ -35,6 +43,8 @@ describe('domain sensing', () => {
 
 		expect(block).toContain('## Active Domain Signals');
 		expect(block).toContain('sales_and_growth.cold_email');
+		expect(block).toContain('Candidate work capabilities:');
+		expect(block).toContain('cold_email_campaign_build');
 		expect(block).toContain('cold_email_engagement_first_outreach');
 		expect(block).toContain('Next step:');
 	});

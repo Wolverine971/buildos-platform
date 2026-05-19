@@ -145,6 +145,7 @@ export type LitePromptInput = MasterPromptContext & {
 	conversationPosition?: string | null;
 	currentUserMessage?: string | null;
 	priorDomainIds?: string[] | null;
+	priorWorkCapabilityIds?: string[] | null;
 	domainSensingResult?: DomainSensingResult | null;
 	retrievalMap?: LitePromptRetrievalMapInput | null;
 	tools?: ChatToolDefinition[] | null;

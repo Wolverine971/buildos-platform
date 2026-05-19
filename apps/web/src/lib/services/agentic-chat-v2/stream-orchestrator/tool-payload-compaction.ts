@@ -24,6 +24,8 @@ export function buildToolPayloadForModel(
 	if (
 		toolName === 'domain_search' ||
 		toolName === 'domain_load' ||
+		toolName === 'work_capability_search' ||
+		toolName === 'work_capability_load' ||
 		toolName === 'tool_schema' ||
 		toolName === 'tool_search' ||
 		toolName === 'skill_search' ||
@@ -181,6 +183,9 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 						skill_ids: Array.isArray(match?.skill_ids)
 							? match.skill_ids.slice(0, 10)
 							: [],
+						work_capability_ids: Array.isArray(match?.work_capability_ids)
+							? match.work_capability_ids.slice(0, 8)
+							: [],
 						related_domain_ids: Array.isArray(match?.related_domain_ids)
 							? match.related_domain_ids.slice(0, 6)
 							: [],
@@ -209,6 +214,9 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 			capability_ids: Array.isArray(record.capability_ids)
 				? record.capability_ids.slice(0, 8)
 				: [],
+			work_capability_ids: Array.isArray(record.work_capability_ids)
+				? record.work_capability_ids.slice(0, 8)
+				: [],
 			skills: Array.isArray(record.skills) ? record.skills.slice(0, 12) : [],
 			recommended_skill_stacks: Array.isArray(record.recommended_skill_stacks)
 				? record.recommended_skill_stacks.slice(0, 6).map((stack: Record<string, any>) => ({
@@ -221,6 +229,74 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 					}))
 				: [],
 			resources: Array.isArray(record.resources) ? record.resources.slice(0, 8) : [],
+			gaps: Array.isArray(record.gaps) ? record.gaps.slice(0, 8) : [],
+			notes: Array.isArray(record.notes) ? record.notes.slice(0, 6) : [],
+			materialized_tools: Array.isArray(record.materialized_tools)
+				? record.materialized_tools.slice(0, 4)
+				: [],
+			next_step: record.next_step
+		});
+	}
+
+	if (type === 'work_capability_search_results') {
+		return applyToolPayloadSizeGuard({
+			type,
+			query: record.query,
+			filters: record.filters,
+			total_matches: record.total_matches,
+			materialized_tools: Array.isArray(record.materialized_tools)
+				? record.materialized_tools.slice(0, 4)
+				: [],
+			matches: Array.isArray(record.matches)
+				? record.matches.slice(0, 8).map((match: Record<string, any>) => ({
+						work_capability_id: match?.work_capability_id,
+						name: match?.name,
+						confidence: match?.confidence,
+						summary:
+							typeof match?.summary === 'string'
+								? toTextPreview(match.summary, 300)
+								: match?.summary,
+						domain_ids: Array.isArray(match?.domain_ids)
+							? match.domain_ids.slice(0, 6)
+							: [],
+						buildos_capability_ids: Array.isArray(match?.buildos_capability_ids)
+							? match.buildos_capability_ids.slice(0, 8)
+							: [],
+						default_skill_id: match?.default_skill_id,
+						skill_ids: Array.isArray(match?.skill_ids)
+							? match.skill_ids.slice(0, 10)
+							: [],
+						coverage_status: match?.coverage_status,
+						load_hint: match?.load_hint
+					}))
+				: [],
+			next_step: record.next_step
+		});
+	}
+
+	if (type === 'work_capability') {
+		return applyToolPayloadSizeGuard({
+			type,
+			id: record.id,
+			name: record.name,
+			summary: record.summary,
+			domain_ids: Array.isArray(record.domain_ids) ? record.domain_ids.slice(0, 8) : [],
+			buildos_capability_ids: Array.isArray(record.buildos_capability_ids)
+				? record.buildos_capability_ids.slice(0, 8)
+				: [],
+			when_to_use: Array.isArray(record.when_to_use) ? record.when_to_use.slice(0, 6) : [],
+			example_requests: Array.isArray(record.example_requests)
+				? record.example_requests.slice(0, 4)
+				: [],
+			default_skill_id: record.default_skill_id,
+			skill_ids: Array.isArray(record.skill_ids) ? record.skill_ids.slice(0, 12) : [],
+			resource_ids: Array.isArray(record.resource_ids) ? record.resource_ids.slice(0, 8) : [],
+			tool_hints: Array.isArray(record.tool_hints) ? record.tool_hints.slice(0, 8) : [],
+			outputs: Array.isArray(record.outputs) ? record.outputs.slice(0, 8) : [],
+			evaluation_criteria: Array.isArray(record.evaluation_criteria)
+				? record.evaluation_criteria.slice(0, 8)
+				: [],
+			coverage_status: record.coverage_status,
 			gaps: Array.isArray(record.gaps) ? record.gaps.slice(0, 8) : [],
 			notes: Array.isArray(record.notes) ? record.notes.slice(0, 6) : [],
 			materialized_tools: Array.isArray(record.materialized_tools)

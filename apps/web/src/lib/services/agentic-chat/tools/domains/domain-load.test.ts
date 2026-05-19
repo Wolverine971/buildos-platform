@@ -40,6 +40,9 @@ describe('domain discovery', () => {
 		});
 		expect(result.materialized_tools).toEqual(['domain_load']);
 		expect(result.matches[0]?.skill_ids).toContain('linkedin_company_page_growth');
+		expect(result.matches[0]?.work_capability_ids).toContain(
+			'linkedin_company_page_growth_plan'
+		);
 	});
 
 	it('loads a compact domain card with linked skills and gaps', () => {
@@ -57,7 +60,10 @@ describe('domain discovery', () => {
 			'cold_email_engagement_first_outreach'
 		);
 		expect(result.skills.map((skill) => skill.id)).toContain('cold_email_reply_os');
-		expect(result.materialized_tools).toEqual(['resource_search']);
+		expect(result.work_capability_ids).toEqual(
+			expect.arrayContaining(['cold_email_campaign_build', 'cold_email_sender_readiness'])
+		);
+		expect(result.materialized_tools).toEqual(['work_capability_load', 'resource_search']);
 		expect(result.boundaries.join(' ')).toContain('child skills');
 	});
 
@@ -95,6 +101,9 @@ describe('domain discovery', () => {
 					]
 				})
 			])
+		);
+		expect(result.work_capability_ids).toEqual(
+			expect.arrayContaining(['youtube_growth_strategy_plan', 'youtube_video_improvement'])
 		);
 	});
 

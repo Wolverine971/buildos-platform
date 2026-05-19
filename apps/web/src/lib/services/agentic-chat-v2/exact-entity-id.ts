@@ -20,6 +20,8 @@ export function shouldCollectExactEntityReferencesFromToolName(
 	return ![
 		'domain_search',
 		'domain_load',
+		'work_capability_search',
+		'work_capability_load',
 		'tool_schema',
 		'tool_search',
 		'skill_search',

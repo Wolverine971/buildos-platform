@@ -14,6 +14,19 @@ export type DomainSessionStateEntry = {
 	gap_skill_ids: string[];
 };
 
+export type WorkCapabilitySessionEntry = {
+	id: string;
+	name: string;
+	coverage_status: DomainCoverageStatus;
+	confidence: number;
+	first_seen_at: string;
+	last_seen_at: string;
+	occurrences: number;
+	domain_ids: string[];
+	default_skill_id?: string;
+	skill_ids: string[];
+};
+
 export type DomainGapSessionEntry = {
 	missing_skill_id?: string;
 	missing_resource_id?: string;
@@ -45,6 +58,7 @@ export type DomainSessionObservation = {
 	source: DomainSensingResult['source'];
 	query_preview: string;
 	domain_ids: string[];
+	candidate_work_capability_ids: string[];
 	recommended_skill_ids: string[];
 	coverage_gap_skill_ids: string[];
 	coverage_gap_resource_ids: string[];
@@ -54,6 +68,7 @@ export type DomainSessionState = {
 	version: 1;
 	updated_at: string;
 	active_domains: DomainSessionStateEntry[];
+	active_work_capabilities: WorkCapabilitySessionEntry[];
 	coverage_gaps: DomainGapSessionEntry[];
 	research_backlog: DomainResearchBacklogEntry[];
 	recent_observations: DomainSessionObservation[];
@@ -79,6 +94,7 @@ type DomainGapMergeCandidate = DomainGapCandidate & {
 };
 
 const ACTIVE_DOMAIN_LIMIT = 6;
+const ACTIVE_WORK_CAPABILITY_LIMIT = 6;
 const COVERAGE_GAP_LIMIT = 12;
 const RESEARCH_BACKLOG_LIMIT = 16;
 const RECENT_OBSERVATION_LIMIT = 8;
@@ -179,6 +195,37 @@ function readActiveDomain(value: unknown): DomainSessionStateEntry | null {
 	};
 }
 
+function readActiveWorkCapability(value: unknown): WorkCapabilitySessionEntry | null {
+	if (!isRecord(value)) return null;
+	const id = readString(value.id);
+	const name = readString(value.name);
+	const coverageStatus = readString(value.coverage_status);
+	const firstSeenAt = readString(value.first_seen_at);
+	const lastSeenAt = readString(value.last_seen_at);
+	if (
+		!id ||
+		!name ||
+		!firstSeenAt ||
+		!lastSeenAt ||
+		(coverageStatus !== 'none' && coverageStatus !== 'partial' && coverageStatus !== 'strong')
+	) {
+		return null;
+	}
+
+	return {
+		id,
+		name,
+		coverage_status: coverageStatus,
+		confidence: readNumber(value.confidence) ?? 0.5,
+		first_seen_at: firstSeenAt,
+		last_seen_at: lastSeenAt,
+		occurrences: Math.max(1, Math.floor(readNumber(value.occurrences) ?? 1)),
+		domain_ids: readStringArray(value.domain_ids),
+		default_skill_id: readString(value.default_skill_id) ?? undefined,
+		skill_ids: readStringArray(value.skill_ids)
+	};
+}
+
 function readGap(value: unknown): DomainGapSessionEntry | null {
 	if (!isRecord(value)) return null;
 	const missingSkillId = readString(value.missing_skill_id);
@@ -255,6 +302,7 @@ function readObservation(value: unknown): DomainSessionObservation | null {
 		source,
 		query_preview: readString(value.query_preview) ?? '',
 		domain_ids: readStringArray(value.domain_ids),
+		candidate_work_capability_ids: readStringArray(value.candidate_work_capability_ids),
 		recommended_skill_ids: readStringArray(value.recommended_skill_ids),
 		coverage_gap_skill_ids: readStringArray(value.coverage_gap_skill_ids),
 		coverage_gap_resource_ids: readStringArray(value.coverage_gap_resource_ids)
@@ -270,6 +318,11 @@ export function readDomainSessionState(value: unknown): DomainSessionState | nul
 			? value.active_domains
 					.map(readActiveDomain)
 					.filter((item): item is DomainSessionStateEntry => Boolean(item))
+			: [],
+		active_work_capabilities: Array.isArray(value.active_work_capabilities)
+			? value.active_work_capabilities
+					.map(readActiveWorkCapability)
+					.filter((item): item is WorkCapabilitySessionEntry => Boolean(item))
 			: [],
 		coverage_gaps: Array.isArray(value.coverage_gaps)
 			? value.coverage_gaps
@@ -305,6 +358,22 @@ export function getActiveDomainIds(
 		.slice(0, limit);
 }
 
+export function getActiveWorkCapabilityIds(
+	state: DomainSessionState | null | undefined,
+	limit = 3
+): string[] {
+	if (!state) return [];
+	return state.active_work_capabilities
+		.slice()
+		.sort((a, b) => {
+			const timeOrder = b.last_seen_at.localeCompare(a.last_seen_at);
+			if (timeOrder !== 0) return timeOrder;
+			return b.occurrences - a.occurrences;
+		})
+		.map((capability) => capability.id)
+		.slice(0, limit);
+}
+
 export function mergeDomainSessionState(
 	previous: DomainSessionState | null | undefined,
 	result: DomainSensingResult,
@@ -328,6 +397,26 @@ export function mergeDomainSessionState(
 			occurrences: (existing?.occurrences ?? 0) + 1,
 			skill_ids: domain.skill_ids.slice(0, 12),
 			gap_skill_ids: domain.gap_skill_ids.slice(0, 8)
+		});
+	}
+
+	const activeWorkCapabilitiesById = new Map<string, WorkCapabilitySessionEntry>();
+	for (const capability of previous?.active_work_capabilities ?? []) {
+		activeWorkCapabilitiesById.set(capability.id, capability);
+	}
+	for (const capability of result.candidate_work_capabilities) {
+		const existing = activeWorkCapabilitiesById.get(capability.id);
+		activeWorkCapabilitiesById.set(capability.id, {
+			id: capability.id,
+			name: capability.name,
+			coverage_status: capability.coverage_status,
+			confidence: capability.confidence,
+			first_seen_at: existing?.first_seen_at ?? now,
+			last_seen_at: now,
+			occurrences: (existing?.occurrences ?? 0) + 1,
+			domain_ids: capability.domain_ids.slice(0, 8),
+			default_skill_id: capability.default_skill_id,
+			skill_ids: capability.skill_ids.slice(0, 12)
 		});
 	}
 
@@ -416,6 +505,7 @@ export function mergeDomainSessionState(
 		query_preview:
 			result.query.length > 220 ? `${result.query.slice(0, 217).trim()}...` : result.query,
 		domain_ids: result.active_domains.map((domain) => domain.id).slice(0, 8),
+		candidate_work_capability_ids: result.candidate_work_capability_ids.slice(0, 8),
 		recommended_skill_ids: result.recommended_skill_ids.slice(0, 12),
 		coverage_gap_skill_ids: result.coverage_gap_skill_ids.slice(0, 8),
 		coverage_gap_resource_ids: result.coverage_gap_resource_ids.slice(0, 8)
@@ -427,6 +517,9 @@ export function mergeDomainSessionState(
 		active_domains: [...activeById.values()]
 			.sort((a, b) => b.last_seen_at.localeCompare(a.last_seen_at))
 			.slice(0, ACTIVE_DOMAIN_LIMIT),
+		active_work_capabilities: [...activeWorkCapabilitiesById.values()]
+			.sort((a, b) => b.last_seen_at.localeCompare(a.last_seen_at))
+			.slice(0, ACTIVE_WORK_CAPABILITY_LIMIT),
 		coverage_gaps: [...gapsById.values()]
 			.sort((a, b) => b.last_seen_at.localeCompare(a.last_seen_at))
 			.slice(0, COVERAGE_GAP_LIMIT),

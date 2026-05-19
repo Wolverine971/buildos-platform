@@ -8,21 +8,20 @@
  * Color Semantics:
  * - muted: Default/neutral states (draft, unknown)
  * - accent: Planning/pending states (todo, planning, active tracking)
- * - emerald: Active/progress states (in_progress, active, on_track)
- * - indigo: Success states (completed, done, achieved, published)
- * - amber: Warning states (review, at_risk, medium priority)
- * - destructive: Error/blocked states (blocked, missed, urgent)
+ * - info (teal): Active/progress states (in_progress, active, on_track)
+ * - success (sage): Completed/achieved states (completed, done, achieved, published)
+ * - warning (yellow): Caution/review states (review, at_risk, medium priority)
+ * - destructive (terracotta): Error/blocked states (blocked, missed, urgent)
  *
  * @module ontology-badge-styles
  */
 
-// Reusable badge class patterns
+// Reusable badge class patterns — all token-based, no hardcoded Tailwind hues.
 const BADGE_MUTED = 'bg-muted text-muted-foreground border-border';
 const BADGE_ACCENT = 'bg-accent/15 text-accent border-accent/30';
-const BADGE_PROGRESS =
-	'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30';
-const BADGE_SUCCESS = 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-400 border-indigo-500/30';
-const BADGE_WARNING = 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30';
+const BADGE_PROGRESS = 'bg-info/15 text-info border-info/30';
+const BADGE_SUCCESS = 'bg-success/15 text-success border-success/30';
+const BADGE_WARNING = 'bg-warning/15 text-warning border-warning/30';
 const BADGE_DANGER = 'bg-destructive/15 text-destructive border-destructive/30';
 
 /**

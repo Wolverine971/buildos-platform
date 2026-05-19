@@ -6,6 +6,7 @@ import type {
 	DomainSearchMatch,
 	DomainSearchPayload
 } from './types';
+import { listWorkCapabilitiesForDomain } from '../work-capabilities';
 
 export type DomainSearchOptions = {
 	query?: string;
@@ -74,10 +75,10 @@ function confidenceFromScore(score: number): number {
 
 function nextStepForDomain(domain: DomainDefinition): string {
 	if (domain.coverageStatus === 'strong') {
-		return 'Load this domain, then load the most relevant skill only if the user needs the workflow playbook.';
+		return 'Load this domain, then load the closest work capability or skill only if the user needs workflow guidance.';
 	}
 	if (domain.coverageStatus === 'partial') {
-		return 'Load this domain to see available skills and known gaps before choosing a general answer or skill.';
+		return 'Load this domain to see available work capabilities, skills, and known gaps before choosing a general answer or skill.';
 	}
 	return 'Load this domain to confirm the gap, help from general context, and avoid pretending a dedicated skill exists.';
 }
@@ -95,6 +96,9 @@ function toSearchMatch(
 		parent_ids: domain.parentIds,
 		aliases_hit: aliasesHit,
 		skill_ids: getSkillIds(domain),
+		work_capability_ids: listWorkCapabilitiesForDomain(domain.id).map(
+			(capability) => capability.id
+		),
 		related_domain_ids: domain.relatedDomainIds ?? [],
 		next_step: nextStepForDomain(domain)
 	};
@@ -148,6 +152,7 @@ export function loadDomain(domainId: string): DomainLoadPayload | Record<string,
 		coverage_status: child.coverageStatus,
 		summary: child.summary
 	}));
+	const workCapabilities = listWorkCapabilitiesForDomain(domain.id);
 
 	const payload: DomainLoadPayload = {
 		type: 'domain',
@@ -160,6 +165,7 @@ export function loadDomain(domainId: string): DomainLoadPayload | Record<string,
 		related_domain_ids: domain.relatedDomainIds ?? [],
 		boundaries: domain.boundaries,
 		capability_ids: domain.capabilityIds,
+		work_capability_ids: workCapabilities.map((capability) => capability.id),
 		skills: domain.skills.map((skill) => ({
 			id: skill.id,
 			use_when: skill.useWhen
@@ -186,11 +192,18 @@ export function loadDomain(domainId: string): DomainLoadPayload | Record<string,
 				summary: gap.summary
 			})) ?? [],
 		materialized_tools:
-			domain.skills.length > 0 || (domain.resources?.length ?? 0) > 0
-				? ['resource_search']
+			workCapabilities.length > 0 ||
+			domain.skills.length > 0 ||
+			(domain.resources?.length ?? 0) > 0
+				? [
+						...(workCapabilities.length > 0 ? ['work_capability_load'] : []),
+						...(domain.skills.length > 0 || (domain.resources?.length ?? 0) > 0
+							? ['resource_search']
+							: [])
+					]
 				: [],
 		next_step:
-			'Use the domain as routing context. Load a linked skill only when the current task needs its workflow; otherwise answer from available context and note gaps internally.'
+			'Use the domain as routing context. Load a work capability when the current task needs an outcome card; load a skill only when the turn needs its workflow playbook.'
 	};
 
 	if (payload.materialized_tools?.length === 0) {

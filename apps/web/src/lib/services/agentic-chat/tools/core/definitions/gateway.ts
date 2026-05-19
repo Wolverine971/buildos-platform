@@ -44,6 +44,57 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	{
 		type: 'function',
 		function: {
+			name: 'work_capability_search',
+			description:
+				'Find outcome cards within a domain. Use after domain context is known when the task needs a specialized output lane before choosing skills.',
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description:
+							'Natural-language outcome search, e.g. "cold email campaign", "YouTube growth plan", or "UI screen review".'
+					},
+					domain: {
+						type: 'string',
+						description:
+							'Optional BuildOS domain id such as "sales_and_growth.cold_email" or "marketing.youtube_growth".'
+					},
+					buildosCapability: {
+						type: 'string',
+						description:
+							'Optional BuildOS runtime capability id such as "planning", "documents", or "project_audit".'
+					},
+					limit: {
+						type: 'integer',
+						description: 'Maximum number of matching work capabilities to return.'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'work_capability_load',
+			description:
+				'Load one compact WorkCapability outcome card. This exposes relevant skills, resource handles, outputs, quality criteria, and tool hints without granting direct write tools.',
+			parameters: {
+				type: 'object',
+				properties: {
+					workCapability: {
+						type: 'string',
+						description:
+							'Canonical work capability id such as "cold_email_campaign_build", "youtube_growth_strategy_plan", or "ui_ux_screen_review".'
+					}
+				},
+				required: ['workCapability']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
 			name: 'skill_search',
 			description: 'Find BuildOS skills.',
 			parameters: {

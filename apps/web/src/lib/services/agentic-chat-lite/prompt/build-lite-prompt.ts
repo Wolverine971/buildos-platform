@@ -6,6 +6,7 @@ import {
 	renderDomainSensingPromptContent,
 	senseDomains
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
+import { listDomains } from '$lib/services/agentic-chat/tools/domains/catalog';
 import { extractToolNamesFromDefinitions } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
 import { listChildSkills, listRootSkills } from '$lib/services/agentic-chat/tools/skills/registry';
@@ -32,6 +33,8 @@ import {
 
 const DISCOVERY_TOOL_NAMES = new Set([
 	'domain_search',
+	'work_capability_search',
+	'work_capability_load',
 	'skill_search',
 	'resource_search',
 	'resource_load',
@@ -442,10 +445,11 @@ function buildOperatingStrategySection(): LitePromptSection {
 			'- Start with the loaded context. If the loaded context is enough, answer without extra tool calls.',
 			'- Before any tool call, open the turn with a 1-2 sentence lead-in describing what you are about to do. Lead-ins are intent only; do not claim outcomes until tool results are back.',
 			'- Use direct tools first when they fit. Use discovery tools (tool_search, tool_schema) only when the exact operation or schema is missing.',
-			'- Use domain_search when the user enters a subject area or niche and the relevant skill family is unclear. After domain_search makes domain_load available, use domain_load when boundaries, linked skills, or coverage gaps would help route the work.',
+			'- Use domain_search when the user enters a subject area or niche and the relevant skill family is unclear. After domain_search makes domain_load available, use domain_load when boundaries, work capabilities, linked skills, or coverage gaps would help route the work.',
+			'- After a loaded domain exposes work_capability_ids and work_capability_load, load a work capability when the user needs a specialized output lane, skill stack, or quality criteria before choosing skills.',
 			'- Use skill_search when the active domain is known but the exact skill is unclear; pass domain when available. Prefer root skills unless a child skill is clearly the needed narrow lens.',
-			'- Use resource_search only after it is exposed by a loaded domain or skill-linked resource path. Use resource_load only for a matched resource when source detail, examples, templates, or provenance would materially improve the answer.',
-			"- Load a skill with skill_load only when the workflow is two or more related writes or required fields are uncertain; default to format: short and request include_examples: true only after a prior failure on the same op. Skill choice follows from the capability that matches the user's intent.",
+			'- Use resource_search only after it is exposed by a loaded domain, work capability, or skill-linked resource path. Use resource_load only for a matched resource when source detail, examples, templates, or provenance would materially improve the answer.',
+			"- Load a skill with skill_load only when the workflow is two or more related writes or required fields are uncertain; default to format: short and request include_examples: true only after a prior failure on the same op. Skill choice follows from the work capability or runtime capability that matches the user's intent.",
 			'- If history includes a previously loaded skills ledger, treat those skills as already discovered. Do not reload the same skill just to recover its summary, child index, or related tools; reload only when the full markdown/examples are needed for this turn.',
 			'- Root skills are the default. Do not load child skills or reference modules automatically after loading a root skill; load deeper material only when the current request needs niche, mode-specific, or high-context guidance.',
 			'- Use skill_reference_load only for a reference_modules entry returned by skill_load. Do not use it to browse arbitrary files or as a substitute for loading a registered child skill.',
@@ -466,6 +470,7 @@ function buildActiveDomainSignalsSection(input: LitePromptInput): LitePromptSect
 					currentUserMessage: input.currentUserMessage,
 					conversationSummary: input.conversationSummary,
 					priorDomainIds: input.priorDomainIds,
+					priorWorkCapabilityIds: input.priorWorkCapabilityIds,
 					limit: 3
 				})
 	);
@@ -488,6 +493,12 @@ function buildCapabilitiesSkillsToolsSection(): LitePromptSection {
 	const capabilities = listCapabilities('available').map(
 		(capability) => `${capability.name}: ${capability.summary}`
 	);
+	const domainIndexRows = listDomains()
+		.sort((a, b) => a.id.localeCompare(b.id))
+		.map((domain) => {
+			const summary = truncateText(domain.summary, 150) ?? domain.summary;
+			return `\`${domain.id}\`: ${summary} Coverage: ${domain.coverageStatus}.`;
+		});
 	const rootSkillRows = listRootSkills()
 		.sort((a, b) => a.id.localeCompare(b.id))
 		.map((skill) => `| \`${skill.id}\` | ${skill.summary} |`);
@@ -514,18 +525,22 @@ function buildCapabilitiesSkillsToolsSection(): LitePromptSection {
 		kind: 'static',
 		source: 'lite.static_capability_skill_catalog',
 		content: [
-			'Think in five layers. They work together in sequence:',
+			'Think in six layers. They work together in sequence:',
 			'',
 			'1. Domain - the subject territory or niche the user is operating in.',
-			'2. Capability - what BuildOS can do for the user.',
-			'3. Skill - workflow guidance for doing that work well. Skill metadata is preloaded in this prompt; call skill_load when the task is multi-step or easy to get wrong and you need the full markdown playbook.',
-			'4. Tool / Op - the exact execution surface. The current tool names are listed in Current Tool Surface below.',
-			'5. Resource - supporting reference material, examples, source maps, or deeper evidence.',
-			'Root skills and loaded domains may expose child skills, reference modules, or resource handles as optional depth. Treat those as indexes, not automatic context. Use skill_reference_load or resource_load only for declared/matched resources.',
+			'2. Work capability - the specialized outcome lane inside a domain.',
+			'3. Capability - what BuildOS can do for the user at runtime.',
+			'4. Skill - workflow guidance for doing that work well. Skill metadata is preloaded in this prompt; call skill_load when the task is multi-step or easy to get wrong and you need the full markdown playbook.',
+			'5. Tool / Op - the exact execution surface. The current tool names are listed in Current Tool Surface below.',
+			'6. Resource - supporting reference material, examples, source maps, or deeper evidence.',
+			'Root skills, loaded domains, and loaded work capabilities may expose child skills, reference modules, or resource handles as optional depth. Treat those as indexes, not automatic context. Use skill_reference_load or resource_load only for declared/matched resources.',
 			'Use domains to orient the conversation, not to preload everything. When domain coverage is partial, help with what is available and treat gaps as routing signal rather than invented expertise.',
 			'',
 			'Capabilities:',
 			formatBullets(capabilities, 'No capabilities are registered.'),
+			'',
+			'Compact domain index (load domain details only when relevant):',
+			formatBullets(domainIndexRows, 'No domains are registered.'),
 			'',
 			'Root skill catalog (use `skill_load` to fetch the playbook):',
 			'',

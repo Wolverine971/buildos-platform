@@ -115,7 +115,7 @@ describe('buildLitePromptEnvelope', () => {
 			'You are a proactive project assistant for BuildOS'
 		);
 		expect(envelope.systemPrompt).toContain(
-			'Think in five layers. They work together in sequence:'
+			'Think in six layers. They work together in sequence:'
 		);
 		expect(envelope.systemPrompt).toContain('Loaded scope:');
 		expect(envelope.systemPrompt).not.toContain('## Active Domain Signals');
@@ -148,13 +148,18 @@ describe('buildLitePromptEnvelope', () => {
 			'If history includes a previously loaded skills ledger, treat those skills as already discovered.'
 		);
 		expect(envelope.systemPrompt).toContain(
-			'Root skills and loaded domains may expose child skills, reference modules, or resource handles as optional depth.'
+			'Root skills, loaded domains, and loaded work capabilities may expose child skills, reference modules, or resource handles as optional depth.'
 		);
 		expect(envelope.systemPrompt).toContain(
 			'Use domains to orient the conversation, not to preload everything.'
 		);
 		expect(envelope.systemPrompt).toContain(
-			'Use resource_search only after it is exposed by a loaded domain or skill-linked resource path.'
+			'Compact domain index (load domain details only when relevant):'
+		);
+		expect(envelope.systemPrompt).toContain('`marketing.youtube_growth`');
+		expect(envelope.systemPrompt).toContain('Coverage: partial.');
+		expect(envelope.systemPrompt).toContain(
+			'Use resource_search only after it is exposed by a loaded domain, work capability, or skill-linked resource path.'
 		);
 		expect(envelope.systemPrompt).toContain('Root skill catalog');
 		expect(envelope.systemPrompt).toContain('Registered child skills');
@@ -204,6 +209,8 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.sections.map((section) => section.id)).toContain('active_domain_signals');
 		const section = envelope.sections.find((item) => item.id === 'active_domain_signals');
 		expect(section?.content).toContain('marketing.youtube_growth');
+		expect(section?.content).toContain('Candidate work capabilities:');
+		expect(section?.content).toContain('youtube_growth_strategy_plan');
 		expect(section?.content).toContain('content_strategy_beyond_blogging');
 		expect(section?.content).toContain('youtube_channel_diagnostics');
 		expect(envelope.systemPrompt).toContain('## Active Domain Signals');
@@ -220,6 +227,7 @@ describe('buildLitePromptEnvelope', () => {
 		const section = envelope.sections.find((item) => item.id === 'active_domain_signals');
 		expect(section?.content).toContain('Source: session_state');
 		expect(section?.content).toContain('marketing.youtube_growth');
+		expect(section?.content).toContain('youtube_growth_strategy_plan');
 		expect(section?.content).toContain('content_strategy_beyond_blogging');
 	});
 

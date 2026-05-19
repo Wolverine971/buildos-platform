@@ -191,6 +191,8 @@ export function isReadLikeOperation(name: string): boolean {
 		normalized === 'tool_schema' ||
 		normalized === 'domain_search' ||
 		normalized === 'domain_load' ||
+		normalized === 'work_capability_search' ||
+		normalized === 'work_capability_load' ||
 		normalized === 'skill_search' ||
 		normalized === 'resource_search' ||
 		normalized === 'resource_load' ||
@@ -215,6 +217,8 @@ export function isReadLikeOperation(name: string): boolean {
 const DISCOVERY_TOOL_NAMES: ReadonlySet<string> = new Set([
 	'domain_search',
 	'domain_load',
+	'work_capability_search',
+	'work_capability_load',
 	'skill_search',
 	'resource_search',
 	'resource_load',

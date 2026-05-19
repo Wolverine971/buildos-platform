@@ -90,6 +90,7 @@ import {
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import {
 	getActiveDomainIds,
+	getActiveWorkCapabilityIds,
 	getNewDomainResearchBacklogEntries,
 	mergeDomainSessionState,
 	readDomainSessionState
@@ -3700,10 +3701,12 @@ export const POST: RequestHandler = async ({
 				sessionMetadata.fastchat_domain_state
 			);
 			const priorDomainIds = getActiveDomainIds(previousDomainState);
+			const priorWorkCapabilityIds = getActiveWorkCapabilityIds(previousDomainState);
 			const turnDomainSensing = senseDomains({
 				currentUserMessage: messageForModel,
 				conversationSummary,
 				priorDomainIds,
+				priorWorkCapabilityIds,
 				limit: 3
 			});
 			const recentContextShiftHint = readRecentContextShiftHint(sessionMetadata);
@@ -4240,6 +4243,7 @@ export const POST: RequestHandler = async ({
 						conversationPosition: `live stream turn ${streamRunId}`,
 						currentUserMessage: messageForModel,
 						priorDomainIds,
+						priorWorkCapabilityIds,
 						domainSensingResult: turnDomainSensing
 					});
 					systemPrompt = litePromptEnvelope.systemPrompt;
@@ -4285,6 +4289,8 @@ export const POST: RequestHandler = async ({
 					recordTurnEvent('prompt', 'domain_sensing_applied', {
 						source: turnDomainSensing.source,
 						domain_ids: turnDomainSensing.active_domains.map((domain) => domain.id),
+						candidate_work_capability_ids:
+							turnDomainSensing.candidate_work_capability_ids,
 						recommended_skill_ids: turnDomainSensing.recommended_skill_ids,
 						coverage_gap_skill_ids: turnDomainSensing.coverage_gap_skill_ids,
 						coverage_gap_resource_ids: turnDomainSensing.coverage_gap_resource_ids,

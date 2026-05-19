@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { senseDomains } from './domain-sensing';
 import {
 	getActiveDomainIds,
+	getActiveWorkCapabilityIds,
 	getNewDomainResearchBacklogEntries,
 	mergeDomainSessionState,
 	readDomainSessionState
@@ -25,6 +26,11 @@ describe('domain session state', () => {
 			id: 'marketing.youtube_growth',
 			occurrences: 1
 		});
+		expect(state.active_work_capabilities[0]).toMatchObject({
+			id: 'youtube_growth_strategy_plan',
+			occurrences: 1,
+			default_skill_id: 'content_strategy_beyond_blogging'
+		});
 		expect(state.coverage_gaps.map((gap) => gap.missing_skill_id)).toContain(
 			'youtube_channel_diagnostics'
 		);
@@ -46,7 +52,11 @@ describe('domain session state', () => {
 			stream_run_id: 'stream-1',
 			source: 'current_user_message'
 		});
+		expect(state.recent_observations[0]?.candidate_work_capability_ids).toContain(
+			'youtube_growth_strategy_plan'
+		);
 		expect(getActiveDomainIds(state)[0]).toBe('marketing.youtube_growth');
+		expect(getActiveWorkCapabilityIds(state)[0]).toBe('youtube_growth_strategy_plan');
 	});
 
 	it('preserves first-seen time and increments continuing domains', () => {
@@ -58,7 +68,8 @@ describe('domain session state', () => {
 
 		const second = senseDomains({
 			currentUserMessage: 'Ok, make the plan.',
-			priorDomainIds: getActiveDomainIds(initial)
+			priorDomainIds: getActiveDomainIds(initial),
+			priorWorkCapabilityIds: getActiveWorkCapabilityIds(initial)
 		});
 		if (!second) throw new Error('Expected second sensing');
 		const next = mergeDomainSessionState(initial, second, {
@@ -73,6 +84,12 @@ describe('domain session state', () => {
 		});
 		expect(next.research_backlog[0]).toMatchObject({
 			id: 'skill:youtube_channel_diagnostics',
+			first_seen_at: '2026-05-17T12:00:00.000Z',
+			last_seen_at: '2026-05-17T12:05:00.000Z',
+			occurrences: 2
+		});
+		expect(next.active_work_capabilities[0]).toMatchObject({
+			id: 'youtube_growth_strategy_plan',
 			first_seen_at: '2026-05-17T12:00:00.000Z',
 			last_seen_at: '2026-05-17T12:05:00.000Z',
 			occurrences: 2
@@ -116,6 +133,21 @@ describe('domain session state', () => {
 				},
 				{ id: 'broken' }
 			],
+			active_work_capabilities: [
+				{
+					id: 'youtube_growth_strategy_plan',
+					name: 'YouTube Growth Strategy Plan',
+					coverage_status: 'partial',
+					confidence: 0.8,
+					first_seen_at: '2026-05-17T12:00:00.000Z',
+					last_seen_at: '2026-05-17T12:00:00.000Z',
+					occurrences: 1,
+					domain_ids: ['marketing.youtube_growth'],
+					default_skill_id: 'content_strategy_beyond_blogging',
+					skill_ids: ['content_strategy_beyond_blogging']
+				},
+				{ id: 'broken' }
+			],
 			coverage_gaps: [],
 			research_backlog: [
 				{
@@ -137,7 +169,9 @@ describe('domain session state', () => {
 		});
 
 		expect(parsed?.active_domains).toHaveLength(1);
+		expect(parsed?.active_work_capabilities).toHaveLength(1);
 		expect(parsed?.research_backlog).toHaveLength(1);
 		expect(getActiveDomainIds(parsed)).toEqual(['marketing.youtube_growth']);
+		expect(getActiveWorkCapabilityIds(parsed)).toEqual(['youtube_growth_strategy_plan']);
 	});
 });
