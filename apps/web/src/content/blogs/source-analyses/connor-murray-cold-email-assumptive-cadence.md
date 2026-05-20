@@ -46,7 +46,7 @@ A deep read of Connor Murray's [10 Years of Expert Cold Email Advice in 36 Minut
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`cold-email-engagement-first-outreach`](/blogs/agent-skills/cold-email-engagement-first-outreach) skill. It supplies the **body craft + cadence layer** — the three-paragraph structure, assumptive language replacement, and the AB follow-up rhythm. It is the "what you actually type and when you send it" layer of the skill.
+This is one of the source layers behind the BuildOS [`cold-email-engagement-first-outreach`](/agent-skills/cold-email-engagement-first-outreach) skill. It supplies the **body craft + cadence layer** — the three-paragraph structure, assumptive language replacement, and the AB follow-up rhythm. It is the "what you actually type and when you send it" layer of the skill.
 
 ## Core thesis
 

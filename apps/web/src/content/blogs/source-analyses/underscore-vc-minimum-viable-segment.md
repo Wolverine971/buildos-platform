@@ -52,7 +52,7 @@ A deep read of the [Minimum Viable Segment (MVS) framework](https://underscore.v
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/blogs/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **segment-testability gate** — the three hard tests that decide whether a candidate segment is even valid before any timing signal, anchor, or offer work begins. A segment that fails the MVS check produces an uninterpretable campaign no matter how good the email is.
+This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **segment-testability gate** — the three hard tests that decide whether a candidate segment is even valid before any timing signal, anchor, or offer work begins. A segment that fails the MVS check produces an uninterpretable campaign no matter how good the email is.
 
 ## Core thesis
 

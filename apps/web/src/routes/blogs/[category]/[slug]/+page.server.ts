@@ -1,6 +1,7 @@
 // apps/web/src/routes/blogs/[category]/[slug]/+page.server.ts
+import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { loadBlogPostMetadata, getRelatedPosts } from '$lib/utils/blog';
+import { AGENT_SKILLS_CATEGORY_KEY, loadBlogPostMetadata, getRelatedPosts } from '$lib/utils/blog';
 import { renderMarkdown } from '$lib/utils/markdown';
 
 const blogContentModules = import.meta.glob<string>('/src/content/blogs/**/*.md', {
@@ -22,8 +23,12 @@ function stripLeadingH1(body: string): string {
 	return body.replace(/^[^\n]+\n=+\s*\n+/, '');
 }
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, url }) => {
 	const { category, slug } = params;
+
+	if (category === AGENT_SKILLS_CATEGORY_KEY) {
+		throw redirect(308, `/agent-skills/${slug}${url.search}`);
+	}
 
 	// Load only metadata (serializable)
 	const post = await loadBlogPostMetadata(category, slug);

@@ -43,7 +43,7 @@ A deep read of Daniel Priestley's [The $1 Million Landing Page](https://www.yout
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`landing-page-scorecard-funnel`](/blogs/agent-skills/landing-page-scorecard-funnel) skill. The skill encodes the 3-part funnel mechanics, the 5-section landing page formula, and the Big 5 qualifying questions as agent-runnable rubrics. This post is the long form: the whole system, section by section.
+This is one of the source layers behind the BuildOS [`landing-page-scorecard-funnel`](/agent-skills/landing-page-scorecard-funnel) skill. The skill encodes the 3-part funnel mechanics, the 5-section landing page formula, and the Big 5 qualifying questions as agent-runnable rubrics. This post is the long form: the whole system, section by section.
 
 ## Core thesis
 
@@ -270,7 +270,7 @@ You're not just collecting emails — you're collecting a **qualified, segmented
 
 ## How BuildOS uses this
 
-This source informs how the [`landing-page-scorecard-funnel`](/blogs/agent-skills/landing-page-scorecard-funnel) skill structures assessment-driven funnels. Specific applications:
+This source informs how the [`landing-page-scorecard-funnel`](/agent-skills/landing-page-scorecard-funnel) skill structures assessment-driven funnels. Specific applications:
 
 - The skill uses Priestley's 5-section landing page as the **default page structure** for any BuildOS-derived assessment funnel.
 - The Big 5 qualifying questions (especially Q4 — preferred solution) are encoded as agent-runnable templates that translate budget signals into routing decisions.
@@ -279,6 +279,6 @@ This source informs how the [`landing-page-scorecard-funnel`](/blogs/agent-skill
 
 ## Related
 
-- Skill: [`landing-page-scorecard-funnel`](/blogs/agent-skills/landing-page-scorecard-funnel) — uses this 3-part funnel as the operating spine.
+- Skill: [`landing-page-scorecard-funnel`](/agent-skills/landing-page-scorecard-funnel) — uses this 3-part funnel as the operating spine.
 - Companion source analysis: [The Sales Pitch Framework: Lessons from April Dunford](/blogs/source-analyses/april-dunford-sales-pitch-framework) — positioning layer that determines whether the scorecard's hook lands.
 - Tool referenced: [ScoreApp](https://scoreapp.com) (Priestley's own scorecard tool).

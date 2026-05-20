@@ -1,7 +1,7 @@
 // apps/web/src/routes/blog/[slug]/+page.server.ts
 import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { loadBlogPosts } from '$lib/utils/blog';
+import { getContentPostPath, loadBlogPosts } from '$lib/utils/blog';
 
 export const load: PageServerLoad = async ({ params, url }) => {
 	const slug = params.slug?.replace(/\.md$/i, '');
@@ -15,5 +15,5 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		throw error(404, 'Post not found');
 	}
 
-	throw redirect(308, `/blogs/${post.category}/${post.slug}${url.search}`);
+	throw redirect(308, `${getContentPostPath(post)}${url.search}`);
 };

@@ -45,7 +45,7 @@ A deep read of Kallaway's [The ONLY 6 Words You Need to Hook ANY Viewer](https:/
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`hook-craft-short-form`](/blogs/agent-skills/hook-craft-short-form) skill. The skill uses the six-slot grammar as the structural-audit pass — given a draft hook, the agent walks the slots and surfaces the missing or weak one. This post is the long form: how Kallaway teaches the slots and the copy-work drill that makes the formula automatic.
+This is one of the source layers behind the BuildOS [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) skill. The skill uses the six-slot grammar as the structural-audit pass — given a draft hook, the agent walks the slots and surfaces the missing or weak one. This post is the long form: how Kallaway teaches the slots and the copy-work drill that makes the formula automatic.
 
 ## Core thesis
 
@@ -206,7 +206,7 @@ Pattern recognition lives in the muscle memory of slot-tagging, not in fancy gen
 
 ## How BuildOS uses this
 
-This source informs how the [`hook-craft-short-form`](/blogs/agent-skills/hook-craft-short-form) skill audits and rewrites drafts:
+This source informs how the [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) skill audits and rewrites drafts:
 
 - The skill uses the 6-slot audit as the **default scoring rubric** — agents are biased toward auditing and rewriting drafts the user already has, not generating from cold.
 - For BuildOS voice specifically, the agent runs a **voice-translation step** that keeps the slot grammar but shifts register — for the BuildOS audience, contrast might be "messy thinking → structured work" instead of "0 to 100K subs."
@@ -214,7 +214,7 @@ This source informs how the [`hook-craft-short-form`](/blogs/agent-skills/hook-c
 
 ## Related
 
-- Skill: [`hook-craft-short-form`](/blogs/agent-skills/hook-craft-short-form) — uses the 6-slot grammar as the audit pass.
+- Skill: [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) — uses the 6-slot grammar as the audit pass.
 - Companion source analyses (the 4-video Kallaway hook cluster):
     - [Irresistible Hooks: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-irresistible-hooks) — the three-beat formula.
     - [Hooks Impossible to Skip: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-hooks-impossible-to-skip) — the four-mistake diagnostic.

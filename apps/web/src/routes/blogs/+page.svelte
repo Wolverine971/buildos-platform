@@ -18,7 +18,13 @@
 	import { Calendar, Clock, ArrowRight, Search } from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
-	import { formatBlogDate, type BlogCategory, type BlogPost } from '$lib/utils/blog';
+	import {
+		formatBlogDate,
+		getContentPostPath,
+		getContentPostUrl,
+		type BlogCategory,
+		type BlogPost
+	} from '$lib/utils/blog';
 	import { escapeSerializedJsonLd } from '$lib/utils/json-ld';
 
 	let { data }: { data: PageData } = $props();
@@ -50,7 +56,7 @@
 				'@type': 'BlogPosting',
 				headline: post.title,
 				description: post.description,
-				url: `${SITE_URL}/blogs/${post.category}/${post.slug}`,
+				url: getContentPostUrl(SITE_URL, post),
 				datePublished: post.date,
 				author: {
 					'@type': 'Person',
@@ -240,7 +246,7 @@
 		{#if featuredPost}
 			<article class="group pt-6 pb-2">
 				<a
-					href="/blogs/{featuredPost.category}/{featuredPost.slug}"
+					href={getContentPostPath(featuredPost)}
 					class="block bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
 				>
 					<div class="p-5 sm:p-7">
@@ -293,7 +299,7 @@
 
 						<article class="group">
 							<a
-								href="/blogs/{post.category}/{post.slug}"
+								href={getContentPostPath(post)}
 								class="flex flex-col h-full bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
 							>
 								<div class="p-4 sm:p-5 flex flex-col flex-1">

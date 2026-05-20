@@ -47,7 +47,7 @@ A deep read of [April Dunford on Lenny's Podcast](https://www.youtube.com/watch?
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`landing-page-scorecard-funnel`](/blogs/agent-skills/landing-page-scorecard-funnel) skill. The skill uses Dunford's framework as the **positioning layer** — the worldview the scorecard funnel runs on top of. Priestley supplies the funnel mechanics; Dunford supplies the decision rule for when the scorecard needs setup before the ask. This post is the long form: the framework, why it works, and the trade-off concept that makes positioning credible.
+This is one of the source layers behind the BuildOS [`landing-page-scorecard-funnel`](/agent-skills/landing-page-scorecard-funnel) skill. The skill uses Dunford's framework as the **positioning layer** — the worldview the scorecard funnel runs on top of. Priestley supplies the funnel mechanics; Dunford supplies the decision rule for when the scorecard needs setup before the ask. This post is the long form: the framework, why it works, and the trade-off concept that makes positioning credible.
 
 ## Core thesis
 
@@ -151,7 +151,7 @@ For BuildOS specifically: the trade-off is **"we are deliberately not a multipla
 
 ## How BuildOS uses this
 
-This source informs how the [`landing-page-scorecard-funnel`](/blogs/agent-skills/landing-page-scorecard-funnel) skill positions the assessment funnel.
+This source informs how the [`landing-page-scorecard-funnel`](/agent-skills/landing-page-scorecard-funnel) skill positions the assessment funnel.
 
 1. **The BuildOS landing page should follow the Setup → Follow-Through structure.** The setup is missing on most pages today. The setup should be: (1) thinking is harder than building in the AI era, (2) current alternatives (Notion, Apple Notes, ChatGPT-as-second-brain) all have trade-offs, (3) ideal solution = a thinking environment. _Then_ introduce BuildOS.
 2. **Name the alternative explicitly.** April's framework demands naming Notion, Apple Notes, paper notebooks, ChatGPT, the 10 unread tabs. Specificity is credibility.
@@ -173,7 +173,7 @@ This source informs how the [`landing-page-scorecard-funnel`](/blogs/agent-skill
 
 ## Related
 
-- Skill: [`landing-page-scorecard-funnel`](/blogs/agent-skills/landing-page-scorecard-funnel) — uses this framework as the positioning layer that the funnel runs on.
+- Skill: [`landing-page-scorecard-funnel`](/agent-skills/landing-page-scorecard-funnel) — uses this framework as the positioning layer that the funnel runs on.
 - Companion source analysis: [The $1 Million Landing Page: Lessons from Daniel Priestley](/blogs/source-analyses/daniel-priestley-1m-landing-page) — the funnel mechanics that operate on top of this positioning.
 - Books: _Obviously Awesome_ (positioning) and _Sales Pitch_ (translating positioning into a winnable pitch) by April Dunford.
 - Source channel: [Lenny's Podcast on YouTube](https://www.youtube.com/@LennysPodcast).

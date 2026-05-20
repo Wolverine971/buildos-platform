@@ -46,7 +46,7 @@ A deep read of Instantly's [The New Way of Cold Emailing in 2026](https://www.yo
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`cold-email-engagement-first-outreach`](/blogs/agent-skills/cold-email-engagement-first-outreach) skill. It supplies the **2026-specific platform layer** — what filters now reward, the deliverability floor required to even reach the inbox, the under-50-recipient reply-rate math, and the two-touch rule that replaced the seven-touch sequence.
+This is one of the source layers behind the BuildOS [`cold-email-engagement-first-outreach`](/agent-skills/cold-email-engagement-first-outreach) skill. It supplies the **2026-specific platform layer** — what filters now reward, the deliverability floor required to even reach the inbox, the under-50-recipient reply-rate math, and the two-touch rule that replaced the seven-touch sequence.
 
 ## Core thesis
 

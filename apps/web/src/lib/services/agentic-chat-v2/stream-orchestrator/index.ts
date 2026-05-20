@@ -179,6 +179,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let repeatedReadOpSetCount = 0;
 	let readLoopRepairRank = 0;
 	let forceNoToolSynthesisPass = false;
+	let noToolSynthesisRetryCount = 0;
 	const gatewayRequiredFieldFailureCounts = new Map<string, number>();
 	let docOrganizationRecoveryEligible = false;
 	let gatewaySchemaRepairInjected = false;
@@ -684,6 +685,35 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				llmStreamPasses.push(llmPassMeta);
 			}
 
+			if (noToolSynthesisPass) {
+				const candidateFinalText = sanitizeAssistantFinalText(assistantBuffer);
+				if (pendingToolCalls.length > 0 && noToolSynthesisRetryCount < 1) {
+					noToolSynthesisRetryCount += 1;
+					messages.push({
+						role: 'system',
+						content:
+							'The previous synthesis attempt still emitted tool calls. Tools are unavailable for this pass. Ignore all pending tool calls and write the final user-facing answer now from the existing tool results. Do not say you will check, search, pull up, inspect, load, or update anything else.'
+					});
+					forceNoToolSynthesisPass = true;
+					continue;
+				}
+				if (candidateFinalText && pendingToolCalls.length === 0) {
+					finalAssistantText = enforceMutationOutcomeIntegrity(candidateFinalText, {
+						contextType: normalizedContext,
+						toolExecutions
+					});
+					if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
+						await emitAssistantRemainder(finalAssistantText);
+					}
+					finishedReason = 'stop';
+					activeAssistantBuffer = '';
+					activePendingToolCallCount = 0;
+					break;
+				}
+				markToolLimitReached('round');
+				break;
+			}
+
 			if (pendingToolCalls.length === 0) {
 				const candidateFinalText = sanitizeAssistantFinalText(assistantBuffer);
 				if (
@@ -725,24 +755,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 				activeAssistantBuffer = '';
 				activePendingToolCallCount = 0;
-				break;
-			}
-
-			if (noToolSynthesisPass) {
-				const candidateFinalText = sanitizeAssistantFinalText(assistantBuffer);
-				if (candidateFinalText) {
-					finalAssistantText = enforceMutationOutcomeIntegrity(candidateFinalText, {
-						contextType: normalizedContext,
-						toolExecutions
-					});
-					if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
-						await emitAssistantRemainder(finalAssistantText);
-					}
-					activeAssistantBuffer = '';
-					activePendingToolCallCount = 0;
-					break;
-				}
-				markToolLimitReached('round');
 				break;
 			}
 

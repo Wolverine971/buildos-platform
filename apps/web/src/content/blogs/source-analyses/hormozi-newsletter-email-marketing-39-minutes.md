@@ -43,7 +43,7 @@ A deep read of [Learn Email Marketing in 39 Minutes!](https://www.youtube.com/wa
 
 ## Why this analysis exists
 
-This is **not** part of the BuildOS [`cold-email-engagement-first-outreach`](/blogs/agent-skills/cold-email-engagement-first-outreach) skill. The audience matters. Hormozi is talking about emailing **people who already opted in** — newsletter, lifecycle, and list-to-customer email — not strangers receiving cold outreach.
+This is **not** part of the BuildOS [`cold-email-engagement-first-outreach`](/agent-skills/cold-email-engagement-first-outreach) skill. The audience matters. Hormozi is talking about emailing **people who already opted in** — newsletter, lifecycle, and list-to-customer email — not strangers receiving cold outreach.
 
 The economics are different (the cost of acquiring the contact is already sunk), the deliverability physics are different (a warm list with healthy engagement has more headroom than a cold sender), and the unit of measurement is different (open rate / click-through rate / lifetime conversion, not reply-to-meeting-booked). Many of the principles transfer to cold outreach — preview text, mobile optimization, single clear CTA, plain-text discipline — but the _operating frame_ is fundamentally about content delivered through email, not interruption sent to strangers.
 

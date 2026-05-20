@@ -45,7 +45,7 @@ A deep read of [Nesrine Changuel on Lenny's Podcast — A 4-step framework for b
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) skill — specifically the optional delight pass. The skill encodes the three pillars, delight grid, anti-delight checks, and demotivator inversion as agent-runnable rules. This post is the long form: the framework, the case studies, and the cultural tactics for shipping delight on a real roadmap.
+This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill — specifically the optional delight pass. The skill encodes the three pillars, delight grid, anti-delight checks, and demotivator inversion as agent-runnable rules. This post is the long form: the framework, the case studies, and the cultural tactics for shipping delight on a real roadmap.
 
 ## TL;DR
 
@@ -249,7 +249,7 @@ Product leader at Buffer noticed ~2% of paying users hadn't logged in for months
 
 ## How BuildOS uses this
 
-This source informs the optional delight pass in the [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) skill, plus product strategy more broadly.
+This source informs the optional delight pass in the [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill, plus product strategy more broadly.
 
 ### BuildOS user motivators
 
@@ -304,6 +304,6 @@ This source informs the optional delight pass in the [`ui-ux-quality-review`](/b
 
 ## Related
 
-- Skill: [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) — the optional delight pass uses these pillars and anti-delight checks.
+- Skill: [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) — the optional delight pass uses these pillars and anti-delight checks.
 - Source channel: [Lenny's Podcast on YouTube](https://www.youtube.com/@LennysPodcast).
 - Nesrine Changuel's book: _Product Delight_.

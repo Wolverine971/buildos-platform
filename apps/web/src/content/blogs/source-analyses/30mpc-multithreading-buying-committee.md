@@ -71,7 +71,7 @@ A composite analysis of three primary sources on B2B buying committees:
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/blogs/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **buying-committee map** the skill returns as part of every segment definition — who the email is for, who else has to agree, and what role each member plays. Cold outreach to a single named contact at a modern B2B account is the most common reason "qualified-looking" campaigns produce no closes.
+This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **buying-committee map** the skill returns as part of every segment definition — who the email is for, who else has to agree, and what role each member plays. Cold outreach to a single named contact at a modern B2B account is the most common reason "qualified-looking" campaigns produce no closes.
 
 ## Core thesis — buying is a committee sport now
 

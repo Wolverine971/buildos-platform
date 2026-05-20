@@ -511,6 +511,48 @@ This is a read-only Libri query tool. It does not enqueue research; use resolve_
 	{
 		type: 'function',
 		function: {
+			name: 'list_corsair_mcp_tools',
+			description: `List tools exposed by the connected Corsair remote MCP server.
+Use this before calling a Corsair MCP tool unless the exact remote tool name and schema are already known.
+If the result says auth_required, tell the user the connector needs OAuth/Bearer credentials before BuildOS can call Corsair.`,
+			parameters: {
+				type: 'object',
+				properties: {}
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'call_corsair_mcp_tool',
+			description: `Call one tool from the connected Corsair remote MCP server.
+Use list_corsair_mcp_tools first to discover the exact tool name and argument schema. Do not call destructive or write-like Corsair tools unless the user explicitly asked for that action.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					name: {
+						type: 'string',
+						description: 'Exact Corsair MCP tool name to call.'
+					},
+					arguments: {
+						type: 'object',
+						description:
+							'Arguments object matching the inputSchema returned by list_corsair_mcp_tools.'
+					},
+					reason: {
+						type: 'string',
+						description: 'Brief reason this Corsair tool call is needed.'
+					}
+				},
+				required: ['name']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
 			name: 'web_search',
 			description: `Perform a live web search using the Tavily API for current or external information not present in BuildOS.
 Use this to discover sources or answer broad research questions. If the user provides a specific URL, use web_visit instead.

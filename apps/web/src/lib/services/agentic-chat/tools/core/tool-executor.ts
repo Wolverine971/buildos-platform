@@ -10,7 +10,7 @@
  * - OntologyReadExecutor: list_*, search_*, get_* tools
  * - OntologyWriteExecutor: create_*, update_*, delete_* tools
  * - UtilityExecutor: profile/contact/relationship utility tools
- * - ExternalExecutor: web_search, web_visit, buildos docs (4 tools)
+ * - ExternalExecutor: web_search, web_visit, remote MCP, BuildOS docs
  *
  * Benefits:
  * - Each executor ~200-400 LOC (was 2,075 LOC total)
@@ -47,6 +47,7 @@ import {
 	type QueryLibriLibraryArgs,
 	type ResolveLibriResourceArgs
 } from '$lib/services/agentic-chat/tools/libri';
+import type { CallCorsairMcpToolArgs } from '$lib/services/agentic-chat/tools/corsair-mcp';
 
 const logger = createLogger('ChatToolExecutor');
 
@@ -315,6 +316,12 @@ export class ChatToolExecutor {
 
 			case 'query_libri_library':
 				return this.externalExecutor.queryLibriLibrary(args as QueryLibriLibraryArgs);
+
+			case 'list_corsair_mcp_tools':
+				return this.externalExecutor.listCorsairMcpTools();
+
+			case 'call_corsair_mcp_tool':
+				return this.externalExecutor.callCorsairMcpTool(args as CallCorsairMcpToolArgs);
 
 			case 'web_search':
 				return this.externalExecutor.webSearch(args as WebSearchArgs);

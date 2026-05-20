@@ -75,8 +75,6 @@
 
 	// Simplified state management - wrapped in $state for reactivity
 	let navigationElement = $state<HTMLElement | null>(null);
-	let modalElement = $state<HTMLElement | null>(null);
-	let animatingDismiss = $state(false);
 
 	// FIXED: Store cleanup functions to prevent memory leaks
 	let pwaCleanup = $state<(() => void) | void>(undefined);
@@ -280,7 +278,7 @@
 	);
 	let needsOnboarding = $derived(Boolean(user && !completedOnboarding));
 	let showOnboardingModal = $derived.by(() => {
-		if (!needsOnboarding || animatingDismiss) return false;
+		if (!needsOnboarding) return false;
 		const isHomePage = $page?.url?.pathname === '/';
 		if (!isHomePage) return false;
 		return forceOnboardingActive || (onboardingProgress < 25 && !checkModalDismissed());
@@ -543,20 +541,8 @@
 		}, 100) as any;
 	}
 
-	async function handleModalDismiss() {
-		if (animatingDismiss) return;
-
-		animatingDismiss = true;
-
+	function handleModalDismiss() {
 		try {
-			// Simple fade out animation
-			if (modalElement) {
-				modalElement.style.transition = 'opacity 0.3s ease';
-				modalElement.style.opacity = '0';
-				await new Promise((resolve) => setTimeout(resolve, 300));
-			}
-
-			// Clear force flag so derived state recalculates to false
 			forceOnboardingActive = false;
 
 			if (browser) {
@@ -568,8 +554,6 @@
 			}
 		} catch (error) {
 			console.error('Error during modal dismiss:', error);
-		} finally {
-			animatingDismiss = false;
 		}
 	}
 
@@ -750,7 +734,7 @@
 	let navigationProps = $derived.by(() => ({ user, completedOnboarding, onboardingProgress }));
 	let footerProps = $derived.by(() => ({ user }));
 	let onboardingModalProps = $derived.by(() => ({
-		isOpen: showOnboardingModal || animatingDismiss,
+		isOpen: showOnboardingModal,
 		onDismiss: handleModalDismiss
 	}));
 	const siteStructuredData = serializeJsonLd({
@@ -909,7 +893,7 @@
 	{/if}
 
 	{#if needsOnboarding && OnboardingModal}
-		<OnboardingModal bind:element={modalElement} {...onboardingModalProps} />
+		<OnboardingModal {...onboardingModalProps} />
 	{/if}
 
 	{#if ToastContainer}

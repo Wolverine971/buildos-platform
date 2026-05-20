@@ -638,6 +638,28 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		timeoutMs: 15000,
 		category: 'read'
 	},
+	list_corsair_mcp_tools: {
+		summary: 'List tools exposed by the connected Corsair remote MCP server.',
+		capabilities: [
+			'Initializes the remote MCP session',
+			'Returns advertised tool names and input schemas',
+			'Reports OAuth/Bearer auth requirements when credentials are missing'
+		],
+		contexts: ['base', 'global', 'project'],
+		timeoutMs: 25000,
+		category: 'read'
+	},
+	call_corsair_mcp_tool: {
+		summary: 'Call a tool on the connected Corsair remote MCP server.',
+		capabilities: [
+			'Uses the MCP tools/call method',
+			'Accepts exact remote tool names and schema-matching arguments',
+			'Returns structured MCP content from Corsair'
+		],
+		contexts: ['base', 'global', 'project'],
+		timeoutMs: 30000,
+		category: 'write'
+	},
 	web_search: {
 		summary: 'Live web research via Tavily with synthesized answer and cited sources.',
 		capabilities: [

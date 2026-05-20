@@ -52,7 +52,7 @@ A deep read of [Shift Selling: Turn Your Prospects into Customers](https://www.y
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/blogs/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **trigger taxonomy and "first-in" thesis** — what counts as a buying moment, why prospects need _three_ events to actually transact, and how to monitor systematically for those moments instead of guessing.
+This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **trigger taxonomy and "first-in" thesis** — what counts as a buying moment, why prospects need _three_ events to actually transact, and how to monitor systematically for those moments instead of guessing.
 
 ## Core thesis
 

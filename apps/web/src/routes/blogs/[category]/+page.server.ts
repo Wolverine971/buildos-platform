@@ -1,10 +1,19 @@
 // apps/web/src/routes/blogs/[category]/+page.server.ts
-import { error } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
-import { loadBlogPostsByCategory, BLOG_CATEGORIES, type BlogCategory } from '$lib/utils/blog';
+import {
+	AGENT_SKILLS_CATEGORY_KEY,
+	loadBlogPostsByCategory,
+	BLOG_CATEGORIES,
+	type BlogCategory
+} from '$lib/utils/blog';
 
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, url }) => {
 	const { category } = params;
+
+	if (category === AGENT_SKILLS_CATEGORY_KEY) {
+		throw redirect(308, `/agent-skills${url.search}`);
+	}
 
 	// Validate category exists
 	if (!(category in BLOG_CATEGORIES)) {

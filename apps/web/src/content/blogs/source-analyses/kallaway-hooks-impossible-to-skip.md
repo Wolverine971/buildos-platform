@@ -47,7 +47,7 @@ A deep read of Kallaway's [Give me 15 mins, and I'll make your hooks impossible 
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`hook-craft-short-form`](/blogs/agent-skills/hook-craft-short-form) skill. The skill encodes the four-mistake diagnostic as agent-runnable rewrite passes. This post is the long form: the diagnostic, the A vs B contrast formula, and the before/after rewrite pairs that train the eye.
+This is one of the source layers behind the BuildOS [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) skill. The skill encodes the four-mistake diagnostic as agent-runnable rewrite passes. This post is the long form: the diagnostic, the A vs B contrast formula, and the before/after rewrite pairs that train the eye.
 
 ## Core thesis
 
@@ -194,7 +194,7 @@ He uses AI for **rewriting an existing draft**, not for generating from blank. D
 
 ## How BuildOS uses this
 
-This source informs how the [`hook-craft-short-form`](/blogs/agent-skills/hook-craft-short-form) skill audits drafted hooks. Specific applications:
+This source informs how the [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) skill audits drafted hooks. Specific applications:
 
 - For BuildOS marketing, target stuck-in-loops, scattered-thoughts, ADHD-overwhelm, context-rot painpoints explicitly. Reject "here's what BuildOS does" framings; rewrite as "if you're struggling with X, here's what to do."
 - BuildOS contrast wedges: against AI-everywhere ("not another AI assistant"), against to-do-list-overhead, against blank-page-overwhelm. These baselines are widely shared, so implied contrast can work.
@@ -203,7 +203,7 @@ This source informs how the [`hook-craft-short-form`](/blogs/agent-skills/hook-c
 
 ## Related
 
-- Skill: [`hook-craft-short-form`](/blogs/agent-skills/hook-craft-short-form) — uses the four-mistake diagnostic as runnable rewrite passes.
+- Skill: [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) — uses the four-mistake diagnostic as runnable rewrite passes.
 - Companion source analyses (the 4-video Kallaway hook cluster):
     - [Irresistible Hooks: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-irresistible-hooks) — the three-beat formula (lean → stop → snapback).
     - [The 6 Hook Archetypes: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-100-viral-hooks) — the archetype catalog.

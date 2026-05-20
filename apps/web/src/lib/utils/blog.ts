@@ -42,6 +42,14 @@ export interface BlogPost {
 	sourceChannelUrl?: string;
 }
 
+export const AGENT_SKILLS_CATEGORY_KEY = 'agent-skills';
+
+export const AGENT_SKILLS_COLLECTION = {
+	name: 'Agent Skills',
+	description: 'Portable skill guides, definitions, and operating playbooks for AI agents.',
+	color: 'cyan'
+} as const;
+
 type BlogModule = {
 	default?: unknown;
 	metadata?: unknown;
@@ -277,11 +285,6 @@ export const BLOG_CATEGORIES = {
 		description: 'Our vision for the future of personal productivity',
 		color: 'indigo'
 	},
-	'agent-skills': {
-		name: 'Agent Skills',
-		description: 'Portable skill guides, definitions, and operating playbooks for AI agents.',
-		color: 'cyan'
-	},
 	'source-analyses': {
 		name: 'Source Analyses',
 		description:
@@ -291,6 +294,29 @@ export const BLOG_CATEGORIES = {
 } as const;
 
 export type BlogCategory = keyof typeof BLOG_CATEGORIES;
+
+export function isAgentSkillsCategory(category: string): boolean {
+	return category === AGENT_SKILLS_CATEGORY_KEY;
+}
+
+export function getContentCollectionPath(category: string): string {
+	return isAgentSkillsCategory(category) ? '/agent-skills' : `/blogs/${category}`;
+}
+
+export function getContentPostPath(post: Pick<BlogPost, 'category' | 'slug'>): string {
+	return `${getContentCollectionPath(post.category)}/${post.slug}`;
+}
+
+export function getContentCollectionUrl(baseUrl: string, category: string): string {
+	return `${baseUrl}${getContentCollectionPath(category)}`;
+}
+
+export function getContentPostUrl(
+	baseUrl: string,
+	post: Pick<BlogPost, 'category' | 'slug'>
+): string {
+	return `${baseUrl}${getContentPostPath(post)}`;
+}
 
 // Calculate estimated reading time based on word count
 export function calculateReadingTime(content: string): number {
@@ -326,9 +352,13 @@ export async function loadBlogPosts(): Promise<BlogPost[]> {
 }
 
 // Load posts by category
-export async function loadBlogPostsByCategory(category: BlogCategory): Promise<BlogPost[]> {
+export async function loadBlogPostsByCategory(category: string): Promise<BlogPost[]> {
 	const allPosts = await loadBlogPosts();
 	return allPosts.filter((post) => post.category === category);
+}
+
+export async function loadAgentSkillPosts(): Promise<BlogPost[]> {
+	return loadBlogPostsByCategory(AGENT_SKILLS_CATEGORY_KEY);
 }
 
 // Load a specific blog post metadata only (without content)

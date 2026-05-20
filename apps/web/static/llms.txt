@@ -28,12 +28,12 @@
 
 ## Agent Skills
 
-- [Agent Skills](https://build-os.com/blogs/agent-skills): Portable skill guides, definitions, operating playbooks, and source lineages for AI agents
-- [Google Calendar For AI Agents: Search Before You Create](https://build-os.com/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create): Calendar operating rules for agent-safe reads, creates, updates, recurrence handling, and duplicate prevention
-- [Landing Page Scorecard Funnel](https://build-os.com/blogs/agent-skills/landing-page-scorecard-funnel): Source-lineaged skill for designing assessment-driven landing pages, questionnaires, dynamic results, and lead routing
-- [Hook Craft For Short-Form](https://build-os.com/blogs/agent-skills/hook-craft-short-form): Source-lineaged skill for drafting, auditing, and rewriting hooks across video, social, email, and pitch openers
-- [Story-Driven Content Craft](https://build-os.com/blogs/agent-skills/story-driven-content-craft): Source-lineaged skill for structuring nonfiction essays, video scripts, social posts, and founder narratives that hold attention
-- [UI/UX Quality Review](https://build-os.com/blogs/agent-skills/ui-ux-quality-review): Source-lineaged skill for reviewing product screens, landing pages, dashboards, and mobile flows for practical interface quality
+- [Agent Skills](https://build-os.com/agent-skills): Portable skill guides, definitions, operating playbooks, and source lineages for AI agents
+- [Google Calendar For AI Agents: Search Before You Create](https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create): Calendar operating rules for agent-safe reads, creates, updates, recurrence handling, and duplicate prevention
+- [Landing Page Scorecard Funnel](https://build-os.com/agent-skills/landing-page-scorecard-funnel): Source-lineaged skill for designing assessment-driven landing pages, questionnaires, dynamic results, and lead routing
+- [Hook Craft For Short-Form](https://build-os.com/agent-skills/hook-craft-short-form): Source-lineaged skill for drafting, auditing, and rewriting hooks across video, social, email, and pitch openers
+- [Story-Driven Content Craft](https://build-os.com/agent-skills/story-driven-content-craft): Source-lineaged skill for structuring nonfiction essays, video scripts, social posts, and founder narratives that hold attention
+- [UI/UX Quality Review](https://build-os.com/agent-skills/ui-ux-quality-review): Source-lineaged skill for reviewing product screens, landing pages, dashboards, and mobile flows for practical interface quality
 
 ## Philosophy
 

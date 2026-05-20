@@ -1,7 +1,12 @@
 // apps/web/src/lib/utils/blog.test.ts
 import { describe, expect, it } from 'vitest';
 
-import { formatBlogDate, parseBlogDate } from './blog';
+import {
+	formatBlogDate,
+	getContentCollectionPath,
+	getContentPostPath,
+	parseBlogDate
+} from './blog';
 
 describe('blog date helpers', () => {
 	it('formats date-only strings without shifting the calendar day', () => {
@@ -19,5 +24,21 @@ describe('blog date helpers', () => {
 
 		expect(parseBlogDate(value)?.toISOString()).toBe(value.toISOString());
 		expect(formatBlogDate(value, 'yyyy-MM-dd')).toBe('2026-03-29');
+	});
+});
+
+describe('content route helpers', () => {
+	it('routes blog categories under /blogs', () => {
+		expect(getContentCollectionPath('philosophy')).toBe('/blogs/philosophy');
+		expect(
+			getContentPostPath({ category: 'philosophy', slug: 'the-floor-under-the-agents' })
+		).toBe('/blogs/philosophy/the-floor-under-the-agents');
+	});
+
+	it('routes agent skills as a standalone collection', () => {
+		expect(getContentCollectionPath('agent-skills')).toBe('/agent-skills');
+		expect(
+			getContentPostPath({ category: 'agent-skills', slug: 'hook-craft-short-form' })
+		).toBe('/agent-skills/hook-craft-short-form');
 	});
 });

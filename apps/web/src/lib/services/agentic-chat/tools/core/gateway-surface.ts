@@ -39,6 +39,8 @@ const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
 	'change_chat_context',
 	'get_workspace_overview',
 	'get_project_overview',
+	'list_corsair_mcp_tools',
+	'call_corsair_mcp_tool',
 	'search_onto_projects',
 	'search_all_projects'
 ] as const;
@@ -47,6 +49,8 @@ const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
 	'change_chat_context',
 	'get_project_overview',
 	'get_onto_project_details',
+	'list_corsair_mcp_tools',
+	'call_corsair_mcp_tool',
 	'search_project',
 	'list_onto_tasks',
 	'list_onto_documents'

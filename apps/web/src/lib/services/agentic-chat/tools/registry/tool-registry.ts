@@ -59,6 +59,8 @@ const UTIL_OPS: Record<string, string> = {
 	link_user_contact: 'util.contact.link',
 	web_search: 'util.web.search',
 	web_visit: 'util.web.visit',
+	list_corsair_mcp_tools: 'util.corsair_mcp.tools.list',
+	call_corsair_mcp_tool: 'util.corsair_mcp.tool.call',
 	get_buildos_overview: 'util.buildos.overview',
 	get_buildos_usage_guide: 'util.buildos.usage_guide'
 };

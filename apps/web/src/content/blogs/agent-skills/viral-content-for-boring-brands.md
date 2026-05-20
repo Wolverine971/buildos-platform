@@ -433,8 +433,8 @@ Tuan Le's source video is also published as a standalone deep-read. Use it when 
 
 ### Related sibling skills
 
-- [Hook Craft For Short-Form](/blogs/agent-skills/hook-craft-short-form) — sentence-level hook polish (creator-side perspective).
-- [Story-Driven Content Craft](/blogs/agent-skills/story-driven-content-craft) — narrative-arc construction.
+- [Hook Craft For Short-Form](/agent-skills/hook-craft-short-form) — sentence-level hook polish (creator-side perspective).
+- [Story-Driven Content Craft](/agent-skills/story-driven-content-craft) — narrative-arc construction.
 - `viral-video-script-structure` — full short-form video scripts.
 - `going-viral` — cross-platform orchestrator.
 - `algorithm-aware-publishing` — distribution-layer decisions.

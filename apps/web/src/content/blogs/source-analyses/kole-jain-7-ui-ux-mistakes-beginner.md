@@ -44,7 +44,7 @@ A deep read of Kole Jain's [7 UI/UX mistakes that SCREAM you're a beginner](http
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) skill. The skill encodes specific patterns from this video — the three-step shadow recipe, the 10px corner-radius standard, the save → badge-dot pattern, the chart failure modes. This post is the long form: how Kole Jain teaches the same mistakes with concrete before-and-afters.
+This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill. The skill encodes specific patterns from this video — the three-step shadow recipe, the 10px corner-radius standard, the save → badge-dot pattern, the chart failure modes. This post is the long form: how Kole Jain teaches the same mistakes with concrete before-and-afters.
 
 ## Core thesis
 
@@ -214,7 +214,7 @@ These show up across multiple mistakes — they're the meta-rules of the video:
 
 ## How BuildOS uses this
 
-This source informs how the [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) skill audits flow, consistency, feedback, and charts. Specific applications:
+This source informs how the [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill audits flow, consistency, feedback, and charts. Specific applications:
 
 - **The 10px corner-radius rule** — apply uniformly across atom-level components (buttons, chips, search bars, cards) for instant cohesion.
 - **The shadow recipe** — light-gray shadow color + heavy blur (or no shadow) instead of black-with-low-opacity. Worth auditing existing components for harsh defaults.
@@ -225,6 +225,6 @@ This source informs how the [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-q
 
 ## Related
 
-- Skill: [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) — encodes these patterns as agent-runnable checks.
+- Skill: [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) — encodes these patterns as agent-runnable checks.
 - Companion source analysis: [The 4-Pixel Rule: Lessons from DesignSpo](/blogs/source-analyses/designspo-golden-rule-web-design) — the underlying spacing math.
 - Source channel: [Kole Jain on YouTube](https://www.youtube.com/@KoleJain).

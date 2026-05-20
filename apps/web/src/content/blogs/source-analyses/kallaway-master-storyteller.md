@@ -46,7 +46,7 @@ A deep read of Kallaway's [How To Become A Master Storyteller](https://www.youtu
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`story-driven-content-craft`](/blogs/agent-skills/story-driven-content-craft) skill. The skill encodes the six craft moves as agent-runnable passes over any draft. This post is the long form: the moves, the citations, and the mechanical diagnostics that make each one auditable.
+This is one of the source layers behind the BuildOS [`story-driven-content-craft`](/agent-skills/story-driven-content-craft) skill. The skill encodes the six craft moves as agent-runnable passes over any draft. This post is the long form: the moves, the citations, and the mechanical diagnostics that make each one auditable.
 
 ## Core thesis
 
@@ -216,7 +216,7 @@ Generalizes to: **topic + scale + question + 3 escalating but-then twists** in t
 
 ## How BuildOS uses this
 
-This source informs how the [`story-driven-content-craft`](/blogs/agent-skills/story-driven-content-craft) skill audits and rewrites founder content.
+This source informs how the [`story-driven-content-craft`](/agent-skills/story-driven-content-craft) skill audits and rewrites founder content.
 
 - The agent runs the six-pass checklist as **deterministic linters** before any AI rewriting: right-edge jaggedness check, "and then" → "but/therefore" rewrite, named-reader check, last-line-first gate, lens-tier check, hook-visual pairing check.
 - For BuildOS founder content specifically, the **lens pass** is where this skill fuses with `nonfiction-writing-from-lived-conviction` — the strongest lens is almost always sourced from the founder's actual operating experience.
@@ -224,7 +224,7 @@ This source informs how the [`story-driven-content-craft`](/blogs/agent-skills/s
 
 ## Related
 
-- Skill: [`story-driven-content-craft`](/blogs/agent-skills/story-driven-content-craft) — runs these six craft moves as agent passes.
+- Skill: [`story-driven-content-craft`](/agent-skills/story-driven-content-craft) — runs these six craft moves as agent passes.
 - Companion source analyses (the 3-video Kallaway storytelling cluster):
     - [The Dopamine Ladder: Kane Kallaway on Storytelling Genius](/blogs/source-analyses/kallaway-storytelling-genius-dopamine-ladders) — the psychology engine behind why the dance works.
     - [7 Storytelling Mistakes: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-7-storytelling-mistakes) — the failure-mode catalog.

@@ -73,6 +73,11 @@ const DEFAULT_CATEGORY_METADATA: Record<string, BlogCategory> = {
 		name: 'Philosophy',
 		description: 'Our vision for the future of personal productivity',
 		color: 'indigo'
+	},
+	'agent-skills': {
+		name: 'Agent Skills',
+		description: 'Portable skill guides, definitions, and operating playbooks for AI agents.',
+		color: 'cyan'
 	}
 };
 

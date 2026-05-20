@@ -44,7 +44,7 @@ A deep read of DesignSpo's [The Golden Rule Of Web Design (and why you're breaki
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) skill. The skill encodes the 4-pixel rule as a closed scale and reject-rules for off-scale values. This post is the long form: how DesignSpo argues the rule and why 4 (not 1, 2, 6, or 8) is the Goldilocks unit.
+This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill. The skill encodes the 4-pixel rule as a closed scale and reject-rules for off-scale values. This post is the long form: how DesignSpo argues the rule and why 4 (not 1, 2, 6, or 8) is the Goldilocks unit.
 
 ## Core thesis
 
@@ -157,7 +157,7 @@ What goes wrong without a mathematical system:
 
 ## How BuildOS uses this
 
-This source informs how the [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) skill audits spacing and layout. Specific applications:
+This source informs how the [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill audits spacing and layout. Specific applications:
 
 - **Tailwind already gives us the 4px base.** The default Tailwind spacing scale (`1 = 4px`, `2 = 8px`, `4 = 16px`, `6 = 24px`, `8 = 32px`, `12 = 48px`, `16 = 64px`, `24 = 96px`) is a 4-pixel system out of the box. The Inkprint design system inherits this. The risk is not the system — it's developers escaping it via `p-[13px]`, `gap-[15px]`, `text-[17px]` arbitrary values when something "looks off."
 - **Audit Inkprint components against the relatedness ladder.** For each shared component (cards, list rows, form fields, modals), verify: 4px for icon+text, 8px for list items, 16px for label+input, 24px between component clusters, 32px between sections. Inconsistencies in `Card`, `BraindumpModal`, dashboard widgets are likely audit hotspots.
@@ -169,7 +169,7 @@ This is the smallest, most portable rule in the product-and-design library: one 
 
 ## Related
 
-- Skill: [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) — uses the closed scale and reject-off-scale rules as agent checks.
+- Skill: [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) — uses the closed scale and reject-off-scale rules as agent checks.
 - Companion source analyses:
     - [Visual Hierarchy: Lessons from DesignSpo](/blogs/source-analyses/designspo-visual-hierarchy)
     - [Typography Fundamentals: Lessons from DesignSpo](/blogs/source-analyses/designspo-typography)

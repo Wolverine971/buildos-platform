@@ -54,16 +54,16 @@ BuildOS should extend that model in a public-web direction:
 
 Do **not** build a separate skills product first.
 
-Start inside the existing blog system and treat the first release as a new content lane:
+Start inside the existing content system and treat the first release as a standalone content lane:
 
 - draft and strategy docs in `apps/web/docs/content/`
 - published articles in `apps/web/src/content/blogs/agent-skills/`
-- real screenshots and static assets in `apps/web/static/blogs/agent-skills/<slug>/`
+- real screenshots and static assets in `apps/web/static/agent-skills/<slug>/`
 
 This is the fastest path because the repo already has:
 
 - mdsvex-backed blog content loading
-- category routes under `/blogs/<category>/<slug>`
+- reusable article rendering for collection and article pages
 - SEO metadata plumbing
 - JSON-LD on blog and article pages
 - a working publishing pattern for long-form technical content
@@ -131,14 +131,14 @@ See `AI_AGENT_CAPABILITY_SYSTEM_PLAN.md` for the full scalable model.
 
 ## Recommended Information Architecture
 
-### Phase 1: Publish Through Existing Blog Infrastructure
+### Phase 1: Publish Through Existing Content Infrastructure
 
-Use a new blog category:
+Use a standalone public route backed by the existing markdown content loader:
 
-- category key: `agent-skills`
-- route shape: `/blogs/agent-skills/<slug>`
+- collection key: `agent-skills`
+- route shape: `/agent-skills/<slug>`
 
-This keeps everything inside the current site structure and lets you start shipping content immediately.
+This keeps authoring inside the current content structure while letting the public library grow outside the blog category hierarchy.
 
 ### Phase 2: Add A Dedicated Skills Index
 
@@ -297,7 +297,7 @@ Create one canonical article template for:
 Use:
 
 ```text
-apps/web/static/blogs/agent-skills/<slug>/
+apps/web/static/agent-skills/<slug>/
 ```
 
 Keep screenshots named for stable UI steps, not ad hoc exports.
@@ -332,7 +332,7 @@ Use a two-track workflow: research first, publish second.
 
 1. Draft a planning brief in `apps/web/docs/content/`
 2. Draft the article in `apps/web/src/content/blogs/agent-skills/`
-3. Add real screenshots to `apps/web/static/blogs/agent-skills/<slug>/`
+3. Add real screenshots to `apps/web/static/agent-skills/<slug>/`
 4. Verify metadata, internal links, and references
 5. Publish with a real `lastmod`
 6. Add follow-up stack links from adjacent skills

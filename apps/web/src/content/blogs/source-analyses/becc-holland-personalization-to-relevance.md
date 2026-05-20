@@ -55,7 +55,7 @@ A composite analysis of Becc Holland's signature framework, captured across [30M
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/blogs/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **relevance taxonomy** the skill uses to grade the strength of a buying signal before approving a segment for outreach. Most "personalized" cold emails are actually decorative relevance attached to a commodity offer — Holland's framework is the cleanest cut for separating the two.
+This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **relevance taxonomy** the skill uses to grade the strength of a buying signal before approving a segment for outreach. Most "personalized" cold emails are actually decorative relevance attached to a commodity offer — Holland's framework is the cleanest cut for separating the two.
 
 ## Core thesis
 

@@ -154,7 +154,12 @@ export const TOOL_CATEGORIES = {
 		costTier: 'low'
 	},
 	external_knowledge: {
-		tools: ['resolve_libri_resource', 'query_libri_library'],
+		tools: [
+			'resolve_libri_resource',
+			'query_libri_library',
+			'list_corsair_mcp_tools',
+			'call_corsair_mcp_tool'
+		],
 		averageTokens: 250,
 		costTier: 'low'
 	},
@@ -199,6 +204,8 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'link_user_contact',
 		'get_entity_relationships',
 		'get_linked_entities',
+		'list_corsair_mcp_tools',
+		'call_corsair_mcp_tool',
 		'web_search',
 		'web_visit',
 		'get_buildos_overview',
@@ -468,6 +475,8 @@ export const UTILITY_TOOLS = extractTools([
 	'list_user_contact_candidates',
 	'resolve_user_contact_candidate',
 	'link_user_contact',
+	'list_corsair_mcp_tools',
+	'call_corsair_mcp_tool',
 	'get_buildos_overview',
 	'get_buildos_usage_guide'
 ]);

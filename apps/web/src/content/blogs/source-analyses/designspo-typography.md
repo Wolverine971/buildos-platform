@@ -45,7 +45,7 @@ A deep read of DesignSpo's [The ULTIMATE Guide To Typography For Beginners](http
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) skill. The skill condenses these rules into agent-runnable checks (line-height proportions, letter-spacing rules, role limits, contrast floors). This post is the long form: how DesignSpo teaches the same material to a human designer.
+This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill. The skill condenses these rules into agent-runnable checks (line-height proportions, letter-spacing rules, role limits, contrast floors). This post is the long form: how DesignSpo teaches the same material to a human designer.
 
 ## Core thesis
 
@@ -214,7 +214,7 @@ The video implicitly or explicitly calls out:
 
 ## How BuildOS uses this
 
-This source informs how the [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) skill audits typography. Specific applications:
+This source informs how the [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill audits typography. Specific applications:
 
 1. **In-app product UI — codify the hierarchy in Inkprint tokens.** BuildOS has many text roles (project titles, task titles, brain-dump body, daily-brief headings, chat messages, labels, button copy). Audit Inkprint to confirm we have a defined H1/H2/H3 + paragraph + button + label scale with fixed size/weight/line-height/letter-spacing per role — and no ad-hoc one-off styles in components. The "design like Lego" rule means new screens should never invent new text styles.
 2. **Marketing site — pick a typeface that signals "thinking environment," not "AI tool."** Per the anti-AI strategy, the public category is "thinking environment for people making complex things." A versatile sans-serif (modern, legible, many weights) likely fits the body copy, but resist the "sterile sameness" failure mode — consider a display or serif for hero headlines to give the brand a distinct voice. Don't blend into the homogeneous AI-product visual market.
@@ -224,6 +224,6 @@ This source informs how the [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-q
 
 ## Related
 
-- Skill: [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) — uses these rules as agent checks for typography.
+- Skill: [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) — uses these rules as agent checks for typography.
 - Companion source analysis: [Visual Hierarchy: Lessons from DesignSpo](/blogs/source-analyses/designspo-visual-hierarchy) — typography is one of the contrast levers in the hierarchy framework.
 - Source channel: [DesignSpo on YouTube](https://www.youtube.com/@DesignSpo).

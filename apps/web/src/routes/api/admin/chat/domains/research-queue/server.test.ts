@@ -108,4 +108,22 @@ describe('GET /api/admin/chat/domains/research-queue', () => {
 
 		expect(response.status).toBe(403);
 	});
+
+	it('escapes wildcard underscore in search filters', async () => {
+		const supabase = createSupabase();
+
+		await GET({
+			url: new URL(
+				'http://localhost/api/admin/chat/domains/research-queue?search=alpha_beta'
+			),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'admin-1' } })
+			}
+		} as any);
+
+		expect(supabase.queueQuery.or).toHaveBeenCalledWith(
+			'queue_key.ilike.%alpha\\_beta%,user_need.ilike.%alpha\\_beta%,summary.ilike.%alpha\\_beta%'
+		);
+	});
 });

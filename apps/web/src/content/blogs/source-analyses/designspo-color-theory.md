@@ -46,7 +46,7 @@ A deep read of DesignSpo's [The ULTIMATE Color Theory Guide For Beginners](https
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) skill. The skill encodes color decisions as agent-checkable rules (60/30/10 proportions, dark-mode saturation reduction, hue-rotation for "lighter" colored text). This post is the long form: how DesignSpo teaches color reasoning to a human designer.
+This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill. The skill encodes color decisions as agent-checkable rules (60/30/10 proportions, dark-mode saturation reduction, hue-rotation for "lighter" colored text). This post is the long form: how DesignSpo teaches color reasoning to a human designer.
 
 ## Core thesis
 
@@ -167,7 +167,7 @@ The speaker's "framework, not rules" for thinking about color:
 
 ## How BuildOS uses this
 
-This source informs how the [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) skill audits color and contrast. Specific applications:
+This source informs how the [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill audits color and contrast. Specific applications:
 
 1. **Inkprint accent discipline.** Inkprint already uses `bg-card` / `text-foreground` / `shadow-ink`. Audit every screen against **60/30/10**: paper-cream/cream is dominant; ink/charcoal is secondary; the accent (currently used for CTAs and active states) should hit ~10% — never more. If active states feel washed out, the accent is over-used elsewhere.
 2. **Dark mode is additive, light mode is subtractive in spirit.** The speaker's additive/subtractive distinction maps directly: dark mode treats screens like emitters (start black, add color), so pure-saturation accents glow harder than they would in light mode. Reduce saturation ~10–15% on dark-mode accent tokens to avoid the "glowing CTA" eye-strain that complementary palettes cause.
@@ -178,7 +178,7 @@ This source informs how the [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-q
 
 ## Related
 
-- Skill: [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) — uses these rules as agent checks for color and contrast.
+- Skill: [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) — uses these rules as agent checks for color and contrast.
 - Companion source analysis: [Visual Hierarchy: Lessons from DesignSpo](/blogs/source-analyses/designspo-visual-hierarchy) — color is rank #5 on the contrast lever stack from the hierarchy guide.
 - Source channel: [DesignSpo on YouTube](https://www.youtube.com/@DesignSpo).
 - Tool: [WebAIM contrast checker](https://webaim.org/resources/contrastchecker/).

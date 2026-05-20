@@ -45,7 +45,7 @@ A deep read of Kallaway's [7 Storytelling Mistakes That Are KILLING Small Creato
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`story-driven-content-craft`](/blogs/agent-skills/story-driven-content-craft) skill. The skill uses this catalog as the **failure-mode pass** — every mistake here corresponds to something an agent should detect and prevent before publishing. This post is the long form: the seven specific ways modern storytelling breaks, with concrete fixes.
+This is one of the source layers behind the BuildOS [`story-driven-content-craft`](/agent-skills/story-driven-content-craft) skill. The skill uses this catalog as the **failure-mode pass** — every mistake here corresponds to something an agent should detect and prevent before publishing. This post is the long form: the seven specific ways modern storytelling breaks, with concrete fixes.
 
 ## Core thesis
 
@@ -188,7 +188,7 @@ In compact form for skill ingestion:
 
 ## How BuildOS uses this
 
-This source informs how the [`story-driven-content-craft`](/blogs/agent-skills/story-driven-content-craft) skill audits drafts before publish.
+This source informs how the [`story-driven-content-craft`](/agent-skills/story-driven-content-craft) skill audits drafts before publish.
 
 - The agent runs the seven mistakes as a **reject pass** after the six-craft-move checklist from Master Storyteller. If a draft passes craft but fails any of these seven, it doesn't ship.
 - For BuildOS founder content, the **villain framing** (Mistake #4) maps cleanly to the anti-AI positioning: the villain is "AI assistants that promise to do your thinking for you," "the to-do-list graveyard," "context-rot," "agent-hype." Stating the villain explicitly in copy is on-brand.
@@ -197,7 +197,7 @@ This source informs how the [`story-driven-content-craft`](/blogs/agent-skills/s
 
 ## Related
 
-- Skill: [`story-driven-content-craft`](/blogs/agent-skills/story-driven-content-craft) — uses this catalog as the failure-mode reject pass.
+- Skill: [`story-driven-content-craft`](/agent-skills/story-driven-content-craft) — uses this catalog as the failure-mode reject pass.
 - Companion source analyses (the 3-video Kallaway storytelling cluster):
     - [How to Become a Master Storyteller: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-master-storyteller) — the positive blueprint.
     - [The Dopamine Ladder: Kane Kallaway on Storytelling Genius](/blogs/source-analyses/kallaway-storytelling-genius-dopamine-ladders) — the psychology engine.

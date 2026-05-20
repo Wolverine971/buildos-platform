@@ -5,6 +5,7 @@
  * Handles external service tool operations:
  * - web_search: Web search via Tavily API
  * - web_visit: Fetch and summarize a specific URL
+ * - list/call Corsair MCP tools
  * - get_buildos_overview: BuildOS documentation overview
  * - get_buildos_usage_guide: BuildOS usage guide
  */
@@ -28,6 +29,11 @@ import {
 	queryLibriLibrary,
 	resolveLibriResource
 } from '$lib/services/agentic-chat/tools/libri/client';
+import {
+	callCorsairMcpTool,
+	listCorsairMcpTools,
+	type CallCorsairMcpToolArgs
+} from '$lib/services/agentic-chat/tools/corsair-mcp';
 import { executeDynamicLibriTool } from '$lib/services/agentic-chat/tools/libri';
 import {
 	buildExcerpt,
@@ -98,6 +104,18 @@ export class ExternalExecutor extends BaseExecutor {
 		args: Record<string, any>
 	): Promise<Record<string, unknown>> {
 		return executeDynamicLibriTool(toolName, args, {
+			fetchFn: this.fetchFn
+		});
+	}
+
+	async listCorsairMcpTools(): Promise<any> {
+		return listCorsairMcpTools({
+			fetchFn: this.fetchFn
+		});
+	}
+
+	async callCorsairMcpTool(args: CallCorsairMcpToolArgs): Promise<any> {
+		return callCorsairMcpTool(args, {
 			fetchFn: this.fetchFn
 		});
 	}

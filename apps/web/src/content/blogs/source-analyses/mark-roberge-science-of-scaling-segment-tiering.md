@@ -55,7 +55,7 @@ A deep read of [A Step-by-Step Guide to Revenue Growth](https://www.youtube.com/
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/blogs/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **leading indicator of retention (LIR) formula**, the **segment-tier view of product-market fit**, and the **Quality × Engagement lead grid** that the skill uses to decide _which accounts get the manual cold-outreach treatment_ vs. which get inbound-only handling vs. which get disqualified.
+This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **leading indicator of retention (LIR) formula**, the **segment-tier view of product-market fit**, and the **Quality × Engagement lead grid** that the skill uses to decide _which accounts get the manual cold-outreach treatment_ vs. which get inbound-only handling vs. which get disqualified.
 
 ## Core thesis
 

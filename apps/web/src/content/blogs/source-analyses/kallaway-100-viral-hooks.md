@@ -45,7 +45,7 @@ A deep read of Kallaway's [I Studied 100 Viral Hooks, These 6 Will Make You Go V
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`hook-craft-short-form`](/blogs/agent-skills/hook-craft-short-form) skill. The skill encodes the six archetypes and the four-component alignment as agent-runnable selection rules. This post is the long form: the catalog, the worked examples, and the universality principle.
+This is one of the source layers behind the BuildOS [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) skill. The skill encodes the six archetypes and the four-component alignment as agent-runnable selection rules. This post is the long form: the catalog, the worked examples, and the universality principle.
 
 ## Core thesis
 
@@ -250,7 +250,7 @@ Subconscious heat map of how viewers consume the first 5 seconds:
 
 ## How BuildOS uses this
 
-This source informs how the [`hook-craft-short-form`](/blogs/agent-skills/hook-craft-short-form) skill selects archetypes for BuildOS founder content:
+This source informs how the [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) skill selects archetypes for BuildOS founder content:
 
 - **Contrarian** is the natural shape for "thinking environment, not AI tool" positioning — Contrarian _is_ the anti-AI strategy in hook form.
 - **Investigator** carries the anti-feed and manufactured-virality content (research-driven observations).
@@ -261,7 +261,7 @@ This source informs how the [`hook-craft-short-form`](/blogs/agent-skills/hook-c
 
 ## Related
 
-- Skill: [`hook-craft-short-form`](/blogs/agent-skills/hook-craft-short-form) — uses the archetype catalog as the selection rubric.
+- Skill: [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) — uses the archetype catalog as the selection rubric.
 - Companion source analyses (the 4-video Kallaway hook cluster):
     - [Irresistible Hooks: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-irresistible-hooks) — the three-beat formula.
     - [Hooks Impossible to Skip: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-hooks-impossible-to-skip) — the four-mistake diagnostic.

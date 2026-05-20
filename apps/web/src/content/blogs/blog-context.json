@@ -236,8 +236,8 @@
 		"agent-skills": {
 			"metadata": {
 				"name": "Agent Skills",
-				"description": "Content related to agent skills",
-				"color": "gray"
+				"description": "Portable skill guides, definitions, and operating playbooks for AI agents.",
+				"color": "cyan"
 			},
 			"posts": {
 				"cold-email-engagement-first-outreach": {
@@ -3546,7 +3546,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-05-19T14:20:07.415Z",
+	"generatedAt": "2026-05-20T18:37:52.115Z",
 	"totalPosts": 98,
 	"totalCategories": 8
 }

@@ -13,7 +13,6 @@
 		SITE_NAME,
 		SITE_URL
 	} from '$lib/constants/seo';
-	import { page } from '$app/stores';
 	import {
 		ArrowLeft,
 		Calendar,
@@ -24,10 +23,17 @@
 		FolderOpen,
 		TrendingUp,
 		GitCompareArrows,
-		Lightbulb
+		Lightbulb,
+		BookOpen
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
-	import { formatBlogDate, type BlogCategory } from '$lib/utils/blog';
+	import {
+		formatBlogDate,
+		getContentCollectionPath,
+		getContentCollectionUrl,
+		getContentPostPath,
+		getContentPostUrl
+	} from '$lib/utils/blog';
 	import { escapeSerializedJsonLd } from '$lib/utils/json-ld';
 
 	let { data }: { data: PageData } = $props();
@@ -39,22 +45,26 @@
 		'case-studies': GitCompareArrows,
 		'advanced-guides': Target,
 		philosophy: Lightbulb,
-		'agent-skills': Brain
+		'agent-skills': Brain,
+		'source-analyses': BookOpen
 	};
 
-	let categoryKey = $derived(($page.params.category ?? 'getting-started') as BlogCategory);
-	let IconComponent = $derived(categoryIcons[categoryKey]);
+	let categoryKey = $derived(data.categoryKey);
+	let categoryUrl = $derived(getContentCollectionUrl(SITE_URL, categoryKey));
+	let IconComponent = $derived(categoryIcons[categoryKey] ?? Brain);
+	let isSkillRepo = $derived(categoryKey === 'agent-skills');
 
 	function generateCategoryJsonLd(category: any, posts: any[], categoryKey: string) {
 		if (!category || !posts) return '';
+		const collectionUrl = getContentCollectionUrl(SITE_URL, categoryKey);
 
 		const jsonLd = {
 			'@context': 'https://schema.org',
 			'@type': 'CollectionPage',
-			'@id': `${SITE_URL}/blogs/${categoryKey}`,
+			'@id': collectionUrl,
 			name: category.name,
 			description: category.description,
-			url: `${SITE_URL}/blogs/${categoryKey}`,
+			url: collectionUrl,
 			publisher: {
 				'@type': 'Organization',
 				'@id': DEFAULT_ORGANIZATION_ID,
@@ -71,7 +81,7 @@
 						'@type': 'BlogPosting',
 						headline: post.title,
 						description: post.description,
-						url: `${SITE_URL}/blogs/${post.category}/${post.slug}`,
+						url: getContentPostUrl(SITE_URL, post),
 						datePublished: post.date,
 						author: {
 							'@type': 'Person',
@@ -80,26 +90,43 @@
 					}
 				}))
 			},
-			isPartOf: {
-				'@type': 'Blog',
-				'@id': `${SITE_URL}/blogs#blog`,
-				name: `${SITE_NAME} Blog`,
-				url: `${SITE_URL}/blogs`,
-				isPartOf: {
-					'@id': DEFAULT_WEBSITE_ID
-				}
-			}
+			isPartOf:
+				categoryKey === 'agent-skills'
+					? {
+							'@id': DEFAULT_WEBSITE_ID
+						}
+					: {
+							'@type': 'Blog',
+							'@id': `${SITE_URL}/blogs#blog`,
+							name: `${SITE_NAME} Blog`,
+							url: `${SITE_URL}/blogs`,
+							isPartOf: {
+								'@id': DEFAULT_WEBSITE_ID
+							}
+						}
 		};
 
 		return JSON.stringify(jsonLd, null, 2);
 	}
 
 	let jsonLdString = $derived(generateCategoryJsonLd(data.category, data.posts, categoryKey));
-	let isSkillRepo = $derived(categoryKey === 'agent-skills');
+	let pageTitle = $derived(
+		`${data.category.name} - BuildOS${
+			isSkillRepo ? ' | Agent Skill Library' : ' Blog | Thinking Environment Insights'
+		}`
+	);
+	let ogTitle = $derived(
+		`${data.category.name} - BuildOS${
+			isSkillRepo ? ' Agent Skill Library' : ' Blog | Thinking Environment'
+		}`
+	);
+	let twitterTitle = $derived(
+		`${data.category.name} - BuildOS${isSkillRepo ? ' Skill Library' : ' Blog'}`
+	);
 </script>
 
 <svelte:head>
-	<title>{data.category.name} - BuildOS Blog | Thinking Environment Insights</title>
+	<title>{pageTitle}</title>
 	<meta
 		name="description"
 		content="{data.category.description} - {data.posts
@@ -112,15 +139,12 @@
 			' '
 		)}, project memory, structured work"
 	/>
-	<link rel="canonical" href="https://build-os.com/blogs/{categoryKey}" />
+	<link rel="canonical" href={categoryUrl} />
 
 	<!-- Open Graph / Facebook -->
 	<meta property="og:type" content="website" />
-	<meta property="og:url" content="https://build-os.com/blogs/{categoryKey}" />
-	<meta
-		property="og:title"
-		content="{data.category.name} - BuildOS Blog | Thinking Environment"
-	/>
+	<meta property="og:url" content={categoryUrl} />
+	<meta property="og:title" content={ogTitle} />
 	<meta
 		property="og:description"
 		content="{data.category.description} - {data.posts
@@ -138,10 +162,10 @@
 
 	<!-- Twitter -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta name="twitter:url" content="https://build-os.com/blogs/{categoryKey}" />
+	<meta name="twitter:url" content={categoryUrl} />
 	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
 	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
-	<meta name="twitter:title" content="{data.category.name} - BuildOS Blog" />
+	<meta name="twitter:title" content={twitterTitle} />
 	<meta
 		name="twitter:description"
 		content="{data.category
@@ -215,7 +239,7 @@
 					{#each data.posts as post}
 						<article class="group">
 							<a
-								href="/blogs/{post.category}/{post.slug}"
+								href={getContentPostPath(post)}
 								class="flex h-full flex-col bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
 							>
 								<div class="flex flex-1 flex-col p-4 sm:p-5">
@@ -298,10 +322,10 @@
 					{#each Object.entries(data.allCategories) as [key, category]}
 						{#if key !== categoryKey}
 							{@const OtherIconComponent =
-								categoryIcons[key as keyof typeof categoryIcons]}
+								categoryIcons[key as keyof typeof categoryIcons] ?? Brain}
 
 							<a
-								href="/blogs/{key}"
+								href={getContentCollectionPath(key)}
 								class="group flex items-start gap-3 bg-card border border-border rounded-lg p-3 hover:shadow-ink hover:border-accent/40 transition-all duration-200 pressable"
 							>
 								<div

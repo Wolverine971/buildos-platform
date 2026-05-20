@@ -46,7 +46,7 @@ A deep read of Kallaway's [How to Become a Storytelling Genius (Dopamine Ladders
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`story-driven-content-craft`](/blogs/agent-skills/story-driven-content-craft) skill. The skill encodes the dopamine ladder as the diagnostic spine — when content underperforms, the agent walks the rungs in order and finds the first failure. This post is the long form: the six rungs, the psychology, and what each rung's failure looks like.
+This is one of the source layers behind the BuildOS [`story-driven-content-craft`](/agent-skills/story-driven-content-craft) skill. The skill encodes the dopamine ladder as the diagnostic spine — when content underperforms, the agent walks the rungs in order and finds the first failure. This post is the long form: the six rungs, the psychology, and what each rung's failure looks like.
 
 ## Core thesis
 
@@ -205,7 +205,7 @@ The first failure on the climb is where to focus. Fixing later rungs without fix
 
 ## How BuildOS uses this
 
-This source informs how the [`story-driven-content-craft`](/blogs/agent-skills/story-driven-content-craft) skill diagnoses underperforming founder content.
+This source informs how the [`story-driven-content-craft`](/agent-skills/story-driven-content-craft) skill diagnoses underperforming founder content.
 
 - **Diagnose by ladder, not by feel.** When the founder says "this video flopped," walk the six rungs in order and find the first failure. Don't propose holistic rewrites until the failing rung is named.
 - **Force question articulation.** Before any draft is shipped, the agent must state — in one sentence — the question the viewer will be holding at the 5-second mark.
@@ -216,7 +216,7 @@ This source informs how the [`story-driven-content-craft`](/blogs/agent-skills/s
 
 ## Related
 
-- Skill: [`story-driven-content-craft`](/blogs/agent-skills/story-driven-content-craft) — uses the ladder as the diagnostic spine.
+- Skill: [`story-driven-content-craft`](/agent-skills/story-driven-content-craft) — uses the ladder as the diagnostic spine.
 - Companion source analyses (the 3-video Kallaway storytelling cluster):
     - [How to Become a Master Storyteller: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-master-storyteller) — the positive blueprint (six craft moves).
     - [7 Storytelling Mistakes: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-7-storytelling-mistakes) — the failure-mode catalog.

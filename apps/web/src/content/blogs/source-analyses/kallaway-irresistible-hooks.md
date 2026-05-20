@@ -46,7 +46,7 @@ A deep read of Kallaway's [How to Create Irresistible Hooks (and blow up your co
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`hook-craft-short-form`](/blogs/agent-skills/hook-craft-short-form) skill. The skill encodes the three-beat formula and the four lean mechanisms as agent-runnable scaffolding for hook generation. This post is the long form: how Kallaway teaches the same formula with worked examples.
+This is one of the source layers behind the BuildOS [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) skill. The skill encodes the three-beat formula and the four lean mechanisms as agent-runnable scaffolding for hook generation. This post is the long form: how Kallaway teaches the same formula with worked examples.
 
 ## Core thesis
 
@@ -163,7 +163,7 @@ Short, sharp notes in music. In the hook: shorter sentences force max clarity an
 
 ## How BuildOS uses this
 
-This source informs how the [`hook-craft-short-form`](/blogs/agent-skills/hook-craft-short-form) skill scaffolds hook generation. Specific applications:
+This source informs how the [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) skill scaffolds hook generation. Specific applications:
 
 - For BuildOS founder content, the agent asks for the target archetype (creator, ADHD operator, founder, knowledge worker) before drafting and surfaces it inside the lean.
 - The "lead with relief, not the thing" rule maps directly to BuildOS's anti-AI marketing strategy: "if you want your messy thinking to turn into structured work" beats "BuildOS uses LLMs to extract tasks."
@@ -172,7 +172,7 @@ This source informs how the [`hook-craft-short-form`](/blogs/agent-skills/hook-c
 
 ## Related
 
-- Skill: [`hook-craft-short-form`](/blogs/agent-skills/hook-craft-short-form) — uses this formula as the spine of the hook-generation rubric.
+- Skill: [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) — uses this formula as the spine of the hook-generation rubric.
 - Companion source analyses (the 4-video Kallaway hook cluster):
     - [Hooks Impossible to Skip: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-hooks-impossible-to-skip) — the four-mistake diagnostic (Delay / Confusion / Irrelevance / Disinterest).
     - [The 6 Hook Archetypes: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-100-viral-hooks) — the archetype catalog (Fortune Teller, Experimenter, Teacher, Magician, Investigator, Contrarian).

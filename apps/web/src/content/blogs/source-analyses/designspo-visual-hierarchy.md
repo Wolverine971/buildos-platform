@@ -46,7 +46,7 @@ A deep read of DesignSpo's [The Complete Guide To Visual Hierarchy](https://www.
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) skill. The skill compresses the operating rules into checkable rules for an agent. This post is the long form — the reasoning, levers, and failure modes — the way DesignSpo teaches them.
+This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill. The skill compresses the operating rules into checkable rules for an agent. This post is the long form — the reasoning, levers, and failure modes — the way DesignSpo teaches them.
 
 ## Core thesis
 
@@ -166,7 +166,7 @@ Skip these rules and you get:
 
 ## How BuildOS uses this
 
-This source informs how the [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) skill audits hierarchy. Specific applications:
+This source informs how the [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill audits hierarchy. Specific applications:
 
 - **Marketing landing page hero:** Apply the Z pattern. Primary = anti-AI/relief headline (top-left). Secondary = subtitle. Tertiary = supporting image or screenshot. Then cards below. Avoid stock human faces in the hero unless the person is _literally using BuildOS for a thinking task_ — otherwise the face steals attention from "turn messy thinking into structured work."
 - **In-app dashboard hierarchy:** Decide one primary action per surface (e.g., "start brain dump" on the home view). Everything else — recent projects, daily brief preview, calendar peek — must be visibly secondary via smaller size, lighter weight, less saturated Inkprint tones. Resist giving every dashboard module equal visual weight.
@@ -176,5 +176,5 @@ This source informs how the [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-q
 
 ## Related
 
-- Skill: [`ui-ux-quality-review`](/blogs/agent-skills/ui-ux-quality-review) — the foundational pass that uses these rules as agent checks for hierarchy.
+- Skill: [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) — the foundational pass that uses these rules as agent checks for hierarchy.
 - Source channel: [DesignSpo on YouTube](https://www.youtube.com/@DesignSpo).

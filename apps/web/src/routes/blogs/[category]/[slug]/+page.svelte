@@ -17,7 +17,16 @@
 	} from '$lib/constants/seo';
 	import type { PageData } from './$types';
 	import { ArrowLeft, Calendar, Clock, History, Tag } from 'lucide-svelte';
-	import { formatBlogDate, parseBlogDate, type BlogLineageSource } from '$lib/utils/blog';
+	import {
+		AGENT_SKILLS_COLLECTION,
+		formatBlogDate,
+		getContentCollectionPath,
+		getContentCollectionUrl,
+		getContentPostPath,
+		getContentPostUrl,
+		parseBlogDate,
+		type BlogLineageSource
+	} from '$lib/utils/blog';
 	import { serializeJsonLd } from '$lib/utils/json-ld';
 
 	let { data }: { data: PageData } = $props();
@@ -28,11 +37,16 @@
 		formatBlogDate(data.post.lastmod || data.post.date, 'MMMM dd, yyyy')
 	);
 	const showUpdatedDate = $derived((data.post.lastmod || data.post.date) !== data.post.date);
+	const isAgentSkillPost = $derived(data.post.category === 'agent-skills');
 	const categoryDisplayName = $derived(
-		data.post.category.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+		isAgentSkillPost
+			? AGENT_SKILLS_COLLECTION.name
+			: data.post.category.replace('-', ' ').replace(/\b\w/g, (l) => l.toUpperCase())
 	);
+	const categoryPath = $derived(getContentCollectionPath(data.post.category));
+	const categoryUrl = $derived(getContentCollectionUrl(SITE_URL, data.post.category));
 
-	const articleUrl = $derived(`${SITE_URL}/blogs/${data.post.category}/${data.post.slug}`);
+	const articleUrl = $derived(getContentPostUrl(SITE_URL, data.post));
 	const lineageSources = $derived(data.post.lineageSources ?? []);
 	const lineagePeople = $derived(data.post.lineagePeople ?? []);
 
@@ -307,35 +321,56 @@
 					'@type': 'SpeakableSpecification',
 					cssSelector: ['[data-speakable="headline"]', '[data-speakable="description"]']
 				},
-				isPartOf: {
-					'@type': 'Blog',
-					'@id': `${SITE_URL}/blogs#blog`,
-					name: `${SITE_NAME} Blog`,
-					url: `${SITE_URL}/blogs`
-				}
+				isPartOf: isAgentSkillPost
+					? {
+							'@type': 'CollectionPage',
+							'@id': `${categoryUrl}#collection`,
+							name: `${SITE_NAME} Agent Skills`,
+							url: categoryUrl
+						}
+					: {
+							'@type': 'Blog',
+							'@id': `${SITE_URL}/blogs#blog`,
+							name: `${SITE_NAME} Blog`,
+							url: `${SITE_URL}/blogs`
+						}
 			},
 			{
 				'@type': 'BreadcrumbList',
 				'@id': `${articleUrl}#breadcrumb`,
-				itemListElement: [
-					{
-						'@type': 'ListItem',
-						position: 1,
-						name: 'Blog',
-						item: `${SITE_URL}/blogs`
-					},
-					{
-						'@type': 'ListItem',
-						position: 2,
-						name: categoryDisplayName,
-						item: `${SITE_URL}/blogs/${data.post.category}`
-					},
-					{
-						'@type': 'ListItem',
-						position: 3,
-						name: data.post.title
-					}
-				]
+				itemListElement: isAgentSkillPost
+					? [
+							{
+								'@type': 'ListItem',
+								position: 1,
+								name: AGENT_SKILLS_COLLECTION.name,
+								item: categoryUrl
+							},
+							{
+								'@type': 'ListItem',
+								position: 2,
+								name: data.post.title
+							}
+						]
+					: [
+							{
+								'@type': 'ListItem',
+								position: 1,
+								name: 'Blog',
+								item: `${SITE_URL}/blogs`
+							},
+							{
+								'@type': 'ListItem',
+								position: 2,
+								name: categoryDisplayName,
+								item: categoryUrl
+							},
+							{
+								'@type': 'ListItem',
+								position: 3,
+								name: data.post.title
+							}
+						]
 			}
 		];
 
@@ -373,14 +408,11 @@
 			', '
 		)}, BuildOS, thinking environment, project memory, structured work, {categoryDisplayName.toLowerCase()}"
 	/>
-	<link rel="canonical" href="https://build-os.com/blogs/{data.post.category}/{data.post.slug}" />
+	<link rel="canonical" href={articleUrl} />
 
 	<!-- Open Graph / Facebook -->
 	<meta property="og:type" content="article" />
-	<meta
-		property="og:url"
-		content="https://build-os.com/blogs/{data.post.category}/{data.post.slug}"
-	/>
+	<meta property="og:url" content={articleUrl} />
 	<meta property="og:title" content="{data.post.title} | BuildOS" />
 	<meta property="og:description" content={data.post.description} />
 	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
@@ -404,10 +436,7 @@
 
 	<!-- Twitter -->
 	<meta name="twitter:card" content="summary_large_image" />
-	<meta
-		name="twitter:url"
-		content="https://build-os.com/blogs/{data.post.category}/{data.post.slug}"
-	/>
+	<meta name="twitter:url" content={articleUrl} />
 	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
 	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
 	<meta name="twitter:title" content="{data.post.title} | BuildOS" />
@@ -428,9 +457,11 @@
 		<nav
 			class="flex items-center gap-1.5 text-xs text-muted-foreground py-4 border-b border-border"
 		>
-			<a href="/blogs" class="hover:text-accent transition-colors">Blog</a>
-			<span>/</span>
-			<a href="/blogs/{data.post.category}" class="hover:text-accent transition-colors">
+			{#if !isAgentSkillPost}
+				<a href="/blogs" class="hover:text-accent transition-colors">Blog</a>
+				<span>/</span>
+			{/if}
+			<a href={categoryPath} class="hover:text-accent transition-colors">
 				{categoryDisplayName}
 			</a>
 		</nav>
@@ -500,7 +531,7 @@
 				{/if}
 			</div>
 
-			{#if data.post.category === 'agent-skills' && (lineageSources.length || lineagePeople.length)}
+			{#if isAgentSkillPost && (lineageSources.length || lineagePeople.length)}
 				<div
 					class="mt-6 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground"
 				>
@@ -630,7 +661,7 @@
 		<!-- Footer Navigation -->
 		<div class="py-6 flex flex-col sm:flex-row gap-3">
 			<a
-				href="/blogs/{data.post.category}"
+				href={categoryPath}
 				class="flex-1 inline-flex items-center justify-center gap-2 bg-muted text-foreground text-sm font-medium px-4 py-2.5 rounded-lg border border-border hover:border-accent/40 transition-colors shadow-ink pressable"
 			>
 				<ArrowLeft class="w-3.5 h-3.5" />
@@ -654,7 +685,7 @@
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
 					{#each data.relatedPosts as relatedPost}
 						<a
-							href="/blogs/{relatedPost.category}/{relatedPost.slug}"
+							href={getContentPostPath(relatedPost)}
 							class="group block bg-card border border-border rounded-lg p-4 hover:shadow-ink hover:border-accent/40 transition-all duration-200 pressable"
 						>
 							<span

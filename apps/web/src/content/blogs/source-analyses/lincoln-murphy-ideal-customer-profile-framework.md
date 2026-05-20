@@ -37,7 +37,7 @@ A deep read of Lincoln Murphy's canonical [Ideal Customer Profile framework](htt
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/blogs/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **seven-dimension ICP rubric** and the **six-fit-type taxonomy** that the skill uses to score whether a prospect is worth writing at all — before any trigger, anchor, or offer work begins.
+This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **seven-dimension ICP rubric** and the **six-fit-type taxonomy** that the skill uses to score whether a prospect is worth writing at all — before any trigger, anchor, or offer work begins.
 
 ## Core thesis
 

@@ -45,7 +45,7 @@ A deep read of Aaron Shepherd's [I Sent 1,500,000 Cold Emails Last Month, Here's
 
 ## Why this analysis exists
 
-This is one of the source layers behind the BuildOS [`cold-email-engagement-first-outreach`](/blogs/agent-skills/cold-email-engagement-first-outreach) skill. It supplies the **infrastructure + offer + voice layer** — the math of how much sending capacity is required for a given goal, the offer-design pattern that earns replies from strangers, and the script discipline that keeps emails from sounding like marketing.
+This is one of the source layers behind the BuildOS [`cold-email-engagement-first-outreach`](/agent-skills/cold-email-engagement-first-outreach) skill. It supplies the **infrastructure + offer + voice layer** — the math of how much sending capacity is required for a given goal, the offer-design pattern that earns replies from strangers, and the script discipline that keeps emails from sounding like marketing.
 
 ## Core thesis
 

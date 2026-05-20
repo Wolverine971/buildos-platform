@@ -61,6 +61,10 @@ function normalizeSearchForFilter(value: string): string {
 		.trim();
 }
 
+function escapeForIlike(value: string): string {
+	return value.replace(/[\\_]/g, (char) => `\\${char}`);
+}
+
 function statusCounts(
 	rows: DomainResearchQueueStoredRow[]
 ): Record<DomainResearchQueueStatus, number> {
@@ -140,8 +144,9 @@ export const GET: RequestHandler = async ({ url, locals: { supabase, safeGetSess
 		if (kind !== 'all') query = query.eq('kind', kind);
 		if (priority !== 'all') query = query.eq('priority', priority);
 		if (search) {
+			const escapedSearch = escapeForIlike(search);
 			query = query.or(
-				`queue_key.ilike.%${search}%,user_need.ilike.%${search}%,summary.ilike.%${search}%`
+				`queue_key.ilike.%${escapedSearch}%,user_need.ilike.%${escapedSearch}%,summary.ilike.%${escapedSearch}%`
 			);
 		}
 

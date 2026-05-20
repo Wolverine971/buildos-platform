@@ -37,6 +37,7 @@ interface BlogContext {
 }
 
 const BASE_URL = 'https://build-os.com';
+const AGENT_SKILLS_CATEGORY_KEY = 'agent-skills';
 // Use a static fallback date instead of today's date to avoid constantly changing dates
 // This should be the date of the initial blog launch or earliest blog post
 const DEFAULT_LASTMOD = '2025-10-05'; // Static fallback date for empty categories
@@ -251,7 +252,9 @@ function getMostRecentPostDate(posts: { [slug: string]: BlogPost | null }): stri
 function getAllPostsLastModDate(blogContext: BlogContext): string {
 	let mostRecentDate = '';
 
-	Object.values(blogContext.categories).forEach((category) => {
+	Object.entries(blogContext.categories).forEach(([categoryKey, category]) => {
+		if (categoryKey === AGENT_SKILLS_CATEGORY_KEY) return;
+
 		const categoryMostRecent = getMostRecentPostDate(category.posts);
 		// Only consider categories that have published posts (non-null dates)
 		if (categoryMostRecent && (!mostRecentDate || categoryMostRecent > mostRecentDate)) {
@@ -277,17 +280,19 @@ function generateBlogUrls(blogContext: BlogContext): SitemapUrl[] {
 	// Add category pages with smart lastmod dates (only if they have published posts)
 	Object.entries(blogContext.categories).forEach(([categoryKey, category]) => {
 		const mostRecentPostDate = getMostRecentPostDate(category.posts);
+		const collectionPath =
+			categoryKey === AGENT_SKILLS_CATEGORY_KEY ? '/agent-skills' : `/blogs/${categoryKey}`;
 
 		// Only add category page if it has published posts
 		if (mostRecentPostDate) {
 			urls.push({
-				loc: `${BASE_URL}/blogs/${categoryKey}`,
+				loc: `${BASE_URL}${collectionPath}`,
 				lastmod: mostRecentPostDate,
 				changefreq: 'weekly',
-				priority: '0.6'
+				priority: categoryKey === AGENT_SKILLS_CATEGORY_KEY ? '0.7' : '0.6'
 			});
 
-			console.log(`📅 Category '${categoryKey}' lastmod set to: ${mostRecentPostDate}`);
+			console.log(`📅 Collection '${collectionPath}' lastmod set to: ${mostRecentPostDate}`);
 		} else {
 			console.log(`⏩ Skipping category '${categoryKey}' - no published posts`);
 		}
@@ -298,9 +303,13 @@ function generateBlogUrls(blogContext: BlogContext): SitemapUrl[] {
 		Object.entries(category.posts).forEach(([slug, post]) => {
 			if (post && post.published) {
 				const postLastMod = getPostLastMod(post);
+				const postPath =
+					categoryKey === AGENT_SKILLS_CATEGORY_KEY
+						? `/agent-skills/${slug}`
+						: `/blogs/${categoryKey}/${slug}`;
 
 				urls.push({
-					loc: `${BASE_URL}/blogs/${categoryKey}/${slug}`,
+					loc: `${BASE_URL}${postPath}`,
 					lastmod: postLastMod,
 					changefreq: (post.changefreq as any) || 'monthly',
 					priority: post.priority || '0.6'
