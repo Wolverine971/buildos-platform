@@ -270,6 +270,7 @@
 	let latestPublicPageReview = $state<PublicPageReview | null>(null);
 	let lastSavePublishedLive = $state(false);
 	let discardChangesModalOpen = $state(false);
+	let pendingDocumentPageNavigation = $state(false);
 	let editorIsRecording = $state(false);
 	let editorIsTranscribing = $state(false);
 
@@ -406,6 +407,10 @@
 	const publicPageUrlPath = $derived.by(() => {
 		if (!publicPageState?.slug) return null;
 		return publicPageState.url_path || `/p/${publicPageState.slug}`;
+	});
+	const documentPageUrlPath = $derived.by(() => {
+		if (!projectId || !activeDocumentId) return null;
+		return `/projects/${projectId}/documents/${activeDocumentId}`;
 	});
 	const publicPageLastLiveUpdateAt = $derived(
 		publicPageState?.last_live_sync_at ?? publicPageState?.published_at ?? null
@@ -792,6 +797,34 @@
 		} else {
 			toastService.error('Failed to copy link. Select the URL and copy it manually.');
 		}
+	}
+
+	async function handleCopyDocumentPageUrl() {
+		if (!browser || !documentPageUrlPath) return;
+		const ok = await copyTextToClipboard(`${window.location.origin}${documentPageUrlPath}`);
+		if (ok) {
+			toastService.success('Document URL copied');
+		} else {
+			toastService.error('Failed to copy URL');
+		}
+	}
+
+	function handleOpenDocumentPage() {
+		if (!browser || !documentPageUrlPath) return;
+		if (blockingSave || saveStatus === 'saving') {
+			toastService.warning('Wait for the current save to finish before leaving.');
+			return;
+		}
+		if (editorIsRecording || editorIsTranscribing) {
+			toastService.warning('Finish voice capture before leaving this document.');
+			return;
+		}
+		if (shouldPromptBeforeClose) {
+			pendingDocumentPageNavigation = true;
+			discardChangesModalOpen = true;
+			return;
+		}
+		window.location.href = documentPageUrlPath;
 	}
 
 	function clearDeferredDocumentLoads() {
@@ -1225,6 +1258,7 @@
 		clearAutosaveTimers();
 		resetDocumentAncillaryState();
 		discardChangesModalOpen = false;
+		pendingDocumentPageNavigation = false;
 		editorIsRecording = false;
 		editorIsTranscribing = false;
 	}
@@ -1340,6 +1374,7 @@
 		resetDocumentPanels();
 		showPublicPageConfirmModal = false;
 		discardChangesModalOpen = false;
+		pendingDocumentPageNavigation = false;
 		isOpen = false;
 		onClose?.();
 	}
@@ -1374,7 +1409,17 @@
 	}
 
 	function handleDiscardChangesConfirm() {
+		const nextPath = pendingDocumentPageNavigation ? documentPageUrlPath : null;
+		pendingDocumentPageNavigation = false;
 		closeModal();
+		if (browser && nextPath) {
+			window.location.href = nextPath;
+		}
+	}
+
+	function handleDiscardChangesCancel() {
+		pendingDocumentPageNavigation = false;
+		discardChangesModalOpen = false;
 	}
 
 	function validateForm(): boolean {
@@ -2351,6 +2396,28 @@
 				</div>
 			</div>
 			<div class="flex items-center gap-1.5">
+				{#if isEditing && activeDocumentId}
+					<button
+						type="button"
+						onclick={handleCopyDocumentPageUrl}
+						disabled={blockingSave || loading}
+						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
+						title="Copy document URL"
+						aria-label="Copy document URL"
+					>
+						<Link class="w-4 h-4" />
+					</button>
+					<button
+						type="button"
+						onclick={handleOpenDocumentPage}
+						disabled={blockingSave || loading}
+						class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
+						title="Open document page"
+						aria-label="Open document page"
+					>
+						<ExternalLink class="w-4 h-4" />
+					</button>
+				{/if}
 				<!-- Export button -->
 				<div class="relative" bind:this={exportMenuRef}>
 					<button
@@ -3928,7 +3995,7 @@
 	confirmText="Discard changes"
 	confirmVariant="danger"
 	onconfirm={handleDiscardChangesConfirm}
-	oncancel={() => (discardChangesModalOpen = false)}
+	oncancel={handleDiscardChangesCancel}
 >
 	{#snippet content()}
 		<p class="text-sm text-muted-foreground">

@@ -27,3 +27,10 @@ export function canReplaceInsertedVoiceRange(
 	if (range.from < 0 || range.to < range.from || range.to > value.length) return false;
 	return value.slice(range.from, range.to) === range.text;
 }
+
+export function shouldInsertCapturedVoiceFallback(
+	capturedTranscript: string,
+	pendingRange: InsertedVoiceRange | null
+): boolean {
+	return normalizeVoiceTranscript(capturedTranscript).length > 0 && !pendingRange;
+}

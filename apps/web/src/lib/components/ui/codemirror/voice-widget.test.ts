@@ -8,6 +8,7 @@ import {
 	voiceWidgetExtension,
 	showVoiceWidget,
 	showVoiceInsertHint,
+	updateVoicePreview,
 	hideVoiceWidget,
 	hideVoiceInsertHint
 } from './voice-widget';
@@ -93,5 +94,19 @@ describe('voice-widget insert hint mode', () => {
 
 		view.dispatch({ effects: hideVoiceWidget.of(null) });
 		expect(parent.querySelector('.cm-voice-insert-hint')).not.toBeNull();
+	});
+
+	it('clears the live preview back to a loading label while transcribing', () => {
+		const { view, parent } = createTestEditor();
+		view.dispatch({ effects: showVoiceWidget.of({ pos: 5 }) });
+		view.dispatch({ effects: updateVoicePreview.of({ text: 'draft transcript' }) });
+
+		expect(parent.querySelector('.cm-voice-preview')?.textContent).toBe(
+			'draft transcript'
+		);
+
+		view.dispatch({ effects: updateVoicePreview.of({ text: '' }) });
+		expect(parent.querySelector('.cm-voice-preview')).toBeNull();
+		expect(parent.querySelector('.cm-voice-label')?.textContent).toContain('Transcribing');
 	});
 });

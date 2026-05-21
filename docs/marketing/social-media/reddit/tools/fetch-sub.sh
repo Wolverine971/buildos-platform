@@ -1,5 +1,5 @@
-# docs/marketing/social-media/reddit/tools/fetch-sub.sh
 #!/usr/bin/env bash
+# docs/marketing/social-media/reddit/tools/fetch-sub.sh
 # Fetch Reddit data for a subreddit via the public JSON API with rate-limit-aware
 # pacing and retry. Skips files that already exist and are non-empty so re-runs resume cleanly.
 #

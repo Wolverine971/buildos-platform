@@ -712,6 +712,10 @@
 	}
 
 	async function openDocumentModal(id: string | null = null) {
+		if (id && project?.id) {
+			goto(`/projects/${project.id}/documents/${id}`);
+			return;
+		}
 		await loadDocumentModal();
 		activeDocumentId = id;
 		showDocumentModal = true;

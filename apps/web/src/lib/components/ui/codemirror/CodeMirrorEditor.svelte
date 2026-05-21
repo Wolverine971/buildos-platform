@@ -223,11 +223,11 @@
 	// Public API: Voice widget
 	// ---------------------------------------------------------------------------
 
-	/** Show the voice transcription indicator at the current cursor position */
-	export function showTranscribing() {
+	/** Show the voice transcription indicator at a position, defaulting to the cursor */
+	export function showTranscribing(pos?: number) {
 		if (!view) return;
-		const pos = view.state.selection.main.head;
-		view.dispatch({ effects: showVoiceWidgetEffect.of({ pos }) });
+		const widgetPos = pos ?? view.state.selection.main.head;
+		view.dispatch({ effects: showVoiceWidgetEffect.of({ pos: widgetPos }) });
 	}
 
 	/** Show the voice insertion hint at the current cursor position */

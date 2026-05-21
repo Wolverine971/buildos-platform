@@ -1,3 +1,5 @@
+<!-- docs/reports/daily-brief-quality-efficiency-review-2026-05-19.md -->
+
 # Daily Brief Quality and Efficiency Review
 
 Date: 2026-05-19
@@ -91,11 +93,47 @@ Expected impact:
 - Makes brief latency more predictable for users with many projects.
 - Still allows parallelism.
 
+### 4. Count Tasks Starting Today As Today's Work
+
+Before:
+
+- A task with `start_at` today and no `due_at` today was categorized as upcoming.
+- This could make the daily brief understate today's work and could cause the project-brief LLM gate to skip an active project.
+
+Now:
+
+- Non-completed tasks with `start_at` today are categorized as today's tasks.
+- Tasks with an overdue `due_at` remain overdue even if their `start_at` is today.
+
+## Include/Exclude Project Hookup Findings
+
+`includeProjects` and `excludeProjects` are currently request-scoped job options, not persisted user preference fields.
+
+Current path:
+
+- `DailyBriefJobMetadata.options` defines both fields as `string[]`.
+- Shared validation requires both fields, when present, to be arrays of strings.
+- `RailwayWorkerService.queueBriefGeneration()` can forward both arrays.
+- `/api/brief-jobs/queue` forwards both arrays to the worker.
+- `/api/daily-briefs/generate` also forwards both arrays to the worker.
+- The worker `/queue/brief` endpoint stores both arrays in queued job options.
+
+Current gaps:
+
+- The primary brief page and daily brief modal do not pass include/exclude arrays into `BriefClientService.startStreamingGeneration()`.
+- `BriefClientService.startStreamingGeneration()` does not expose include/exclude in its options, so a UI could not currently pass them through that path without a type/API change.
+- The older frontend `BriefGenerationOptions` types still declare `includeProjects?: boolean`, which does not match the queue contract of `string[]`.
+- The ontology worker receives the options but does not apply them in `loadUserOntologyData()`.
+
+Interpretation:
+
+- These fields look like a planned/manual generation filter, not a user-updated project preference.
+- A backend-only implementation would make direct API callers work, but it would not change the normal user-facing generation path until the frontend creates and passes project ID arrays.
+
 ## Remaining Findings To Address Later
 
 ### Quality
 
-- Start-date-only tasks may be underweighted. A task with `start_at` today but no `due_at` today is treated as upcoming rather than today's work.
 - The final `Project Details` section may become too long for users with many active projects.
 - `ontology_daily_briefs.executive_summary` stores the full main brief markdown, not just an executive summary. The naming is misleading.
 - `includeProjects` and `excludeProjects` are accepted by the queue API but are not applied in the ontology data loader.
@@ -111,8 +149,7 @@ Expected impact:
 
 ## Suggested Next Pass
 
-1. Fix `start_at` today categorization.
-2. Apply `includeProjects` / `excludeProjects` in the worker data loader.
-3. Add metrics for `projectBriefsLlmGenerated`, `projectBriefsDeterministic`, skipped reasons, cost, and latency.
-4. Merge executive summary and analysis into a single LLM call that returns two bounded fields.
-5. Shorten the final main brief by summarizing low-signal project details instead of appending every deterministic project brief verbatim.
+1. Apply `includeProjects` / `excludeProjects` in the worker data loader after confirming the product surface that should set those arrays.
+2. Add metrics for `projectBriefsLlmGenerated`, `projectBriefsDeterministic`, skipped reasons, cost, and latency.
+3. Merge executive summary and analysis into a single LLM call that returns two bounded fields.
+4. Shorten the final main brief by summarizing low-signal project details instead of appending every deterministic project brief verbatim.

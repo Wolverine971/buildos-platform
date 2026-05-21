@@ -1108,15 +1108,15 @@ Gateway payload compaction:
   apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-payload-compaction.ts
 ```
 
-Implementation implications:
+Implementation fit:
 
-- `tools/work-capabilities/` can follow the same shape as `tools/domains/`.
-- `DomainSkillStack` can remain as the compatibility bridge while `WorkCapability` is introduced.
-- `work_capability_search` should materialize only `work_capability_load`.
-- `work_capability_load` should materialize only `skill_load` and `resource_search`.
-- `tool-payload-compaction` needs compact handlers for `work_capability_search_results` and `work_capability`.
+- `tools/work-capabilities/` follows the same shape as `tools/domains/`.
+- `DomainSkillStack` remains as the compatibility bridge while `WorkCapability` is introduced.
+- `work_capability_search` materializes only `work_capability_load`.
+- `work_capability_load` materializes only `skill_load` and `resource_search`.
+- `tool-payload-compaction` has compact handlers for `work_capability_search_results` and `work_capability`.
 - The prompt should keep the existing root/child skill table until routing evals pass.
-- The first prompt change should add the compact domain index, not remove skill metadata.
+- The first prompt change added the compact domain index without removing skill metadata.
 
 ## Migration Plan
 
@@ -1137,9 +1137,9 @@ Implementation status:
 
 Do not remove skill metadata yet. The current root/child skill tables are still the fallback discovery surface.
 
-Add WorkCapability while keeping the prompt behavior stable:
+Implemented WorkCapability while keeping the prompt behavior stable:
 
-Create:
+Implemented:
 
 ```txt
 apps/web/src/lib/services/agentic-chat/tools/work-capabilities/
@@ -1150,7 +1150,7 @@ apps/web/src/lib/services/agentic-chat/tools/work-capabilities/
   work-capability-validation.ts
 ```
 
-Seed with 5-10 high-value work capabilities:
+Seeded with 5-10 high-value work capabilities:
 
 ```txt
 cold_email_campaign_build
@@ -1167,12 +1167,12 @@ project_audit
 
 Some of these can be BuildOS-native and domain-aware, such as `project_audit`.
 
-### Phase 2: Wire Gateway Tools Behind A Feature Flag
+### Phase 2: Wire Gateway Tools
 
-- Add `work_capability_search`.
-- Add `work_capability_load`.
-- Let `domain_load` return `work_capability_ids`.
-- Let `work_capability_load` materialize only `skill_load` and `resource_search` when appropriate.
+- Added `work_capability_search`.
+- Added `work_capability_load`.
+- `domain_load` returns `work_capability_ids`.
+- `work_capability_load` materializes only `skill_load` and `resource_search` when appropriate.
 - Keep direct tool availability controlled by context surface profiles and existing tool discovery.
 - Keep the current root/child skill prompt tables during rollout.
 

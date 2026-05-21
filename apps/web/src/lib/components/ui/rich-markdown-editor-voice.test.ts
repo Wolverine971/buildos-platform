@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	canReplaceInsertedVoiceRange,
 	normalizeVoiceTranscript,
-	preserveInsertedVoiceSpacing
+	preserveInsertedVoiceSpacing,
+	shouldInsertCapturedVoiceFallback
 } from './rich-markdown-editor-voice';
 
 describe('rich-markdown-editor voice helpers', () => {
@@ -39,5 +40,17 @@ describe('rich-markdown-editor voice helpers', () => {
 				text: ' hello '
 			})
 		).toBe(false);
+	});
+
+	it('only uses the captured live transcript fallback when no final insert happened', () => {
+		expect(shouldInsertCapturedVoiceFallback(' captured transcript ', null)).toBe(true);
+		expect(
+			shouldInsertCapturedVoiceFallback('captured transcript', {
+				from: 7,
+				to: 26,
+				text: 'captured transcript'
+			})
+		).toBe(false);
+		expect(shouldInsertCapturedVoiceFallback('   ', null)).toBe(false);
 	});
 });

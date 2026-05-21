@@ -133,12 +133,20 @@ function shouldProcessDirectory(dirPath: string): boolean {
 	return !EXCLUDED_DIRS.includes(dirName) && !dirName.startsWith('.');
 }
 
+function isShebangLine(line: string): boolean {
+	return line.startsWith('#!');
+}
+
+function isExistingPathCommentLine(line: string): boolean {
+	const trimmedLine = line.trim();
+	return EXISTING_PATH_COMMENT_PATTERNS.some((pattern) => pattern.test(trimmedLine));
+}
+
 function hasExistingPathComment(content: string): boolean {
 	const lines = content.split('\n');
 	if (lines.length === 0) return false;
 
-	const firstLine = lines[0].trim();
-	return EXISTING_PATH_COMMENT_PATTERNS.some((pattern) => pattern.test(firstLine));
+	return isExistingPathCommentLine(lines[0]);
 }
 
 /**
@@ -181,6 +189,44 @@ function addPathToFrontmatter(content: string, relativePath: string): string {
 	}
 }
 
+function addOrUpdatePathCommentInLines(content: string, pathComment: string): string {
+	const lines = content.split('\n');
+
+	if (lines.length > 1 && isExistingPathCommentLine(lines[0]) && isShebangLine(lines[1])) {
+		const shebang = lines[1];
+		const rest = lines.slice(2);
+
+		while (rest.length > 0 && isExistingPathCommentLine(rest[0])) {
+			rest.shift();
+		}
+
+		return [shebang, pathComment, ...rest].join('\n');
+	}
+
+	if (isShebangLine(lines[0])) {
+		const rest = lines.slice(1);
+
+		if (rest.length > 0 && isExistingPathCommentLine(rest[0])) {
+			rest[0] = pathComment;
+
+			while (rest.length > 1 && isExistingPathCommentLine(rest[1])) {
+				rest.splice(1, 1);
+			}
+		} else {
+			rest.unshift(pathComment);
+		}
+
+		return [lines[0], ...rest].join('\n');
+	}
+
+	if (hasExistingPathComment(content)) {
+		lines[0] = pathComment;
+		return lines.join('\n');
+	}
+
+	return pathComment + '\n' + content;
+}
+
 function addOrUpdatePathComment(filePath: string, rootDir: string): boolean {
 	try {
 		const content = fs.readFileSync(filePath, 'utf8');
@@ -215,16 +261,7 @@ function addOrUpdatePathComment(filePath: string, rootDir: string): boolean {
 		} else {
 			// Non-markdown files: use original logic
 			const pathComment = commentFunction(relativePath);
-			const lines = content.split('\n');
-
-			if (hasExistingPathComment(content)) {
-				// Replace the first line with the new path comment
-				lines[0] = pathComment;
-				newContent = lines.join('\n');
-			} else {
-				// Add the path comment at the beginning
-				newContent = pathComment + '\n' + content;
-			}
+			newContent = addOrUpdatePathCommentInLines(content, pathComment);
 		}
 
 		// Only write if content has changed

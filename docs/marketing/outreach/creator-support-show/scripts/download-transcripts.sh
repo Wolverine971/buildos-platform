@@ -1,5 +1,5 @@
-# docs/marketing/outreach/creator-support-show/scripts/download-transcripts.sh
 #!/usr/bin/env bash
+# docs/marketing/outreach/creator-support-show/scripts/download-transcripts.sh
 # Download all 49 Creator Support Show transcripts sequentially with 3s delays.
 # Safe pattern per youtube-transcript skill (no IpBlocked risk).
 set -uo pipefail

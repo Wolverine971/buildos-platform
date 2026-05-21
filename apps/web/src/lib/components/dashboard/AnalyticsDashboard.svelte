@@ -17,6 +17,7 @@
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DashboardBriefWidget from './DashboardBriefWidget.svelte';
+	import ProjectOverdueIndicator from './ProjectOverdueIndicator.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import { getTaskStateBadgeClass } from '$lib/utils/ontology-badge-styles';
 	import { getDashboardGreeting } from '$lib/utils/dashboard-greeting';
@@ -250,12 +251,6 @@
 			.split('_')
 			.map((w) => w.charAt(0).toUpperCase() + w.slice(1))
 			.join(' ');
-	}
-
-	function formatOverdueProjectTitle(batch: OverdueProjectBatch): string {
-		const taskLabel = `${batch.overdue_count} overdue ${batch.overdue_count === 1 ? 'task' : 'tasks'}`;
-		if (batch.assigned_to_me_count <= 0) return taskLabel;
-		return `${taskLabel}, ${batch.assigned_to_me_count} assigned to me`;
 	}
 
 	function resolveProjectHref(project: { id?: string | null }): string {
@@ -684,7 +679,7 @@
 							<a
 								href={resolveProjectHref(project)}
 								onclick={(event) => handleProjectCardClick(event, project)}
-								class="group block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
+								class="group relative block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
 								hover:border-accent/40 transition-colors pressable"
 							>
 								<div class="flex items-center justify-between gap-2">
@@ -726,22 +721,20 @@
 										/>
 									</div>
 								</div>
-								<p class="mt-0.5 text-[11px] text-muted-foreground pl-[22px]">
-									{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
-									docs
-								</p>
-								{#if overdueBatch}
-									<div class="mt-1 pl-[22px]">
-										<span
-											class="inline-flex max-w-full items-center gap-1 rounded-md border border-warning/25 bg-warning/10 px-1.5 py-0.5 text-[10px] font-semibold text-warning"
-											title={formatOverdueProjectTitle(overdueBatch)}
-											aria-label={formatOverdueProjectTitle(overdueBatch)}
-										>
-											<AlertTriangle class="h-2.5 w-2.5 shrink-0" />
-											<span class="truncate">Has overdue tasks</span>
-										</span>
-									</div>
-								{/if}
+								<div class="mt-0.5 flex items-center gap-2 pl-[22px]">
+									<p
+										class="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
+									>
+										{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
+										docs
+									</p>
+									{#if overdueBatch}
+										<ProjectOverdueIndicator
+											batch={overdueBatch}
+											class="shrink-0"
+										/>
+									{/if}
+								</div>
 							</a>
 						{/each}
 					</div>
@@ -776,7 +769,7 @@
 							<a
 								href={resolveProjectHref(project)}
 								onclick={(event) => handleProjectCardClick(event, project)}
-								class="group block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
+								class="group relative block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
 								hover:border-accent/40 transition-colors pressable"
 							>
 								<div class="flex items-center justify-between gap-2">
@@ -802,22 +795,20 @@
 										/>
 									</div>
 								</div>
-								<p class="mt-0.5 text-[11px] text-muted-foreground pl-[22px]">
-									{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
-									docs
-								</p>
-								{#if overdueBatch}
-									<div class="mt-1 pl-[22px]">
-										<span
-											class="inline-flex max-w-full items-center gap-1 rounded-md border border-warning/25 bg-warning/10 px-1.5 py-0.5 text-[10px] font-semibold text-warning"
-											title={formatOverdueProjectTitle(overdueBatch)}
-											aria-label={formatOverdueProjectTitle(overdueBatch)}
-										>
-											<AlertTriangle class="h-2.5 w-2.5 shrink-0" />
-											<span class="truncate">Has overdue tasks</span>
-										</span>
-									</div>
-								{/if}
+								<div class="mt-0.5 flex items-center gap-2 pl-[22px]">
+									<p
+										class="min-w-0 flex-1 truncate text-[11px] text-muted-foreground"
+									>
+										{project.task_count} tasks · {project.goal_count} goals · {project.document_count}
+										docs
+									</p>
+									{#if overdueBatch}
+										<ProjectOverdueIndicator
+											batch={overdueBatch}
+											class="shrink-0"
+										/>
+									{/if}
+								</div>
 							</a>
 						{/each}
 					</div>

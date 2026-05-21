@@ -2,13 +2,15 @@
 
 # BuildOS Domain + Skill Architecture
 
-Status: background/reference draft
-Date: 2026-05-18
+Status: background/reference draft; superseded for implementation
+Date: 2026-05-18; updated 2026-05-19
 Owner: BuildOS agentic chat
 
 Implementation note:
 
 This document captures the original domain/skill direction and remains useful for the domain catalog, session state, resource handles, and research queue model. The implementation target is now the refined work-capability architecture in `docs/specs/buildos-domain-work-capability-architecture-2026-05-18.md`, which adds the missing outcome-routing layer between domains and skills.
+
+As of 2026-05-19, Phase 1 infrastructure is implemented in the work-capability architecture: domain/work-capability tools, compact domain prompt index, session domain state, demand capture, and the admin-managed `domain_research_queue`. The broader candidate map for 10-20 future domain packs lives in `docs/specs/buildos-domain-candidate-map-2026-05-19.md`.
 
 ## Purpose
 

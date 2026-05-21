@@ -1,5 +1,5 @@
-# docs/marketing/outreach/creator-support-show/scripts/retry-wrapper.sh
 #!/usr/bin/env bash
+# docs/marketing/outreach/creator-support-show/scripts/retry-wrapper.sh
 # One-shot retry wrapper for Creator Support Show transcripts.
 # Triggered by LaunchAgent ~/Library/LaunchAgents/com.dj.buildos.css-retry.plist
 # at 12:00 PM America/New_York on 2026-05-14 (= 9:00 AM America/Los_Angeles).

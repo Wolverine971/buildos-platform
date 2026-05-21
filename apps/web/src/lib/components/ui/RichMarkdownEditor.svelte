@@ -43,6 +43,7 @@
 		canReplaceInsertedVoiceRange,
 		normalizeVoiceTranscript,
 		preserveInsertedVoiceSpacing,
+		shouldInsertCapturedVoiceFallback,
 		type InsertedVoiceRange
 	} from './rich-markdown-editor-voice';
 
@@ -587,10 +588,7 @@
 		if (!trimmedTranscript || !editorRef) return null;
 
 		if (!cursorPositionBeforeRecording) {
-			// Fallback: append to end
-			const pos = value.length;
-			const separator = value.trim() ? ' ' : '';
-			const inserted = editorRef.insertTextAt(pos, separator + trimmedTranscript);
+			const inserted = editorRef.insertAtCursor(trimmedTranscript);
 			return inserted ? { ...inserted } : null;
 		}
 
@@ -625,6 +623,9 @@
 					pendingInsertedVoiceRange.to
 				);
 				pendingInsertedVoiceRange = replaced ? { ...replaced } : null;
+				if (replaced) {
+					editorRef.hideTranscribing();
+				}
 			} else {
 				pendingInsertedVoiceRange = null;
 			}
@@ -634,6 +635,7 @@
 		const inserted = insertTranscriptionAtCursor(finalTranscript);
 		if (inserted) {
 			pendingInsertedVoiceRange = inserted;
+			editorRef.hideTranscribing();
 		}
 	}
 
@@ -1102,11 +1104,10 @@
 		// Store the transcript we'll use for insertion
 		const transcriptToInsert = capturedTranscriptForCallback;
 
-		// Hide the inline voice widget in the editor
-		editorRef?.hideTranscribing();
-
 		// Clear the live preview and recording state
 		liveTranscriptPreview = '';
+		editorRef?.updateTranscriptPreview('');
+		editorRef?.showTranscribing(cursorPositionBeforeRecording?.start);
 		isInitializingRecording = false;
 		isCurrentlyRecording = false;
 
@@ -1123,17 +1124,27 @@
 			// Pass empty string - we handle text ourselves
 			await voiceRecordingService.stopRecording('', undefined, voiceClientId);
 
-			// If we had a live transcript, insert it at cursor position now
-			// The audio transcription may update it later with better accuracy
-			if (transcriptToInsert) {
+			// The voice service usually calls back with the final transcript. Use
+			// the captured live transcript only if no callback inserted text.
+			if (
+				shouldInsertCapturedVoiceFallback(transcriptToInsert, pendingInsertedVoiceRange)
+			) {
 				const inserted = insertTranscriptionAtCursor(transcriptToInsert);
 				pendingInsertedVoiceRange = inserted;
+				if (inserted) {
+					editorRef?.hideTranscribing();
+				}
+			}
 
+			if (pendingInsertedVoiceRange) {
 				// Show "Added" feedback for 1.5 seconds
 				showAddedFeedback = true;
 				addedFeedbackTimeout = setTimeout(() => {
 					showAddedFeedback = false;
 				}, 1500);
+			} else {
+				editorRef?.hideTranscribing();
+				cursorPositionBeforeRecording = null;
 			}
 
 			// Clear inserting state
@@ -1577,6 +1588,7 @@
 					class={`flex h-10 w-10 xs:h-9 xs:w-9 shrink-0 items-center justify-center rounded-full transition-all duration-150 touch-manipulation ${voiceButtonClasses}`}
 					style="-webkit-tap-highlight-color: transparent;"
 					onclick={toggleVoiceRecording}
+					onmousedown={(event) => event.preventDefault()}
 					onmouseenter={handleVoiceButtonMouseEnter}
 					onmouseleave={handleVoiceButtonMouseLeave}
 					onfocus={handleVoiceButtonFocus}

@@ -1,0 +1,88 @@
+<!-- docs/marketing/social-media/instagram-profiles/softgirlnocode.md -->
+
+# @softgirlnocode
+
+**Handle:** @softgirlnocode
+**Display Name:** Audrey (softgirlnocode) — Rakugo Media
+**Profile URL:** https://www.instagram.com/softgirlnocode/
+**Canonical Person ID:** Not created
+**Category:** AI / No-Code Automation / Agent Tutorials
+**Lane:** AI
+**Lead Class:** audience_multiplier / direct_user
+**Tier:** 2
+**Strategic Role:** Adjacent builder (watering-hole-mining-adjacent at 140K)
+**Relationship Status:** Prospect (story-rail tag only, no direct comment)
+**Audience Quality:** High — AI builders, no-code operators, technical buyers
+**Ladder Stage:** stage_2_queued
+**Next Best Action:** First-touch comment on `DYhwhESiHCm` (Claude routines + agent setup levels) via `/instagram-reply` 2026-05-20
+**Earliest Next Touch:** Now (queued in 2026-05-20 warmup)
+**Profile Created:** 2026-05-20 (Stage 0 promotion — first appeared 2026-05-12 in @build.os story rail)
+**Last Reviewed:** 2026-05-21
+**Last Engaged:** Never (story-rail tag from @build.os 5/11-5/13 is one-way, not bidirectional)
+**Source of First Discovery:** `discovery/instagram/candidates.md` — Stage 0 candidate seeded 2026-05-12 after 3-consecutive-day appearance in @build.os story rail (5/11, 5/12, 5/13)
+
+## Condensed Intel
+
+- **What they post about:** Claude routines, autonomous agent setup, no-code automations (Make.com, n8n), GitHub-as-webhook patterns, Perplexity Computer orchestration, Roam for remote teams, AI workflow tradeoffs. Technical-tutorial register, not hustle-pitch.
+- **Why they matter to BuildOS:** Her content frames AI tooling as **orchestration tradeoffs**, not as a list of tools — this is the literal lane BuildOS thinks in. Her audience (AI builders, no-code operators) is the BuildOS target audience. The 3-consecutive-day @build.os story-rail tag is a one-way relationship signal that should be reciprocated with a direct comment touchpoint.
+- **Best engagement angles:** Add a dimension she didn't cover (context-persistence-across-runs, plan-cap as context budget, async failure modes). Concrete builder voice. Don't pitch first — her audience is technical and pitch-allergic.
+- **What we have already said:** Nothing on her grid. @build.os tagged her in story rail 5/11–5/13 (one-way, no comment / no DM).
+- **Open loops:** First-comment test on DYhwhESiHCm. Verify whether the story-rail tag was a deliberate @build.os signal that should be acknowledged in the comment or kept separate.
+
+## Bio Snapshot
+
+- **Bio:** "^ Plugging AI into real life & business / ^ softgirlnocode@rakugomedia.com"
+- **Followers:** 140K (verified 2026-05-20)
+- **Posts:** 130
+- **Following:** 193 (low — signals selective curation)
+- **Offer / link:** beacons.ai/audreyintech (linktree-style)
+- **Formats:** Reels (primary), tutorials, before-after orchestration breakdowns, AI tool reviews
+- **Audience vibe:** Real builders + no-code operators + technical buyers; comments are workflow-specific, not "love it!" filler
+
+## Content Themes
+
+- Claude routines / agent setup level-ups (Level 1 / 2 / 3 framing)
+- No-code orchestration (Make.com, n8n, GitHub webhooks)
+- Multi-tool stacks for autonomous workflows
+- Perplexity Computer + financial-report automation
+- Remote-team tooling (Roam, async-first stack)
+- "CTA-light" content — she doesn't run aggressive comment-bait
+
+## Voice & Community Notes
+
+- **Tone:** Calm-technical, tutorial-style, no hype
+- **Language style:** Concrete-step ("Level 1 / Level 2 / Level 3"), tradeoff-aware ("each level comes with tradeoffs")
+- **What lands well:** Specific orchestration tradeoffs, technical-buyer voice, real builders adding constraints she didn't mention
+- **Avoid:** "Love your content" cheer-only, generic "AI is amazing" comments, pitch-first framing, agent-engineering jargon she didn't introduce
+
+## Relationship History
+
+| Date       | Surface          | Topic                                                                                                                                                                                                                                     | Post Link                                                  | Action        | Status                                                                  | What We Said / Planned                                                                                                                                                                                                                                                                                                                                                                                                                                          | Outcome                  | Source                         |
+| ---------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | ------------------------------ |
+| 2026-05-11 | Story (build.os) | Tagged in @build.os story rail (day 1 of 3)                                                                                                                                                                                               | (story handle observation, no specific post)               | Discovered    | Logged                                                                  | One-way story-rail tag from @build.os. No reciprocation. Unknown trigger.                                                                                                                                                                                                                                                                                                                                                                                       | none yet                 | 2026-05-11_instagram-warmup.md |
+| 2026-05-12 | Story (build.os) | Tagged in @build.os story rail (day 2 of 3)                                                                                                                                                                                               | (story handle observation, no specific post)               | Discovered    | Logged                                                                  | Second-day story-rail tag — repeat signal. Added to Stage 0 candidate queue.                                                                                                                                                                                                                                                                                                                                                                                    | none yet                 | 2026-05-12_instagram-warmup.md |
+| 2026-05-13 | Story (build.os) | Tagged in @build.os story rail (day 3 of 3)                                                                                                                                                                                               | (story handle observation, no specific post)               | Discovered    | Logged                                                                  | Third-day story-rail tag — confirms deliberate one-way signal. Priority Stage 0 candidate.                                                                                                                                                                                                                                                                                                                                                                      | none yet                 | 2026-05-13_instagram-warmup.md |
+| 2026-05-20 | Profile          | First profile creation — Stage 0 promotion                                                                                                                                                                                                | n/a                                                        | Profiled      | Logged                                                                  | 140K verified. Bio + content themes captured. Direct content lane fit (Claude routines + agent setup) is unusually strong.                                                                                                                                                                                                                                                                                                                                      | none yet                 | 2026-05-20_instagram-warmup.md |
+| 2026-05-20 | Reel             | "If you're trying to turn a repeatable task into an actual autonomous agent, the setup matters. Claude routines... Level 1 / 2 / 3 tradeoffs... GitHub + Make.com / n8n workaround."                                                      | https://www.instagram.com/softgirlnocode/reel/DYhwhESiHCm/ | Queued        | Pending /instagram-reply (still queueable but pattern shift noted 5/21) | First direct-grid touch. Reply angle: add the context-persistence dimension; soft BuildOS reference OK. Match her calm-technical register. Mention fit 2.                                                                                                                                                                                                                                                                                                       | Pending                  | 2026-05-20_instagram-warmup.md |
+| 2026-05-21 | Reel             | **CTA-bait pivot signal — "I will send my tutorial if you comment 'link' also link in the bio. I shared my best trick for creating a motion board prompt so you can get more consistent, polished, high-qualit..."** (today's fresh reel) | https://www.instagram.com/softgirlnocode/reel/DYkBOdJC8F5/ | Pattern check | **First red flag**                                                      | **First CTA-bait post observed since profile creation (5/20).** Comment-for-link pattern matches @gregisenberg / @hamptonfounders / @amyporterfield CTA-bait shape. **If a second CTA-bait post appears in the next 3 grid items, demote to monitor-only** in `instagram-engagement-targets.md`. **Do NOT engage on this post.** Holds 5/20 DYhwhESiHCm queue slot as the active touch target. **Profile status downgrade pending second-signal confirmation.** | Pattern logged — Monitor | 2026-05-21_instagram-warmup.md |
+
+## Ledger Links
+
+- **Comment log rows:** Will be added by `/instagram-reply` after first comment posts
+- **Discovery candidate row:** Active → promoted on 2026-05-20 warmup (mark as `engaged` after first comment posts; until then `queued_for_warmup`)
+- **Person node:** Not created — promote if direct reply / DM / like-back lands
+
+## Open Loops
+
+- First-comment test on DYhwhESiHCm
+- Track whether the 3-day story-rail tag from @build.os generated any signal she's already aware of BuildOS
+- Capture 3–5 high-signal commenter handles on her grid for Stage 0 (her audience overlap is unusually strong)
+- Watch for AI-orchestration or context-engineering content where DJ has lived builder POV
+
+## Next Best Angles
+
+- Context-persistence-across-runs as the missing dimension in Level 3 setups
+- Plan-cap-as-context-budget framing (DJ has lived experience with token-budget tradeoffs on BuildOS daily briefs)
+- Async failure modes: what breaks when the agent runs while you sleep (BuildOS brief-generation drift, schema-change cascade)
+- After first touch lands: mine her commenter graph for sub-50K AI-builder peer candidates
+- **CTA-bait watch (2026-05-21):** if a second "comment 'X'" post appears in the next 3 grid items, demote profile to monitor-only and remove from active reply queue.

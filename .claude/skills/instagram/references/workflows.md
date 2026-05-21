@@ -79,7 +79,33 @@ Stories expire after 24h. Green ring = Close Friends.
   - Follow requests
   - Activity (likes, comments, follows, mentions) grouped by Today / This Week / This Month.
 
-## 8. Selector cheat-sheet
+## 8. Account picker recovery
+
+When Chrome lands on the logged-out account picker but the target handle is visible, the account can often be restored without the normal Switch Accounts modal:
+
+1. Confirm the target handle is listed in the picker.
+2. Click the text row/span for the target handle, not a nearby blank area.
+3. Wait for Instagram to load the home feed.
+4. Verify the active account from at least two signals:
+   - sidebar or top-right avatar alt text includes `<handle>'s profile picture`
+   - profile link points to `/<handle>/`
+   - sidebar widget text shows the intended handle/name
+5. Only proceed to comments, notifications, or DMs after verification.
+
+Known 2026-05-20 pattern: the picker-click workaround restored `@djwayne3`. For BuildOS posting, `/instagram-reply` should click the `build.os` row from the same picker screen, then verify `build.os` before posting or reading DMs.
+
+Known 2026-05-21 pattern from an already-authenticated Instagram session:
+
+1. Click the Settings gear in the sidebar.
+2. Click **Switch accounts** in the popup.
+3. In the picker overlay, click the target handle row (`div[role="button"]`).
+4. Verify the active account from the same two-signal check above before acting.
+
+Use this Settings path when the sidebar "Switch" label is collapsed or has a zero-size hit target.
+
+If the handle appears in the picker but protected routes redirect to `/accounts/login/`, the account is listed but has no valid session cookie. Stop and require DJ to log in manually; do not attempt password entry.
+
+## 9. Selector cheat-sheet
 
 | Element | Locator |
 |---------|---------|
@@ -92,7 +118,7 @@ Stories expire after 24h. Green ring = Close Friends.
 | Follow button | Profile header, "Follow" / "Following" toggle |
 | Story rings | Top of home feed; colored ring = unseen story |
 
-## 9. Engagement gotchas
+## 10. Engagement gotchas
 
 - **Rate-limiting is aggressive.** Space out actions; batches of likes/comments trigger challenges.
 - **Saves and shares outweigh likes** in the algorithm. Reel completion and dwell time also matter more than like count.
@@ -102,7 +128,7 @@ Stories expire after 24h. Green ring = Close Friends.
 - **Hashtags:** 3–5 per post is current guidance (ignore the 30-tag era). Put them in the caption or the first comment.
 - **Web vs. mobile:** web covers likes, comments, saves, story viewing, DM, search; story creation and some Reels features are mobile-only.
 
-## 10. Account-type signals (for warmup filtering)
+## 11. Account-type signals (for warmup filtering)
 
 - Blue check = verified.
 - **Creator** or **Business** label under the name → professional account.
