@@ -119,8 +119,8 @@
 								Read and write
 							</span>
 							<span class="mt-1 block text-sm text-muted-foreground">
-								Claude can also create and update tasks and documents in selected
-								projects.
+								Claude can also create and update projects, tasks, and documents.
+								Project creation requires all-project access.
 							</span>
 						</span>
 					</label>
@@ -143,7 +143,8 @@
 							>
 							<span class="block text-sm text-muted-foreground">
 								Expose projects where your account is an owner or collaborator.
-								Public project pages are not included automatically.
+								Public project pages are not included automatically. Read/write
+								connectors can also create new projects.
 							</span>
 						</span>
 					</label>
@@ -157,7 +158,8 @@
 						<span>
 							<span class="font-medium text-foreground">Selected projects</span>
 							<span class="block text-sm text-muted-foreground">
-								Limit this connector to the checked projects below.
+								Limit this connector to the checked projects below. New project
+								creation is disabled in this mode.
 							</span>
 						</span>
 					</label>

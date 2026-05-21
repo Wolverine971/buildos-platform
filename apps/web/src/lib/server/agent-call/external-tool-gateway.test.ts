@@ -11,6 +11,8 @@ const resolveEntityMentionUserIdsMock = vi.fn();
 const notifyEntityMentionsAddedMock = vi.fn();
 const addDocumentToTreeMock = vi.fn();
 const createOrMergeDocumentVersionMock = vi.fn();
+const instantiateProjectMock = vi.fn();
+const validateProjectSpecMock = vi.fn();
 const calendarExecutorMocks = vi.hoisted(() => ({
 	listCalendarEvents: vi.fn(),
 	getCalendarEventDetails: vi.fn(),
@@ -60,6 +62,17 @@ vi.mock('$lib/services/ontology/versioning.service', () => ({
 		type_key: typeof document.type_key === 'string' ? document.type_key : null,
 		project_id: typeof document.project_id === 'string' ? document.project_id : null
 	})
+}));
+
+vi.mock('$lib/services/ontology/instantiation.service', () => ({
+	instantiateProject: instantiateProjectMock,
+	validateProjectSpec: validateProjectSpecMock,
+	OntologyInstantiationError: class OntologyInstantiationError extends Error {
+		constructor(message: string) {
+			super(message);
+			this.name = 'OntologyInstantiationError';
+		}
+	}
 }));
 
 vi.mock('$lib/services/agentic-chat/tools/core/executors/calendar-executor', () => ({
@@ -133,10 +146,27 @@ type AssetRow = {
 	storage_path?: string | null;
 };
 
+type ProjectRow = {
+	id: string;
+	name: string;
+	description: string | null;
+	type_key: string;
+	state_key: string;
+	props: Record<string, unknown> | null;
+	start_at: string | null;
+	end_at: string | null;
+	created_at: string;
+	updated_at: string;
+	archived_at?: string | null;
+	deleted_at: string | null;
+	created_by?: string | null;
+};
+
 type State = {
 	documents: DocumentRow[];
 	tasks: TaskRow[];
 	assets?: AssetRow[];
+	projects?: ProjectRow[];
 	toolExecutions: Array<Record<string, unknown>>;
 	projectLogs?: Array<Record<string, unknown>>;
 	nextTaskId: number;
@@ -919,9 +949,59 @@ class OntoProjectLogsQueryBuilderMock {
 	}
 }
 
+class OntoProjectsQueryBuilderMock {
+	private idFilter: string | null = null;
+
+	constructor(private readonly state: State) {}
+
+	select() {
+		return this;
+	}
+
+	eq(field: string, value: unknown) {
+		if (field === 'id' && typeof value === 'string') {
+			this.idFilter = value;
+		}
+		return this;
+	}
+
+	maybeSingle() {
+		const row = (this.state.projects ?? []).find(
+			(project) => this.idFilter === null || project.id === this.idFilter
+		);
+
+		return Promise.resolve({
+			data: row ? this.serialize(row) : null,
+			error: null
+		});
+	}
+
+	private serialize(row: ProjectRow) {
+		return {
+			id: row.id,
+			name: row.name,
+			description: row.description,
+			type_key: row.type_key,
+			state_key: row.state_key,
+			props: row.props,
+			start_at: row.start_at,
+			end_at: row.end_at,
+			created_at: row.created_at,
+			updated_at: row.updated_at,
+			archived_at: row.archived_at ?? null,
+			deleted_at: row.deleted_at,
+			created_by: row.created_by ?? null
+		};
+	}
+}
+
 function createAdminMock(state: State) {
 	return {
 		from: vi.fn((table: string) => {
+			if (table === 'onto_projects') {
+				return new OntoProjectsQueryBuilderMock(state);
+			}
+
 			if (table === 'onto_documents') {
 				return new OntoDocumentsQueryBuilderMock(state);
 			}
@@ -957,6 +1037,11 @@ describe('external tool gateway', () => {
 			status: 'created',
 			versionNumber: 1,
 			versionId: 'version-1'
+		});
+		validateProjectSpecMock.mockReturnValue({ valid: true, errors: [] });
+		instantiateProjectMock.mockResolvedValue({
+			project_id: '88888888-8888-8888-8888-888888888888',
+			counts: {}
 		});
 		resolveEntityMentionUserIdsMock.mockResolvedValue([]);
 		notifyEntityMentionsAddedMock.mockResolvedValue({ notifiedUserIds: [] });
@@ -1012,6 +1097,31 @@ describe('external tool gateway', () => {
 			])
 		);
 		expect(tools.map((tool) => tool.name)).not.toContain('update_onto_task');
+	});
+
+	it('exposes project creation only for unscoped read_write external callers', async () => {
+		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
+		const allowedOps = [
+			...BUILDOS_AGENT_READ_OPS,
+			'onto.project.create',
+			'onto.project.update'
+		] as const;
+
+		const unscopedTools = getBuildosAgentGatewayTools({
+			mode: 'read_write',
+			allowed_ops: [...allowedOps]
+		});
+		const scopedTools = getBuildosAgentGatewayTools({
+			mode: 'read_write',
+			project_ids: ['44444444-4444-4444-4444-444444444444'],
+			allowed_ops: [...allowedOps]
+		});
+
+		expect(unscopedTools.map((tool) => tool.name)).toEqual(
+			expect.arrayContaining(['create_onto_project', 'update_onto_project'])
+		);
+		expect(scopedTools.map((tool) => tool.name)).toContain('update_onto_project');
+		expect(scopedTools.map((tool) => tool.name)).not.toContain('create_onto_project');
 	});
 
 	it('exposes schemas for every supported external op in the granted scope', async () => {
@@ -1855,6 +1965,152 @@ describe('external tool gateway', () => {
 				}
 			}
 		});
+	});
+
+	it('creates a project through a direct tool for unscoped read_write callers', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			projects: [
+				{
+					id: '88888888-8888-8888-8888-888888888888',
+					name: 'Agent Project',
+					description: 'Created from an external agent',
+					type_key: 'project.business.product_launch',
+					state_key: 'planning',
+					props: {},
+					start_at: null,
+					end_at: null,
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:00:00.000Z',
+					archived_at: null,
+					deleted_at: null,
+					created_by: 'actor-1'
+				}
+			],
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+
+		instantiateProjectMock.mockResolvedValueOnce({
+			project_id: '88888888-8888-8888-8888-888888888888',
+			counts: { tasks: 1, documents: 0 }
+		});
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write',
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
+			},
+			toolName: 'create_onto_project',
+			arguments: {
+				idempotency_key: 'project-create-agent-project',
+				project: {
+					name: 'Agent Project',
+					type_key: 'project.business.product_launch',
+					description: 'Created from an external agent'
+				},
+				entities: [
+					{
+						temp_id: 'task-1',
+						kind: 'task',
+						title: 'Draft the launch brief'
+					}
+				],
+				relationships: []
+			}
+		});
+
+		expect(validateProjectSpecMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				project: expect.objectContaining({
+					name: 'Agent Project',
+					type_key: 'project.business.product_launch'
+				}),
+				entities: expect.arrayContaining([
+					expect.objectContaining({ temp_id: 'task-1', kind: 'task' })
+				]),
+				relationships: []
+			})
+		);
+		expect(instantiateProjectMock).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({
+				project: expect.objectContaining({ name: 'Agent Project' })
+			}),
+			'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			expect.objectContaining({
+				activityLog: expect.objectContaining({ changeSource: 'agent_call' })
+			})
+		);
+		expect(result).toMatchObject({
+			op: 'onto.project.create',
+			ok: true,
+			result: {
+				project_id: '88888888-8888-8888-8888-888888888888',
+				project: {
+					id: '88888888-8888-8888-8888-888888888888',
+					name: 'Agent Project'
+				},
+				counts: { tasks: 1, documents: 0 }
+			}
+		});
+		expect(state.toolExecutions[0]).toMatchObject({
+			op: 'onto.project.create',
+			status: 'succeeded',
+			entity_kind: 'project',
+			entity_id: '88888888-8888-8888-8888-888888888888'
+		});
+	});
+
+	it('denies project creation for project-scoped read_write callers', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
+			},
+			toolName: 'create_onto_project',
+			arguments: {
+				project: {
+					name: 'Scoped Project',
+					type_key: 'project.business.product_launch'
+				},
+				entities: [],
+				relationships: []
+			}
+		});
+
+		expect(result).toMatchObject({
+			ok: false,
+			error: {
+				code: 'FORBIDDEN',
+				details: {
+					required_scope_mode: 'read_write'
+				}
+			}
+		});
+		expect(instantiateProjectMock).not.toHaveBeenCalled();
+		expect(state.toolExecutions).toHaveLength(0);
 	});
 
 	it('creates a task through a direct tool when read_write access is granted', async () => {

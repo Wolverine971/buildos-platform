@@ -1,6 +1,7 @@
 // apps/web/src/lib/server/agent-call/oauth-connector.service.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	BUILDOS_OAUTH_READ_WRITE_OPS,
 	isOAuthRedirectUriAllowed,
 	mcpResourceUrl,
 	OAuthConnectorError,
@@ -18,6 +19,12 @@ describe('OAuth connector helpers', () => {
 		const scopes = parseOAuthScopes('offline_access buildos.write buildos.read');
 
 		expect(scopeString(scopes)).toBe('buildos.read buildos.write offline_access');
+	});
+
+	it('grants project create and update in the OAuth read/write bundle', () => {
+		expect(BUILDOS_OAUTH_READ_WRITE_OPS).toEqual(
+			expect.arrayContaining(['onto.project.create', 'onto.project.update'])
+		);
 	});
 
 	it('rejects unsupported OAuth scopes', () => {

@@ -126,6 +126,8 @@ The Agent Keys UI leads with preset bundles. Pick one and you're done — the pe
 
 Existing keys that still carry the old narrow default (task writes only) auto-upgrade to **Author docs + tasks** on the next call — no action needed.
 
+Project creation is intentionally broader than project-scoped writes: `onto.project.create` requires `read_write` plus all-project access. If a key or MCP grant is limited to selected project IDs, it can update those projects but cannot create a new one because there is no pre-existing `project_id` to authorize.
+
 ## What's exposed
 
 **Reads** (available on every key)
@@ -139,11 +141,11 @@ Existing keys that still carry the old narrow default (task writes only) auto-up
 
 - `onto.task.create`, `onto.task.update`
 - `onto.document.create`, `onto.document.update`
-- `onto.project.create`, `onto.project.update` _(coming soon — registered but not yet wired)_
-- `onto.goal.create`, `onto.goal.update` _(coming soon)_
-- `onto.plan.create`, `onto.plan.update` _(coming soon)_
-- `onto.milestone.create`, `onto.milestone.update` _(coming soon)_
-- `onto.risk.create`, `onto.risk.update` _(coming soon)_
+- `onto.project.create`, `onto.project.update`
+- `onto.goal.create`, `onto.goal.update`
+- `onto.plan.create`, `onto.plan.update`
+- `onto.milestone.create`, `onto.milestone.update`
+- `onto.risk.create`, `onto.risk.update`
 
 **Discovery**
 
@@ -155,14 +157,14 @@ Existing keys that still carry the old narrow default (task writes only) auto-up
 
 ## Saving a markdown document from an external agent
 
-The headline v1 write op is `onto.document.create`. Any connected tool can save a markdown artifact into a specific project in a single call.
+The headline v1 write op is `onto.document.create`, exposed by `tools/list` as `create_onto_document`. Any connected tool can save a markdown artifact into a specific project in a single call.
 
 ```json
 {
 	"method": "tools/call",
 	"params": {
 		"call_id": "<your call id>",
-		"name": "onto.document.create",
+		"name": "create_onto_document",
 		"arguments": {
 			"project_id": "<project uuid>",
 			"title": "Research: creator distribution loops",
@@ -185,6 +187,38 @@ Notes:
 - `parent_id` is also accepted as a legacy alias on the external gateway when a model uses the internal `create_onto_document` naming.
 - `position` is optional on create for sibling ordering within the project document tree.
 - Documents created through the gateway are tagged with `props.origin = "external_agent"` for auditability.
+
+## Creating a project from an external agent
+
+The project creation op is `onto.project.create`, exposed by `tools/list` as `create_onto_project`. It uses the same `ProjectSpec` contract as internal BuildOS project creation: include `project`, `entities`, and `relationships`; use empty arrays when the new project should start minimal.
+
+```json
+{
+	"method": "tools/call",
+	"params": {
+		"call_id": "<your call id>",
+		"name": "create_onto_project",
+		"arguments": {
+			"idempotency_key": "claude-code:project:creator-launch-plan:2026-05-21",
+			"project": {
+				"name": "Creator Launch Plan",
+				"type_key": "project.business.product_launch",
+				"description": "Plan and assets for launching the creator product."
+			},
+			"entities": [],
+			"relationships": []
+		}
+	}
+}
+```
+
+Notes:
+
+- `project.type_key` must use the `project.{realm}.{domain}` format, for example `project.business.product_launch`.
+- `entities` can include initial `task`, `document`, `goal`, `plan`, `milestone`, `risk`, `requirement`, `metric`, and `source` records using `temp_id` references.
+- `relationships` connects `temp_id` entities to each other. The project itself is implicit and should not be a relationship endpoint.
+- Optional `context_document` creates a `document.context.project` document linked to the project.
+- Remote MCP read/write grants include project create/update. Project creation is omitted from `tools/list` when the grant is scoped to selected project IDs.
 
 ## One-click bootstrap
 
@@ -218,9 +252,8 @@ Payload is JSON-RPC. Start with `call.dial`, list your tools with `tools/list`, 
 
 ## Roadmap
 
-- **`onto.document.create` / `onto.document.update`** — **shipped.** External agents can author markdown documents directly into projects.
-- **`onto.project.create` / `onto.project.update`** — registered, wiring in progress. Will let agents spin up projects before writing docs/tasks.
-- **Goals, plans, milestones, risks** — registered, wiring in progress. Rounds out the write surface so anything the internal agent can do is also available through the gateway.
+- **Project, document, task, goal, plan, milestone, and risk writes** — **shipped.** External agents can create and update the same core ontology primitives used by internal BuildOS chat, subject to scope, write audit, and idempotency.
+- **Content idea wrappers** — still planned. They should compose the shipped primitives rather than inventing a separate top-level entity.
 
 Design doc: `apps/web/docs/features/agent-call/MULTI_SURFACE_CONTENT_IDEA_WORKFLOW.md`.
 

@@ -1021,6 +1021,10 @@ function buildExternalToolDescription(entry: RegistryOp): string {
 	const scopeNotice =
 		'Only projects in the caller-approved BuildOS scope are visible; public project visibility does not grant connector access.';
 
+	if (entry.op === 'onto.project.create') {
+		return `${entry.description} Project creation requires read_write access without project_id scoping, because a new project has no pre-existing project_id to authorize. ${scopeNotice}`;
+	}
+
 	if (entry.group !== 'cal') {
 		return `${entry.description} ${scopeNotice}`;
 	}
@@ -1267,8 +1271,12 @@ function getProjectIdsOrThrow(visible: VisibleProjectContext, entityLabel: strin
 	return projectIds;
 }
 
+function isUnscopedProjectCreationAllowed(scope: AgentCallScope): boolean {
+	return !Array.isArray(scope.project_ids);
+}
+
 function assertUnscopedProjectCreationAllowed(scope: AgentCallScope): void {
-	if (Array.isArray(scope.project_ids) && scope.project_ids.length > 0) {
+	if (!isUnscopedProjectCreationAllowed(scope)) {
 		throw new ExternalToolGatewayError(
 			'FORBIDDEN',
 			'Project creation is only available to unscoped read_write callers'
@@ -5227,6 +5235,10 @@ function buildExternalGatewayRegistry(scope: AgentCallScope): ExternalGatewayReg
 	const ops: Record<string, ExternalGatewayRegistryEntry> = {};
 
 	for (const op of allowedOps) {
+		if (op === 'onto.project.create' && !isUnscopedProjectCreationAllowed(scope)) {
+			continue;
+		}
+
 		const entry = internalRegistry.ops[op] ?? EXTERNAL_CUSTOM_OPS[op];
 		const handler = EXTERNAL_OP_HANDLERS[op];
 		if (!entry || !handler) continue;

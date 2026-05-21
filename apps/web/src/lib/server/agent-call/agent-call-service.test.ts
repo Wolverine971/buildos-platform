@@ -467,6 +467,61 @@ describe('BuildosAgentCallService', () => {
 		});
 	});
 
+	it('preserves all-project read_write grants as unscoped so project creation can be listed', async () => {
+		const state: SessionState = { sessions: {}, nextId: 1 };
+		const admin = createAdminMock(state);
+		authenticateExternalAgentCallerMock.mockResolvedValue(
+			createCaller({
+				policy: {
+					scope_mode: 'read_write',
+					allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
+				}
+			})
+		);
+		resolveCalleeForCallerMock.mockResolvedValue(
+			createBuildosAgent({
+				default_policy: {
+					scope_mode: 'read_write',
+					allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
+				}
+			})
+		);
+
+		const { BuildosAgentCallService } = await import('./agent-call-service');
+		const service = new BuildosAgentCallService(admin);
+
+		const response = await service.dial(
+			new Request('https://example.com', {
+				headers: { authorization: 'Bearer token' }
+			}),
+			{
+				callee_handle: 'buildos:user:aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+				requested_scope: {
+					mode: 'read_write'
+				}
+			}
+		);
+
+		expect(response.call).toMatchObject({
+			status: 'accepted',
+			granted_scope: {
+				mode: 'read_write',
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
+			}
+		});
+		expect('project_ids' in response.call.granted_scope).toBe(false);
+		expect(Object.values(state.sessions)[0]?.granted_scope).toMatchObject({
+			mode: 'read_write',
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
+		});
+		expect(
+			Object.prototype.hasOwnProperty.call(
+				Object.values(state.sessions)[0]?.granted_scope ?? {},
+				'project_ids'
+			)
+		).toBe(false);
+	});
+
 	it('activates an accepted session when listing tools', async () => {
 		const state: SessionState = {
 			sessions: {

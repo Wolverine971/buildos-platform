@@ -41,9 +41,11 @@ const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;
 const REFRESH_TOKEN_TTL_SECONDS = 90 * 24 * 60 * 60;
 const AUTHORIZATION_CODE_TTL_SECONDS = 5 * 60;
 const DEFAULT_SCOPES: BuildosAgentOAuthScope[] = ['buildos.read', 'offline_access'];
-const WRITE_BUNDLE_OPS = [
+export const BUILDOS_OAUTH_READ_WRITE_OPS = [
 	...BUILDOS_AGENT_READ_OPS,
-	...OPENCLAW_DEFAULT_WRITE_OPS
+	...OPENCLAW_DEFAULT_WRITE_OPS,
+	'onto.project.create',
+	'onto.project.update'
 ] as BuildosAgentAllowedOp[];
 
 type OAuthTokenIssueResult = {
@@ -284,7 +286,7 @@ function scopeModeFromScopes(scopes: readonly BuildosAgentOAuthScope[]): AgentCa
 
 function allowedOpsForScopes(scopes: readonly BuildosAgentOAuthScope[]): BuildosAgentAllowedOp[] {
 	return scopeModeFromScopes(scopes) === 'read_write'
-		? [...WRITE_BUNDLE_OPS]
+		? [...BUILDOS_OAUTH_READ_WRITE_OPS]
 		: [...BUILDOS_AGENT_READ_OPS];
 }
 

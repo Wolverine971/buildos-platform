@@ -226,6 +226,10 @@ function normalizeGrantedScope(params: {
 	const callerScopeMode = extractScopeModeFromPolicy(params.callerPolicy);
 	const agentScopeMode = extractScopeModeFromPolicy(params.agentPolicy, 'read_write');
 	const maxScopeMode = minimumScopeMode(callerScopeMode, agentScopeMode);
+	const hasExplicitProjectScope =
+		callerProjectIds !== null ||
+		agentProjectIds !== null ||
+		params.requestedScope.project_ids !== undefined;
 
 	if (params.requestedScope.mode === 'read_write' && maxScopeMode !== 'read_write') {
 		return {
@@ -318,7 +322,7 @@ function normalizeGrantedScope(params: {
 	return {
 		grantedScope: {
 			mode: grantedMode,
-			project_ids: grantedProjectIds,
+			...(hasExplicitProjectScope ? { project_ids: grantedProjectIds } : {}),
 			allowed_ops: grantedAllowedOps
 		}
 	};
