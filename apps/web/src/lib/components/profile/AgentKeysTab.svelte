@@ -2,7 +2,7 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import { page } from '$app/stores';
 	import {
 		Activity,
@@ -544,6 +544,14 @@
 		}
 	}
 
+	async function refreshAgentConnectionStatus() {
+		try {
+			await invalidate('app:agent-connections');
+		} catch (error) {
+			console.warn('Failed to refresh agent connection status:', error);
+		}
+	}
+
 	function markCopied(id: string) {
 		copiedId = id;
 		if (copyTimeout) clearTimeout(copyTimeout);
@@ -818,6 +826,7 @@
 			const payload = await parseResponse<BuildosAgentCallerProvisionResponse>(response);
 			latestProvisioned = payload;
 			await loadCallers();
+			await refreshAgentConnectionStatus();
 
 			const message = existingCaller
 				? `Updated permissions and rotated the BuildOS key for ${installationDisplayName(existingCaller)}.`
@@ -860,6 +869,7 @@
 			const payload = await parseResponse<BuildosAgentCallerProvisionResponse>(response);
 			latestProvisioned = payload;
 			await loadCallers();
+			await refreshAgentConnectionStatus();
 
 			const didCopy = await writeToClipboard(
 				'latest-token',
@@ -903,6 +913,7 @@
 			toastService.success(message);
 			onsuccess?.({ message });
 			await loadCallers();
+			await refreshAgentConnectionStatus();
 		} catch (error) {
 			const message = error instanceof Error ? error.message : 'Failed to revoke agent key';
 			toastService.error(message);
@@ -992,8 +1003,8 @@
 <div class="space-y-4 sm:space-y-5">
 	<TabHeader
 		icon={Key}
-		title="Agent Keys"
-		description="Give Claude, Cursor, ChatGPT, or any AI tool a scoped read/write into your projects. One key per tool. Rotate or revoke any time."
+		title="Agents"
+		description="Connect ChatGPT Codex, Claude Code, Open Claw, or any AI tool to your BuildOS projects. One key per tool. Rotate or revoke any time."
 	>
 		{#snippet actions()}
 			<Button
@@ -1039,12 +1050,12 @@
 				session.
 			</p>
 			<p>
-				<span class="font-semibold text-foreground">How:</span> Generate a key → paste it into
-				your tool's config → tell the agent "connect to BuildOS, list my projects."
+				<span class="font-semibold text-foreground">How:</span> Generate a key, paste it into
+				your tool's config, then tell the agent "connect to BuildOS, list my projects."
 			</p>
 			<p>
 				<span class="font-semibold text-foreground">Safety:</span> Per-project scope. Per-op
-				write whitelist. Audit log. Rotate or revoke any time. BuildOS stores only a hash — the
+				write whitelist. Audit log. Rotate or revoke any time. BuildOS stores only a hash; the
 				full key is shown once on generate.
 			</p>
 		</div>
@@ -1071,11 +1082,11 @@
 		</div>
 	{/if}
 
-	<!-- Registered Callers -->
+	<!-- Connected Agents -->
 	<SettingsCard
-		title="Registered Keys"
+		title="Connected Agents"
 		icon={Key}
-		labelledById="registered-keys-heading"
+		labelledById="connected-agents-heading"
 		bodyClass="space-y-3"
 	>
 		{#snippet actions()}
@@ -1099,8 +1110,8 @@
 			<div class="rounded-lg border border-dashed border-border p-6 text-center">
 				<Key class="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
 				<p class="text-sm text-muted-foreground">
-					No tools connected yet. Generate a key for the AI tool you use most — Claude
-					Code, Cursor, ChatGPT, or anything that can call HTTP.
+					No agents connected yet. Generate a key for the AI tool you use most: Claude
+					Code, ChatGPT Codex, Open Claw, Cursor, or anything that can call HTTP.
 				</p>
 			</div>
 		{:else}

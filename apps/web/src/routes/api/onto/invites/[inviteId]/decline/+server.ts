@@ -7,6 +7,13 @@ import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { logOntologyApiError } from '../../../shared/error-logging';
 
+type DeclineProjectInviteResult = {
+	invite_id?: string | null;
+	status?: string | null;
+	declined_at?: string | null;
+	recoverable_until?: string | null;
+};
+
 export const POST: RequestHandler = async ({ params, locals }) => {
 	const supabase = locals.supabase;
 	let userId: string | undefined;
@@ -38,10 +45,12 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 			return ApiResponse.error(error.message, 400);
 		}
 
-		const result = Array.isArray(data) ? data[0] : data;
+		const result = (Array.isArray(data) ? data[0] : data) as DeclineProjectInviteResult | null;
 		return ApiResponse.success({
 			inviteId: result?.invite_id ?? inviteId,
-			status: result?.status ?? 'declined'
+			status: result?.status ?? 'declined',
+			declinedAt: result?.declined_at ?? null,
+			recoverableUntil: result?.recoverable_until ?? null
 		});
 	} catch (error) {
 		console.error('[Invite Decline API] Failed to decline invite:', error);

@@ -56,4 +56,32 @@ describe('/invites/[token] page', () => {
 			'/auth/register?redirect=%2Finvites%2Finvite-token'
 		);
 	});
+
+	it('allows a recoverable declined invite to be accepted again', () => {
+		render(InviteTokenPage, {
+			props: {
+				data: {
+					status: 'ready',
+					redirectTo: '/invites/invite-token',
+					userEmail: 'invitee@example.com',
+					emailMatches: true,
+					invite: {
+						invite_id: 'invite-1',
+						project_name: 'Project Alpha',
+						role_key: 'editor',
+						status: 'declined',
+						can_accept: true,
+						recoverable_until: '2026-05-23T12:00:00.000Z',
+						invitee_email: 'invitee@example.com',
+						invited_by_name: 'Owner',
+						expires_at: '2026-05-30T00:00:00.000Z'
+					}
+				}
+			}
+		});
+
+		expect(screen.getByText(/declined · recoverable/i)).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /accept anyway/i })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: /decline invite/i })).not.toBeInTheDocument();
+	});
 });

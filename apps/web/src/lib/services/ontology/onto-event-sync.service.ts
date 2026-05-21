@@ -394,7 +394,7 @@ export class OntoEventSyncService {
 		});
 
 		if (event.project_id) {
-			logCreateAsync(
+			await logCreateAsync(
 				this.supabase,
 				event.project_id,
 				'event',
@@ -472,7 +472,7 @@ export class OntoEventSyncService {
 
 		const projectId = updated.project_id ?? existing.project_id;
 		if (projectId) {
-			logUpdateAsync(
+			await logUpdateAsync(
 				this.supabase,
 				projectId,
 				'event',
@@ -543,7 +543,7 @@ export class OntoEventSyncService {
 
 		const projectId = updated.project_id ?? existing.project_id;
 		if (projectId) {
-			logDeleteAsync(
+			await logDeleteAsync(
 				this.supabase,
 				projectId,
 				'event',

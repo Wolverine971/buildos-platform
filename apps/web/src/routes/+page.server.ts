@@ -11,6 +11,22 @@ import { getUserDashboardAnalytics } from '$lib/services/dashboard/user-dashboar
 import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 
+type PendingProjectInvite = {
+	invite_id: string;
+	project_id: string | null;
+	project_name: string;
+	role_key: string | null;
+	access: string | null;
+	status: string;
+	expires_at: string | null;
+	created_at: string | null;
+	declined_at?: string | null;
+	recoverable_until?: string | null;
+	can_accept?: boolean | null;
+	invited_by_name?: string | null;
+	invited_by_email?: string | null;
+};
+
 async function hasAnyProjects(
 	supabase: Parameters<PageServerLoad>[0]['locals']['supabase'],
 	userId: string
@@ -47,11 +63,25 @@ async function hasAnyProjects(
 	}
 }
 
+async function listPendingProjectInvites(
+	supabase: Parameters<PageServerLoad>[0]['locals']['supabase']
+): Promise<PendingProjectInvite[]> {
+	const { data, error } = await supabase.rpc('list_pending_project_invites');
+
+	if (error) {
+		console.warn('[Dashboard] Failed to load pending project invites:', error);
+		return [];
+	}
+
+	return (data ?? []) as unknown as PendingProjectInvite[];
+}
+
 export const load: PageServerLoad = async ({
 	locals: { safeGetSession, supabase, serverTiming },
 	depends
 }) => {
 	depends('app:auth');
+	depends('app:invites');
 	depends('dashboard:analytics');
 
 	const measure = <T>(name: string, fn: () => Promise<T> | T) =>
@@ -62,9 +92,14 @@ export const load: PageServerLoad = async ({
 	if (!user) {
 		return {
 			user: null,
-			dashboard: null
+			dashboard: null,
+			pendingInvites: []
 		};
 	}
+
+	const pendingInvites = await measure('dashboard.pending_invites', () =>
+		listPendingProjectInvites(supabase)
+	);
 
 	// Skip expensive analytics for users still in onboarding only when they truly
 	// have no projects yet. Some existing users can have projects even with
@@ -81,20 +116,23 @@ export const load: PageServerLoad = async ({
 
 				return {
 					user,
-					dashboard
+					dashboard,
+					pendingInvites
 				};
 			} catch (err) {
 				console.error('[Dashboard] Failed to load dashboard analytics:', err);
 				return {
 					user,
-					dashboard: createEmptyUserDashboardAnalytics()
+					dashboard: createEmptyUserDashboardAnalytics(),
+					pendingInvites
 				};
 			}
 		}
 
 		return {
 			user,
-			dashboard: createEmptyUserDashboardAnalytics()
+			dashboard: createEmptyUserDashboardAnalytics(),
+			pendingInvites
 		};
 	}
 
@@ -105,13 +143,15 @@ export const load: PageServerLoad = async ({
 
 		return {
 			user,
-			dashboard
+			dashboard,
+			pendingInvites
 		};
 	} catch (err) {
 		console.error('[Dashboard] Failed to load dashboard analytics:', err);
 		return {
 			user,
-			dashboard: createEmptyUserDashboardAnalytics()
+			dashboard: createEmptyUserDashboardAnalytics(),
+			pendingInvites
 		};
 	}
 };

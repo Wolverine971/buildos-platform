@@ -44,6 +44,7 @@
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
+	import EntityCollaborationAction from './EntityCollaborationAction.svelte';
 	import DocumentVersionHistoryPanel from './DocumentVersionHistoryPanel.svelte';
 	import DocumentVersionRestoreModal from './DocumentVersionRestoreModal.svelte';
 	import DocumentComparisonView from './DocumentComparisonView.svelte';
@@ -2592,6 +2593,16 @@
 									</FormField>
 								</div>
 
+								{#if isEditing && activeDocumentId}
+									<EntityCollaborationAction
+										{projectId}
+										entityType="document"
+										entityId={activeDocumentId}
+										entityTitle={title || 'Document'}
+										disabled={blockingSave || isArchivedDocument}
+									/>
+								{/if}
+
 								<!-- Tags + Metadata strip -->
 								{#if isEditing}
 									<div class="pt-3 border-t border-border space-y-2">
@@ -3390,6 +3401,16 @@
 													{/each}
 												</Select>
 											</FormField>
+
+											{#if isEditing && activeDocumentId}
+												<EntityCollaborationAction
+													{projectId}
+													entityType="document"
+													entityId={activeDocumentId}
+													entityTitle={title || 'Document'}
+													disabled={blockingSave || isArchivedDocument}
+												/>
+											{/if}
 
 											{#if isEditing && activeDocumentId}
 												<div class="pt-2 border-t border-border space-y-2">

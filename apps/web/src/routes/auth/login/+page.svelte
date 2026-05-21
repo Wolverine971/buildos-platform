@@ -96,7 +96,7 @@
 			const payload = await response.json();
 			const invites = payload?.data?.invites ?? [];
 			if (invites.length > 0) {
-				return `/invites?message=${encodeURIComponent('You have pending invites')}`;
+				return `/invites?message=${encodeURIComponent('You have project invites to review')}`;
 			}
 		} catch (err) {
 			console.warn('[Auth] Failed to check pending invites:', err);

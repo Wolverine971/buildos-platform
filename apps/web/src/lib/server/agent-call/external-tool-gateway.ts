@@ -1964,7 +1964,7 @@ async function syncCreatedTaskSideEffects(params: {
 		console.warn('[External Tool Gateway] Failed to sync task events on create:', eventError);
 	}
 
-	logCreateAsync(
+	await logCreateAsync(
 		params.context.admin,
 		params.project.id,
 		'task',
@@ -2058,7 +2058,7 @@ async function syncUpdatedTaskSideEffects(params: {
 		source: 'agent_ping'
 	});
 
-	logUpdateAsync(
+	await logUpdateAsync(
 		params.context.admin,
 		params.project.id,
 		'task',
@@ -2964,7 +2964,7 @@ async function createDocument(context: ToolExecutionContext, args: Record<string
 		source: 'agent_ping'
 	});
 
-	logCreateAsync(
+	await logCreateAsync(
 		context.admin,
 		project.id,
 		'document',
@@ -3171,7 +3171,7 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 		console.warn('[External Tool Gateway] Failed to record document version:', versionError);
 	}
 
-	logUpdateAsync(
+	await logUpdateAsync(
 		context.admin,
 		project.id,
 		'document',
@@ -3238,7 +3238,12 @@ async function createProject(context: ToolExecutionContext, args: Record<string,
 
 	let result: { project_id: string; counts: Record<string, number | undefined> };
 	try {
-		result = await instantiateProject(context.admin, spec as any, context.userId);
+		result = await instantiateProject(context.admin, spec as any, context.userId, {
+			activityLog: {
+				changeSource: 'agent_call',
+				actorContext: getExternalAgentActivityContext(context)
+			}
+		});
 	} catch (error) {
 		if (error instanceof OntologyInstantiationError) {
 			throw new ExternalToolGatewayError('VALIDATION_ERROR', error.message);
@@ -3251,24 +3256,6 @@ async function createProject(context: ToolExecutionContext, args: Record<string,
 		.select(CORE_ENTITY_CONFIG.project.select)
 		.eq('id', result.project_id)
 		.maybeSingle();
-
-	logCreateAsync(
-		context.admin,
-		result.project_id,
-		'project',
-		result.project_id,
-		{
-			name:
-				project && typeof project.name === 'string'
-					? project.name
-					: (args.project as { name?: unknown } | undefined)?.name,
-			counts: result.counts
-		},
-		context.userId,
-		'agent_call',
-		undefined,
-		getExternalAgentActivityContext(context)
-	);
 
 	return {
 		project_id: result.project_id,
@@ -3343,7 +3330,7 @@ async function updateProject(context: ToolExecutionContext, args: Record<string,
 		);
 	}
 
-	logUpdateAsync(
+	await logUpdateAsync(
 		context.admin,
 		access.project.id,
 		'project',
@@ -3411,7 +3398,7 @@ async function createGoal(context: ToolExecutionContext, args: Record<string, un
 		throw new ExternalToolGatewayError('INTERNAL', error?.message || 'Failed to create goal');
 	}
 
-	logCreateAsync(
+	await logCreateAsync(
 		context.admin,
 		project.id,
 		'goal',
@@ -3524,7 +3511,7 @@ async function createPlan(context: ToolExecutionContext, args: Record<string, un
 			? [{ kind: 'milestone', id: args.milestone_id, rel: 'has_plan' }]
 			: [])
 	]);
-	logCreateAsync(
+	await logCreateAsync(
 		context.admin,
 		project.id,
 		'plan',
@@ -3634,7 +3621,7 @@ async function createMilestone(context: ToolExecutionContext, args: Record<strin
 	await createOptionalParentEdges(context, project, 'milestone', String(data.id), [
 		{ kind: 'goal', id: goalId, rel: 'has_milestone' }
 	]);
-	logCreateAsync(
+	await logCreateAsync(
 		context.admin,
 		project.id,
 		'milestone',
@@ -3742,7 +3729,7 @@ async function createRisk(context: ToolExecutionContext, args: Record<string, un
 		throw new ExternalToolGatewayError('INTERNAL', error?.message || 'Failed to create risk');
 	}
 
-	logCreateAsync(
+	await logCreateAsync(
 		context.admin,
 		project.id,
 		'risk',
@@ -3872,7 +3859,7 @@ async function updateCoreEntity(
 		);
 	}
 
-	logUpdateAsync(
+	await logUpdateAsync(
 		context.admin,
 		access.project.id,
 		kind,
@@ -4034,7 +4021,7 @@ async function createEdge(
 		throw new ExternalToolGatewayError('INTERNAL', error?.message || 'Failed to create edge');
 	}
 
-	logCreateAsync(
+	await logCreateAsync(
 		context.admin,
 		srcProjectId,
 		'edge',
@@ -4090,7 +4077,7 @@ async function unlinkOntoEdge(context: ToolExecutionContext, args: Record<string
 		);
 	}
 
-	logUpdateAsync(
+	await logUpdateAsync(
 		context.admin,
 		project.id,
 		'edge',
@@ -4200,6 +4187,21 @@ async function createTaskDocument(context: ToolExecutionContext, args: Record<st
 				versionError
 			);
 		}
+		await logCreateAsync(
+			context.admin,
+			taskAccess.project.id,
+			'document',
+			String(document.id),
+			{
+				title: document.title,
+				type_key: document.type_key,
+				state_key: document.state_key
+			},
+			context.userId,
+			'agent_call',
+			undefined,
+			getExternalAgentActivityContext(context)
+		);
 		await createEdge(
 			context,
 			{
@@ -4298,6 +4300,22 @@ async function moveDocumentInTree(context: ToolExecutionContext, args: Record<st
 			newPosition: position
 		},
 		actorId
+	);
+	await logUpdateAsync(
+		context.admin,
+		project.id,
+		'document',
+		documentId,
+		{ tree_move: true },
+		{
+			tree_move: true,
+			new_parent_id: newParentId ?? null,
+			new_position: position
+		},
+		context.userId,
+		'agent_call',
+		undefined,
+		getExternalAgentActivityContext(context)
 	);
 
 	return {

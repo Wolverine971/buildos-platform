@@ -8,6 +8,7 @@ import {
 import { ProjectCalendarService } from '$lib/services/project-calendar.service';
 import { GoogleOAuthService } from '$lib/services/google-oauth-service';
 import type { CalendarEvent } from '$lib/services/calendar-service';
+import { logUpdateAsync } from '$lib/services/async-activity-logger';
 import {
 	normalizeCalendarDateTimeInput,
 	isValidIanaTimezone,
@@ -1126,6 +1127,8 @@ export class CalendarExecutor extends BaseExecutor {
 		if (args.calendar_id && !requestedCalendarId) {
 			throw new Error('calendar_id must be a valid Google Calendar ID');
 		}
+		const actorId = await this.getActorId();
+		const activityLog = this.buildEventActivityLog(actorId);
 
 		const { data: existing } = await this.supabase
 			.from('project_calendars')
@@ -1153,6 +1156,18 @@ export class CalendarExecutor extends BaseExecutor {
 			if (!payload?.success) {
 				throw new Error(payload?.error || 'Failed to create project calendar');
 			}
+			await logUpdateAsync(
+				this.supabase as any,
+				projectId,
+				'project',
+				projectId,
+				{ project_calendar: null },
+				{ project_calendar: payload.data ?? null },
+				this.userId,
+				activityLog.changeSource,
+				activityLog.chatSessionId,
+				activityLog.actorContext
+			);
 			return payload.data ?? null;
 		}
 
@@ -1171,6 +1186,19 @@ export class CalendarExecutor extends BaseExecutor {
 		if (!payload?.success) {
 			throw new Error(payload?.error || 'Failed to update project calendar');
 		}
+
+		await logUpdateAsync(
+			this.supabase as any,
+			projectId,
+			'project',
+			projectId,
+			{ project_calendar: existing },
+			{ project_calendar: payload.data ?? null },
+			this.userId,
+			activityLog.changeSource,
+			activityLog.chatSessionId,
+			activityLog.actorContext
+		);
 
 		return payload.data ?? null;
 	}

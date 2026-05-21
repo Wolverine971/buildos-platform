@@ -45,6 +45,7 @@
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
+	import EntityCollaborationAction from './EntityCollaborationAction.svelte';
 	import { PLAN_STATES, type Plan } from '$lib/types/onto';
 	import type { EntityKind, LinkedEntitiesResult } from './linked-entities/linked-entities.types';
 	import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
@@ -618,6 +619,14 @@
 							</CardHeader>
 							<CardBody padding="none">
 								<div class="divide-y divide-border/70">
+									<EntityCollaborationAction
+										{projectId}
+										entityType="plan"
+										entityId={planId}
+										entityTitle={name || plan?.name || 'Plan'}
+										disabled={formDisabled}
+									/>
+
 									<!-- Workflow -->
 									<section
 										class="px-3 py-3 sm:px-4"

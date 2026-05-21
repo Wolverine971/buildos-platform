@@ -1,6 +1,6 @@
 <!-- apps/web/src/routes/invites/[token]/+page.svelte -->
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import { browserPushService } from '$lib/services/browser-push.service';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
@@ -14,15 +14,28 @@
 	let actionError = $state('');
 	let acceptedRedirectPath = $state<string | null>(null);
 	let showNotificationPrompt = $state(false);
+	let localRecoverableUntil = $state<string | null>(null);
 
 	let invite = $derived(data?.invite ?? null);
 	let localStatusOverride = $state<string | null>(null);
 	let localStatus = $derived(localStatusOverride ?? invite?.status ?? null);
 	let isPending = $derived(localStatus === 'pending');
+	let canAcceptInvite = $derived(
+		isPending ||
+			(localStatus === 'declined' &&
+				(invite?.can_accept === true || Boolean(localRecoverableUntil)))
+	);
 	let inviterName = $derived(invite?.invited_by_name || invite?.invited_by_email || 'A teammate');
 	let expiresLabel = $derived(
 		invite?.expires_at ? new Date(invite.expires_at).toLocaleDateString() : null
 	);
+	let recoverableLabel = $derived.by(() => {
+		const value = localRecoverableUntil ?? invite?.recoverable_until ?? null;
+		if (!value) return null;
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return null;
+		return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+	});
 	let authRedirect = $derived((data?.redirectTo as string | undefined) ?? '/invites');
 	let loginUrl = $derived(`/auth/login?redirect=${encodeURIComponent(authRedirect)}`);
 	let registerUrl = $derived(`/auth/register?redirect=${encodeURIComponent(authRedirect)}`);
@@ -162,6 +175,7 @@
 			}
 
 			toastService.success('Invite accepted');
+			void invalidate('app:invites');
 
 			const projectId = payload?.data?.projectId ?? payload?.data?.project_id;
 			acceptedRedirectPath = projectId
@@ -205,7 +219,9 @@
 			}
 
 			localStatusOverride = 'declined';
-			toastService.success('Invite declined');
+			localRecoverableUntil = payload?.data?.recoverableUntil ?? null;
+			toastService.success('Invite declined. You can still accept it for 48 hours.');
+			void invalidate('app:invites');
 		} catch (err) {
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/invites/${invite.invite_id}/decline`,
@@ -324,14 +340,15 @@
 						</a>
 					</div>
 				{:else if data?.status === 'ready'}
-					{#if !isPending}
+					{#if !canAcceptInvite}
 						<div
 							class="mt-4 rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"
 						>
 							{#if localStatus === 'accepted'}Invite already accepted.{/if}
 							{#if localStatus === 'expired'}This invite has expired.{/if}
 							{#if localStatus === 'revoked'}This invite has been revoked.{/if}
-							{#if localStatus === 'declined'}You declined this invite.{/if}
+							{#if localStatus === 'declined'}This declined invite is no longer
+								recoverable.{/if}
 						</div>
 						<div class="mt-4">
 							<a
@@ -403,6 +420,15 @@
 									Continue without push
 								</button>
 							{:else}
+								{#if localStatus === 'declined'}
+									<div
+										class="rounded-lg border border-accent/20 bg-accent/10 px-3 py-2 text-sm text-accent"
+									>
+										Declined · recoverable{recoverableLabel
+											? ` until ${recoverableLabel}`
+											: ' for 48 hours'}
+									</div>
+								{/if}
 								<button
 									onclick={handleAccept}
 									disabled={accepting || declining}
@@ -411,21 +437,25 @@
 									{#if accepting}
 										Accepting...
 									{:else}
-										Accept invite
+										{localStatus === 'declined'
+											? 'Accept anyway'
+											: 'Accept invite'}
 									{/if}
 									<CheckCircle2 class="w-4 h-4" />
 								</button>
-								<button
-									onclick={handleDecline}
-									disabled={accepting || declining}
-									class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:bg-muted disabled:opacity-60"
-								>
-									{#if declining}
-										Declining...
-									{:else}
-										Decline invite
-									{/if}
-								</button>
+								{#if isPending}
+									<button
+										onclick={handleDecline}
+										disabled={accepting || declining}
+										class="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:bg-muted disabled:opacity-60"
+									>
+										{#if declining}
+											Declining...
+										{:else}
+											Decline invite
+										{/if}
+									</button>
+								{/if}
 							{/if}
 						</div>
 					{/if}

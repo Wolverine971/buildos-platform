@@ -101,9 +101,7 @@ describe('voice-widget insert hint mode', () => {
 		view.dispatch({ effects: showVoiceWidget.of({ pos: 5 }) });
 		view.dispatch({ effects: updateVoicePreview.of({ text: 'draft transcript' }) });
 
-		expect(parent.querySelector('.cm-voice-preview')?.textContent).toBe(
-			'draft transcript'
-		);
+		expect(parent.querySelector('.cm-voice-preview')?.textContent).toBe('draft transcript');
 
 		view.dispatch({ effects: updateVoicePreview.of({ text: '' }) });
 		expect(parent.querySelector('.cm-voice-preview')).toBeNull();

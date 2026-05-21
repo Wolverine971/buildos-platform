@@ -2,8 +2,10 @@
 /**
  * Async Activity Logger - Non-blocking activity logging utility
  *
- * This module provides a fire-and-forget pattern for logging activity changes
- * to the onto_project_logs table without blocking the main request thread.
+ * This module provides a fire-and-forget-compatible pattern for logging activity
+ * changes to the onto_project_logs table. Callers may ignore the returned
+ * promise for non-blocking behavior, or await it when the log must be attempted
+ * before the request completes.
  *
  * Usage:
  * ```ts
@@ -97,10 +99,10 @@ export interface ActivityLogActorContext {
 // =============================================================================
 
 /**
- * Log a single activity change asynchronously (fire-and-forget)
+ * Log a single activity change asynchronously.
  *
- * This function does NOT await the database insert, making it non-blocking.
- * Errors are logged to console but do not throw.
+ * Errors are logged to console but do not throw. Ignore the returned promise for
+ * fire-and-forget behavior, or await it to ensure the insert attempt completes.
  *
  * @param supabase - Supabase client
  * @param params - Activity log parameters
@@ -108,9 +110,8 @@ export interface ActivityLogActorContext {
 export function logActivityAsync(
 	supabase: SupabaseClient<Database>,
 	params: ActivityLogParams
-): void {
-	// Fire and forget - don't await
-	performLogInsert(supabase, params).catch((error) => {
+): Promise<void> {
+	return performLogInsert(supabase, params).catch((error) => {
 		console.error('[AsyncActivityLogger] Failed to log activity:', error, {
 			entityType: params.entityType,
 			entityId: params.entityId,
@@ -120,10 +121,10 @@ export function logActivityAsync(
 }
 
 /**
- * Log multiple activity changes asynchronously (fire-and-forget)
+ * Log multiple activity changes asynchronously.
  *
- * This function does NOT await the database inserts, making it non-blocking.
- * Errors are logged to console but do not throw.
+ * Errors are logged to console but do not throw. Ignore the returned promise for
+ * fire-and-forget behavior, or await it to ensure the insert attempt completes.
  *
  * @param supabase - Supabase client
  * @param params - Bulk activity log parameters
@@ -131,11 +132,10 @@ export function logActivityAsync(
 export function logActivitiesAsync(
 	supabase: SupabaseClient<Database>,
 	params: BulkActivityLogParams
-): void {
-	if (params.logs.length === 0) return;
+): Promise<void> {
+	if (params.logs.length === 0) return Promise.resolve();
 
-	// Fire and forget - don't await
-	performBulkLogInsert(supabase, params.logs).catch((error) => {
+	return performBulkLogInsert(supabase, params.logs).catch((error) => {
 		console.error('[AsyncActivityLogger] Failed to log bulk activities:', error, {
 			count: params.logs.length
 		});
@@ -219,8 +219,8 @@ export function logCreateAsync(
 	changeSource?: ProjectLogChangeSource,
 	chatSessionId?: string,
 	actorContext?: ActivityLogActorContext
-): void {
-	logActivityAsync(supabase, {
+): Promise<void> {
+	return logActivityAsync(supabase, {
 		projectId,
 		entityType,
 		entityId,
@@ -250,8 +250,8 @@ export function logUpdateAsync(
 	changeSource?: ProjectLogChangeSource,
 	chatSessionId?: string,
 	actorContext?: ActivityLogActorContext
-): void {
-	logActivityAsync(supabase, {
+): Promise<void> {
+	return logActivityAsync(supabase, {
 		projectId,
 		entityType,
 		entityId,
@@ -280,8 +280,8 @@ export function logDeleteAsync(
 	changeSource?: ProjectLogChangeSource,
 	chatSessionId?: string,
 	actorContext?: ActivityLogActorContext
-): void {
-	logActivityAsync(supabase, {
+): Promise<void> {
+	return logActivityAsync(supabase, {
 		projectId,
 		entityType,
 		entityId,

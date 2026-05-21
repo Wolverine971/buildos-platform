@@ -129,7 +129,7 @@
 		{ id: 'briefs', label: 'Brief Settings', icon: Bell },
 		{ id: 'calendar', label: 'Calendar', icon: Calendar },
 		{ id: 'notifications', label: 'Notifications', icon: Bell },
-		{ id: 'agent-keys', label: 'Agent Keys', icon: Key },
+		{ id: 'agent-keys', label: 'Agents', icon: Key },
 		...(data.stripeEnabled ? [{ id: 'billing', label: 'Billing', icon: CreditCard }] : [])
 	]);
 

@@ -500,15 +500,23 @@
 	// ============================================================
 
 	onMount(() => {
-		// Open a document via query params (used by OwnerBar "Edit original")
+		// Open an entity via query params (used by notifications and OwnerBar "Edit original")
 		if (typeof window !== 'undefined') {
 			const params = new URLSearchParams(window.location.search);
 			const docId = params.get('doc');
+			const entityType = params.get('entity');
+			const entityId = params.get('entity_id') ?? params.get('id');
 			if (docId) {
 				activeDocumentId = docId;
 				showDocumentModal = true;
 				const cleanUrl = window.location.pathname + window.location.hash;
 				window.history.replaceState({}, '', cleanUrl);
+			} else if (entityType && entityId) {
+				const result = openEntityEditor(entityType, entityId);
+				if (result === 'opened') {
+					const cleanUrl = window.location.pathname + window.location.hash;
+					window.history.replaceState({}, '', cleanUrl);
+				}
 			}
 		}
 
@@ -1093,6 +1101,7 @@
 			<div class="mb-2 sm:mb-3">
 				<EntityTabStrip
 					projectId={project.id}
+					projectName={project.name}
 					{canEdit}
 					{goals}
 					{milestones}

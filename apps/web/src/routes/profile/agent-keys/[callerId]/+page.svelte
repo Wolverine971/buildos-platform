@@ -222,7 +222,7 @@
 				onclick={() => goto('/profile?tab=agent-keys')}
 				class="self-start"
 			>
-				Agent Keys
+				Agents
 			</Button>
 
 			<div

@@ -19,9 +19,12 @@ import {
 	TASK_STATES,
 	RISK_STATES
 } from '$lib/types/onto';
-import type { Json, ProjectLogEntityType } from '@buildos/shared-types';
+import type { Json, ProjectLogChangeSource, ProjectLogEntityType } from '@buildos/shared-types';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
-import { logActivitiesAsync } from '$lib/services/async-activity-logger';
+import {
+	logActivitiesAsync,
+	type ActivityLogActorContext
+} from '$lib/services/async-activity-logger';
 import { autoOrganizeConnections } from '$lib/services/ontology/auto-organizer.service';
 import {
 	addDocumentToTree,
@@ -76,6 +79,14 @@ type InsertedEntities = {
 	risks: string[];
 	edges: string[];
 };
+
+export interface ProjectInstantiationOptions {
+	activityLog?: {
+		changeSource?: ProjectLogChangeSource;
+		chatSessionId?: string;
+		actorContext?: ActivityLogActorContext;
+	};
+}
 
 const PROJECT_STATE_MAP: Record<string, ProjectState> = {
 	planning: 'planning',
@@ -238,7 +249,8 @@ export class OntologyInstantiationError extends Error {
 export async function instantiateProject(
 	client: TypedSupabaseClient,
 	spec: ProjectSpec,
-	userId: string
+	userId: string,
+	options: ProjectInstantiationOptions = {}
 ): Promise<{ project_id: string; counts: InstantiationCounts }> {
 	// Double-validate to ensure service can be called directly (tests, scripts)
 	const validation = validateProjectSpecStruct(spec);
@@ -853,13 +865,17 @@ export async function instantiateProject(
 					entityId,
 					action: 'created' as const,
 					changedBy: userId,
-					changeSource: 'api' as const
+					changedByActorId: options.activityLog?.actorContext?.changedByActorId,
+					changeSource: options.activityLog?.changeSource ?? 'api',
+					chatSessionId: options.activityLog?.chatSessionId,
+					externalAgentCallerId: options.activityLog?.actorContext?.externalAgentCallerId,
+					agentCallSessionId: options.activityLog?.actorContext?.agentCallSessionId
 				}))
 			)
 			.filter((log) => Boolean(log.entityId));
 
 		if (activityLogs.length > 0) {
-			logActivitiesAsync(client as any, { logs: activityLogs });
+			await logActivitiesAsync(client as any, { logs: activityLogs });
 		}
 
 		return {

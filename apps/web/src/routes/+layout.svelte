@@ -89,6 +89,7 @@
 	// PERFORMANCE: Reactive data with memoization - converted to $derived runes
 	let user = $derived(data.user);
 	let completedOnboarding = $derived(data.completedOnboarding);
+	let hasConnectedAgents = $derived(Boolean(data.hasConnectedAgents));
 	type BillingContext = {
 		subscription: any | null;
 		trialStatus: any | null;
@@ -731,7 +732,12 @@
 	});
 
 	// PERFORMANCE: Memoize component props to prevent unnecessary re-renders - converted to $derived.by()
-	let navigationProps = $derived.by(() => ({ user, completedOnboarding, onboardingProgress }));
+	let navigationProps = $derived.by(() => ({
+		user,
+		completedOnboarding,
+		onboardingProgress,
+		hasConnectedAgents
+	}));
 	let footerProps = $derived.by(() => ({ user }));
 	let onboardingModalProps = $derived.by(() => ({
 		isOpen: showOnboardingModal,

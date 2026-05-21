@@ -166,7 +166,7 @@ describe('Auth invite flow', () => {
 
 		await waitFor(() => {
 			expect(gotoMock).toHaveBeenCalledWith(
-				'/invites?message=You%20have%20pending%20invites',
+				'/invites?message=You%20have%20project%20invites%20to%20review',
 				{
 					invalidateAll: true
 				}

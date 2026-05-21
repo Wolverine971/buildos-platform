@@ -65,6 +65,33 @@ function setCached<T>(
 	});
 }
 
+async function hasConnectedAgents(
+	supabase: Parameters<LayoutServerLoad>[0]['locals']['supabase'],
+	userId: string
+): Promise<boolean> {
+	try {
+		const { count, error } = await supabase
+			.from('external_agent_callers')
+			.select('id', { count: 'exact', head: true })
+			.eq('user_id', userId)
+			.in('status', ['trusted', 'pending']);
+
+		if (error) {
+			console.warn('[Layout] Failed to load agent connection status:', error);
+			// Be conservative: if we cannot confirm state, avoid showing a setup CTA
+			// to users who may already have connected agents.
+			return true;
+		}
+
+		return (count ?? 0) > 0;
+	} catch (error) {
+		console.warn('[Layout] Failed to load agent connection status:', error);
+		// Be conservative: if we cannot confirm state, avoid showing a setup CTA
+		// to users who may already have connected agents.
+		return true;
+	}
+}
+
 export const load: LayoutServerLoad = async ({
 	locals: { safeGetSession, supabase, serverTiming },
 	url,
@@ -92,11 +119,13 @@ export const load: LayoutServerLoad = async ({
 			completedOnboarding: true,
 			onboardingProgress: 100,
 			billingContext: createEmptyBillingContext(false),
-			pendingInvites: []
+			pendingInvites: [],
+			hasConnectedAgents: false
 		};
 	}
 
 	depends('app:invites');
+	depends('app:agent-connections');
 
 	const completedOnboarding = Boolean(user.onboarding_completed_at);
 	const nowMs = Date.now();
@@ -117,85 +146,94 @@ export const load: LayoutServerLoad = async ({
 	// Run all remaining queries in parallel instead of sequentially/streamed.
 	// Awaiting here prevents layout shifts from TrialBanner/PaymentWarning
 	// appearing late on the client when streamed promises resolve.
-	const [pendingInvitesResult, onboardingProgress, billingContext] = await Promise.all([
-		measure('db.pending_invites', async () => {
-			const cacheKey = user.id;
-			const cached = getCached(pendingInvitesCache, cacheKey, nowMs);
-			if (cached) return cached;
+	const [pendingInvitesResult, onboardingProgress, billingContext, agentConnectionStatus] =
+		await Promise.all([
+			measure('db.pending_invites', async () => {
+				const cacheKey = user.id;
+				const cached = getCached(pendingInvitesCache, cacheKey, nowMs);
+				if (cached) return cached;
 
-			try {
-				const { data, error } = await supabase.rpc('list_pending_project_invites');
-				if (error) {
+				try {
+					const { data, error } = await supabase.rpc('list_pending_project_invites');
+					if (error) {
+						console.warn('[Layout] Failed to load pending invites:', error);
+						return [] as unknown[];
+					}
+					const invites = Array.isArray(data) ? (data as unknown[]) : ([] as unknown[]);
+					setCached(
+						pendingInvitesCache,
+						cacheKey,
+						invites,
+						PENDING_INVITES_TTL_MS,
+						nowMs
+					);
+					return invites;
+				} catch (error) {
 					console.warn('[Layout] Failed to load pending invites:', error);
 					return [] as unknown[];
 				}
-				const invites = Array.isArray(data) ? (data as unknown[]) : ([] as unknown[]);
-				setCached(pendingInvitesCache, cacheKey, invites, PENDING_INVITES_TTL_MS, nowMs);
-				return invites;
-			} catch (error) {
-				console.warn('[Layout] Failed to load pending invites:', error);
-				return [] as unknown[];
-			}
-		}),
+			}),
 
-		completedOnboarding
-			? 100
-			: measure('db.onboarding_progress', async () => {
-					const cacheKey = user.id;
-					const cached = getCached(onboardingProgressCache, cacheKey, nowMs);
-					if (cached !== null) return cached;
-					if (!shouldLoadOnboardingProgress) {
-						return 0;
-					}
-					try {
-						const progress = await new OnboardingProgressService(supabase)
-							.getOnboardingProgress(user.id)
-							.then((data) => clampProgress(data?.progress));
-						setCached(
-							onboardingProgressCache,
-							cacheKey,
-							progress,
-							ONBOARDING_PROGRESS_TTL_MS,
-							nowMs
-						);
-						return progress;
-					} catch (error) {
-						console.error('Failed to load onboarding progress:', error);
-						return 0;
-					}
-				}),
+			completedOnboarding
+				? 100
+				: measure('db.onboarding_progress', async () => {
+						const cacheKey = user.id;
+						const cached = getCached(onboardingProgressCache, cacheKey, nowMs);
+						if (cached !== null) return cached;
+						if (!shouldLoadOnboardingProgress) {
+							return 0;
+						}
+						try {
+							const progress = await new OnboardingProgressService(supabase)
+								.getOnboardingProgress(user.id)
+								.then((data) => clampProgress(data?.progress));
+							setCached(
+								onboardingProgressCache,
+								cacheKey,
+								progress,
+								ONBOARDING_PROGRESS_TTL_MS,
+								nowMs
+							);
+							return progress;
+						} catch (error) {
+							console.error('Failed to load onboarding progress:', error);
+							return 0;
+						}
+					}),
 
-		shouldLoadBillingContext
-			? measure('db.billing_context', async () => {
-					const cached = getCachedBillingContext(user.id, nowMs);
-					if (cached) return cached;
+			shouldLoadBillingContext
+				? measure('db.billing_context', async () => {
+						const cached = getCachedBillingContext(user.id, nowMs);
+						if (cached) return cached;
 
-					try {
-						const context = await fetchBillingContext(
-							supabase,
-							user.id,
-							stripeEnabled,
-							{
-								consumptionGateMode: 'snapshot'
-							}
-						);
-						const normalizedContext: BillingContext = {
-							subscription: context?.subscription ?? null,
-							trialStatus: context?.trialStatus ?? null,
-							paymentWarnings: context?.paymentWarnings ?? [],
-							isReadOnly: Boolean(context?.isReadOnly),
-							consumptionGate: context?.consumptionGate ?? null,
-							loading: false
-						};
-						setCachedBillingContext(user.id, normalizedContext, nowMs);
-						return normalizedContext;
-					} catch (error) {
-						console.error('Failed to load billing context:', error);
-						return createEmptyBillingContext(false);
-					}
-				})
-			: createEmptyBillingContext(false)
-	]);
+						try {
+							const context = await fetchBillingContext(
+								supabase,
+								user.id,
+								stripeEnabled,
+								{
+									consumptionGateMode: 'snapshot'
+								}
+							);
+							const normalizedContext: BillingContext = {
+								subscription: context?.subscription ?? null,
+								trialStatus: context?.trialStatus ?? null,
+								paymentWarnings: context?.paymentWarnings ?? [],
+								isReadOnly: Boolean(context?.isReadOnly),
+								consumptionGate: context?.consumptionGate ?? null,
+								loading: false
+							};
+							setCachedBillingContext(user.id, normalizedContext, nowMs);
+							return normalizedContext;
+						} catch (error) {
+							console.error('Failed to load billing context:', error);
+							return createEmptyBillingContext(false);
+						}
+					})
+				: createEmptyBillingContext(false),
+
+			measure('db.agent_connections', () => hasConnectedAgents(supabase, user.id))
+		]);
 
 	return {
 		...baseData,
@@ -203,6 +241,7 @@ export const load: LayoutServerLoad = async ({
 		completedOnboarding,
 		onboardingProgress,
 		billingContext,
-		pendingInvites: pendingInvitesResult
+		pendingInvites: pendingInvitesResult,
+		hasConnectedAgents: agentConnectionStatus
 	};
 };

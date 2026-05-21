@@ -1,7 +1,7 @@
 <!-- apps/web/src/lib/components/dashboard/AnalyticsDashboard.svelte -->
 <script lang="ts">
 	import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import {
 		ArrowRight,
 		Calendar,
@@ -12,8 +12,12 @@
 		MessageSquare,
 		RefreshCcw,
 		Share2,
+		Sparkles,
 		Target,
-		AlertTriangle
+		AlertTriangle,
+		CheckCircle2,
+		UserPlus,
+		XCircle
 	} from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DashboardBriefWidget from './DashboardBriefWidget.svelte';
@@ -27,6 +31,7 @@
 	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
 	import type { OverdueProjectBatch } from '$lib/types/overdue-triage';
 	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
+	import { toastService } from '$lib/stores/toast.store';
 
 	type User = {
 		id: string;
@@ -39,7 +44,25 @@
 	type Props = {
 		user: User;
 		analytics: UserDashboardAnalytics;
+		pendingInvites?: ProjectInviteRow[];
+		showAgentConnectionCta?: boolean;
 		onrefresh?: () => void;
+	};
+
+	type ProjectInviteRow = {
+		invite_id: string;
+		project_id: string | null;
+		project_name: string;
+		role_key: string | null;
+		access: string | null;
+		status: string;
+		expires_at: string | null;
+		created_at: string | null;
+		declined_at?: string | null;
+		recoverable_until?: string | null;
+		can_accept?: boolean | null;
+		invited_by_name?: string | null;
+		invited_by_email?: string | null;
 	};
 
 	type ActivityItem =
@@ -76,9 +99,18 @@
 				href: string;
 		  };
 
-	let { user, analytics, onrefresh: refreshHandler }: Props = $props();
+	let {
+		user,
+		analytics,
+		pendingInvites = [],
+		showAgentConnectionCta = false,
+		onrefresh: refreshHandler
+	}: Props = $props();
 
 	let isRefreshing = $state(false);
+	let dashboardInviteRows = $state<ProjectInviteRow[]>([]);
+	let inviteActionId = $state<string | null>(null);
+	let inviteActionError = $state<string | null>(null);
 	let isOpeningCalendar = $state(false);
 	let showBriefModal = $state(false);
 	let selectedBrief = $state<DailyBrief | null>(null);
@@ -171,6 +203,28 @@
 	const sharedNotActive = $derived(sharedProjects.filter((p) => !activeProjectIds.has(p.id)));
 
 	const recentChats = $derived(analytics.recent.chatSessions.slice(0, 4));
+	const actionableInvites = $derived(
+		dashboardInviteRows.filter((invite) => isActionableInvite(invite))
+	);
+	const pendingInviteCount = $derived(
+		actionableInvites.filter((invite) => invite.status === 'pending').length
+	);
+	const declinedRecoverableInviteCount = $derived(
+		actionableInvites.filter((invite) => invite.status === 'declined').length
+	);
+	const inviteSummary = $derived.by(() => {
+		const pendingLabel = `${pendingInviteCount} ${pendingInviteCount === 1 ? 'pending invite' : 'pending invites'}`;
+		const declinedLabel = `${declinedRecoverableInviteCount} recoverable`;
+		if (pendingInviteCount > 0 && declinedRecoverableInviteCount > 0) {
+			return `${pendingLabel} · ${declinedLabel}`;
+		}
+		if (pendingInviteCount > 0) return pendingLabel;
+		return declinedLabel;
+	});
+
+	$effect(() => {
+		dashboardInviteRows = Array.isArray(pendingInvites) ? [...pendingInvites] : [];
+	});
 
 	const unifiedFeed: ActivityItem[] = $derived.by(() => {
 		const items: ActivityItem[] = [];
@@ -220,6 +274,15 @@
 		return items.slice(0, 8);
 	});
 
+	function isActionableInvite(invite: ProjectInviteRow): boolean {
+		if (invite.status === 'pending') return true;
+		return invite.status === 'declined' && invite.can_accept === true;
+	}
+
+	function formatInviteRole(roleKey: string | null | undefined): string {
+		return roleKey === 'viewer' ? 'Viewer' : 'Editor';
+	}
+
 	function formatRelativeTime(timestamp: string): string {
 		const parsed = Date.parse(timestamp);
 		if (Number.isNaN(parsed)) return 'Recently';
@@ -234,6 +297,16 @@
 		if (deltaDays < 7) return `${deltaDays}d ago`;
 
 		return new Date(parsed).toLocaleDateString(undefined, {
+			month: 'short',
+			day: 'numeric'
+		});
+	}
+
+	function formatInviteDate(value: string | null | undefined): string {
+		if (!value) return 'soon';
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return 'soon';
+		return date.toLocaleDateString(undefined, {
 			month: 'short',
 			day: 'numeric'
 		});
@@ -467,6 +540,76 @@
 		}
 	}
 
+	async function acceptInvite(invite: ProjectInviteRow) {
+		if (!invite.invite_id || inviteActionId) return;
+		inviteActionId = invite.invite_id;
+		inviteActionError = null;
+
+		try {
+			const response = await fetch(`/api/onto/invites/${invite.invite_id}/accept`, {
+				method: 'POST'
+			});
+			const payload = await response.json();
+
+			if (!response.ok || !payload?.success) {
+				throw new Error(payload?.error || 'Failed to accept invite');
+			}
+
+			toastService.success('Invite accepted');
+			const projectId =
+				payload?.data?.projectId ?? payload?.data?.project_id ?? invite.project_id;
+			await goto(
+				projectId
+					? `/projects/${projectId}?message=${encodeURIComponent('Invite accepted')}`
+					: `/projects?message=${encodeURIComponent('Invite accepted')}`,
+				{ invalidateAll: true }
+			);
+		} catch (error) {
+			console.error('[Dashboard] Failed to accept invite:', error);
+			inviteActionError = error instanceof Error ? error.message : 'Failed to accept invite';
+		} finally {
+			inviteActionId = null;
+		}
+	}
+
+	async function declineInvite(invite: ProjectInviteRow) {
+		if (!invite.invite_id || inviteActionId || invite.status !== 'pending') return;
+		inviteActionId = invite.invite_id;
+		inviteActionError = null;
+
+		try {
+			const response = await fetch(`/api/onto/invites/${invite.invite_id}/decline`, {
+				method: 'POST'
+			});
+			const payload = await response.json();
+
+			if (!response.ok || !payload?.success) {
+				throw new Error(payload?.error || 'Failed to decline invite');
+			}
+
+			const declinedAt = payload?.data?.declinedAt ?? new Date().toISOString();
+			const recoverableUntil = payload?.data?.recoverableUntil ?? null;
+			dashboardInviteRows = dashboardInviteRows.map((row) =>
+				row.invite_id === invite.invite_id
+					? {
+							...row,
+							status: 'declined',
+							declined_at: declinedAt,
+							recoverable_until: recoverableUntil,
+							can_accept: true
+						}
+					: row
+			);
+			toastService.success('Invite declined. You can still accept it for 48 hours.');
+			void invalidate('app:invites');
+		} catch (error) {
+			console.error('[Dashboard] Failed to decline invite:', error);
+			inviteActionError = error instanceof Error ? error.message : 'Failed to decline invite';
+		} finally {
+			inviteActionId = null;
+		}
+	}
+
 	async function openCalendarDashboard() {
 		if (isOpeningCalendar) return;
 		isOpeningCalendar = true;
@@ -543,6 +686,140 @@
 			<section>
 				<DashboardBriefWidget {user} onviewbrief={handleViewBrief} />
 			</section>
+
+			{#if showAgentConnectionCta}
+				<section class="rounded-lg border border-accent/25 bg-accent/5 shadow-ink wt-card">
+					<div
+						class="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
+					>
+						<div class="min-w-0 flex items-start gap-2.5">
+							<div
+								class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent/10"
+							>
+								<Sparkles class="h-4 w-4 text-accent" />
+							</div>
+							<div class="min-w-0">
+								<p class="text-sm font-semibold text-foreground">
+									Do you have agents?
+								</p>
+								<p class="mt-0.5 text-xs text-muted-foreground">
+									ChatGPT Codex, Claude Code, Open Claw.
+								</p>
+							</div>
+						</div>
+						<a
+							href="/profile?tab=agent-keys"
+							class="inline-flex items-center justify-center gap-1 rounded-md border border-accent/25 bg-card px-2.5 py-2 text-xs font-semibold text-accent shadow-ink pressable transition-colors hover:bg-accent/10"
+						>
+							Connect your agents here.
+							<ArrowRight class="h-3 w-3" />
+						</a>
+					</div>
+				</section>
+			{/if}
+
+			{#if actionableInvites.length > 0}
+				<section
+					class="rounded-lg border border-accent/25 bg-accent/5 shadow-ink wt-card overflow-hidden"
+				>
+					<div class="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
+						<div class="min-w-0 flex items-start gap-2.5">
+							<div
+								class="flex items-center justify-center h-8 w-8 rounded-md bg-accent/10 shrink-0"
+							>
+								<UserPlus class="h-4 w-4 text-accent" />
+							</div>
+							<div class="min-w-0">
+								<p class="text-sm font-semibold text-foreground">Project invites</p>
+								<p class="text-xs text-muted-foreground mt-0.5">{inviteSummary}</p>
+							</div>
+						</div>
+						<a
+							href="/invites"
+							class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border border-accent/25 bg-card text-accent shadow-ink pressable hover:bg-accent/10 transition-colors"
+						>
+							Review all
+							<ArrowRight class="h-3 w-3" />
+						</a>
+					</div>
+
+					{#if inviteActionError}
+						<div class="border-t border-accent/15 bg-background/60 px-3 py-2">
+							<p class="text-xs text-destructive">{inviteActionError}</p>
+						</div>
+					{/if}
+
+					<div class="border-t border-accent/15 bg-background/40">
+						<div class="grid gap-2 p-3 lg:grid-cols-2">
+							{#each actionableInvites.slice(0, 4) as invite (invite.invite_id)}
+								<div
+									class="rounded-lg border border-border bg-card px-3 py-2.5 shadow-ink"
+								>
+									<div class="flex items-start justify-between gap-2">
+										<div class="min-w-0">
+											<p
+												class="text-sm font-semibold text-foreground truncate"
+											>
+												{invite.project_name}
+											</p>
+											<p
+												class="mt-0.5 text-[11px] text-muted-foreground truncate"
+											>
+												Invited by {invite.invited_by_name ||
+													invite.invited_by_email ||
+													'a teammate'}
+											</p>
+										</div>
+										<span
+											class="shrink-0 rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold text-foreground"
+										>
+											{formatInviteRole(invite.role_key)}
+										</span>
+									</div>
+
+									<div
+										class="mt-2 flex flex-wrap items-center justify-between gap-2"
+									>
+										<p class="text-[11px] text-muted-foreground">
+											{#if invite.status === 'declined'}
+												Declined · recoverable until {formatInviteDate(
+													invite.recoverable_until
+												)}
+											{:else}
+												Expires {formatInviteDate(invite.expires_at)}
+											{/if}
+										</p>
+										<div class="flex items-center gap-1.5">
+											<button
+												type="button"
+												onclick={() => acceptInvite(invite)}
+												disabled={inviteActionId === invite.invite_id}
+												class="inline-flex items-center gap-1 rounded-md bg-accent px-2.5 py-1 text-xs font-semibold text-accent-foreground shadow-ink pressable hover:bg-accent/90 transition-colors disabled:opacity-60"
+											>
+												<CheckCircle2 class="h-3 w-3" />
+												{invite.status === 'declined'
+													? 'Accept anyway'
+													: 'Accept'}
+											</button>
+											{#if invite.status === 'pending'}
+												<button
+													type="button"
+													onclick={() => declineInvite(invite)}
+													disabled={inviteActionId === invite.invite_id}
+													class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-ink pressable hover:bg-muted transition-colors disabled:opacity-60"
+												>
+													<XCircle class="h-3 w-3" />
+													Decline
+												</button>
+											{/if}
+										</div>
+									</div>
+								</div>
+							{/each}
+						</div>
+					</div>
+				</section>
+			{/if}
 
 			{#if overdueTasks > 0}
 				<section

@@ -1,21 +1,51 @@
 <!-- apps/web/src/routes/invites/+page.svelte -->
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import { goto } from '$app/navigation';
+	import { goto, invalidate } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
 	import { logOntologyClientError } from '$lib/utils/ontology-client-logger';
-	import { AlertCircle, ArrowRight, CheckCircle2, Mail, UserPlus } from 'lucide-svelte';
+	import { AlertCircle, ArrowRight, CheckCircle2, UserPlus, XCircle } from 'lucide-svelte';
 
 	let { data } = $props();
-	const initialInvites = untrack(() => (data?.invites as any[]) ?? []);
 
-	let invites = $state(initialInvites);
+	type InviteRow = {
+		invite_id: string;
+		project_id?: string | null;
+		project_name: string;
+		role_key?: string | null;
+		status?: string | null;
+		expires_at?: string | null;
+		created_at?: string | null;
+		declined_at?: string | null;
+		recoverable_until?: string | null;
+		can_accept?: boolean | null;
+		invited_by_name?: string | null;
+		invited_by_email?: string | null;
+	};
+
+	const initialInvites = untrack(() => (data?.invites as InviteRow[]) ?? []);
+
+	let invites = $state<InviteRow[]>(initialInvites);
 	let actionError = $state('');
 	let processingId = $state<string | null>(null);
 
 	function formatDate(value: string | null | undefined) {
 		if (!value) return 'Unknown';
 		return new Date(value).toLocaleDateString();
+	}
+
+	function formatShortDate(value: string | null | undefined) {
+		if (!value) return 'Unknown';
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return 'Unknown';
+		return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+	}
+
+	function canAcceptInvite(invite: InviteRow) {
+		return (
+			invite.status === 'pending' ||
+			(invite.status === 'declined' && invite.can_accept === true)
+		);
 	}
 
 	async function handleAccept(inviteId: string, projectId?: string | null) {
@@ -36,6 +66,7 @@
 			}
 
 			toastService.success('Invite accepted');
+			await invalidate('app:invites');
 
 			const resolvedProjectId =
 				payload?.data?.projectId ?? payload?.data?.project_id ?? projectId;
@@ -80,8 +111,21 @@
 				throw new Error(payload?.error || 'Failed to decline invite');
 			}
 
-			invites = invites.filter((invite) => invite.invite_id !== inviteId);
-			toastService.success('Invite declined');
+			const declinedAt = payload?.data?.declinedAt ?? new Date().toISOString();
+			const recoverableUntil = payload?.data?.recoverableUntil ?? null;
+			invites = invites.map((invite) =>
+				invite.invite_id === inviteId
+					? {
+							...invite,
+							status: 'declined',
+							declined_at: declinedAt,
+							recoverable_until: recoverableUntil,
+							can_accept: true
+						}
+					: invite
+			);
+			toastService.success('Invite declined. You can still accept it for 48 hours.');
+			void invalidate('app:invites');
 		} catch (err) {
 			void logOntologyClientError(err, {
 				endpoint: `/api/onto/invites/${inviteId}/decline`,
@@ -102,15 +146,15 @@
 </script>
 
 <svelte:head>
-	<title>Pending Invites | BuildOS</title>
+	<title>Project Invites | BuildOS</title>
 </svelte:head>
 
 <div class="min-h-screen bg-background px-4 py-10">
 	<div class="mx-auto w-full max-w-2xl">
 		<div class="mb-6">
-			<h1 class="text-2xl font-semibold text-foreground">Pending invites</h1>
+			<h1 class="text-2xl font-semibold text-foreground">Project invites</h1>
 			<p class="text-sm text-muted-foreground">
-				Accept or decline invitations sent to your email address.
+				Accept, decline, or recover recently declined project invitations.
 			</p>
 		</div>
 
@@ -151,7 +195,7 @@
 				</div>
 				<h2 class="text-lg font-semibold text-foreground">No pending invites</h2>
 				<p class="mt-1 text-sm text-muted-foreground">
-					You're all caught up. New project invitations will show up here.
+					You're all caught up. New and recently declined invitations will show up here.
 				</p>
 				<a
 					href="/projects"
@@ -190,6 +234,15 @@
 								{invite.role_key === 'editor' ? 'Editor' : 'Viewer'}
 							</div>
 						</div>
+						{#if invite.status === 'declined'}
+							<div
+								class="mt-3 rounded-md border border-accent/20 bg-accent/10 px-3 py-2 text-xs text-accent"
+							>
+								Declined · recoverable until {formatShortDate(
+									invite.recoverable_until
+								)}
+							</div>
+						{/if}
 						<div
 							class="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground"
 						>
@@ -197,22 +250,27 @@
 							<span>Invited {formatDate(invite.created_at)}</span>
 						</div>
 						<div class="mt-4 flex flex-wrap gap-2">
-							<button
-								onclick={() => handleAccept(invite.invite_id, invite.project_id)}
-								disabled={processingId === invite.invite_id}
-								class="inline-flex items-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-colors hover:bg-accent/90 disabled:opacity-60"
-							>
-								Accept
-								<CheckCircle2 class="w-4 h-4" />
-							</button>
-							<button
-								onclick={() => handleDecline(invite.invite_id)}
-								disabled={processingId === invite.invite_id}
-								class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:bg-muted disabled:opacity-60"
-							>
-								Decline
-								<Mail class="w-4 h-4" />
-							</button>
+							{#if canAcceptInvite(invite)}
+								<button
+									onclick={() =>
+										handleAccept(invite.invite_id, invite.project_id)}
+									disabled={processingId === invite.invite_id}
+									class="inline-flex items-center gap-2 rounded-lg bg-accent px-3.5 py-2 text-sm font-semibold text-accent-foreground shadow-ink pressable transition-colors hover:bg-accent/90 disabled:opacity-60"
+								>
+									{invite.status === 'declined' ? 'Accept anyway' : 'Accept'}
+									<CheckCircle2 class="w-4 h-4" />
+								</button>
+							{/if}
+							{#if invite.status === 'pending'}
+								<button
+									onclick={() => handleDecline(invite.invite_id)}
+									disabled={processingId === invite.invite_id}
+									class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-sm font-semibold text-foreground shadow-ink pressable transition-colors hover:bg-muted disabled:opacity-60"
+								>
+									Decline
+									<XCircle class="w-4 h-4" />
+								</button>
+							{/if}
 						</div>
 					</div>
 				{/each}

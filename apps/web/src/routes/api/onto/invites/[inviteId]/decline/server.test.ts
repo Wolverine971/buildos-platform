@@ -59,7 +59,12 @@ describe('POST /api/onto/invites/[inviteId]/decline', () => {
 		const supabase = event.locals.supabase as any;
 
 		supabase.rpc.mockResolvedValue({
-			data: { invite_id: 'invite-1', status: 'declined' },
+			data: {
+				invite_id: 'invite-1',
+				status: 'declined',
+				declined_at: '2026-05-21T12:00:00.000Z',
+				recoverable_until: '2026-05-23T12:00:00.000Z'
+			},
 			error: null
 		});
 
@@ -70,7 +75,9 @@ describe('POST /api/onto/invites/[inviteId]/decline', () => {
 		expect(payload.success).toBe(true);
 		expect(payload.data).toMatchObject({
 			inviteId: 'invite-1',
-			status: 'declined'
+			status: 'declined',
+			declinedAt: '2026-05-21T12:00:00.000Z',
+			recoverableUntil: '2026-05-23T12:00:00.000Z'
 		});
 		expect(supabase.rpc).toHaveBeenCalledWith('decline_project_invite', {
 			p_invite_id: 'invite-1'

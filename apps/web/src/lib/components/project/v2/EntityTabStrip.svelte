@@ -29,6 +29,7 @@
 		Flag,
 		GitBranch,
 		LoaderCircle,
+		MessageCircle,
 		MessagesSquare,
 		Plus,
 		Sparkles,
@@ -41,6 +42,9 @@
 	import { getUpcomingEvents } from '$lib/components/project/project-event-filters';
 	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 	import type { ProjectLogEntityType } from '@buildos/shared-types';
+	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
+	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
+	import type { DailyBrief } from '$lib/types/daily-brief';
 	import type { Goal, Milestone, OntoEvent, Plan, Risk } from '$lib/types/onto';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 
@@ -50,6 +54,7 @@
 
 	let {
 		projectId,
+		projectName = 'Project',
 		canEdit,
 		goals = [],
 		milestones = [],
@@ -71,6 +76,7 @@
 		onOpenEvents
 	}: {
 		projectId: string;
+		projectName?: string;
 		canEdit: boolean;
 		goals: Goal[];
 		milestones: Milestone[];
@@ -107,7 +113,12 @@
 	let briefsError = $state<string | null>(null);
 	let briefsHasMore = $state(false);
 	let briefsTotal = $state(0);
-	let expandedBriefId = $state<string | null>(null);
+	let BriefChatModal = $state<any>(null);
+	let showBriefChatModal = $state(false);
+	let briefChatBrief = $state<DailyBrief | null>(null);
+	let briefChatSessionId = $state<string | null>(null);
+	let briefChatTitle = $state<string | null>(null);
+	let openingBriefId = $state<string | null>(null);
 
 	async function loadBriefs(reset = false) {
 		if (briefsLoading) return;
@@ -132,6 +143,120 @@
 			void loadBriefs(true);
 		}
 	});
+
+	function dateFromDateOnly(value: string): Date {
+		const [dateOnly] = value.split('T');
+		return new Date(`${dateOnly}T00:00:00`);
+	}
+
+	function formatBriefDateLabel(dateString: string | null): string {
+		if (!dateString) return 'Unknown date';
+		const date = dateFromDateOnly(dateString);
+		return date.toLocaleDateString(undefined, {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric'
+		});
+	}
+
+	function formatBriefChatTitle(brief: ProjectBriefSummary): string {
+		const dateLabel = brief.brief_date
+			? formatBriefDateLabel(brief.brief_date)
+			: relativeTime(brief.created_at);
+		return `${projectName} brief - ${dateLabel}`;
+	}
+
+	function markdownToPlainText(markdown: string | null | undefined, maxLength = 220): string {
+		if (!markdown) return '';
+
+		const text = markdown
+			.replace(/```[\s\S]*?```/g, ' ')
+			.replace(/`([^`]+)`/g, '$1')
+			.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+			.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+			.replace(/^#{1,6}\s+/gm, '')
+			.replace(/^>\s?/gm, '')
+			.replace(/^\s*[-*+]\s+/gm, '')
+			.replace(/^\s*\d+\.\s+/gm, '')
+			.replace(/[*_~|]/g, '')
+			.replace(/\s+/g, ' ')
+			.trim();
+
+		if (text.length <= maxLength) return text;
+		return `${text.slice(0, maxLength).trim()}...`;
+	}
+
+	function briefPreview(brief: ProjectBriefSummary): string {
+		return markdownToPlainText(brief.executive_summary || brief.brief_content);
+	}
+
+	function getBriefChatKey(brief: ProjectBriefSummary): string {
+		return brief.daily_brief_id || brief.id;
+	}
+
+	function dateOnlyFromBrief(brief: ProjectBriefSummary): string {
+		const source = brief.brief_date || brief.created_at;
+		return source.split('T')[0] || source;
+	}
+
+	function toDailyBriefForChat(brief: ProjectBriefSummary): DailyBrief {
+		return {
+			id: brief.daily_brief_id || brief.id,
+			chat_brief_id: brief.daily_brief_id || brief.id,
+			user_id: '',
+			brief_date: dateOnlyFromBrief(brief),
+			summary_content: brief.brief_content || brief.executive_summary || '',
+			executive_summary: brief.executive_summary || brief.brief_content || '',
+			priority_actions: brief.priority_actions || [],
+			generation_status: 'completed',
+			metadata: {
+				...(brief.metadata ?? {}),
+				project_id: projectId,
+				project_name: projectName,
+				project_brief_id: brief.id
+			},
+			created_at: brief.created_at
+		};
+	}
+
+	async function openBriefChat(brief: ProjectBriefSummary) {
+		if (openingBriefId) return;
+		openingBriefId = brief.id;
+
+		if (!BriefChatModal) {
+			try {
+				const module = await import('$lib/components/briefs/BriefChatModal.svelte');
+				BriefChatModal = module.default;
+			} catch (err) {
+				console.error('Failed to load BriefChatModal:', err);
+				openingBriefId = null;
+				return;
+			}
+		}
+
+		const chatKey = getBriefChatKey(brief);
+		briefChatSessionId = briefChatSessionStore.get(chatKey);
+		briefChatTitle = formatBriefChatTitle(brief);
+		briefChatBrief = toDailyBriefForChat(brief);
+		showBriefChatModal = true;
+		openingBriefId = null;
+	}
+
+	function handleBriefChatClose(summary?: DataMutationSummary) {
+		const chatKey = briefChatBrief?.chat_brief_id || briefChatBrief?.id;
+		if (chatKey && summary?.sessionId) {
+			briefChatSessionStore.set(chatKey, summary.sessionId);
+		}
+
+		showBriefChatModal = false;
+		briefChatBrief = null;
+		briefChatSessionId = null;
+		briefChatTitle = null;
+
+		if (summary?.hasChanges) {
+			void loadBriefs(true);
+		}
+	}
 
 	// ----------------------------------------------------------------
 	// Counts and tab config
@@ -390,68 +515,39 @@
 								</p>
 							{:else}
 								{#each briefs as brief (brief.id)}
-									{@const isOpen = expandedBriefId === brief.id}
+									{@const preview = briefPreview(brief)}
 									<article class="rounded-md border border-border bg-background">
 										<button
 											type="button"
-											onclick={() =>
-												(expandedBriefId = isOpen ? null : brief.id)}
+											onclick={() => openBriefChat(brief)}
+											disabled={openingBriefId === brief.id}
 											class="w-full text-left px-3 py-2 flex items-center justify-between gap-2 hover:bg-muted/40 transition-colors pressable"
+											aria-haspopup="dialog"
 										>
 											<div class="min-w-0 flex-1">
 												<p class="text-xs font-medium text-foreground">
 													{brief.brief_date
-														? new Date(
-																brief.brief_date
-															).toLocaleDateString(undefined, {
-																weekday: 'short',
-																month: 'short',
-																day: 'numeric'
-															})
+														? formatBriefDateLabel(brief.brief_date)
 														: relativeTime(brief.created_at)}
 												</p>
-												{#if brief.executive_summary}
+												{#if preview}
 													<p
 														class="text-[11px] text-muted-foreground line-clamp-1 mt-0.5"
 													>
-														{brief.executive_summary}
+														{preview}
 													</p>
 												{/if}
 											</div>
-											<ChevronDown
-												class="w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform {isOpen
-													? 'rotate-180'
-													: ''}"
-											/>
+											{#if openingBriefId === brief.id}
+												<LoaderCircle
+													class="w-3.5 h-3.5 text-muted-foreground shrink-0 animate-spin"
+												/>
+											{:else}
+												<MessageCircle
+													class="w-3.5 h-3.5 text-muted-foreground shrink-0"
+												/>
+											{/if}
 										</button>
-										{#if isOpen}
-											<div
-												class="border-t border-border/60 px-3 py-2 space-y-2"
-												transition:slide={{ duration: 120 }}
-											>
-												{#if brief.priority_actions && brief.priority_actions.length}
-													<div>
-														<p
-															class="text-[10px] uppercase tracking-widest text-muted-foreground/70 mb-1"
-														>
-															Priority actions
-														</p>
-														<ul
-															class="list-disc list-inside text-xs text-foreground space-y-0.5"
-														>
-															{#each brief.priority_actions as action, i (i)}
-																<li>{action}</li>
-															{/each}
-														</ul>
-													</div>
-												{/if}
-												<div
-													class="text-xs text-foreground whitespace-pre-wrap leading-relaxed"
-												>
-													{brief.brief_content}
-												</div>
-											</div>
-										{/if}
 									</article>
 								{/each}
 								{#if briefsHasMore}
@@ -847,3 +943,14 @@
 		</div>
 	{/each}
 </section>
+
+{#if BriefChatModal && showBriefChatModal && briefChatBrief}
+	<BriefChatModal
+		isOpen={showBriefChatModal}
+		brief={briefChatBrief}
+		title={briefChatTitle ?? undefined}
+		initialTab="brief"
+		initialChatSessionId={briefChatSessionId}
+		onClose={handleBriefChatClose}
+	/>
+{/if}

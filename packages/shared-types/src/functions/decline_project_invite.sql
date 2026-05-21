@@ -1,17 +1,20 @@
 -- packages/shared-types/src/functions/decline_project_invite.sql
 -- Source: Supabase pg_get_functiondef
 
+DROP FUNCTION IF EXISTS public.decline_project_invite(uuid);
+
 CREATE OR REPLACE FUNCTION public.decline_project_invite(p_invite_id uuid)
- RETURNS TABLE(invite_id uuid, status text)
+ RETURNS TABLE(invite_id uuid, status text, declined_at timestamp with time zone, recoverable_until timestamp with time zone)
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
 DECLARE
-  v_invite onto_project_invites%ROWTYPE;
+  v_invite public.onto_project_invites%ROWTYPE;
   v_auth_user_id uuid;
   v_actor_id uuid;
   v_user_email text;
+  v_declined_at timestamptz;
 BEGIN
   IF p_invite_id IS NULL THEN
     RAISE EXCEPTION 'Invite id missing';
@@ -22,7 +25,7 @@ BEGIN
     RAISE EXCEPTION 'Authentication required';
   END IF;
 
-  v_actor_id := ensure_actor_for_user(v_auth_user_id);
+  v_actor_id := public.ensure_actor_for_user(v_auth_user_id);
 
   SELECT email INTO v_user_email
   FROM public.users
@@ -30,7 +33,7 @@ BEGIN
 
   IF v_user_email IS NULL THEN
     SELECT email INTO v_user_email
-    FROM onto_actors
+    FROM public.onto_actors
     WHERE id = v_actor_id;
   END IF;
 
@@ -39,7 +42,7 @@ BEGIN
   END IF;
 
   SELECT * INTO v_invite
-  FROM onto_project_invites
+  FROM public.onto_project_invites
   WHERE id = p_invite_id
   FOR UPDATE;
 
@@ -47,25 +50,51 @@ BEGIN
     RAISE EXCEPTION 'Invite not found';
   END IF;
 
-  IF v_invite.status <> 'pending' THEN
+  IF v_invite.status NOT IN ('pending', 'declined') THEN
     RAISE EXCEPTION 'Invite is not pending';
   END IF;
 
+  IF v_invite.status = 'declined' THEN
+    IF v_invite.declined_at IS NULL
+      OR v_invite.declined_at + interval '48 hours' < now()
+    THEN
+      RAISE EXCEPTION 'Invite was declined and is no longer recoverable';
+    END IF;
+
+    RETURN QUERY
+    SELECT
+      v_invite.id,
+      'declined'::text,
+      v_invite.declined_at,
+      v_invite.declined_at + interval '48 hours';
+    RETURN;
+  END IF;
+
   IF v_invite.expires_at < now() THEN
-    UPDATE onto_project_invites
+    UPDATE public.onto_project_invites
     SET status = 'expired'
     WHERE id = v_invite.id;
     RAISE EXCEPTION 'Invite has expired';
   END IF;
 
-  IF lower(v_invite.invitee_email) <> lower(trim(v_user_email)) THEN
+  IF lower(trim(v_invite.invitee_email)) <> lower(trim(v_user_email)) THEN
     RAISE EXCEPTION 'Invite email mismatch';
   END IF;
 
-  UPDATE onto_project_invites
-  SET status = 'declined'
+  v_declined_at := now();
+
+  UPDATE public.onto_project_invites
+  SET status = 'declined',
+      declined_at = v_declined_at
   WHERE id = v_invite.id;
 
-  RETURN QUERY SELECT v_invite.id, 'declined'::text;
+  RETURN QUERY
+  SELECT
+    v_invite.id,
+    'declined'::text,
+    v_declined_at,
+    v_declined_at + interval '48 hours';
 END;
-$function$
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.decline_project_invite(uuid) TO authenticated;

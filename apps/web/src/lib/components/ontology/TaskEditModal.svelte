@@ -56,6 +56,7 @@
 	import EntityActivityLog from './EntityActivityLog.svelte';
 	import EntityCommentsSection from './EntityCommentsSection.svelte';
 	import ImageAssetsPanel from './ImageAssetsPanel.svelte';
+	import EntityCollaborationAction from './EntityCollaborationAction.svelte';
 	import { TASK_STATES } from '$lib/types/onto';
 	import type { EntityKind } from './linked-entities/linked-entities.types';
 	// Lazy-loaded modal components for better initial load performance
@@ -944,6 +945,14 @@
 							</CardHeader>
 							<CardBody padding="none">
 								<div class="divide-y divide-border/70">
+									<EntityCollaborationAction
+										{projectId}
+										entityType="task"
+										entityId={taskId}
+										entityTitle={title || task?.title || 'Task'}
+										disabled={isSaving || isLoading}
+									/>
+
 									<section
 										class="px-3 py-3 sm:px-4"
 										aria-label="Workflow: {stateMeta.label}, {priorityMeta.label}, {assigneeSummary}"

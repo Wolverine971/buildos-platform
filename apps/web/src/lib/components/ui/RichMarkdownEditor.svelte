@@ -1126,9 +1126,7 @@
 
 			// The voice service usually calls back with the final transcript. Use
 			// the captured live transcript only if no callback inserted text.
-			if (
-				shouldInsertCapturedVoiceFallback(transcriptToInsert, pendingInsertedVoiceRange)
-			) {
+			if (shouldInsertCapturedVoiceFallback(transcriptToInsert, pendingInsertedVoiceRange)) {
 				const inserted = insertTranscriptionAtCursor(transcriptToInsert);
 				pendingInsertedVoiceRange = inserted;
 				if (inserted) {

@@ -3,6 +3,24 @@ import type { PageServerLoad } from './$types';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { createHash } from 'crypto';
 
+type InvitePreviewResult = {
+	invite_id: string;
+	project_id: string | null;
+	project_name: string | null;
+	role_key: string | null;
+	access: string | null;
+	invitee_email: string | null;
+	invited_by_actor_id: string | null;
+	invited_by_name: string | null;
+	invited_by_email: string | null;
+	status: string | null;
+	expires_at: string | null;
+	created_at: string | null;
+	declined_at?: string | null;
+	recoverable_until?: string | null;
+	can_accept?: boolean | null;
+};
+
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const token = params.token?.trim();
 	if (!token) {
@@ -30,7 +48,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		return { status: 'error', message: error.message };
 	}
 
-	const result = Array.isArray(data) ? data[0] : data;
+	const result = (Array.isArray(data) ? data[0] : data) as unknown as InvitePreviewResult | null;
 	if (!result?.invite_id) {
 		return { status: 'error', message: 'Invite could not be resolved' };
 	}

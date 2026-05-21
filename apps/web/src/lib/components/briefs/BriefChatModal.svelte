@@ -31,16 +31,26 @@
 	interface Props {
 		isOpen?: boolean;
 		brief: DailyBrief;
+		title?: string;
+		initialTab?: 'brief' | 'chat';
 		initialChatSessionId?: string | null;
 		onClose?: (summary?: DataMutationSummary) => void;
 	}
 
-	let { isOpen = false, brief, initialChatSessionId = null, onClose }: Props = $props();
+	let {
+		isOpen = false,
+		brief,
+		title,
+		initialTab = 'chat',
+		initialChatSessionId = null,
+		onClose
+	}: Props = $props();
 
 	let activeTab = $state<'brief' | 'chat'>('chat');
 	let scrollLockHeld = $state(false);
 	let lastSummary = $state<DataMutationSummary | undefined>(undefined);
 	let briefChatEntityId = $derived(brief.chat_brief_id || brief.id);
+	let displayTitle = $derived(title ?? `Daily Brief — ${formatBriefDate(brief.brief_date)}`);
 
 	// Touch gesture state
 	let isDragging = $state(false);
@@ -180,7 +190,7 @@
 	$effect(() => {
 		if (isOpen) {
 			lastSummary = undefined;
-			activeTab = 'chat';
+			activeTab = initialTab;
 			chatTabHasUnread = false;
 			briefTabHasUpdates = false;
 			dragTranslateY = 0;
@@ -248,7 +258,7 @@
 							border-b border-border bg-muted flex-shrink-0"
 					>
 						<h2 class="text-sm font-semibold text-foreground truncate">
-							Daily Brief — {formatBriefDate(brief.brief_date)}
+							{displayTitle}
 						</h2>
 						<button
 							type="button"

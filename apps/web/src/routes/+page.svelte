@@ -148,6 +148,8 @@
 			timezone: data.user.timezone ?? undefined
 		}}
 		analytics={data.dashboard ?? createEmptyUserDashboardAnalytics()}
+		pendingInvites={data.pendingInvites ?? []}
+		showAgentConnectionCta={!data.hasConnectedAgents}
 		onrefresh={handleDashboardRefresh}
 	/>
 {:else}

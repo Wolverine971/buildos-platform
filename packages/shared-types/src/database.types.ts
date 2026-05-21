@@ -6977,6 +6977,7 @@ export type Database = {
           accepted_by_actor_id: string | null
           access: string
           created_at: string
+          declined_at: string | null
           expires_at: string
           id: string
           invited_by_actor_id: string | null
@@ -6991,6 +6992,7 @@ export type Database = {
           accepted_by_actor_id?: string | null
           access: string
           created_at?: string
+          declined_at?: string | null
           expires_at: string
           id?: string
           invited_by_actor_id?: string | null
@@ -7005,6 +7007,7 @@ export type Database = {
           accepted_by_actor_id?: string | null
           access?: string
           created_at?: string
+          declined_at?: string | null
           expires_at?: string
           id?: string
           invited_by_actor_id?: string | null
@@ -13820,7 +13823,9 @@ export type Database = {
       decline_project_invite: {
         Args: { p_invite_id: string }
         Returns: {
+          declined_at: string
           invite_id: string
+          recoverable_until: string
           status: string
         }[]
       }
@@ -14329,7 +14334,9 @@ export type Database = {
         Args: { p_token_hash: string }
         Returns: {
           access: string
+          can_accept: boolean
           created_at: string
+          declined_at: string | null
           expires_at: string
           invite_id: string
           invited_by_actor_id: string
@@ -14338,6 +14345,7 @@ export type Database = {
           invitee_email: string
           project_id: string
           project_name: string
+          recoverable_until: string | null
           role_key: string
           status: string
         }[]
@@ -14652,7 +14660,9 @@ export type Database = {
         Args: never
         Returns: {
           access: string
+          can_accept: boolean
           created_at: string
+          declined_at: string | null
           expires_at: string
           invite_id: string
           invited_by_actor_id: string
@@ -14660,6 +14670,7 @@ export type Database = {
           invited_by_name: string
           project_id: string
           project_name: string
+          recoverable_until: string | null
           role_key: string
           status: string
         }[]
