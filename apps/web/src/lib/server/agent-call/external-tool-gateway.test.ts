@@ -834,6 +834,7 @@ class AgentCallToolExecutionsQueryBuilderMock {
 
 class OntoProjectLogsQueryBuilderMock {
 	private filters = new Map<string, unknown>();
+	private inFilters = new Map<string, unknown[]>();
 	private minCreatedAt: string | null = null;
 	private rowLimit: number | null = null;
 	private insertPayload: Record<string, unknown> | null = null;
@@ -857,6 +858,11 @@ class OntoProjectLogsQueryBuilderMock {
 
 	eq(field: string, value: unknown) {
 		this.filters.set(field, value);
+		return this;
+	}
+
+	in(field: string, values: unknown[]) {
+		this.inFilters.set(field, values);
 		return this;
 	}
 
@@ -899,6 +905,9 @@ class OntoProjectLogsQueryBuilderMock {
 		const rows = (this.state.projectLogs ?? []).filter((row) => {
 			for (const [field, value] of this.filters.entries()) {
 				if (row[field] !== value) return false;
+			}
+			for (const [field, values] of this.inFilters.entries()) {
+				if (!values.includes(row[field])) return false;
 			}
 			if (this.minCreatedAt && String(row.created_at ?? '') < this.minCreatedAt) {
 				return false;
@@ -1922,6 +1931,17 @@ describe('external tool gateway', () => {
 		expect(notifyEntityMentionsAddedMock).toHaveBeenCalledTimes(1);
 		expect(state.toolExecutions).toHaveLength(1);
 		expect(state.toolExecutions[0]?.status).toBe('succeeded');
+		expect(state.projectLogs).toHaveLength(1);
+		expect(state.projectLogs?.[0]).toMatchObject({
+			project_id: '44444444-4444-4444-4444-444444444444',
+			entity_type: 'task',
+			entity_id: state.tasks[0]?.id,
+			action: 'created',
+			changed_by: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			change_source: 'agent_call',
+			external_agent_caller_id: '11111111-1111-1111-1111-111111111111',
+			agent_call_session_id: '22222222-2222-2222-2222-222222222222'
+		});
 	});
 
 	it('exposes placement and legacy content aliases on external document create tools', async () => {

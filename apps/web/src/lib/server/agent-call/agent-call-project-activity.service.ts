@@ -190,8 +190,8 @@ async function hasExistingActivityLog(params: {
 		.eq('entity_type', params.entityType)
 		.eq('entity_id', params.entityId)
 		.eq('action', params.action)
-		.eq('change_source', 'agent_call')
 		.eq('agent_call_session_id', params.callSessionId)
+		.in('change_source', ['agent_call', 'api'])
 		.limit(1);
 
 	if (params.startedAt) {
@@ -205,6 +205,41 @@ async function hasExistingActivityLog(params: {
 	}
 
 	return Array.isArray(data) && data.length > 0;
+}
+
+async function insertActivityLogWithSourceFallback(params: {
+	admin: any;
+	row: JsonRecord;
+}): Promise<void> {
+	const { error } = await params.admin.from('onto_project_logs').insert(params.row);
+	if (!error) return;
+
+	const isAgentCallSourceConstraint =
+		error.code === '23514' &&
+		typeof error.message === 'string' &&
+		error.message.includes('check_change_source_values') &&
+		params.row.change_source === 'agent_call';
+
+	if (!isAgentCallSourceConstraint) {
+		console.warn('[AgentCallProjectActivity] Failed to insert activity:', error);
+		return;
+	}
+
+	const retryRow = {
+		...params.row,
+		change_source: 'api',
+		after_data:
+			params.row.after_data && typeof params.row.after_data === 'object'
+				? {
+						...(params.row.after_data as JsonRecord),
+						intended_change_source: 'agent_call'
+					}
+				: params.row.after_data
+	};
+	const retry = await params.admin.from('onto_project_logs').insert(retryRow);
+	if (retry.error) {
+		console.warn('[AgentCallProjectActivity] Failed to insert fallback activity:', retry.error);
+	}
 }
 
 export async function maybeLogAgentCallProjectActivity(params: {
@@ -270,23 +305,22 @@ export async function maybeLogAgentCallProjectActivity(params: {
 			...(params.executionId ? { agent_call_tool_execution_id: params.executionId } : {})
 		};
 
-		const { error } = await params.admin.from('onto_project_logs').insert({
-			project_id: projectId,
-			entity_type: config.entityType,
-			entity_id: entityId,
-			action: config.action,
-			before_data: config.action === 'created' ? null : { op: params.op },
-			after_data: config.action === 'deleted' ? null : snapshot,
-			changed_by: params.userId,
-			change_source: 'agent_call',
-			external_agent_caller_id: params.callerId,
-			agent_call_session_id: params.callSessionId,
-			created_at: params.completedAt ?? new Date().toISOString()
+		await insertActivityLogWithSourceFallback({
+			admin: params.admin,
+			row: {
+				project_id: projectId,
+				entity_type: config.entityType,
+				entity_id: entityId,
+				action: config.action,
+				before_data: config.action === 'created' ? null : { op: params.op },
+				after_data: config.action === 'deleted' ? null : snapshot,
+				changed_by: params.userId,
+				change_source: 'agent_call',
+				external_agent_caller_id: params.callerId,
+				agent_call_session_id: params.callSessionId,
+				created_at: params.completedAt ?? new Date().toISOString()
+			}
 		});
-
-		if (error) {
-			console.warn('[AgentCallProjectActivity] Failed to insert activity:', error);
-		}
 	} catch (error) {
 		console.warn('[AgentCallProjectActivity] Failed to log Bridge activity:', error);
 	}

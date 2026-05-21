@@ -66,7 +66,7 @@ type ProjectLogInsert = {
 	before_data: JsonRecord | null;
 	after_data: JsonRecord | null;
 	changed_by: string;
-	change_source: 'agent_call';
+	change_source: 'agent_call' | 'api';
 	external_agent_caller_id: string | null;
 	agent_call_session_id: string | null;
 	created_at: string;
@@ -242,12 +242,12 @@ async function main() {
 			.eq('project_id', projectId)
 			.eq('entity_type', entityType)
 			.eq('entity_id', entityId)
-			.eq('change_source', 'agent_call')
 			.eq('agent_call_session_id', execution.agent_call_session_id)
-			.maybeSingle();
+			.in('change_source', ['agent_call', 'api'])
+			.limit(1);
 
 		if (existingError) throw existingError;
-		if (existing) continue;
+		if (Array.isArray(existing) && existing.length > 0) continue;
 
 		const snapshot = buildSnapshot(execution, projectId);
 		inserts.push({
@@ -291,7 +291,26 @@ async function main() {
 	if (dryRun || inserts.length === 0) return;
 
 	const { error: insertError } = await supabase.from('onto_project_logs').insert(inserts);
-	if (insertError) throw insertError;
+	if (insertError) {
+		const isAgentCallSourceConstraint =
+			insertError.code === '23514' &&
+			typeof insertError.message === 'string' &&
+			insertError.message.includes('check_change_source_values');
+		if (!isAgentCallSourceConstraint) throw insertError;
+
+		const fallbackInserts = inserts.map((insert) => ({
+			...insert,
+			change_source: 'api' as const,
+			after_data: insert.after_data
+				? { ...insert.after_data, intended_change_source: 'agent_call' }
+				: insert.after_data
+		}));
+		const { error: fallbackError } = await supabase
+			.from('onto_project_logs')
+			.insert(fallbackInserts);
+		if (fallbackError) throw fallbackError;
+		console.log('Production check_change_source_values rejected agent_call; inserted with api source fallback.');
+	}
 	console.log(`Inserted ${inserts.length} project activity log(s).`);
 }
 
