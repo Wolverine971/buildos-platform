@@ -153,6 +153,53 @@ function normalizeRedirectUris(value: unknown): string[] {
 	return redirectUris;
 }
 
+function isLoopbackRedirectHost(hostname: string): boolean {
+	const normalized = hostname.toLowerCase();
+	return normalized === 'localhost' || normalized === '127.0.0.1' || normalized === '[::1]';
+}
+
+function parseRedirectUri(value: string): URL | null {
+	try {
+		return new URL(value);
+	} catch {
+		return null;
+	}
+}
+
+function isLoopbackRedirectUriMatch(registeredUri: string, requestedUri: string): boolean {
+	const registered = parseRedirectUri(registeredUri);
+	const requested = parseRedirectUri(requestedUri);
+	if (!registered || !requested) return false;
+	if (registered.protocol !== 'http:' || requested.protocol !== 'http:') return false;
+	if (
+		!isLoopbackRedirectHost(registered.hostname) ||
+		!isLoopbackRedirectHost(requested.hostname)
+	) {
+		return false;
+	}
+	if (registered.hostname.toLowerCase() !== requested.hostname.toLowerCase()) return false;
+	if (registered.port) return false;
+
+	return (
+		registered.pathname === requested.pathname &&
+		registered.search === requested.search &&
+		registered.hash === requested.hash
+	);
+}
+
+export function isOAuthRedirectUriAllowed(
+	registeredRedirectUris: readonly string[],
+	requestedRedirectUri: string
+): boolean {
+	if (registeredRedirectUris.includes(requestedRedirectUri)) {
+		return true;
+	}
+
+	return registeredRedirectUris.some((registeredUri) =>
+		isLoopbackRedirectUriMatch(registeredUri, requestedRedirectUri)
+	);
+}
+
 function normalizeClientName(value: unknown): string {
 	if (typeof value !== 'string' || !value.trim()) {
 		return BUILDOS_CONNECTOR_PUBLIC_NAME;
@@ -492,7 +539,7 @@ export async function loadOAuthAuthorizationRequest(
 		throw new OAuthConnectorError('Unknown OAuth client', 400, 'unauthorized_client');
 	}
 
-	if (!client.redirect_uris.includes(redirectUri)) {
+	if (!isOAuthRedirectUriAllowed(client.redirect_uris, redirectUri)) {
 		throw new OAuthConnectorError(
 			'redirect_uri is not registered for this client',
 			400,

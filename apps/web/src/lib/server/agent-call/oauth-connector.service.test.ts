@@ -1,6 +1,7 @@
 // apps/web/src/lib/server/agent-call/oauth-connector.service.test.ts
 import { describe, expect, it } from 'vitest';
 import {
+	isOAuthRedirectUriAllowed,
 	mcpResourceUrl,
 	OAuthConnectorError,
 	parseOAuthScopes,
@@ -28,5 +29,34 @@ describe('OAuth connector helpers', () => {
 		expect(protectedResourceMetadataUrl('https://build-os.com')).toBe(
 			'https://build-os.com/.well-known/oauth-protected-resource/mcp/buildos'
 		);
+	});
+
+	it('allows OAuth native-app loopback redirects to use runtime ports', () => {
+		expect(
+			isOAuthRedirectUriAllowed(
+				['http://localhost/callback', 'http://127.0.0.1/callback'],
+				'http://localhost:58233/callback'
+			)
+		).toBe(true);
+
+		expect(
+			isOAuthRedirectUriAllowed(
+				['http://localhost/callback', 'http://127.0.0.1/callback'],
+				'http://127.0.0.1:58233/callback'
+			)
+		).toBe(true);
+	});
+
+	it('does not let loopback redirect matching change host or path', () => {
+		expect(
+			isOAuthRedirectUriAllowed(
+				['http://localhost/callback'],
+				'http://127.0.0.1:58233/callback'
+			)
+		).toBe(false);
+
+		expect(
+			isOAuthRedirectUriAllowed(['http://localhost/callback'], 'http://localhost:58233/other')
+		).toBe(false);
 	});
 });
