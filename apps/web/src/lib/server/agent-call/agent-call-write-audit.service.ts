@@ -1,6 +1,7 @@
 // apps/web/src/lib/server/agent-call/agent-call-write-audit.service.ts
 import type { BuildosAgentAllowedOp } from '@buildos/shared-types';
 import { logSecurityEvent, type SecurityEventLogOptions } from '$lib/server/security-event-logger';
+import { maybeLogAgentCallProjectActivity } from './agent-call-project-activity.service';
 
 export type AgentCallWriteExecutionStatus = 'pending' | 'succeeded' | 'failed';
 
@@ -177,6 +178,7 @@ export async function recordWriteExecutionSuccess(params: {
 	responsePayload: Record<string, unknown>;
 	entityKind?: string;
 	entityId?: string;
+	startedAt?: string;
 	securityEventOptions?: SecurityEventLogOptions;
 }): Promise<void> {
 	const completedAt = new Date().toISOString();
@@ -198,6 +200,21 @@ export async function recordWriteExecutionSuccess(params: {
 		if (error) {
 			throw new Error(error.message || 'Failed to finalize write execution');
 		}
+
+		await maybeLogAgentCallProjectActivity({
+			admin: params.admin,
+			executionId: params.executionId,
+			callSessionId: params.callSessionId,
+			callerId: params.callerId,
+			userId: params.userId,
+			op: params.op,
+			args: params.args,
+			responsePayload: params.responsePayload,
+			entityKind: params.entityKind,
+			entityId: params.entityId,
+			startedAt: params.startedAt,
+			completedAt
+		});
 
 		await logAgentWriteSecurityEvent(params.admin, {
 			eventType: 'agent.write.succeeded',
@@ -236,6 +253,21 @@ export async function recordWriteExecutionSuccess(params: {
 	if (error) {
 		throw new Error(error.message || 'Failed to record write execution');
 	}
+
+	await maybeLogAgentCallProjectActivity({
+		admin: params.admin,
+		executionId: null,
+		callSessionId: params.callSessionId,
+		callerId: params.callerId,
+		userId: params.userId,
+		op: params.op,
+		args: params.args,
+		responsePayload: params.responsePayload,
+		entityKind: params.entityKind,
+		entityId: params.entityId,
+		startedAt: params.startedAt ?? completedAt,
+		completedAt
+	});
 
 	await logAgentWriteSecurityEvent(params.admin, {
 		eventType: 'agent.write.succeeded',

@@ -86,7 +86,7 @@ describe('calendar brief formatting', () => {
 		});
 
 		expect(formatCalendarBriefItem(item, true)).toBe(
-			'- Thu May 7, 8:30 AM-9:00 AM - Due: LinkedIn Post 2 - [Google Calendar](https://calendar.google.com/calendar/event?eid=google-event-1) / [Task](/projects/project-1/tasks/task-1) / Task due / BuildOS'
+			'- **[Due: LinkedIn Post 2](/projects/project-1/tasks/task-1)**\n  - Thu May 7, 8:30 AM-9:00 AM / [Google Calendar](https://calendar.google.com/calendar/event?eid=google-event-1) / Task due / [BuildOS](/projects/project-1)'
 		);
 	});
 
@@ -94,7 +94,7 @@ describe('calendar brief formatting', () => {
 		const item = createCalendarItem();
 
 		expect(formatCalendarBriefItem(item, true)).toBe(
-			'- Thu May 7, 8:30 AM-9:00 AM - Due: LinkedIn Post 2 - Google Calendar (unconfirmed) / [Task](/projects/project-1/tasks/task-1) / stale sync / Task due / BuildOS'
+			'- **[Due: LinkedIn Post 2](/projects/project-1/tasks/task-1)**\n  - Thu May 7, 8:30 AM-9:00 AM / Google Calendar (unconfirmed) / stale sync / Task due / [BuildOS](/projects/project-1)'
 		);
 	});
 
@@ -108,7 +108,7 @@ describe('calendar brief formatting', () => {
 		});
 
 		expect(formatCalendarBriefItem(item, false)).toBe(
-			'- 8:30 AM-9:00 AM - Due: LinkedIn Post 2 - Internal only / Task due / BuildOS'
+			'- **Due: LinkedIn Post 2**\n  - 8:30 AM-9:00 AM / Internal only / Task due / [BuildOS](/projects/project-1)'
 		);
 	});
 
@@ -119,7 +119,7 @@ describe('calendar brief formatting', () => {
 		});
 
 		expect(formatCalendarSection(createCalendarSection(item))).toContain(
-			'[Task](/projects/project-1/tasks/task-1)'
+			'[Due: LinkedIn Post 2](/projects/project-1/tasks/task-1)'
 		);
 		expect(formatCalendarSection(createCalendarSection(item))).toContain(
 			'[Google Calendar](https://calendar.google.com/calendar/event?eid=google-event-1)'

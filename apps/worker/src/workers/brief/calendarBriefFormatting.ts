@@ -22,11 +22,30 @@ function formatMarkdownLink(label: string, url: string | null | undefined): stri
 	return `[${escapedLabel}](${normalizedUrl})`;
 }
 
-function formatTaskLink(item: CalendarBriefItem): string | null {
+function formatStrongText(text: string): string {
+	return `**${text.replace(/\*/g, '\\*')}**`;
+}
+
+function formatTaskUrl(item: CalendarBriefItem): string | null {
 	if (!item.projectId || !item.taskId) return null;
 	const projectId = encodeURIComponent(item.projectId);
 	const taskId = encodeURIComponent(item.taskId);
-	return formatMarkdownLink('Task', `/projects/${projectId}/tasks/${taskId}`);
+	return `/projects/${projectId}/tasks/${taskId}`;
+}
+
+function formatItemTitle(item: CalendarBriefItem): string {
+	const taskUrl = formatTaskUrl(item);
+	if (!taskUrl) return formatStrongText(item.title);
+
+	const link = formatMarkdownLink(item.title, taskUrl);
+	return link ? formatStrongText(link) : formatStrongText(item.title);
+}
+
+function formatProjectLink(item: CalendarBriefItem): string | null {
+	if (!item.projectId || !item.projectName) return item.projectName;
+
+	const projectId = encodeURIComponent(item.projectId);
+	return formatMarkdownLink(item.projectName, `/projects/${projectId}`) ?? item.projectName;
 }
 
 function canLinkCalendarSource(item: CalendarBriefItem): boolean {
@@ -60,14 +79,13 @@ export function formatCalendarBriefItem(item: CalendarBriefItem, includeDate: bo
 	const kindLabel = formatCalendarKindLabel(item);
 	const syncFreshnessLabel = item.syncFreshness === 'stale' ? 'stale sync' : null;
 	const details = [
+		timeLabel,
 		formatCalendarSourceLabel(item),
-		formatTaskLink(item),
 		syncFreshnessLabel,
 		kindLabel,
-		item.projectName
+		formatProjectLink(item)
 	].filter(Boolean);
-	const detailSuffix = details.length > 0 ? ` - ${details.join(' / ')}` : '';
-	return `- ${timeLabel} - ${item.title}${detailSuffix}`;
+	return `- ${formatItemTitle(item)}\n  - ${details.join(' / ')}`;
 }
 
 function formatCalendarCounts(section: CalendarBriefSection, scope: 'today' | 'upcoming'): string {

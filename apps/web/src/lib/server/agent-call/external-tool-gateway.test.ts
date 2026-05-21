@@ -138,6 +138,7 @@ type State = {
 	tasks: TaskRow[];
 	assets?: AssetRow[];
 	toolExecutions: Array<Record<string, unknown>>;
+	projectLogs?: Array<Record<string, unknown>>;
 	nextTaskId: number;
 	nextToolExecutionId: number;
 };
@@ -831,6 +832,84 @@ class AgentCallToolExecutionsQueryBuilderMock {
 	}
 }
 
+class OntoProjectLogsQueryBuilderMock {
+	private filters = new Map<string, unknown>();
+	private minCreatedAt: string | null = null;
+	private rowLimit: number | null = null;
+	private insertPayload: Record<string, unknown> | null = null;
+	private action: 'select' | 'insert' | null = null;
+
+	constructor(private readonly state: State) {}
+
+	select() {
+		this.action = 'select';
+		return this;
+	}
+
+	insert(payload: Record<string, unknown>) {
+		this.action = 'insert';
+		this.insertPayload = payload;
+		return Promise.resolve({
+			data: null,
+			error: this.executeInsert()
+		});
+	}
+
+	eq(field: string, value: unknown) {
+		this.filters.set(field, value);
+		return this;
+	}
+
+	gte(field: string, value: unknown) {
+		if (field === 'created_at' && typeof value === 'string') {
+			this.minCreatedAt = value;
+		}
+		return this;
+	}
+
+	limit(value: number) {
+		this.rowLimit = value;
+		return this;
+	}
+
+	then<TResult1 = any, TResult2 = never>(
+		onfulfilled?:
+			| ((value: {
+					data: Record<string, unknown>[];
+					error: any;
+			  }) => TResult1 | PromiseLike<TResult1>)
+			| null,
+		onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+	) {
+		return Promise.resolve(this.executeSelect()).then(onfulfilled, onrejected);
+	}
+
+	private executeInsert() {
+		if (this.action !== 'insert' || !this.insertPayload) return null;
+		this.state.projectLogs ??= [];
+		const id = `aaaaaaaa-0000-0000-0000-${String(this.state.projectLogs.length + 1).padStart(12, '0')}`;
+		this.state.projectLogs.push({
+			id,
+			...this.insertPayload
+		});
+		return null;
+	}
+
+	private executeSelect() {
+		const rows = (this.state.projectLogs ?? []).filter((row) => {
+			for (const [field, value] of this.filters.entries()) {
+				if (row[field] !== value) return false;
+			}
+			if (this.minCreatedAt && String(row.created_at ?? '') < this.minCreatedAt) {
+				return false;
+			}
+			return true;
+		});
+		const limited = typeof this.rowLimit === 'number' ? rows.slice(0, this.rowLimit) : rows;
+		return { data: limited, error: null };
+	}
+}
+
 function createAdminMock(state: State) {
 	return {
 		from: vi.fn((table: string) => {
@@ -848,6 +927,10 @@ function createAdminMock(state: State) {
 
 			if (table === 'agent_call_tool_executions') {
 				return new AgentCallToolExecutionsQueryBuilderMock(state);
+			}
+
+			if (table === 'onto_project_logs') {
+				return new OntoProjectLogsQueryBuilderMock(state);
 			}
 
 			throw new Error(`Unexpected table ${table}`);

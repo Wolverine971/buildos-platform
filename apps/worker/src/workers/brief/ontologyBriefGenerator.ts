@@ -80,6 +80,10 @@ function formatDate(dateStr: string): string {
 	return format(date, 'MMM d, yyyy');
 }
 
+function escapeMarkdownLinkLabel(label: string): string {
+	return label.replace(/([\\[\]*])/g, '\\$1');
+}
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
 	let timeout: NodeJS.Timeout | null = null;
 	const timeoutPromise = new Promise<T>((_, reject) => {
@@ -698,8 +702,11 @@ function generateMainBriefMarkdown(
 	// Helper to format task with project link
 	const formatTaskWithProject = (task: OntoTask): string => {
 		const projectName = projectNameMap.get(task.project_id) || 'Unknown Project';
-		const priorityStr = task.priority !== null ? ` (P${task.priority})` : '';
-		return `- [${task.title}](/projects/${task.project_id}/tasks/${task.id})${priorityStr} — [${projectName}](/projects/${task.project_id})`;
+		const priorityLabel = task.priority !== null ? `P${task.priority}` : null;
+		const projectLink = `[${escapeMarkdownLinkLabel(projectName)}](/projects/${task.project_id})`;
+		const metadata = [priorityLabel, projectLink].filter(Boolean).join(' / ');
+		const taskLink = `[${escapeMarkdownLinkLabel(task.title)}](/projects/${task.project_id}/tasks/${task.id})`;
+		return `- **${taskLink}**\n  - ${metadata}`;
 	};
 
 	let mainBrief = `# ${formatDate(briefData.briefDate)}\n\n`;
@@ -707,6 +714,11 @@ function generateMainBriefMarkdown(
 	// Holiday notice
 	if (holidays && holidays.length > 0) {
 		mainBrief += `🎉 **Today is ${holidays.join(' and ')}**\n\n`;
+	}
+
+	// Executive Brief - lead with the synthesized readout before status metrics
+	if (executiveSummary.trim()) {
+		mainBrief += `## Executive Brief\n\n${executiveSummary.trim()}\n\n`;
 	}
 
 	// Day Hook - one-liner that sets expectations
@@ -752,9 +764,6 @@ function generateMainBriefMarkdown(
 		}
 		mainBrief += '\n';
 	}
-
-	// Executive Summary
-	mainBrief += `## Executive Summary\n\n${executiveSummary}\n\n`;
 
 	// Strategic Alignment Section
 	const activeGoals = briefData.goals.filter(

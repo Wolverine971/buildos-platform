@@ -484,7 +484,7 @@
 				{/if}
 
 				<div
-					class="prose prose-sm max-w-none overflow-x-auto
+					class="daily-brief-markdown prose prose-sm max-w-none overflow-x-auto break-words
 						prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground
 						prose-strong:text-foreground prose-a:text-accent prose-blockquote:text-muted-foreground
 						prose-blockquote:border-border prose-code:bg-muted prose-code:text-foreground
@@ -577,3 +577,85 @@
 		</div>
 	{/snippet}
 </Modal>
+
+<style>
+	:global(.daily-brief-markdown) {
+		color: hsl(var(--foreground));
+		font-size: 0.98rem;
+		line-height: 1.62;
+	}
+
+	:global(.daily-brief-markdown h1) {
+		margin: 0 0 1.35rem;
+		font-size: 2rem;
+		font-weight: 750;
+		line-height: 1.12;
+		letter-spacing: 0;
+	}
+
+	:global(.daily-brief-markdown h2) {
+		margin: 2rem 0 0.75rem;
+		padding-top: 1.1rem;
+		border-top: 1px solid hsl(var(--border) / 0.65);
+		font-size: 1.15rem;
+		font-weight: 720;
+		line-height: 1.25;
+		letter-spacing: 0;
+	}
+
+	:global(.daily-brief-markdown h1 + h2) {
+		margin-top: 0.5rem;
+		padding-top: 0;
+		border-top: 0;
+	}
+
+	:global(.daily-brief-markdown h3) {
+		margin: 1.35rem 0 0.5rem;
+		font-size: 1rem;
+		font-weight: 700;
+		line-height: 1.25;
+		letter-spacing: 0;
+	}
+
+	:global(.daily-brief-markdown p) {
+		margin: 0.55rem 0;
+	}
+
+	:global(.daily-brief-markdown ul),
+	:global(.daily-brief-markdown ol) {
+		margin: 0.6rem 0 1rem;
+		padding-left: 1.15rem;
+	}
+
+	:global(.daily-brief-markdown li) {
+		margin: 0.38rem 0;
+		padding-left: 0.12rem;
+	}
+
+	:global(.daily-brief-markdown li > p) {
+		margin: 0.15rem 0;
+	}
+
+	:global(.daily-brief-markdown ul ul),
+	:global(.daily-brief-markdown ol ul) {
+		margin: 0.2rem 0 0.45rem;
+		padding-left: 1rem;
+		color: hsl(var(--muted-foreground));
+		font-size: 0.9rem;
+		line-height: 1.45;
+	}
+
+	:global(.daily-brief-markdown ul ul li),
+	:global(.daily-brief-markdown ol ul li) {
+		margin: 0.1rem 0;
+	}
+
+	:global(.daily-brief-markdown a) {
+		text-decoration-thickness: 0.08em;
+		text-underline-offset: 0.18em;
+	}
+
+	:global(.daily-brief-markdown hr) {
+		margin: 1.6rem 0;
+	}
+</style>

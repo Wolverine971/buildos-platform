@@ -5597,6 +5597,7 @@ async function executeGatewayOp(params: {
 					responsePayload: response,
 					entityKind: entityMeta.entityKind,
 					entityId: entityMeta.entityId,
+					startedAt: executionStartedAt,
 					securityEventOptions: params.securityEventOptions
 				});
 			} catch (auditError) {
