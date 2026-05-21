@@ -34,6 +34,14 @@ export default {
 			$utils: 'src/lib/utils'
 		},
 
+		csrf: {
+			// OAuth token/revocation endpoints must accept cross-origin
+			// application/x-www-form-urlencoded POSTs from native clients such as
+			// Claude Code. SvelteKit's built-in check is global, so hooks.server.ts
+			// re-applies the same-origin form-post guard for every non-OAuth route.
+			trustedOrigins: ['*']
+		},
+
 		prerender: {
 			handleHttpError: ({ path, message }) => {
 				// Skip errors for API routes and auth routes (they're not prerenderable)

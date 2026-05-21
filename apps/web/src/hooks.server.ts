@@ -44,6 +44,43 @@ const LEGACY_PATH_REDIRECTS = new Map<string, string>([
 	['/s-build-os.webp', '/twitter_card_light.webp']
 ]);
 const LEGACY_BLOG_MARKDOWN_PATH = /^\/src\/content\/blogs\/([^/]+)\/([^/]+?)(?:\.md)?\/?$/;
+const CROSS_ORIGIN_FORM_POST_ALLOWED_PATHS = new Set(['/oauth/token', '/oauth/revoke']);
+
+function isFormContentType(contentType: string | null): boolean {
+	if (!contentType) return false;
+	const normalized = contentType.split(';', 1)[0]?.trim().toLowerCase();
+	return (
+		normalized === 'application/x-www-form-urlencoded' ||
+		normalized === 'multipart/form-data' ||
+		normalized === 'text/plain'
+	);
+}
+
+function createCrossSiteFormPostResponse(event: RequestEvent): Response | null {
+	const method = event.request.method.toUpperCase();
+	if (method !== 'POST' && method !== 'PUT' && method !== 'PATCH' && method !== 'DELETE') {
+		return null;
+	}
+
+	if (!isFormContentType(event.request.headers.get('content-type'))) {
+		return null;
+	}
+
+	if (CROSS_ORIGIN_FORM_POST_ALLOWED_PATHS.has(event.url.pathname)) {
+		return null;
+	}
+
+	const origin = event.request.headers.get('origin');
+	if (!origin || origin === event.url.origin) {
+		return null;
+	}
+
+	return json(
+		{ message: `Cross-site ${method} form submissions are forbidden` },
+		{ status: 403 }
+	);
+}
+
 function getLegacyRedirectPath(pathname: string): string | null {
 	const redirectedPath = LEGACY_PATH_REDIRECTS.get(pathname);
 	if (redirectedPath) {
@@ -164,6 +201,11 @@ function logHookError(
 
 // Main handle for Supabase and session management
 const handleSupabase: Handle = async ({ event, resolve }) => {
+	const crossSiteFormPostResponse = createCrossSiteFormPostResponse(event);
+	if (crossSiteFormPostResponse) {
+		return crossSiteFormPostResponse;
+	}
+
 	const privateConfigProbeResponse = createPrivateConfigProbeResponse(event);
 	if (privateConfigProbeResponse) {
 		return privateConfigProbeResponse;
