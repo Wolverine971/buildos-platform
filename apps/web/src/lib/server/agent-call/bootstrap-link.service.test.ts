@@ -221,6 +221,7 @@ describe('AgentCallBootstrapLinkService', () => {
 			/^https:\/\/build-os\.com\/api\/agent-call\/bootstrap\/bocs_/
 		);
 		expect(response.paste_prompt).toContain(response.instructions_url);
+		expect(response.paste_prompt).toContain('use get_onto_project_status first');
 		expect(state.bootstrapRows).toHaveLength(1);
 		expect(state.bootstrapRows[0]?.payload).toMatchObject({
 			bearer_token: 'boca_test_secret'
@@ -278,12 +279,16 @@ describe('AgentCallBootstrapLinkService', () => {
 			'Use direct tools returned by tools/list for normal BuildOS reads and writes.'
 		);
 		expect(document.setup_steps).toContain(
+			'When working inside an existing project, call get_onto_project_status first if it is returned by tools/list. Treat it like git status for BuildOS: a compact snapshot of the project description, counts, collaborators, recent changes, due-soon work, and upcoming events.'
+		);
+		expect(document.setup_steps).toContain(
 			'Use tool_search only when the exact BuildOS tool is unknown.'
 		);
 		expect(document.setup_steps).toContain(
 			'Use tool_schema before first-time or uncertain writes, then call the returned direct tool_name.'
 		);
 		expect(document.follow_up_prompt).toContain('call the scoped direct tools by name');
+		expect(document.follow_up_prompt).toContain('call get_onto_project_status first');
 		expect(serializeBootstrapDocumentAsText(document)).toContain(
 			'BuildOS OpenClaw Bootstrap Instructions'
 		);

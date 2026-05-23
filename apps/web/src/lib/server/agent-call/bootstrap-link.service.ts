@@ -57,6 +57,7 @@ function buildPastePrompt(params: {
 		`- ${params.secretHandlingNote}`,
 		'- Prefer the native BuildOS connector if one exists.',
 		'- If no connector exists, use your shell/HTTP capability to call BuildOS directly as instructed.',
+		'- After setup, use get_onto_project_status first when working inside an existing project.',
 		'- Do not ask the user to paste the secret token into chat again.',
 		...(params.requiresOAuth
 			? [

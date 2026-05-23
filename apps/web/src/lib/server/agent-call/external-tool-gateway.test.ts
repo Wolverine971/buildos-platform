@@ -146,6 +146,20 @@ type AssetRow = {
 	storage_path?: string | null;
 };
 
+type EventRow = {
+	id: string;
+	project_id: string | null;
+	title: string;
+	state_key: string;
+	start_at: string;
+	end_at: string | null;
+	location: string | null;
+	updated_at: string;
+	deleted_at: string | null;
+	owner_entity_type?: string;
+	owner_entity_id?: string | null;
+};
+
 type ProjectRow = {
 	id: string;
 	name: string;
@@ -162,11 +176,31 @@ type ProjectRow = {
 	created_by?: string | null;
 };
 
+type ProjectMemberRow = {
+	id: string;
+	project_id: string;
+	actor_id: string;
+	role_key: string;
+	access: string;
+	role_name: string | null;
+	role_description: string | null;
+	created_at: string;
+	removed_at: string | null;
+	actor?: {
+		id: string;
+		user_id: string | null;
+		name: string | null;
+		email: string | null;
+	} | null;
+};
+
 type State = {
 	documents: DocumentRow[];
 	tasks: TaskRow[];
 	assets?: AssetRow[];
+	events?: EventRow[];
 	projects?: ProjectRow[];
+	projectMembers?: ProjectMemberRow[];
 	toolExecutions: Array<Record<string, unknown>>;
 	projectLogs?: Array<Record<string, unknown>>;
 	nextTaskId: number;
@@ -359,6 +393,11 @@ class OntoTasksQueryBuilderMock {
 	private projectIdsFilter: string[] | null = null;
 	private deletedAtFilterApplied = false;
 	private archivedAtFilter: 'active' | 'archived' | null = null;
+	private dueAtLte: string | null = null;
+	private dueAtGte: string | null = null;
+	private orderBy: { field: string; ascending: boolean } | null = null;
+	private rowLimit: number | null = null;
+	private rangeBounds: { from: number; to: number } | null = null;
 	private insertPayload: Record<string, unknown> | null = null;
 	private updatePayload: Record<string, unknown> | null = null;
 
@@ -387,6 +426,9 @@ class OntoTasksQueryBuilderMock {
 	eq(field: string, value: unknown) {
 		if (field === 'id' && typeof value === 'string') {
 			this.idFilter = value;
+		}
+		if (field === 'project_id' && typeof value === 'string') {
+			this.projectIdsFilter = [value];
 		}
 
 		return this;
@@ -421,6 +463,48 @@ class OntoTasksQueryBuilderMock {
 		return this;
 	}
 
+	lte(field: string, value: unknown) {
+		if (field === 'due_at' && typeof value === 'string') {
+			this.dueAtLte = value;
+		}
+		return this;
+	}
+
+	gte(field: string, value: unknown) {
+		if (field === 'due_at' && typeof value === 'string') {
+			this.dueAtGte = value;
+		}
+		return this;
+	}
+
+	order(field: string, options?: { ascending?: boolean }) {
+		this.orderBy = { field, ascending: options?.ascending !== false };
+		return this;
+	}
+
+	limit(value: number) {
+		this.rowLimit = value;
+		return this;
+	}
+
+	range(from: number, to: number) {
+		this.rangeBounds = { from, to };
+		return this;
+	}
+
+	then<TResult1 = any, TResult2 = never>(
+		onfulfilled?:
+			| ((value: {
+					data: Record<string, unknown>[];
+					error: any;
+					count: number;
+			  }) => TResult1 | PromiseLike<TResult1>)
+			| null,
+		onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+	) {
+		return Promise.resolve(this.executeList()).then(onfulfilled, onrejected);
+	}
+
 	private matches(row: TaskRow): boolean {
 		if (this.idFilter !== null && row.id !== this.idFilter) {
 			return false;
@@ -439,12 +523,48 @@ class OntoTasksQueryBuilderMock {
 		if (this.archivedAtFilter === 'archived' && row.archived_at == null) {
 			return false;
 		}
+		if (this.dueAtLte !== null) {
+			if (row.due_at === null || row.due_at > this.dueAtLte) return false;
+		}
+		if (this.dueAtGte !== null) {
+			if (row.due_at === null || row.due_at < this.dueAtGte) return false;
+		}
 
 		return true;
 	}
 
+	private filteredRows() {
+		let rows = this.state.tasks.filter((task) => this.matches(task));
+		if (this.orderBy) {
+			const orderBy = this.orderBy;
+			const field = orderBy.field as keyof TaskRow;
+			rows = [...rows].sort((a, b) => {
+				const left = String(a[field] ?? '');
+				const right = String(b[field] ?? '');
+				return orderBy.ascending ? left.localeCompare(right) : right.localeCompare(left);
+			});
+		}
+		return rows;
+	}
+
+	private executeList() {
+		const rows = this.filteredRows();
+		let limited = rows;
+		if (this.rangeBounds) {
+			limited = rows.slice(this.rangeBounds.from, this.rangeBounds.to + 1);
+		}
+		if (this.rowLimit !== null) {
+			limited = limited.slice(0, this.rowLimit);
+		}
+		return {
+			data: limited,
+			error: null,
+			count: rows.length
+		};
+	}
+
 	maybeSingle() {
-		const row = this.state.tasks.find((task) => this.matches(task)) ?? null;
+		const row = this.filteredRows()[0] ?? null;
 		return Promise.resolve({ data: row, error: null });
 	}
 
@@ -508,7 +628,7 @@ class OntoTasksQueryBuilderMock {
 			return Promise.resolve({ data: updated, error: null });
 		}
 
-		const row = this.state.tasks.find((task) => this.matches(task)) ?? null;
+		const row = this.filteredRows()[0] ?? null;
 		return Promise.resolve({
 			data: row,
 			error: row ? null : new Error('Task not found')
@@ -867,6 +987,7 @@ class OntoProjectLogsQueryBuilderMock {
 	private inFilters = new Map<string, unknown[]>();
 	private minCreatedAt: string | null = null;
 	private rowLimit: number | null = null;
+	private orderBy: { field: string; ascending: boolean } | null = null;
 	private insertPayload: Record<string, unknown> | null = null;
 	private action: 'select' | 'insert' | null = null;
 
@@ -908,6 +1029,11 @@ class OntoProjectLogsQueryBuilderMock {
 		return this;
 	}
 
+	order(field: string, options?: { ascending?: boolean }) {
+		this.orderBy = { field, ascending: options?.ascending !== false };
+		return this;
+	}
+
 	then<TResult1 = any, TResult2 = never>(
 		onfulfilled?:
 			| ((value: {
@@ -932,7 +1058,7 @@ class OntoProjectLogsQueryBuilderMock {
 	}
 
 	private executeSelect() {
-		const rows = (this.state.projectLogs ?? []).filter((row) => {
+		let rows = (this.state.projectLogs ?? []).filter((row) => {
 			for (const [field, value] of this.filters.entries()) {
 				if (row[field] !== value) return false;
 			}
@@ -944,8 +1070,141 @@ class OntoProjectLogsQueryBuilderMock {
 			}
 			return true;
 		});
+		if (this.orderBy) {
+			const orderBy = this.orderBy;
+			rows = [...rows].sort((a, b) => {
+				const left = String(a[orderBy.field] ?? '');
+				const right = String(b[orderBy.field] ?? '');
+				return orderBy.ascending ? left.localeCompare(right) : right.localeCompare(left);
+			});
+		}
 		const limited = typeof this.rowLimit === 'number' ? rows.slice(0, this.rowLimit) : rows;
 		return { data: limited, error: null };
+	}
+}
+
+class OntoEventsQueryBuilderMock {
+	private idFilter: string | null = null;
+	private projectIdFilter: string | null = null;
+	private deletedAtFilterApplied = false;
+	private startAtGte: string | null = null;
+	private startAtLte: string | null = null;
+	private orderBy: { field: string; ascending: boolean } | null = null;
+	private rowLimit: number | null = null;
+
+	constructor(private readonly state: State) {}
+
+	select() {
+		return this;
+	}
+
+	eq(field: string, value: unknown) {
+		if (field === 'id' && typeof value === 'string') {
+			this.idFilter = value;
+		}
+		if (field === 'project_id' && typeof value === 'string') {
+			this.projectIdFilter = value;
+		}
+		return this;
+	}
+
+	is(field: string, value: unknown) {
+		if (field === 'deleted_at' && value === null) {
+			this.deletedAtFilterApplied = true;
+		}
+		return this;
+	}
+
+	gte(field: string, value: unknown) {
+		if (field === 'start_at' && typeof value === 'string') {
+			this.startAtGte = value;
+		}
+		return this;
+	}
+
+	lte(field: string, value: unknown) {
+		if (field === 'start_at' && typeof value === 'string') {
+			this.startAtLte = value;
+		}
+		return this;
+	}
+
+	order(field: string, options?: { ascending?: boolean }) {
+		this.orderBy = { field, ascending: options?.ascending !== false };
+		return this;
+	}
+
+	limit(value: number) {
+		this.rowLimit = value;
+		return this;
+	}
+
+	maybeSingle() {
+		const row = this.filteredRows()[0] ?? null;
+		return Promise.resolve({
+			data: row ? this.serialize(row) : null,
+			error: null
+		});
+	}
+
+	then<TResult1 = any, TResult2 = never>(
+		onfulfilled?:
+			| ((value: {
+					data: Record<string, unknown>[];
+					error: any;
+			  }) => TResult1 | PromiseLike<TResult1>)
+			| null,
+		onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+	) {
+		return Promise.resolve(this.executeList()).then(onfulfilled, onrejected);
+	}
+
+	private matches(row: EventRow): boolean {
+		if (this.idFilter !== null && row.id !== this.idFilter) return false;
+		if (this.projectIdFilter !== null && row.project_id !== this.projectIdFilter) return false;
+		if (this.deletedAtFilterApplied && row.deleted_at !== null) return false;
+		if (this.startAtGte !== null && row.start_at < this.startAtGte) return false;
+		if (this.startAtLte !== null && row.start_at > this.startAtLte) return false;
+		return true;
+	}
+
+	private filteredRows() {
+		let rows = (this.state.events ?? []).filter((event) => this.matches(event));
+		if (this.orderBy) {
+			const orderBy = this.orderBy;
+			const field = orderBy.field as keyof EventRow;
+			rows = [...rows].sort((a, b) => {
+				const left = String(a[field] ?? '');
+				const right = String(b[field] ?? '');
+				return orderBy.ascending ? left.localeCompare(right) : right.localeCompare(left);
+			});
+		}
+		return rows;
+	}
+
+	private executeList() {
+		const rows = this.filteredRows();
+		const limited = this.rowLimit !== null ? rows.slice(0, this.rowLimit) : rows;
+		return {
+			data: limited.map((row) => this.serialize(row)),
+			error: null
+		};
+	}
+
+	private serialize(row: EventRow) {
+		return {
+			id: row.id,
+			project_id: row.project_id,
+			title: row.title,
+			state_key: row.state_key,
+			start_at: row.start_at,
+			end_at: row.end_at,
+			location: row.location,
+			updated_at: row.updated_at,
+			deleted_at: row.deleted_at,
+			owner_entity_type: row.owner_entity_type ?? 'project',
+			owner_entity_id: row.owner_entity_id ?? row.project_id
+		};
 	}
 }
 
@@ -995,6 +1254,97 @@ class OntoProjectsQueryBuilderMock {
 	}
 }
 
+class OntoProjectMembersQueryBuilderMock {
+	private projectIdFilter: string | null = null;
+	private removedAtFilterApplied = false;
+	private orderBy: { field: string; ascending: boolean } | null = null;
+	private rowLimit: number | null = null;
+
+	constructor(private readonly state: State) {}
+
+	select() {
+		return this;
+	}
+
+	eq(field: string, value: unknown) {
+		if (field === 'project_id' && typeof value === 'string') {
+			this.projectIdFilter = value;
+		}
+		return this;
+	}
+
+	is(field: string, value: unknown) {
+		if (field === 'removed_at' && value === null) {
+			this.removedAtFilterApplied = true;
+		}
+		return this;
+	}
+
+	order(field: string, options?: { ascending?: boolean }) {
+		this.orderBy = { field, ascending: options?.ascending !== false };
+		return this;
+	}
+
+	limit(value: number) {
+		this.rowLimit = value;
+		return this;
+	}
+
+	then<TResult1 = any, TResult2 = never>(
+		onfulfilled?:
+			| ((value: {
+					data: Record<string, unknown>[];
+					error: any;
+					count: number;
+			  }) => TResult1 | PromiseLike<TResult1>)
+			| null,
+		onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | null
+	) {
+		return Promise.resolve(this.executeList()).then(onfulfilled, onrejected);
+	}
+
+	private matches(row: ProjectMemberRow): boolean {
+		if (this.projectIdFilter !== null && row.project_id !== this.projectIdFilter) return false;
+		if (this.removedAtFilterApplied && row.removed_at !== null) return false;
+		return true;
+	}
+
+	private filteredRows() {
+		let rows = (this.state.projectMembers ?? []).filter((member) => this.matches(member));
+		if (this.orderBy) {
+			const orderBy = this.orderBy;
+			const field = orderBy.field as keyof ProjectMemberRow;
+			rows = [...rows].sort((a, b) => {
+				const left = String(a[field] ?? '');
+				const right = String(b[field] ?? '');
+				return orderBy.ascending ? left.localeCompare(right) : right.localeCompare(left);
+			});
+		}
+		return rows;
+	}
+
+	private executeList() {
+		const rows = this.filteredRows();
+		const limited = this.rowLimit !== null ? rows.slice(0, this.rowLimit) : rows;
+		return {
+			data: limited.map((row) => ({
+				id: row.id,
+				project_id: row.project_id,
+				actor_id: row.actor_id,
+				role_key: row.role_key,
+				access: row.access,
+				role_name: row.role_name,
+				role_description: row.role_description,
+				created_at: row.created_at,
+				removed_at: row.removed_at,
+				actor: row.actor ?? null
+			})),
+			error: null,
+			count: rows.length
+		};
+	}
+}
+
 function createAdminMock(state: State) {
 	return {
 		from: vi.fn((table: string) => {
@@ -1020,6 +1370,14 @@ function createAdminMock(state: State) {
 
 			if (table === 'onto_project_logs') {
 				return new OntoProjectLogsQueryBuilderMock(state);
+			}
+
+			if (table === 'onto_events') {
+				return new OntoEventsQueryBuilderMock(state);
+			}
+
+			if (table === 'onto_project_members') {
+				return new OntoProjectMembersQueryBuilderMock(state);
 			}
 
 			throw new Error(`Unexpected table ${table}`);
@@ -1081,6 +1439,7 @@ describe('external tool gateway', () => {
 				'list_onto_projects',
 				'search_onto_projects',
 				'get_onto_project_details',
+				'get_onto_project_status',
 				'list_onto_tasks',
 				'search_onto_tasks',
 				'get_onto_task_details',
@@ -1097,6 +1456,325 @@ describe('external tool gateway', () => {
 			])
 		);
 		expect(tools.map((tool) => tool.name)).not.toContain('update_onto_task');
+	});
+
+	it('returns a compact project status packet for first-time external agent context', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const now = Date.now();
+		const overdueAt = new Date(now - 24 * 60 * 60 * 1000).toISOString();
+		const dueSoonAt = new Date(now + 2 * 24 * 60 * 60 * 1000).toISOString();
+		const upcomingAt = new Date(now + 3 * 24 * 60 * 60 * 1000).toISOString();
+		const staleFutureAt = new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString();
+		const state: State = {
+			documents: [],
+			tasks: [
+				{
+					id: '77777777-7777-7777-7777-777777777777',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					title: 'Overdue launch checklist',
+					description: null,
+					type_key: 'task.default',
+					state_key: 'todo',
+					priority: 4,
+					start_at: null,
+					due_at: overdueAt,
+					completed_at: null,
+					props: {},
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-29T00:00:00.000Z',
+					archived_at: null,
+					deleted_at: null
+				},
+				{
+					id: '77777777-7777-7777-7777-777777777778',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					title: 'Due soon launch memo',
+					description: null,
+					type_key: 'task.default',
+					state_key: 'in_progress',
+					priority: 5,
+					start_at: null,
+					due_at: dueSoonAt,
+					completed_at: null,
+					props: {},
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-30T00:00:00.000Z',
+					archived_at: null,
+					deleted_at: null
+				},
+				{
+					id: '77777777-7777-7777-7777-777777777779',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					title: 'Completed task should not appear',
+					description: null,
+					type_key: 'task.default',
+					state_key: 'done',
+					priority: 1,
+					start_at: null,
+					due_at: overdueAt,
+					completed_at: overdueAt,
+					props: {},
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-30T00:00:00.000Z',
+					archived_at: null,
+					deleted_at: null
+				},
+				{
+					id: '77777777-7777-7777-7777-777777777780',
+					project_id: '66666666-6666-6666-6666-666666666666',
+					title: 'Hidden project task',
+					description: null,
+					type_key: 'task.default',
+					state_key: 'todo',
+					priority: 1,
+					start_at: null,
+					due_at: dueSoonAt,
+					completed_at: null,
+					props: {},
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-30T00:00:00.000Z',
+					archived_at: null,
+					deleted_at: null
+				}
+			],
+			events: [
+				{
+					id: '88888888-8888-8888-8888-888888888888',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					title: 'Launch review',
+					state_key: 'confirmed',
+					start_at: upcomingAt,
+					end_at: null,
+					location: 'Zoom',
+					updated_at: '2026-04-30T00:00:00.000Z',
+					deleted_at: null
+				},
+				{
+					id: '88888888-8888-8888-8888-888888888889',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					title: 'Future out of window',
+					state_key: 'confirmed',
+					start_at: staleFutureAt,
+					end_at: null,
+					location: null,
+					updated_at: '2026-04-30T00:00:00.000Z',
+					deleted_at: null
+				}
+			],
+			projectLogs: [
+				{
+					project_id: '44444444-4444-4444-4444-444444444444',
+					entity_type: 'document',
+					entity_id: '66666666-6666-6666-6666-666666666666',
+					action: 'updated',
+					created_at: '2026-05-02T00:00:00.000Z',
+					before_data: { title: 'Old brief' },
+					after_data: { title: 'Launch brief' },
+					change_source: 'agent_call'
+				},
+				{
+					project_id: '44444444-4444-4444-4444-444444444444',
+					entity_type: 'task',
+					entity_id: '77777777-7777-7777-7777-777777777777',
+					action: 'created',
+					created_at: '2026-05-01T00:00:00.000Z',
+					before_data: null,
+					after_data: { title: 'Overdue launch checklist' },
+					change_source: 'user'
+				},
+				{
+					project_id: '66666666-6666-6666-6666-666666666666',
+					entity_type: 'task',
+					entity_id: '99999999-9999-9999-9999-999999999999',
+					action: 'updated',
+					created_at: '2026-05-03T00:00:00.000Z',
+					before_data: null,
+					after_data: { title: 'Hidden change' },
+					change_source: 'user'
+				}
+			],
+			projectMembers: [
+				{
+					id: 'aaaaaaaa-1111-1111-1111-aaaaaaaaaaaa',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					actor_id: 'actor-1',
+					role_key: 'owner',
+					access: 'admin',
+					role_name: 'Project Owner',
+					role_description: 'Owns direction and final decisions.',
+					created_at: '2026-04-01T00:00:00.000Z',
+					removed_at: null,
+					actor: {
+						id: 'actor-1',
+						user_id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+						name: 'Dana Owner',
+						email: 'dana@example.com'
+					}
+				},
+				{
+					id: 'aaaaaaaa-2222-2222-2222-aaaaaaaaaaaa',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					actor_id: 'actor-collab-1',
+					role_key: 'editor',
+					access: 'write',
+					role_name: 'Launch Lead',
+					role_description: 'Coordinates launch work and dependencies.',
+					created_at: '2026-04-02T00:00:00.000Z',
+					removed_at: null,
+					actor: {
+						id: 'actor-collab-1',
+						user_id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+						name: 'Lee Collaborator',
+						email: 'lee@example.com'
+					}
+				},
+				{
+					id: 'aaaaaaaa-3333-3333-3333-aaaaaaaaaaaa',
+					project_id: '44444444-4444-4444-4444-444444444444',
+					actor_id: 'actor-removed-1',
+					role_key: 'viewer',
+					access: 'read',
+					role_name: null,
+					role_description: null,
+					created_at: '2026-04-03T00:00:00.000Z',
+					removed_at: '2026-04-04T00:00:00.000Z',
+					actor: {
+						id: 'actor-removed-1',
+						user_id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+						name: 'Removed Member',
+						email: 'removed@example.com'
+					}
+				},
+				{
+					id: 'aaaaaaaa-4444-4444-4444-aaaaaaaaaaaa',
+					project_id: '66666666-6666-6666-6666-666666666666',
+					actor_id: 'actor-hidden-1',
+					role_key: 'owner',
+					access: 'admin',
+					role_name: 'Hidden Owner',
+					role_description: null,
+					created_at: '2026-04-01T00:00:00.000Z',
+					removed_at: null,
+					actor: {
+						id: 'actor-hidden-1',
+						user_id: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+						name: 'Hidden Member',
+						email: 'hidden@example.com'
+					}
+				}
+			],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_only',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
+			},
+			toolName: 'get_onto_project_status',
+			arguments: {
+				task_limit: 4,
+				event_limit: 4
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.project.status.get',
+			ok: true,
+			result: {
+				project: {
+					id: '44444444-4444-4444-4444-444444444444',
+					name: 'Allowed Project'
+				},
+				overview: {
+					counts: {
+						tasks: 7,
+						documents: 4,
+						plans: 2,
+						goals: 1,
+						collaborators: 2
+					},
+					count_summary:
+						'Allowed Project has 7 tasks, 4 documents, 2 plans, 1 goal, 2 collaborators.'
+				},
+				collaborators: {
+					count: 2,
+					shown: 2,
+					truncated: false,
+					members: [
+						expect.objectContaining({
+							actor_id: 'actor-1',
+							display_name: 'Dana Owner',
+							email: 'dana@example.com',
+							role_key: 'owner',
+							role_name: 'Project Owner',
+							access: 'admin',
+							is_current_user: true
+						}),
+						expect.objectContaining({
+							actor_id: 'actor-collab-1',
+							display_name: 'Lee Collaborator',
+							email: 'lee@example.com',
+							role_key: 'editor',
+							role_name: 'Launch Lead',
+							access: 'write',
+							is_current_user: false
+						})
+					]
+				},
+				recent_changes: [
+					expect.objectContaining({
+						entity_type: 'document',
+						action: 'updated',
+						title: 'Launch brief'
+					}),
+					expect.objectContaining({
+						entity_type: 'task',
+						action: 'created',
+						title: 'Overdue launch checklist'
+					})
+				],
+				upcoming: {
+					overdue_tasks: [
+						expect.objectContaining({
+							title: 'Overdue launch checklist',
+							due_at: overdueAt
+						})
+					],
+					due_soon_tasks: [
+						expect.objectContaining({
+							title: 'Due soon launch memo',
+							due_at: dueSoonAt
+						})
+					],
+					upcoming_events: [
+						expect.objectContaining({
+							title: 'Launch review',
+							start_at: upcomingAt
+						})
+					]
+				}
+			}
+		});
+		expect(JSON.stringify(result.result)).not.toContain('Hidden project task');
+		expect(JSON.stringify(result.result)).not.toContain('Hidden change');
+		expect(JSON.stringify(result.result)).not.toContain('Hidden Member');
+		expect(JSON.stringify(result.result)).not.toContain('Removed Member');
+		expect(JSON.stringify(result.result)).not.toContain('Completed task should not appear');
+		expect(JSON.stringify(result.result)).not.toContain('Future out of window');
+		expect(state.toolExecutions[0]).toMatchObject({
+			op: 'onto.project.status.get',
+			status: 'succeeded',
+			entity_kind: 'project',
+			entity_id: '44444444-4444-4444-4444-444444444444'
+		});
 	});
 
 	it('exposes project creation only for unscoped read_write external callers', async () => {

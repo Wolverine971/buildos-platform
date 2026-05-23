@@ -552,6 +552,7 @@ function setupStepsForProfile(
 		`Request ${context.scopeMode} during call.dial unless this session only needs narrower access.`,
 		'Call call.dial first, then tools/list.',
 		'Use direct tools returned by tools/list for normal BuildOS reads and writes.',
+		'When working inside an existing project, call get_onto_project_status first if it is returned by tools/list. Treat it like git status for BuildOS: a compact snapshot of the project description, counts, recent changes, due-soon work, and upcoming events.',
 		'Use tool_search only when the exact BuildOS tool is unknown.',
 		'Use tool_schema before first-time or uncertain writes, then call the returned direct tool_name.',
 		'Call call.hangup when the session is finished.'
@@ -623,6 +624,7 @@ function followUpPromptForProfile(profile: AgentClientProfile): string {
 	return [
 		'Use the configured BuildOS credentials.',
 		'Connect to BuildOS, list the available BuildOS tools, then call the scoped direct tools by name.',
+		'For project work, call get_onto_project_status first when available so you have the current project snapshot before reading deeper or writing.',
 		'Use tool_search only when the exact tool is unknown, and tool_schema when you need exact arguments before a write.',
 		'Do not ask the user to paste secrets into chat.',
 		'If configuration is incomplete, say exactly which file, env var, or secret location still needs to be updated.'

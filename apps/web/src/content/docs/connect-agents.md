@@ -15,6 +15,16 @@ Generate a key. Choose where you are installing it. BuildOS gives you the right 
 
 Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any time. No retraining your agents on your context every session.
 
+## What agents should do first
+
+BuildOS is usually a workspace with many projects. After an agent connects, it should:
+
+1. Call `call.dial`.
+2. Call `tools/list` and use the direct tool names it returns.
+3. If it is about to work inside an existing project, call `get_onto_project_status` with the `project_id` first.
+
+`get_onto_project_status` is the BuildOS equivalent of `git status` for a project. It returns the compact snapshot an agent needs before deeper reads or writes: project description, task/document/plan/goal/collaborator counts, active collaborators, recent changes, overdue and due-soon tasks, and upcoming events.
+
 ## Client profiles
 
 Same BuildOS auth core. Different save location.
@@ -55,7 +65,7 @@ Choose the **Claude Code** client profile when generating the key.
 
     > "Connect to BuildOS and list my projects."
 
-    Claude will use the configured BuildOS transport, open a session, and show your projects. Until the MCP facade ships, the JSON-RPC gateway at `POST /api/agent-call/buildos` is the fallback.
+    Claude will use the configured BuildOS transport, open a session, and show your projects. When you pick a project, it should call `get_onto_project_status` before deeper reads or writes. Until the MCP facade ships, the JSON-RPC gateway at `POST /api/agent-call/buildos` is the fallback.
 
 The env block looks like:
 
@@ -72,7 +82,7 @@ Cursor uses the same env block. Drop it into your Cursor agent settings (the pla
 
 > "Connect to BuildOS, list my projects."
 
-Cursor will use the bearer token to dial the gateway. Same tool surface as Claude Code.
+Cursor will use the bearer token to dial the gateway. Same tool surface as Claude Code. For project work, ask it to call `get_onto_project_status` first so it has the current project snapshot.
 
 ## Setting it up in Claude Desktop and Claude browser
 
@@ -132,7 +142,7 @@ Project creation is intentionally broader than project-scoped writes: `onto.proj
 
 **Reads** (available on every key)
 
-- `onto.project.list`, `onto.project.search`, `onto.project.get`
+- `onto.project.list`, `onto.project.search`, `onto.project.get`, `onto.project.status.get`
 - `onto.task.list`, `onto.task.search`, `onto.task.get`
 - `onto.document.list`, `onto.document.search`, `onto.document.get`
 - `onto.search`
@@ -154,6 +164,32 @@ Project creation is intentionally broader than project-scoped writes: `onto.proj
 **Session methods**
 
 - `call.dial`, `tools/list`, `tools/call`, `call.hangup`
+
+## Getting Project Status
+
+The project status op is `onto.project.status.get`, exposed by `tools/list` as `get_onto_project_status`. It is read-only and available on normal read grants.
+
+Use it when an agent first attaches to a known project, before it starts searching individual tasks or documents. It returns:
+
+- `overview`: short description, task/document/plan/goal/collaborator counts, count summary, and next step when available
+- `collaborators`: active project members with actor ID, display name, email when available, role/access, role profile, and whether the member is the connected user
+- `recent_changes`: most recent project log entries with entity type, action, title, timestamp, and source
+- `upcoming`: overdue tasks, due-soon tasks, upcoming project events, and the time windows used
+
+If the agent does not know the project ID yet, it can list/search projects first, or pass a `query` if the status tool is available and the project name is clear.
+
+```json
+{
+	"method": "tools/call",
+	"params": {
+		"call_id": "<your call id>",
+		"name": "get_onto_project_status",
+		"arguments": {
+			"project_id": "<project uuid>"
+		}
+	}
+}
+```
 
 ## Saving a markdown document from an external agent
 
@@ -234,6 +270,7 @@ That endpoint returns an `agent_profile_bootstrap_v1` document with:
 - client-specific storage targets
 - setup steps
 - artifacts such as a ChatGPT Action OpenAPI schema or MCP config target notes
+- guidance to call `get_onto_project_status` first for existing project work
 - OAuth guidance for browser/cloud clients
 
 It is short-lived and returns `Cache-Control: no-store`.

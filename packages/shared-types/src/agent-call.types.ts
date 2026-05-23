@@ -24,6 +24,7 @@ export const BUILDOS_AGENT_READ_OPS = [
 	'onto.project.list',
 	'onto.project.search',
 	'onto.project.get',
+	'onto.project.status.get',
 	'onto.project.graph.get',
 	'onto.task.list',
 	'onto.task.search',

@@ -709,6 +709,7 @@
 			`- Project scope: ${projectScopeDescription(params.caller)}.`,
 			`- Allowed ops: ${allowedOpsDescription(params.caller)}.`,
 			'- Use the direct tool names returned by tools/list for BuildOS reads and writes.',
+			'- When working inside an existing project, call get_onto_project_status first if tools/list returned it. Treat it like git status for BuildOS: a current snapshot with the project description, counts, collaborators, recent changes, due-soon work, and upcoming events.',
 			'- Use tool_search only when the exact BuildOS tool is unknown.',
 			'- Use tool_schema when write arguments are uncertain, then call the returned direct tool_name.',
 			'- Do not perform writes unless I explicitly ask you to.',
