@@ -16,6 +16,7 @@
 	import { liveTranscript } from '$lib/utils/voice';
 	import { browser } from '$app/environment';
 	import { haptic } from '$lib/utils/haptic';
+	import { getLiveTranscriptPreview } from './live-transcript-preview';
 
 	type VoiceButtonVariant = 'muted' | 'loading' | 'prompt' | 'recording' | 'ready';
 
@@ -575,9 +576,10 @@
 		isCurrentlyRecording && liveTranscriptPreview.trim().length > 0 && _canUseLiveTranscript
 	);
 
-	const displayedLiveTranscript = $derived(
+	const fullLiveTranscript = $derived(
 		liveTranscriptPreview.trim() || capturedTranscriptForCallback
 	);
+	const displayedLiveTranscript = $derived(getLiveTranscriptPreview(fullLiveTranscript));
 
 	const showVoiceActivityPanel = $derived(
 		enableVoice &&
@@ -592,7 +594,7 @@
 	const voiceActivityLabel = $derived.by(() => {
 		if (_isStopping) return stoppingLabel;
 		if (_isTranscribing) return transcribingStatusLabel;
-		if (isCurrentlyRecording && displayedLiveTranscript.length === 0) return listeningLabel;
+		if (isCurrentlyRecording && fullLiveTranscript.length === 0) return listeningLabel;
 		return liveTranscriptLabel;
 	});
 
@@ -1050,13 +1052,17 @@
 					<span class="h-1.5 w-1.5 animate-pulse rounded-full bg-accent"></span>
 					{voiceActivityLabel}
 				</span>
-				<p class="m-0 line-clamp-3 flex-1 text-sm leading-relaxed text-foreground">
-					{_isStopping
-						? 'Finishing capture...'
-						: _isTranscribing
-							? transcribingStatusLabel
-							: displayedLiveTranscript || 'Recording audio...'}
-				</p>
+				<div
+					class="flex max-h-[4.5rem] min-h-[1.5rem] min-w-0 flex-1 flex-col justify-end overflow-hidden"
+				>
+					<p class="m-0 break-words text-sm leading-relaxed text-foreground">
+						{_isStopping
+							? 'Finishing capture...'
+							: _isTranscribing
+								? transcribingStatusLabel
+								: displayedLiveTranscript || 'Recording audio...'}
+					</p>
+				</div>
 			</div>
 		</div>
 	{/if}

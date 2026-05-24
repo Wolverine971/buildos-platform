@@ -87,4 +87,80 @@ describe('evaluatePromptScenario', () => {
 			)?.status
 		).toBe('failed');
 	});
+
+	it('passes a supervisor question turn with checkpoint events', () => {
+		const scenario = getPromptEvalScenario('safety.supervisor_question_repeated_validation');
+		expect(scenario).not.toBeNull();
+
+		const result = evaluatePromptScenario(scenario!, {
+			turnRun: {
+				id: 'run-supervisor-question',
+				status: 'completed',
+				finished_reason: 'supervisor_question',
+				first_lane: 'direct_exact_op',
+				first_canonical_op: 'onto.task.update',
+				first_skill_path: null,
+				validation_failure_count: 2,
+				prompt_snapshot: { id: 'snapshot-supervisor-question' }
+			},
+			assistantMessage: {
+				id: 'assistant-supervisor-question',
+				content:
+					'Which exact task should I use? Send the name or ID, and I will continue from here.'
+			},
+			events: [
+				{ event_type: 'supervisor_decision', payload: { action: 'ask_user' } },
+				{ event_type: 'supervisor_question_checkpoint_created', payload: {} },
+				{ event_type: 'done_emitted', payload: {} }
+			],
+			toolExecutions: [{ gateway_op: 'onto.task.update', success: false }]
+		});
+
+		expect(result.status).toBe('passed');
+		expect(result.summary).toMatchObject({
+			finished_reason: 'supervisor_question',
+			validation_failure_count: 2
+		});
+		expect(
+			result.assertions.find(
+				(assertion) => assertion.assertionKey === 'finished_reason_matches'
+			)?.status
+		).toBe('passed');
+	});
+
+	it('fails the supervisor question scenario when the turn finishes normally', () => {
+		const scenario = getPromptEvalScenario('safety.supervisor_question_repeated_validation');
+		expect(scenario).not.toBeNull();
+
+		const result = evaluatePromptScenario(scenario!, {
+			turnRun: {
+				id: 'run-normal',
+				status: 'completed',
+				finished_reason: 'stop',
+				first_lane: 'direct_exact_op',
+				first_canonical_op: 'onto.task.update',
+				first_skill_path: null,
+				validation_failure_count: 2,
+				prompt_snapshot: { id: 'snapshot-normal' }
+			},
+			assistantMessage: {
+				id: 'assistant-normal',
+				content: 'I could not update the task.'
+			},
+			events: [{ event_type: 'done_emitted', payload: {} }],
+			toolExecutions: [{ gateway_op: 'onto.task.update', success: false }]
+		});
+
+		expect(result.status).toBe('failed');
+		expect(
+			result.assertions.find(
+				(assertion) => assertion.assertionKey === 'finished_reason_matches'
+			)?.status
+		).toBe('failed');
+		expect(
+			result.assertions.find(
+				(assertion) => assertion.assertionKey === 'event_type:supervisor_decision'
+			)?.status
+		).toBe('failed');
+	});
 });

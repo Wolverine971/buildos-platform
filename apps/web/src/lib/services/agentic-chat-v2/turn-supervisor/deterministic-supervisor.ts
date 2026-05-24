@@ -1,0 +1,453 @@
+// apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/deterministic-supervisor.ts
+import type {
+	TurnDigest,
+	TurnSupervisor,
+	TurnSupervisorConfig,
+	TurnSupervisorDecision,
+	TurnSupervisorObservation,
+	TurnSupervisorRisk
+} from './types';
+import { buildTurnStatusMessage } from './status-messages';
+import {
+	buildToolPatternKey,
+	classifyToolError,
+	isLikelyReadToolName,
+	isLikelyWriteToolName
+} from './digest';
+import type { ChatContextType } from '@buildos/shared-types';
+
+type CreateTurnSupervisorParams = {
+	turnRunId?: string | null;
+	sessionId: string;
+	userId: string;
+	contextType: ChatContextType;
+	entityId?: string | null;
+	projectId?: string | null;
+	userMessage: string;
+	config?: TurnSupervisorConfig;
+};
+
+type RecentToolEntry = TurnDigest['recentTools'][number] & {
+	toolCallId: string;
+};
+
+const DEFAULT_CONFIG: Required<TurnSupervisorConfig> = {
+	statusSilenceMs: 10_000,
+	repeatedStatusIntervalMs: 15_000,
+	maxStatusUpdates: 3,
+	toolRunningStatusMs: 12_000,
+	forceSynthesisAfterToolCalls: 6,
+	forceSynthesisAfterReadRounds: 6,
+	maxToolRounds: 8,
+	askUserAfterRepeatedValidationFailures: 2
+};
+
+const FORCE_SYNTHESIS_INSTRUCTION =
+	'Supervisor note: enough tool work has happened for this turn. Stop calling tools and write the final user-facing answer from the available tool results. Be explicit about what was completed, what was found, and what could not be completed. Do not say you will check, inspect, load, search, update, or create anything else.';
+
+export function createDeterministicTurnSupervisor(
+	params: CreateTurnSupervisorParams
+): TurnSupervisor {
+	return new DeterministicTurnSupervisor(params);
+}
+
+class DeterministicTurnSupervisor implements TurnSupervisor {
+	private readonly params: CreateTurnSupervisorParams;
+	private readonly config: Required<TurnSupervisorConfig>;
+	private readonly startedAt: number;
+	private lastVisibleTextAt: number | null = null;
+	private assistantTextChars = 0;
+	private finalCandidateChars = 0;
+	private llmPassCount = 0;
+	private toolRoundCount = 0;
+	private toolCallCount = 0;
+	private validationFailureCount = 0;
+	private successfulWrites = 0;
+	private failedWrites = 0;
+	private readRounds = 0;
+	private lowNoveltyReadRounds = 0;
+	private repeatedToolPatternCount = 0;
+	private repeatedFailureCount = 0;
+	private discoveredEntityCount = 0;
+	private statusUpdateCount = 0;
+	private lastStatusAt: number | null = null;
+	private forceSynthesisIssued = false;
+	private askUserIssued = false;
+	private lastRoundPattern: string | null = null;
+	private currentRoundTools: Array<{ toolName: string; canonicalOp?: string | null }> = [];
+	private readonly recentTools: RecentToolEntry[] = [];
+	private readonly failureCounts = new Map<string, number>();
+
+	constructor(params: CreateTurnSupervisorParams) {
+		this.params = params;
+		this.config = { ...DEFAULT_CONFIG, ...(params.config ?? {}) };
+		this.startedAt = Date.now();
+	}
+
+	observe(observation: TurnSupervisorObservation): TurnSupervisorDecision[] {
+		const at = observation.at ?? Date.now();
+		this.applyObservation(observation, at);
+		return this.decide(observation, at);
+	}
+
+	getDigest(): TurnDigest {
+		return this.buildDigest(Date.now());
+	}
+
+	private applyObservation(observation: TurnSupervisorObservation, at: number): void {
+		switch (observation.type) {
+			case 'assistant_text_delta': {
+				const chars = Math.max(0, observation.chars || 0);
+				this.assistantTextChars += chars;
+				if (chars > 0) {
+					this.lastVisibleTextAt = at;
+				}
+				break;
+			}
+			case 'llm_pass_completed': {
+				this.llmPassCount = Math.max(this.llmPassCount, observation.pass);
+				break;
+			}
+			case 'tool_call_emitted': {
+				this.toolCallCount += 1;
+				const canonicalOp = extractCanonicalOpFromPreview(observation.argsPreview);
+				const entry: RecentToolEntry = {
+					sequence: this.toolCallCount,
+					toolName: observation.toolName,
+					toolCallId: observation.toolCallId,
+					canonicalOp,
+					success: null,
+					errorClass: null,
+					resultSummary: null
+				};
+				this.recentTools.push(entry);
+				this.currentRoundTools.push({
+					toolName: observation.toolName,
+					canonicalOp
+				});
+				while (this.recentTools.length > 10) {
+					this.recentTools.shift();
+				}
+				break;
+			}
+			case 'tool_result_received': {
+				const entry = this.recentTools.find(
+					(tool) => tool.toolCallId === observation.toolCallId
+				);
+				const errorClass = classifyToolError(observation.error);
+				if (entry) {
+					entry.success = observation.success;
+					entry.errorClass = errorClass;
+					entry.resultSummary = observation.resultSummary ?? null;
+				}
+				if (!observation.success) {
+					const failureKey = `${observation.toolName}|${errorClass ?? 'execution'}|${observation.error ?? ''}`;
+					const nextCount = (this.failureCounts.get(failureKey) ?? 0) + 1;
+					this.failureCounts.set(failureKey, nextCount);
+					if (nextCount >= 2) {
+						this.repeatedFailureCount = Math.max(this.repeatedFailureCount, nextCount);
+					}
+					if (errorClass === 'validation') {
+						this.validationFailureCount += 1;
+					}
+				} else if (entry && isLikelyWriteToolName(entry.toolName, entry.canonicalOp)) {
+					this.successfulWrites += 1;
+				} else if (entry && isLikelyReadToolName(entry.toolName, entry.canonicalOp)) {
+					this.discoveredEntityCount += countLikelyEntityIds(observation.resultSummary);
+				}
+				if (
+					!observation.success &&
+					entry &&
+					isLikelyWriteToolName(entry.toolName, entry.canonicalOp)
+				) {
+					this.failedWrites += 1;
+				}
+				break;
+			}
+			case 'tool_round_completed': {
+				this.toolRoundCount = Math.max(this.toolRoundCount, observation.round);
+				const roundPattern = buildToolPatternKey(this.currentRoundTools);
+				const hasWrite = this.currentRoundTools.some((tool) =>
+					isLikelyWriteToolName(tool.toolName, tool.canonicalOp)
+				);
+				const hasRead = this.currentRoundTools.some((tool) =>
+					isLikelyReadToolName(tool.toolName, tool.canonicalOp)
+				);
+				if (!hasWrite && hasRead) {
+					this.readRounds += 1;
+					if (roundPattern && roundPattern === this.lastRoundPattern) {
+						this.lowNoveltyReadRounds += 1;
+					}
+				}
+				if (roundPattern && roundPattern === this.lastRoundPattern) {
+					this.repeatedToolPatternCount += 1;
+				}
+				if (roundPattern) {
+					this.lastRoundPattern = roundPattern;
+				}
+				this.currentRoundTools = [];
+				break;
+			}
+			case 'final_candidate': {
+				this.finalCandidateChars = observation.text.trim().length;
+				break;
+			}
+		}
+	}
+
+	private decide(observation: TurnSupervisorObservation, at: number): TurnSupervisorDecision[] {
+		const decisions: TurnSupervisorDecision[] = [];
+		const digest = this.buildDigest(at);
+
+		const askUserDecision = this.buildAskUserDecision(observation, digest);
+		if (askUserDecision) {
+			this.askUserIssued = true;
+			return [askUserDecision];
+		}
+
+		if (this.shouldEmitStatus(observation, digest, at)) {
+			this.statusUpdateCount += 1;
+			this.lastStatusAt = at;
+			decisions.push({
+				action: 'emit_status',
+				message: buildTurnStatusMessage(digest),
+				reason:
+					observation.type === 'long_running_operation'
+						? 'long_running_operation'
+						: 'long_silence'
+			});
+		}
+
+		if (!this.forceSynthesisIssued && this.shouldForceSynthesis(observation, digest)) {
+			this.forceSynthesisIssued = true;
+			decisions.push({
+				action: 'force_synthesis',
+				instruction: FORCE_SYNTHESIS_INSTRUCTION,
+				reason: digest.risks.includes('low_novelty_reads')
+					? 'low_novelty_reads'
+					: digest.risks.includes('near_tool_budget')
+						? 'near_tool_budget'
+						: 'many_tool_calls'
+			});
+		}
+
+		if (
+			observation.type === 'final_candidate' &&
+			digest.toolCallCount > 0 &&
+			digest.finalCandidateChars === 0
+		) {
+			decisions.push({
+				action: 'flag_eval',
+				reason: 'empty_final_candidate_after_tool_work'
+			});
+		}
+
+		return decisions.length > 0 ? decisions : [{ action: 'continue' }];
+	}
+
+	private buildAskUserDecision(
+		observation: TurnSupervisorObservation,
+		digest: TurnDigest
+	): TurnSupervisorDecision | null {
+		if (this.askUserIssued) return null;
+		if (observation.type !== 'tool_round_completed') return null;
+		if (digest.progress.successfulWrites > 0) return null;
+		if (digest.progress.failedWrites === 0) return null;
+		if (
+			digest.validationFailureCount < this.config.askUserAfterRepeatedValidationFailures ||
+			digest.progress.repeatedFailureCount <
+				this.config.askUserAfterRepeatedValidationFailures
+		) {
+			return null;
+		}
+
+		const failedValidationTools = digest.recentTools.filter(
+			(tool) =>
+				tool.success === false &&
+				tool.errorClass === 'validation' &&
+				isLikelyWriteToolName(tool.toolName, tool.canonicalOp)
+		);
+		const latestFailure = failedValidationTools.at(-1);
+		if (!latestFailure) return null;
+
+		const missingField = extractMissingRequiredField(latestFailure.resultSummary);
+		const question = buildRequiredFieldQuestion(missingField);
+		return {
+			action: 'ask_user',
+			question,
+			checkpoint: {
+				digest,
+				resumeContext: {
+					user_message: this.params.userMessage,
+					reason: 'repeated_validation_failures',
+					missing_field: missingField,
+					last_failed_tool: latestFailure.toolName,
+					last_failed_operation: latestFailure.canonicalOp ?? null,
+					last_error: latestFailure.resultSummary ?? null,
+					recent_tools: digest.recentTools,
+					progress: digest.progress,
+					instruction:
+						'Continue from this checkpoint after the user provides the missing detail. Do not retry the failed write until the missing field is resolved.'
+				}
+			},
+			reason: 'repeated_validation_failures'
+		};
+	}
+
+	private shouldEmitStatus(
+		observation: TurnSupervisorObservation,
+		digest: TurnDigest,
+		at: number
+	): boolean {
+		if (this.statusUpdateCount >= this.config.maxStatusUpdates) return false;
+		if (
+			this.lastStatusAt !== null &&
+			at - this.lastStatusAt < this.config.repeatedStatusIntervalMs
+		) {
+			return false;
+		}
+		if (
+			observation.type === 'long_running_operation' &&
+			observation.elapsedMs >= this.config.toolRunningStatusMs
+		) {
+			return true;
+		}
+		if (digest.toolCallCount === 0 && digest.toolRoundCount === 0) return false;
+		return digest.msSinceVisibleText === null
+			? digest.elapsedMs >= this.config.statusSilenceMs
+			: digest.msSinceVisibleText >= this.config.statusSilenceMs;
+	}
+
+	private shouldForceSynthesis(
+		observation: TurnSupervisorObservation,
+		digest: TurnDigest
+	): boolean {
+		if (observation.type !== 'tool_round_completed') return false;
+		if (
+			digest.toolCallCount >= this.config.forceSynthesisAfterToolCalls &&
+			digest.progress.successfulWrites === 0
+		) {
+			return true;
+		}
+		if (
+			digest.progress.readRounds >= this.config.forceSynthesisAfterReadRounds &&
+			digest.progress.successfulWrites === 0
+		) {
+			return true;
+		}
+		if (
+			digest.progress.lowNoveltyReadRounds >= 2 &&
+			digest.progress.readRounds >= this.config.forceSynthesisAfterReadRounds
+		) {
+			return true;
+		}
+		return digest.toolRoundCount >= Math.max(1, this.config.maxToolRounds - 1);
+	}
+
+	private buildDigest(at: number): TurnDigest {
+		const elapsedMs = Math.max(0, at - this.startedAt);
+		const msSinceVisibleText =
+			this.lastVisibleTextAt === null ? null : Math.max(0, at - this.lastVisibleTextAt);
+		const risks = this.buildRisks(elapsedMs, msSinceVisibleText);
+		return {
+			turnRunId: this.params.turnRunId ?? null,
+			sessionId: this.params.sessionId,
+			userId: this.params.userId,
+			contextType: this.params.contextType,
+			entityId: this.params.entityId ?? null,
+			projectId: this.params.projectId ?? null,
+			userMessage: this.params.userMessage,
+			elapsedMs,
+			msSinceVisibleText,
+			assistantTextChars: this.assistantTextChars,
+			finalCandidateChars: this.finalCandidateChars,
+			llmPassCount: this.llmPassCount,
+			toolRoundCount: this.toolRoundCount,
+			toolCallCount: this.toolCallCount,
+			validationFailureCount: this.validationFailureCount,
+			recentTools: this.recentTools.map((tool) => ({
+				sequence: tool.sequence,
+				toolName: tool.toolName,
+				canonicalOp: tool.canonicalOp,
+				success: tool.success,
+				errorClass: tool.errorClass,
+				resultSummary: tool.resultSummary
+			})),
+			progress: {
+				successfulWrites: this.successfulWrites,
+				failedWrites: this.failedWrites,
+				readRounds: this.readRounds,
+				lowNoveltyReadRounds: this.lowNoveltyReadRounds,
+				repeatedToolPatternCount: this.repeatedToolPatternCount,
+				repeatedFailureCount: this.repeatedFailureCount,
+				discoveredEntityCount: this.discoveredEntityCount
+			},
+			risks
+		};
+	}
+
+	private buildRisks(elapsedMs: number, msSinceVisibleText: number | null): TurnSupervisorRisk[] {
+		const risks = new Set<TurnSupervisorRisk>();
+		if (
+			(msSinceVisibleText === null && elapsedMs >= this.config.statusSilenceMs) ||
+			(msSinceVisibleText !== null && msSinceVisibleText >= this.config.statusSilenceMs)
+		) {
+			risks.add('long_silence');
+		}
+		if (this.toolCallCount >= this.config.forceSynthesisAfterToolCalls) {
+			risks.add('many_tool_calls');
+		}
+		if (this.repeatedFailureCount >= 2) risks.add('repeated_failures');
+		if (this.lowNoveltyReadRounds >= 2) risks.add('low_novelty_reads');
+		if (this.toolRoundCount >= Math.max(1, this.config.maxToolRounds - 1)) {
+			risks.add('near_tool_budget');
+		}
+		if (this.toolCallCount > 0 && this.finalCandidateChars === 0) {
+			risks.add('empty_final_candidate');
+			risks.add('tools_without_final_answer');
+		}
+		return Array.from(risks);
+	}
+}
+
+function extractCanonicalOpFromPreview(preview: unknown): string | null {
+	if (!preview || typeof preview !== 'object' || Array.isArray(preview)) return null;
+	for (const key of ['op', 'operation', 'help_path']) {
+		const value = (preview as Record<string, unknown>)[key];
+		if (typeof value === 'string' && value.trim()) return value.trim();
+	}
+	return null;
+}
+
+function extractMissingRequiredField(summary: string | null | undefined): string | null {
+	if (!summary) return null;
+	const match =
+		summary.match(/Missing required parameter:\s*([a-zA-Z0-9_.-]+)/i) ??
+		summary.match(/Invalid\s+([a-zA-Z0-9_.-]+):/i);
+	return match?.[1] ?? null;
+}
+
+function buildRequiredFieldQuestion(field: string | null): string {
+	if (!field) {
+		return 'Which exact item should I use? Send the name or ID, and I will continue from here.';
+	}
+	if (field === 'project_id') {
+		return 'Which exact project should I use? Send the project name or ID, and I will continue from here.';
+	}
+	if (field.endsWith('_id')) {
+		const entity = field.slice(0, -3).replace(/_/g, ' ').trim();
+		return `Which exact ${entity || 'item'} should I use? Send the name or ID, and I will continue from here.`;
+	}
+	if (field === 'title' || field === 'name') {
+		return `What ${field} should I use?`;
+	}
+	return `What value should I use for ${field}?`;
+}
+
+function countLikelyEntityIds(summary: string | null | undefined): number {
+	if (!summary) return 0;
+	const matches = summary.match(
+		/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi
+	);
+	return matches?.length ?? 0;
+}

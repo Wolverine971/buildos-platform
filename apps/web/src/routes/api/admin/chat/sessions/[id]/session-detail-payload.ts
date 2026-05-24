@@ -345,6 +345,86 @@ const isToolOutcomeTurnEvent = (event: TurnEventRow): boolean =>
 	event.event_type === 'tool_result_received' ||
 	event.event_type === 'tool_call_validation_failed';
 
+const isSupervisorTurnEvent = (eventType: string | null | undefined): boolean =>
+	typeof eventType === 'string' && eventType.startsWith('supervisor_');
+
+const supervisorTurnEventTitle = (
+	eventType: string | null | undefined,
+	payload: Record<string, unknown>
+): string => {
+	const action = stringRecordField(payload, 'action');
+	if (eventType === 'supervisor_decision' && action) {
+		return `Supervisor Decision: ${action}`;
+	}
+	if (eventType === 'supervisor_decision_summary') return 'Supervisor Decision Summary';
+	if (eventType === 'supervisor_status_emitted') return 'Supervisor Status';
+	if (eventType === 'supervisor_force_synthesis') return 'Supervisor Force Synthesis';
+	if (eventType === 'supervisor_question_checkpoint_created') {
+		return 'Supervisor Checkpoint Created';
+	}
+	if (eventType === 'supervisor_finalization_guard_applied') {
+		return 'Supervisor Finalization Guard';
+	}
+	if (eventType === 'supervisor_eval_flagged') return 'Supervisor Eval Flag';
+	return `Supervisor Event: ${eventType ?? 'event'}`;
+};
+
+const supervisorTurnEventSeverity = (
+	eventType: string | null | undefined,
+	payload: Record<string, unknown>
+): TimelineSeverity => {
+	const action = stringRecordField(payload, 'action');
+	if (
+		action === 'ask_user' ||
+		action === 'force_synthesis' ||
+		action === 'stop_with_message' ||
+		action === 'flag_eval'
+	) {
+		return 'warning';
+	}
+	if (
+		eventType === 'supervisor_question_checkpoint_created' ||
+		eventType === 'supervisor_finalization_guard_applied' ||
+		eventType === 'supervisor_eval_flagged'
+	) {
+		return 'warning';
+	}
+	return 'info';
+};
+
+const supervisorTurnEventSummary = (
+	event: TurnEventRow,
+	payload: Record<string, unknown>
+): string => {
+	const actions = Array.isArray(payload.actions) ? payload.actions.map(String).join(',') : null;
+	const count = typeof payload.count === 'number' ? `count=${payload.count}` : null;
+	return summarizeText(
+		[
+			event.phase ? `phase=${event.phase}` : null,
+			stringRecordField(payload, 'action')
+				? `action=${stringRecordField(payload, 'action')}`
+				: null,
+			stringRecordField(payload, 'reason')
+				? `reason=${stringRecordField(payload, 'reason')}`
+				: null,
+			stringRecordField(payload, 'source')
+				? `source=${stringRecordField(payload, 'source')}`
+				: null,
+			stringRecordField(payload, 'trigger')
+				? `trigger=${stringRecordField(payload, 'trigger')}`
+				: null,
+			count,
+			actions ? `actions=${actions}` : null,
+			stringRecordField(payload, 'question')
+				? `question=${stringRecordField(payload, 'question')}`
+				: null
+		]
+			.filter(Boolean)
+			.join(' • '),
+		260
+	);
+};
+
 const compareToolExecutions = (a: ToolExecutionRow, b: ToolExecutionRow): number => {
 	const sequenceDiff = asNumber(a.sequence_index) - asNumber(b.sequence_index);
 	if (sequenceDiff !== 0) return sequenceDiff;
@@ -863,8 +943,11 @@ export const buildSessionDetailPayload = ({
 				event.payload && typeof event.payload === 'object' && !Array.isArray(event.payload)
 					? (event.payload as Record<string, unknown>)
 					: { value: event.payload };
+			const supervisorEvent = isSupervisorTurnEvent(event.event_type);
 			const severity: TimelineSeverity =
-				event.event_type === 'tool_call_validation_failed'
+				supervisorEvent
+					? supervisorTurnEventSeverity(event.event_type, payload)
+					: event.event_type === 'tool_call_validation_failed'
 					? 'error'
 					: event.event_type === 'context_shift_emitted'
 						? 'warning'
@@ -874,19 +957,25 @@ export const buildSessionDetailPayload = ({
 				timestamp: eventTimestamp,
 				type: 'turn_event',
 				severity,
-				title: `Turn Event: ${event.event_type ?? 'event'}`,
-				summary: summarizeText(
-					[
-						event.phase ? `phase=${event.phase}` : null,
-						payload.path ? `path=${String(payload.path)}` : null,
-						payload.canonical_op ? `op=${String(payload.canonical_op)}` : null,
-						payload.tool_name ? `tool=${String(payload.tool_name)}` : null,
-						payload.error ? `error=${String(payload.error)}` : null
-					]
-						.filter(Boolean)
-						.join(' • '),
-					220
-				),
+				title: supervisorEvent
+					? supervisorTurnEventTitle(event.event_type, payload)
+					: `Turn Event: ${event.event_type ?? 'event'}`,
+				summary: supervisorEvent
+					? supervisorTurnEventSummary(event, payload)
+					: summarizeText(
+							[
+								event.phase ? `phase=${event.phase}` : null,
+								payload.path ? `path=${String(payload.path)}` : null,
+								payload.canonical_op
+									? `op=${String(payload.canonical_op)}`
+									: null,
+								payload.tool_name ? `tool=${String(payload.tool_name)}` : null,
+								payload.error ? `error=${String(payload.error)}` : null
+							]
+								.filter(Boolean)
+								.join(' • '),
+							220
+						),
 				turn_index: turnRun.turn_index,
 				payload: {
 					id: event.id,
@@ -916,6 +1005,11 @@ export const buildSessionDetailPayload = ({
 						typeof payload.tool_result_source === 'string'
 							? payload.tool_result_source
 							: null,
+					supervisor_action: stringRecordField(payload, 'action'),
+					supervisor_reason: stringRecordField(payload, 'reason'),
+					supervisor_source: stringRecordField(payload, 'source'),
+					supervisor_trigger: stringRecordField(payload, 'trigger'),
+					supervisor_question: stringRecordField(payload, 'question'),
 					linked_tool_execution:
 						payload.linked_tool_execution &&
 						typeof payload.linked_tool_execution === 'object' &&

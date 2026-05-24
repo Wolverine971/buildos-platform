@@ -192,8 +192,7 @@ async function main() {
 		throw new Error('Missing PUBLIC_SUPABASE_URL or Supabase service key');
 	}
 
-	const since =
-		getArg('since') ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+	const since = getArg('since') ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 	const limit = Number(getArg('limit') ?? 500);
 	const projectIdFilter = getArg('project-id');
 	const dryRun = hasFlag('dry-run');
@@ -226,7 +225,7 @@ async function main() {
 		const entityType = entityTypeForLog(execution);
 		const projectId = await resolveProjectId(supabase, execution);
 		const entityId =
-			execution.op === 'cal.project.set' ? projectId : execution.entity_id ?? null;
+			execution.op === 'cal.project.set' ? projectId : (execution.entity_id ?? null);
 
 		if (!action || !entityType || !projectId || !entityId) {
 			skipped.push({ id: execution.id, op: execution.op, reason: 'missing entity/project' });
@@ -309,7 +308,9 @@ async function main() {
 			.from('onto_project_logs')
 			.insert(fallbackInserts);
 		if (fallbackError) throw fallbackError;
-		console.log('Production check_change_source_values rejected agent_call; inserted with api source fallback.');
+		console.log(
+			'Production check_change_source_values rejected agent_call; inserted with api source fallback.'
+		);
 	}
 	console.log(`Inserted ${inserts.length} project activity log(s).`);
 }

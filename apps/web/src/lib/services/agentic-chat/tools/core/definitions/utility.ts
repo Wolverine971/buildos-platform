@@ -83,6 +83,7 @@ Use this for questions like:
 - "What is happening with my projects?"
 - "What is blocked across my workspace?"
 - "Give me a quick overview of what needs attention."
+Returns workspace and per-project task/document/plan/goal/collaborator counts alongside active work, upcoming events, and recent activity.
 This is the preferred high-level retrieval path for workspace status questions before generic search/list assembly.`,
 			parameters: {
 				type: 'object',
@@ -106,6 +107,7 @@ Use this for questions like:
 - "What's going on with 9takes?"
 - "Give me the current status of this project."
 - "What is blocked or due soon in this project?"
+Returns the project status snapshot with task/document/plan/goal counts, active work, milestones, risks, upcoming events, recent activity, and active collaborators.
 Pass project_id when known. If the user names a project but the ID is unknown, pass query and this op will try to resolve the project or return candidates.`,
 			parameters: {
 				type: 'object',

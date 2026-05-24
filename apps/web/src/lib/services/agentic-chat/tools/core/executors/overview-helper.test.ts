@@ -19,7 +19,11 @@ describe('overview-helper', () => {
 					state_key: 'active',
 					description: 'Main project',
 					next_step_short: 'Ship the next cut',
-					updated_at: '2026-03-30T10:00:00.000Z'
+					updated_at: '2026-03-30T10:00:00.000Z',
+					task_count: 4,
+					document_count: 3,
+					plan_count: 2,
+					goal_count: 1
 				},
 				{
 					id: 'proj-2',
@@ -27,7 +31,11 @@ describe('overview-helper', () => {
 					state_key: 'active',
 					description: 'Shared project',
 					next_step_short: null,
-					updated_at: '2026-03-29T10:00:00.000Z'
+					updated_at: '2026-03-29T10:00:00.000Z',
+					task_count: 1,
+					document_count: 0,
+					plan_count: 0,
+					goal_count: 1
 				}
 			],
 			tasks: [
@@ -106,12 +114,42 @@ describe('overview-helper', () => {
 				{
 					project_id: 'proj-1',
 					entity_type: 'task',
+					entity_id: 'task-4',
+					action: 'deleted',
+					created_at: '2026-03-30T11:45:00.000Z',
+					changed_by: 'agent',
+					changed_by_actor_id: 'actor-1',
+					change_source: 'agent_call',
+					before_data: { title: 'Deleted task' },
+					after_data: null
+				},
+				{
+					project_id: 'proj-1',
+					entity_type: 'task',
 					entity_id: 'task-1',
 					action: 'updated',
 					created_at: '2026-03-30T11:30:00.000Z',
 					after_data: { title: 'Blocked task' }
 				}
-			]
+			],
+			members: [
+				{
+					id: 'member-1',
+					project_id: 'proj-1',
+					actor_id: 'actor-1',
+					role_key: 'owner',
+					access: 'admin',
+					role_name: 'Project Owner',
+					role_description: 'Owns project direction.',
+					created_at: '2026-03-01T00:00:00.000Z',
+					actor: {
+						id: 'actor-1',
+						name: 'Dana Owner',
+						email: 'dana@example.com'
+					}
+				}
+			],
+			currentActorId: 'actor-1'
 		});
 
 		expect(payload.scope).toBe('workspace');
@@ -126,8 +164,27 @@ describe('overview-helper', () => {
 		expect(payload.totals.open_plans).toBe(1);
 		expect(payload.totals.open_risks).toBe(1);
 		expect(payload.totals.upcoming_events).toBe(1);
+		expect(payload.entity_totals).toMatchObject({
+			projects: 2,
+			tasks: 5,
+			documents: 3,
+			plans: 2,
+			goals: 2,
+			collaborators: 1
+		});
 		expect(payload.projects[0]?.name).toBe('9takes');
-		expect(payload.projects[0]?.recent_activity[0]?.title).toBe('Blocked task');
+		expect(payload.projects[0]?.entity_counts).toMatchObject({
+			tasks: 4,
+			documents: 3,
+			plans: 2,
+			goals: 1,
+			collaborators: 1
+		});
+		expect(payload.projects[0]?.recent_activity[0]).toMatchObject({
+			action: 'deleted',
+			title: 'Deleted task',
+			change_source: 'agent_call'
+		});
 	});
 
 	it('resolves exact project matches and returns ambiguity when multiple names fit', () => {
@@ -169,7 +226,11 @@ describe('overview-helper', () => {
 				start_at: null,
 				end_at: null,
 				next_step_short: 'Ship the next cut',
-				updated_at: '2026-03-30T10:00:00.000Z'
+				updated_at: '2026-03-30T10:00:00.000Z',
+				task_count: 3,
+				document_count: 2,
+				plan_count: 1,
+				goal_count: 1
 			},
 			tasks: [
 				{
@@ -247,12 +308,42 @@ describe('overview-helper', () => {
 				{
 					project_id: 'proj-1',
 					entity_type: 'task',
+					entity_id: 'task-4',
+					action: 'deleted',
+					created_at: '2026-03-30T11:45:00.000Z',
+					changed_by: 'agent',
+					changed_by_actor_id: 'actor-1',
+					change_source: 'agent_call',
+					before_data: { title: 'Deleted task' },
+					after_data: null
+				},
+				{
+					project_id: 'proj-1',
+					entity_type: 'task',
 					entity_id: 'task-1',
 					action: 'updated',
 					created_at: '2026-03-30T11:30:00.000Z',
 					after_data: { title: 'Blocked task' }
 				}
-			]
+			],
+			members: [
+				{
+					id: 'member-1',
+					project_id: 'proj-1',
+					actor_id: 'actor-1',
+					role_key: 'owner',
+					access: 'admin',
+					role_name: 'Project Owner',
+					role_description: 'Owns project direction.',
+					created_at: '2026-03-01T00:00:00.000Z',
+					actor: {
+						id: 'actor-1',
+						name: 'Dana Owner',
+						email: 'dana@example.com'
+					}
+				}
+			],
+			currentActorId: 'actor-1'
 		});
 
 		expect(payload.scope).toBe('project');
@@ -269,7 +360,32 @@ describe('overview-helper', () => {
 			open_milestones: 1,
 			open_plans: 1,
 			open_risks: 1,
-			upcoming_events: 1
+			upcoming_events: 1,
+			collaborators: 1
+		});
+		expect(payload.entity_counts).toMatchObject({
+			tasks: 3,
+			documents: 2,
+			plans: 1,
+			goals: 1,
+			collaborators: 1
+		});
+		expect(payload.collaborators?.members[0]).toMatchObject({
+			actor_id: 'actor-1',
+			display_name: 'Dana Owner',
+			email: 'dana@example.com',
+			role_key: 'owner',
+			is_current_user: true
+		});
+		expect(payload.recent_activity?.[0]).toMatchObject({
+			entity_type: 'task',
+			entity_id: 'task-4',
+			action: 'deleted',
+			title: 'Deleted task',
+			changed_by: 'agent',
+			changed_by_actor_id: 'actor-1',
+			change_source: 'agent_call',
+			created_at: '2026-03-30T11:45:00.000Z'
 		});
 		expect(payload.tasks?.[0]?.id).toBe('task-1');
 		expect(payload.tasks?.map((task) => task.id)).not.toContain('task-3');

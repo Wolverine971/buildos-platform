@@ -13,6 +13,10 @@ type ProjectSummaryRpcRow = {
 	access_role: 'owner' | 'editor' | 'viewer' | null;
 	access_level: 'read' | 'write' | 'admin' | null;
 	is_shared: boolean;
+	task_count: number;
+	goal_count: number;
+	plan_count: number;
+	document_count: number;
 };
 
 type TableRow = Record<string, any>;
@@ -37,10 +41,10 @@ function createProjectSummaryRow(
 		facet_stage: null,
 		created_at: overrides.updated_at ?? '2026-03-01T00:00:00.000Z',
 		updated_at: overrides.updated_at ?? '2026-03-30T00:00:00.000Z',
-		task_count: 0,
-		goal_count: 0,
-		plan_count: 0,
-		document_count: 0,
+		task_count: overrides.task_count ?? 0,
+		goal_count: overrides.goal_count ?? 0,
+		plan_count: overrides.plan_count ?? 0,
+		document_count: overrides.document_count ?? 0,
 		owner_actor_id: overrides.owner_actor_id ?? 'actor-1',
 		access_role: overrides.access_role ?? 'owner',
 		access_level: overrides.access_level ?? 'admin',
@@ -65,6 +69,7 @@ function createOverviewSupabaseMock(config: {
 	risks?: TableRow[];
 	events?: TableRow[];
 	projectLogs?: TableRow[];
+	members?: TableRow[];
 }) {
 	const tasks = config.tasks ?? [];
 	const milestones = config.milestones ?? [];
@@ -72,6 +77,7 @@ function createOverviewSupabaseMock(config: {
 	const risks = config.risks ?? [];
 	const events = config.events ?? [];
 	const projectLogs = config.projectLogs ?? [];
+	const members = config.members ?? [];
 
 	const rpc = vi.fn().mockImplementation((fn: string) => {
 		if (fn === 'ensure_actor_for_user') {
@@ -172,6 +178,21 @@ function createOverviewSupabaseMock(config: {
 			};
 		}
 
+		if (table === 'onto_project_members') {
+			return {
+				select: vi.fn().mockReturnValue({
+					in: vi.fn().mockImplementation((_column: string, projectIds: unknown) => ({
+						is: vi.fn().mockResolvedValue({
+							data: filterByProjectIds(members, projectIds).filter(
+								(row) => row.removed_at == null
+							),
+							error: null
+						})
+					}))
+				})
+			};
+		}
+
 		throw new Error(`Unexpected table in overview mock: ${table}`);
 	});
 
@@ -204,7 +225,11 @@ describe('UtilityExecutor overview scoping', () => {
 					id: 'proj-owned',
 					name: '9takes',
 					updated_at: '2026-03-30T12:00:00.000Z',
-					next_step_short: 'Ship the next release'
+					next_step_short: 'Ship the next release',
+					task_count: 4,
+					goal_count: 2,
+					plan_count: 1,
+					document_count: 3
 				}),
 				createProjectSummaryRow({
 					id: 'proj-shared',
@@ -280,6 +305,21 @@ describe('UtilityExecutor overview scoping', () => {
 		]);
 		expect(payload.totals.active_tasks).toBe(2);
 		expect(payload.totals.blocked_tasks).toBe(1);
+		expect(payload.entity_totals).toMatchObject({
+			projects: 2,
+			tasks: 4,
+			documents: 3,
+			plans: 1,
+			goals: 2,
+			collaborators: 0
+		});
+		expect(payload.projects[0].entity_counts).toMatchObject({
+			tasks: 4,
+			documents: 3,
+			plans: 1,
+			goals: 2,
+			collaborators: 0
+		});
 	});
 
 	it('resolves named project overview within owner-or-member scope only', async () => {
@@ -288,7 +328,11 @@ describe('UtilityExecutor overview scoping', () => {
 				createProjectSummaryRow({
 					id: 'proj-owned',
 					name: '9takes',
-					updated_at: '2026-03-30T12:00:00.000Z'
+					updated_at: '2026-03-30T12:00:00.000Z',
+					task_count: 7,
+					goal_count: 1,
+					plan_count: 2,
+					document_count: 4
 				}),
 				createProjectSummaryRow({
 					id: 'proj-shared',
@@ -311,6 +355,59 @@ describe('UtilityExecutor overview scoping', () => {
 					completed_at: null,
 					updated_at: '2026-03-30T10:00:00.000Z'
 				}
+			],
+			members: [
+				{
+					id: 'member-owner',
+					project_id: 'proj-owned',
+					actor_id: 'actor-1',
+					role_key: 'owner',
+					access: 'admin',
+					role_name: 'Project Owner',
+					role_description: 'Owns project direction.',
+					created_at: '2026-03-01T00:00:00.000Z',
+					removed_at: null,
+					actor: {
+						id: 'actor-1',
+						user_id: 'user-1',
+						name: 'Dana Owner',
+						email: 'dana@example.com'
+					}
+				},
+				{
+					id: 'member-editor',
+					project_id: 'proj-owned',
+					actor_id: 'actor-2',
+					role_key: 'editor',
+					access: 'write',
+					role_name: 'Launch Lead',
+					role_description: 'Coordinates launch work.',
+					created_at: '2026-03-02T00:00:00.000Z',
+					removed_at: null,
+					actor: {
+						id: 'actor-2',
+						user_id: 'user-2',
+						name: 'Lee Collaborator',
+						email: 'lee@example.com'
+					}
+				},
+				{
+					id: 'member-removed',
+					project_id: 'proj-owned',
+					actor_id: 'actor-3',
+					role_key: 'viewer',
+					access: 'read',
+					role_name: null,
+					role_description: null,
+					created_at: '2026-03-03T00:00:00.000Z',
+					removed_at: '2026-03-04T00:00:00.000Z',
+					actor: {
+						id: 'actor-3',
+						user_id: 'user-3',
+						name: 'Removed Member',
+						email: 'removed@example.com'
+					}
+				}
 			]
 		});
 		const executor = createExecutor(supabase);
@@ -327,6 +424,39 @@ describe('UtilityExecutor overview scoping', () => {
 			id: 'proj-owned',
 			name: '9takes'
 		});
+		expect(payload.counts.collaborators).toBe(2);
+		expect(payload.entity_counts).toMatchObject({
+			tasks: 7,
+			documents: 4,
+			plans: 2,
+			goals: 1,
+			collaborators: 2
+		});
+		expect(payload.collaborators).toMatchObject({
+			count: 2,
+			truncated: false,
+			members: [
+				expect.objectContaining({
+					actor_id: 'actor-1',
+					display_name: 'Dana Owner',
+					email: 'dana@example.com',
+					role_key: 'owner',
+					role_name: 'Project Owner',
+					access: 'admin',
+					is_current_user: true
+				}),
+				expect.objectContaining({
+					actor_id: 'actor-2',
+					display_name: 'Lee Collaborator',
+					email: 'lee@example.com',
+					role_key: 'editor',
+					role_name: 'Launch Lead',
+					access: 'write',
+					is_current_user: false
+				})
+			]
+		});
+		expect(JSON.stringify(payload)).not.toContain('Removed Member');
 	});
 
 	it('does not expose public-only projects via direct project_id lookup', async () => {

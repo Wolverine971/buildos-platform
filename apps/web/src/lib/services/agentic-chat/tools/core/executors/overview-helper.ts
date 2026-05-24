@@ -1,4 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/tools/core/executors/overview-helper.ts
+import { buildActivityLogSummary } from '$lib/utils/activity-log-summary';
 export type ProjectRow = {
 	id: string;
 	name: string;
@@ -8,6 +9,10 @@ export type ProjectRow = {
 	end_at?: string | null;
 	next_step_short?: string | null;
 	updated_at: string | null;
+	task_count?: number | null;
+	document_count?: number | null;
+	plan_count?: number | null;
+	goal_count?: number | null;
 };
 
 export type TaskRow = {
@@ -64,8 +69,23 @@ export type ProjectLogRow = {
 	entity_id: string;
 	action: string;
 	created_at: string;
+	changed_by?: string | null;
+	changed_by_actor_id?: string | null;
+	change_source?: string | null;
 	after_data?: Record<string, unknown> | null;
 	before_data?: Record<string, unknown> | null;
+};
+
+export type ProjectMemberRow = {
+	id: string;
+	project_id: string;
+	actor_id: string;
+	role_key: string | null;
+	access: string | null;
+	role_name?: string | null;
+	role_description?: string | null;
+	created_at?: string | null;
+	actor?: unknown;
 };
 
 type OverviewProjectCounts = {
@@ -77,14 +97,41 @@ type OverviewProjectCounts = {
 	open_plans: number;
 	open_risks: number;
 	upcoming_events: number;
+	collaborators: number;
 };
+
+type OverviewEntityCounts = {
+	tasks: number;
+	documents: number;
+	plans: number;
+	goals: number;
+	collaborators: number;
+};
+
+type OverviewEntityTotals = OverviewEntityCounts & { projects: number };
 
 type OverviewActivity = {
 	entity_type: string;
 	entity_id: string;
 	action: string;
 	title: string | null;
+	description: string;
+	changed_by: string | null;
+	changed_by_actor_id: string | null;
+	change_source: string | null;
 	created_at: string;
+};
+
+type OverviewCollaborator = {
+	actor_id: string | null;
+	display_name: string;
+	email: string | null;
+	role_key: string | null;
+	role_name: string | null;
+	role_description: string | null;
+	access: string | null;
+	is_current_user: boolean;
+	joined_at: string | null;
 };
 
 type OverviewProjectSummary = {
@@ -95,6 +142,7 @@ type OverviewProjectSummary = {
 	next_step_short: string | null;
 	updated_at: string | null;
 	counts: OverviewProjectCounts;
+	entity_counts: OverviewEntityCounts;
 	next_milestone: { id: string; title: string | null; due_at: string | null } | null;
 	next_event: { id: string; title: string | null; start_at: string | null } | null;
 	recent_activity: OverviewActivity[];
@@ -106,6 +154,7 @@ type WorkspaceOverviewPayload = {
 	projects_returned: number;
 	maybe_more: boolean;
 	totals: OverviewProjectCounts & { projects: number };
+	entity_totals: OverviewEntityTotals;
 	projects: OverviewProjectSummary[];
 	message: string;
 };
@@ -135,6 +184,7 @@ type ProjectOverviewPayload = {
 		updated_at: string | null;
 	};
 	counts?: OverviewProjectCounts;
+	entity_counts?: OverviewEntityCounts;
 	tasks?: Array<{
 		id: string;
 		title: string | null;
@@ -150,6 +200,11 @@ type ProjectOverviewPayload = {
 		due_at: string | null;
 		updated_at: string | null;
 	}>;
+	collaborators?: {
+		count: number;
+		members: OverviewCollaborator[];
+		truncated: boolean;
+	};
 	risks?: Array<{
 		id: string;
 		title: string | null;
@@ -175,6 +230,7 @@ type BuildWorkspaceOverviewParams = {
 	risks: RiskRow[];
 	events: EventRow[];
 	projectLogs: ProjectLogRow[];
+	members?: ProjectMemberRow[];
 	maybeMore: boolean;
 	now?: Date;
 };
@@ -188,6 +244,8 @@ type BuildProjectOverviewParams = {
 	risks: RiskRow[];
 	events: EventRow[];
 	projectLogs: ProjectLogRow[];
+	members?: ProjectMemberRow[];
+	currentActorId?: string | null;
 	now?: Date;
 };
 
@@ -209,6 +267,7 @@ const PROJECT_TASK_LIMIT = 8;
 const PROJECT_MILESTONE_LIMIT = 5;
 const PROJECT_RISK_LIMIT = 5;
 const PROJECT_EVENT_LIMIT = 5;
+const PROJECT_COLLABORATOR_LIMIT = 20;
 
 function normalizeStateKey(value: string | null | undefined): string {
 	return (value ?? '').trim().toLowerCase();
@@ -294,9 +353,10 @@ function buildProjectCounts(params: {
 	plans: PlanRow[];
 	risks: RiskRow[];
 	events: EventRow[];
+	members?: ProjectMemberRow[];
 	nowMs: number;
 }): OverviewProjectCounts {
-	const { tasks, milestones, plans, risks, events, nowMs } = params;
+	const { tasks, milestones, plans, risks, events, members = [], nowMs } = params;
 	return {
 		active_tasks: tasks.filter((task) => !isCompleted(task.state_key, task.completed_at))
 			.length,
@@ -316,7 +376,77 @@ function buildProjectCounts(params: {
 		).length,
 		open_plans: plans.filter((plan) => isOpenPlan(plan.state_key)).length,
 		open_risks: risks.filter((risk) => isOpenRisk(risk.state_key)).length,
-		upcoming_events: events.filter((event) => isUpcomingEvent(event.start_at, nowMs)).length
+		upcoming_events: events.filter((event) => isUpcomingEvent(event.start_at, nowMs)).length,
+		collaborators: members.length
+	};
+}
+
+function normalizeCount(value: number | null | undefined): number {
+	return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
+}
+
+function buildEntityCounts(project: ProjectRow, collaboratorCount: number): OverviewEntityCounts {
+	return {
+		tasks: normalizeCount(project.task_count),
+		documents: normalizeCount(project.document_count),
+		plans: normalizeCount(project.plan_count),
+		goals: normalizeCount(project.goal_count),
+		collaborators: normalizeCount(collaboratorCount)
+	};
+}
+
+function normalizeActor(value: unknown): Record<string, unknown> | null {
+	if (!value) return null;
+	if (Array.isArray(value)) {
+		const first = value[0];
+		return first && typeof first === 'object' && !Array.isArray(first)
+			? (first as Record<string, unknown>)
+			: null;
+	}
+	return typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+}
+
+function serializeCollaborator(
+	member: ProjectMemberRow,
+	currentActorId?: string | null
+): OverviewCollaborator {
+	const actor = normalizeActor(member.actor);
+	const name = typeof actor?.name === 'string' && actor.name.trim() ? actor.name.trim() : null;
+	const email =
+		typeof actor?.email === 'string' && actor.email.trim() ? actor.email.trim() : null;
+	const displayName =
+		name ?? email ?? (member.actor_id === currentActorId ? 'You' : 'Project member');
+
+	return {
+		actor_id: member.actor_id ?? null,
+		display_name: displayName,
+		email,
+		role_key: member.role_key ?? null,
+		role_name: member.role_name?.trim() || null,
+		role_description: member.role_description?.trim() || null,
+		access: member.access ?? null,
+		is_current_user: Boolean(currentActorId && member.actor_id === currentActorId),
+		joined_at: member.created_at ?? null
+	};
+}
+
+function sortCollaborators(currentActorId?: string | null) {
+	return (left: ProjectMemberRow, right: ProjectMemberRow) => {
+		if (currentActorId) {
+			if (left.actor_id === currentActorId && right.actor_id !== currentActorId) return -1;
+			if (right.actor_id === currentActorId && left.actor_id !== currentActorId) return 1;
+		}
+
+		const roleOrder: Record<string, number> = { owner: 0, editor: 1, viewer: 2 };
+		const roleDelta =
+			(roleOrder[left.role_key ?? ''] ?? 99) - (roleOrder[right.role_key ?? ''] ?? 99);
+		if (roleDelta !== 0) return roleDelta;
+
+		const leftLabel = serializeCollaborator(left, currentActorId).display_name;
+		const rightLabel = serializeCollaborator(right, currentActorId).display_name;
+		return leftLabel.localeCompare(rightLabel);
 	};
 }
 
@@ -390,16 +520,30 @@ function sortEvents(events: EventRow[]): EventRow[] {
 
 function buildActivity(rows: ProjectLogRow[], limit: number): OverviewActivity[] {
 	return [...rows]
-		.filter((row) => row.action === 'created' || row.action === 'updated')
 		.sort((a, b) => toTimestamp(b.created_at) - toTimestamp(a.created_at))
 		.slice(0, limit)
-		.map((row) => ({
-			entity_type: row.entity_type,
-			entity_id: row.entity_id,
-			action: row.action,
-			title: extractActivityTitle(row),
-			created_at: row.created_at
-		}));
+		.map((row) => {
+			const summary = buildActivityLogSummary({
+				action: row.action,
+				entity_type: row.entity_type,
+				entity_id: row.entity_id,
+				entity_name: extractActivityTitle(row),
+				before_data: row.before_data,
+				after_data: row.after_data
+			});
+
+			return {
+				entity_type: row.entity_type,
+				entity_id: row.entity_id,
+				action: row.action,
+				title: extractActivityTitle(row) ?? summary.title,
+				description: summary.description,
+				changed_by: row.changed_by ?? null,
+				changed_by_actor_id: row.changed_by_actor_id ?? null,
+				change_source: row.change_source ?? null,
+				created_at: row.created_at
+			};
+		});
 }
 
 function groupByProjectId<T extends { project_id: string }>(rows: T[]): Map<string, T[]> {
@@ -426,6 +570,7 @@ export function buildWorkspaceOverviewPayload(
 	const risksByProject = groupByProjectId(params.risks);
 	const eventsByProject = groupByProjectId(params.events);
 	const logsByProject = groupByProjectId(params.projectLogs);
+	const membersByProject = groupByProjectId(params.members ?? []);
 
 	const projects = params.projects.map((project) => {
 		const tasks = tasksByProject.get(project.id) ?? [];
@@ -435,6 +580,7 @@ export function buildWorkspaceOverviewPayload(
 		const events = (eventsByProject.get(project.id) ?? []).filter((event) =>
 			isUpcomingEvent(event.start_at, nowMs)
 		);
+		const members = membersByProject.get(project.id) ?? [];
 		const recentActivity = buildActivity(logsByProject.get(project.id) ?? [], ACTIVITY_LIMIT);
 		const counts = buildProjectCounts({
 			tasks,
@@ -442,8 +588,10 @@ export function buildWorkspaceOverviewPayload(
 			plans,
 			risks,
 			events,
+			members,
 			nowMs
 		});
+		const entityCounts = buildEntityCounts(project, counts.collaborators);
 		const nextMilestone = sortMilestones(
 			milestones.filter(
 				(milestone) => !isCompleted(milestone.state_key, milestone.completed_at)
@@ -460,6 +608,7 @@ export function buildWorkspaceOverviewPayload(
 			next_step_short: project.next_step_short ?? null,
 			updated_at: project.updated_at,
 			counts,
+			entity_counts: entityCounts,
 			next_milestone: nextMilestone
 				? {
 						id: nextMilestone.id,
@@ -489,6 +638,7 @@ export function buildWorkspaceOverviewPayload(
 			acc.open_plans += project.counts.open_plans;
 			acc.open_risks += project.counts.open_risks;
 			acc.upcoming_events += project.counts.upcoming_events;
+			acc.collaborators += project.counts.collaborators;
 			return acc;
 		},
 		{
@@ -500,7 +650,27 @@ export function buildWorkspaceOverviewPayload(
 			open_milestones: 0,
 			open_plans: 0,
 			open_risks: 0,
-			upcoming_events: 0
+			upcoming_events: 0,
+			collaborators: 0
+		}
+	);
+	const entityTotals = projects.reduce<OverviewEntityTotals>(
+		(acc, project) => {
+			acc.projects += 1;
+			acc.tasks += project.entity_counts.tasks;
+			acc.documents += project.entity_counts.documents;
+			acc.plans += project.entity_counts.plans;
+			acc.goals += project.entity_counts.goals;
+			acc.collaborators += project.entity_counts.collaborators;
+			return acc;
+		},
+		{
+			projects: 0,
+			tasks: 0,
+			documents: 0,
+			plans: 0,
+			goals: 0,
+			collaborators: 0
 		}
 	);
 
@@ -511,6 +681,7 @@ export function buildWorkspaceOverviewPayload(
 		projects_returned: projects.length,
 		maybe_more: params.maybeMore,
 		totals,
+		entity_totals: entityTotals,
 		projects,
 		message:
 			projects.length === 0
@@ -585,6 +756,7 @@ export function buildProjectOverviewPayload(
 		plans: params.plans ?? [],
 		risks: params.risks,
 		events: upcomingEvents,
+		members: params.members ?? [],
 		nowMs
 	});
 	const tasks = sortTasks(
@@ -624,6 +796,13 @@ export function buildProjectOverviewPayload(
 			updated_at: risk.updated_at ?? null
 		}));
 	const recentActivity = buildActivity(params.projectLogs, PROJECT_EVENT_LIMIT);
+	const allCollaborators = [...(params.members ?? [])].sort(
+		sortCollaborators(params.currentActorId)
+	);
+	const collaboratorMembers = allCollaborators
+		.slice(0, PROJECT_COLLABORATOR_LIMIT)
+		.map((member) => serializeCollaborator(member, params.currentActorId));
+	const entityCounts = buildEntityCounts(params.project, allCollaborators.length);
 
 	return {
 		generated_at: now.toISOString(),
@@ -644,8 +823,14 @@ export function buildProjectOverviewPayload(
 			updated_at: params.project.updated_at
 		},
 		counts,
+		entity_counts: entityCounts,
 		tasks,
 		milestones,
+		collaborators: {
+			count: allCollaborators.length,
+			members: collaboratorMembers,
+			truncated: allCollaborators.length > collaboratorMembers.length
+		},
 		risks,
 		upcoming_events: upcomingEvents.map((event) => ({
 			id: event.id,

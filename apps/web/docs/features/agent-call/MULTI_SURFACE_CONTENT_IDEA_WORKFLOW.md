@@ -2,8 +2,8 @@
 
 # Multi-Surface Content Idea Workflow — Design Note
 
-**Status:** PoC shipped — document write surface live; remaining entity writes deferred
-**Date:** 2026-04-17 (updated 2026-04-18)
+**Status:** PoC shipped — core external write primitives live; content-idea wrapper deferred
+**Date:** 2026-04-17 (updated 2026-05-21)
 **Author:** DJ (with Claude)
 **Context:** User wants to move flexibly between BuildOS, Claude Code / OpenClaw (third-party agent surfaces), and Libri (the user's own library / data lake for books, authors, and YouTube videos — a separate service, not inside BuildOS). The near-term bottleneck is that BuildOS's external agent-call gateway exposes a narrow slice of the data model, so third-party agents can't yet do routine authoring work against BuildOS. The content-idea workflow is one downstream use case; the immediate need is a wider, trusted tool surface.
 
@@ -57,23 +57,16 @@ Do not invent new primitives in this PoC. Everything listed above already exists
 
 - **Shared types** (`packages/shared-types/src/agent-call.types.ts`) — `BUILDOS_AGENT_WRITE_OPS` expanded from 2 ops to 14. Added `OPENCLAW_DEFAULT_WRITE_OPS` (the "Author docs + tasks" bundle) and `LEGACY_OPENCLAW_DEFAULT_WRITE_OPS` (for the auto-upgrade detection).
 - **Document gateway handlers** — `onto.document.create` and `onto.document.update` live in `apps/web/src/lib/server/agent-call/external-tool-gateway.ts`. Markdown stored as-is, 200 KB cap enforced, wholesale replace on update, project root is the default tree placement, version snapshots via `createOrMergeDocumentVersion`, activity log entries, mention notifications, and `props.origin = 'external_agent'` facet for auditability.
+- **Project gateway handlers** — `onto.project.create` and `onto.project.update` are wired. Creation delegates to `instantiateProject` and accepts the same `ProjectSpec` shape as internal project creation (`project`, `entities`, `relationships`, optional `context_document`). Creation requires an unscoped `read_write` grant because a new project has no pre-existing `project_id` to authorize.
+- **Structural entity handlers** — `onto.goal.*`, `onto.plan.*`, `onto.milestone.*`, and `onto.risk.*` create/update handlers are wired through the same scoped write gateway.
+- **Remote MCP write bundle** — `buildos.write` now includes project create/update in addition to the author-docs-and-tasks bundle. The MCP tool list omits `create_onto_project` when the approved grant is scoped to selected project IDs.
 - **Auto-upgrade migration** — `upgradeLegacyOpenClawAllowedOps` in `agent-call-policy.ts` detects OpenClaw callers still carrying the old narrow scope and returns the expanded bundle. `caller-auth.ts` persists the upgrade to `external_agent_callers.policy` on next auth and emits an `agent.caller.policy.upgraded` security event.
 - **Agent Keys UI** (`apps/web/src/lib/components/profile/AgentKeysTab.svelte`) — bundles lead the permissions picker (Read only / Author docs + tasks [default] / Full read/write / Custom); full per-op matrix behind an Advanced disclosure; new-key default is the Author docs + tasks bundle.
-- **User-facing docs** (`apps/web/src/content/docs/connect-agents.md`) — permission-bundle table, expanded op list with "coming soon" markers for the other entities, and a worked `onto.document.create` example.
+- **User-facing docs** (`apps/web/src/content/docs/connect-agents.md`) — permission-bundle table, expanded op list, worked `create_onto_document` example, and project creation guidance for `create_onto_project`.
 
-**Deferred (registered, stubbed, not wired):**
+**Deferred:**
 
-- `onto.project.create` / `update`
-- `onto.goal.create` / `update`
-- `onto.plan.create` / `update`
-- `onto.milestone.create` / `update`
-- `onto.risk.create` / `update`
-
-These ops exist in `BUILDOS_AGENT_WRITE_OPS` and show up in the Agent Keys Advanced disclosure, but the handlers throw `INTERNAL` ("not yet implemented") until wired. The docs page labels them as "coming soon." Implement by following the document-handler pattern in `external-tool-gateway.ts` when ready.
-
-**Also deferred:**
-
-- Integration tests covering happy path, scope denial, validation (title required, content > 200 KB), idempotent replay, and the OpenClaw auto-upgrade path.
+- Broader integration coverage for every structural write op. Project creation now has focused coverage for exposure, happy path, scoped denial, and OAuth bundle inclusion.
 - Content-idea workflow ops (`onto.content_idea.*`) — these stay wrappers to be built once the primitives above exist.
 - Brief rendering for `origin = external_agent` documents as a dedicated "New from external agents" section.
 

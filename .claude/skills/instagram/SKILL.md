@@ -5,7 +5,7 @@ description: Browser automation for Instagram web. Use when navigating feed, sto
 
 # Instagram
 
-Load this when interacting with Instagram via browser automation. Detailed flows, selectors, and engagement gotchas live in `references/workflows.md` — load that file when you need exact click sequences or nuance.
+Load this when interacting with Instagram via browser automation. Detailed flows, selectors, account switching, and engagement gotchas live in `references/workflows.md` — load that file before any Instagram browser session that needs account verification or switching, and whenever you need exact click sequences or nuance.
 
 ## Prerequisites
 
@@ -43,6 +43,7 @@ Story reply → open story → "Send message" input → opens DM thread
 
 ## Non-obvious rules
 
+- **Account verification is required before every scan or action.** Use `references/workflows.md` section 8 when the active account is not the intended handle.
 - **Rate-limiting is aggressive.** Space out actions. Batched likes/comments trigger challenges.
 - **Algorithm weights, strongest → weakest:** saves, shares to DM/Story, comments (meaningful ones), reel completion rate, dwell time — then likes.
 - **Meaningful comments matter more than short ones.** ≥5 words, relevance > generic praise. Short "🔥" / "nice!" comments post but barely move reach.
@@ -52,6 +53,7 @@ Story reply → open story → "Send message" input → opens DM thread
 ## When to read `references/workflows.md`
 
 - You need exact selectors, comment input label, or story reply behavior.
+- You need to verify or switch the active Instagram account.
 - You're building a DM flow (inbox filter / new message / send path).
 - You need the engagement-signals rundown with specifics.
 - A scripted flow is failing and you suspect a selector or permission check.

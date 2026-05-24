@@ -125,6 +125,111 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.finalAssistantText).toBe('Created the January milestone.');
 	});
 
+	it('emits a finalization guard summary when tools ran but the model gives no final text', async () => {
+		let streamInvocation = 0;
+		const emittedDeltas: string[] = [];
+		const supervisorRecords: string[] = [];
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_task',
+							{
+								task_id: '881823a4-e74e-48d2-bf3e-b77db7e47b5f',
+								state_key: 'done'
+							},
+							'update_onto_task:done'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			return {
+				tool_call_id: call.id,
+				result: { ok: true },
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Mark the task done.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'update_onto_task']),
+			toolExecutor,
+			onDelta: async (delta) => {
+				emittedDeltas.push(delta);
+			},
+			onSupervisorDecision: async ({ decision }) => {
+				supervisorRecords.push(decision.action);
+			}
+		});
+
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(emittedDeltas.join('')).toContain('I completed the requested change.');
+		expect(result.finalAssistantText).toBe('I completed the requested change.');
+		expect(result.finalizationGuard).toMatchObject({
+			applied: true,
+			reason: 'empty_after_successful_writes'
+		});
+		expect(supervisorRecords).toContain('flag_eval');
+	});
+
+	it('emits a supervisor status during long model silence', async () => {
+		vi.useFakeTimers();
+		try {
+			const statusMessages: string[] = [];
+			const llm = {
+				streamText: vi.fn(async function* () {
+					await new Promise((resolve) => setTimeout(resolve, 13_000));
+					yield { type: 'text', content: 'Done after thinking.' };
+					yield { type: 'done', finished_reason: 'stop' };
+				})
+			} as any;
+
+			const resultPromise = streamFastChat({
+				llm,
+				userId: 'user_1',
+				sessionId: 'session_1',
+				contextType: 'project',
+				entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+				projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+				history: [],
+				message: 'Think for a bit, then answer.',
+				tools: [],
+				onDelta: async () => {},
+				onSupervisorDecision: async ({ decision }) => {
+					if (decision.action === 'emit_status') {
+						statusMessages.push(decision.message);
+					}
+				}
+			});
+
+			await vi.advanceTimersByTimeAsync(12_000);
+			expect(statusMessages).toEqual(['BuildOS is still working through the request.']);
+
+			await vi.advanceTimersByTimeAsync(1_000);
+			const result = await resultPromise;
+			expect(result.finalAssistantText).toBe('Done after thinking.');
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('synthesizes instead of showing the safety-limit notice after the final discovery round', async () => {
 		let streamInvocation = 0;
 		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];
@@ -303,6 +408,160 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.llmPasses?.[2]?.forcedNoToolSynthesis).toBe(true);
 	});
 
+	it('retries final synthesis when a no-tool pass reports tool_calls without a tool payload', async () => {
+		let streamInvocation = 0;
+		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					toolNames: (params.tools ?? [])
+						.map((tool: ChatToolDefinition) => tool.function?.name)
+						.filter((name: string | undefined): name is string => Boolean(name))
+				});
+
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'search_project',
+							{
+								project_id: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+								query: 'Tim Ferriss'
+							},
+							'search_project:tim'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (streamInvocation === 2) {
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield {
+					type: 'text',
+					content: 'Here are a few interesting Tim Ferriss facts from the gathered context.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			return {
+				tool_call_id: call.id,
+				result: {
+					results: [{ id: 'doc_1', type: 'document', title: 'Tim Ferriss notes' }]
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Find interesting facts about Tim Ferriss.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'search_project']),
+			toolExecutor,
+			onDelta: async () => {},
+			maxToolRounds: 1
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(3);
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(streamParams[1]?.toolChoice).toBeUndefined();
+		expect(streamParams[1]?.toolNames).toEqual([]);
+		expect(streamParams[2]?.toolChoice).toBeUndefined();
+		expect(streamParams[2]?.toolNames).toEqual([]);
+		expect(result.finishedReason).toBe('stop');
+		expect(result.finalAssistantText).toBe(
+			'Here are a few interesting Tim Ferriss facts from the gathered context.'
+		);
+		expect(result.finalAssistantText).not.toContain('turn ended before a final response');
+	});
+
+	it('falls back to a finalization guard when no-tool synthesis keeps emitting tool calls', async () => {
+		let streamInvocation = 0;
+		const emittedDeltas: string[] = [];
+		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					toolChoice: params.tool_choice,
+					toolNames: (params.tools ?? [])
+						.map((tool: ChatToolDefinition) => tool.function?.name)
+						.filter((name: string | undefined): name is string => Boolean(name))
+				});
+
+				yield {
+					type: 'tool_call',
+					tool_call: toolCall(
+						'search_project',
+						{
+							project_id: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+							query: `round ${streamInvocation}`
+						},
+						`search_project:${streamInvocation}`
+					)
+				};
+				yield { type: 'done', finished_reason: 'tool_calls' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			return {
+				tool_call_id: call.id,
+				result: {
+					results: [{ id: 'doc_1', type: 'document', title: 'Meeting prep notes' }]
+				},
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Prep me for the meeting.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'search_project']),
+			toolExecutor,
+			onDelta: async (delta) => {
+				emittedDeltas.push(delta);
+			},
+			maxToolRounds: 1
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(3);
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(streamParams[1]?.toolChoice).toBeUndefined();
+		expect(streamParams[1]?.toolNames).toEqual([]);
+		expect(streamParams[2]?.toolChoice).toBeUndefined();
+		expect(streamParams[2]?.toolNames).toEqual([]);
+		expect(result.finishedReason).toBe('tool_round_limit');
+		expect(result.finalAssistantText).toBe(
+			'I gathered the requested context, but the turn ended before a final response was produced.'
+		);
+		expect(emittedDeltas.join('')).toBe(result.finalAssistantText);
+		expect(result.finalAssistantText).not.toContain('safety limit');
+		expect(result.finalizationGuard).toMatchObject({
+			applied: true,
+			reason: 'empty_after_reads'
+		});
+	});
+
 	it('validates direct tool arguments before execution and retries after repair', async () => {
 		let streamInvocation = 0;
 		let repairPassMessages: FastChatHistoryMessage[] | undefined;
@@ -375,6 +634,222 @@ describe('streamFastChat direct tool orchestration', () => {
 			)
 		).toBe(true);
 		expect(result.finalAssistantText).toBe('Marked the task done.');
+	});
+
+	it('pauses with a supervisor question after repeated write validation failures', async () => {
+		let streamInvocation = 0;
+		const emittedDeltas: string[] = [];
+		const supervisorActions: string[] = [];
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				yield {
+					type: 'tool_call',
+					tool_call: toolCall(
+						'update_onto_task',
+						{ state_key: 'done' },
+						`update_onto_task:missing-id-${streamInvocation}`
+					)
+				};
+				yield { type: 'done', finished_reason: 'tool_calls' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (): Promise<ChatToolResult> => {
+			throw new Error('Tool executor should not run for invalid calls');
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Mark the task done.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'update_onto_task']),
+			toolExecutor,
+			onDelta: async (delta) => {
+				emittedDeltas.push(delta);
+			},
+			onSupervisorDecision: async ({ decision }) => {
+				supervisorActions.push(decision.action);
+			}
+		});
+
+		expect(llm.streamText).toHaveBeenCalledTimes(2);
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(result.finishedReason).toBe('supervisor_question');
+		expect(result.finalAssistantText).toBe(
+			'Which exact task should I use? Send the name or ID, and I will continue from here.'
+		);
+		expect(emittedDeltas.join('')).toContain('Which exact task should I use?');
+		expect(supervisorActions).toContain('ask_user');
+		const askRecord = result.supervisorDecisions?.find(
+			(record) => record.decision.action === 'ask_user'
+		);
+		expect(askRecord?.decision).toMatchObject({
+			action: 'ask_user',
+			reason: 'repeated_validation_failures'
+		});
+		expect(result.toolExecutions).toHaveLength(2);
+	});
+
+	it('does not page the supervisor judge during a normal turn', async () => {
+		const judge = {
+			evaluate: vi.fn()
+		};
+		const llm = {
+			streamText: vi.fn(async function* () {
+				yield { type: 'text', content: 'Normal answer.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'global',
+			history: [],
+			message: 'Answer normally.',
+			tools: [],
+			turnSupervisorJudge: judge,
+			onDelta: async () => {}
+		});
+
+		expect(result.finalAssistantText).toBe('Normal answer.');
+		expect(judge.evaluate).not.toHaveBeenCalled();
+	});
+
+	it('lets the paged supervisor judge override a repeated-failure decision', async () => {
+		let streamInvocation = 0;
+		const emittedDeltas: string[] = [];
+		const supervisorRecords: Array<{ action: string; source?: string; trigger?: string }> = [];
+		const judge = {
+			evaluate: vi.fn().mockResolvedValue({
+				action: 'stop_with_message',
+				message: 'I need the exact task before I can safely update it.',
+				reason: 'judge_missing_target',
+				finishedReason: 'supervisor_judge_stop'
+			})
+		};
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				yield {
+					type: 'tool_call',
+					tool_call: toolCall(
+						'update_onto_task',
+						{ state_key: 'done' },
+						`update_onto_task:judge-missing-id-${streamInvocation}`
+					)
+				};
+				yield { type: 'done', finished_reason: 'tool_calls' };
+			})
+		} as any;
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Mark the task done.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'update_onto_task']),
+			toolExecutor: async () => {
+				throw new Error('Tool executor should not run for invalid calls');
+			},
+			turnSupervisorJudge: judge,
+			onDelta: async (delta) => {
+				emittedDeltas.push(delta);
+			},
+			onSupervisorDecision: async ({ decision, source, trigger }) => {
+				supervisorRecords.push({ action: decision.action, source, trigger });
+			}
+		});
+
+		expect(judge.evaluate).toHaveBeenCalledTimes(1);
+		expect(judge.evaluate).toHaveBeenCalledWith(
+			expect.objectContaining({
+				trigger: 'repeated_failures',
+				observationType: 'tool_round_completed'
+			})
+		);
+		expect(result.finishedReason).toBe('supervisor_judge_stop');
+		expect(result.finalAssistantText).toBe(
+			'I need the exact task before I can safely update it.'
+		);
+		expect(emittedDeltas.join('')).toContain('I need the exact task');
+		expect(supervisorRecords).toEqual([
+			{
+				action: 'stop_with_message',
+				source: 'judge',
+				trigger: 'repeated_failures'
+			}
+		]);
+	});
+
+	it('does not let the supervisor judge downgrade a deterministic user question to status', async () => {
+		let streamInvocation = 0;
+		const supervisorRecords: Array<{ action: string; source?: string; trigger?: string }> = [];
+		const judge = {
+			evaluate: vi.fn().mockResolvedValue({
+				action: 'emit_status',
+				message: 'Still checking.',
+				reason: 'judge_status_only'
+			})
+		};
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				yield {
+					type: 'tool_call',
+					tool_call: toolCall(
+						'update_onto_task',
+						{ state_key: 'done' },
+						`update_onto_task:downgrade-missing-id-${streamInvocation}`
+					)
+				};
+				yield { type: 'done', finished_reason: 'tool_calls' };
+			})
+		} as any;
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Mark the task done.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'update_onto_task']),
+			toolExecutor: async () => {
+				throw new Error('Tool executor should not run for invalid calls');
+			},
+			turnSupervisorJudge: judge,
+			onDelta: async () => {},
+			onSupervisorDecision: async ({ decision, source, trigger }) => {
+				supervisorRecords.push({ action: decision.action, source, trigger });
+			}
+		});
+
+		expect(judge.evaluate).toHaveBeenCalledTimes(1);
+		expect(result.finishedReason).toBe('supervisor_question');
+		expect(result.finalAssistantText).toBe(
+			'Which exact task should I use? Send the name or ID, and I will continue from here.'
+		);
+		expect(supervisorRecords).toEqual([
+			{
+				action: 'ask_user',
+				source: 'monitor',
+				trigger: 'repeated_failures'
+			}
+		]);
 	});
 
 	it('redacts invalid durable text from repair replay before retry', async () => {
@@ -564,6 +1039,7 @@ describe('streamFastChat direct tool orchestration', () => {
 			toolNames: string[];
 			messages: FastChatHistoryMessage[];
 		}> = [];
+		const supervisorRecords: Array<{ action: string; source?: string; trigger?: string }> = [];
 		const llm = {
 			streamText: vi.fn(async function* (params: any) {
 				streamInvocation += 1;
@@ -626,6 +1102,9 @@ describe('streamFastChat direct tool orchestration', () => {
 			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'search_project']),
 			toolExecutor,
 			onDelta: async () => {},
+			onSupervisorDecision: async ({ decision, source, trigger }) => {
+				supervisorRecords.push({ action: decision.action, source, trigger });
+			},
 			maxToolRounds: 3
 		});
 
@@ -638,6 +1117,13 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.finalAssistantText).toBe('Rod meeting prep answer from gathered context.');
 		expect(result.finalAssistantText).not.toContain('safety limit');
 		expect(result.llmPasses?.[2]?.forcedNoToolSynthesis).toBe(true);
+		expect(supervisorRecords).toEqual([
+			{
+				action: 'force_synthesis',
+				source: 'monitor',
+				trigger: 'near_tool_budget'
+			}
+		]);
 	});
 
 	it('re-injects read-loop repair instructions with escalating guidance', async () => {

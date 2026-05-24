@@ -49,6 +49,7 @@ import {
 	type MilestoneRow,
 	type PlanRow,
 	type ProjectLogRow,
+	type ProjectMemberRow,
 	type ProjectRow,
 	type RiskRow,
 	type TaskRow
@@ -76,6 +77,10 @@ function mapProjectSummaryToOverviewRow(summary: {
 	description: string | null;
 	next_step_short: string | null;
 	updated_at: string;
+	task_count: number;
+	document_count: number;
+	plan_count: number;
+	goal_count: number;
 }): ProjectRow {
 	return {
 		id: summary.id,
@@ -85,7 +90,11 @@ function mapProjectSummaryToOverviewRow(summary: {
 		start_at: null,
 		end_at: null,
 		next_step_short: summary.next_step_short ?? null,
-		updated_at: summary.updated_at ?? null
+		updated_at: summary.updated_at ?? null,
+		task_count: summary.task_count,
+		document_count: summary.document_count,
+		plan_count: summary.plan_count,
+		goal_count: summary.goal_count
 	};
 }
 
@@ -475,6 +484,7 @@ export class UtilityExecutor extends BaseExecutor {
 		risks: RiskRow[];
 		events: EventRow[];
 		projectLogs: ProjectLogRow[];
+		members: ProjectMemberRow[];
 	}> {
 		if (projectIds.length === 0) {
 			return {
@@ -483,7 +493,8 @@ export class UtilityExecutor extends BaseExecutor {
 				plans: [],
 				risks: [],
 				events: [],
-				projectLogs: []
+				projectLogs: [],
+				members: []
 			};
 		}
 
@@ -492,8 +503,8 @@ export class UtilityExecutor extends BaseExecutor {
 		const eventStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 		const eventEnd = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString();
 
-		const [tasksRes, milestonesRes, plansRes, risksRes, eventsRes, logsRes] = await Promise.all(
-			[
+		const [tasksRes, milestonesRes, plansRes, risksRes, eventsRes, logsRes, membersRes] =
+			await Promise.all([
 				supabaseAny
 					.from('onto_tasks')
 					.select(
@@ -526,13 +537,19 @@ export class UtilityExecutor extends BaseExecutor {
 				supabaseAny
 					.from('onto_project_logs')
 					.select(
-						'project_id, entity_type, entity_id, action, created_at, after_data, before_data'
+						'project_id, entity_type, entity_id, action, created_at, changed_by, changed_by_actor_id, change_source, after_data, before_data'
 					)
 					.in('project_id', projectIds)
 					.order('created_at', { ascending: false })
-					.limit(Math.max(12, projectIds.length * 6))
-			]
-		);
+					.limit(Math.max(12, projectIds.length * 6)),
+				supabaseAny
+					.from('onto_project_members')
+					.select(
+						'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)'
+					)
+					.in('project_id', projectIds)
+					.is('removed_at', null)
+			]);
 
 		const failures = [
 			['tasks', tasksRes.error],
@@ -540,7 +557,8 @@ export class UtilityExecutor extends BaseExecutor {
 			['plans', plansRes.error],
 			['risks', risksRes.error],
 			['events', eventsRes.error],
-			['project activity', logsRes.error]
+			['project activity', logsRes.error],
+			['project collaborators', membersRes.error]
 		].filter((entry) => entry[1]);
 		if (failures.length > 0) {
 			const [label, error] = failures[0]!;
@@ -553,7 +571,8 @@ export class UtilityExecutor extends BaseExecutor {
 			plans: Array.isArray(plansRes.data) ? plansRes.data : [],
 			risks: Array.isArray(risksRes.data) ? risksRes.data : [],
 			events: Array.isArray(eventsRes.data) ? eventsRes.data : [],
-			projectLogs: Array.isArray(logsRes.data) ? logsRes.data : []
+			projectLogs: Array.isArray(logsRes.data) ? logsRes.data : [],
+			members: Array.isArray(membersRes.data) ? membersRes.data : []
 		};
 	}
 
@@ -569,6 +588,7 @@ export class UtilityExecutor extends BaseExecutor {
 				risks: [],
 				events: [],
 				projectLogs: [],
+				members: [],
 				maybeMore: false
 			});
 		}
@@ -583,6 +603,7 @@ export class UtilityExecutor extends BaseExecutor {
 			risks: related.risks,
 			events: related.events,
 			projectLogs: related.projectLogs,
+			members: related.members,
 			maybeMore
 		});
 	}
@@ -628,7 +649,9 @@ export class UtilityExecutor extends BaseExecutor {
 				plans: related.plans,
 				risks: related.risks,
 				events: related.events,
-				projectLogs: related.projectLogs
+				projectLogs: related.projectLogs,
+				members: related.members,
+				currentActorId: await this.getActorId()
 			});
 		}
 
@@ -667,7 +690,9 @@ export class UtilityExecutor extends BaseExecutor {
 			plans: related.plans,
 			risks: related.risks,
 			events: related.events,
-			projectLogs: related.projectLogs
+			projectLogs: related.projectLogs,
+			members: related.members,
+			currentActorId: await this.getActorId()
 		});
 	}
 

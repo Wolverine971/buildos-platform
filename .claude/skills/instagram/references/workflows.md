@@ -79,7 +79,39 @@ Stories expire after 24h. Green ring = Close Friends.
   - Follow requests
   - Activity (likes, comments, follows, mentions) grouped by Today / This Week / This Month.
 
-## 8. Account picker recovery
+## 8. Account switching and picker recovery
+
+Treat account switching as a required setup workflow, not a best-effort click. DJ's Chrome profile commonly has multiple Instagram accounts available:
+
+- `djwayne3`
+- `build.os`
+- `9takesdotcom`
+- `dj_pew_pew`
+
+Before any scan, comment, like, save, or DM action:
+
+1. Navigate to `https://www.instagram.com/`.
+2. Determine the active account from at least two signals:
+   - avatar alt text includes `<handle>'s profile picture`
+   - profile link points to `/<handle>/`
+   - sidebar/top-right widget text shows the intended handle/name
+3. If the active account is wrong, use one of the known-good switch paths below.
+4. After switching, reload once and repeat the two-signal verification.
+5. If the target handle is not visible in the picker, stop and log `browser_limitation: instagram_account_not_in_picker`; do not proceed on a neighboring account.
+6. If the target handle appears but a protected route redirects to `/accounts/login/`, stop and log `browser_limitation: instagram_session_logged_out`; DJ must refresh that account's login manually.
+
+### Path A: Settings -> Switch accounts (logged-in session)
+
+Use this when Instagram is already logged into a wrong account and the sidebar "Switch" label is collapsed or has a zero-size hit target.
+
+1. Click the Settings gear in the left sidebar. If the visible text target is collapsed, click the parent link around `svg[aria-label="Settings"]`.
+2. In the popup, click the `div[role="button"]` row labeled **Switch accounts**.
+3. In the picker overlay, click the target handle row. Handles normally render as `div[role="button"]` rows.
+4. Wait for the page to refresh, reload once if needed, then verify from two account signals before acting.
+
+Known 2026-05-21 pattern: logged-in `@9takesdotcom` session switched to `@djwayne3` by Settings gear -> Switch accounts -> `djwayne3` row. The sidebar "Switch" span had `w=0/h=0`, so the Settings path was the reliable route.
+
+### Path B: Login/account picker row (logged-out or relabeled picker)
 
 When Chrome lands on the logged-out account picker but the target handle is visible, the account can often be restored without the normal Switch Accounts modal:
 
@@ -93,15 +125,6 @@ When Chrome lands on the logged-out account picker but the target handle is visi
 5. Only proceed to comments, notifications, or DMs after verification.
 
 Known 2026-05-20 pattern: the picker-click workaround restored `@djwayne3`. For BuildOS posting, `/instagram-reply` should click the `build.os` row from the same picker screen, then verify `build.os` before posting or reading DMs.
-
-Known 2026-05-21 pattern from an already-authenticated Instagram session:
-
-1. Click the Settings gear in the sidebar.
-2. Click **Switch accounts** in the popup.
-3. In the picker overlay, click the target handle row (`div[role="button"]`).
-4. Verify the active account from the same two-signal check above before acting.
-
-Use this Settings path when the sidebar "Switch" label is collapsed or has a zero-size hit target.
 
 If the handle appears in the picker but protected routes redirect to `/accounts/login/`, the account is listed but has no valid session cookie. Stop and require DJ to log in manually; do not attempt password entry.
 

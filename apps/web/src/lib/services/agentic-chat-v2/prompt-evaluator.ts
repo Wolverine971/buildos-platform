@@ -166,6 +166,19 @@ export function evaluatePromptScenario(
 		});
 	}
 
+	if (scenario.expectedFinishedReason) {
+		pushAssertion(assertions, {
+			assertionKey: 'finished_reason_matches',
+			passed: target.turnRun.finished_reason === scenario.expectedFinishedReason,
+			expected: scenario.expectedFinishedReason,
+			actual: target.turnRun.finished_reason ?? null,
+			details:
+				target.turnRun.finished_reason === scenario.expectedFinishedReason
+					? null
+					: `Expected finished_reason=${scenario.expectedFinishedReason}, got ${target.turnRun.finished_reason ?? 'none'}.`
+		});
+	}
+
 	if (scenario.requireAssistantAnswer !== false) {
 		pushAssertion(assertions, {
 			assertionKey: 'assistant_answer_present',
@@ -309,6 +322,7 @@ export function evaluatePromptScenario(
 			observed_ops: observedOps,
 			observed_skill_paths: observedSkills,
 			event_types: eventTypes,
+			finished_reason: target.turnRun.finished_reason ?? null,
 			validation_failure_count: validationFailures
 		} as Json,
 		assertions

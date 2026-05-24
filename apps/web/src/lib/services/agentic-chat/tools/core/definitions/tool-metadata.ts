@@ -538,6 +538,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 	get_workspace_overview: {
 		summary: 'Return a BuildOS-native workspace status summary across accessible projects.',
 		capabilities: [
+			'Includes workspace-level and per-project task, document, plan, goal, and collaborator counts',
 			'Highlights active, blocked, overdue, and due-soon work across projects',
 			'Includes next milestones, upcoming events, and recent changes per project',
 			'Preferred first step for broad workspace status questions'
@@ -549,7 +550,8 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		summary: 'Return a BuildOS-native status summary for one project by ID or name query.',
 		capabilities: [
 			'Resolves a named project when the exact ID is not yet known',
-			'Highlights top active tasks, milestones, risks, upcoming events, and recent changes',
+			'Includes task, document, plan, goal, and collaborator counts',
+			'Highlights top active tasks, milestones, risks, upcoming events, recent changes, and active collaborators',
 			'Preferred first step for project status questions'
 		],
 		contexts: ['base', 'global', 'project'],

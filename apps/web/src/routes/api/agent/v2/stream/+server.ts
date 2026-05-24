@@ -17,6 +17,7 @@ export const config = {
 
 import type { RequestHandler } from './$types';
 import { dev } from '$app/environment';
+import { env as privateEnv } from '$env/dynamic/private';
 import { ApiResponse } from '$lib/utils/api-response';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { createLogger } from '$lib/utils/logger';
@@ -142,6 +143,17 @@ import {
 } from '$lib/services/agentic-chat-v2/cancel-reason-channel';
 import { isRunningTurnUniqueViolation } from '$lib/services/agentic-chat-v2/turn-run-conflicts';
 import { sanitizeAssistantFinalText } from '$lib/services/agentic-chat-v2/stream-orchestrator/assistant-text-sanitization';
+import {
+	buildCheckpointResumeSystemMessage,
+	createLLMTurnSupervisorJudge,
+	createTurnCheckpoint,
+	loadLatestActiveCheckpoint,
+	markCheckpointResumed,
+	markCheckpointResuming,
+	recoverStaleResumingCheckpoints,
+	restoreCheckpointToActive,
+	type ChatTurnCheckpoint
+} from '$lib/services/agentic-chat-v2/turn-supervisor';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const logger = createLogger('API:AgentStreamV2');
@@ -211,6 +223,10 @@ const FASTCHAT_DETACHED_TURN_MAX_DURATION_MS = parsePositiveInt(
 	process.env.FASTCHAT_DETACHED_TURN_MAX_DURATION_MS,
 	285000
 );
+const FASTCHAT_SUPERVISOR_RESUMING_STALE_AFTER_MS = parsePositiveInt(
+	process.env.FASTCHAT_SUPERVISOR_RESUMING_STALE_AFTER_MS,
+	15 * 60 * 1000
+);
 const FASTCHAT_CANCEL_WATCH_INTERVAL_MS = parsePositiveInt(
 	process.env.FASTCHAT_CANCEL_WATCH_INTERVAL_MS,
 	750
@@ -269,6 +285,35 @@ function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean
 	if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
 	if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
 	return fallback;
+}
+
+function readRuntimeEnv(name: string): string | undefined {
+	return privateEnv[name] ?? process.env[name];
+}
+
+function resolveTurnSupervisorJudgeConfig(): {
+	enabled: boolean;
+	timeoutMs: number;
+	maxCalls: number;
+	model?: string;
+	enabledEnvPresent: boolean;
+} {
+	const enabledValue = readRuntimeEnv('FASTCHAT_TURN_SUPERVISOR_LLM_ENABLED');
+	const model = readRuntimeEnv('FASTCHAT_TURN_SUPERVISOR_LLM_MODEL')?.trim() || undefined;
+	return {
+		enabled: parseBooleanFlag(enabledValue, false),
+		timeoutMs: parsePositiveInt(readRuntimeEnv('FASTCHAT_TURN_SUPERVISOR_LLM_TIMEOUT_MS'), 4000),
+		maxCalls: parsePositiveInt(readRuntimeEnv('FASTCHAT_TURN_SUPERVISOR_LLM_MAX_CALLS'), 3),
+		model,
+		enabledEnvPresent: enabledValue !== undefined
+	};
+}
+
+function countBy(values: readonly string[]): Record<string, number> {
+	return values.reduce<Record<string, number>>((counts, value) => {
+		counts[value] = (counts[value] ?? 0) + 1;
+		return counts;
+	}, {});
 }
 
 function resolvePersistableAssistantContent(params: {
@@ -3427,6 +3472,42 @@ export const POST: RequestHandler = async ({
 					? streamRequest.voice_note_group_id
 					: undefined;
 		let stopCancelWatcher: (() => void) | null = null;
+		let activeSupervisorCheckpoint: ChatTurnCheckpoint | null = null;
+		let resumingSupervisorCheckpoint: ChatTurnCheckpoint | null = null;
+		let supervisorQuestionCheckpointId: string | null = null;
+		let supervisorQuestionCheckpointFailed = false;
+		const restoreResumingSupervisorCheckpoint = async (reason: string): Promise<void> => {
+			if (!resumingSupervisorCheckpoint) return;
+			const checkpointId = resumingSupervisorCheckpoint.id;
+			try {
+				const restored = await restoreCheckpointToActive({
+					supabase,
+					checkpointId,
+					userId
+				});
+				if (restored) {
+					recordTurnEvent('finalize', 'supervisor_checkpoint_restored', {
+						checkpoint_id: checkpointId,
+						reason
+					} as Json);
+					resumingSupervisorCheckpoint = null;
+				}
+			} catch (error) {
+				logFastChatError({
+					error,
+					operationType: 'fastchat_supervisor_checkpoint_restore',
+					projectId: projectIdForLogs,
+					tableName: 'chat_turn_checkpoints',
+					recordId: checkpointId,
+					metadata: {
+						sessionId: timingSessionId,
+						contextType,
+						entityId,
+						reason
+					}
+				});
+			}
+		};
 
 		try {
 			if (isDailyBriefContext(contextType)) {
@@ -3691,6 +3772,50 @@ export const POST: RequestHandler = async ({
 				}
 			}
 
+			try {
+				const staleBefore = new Date(
+					Date.now() - FASTCHAT_SUPERVISOR_RESUMING_STALE_AFTER_MS
+				).toISOString();
+				await recoverStaleResumingCheckpoints({
+					supabase,
+					userId,
+					staleBefore
+				});
+			} catch (error) {
+				logFastChatError({
+					error,
+					operationType: 'fastchat_supervisor_checkpoint_restore_stale',
+					projectId: projectIdForLogs,
+					tableName: 'chat_turn_checkpoints',
+					metadata: {
+						sessionId: session.id,
+						contextType,
+						entityId
+					}
+				});
+			}
+
+			try {
+				activeSupervisorCheckpoint = await loadLatestActiveCheckpoint({
+					supabase,
+					sessionId: session.id,
+					userId
+				});
+			} catch (error) {
+				activeSupervisorCheckpoint = null;
+				logFastChatError({
+					error,
+					operationType: 'fastchat_supervisor_checkpoint_load',
+					projectId: projectIdForLogs,
+					tableName: 'chat_turn_checkpoints',
+					metadata: {
+						sessionId: session.id,
+						contextType,
+						entityId
+					}
+				});
+			}
+
 			const requestLastTurnContext =
 				streamRequest.lastTurnContext ?? streamRequest.last_turn_context ?? null;
 			const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
@@ -3735,6 +3860,14 @@ export const POST: RequestHandler = async ({
 				httpReferer: request.headers.get('referer') ?? undefined,
 				appName: 'BuildOS Agentic Chat V2'
 			});
+			const turnSupervisorJudgeConfig = resolveTurnSupervisorJudgeConfig();
+			const turnSupervisorJudge = turnSupervisorJudgeConfig.enabled
+				? createLLMTurnSupervisorJudge({
+						llm,
+						timeoutMs: turnSupervisorJudgeConfig.timeoutMs,
+						model: turnSupervisorJudgeConfig.model
+					})
+				: undefined;
 			const gatewayEnabled = true;
 			const toolSelectionStartedAtMs = Date.now();
 			const selectedSurfaceProfile = resolveFastChatSurfaceProfileForTurn({
@@ -3940,6 +4073,78 @@ export const POST: RequestHandler = async ({
 				);
 				queueTimingMetric(failedReason);
 				return;
+			}
+			recordTurnEvent('llm', 'supervisor_judge_config', {
+				enabled: turnSupervisorJudgeConfig.enabled,
+				enabled_env_present: turnSupervisorJudgeConfig.enabledEnvPresent,
+				timeout_ms: turnSupervisorJudgeConfig.timeoutMs,
+				max_calls: turnSupervisorJudgeConfig.maxCalls,
+				model: turnSupervisorJudgeConfig.model ?? null
+			});
+			if (activeSupervisorCheckpoint) {
+				try {
+					resumingSupervisorCheckpoint = await markCheckpointResuming({
+						supabase,
+						checkpointId: activeSupervisorCheckpoint.id,
+						userId,
+						resumeTurnRunId: turnRunId
+					});
+					if (resumingSupervisorCheckpoint) {
+						historyForModel = [
+							...historyForModel,
+							{
+								role: 'system',
+								content: buildCheckpointResumeSystemMessage(
+									resumingSupervisorCheckpoint
+								)
+							}
+						];
+						historyForModelCount = historyForModel.length;
+						userMessageMetadata.supervisor_resume_checkpoint_id =
+							resumingSupervisorCheckpoint.id;
+						userMessageMetadata.supervisor_resume_original_turn_run_id =
+							resumingSupervisorCheckpoint.turn_run_id;
+						queueTurnRunUpdate(
+							{
+								history_for_model_count: historyForModelCount
+							},
+							'update_turn_run_supervisor_checkpoint_resume',
+							{
+								checkpointId: resumingSupervisorCheckpoint.id,
+								originalTurnRunId: resumingSupervisorCheckpoint.turn_run_id
+							}
+						);
+						recordTurnEvent('prompt', 'supervisor_checkpoint_resuming', {
+							checkpoint_id: resumingSupervisorCheckpoint.id,
+							original_turn_run_id: resumingSupervisorCheckpoint.turn_run_id,
+							resume_turn_run_id: turnRunId,
+							checkpoint_type: resumingSupervisorCheckpoint.checkpoint_type,
+							reason: resumingSupervisorCheckpoint.reason,
+							history_for_model_count: historyForModelCount
+						} as Json);
+					} else {
+						logger.info('Supervisor checkpoint was already consumed before resume', {
+							checkpointId: activeSupervisorCheckpoint.id,
+							sessionId: session.id,
+							turnRunId
+						});
+					}
+				} catch (error) {
+					resumingSupervisorCheckpoint = null;
+					logFastChatError({
+						error,
+						operationType: 'fastchat_supervisor_checkpoint_resume',
+						projectId: projectIdForLogs,
+						tableName: 'chat_turn_checkpoints',
+						recordId: activeSupervisorCheckpoint.id,
+						metadata: {
+							sessionId: session.id,
+							contextType,
+							entityId,
+							turnRunId
+						}
+					});
+				}
 			}
 			const userMessagePromise = sessionService.persistMessage({
 				sessionId: session.id,
@@ -4559,6 +4764,8 @@ export const POST: RequestHandler = async ({
 				llmPasses,
 				toolRounds,
 				toolCallsMade,
+				supervisorDecisions,
+				finalizationGuard,
 				cancelled,
 				peakPromptTokens,
 				finalContextUsage
@@ -4582,6 +4789,8 @@ export const POST: RequestHandler = async ({
 				maxToolRounds: Math.max(1, gatewayRoundCap),
 				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
 				tools,
+				turnSupervisorJudge,
+				maxSupervisorJudgeCalls: turnSupervisorJudgeConfig.maxCalls,
 				// Live orchestration-budget snapshot from provider-reported tokens.
 				// Not re-emitted to the UI badge because the UI uses a different
 				// (smaller) budget calibrated for chat length; mixing them would
@@ -4905,6 +5114,118 @@ export const POST: RequestHandler = async ({
 						});
 					}
 				},
+				onSupervisorDecision: async ({ decision, digest, source, trigger }) => {
+					const payload = {
+						action: decision.action,
+						reason: 'reason' in decision ? decision.reason : null,
+						question: decision.action === 'ask_user' ? decision.question : null,
+						source: source ?? 'monitor',
+						trigger: trigger ?? null,
+						digest: {
+							elapsed_ms: digest.elapsedMs,
+							ms_since_visible_text: digest.msSinceVisibleText,
+							llm_pass_count: digest.llmPassCount,
+							tool_round_count: digest.toolRoundCount,
+							tool_call_count: digest.toolCallCount,
+							validation_failure_count: digest.validationFailureCount,
+							progress: digest.progress,
+							risks: digest.risks,
+							recent_tools: digest.recentTools
+						}
+					} as Json;
+					recordTurnEvent(
+						decision.action === 'emit_status' ? 'stream' : 'llm',
+						decision.action === 'emit_status'
+							? 'supervisor_status_emitted'
+							: decision.action === 'force_synthesis'
+								? 'supervisor_force_synthesis'
+								: decision.action === 'flag_eval'
+									? 'supervisor_eval_flagged'
+									: decision.action === 'ask_user'
+										? 'supervisor_ask_user'
+										: 'supervisor_decision',
+						payload
+					);
+					if (decision.action === 'emit_status') {
+						await sendTimedMessage(
+							{
+								type: 'agent_state',
+								state: 'thinking',
+								details: decision.message
+							},
+							{
+								operationType: 'fastchat_stream_emit_supervisor_status',
+								projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+								metadata: {
+									sessionId: session.id,
+									contextType: effectiveContextType,
+									reason: decision.reason
+								}
+							}
+						);
+					}
+					if (decision.action === 'ask_user') {
+						try {
+							if (!supervisorQuestionCheckpointId && turnRunId) {
+								const supervisorQuestionCheckpoint = await createTurnCheckpoint({
+									supabase,
+									turnRunId,
+									sessionId: session.id,
+									userId,
+									checkpointType: 'supervisor_question',
+									reason: decision.reason,
+									digest: decision.checkpoint.digest,
+									resumeContext: decision.checkpoint.resumeContext,
+									supervisorDecision: decision,
+									question: decision.question
+								});
+								supervisorQuestionCheckpointId = supervisorQuestionCheckpoint.id;
+								recordTurnEvent('llm', 'supervisor_question_checkpoint_created', {
+									checkpoint_id: supervisorQuestionCheckpointId,
+									reason: decision.reason,
+									question_chars: decision.question.length
+								} as Json);
+							}
+						} catch (error) {
+							supervisorQuestionCheckpointFailed = true;
+							logFastChatError({
+								error,
+								operationType: 'fastchat_supervisor_question_checkpoint',
+								projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+								tableName: 'chat_turn_checkpoints',
+								metadata: {
+									sessionId: session.id,
+									contextType: effectiveContextType,
+									entityId: effectiveEntityId,
+									turnRunId,
+									reason: decision.reason
+								}
+							});
+							recordTurnEvent('llm', 'supervisor_question_checkpoint_failed', {
+								reason: decision.reason,
+								error: error instanceof Error ? error.message : String(error)
+							} as Json);
+						}
+						await sendTimedMessage(
+							{
+								type: 'agent_state',
+								state: 'waiting_on_user',
+								details: 'Waiting on your direction to continue.'
+							},
+							{
+								operationType: 'fastchat_stream_emit_supervisor_question_state',
+								projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+								metadata: {
+									sessionId: session.id,
+									contextType: effectiveContextType,
+									reason: decision.reason,
+									checkpointId: supervisorQuestionCheckpointId,
+									checkpointFailed: supervisorQuestionCheckpointFailed
+								}
+							}
+						);
+					}
+				},
 				onDelta: async (delta) => {
 					try {
 						await sendTimedMessage(
@@ -4930,6 +5251,27 @@ export const POST: RequestHandler = async ({
 				}
 			});
 			const normalizedExecutions = toolExecutions ?? [];
+			if (finalizationGuard?.applied) {
+				recordTurnEvent('finalize', 'supervisor_finalization_guard_applied', {
+					reason: finalizationGuard.reason ?? null,
+					text_chars: finalizationGuard.text.length,
+					tool_execution_count: normalizedExecutions.length
+				} as Json);
+			}
+			if (supervisorDecisions?.length) {
+				const sourceCounts = countBy(
+					supervisorDecisions.map((record) => record.source ?? 'monitor')
+				);
+				const triggerCounts = countBy(
+					supervisorDecisions.flatMap((record) => (record.trigger ? [record.trigger] : []))
+				);
+				recordTurnEvent('finalize', 'supervisor_decision_summary', {
+					count: supervisorDecisions.length,
+					actions: supervisorDecisions.map((record) => record.decision.action),
+					sources: sourceCounts,
+					triggers: triggerCounts
+				} as Json);
+			}
 			for (const pass of llmPasses ?? []) {
 				recordTurnEvent('llm', 'llm_pass_completed', {
 					pass: pass.pass,
@@ -5174,6 +5516,7 @@ export const POST: RequestHandler = async ({
 					},
 					'cancelled'
 				);
+				await restoreResumingSupervisorCheckpoint(interruptedReason ?? 'cancelled');
 				return;
 			}
 
@@ -5212,6 +5555,25 @@ export const POST: RequestHandler = async ({
 					token_budget: finalContextUsage.tokenBudget,
 					usage_percent: finalContextUsage.usagePercent,
 					status: finalContextUsage.status
+				} as Json;
+			}
+			if (finalizationGuard?.applied) {
+				assistantPersistMetadata.supervisor_finalization_guard = {
+					reason: finalizationGuard.reason ?? null,
+					text_chars: finalizationGuard.text.length
+				} as Json;
+			}
+			if (resumingSupervisorCheckpoint) {
+				assistantPersistMetadata.supervisor_resume_checkpoint = {
+					checkpoint_id: resumingSupervisorCheckpoint.id,
+					original_turn_run_id: resumingSupervisorCheckpoint.turn_run_id,
+					reason: resumingSupervisorCheckpoint.reason
+				} as Json;
+			}
+			if (supervisorQuestionCheckpointId || supervisorQuestionCheckpointFailed) {
+				assistantPersistMetadata.supervisor_question_checkpoint = {
+					checkpoint_id: supervisorQuestionCheckpointId,
+					failed: supervisorQuestionCheckpointFailed
 				} as Json;
 			}
 			assistantPersistStartedAtMs = Date.now();
@@ -5420,6 +5782,44 @@ export const POST: RequestHandler = async ({
 				},
 				'completed'
 			);
+			if (resumingSupervisorCheckpoint) {
+				const checkpointId = resumingSupervisorCheckpoint.id;
+				try {
+					const resumed = await markCheckpointResumed({
+						supabase,
+						checkpointId,
+						userId
+					});
+					if (resumed) {
+						recordTurnEvent('finalize', 'supervisor_checkpoint_resumed', {
+							checkpoint_id: checkpointId,
+							original_turn_run_id: resumed.turn_run_id,
+							resume_turn_run_id: turnRunId
+						} as Json);
+						resumingSupervisorCheckpoint = null;
+					} else {
+						logger.warn('Supervisor checkpoint was not resumable at completion', {
+							checkpointId,
+							sessionId: session.id,
+							turnRunId
+						});
+					}
+				} catch (error) {
+					logFastChatError({
+						error,
+						operationType: 'fastchat_supervisor_checkpoint_resumed',
+						projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+						tableName: 'chat_turn_checkpoints',
+						recordId: checkpointId,
+						metadata: {
+							sessionId: session.id,
+							contextType: effectiveContextType,
+							entityId: effectiveEntityId,
+							turnRunId
+						}
+					});
+				}
+			}
 		} catch (error) {
 			if (turnAbortController.signal.aborted || isAbortLikeError(error)) {
 				const interruptedReason = turnAbortReason ?? 'cancelled';
@@ -5449,6 +5849,7 @@ export const POST: RequestHandler = async ({
 					},
 					'aborted'
 				);
+				await restoreResumingSupervisorCheckpoint(interruptedReason);
 				logger.info('Agent V2 stream cancelled', {
 					sessionId: streamRequest.session_id ?? null,
 					contextType,
@@ -5551,6 +5952,7 @@ export const POST: RequestHandler = async ({
 				},
 				'failed'
 			);
+			await restoreResumingSupervisorCheckpoint('error');
 		} finally {
 			clearTimeout(turnTimeoutId);
 			stopCancelWatcher?.();

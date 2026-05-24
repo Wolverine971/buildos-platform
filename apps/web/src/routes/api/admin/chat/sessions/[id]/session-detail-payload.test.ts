@@ -400,4 +400,119 @@ describe('buildSessionDetailPayload', () => {
 		expect(payload.session.total_tokens).toBe(89_656);
 		expect(payload.metrics.total_cost_usd).toBeCloseTo(0.03410753);
 	});
+
+	it('highlights supervisor turn events in the admin timeline', () => {
+		const payload = buildSessionDetailPayload({
+			sessionRow: {
+				id: 'session-supervisor',
+				user_id: 'user-1',
+				title: 'Supervisor session',
+				status: 'active',
+				context_type: 'project',
+				entity_id: 'project-1',
+				message_count: 1,
+				total_tokens_used: 0,
+				tool_call_count: 0,
+				created_at: '2026-05-23T12:00:00.000Z',
+				updated_at: '2026-05-23T12:00:10.000Z',
+				last_message_at: '2026-05-23T12:00:10.000Z',
+				agent_metadata: {},
+				users: {
+					id: 'user-1',
+					email: 'admin@example.com',
+					name: 'Admin User'
+				}
+			},
+			messages: [],
+			toolExecutions: [],
+			llmCalls: [],
+			operations: [],
+			timingData: null,
+			turnRuns: [
+				{
+					id: 'run-supervisor',
+					stream_run_id: 'stream-supervisor',
+					client_turn_id: 'turn-supervisor',
+					context_type: 'project',
+					entity_id: 'project-1',
+					project_id: 'project-1',
+					gateway_enabled: true,
+					request_message: 'Mark the task done.',
+					status: 'completed',
+					finished_reason: 'supervisor_question',
+					tool_round_count: 2,
+					tool_call_count: 2,
+					validation_failure_count: 2,
+					llm_pass_count: 2,
+					started_at: '2026-05-23T12:00:00.000Z',
+					finished_at: '2026-05-23T12:00:10.000Z',
+					created_at: '2026-05-23T12:00:00.000Z',
+					updated_at: '2026-05-23T12:00:10.000Z'
+				}
+			],
+			promptSnapshots: [],
+			turnEvents: [
+				{
+					id: 'event-supervisor-decision',
+					turn_run_id: 'run-supervisor',
+					stream_run_id: 'stream-supervisor',
+					sequence_index: 1,
+					phase: 'supervisor',
+					event_type: 'supervisor_decision',
+					payload: {
+						action: 'ask_user',
+						reason: 'repeated_validation_failures',
+						source: 'monitor',
+						question: 'Which exact task should I use?'
+					},
+					created_at: '2026-05-23T12:00:08.000Z'
+				},
+				{
+					id: 'event-supervisor-summary',
+					turn_run_id: 'run-supervisor',
+					stream_run_id: 'stream-supervisor',
+					sequence_index: 2,
+					phase: 'finalize',
+					event_type: 'supervisor_decision_summary',
+					payload: {
+						count: 1,
+						actions: ['ask_user'],
+						sources: { monitor: 1 },
+						triggers: {}
+					},
+					created_at: '2026-05-23T12:00:10.000Z'
+				}
+			],
+			evalRuns: [],
+			evalAssertions: []
+		});
+
+		const decisionEvent = payload.timeline.find(
+			(event) => event.id === 'turn_event:event-supervisor-decision'
+		);
+		expect(decisionEvent).toMatchObject({
+			type: 'turn_event',
+			severity: 'warning',
+			title: 'Supervisor Decision: ask_user'
+		});
+		expect(decisionEvent?.summary).toContain('reason=repeated_validation_failures');
+		expect(decisionEvent?.summary).toContain('source=monitor');
+		expect(decisionEvent?.payload).toMatchObject({
+			event_type: 'supervisor_decision',
+			supervisor_action: 'ask_user',
+			supervisor_reason: 'repeated_validation_failures',
+			supervisor_source: 'monitor',
+			supervisor_question: 'Which exact task should I use?'
+		});
+
+		const summaryEvent = payload.timeline.find(
+			(event) => event.id === 'turn_event:event-supervisor-summary'
+		);
+		expect(summaryEvent).toMatchObject({
+			severity: 'info',
+			title: 'Supervisor Decision Summary'
+		});
+		expect(summaryEvent?.summary).toContain('count=1');
+		expect(summaryEvent?.summary).toContain('actions=ask_user');
+	});
 });

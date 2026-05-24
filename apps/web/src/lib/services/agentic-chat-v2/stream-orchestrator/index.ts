@@ -38,6 +38,20 @@ import {
 	sanitizeToolCallsForReplay
 } from './tool-arguments';
 import {
+	applyFinalizationGuard,
+	createDeterministicTurnSupervisor,
+	type FinalizationGuardResult,
+	type TurnSupervisor,
+	type TurnSupervisorDecisionRecord,
+	type TurnSupervisorJudge,
+	type TurnSupervisorJudgeTrigger,
+	type TurnSupervisorObservation
+} from '../turn-supervisor';
+import {
+	parseToolArguments as parseSupervisorToolArguments,
+	summarizeToolResult
+} from '../turn-supervisor/digest';
+import {
 	buildConsolidatedRepairInstruction,
 	buildGatewayCreateFieldNoProgressRepairInstruction,
 	buildGatewayMutationNoExecutionRepairInstruction,
@@ -92,6 +106,10 @@ type StreamFastChatParams = {
 	onToolCall?: (toolCall: ChatToolCall) => Promise<void> | void;
 	onToolResult?: (execution: FastToolExecution) => Promise<void> | void;
 	onContextUsageUpdate?: (snapshot: ContextUsageSnapshot) => Promise<void> | void;
+	turnSupervisor?: TurnSupervisor;
+	turnSupervisorJudge?: TurnSupervisorJudge;
+	maxSupervisorJudgeCalls?: number;
+	onSupervisorDecision?: (record: TurnSupervisorDecisionRecord) => Promise<void> | void;
 	orchestrationTokenBudget?: number;
 	maxToolRounds?: number;
 	maxToolCalls?: number;
@@ -112,6 +130,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	llmPasses?: LLMStreamPassMetadata[];
 	toolRounds?: number;
 	toolCallsMade?: number;
+	supervisorDecisions?: TurnSupervisorDecisionRecord[];
+	finalizationGuard?: FinalizationGuardResult;
 	cancelled?: boolean;
 	peakPromptTokens?: number;
 	finalContextUsage?: ContextUsageSnapshot;
@@ -191,8 +211,32 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let toolLeadInEmitted = false;
 	let activeAssistantBuffer = '';
 	let activePendingToolCallCount = 0;
+	let supervisorStopRequested = false;
+	let finalizationGuardResult: FinalizationGuardResult | undefined;
 	const pendingRepairInstructions: string[] = [];
 	const contextGatheringLedger = new ContextGatheringLedger();
+	const supervisor =
+		params.turnSupervisor ??
+		createDeterministicTurnSupervisor({
+			turnRunId: params.turnRunId ?? null,
+			sessionId,
+			userId,
+			contextType: normalizedContext,
+			entityId: entityId ?? null,
+			projectId: params.projectId ?? null,
+			userMessage: message,
+			config: {
+				maxToolRounds
+			}
+		});
+	const supervisorDecisions: TurnSupervisorDecisionRecord[] = [];
+	const supervisorJudge = params.turnSupervisorJudge;
+	const maxSupervisorJudgeCalls = Math.max(0, params.maxSupervisorJudgeCalls ?? 3);
+	let supervisorJudgeCallCount = 0;
+	const supervisorJudgeKeys = new Set<string>();
+	let observeSupervisor: (
+		observation: TurnSupervisorObservation
+	) => Promise<void> = async () => {};
 
 	// Live context-usage snapshot. Updated after every LLM `done` event using
 	// the provider-reported prompt_tokens (ground truth) so saturation logic
@@ -357,6 +401,12 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				arguments: JSON.stringify(args)
 			}
 		};
+		await observeSupervisor({
+			type: 'tool_call_emitted',
+			toolName: toolCall.function.name,
+			toolCallId: toolCall.id,
+			argsPreview: args
+		});
 
 		if (params.onToolCall) {
 			try {
@@ -381,6 +431,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 		const execution: FastToolExecution = { toolCall, result };
 		toolExecutions.push(execution);
+		await observeSupervisor({
+			type: 'tool_result_received',
+			toolName: toolCall.function.name,
+			toolCallId: toolCall.id,
+			success: result.success === true,
+			error: result.error ?? null,
+			resultSummary: summarizeToolResult(result)
+		});
 		if (params.onToolResult) {
 			try {
 				await params.onToolResult(execution);
@@ -478,6 +536,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		const delta = `${prefix}${normalized}`;
 		assistantText += delta;
 		await onDelta(delta);
+		await observeSupervisor({ type: 'assistant_text_delta', chars: delta.length });
 	};
 
 	const emitAssistantRemainder = async (content: string): Promise<void> => {
@@ -499,6 +558,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			if (!remainder.trim()) return;
 			assistantText += remainder;
 			await onDelta(remainder);
+			await observeSupervisor({ type: 'assistant_text_delta', chars: remainder.length });
 			return;
 		}
 
@@ -519,10 +579,215 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		toolLeadInEmitted = true;
 	};
 
+	const resolveSupervisorJudgeTrigger = (
+		record: TurnSupervisorDecisionRecord,
+		observation: TurnSupervisorObservation
+	): TurnSupervisorJudgeTrigger | null => {
+		const { decision, digest } = record;
+		if (decision.action === 'emit_status') {
+			return decision.reason === 'long_running_operation'
+				? 'long_running_operation'
+				: 'long_silence';
+		}
+		if (decision.reason === 'repeated_validation_failures') {
+			return 'repeated_failures';
+		}
+		if (decision.action === 'force_synthesis') {
+			if (decision.reason === 'low_novelty_reads') return 'low_novelty_reads';
+			if (decision.reason === 'near_tool_budget') return 'near_tool_budget';
+			return 'many_tool_calls';
+		}
+		if (
+			decision.action === 'flag_eval' &&
+			decision.reason === 'empty_final_candidate_after_tool_work'
+		) {
+			return 'empty_final_candidate';
+		}
+		if (observation.type === 'tool_round_completed') {
+			if (digest.risks.includes('repeated_failures')) return 'repeated_failures';
+			if (digest.risks.includes('near_tool_budget')) return 'near_tool_budget';
+			if (digest.risks.includes('many_tool_calls')) return 'many_tool_calls';
+		}
+		return null;
+	};
+
+	const normalizeJudgeDecisionForTrigger = (
+		trigger: TurnSupervisorJudgeTrigger,
+		decision: TurnSupervisorDecisionRecord['decision'],
+		monitorDecision: TurnSupervisorDecisionRecord['decision']
+	): TurnSupervisorDecisionRecord['decision'] | null => {
+		if (decision.action === 'continue') return null;
+		if (monitorDecision.action === 'emit_status' && decision.action === 'emit_status') {
+			return null;
+		}
+		if (
+			(monitorDecision.action === 'ask_user' ||
+				monitorDecision.action === 'stop_with_message' ||
+				monitorDecision.action === 'force_synthesis') &&
+			(decision.action === 'emit_status' || decision.action === 'flag_eval')
+		) {
+			return null;
+		}
+		if (
+			trigger === 'long_running_operation' &&
+			decision.action !== 'emit_status' &&
+			decision.action !== 'flag_eval'
+		) {
+			return null;
+		}
+		if (trigger === 'long_silence' && decision.action === 'ask_user') {
+			return null;
+		}
+		return decision;
+	};
+
+	const maybeRunSupervisorJudge = async (
+		record: TurnSupervisorDecisionRecord,
+		observation: TurnSupervisorObservation
+	): Promise<TurnSupervisorDecisionRecord | null> => {
+		if (!supervisorJudge || supervisorJudgeCallCount >= maxSupervisorJudgeCalls) {
+			return null;
+		}
+		const trigger = resolveSupervisorJudgeTrigger(record, observation);
+		if (!trigger) return null;
+
+		const key = `${trigger}:${record.decision.action}:${'reason' in record.decision ? record.decision.reason : ''}`;
+		if (supervisorJudgeKeys.has(key)) return null;
+		supervisorJudgeKeys.add(key);
+		supervisorJudgeCallCount += 1;
+
+		try {
+			const judgedDecision = await supervisorJudge.evaluate({
+				trigger,
+				digest: record.digest,
+				deterministicDecision: record.decision,
+				observationType: observation.type
+			});
+			if (!judgedDecision) return null;
+			const normalizedDecision = normalizeJudgeDecisionForTrigger(
+				trigger,
+				judgedDecision,
+				record.decision
+			);
+			if (!normalizedDecision) return null;
+			return {
+				decision: normalizedDecision,
+				digest: record.digest,
+				at: new Date().toISOString(),
+				source: 'judge',
+				trigger
+			};
+		} catch {
+			return null;
+		}
+	};
+
+	const handleSupervisorDecisionRecord = async (
+		record: TurnSupervisorDecisionRecord
+	): Promise<void> => {
+		supervisorDecisions.push(record);
+		if (params.onSupervisorDecision) {
+			try {
+				await params.onSupervisorDecision(record);
+			} catch {
+				// Supervisor telemetry/status callbacks must not crash orchestration.
+			}
+		}
+
+		const { decision } = record;
+		if (decision.action === 'force_synthesis') {
+			queueRepairInstruction(decision.instruction);
+			forceNoToolSynthesisPass = true;
+			return;
+		}
+		if (decision.action === 'ask_user') {
+			finalAssistantText = decision.question;
+			finishedReason = 'supervisor_question';
+			supervisorStopRequested = true;
+			await emitAssistantRemainder(decision.question);
+			return;
+		}
+		if (decision.action === 'stop_with_message') {
+			finalAssistantText = decision.message;
+			finishedReason = decision.finishedReason;
+			supervisorStopRequested = true;
+			await emitAssistantRemainder(decision.message);
+		}
+	};
+
+	observeSupervisor = async (observation: TurnSupervisorObservation): Promise<void> => {
+		let decisions;
+		try {
+			decisions = supervisor.observe(observation);
+		} catch {
+			return;
+		}
+		for (const decision of decisions) {
+			if (decision.action === 'continue') continue;
+			let digest;
+			try {
+				digest = supervisor.getDigest();
+			} catch {
+				continue;
+			}
+			const monitorRecord: TurnSupervisorDecisionRecord = {
+				decision,
+				digest,
+				at: new Date().toISOString(),
+				source: 'monitor'
+			};
+			const monitorTrigger = resolveSupervisorJudgeTrigger(monitorRecord, observation);
+			if (monitorTrigger) {
+				monitorRecord.trigger = monitorTrigger;
+			}
+
+			if (decision.action === 'emit_status') {
+				await handleSupervisorDecisionRecord(monitorRecord);
+				const judgeRecord = await maybeRunSupervisorJudge(monitorRecord, observation);
+				if (judgeRecord) {
+					await handleSupervisorDecisionRecord(judgeRecord);
+				}
+				continue;
+			}
+
+			const judgeRecord = await maybeRunSupervisorJudge(monitorRecord, observation);
+			await handleSupervisorDecisionRecord(judgeRecord ?? monitorRecord);
+		}
+	};
+
+	const startLongRunningOperationHeartbeat = (
+		operation: 'tool_execution' | 'llm_stream',
+		options: { toolName?: string; toolCallId?: string } = {}
+	): (() => void) => {
+		const startedAt = Date.now();
+		let stopped = false;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		const tick = (): void => {
+			if (stopped) return;
+			void observeSupervisor({
+				type: 'long_running_operation',
+				operation,
+				toolName: options.toolName,
+				toolCallId: options.toolCallId,
+				elapsedMs: Date.now() - startedAt
+			});
+			timer = setTimeout(tick, 15_000);
+		};
+		timer = setTimeout(tick, 12_000);
+		return () => {
+			stopped = true;
+			if (timer) clearTimeout(timer);
+		};
+	};
+
 	try {
+		await observeSupervisor({ type: 'turn_started' });
 		while (true) {
 			if (signal?.aborted) {
 				throw new Error('Request aborted');
+			}
+			if (supervisorStopRequested) {
+				break;
 			}
 
 			let assistantBuffer = '';
@@ -539,160 +804,198 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 			let llmDoneReceived = false;
 
-			for await (const event of llm.streamText({
-				messages,
-				tools: noToolSynthesisPass ? undefined : hasTools ? tools : undefined,
-				tool_choice: noToolSynthesisPass ? undefined : hasTools ? 'auto' : undefined,
-				temperature: noToolSynthesisPass ? undefined : hasTools ? 0.2 : undefined,
-				userId,
-				sessionId,
-				chatSessionId: sessionId,
-				turnRunId: params.turnRunId ?? undefined,
-				streamRunId: params.streamRunId ?? undefined,
-				clientTurnId: params.clientTurnId ?? undefined,
-				profile: 'balanced',
-				operationType: 'agentic_chat_v2_stream',
-				contextType: normalizedContext,
-				entityId: entityId ?? undefined,
-				projectId: params.projectId ?? undefined,
-				signal
-			})) {
-				if (event.type === 'text' && event.content) {
-					assistantBuffer += event.content;
-					activeAssistantBuffer = assistantBuffer;
-					await tryEmitEarlyAssistantLeadIn(assistantBuffer);
-				} else if (event.type === 'reasoning') {
-					// Reasoning stays out of the user-visible content buffer.
-					// Track per-pass counters so we can tell at a glance whether
-					// the provider is using the reasoning channel correctly.
-					// If a model emits reasoning via delta.content instead, we
-					// will see content tokens climb while these counters stay
-					// at zero, a clear signal to switch models or add a
-					// targeted sanitizer for that provider.
-					const reasoningEvent = event as {
-						reasoning?: string;
-						reasoning_details?: unknown[];
-					};
-					const reasoningLen =
-						(typeof reasoningEvent.reasoning === 'string'
-							? reasoningEvent.reasoning.length
-							: 0) +
-						(Array.isArray(reasoningEvent.reasoning_details)
-							? reasoningEvent.reasoning_details.reduce<number>(
-									(acc: number, part: unknown) => {
-										if (!part || typeof part !== 'object') return acc;
-										const text = (part as { text?: unknown }).text;
-										return acc + (typeof text === 'string' ? text.length : 0);
-									},
-									0
-								)
-							: 0);
-					llmPassMeta.reasoningChannelChunks =
-						(llmPassMeta.reasoningChannelChunks ?? 0) + 1;
-					llmPassMeta.reasoningChannelChars =
-						(llmPassMeta.reasoningChannelChars ?? 0) + reasoningLen;
-				} else if (event.type === 'tool_call' && event.tool_call) {
-					const normalizedToolCall = normalizeToolCallDefaults(
-						event.tool_call,
-						params.projectId ?? undefined
-					);
-					pendingToolCalls.push(normalizedToolCall);
-					activePendingToolCallCount = pendingToolCalls.length;
-					if (params.onToolCall) {
-						await params.onToolCall(normalizedToolCall);
-					}
-				} else if (event.type === 'done') {
-					llmDoneReceived = true;
-					if (event.usage) {
-						if (!usage) {
-							usage = { ...event.usage };
-						} else {
-							if (event.usage.total_tokens !== undefined) {
-								usage.total_tokens =
-									(usage.total_tokens ?? 0) + (event.usage.total_tokens ?? 0);
-							}
-							if (event.usage.prompt_tokens !== undefined) {
-								usage.prompt_tokens =
-									(usage.prompt_tokens ?? 0) + (event.usage.prompt_tokens ?? 0);
-							}
-							if (event.usage.completion_tokens !== undefined) {
-								usage.completion_tokens =
-									(usage.completion_tokens ?? 0) +
-									(event.usage.completion_tokens ?? 0);
-							}
+			const clearLlmHeartbeat = startLongRunningOperationHeartbeat('llm_stream');
+			try {
+				for await (const event of llm.streamText({
+					messages,
+					tools: noToolSynthesisPass ? undefined : hasTools ? tools : undefined,
+					tool_choice: noToolSynthesisPass ? undefined : hasTools ? 'auto' : undefined,
+					temperature: noToolSynthesisPass ? undefined : hasTools ? 0.2 : undefined,
+					userId,
+					sessionId,
+					chatSessionId: sessionId,
+					turnRunId: params.turnRunId ?? undefined,
+					streamRunId: params.streamRunId ?? undefined,
+					clientTurnId: params.clientTurnId ?? undefined,
+					profile: 'balanced',
+					operationType: 'agentic_chat_v2_stream',
+					contextType: normalizedContext,
+					entityId: entityId ?? undefined,
+					projectId: params.projectId ?? undefined,
+					signal
+				})) {
+					if (event.type === 'text' && event.content) {
+						assistantBuffer += event.content;
+						activeAssistantBuffer = assistantBuffer;
+						await tryEmitEarlyAssistantLeadIn(assistantBuffer);
+					} else if (event.type === 'reasoning') {
+						// Reasoning stays out of the user-visible content buffer.
+						// Track per-pass counters so we can tell at a glance whether
+						// the provider is using the reasoning channel correctly.
+						// If a model emits reasoning via delta.content instead, we
+						// will see content tokens climb while these counters stay
+						// at zero, a clear signal to switch models or add a
+						// targeted sanitizer for that provider.
+						const reasoningEvent = event as {
+							reasoning?: string;
+							reasoning_details?: unknown[];
+						};
+						const reasoningLen =
+							(typeof reasoningEvent.reasoning === 'string'
+								? reasoningEvent.reasoning.length
+								: 0) +
+							(Array.isArray(reasoningEvent.reasoning_details)
+								? reasoningEvent.reasoning_details.reduce<number>(
+										(acc: number, part: unknown) => {
+											if (!part || typeof part !== 'object') return acc;
+											const text = (part as { text?: unknown }).text;
+											return (
+												acc + (typeof text === 'string' ? text.length : 0)
+											);
+										},
+										0
+									)
+								: 0);
+						llmPassMeta.reasoningChannelChunks =
+							(llmPassMeta.reasoningChannelChunks ?? 0) + 1;
+						llmPassMeta.reasoningChannelChars =
+							(llmPassMeta.reasoningChannelChars ?? 0) + reasoningLen;
+					} else if (event.type === 'tool_call' && event.tool_call) {
+						const normalizedToolCall = normalizeToolCallDefaults(
+							event.tool_call,
+							params.projectId ?? undefined
+						);
+						pendingToolCalls.push(normalizedToolCall);
+						activePendingToolCallCount = pendingToolCalls.length;
+						await observeSupervisor({
+							type: 'tool_call_emitted',
+							toolName: normalizedToolCall.function.name,
+							toolCallId: normalizedToolCall.id,
+							argsPreview: parseSupervisorToolArguments(normalizedToolCall)
+						});
+						if (params.onToolCall) {
+							await params.onToolCall(normalizedToolCall);
 						}
+					} else if (event.type === 'done') {
+						llmDoneReceived = true;
+						if (event.usage) {
+							if (!usage) {
+								usage = { ...event.usage };
+							} else {
+								if (event.usage.total_tokens !== undefined) {
+									usage.total_tokens =
+										(usage.total_tokens ?? 0) + (event.usage.total_tokens ?? 0);
+								}
+								if (event.usage.prompt_tokens !== undefined) {
+									usage.prompt_tokens =
+										(usage.prompt_tokens ?? 0) +
+										(event.usage.prompt_tokens ?? 0);
+								}
+								if (event.usage.completion_tokens !== undefined) {
+									usage.completion_tokens =
+										(usage.completion_tokens ?? 0) +
+										(event.usage.completion_tokens ?? 0);
+								}
+							}
 
-						if (typeof event.usage.prompt_tokens === 'number') {
-							llmPassMeta.promptTokens = event.usage.prompt_tokens;
-							// Update live context-usage snapshot from provider ground truth
-							// so saturation logic and the UI badge can react to real
-							// context-window load mid-turn.
-							await updateLiveContextUsage(event.usage.prompt_tokens);
+							if (typeof event.usage.prompt_tokens === 'number') {
+								llmPassMeta.promptTokens = event.usage.prompt_tokens;
+								// Update live context-usage snapshot from provider ground truth
+								// so saturation logic and the UI badge can react to real
+								// context-window load mid-turn.
+								await updateLiveContextUsage(event.usage.prompt_tokens);
+							}
+							if (typeof event.usage.completion_tokens === 'number') {
+								llmPassMeta.completionTokens = event.usage.completion_tokens;
+							}
+							if (typeof event.usage.total_tokens === 'number') {
+								llmPassMeta.totalTokens = event.usage.total_tokens;
+							}
+							const usageRecord = event.usage as Record<string, unknown>;
+							const completionTokenDetails =
+								usageRecord.completion_tokens_details &&
+								typeof usageRecord.completion_tokens_details === 'object'
+									? (usageRecord.completion_tokens_details as Record<
+											string,
+											unknown
+										>)
+									: null;
+							const usageReasoningTokens =
+								completionTokenDetails &&
+								typeof completionTokenDetails.reasoning_tokens === 'number'
+									? completionTokenDetails.reasoning_tokens
+									: undefined;
+							if (typeof usageReasoningTokens === 'number') {
+								llmPassMeta.reasoningTokens = usageReasoningTokens;
+							}
 						}
-						if (typeof event.usage.completion_tokens === 'number') {
-							llmPassMeta.completionTokens = event.usage.completion_tokens;
-						}
-						if (typeof event.usage.total_tokens === 'number') {
-							llmPassMeta.totalTokens = event.usage.total_tokens;
-						}
-						const usageRecord = event.usage as Record<string, unknown>;
-						const completionTokenDetails =
-							usageRecord.completion_tokens_details &&
-							typeof usageRecord.completion_tokens_details === 'object'
-								? (usageRecord.completion_tokens_details as Record<string, unknown>)
-								: null;
-						const usageReasoningTokens =
-							completionTokenDetails &&
-							typeof completionTokenDetails.reasoning_tokens === 'number'
-								? completionTokenDetails.reasoning_tokens
-								: undefined;
-						if (typeof usageReasoningTokens === 'number') {
-							llmPassMeta.reasoningTokens = usageReasoningTokens;
-						}
-					}
-					finishedReason = event.finished_reason ?? finishedReason;
-					llmPassMeta.finishedReason =
-						event.finished_reason ?? llmPassMeta.finishedReason;
-					const eventRecord = event as Record<string, unknown>;
-					const model = readStringMeta(eventRecord.model);
-					const provider = readStringMeta(eventRecord.provider);
-					const requestId =
-						readStringMeta(eventRecord.request_id) ??
-						readStringMeta(eventRecord.requestId);
-					const systemFingerprint =
-						readStringMeta(eventRecord.system_fingerprint) ??
-						readStringMeta(eventRecord.systemFingerprint);
-					const cacheStatus =
-						readStringMeta(eventRecord.cache_status) ??
-						readStringMeta(eventRecord.cacheStatus);
-					const reasoningTokens =
-						readNumberMeta(eventRecord.reasoning_tokens) ??
-						readNumberMeta(eventRecord.reasoningTokens);
+						finishedReason = event.finished_reason ?? finishedReason;
+						llmPassMeta.finishedReason =
+							event.finished_reason ?? llmPassMeta.finishedReason;
+						const eventRecord = event as Record<string, unknown>;
+						const model = readStringMeta(eventRecord.model);
+						const provider = readStringMeta(eventRecord.provider);
+						const requestId =
+							readStringMeta(eventRecord.request_id) ??
+							readStringMeta(eventRecord.requestId);
+						const systemFingerprint =
+							readStringMeta(eventRecord.system_fingerprint) ??
+							readStringMeta(eventRecord.systemFingerprint);
+						const cacheStatus =
+							readStringMeta(eventRecord.cache_status) ??
+							readStringMeta(eventRecord.cacheStatus);
+						const reasoningTokens =
+							readNumberMeta(eventRecord.reasoning_tokens) ??
+							readNumberMeta(eventRecord.reasoningTokens);
 
-					if (model) llmPassMeta.model = model;
-					if (provider) llmPassMeta.provider = provider;
-					if (requestId) llmPassMeta.requestId = requestId;
-					if (systemFingerprint) llmPassMeta.systemFingerprint = systemFingerprint;
-					if (cacheStatus) llmPassMeta.cacheStatus = cacheStatus;
-					if (typeof reasoningTokens === 'number') {
-						llmPassMeta.reasoningTokens = reasoningTokens;
+						if (model) llmPassMeta.model = model;
+						if (provider) llmPassMeta.provider = provider;
+						if (requestId) llmPassMeta.requestId = requestId;
+						if (systemFingerprint) llmPassMeta.systemFingerprint = systemFingerprint;
+						if (cacheStatus) llmPassMeta.cacheStatus = cacheStatus;
+						if (typeof reasoningTokens === 'number') {
+							llmPassMeta.reasoningTokens = reasoningTokens;
+						}
+					} else if (event.type === 'error') {
+						throw new Error(event.error || 'LLM stream error');
 					}
-				} else if (event.type === 'error') {
-					throw new Error(event.error || 'LLM stream error');
 				}
+			} finally {
+				clearLlmHeartbeat();
 			}
 			if (llmDoneReceived) {
 				llmStreamPasses.push(llmPassMeta);
+				await observeSupervisor({
+					type: 'llm_pass_completed',
+					pass: llmPassMeta.pass,
+					finishedReason: llmPassMeta.finishedReason,
+					usage:
+						llmPassMeta.totalTokens !== undefined ||
+						llmPassMeta.promptTokens !== undefined ||
+						llmPassMeta.completionTokens !== undefined
+							? {
+									total_tokens: llmPassMeta.totalTokens,
+									prompt_tokens: llmPassMeta.promptTokens,
+									completion_tokens: llmPassMeta.completionTokens
+								}
+							: undefined
+				});
+			}
+			if (supervisorStopRequested) {
+				break;
 			}
 
 			if (noToolSynthesisPass) {
 				const candidateFinalText = sanitizeAssistantFinalText(assistantBuffer);
-				if (pendingToolCalls.length > 0 && noToolSynthesisRetryCount < 1) {
+				const noToolPassStillRequestedTools =
+					pendingToolCalls.length > 0 ||
+					(llmPassMeta.finishedReason === 'tool_calls' && !candidateFinalText);
+				if (noToolPassStillRequestedTools && noToolSynthesisRetryCount < 1) {
 					noToolSynthesisRetryCount += 1;
 					messages.push({
 						role: 'system',
 						content:
-							'The previous synthesis attempt still emitted tool calls. Tools are unavailable for this pass. Ignore all pending tool calls and write the final user-facing answer now from the existing tool results. Do not say you will check, search, pull up, inspect, load, or update anything else.'
+							'The previous synthesis attempt still requested tool calls even though tools are unavailable. Ignore all pending or implied tool calls and write the final user-facing answer now from the existing tool results. Do not say you will check, search, pull up, inspect, load, or update anything else.'
 					});
 					forceNoToolSynthesisPass = true;
 					continue;
@@ -701,6 +1004,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					finalAssistantText = enforceMutationOutcomeIntegrity(candidateFinalText, {
 						contextType: normalizedContext,
 						toolExecutions
+					});
+					await observeSupervisor({
+						type: 'final_candidate',
+						text: finalAssistantText,
+						finishedReason: 'stop'
 					});
 					if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
 						await emitAssistantRemainder(finalAssistantText);
@@ -749,6 +1057,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				finalAssistantText = enforceMutationOutcomeIntegrity(candidateFinalText, {
 					contextType: normalizedContext,
 					toolExecutions
+				});
+				await observeSupervisor({
+					type: 'final_candidate',
+					text: finalAssistantText,
+					finishedReason
 				});
 				if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
 					await emitAssistantRemainder(finalAssistantText);
@@ -839,6 +1152,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 						toolExecutions.push({ toolCall, result });
 						roundExecutions.push({ toolCall, result });
+						await observeSupervisor({
+							type: 'tool_result_received',
+							toolName: toolCall.function.name,
+							toolCallId: toolCall.id,
+							success: false,
+							error: result.error ?? null,
+							resultSummary: summarizeToolResult(result)
+						});
 						if (params.onToolResult) {
 							try {
 								await params.onToolResult({ toolCall, result });
@@ -876,6 +1197,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						extractGatewayRequiredFieldFailuresFromValidationIssues(validationIssues);
 					const maxRequiredFieldFailure =
 						recordGatewayRequiredFieldFailures(requiredFieldFailures);
+					await observeSupervisor({
+						type: 'tool_round_completed',
+						round: toolRounds,
+						toolCallsMade
+					});
+					if (supervisorStopRequested) {
+						break;
+					}
 					if (
 						gatewayModeActive &&
 						allowAutonomousRecovery &&
@@ -970,6 +1299,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 								: 'Tool not available in this context'
 					};
 				} else {
+					const clearToolStatusTimer = startLongRunningOperationHeartbeat(
+						'tool_execution',
+						{
+							toolName: originalToolCall.function.name,
+							toolCallId: originalToolCall.id
+						}
+					);
 					try {
 						result = await params.toolExecutor(toolCall, tools);
 						if (result.tool_call_id !== originalToolCall.id) {
@@ -987,12 +1323,22 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 							success: false,
 							error: message
 						};
+					} finally {
+						clearToolStatusTimer();
 					}
 				}
 
 				const execution: FastToolExecution = { toolCall: originalToolCall, result };
 				toolExecutions.push(execution);
 				roundExecutions.push(execution);
+				await observeSupervisor({
+					type: 'tool_result_received',
+					toolName: originalToolCall.function.name,
+					toolCallId: originalToolCall.id,
+					success: result.success === true,
+					error: result.error ?? null,
+					resultSummary: summarizeToolResult(result)
+				});
 				if (gatewayModeActive && result.success) {
 					materializeDirectTools(
 						extractGatewayMaterializedToolNames(result.result),
@@ -1022,6 +1368,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			if (toolLimitNotice) {
+				break;
+			}
+			await observeSupervisor({
+				type: 'tool_round_completed',
+				round: toolRounds,
+				toolCallsMade
+			});
+			if (supervisorStopRequested) {
 				break;
 			}
 
@@ -1214,6 +1568,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				llmPasses: llmStreamPasses,
 				toolRounds,
 				toolCallsMade,
+				supervisorDecisions,
+				finalizationGuard: finalizationGuardResult,
 				cancelled: true,
 				peakPromptTokens: peakPromptTokens > 0 ? peakPromptTokens : undefined,
 				finalContextUsage: liveContextUsage
@@ -1223,11 +1579,46 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	}
 
 	if (toolLimitNotice) {
+		const toolLimitFinalizationGuard = applyFinalizationGuard({
+			finalAssistantText: '',
+			assistantText: '',
+			toolExecutions
+		});
+		const finalToolLimitText = toolLimitFinalizationGuard.applied
+			? toolLimitFinalizationGuard.text
+			: toolLimitNotice;
 		const prefix = assistantText.trim().length > 0 ? '\n\n' : '';
-		const noticeDelta = `${prefix}${toolLimitNotice}`;
+		const noticeDelta = `${prefix}${finalToolLimitText}`;
 		assistantText += noticeDelta;
-		finalAssistantText = toolLimitNotice;
+		finalAssistantText = finalToolLimitText;
 		await onDelta(noticeDelta);
+		await observeSupervisor({ type: 'assistant_text_delta', chars: noticeDelta.length });
+		if (toolLimitFinalizationGuard.applied) {
+			finalizationGuardResult = toolLimitFinalizationGuard;
+			await observeSupervisor({
+				type: 'final_candidate',
+				text: finalAssistantText,
+				finishedReason
+			});
+		}
+	}
+
+	const candidateFinalizationGuard = applyFinalizationGuard({
+		finalAssistantText,
+		assistantText,
+		toolExecutions
+	});
+	if (candidateFinalizationGuard.applied) {
+		finalizationGuardResult = candidateFinalizationGuard;
+		finalAssistantText = finalizationGuardResult.text;
+		await observeSupervisor({
+			type: 'final_candidate',
+			text: finalAssistantText,
+			finishedReason
+		});
+		if (finalAssistantText && finalAssistantText !== assistantText.trim()) {
+			await emitAssistantRemainder(finalAssistantText);
+		}
 	}
 
 	if (dev) {
@@ -1249,6 +1640,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		llmPasses: llmStreamPasses,
 		toolRounds,
 		toolCallsMade,
+		supervisorDecisions,
+		finalizationGuard: finalizationGuardResult,
 		peakPromptTokens: peakPromptTokens > 0 ? peakPromptTokens : undefined,
 		finalContextUsage: liveContextUsage
 	};
