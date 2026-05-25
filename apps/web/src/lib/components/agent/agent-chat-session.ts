@@ -303,6 +303,31 @@ function compactLabel(value: unknown, maxLength = 90): string | null {
 	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
 }
 
+function joinCompactLabels(...values: unknown[]): string | null {
+	const parts = values
+		.map((value) => compactLabel(value))
+		.filter((value): value is string => Boolean(value));
+	return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+function libriCapabilityTarget(record: Record<string, unknown> | null): string | null {
+	if (!record) return null;
+	const query =
+		compactLabel(record.query) ?? compactLabel(record.capability) ?? compactLabel(record.name);
+	const domain =
+		compactLabel(record.domain) ?? compactLabel(record.category) ?? compactLabel(record.kind);
+	if (domain && query) return `${domain}: ${query}`;
+	return query ?? domain;
+}
+
+function webVisitTarget(record: Record<string, unknown> | null): string | null {
+	if (!record) return null;
+	const url = compactLabel(record.url);
+	const details = joinCompactLabels(record.mode, record.output_format ?? record.outputFormat);
+	if (url && details) return `${url} · ${details}`;
+	return url ?? details;
+}
+
 const TOOL_TARGET_KEYS = [
 	'title',
 	'name',
@@ -363,9 +388,31 @@ function extractTargetFromRecord(record: Record<string, unknown> | null, depth =
 }
 
 function extractToolTarget(source: RestoredToolActivitySource): string | null {
+	const argumentRecord = parseRecord(source.arguments) ?? parseRecord(source.argumentPreview);
+	const toolName = source.toolName.toLowerCase();
+	if (toolName === 'web_visit') {
+		const target = webVisitTarget(argumentRecord);
+		if (target) return target;
+	}
+	if (
+		toolName === 'libri_search_capabilities' ||
+		toolName === 'libri_get_capability_schema' ||
+		toolName === 'resolve_libri_resource' ||
+		toolName === 'query_libri_library'
+	) {
+		const target = libriCapabilityTarget(argumentRecord);
+		if (target) return target;
+	}
+	if (toolName === 'libri_overview') {
+		const target = joinCompactLabels(
+			argumentRecord?.domain,
+			argumentRecord?.include_domains ?? argumentRecord?.includeDomains
+		);
+		if (target) return target;
+	}
+
 	return (
-		extractTargetFromRecord(parseRecord(source.arguments)) ??
-		extractTargetFromRecord(parseRecord(source.argumentPreview)) ??
+		extractTargetFromRecord(argumentRecord) ??
 		extractTargetFromRecord(parseRecord(source.result)) ??
 		extractTargetFromRecord(parseRecord(source.resultPreview))
 	);
@@ -424,6 +471,21 @@ function restoredToolAction(source: RestoredToolActivitySource): {
 	}
 	if (toolName === 'web_visit') {
 		return { completed: 'Visited web page', failed: 'visit web page' };
+	}
+	if (toolName === 'web_search') {
+		return { completed: 'Searched web', failed: 'search web' };
+	}
+	if (toolName === 'libri_overview') {
+		return { completed: 'Loaded Libri overview', failed: 'load Libri overview' };
+	}
+	if (toolName === 'libri_search_capabilities') {
+		return { completed: 'Searched Libri capabilities', failed: 'search Libri capabilities' };
+	}
+	if (toolName === 'libri_get_capability_schema') {
+		return {
+			completed: 'Loaded Libri capability schema',
+			failed: 'load Libri capability schema'
+		};
 	}
 	if (toolName === 'resolve_libri_resource') {
 		return { completed: 'Resolved library resource', failed: 'resolve library resource' };

@@ -444,7 +444,8 @@ describe('streamFastChat direct tool orchestration', () => {
 
 				yield {
 					type: 'text',
-					content: 'Here are a few interesting Tim Ferriss facts from the gathered context.'
+					content:
+						'Here are a few interesting Tim Ferriss facts from the gathered context.'
 				};
 				yield { type: 'done', finished_reason: 'stop' };
 			})

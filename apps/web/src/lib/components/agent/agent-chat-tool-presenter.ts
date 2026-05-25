@@ -689,6 +689,29 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		return undefined;
 	}
 
+	function joinDisplayParts(...values: unknown[]): string | undefined {
+		const parts = values
+			.map((value) => normalizeEntityLabel(value))
+			.filter((value): value is string => Boolean(value));
+		return parts.length > 0 ? parts.join(' · ') : undefined;
+	}
+
+	function libriCapabilityTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		const query = firstDisplayLabel(args.query, args.capability, args.name);
+		const domain = firstDisplayLabel(args.domain, args.category, args.kind);
+		if (domain && query) return `${domain}: ${query}`;
+		return query || domain;
+	}
+
+	function webVisitTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		const url = firstDisplayLabel(args.url);
+		const modeDetails = joinDisplayParts(args.mode, args.output_format ?? args.outputFormat);
+		if (url && modeDetails) return `${url} · ${modeDetails}`;
+		return url || modeDetails;
+	}
+
 	function resolveProjectNameFromArgs(args: Record<string, any> | undefined): string | undefined {
 		if (!args || typeof args !== 'object') return undefined;
 		return resolveEntityName(
@@ -1049,15 +1072,29 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		}),
 		web_visit: (args) => ({
 			action: 'Visiting web page',
-			target: firstDisplayLabel(args?.url)
+			target: webVisitTarget(args)
+		}),
+		libri_overview: (args) => ({
+			action: 'Loading Libri overview',
+			target: joinDisplayParts(args?.domain, args?.include_domains ?? args?.includeDomains)
+		}),
+		libri_search_capabilities: (args) => ({
+			action: 'Searching Libri capabilities',
+			target: libriCapabilityTarget(args)
+		}),
+		libri_get_capability_schema: (args) => ({
+			action: 'Loading Libri capability schema',
+			target: libriCapabilityTarget(args)
 		}),
 		resolve_libri_resource: (args) => ({
 			action: 'Resolving library resource',
-			target: firstDisplayLabel(args?.query)
+			target: libriCapabilityTarget(args)
 		}),
 		query_libri_library: (args) => ({
 			action: 'Querying library',
-			target: firstDisplayLabel(args?.query, args?.category, args?.action)
+			target:
+				libriCapabilityTarget(args) ??
+				firstDisplayLabel(args?.query, args?.category, args?.action)
 		}),
 		tag_onto_entity: (args) => ({
 			action: 'Tagging entity',

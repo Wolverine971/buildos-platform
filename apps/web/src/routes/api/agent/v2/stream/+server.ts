@@ -302,7 +302,10 @@ function resolveTurnSupervisorJudgeConfig(): {
 	const model = readRuntimeEnv('FASTCHAT_TURN_SUPERVISOR_LLM_MODEL')?.trim() || undefined;
 	return {
 		enabled: parseBooleanFlag(enabledValue, false),
-		timeoutMs: parsePositiveInt(readRuntimeEnv('FASTCHAT_TURN_SUPERVISOR_LLM_TIMEOUT_MS'), 4000),
+		timeoutMs: parsePositiveInt(
+			readRuntimeEnv('FASTCHAT_TURN_SUPERVISOR_LLM_TIMEOUT_MS'),
+			4000
+		),
 		maxCalls: parsePositiveInt(readRuntimeEnv('FASTCHAT_TURN_SUPERVISOR_LLM_MAX_CALLS'), 3),
 		model,
 		enabledEnvPresent: enabledValue !== undefined
@@ -5263,7 +5266,9 @@ export const POST: RequestHandler = async ({
 					supervisorDecisions.map((record) => record.source ?? 'monitor')
 				);
 				const triggerCounts = countBy(
-					supervisorDecisions.flatMap((record) => (record.trigger ? [record.trigger] : []))
+					supervisorDecisions.flatMap((record) =>
+						record.trigger ? [record.trigger] : []
+					)
 				);
 				recordTurnEvent('finalize', 'supervisor_decision_summary', {
 					count: supervisorDecisions.length,

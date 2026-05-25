@@ -448,6 +448,140 @@ const stringRecordField = (record: Record<string, unknown>, key: string): string
 	return trimmed.length > 0 ? trimmed : null;
 };
 
+const recordField = (value: unknown): Record<string, unknown> | null =>
+	value && typeof value === 'object' && !Array.isArray(value)
+		? (value as Record<string, unknown>)
+		: null;
+
+const compactRecordField = (
+	record: Record<string, unknown>,
+	key: string,
+	maxChars = 90
+): string | null => {
+	const value = stringRecordField(record, key);
+	return value ? summarizeText(value, maxChars) : null;
+};
+
+const joinSummaryParts = (...parts: Array<string | null>): string | null => {
+	const present = parts.filter((part): part is string => Boolean(part));
+	return present.length > 0 ? present.join(' · ') : null;
+};
+
+const toolArgumentsFromPayload = (
+	payload: Record<string, unknown>
+): Record<string, unknown> | null =>
+	recordField(payload.tool_arguments) ?? recordField(payload.args);
+
+const formatLibriEventTarget = (args: Record<string, unknown>): string | null => {
+	const query =
+		compactRecordField(args, 'query') ??
+		compactRecordField(args, 'capability') ??
+		compactRecordField(args, 'name');
+	const domain =
+		compactRecordField(args, 'domain') ??
+		compactRecordField(args, 'category') ??
+		compactRecordField(args, 'kind');
+	if (domain && query) return `${domain}: ${query}`;
+	return query ?? domain;
+};
+
+const formatWebVisitEventTarget = (args: Record<string, unknown>): string | null => {
+	const url = compactRecordField(args, 'url', 120);
+	const modeDetails = joinSummaryParts(
+		compactRecordField(args, 'mode'),
+		compactRecordField(args, 'output_format') ?? compactRecordField(args, 'outputFormat')
+	);
+	if (url && modeDetails) return `${url} · ${modeDetails}`;
+	return url ?? modeDetails;
+};
+
+const formatToolEventTarget = (payload: Record<string, unknown>): string | null => {
+	const args = toolArgumentsFromPayload(payload);
+	if (!args) return null;
+	const toolName = stringRecordField(payload, 'tool_name') ?? '';
+	if (toolName === 'web_visit') return formatWebVisitEventTarget(args);
+	if (
+		toolName === 'libri_search_capabilities' ||
+		toolName === 'libri_get_capability_schema' ||
+		toolName === 'resolve_libri_resource' ||
+		toolName === 'query_libri_library'
+	) {
+		return formatLibriEventTarget(args);
+	}
+	if (toolName === 'libri_overview') {
+		return joinSummaryParts(
+			compactRecordField(args, 'domain'),
+			compactRecordField(args, 'include_domains') ??
+				compactRecordField(args, 'includeDomains')
+		);
+	}
+	return null;
+};
+
+const isFailedToolOutcomeEvent = (
+	event: TurnEventRow,
+	payload: Record<string, unknown>
+): boolean => {
+	if (event.event_type === 'tool_call_validation_failed') return true;
+	if (event.event_type !== 'tool_result_received') return false;
+	if (payload.success === false) return true;
+	return typeof payload.error === 'string' && payload.error.trim().length > 0;
+};
+
+const toolFailureKeyFromEvent = (event: TurnEventRow, payload: Record<string, unknown>): string => {
+	const linkedToolExecution = recordField(payload.linked_tool_execution);
+	const executionId =
+		stringRecordField(payload, 'tool_execution_id') ??
+		(linkedToolExecution ? stringRecordField(linkedToolExecution, 'id') : null);
+	if (executionId) return `tool_execution:${executionId}`;
+	const toolCallId =
+		stringRecordField(payload, 'tool_call_id') ?? stringRecordField(payload, 'toolCallId');
+	if (toolCallId) return `tool_call:${toolCallId}`;
+	return `turn_event:${event.id}`;
+};
+
+const toolFailureKeyFromTraceEntry = (
+	messageId: string,
+	entry: Record<string, unknown>,
+	index: number
+): string => {
+	const toolCallId =
+		stringRecordField(entry, 'tool_call_id') ?? stringRecordField(entry, 'toolCallId');
+	return toolCallId ? `tool_call:${toolCallId}` : `metadata_trace:${messageId}:${index}`;
+};
+
+const countObservedToolFailures = (params: {
+	toolExecutions: ToolExecutionRow[];
+	messages: MessageRow[];
+	turnEvents: TurnEventRow[];
+}): number => {
+	const structuredFailures = new Set<string>();
+	for (const execution of params.toolExecutions) {
+		if (execution.success === false) {
+			structuredFailures.add(`tool_execution:${execution.id}`);
+		}
+	}
+	for (const event of params.turnEvents) {
+		const payload = normalizeTurnEventPayload(event.payload);
+		if (isFailedToolOutcomeEvent(event, payload)) {
+			structuredFailures.add(toolFailureKeyFromEvent(event, payload));
+		}
+	}
+
+	const metadataTraceFailures = new Set<string>();
+	for (const message of params.messages) {
+		const trace = parseToolTraceFromMessageMetadata(message.metadata);
+		trace.forEach((entry, index) => {
+			const hasError = typeof entry.error === 'string' && entry.error.trim().length > 0;
+			if (entry.success === false || hasError) {
+				metadataTraceFailures.add(toolFailureKeyFromTraceEntry(message.id, entry, index));
+			}
+		});
+	}
+
+	return Math.max(structuredFailures.size, metadataTraceFailures.size);
+};
+
 const toLinkedToolExecutionPayload = (
 	toolExecution: ToolExecutionRow
 ): Record<string, unknown> => ({
@@ -831,6 +965,12 @@ export const buildSessionDetailPayload = ({
 			b.started_at.localeCompare(a.started_at)
 		)
 	}));
+	const linkedTurnEvents = sessionTurnRuns.flatMap((turnRun) => turnRun.events);
+	const toolFailureCount = countObservedToolFailures({
+		toolExecutions,
+		messages,
+		turnEvents: linkedTurnEvents
+	});
 	const turnIndexByTurnRunId = new Map<string, number>(
 		sessionTurnRuns.map((turnRun) => [turnRun.id, turnRun.turn_index])
 	);
@@ -944,14 +1084,16 @@ export const buildSessionDetailPayload = ({
 					? (event.payload as Record<string, unknown>)
 					: { value: event.payload };
 			const supervisorEvent = isSupervisorTurnEvent(event.event_type);
-			const severity: TimelineSeverity =
-				supervisorEvent
-					? supervisorTurnEventSeverity(event.event_type, payload)
-					: event.event_type === 'tool_call_validation_failed'
+			const toolTarget = formatToolEventTarget(payload);
+			const severity: TimelineSeverity = supervisorEvent
+				? supervisorTurnEventSeverity(event.event_type, payload)
+				: isFailedToolOutcomeEvent(event, payload)
 					? 'error'
-					: event.event_type === 'context_shift_emitted'
-						? 'warning'
-						: 'info';
+					: event.event_type === 'tool_call_validation_failed'
+						? 'error'
+						: event.event_type === 'context_shift_emitted'
+							? 'warning'
+							: 'info';
 			timeline.push({
 				id: `turn_event:${event.id}`,
 				timestamp: eventTimestamp,
@@ -966,10 +1108,9 @@ export const buildSessionDetailPayload = ({
 							[
 								event.phase ? `phase=${event.phase}` : null,
 								payload.path ? `path=${String(payload.path)}` : null,
-								payload.canonical_op
-									? `op=${String(payload.canonical_op)}`
-									: null,
+								payload.canonical_op ? `op=${String(payload.canonical_op)}` : null,
 								payload.tool_name ? `tool=${String(payload.tool_name)}` : null,
+								toolTarget ? `target=${toolTarget}` : null,
 								payload.error ? `error=${String(payload.error)}` : null
 							]
 								.filter(Boolean)
@@ -1298,7 +1439,7 @@ export const buildSessionDetailPayload = ({
 
 	const hasErrors =
 		messages.some((row) => !!row.error_message) ||
-		toolExecutions.some((row) => row.success === false) ||
+		toolFailureCount > 0 ||
 		llmCallsWithEffectiveCost.some((row) => row.status !== 'success' || !!row.error_message) ||
 		operations.some((row) => row.status === 'failed' || !!row.error_message) ||
 		sessionTurnRuns.some(
@@ -1339,7 +1480,7 @@ export const buildSessionDetailPayload = ({
 			total_tokens: totalTokens,
 			total_cost_usd: totalCost,
 			tool_calls: toolCallCount,
-			tool_failures: toolExecutions.filter((row) => row.success === false).length,
+			tool_failures: toolFailureCount,
 			llm_calls: llmCallsWithEffectiveCost.length,
 			llm_failures: llmCallsWithEffectiveCost.filter((row) => row.status !== 'success')
 				.length,

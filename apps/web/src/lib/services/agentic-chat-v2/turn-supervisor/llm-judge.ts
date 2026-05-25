@@ -69,8 +69,7 @@ function buildJudgePrompt(input: TurnSupervisorJudgeInput): string {
 			deterministic_decision: input.deterministicDecision,
 			digest: input.digest,
 			output_schema: {
-				action:
-					'continue | emit_status | force_synthesis | ask_user | stop_with_message | flag_eval',
+				action: 'continue | emit_status | force_synthesis | ask_user | stop_with_message | flag_eval',
 				reason: 'short stable reason string',
 				message: 'required for emit_status or stop_with_message',
 				question: 'required for ask_user',

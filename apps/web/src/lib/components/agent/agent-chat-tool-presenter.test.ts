@@ -175,6 +175,32 @@ describe('agent-chat-tool-presenter — formatToolMessage', () => {
 		).toBe('Loaded tool schema: "util.project.overview"');
 	});
 
+	it('includes Libri domain and web visit mode details in tool labels', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+
+		expect(
+			presenter.formatToolMessage(
+				'libri_search_capabilities',
+				{ query: 'Tim Ferriss', domain: 'people' },
+				'completed'
+			)
+		).toBe('Searched Libri capabilities: "people: Tim Ferriss"');
+
+		expect(
+			presenter.formatToolMessage(
+				'web_visit',
+				{
+					url: 'https://9takes.com/personality-analysis/tim-ferriss',
+					mode: 'reader',
+					output_format: 'markdown'
+				},
+				'completed'
+			)
+		).toBe(
+			'Visited web page: "https://9takes.com/personality-analysis/tim-ferriss · reader · markdown"'
+		);
+	});
+
 	it('returns "Using tool: X" on invalid JSON argument strings', () => {
 		const h = makeHarness();
 		const presenter = createToolPresenter(h.ctx);

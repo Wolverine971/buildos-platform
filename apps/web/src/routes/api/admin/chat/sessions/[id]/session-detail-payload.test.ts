@@ -401,6 +401,121 @@ describe('buildSessionDetailPayload', () => {
 		expect(payload.metrics.total_cost_usd).toBeCloseTo(0.03410753);
 	});
 
+	it('counts failed tool turn events and surfaces tool argument targets in timeline summaries', () => {
+		const url = 'https://9takes.com/personality-analysis/tim-ferriss';
+		const payload = buildSessionDetailPayload({
+			sessionRow: {
+				id: 'session-tool-failure',
+				user_id: 'user-1',
+				title: 'Tool failure session',
+				status: 'active',
+				context_type: 'project',
+				entity_id: 'project-1',
+				message_count: 1,
+				total_tokens_used: 0,
+				tool_call_count: 1,
+				created_at: '2026-05-24T19:54:00.000Z',
+				updated_at: '2026-05-24T19:55:00.000Z',
+				last_message_at: '2026-05-24T19:55:00.000Z',
+				agent_metadata: {},
+				users: {
+					id: 'user-1',
+					email: 'admin@example.com',
+					name: 'Admin User'
+				}
+			},
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'I retried the page.',
+					created_at: '2026-05-24T19:55:00.000Z',
+					metadata: {
+						fastchat_tool_trace_v1: [
+							{
+								tool_call_id: 'call-web',
+								tool_name: 'web_visit',
+								success: false,
+								error: "Tool 'web_visit' failed: Tool execution timeout after 60000ms"
+							}
+						]
+					}
+				}
+			],
+			toolExecutions: [],
+			llmCalls: [],
+			operations: [],
+			timingData: null,
+			turnRuns: [
+				{
+					id: 'run-1',
+					stream_run_id: 'stream-1',
+					client_turn_id: 'turn-1',
+					context_type: 'project',
+					entity_id: 'project-1',
+					request_message: 'Check this page.',
+					status: 'completed',
+					finished_reason: 'stop',
+					tool_round_count: 1,
+					tool_call_count: 1,
+					validation_failure_count: 0,
+					llm_pass_count: 1,
+					started_at: '2026-05-24T19:54:00.000Z',
+					finished_at: '2026-05-24T19:55:00.000Z'
+				}
+			],
+			promptSnapshots: [],
+			turnEvents: [
+				{
+					id: 'event-call',
+					turn_run_id: 'run-1',
+					stream_run_id: 'stream-1',
+					sequence_index: 1,
+					phase: 'tool',
+					event_type: 'tool_call_emitted',
+					payload: {
+						tool_call_id: 'call-web',
+						tool_name: 'web_visit',
+						canonical_op: 'util.web.visit',
+						args: {
+							url,
+							mode: 'reader',
+							output_format: 'markdown'
+						}
+					},
+					created_at: '2026-05-24T19:54:10.000Z'
+				},
+				{
+					id: 'event-result',
+					turn_run_id: 'run-1',
+					stream_run_id: 'stream-1',
+					sequence_index: 2,
+					phase: 'tool',
+					event_type: 'tool_result_received',
+					payload: {
+						tool_call_id: 'call-web',
+						tool_name: 'web_visit',
+						canonical_op: 'util.web.visit',
+						success: false,
+						error: "Tool 'web_visit' failed: Tool execution timeout after 60000ms"
+					},
+					created_at: '2026-05-24T19:55:10.000Z'
+				}
+			],
+			evalRuns: [],
+			evalAssertions: []
+		});
+
+		expect(payload.metrics.tool_failures).toBe(1);
+		expect(payload.session.has_errors).toBe(true);
+		expect(
+			payload.timeline.find((event) => event.id === 'turn_event:event-call')?.summary
+		).toContain(`target=${url} · reader · markdown`);
+		expect(
+			payload.timeline.find((event) => event.id === 'turn_event:event-result')?.severity
+		).toBe('error');
+	});
+
 	it('highlights supervisor turn events in the admin timeline', () => {
 		const payload = buildSessionDetailPayload({
 			sessionRow: {

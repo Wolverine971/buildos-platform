@@ -260,6 +260,45 @@ describe('agent-chat-session helpers', () => {
 		});
 	});
 
+	it('buildAgentChatSessionSnapshot restores granular Libri and web labels from metadata traces', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'I checked it.',
+					created_at: '2026-03-28T10:01:00.000Z',
+					metadata: {
+						fastchat_tool_trace_v1: [
+							{
+								tool_call_id: 'call-libri',
+								tool_name: 'libri_search_capabilities',
+								success: true,
+								arguments_preview: '{"query":"Tim Ferriss","domain":"people"}'
+							},
+							{
+								tool_call_id: 'call-web',
+								tool_name: 'web_visit',
+								success: true,
+								arguments_preview:
+									'{"url":"https://9takes.com/personality-analysis/tim-ferriss","mode":"reader","output_format":"markdown"}'
+							}
+						]
+					}
+				}
+			] as any
+		});
+
+		expect(snapshot.messages[0]?.type).toBe('thinking_block');
+		expect(
+			(snapshot.messages[0] as any).activities.map((activity: any) => activity.content)
+		).toEqual([
+			'Searched Libri capabilities: "people: Tim Ferriss"',
+			'Visited web page: "https://9takes.com/personality-analysis/tim-ferriss · reader · markdown"'
+		]);
+	});
+
 	it('buildAgentChatSessionSnapshot restores project overview labels with project names', () => {
 		const snapshot = buildAgentChatSessionSnapshot({
 			session: makeSession(),

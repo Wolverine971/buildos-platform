@@ -7,121 +7,20 @@ import {
 	type PromptEvalVariantEvidence,
 	type PromptEvalVariantScenarioComparison
 } from '../agentic-chat-v2/prompt-eval-comparison';
-
-type AuditRecord = Record<string, unknown>;
-
-export type AuditTimelineType =
-	| 'session'
-	| 'message'
-	| 'tool_execution'
-	| 'llm_call'
-	| 'operation'
-	| 'context_shift'
-	| 'timing'
-	| 'turn_run'
-	| 'prompt_snapshot'
-	| 'turn_event'
-	| 'eval_run';
-
-export type AuditTimelineSeverity = 'info' | 'success' | 'warning' | 'error';
-
-export interface AuditTimelineEvent {
-	id: string;
-	timestamp: string;
-	type: AuditTimelineType;
-	severity: AuditTimelineSeverity;
-	title: string;
-	summary: string;
-	turn_index: number | null;
-	payload: AuditRecord;
-}
-
-export interface AuditPromptEvalRun {
-	id: string;
-	scenario_slug: string;
-	scenario_version: string;
-	runner_type: string;
-	status: string;
-	summary: AuditRecord;
-	started_at: string;
-	completed_at: string | null;
-	created_by: string | null;
-	assertions: AuditRecord[];
-}
-
-export interface AuditTurnRun {
-	id: string;
-	turn_index: number;
-	stream_run_id: string | null;
-	client_turn_id: string | null;
-	status: string;
-	finished_reason: string | null;
-	context_type: string;
-	entity_id: string | null;
-	project_id: string | null;
-	gateway_enabled: boolean;
-	request_message: string;
-	user_message_id: string | null;
-	assistant_message_id: string | null;
-	tool_round_count: number;
-	tool_call_count: number;
-	validation_failure_count: number;
-	llm_pass_count: number;
-	first_lane: string | null;
-	first_help_path: string | null;
-	first_skill_path: string | null;
-	first_canonical_op: string | null;
-	history_strategy: string | null;
-	history_compressed: boolean | null;
-	raw_history_count: number;
-	history_for_model_count: number;
-	cache_source: string | null;
-	cache_age_seconds: number;
-	request_prewarmed_context: boolean;
-	started_at: string;
-	finished_at: string | null;
-	prompt_snapshot: AuditRecord | null;
-	events: AuditRecord[];
-	eval_runs: AuditPromptEvalRun[];
-}
-
-export interface ChatSessionAuditPayload {
-	session: {
-		id: string;
-		title: string;
-		user: { id: string; email: string; name: string };
-		context_type: string;
-		context_id: string | null;
-		status: string;
-		message_count: number;
-		total_tokens: number;
-		tool_call_count: number;
-		llm_call_count: number;
-		cost_estimate: number;
-		has_errors: boolean;
-		created_at: string;
-		updated_at: string;
-		last_message_at: string | null;
-		agent_metadata: AuditRecord;
-		extracted_entities: unknown;
-	};
-	metrics: {
-		total_tokens: number;
-		total_cost_usd: number;
-		tool_calls: number;
-		tool_failures: number;
-		llm_calls: number;
-		llm_failures: number;
-		messages: number;
-	};
-	messages: AuditRecord[];
-	tool_executions: AuditRecord[];
-	llm_calls: AuditRecord[];
-	operations: AuditRecord[];
-	timeline: AuditTimelineEvent[];
-	timing_metrics: AuditRecord | null;
-	turn_runs: AuditTurnRun[];
-}
+import type {
+	AuditRecord,
+	AuditTimelineEvent,
+	AuditTurnRun,
+	ChatSessionAuditPayload
+} from './chat-session-audit-types';
+export type {
+	AuditPromptEvalRun,
+	AuditTimelineEvent,
+	AuditTimelineSeverity,
+	AuditTimelineType,
+	AuditTurnRun,
+	ChatSessionAuditPayload
+} from './chat-session-audit-types';
 
 type ChatSessionAuditResponse = {
 	success?: boolean;

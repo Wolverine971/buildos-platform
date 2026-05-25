@@ -1,3 +1,4 @@
+// apps/web/src/lib/components/ui/live-transcript-preview.ts
 export const LIVE_TRANSCRIPT_PREVIEW_CHAR_LIMIT = 300;
 
 export function getLiveTranscriptPreview(
