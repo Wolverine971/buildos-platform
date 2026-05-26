@@ -10,6 +10,7 @@
 
 @layer base {
 	html {
+		@apply bg-background;
 		overflow-y: scroll;
 		scroll-behavior: smooth;
 		-webkit-text-size-adjust: 100%;

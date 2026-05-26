@@ -3322,7 +3322,7 @@
 		closeOnBackdrop={false}
 		showCloseButton={false}
 		ariaLabel="BuildOS chat assistant dialog"
-		customClasses="agent-chat-keyboard-modal lg:!max-w-6xl xl:!max-w-7xl !max-h-[calc(100dvh_-_var(--keyboard-height,0px))] !h-[calc(100dvh_-_var(--keyboard-height,0px))] sm:!h-[90dvh] sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg !overscroll-none"
+		customClasses="agent-chat-keyboard-modal lg:!max-w-6xl xl:!max-w-7xl !h-[100dvh] !max-h-[100dvh] sm:!h-[90dvh] sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg !overscroll-none"
 	>
 		{#snippet header()}
 			<!-- INKPRINT header bar with Frame texture -->
@@ -3520,8 +3520,37 @@
 {/if}
 
 <style>
-	:global(.agent-chat-keyboard-modal) {
-		margin-bottom: var(--keyboard-height, 0px) !important;
+	@media (max-width: 639px) {
+		:global(.agent-chat-keyboard-modal) {
+			height: calc(100dvh - var(--keyboard-height, 0px)) !important;
+			max-height: calc(100dvh - var(--keyboard-height, 0px)) !important;
+			min-height: calc(100dvh - var(--keyboard-height, 0px)) !important;
+			margin-bottom: var(--keyboard-height, 0px) !important;
+			border-bottom-left-radius: 0 !important;
+			border-bottom-right-radius: 0 !important;
+		}
+
+		:global(.agent-chat-keyboard-modal .modal-content) {
+			min-height: 0;
+			flex: 1 1 auto;
+		}
+
+		@supports (padding-bottom: env(safe-area-inset-bottom, 0px)) {
+			:global(.agent-chat-keyboard-modal) {
+				height: calc(
+					100dvh + env(safe-area-inset-bottom, 0px) - var(--keyboard-height, 0px)
+				) !important;
+				max-height: calc(
+					100dvh + env(safe-area-inset-bottom, 0px) - var(--keyboard-height, 0px)
+				) !important;
+				min-height: calc(
+					100dvh + env(safe-area-inset-bottom, 0px) - var(--keyboard-height, 0px)
+				) !important;
+				margin-bottom: calc(
+					var(--keyboard-height, 0px) - env(safe-area-inset-bottom, 0px)
+				) !important;
+			}
+		}
 	}
 
 	@media (min-width: 640px) {

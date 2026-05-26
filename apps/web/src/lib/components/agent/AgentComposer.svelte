@@ -331,61 +331,63 @@
 			{#if !isStreaming}
 				<button
 					type="button"
-					class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
+					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
 					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="Attach image"
 					title="Attach image"
 					{disabled}
 					onclick={() => fileInput?.click()}
 				>
-					<ImagePlus class="h-3.5 w-3.5" />
+					<ImagePlus class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
 				</button>
-				<button
-					type="button"
-					class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
-					style="-webkit-tap-highlight-color: transparent;"
-					aria-label="Attach existing project image"
-					title="Attach existing project image"
-					disabled={disabled || !canAttachExistingImages}
-					onclick={() => onAttachExistingImages?.()}
-				>
-					<Images class="h-3.5 w-3.5" />
-				</button>
+				{#if canAttachExistingImages}
+					<button
+						type="button"
+						class="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 xs:flex sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
+						style="-webkit-tap-highlight-color: transparent;"
+						aria-label="Attach existing project image"
+						title="Attach existing project image"
+						{disabled}
+						onclick={() => onAttachExistingImages?.()}
+					>
+						<Images class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+					</button>
+				{/if}
 			{/if}
 			{#if isStreaming}
 				<!-- Stop button: destructive semantic for urgency -->
 				<button
 					type="button"
-					class="flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full border-2 border-destructive bg-destructive text-destructive-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-destructive/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background"
+					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-destructive bg-destructive text-destructive-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-destructive/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
 					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="Stop response"
 					onclick={onStop}
 				>
-					<Square class="h-3.5 w-3.5" />
+					<Square class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
 				</button>
 				{#if allowSendWhileStreaming}
 					<!-- Send while streaming: accent for primary action -->
 					<button
 						type="submit"
-						class="flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:shadow-none disabled:cursor-not-allowed dark:focus-visible:ring-offset-background"
+						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:cursor-not-allowed disabled:shadow-none sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
 						style="-webkit-tap-highlight-color: transparent;"
 						aria-label="Send & stop"
 						title="Send & stop"
 						disabled={disabled || isSendDisabled}
 					>
-						<Send class="h-3.5 w-3.5" />
+						<Send class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
 					</button>
 				{/if}
 			{:else}
 				<!-- Send button: accent color for primary action, clear disabled state -->
 				<button
 					type="submit"
-					class="flex h-11 w-11 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:shadow-none disabled:cursor-not-allowed dark:focus-visible:ring-offset-background"
+					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-accent bg-accent text-accent-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:bg-accent/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:border-border disabled:bg-muted disabled:text-muted-foreground/50 disabled:cursor-not-allowed disabled:shadow-none sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
 					style="-webkit-tap-highlight-color: transparent;"
 					aria-label="Send message"
 					disabled={disabled || isSendDisabled}
 				>
-					<Send class="h-3.5 w-3.5" />
+					<Send class="h-4 w-4 sm:h-3.5 sm:w-3.5" />
 				</button>
 			{/if}
 		{/snippet}

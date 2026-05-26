@@ -46,6 +46,18 @@ describe('AgentComposer', () => {
 		expect(screen.getAllByRole('button', { name: /send message/i })[0]).toBeDisabled();
 	});
 
+	it('does not show the project image library action when unavailable', () => {
+		render(AgentComposer, {
+			props: createProps({
+				displayContextLabel: 'General chat',
+				canAttachExistingImages: false
+			})
+		});
+
+		expect(screen.getAllByRole('button', { name: /attach image/i }).length).toBeGreaterThan(0);
+		expect(screen.queryByRole('button', { name: /attach existing project image/i })).toBeNull();
+	});
+
 	it('passes selected files through so the parent can report skipped unsupported files', async () => {
 		const onAttachmentFiles = vi.fn();
 		const { container } = render(AgentComposer, {

@@ -1095,9 +1095,9 @@
 
 	<!-- Mobile action bar: Visible only on portrait phones (< 480px) -->
 	<!-- z-10 ensures buttons are ALWAYS clickable above any overlays -->
-	<div class="relative z-10 mt-1.5 flex items-center gap-2 xs:hidden">
+	<div class="relative z-10 mt-1.5 flex items-center gap-1.5 xs:hidden">
 		<!-- Mobile hint text (left-aligned, pushes buttons right) -->
-		<span class="flex-1 text-xs text-muted-foreground px-1">
+		<span class="min-w-0 flex-1 px-1 text-xs text-muted-foreground">
 			{hintText ?? (enableVoice && !voiceBlocked ? 'Type or speak' : 'Tap to send')}
 		</span>
 
