@@ -58,6 +58,19 @@ describe('AgentComposer', () => {
 		expect(screen.queryByRole('button', { name: /attach existing project image/i })).toBeNull();
 	});
 
+	it('shows the project image library action when available', () => {
+		render(AgentComposer, {
+			props: createProps({
+				displayContextLabel: 'General chat',
+				canAttachExistingImages: true
+			})
+		});
+
+		expect(
+			screen.getByRole('button', { name: /attach existing project image/i })
+		).toBeInTheDocument();
+	});
+
 	it('passes selected files through so the parent can report skipped unsupported files', async () => {
 		const onAttachmentFiles = vi.fn();
 		const { container } = render(AgentComposer, {

@@ -343,7 +343,7 @@
 				{#if canAttachExistingImages}
 					<button
 						type="button"
-						class="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 xs:flex sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
+						class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-ink transition-all duration-100 touch-manipulation pressable hover:border-accent hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:h-8 sm:w-8 dark:focus-visible:ring-offset-background"
 						style="-webkit-tap-highlight-color: transparent;"
 						aria-label="Attach existing project image"
 						title="Attach existing project image"

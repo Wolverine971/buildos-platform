@@ -140,7 +140,7 @@ export class EmailGenerationService {
 		// Use provided API key or try to get from environment
 
 		this.llmService = new SmartLLMService({
-			httpReferer: 'https://buildos.dev',
+			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS Email Service',
 			supabase
 		});

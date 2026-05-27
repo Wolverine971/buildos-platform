@@ -737,8 +737,7 @@ Implement proper CORS headers:
 // src/hooks.server.ts
 export const handle = async ({ event, resolve }) => {
 	const allowedOrigins = [
-		'https://buildos.app',
-		'https://app.buildos.io',
+		'https://build-os.com',
 		// Add staging/dev origins in non-production
 		...(dev ? ['http://localhost:3000', 'http://localhost:5173'] : [])
 	];
@@ -839,9 +838,9 @@ info:
     description: AI-powered productivity platform API
 
 servers:
-    - url: https://api.buildos.app/v1
+    - url: https://api.build-os.com/v1
       description: Production
-    - url: https://staging-api.buildos.app/v1
+    - url: https://staging-api.build-os.com/v1
       description: Staging
 
 paths:
@@ -1017,7 +1016,7 @@ Implement RFC 7807 Problem Details format:
 
 // Recommended (RFC 7807)
 {
-  type: "https://buildos.app/errors/validation-error",
+  type: "https://build-os.com/errors/validation-error",
   title: "Validation Error",
   status: 400,
   detail: "The request body contains invalid fields",
@@ -1052,7 +1051,7 @@ export class ApiResponse {
 	) {
 		return new Response(
 			JSON.stringify({
-				type: `https://buildos.app/errors/${type}`,
+				type: `https://build-os.com/errors/${type}`,
 				title,
 				status,
 				detail,

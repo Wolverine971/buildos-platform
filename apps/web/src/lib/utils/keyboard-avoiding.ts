@@ -68,6 +68,24 @@ export function initKeyboardAvoiding(options: KeyboardAvoidingOptions): () => vo
 	} = options;
 
 	let isKeyboardVisible = false;
+	let focusChangeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	function isEditableElement(node: Element | null): boolean {
+		if (!node) return false;
+		if (
+			node instanceof HTMLInputElement ||
+			node instanceof HTMLTextAreaElement ||
+			node instanceof HTMLSelectElement
+		) {
+			return !node.disabled && node.type !== 'hidden';
+		}
+		return node instanceof HTMLElement && node.isContentEditable;
+	}
+
+	function hasFocusedEditable(): boolean {
+		if (typeof document === 'undefined') return false;
+		return isEditableElement(document.activeElement);
+	}
 
 	function getKeyboardHeight(): number {
 		if (!window.visualViewport) return 0;
@@ -88,8 +106,9 @@ export function initKeyboardAvoiding(options: KeyboardAvoidingOptions): () => vo
 
 		// visualViewport.offsetTop accounts for browser chrome/viewport panning.
 		// The bottom occlusion is the part of the layout viewport below the visual viewport.
-		const keyboardHeight = getKeyboardHeight();
-		const keyboardNowVisible = keyboardHeight > minHeightChange;
+		const rawKeyboardHeight = getKeyboardHeight();
+		const keyboardNowVisible = hasFocusedEditable() && rawKeyboardHeight > minHeightChange;
+		const keyboardHeight = keyboardNowVisible ? rawKeyboardHeight : 0;
 
 		// Set CSS custom property on every resize event (not just state changes)
 		// so height tracks smoothly during keyboard animation
@@ -115,11 +134,31 @@ export function initKeyboardAvoiding(options: KeyboardAvoidingOptions): () => vo
 
 	function handleViewportScroll() {
 		if (!window.visualViewport || !isKeyboardVisible) return;
+		const keyboardHeight = getKeyboardHeight();
+		const keyboardNowVisible = hasFocusedEditable() && keyboardHeight > minHeightChange;
+		if (!keyboardNowVisible) {
+			isKeyboardVisible = false;
+			setKeyboardHeightProperty(false, 0);
+			element.style.transform = '';
+			element.style.transition = 'transform 150ms ease-out';
+			onKeyboardChange?.(false, 0);
+			return;
+		}
 
 		const offsetTop = window.visualViewport.offsetTop || 0;
-		setKeyboardHeightProperty(true, getKeyboardHeight());
+		setKeyboardHeightProperty(true, keyboardHeight);
 		if (!applyTransform) return;
 		element.style.transform = `translateY(${-offsetTop}px)`;
+	}
+
+	function handleFocusChange() {
+		if (focusChangeTimeout !== null) {
+			clearTimeout(focusChangeTimeout);
+		}
+		focusChangeTimeout = setTimeout(() => {
+			focusChangeTimeout = null;
+			handleViewportResize();
+		}, 0);
 	}
 
 	function handleOrientationChange() {
@@ -138,12 +177,20 @@ export function initKeyboardAvoiding(options: KeyboardAvoidingOptions): () => vo
 	window.visualViewport.addEventListener('resize', handleViewportResize);
 	window.visualViewport.addEventListener('scroll', handleViewportScroll);
 	window.addEventListener('orientationchange', handleOrientationChange);
+	document.addEventListener('focusin', handleFocusChange, true);
+	document.addEventListener('focusout', handleFocusChange, true);
 
 	// Cleanup function
 	return () => {
+		if (focusChangeTimeout !== null) {
+			clearTimeout(focusChangeTimeout);
+			focusChangeTimeout = null;
+		}
 		window.visualViewport?.removeEventListener('resize', handleViewportResize);
 		window.visualViewport?.removeEventListener('scroll', handleViewportScroll);
 		window.removeEventListener('orientationchange', handleOrientationChange);
+		document.removeEventListener('focusin', handleFocusChange, true);
+		document.removeEventListener('focusout', handleFocusChange, true);
 		element.style.transform = '';
 		element.style.transition = '';
 		if (setCSSProperty) {

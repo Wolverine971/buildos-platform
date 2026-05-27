@@ -582,7 +582,7 @@ CREATE TABLE notification_tracking_links (
 - Linked to notification_deliveries (cascades on delete)
 - Click tracking with timestamps
 - Collision-resistant short code generation
-- Used in shortened URLs: `https://buildos.app/l/{short_code}`
+- Used in shortened URLs: `https://build-os.com/l/{short_code}`
 
 **Helper Functions:**
 

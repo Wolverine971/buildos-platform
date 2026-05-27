@@ -10,6 +10,7 @@
 		ListChecks,
 		LoaderCircle,
 		MessageSquare,
+		Plus,
 		RefreshCcw,
 		Share2,
 		Sparkles,
@@ -640,10 +641,11 @@
 				</h1>
 				<div class="flex w-full items-center gap-1.5 sm:w-auto sm:shrink-0 sm:gap-2">
 					<Button
-						variant="primary"
+						variant="outline"
 						size="sm"
+						icon={Plus}
 						onclick={() => goto('/projects/create')}
-						class="flex-1 sm:flex-none"
+						class="flex-1 whitespace-nowrap border-accent/30 bg-card text-accent hover:border-accent/50 hover:bg-accent/10 hover:text-accent focus:ring-accent/40 sm:flex-none"
 					>
 						New Project
 					</Button>

@@ -13,7 +13,7 @@ const openAIApiKey = PRIVATE_OPENAI_API_KEY!;
 async function generateEmbeddings() {
 	const supabase = createCustomClient(supabaseUrl, supabaseServiceKey);
 	const llmService = new SmartLLMService({
-		httpReferer: 'https://buildos.dev',
+		httpReferer: 'https://build-os.com',
 		appName: 'BuildOS Embedding Generator',
 		supabase
 	});

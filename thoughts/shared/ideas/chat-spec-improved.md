@@ -927,7 +927,7 @@ async function streamChatResponse({
 	try {
 		// Initialize services
 		const llmService = new SmartLLMService({
-			httpReferer: 'https://buildos.app',
+			httpReferer: 'https://build-os.com',
 			appName: 'BuildOS Chat',
 			supabase
 		});
