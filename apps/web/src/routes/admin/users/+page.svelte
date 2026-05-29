@@ -426,7 +426,143 @@
 				</p>
 			</div>
 		{:else}
-			<div class="overflow-x-auto">
+			<!-- Mobile card list (sort via the Sort dropdown above) -->
+			<ul class="divide-y divide-border lg:hidden">
+				{#each users as user}
+					<li class="p-3">
+						<div class="flex items-start gap-3">
+							<div
+								class="h-9 w-9 shrink-0 rounded-full bg-accent/10 flex items-center justify-center"
+							>
+								<span class="text-sm font-medium text-accent">
+									{(user.name || user.email).charAt(0).toUpperCase()}
+								</span>
+							</div>
+							<div class="min-w-0 flex-1">
+								<div class="flex items-center gap-1.5">
+									<span class="truncate text-sm font-medium text-foreground">
+										{user.name || 'No name'}
+									</span>
+									{#if user.is_admin}
+										<Shield class="h-3.5 w-3.5 shrink-0 text-rose-500" />
+									{/if}
+								</div>
+								<div class="truncate text-xs text-muted-foreground">
+									{user.email}
+								</div>
+							</div>
+							<Button
+								onclick={() => {
+									selectedUser = user;
+									showUserModal = true;
+								}}
+								variant="ghost"
+								size="sm"
+								icon={Eye}
+								class="!p-2 shrink-0 text-muted-foreground"
+								title="View details"
+							/>
+						</div>
+
+						<div
+							class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground"
+						>
+							<span
+								class="inline-flex items-center gap-1 {getLastVisitColor(
+									user.last_visit
+								)}"
+							>
+								<Clock class="h-3.5 w-3.5" />
+								{formatLastVisit(user.last_visit)}
+							</span>
+							<span>Joined {formatDate(user.created_at)}</span>
+						</div>
+
+						<div class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+							<div class="flex items-center justify-between gap-2">
+								<span class="text-muted-foreground">Projects</span>
+								<span class="font-medium text-purple-600 dark:text-purple-400">
+									{user.project_count || 0}
+								</span>
+							</div>
+							<div class="flex items-center justify-between gap-2">
+								<span class="text-muted-foreground">Sessions</span>
+								<span class="font-medium text-accent">
+									{user.agentic_session_count || 0}
+								</span>
+							</div>
+							<div class="flex items-center justify-between gap-2">
+								<span class="text-muted-foreground">Chat msgs</span>
+								<span class="font-medium text-indigo-600 dark:text-indigo-400">
+									{user.agentic_message_count || 0}
+								</span>
+							</div>
+							<div class="flex items-center justify-between gap-2">
+								<span class="text-muted-foreground">Briefs</span>
+								<span class="font-medium text-foreground">
+									{user.daily_brief_opt_in ? 'On' : 'Off'} · {user.daily_brief_count ||
+										0}
+								</span>
+							</div>
+							<div class="flex items-center justify-between gap-2">
+								<span class="text-muted-foreground">Calendar</span>
+								<span
+									class="font-medium {user.calendar_connected
+										? 'text-emerald-600 dark:text-emerald-400'
+										: 'text-muted-foreground'}"
+								>
+									{user.calendar_connected ? 'Yes' : 'No'}
+								</span>
+							</div>
+							<div class="flex items-center justify-between gap-2">
+								<span class="text-muted-foreground">Ontology</span>
+								<span class="font-medium text-indigo-600 dark:text-indigo-400">
+									{user.ontology_entity_total || 0}
+								</span>
+							</div>
+							<div class="flex items-center justify-between gap-2">
+								<span class="text-muted-foreground">Onboarding</span>
+								<span
+									class="font-medium {user.onboarding_completed_at
+										? 'text-emerald-600 dark:text-emerald-400'
+										: 'text-amber-600 dark:text-amber-400'}"
+								>
+									{user.onboarding_completed_at ? 'Complete' : 'Pending'}
+								</span>
+							</div>
+						</div>
+
+						<div class="mt-3 flex items-center gap-1 border-t border-border pt-2">
+							<Button
+								onclick={() => openEmailComposer(user)}
+								variant="ghost"
+								size="sm"
+								icon={Mail}
+								class="!p-2 text-muted-foreground"
+								title="Send email"
+							/>
+							<Button
+								onclick={() => loadUserActivity(user.id)}
+								variant="ghost"
+								size="sm"
+								icon={Activity}
+								class="!p-2 text-muted-foreground"
+								title="View activity details"
+							/>
+							<Button
+								onclick={() => toggleAdminStatus(user.id, user.is_admin)}
+								variant="ghost"
+								size="sm"
+								icon={user.is_admin ? ShieldOff : Shield}
+								class="!p-2 text-muted-foreground"
+								title={user.is_admin ? 'Remove admin' : 'Make admin'}
+							/>
+						</div>
+					</li>
+				{/each}
+			</ul>
+
+			<div class="hidden overflow-x-auto lg:block">
 				<table class="min-w-full divide-y divide-border">
 					<thead class="bg-muted/50">
 						<tr>
