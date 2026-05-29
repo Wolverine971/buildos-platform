@@ -2,6 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getChangedFiles } from './lib/changed-files';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -315,17 +316,58 @@ function processDirectory(
 	return { processed, updated };
 }
 
+function processChangedFiles(
+	files: string[],
+	rootDir: string
+): { processed: number; updated: number } {
+	let processed = 0;
+	let updated = 0;
+
+	for (const fullPath of files) {
+		if (!shouldProcessFile(fullPath)) {
+			continue;
+		}
+		// Honor the same directory exclusions the full scan uses.
+		const relative = getRelativePath(fullPath, rootDir);
+		if (relative.split('/').some((segment) => EXCLUDED_DIRS.includes(segment))) {
+			continue;
+		}
+
+		processed++;
+		const wasUpdated = addOrUpdatePathComment(fullPath, rootDir);
+		if (wasUpdated) {
+			updated++;
+			console.log(`Updated: ${relative}`);
+		}
+	}
+
+	return { processed, updated };
+}
+
 function main() {
 	const args = process.argv.slice(2);
-	const targetDir = args[0] || process.cwd();
+	const changedOnly = args.includes('--changed');
+	const positional = args.filter((arg) => !arg.startsWith('--'));
+	const targetDir = positional[0] || process.cwd();
 	const rootDir = path.resolve(targetDir);
 
-	console.log(`Starting file path labeling in: ${rootDir}`);
-	console.log('Supported file types:', Object.keys(COMMENT_PATTERNS).join(', '));
-	console.log('');
-
 	const startTime = Date.now();
-	const result = processDirectory(rootDir, rootDir);
+	let result: { processed: number; updated: number };
+
+	if (changedOnly) {
+		const changedFiles = getChangedFiles({ cwd: rootDir });
+		console.log(
+			`Labeling path comments on ${changedFiles.length} changed file(s) in: ${rootDir}`
+		);
+		console.log('');
+		result = processChangedFiles(changedFiles, rootDir);
+	} else {
+		console.log(`Starting file path labeling in: ${rootDir}`);
+		console.log('Supported file types:', Object.keys(COMMENT_PATTERNS).join(', '));
+		console.log('');
+		result = processDirectory(rootDir, rootDir);
+	}
+
 	const endTime = Date.now();
 
 	console.log('');

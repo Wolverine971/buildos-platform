@@ -406,42 +406,21 @@
 
 	<!-- Main content -->
 	<div class="flex min-h-screen min-w-0 flex-1 flex-col">
-		<!-- Mobile top bar -->
+		<!-- Mobile admin section bar (sits below the global top nav) -->
 		<header
-			class="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-border bg-card px-3 shadow-ink lg:hidden"
+			class="sticky top-0 z-30 flex h-12 items-center gap-2 border-b border-border bg-card px-3 shadow-ink lg:hidden"
 		>
 			<button
 				type="button"
-				class="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				aria-label="Open admin menu"
+				class="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-ink transition-colors hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				aria-label="Open admin sections menu"
 				aria-controls="admin-mobile-nav"
 				aria-expanded={mobileOpen}
 				onclick={() => (mobileOpen = true)}
 			>
-				<Menu class="h-5 w-5" />
+				<Menu class="h-4 w-4" />
+				<span>Admin menu</span>
 			</button>
-
-			<a
-				href="/admin"
-				class="flex min-w-0 items-center gap-2 rounded-lg px-2 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				aria-label="Admin dashboard"
-			>
-				<span
-					class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground shadow-ink"
-				>
-					<Layers class="h-4 w-4" />
-				</span>
-				<span class="truncate text-sm font-bold text-foreground">Admin Console</span>
-			</a>
-
-			<a
-				href="/"
-				class="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-				aria-label="Open main app"
-				title="Open main app"
-			>
-				<Home class="h-5 w-5" />
-			</a>
 		</header>
 
 		<!-- Main Content Area -->

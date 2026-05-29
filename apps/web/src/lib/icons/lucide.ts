@@ -75,6 +75,7 @@ export { default as Edit3 } from 'lucide-svelte/icons/edit-3';
 export { default as ExternalLink } from 'lucide-svelte/icons/external-link';
 export { default as Eye } from 'lucide-svelte/icons/eye';
 export { default as EyeOff } from 'lucide-svelte/icons/eye-off';
+export { default as FileArchive } from 'lucide-svelte/icons/file-archive';
 export { default as FileCheck } from 'lucide-svelte/icons/file-check';
 export { default as FileImage } from 'lucide-svelte/icons/file-image';
 export { default as FilePlus } from 'lucide-svelte/icons/file-plus';

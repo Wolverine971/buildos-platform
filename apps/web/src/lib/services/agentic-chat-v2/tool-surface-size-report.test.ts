@@ -97,7 +97,16 @@ describe('tool surface size report', () => {
 		// 2026-05-17: budget bumped from 9300 -> 9400 after adding the
 		// skill_search discovery bridge. domain_load is still materialized only
 		// after search, so the always-on increase stays bounded.
-		expect(projectBasic?.totalChars).toBeLessThanOrEqual(9400);
+		// 2026-05-29: budget bumped from 9400 -> 11000. The gateway tool refactor
+		// intentionally widened the always-on project_basic surface to 14 tools:
+		// the discovery bridge (domain_search, skill_search, skill_load,
+		// skill_reference_load, tool_search, tool_schema) plus the Corsair MCP
+		// bridge (list_corsair_mcp_tools + call_corsair_mcp_tool, ~1100 chars) and
+		// the project read tools. It now serializes to ~10617 chars. This is a
+		// deliberate composition, not description-bloat -- verified per-tool, no
+		// single definition regressed. 11000 keeps the guard meaningful (~400 chars
+		// of headroom) while no longer flagging the intended surface.
+		expect(projectBasic?.totalChars).toBeLessThanOrEqual(11000);
 		expect(projectWrite?.totalChars).toBeLessThan(21000);
 	});
 });

@@ -17,6 +17,7 @@
 		downloadChatSessionAuditMarkdown,
 		fetchChatSessionAuditPayload
 	} from '$lib/services/admin/chat-session-audit-export';
+	import { downloadChatSessionAuditBundle } from '$lib/services/admin/chat-session-audit-bundle';
 	import type {
 		AuditTimelineType as TimelineType,
 		ChatSessionAuditPayload as SessionDetailPayload,
@@ -455,6 +456,19 @@
 		}
 	}
 
+	function exportSessionBundle() {
+		if (!browser || !sessionDetail) return;
+		try {
+			downloadChatSessionAuditBundle(sessionDetail);
+			toastService.success('Session audit bundle exported as zip');
+		} catch (err) {
+			console.error('Failed exporting session audit bundle', err);
+			toastService.error(
+				err instanceof Error ? err.message : 'Failed to export session audit bundle'
+			);
+		}
+	}
+
 	function updateSelectedEvalScenario(turnRunId: string, value: string) {
 		selectedEvalScenarioByTurnId = {
 			...selectedEvalScenarioByTurnId,
@@ -558,6 +572,7 @@
 			{eventTypeFilters}
 			{closeSessionDetail}
 			{exportSessionAudit}
+			{exportSessionBundle}
 			{resetTimelineFilters}
 			{toggleEventType}
 			{toggleEventExpansion}

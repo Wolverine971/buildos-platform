@@ -89,6 +89,7 @@
 		downloadChatSessionAuditMarkdown,
 		fetchChatSessionAuditPayload
 	} from '$lib/services/admin/chat-session-audit-export';
+	import { downloadChatSessionAuditBundle } from '$lib/services/admin/chat-session-audit-bundle';
 
 	interface AutoInitProjectConfig {
 		projectId: string;
@@ -1772,6 +1773,30 @@
 		}
 	}
 
+	async function exportCurrentSessionBundle() {
+		if (!browser) return;
+
+		const sessionId = currentSession?.id;
+		if (!sessionId) {
+			toastService.error('Start or resume a chat session before exporting the audit.');
+			return;
+		}
+
+		isExportingAudit = true;
+		try {
+			const payload = await fetchChatSessionAuditPayload(sessionId);
+			downloadChatSessionAuditBundle(payload);
+			toastService.success('Session audit bundle exported as zip');
+		} catch (err) {
+			console.error('Failed exporting current session bundle', err);
+			toastService.error(
+				err instanceof Error ? err.message : 'Failed to export session audit bundle'
+			);
+		} finally {
+			isExportingAudit = false;
+		}
+	}
+
 	function resolveAttachmentProjectId(): string | null {
 		return attachmentProjectId;
 	}
@@ -3350,6 +3375,7 @@
 					{showAdminDebugActions}
 					{adminSessionHref}
 					onExportAudit={exportCurrentSessionAudit}
+					onExportBundle={exportCurrentSessionBundle}
 					{isExportingAudit}
 				/>
 			</div>

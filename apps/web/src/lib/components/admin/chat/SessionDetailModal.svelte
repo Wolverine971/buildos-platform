@@ -38,6 +38,7 @@
 		eventTypeFilters,
 		closeSessionDetail,
 		exportSessionAudit,
+		exportSessionBundle,
 		resetTimelineFilters,
 		toggleEventType,
 		toggleEventExpansion,
@@ -65,6 +66,7 @@
 		eventTypeFilters: Record<TimelineType, boolean>;
 		closeSessionDetail: () => void;
 		exportSessionAudit: () => void;
+		exportSessionBundle: () => void;
 		resetTimelineFilters: () => void;
 		toggleEventType: (type: TimelineType) => void;
 		toggleEventExpansion: (eventId: string) => void;
@@ -98,7 +100,11 @@
 	{:else if sessionDetail}
 		<div class="flex flex-col">
 			<div class="p-3 border-b border-border space-y-3 bg-card">
-				<SessionMetricsHeader {sessionDetail} onExport={exportSessionAudit} />
+				<SessionMetricsHeader
+					{sessionDetail}
+					onExport={exportSessionAudit}
+					onExportBundle={exportSessionBundle}
+				/>
 				<LibriPanel {sessionDetail} {libriExtraction} {libriHandoff} />
 			</div>
 

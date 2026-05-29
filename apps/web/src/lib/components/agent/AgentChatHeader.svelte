@@ -8,6 +8,7 @@
 		LoaderCircle,
 		AlertTriangle,
 		Download,
+		FileArchive,
 		MoreHorizontal
 	} from 'lucide-svelte';
 	import { dev } from '$app/environment';
@@ -36,6 +37,7 @@
 		showAdminDebugActions?: boolean;
 		adminSessionHref?: string | null;
 		onExportAudit?: (() => void) | null;
+		onExportBundle?: (() => void) | null;
 		isExportingAudit?: boolean;
 	}
 
@@ -59,6 +61,7 @@
 		showAdminDebugActions = false,
 		adminSessionHref = null,
 		onExportAudit = null,
+		onExportBundle = null,
 		isExportingAudit = false
 	}: Props = $props();
 
@@ -66,7 +69,7 @@
 
 	const isProjectContext = $derived.by(() => selectedContextType === 'project');
 	const hasMobileAdminActions = $derived(
-		showAdminDebugActions && Boolean(adminSessionHref || onExportAudit)
+		showAdminDebugActions && Boolean(adminSessionHref || onExportAudit || onExportBundle)
 	);
 
 	// Determine project URL based on context
@@ -258,6 +261,20 @@
 			</button>
 		{/if}
 
+		{#if showAdminDebugActions && onExportBundle}
+			<button
+				type="button"
+				onclick={onExportBundle}
+				disabled={isExportingAudit}
+				class="hidden h-9 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 sm:flex sm:h-7"
+				style="-webkit-tap-highlight-color: transparent;"
+				title="Export this chat session as a multi-file zip bundle (README gist + transcript + raw JSON)"
+			>
+				<FileArchive class="h-3.5 w-3.5 shrink-0" />
+				<span class="hidden sm:inline">Bundle</span>
+			</button>
+		{/if}
+
 		{#if hasMobileAdminActions}
 			<div class="relative sm:hidden">
 				<button
@@ -307,6 +324,21 @@
 									<Download class="h-3.5 w-3.5 shrink-0" />
 								{/if}
 								<span>Export</span>
+							</button>
+						{/if}
+						{#if onExportBundle}
+							<button
+								type="button"
+								onclick={() => {
+									adminMenuOpen = false;
+									onExportBundle?.();
+								}}
+								disabled={isExportingAudit}
+								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+								role="menuitem"
+							>
+								<FileArchive class="h-3.5 w-3.5 shrink-0" />
+								<span>Bundle</span>
 							</button>
 						{/if}
 					</div>

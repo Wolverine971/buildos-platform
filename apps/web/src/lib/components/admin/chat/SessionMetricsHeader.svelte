@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/admin/chat/SessionMetricsHeader.svelte -->
 <script lang="ts">
-	import { Download } from 'lucide-svelte';
+	import { Download, FileArchive } from 'lucide-svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
 		formatCurrency,
@@ -12,10 +12,12 @@
 
 	let {
 		sessionDetail,
-		onExport
+		onExport,
+		onExportBundle
 	}: {
 		sessionDetail: SessionDetailPayload;
 		onExport: () => void;
+		onExportBundle: () => void;
 	} = $props();
 </script>
 
@@ -35,6 +37,16 @@
 	<div class="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
 		<Button onclick={onExport} icon={Download} variant="secondary" size="sm" class="pressable">
 			Export Markdown
+		</Button>
+		<Button
+			onclick={onExportBundle}
+			icon={FileArchive}
+			variant="secondary"
+			size="sm"
+			class="pressable"
+			title="Download a multi-file zip: README gist, transcript, tool calls, timeline, and raw JSON"
+		>
+			Export Bundle
 		</Button>
 		<span
 			class="px-2 py-0.5 rounded-full text-xs font-medium {statusBadge(

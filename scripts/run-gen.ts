@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 
 const commands: Record<string, string> = {
 	all: 'gen:all',
+	'all:full': 'gen:all:full',
 	types: 'gen:types',
 	schema: 'gen:schema',
 	web: 'gen:web'

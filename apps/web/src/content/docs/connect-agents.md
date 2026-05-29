@@ -5,7 +5,7 @@ slug: connect-agents
 summary: One key. Every project. Connect Claude Code, OpenClaw, ChatGPT Actions, Codex, or any HTTP-capable tool to your BuildOS workspace with setup instructions tailored to the client.
 icon: Plug
 order: 9
-lastUpdated: 2026-05-13
+lastUpdated: 2026-05-29
 path: apps/web/src/content/docs/connect-agents.md
 ---
 
@@ -29,14 +29,14 @@ BuildOS is usually a workspace with many projects. After an agent connects, it s
 
 Same BuildOS auth core. Different save location.
 
-| Client profile                   | Best storage path                         | Status                                                       |
-| -------------------------------- | ----------------------------------------- | ------------------------------------------------------------ |
-| **OpenClaw**                     | OpenClaw env, SecretRef, or plugin config | BuildOS side ready; OpenClaw connector in progress           |
-| **Claude Code**                  | `claude mcp add` (key header or OAuth)    | MCP ready at `/mcp/buildos`                                  |
-| **ChatGPT Actions**              | GPT Action API key secret                 | Ready for private GPTs; use OAuth before sharing broadly     |
-| **Codex CLI / IDE**              | Codex MCP config (`/mcp/buildos`)         | MCP ready at `/mcp/buildos`                                  |
-| **Claude browser / ChatGPT MCP** | Remote MCP OAuth connector                | OAuth remote MCP ready at `/mcp/buildos`                     |
-| **Custom HTTP / scripts**        | Your env file or secret manager           | Ready                                                        |
+| Client profile                   | Best storage path                         | Status                                                   |
+| -------------------------------- | ----------------------------------------- | -------------------------------------------------------- |
+| **OpenClaw**                     | OpenClaw env, SecretRef, or plugin config | BuildOS side ready; OpenClaw connector in progress       |
+| **Claude Code**                  | `claude mcp add` (key header or OAuth)    | MCP ready at `/mcp/buildos`                              |
+| **ChatGPT Actions**              | GPT Action API key secret                 | Ready for private GPTs; use OAuth before sharing broadly |
+| **Codex CLI / IDE**              | Codex MCP config (`/mcp/buildos`)         | MCP ready at `/mcp/buildos`                              |
+| **Claude browser / ChatGPT MCP** | Remote MCP OAuth connector                | OAuth remote MCP ready at `/mcp/buildos`                 |
+| **Custom HTTP / scripts**        | Your env file or secret manager           | Ready                                                    |
 
 BuildOS speaks the Model Context Protocol at **`/mcp/buildos`**. Local clients (Claude Code, Codex, custom HTTP) authenticate with the agent key in an `Authorization: Bearer` header; browser/cloud clients (Claude.ai, ChatGPT) authenticate with OAuth — no pasted token. The older JSON-RPC gateway at `POST /api/agent-call/buildos` (the `call.dial → tools/list → tools/call → call.hangup` flow) still works for any HTTP-capable tool and is the fallback when a client can't speak MCP.
 
@@ -147,7 +147,7 @@ The Agent Keys UI leads with preset bundles. Pick one and you're done — the pe
 
 Existing keys that still carry the old narrow default (task writes only) auto-upgrade to **Author docs + tasks** on the next call — no action needed.
 
-Project creation is intentionally broader than project-scoped writes: `onto.project.create` requires `read_write` plus all-project access. If a key or MCP grant is limited to selected project IDs, it can update those projects but cannot create a new one because there is no pre-existing `project_id` to authorize.
+Project creation is its own write op: `onto.project.create` requires `read_write` and the op whitelisted. It is **not** tied to all-project access — a key scoped to selected projects can still create new ones, and each project it creates is automatically added to that key's scope so it can immediately read and write the project it just made. To prevent a key from creating projects, leave `onto.project.create` out of its write whitelist.
 
 ## What's exposed
 

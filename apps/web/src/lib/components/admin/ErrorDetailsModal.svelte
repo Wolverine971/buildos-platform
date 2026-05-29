@@ -725,7 +725,7 @@
 							>
 								LLM Details
 							</p>
-							<div class="grid grid-cols-3 gap-2 text-xs">
+							<div class="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
 								<div>
 									<span class="text-muted-foreground">Provider:</span>
 									<p class="text-foreground font-medium">

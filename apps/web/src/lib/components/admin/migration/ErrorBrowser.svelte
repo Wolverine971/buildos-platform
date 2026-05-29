@@ -309,7 +309,7 @@
 			<p class="mt-2 text-muted-foreground">No errors found matching your criteria.</p>
 		</div>
 	{:else}
-		<div class="overflow-hidden rounded-lg border border-border">
+		<div class="overflow-x-auto rounded-lg border border-border">
 			<table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
 				<thead class="bg-muted/50">
 					<tr

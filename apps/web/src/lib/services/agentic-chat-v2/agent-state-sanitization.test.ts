@@ -78,7 +78,10 @@ describe('sanitizeAgentStateForPrompt', () => {
 				{ expected_ids: ['nope'] } as any
 			],
 			tentative_hypotheses: [],
-			items: [{ relatedEntityIds: [UUID_B, 'bad'] } as any, { relatedEntityIds: ['nope'] } as any]
+			items: [
+				{ relatedEntityIds: [UUID_B, 'bad'] } as any,
+				{ relatedEntityIds: ['nope'] } as any
+			]
 		};
 
 		const result = sanitizeAgentStateForPrompt(state);

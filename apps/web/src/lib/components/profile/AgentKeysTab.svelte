@@ -772,9 +772,7 @@
 		provisioned: BuildosAgentCallerProvisionResponse,
 		includeKey: boolean
 	): McpQuickConnect {
-		const token = includeKey
-			? provisioned.credentials.bearer_token
-			: '<BUILDOS_AGENT_TOKEN>';
+		const token = includeKey ? provisioned.credentials.bearer_token : '<BUILDOS_AGENT_TOKEN>';
 		return buildMcpQuickConnect(bootstrapProfile(provisioned).id, token);
 	}
 
@@ -783,10 +781,7 @@
 		return buildMcpQuickConnect(profileForCaller(caller).id, '<BUILDOS_AGENT_TOKEN>');
 	}
 
-	function buildMcpQuickConnect(
-		profileId: AgentClientProfileId,
-		token: string
-	): McpQuickConnect {
+	function buildMcpQuickConnect(profileId: AgentClientProfileId, token: string): McpQuickConnect {
 		const mcpUrl = `${buildosBaseUrl()}/mcp/buildos`;
 
 		switch (profileId) {
@@ -1337,7 +1332,9 @@
 													'Command copied'
 												)}
 										>
-											{copiedId === `mcp-cmd-${caller.id}` ? 'Copied' : 'Copy'}
+											{copiedId === `mcp-cmd-${caller.id}`
+												? 'Copied'
+												: 'Copy'}
 										</Button>
 									</div>
 									<pre
@@ -1989,7 +1986,9 @@
 				<div class="rounded-lg border border-accent/40 bg-accent/5 p-3 space-y-2">
 					<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 						<div>
-							<div class="text-xs font-semibold uppercase tracking-wider text-foreground">
+							<div
+								class="text-xs font-semibold uppercase tracking-wider text-foreground"
+							>
 								{mcpQuickConnect(latestProvisioned, false).label}
 							</div>
 							<p class="mt-1 text-xs text-muted-foreground">

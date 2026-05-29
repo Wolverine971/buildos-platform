@@ -12,14 +12,17 @@
 		"lint:fix": "turbo lint:fix",
 		"typecheck": "turbo typecheck",
 		"format": "prettier --write .",
+		"format:changed": "node --import tsx scripts/formatChanged.ts",
 		"clean": "turbo clean",
 		"pre-push": "turbo pre-push",
 		"gen:types": "node --import tsx scripts/generate-types.ts",
 		"gen:schema": "node --import tsx scripts/extract-database-schema.ts",
 		"gen:web": "pnpm --filter=web gen:web",
 		"gen": "node --import tsx scripts/run-gen.ts",
-		"gen:all": "pnpm run gen:types -- --allow-stale && pnpm run gen:schema && pnpm run gen:web && pnpm --filter=@buildos/shared-types build && pnpm run label-paths && pnpm format && pnpm typecheck",
-		"label-paths": "node --import tsx scripts/labelFilePaths.ts"
+		"gen:all": "pnpm run gen:types -- --allow-stale && pnpm run gen:schema && pnpm run gen:web && pnpm --filter=@buildos/shared-types build && pnpm run label-paths:changed && pnpm run format:changed && pnpm typecheck",
+		"gen:all:full": "pnpm run gen:types -- --allow-stale && pnpm run gen:schema && pnpm run gen:web && pnpm --filter=@buildos/shared-types build && pnpm run label-paths && pnpm format && pnpm typecheck",
+		"label-paths": "node --import tsx scripts/labelFilePaths.ts",
+		"label-paths:changed": "node --import tsx scripts/labelFilePaths.ts --changed"
 	},
 	"devDependencies": {
 		"dotenv": "^16.4.5",

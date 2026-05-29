@@ -203,6 +203,7 @@ type State = {
 	projectMembers?: ProjectMemberRow[];
 	toolExecutions: Array<Record<string, unknown>>;
 	projectLogs?: Array<Record<string, unknown>>;
+	callerPolicy?: Record<string, unknown> | null;
 	nextTaskId: number;
 	nextToolExecutionId: number;
 };
@@ -1380,6 +1381,25 @@ function createAdminMock(state: State) {
 				return new OntoProjectMembersQueryBuilderMock(state);
 			}
 
+			if (table === 'external_agent_callers') {
+				// Minimal builder for the auto-scope persistence in grantCallerProjectAccess.
+				const record = { policy: state.callerPolicy ?? null };
+				const builder: any = {
+					select: () => builder,
+					eq: () => builder,
+					maybeSingle: async () => ({ data: record, error: null }),
+					update: (patch: { policy?: unknown }) => {
+						if (patch && 'policy' in patch) {
+							state.callerPolicy = patch.policy as Record<string, unknown>;
+						}
+						return builder;
+					},
+					then: (resolve: (value: unknown) => unknown) =>
+						resolve({ data: null, error: null })
+				};
+				return builder;
+			}
+
 			throw new Error(`Unexpected table ${table}`);
 		}),
 		rpc: vi.fn()
@@ -1777,7 +1797,7 @@ describe('external tool gateway', () => {
 		});
 	});
 
-	it('exposes project creation only for unscoped read_write external callers', async () => {
+	it('exposes project creation for any read_write caller that whitelists the op, scoped or not', async () => {
 		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
 		const allowedOps = [
 			...BUILDOS_AGENT_READ_OPS,
@@ -1795,11 +1815,26 @@ describe('external tool gateway', () => {
 			allowed_ops: [...allowedOps]
 		});
 
+		// Project creation is no longer tied to all-project scope: a project-scoped
+		// key that whitelists onto.project.create still gets the create tool.
 		expect(unscopedTools.map((tool) => tool.name)).toEqual(
 			expect.arrayContaining(['create_onto_project', 'update_onto_project'])
 		);
-		expect(scopedTools.map((tool) => tool.name)).toContain('update_onto_project');
-		expect(scopedTools.map((tool) => tool.name)).not.toContain('create_onto_project');
+		expect(scopedTools.map((tool) => tool.name)).toEqual(
+			expect.arrayContaining(['create_onto_project', 'update_onto_project'])
+		);
+	});
+
+	it('omits project creation when the op is not whitelisted', async () => {
+		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
+		const tools = getBuildosAgentGatewayTools({
+			mode: 'read_write',
+			project_ids: ['44444444-4444-4444-4444-444444444444'],
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.update']
+		});
+
+		expect(tools.map((tool) => tool.name)).toContain('update_onto_project');
+		expect(tools.map((tool) => tool.name)).not.toContain('create_onto_project');
 	});
 
 	it('exposes schemas for every supported external op in the granted scope', async () => {
@@ -2747,14 +2782,51 @@ describe('external tool gateway', () => {
 		});
 	});
 
-	it('denies project creation for project-scoped read_write callers', async () => {
+	it('lets a project-scoped read_write caller create a project and auto-adds it to scope', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const newProjectId = '88888888-8888-8888-8888-888888888888';
 		const state: State = {
+			projects: [
+				{
+					id: newProjectId,
+					name: 'Scoped Project',
+					description: null,
+					type_key: 'project.business.product_launch',
+					state_key: 'planning',
+					props: {},
+					start_at: null,
+					end_at: null,
+					created_at: '2026-04-28T00:00:00.000Z',
+					updated_at: '2026-04-28T00:00:00.000Z',
+					archived_at: null,
+					deleted_at: null,
+					created_by: 'actor-1'
+				}
+			],
 			documents: [],
 			tasks: [],
 			toolExecutions: [],
+			// Caller is scoped to one existing project.
+			callerPolicy: {
+				scope_mode: 'read_write',
+				allowed_project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
+			},
 			nextTaskId: 1,
 			nextToolExecutionId: 1
+		};
+
+		instantiateProjectMock.mockResolvedValueOnce({
+			project_id: newProjectId,
+			counts: { tasks: 0, documents: 0 }
+		});
+
+		// Same scope object the gateway threads into the handler context, so the
+		// in-session scope expansion is observable here.
+		const scope = {
+			mode: 'read_write' as const,
+			project_ids: ['44444444-4444-4444-4444-444444444444'],
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
 		};
 
 		const result = await executeBuildosAgentGatewayTool({
@@ -2762,11 +2834,7 @@ describe('external tool gateway', () => {
 			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 			callerId: '11111111-1111-1111-1111-111111111111',
 			callSessionId: '22222222-2222-2222-2222-222222222222',
-			scope: {
-				mode: 'read_write',
-				project_ids: ['44444444-4444-4444-4444-444444444444'],
-				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.project.create']
-			},
+			scope,
 			toolName: 'create_onto_project',
 			arguments: {
 				project: {
@@ -2779,16 +2847,20 @@ describe('external tool gateway', () => {
 		});
 
 		expect(result).toMatchObject({
-			ok: false,
-			error: {
-				code: 'FORBIDDEN',
-				details: {
-					required_scope_mode: 'read_write'
-				}
-			}
+			op: 'onto.project.create',
+			ok: true,
+			result: { project_id: newProjectId }
 		});
-		expect(instantiateProjectMock).not.toHaveBeenCalled();
-		expect(state.toolExecutions).toHaveLength(0);
+		expect(instantiateProjectMock).toHaveBeenCalled();
+		// New project is usable immediately this session...
+		expect(scope.project_ids).toContain(newProjectId);
+		// ...and persisted to the caller policy for future sessions.
+		expect(state.callerPolicy?.allowed_project_ids).toContain(newProjectId);
+		expect(state.toolExecutions[0]).toMatchObject({
+			op: 'onto.project.create',
+			status: 'succeeded',
+			entity_id: newProjectId
+		});
 	});
 
 	it('creates a task through a direct tool when read_write access is granted', async () => {

@@ -1086,7 +1086,7 @@ function buildExternalToolDescription(entry: RegistryOp): string {
 		'Only projects in the caller-approved BuildOS scope are visible; public project visibility does not grant connector access.';
 
 	if (entry.op === 'onto.project.create') {
-		return `${entry.description} Project creation requires read_write access without project_id scoping, because a new project has no pre-existing project_id to authorize. ${scopeNotice}`;
+		return `${entry.description} Project creation requires read_write access with onto.project.create whitelisted. A project-scoped key may create projects; each project it creates is automatically added to the key's scope. ${scopeNotice}`;
 	}
 
 	if (entry.group !== 'cal') {
@@ -1333,19 +1333,6 @@ function getProjectIdsOrThrow(visible: VisibleProjectContext, entityLabel: strin
 		throw new ExternalToolGatewayError('NOT_FOUND', `${entityLabel} not found`);
 	}
 	return projectIds;
-}
-
-function isUnscopedProjectCreationAllowed(scope: AgentCallScope): boolean {
-	return !Array.isArray(scope.project_ids);
-}
-
-function assertUnscopedProjectCreationAllowed(scope: AgentCallScope): void {
-	if (!isUnscopedProjectCreationAllowed(scope)) {
-		throw new ExternalToolGatewayError(
-			'FORBIDDEN',
-			'Project creation is only available to unscoped read_write callers'
-		);
-	}
 }
 
 function withProjectName(
@@ -3722,7 +3709,11 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 }
 
 async function createProject(context: ToolExecutionContext, args: Record<string, unknown>) {
-	assertUnscopedProjectCreationAllowed(context.scope);
+	// Project creation is gated only by the `onto.project.create` write op being in
+	// the caller's whitelist (enforced by registry inclusion) plus read_write mode.
+	// It is intentionally NOT tied to all-project scope: a project-scoped key may
+	// create new projects, and the created project is auto-added to the key's scope
+	// below so the same caller can immediately read and write it.
 
 	if (Array.isArray(args.clarifications) && args.clarifications.length > 0) {
 		return {
@@ -3775,6 +3766,8 @@ async function createProject(context: ToolExecutionContext, args: Record<string,
 		throw error;
 	}
 
+	await grantCallerProjectAccess(context, result.project_id);
+
 	const { data: project } = await context.admin
 		.from('onto_projects')
 		.select(CORE_ENTITY_CONFIG.project.select)
@@ -3787,6 +3780,58 @@ async function createProject(context: ToolExecutionContext, args: Record<string,
 		counts: result.counts,
 		message: `Created project "${(project as { name?: string } | null)?.name ?? result.project_id}".`
 	};
+}
+
+/**
+ * After a project-scoped caller creates a project, add it to that caller's scope
+ * so the same key can immediately read and write the project it just made.
+ *
+ * - Unscoped callers (project_ids absent) already see all projects — no-op.
+ * - The in-memory scope is updated so later calls in this same session work.
+ * - The caller policy is persisted so future sessions keep the access. Runtime
+ *   auth (both static keys and OAuth) derives scope from external_agent_callers.
+ *   policy, so updating it here is sufficient.
+ */
+async function grantCallerProjectAccess(
+	context: ToolExecutionContext,
+	projectId: string
+): Promise<void> {
+	if (!context.callerId) return;
+	if (!Array.isArray(context.scope.project_ids)) return;
+	if (context.scope.project_ids.includes(projectId)) return;
+
+	// Update the in-session scope immediately.
+	context.scope.project_ids = [...context.scope.project_ids, projectId];
+
+	try {
+		const { data: caller } = await context.admin
+			.from('external_agent_callers')
+			.select('policy')
+			.eq('id', context.callerId)
+			.maybeSingle();
+
+		const policy = ((caller?.policy as Record<string, unknown> | null) ?? {}) as Record<
+			string,
+			unknown
+		>;
+		const existing = Array.isArray(policy.allowed_project_ids)
+			? (policy.allowed_project_ids as unknown[]).filter(
+					(id): id is string => typeof id === 'string'
+				)
+			: null;
+
+		// A null stored allowlist means the key is unscoped in storage; don't
+		// narrow it to a single project. Only append when an explicit list exists.
+		if (!existing || existing.includes(projectId)) return;
+
+		await context.admin
+			.from('external_agent_callers')
+			.update({ policy: { ...policy, allowed_project_ids: [...existing, projectId] } })
+			.eq('id', context.callerId);
+	} catch {
+		// Persisting the scope expansion is best-effort. The project was created and
+		// is usable for the rest of this session even if the policy write fails.
+	}
 }
 
 async function updateProject(context: ToolExecutionContext, args: Record<string, unknown>) {
@@ -5739,10 +5784,6 @@ function buildExternalGatewayRegistry(scope: AgentCallScope): ExternalGatewayReg
 	const ops: Record<string, ExternalGatewayRegistryEntry> = {};
 
 	for (const op of allowedOps) {
-		if (op === 'onto.project.create' && !isUnscopedProjectCreationAllowed(scope)) {
-			continue;
-		}
-
 		const entry = internalRegistry.ops[op] ?? EXTERNAL_CUSTOM_OPS[op];
 		const handler = EXTERNAL_OP_HANDLERS[op];
 		if (!entry || !handler) continue;

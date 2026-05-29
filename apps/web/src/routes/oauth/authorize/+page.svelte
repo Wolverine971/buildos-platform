@@ -165,8 +165,8 @@
 							<span
 								class="mt-1.5 block text-sm leading-relaxed text-muted-foreground"
 							>
-								Also create and update projects, tasks, and documents. Creating new
-								projects requires all-project access below.
+								Also create and update projects, tasks, and documents — including
+								new projects, even when scoped to selected projects below.
 							</span>
 						</span>
 					</label>
@@ -235,8 +235,9 @@
 							<span
 								class="mt-1.5 block text-sm leading-relaxed text-muted-foreground"
 							>
-								Limit this connector to the projects checked below. Creating new
-								projects is disabled in this mode.
+								Limit this connector to the projects checked below. With write
+								access, new projects it creates are added to this list
+								automatically.
 							</span>
 						</span>
 					</label>

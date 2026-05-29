@@ -110,7 +110,7 @@
 							></textarea>
 						</div>
 
-						<div class="grid grid-cols-2 gap-4">
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div>
 								<label
 									for={fieldId(channel, 'priority')}
@@ -197,7 +197,7 @@
 				{:else if channel === 'in_app' && channelPayloads.in_app}
 					<!-- In-App Notification Form -->
 					<div class="space-y-4">
-						<div class="grid grid-cols-2 gap-4">
+						<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 							<div>
 								<label
 									for={fieldId(channel, 'type')}

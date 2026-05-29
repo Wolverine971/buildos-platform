@@ -442,7 +442,7 @@
 
 	{#if expanded}
 		<!-- Quick Stats Row -->
-		<div class="px-3 py-2 border-b border-border grid grid-cols-4 gap-2">
+		<div class="px-3 py-2 border-b border-border grid grid-cols-2 gap-2 sm:grid-cols-4">
 			<div class="text-center">
 				<div class="text-lg font-bold text-foreground">
 					{userContext.activity.project_count}

@@ -2,6 +2,7 @@
 description: Run the Instagram warmup research pass for DJ and queue high-quality engagement opportunities.
 argument-hint: "[optional focus]"
 disable-model-invocation: true
+path: .claude/commands/instagram-warmup.md
 ---
 
 # Instagram Warmup - @djwayne3 Daily Opportunity Sourcing
@@ -179,9 +180,13 @@ Use the Stage 1 template in this file and keep it updated as you work.
 The user has multiple Instagram accounts. Confirm you are on **@djwayne3** before scanning.
 
 1. Navigate to `https://www.instagram.com/`
-2. Check the currently logged-in username in the sidebar or profile switcher.
-3. If the account is not `@djwayne3`, switch accounts.
-4. If you cannot confirm the account, stop and ask the user to switch manually.
+2. Check the active username from at least two signals: avatar alt text (`djwayne3's profile picture`), profile link `/djwayne3/`, or sidebar/top-right widget text.
+3. If the account is not `@djwayne3`, switch accounts using the Instagram skill's account-switching playbook:
+   - Preferred logged-in path: Settings gear -> **Switch accounts** -> `djwayne3` row (`div[role="button"]`).
+   - Fallback logged-out picker path: click the visible `djwayne3` account row/span directly.
+4. After switching, reload once and verify the same two account signals before scanning.
+5. If `djwayne3` is not visible in the picker, stop and log `browser_limitation: instagram_account_not_in_picker`.
+6. If `djwayne3` appears but `/notifications/` or another protected route redirects to `/accounts/login/`, stop and log `browser_limitation: instagram_session_logged_out`; DJ must refresh the session manually.
 
 Do not continue until the active account is confirmed.
 

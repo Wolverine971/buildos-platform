@@ -45,7 +45,7 @@
 	}
 </script>
 
-<div class="flex items-center space-x-4">
+<div class="flex flex-wrap items-center gap-3">
 	<!-- Auto Refresh -->
 	<label class="flex items-center space-x-2 cursor-pointer">
 		<input

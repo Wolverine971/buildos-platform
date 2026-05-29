@@ -2,6 +2,7 @@
 description: Draft Instagram replies from a queued warmup document using BuildOS voice and relationship context.
 argument-hint: "[warmup-file]"
 disable-model-invocation: true
+path: .claude/commands/instagram-reply.md
 ---
 
 # Instagram Reply - @djwayne3 Reply Drafting
@@ -65,6 +66,8 @@ Read these first:
 - `/docs/marketing/social-media/people/README.md`
 
 Then read the account profile for every queued account listed in the warmup doc.
+
+If an Instagram browser automation skill exists at `.claude/skills/instagram/SKILL.md`, read and follow it before interacting with Instagram. The account-switching workflow in `references/workflows.md` is required, not optional.
 
 ---
 
