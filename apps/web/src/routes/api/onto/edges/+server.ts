@@ -127,6 +127,10 @@ function validateEdge(edge: EdgeInput): string | null {
 	return null;
 }
 
+function hasProjectEndpoint(edge: Pick<EdgeInput, 'src_kind' | 'dst_kind'>): boolean {
+	return edge.src_kind === 'project' || edge.dst_kind === 'project';
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const { user } = await locals.safeGetSession();
@@ -342,6 +346,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 			return normalized;
 		});
+		const skippedProjectEndpointEdges = normalizedEdges.filter(hasProjectEndpoint).length;
+		const persistableNormalizedEdges = normalizedEdges.filter(
+			(edge) => !hasProjectEndpoint(edge)
+		);
+
+		if (persistableNormalizedEdges.length === 0) {
+			return ApiResponse.success({
+				created: 0,
+				skipped_project_edges: skippedProjectEndpointEdges
+			});
+		}
 
 		// Derive project_id for each edge from the (normalized) source entity
 		// and validate that source and destination are in the same project
@@ -355,7 +370,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			project_id: string;
 		}> = [];
 
-		for (const edge of normalizedEdges) {
+		for (const edge of persistableNormalizedEdges) {
 			// Get project_id from source entity
 			const srcProjectId = await getEntityProjectId(supabase, edge.src_kind, edge.src_id);
 			if (!srcProjectId) {
@@ -406,7 +421,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		if (newEdges.length === 0) {
 			// All edges already exist
-			return ApiResponse.success({ created: 0 });
+			return ApiResponse.success({
+				created: 0,
+				skipped_project_edges: skippedProjectEndpointEdges
+			});
 		}
 
 		// Prepare edges for insertion (already normalized, with project_id)
@@ -448,7 +466,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		return ApiResponse.success({
-			created: insertedEdges?.length || newEdges.length
+			created: insertedEdges?.length || newEdges.length,
+			skipped_project_edges: skippedProjectEndpointEdges
 		});
 	} catch (error) {
 		console.error('[Edges API] Error:', error);

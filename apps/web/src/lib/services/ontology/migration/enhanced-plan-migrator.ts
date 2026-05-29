@@ -84,24 +84,6 @@ export class EnhancedPlanMigrator {
 				throw new Error(`Failed to create onto_plan for ${phase.id}: ${error?.message}`);
 			}
 
-			// Create has_plan edge to link plan to project
-			// See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
-			const { error: edgeError } = await this.client.from('onto_edges').insert({
-				src_kind: 'project',
-				src_id: projectContext.ontoProjectId,
-				rel: 'has_plan',
-				dst_kind: 'plan',
-				dst_id: data.id,
-				project_id: projectContext.ontoProjectId
-			});
-
-			if (edgeError) {
-				console.error(
-					`[EnhancedPlanMigrator] Failed to create has_plan edge for plan ${phase.id} → project ${projectContext.ontoProjectId}: ${edgeError.message}`
-				);
-				throw new Error(`Failed to create project-plan edge: ${edgeError.message}`);
-			}
-
 			// Update legacy mapping
 			await upsertLegacyMapping(this.client, {
 				legacyTable: 'phases',

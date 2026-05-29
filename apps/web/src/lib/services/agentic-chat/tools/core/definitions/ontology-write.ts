@@ -553,7 +553,7 @@ Always pass the exact document_id from get_document_tree/list_onto_documents (do
 		function: {
 			name: 'create_task_document',
 			description: `Create or attach a document to a task workspace.
-Also ensures the project has_document edge exists for discovery.`,
+Project membership is stored on the document project_id; this tool only creates the task-document edge.`,
 			parameters: {
 				type: 'object',
 				properties: {

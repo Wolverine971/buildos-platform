@@ -332,17 +332,9 @@ export function resolveConnections(params: {
 		mode
 	};
 
-	let entityProjectEdge: RelationshipPlan['entityProjectEdge'];
-	if (entity.kind === 'document') {
-		entityProjectEdge = { rel: 'has_document', mode: 'ensure' };
-	} else if (entity.kind === 'source') {
-		entityProjectEdge = { rel: 'has_source', mode: 'ensure' };
-	}
-
 	return {
 		entityContainment,
 		entitySemantic: Array.from(semantic.values()),
-		entityProjectEdge,
 		childContainment: Array.from(childContainmentMap.values())
 	};
 }

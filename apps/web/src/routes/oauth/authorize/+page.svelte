@@ -134,7 +134,9 @@
 									Recommended
 								</span>
 							</span>
-							<span class="mt-1.5 block text-sm leading-relaxed text-muted-foreground">
+							<span
+								class="mt-1.5 block text-sm leading-relaxed text-muted-foreground"
+							>
 								Read your selected projects, tasks, documents, and context. Nothing
 								is changed.
 							</span>
@@ -160,7 +162,9 @@
 								<Pencil class="h-4 w-4 text-muted-foreground" />
 								<span class="font-medium text-foreground">Read and write</span>
 							</span>
-							<span class="mt-1.5 block text-sm leading-relaxed text-muted-foreground">
+							<span
+								class="mt-1.5 block text-sm leading-relaxed text-muted-foreground"
+							>
 								Also create and update projects, tasks, and documents. Creating new
 								projects requires all-project access below.
 							</span>
@@ -198,9 +202,11 @@
 								<FolderOpen class="h-4 w-4 text-muted-foreground" />
 								<span class="font-medium text-foreground">All my projects</span>
 							</span>
-							<span class="mt-1.5 block text-sm leading-relaxed text-muted-foreground">
-								Projects where you are an owner or collaborator. Public project pages
-								are not included automatically.
+							<span
+								class="mt-1.5 block text-sm leading-relaxed text-muted-foreground"
+							>
+								Projects where you are an owner or collaborator. Public project
+								pages are not included automatically.
 							</span>
 						</span>
 					</label>
@@ -222,9 +228,13 @@
 						<span class="min-w-0 flex-1">
 							<span class="flex items-center gap-2">
 								<ListChecks class="h-4 w-4 text-muted-foreground" />
-								<span class="font-medium text-foreground">Only selected projects</span>
+								<span class="font-medium text-foreground"
+									>Only selected projects</span
+								>
 							</span>
-							<span class="mt-1.5 block text-sm leading-relaxed text-muted-foreground">
+							<span
+								class="mt-1.5 block text-sm leading-relaxed text-muted-foreground"
+							>
 								Limit this connector to the projects checked below. Creating new
 								projects is disabled in this mode.
 							</span>
@@ -258,7 +268,9 @@
 												class="mt-0.5 h-4 w-4 shrink-0 accent-foreground"
 											/>
 											<span class="min-w-0 flex-1">
-												<span class="block truncate text-sm font-medium text-foreground">
+												<span
+													class="block truncate text-sm font-medium text-foreground"
+												>
 													{project.name}
 												</span>
 												{#if project.description}

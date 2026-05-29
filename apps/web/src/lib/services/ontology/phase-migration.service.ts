@@ -589,25 +589,6 @@ export class PhaseMigrationService {
 			);
 		}
 
-		// Create has_plan edge to link plan to project
-		// See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
-		const { error: edgeError } = await this.client.from('onto_edges').insert({
-			src_kind: 'project',
-			src_id: params.ontoProjectId,
-			rel: 'has_plan',
-			dst_kind: 'plan',
-			dst_id: data.id,
-			project_id: params.ontoProjectId
-		});
-
-		if (edgeError) {
-			console.error(
-				`[PhaseMigration] Failed to create has_plan edge for plan "${params.name}" → project ${params.ontoProjectId}: ${edgeError.message}`
-			);
-			// Throw to ensure edge creation failures are not silently ignored
-			throw new Error(`Failed to create project-plan edge: ${edgeError.message}`);
-		}
-
 		return data.id;
 	}
 	private toPreviewPayload(

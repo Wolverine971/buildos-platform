@@ -243,7 +243,9 @@ Content-Type: application/json
 					Connect your <span class="text-accent">agents</span> to BuildOS
 				</h1>
 
-				<div class="mx-auto mb-8 max-w-3xl space-y-4 text-base text-muted-foreground sm:text-lg lg:text-xl">
+				<div
+					class="mx-auto mb-8 max-w-3xl space-y-4 text-base text-muted-foreground sm:text-lg lg:text-xl"
+				>
 					<p>
 						BuildOS is not another agent. BuildOS is where the project lives so every
 						human and agent can work from the same memory.

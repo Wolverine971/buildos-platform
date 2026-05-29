@@ -366,7 +366,7 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		capabilities: [
 			'Creates task_has_document edge',
 			'Can attach existing docs',
-			'Keeps project has_document for discovery'
+			'Uses document project_id for project membership'
 		],
 		contexts: ['project'],
 		category: 'write'

@@ -54,7 +54,7 @@ describe('resolveConnections project reference safeguards', () => {
 		});
 
 		expect(plan.entitySemantic).toHaveLength(0);
-		expect(plan.entityProjectEdge).toEqual({ rel: 'has_document', mode: 'ensure' });
+		expect(plan.entityProjectEdge).toBeUndefined();
 	});
 
 	it('does not infer references for project-source connections', () => {
@@ -64,7 +64,7 @@ describe('resolveConnections project reference safeguards', () => {
 		});
 
 		expect(plan.entitySemantic).toHaveLength(0);
-		expect(plan.entityProjectEdge).toEqual({ rel: 'has_source', mode: 'ensure' });
+		expect(plan.entityProjectEdge).toBeUndefined();
 	});
 });
 

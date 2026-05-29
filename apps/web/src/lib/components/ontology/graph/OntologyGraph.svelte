@@ -196,9 +196,9 @@
 					'min-width': '260px',
 					'min-height': '190px',
 					'text-valign': 'top',
-					'text-margin-y': 12,
-					'font-size': 13,
-					'font-weight': 700,
+					'text-margin-y': 14,
+					'font-size': 15,
+					'font-weight': 800,
 					'text-background-opacity': 0,
 					'underlay-opacity': 0
 				}

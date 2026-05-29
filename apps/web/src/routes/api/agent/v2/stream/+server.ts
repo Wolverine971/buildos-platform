@@ -42,11 +42,14 @@ import type {
 	ContextUsageSnapshot,
 	Json,
 	LastTurnContext,
-	OperationEventPayload,
 	AgentTimingSummary
 } from '@buildos/shared-types';
 import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
 import type { AgentState, ProjectFocus } from '$lib/types/agent-chat-enhancement';
+import {
+	buildEmptyAgentState,
+	sanitizeAgentStateForPrompt
+} from '$lib/services/agentic-chat-v2/agent-state-sanitization';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
 import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
 import { extractTools, getToolCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
@@ -1002,23 +1005,6 @@ type FastChatContextShiftHint = {
 	shifted_at: string;
 };
 
-const OPERATION_ENTITY_TYPES: OperationEventPayload['entity_type'][] = [
-	'document',
-	'task',
-	'goal',
-	'plan',
-	'project',
-	'milestone',
-	'risk'
-];
-
-function isOperationEntityType(
-	value: string | null | undefined
-): value is OperationEventPayload['entity_type'] {
-	if (!value) return false;
-	return OPERATION_ENTITY_TYPES.includes(value as OperationEventPayload['entity_type']);
-}
-
 function toolDefinitionRequiresProjectId(tool: ChatToolDefinition | undefined): boolean {
 	if (!tool) return false;
 	const params = tool.function?.parameters as
@@ -1342,77 +1328,6 @@ function annotateContextMetaCacheAge(
 	contextMeta.cache_age_seconds = Math.max(0, Math.floor(cacheAgeSeconds));
 }
 
-function buildEmptyAgentState(sessionId: string): AgentState {
-	return {
-		sessionId,
-		current_understanding: {
-			entities: [],
-			dependencies: []
-		},
-		assumptions: [],
-		expectations: [],
-		tentative_hypotheses: [],
-		items: []
-	};
-}
-
-function isValidAgentStateEntityId(value: unknown): value is string {
-	if (typeof value !== 'string') return false;
-	const trimmed = value.trim();
-	return trimmed.length > 0 && !trimmed.includes('...') && isValidUUID(trimmed);
-}
-
-function sanitizeUuidStringArray(values: unknown): string[] | undefined {
-	if (!Array.isArray(values)) return undefined;
-	const unique = new Set<string>();
-	for (const value of values) {
-		if (!isValidAgentStateEntityId(value)) continue;
-		unique.add(value.trim());
-	}
-	return unique.size > 0 ? Array.from(unique) : undefined;
-}
-
-function sanitizeAgentStateForPrompt(agentState: AgentState): AgentState {
-	const entities = (agentState.current_understanding?.entities ?? [])
-		.filter((entity) => isValidAgentStateEntityId(entity?.id))
-		.map((entity) => ({
-			...entity,
-			id: entity.id.trim()
-		}));
-
-	const dependencies = (agentState.current_understanding?.dependencies ?? [])
-		.filter((dep) => isValidAgentStateEntityId(dep?.from) && isValidAgentStateEntityId(dep?.to))
-		.map((dep) => ({
-			...dep,
-			from: dep.from.trim(),
-			to: dep.to.trim()
-		}));
-
-	const items = (agentState.items ?? []).map((item) => {
-		const relatedEntityIds = sanitizeUuidStringArray(item.relatedEntityIds);
-		return relatedEntityIds
-			? { ...item, relatedEntityIds }
-			: { ...item, relatedEntityIds: undefined };
-	});
-
-	const expectations = (agentState.expectations ?? []).map((expectation) => {
-		const expectedIds = sanitizeUuidStringArray(expectation.expected_ids);
-		return expectedIds
-			? { ...expectation, expected_ids: expectedIds }
-			: { ...expectation, expected_ids: undefined };
-	});
-
-	return {
-		...agentState,
-		current_understanding: {
-			entities,
-			dependencies
-		},
-		items,
-		expectations
-	};
-}
-
 function extractEntityLabel(
 	record: Record<string, any> | null | undefined,
 	fallback?: string
@@ -1660,25 +1575,6 @@ async function updateAgentMetadata(
 	if (data === null) {
 		logger.warn('No chat session metadata merged', { sessionId });
 	}
-}
-
-function emitOperation(
-	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
-	operation: OperationEventPayload,
-	options: {
-		onError?: (error: unknown) => void;
-		onMessageSent?: () => void;
-	} = {}
-): void {
-	void agentStream
-		.sendMessage({ type: 'operation', operation })
-		.then(() => {
-			options.onMessageSent?.();
-		})
-		.catch((error) => {
-			logger.warn('Failed to emit operation event', { error, operation });
-			options.onError?.(error);
-		});
 }
 
 function emitContextUsage(
@@ -2838,120 +2734,6 @@ function buildToolMessageSnapshotsForReconciliation(
 	});
 }
 
-function _emitContextOperations(
-	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
-	params: {
-		contextType: string;
-		data: any;
-		projectName?: string | null;
-		focusEntityType?: string | null;
-		focusEntityName?: string | null;
-	}
-): void {
-	const { contextType, data, projectName, focusEntityType, focusEntityName } = params;
-
-	if (contextType === 'global' && data?.projects) {
-		const count = Array.isArray(data.projects) ? data.projects.length : 0;
-		emitOperation(agentStream, {
-			action: 'list',
-			entity_type: 'project',
-			entity_name: `All projects (${count})`,
-			status: 'success'
-		});
-		return;
-	}
-
-	if (isDailyBriefContext(contextType)) {
-		const briefDate =
-			typeof data?.brief_date === 'string'
-				? data.brief_date
-				: typeof data?.briefDate === 'string'
-					? data.briefDate
-					: null;
-		emitOperation(agentStream, {
-			action: 'read',
-			entity_type: 'project',
-			entity_name: briefDate ? `Daily brief ${briefDate}` : 'Daily brief',
-			status: 'success'
-		});
-
-		const countsRecord =
-			data?.mentioned_entity_counts && typeof data.mentioned_entity_counts === 'object'
-				? (data.mentioned_entity_counts as Record<string, unknown>)
-				: data?.mentionedEntityCounts && typeof data.mentionedEntityCounts === 'object'
-					? (data.mentionedEntityCounts as Record<string, unknown>)
-					: null;
-		if (!countsRecord) return;
-		for (const [kind, rawCount] of Object.entries(countsRecord)) {
-			if (!isOperationEntityType(kind)) continue;
-			if (typeof rawCount !== 'number' || rawCount <= 0) continue;
-			emitOperation(agentStream, {
-				action: 'list',
-				entity_type: kind,
-				entity_name: `${kind}s (${rawCount})`,
-				status: 'success'
-			});
-		}
-		return;
-	}
-
-	if (data?.project) {
-		const resolvedProjectName =
-			projectName || (typeof data.project.name === 'string' ? data.project.name : 'Project');
-		emitOperation(agentStream, {
-			action: 'read',
-			entity_type: 'project',
-			entity_name: resolvedProjectName,
-			status: 'success'
-		});
-	}
-
-	if (focusEntityType && isOperationEntityType(focusEntityType)) {
-		const label = focusEntityName?.trim() || focusEntityType;
-		emitOperation(agentStream, {
-			action: 'read',
-			entity_type: focusEntityType,
-			entity_name: label,
-			status: 'success'
-		});
-	}
-
-	const listSummaries: Array<{ entity: OperationEventPayload['entity_type']; count: number }> =
-		[];
-	if (Array.isArray(data?.goals)) {
-		listSummaries.push({ entity: 'goal', count: data.goals.length });
-	}
-	if (Array.isArray(data?.milestones)) {
-		listSummaries.push({ entity: 'milestone', count: data.milestones.length });
-	}
-	if (Array.isArray(data?.plans)) {
-		listSummaries.push({ entity: 'plan', count: data.plans.length });
-	}
-	if (Array.isArray(data?.tasks)) {
-		listSummaries.push({ entity: 'task', count: data.tasks.length });
-	}
-	if (Array.isArray(data?.documents)) {
-		listSummaries.push({ entity: 'document', count: data.documents.length });
-	}
-	if (data?.linked_entities && typeof data.linked_entities === 'object') {
-		Object.entries(data.linked_entities).forEach(([key, value]) => {
-			if (!isOperationEntityType(key)) return;
-			if (!Array.isArray(value) || value.length === 0) return;
-			listSummaries.push({ entity: key, count: value.length });
-		});
-	}
-
-	listSummaries.slice(0, 6).forEach(({ entity, count }) => {
-		if (count <= 0) return;
-		emitOperation(agentStream, {
-			action: 'list',
-			entity_type: entity,
-			entity_name: `${entity}s (${count})`,
-			status: 'success'
-		});
-	});
-}
-
 export const POST: RequestHandler = async ({
 	request,
 	locals: { supabase, safeGetSession },
@@ -3512,6 +3294,39 @@ export const POST: RequestHandler = async ({
 			}
 		};
 
+		// Emits the standard error -> done pair used by every early-exit / deny path.
+		// Marks doneEmittedAtMs for timing. Callers keep their own tail (stream close,
+		// cancel-watcher teardown, timing metric) since those differ per exit reason.
+		const emitErrorThenDone = async (params: {
+			error: string;
+			finishedReason: string;
+			projectId?: string;
+			errorMetadata: Record<string, unknown>;
+			doneMetadata?: Record<string, unknown>;
+		}): Promise<void> => {
+			await sendTimedMessage(
+				{ type: 'error', error: params.error },
+				{
+					operationType: 'fastchat_stream_emit_error',
+					projectId: params.projectId,
+					metadata: params.errorMetadata
+				}
+			);
+			doneEmittedAtMs = Date.now();
+			await sendTimedMessage(
+				{
+					type: 'done',
+					usage: { total_tokens: 0 },
+					finished_reason: params.finishedReason
+				},
+				{
+					operationType: 'fastchat_stream_emit_done',
+					projectId: params.projectId,
+					metadata: params.doneMetadata ?? params.errorMetadata
+				}
+			);
+		};
+
 		try {
 			if (isDailyBriefContext(contextType)) {
 				if (!entityId) {
@@ -3522,28 +3337,11 @@ export const POST: RequestHandler = async ({
 							contextType
 						}
 					});
-					await sendTimedMessage(
-						{
-							type: 'error',
-							error: 'Brief context requires a brief ID.'
-						},
-						{
-							operationType: 'fastchat_stream_emit_error',
-							metadata: { contextType, entityId, reason: 'missing_brief_id' }
-						}
-					);
-					doneEmittedAtMs = Date.now();
-					await sendTimedMessage(
-						{
-							type: 'done',
-							usage: { total_tokens: 0 },
-							finished_reason: 'error'
-						},
-						{
-							operationType: 'fastchat_stream_emit_done',
-							metadata: { contextType, entityId, reason: 'missing_brief_id' }
-						}
-					);
+					await emitErrorThenDone({
+						error: 'Brief context requires a brief ID.',
+						finishedReason: 'error',
+						errorMetadata: { contextType, entityId, reason: 'missing_brief_id' }
+					});
 					await agentStream.close();
 					return;
 				}
@@ -3568,28 +3366,11 @@ export const POST: RequestHandler = async ({
 							reason: briefAccess.reason ?? 'denied'
 						}
 					});
-					await sendTimedMessage(
-						{
-							type: 'error',
-							error: 'Access denied for the selected brief.'
-						},
-						{
-							operationType: 'fastchat_stream_emit_error',
-							metadata: { contextType, entityId, reason: 'brief_access_denied' }
-						}
-					);
-					doneEmittedAtMs = Date.now();
-					await sendTimedMessage(
-						{
-							type: 'done',
-							usage: { total_tokens: 0 },
-							finished_reason: 'error'
-						},
-						{
-							operationType: 'fastchat_stream_emit_done',
-							metadata: { contextType, entityId, reason: 'brief_access_denied' }
-						}
-					);
+					await emitErrorThenDone({
+						error: 'Access denied for the selected brief.',
+						finishedReason: 'error',
+						errorMetadata: { contextType, entityId, reason: 'brief_access_denied' }
+					});
 					await agentStream.close();
 					return;
 				}
@@ -3612,30 +3393,12 @@ export const POST: RequestHandler = async ({
 							reason: accessResult.reason ?? 'denied'
 						}
 					});
-					await sendTimedMessage(
-						{
-							type: 'error',
-							error: 'Access denied for the selected project.'
-						},
-						{
-							operationType: 'fastchat_stream_emit_error',
-							projectId: entityId,
-							metadata: { contextType, entityId, reason: 'project_access_denied' }
-						}
-					);
-					doneEmittedAtMs = Date.now();
-					await sendTimedMessage(
-						{
-							type: 'done',
-							usage: { total_tokens: 0 },
-							finished_reason: 'error'
-						},
-						{
-							operationType: 'fastchat_stream_emit_done',
-							projectId: entityId,
-							metadata: { contextType, entityId, reason: 'project_access_denied' }
-						}
-					);
+					await emitErrorThenDone({
+						error: 'Access denied for the selected project.',
+						finishedReason: 'error',
+						projectId: entityId,
+						errorMetadata: { contextType, entityId, reason: 'project_access_denied' }
+					});
 					await agentStream.close();
 					return;
 				}
@@ -3707,40 +3470,17 @@ export const POST: RequestHandler = async ({
 					: 0;
 
 				if (activeTurnAgeMs < FASTCHAT_DETACHED_TURN_MAX_DURATION_MS) {
-					await sendTimedMessage(
-						{
-							type: 'error',
-							error: 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.'
-						},
-						{
-							operationType: 'fastchat_stream_emit_error',
-							projectId: projectIdForLogs,
-							metadata: {
-								sessionId: session.id,
-								contextType,
-								activeTurnRunId: activeTurn.id,
-								activeStreamRunId: activeTurn.stream_run_id
-							}
+					await emitErrorThenDone({
+						error: 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.',
+						finishedReason: 'active_turn_running',
+						projectId: projectIdForLogs,
+						errorMetadata: {
+							sessionId: session.id,
+							contextType,
+							activeTurnRunId: activeTurn.id,
+							activeStreamRunId: activeTurn.stream_run_id
 						}
-					);
-					doneEmittedAtMs = Date.now();
-					await sendTimedMessage(
-						{
-							type: 'done',
-							usage: { total_tokens: 0 },
-							finished_reason: 'active_turn_running'
-						},
-						{
-							operationType: 'fastchat_stream_emit_done',
-							projectId: projectIdForLogs,
-							metadata: {
-								sessionId: session.id,
-								contextType,
-								activeTurnRunId: activeTurn.id,
-								activeStreamRunId: activeTurn.stream_run_id
-							}
-						}
-					);
+					});
 					stopCancelWatcher?.();
 					stopCancelWatcher = null;
 					return;
@@ -4033,47 +3773,30 @@ export const POST: RequestHandler = async ({
 						metadata: conflictMetadata
 					});
 				}
-				await sendTimedMessage(
-					{
-						type: 'error',
-						error: activeTurnConflict
-							? 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.'
-							: 'BuildOS could not start this response. Please try again.'
-					},
-					{
-						operationType: 'fastchat_stream_emit_error',
-						projectId: projectIdForLogs,
-						metadata: {
-							sessionId: session.id,
-							contextType,
-							entityId,
-							reason: activeTurnConflict
-								? 'active_turn_conflict'
-								: 'turn_run_insert_failed'
-						}
-					}
-				);
-				doneEmittedAtMs = Date.now();
 				const failedReason = activeTurnConflict
 					? 'active_turn_running'
 					: 'turn_run_insert_failed';
-				await sendTimedMessage(
-					{
-						type: 'done',
-						usage: { total_tokens: 0 },
-						finished_reason: failedReason
+				await emitErrorThenDone({
+					error: activeTurnConflict
+						? 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.'
+						: 'BuildOS could not start this response. Please try again.',
+					finishedReason: failedReason,
+					projectId: projectIdForLogs,
+					errorMetadata: {
+						sessionId: session.id,
+						contextType,
+						entityId,
+						reason: activeTurnConflict
+							? 'active_turn_conflict'
+							: 'turn_run_insert_failed'
 					},
-					{
-						operationType: 'fastchat_stream_emit_done',
-						projectId: projectIdForLogs,
-						metadata: {
-							sessionId: session.id,
-							contextType,
-							entityId,
-							reason: failedReason
-						}
+					doneMetadata: {
+						sessionId: session.id,
+						contextType,
+						entityId,
+						reason: failedReason
 					}
-				);
+				});
 				queueTimingMetric(failedReason);
 				return;
 			}

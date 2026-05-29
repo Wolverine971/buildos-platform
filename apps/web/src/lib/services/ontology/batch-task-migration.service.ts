@@ -1111,20 +1111,11 @@ IMPORTANT:
 			if (!record || !insertedId) continue;
 
 			if (record._plan_id) {
-				// Task is in a phase - create plan → task edge
+				// Task is in a phase - create plan → task edge. Project ownership
+				// is represented by the task project_id column.
 				edgeRecords.push({
 					src_id: record._plan_id,
 					src_kind: 'plan',
-					dst_id: insertedId,
-					dst_kind: 'task',
-					rel: 'has_task',
-					project_id: record.project_id
-				});
-			} else {
-				// Task is NOT in a phase - link directly to project
-				edgeRecords.push({
-					src_id: record.project_id,
-					src_kind: 'project',
 					dst_id: insertedId,
 					dst_kind: 'task',
 					rel: 'has_task',

@@ -30,6 +30,7 @@ import type {
 	OntoTask,
 	ViewMode
 } from './graph.types';
+import type { DocStructure, DocTreeNode } from '$lib/types/onto-api';
 
 // ============================================================
 // COLOR PALETTE - Inkprint Aligned
@@ -203,15 +204,15 @@ interface NodeStyleConfig {
 export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 	project: {
 		shape: 'round-rectangle',
-		baseWidth: 76,
-		baseHeight: 46,
-		fontSize: 11,
-		fontWeight: 600,
+		baseWidth: 92,
+		baseHeight: 52,
+		fontSize: 14,
+		fontWeight: 800,
 		labelValign: 'center',
 		labelHalign: 'center',
-		labelMaxWidth: 66,
+		labelMaxWidth: 84,
 		labelMaxLines: 2,
-		labelMaxCharsPerLine: 13,
+		labelMaxCharsPerLine: 16,
 		// 4px frame + Cytoscape underlay halo (see OntologyGraph.svelte) gives projects
 		// "stamped" presence against the tx-grid canvas — closest analog to wt-card weight.
 		borderWidth: 4,
@@ -224,13 +225,13 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		shape: 'ellipse',
 		baseWidth: 44,
 		baseHeight: 44,
-		fontSize: 9,
-		fontWeight: 600,
+		fontSize: 10,
+		fontWeight: 700,
 		labelValign: 'bottom',
 		labelMarginY: 8,
-		labelMaxWidth: 92,
+		labelMaxWidth: 100,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 15,
+		labelMaxCharsPerLine: 16,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	},
@@ -238,12 +239,13 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		shape: 'ellipse',
 		baseWidth: 26,
 		baseHeight: 26,
-		fontSize: 9,
+		fontSize: 10,
+		fontWeight: 600,
 		labelValign: 'bottom',
 		labelMarginY: 6,
-		labelMaxWidth: 88,
+		labelMaxWidth: 98,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 15,
+		labelMaxCharsPerLine: 16,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	},
@@ -251,12 +253,13 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		shape: 'round-rectangle',
 		baseWidth: 88,
 		baseHeight: 50,
-		fontSize: 10,
+		fontSize: 11,
+		fontWeight: 700,
 		labelValign: 'center',
 		labelHalign: 'center',
-		labelMaxWidth: 76,
+		labelMaxWidth: 84,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 15,
+		labelMaxCharsPerLine: 16,
 		borderWidth: 2,
 		borderStyle: 'dashed'
 	},
@@ -264,12 +267,13 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		shape: 'rectangle',
 		baseWidth: 22,
 		baseHeight: 28,
-		fontSize: 8,
+		fontSize: 10,
+		fontWeight: 600,
 		labelValign: 'bottom',
 		labelMarginY: 4,
-		labelMaxWidth: 88,
+		labelMaxWidth: 98,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 15,
+		labelMaxCharsPerLine: 16,
 		borderWidth: 1,
 		borderStyle: 'solid'
 	},
@@ -277,12 +281,13 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		shape: 'triangle',
 		baseWidth: 26,
 		baseHeight: 30,
-		fontSize: 9,
+		fontSize: 10,
+		fontWeight: 600,
 		labelValign: 'bottom',
 		labelMarginY: 6,
-		labelMaxWidth: 92,
+		labelMaxWidth: 100,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 15,
+		labelMaxCharsPerLine: 16,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	},
@@ -290,12 +295,13 @@ export const NODE_STYLE_CONFIG: Record<NodeType, NodeStyleConfig> = {
 		shape: 'octagon',
 		baseWidth: 28,
 		baseHeight: 28,
-		fontSize: 9,
+		fontSize: 10,
+		fontWeight: 600,
 		labelValign: 'bottom',
 		labelMarginY: 6,
-		labelMaxWidth: 88,
+		labelMaxWidth: 98,
 		labelMaxLines: 3,
-		labelMaxCharsPerLine: 15,
+		labelMaxCharsPerLine: 16,
 		borderWidth: 2,
 		borderStyle: 'solid'
 	},
@@ -563,6 +569,102 @@ function isDirectProjectContainerEdge(edge: OntoEdge, projectIds: Set<string>): 
 	if (srcIsProject && dstIsProject) return false;
 
 	return PROJECT_CONTAINER_RELS.has(edge.rel);
+}
+
+function normalizeDocTreeNodes(value: unknown): DocTreeNode[] {
+	if (!Array.isArray(value)) return [];
+
+	const nodes: DocTreeNode[] = [];
+	for (const item of value) {
+		if (!item || typeof item !== 'object') continue;
+		const record = item as Record<string, unknown>;
+		if (typeof record.id !== 'string' || record.id.length === 0) continue;
+
+		nodes.push({
+			id: record.id,
+			order:
+				typeof record.order === 'number' && Number.isFinite(record.order)
+					? record.order
+					: 0,
+			children: normalizeDocTreeNodes(record.children)
+		});
+	}
+	return nodes;
+}
+
+function normalizeDocStructure(value: unknown): DocStructure | null {
+	if (!value) return null;
+
+	if (typeof value === 'string') {
+		try {
+			return normalizeDocStructure(JSON.parse(value));
+		} catch {
+			return null;
+		}
+	}
+
+	if (Array.isArray(value)) {
+		return { version: 1, root: normalizeDocTreeNodes(value) };
+	}
+
+	if (typeof value !== 'object') return null;
+
+	const record = value as Record<string, unknown>;
+	return {
+		version: typeof record.version === 'number' ? record.version : 1,
+		root: normalizeDocTreeNodes(record.root)
+	};
+}
+
+function buildEdgeIdentity(
+	edge: Pick<OntoEdge, 'src_kind' | 'src_id' | 'dst_kind' | 'dst_id' | 'rel'>
+) {
+	return `${edge.rel}:${edge.src_kind}:${edge.src_id}:${edge.dst_kind}:${edge.dst_id}`;
+}
+
+function buildDocStructureEdges(projects: OntoProject[]): OntoEdge[] {
+	const edges: OntoEdge[] = [];
+
+	function visit(project: OntoProject, parent: DocTreeNode): void {
+		for (const child of parent.children ?? []) {
+			edges.push({
+				id: `doc-structure:${project.id}:${parent.id}:${child.id}`,
+				project_id: project.id,
+				src_kind: 'document',
+				src_id: parent.id,
+				dst_kind: 'document',
+				dst_id: child.id,
+				rel: 'has_part',
+				props: {
+					source: 'doc_structure',
+					derived: true
+				},
+				created_at: ''
+			});
+			visit(project, child);
+		}
+	}
+
+	for (const project of projects) {
+		const structure = normalizeDocStructure(project.doc_structure);
+		for (const rootNode of structure?.root ?? []) {
+			visit(project, rootNode);
+		}
+	}
+
+	return edges;
+}
+
+function appendDocStructureEdges(edges: OntoEdge[], projects: OntoProject[]): OntoEdge[] {
+	const existing = new Set(edges.map(buildEdgeIdentity));
+	const derivedEdges = buildDocStructureEdges(projects).filter((edge) => {
+		const identity = buildEdgeIdentity(edge);
+		if (existing.has(identity)) return false;
+		existing.add(identity);
+		return true;
+	});
+
+	return derivedEdges.length > 0 ? [...edges, ...derivedEdges] : edges;
 }
 
 // ============================================================
@@ -891,6 +993,7 @@ export class OntologyGraphService {
 			has_task: 'hierarchical',
 			contains: 'hierarchical',
 			has_plan: 'hierarchical',
+			has_part: 'hierarchical',
 			part_of: 'hierarchical',
 			project_contains: 'hierarchical',
 
@@ -1051,9 +1154,10 @@ export class OntologyGraphService {
 							(allowedKinds.has(edge.src_kind) && allowedKinds.has(edge.dst_kind))
 					);
 
-		const visualSourceEdges = filteredSourceEdges.filter(
-			(edge) => !isDirectProjectContainerEdge(edge, projectIds)
-		);
+		const visualSourceEdges = appendDocStructureEdges(
+			filteredSourceEdges,
+			data.projects
+		).filter((edge) => !isDirectProjectContainerEdge(edge, projectIds));
 		const edges = this.edgesToCytoscape(visualSourceEdges, isDark);
 
 		// Filter edges to only include those with valid source and target nodes
