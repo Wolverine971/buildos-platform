@@ -3361,6 +3361,39 @@ export const POST: RequestHandler = async ({
 			}
 		};
 
+		// Emits the standard error -> done pair used by every early-exit / deny path.
+		// Marks doneEmittedAtMs for timing. Callers keep their own tail (stream close,
+		// cancel-watcher teardown, timing metric) since those differ per exit reason.
+		const emitErrorThenDone = async (params: {
+			error: string;
+			finishedReason: string;
+			projectId?: string;
+			errorMetadata: Record<string, unknown>;
+			doneMetadata?: Record<string, unknown>;
+		}): Promise<void> => {
+			await sendTimedMessage(
+				{ type: 'error', error: params.error },
+				{
+					operationType: 'fastchat_stream_emit_error',
+					projectId: params.projectId,
+					metadata: params.errorMetadata
+				}
+			);
+			doneEmittedAtMs = Date.now();
+			await sendTimedMessage(
+				{
+					type: 'done',
+					usage: { total_tokens: 0 },
+					finished_reason: params.finishedReason
+				},
+				{
+					operationType: 'fastchat_stream_emit_done',
+					projectId: params.projectId,
+					metadata: params.doneMetadata ?? params.errorMetadata
+				}
+			);
+		};
+
 		try {
 			if (isDailyBriefContext(contextType)) {
 				if (!entityId) {
@@ -3371,28 +3404,11 @@ export const POST: RequestHandler = async ({
 							contextType
 						}
 					});
-					await sendTimedMessage(
-						{
-							type: 'error',
-							error: 'Brief context requires a brief ID.'
-						},
-						{
-							operationType: 'fastchat_stream_emit_error',
-							metadata: { contextType, entityId, reason: 'missing_brief_id' }
-						}
-					);
-					doneEmittedAtMs = Date.now();
-					await sendTimedMessage(
-						{
-							type: 'done',
-							usage: { total_tokens: 0 },
-							finished_reason: 'error'
-						},
-						{
-							operationType: 'fastchat_stream_emit_done',
-							metadata: { contextType, entityId, reason: 'missing_brief_id' }
-						}
-					);
+					await emitErrorThenDone({
+						error: 'Brief context requires a brief ID.',
+						finishedReason: 'error',
+						errorMetadata: { contextType, entityId, reason: 'missing_brief_id' }
+					});
 					await agentStream.close();
 					return;
 				}
@@ -3417,28 +3433,11 @@ export const POST: RequestHandler = async ({
 							reason: briefAccess.reason ?? 'denied'
 						}
 					});
-					await sendTimedMessage(
-						{
-							type: 'error',
-							error: 'Access denied for the selected brief.'
-						},
-						{
-							operationType: 'fastchat_stream_emit_error',
-							metadata: { contextType, entityId, reason: 'brief_access_denied' }
-						}
-					);
-					doneEmittedAtMs = Date.now();
-					await sendTimedMessage(
-						{
-							type: 'done',
-							usage: { total_tokens: 0 },
-							finished_reason: 'error'
-						},
-						{
-							operationType: 'fastchat_stream_emit_done',
-							metadata: { contextType, entityId, reason: 'brief_access_denied' }
-						}
-					);
+					await emitErrorThenDone({
+						error: 'Access denied for the selected brief.',
+						finishedReason: 'error',
+						errorMetadata: { contextType, entityId, reason: 'brief_access_denied' }
+					});
 					await agentStream.close();
 					return;
 				}
@@ -3461,30 +3460,12 @@ export const POST: RequestHandler = async ({
 							reason: accessResult.reason ?? 'denied'
 						}
 					});
-					await sendTimedMessage(
-						{
-							type: 'error',
-							error: 'Access denied for the selected project.'
-						},
-						{
-							operationType: 'fastchat_stream_emit_error',
-							projectId: entityId,
-							metadata: { contextType, entityId, reason: 'project_access_denied' }
-						}
-					);
-					doneEmittedAtMs = Date.now();
-					await sendTimedMessage(
-						{
-							type: 'done',
-							usage: { total_tokens: 0 },
-							finished_reason: 'error'
-						},
-						{
-							operationType: 'fastchat_stream_emit_done',
-							projectId: entityId,
-							metadata: { contextType, entityId, reason: 'project_access_denied' }
-						}
-					);
+					await emitErrorThenDone({
+						error: 'Access denied for the selected project.',
+						finishedReason: 'error',
+						projectId: entityId,
+						errorMetadata: { contextType, entityId, reason: 'project_access_denied' }
+					});
 					await agentStream.close();
 					return;
 				}
@@ -3556,40 +3537,17 @@ export const POST: RequestHandler = async ({
 					: 0;
 
 				if (activeTurnAgeMs < FASTCHAT_DETACHED_TURN_MAX_DURATION_MS) {
-					await sendTimedMessage(
-						{
-							type: 'error',
-							error: 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.'
-						},
-						{
-							operationType: 'fastchat_stream_emit_error',
-							projectId: projectIdForLogs,
-							metadata: {
-								sessionId: session.id,
-								contextType,
-								activeTurnRunId: activeTurn.id,
-								activeStreamRunId: activeTurn.stream_run_id
-							}
+					await emitErrorThenDone({
+						error: 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.',
+						finishedReason: 'active_turn_running',
+						projectId: projectIdForLogs,
+						errorMetadata: {
+							sessionId: session.id,
+							contextType,
+							activeTurnRunId: activeTurn.id,
+							activeStreamRunId: activeTurn.stream_run_id
 						}
-					);
-					doneEmittedAtMs = Date.now();
-					await sendTimedMessage(
-						{
-							type: 'done',
-							usage: { total_tokens: 0 },
-							finished_reason: 'active_turn_running'
-						},
-						{
-							operationType: 'fastchat_stream_emit_done',
-							projectId: projectIdForLogs,
-							metadata: {
-								sessionId: session.id,
-								contextType,
-								activeTurnRunId: activeTurn.id,
-								activeStreamRunId: activeTurn.stream_run_id
-							}
-						}
-					);
+					});
 					stopCancelWatcher?.();
 					stopCancelWatcher = null;
 					return;
@@ -3882,47 +3840,28 @@ export const POST: RequestHandler = async ({
 						metadata: conflictMetadata
 					});
 				}
-				await sendTimedMessage(
-					{
-						type: 'error',
-						error: activeTurnConflict
-							? 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.'
-							: 'BuildOS could not start this response. Please try again.'
-					},
-					{
-						operationType: 'fastchat_stream_emit_error',
-						projectId: projectIdForLogs,
-						metadata: {
-							sessionId: session.id,
-							contextType,
-							entityId,
-							reason: activeTurnConflict
-								? 'active_turn_conflict'
-								: 'turn_run_insert_failed'
-						}
-					}
-				);
-				doneEmittedAtMs = Date.now();
 				const failedReason = activeTurnConflict
 					? 'active_turn_running'
 					: 'turn_run_insert_failed';
-				await sendTimedMessage(
-					{
-						type: 'done',
-						usage: { total_tokens: 0 },
-						finished_reason: failedReason
+				await emitErrorThenDone({
+					error: activeTurnConflict
+						? 'BuildOS is still finishing the previous response. Reopen this chat in a moment to see the completed result.'
+						: 'BuildOS could not start this response. Please try again.',
+					finishedReason: failedReason,
+					projectId: projectIdForLogs,
+					errorMetadata: {
+						sessionId: session.id,
+						contextType,
+						entityId,
+						reason: activeTurnConflict ? 'active_turn_conflict' : 'turn_run_insert_failed'
 					},
-					{
-						operationType: 'fastchat_stream_emit_done',
-						projectId: projectIdForLogs,
-						metadata: {
-							sessionId: session.id,
-							contextType,
-							entityId,
-							reason: failedReason
-						}
+					doneMetadata: {
+						sessionId: session.id,
+						contextType,
+						entityId,
+						reason: failedReason
 					}
-				);
+				});
 				queueTimingMetric(failedReason);
 				return;
 			}
