@@ -39,7 +39,7 @@
 	let { projectId, onNodeClick, embedded = true }: Props = $props();
 
 	// UI State
-	let selectedLayout = $state<string>('dagre');
+	let selectedLayout = $state<string>('cose-bilkent');
 
 	// Graph data state
 	let graphData = $state<GraphSourceData | null>(null);

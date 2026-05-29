@@ -243,51 +243,80 @@
 		</div>
 
 		<section
-			class="tx tx-frame tx-weak mb-5 min-w-0 rounded-lg border border-border bg-card p-4 shadow-ink"
+			class="tx tx-frame tx-weak mb-5 min-w-0 rounded-lg border border-border bg-card p-4 shadow-ink sm:p-5"
 		>
 			<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-				<div class="min-w-0">
-					<div class="flex flex-wrap items-center gap-2">
+				<div class="min-w-0 flex-1">
+					<div class="flex flex-wrap items-start gap-3">
 						<div
-							class="flex h-10 w-10 items-center justify-center rounded-lg bg-accent shadow-ink"
+							class="tx tx-bloom tx-weak flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-accent shadow-ink"
 						>
 							<Key class="h-5 w-5 text-accent-foreground" />
 						</div>
-						<h1
-							class="min-w-0 max-w-full break-words text-xl font-bold text-foreground sm:text-2xl"
-						>
-							{installationDisplayName(caller)}
-						</h1>
-						<Badge variant={statusVariant(caller.status)}>{caller.status}</Badge>
-						<Badge variant="default">{displayProvider(caller.provider)}</Badge>
-						<Badge variant={usageSignal.variant}>{usageSignal.label}</Badge>
-						<Badge variant={healthSignal.variant}>{healthSignal.label}</Badge>
+						<div class="min-w-0 flex-1">
+							<div
+								class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+							>
+								Connector
+							</div>
+							<h1
+								class="mt-0.5 min-w-0 max-w-full break-words text-xl font-bold text-foreground sm:text-2xl"
+							>
+								{installationDisplayName(caller)}
+							</h1>
+							<div class="mt-2 flex flex-wrap items-center gap-1.5">
+								<Badge variant={statusVariant(caller.status)}>{caller.status}</Badge>
+								<Badge variant="default">{displayProvider(caller.provider)}</Badge>
+								<Badge variant={usageSignal.variant}>{usageSignal.label}</Badge>
+								<Badge variant={healthSignal.variant}>{healthSignal.label}</Badge>
+							</div>
+						</div>
 					</div>
 
 					<div
-						class="mt-3 grid min-w-0 gap-2 text-xs text-muted-foreground sm:grid-cols-2 lg:grid-cols-4"
+						class="mt-4 grid min-w-0 gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-4"
 					>
 						<div class="min-w-0">
-							<span class="font-medium text-foreground">Caller key:</span>
-							<code class="ml-1 break-all">{caller.caller_key}</code>
-						</div>
-						<div class="min-w-0">
-							<span class="font-medium text-foreground">Prefix:</span>
-							<code class="ml-1 break-all">{caller.token_prefix}</code>
-						</div>
-						<div class="min-w-0">
-							<span class="font-medium text-foreground">Last activity:</span>
-							<span class="ml-1"
-								>{formatRelativeTimestamp(detail.totals.last_activity_at)}</span
+							<div
+								class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+							>
+								Caller key
+							</div>
+							<code class="mt-1 block break-all text-xs text-foreground"
+								>{caller.caller_key}</code
 							>
 						</div>
 						<div class="min-w-0">
-							<span class="font-medium text-foreground">Range:</span>
-							<span class="ml-1">
-								{new Date(detail.range.start_at).toLocaleDateString()} - {new Date(
+							<div
+								class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+							>
+								Prefix
+							</div>
+							<code class="mt-1 block break-all text-xs text-foreground"
+								>{caller.token_prefix}</code
+							>
+						</div>
+						<div class="min-w-0">
+							<div
+								class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+							>
+								Last activity
+							</div>
+							<p class="mt-1 text-xs text-foreground">
+								{formatRelativeTimestamp(detail.totals.last_activity_at)}
+							</p>
+						</div>
+						<div class="min-w-0">
+							<div
+								class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+							>
+								Range
+							</div>
+							<p class="mt-1 text-xs text-foreground">
+								{new Date(detail.range.start_at).toLocaleDateString()} – {new Date(
 									detail.range.end_at
 								).toLocaleDateString()}
-							</span>
+							</p>
 						</div>
 					</div>
 				</div>
@@ -299,7 +328,7 @@
 				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
 			>
 				<div
-					class="flex min-w-0 items-center gap-2 text-xs uppercase text-muted-foreground"
+					class="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
 				>
 					<Activity class="h-3.5 w-3.5" />
 					Sessions
@@ -317,7 +346,7 @@
 				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
 			>
 				<div
-					class="flex min-w-0 items-center gap-2 text-xs uppercase text-muted-foreground"
+					class="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
 				>
 					<Terminal class="h-3.5 w-3.5" />
 					Tool Calls
@@ -333,7 +362,7 @@
 				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
 			>
 				<div
-					class="flex min-w-0 items-center gap-2 text-xs uppercase text-muted-foreground"
+					class="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
 				>
 					<Zap class="h-3.5 w-3.5" />
 					Writes
@@ -349,7 +378,7 @@
 				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
 			>
 				<div
-					class="flex min-w-0 items-center gap-2 text-xs uppercase text-muted-foreground"
+					class="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
 				>
 					<AlertTriangle class="h-3.5 w-3.5" />
 					Errors
@@ -365,7 +394,7 @@
 				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
 			>
 				<div
-					class="flex min-w-0 items-center gap-2 text-xs uppercase text-muted-foreground"
+					class="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
 				>
 					<ShieldAlert class="h-3.5 w-3.5" />
 					Denied
@@ -381,7 +410,7 @@
 				class="min-w-0 overflow-hidden rounded-lg border border-border bg-card p-3 shadow-ink"
 			>
 				<div
-					class="flex min-w-0 items-center gap-2 text-xs uppercase text-muted-foreground"
+					class="flex min-w-0 items-center gap-1.5 text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
 				>
 					<Clock class="h-3.5 w-3.5" />
 					Latency

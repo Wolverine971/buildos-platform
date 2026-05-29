@@ -243,13 +243,16 @@ Content-Type: application/json
 					Connect your <span class="text-accent">agents</span> to BuildOS
 				</h1>
 
-				<p
-					class="mx-auto mb-8 max-w-3xl text-base text-muted-foreground sm:text-lg lg:text-xl"
-				>
-					BuildOS is not another agent. BuildOS is where the project lives so every human
-					and agent can work from the same memory.<br /><br />Give Claude Code, Cursor,
-					Claude Desktop, ChatGPT, or any HTTP-capable tool a scoped read/write into it.
-				</p>
+				<div class="mx-auto mb-8 max-w-3xl space-y-4 text-base text-muted-foreground sm:text-lg lg:text-xl">
+					<p>
+						BuildOS is not another agent. BuildOS is where the project lives so every
+						human and agent can work from the same memory.
+					</p>
+					<p>
+						Give Claude Code, Cursor, Claude Desktop, ChatGPT, or any HTTP-capable tool
+						a scoped read/write into it.
+					</p>
+				</div>
 
 				<div class="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
 					<a

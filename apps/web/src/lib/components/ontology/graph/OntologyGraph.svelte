@@ -182,6 +182,27 @@
 					'underlay-padding': 5
 				}
 			},
+			// A project is the workspace boundary for its ontology entities. Cytoscape
+			// renders this as a compound parent node, so project membership reads as
+			// containment instead of redundant edges radiating from the project.
+			{
+				selector: 'node[type = "project"]:parent',
+				style: {
+					'background-opacity': 0.08,
+					'border-opacity': 0.55,
+					'border-width': 2,
+					padding: '46px',
+					'compound-sizing-wrt-labels': 'include',
+					'min-width': '260px',
+					'min-height': '190px',
+					'text-valign': 'top',
+					'text-margin-y': 12,
+					'font-size': 13,
+					'font-weight': 700,
+					'text-background-opacity': 0,
+					'underlay-opacity': 0
+				}
+			},
 			// Goals carry the Lucide Target SVG painted as background-image,
 			// keeping the icon consistent with the legend, NodeDetailsPanel, and Inkprint.
 			{

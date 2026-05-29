@@ -130,4 +130,116 @@ describe('OntologyGraphService label display data', () => {
 			'xmlns="http://www.w3.org/2000/svg"'
 		);
 	});
+
+	it('places project-owned entities inside the project compound node', () => {
+		const graph = OntologyGraphService.buildGraphData(
+			makeSourceData({
+				tasks: [
+					{
+						id: 'task-1',
+						project_id: 'project-1',
+						type_key: 'task',
+						title: 'Book guest',
+						description: null,
+						state_key: 'todo',
+						priority: 3,
+						props: null,
+						created_by: 'actor-1',
+						created_at: now,
+						updated_at: now
+					}
+				],
+				documents: [
+					{
+						id: 'doc-1',
+						project_id: 'project-1',
+						type_key: 'document',
+						title: 'Guest Brief',
+						description: null,
+						state_key: 'draft',
+						props: null,
+						children: null,
+						created_by: 'actor-1',
+						created_at: now,
+						updated_at: now
+					}
+				]
+			}),
+			'full'
+		);
+
+		expect(
+			graph.nodes.find((node) => node.data.id === 'project-1')?.data.parent
+		).toBeUndefined();
+		expect(graph.nodes.find((node) => node.data.id === 'task-1')?.data.parent).toBe(
+			'project-1'
+		);
+		expect(graph.nodes.find((node) => node.data.id === 'doc-1')?.data.parent).toBe('project-1');
+	});
+
+	it('suppresses direct project containment edges while keeping internal ontology edges', () => {
+		const graph = OntologyGraphService.buildGraphData(
+			makeSourceData({
+				plans: [
+					{
+						id: 'plan-1',
+						project_id: 'project-1',
+						type_key: 'plan',
+						name: 'Production',
+						plan: null,
+						description: null,
+						state_key: 'active',
+						props: null,
+						created_by: 'actor-1',
+						created_at: now,
+						updated_at: now
+					}
+				],
+				tasks: [
+					{
+						id: 'task-1',
+						project_id: 'project-1',
+						type_key: 'task',
+						title: 'Record episode',
+						description: null,
+						state_key: 'todo',
+						priority: 3,
+						props: null,
+						created_by: 'actor-1',
+						created_at: now,
+						updated_at: now
+					}
+				],
+				edges: [
+					{
+						id: 'edge-project-plan',
+						project_id: 'project-1',
+						src_kind: 'project',
+						src_id: 'project-1',
+						dst_kind: 'plan',
+						dst_id: 'plan-1',
+						rel: 'has_plan',
+						props: {},
+						created_at: now
+					},
+					{
+						id: 'edge-plan-task',
+						project_id: 'project-1',
+						src_kind: 'plan',
+						src_id: 'plan-1',
+						dst_kind: 'task',
+						dst_id: 'task-1',
+						rel: 'has_task',
+						props: {},
+						created_at: now
+					}
+				]
+			}),
+			'full'
+		);
+
+		expect(graph.edges.map((edge) => edge.data.id)).toEqual(['edge-plan-task']);
+		expect(graph.edges[0]?.data.source).toBe('plan-1');
+		expect(graph.edges[0]?.data.target).toBe('task-1');
+	});
 });

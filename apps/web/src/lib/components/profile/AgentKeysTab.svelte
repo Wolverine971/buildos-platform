@@ -8,12 +8,14 @@
 		Activity,
 		BarChart3,
 		ChevronDown,
+		ChevronRight,
 		CircleCheck,
 		Copy,
 		ExternalLink,
 		Key,
 		Plus,
 		RefreshCw,
+		ShieldCheck,
 		Trash2
 	} from 'lucide-svelte';
 	import type {
@@ -1025,10 +1027,10 @@
 
 	<!-- What is this? -->
 	<details
-		class="group tx tx-frame tx-weak overflow-hidden rounded-lg border border-border bg-card shadow-ink"
+		class="group tx tx-bloom tx-weak overflow-hidden rounded-lg border border-border bg-card shadow-ink"
 	>
 		<summary
-			class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 sm:px-5 py-3 text-sm font-semibold text-foreground"
+			class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 sm:px-5 py-3 text-sm font-semibold text-foreground hover:bg-muted/30"
 		>
 			<span class="flex items-center gap-2">
 				<Key class="w-4 h-4 text-accent" />
@@ -1039,37 +1041,64 @@
 			/>
 		</summary>
 		<div
-			class="border-t border-border px-4 sm:px-5 py-3 space-y-2 text-xs sm:text-sm text-muted-foreground"
+			class="grid gap-3 border-t border-border px-4 sm:px-5 py-4 sm:grid-cols-2 text-xs sm:text-sm text-muted-foreground"
 		>
-			<p>
-				<span class="font-semibold text-foreground">What:</span> A scoped read/write connection
-				between BuildOS and any AI tool that can call HTTP.
-			</p>
-			<p>
-				<span class="font-semibold text-foreground">Why:</span> Your projects live in BuildOS.
-				Your AI tools should read off the same sheet of paper instead of starting from zero each
-				session.
-			</p>
-			<p>
-				<span class="font-semibold text-foreground">How:</span> Generate a key, paste it into
-				your tool's config, then tell the agent "connect to BuildOS, list my projects."
-			</p>
-			<p>
-				<span class="font-semibold text-foreground">Safety:</span> Per-project scope. Per-op
-				write whitelist. Audit log. Rotate or revoke any time. BuildOS stores only a hash; the
-				full key is shown once on generate.
-			</p>
+			<div>
+				<div class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70">
+					What
+				</div>
+				<p class="mt-1 leading-relaxed">
+					A scoped read/write connection between BuildOS and any AI tool that can call
+					HTTP.
+				</p>
+			</div>
+			<div>
+				<div class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70">
+					Why
+				</div>
+				<p class="mt-1 leading-relaxed">
+					Your projects live in BuildOS. Your AI tools should read off the same sheet of
+					paper instead of starting from zero each session.
+				</p>
+			</div>
+			<div>
+				<div class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70">
+					How
+				</div>
+				<p class="mt-1 leading-relaxed">
+					Generate a key, paste it into your tool's config, then tell the agent
+					"connect to BuildOS, list my projects."
+				</p>
+			</div>
+			<div>
+				<div class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70">
+					Safety
+				</div>
+				<p class="mt-1 leading-relaxed">
+					Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any
+					time. BuildOS stores only a hash; the full key is shown once on generate.
+				</p>
+			</div>
 		</div>
 	</details>
 
 	<!-- Agent Handle -->
 	{#if buildosAgent}
 		<div
-			class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-border bg-muted/40 px-3 py-2"
+			class="flex flex-col gap-2 rounded-lg border border-border bg-card px-3 py-2.5 shadow-ink sm:flex-row sm:items-center sm:justify-between"
 		>
-			<div class="flex items-center gap-2 text-sm text-muted-foreground min-w-0">
-				<span class="font-medium text-foreground flex-shrink-0">Your agent handle:</span>
-				<code class="text-xs truncate">{buildosAgent.handle}</code>
+			<div class="flex min-w-0 items-center gap-2.5">
+				<div
+					class="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
+				>
+					<Key class="h-3.5 w-3.5" />
+				</div>
+				<div class="min-w-0">
+					<div class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
+						Your agent handle
+					</div>
+					<code class="block truncate text-xs text-foreground">{buildosAgent.handle}</code>
+				</div>
 			</div>
 			<Button
 				variant="ghost"
@@ -1095,10 +1124,15 @@
 				{callers.length} key{callers.length === 1 ? '' : 's'}
 			</Badge>
 		{/snippet}
-		<div class="rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground">
-			<span class="font-medium text-foreground">Need the full key?</span>
-			For security, BuildOS stores only a hash. Use Rotate + Copy to reissue the key, then copy
-			the full BuildOS Agent Key from the confirmation modal.
+		<div
+			class="flex items-start gap-2.5 rounded-lg border border-border bg-muted/30 p-3 text-xs text-muted-foreground"
+		>
+			<ShieldCheck class="mt-0.5 h-4 w-4 shrink-0 text-foreground/60" />
+			<p>
+				<span class="font-medium text-foreground">Need the full key?</span>
+				For security, BuildOS stores only a hash. Use Rotate + Copy to reissue the key,
+				then copy the full BuildOS Agent Key from the confirmation modal.
+			</p>
 		</div>
 
 		{#if loading}
@@ -1108,12 +1142,21 @@
 				Loading...
 			</div>
 		{:else if callers.length === 0}
-			<div class="rounded-lg border border-dashed border-border p-6 text-center">
-				<Key class="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-				<p class="text-sm text-muted-foreground">
-					No agents connected yet. Generate a key for the AI tool you use most: Claude
+			<div class="rounded-lg border border-dashed border-border bg-muted/20 p-8 text-center">
+				<div
+					class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card shadow-ink"
+				>
+					<Key class="h-5 w-5 text-muted-foreground" />
+				</div>
+				<p class="mx-auto max-w-md text-sm text-muted-foreground">
+					No agents connected yet. Generate a key for the AI tool you use most — Claude
 					Code, ChatGPT Codex, Open Claw, Cursor, or anything that can call HTTP.
 				</p>
+				<div class="mt-4">
+					<Button variant="primary" size="sm" icon={Plus} onclick={openGenerateModal}>
+						Generate your first key
+					</Button>
+				</div>
 			</div>
 		{:else}
 			<div class="space-y-2">
@@ -1572,10 +1615,14 @@
 				<div class="space-y-2">
 					<button
 						type="button"
-						class="flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+						class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
 						onclick={() => (showAdvancedPermissions = !showAdvancedPermissions)}
 					>
-						<span>{showAdvancedPermissions ? '▾' : '▸'}</span>
+						{#if showAdvancedPermissions}
+							<ChevronDown class="h-3.5 w-3.5" />
+						{:else}
+							<ChevronRight class="h-3.5 w-3.5" />
+						{/if}
 						Advanced permissions ({selectedWriteOps.length} write op{selectedWriteOps.length ===
 						1
 							? ''

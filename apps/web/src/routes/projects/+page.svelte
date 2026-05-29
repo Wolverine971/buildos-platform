@@ -28,7 +28,7 @@
 	} from '$lib/components/ontology/graph/lib/graph.filters';
 	import type { OntologyProjectSummary } from '$lib/services/ontology/ontology-projects.service';
 	import { ontologyGraphStore } from '$lib/stores/ontology-graph.store';
-	import { LoaderCircle, SlidersHorizontal, ChevronDown } from 'lucide-svelte';
+	import { LoaderCircle, Plus, SlidersHorizontal, ChevronDown } from 'lucide-svelte';
 	import FilterGroup from '$lib/components/ui/FilterGroup.svelte';
 	import { setNavigationData } from '$lib/stores/project-navigation.store';
 	import PullToRefresh from '$lib/components/pwa/PullToRefresh.svelte';
@@ -654,21 +654,13 @@
 					</div>
 				{:else}
 					<div class="flex justify-end">
-						<Button variant="primary" size="sm" onclick={handleCreateProject}>
-							<svg
-								class="h-4 w-4 mr-2"
-								xmlns="http://www.w3.org/2000/svg"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M12 4v16m8-8H4"
-								/>
-							</svg>
+						<Button
+							variant="outline"
+							size="sm"
+							icon={Plus}
+							onclick={handleCreateProject}
+							class="whitespace-nowrap border-accent/30 bg-card text-accent hover:border-accent/50 hover:bg-accent/10 hover:text-accent focus:ring-accent/40"
+						>
 							<span>New Project</span>
 						</Button>
 					</div>

@@ -340,6 +340,18 @@ const SCALE_MULTIPLIERS: Record<string, number> = {
 
 const FALLBACK_LABEL = 'Untitled';
 const LABEL_OVERFLOW_MARKER = '...';
+const PROJECT_CONTAINER_RELS = new Set([
+	'project_contains',
+	'contains',
+	'part_of',
+	'has_task',
+	'has_plan',
+	'has_goal',
+	'has_document',
+	'has_context_document',
+	'has_milestone',
+	'has_risk'
+]);
 
 /**
  * Inline Lucide Target SVG as a data URI. Painted onto goal nodes as
@@ -518,6 +530,39 @@ function getLabelVisualData(label: string | null | undefined, config: NodeStyleC
 		labelBackgroundOpacity: isCentered ? 0 : 0.86,
 		labelBackgroundPadding: isCentered ? 0 : 2
 	};
+}
+
+function asProjectId(value: unknown): string | null {
+	return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+function assignProjectContainers(nodes: CytoscapeNode[], projects: OntoProject[]): CytoscapeNode[] {
+	const projectIds = new Set(projects.map((project) => project.id));
+
+	return nodes.map((node) => {
+		if (node.data.type === 'project') return node;
+
+		const projectId = asProjectId(node.data.metadata?.projectId);
+		if (!projectId || !projectIds.has(projectId)) return node;
+
+		return {
+			...node,
+			data: {
+				...node.data,
+				parent: projectId
+			}
+		};
+	});
+}
+
+function isDirectProjectContainerEdge(edge: OntoEdge, projectIds: Set<string>): boolean {
+	const srcIsProject = edge.src_kind === 'project' && projectIds.has(edge.src_id);
+	const dstIsProject = edge.dst_kind === 'project' && projectIds.has(edge.dst_id);
+
+	if (!srcIsProject && !dstIsProject) return false;
+	if (srcIsProject && dstIsProject) return false;
+
+	return PROJECT_CONTAINER_RELS.has(edge.rel);
 }
 
 // ============================================================
@@ -982,7 +1027,7 @@ export class OntologyGraphService {
 			'risk'
 		]);
 
-		const nodes: CytoscapeNode[] = [
+		const rawNodes: CytoscapeNode[] = [
 			...this.projectsToNodes(data.projects, isDark),
 			...this.tasksToNodes(data.tasks, isDark),
 			...this.documentsToNodes(data.documents, isDark),
@@ -991,6 +1036,8 @@ export class OntologyGraphService {
 			...this.milestonesToNodes(data.milestones, isDark),
 			...this.risksToNodes(data.risks ?? [], isDark)
 		];
+		const nodes = assignProjectContainers(rawNodes, data.projects);
+		const projectIds = new Set(data.projects.map((project) => project.id));
 
 		const filteredSourceEdges =
 			viewMode === 'projects'
@@ -1004,7 +1051,10 @@ export class OntologyGraphService {
 							(allowedKinds.has(edge.src_kind) && allowedKinds.has(edge.dst_kind))
 					);
 
-		const edges = this.edgesToCytoscape(filteredSourceEdges, isDark);
+		const visualSourceEdges = filteredSourceEdges.filter(
+			(edge) => !isDirectProjectContainerEdge(edge, projectIds)
+		);
+		const edges = this.edgesToCytoscape(visualSourceEdges, isDark);
 
 		// Filter edges to only include those with valid source and target nodes
 		const nodeIds = new Set(nodes.map((node) => node.data.id));
