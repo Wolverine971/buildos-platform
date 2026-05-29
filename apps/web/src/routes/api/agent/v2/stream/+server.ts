@@ -46,6 +46,10 @@ import type {
 } from '@buildos/shared-types';
 import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
 import type { AgentState, ProjectFocus } from '$lib/types/agent-chat-enhancement';
+import {
+	buildEmptyAgentState,
+	sanitizeAgentStateForPrompt
+} from '$lib/services/agentic-chat-v2/agent-state-sanitization';
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
 import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
 import { extractTools, getToolCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
@@ -1322,77 +1326,6 @@ function annotateContextMetaCacheAge(
 			: null;
 	if (!contextMeta) return;
 	contextMeta.cache_age_seconds = Math.max(0, Math.floor(cacheAgeSeconds));
-}
-
-function buildEmptyAgentState(sessionId: string): AgentState {
-	return {
-		sessionId,
-		current_understanding: {
-			entities: [],
-			dependencies: []
-		},
-		assumptions: [],
-		expectations: [],
-		tentative_hypotheses: [],
-		items: []
-	};
-}
-
-function isValidAgentStateEntityId(value: unknown): value is string {
-	if (typeof value !== 'string') return false;
-	const trimmed = value.trim();
-	return trimmed.length > 0 && !trimmed.includes('...') && isValidUUID(trimmed);
-}
-
-function sanitizeUuidStringArray(values: unknown): string[] | undefined {
-	if (!Array.isArray(values)) return undefined;
-	const unique = new Set<string>();
-	for (const value of values) {
-		if (!isValidAgentStateEntityId(value)) continue;
-		unique.add(value.trim());
-	}
-	return unique.size > 0 ? Array.from(unique) : undefined;
-}
-
-function sanitizeAgentStateForPrompt(agentState: AgentState): AgentState {
-	const entities = (agentState.current_understanding?.entities ?? [])
-		.filter((entity) => isValidAgentStateEntityId(entity?.id))
-		.map((entity) => ({
-			...entity,
-			id: entity.id.trim()
-		}));
-
-	const dependencies = (agentState.current_understanding?.dependencies ?? [])
-		.filter((dep) => isValidAgentStateEntityId(dep?.from) && isValidAgentStateEntityId(dep?.to))
-		.map((dep) => ({
-			...dep,
-			from: dep.from.trim(),
-			to: dep.to.trim()
-		}));
-
-	const items = (agentState.items ?? []).map((item) => {
-		const relatedEntityIds = sanitizeUuidStringArray(item.relatedEntityIds);
-		return relatedEntityIds
-			? { ...item, relatedEntityIds }
-			: { ...item, relatedEntityIds: undefined };
-	});
-
-	const expectations = (agentState.expectations ?? []).map((expectation) => {
-		const expectedIds = sanitizeUuidStringArray(expectation.expected_ids);
-		return expectedIds
-			? { ...expectation, expected_ids: expectedIds }
-			: { ...expectation, expected_ids: undefined };
-	});
-
-	return {
-		...agentState,
-		current_understanding: {
-			entities,
-			dependencies
-		},
-		items,
-		expectations
-	};
 }
 
 function extractEntityLabel(
