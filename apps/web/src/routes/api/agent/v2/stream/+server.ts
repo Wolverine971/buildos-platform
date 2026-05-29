@@ -42,7 +42,6 @@ import type {
 	ContextUsageSnapshot,
 	Json,
 	LastTurnContext,
-	OperationEventPayload,
 	AgentTimingSummary
 } from '@buildos/shared-types';
 import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
@@ -1002,23 +1001,6 @@ type FastChatContextShiftHint = {
 	shifted_at: string;
 };
 
-const OPERATION_ENTITY_TYPES: OperationEventPayload['entity_type'][] = [
-	'document',
-	'task',
-	'goal',
-	'plan',
-	'project',
-	'milestone',
-	'risk'
-];
-
-function isOperationEntityType(
-	value: string | null | undefined
-): value is OperationEventPayload['entity_type'] {
-	if (!value) return false;
-	return OPERATION_ENTITY_TYPES.includes(value as OperationEventPayload['entity_type']);
-}
-
 function toolDefinitionRequiresProjectId(tool: ChatToolDefinition | undefined): boolean {
 	if (!tool) return false;
 	const params = tool.function?.parameters as
@@ -1660,25 +1642,6 @@ async function updateAgentMetadata(
 	if (data === null) {
 		logger.warn('No chat session metadata merged', { sessionId });
 	}
-}
-
-function emitOperation(
-	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
-	operation: OperationEventPayload,
-	options: {
-		onError?: (error: unknown) => void;
-		onMessageSent?: () => void;
-	} = {}
-): void {
-	void agentStream
-		.sendMessage({ type: 'operation', operation })
-		.then(() => {
-			options.onMessageSent?.();
-		})
-		.catch((error) => {
-			logger.warn('Failed to emit operation event', { error, operation });
-			options.onError?.(error);
-		});
 }
 
 function emitContextUsage(
@@ -2835,120 +2798,6 @@ function buildToolMessageSnapshotsForReconciliation(
 			tool_name: toolCall.function.name,
 			content: JSON.stringify(contentPayload)
 		};
-	});
-}
-
-function _emitContextOperations(
-	agentStream: ReturnType<typeof SSEResponse.createChatStream>,
-	params: {
-		contextType: string;
-		data: any;
-		projectName?: string | null;
-		focusEntityType?: string | null;
-		focusEntityName?: string | null;
-	}
-): void {
-	const { contextType, data, projectName, focusEntityType, focusEntityName } = params;
-
-	if (contextType === 'global' && data?.projects) {
-		const count = Array.isArray(data.projects) ? data.projects.length : 0;
-		emitOperation(agentStream, {
-			action: 'list',
-			entity_type: 'project',
-			entity_name: `All projects (${count})`,
-			status: 'success'
-		});
-		return;
-	}
-
-	if (isDailyBriefContext(contextType)) {
-		const briefDate =
-			typeof data?.brief_date === 'string'
-				? data.brief_date
-				: typeof data?.briefDate === 'string'
-					? data.briefDate
-					: null;
-		emitOperation(agentStream, {
-			action: 'read',
-			entity_type: 'project',
-			entity_name: briefDate ? `Daily brief ${briefDate}` : 'Daily brief',
-			status: 'success'
-		});
-
-		const countsRecord =
-			data?.mentioned_entity_counts && typeof data.mentioned_entity_counts === 'object'
-				? (data.mentioned_entity_counts as Record<string, unknown>)
-				: data?.mentionedEntityCounts && typeof data.mentionedEntityCounts === 'object'
-					? (data.mentionedEntityCounts as Record<string, unknown>)
-					: null;
-		if (!countsRecord) return;
-		for (const [kind, rawCount] of Object.entries(countsRecord)) {
-			if (!isOperationEntityType(kind)) continue;
-			if (typeof rawCount !== 'number' || rawCount <= 0) continue;
-			emitOperation(agentStream, {
-				action: 'list',
-				entity_type: kind,
-				entity_name: `${kind}s (${rawCount})`,
-				status: 'success'
-			});
-		}
-		return;
-	}
-
-	if (data?.project) {
-		const resolvedProjectName =
-			projectName || (typeof data.project.name === 'string' ? data.project.name : 'Project');
-		emitOperation(agentStream, {
-			action: 'read',
-			entity_type: 'project',
-			entity_name: resolvedProjectName,
-			status: 'success'
-		});
-	}
-
-	if (focusEntityType && isOperationEntityType(focusEntityType)) {
-		const label = focusEntityName?.trim() || focusEntityType;
-		emitOperation(agentStream, {
-			action: 'read',
-			entity_type: focusEntityType,
-			entity_name: label,
-			status: 'success'
-		});
-	}
-
-	const listSummaries: Array<{ entity: OperationEventPayload['entity_type']; count: number }> =
-		[];
-	if (Array.isArray(data?.goals)) {
-		listSummaries.push({ entity: 'goal', count: data.goals.length });
-	}
-	if (Array.isArray(data?.milestones)) {
-		listSummaries.push({ entity: 'milestone', count: data.milestones.length });
-	}
-	if (Array.isArray(data?.plans)) {
-		listSummaries.push({ entity: 'plan', count: data.plans.length });
-	}
-	if (Array.isArray(data?.tasks)) {
-		listSummaries.push({ entity: 'task', count: data.tasks.length });
-	}
-	if (Array.isArray(data?.documents)) {
-		listSummaries.push({ entity: 'document', count: data.documents.length });
-	}
-	if (data?.linked_entities && typeof data.linked_entities === 'object') {
-		Object.entries(data.linked_entities).forEach(([key, value]) => {
-			if (!isOperationEntityType(key)) return;
-			if (!Array.isArray(value) || value.length === 0) return;
-			listSummaries.push({ entity: key, count: value.length });
-		});
-	}
-
-	listSummaries.slice(0, 6).forEach(({ entity, count }) => {
-		if (count <= 0) return;
-		emitOperation(agentStream, {
-			action: 'list',
-			entity_type: entity,
-			entity_name: `${entity}s (${count})`,
-			status: 'success'
-		});
 	});
 }
 
