@@ -674,6 +674,115 @@
 		</div>
 	{/if}
 
+	{#snippet rowActions(user: any, subscription: any)}
+		{#if subscription || user.billing_account}
+			<div class="relative" data-action-menu>
+				<Button
+					onclick={(e) => {
+						e.stopPropagation();
+						toggleActionMenu(user.id);
+					}}
+					variant="ghost"
+					size="sm"
+					icon={MoreVertical}
+					btnType="container"
+					class="!p-1"
+				/>
+
+				{#if showActionMenu === user.id}
+					<div
+						class="absolute right-0 mt-2 w-48 bg-card rounded-md shadow-ink-strong z-10 border border-border"
+					>
+						<div class="py-1">
+							{#if subscription?.status === 'active'}
+								<Button
+									onclick={() =>
+										performAction('cancel', user.id, subscription.id)}
+									variant="ghost"
+									size="sm"
+									icon={Ban}
+									class="w-full justify-start text-left"
+								>
+									Cancel Subscription
+								</Button>
+							{/if}
+
+							{#if subscription?.status === 'trialing'}
+								<Button
+									onclick={() =>
+										performAction('extend_trial', user.id, subscription.id)}
+									variant="ghost"
+									size="sm"
+									icon={Clock}
+									class="w-full justify-start text-left"
+								>
+									Extend Trial
+								</Button>
+							{/if}
+
+							{#if subscription}
+								<Button
+									onclick={() =>
+										performAction('add_discount', user.id, subscription.id)}
+									variant="ghost"
+									size="sm"
+									icon={Gift}
+									class="w-full justify-start text-left"
+								>
+									Apply Discount
+								</Button>
+							{/if}
+
+							<Button
+								onclick={() => manualUnfreeze(user.id)}
+								variant="ghost"
+								size="sm"
+								icon={Unlock}
+								class="w-full justify-start text-left"
+							>
+								Manual Unfreeze
+							</Button>
+
+							<Button
+								onclick={() => openBillingTimeline(user)}
+								variant="ghost"
+								size="sm"
+								icon={History}
+								class="w-full justify-start text-left"
+							>
+								Billing Timeline
+							</Button>
+
+							<Button
+								onclick={() => {
+									emailUserId = user.id;
+									emailUserName = user.name;
+									emailUserEmail = user.email;
+									showEmailModal = true;
+									showActionMenu = null;
+								}}
+								variant="ghost"
+								size="sm"
+								icon={Mail}
+								class="w-full justify-start text-left"
+							>
+								Send Email
+							</Button>
+
+							<a
+								href="/admin/users/{user.id}"
+								class="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted"
+							>
+								<User class="w-4 h-4 mr-2" />
+								View User Details
+							</a>
+						</div>
+					</div>
+				{/if}
+			</div>
+		{/if}
+	{/snippet}
+
 	<!-- Users Table -->
 	<div class="admin-panel overflow-hidden">
 		{#if isLoading}
@@ -687,7 +796,87 @@
 				<p class="text-muted-foreground">No users found</p>
 			</div>
 		{:else}
-			<div class="overflow-x-auto">
+			<!-- Mobile card list -->
+			<ul class="divide-y divide-border lg:hidden">
+				{#each users as user}
+					{@const subscription = user.customer_subscriptions?.[0]}
+					<li class="p-3">
+						<div class="flex items-start justify-between gap-2">
+							<div class="min-w-0">
+								<div class="truncate text-sm font-medium text-foreground">
+									{user.name || 'Unnamed User'}
+								</div>
+								<div class="truncate text-xs text-muted-foreground">
+									{user.email}
+								</div>
+							</div>
+							{@render rowActions(user, subscription)}
+						</div>
+
+						<div class="mt-2 flex flex-wrap items-center gap-2">
+							{#if subscription}
+								{@const StatusIcon = getStatusIcon(subscription.status)}
+								<span
+									class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {getStatusColor(
+										subscription.status
+									)}"
+								>
+									<StatusIcon class="mr-1 h-3 w-3" />
+									{subscription.status}
+								</span>
+							{:else}
+								<span
+									class="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground dark:text-muted-foreground"
+								>
+									None
+								</span>
+							{/if}
+							{#if user.billing_account}
+								<span
+									class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {getBillingStateColor(
+										user.billing_account.billing_state
+									)}"
+								>
+									{getBillingStateLabel(user.billing_account.billing_state)}
+								</span>
+							{/if}
+						</div>
+
+						<div class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+							<div class="flex items-center justify-between gap-2">
+								<span class="text-muted-foreground">Plan</span>
+								<span class="truncate font-medium text-foreground">
+									{#if subscription}
+										{subscription.subscription_plans?.name || 'Unknown'}
+									{:else}
+										None
+									{/if}
+								</span>
+							</div>
+							<div class="flex items-center justify-between gap-2">
+								<span class="text-muted-foreground">Revenue</span>
+								<span class="font-medium text-foreground">
+									${(
+										(subscription?.subscription_plans?.price || 0) / 100
+									).toFixed(2)}
+								</span>
+							</div>
+							<div class="flex items-center justify-between gap-2">
+								<span class="text-muted-foreground">Next billing</span>
+								<span class="font-medium text-foreground">
+									{subscription?.current_period_end
+										? new Date(
+												subscription.current_period_end
+											).toLocaleDateString()
+										: '-'}
+								</span>
+							</div>
+						</div>
+					</li>
+				{/each}
+			</ul>
+
+			<div class="hidden overflow-x-auto lg:block">
 				<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
 					<thead class="bg-muted">
 						<tr>
@@ -810,125 +999,7 @@
 								<td
 									class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
 								>
-									{#if subscription || user.billing_account}
-										<div class="relative" data-action-menu>
-											<Button
-												onclick={(e) => {
-													e.stopPropagation();
-													toggleActionMenu(user.id);
-												}}
-												variant="ghost"
-												size="sm"
-												icon={MoreVertical}
-												btnType="container"
-												class="!p-1"
-											/>
-
-											{#if showActionMenu === user.id}
-												<div
-													class="absolute right-0 mt-2 w-48 bg-card rounded-md shadow-ink-strong z-10 border border-border"
-												>
-													<div class="py-1">
-														{#if subscription?.status === 'active'}
-															<Button
-																onclick={() =>
-																	performAction(
-																		'cancel',
-																		user.id,
-																		subscription.id
-																	)}
-																variant="ghost"
-																size="sm"
-																icon={Ban}
-																class="w-full justify-start text-left"
-															>
-																Cancel Subscription
-															</Button>
-														{/if}
-
-														{#if subscription?.status === 'trialing'}
-															<Button
-																onclick={() =>
-																	performAction(
-																		'extend_trial',
-																		user.id,
-																		subscription.id
-																	)}
-																variant="ghost"
-																size="sm"
-																icon={Clock}
-																class="w-full justify-start text-left"
-															>
-																Extend Trial
-															</Button>
-														{/if}
-
-														{#if subscription}
-															<Button
-																onclick={() =>
-																	performAction(
-																		'add_discount',
-																		user.id,
-																		subscription.id
-																	)}
-																variant="ghost"
-																size="sm"
-																icon={Gift}
-																class="w-full justify-start text-left"
-															>
-																Apply Discount
-															</Button>
-														{/if}
-
-														<Button
-															onclick={() => manualUnfreeze(user.id)}
-															variant="ghost"
-															size="sm"
-															icon={Unlock}
-															class="w-full justify-start text-left"
-														>
-															Manual Unfreeze
-														</Button>
-
-														<Button
-															onclick={() =>
-																openBillingTimeline(user)}
-															variant="ghost"
-															size="sm"
-															icon={History}
-															class="w-full justify-start text-left"
-														>
-															Billing Timeline
-														</Button>
-
-														<Button
-															onclick={() => {
-																emailUserId = user.id;
-																emailUserName = user.name;
-																emailUserEmail = user.email;
-																showEmailModal = true;
-																showActionMenu = null;
-															}}
-															variant="ghost"
-															size="sm"
-															icon={Mail}
-															class="w-full justify-start text-left"
-														>
-															Send Email
-														</Button>
-
-														<a
-															href="/admin/users/{user.id}"
-															class="flex items-center w-full px-4 py-2 text-sm text-foreground hover:bg-muted"
-														>
-															<User class="w-4 h-4 mr-2" />
-															View User Details
-														</a>
-													</div>
-												</div>
-											{/if}
-										</div>
-									{/if}
+									{@render rowActions(user, subscription)}
 								</td>
 							</tr>
 						{/each}

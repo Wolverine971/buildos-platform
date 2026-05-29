@@ -945,34 +945,19 @@
 		showBack={false}
 	>
 		{#snippet actions()}
-			<div class="flex w-full flex-wrap items-center gap-3 sm:gap-4 sm:justify-end">
-				<label class="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-					<input
-						type="checkbox"
-						bind:checked={autoRefresh}
-						class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer bg-background"
-					/>
-					<span>Auto Refresh</span>
-				</label>
-
+			<div class="flex w-full flex-wrap items-center gap-2 sm:gap-3 sm:justify-end">
 				<Select
 					bind:value={selectedTimeframe}
-					size="md"
+					size="sm"
 					placeholder="Last 30 Days"
-					class="w-full sm:w-44"
+					class="flex-1 min-w-[7.5rem] sm:w-44 sm:flex-none"
 				>
 					<option value="7d">Last 7 Days</option>
 					<option value="30d">Last 30 Days</option>
 					<option value="90d">Last 90 Days</option>
 				</Select>
 
-				<Button
-					onclick={exportAnalytics}
-					variant="primary"
-					size="sm"
-					icon={Download}
-					class="w-full sm:w-auto"
-				>
+				<Button onclick={exportAnalytics} variant="primary" size="sm" icon={Download}>
 					Export
 				</Button>
 
@@ -983,10 +968,19 @@
 					size="sm"
 					icon={RefreshCw}
 					loading={isLoading}
-					class="w-full sm:w-auto"
+					aria-label="Refresh"
 				>
-					Refresh
+					<span class="hidden sm:inline">Refresh</span>
 				</Button>
+
+				<label class="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+					<input
+						type="checkbox"
+						bind:checked={autoRefresh}
+						class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer bg-background"
+					/>
+					<span>Auto Refresh</span>
+				</label>
 			</div>
 		{/snippet}
 	</AdminPageHeader>

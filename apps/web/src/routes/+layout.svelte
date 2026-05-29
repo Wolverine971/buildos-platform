@@ -842,7 +842,7 @@
 		Skip to main content
 	</a>
 
-	{#if showNavigation}
+	{#if showNavigation && !isAdminRoute}
 		<Navigation bind:element={navigationElement} {...navigationProps} />
 	{/if}
 
