@@ -333,7 +333,7 @@
 	{/if}
 
 	<!-- Tab Navigation -->
-	<div class="flex border-b border-border">
+	<div class="flex border-b border-border overflow-x-auto">
 		<button
 			class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'overview'
 				? 'border-b-2 border-purple-500 text-purple-600 dark:text-purple-400'

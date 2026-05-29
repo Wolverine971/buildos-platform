@@ -1,5 +1,6 @@
 // apps/web/src/lib/server/agent-call/mcp-connector.service.ts
 import { json } from '@sveltejs/kit';
+import type { AgentCallScope, ExternalAgentCallerRecord } from '@buildos/shared-types';
 import type { SecurityEventLogOptions } from '$lib/server/security-event-logger';
 import {
 	authenticateOAuthMcpRequest,
@@ -14,7 +15,13 @@ import { executeBuildosAgentGatewayTool } from './external-tool-gateway';
 import { getPublicBuildosAgentTools } from './public-tool-registry';
 import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-registry';
 import { normalizeGatewayOpName } from '$lib/services/agentic-chat/tools/registry/gateway-op-aliases';
-import { isWriteOp, requiredScopeModeForOp } from './agent-call-policy';
+import {
+	extractAllowedOpsFromPolicy,
+	extractScopeModeFromPolicy,
+	isWriteOp,
+	requiredScopeModeForOp
+} from './agent-call-policy';
+import { authenticateExternalAgentCaller, AgentCallAuthError } from './caller-auth';
 
 type JsonRpcId = string | number | null;
 
@@ -145,6 +152,77 @@ function readToolArguments(params: unknown): Record<string, unknown> | undefined
 	return params.arguments;
 }
 
+function scopeFromCallerPolicy(caller: ExternalAgentCallerRecord): AgentCallScope {
+	const scopeMode = extractScopeModeFromPolicy(caller.policy);
+	const allowedProjectIds = caller.policy?.allowed_project_ids;
+	return {
+		mode: scopeMode,
+		allowed_ops: extractAllowedOpsFromPolicy(caller.policy, scopeMode),
+		...(Array.isArray(allowedProjectIds)
+			? {
+					project_ids: allowedProjectIds.filter(
+						(id: unknown): id is string => typeof id === 'string'
+					)
+				}
+			: {})
+	};
+}
+
+/**
+ * Authenticate a remote MCP request, accepting either:
+ *  - an OAuth access token (browser / cloud connectors that completed the OAuth
+ *    consent flow), or
+ *  - a static BuildOS agent key (`boca_...`) pasted into MCP config headers by
+ *    local clients such as Claude Code, Codex, or any custom HTTP client.
+ *
+ * OAuth is tried first. If the token is not a known OAuth token (401), we fall
+ * back to the static-key path. Either way the returned scope is enforced
+ * identically downstream. An OAuth denial (403, e.g. revoked grant) is NOT
+ * downgraded to the static path.
+ */
+async function authenticateBuildosMcpRequest(params: {
+	admin: any;
+	request: Request;
+	url: URL;
+	securityEventOptions?: SecurityEventLogOptions;
+}): Promise<{ caller: ExternalAgentCallerRecord; scope: AgentCallScope }> {
+	try {
+		const oauth = await authenticateOAuthMcpRequest({
+			admin: params.admin,
+			request: params.request,
+			resource: mcpResourceUrl(params.url.origin),
+			securityEventOptions: params.securityEventOptions
+		});
+		return { caller: oauth.caller, scope: oauth.scope };
+	} catch (oauthError) {
+		// Only fall back for "unrecognized token" (401). Explicit OAuth denials
+		// (403 insufficient_scope / revoked grant) must not be retried as a key.
+		if (!(oauthError instanceof OAuthConnectorError) || oauthError.status !== 401) {
+			throw oauthError;
+		}
+
+		try {
+			const caller = await authenticateExternalAgentCaller(
+				params.admin,
+				params.request,
+				params.securityEventOptions
+			);
+			return { caller, scope: scopeFromCallerPolicy(caller) };
+		} catch (callerError) {
+			// The static key also failed to authenticate. Surface the original OAuth
+			// 401 so MCP clients still receive the WWW-Authenticate challenge and can
+			// discover the OAuth flow.
+			if (
+				callerError instanceof AgentCallAuthError &&
+				(callerError.status === 401 || callerError.status === 403)
+			) {
+				throw oauthError;
+			}
+			throw callerError;
+		}
+	}
+}
+
 async function dispatchMcpMethod(params: {
 	admin: any;
 	request: Request;
@@ -153,10 +231,10 @@ async function dispatchMcpMethod(params: {
 	rawParams: unknown;
 	securityEventOptions?: SecurityEventLogOptions;
 }) {
-	const auth = await authenticateOAuthMcpRequest({
+	const auth = await authenticateBuildosMcpRequest({
 		admin: params.admin,
 		request: params.request,
-		resource: mcpResourceUrl(params.url.origin),
+		url: params.url,
 		securityEventOptions: params.securityEventOptions
 	});
 

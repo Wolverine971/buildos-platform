@@ -32,13 +32,13 @@ Same BuildOS auth core. Different save location.
 | Client profile                   | Best storage path                         | Status                                                       |
 | -------------------------------- | ----------------------------------------- | ------------------------------------------------------------ |
 | **OpenClaw**                     | OpenClaw env, SecretRef, or plugin config | BuildOS side ready; OpenClaw connector in progress           |
-| **Claude Code**                  | Local MCP config env/header or adapter    | BuildOS gateway ready; MCP facade/adapter is the clean path  |
+| **Claude Code**                  | `claude mcp add` (key header or OAuth)    | MCP ready at `/mcp/buildos`                                  |
 | **ChatGPT Actions**              | GPT Action API key secret                 | Ready for private GPTs; use OAuth before sharing broadly     |
-| **Codex CLI / IDE**              | Codex MCP config env reference            | BuildOS gateway ready; MCP facade/adapter is the clean path  |
-| **Claude browser / ChatGPT MCP** | Remote MCP OAuth connector                | Needs OAuth-backed remote connector, not pasted bearer token |
+| **Codex CLI / IDE**              | Codex MCP config (`/mcp/buildos`)         | MCP ready at `/mcp/buildos`                                  |
+| **Claude browser / ChatGPT MCP** | Remote MCP OAuth connector                | OAuth remote MCP ready at `/mcp/buildos`                     |
 | **Custom HTTP / scripts**        | Your env file or secret manager           | Ready                                                        |
 
-If your tool can make an HTTP request with a bearer token, it can call the gateway today. If the client runs in someone else's browser/cloud account, use OAuth-backed remote MCP instead of asking the model to remember a token.
+BuildOS speaks the Model Context Protocol at **`/mcp/buildos`**. Local clients (Claude Code, Codex, custom HTTP) authenticate with the agent key in an `Authorization: Bearer` header; browser/cloud clients (Claude.ai, ChatGPT) authenticate with OAuth — no pasted token. The older JSON-RPC gateway at `POST /api/agent-call/buildos` (the `call.dial → tools/list → tools/call → call.hangup` flow) still works for any HTTP-capable tool and is the fallback when a client can't speak MCP.
 
 ## Generate an agent key
 
@@ -57,17 +57,28 @@ If your tool can make an HTTP request with a bearer token, it can call the gatew
 
 ## Setting it up in Claude Code
 
-Choose the **Claude Code** client profile when generating the key.
+Choose the **Claude Code** client profile when generating the key, then add BuildOS as an MCP server. The Agent Keys tab shows this exact command (with your key filled in):
 
-1. **Generate a key** as above. Copy the env block.
-2. **Store it in local config or env** used by your BuildOS MCP adapter/facade. Never paste the token into chat input.
-3. **Ask Claude to dial:**
+```bash
+claude mcp add --transport http buildos https://build-os.com/mcp/buildos \
+  --header "Authorization: Bearer boca_your_one_time_secret"
+```
 
-    > "Connect to BuildOS and list my projects."
+Restart Claude Code and BuildOS tools appear. Then prompt:
 
-    Claude will use the configured BuildOS transport, open a session, and show your projects. When you pick a project, it should call `get_onto_project_status` before deeper reads or writes. Until the MCP facade ships, the JSON-RPC gateway at `POST /api/agent-call/buildos` is the fallback.
+> "Connect to BuildOS and list my projects."
 
-The env block looks like:
+When you pick a project, ask it to call `get_onto_project_status` before deeper reads or writes — it's a compact, git-status-style snapshot of the project.
+
+**Prefer not to paste a key?** Run the same command without `--header`:
+
+```bash
+claude mcp add --transport http buildos https://build-os.com/mcp/buildos
+```
+
+Claude Code discovers BuildOS's OAuth metadata and opens a browser consent screen where you approve scope and projects — no token stored locally.
+
+The JSON-RPC gateway at `POST /api/agent-call/buildos` remains available as a fallback if you'd rather drive the `call.dial` flow directly with the env block:
 
 ```env
 BUILDOS_BASE_URL=https://build-os.com
@@ -89,9 +100,9 @@ Cursor will use the bearer token to dial the gateway. Same tool surface as Claud
 There are two different paths:
 
 - **Local MCP config** behaves like Claude Code: env/header storage is fine if the server runs locally.
-- **Claude browser or cloud-brokered remote connectors** need a public remote MCP server with OAuth. Browser chat is not a secret store, and Claude's cloud cannot read your local env.
+- **Claude browser or cloud-brokered remote connectors** authenticate with OAuth, not a pasted token. Browser chat is not a secret store, and Claude's cloud cannot read your local env.
 
-For remote connectors, BuildOS should expose an MCP facade and OAuth flow. The generated profile currently marks this as `requires_oauth`.
+For browser/cloud clients, add **`https://build-os.com/mcp/buildos`** as a custom/remote MCP connector. BuildOS publishes OAuth metadata, so the client takes you through a consent screen where you pick scope and projects, then issues its own token behind the scenes. Nothing to copy or paste.
 
 ## Setting it up in ChatGPT (Custom GPT)
 

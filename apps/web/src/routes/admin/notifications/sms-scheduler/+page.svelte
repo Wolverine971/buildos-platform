@@ -366,10 +366,10 @@
 
 		<!-- Tabs -->
 		<div class="border-b border-border mb-6">
-			<nav class="-mb-px flex space-x-8">
+			<nav class="-mb-px flex space-x-6 overflow-x-auto sm:space-x-8">
 				<button
 					onclick={() => (activeTab = 'trigger')}
-					class="py-2 px-1 border-b-2 font-medium text-sm transition-colors
+					class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors
 						{activeTab === 'trigger'
 						? 'border-blue-500 text-blue-600 dark:text-blue-400'
 						: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
@@ -381,7 +381,7 @@
 				</button>
 				<button
 					onclick={() => (activeTab = 'results')}
-					class="py-2 px-1 border-b-2 font-medium text-sm transition-colors
+					class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors
 						{activeTab === 'results'
 						? 'border-blue-500 text-blue-600 dark:text-blue-400'
 						: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
@@ -393,7 +393,7 @@
 				</button>
 				<button
 					onclick={() => (activeTab = 'monitor')}
-					class="py-2 px-1 border-b-2 font-medium text-sm transition-colors
+					class="shrink-0 whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm transition-colors
 						{activeTab === 'monitor'
 						? 'border-blue-500 text-blue-600 dark:text-blue-400'
 						: 'border-transparent text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground'}"
@@ -417,7 +417,7 @@
 					</h3>
 
 					<!-- Search -->
-					<div class="flex gap-2 mb-4">
+					<div class="flex flex-wrap gap-2 mb-4">
 						<input
 							type="text"
 							placeholder="Search users by email or name..."
@@ -650,7 +650,7 @@
 
 									<!-- Stats Grid -->
 									{#if result.calendar_connected}
-										<div class="grid grid-cols-4 gap-3 mb-3">
+										<div class="grid grid-cols-2 gap-3 mb-3 sm:grid-cols-4">
 											<div class="bg-muted p-3 rounded">
 												<div class="text-xs text-muted-foreground">
 													Total Events
@@ -852,7 +852,7 @@
 					<h3 class="text-lg font-semibold text-foreground mb-4">Trigger Results</h3>
 
 					<!-- Summary -->
-					<div class="grid grid-cols-3 gap-4 mb-6">
+					<div class="grid grid-cols-1 gap-4 mb-6 sm:grid-cols-3">
 						<div class="p-4 bg-muted rounded-lg">
 							<div class="text-sm text-muted-foreground">Mode</div>
 							<div class="text-lg font-semibold text-foreground">
@@ -877,7 +877,7 @@
 					{#if lastTriggerResult.details?.length > 0}
 						<div>
 							<h4 class="font-medium text-foreground mb-2">User Details</h4>
-							<div class="border rounded-lg overflow-hidden">
+							<div class="border rounded-lg overflow-x-auto">
 								<table class="w-full text-sm">
 									<thead class="bg-muted">
 										<tr>
@@ -974,7 +974,7 @@
 							</div>
 
 							{#if status.messages && status.messages.length > 0}
-								<div class="border rounded-lg overflow-hidden">
+								<div class="border rounded-lg overflow-x-auto">
 									<table class="w-full text-xs">
 										<thead class="bg-muted">
 											<tr>
