@@ -26,6 +26,11 @@
 			"components": ["PublicProjectView"]
 		},
 		{
+			"file": "src/lib/components/layout/Navigation.svelte",
+			"type": "component",
+			"components": ["AgentChatModal"]
+		},
+		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
 			"type": "component",
 			"components": [
@@ -42,11 +47,6 @@
 				"CalendarAnalysisModalContent",
 				"TimeBlockModalContent"
 			]
-		},
-		{
-			"file": "src/lib/components/layout/Navigation.svelte",
-			"type": "component",
-			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
@@ -1074,9 +1074,9 @@
 	"unusedComponents": [
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
 		"src/lib/components/landing/HomepageV2.svelte",
+		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
-		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
 		"src/lib/components/project/ProjectHistorySection.svelte",
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",

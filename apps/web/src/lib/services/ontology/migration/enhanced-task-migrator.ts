@@ -83,9 +83,8 @@ export class EnhancedTaskMigrator {
 				throw new Error(`Failed to create onto_task for ${task.id}: ${error?.message}`);
 			}
 
-			// Create relationship edge: plan → task if in phase, otherwise project → task
-			// Convention: Store directionally (parent → child), query bidirectionally
-			// See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
+			// Create relationship edge when there is a real ontology parent. Project
+			// ownership is already represented by the task project_id column.
 			if (projectContext.ontoPlanId) {
 				// Task is in a phase - create plan → task edge
 				const { error: edgeError } = await this.client.from('onto_edges').insert({
@@ -102,23 +101,6 @@ export class EnhancedTaskMigrator {
 						`[EnhancedTaskMigrator] Failed to create task-plan edge for task ${task.id} → plan ${projectContext.ontoPlanId}: ${edgeError.message}`
 					);
 					throw new Error(`Failed to create task-plan edge: ${edgeError.message}`);
-				}
-			} else {
-				// Task is NOT in a phase - link directly to project
-				const { error: edgeError } = await this.client.from('onto_edges').insert({
-					src_id: projectContext.ontoProjectId,
-					src_kind: 'project',
-					dst_id: data.id,
-					dst_kind: 'task',
-					rel: 'has_task',
-					project_id: projectContext.ontoProjectId
-				});
-
-				if (edgeError) {
-					console.error(
-						`[EnhancedTaskMigrator] Failed to create task-project edge for task ${task.id} → project ${projectContext.ontoProjectId}: ${edgeError.message}`
-					);
-					throw new Error(`Failed to create task-project edge: ${edgeError.message}`);
 				}
 			}
 

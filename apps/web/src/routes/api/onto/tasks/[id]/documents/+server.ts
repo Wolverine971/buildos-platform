@@ -304,36 +304,6 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 					metadata: { nonFatal: true }
 				});
 			}
-
-			// Ensure project → document edge exists for downstream consumers
-			const { error: projectEdgeError } = await supabase.from('onto_edges').insert({
-				project_id: project.id,
-				src_kind: 'project',
-				src_id: project.id,
-				rel: 'has_document',
-				dst_kind: 'document',
-				dst_id: document.id,
-				props: {}
-			});
-
-			if (projectEdgeError) {
-				console.error(
-					'[TaskDoc API] Failed to insert project has_document edge:',
-					projectEdgeError
-				);
-				await logOntologyApiError({
-					supabase,
-					error: projectEdgeError,
-					endpoint: `/api/onto/tasks/${taskId}/documents`,
-					method: 'POST',
-					userId: session.user.id,
-					projectId: project.id,
-					entityType: 'edge',
-					operation: 'task_document_project_edge',
-					tableName: 'onto_edges',
-					metadata: { nonFatal: true }
-				});
-			}
 		}
 
 		if (!document) {

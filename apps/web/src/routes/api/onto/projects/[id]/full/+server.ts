@@ -80,6 +80,44 @@ type PublicPageCounts = {
 	live: number;
 };
 
+const CONTEXT_DOCUMENT_FALLBACK_COLUMNS = [
+	'archived_at',
+	'children',
+	'content',
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'description',
+	'id',
+	'project_id',
+	'props',
+	'state_key',
+	'title',
+	'type_key',
+	'updated_at'
+].join(',');
+
+async function fetchContextDocumentByTypeKey(
+	supabase: App.Locals['supabase'],
+	projectId: string
+): Promise<unknown | null> {
+	const { data, error } = await supabase
+		.from('onto_documents')
+		.select(CONTEXT_DOCUMENT_FALLBACK_COLUMNS)
+		.eq('project_id', projectId)
+		.eq('type_key', 'document.context.project')
+		.is('deleted_at', null)
+		.order('updated_at', { ascending: false })
+		.limit(1)
+		.maybeSingle();
+
+	if (error) {
+		throw error;
+	}
+
+	return data ?? null;
+}
+
 async function fetchPublicPageCounts(
 	supabase: App.Locals['supabase'],
 	projectId: string
@@ -196,29 +234,47 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 		const lastChangedByActorMap = buildLastChangedByActorMap(data.task_last_changed_by);
 
 		const eventService = new OntoEventSyncService(supabase);
+		const contextDocumentPromise =
+			data.context_document !== null && data.context_document !== undefined
+				? Promise.resolve(data.context_document)
+				: fetchContextDocumentByTypeKey(supabase, id).catch((contextError) => {
+						console.warn(
+							'[Project Full API] Failed to load context document fallback:',
+							contextError
+						);
+						return null;
+					});
 
 		// Run remaining independent post-RPC fetches in parallel: milestone/goal
 		// decoration (edges already supplied by RPC), events, and public-page
 		// counts.
-		const [milestoneDecorateResult, eventsResult, publicPageCountsResult] = await Promise.all([
-			decorateMilestonesWithGoals(supabase, goals, milestones, goalMilestoneEdges),
-			eventService
-				.listProjectEvents(
-					id,
-					{
-						includeDeleted: false
-					},
-					userId
-				)
-				.catch((eventsError) => {
-					console.warn('[Project Full API] Failed to load project events:', eventsError);
-					return [];
+		const [milestoneDecorateResult, eventsResult, publicPageCountsResult, contextDocument] =
+			await Promise.all([
+				decorateMilestonesWithGoals(supabase, goals, milestones, goalMilestoneEdges),
+				eventService
+					.listProjectEvents(
+						id,
+						{
+							includeDeleted: false
+						},
+						userId
+					)
+					.catch((eventsError) => {
+						console.warn(
+							'[Project Full API] Failed to load project events:',
+							eventsError
+						);
+						return [];
+					}),
+				fetchPublicPageCounts(supabase, id).catch((countsError) => {
+					console.warn(
+						'[Project Full API] Failed to load public-page counts:',
+						countsError
+					);
+					return { total: 0, live: 0 } satisfies PublicPageCounts;
 				}),
-			fetchPublicPageCounts(supabase, id).catch((countsError) => {
-				console.warn('[Project Full API] Failed to load public-page counts:', countsError);
-				return { total: 0, live: 0 } satisfies PublicPageCounts;
-			})
-		]);
+				contextDocumentPromise
+			]);
 
 		const { milestones: decoratedMilestones } = milestoneDecorateResult;
 
@@ -243,7 +299,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			milestones: decoratedMilestones,
 			risks: data.risks || [],
 			metrics: data.metrics || [],
-			context_document: data.context_document,
+			context_document: contextDocument,
 			events: eventsResult,
 			public_page_counts: publicPageCountsResult
 		});

@@ -192,7 +192,7 @@ export interface ProjectGraph {
 	/** Get milestones for the project (via has_milestone edge) */
 	getMilestonesForProject(): OntoMilestone[];
 
-	/** Get documents for the project (via has_document edge) */
+	/** Get documents for the project (via project_id ownership) */
 	getDocumentsForProject(): OntoDocument[];
 
 	/** Get risks for the project (via has_risk edge) */
@@ -204,7 +204,7 @@ export interface ProjectGraph {
 	/** Get metrics for the project (via has_metric edge) */
 	getMetricsForProject(): OntoMetric[];
 
-	/** Get sources for the project (via has_source edge) */
+	/** Get sources for the project (via project_id ownership) */
 	getSourcesForProject(): OntoSource[];
 
 	/**

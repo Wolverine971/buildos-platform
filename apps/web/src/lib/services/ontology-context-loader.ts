@@ -1227,10 +1227,12 @@ export class OntologyContextLoader {
 				edge.rel === 'has_context_document' &&
 				edge.dst_kind === 'document'
 		);
-		const contextDocumentId = contextEdge?.dst_id ?? null;
-		const contextDocumentTitle =
-			contextDocumentId &&
-			graphData.documents.find((doc) => doc.id === contextDocumentId)?.title;
+		const contextDocument =
+			graphData.documents.find((doc) => doc.type_key === 'document.context.project') ??
+			graphData.documents.find((doc) => doc.id === contextEdge?.dst_id) ??
+			null;
+		const contextDocumentId = contextDocument?.id ?? null;
+		const contextDocumentTitle = contextDocument?.title;
 
 		const [projectAssets, docStructure] = await Promise.all([
 			this.loadProjectAssetsForHighlights(projectId),

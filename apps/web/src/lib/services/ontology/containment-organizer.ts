@@ -2,8 +2,9 @@
 /**
  * Containment auto-organizer for ontology edges.
  *
- * Applies canonical parent -> child containment edges and removes redundant
- * project-level links when deeper parents exist.
+ * Applies canonical parent -> child containment edges. Project ownership is
+ * represented by each entity's project_id FK, so project parents are accepted
+ * for backward-compatible inputs but are not persisted as onto_edges.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -56,6 +57,8 @@ export const ALLOWED_PARENTS: Record<EntityKind, EntityKind[]> = {
 	source: ['project'],
 	event: ['task']
 };
+
+const NON_PERSISTED_PARENT_KINDS = new Set<EntityKind>(['project']);
 
 export function normalizeParentRefs(input?: {
 	parent?: ParentRef | null;
@@ -192,7 +195,11 @@ export async function applyContainmentEdges(params: {
 		}
 	}
 
-	const desiredEdges: ContainmentEdge[] = desiredParents.flatMap((parent) => {
+	const persistedParents = desiredParents.filter(
+		(parent) => !NON_PERSISTED_PARENT_KINDS.has(parent.kind)
+	);
+
+	const desiredEdges: ContainmentEdge[] = persistedParents.flatMap((parent) => {
 		const rel = resolveContainmentRel(childKind, parent.kind);
 		if (!rel) return [];
 		return [

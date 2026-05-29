@@ -42,6 +42,23 @@ import { attachLastChangedByActorToTasks } from '$lib/server/task-relevance.serv
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
 
+const CONTEXT_DOCUMENT_COLUMNS = [
+	'archived_at',
+	'children',
+	'content',
+	'created_at',
+	'created_by',
+	'deleted_at',
+	'description',
+	'id',
+	'project_id',
+	'props',
+	'state_key',
+	'title',
+	'type_key',
+	'updated_at'
+].join(',');
+
 interface ProjectAccessPayload {
 	can_edit?: boolean;
 	can_admin?: boolean;
@@ -254,6 +271,26 @@ async function loadFullData(
 	const data = rawData as Record<string, any>;
 	if (data.project && typeof data.project === 'object') {
 		data.project = sanitizeProjectForClient(data.project as Record<string, unknown>);
+	}
+	if (!data.context_document) {
+		const { data: contextDocument, error: contextDocumentError } = await supabase
+			.from('onto_documents')
+			.select(CONTEXT_DOCUMENT_COLUMNS)
+			.eq('project_id', id)
+			.eq('type_key', 'document.context.project')
+			.is('deleted_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(1)
+			.maybeSingle();
+
+		if (contextDocumentError) {
+			console.warn(
+				'[Project Page] Failed to load context document fallback:',
+				contextDocumentError
+			);
+		} else {
+			data.context_document = contextDocument ?? null;
+		}
 	}
 	const rawTasks = (data.tasks || []) as Array<{ id: string } & Record<string, unknown>>;
 	const goals = (data.goals || []) as GoalRow[];

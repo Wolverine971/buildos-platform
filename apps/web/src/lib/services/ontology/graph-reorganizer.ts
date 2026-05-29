@@ -613,21 +613,7 @@ export async function planGraphReorg(params: {
 		}
 
 		const projectEdge = nodePlan.plan.entityProjectEdge;
-		if (projectEdge?.mode === 'ensure') {
-			const edge: EdgeInsert = {
-				project_id: projectId,
-				src_kind: 'project',
-				src_id: projectId,
-				dst_kind: nodePlan.node.kind,
-				dst_id: nodePlan.node.id,
-				rel: projectEdge.rel,
-				props: {}
-			};
-			const key = buildEdgeKey(edge);
-			if (!desiredEdgesByKey.has(key)) {
-				desiredEdgesByKey.set(key, edge);
-			}
-		} else if (projectEdge?.mode === 'remove') {
+		if (projectEdge?.mode === 'ensure' || projectEdge?.mode === 'remove') {
 			const edgeKey = `${projectEdge.rel}:project:${projectId}:${nodePlan.node.kind}:${nodePlan.node.id}`;
 			nodePlan.deleteScopes.push({ type: 'projectEdge', edgeKey });
 		}

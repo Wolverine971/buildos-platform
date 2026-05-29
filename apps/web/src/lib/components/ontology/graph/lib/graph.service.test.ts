@@ -177,6 +177,67 @@ describe('OntologyGraphService label display data', () => {
 		expect(graph.nodes.find((node) => node.data.id === 'doc-1')?.data.parent).toBe('project-1');
 	});
 
+	it('derives document hierarchy edges from project doc_structure', () => {
+		const baseProject = makeSourceData().projects[0]!;
+		const graph = OntologyGraphService.buildGraphData(
+			makeSourceData({
+				projects: [
+					{
+						...baseProject,
+						doc_structure: {
+							version: 1,
+							root: [
+								{
+									id: 'doc-parent',
+									order: 0,
+									children: [{ id: 'doc-child', order: 0 }]
+								}
+							]
+						}
+					}
+				],
+				documents: [
+					{
+						id: 'doc-parent',
+						project_id: 'project-1',
+						type_key: 'document',
+						title: 'Parent Brief',
+						description: null,
+						state_key: 'draft',
+						props: null,
+						children: null,
+						created_by: 'actor-1',
+						created_at: now,
+						updated_at: now
+					},
+					{
+						id: 'doc-child',
+						project_id: 'project-1',
+						type_key: 'document',
+						title: 'Child Notes',
+						description: null,
+						state_key: 'draft',
+						props: null,
+						children: null,
+						created_by: 'actor-1',
+						created_at: now,
+						updated_at: now
+					}
+				]
+			}),
+			'full'
+		);
+
+		const hierarchyEdge = graph.edges.find((edge) =>
+			edge.data.id.startsWith('doc-structure:project-1:doc-parent:doc-child')
+		);
+
+		expect(hierarchyEdge?.data.source).toBe('doc-parent');
+		expect(hierarchyEdge?.data.target).toBe('doc-child');
+		expect(hierarchyEdge?.data.relationship).toBe('has_part');
+		expect(hierarchyEdge?.data.category).toBe('hierarchical');
+	});
+
 	it('suppresses direct project containment edges while keeping internal ontology edges', () => {
 		const graph = OntologyGraphService.buildGraphData(
 			makeSourceData({

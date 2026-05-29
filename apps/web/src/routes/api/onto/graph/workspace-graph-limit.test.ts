@@ -217,7 +217,7 @@ describe('buildWorkspaceGraphPayload', () => {
 		expect(filtered.risks).toHaveLength(1);
 	});
 
-	it('adds inferred project links for project-owned entities without direct edges', () => {
+	it('adds inferred project links to source data while rendering ownership as containment', () => {
 		const source: GraphSourceData = {
 			projects: [makeProject(0)],
 			tasks: [makeTask(0)],
@@ -237,8 +237,10 @@ describe('buildWorkspaceGraphPayload', () => {
 			dst_id: 'task-0',
 			props: { inferred: true, source: 'project_id' }
 		});
-		expect(payload.graph.edges).toHaveLength(1);
-		expect(payload.graph.edges[0]?.data.inferred).toBe(true);
+		expect(payload.graph.edges).toHaveLength(0);
+		expect(payload.graph.nodes.find((node) => node.data.id === 'task-0')?.data.parent).toBe(
+			'project-0'
+		);
 		expect(payload.limitMetadata.scopeCounts.showInferredProjectLinks).toMatchObject({
 			total: 1,
 			included: 1,

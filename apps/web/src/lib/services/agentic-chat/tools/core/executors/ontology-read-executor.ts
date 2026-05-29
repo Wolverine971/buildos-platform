@@ -305,16 +305,15 @@ export class OntologyReadExecutor extends BaseExecutor {
 				.order('updated_at', { ascending: false })
 				.limit(8),
 			supabase
-				.from('onto_edges')
+				.from('onto_documents')
 				.select(
-					'dst_id, document:onto_documents!inner(id, project_id, title, description, type_key, state_key, created_at, updated_at, archived_at)'
+					'id, project_id, title, description, type_key, state_key, created_at, updated_at, archived_at'
 				)
-				.eq('src_kind', 'project')
-				.eq('src_id', projectId)
-				.eq('rel', 'has_context_document')
-				.eq('dst_kind', 'document')
-				.is('document.deleted_at', null)
-				.maybeSingle()
+				.eq('project_id', projectId)
+				.eq('type_key', 'document.context.project')
+				.is('deleted_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(1)
 		]);
 
 		this.throwFirstQueryError([
@@ -334,7 +333,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			return null;
 		}
 
-		const contextDocumentRaw = contextDocResult.data?.document ?? null;
+		const contextDocumentRaw = contextDocResult.data ?? null;
 		const contextDocument = Array.isArray(contextDocumentRaw)
 			? (contextDocumentRaw[0] ?? null)
 			: contextDocumentRaw;

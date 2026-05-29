@@ -182,31 +182,24 @@ async function loadContextDocument(
 	supabase: SupabaseClient<Database>,
 	project: ProjectRow
 ): Promise<ReverseEngineeringContextDocument | null> {
-	// Query context document via edge relationship
-	const { data: contextEdge } = await supabase
-		.from('onto_edges')
-		.select('dst_id')
-		.eq('src_kind', 'project')
-		.eq('src_id', project.id)
-		.eq('rel', 'has_context_document')
-		.eq('dst_kind', 'document')
-		.limit(1)
-		.maybeSingle();
-
-	const contextDocumentId = contextEdge?.dst_id || null;
-
-	if (!contextDocumentId) {
-		return null;
-	}
-
 	const { data: document, error: documentError } = await supabase
 		.from('onto_documents')
 		.select('id, title')
-		.eq('id', contextDocumentId)
+		.eq('project_id', project.id)
+		.eq('type_key', 'document.context.project')
+		.is('deleted_at', null)
+		.order('updated_at', { ascending: false })
+		.limit(1)
 		.maybeSingle();
 
 	if (documentError) {
 		console.error('[Goal Reverse] Failed to load context document metadata:', documentError);
+		return null;
+	}
+
+	const contextDocumentId = document?.id || null;
+
+	if (!contextDocumentId) {
 		return null;
 	}
 

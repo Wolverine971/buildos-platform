@@ -1044,7 +1044,9 @@
 			class="grid gap-3 border-t border-border px-4 sm:px-5 py-4 sm:grid-cols-2 text-xs sm:text-sm text-muted-foreground"
 		>
 			<div>
-				<div class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70">
+				<div
+					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
+				>
 					What
 				</div>
 				<p class="mt-1 leading-relaxed">
@@ -1053,7 +1055,9 @@
 				</p>
 			</div>
 			<div>
-				<div class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70">
+				<div
+					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
+				>
 					Why
 				</div>
 				<p class="mt-1 leading-relaxed">
@@ -1062,21 +1066,25 @@
 				</p>
 			</div>
 			<div>
-				<div class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70">
+				<div
+					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
+				>
 					How
 				</div>
 				<p class="mt-1 leading-relaxed">
-					Generate a key, paste it into your tool's config, then tell the agent
-					"connect to BuildOS, list my projects."
+					Generate a key, paste it into your tool's config, then tell the agent "connect
+					to BuildOS, list my projects."
 				</p>
 			</div>
 			<div>
-				<div class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70">
+				<div
+					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
+				>
 					Safety
 				</div>
 				<p class="mt-1 leading-relaxed">
-					Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any
-					time. BuildOS stores only a hash; the full key is shown once on generate.
+					Per-project scope. Per-op write whitelist. Audit log. Rotate or revoke any time.
+					BuildOS stores only a hash; the full key is shown once on generate.
 				</p>
 			</div>
 		</div>
@@ -1094,10 +1102,13 @@
 					<Key class="h-3.5 w-3.5" />
 				</div>
 				<div class="min-w-0">
-					<div class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
+					<div
+						class="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground"
+					>
 						Your agent handle
 					</div>
-					<code class="block truncate text-xs text-foreground">{buildosAgent.handle}</code>
+					<code class="block truncate text-xs text-foreground">{buildosAgent.handle}</code
+					>
 				</div>
 			</div>
 			<Button
@@ -1130,8 +1141,8 @@
 			<ShieldCheck class="mt-0.5 h-4 w-4 shrink-0 text-foreground/60" />
 			<p>
 				<span class="font-medium text-foreground">Need the full key?</span>
-				For security, BuildOS stores only a hash. Use Rotate + Copy to reissue the key,
-				then copy the full BuildOS Agent Key from the confirmation modal.
+				For security, BuildOS stores only a hash. Use Rotate + Copy to reissue the key, then
+				copy the full BuildOS Agent Key from the confirmation modal.
 			</p>
 		</div>
 

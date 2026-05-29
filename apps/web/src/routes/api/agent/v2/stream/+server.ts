@@ -3853,7 +3853,9 @@ export const POST: RequestHandler = async ({
 						sessionId: session.id,
 						contextType,
 						entityId,
-						reason: activeTurnConflict ? 'active_turn_conflict' : 'turn_run_insert_failed'
+						reason: activeTurnConflict
+							? 'active_turn_conflict'
+							: 'turn_run_insert_failed'
 					},
 					doneMetadata: {
 						sessionId: session.id,

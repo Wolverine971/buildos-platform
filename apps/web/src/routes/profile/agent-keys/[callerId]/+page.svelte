@@ -265,7 +265,8 @@
 								{installationDisplayName(caller)}
 							</h1>
 							<div class="mt-2 flex flex-wrap items-center gap-1.5">
-								<Badge variant={statusVariant(caller.status)}>{caller.status}</Badge>
+								<Badge variant={statusVariant(caller.status)}>{caller.status}</Badge
+								>
 								<Badge variant="default">{displayProvider(caller.provider)}</Badge>
 								<Badge variant={usageSignal.variant}>{usageSignal.label}</Badge>
 								<Badge variant={healthSignal.variant}>{healthSignal.label}</Badge>

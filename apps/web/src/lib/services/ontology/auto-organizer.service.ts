@@ -201,36 +201,10 @@ async function ensureProjectEdge(params: {
 	entity: { kind: EntityKind; id: string };
 	rel: RelationshipType;
 }): Promise<void> {
-	const { supabase, projectId, entity, rel } = params;
-	const { data, error } = await supabase
-		.from('onto_edges')
-		.select('id')
-		.eq('src_kind', 'project')
-		.eq('src_id', projectId)
-		.eq('dst_kind', entity.kind)
-		.eq('dst_id', entity.id)
-		.eq('rel', rel)
-		.maybeSingle();
-
-	if (error) {
-		throw new AutoOrganizeError(error.message, 500);
-	}
-
-	if (!data) {
-		const { error: insertError } = await supabase.from('onto_edges').insert({
-			project_id: projectId,
-			src_kind: 'project',
-			src_id: projectId,
-			dst_kind: entity.kind,
-			dst_id: entity.id,
-			rel,
-			props: {}
-		});
-
-		if (insertError) {
-			throw new AutoOrganizeError(insertError.message, 500);
-		}
-	}
+	// Project membership is now implied by the entity project_id FK. Treat legacy
+	// "ensure" requests as cleanup so older callers stop reintroducing direct
+	// project edges.
+	await removeProjectEdge(params);
 }
 
 async function removeProjectEdge(params: {

@@ -389,15 +389,15 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				.select(METRIC_COLUMNS)
 				.eq('project_id', id)
 				.order('created_at'),
-			// OPTIMIZATION: Fetch context document via edge in single query with JOIN
+			// Context document membership is implied by project_id + type_key; no project edge needed.
 			supabase
-				.from('onto_edges')
-				.select(`dst_id, document:onto_documents!inner(${CONTEXT_DOCUMENT_COLUMNS})`)
-				.eq('src_kind', 'project')
-				.eq('src_id', id)
-				.eq('rel', 'has_context_document')
-				.eq('dst_kind', 'document')
-				.is('document.deleted_at', null)
+				.from('onto_documents')
+				.select(CONTEXT_DOCUMENT_COLUMNS)
+				.eq('project_id', id)
+				.eq('type_key', 'document.context.project')
+				.is('deleted_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(1)
 				.maybeSingle()
 		]);
 
@@ -421,9 +421,7 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			console.error('[Project API] Failed to fetch images:', imagesResult.error);
 		}
 
-		// Extract context document from JOIN result
-		// The !inner join creates an aliased property with the table name
-		const contextDocument: Document | null = (contextDocResult.data as any)?.document ?? null;
+		const contextDocument: Document | null = (contextDocResult.data as Document | null) ?? null;
 
 		const { milestones: decoratedMilestones } = await decorateMilestonesWithGoals(
 			supabase,

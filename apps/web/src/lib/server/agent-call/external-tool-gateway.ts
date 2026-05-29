@@ -4726,18 +4726,6 @@ async function createTaskDocument(context: ToolExecutionContext, args: Record<st
 			undefined,
 			getExternalAgentActivityContext(context)
 		);
-		await createEdge(
-			context,
-			{
-				src_kind: 'project',
-				src_id: taskAccess.project.id,
-				dst_kind: 'document',
-				dst_id: document.id,
-				rel: 'has_document',
-				props: { origin: 'external_agent' }
-			},
-			taskAccess.project
-		);
 	}
 
 	const role =

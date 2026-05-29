@@ -351,16 +351,6 @@ export async function instantiateProject(
 			await addDocumentToDocStructure(client, typedProjectId, contextDocId, actorId, {
 				title: parsed.context_document.title
 			});
-
-			// Use has_context_document edge to link the context document
-			edgesToInsert.push({
-				project_id: typedProjectId,
-				src_kind: 'project',
-				src_id: projectId,
-				rel: 'has_context_document',
-				dst_kind: 'document',
-				dst_id: contextDocId
-			});
 		}
 
 		const entityIdByTempId = new Map<string, { kind: EntityKind; id: string }>();
