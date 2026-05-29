@@ -914,15 +914,22 @@ export function validateProjectSpec(spec: unknown): { valid: boolean; errors: st
  * Tries current_actor_id() first (what RLS uses), then falls back to creating
  * the actor via ensure_actor_for_user and re-checks. Throws if still missing.
  */
-async function resolveActorId(client: TypedSupabaseClient, userId: string): Promise<string> {
-	// First, try the same resolver used by RLS policies.
+export async function resolveActorId(client: TypedSupabaseClient, userId: string): Promise<string> {
+	// First, try the same resolver used by RLS policies. This works for
+	// user-scoped clients (the web app) where auth.uid() is populated.
 	const { data: currentActorId } = await client.rpc('current_actor_id');
 	if (currentActorId) return currentActorId;
 
-	// If not found, create/ensure the actor row for this user.
-	await ensureActorExists(client, userId);
+	// No session actor. This is the normal case for the service-role admin client
+	// used by the external agent gateway / remote MCP, where auth.uid() is null and
+	// current_actor_id() therefore returns null. ensure_actor_for_user takes an
+	// explicit user id and returns that user's actor id directly, so use it rather
+	// than re-checking the session resolver (which can never succeed without a JWT).
+	const ensuredActorId = await ensureActorExists(client, userId);
+	if (ensuredActorId) return ensuredActorId;
 
-	// Re-fetch to align with RLS check during insert.
+	// Last resort: re-check the session resolver in case the actor was just created
+	// for a user-scoped client that previously had no actor row.
 	const { data: resolvedActorId, error: resolvedError } = await client.rpc('current_actor_id');
 	if (resolvedActorId) return resolvedActorId;
 

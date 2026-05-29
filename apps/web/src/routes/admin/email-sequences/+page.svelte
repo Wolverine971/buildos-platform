@@ -762,7 +762,7 @@
 						<p class="mt-3 text-sm text-destructive">{triggerError}</p>
 					{/if}
 					{#if triggerResult}
-						<div class="mt-3 grid grid-cols-4 gap-2 text-center text-xs">
+						<div class="mt-3 grid grid-cols-2 gap-2 text-center text-xs sm:grid-cols-4">
 							<div class="rounded border border-border bg-background p-2">
 								<p class="text-lg font-bold text-foreground">
 									{triggerResult.counts.queued}

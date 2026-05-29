@@ -755,6 +755,85 @@
 		return profileForCaller(provisioned.caller);
 	}
 
+	type McpQuickConnect = {
+		label: string;
+		language: string;
+		value: string;
+		note: string;
+	};
+
+	/**
+	 * The single, prominent "connect via MCP" command for a profile. BuildOS's MCP
+	 * endpoint (/mcp/buildos) accepts both OAuth (browser, zero-paste) and the
+	 * static agent key below (header config for local clients). This returns the
+	 * cleanest copy-paste form per client.
+	 */
+	function mcpQuickConnect(
+		provisioned: BuildosAgentCallerProvisionResponse,
+		includeKey: boolean
+	): McpQuickConnect {
+		const token = includeKey
+			? provisioned.credentials.bearer_token
+			: '<BUILDOS_AGENT_TOKEN>';
+		return buildMcpQuickConnect(bootstrapProfile(provisioned).id, token);
+	}
+
+	function mcpQuickConnectForCaller(caller: BuildosAgentCallerSummary): McpQuickConnect {
+		// Existing keys never expose the secret again, so always use the placeholder.
+		return buildMcpQuickConnect(profileForCaller(caller).id, '<BUILDOS_AGENT_TOKEN>');
+	}
+
+	function buildMcpQuickConnect(
+		profileId: AgentClientProfileId,
+		token: string
+	): McpQuickConnect {
+		const mcpUrl = `${buildosBaseUrl()}/mcp/buildos`;
+
+		switch (profileId) {
+			case 'claude-code':
+				return {
+					label: 'Add to Claude Code',
+					language: 'bash',
+					value: `claude mcp add --transport http buildos ${mcpUrl} --header "Authorization: Bearer ${token}"`,
+					note: 'Run this in your terminal, then restart Claude Code. Prefer no pasted key? Run it without --header and approve BuildOS in the browser (OAuth).'
+				};
+			case 'codex-cli':
+				return {
+					label: 'Add to Codex — ~/.codex/config.toml',
+					language: 'toml',
+					value: [
+						'[mcp_servers.buildos]',
+						`url = "${mcpUrl}"`,
+						'bearer_token_env_var = "BUILDOS_AGENT_TOKEN"'
+					].join('\n'),
+					note: 'Set BUILDOS_AGENT_TOKEN in your environment to the key above, then restart Codex.'
+				};
+			case 'claude-browser':
+			case 'chatgpt-developer-mode':
+				return {
+					label: 'Add as a remote MCP connector',
+					language: 'text',
+					value: mcpUrl,
+					note: 'Add this URL as a custom connector and approve BuildOS in the browser. Browser clients authenticate with OAuth — no key pasting needed.'
+				};
+			default:
+				return {
+					label: 'Connect any MCP client',
+					language: 'text',
+					value: `URL:    ${mcpUrl}\nHeader: Authorization: Bearer ${token}`,
+					note: 'Point any streamable-HTTP MCP client at this URL with the bearer header. Browser-based clients can connect to the same URL with OAuth instead.'
+				};
+		}
+	}
+
+	function mcpQuickConnectIncludesSecret(
+		provisioned: BuildosAgentCallerProvisionResponse
+	): boolean {
+		// Connector (OAuth) profiles never embed the key in the command.
+		const profileId = bootstrapProfile(provisioned).id;
+		return profileId !== 'claude-browser' && profileId !== 'chatgpt-developer-mode';
+	}
+
 	async function provisionCaller() {
 		if (saving) return;
 
@@ -1007,7 +1086,7 @@
 	<TabHeader
 		icon={Key}
 		title="Agents"
-		description="Connect ChatGPT Codex, Claude Code, Open Claw, or any AI tool to your BuildOS projects. One key per tool. Rotate or revoke any time."
+		description="Connect Claude Code, Codex, ChatGPT, OpenClaw, or any AI tool to your BuildOS projects. One key per tool. Rotate or revoke any time."
 	>
 		{#snippet actions()}
 			<Button
@@ -1161,7 +1240,7 @@
 				</div>
 				<p class="mx-auto max-w-md text-sm text-muted-foreground">
 					No agents connected yet. Generate a key for the AI tool you use most — Claude
-					Code, ChatGPT Codex, Open Claw, Cursor, or anything that can call HTTP.
+					Code, Codex, ChatGPT, OpenClaw, Cursor, or anything that can call HTTP.
 				</p>
 				<div class="mt-4">
 					<Button variant="primary" size="sm" icon={Plus} onclick={openGenerateModal}>
@@ -1227,6 +1306,47 @@
 						</summary>
 
 						<div class="border-t border-border p-3 sm:p-4 space-y-4">
+							{#if caller.status === 'trusted'}
+								<div
+									class="rounded-lg border border-accent/40 bg-accent/5 p-3 space-y-2"
+								>
+									<div
+										class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between"
+									>
+										<div>
+											<div
+												class="text-xs font-semibold uppercase tracking-wider text-foreground"
+											>
+												{mcpQuickConnectForCaller(caller).label}
+											</div>
+											<p class="mt-1 text-xs text-muted-foreground">
+												{mcpQuickConnectForCaller(caller).note}
+											</p>
+										</div>
+										<Button
+											variant="primary"
+											size="sm"
+											icon={copiedId === `mcp-cmd-${caller.id}`
+												? CircleCheck
+												: Copy}
+											title="Replace <BUILDOS_AGENT_TOKEN> with the key you saved when you generated it. Browser/OAuth connectors don't need a key."
+											onclick={() =>
+												copyToClipboard(
+													`mcp-cmd-${caller.id}`,
+													mcpQuickConnectForCaller(caller).value,
+													'Command copied'
+												)}
+										>
+											{copiedId === `mcp-cmd-${caller.id}` ? 'Copied' : 'Copy'}
+										</Button>
+									</div>
+									<pre
+										class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+											>{mcpQuickConnectForCaller(caller).value}</code
+										></pre>
+								</div>
+							{/if}
+
 							<div class="flex flex-wrap gap-2">
 								{#if caller.status === 'trusted'}
 									{#if !isOAuthConnectorCaller(caller)}
@@ -1865,11 +1985,62 @@
 					</div>
 				</div>
 
+				<!-- Prominent: connect via MCP -->
+				<div class="rounded-lg border border-accent/40 bg-accent/5 p-3 space-y-2">
+					<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+						<div>
+							<div class="text-xs font-semibold uppercase tracking-wider text-foreground">
+								{mcpQuickConnect(latestProvisioned, false).label}
+							</div>
+							<p class="mt-1 text-xs text-muted-foreground">
+								{mcpQuickConnect(latestProvisioned, false).note}
+							</p>
+						</div>
+						<div class="flex flex-wrap gap-2">
+							<Button
+								variant="outline"
+								size="sm"
+								icon={copiedId === 'mcp-quick-placeholder' ? CircleCheck : Copy}
+								onclick={() =>
+									copyToClipboard(
+										'mcp-quick-placeholder',
+										mcpQuickConnect(latestProvisioned!, false).value,
+										'Command copied'
+									)}
+							>
+								{copiedId === 'mcp-quick-placeholder' ? 'Copied' : 'Copy'}
+							</Button>
+							{#if mcpQuickConnectIncludesSecret(latestProvisioned)}
+								<Button
+									variant="primary"
+									size="sm"
+									icon={copiedId === 'mcp-quick-key' ? CircleCheck : Copy}
+									onclick={() =>
+										copyToClipboard(
+											'mcp-quick-key',
+											mcpQuickConnect(latestProvisioned!, true).value,
+											'Command with key copied'
+										)}
+								>
+									{copiedId === 'mcp-quick-key' ? 'Copied' : 'Copy with key'}
+								</Button>
+							{/if}
+						</div>
+					</div>
+					<pre
+						class="overflow-x-auto rounded border border-border bg-card p-2.5 text-xs text-foreground whitespace-pre-wrap"><code
+							>{mcpQuickConnect(latestProvisioned, false).value}</code
+						></pre>
+				</div>
+
 				<div class="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
 					<div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
 						<div>
 							<div class="text-xs uppercase tracking-wider text-muted-foreground">
 								{bootstrapProfile(latestProvisioned).label} Handoff
+								<span class="ml-1 normal-case text-muted-foreground/70"
+									>(advanced / gateway fallback)</span
+								>
 							</div>
 							<p class="mt-1 text-xs text-muted-foreground">
 								{bootstrapProfile(latestProvisioned).secretHandlingNote}

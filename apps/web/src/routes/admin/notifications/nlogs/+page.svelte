@@ -319,11 +319,14 @@
 		<!-- Tabs -->
 		<div class="admin-panel">
 			<div class="border-b border-border">
-				<nav class="flex space-x-8 px-6" aria-label="Tabs">
+				<nav
+					class="flex space-x-6 overflow-x-auto px-4 sm:space-x-8 sm:px-6"
+					aria-label="Tabs"
+				>
 					<button
 						type="button"
 						onclick={() => handleTabChange('events')}
-						class="py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
+						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
 						'events'
 							? 'border-blue-500 text-blue-600 dark:text-blue-400'
 							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
@@ -333,7 +336,7 @@
 					<button
 						type="button"
 						onclick={() => handleTabChange('deliveries')}
-						class="py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
+						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
 						'deliveries'
 							? 'border-blue-500 text-blue-600 dark:text-blue-400'
 							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
@@ -343,7 +346,7 @@
 					<button
 						type="button"
 						onclick={() => handleTabChange('system')}
-						class="py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
+						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
 						'system'
 							? 'border-blue-500 text-blue-600 dark:text-blue-400'
 							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"

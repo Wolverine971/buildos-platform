@@ -1,6 +1,43 @@
 // apps/web/src/lib/services/ontology/instantiation.service.test.ts
-import { describe, expect, it } from 'vitest';
-import { resolveFacets, validateProjectSpec } from './instantiation.service';
+import { describe, expect, it, vi } from 'vitest';
+import { resolveActorId, resolveFacets, validateProjectSpec } from './instantiation.service';
+
+function fakeRpcClient(impl: (name: string, args?: unknown) => { data: unknown; error?: unknown }) {
+	return { rpc: vi.fn(impl) } as any;
+}
+
+describe('resolveActorId', () => {
+	it('uses the session actor when current_actor_id() resolves (user-scoped client)', async () => {
+		const client = fakeRpcClient((name) =>
+			name === 'current_actor_id' ? { data: 'actor-session' } : { data: null }
+		);
+
+		await expect(resolveActorId(client, 'user-1')).resolves.toBe('actor-session');
+		// ensure_actor_for_user should not be needed when a session actor exists.
+		expect(client.rpc).toHaveBeenCalledTimes(1);
+	});
+
+	it('falls back to ensure_actor_for_user when current_actor_id() is null (admin/agent client)', async () => {
+		// This is the remote-MCP / agent gateway path: the service-role admin client
+		// has no auth.uid(), so current_actor_id() returns null. We must use the id
+		// returned by ensure_actor_for_user rather than re-checking the session.
+		const client = fakeRpcClient((name) =>
+			name === 'ensure_actor_for_user' ? { data: 'actor-ensured' } : { data: null }
+		);
+
+		await expect(resolveActorId(client, 'user-1')).resolves.toBe('actor-ensured');
+	});
+
+	it('throws a clear error when the actor cannot be resolved at all', async () => {
+		const client = fakeRpcClient((name) =>
+			name === 'ensure_actor_for_user'
+				? { data: null, error: { message: 'no actor' } }
+				: { data: null }
+		);
+
+		await expect(resolveActorId(client, 'user-1')).rejects.toThrow(/Failed to resolve actor/);
+	});
+});
 
 describe('resolveFacets', () => {
 	it('applies template defaults when spec facets are missing', () => {
