@@ -120,4 +120,27 @@ A from-scratch spine can own **A + the seams for D**, but it must *call into* B 
 4. **Layer D:** put feature/perf layers behind clean seams/flags.
 5. **Layer C (last):** isolate active-turn singleton + checkpoint resume behind their own modules.
 
-**Status:** Scope agreed 2026-05-29. Layer E in progress.
+---
+
+## Progress log
+
+### 2026-05-29 — Layer E (partial), branch `refactor/agent-stream-v2-layer-e`
+
+Two safe, behavior-preserving cuts landed; the finalize collapse was deferred after the code turned out to be already partially refactored.
+
+- **`623680e2` — Remove dead `_emitContextOperations` + orphans.** Deleted the never-called `_emitContextOperations` (~113 lines) and the helpers it transitively kept alive (`emitOperation`, `OPERATION_ENTITY_TYPES`, `isOperationEntityType`) plus the now-unused `OperationEventPayload` import. **5985 → 5834.**
+- **`d46e4787` — Extract `emitErrorThenDone`.** Collapsed the repeated emit-error → mark-done → emit-done core across 5 early-exit paths (brief-missing, brief-denied, project-denied, active-turn-running, turn-run-insert-failed). Each caller keeps its own distinct tail (stream close / cancel-watcher teardown / timing metric). **5834 → 5773.**
+
+Verification after both: route tests **6/6 green**, `svelte-check` **0 errors / 0 warnings**. Net so far: **5985 → 5773 (−212 lines)**, zero behavior change.
+
+#### Finalize collapse — DEFERRED (premise stale)
+
+The 2026-05-25 assessment described "3 inline finalize branches, ~90% duplicate, ~400 lines." That is **no longer accurate** — the code has already been refactored since then:
+
+- The cancelled/interrupted path is **already** its own closure, `finalizeInterruption` (~5334–5480).
+- The shared sub-steps are **already** extracted helpers: `persistToolExecutionRows`, `buildLastTurnContext`, `persistTurnRunFinalState`, `queueTimingMetric`, `restoreResumingSupervisorCheckpoint`.
+- What remains is three branches (interrupted / success `else` / error `catch`) that orchestrate those shared helpers with **genuinely different** metadata builders (`interruptedMetadata` vs `buildAssistantMessageMetadata` vs error metadata), `interrupted: true` flags, `finished_reason`s, checkpoint semantics (restore vs resumed vs restore), and reconciliation-var capture.
+
+Collapsing them into one parameterized `finalizeTurn({status, …})` would now save only **~60–100 lines, not 400**, and would push all those real divergences into conditional branches inside one function — which risks *reducing* clarity on the hottest code path (every turn's persistence + checkpoint + timing). **Recommendation:** do it as its own focused PR with fresh analysis, or skip in favor of higher-value Layer B extraction. Not worth bundling into the safe Layer E cuts.
+
+**Status:** Layer E safe cuts shipped (`623680e2`, `d46e4787`). Finalize collapse deferred. Next decision: Layer B extraction vs. revisit finalize.
