@@ -132,11 +132,12 @@ export function searchDomains(options: DomainSearchOptions = {}): DomainSearchPa
 }
 
 export function loadDomain(domainId: string): DomainLoadPayload | Record<string, unknown> {
-	const domain = getDomainById(domainId);
+	const normalizedDomainId = domainId.trim().toLowerCase();
+	const domain = getDomainById(normalizedDomainId);
 	if (!domain) {
 		return {
 			type: 'not_found',
-			domain: domainId.trim(),
+			domain: normalizedDomainId,
 			available_domains: listDomains().map((item) => ({
 				id: item.id,
 				name: item.name,

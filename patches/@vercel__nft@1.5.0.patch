@@ -1,0 +1,36 @@
+diff --git a/out/node-file-trace.js b/out/node-file-trace.js
+index ab58862c98f3f024d74668495b00a98a95f76f03..55ecd318b343f26e7dbee939291276f8b71c7e0c 100644
+--- a/out/node-file-trace.js
++++ b/out/node-file-trace.js
+@@ -260,6 +260,9 @@ class Job {
+         if (!isRealpath) {
+             path = await this.realpath(path, parent);
+         }
++        if (!(await this.stat(path))) {
++            return false;
++        }
+         path = (0, path_1.relative)(this.base, path);
+         if (parent) {
+             parent = (0, path_1.relative)(this.base, parent);
+diff --git a/out/utils/special-cases.js b/out/utils/special-cases.js
+index a66b596da3c45e7307cf38f4f2f524e1d338c2cb..f7c7057ee6b8c2b4c1eee7985035fda65c23b077 100644
+--- a/out/utils/special-cases.js
++++ b/out/utils/special-cases.js
+@@ -153,13 +153,16 @@ const specialCases = {
+             const pkg = JSON.parse((0, graceful_fs_1.readFileSync)(file, 'utf8'));
+             for (const dep of Object.keys(pkg.optionalDependencies || {})) {
+                 const dir = (0, path_1.resolve)(id, '..', '..', '..', dep);
++                if (!(0, graceful_fs_1.existsSync)(dir))
++                    continue;
+                 emitAssetDirectory(dir);
+                 try {
+                     const file = (0, path_1.resolve)(dir, 'package.json');
+                     const pkg = JSON.parse((0, graceful_fs_1.readFileSync)(file, 'utf8'));
+                     for (const innerDep of Object.keys(pkg.optionalDependencies || {})) {
+                         const innerDir = (0, path_1.resolve)(await job.realpath(dir), '..', '..', innerDep);
+-                        emitAssetDirectory(innerDir);
++                        if ((0, graceful_fs_1.existsSync)(innerDir))
++                            emitAssetDirectory(innerDir);
+                     }
+                 }
+                 catch (err) {

@@ -55,6 +55,11 @@ overrides:
   flatted@<3.4.0: '>=3.4.0'
   follow-redirects@<1.16.0: '>=1.16.0'
 
+patchedDependencies:
+  '@vercel/nft@1.5.0':
+    hash: m53vpa6vasajjvkuxn5j7u7pbu
+    path: patches/@vercel__nft@1.5.0.patch
+
 importers:
 
   .:
@@ -7350,7 +7355,7 @@ snapshots:
   '@sveltejs/adapter-vercel@6.3.3(@sveltejs/kit@2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3)))(rollup@4.60.1)':
     dependencies:
       '@sveltejs/kit': 2.57.1(@sveltejs/vite-plugin-svelte@5.1.1(svelte@5.55.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3)))(svelte@5.55.2)(typescript@5.9.2)(vite@7.3.2(@types/node@20.19.17)(jiti@1.21.7)(terser@5.47.1)(tsx@4.20.6)(yaml@2.8.3))
-      '@vercel/nft': 1.5.0(rollup@4.60.1)
+      '@vercel/nft': 1.5.0(patch_hash=m53vpa6vasajjvkuxn5j7u7pbu)(rollup@4.60.1)
       esbuild: 0.25.10
     transitivePeerDependencies:
       - encoding
@@ -7920,7 +7925,7 @@ snapshots:
       react: 19.2.3
       svelte: 5.55.2
 
-  '@vercel/nft@1.5.0(rollup@4.60.1)':
+  '@vercel/nft@1.5.0(patch_hash=m53vpa6vasajjvkuxn5j7u7pbu)(rollup@4.60.1)':
     dependencies:
       '@mapbox/node-pre-gyp': 2.0.0
       '@rollup/pluginutils': 5.3.0(rollup@4.60.1)

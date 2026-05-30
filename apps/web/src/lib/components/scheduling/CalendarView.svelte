@@ -66,6 +66,9 @@
 		continuesAfter: boolean;
 	}
 
+	const monthSegmentIdentityCache = new WeakMap<object, string>();
+	let monthSegmentIdentityCounter = 0;
+
 	interface Props {
 		viewMode?: 'day' | 'week' | 'month';
 		currentDate?: Date;
@@ -437,14 +440,29 @@
 	}
 
 	function getEventIdentity(event: CalendarDayEvent): string {
-		return (
+		const explicitIdentity =
 			event.calendarItem?.calendar_item_id ||
 			event.calendarItem?.event_id ||
 			event.calendarItem?.task_id ||
 			event.originalEvent?.calendarItem?.calendar_item_id ||
-			event.schedule?.task?.id ||
-			`${event.type}:${event.title}:${event.start.toISOString()}:${event.end.toISOString()}`
-		);
+			event.schedule?.task?.id;
+		if (explicitIdentity) return String(explicitIdentity);
+
+		const sourceObject =
+			(typeof event.originalEvent === 'object' &&
+				event.originalEvent !== null &&
+				event.originalEvent) ||
+			(typeof event.schedule === 'object' && event.schedule !== null && event.schedule);
+		if (sourceObject) {
+			const existing = monthSegmentIdentityCache.get(sourceObject);
+			if (existing) return existing;
+			monthSegmentIdentityCounter += 1;
+			const generated = `month-segment-${monthSegmentIdentityCounter}`;
+			monthSegmentIdentityCache.set(sourceObject, generated);
+			return generated;
+		}
+
+		return `${event.type}:${event.title}:${event.start.toISOString()}:${event.end.toISOString()}`;
 	}
 
 	function getMonthWeeks(date: Date): Date[][] {

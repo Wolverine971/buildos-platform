@@ -516,6 +516,80 @@ describe('buildSessionDetailPayload', () => {
 		).toBe('error');
 	});
 
+	it('counts distinct failures across structured rows and metadata traces', () => {
+		const payload = buildSessionDetailPayload({
+			sessionRow: {
+				id: 'session-distinct-failures',
+				user_id: 'user-1',
+				title: 'Distinct failure sources',
+				status: 'active',
+				context_type: 'project',
+				entity_id: 'project-1',
+				message_count: 1,
+				total_tokens_used: 0,
+				tool_call_count: 2,
+				created_at: '2026-05-24T20:00:00.000Z',
+				updated_at: '2026-05-24T20:01:00.000Z',
+				last_message_at: '2026-05-24T20:01:00.000Z',
+				agent_metadata: {},
+				users: {
+					id: 'user-1',
+					email: 'admin@example.com',
+					name: 'Admin User'
+				}
+			},
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Encountered separate tool issues.',
+					created_at: '2026-05-24T20:01:00.000Z',
+					metadata: {
+						fastchat_tool_trace_v1: [
+							{
+								tool_call_id: 'call-trace-only',
+								tool_name: 'web_visit',
+								success: false,
+								error: 'Trace-only failure'
+							}
+						]
+					}
+				}
+			],
+			toolExecutions: [
+				{
+					id: 'tool-exec-1',
+					message_id: 'assistant-1',
+					turn_run_id: 'run-1',
+					stream_run_id: 'stream-1',
+					client_turn_id: 'turn-1',
+					tool_name: 'web_visit',
+					tool_category: 'detail',
+					gateway_op: 'util.web.visit',
+					help_path: null,
+					sequence_index: 1,
+					success: false,
+					execution_time_ms: 91,
+					arguments: { url: 'https://example.com' },
+					result: null,
+					error_message: 'Structured-only failure',
+					created_at: '2026-05-24T20:00:30.000Z'
+				}
+			],
+			llmCalls: [],
+			operations: [],
+			timingData: null,
+			turnRuns: [],
+			promptSnapshots: [],
+			turnEvents: [],
+			evalRuns: [],
+			evalAssertions: []
+		});
+
+		expect(payload.metrics.tool_failures).toBe(2);
+		expect(payload.session.has_errors).toBe(true);
+	});
+
 	it('highlights supervisor turn events in the admin timeline', () => {
 		const payload = buildSessionDetailPayload({
 			sessionRow: {

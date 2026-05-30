@@ -67,6 +67,14 @@ describe('domain discovery', () => {
 		expect(result.boundaries.join(' ')).toContain('child skills');
 	});
 
+	it('normalizes domain id input before lookup', () => {
+		const result = loadDomain('  MARKETING.YOUTUBE_GROWTH  ');
+		expect(result).toMatchObject({
+			type: 'domain',
+			domain_id: 'marketing.youtube_growth'
+		});
+	});
+
 	it('routes YouTube audience requests to the platform domain before generic creator growth', () => {
 		const result = searchDomains({ query: 'I want to grow my YouTube audience', limit: 3 });
 

@@ -579,7 +579,9 @@ const countObservedToolFailures = (params: {
 		});
 	}
 
-	return Math.max(structuredFailures.size, metadataTraceFailures.size);
+	const observedFailureKeys = new Set<string>(structuredFailures);
+	for (const key of metadataTraceFailures) observedFailureKeys.add(key);
+	return observedFailureKeys.size;
 };
 
 const toLinkedToolExecutionPayload = (

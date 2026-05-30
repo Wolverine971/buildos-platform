@@ -91,6 +91,9 @@
 			"minimatch@>=10.0.0 <10.2.3": ">=10.2.3",
 			"flatted@<3.4.0": ">=3.4.0",
 			"follow-redirects@<1.16.0": ">=1.16.0"
+		},
+		"patchedDependencies": {
+			"@vercel/nft@1.5.0": "patches/@vercel__nft@1.5.0.patch"
 		}
 	}
 }

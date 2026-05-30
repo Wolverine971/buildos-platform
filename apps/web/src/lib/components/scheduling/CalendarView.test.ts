@@ -78,4 +78,34 @@ describe('CalendarView multi-day events', () => {
 		expect(screen.getAllByText('Continues').length).toBeGreaterThan(0);
 		expect(screen.getAllByText('Ends').length).toBeGreaterThan(0);
 	});
+
+	it('does not merge distinct all-day events that share title and time when ids are missing', () => {
+		render(CalendarView, {
+			props: {
+				viewMode: 'month',
+				currentDate: new Date(2026, 4, 1, 12),
+				workingHours,
+				events: [
+					{
+						summary: 'Launch Window',
+						start: { date: '2026-05-11' },
+						end: { date: '2026-05-14' },
+						allDay: true
+					},
+					{
+						summary: 'Launch Window',
+						start: { date: '2026-05-11' },
+						end: { date: '2026-05-14' },
+						allDay: true
+					}
+				]
+			}
+		});
+
+		const spanningBars = screen
+			.getAllByRole('button', { name: /Launch Window/i })
+			.filter((button) => button.getAttribute('style')?.includes('width: calc('));
+
+		expect(spanningBars.length).toBe(2);
+	});
 });
