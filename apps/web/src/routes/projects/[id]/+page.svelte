@@ -48,6 +48,7 @@
 	import MobileTaskBoard from '$lib/components/project/v2/MobileTaskBoard.svelte';
 	import TaskKanbanBoard from '$lib/components/project/v2/TaskKanbanBoard.svelte';
 	import EntityTabStrip from '$lib/components/project/v2/EntityTabStrip.svelte';
+	import ProjectEntitySearchCombobox from '$lib/components/project/v2/ProjectEntitySearchCombobox.svelte';
 	import {
 		archiveProjectDocument,
 		deleteProject,
@@ -1081,6 +1082,24 @@
 					{goals}
 					{events}
 					onOpenEntity={handleEntityClick}
+				/>
+			</div>
+		{/if}
+
+		{#if isHydrating}
+			<div class="mb-2 sm:mb-3">
+				<div
+					class="h-14 rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-2 sm:p-2.5"
+				>
+					<div class="h-10 rounded-md bg-muted/40 animate-pulse"></div>
+				</div>
+			</div>
+		{:else}
+			<div class="mb-2 sm:mb-3">
+				<ProjectEntitySearchCombobox
+					projectId={project.id}
+					disabled={isHydrating}
+					onSelectEntity={handleEntityClick}
 				/>
 			</div>
 		{/if}

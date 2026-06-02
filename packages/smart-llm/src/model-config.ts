@@ -7,6 +7,9 @@ export const KIMI_EXPERIMENT_MODELS = [KIMI_EXPERIMENT_MODEL] as const;
 export const QWEN_36_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.6-plus' as const;
 export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
 export const DEEPSEEK_V4_PRO_MODEL = 'deepseek/deepseek-v4-pro' as const;
+export const MINIMAX_M3_MODEL = 'minimax/minimax-m3' as const;
+export const XIAOMI_MIMO_V25_MODEL = 'xiaomi/mimo-v2.5' as const;
+export const TENCENT_HY3_PREVIEW_MODEL = 'tencent/hy3-preview' as const;
 export const GEMINI_31_FLASH_LITE_PREVIEW_MODEL = 'google/gemini-3.1-flash-lite-preview' as const;
 export const ACTIVE_EXPERIMENT_MODEL = QWEN_36_PLUS_EXPERIMENT_MODEL;
 export const ACTIVE_EXPERIMENT_MODELS = [ACTIVE_EXPERIMENT_MODEL] as const;
@@ -284,6 +287,30 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
+	[TENCENT_HY3_PREVIEW_MODEL]: {
+		id: TENCENT_HY3_PREVIEW_MODEL,
+		name: 'Tencent Hy3 Preview',
+		speed: 4.4,
+		smartness: 4.65,
+		creativity: 4.1,
+		cost: 0.063,
+		outputCost: 0.21,
+		provider: 'tencent',
+		bestFor: [
+			'ultra-low-cost-agentic-workflows',
+			'tool-calling',
+			'coding-assistants',
+			'fast-text-generation',
+			'configurable-reasoning',
+			'262k-context'
+		],
+		limitations: ['preview-model', 'text-only', 'no-json-response-format', '262k-context'],
+		capabilities: {
+			tools: true,
+			reasoning: true,
+			longContext: true
+		}
+	},
 	'deepseek/deepseek-v3.2': {
 		id: 'deepseek/deepseek-v3.2',
 		name: 'DeepSeek V3.2',
@@ -330,6 +357,61 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		],
 		limitations: ['reasoning-tokens-can-increase-cost'],
 		capabilities: { jsonMode: true, tools: true, reasoning: true, longContext: true }
+	},
+	[MINIMAX_M3_MODEL]: {
+		id: MINIMAX_M3_MODEL,
+		name: 'MiniMax M3',
+		speed: 3.8,
+		smartness: 4.9,
+		creativity: 4.5,
+		cost: 0.3,
+		outputCost: 1.2,
+		provider: 'minimax',
+		bestFor: [
+			'long-horizon-agentic-workflows',
+			'coding-assistants',
+			'tool-calling',
+			'multimodal',
+			'image-video-understanding',
+			'json-mode',
+			'long-output',
+			'1m-advertised-context'
+		],
+		limitations: ['new-model', 'openrouter-endpoint-512k-prompt-cap'],
+		capabilities: {
+			jsonMode: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
+	[XIAOMI_MIMO_V25_MODEL]: {
+		id: XIAOMI_MIMO_V25_MODEL,
+		name: 'Xiaomi MiMo-V2.5',
+		speed: 4.2,
+		smartness: 4.75,
+		creativity: 4.3,
+		cost: 0.14,
+		outputCost: 0.28,
+		provider: 'xiaomi',
+		bestFor: [
+			'low-cost-omnimodal',
+			'agentic-workflows',
+			'json-mode',
+			'tool-calling',
+			'image-video-audio-understanding',
+			'long-document-context',
+			'1m-context'
+		],
+		limitations: ['single-provider-xiaomi', 'uptime-variable'],
+		capabilities: {
+			jsonMode: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
 	},
 	'anthropic/claude-haiku-4.5': {
 		id: 'anthropic/claude-haiku-4.5',
@@ -605,17 +687,37 @@ export function modelSupportsCapability(
 }
 
 const OPENROUTER_TEXT_ROUTE = [
+	TENCENT_HY3_PREVIEW_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
+	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
 	ACTIVE_EXPERIMENT_MODEL
 ] as const;
-const OPENROUTER_JSON_ROUTE = [DEEPSEEK_V4_FLASH_MODEL, ACTIVE_EXPERIMENT_MODEL] as const;
-const OPENROUTER_TOOL_ROUTE = [DEEPSEEK_V4_FLASH_MODEL, ACTIVE_EXPERIMENT_MODEL] as const;
+const OPENROUTER_JSON_ROUTE = [
+	DEEPSEEK_V4_FLASH_MODEL,
+	XIAOMI_MIMO_V25_MODEL,
+	MINIMAX_M3_MODEL,
+	ACTIVE_EXPERIMENT_MODEL
+] as const;
+const OPENROUTER_TOOL_ROUTE = [
+	TENCENT_HY3_PREVIEW_MODEL,
+	DEEPSEEK_V4_FLASH_MODEL,
+	MINIMAX_M3_MODEL,
+	XIAOMI_MIMO_V25_MODEL,
+	ACTIVE_EXPERIMENT_MODEL
+] as const;
 const OPENROUTER_MULTIMODAL_ROUTE = [
+	XIAOMI_MIMO_V25_MODEL,
+	MINIMAX_M3_MODEL,
 	ACTIVE_EXPERIMENT_MODEL,
 	GEMINI_31_FLASH_LITE_PREVIEW_MODEL
 ] as const;
-const EMERGENCY_TEXT_ROUTE = [ACTIVE_EXPERIMENT_MODEL, GEMINI_31_FLASH_LITE_PREVIEW_MODEL] as const;
+const EMERGENCY_TEXT_ROUTE = [
+	DEEPSEEK_V4_FLASH_MODEL,
+	XIAOMI_MIMO_V25_MODEL,
+	ACTIVE_EXPERIMENT_MODEL,
+	GEMINI_31_FLASH_LITE_PREVIEW_MODEL
+] as const;
 
 export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(
 	new Set<string>([
@@ -629,9 +731,14 @@ export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(
 );
 export const ACTIVE_RUNTIME_MODEL_SET = new Set<string>(ACTIVE_RUNTIME_MODEL_IDS);
 export const JSON_MODELS: Record<string, ModelProfile> = Object.fromEntries(
+	ACTIVE_RUNTIME_MODEL_IDS.filter((modelId) => {
+		const capabilities = MODEL_CATALOG[modelId]?.capabilities;
+		return capabilities?.jsonMode === true || capabilities?.structuredOutputs === true;
+	}).map((modelId) => [modelId, MODEL_CATALOG[modelId]])
+) as Record<string, ModelProfile>;
+export const TEXT_MODELS: Record<string, ModelProfile> = Object.fromEntries(
 	ACTIVE_RUNTIME_MODEL_IDS.map((modelId) => [modelId, MODEL_CATALOG[modelId]])
 ) as Record<string, ModelProfile>;
-export const TEXT_MODELS: Record<string, ModelProfile> = JSON_MODELS;
 
 const PROVIDER_VERSION_SUFFIX_PATTERNS = [/-\d{8}$/, /-\d{4}-\d{2}-\d{2}$/, /-\d{2}-\d{2}$/];
 

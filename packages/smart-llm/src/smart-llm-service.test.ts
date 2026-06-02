@@ -4,7 +4,7 @@ import { SmartLLMService } from './smart-llm-service';
 import {
 	ACTIVE_EXPERIMENT_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
-	GEMINI_31_FLASH_LITE_PREVIEW_MODEL
+	TENCENT_HY3_PREVIEW_MODEL
 } from './model-config';
 
 function buildSSE(payloads: string[], headers?: Record<string, string>): Response {
@@ -532,13 +532,13 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 
 		expect(requestBodies.length).toBeGreaterThan(0);
 		expect(requestUrls[0]).toContain('openrouter.ai/api/v1/chat/completions');
-		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(requestBodies[0]?.model).toBe(TENCENT_HY3_PREVIEW_MODEL);
 		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'low', exclude: true });
 	});
 });
 
 describe('SmartLLMService model failover', () => {
-	it('fails over from DeepSeek V4 Flash to the next text fallback', async () => {
+	it('fails over from the primary text model to the next text fallback', async () => {
 		const requestBodies: any[] = [];
 		const usageLogger = {
 			logUsageToDatabase: vi.fn(async () => undefined)
@@ -552,7 +552,7 @@ describe('SmartLLMService model failover', () => {
 				return new Response(
 					JSON.stringify({
 						error: {
-							message: `Model ${DEEPSEEK_V4_FLASH_MODEL} is no longer available.`
+							message: `Model ${TENCENT_HY3_PREVIEW_MODEL} is no longer available.`
 						}
 					}),
 					{
@@ -569,7 +569,7 @@ describe('SmartLLMService model failover', () => {
 					id: 'chatcmpl-fallback',
 					object: 'chat.completion.chunk',
 					created: 0,
-					model: GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
+					model: DEEPSEEK_V4_FLASH_MODEL,
 					choices: [
 						{
 							index: 0,
@@ -583,7 +583,7 @@ describe('SmartLLMService model failover', () => {
 					id: 'chatcmpl-fallback',
 					object: 'chat.completion.chunk',
 					created: 0,
-					model: GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
+					model: DEEPSEEK_V4_FLASH_MODEL,
 					choices: [
 						{
 							index: 0,
@@ -623,14 +623,14 @@ describe('SmartLLMService model failover', () => {
 		}
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
-		expect(requestBodies[1]?.model).toBe(GEMINI_31_FLASH_LITE_PREVIEW_MODEL);
+		expect(requestBodies[0]?.model).toBe(TENCENT_HY3_PREVIEW_MODEL);
+		expect(requestBodies[1]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(events.some((event) => event.type === 'error')).toBe(false);
 		expect(events.some((event) => event.type === 'text')).toBe(true);
 		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
 			expect.objectContaining({
-				modelRequested: GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
-				modelUsed: GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
+				modelRequested: DEEPSEEK_V4_FLASH_MODEL,
+				modelUsed: DEEPSEEK_V4_FLASH_MODEL,
 				status: 'success',
 				streaming: true
 			})

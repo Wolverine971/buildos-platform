@@ -6,6 +6,7 @@ import {
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	KIMI_EXPERIMENT_MODEL,
+	MINIMAX_M3_MODEL,
 	MODEL_CATALOG,
 	OPENROUTER_V2_JSON_MODELS,
 	OPENROUTER_V2_MULTIMODAL_MODELS,
@@ -13,6 +14,8 @@ import {
 	OPENROUTER_V2_TOOL_MODELS,
 	OPENROUTER_V2_TOOL_MODELS_EXACTO,
 	PROJECT_NEXT_STEP_MODELS,
+	TENCENT_HY3_PREVIEW_MODEL,
+	XIAOMI_MIMO_V25_MODEL,
 	TOOL_CALLING_MODEL_ORDER
 } from './model-config';
 import {
@@ -199,6 +202,27 @@ describe('ensureToolCompatibleModels', () => {
 		expect(models.every((model) => !model.includes('alpha'))).toBe(true);
 	});
 
+	it('routes new OpenRouter models only through compatible lanes', () => {
+		expect(OPENROUTER_V2_TEXT_MODELS[0]).toBe(TENCENT_HY3_PREVIEW_MODEL);
+		expect(OPENROUTER_V2_TEXT_MODELS).toContain(XIAOMI_MIMO_V25_MODEL);
+
+		expect(OPENROUTER_V2_JSON_MODELS).toContain(XIAOMI_MIMO_V25_MODEL);
+		expect(OPENROUTER_V2_JSON_MODELS).toContain(MINIMAX_M3_MODEL);
+		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
+
+		expect(OPENROUTER_V2_TOOL_MODELS[0]).toBe(TENCENT_HY3_PREVIEW_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS).toContain(MINIMAX_M3_MODEL);
+		expect(OPENROUTER_V2_MULTIMODAL_MODELS[0]).toBe(XIAOMI_MIMO_V25_MODEL);
+		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(MINIMAX_M3_MODEL);
+	});
+
+	it('excludes non-json active models from custom JSON selection', () => {
+		const models = selectJSONModels('custom', 'simple', { maxCost: 0.2 });
+
+		expect(models).toContain(XIAOMI_MIMO_V25_MODEL);
+		expect(models).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
+	});
+
 	it('recognizes the new structured-output-capable OpenRouter models', () => {
 		expect(supportsJsonMode('qwen/qwen3.5-flash-02-23')).toBe(true);
 		expect(supportsJsonMode('qwen/qwen3.6-plus')).toBe(true);
@@ -211,6 +235,9 @@ describe('ensureToolCompatibleModels', () => {
 		expect(supportsJsonMode(DEEPSEEK_V4_FLASH_MODEL)).toBe(true);
 		expect(supportsJsonMode(DEEPSEEK_V4_PRO_MODEL)).toBe(true);
 		expect(supportsJsonMode('minimax/minimax-m2.7')).toBe(true);
+		expect(supportsJsonMode(MINIMAX_M3_MODEL)).toBe(true);
+		expect(supportsJsonMode(XIAOMI_MIMO_V25_MODEL)).toBe(true);
+		expect(supportsJsonMode(TENCENT_HY3_PREVIEW_MODEL)).toBe(false);
 		expect(supportsJsonMode('nvidia/nemotron-3-super-120b-a12b:free')).toBe(true);
 		expect(supportsJsonMode(KIMI_EXPERIMENT_MODEL)).toBe(true);
 	});

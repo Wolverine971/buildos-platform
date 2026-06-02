@@ -366,6 +366,107 @@
 					"category": "agent-skills",
 					"filePath": "src/content/blogs/agent-skills/cold-email-engagement-first-outreach.md"
 				},
+				"cold-email-icp-signal-design": {
+					"title": "Cold Email ICP And Signal Design: An Agent Skill For Right-Person Outreach",
+					"description": "A source-lineaged child skill for defining the right person, right moment, segment, buying signal, timing thesis, buying committee map, and disqualifiers before cold outreach.",
+					"author": "DJ Wayne",
+					"date": "2026-05-15",
+					"lastmod": "2026-06-01",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": true,
+					"tags": [
+						"agent-skills",
+						"cold-email",
+						"icp",
+						"signal-design",
+						"buying-committee",
+						"b2b-sales",
+						"sales-and-growth",
+						"buildos"
+					],
+					"readingTime": 8,
+					"excerpt": "Before an agent writes cold outreach, it needs to prove the recipient, timing signal, segment, committee map, and disqualifiers are coherent. This skill turns vague target lists into approved segment definitions or refuses to ship.",
+					"skillId": "sales-and-growth/cold-email-icp-signal-design",
+					"skillType": "child",
+					"skillCategory": "sales-and-growth",
+					"parentSkill": "cold-email-engagement-first-outreach",
+					"providers": [
+						"BuildOS runtime skill",
+						"BuildOS YouTube library",
+						"source analysis corpus"
+					],
+					"compatibleAgents": [
+						"BuildOS-compatible agents",
+						"Claude Code",
+						"Codex",
+						"portable Agent Skills"
+					],
+					"stackWith": [
+						"cold-email-engagement-first-outreach",
+						"cold-email-offer-lab",
+						"cold-email-outreach-compiler"
+					],
+					"skillSource": "apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_icp_signal_design/SKILL.md",
+					"lineagePath": "docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/lineage.yaml",
+					"lineagePeople": [
+						"Ash Maurya",
+						"Craig Elias",
+						"Becc Holland",
+						"Lincoln Murphy",
+						"Mark Roberge",
+						"Michael Skok",
+						"Nick Cegelski",
+						"Armand Farrokh",
+						"Brent Adamson",
+						"John McMahon"
+					],
+					"lineageSources": [
+						{
+							"title": "Minimum Viable Segment",
+							"creator": "Underscore VC / Michael Skok",
+							"creatorType": "Organization",
+							"sourceType": "framework",
+							"url": "https://underscore.vc/"
+						},
+						{
+							"title": "Trigger Event Selling",
+							"creator": "Craig Elias",
+							"creatorType": "Person",
+							"sourceType": "framework"
+						},
+						{
+							"title": "Personalization To Relevance",
+							"creator": "Becc Holland",
+							"creatorType": "Person",
+							"sourceType": "framework"
+						},
+						{
+							"title": "Ideal Customer Profile Framework",
+							"creator": "Lincoln Murphy",
+							"creatorType": "Person",
+							"sourceType": "framework"
+						},
+						{
+							"title": "The Science Of Scaling",
+							"creator": "Mark Roberge",
+							"creatorType": "Person",
+							"sourceType": "framework"
+						},
+						{
+							"title": "How to Multithread and Get to Power in Sales",
+							"creator": "30 Minutes to President's Club",
+							"creatorType": "Organization",
+							"sourceType": "newsletter",
+							"url": "https://www.30mpc.com/newsletter/how-to-multithread-and-get-to-power-in-sales"
+						}
+					],
+					"relatedSkills": ["cold-email-engagement-first-outreach"],
+					"path": "apps/web/src/content/blogs/agent-skills/cold-email-icp-signal-design.md",
+					"slug": "cold-email-icp-signal-design",
+					"category": "agent-skills",
+					"filePath": "src/content/blogs/agent-skills/cold-email-icp-signal-design.md"
+				},
 				"google-calendar-for-ai-agents-search-before-you-create": {
 					"title": "Google Calendar For AI Agents: Search Before You Create",
 					"description": "A portable Google Calendar skill for AI agents: choose scope first, search before creating events, use exact IDs for mutations, and treat recurrence as high risk.",
@@ -3491,6 +3592,51 @@
 					"category": "source-analyses",
 					"filePath": "src/content/blogs/source-analyses/steli-efti-low-friction-replies-123.md"
 				},
+				"tuan-le-3-billion-views-psychology": {
+					"title": "What Getting 3 Billion Views Taught Me About Human Psychology: Lessons from Tuan Le",
+					"description": "A deep read of Tuan Le's brand-content psychology framework: format recognition, curiosity gaps, identity layers, credential shortcuts, share-as-status, and the Hook -> Problem -> Story -> Payoff skeleton.",
+					"author": "DJ Wayne",
+					"date": "2026-05-10",
+					"lastmod": "2026-06-01",
+					"changefreq": "monthly",
+					"priority": "0.7",
+					"published": true,
+					"tags": [
+						"source-analysis",
+						"viral-content",
+						"viewer-psychology",
+						"format-steal",
+						"identity-marketing",
+						"means-end-chain",
+						"credential-shortcut",
+						"shareability",
+						"marketing-and-content"
+					],
+					"readingTime": 10,
+					"excerpt": "Virality is not about the product being exciting. Tuan Le's framework argues that the viewer's brain runs six fast filters before conscious evaluation: familiar format, curiosity gap, identity relevance, credential, sharer payoff, and story.",
+					"sourceTitle": "What Getting 3 Billion Views Taught Me About Human Psychology",
+					"sourceCreator": "Tuan Le",
+					"sourceUrl": "https://www.youtube.com/watch?v=KkK-Y7GiQ2o",
+					"sourceChannelUrl": "https://www.youtube.com/@tuann_lee",
+					"lineagePeople": ["Tuan Le"],
+					"lineageSources": [
+						{
+							"title": "What Getting 3 Billion Views Taught Me About Human Psychology",
+							"creator": "Tuan Le",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@tuann_lee",
+							"channelName": "Tuan Le",
+							"channelUrl": "https://www.youtube.com/@tuann_lee",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=KkK-Y7GiQ2o"
+						}
+					],
+					"relatedSkills": ["viral-content-for-boring-brands"],
+					"path": "apps/web/src/content/blogs/source-analyses/tuan-le-3-billion-views-psychology.md",
+					"slug": "tuan-le-3-billion-views-psychology",
+					"category": "source-analyses",
+					"filePath": "src/content/blogs/source-analyses/tuan-le-3-billion-views-psychology.md"
+				},
 				"underscore-vc-minimum-viable-segment": {
 					"title": "Minimum Viable Segment: Lessons from Underscore VC (Michael Skok)",
 					"description": "A deep read of the Minimum Viable Segment (MVS) framework from Underscore VC and Michael Skok — the three criteria a segment must meet (Common Needs, Dominability, Viability with MVP), the disqualifiers that pull a segment out of scope, and why divergent needs are the real reason MVPs fail to land.",
@@ -3546,7 +3692,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-05-30T03:10:25.586Z",
-	"totalPosts": 98,
+	"generatedAt": "2026-06-02T01:35:29.268Z",
+	"totalPosts": 100,
 	"totalCategories": 8
 }

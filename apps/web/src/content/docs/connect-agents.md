@@ -123,7 +123,7 @@ Choose **ChatGPT Developer Mode** only when you are building a remote MCP connec
 
 ## Setting it up in OpenClaw
 
-Choose **OpenClaw** when generating the key. Store the values in OpenClaw env, SecretRef, or plugin config. The OpenClaw-specific connector is still mid-build. Once it ships, it should read those values and call the BuildOS gateway. See [`/docs/integrations/openclaw/setup`](/docs/integrations/openclaw/setup) for the OpenClaw-only walkthrough.
+Choose **OpenClaw** when generating the key. Store the values in OpenClaw env, SecretRef, or plugin config. The OpenClaw-specific connector is still mid-build. Once it ships, it should read those values and call the BuildOS gateway.
 
 ## What you can scope
 

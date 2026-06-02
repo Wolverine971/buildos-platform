@@ -3,7 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
-	resolveModelPricingProfile
+	MINIMAX_M3_MODEL,
+	resolveModelPricingProfile,
+	TENCENT_HY3_PREVIEW_MODEL,
+	XIAOMI_MIMO_V25_MODEL
 } from './model-config';
 
 describe('resolveModelPricingProfile', () => {
@@ -41,6 +44,22 @@ describe('resolveModelPricingProfile', () => {
 		expect(pro?.modelId).toBe(DEEPSEEK_V4_PRO_MODEL);
 		expect(pro?.profile.cost).toBe(1.74);
 		expect(pro?.profile.outputCost).toBe(3.48);
+	});
+
+	it('normalizes newly added OpenRouter endpoint ids for pricing', () => {
+		const minimax = resolveModelPricingProfile('minimax/minimax-m3-20260531');
+		const mimo = resolveModelPricingProfile('xiaomi/mimo-v2.5-20260422');
+		const hy3 = resolveModelPricingProfile('tencent/hy3-preview-20260421');
+
+		expect(minimax?.modelId).toBe(MINIMAX_M3_MODEL);
+		expect(minimax?.profile.cost).toBe(0.3);
+		expect(minimax?.profile.outputCost).toBe(1.2);
+		expect(mimo?.modelId).toBe(XIAOMI_MIMO_V25_MODEL);
+		expect(mimo?.profile.cost).toBe(0.14);
+		expect(mimo?.profile.outputCost).toBe(0.28);
+		expect(hy3?.modelId).toBe(TENCENT_HY3_PREVIEW_MODEL);
+		expect(hy3?.profile.cost).toBe(0.063);
+		expect(hy3?.profile.outputCost).toBe(0.21);
 	});
 
 	it('falls back to a requested model when the resolved model is not configured', () => {

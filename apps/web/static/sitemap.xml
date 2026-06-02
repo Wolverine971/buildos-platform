@@ -154,6 +154,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://build-os.com/agent-skills/cold-email-icp-signal-design</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/blogs/advanced-guides/debug-the-harness-not-the-model</loc>
     <lastmod>2026-05-02</lastmod>
     <changefreq>monthly</changefreq>
@@ -269,13 +275,13 @@
   </url>
   <url>
     <loc>https://build-os.com/agent-skills</loc>
-    <lastmod>2026-05-15</lastmod>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://build-os.com/blogs</loc>
-    <lastmod>2026-05-15</lastmod>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
@@ -448,6 +454,12 @@
     <priority>0.7</priority>
   </url>
   <url>
+    <loc>https://build-os.com/blogs/source-analyses/tuan-le-3-billion-views-psychology</loc>
+    <lastmod>2026-06-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://build-os.com/blogs/source-analyses/underscore-vc-minimum-viable-segment</loc>
     <lastmod>2026-05-15</lastmod>
     <changefreq>monthly</changefreq>
@@ -521,7 +533,7 @@
   </url>
   <url>
     <loc>https://build-os.com/blogs/source-analyses</loc>
-    <lastmod>2026-05-15</lastmod>
+    <lastmod>2026-06-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
