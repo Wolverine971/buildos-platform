@@ -9,7 +9,8 @@
 		AlertTriangle,
 		Download,
 		FileArchive,
-		MoreHorizontal
+		MoreHorizontal,
+		ChevronDown
 	} from 'lucide-svelte';
 	import { dev } from '$app/environment';
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
@@ -66,6 +67,7 @@
 	}: Props = $props();
 
 	let adminMenuOpen = $state(false);
+	let exportMenuOpen = $state(false);
 
 	const isProjectContext = $derived.by(() => selectedContextType === 'project');
 	const hasMobileAdminActions = $derived(
@@ -243,36 +245,76 @@
 			</a>
 		{/if}
 
-		{#if showAdminDebugActions && onExportAudit}
-			<button
-				type="button"
-				onclick={onExportAudit}
-				disabled={isExportingAudit}
-				class="hidden h-9 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 sm:flex sm:h-7"
-				style="-webkit-tap-highlight-color: transparent;"
-				title="Export this chat session as markdown"
-			>
-				{#if isExportingAudit}
-					<LoaderCircle class="h-3.5 w-3.5 shrink-0 animate-spin" />
-				{:else}
-					<Download class="h-3.5 w-3.5 shrink-0" />
-				{/if}
-				<span class="hidden sm:inline">Export</span>
-			</button>
-		{/if}
+		{#if showAdminDebugActions && (onExportAudit || onExportBundle)}
+			<!-- Desktop: single Export button with a dropdown of export formats -->
+			<div class="relative hidden sm:block">
+				<button
+					type="button"
+					onclick={() => (exportMenuOpen = !exportMenuOpen)}
+					disabled={isExportingAudit}
+					class="flex h-9 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 sm:h-7"
+					style="-webkit-tap-highlight-color: transparent;"
+					title="Export this chat session"
+					aria-haspopup="menu"
+					aria-expanded={exportMenuOpen}
+				>
+					{#if isExportingAudit}
+						<LoaderCircle class="h-3.5 w-3.5 shrink-0 animate-spin" />
+					{:else}
+						<Download class="h-3.5 w-3.5 shrink-0" />
+					{/if}
+					<span>Export</span>
+					<ChevronDown class="h-3 w-3 shrink-0" />
+				</button>
 
-		{#if showAdminDebugActions && onExportBundle}
-			<button
-				type="button"
-				onclick={onExportBundle}
-				disabled={isExportingAudit}
-				class="hidden h-9 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-60 sm:flex sm:h-7"
-				style="-webkit-tap-highlight-color: transparent;"
-				title="Export this chat session as a multi-file zip bundle (README gist + transcript + raw JSON)"
-			>
-				<FileArchive class="h-3.5 w-3.5 shrink-0" />
-				<span class="hidden sm:inline">Bundle</span>
-			</button>
+				{#if exportMenuOpen}
+					<!-- Click-away backdrop -->
+					<button
+						type="button"
+						class="fixed inset-0 z-40 cursor-default"
+						aria-label="Close export menu"
+						tabindex="-1"
+						onclick={() => (exportMenuOpen = false)}
+					></button>
+					<div
+						class="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-52 overflow-hidden rounded-lg border border-border bg-card py-1 shadow-ink tx tx-frame tx-weak"
+						role="menu"
+					>
+						{#if onExportAudit}
+							<button
+								type="button"
+								onclick={() => {
+									exportMenuOpen = false;
+									onExportAudit?.();
+								}}
+								disabled={isExportingAudit}
+								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+								role="menuitem"
+								title="Export this chat session as a single markdown file"
+							>
+								<Download class="h-3.5 w-3.5 shrink-0" />
+								<span>Export as markdown</span>
+							</button>
+						{/if}
+						{#if onExportBundle}
+							<button
+								type="button"
+								onclick={() => {
+									exportMenuOpen = false;
+									onExportBundle?.();
+								}}
+								disabled={isExportingAudit}
+								class="flex w-full items-center gap-2 px-3 py-2 text-left text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+								role="menuitem"
+								title="Export this chat session as a multi-file zip bundle (README gist + transcript + raw JSON)"
+							>
+								<FileArchive class="h-3.5 w-3.5 shrink-0" />
+								<span>Export as separate files</span>
+							</button>
+						{/if}
+					</div>
+				{/if}
+			</div>
 		{/if}
 
 		{#if hasMobileAdminActions}
@@ -323,7 +365,7 @@
 								{:else}
 									<Download class="h-3.5 w-3.5 shrink-0" />
 								{/if}
-								<span>Export</span>
+								<span>Export as markdown</span>
 							</button>
 						{/if}
 						{#if onExportBundle}
@@ -338,7 +380,7 @@
 								role="menuitem"
 							>
 								<FileArchive class="h-3.5 w-3.5 shrink-0" />
-								<span>Bundle</span>
+								<span>Export as separate files</span>
 							</button>
 						{/if}
 					</div>

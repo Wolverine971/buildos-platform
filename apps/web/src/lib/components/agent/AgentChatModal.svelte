@@ -3351,9 +3351,11 @@
 	>
 		{#snippet header()}
 			<!-- INKPRINT header bar with Frame texture -->
-			<!-- pt safe-area-inset-top keeps the header below the notch/Dynamic Island on fullscreen mobile -->
+			<!-- pt = safe-area-inset-top (notch/Dynamic Island height, detected per-device)
+			     + a small constant gap so the header clears the floating Island instead of
+			     butting right up against it. Reset to 0 on sm+ where there's no system bar. -->
 			<div
-				class="border-b border-border bg-card pt-[env(safe-area-inset-top,0px)] sm:pt-0 tx tx-frame tx-weak"
+				class="relative z-20 border-b border-border bg-card pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] sm:pt-0 tx tx-frame tx-weak"
 			>
 				<AgentChatHeader
 					{selectedContextType}

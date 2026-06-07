@@ -273,7 +273,7 @@
 	let mainContentClasses = $derived(
 		isAdminRoute
 			? 'relative flex flex-1 w-full min-h-0'
-			: `rounded-md relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-[1200px] p-1 ${
+			: `rounded-md relative mx-auto my-3 sm:my-4 flex-1 w-full max-w-[1200px] p-px ${
 					showNavigation ? '' : 'min-h-screen'
 				}`
 	);
