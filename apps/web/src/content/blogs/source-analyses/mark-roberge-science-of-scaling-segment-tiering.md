@@ -53,7 +53,7 @@ path: apps/web/src/content/blogs/source-analyses/mark-roberge-science-of-scaling
 
 A deep read of [A Step-by-Step Guide to Revenue Growth](https://www.youtube.com/watch?v=aIAbNeqn9K8) (31:49) from SaaStr Annual, given by Mark Roberge — Senior Lecturer at Harvard Business School, former CRO of HubSpot, author of _The Sales Acceleration Formula_, and founding partner at Stage 2 Capital.
 
-## Why this analysis exists
+## Why this segment tiering analysis exists
 
 This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **leading indicator of retention (LIR) formula**, the **segment-tier view of product-market fit**, and the **Quality × Engagement lead grid** that the skill uses to decide _which accounts get the manual cold-outreach treatment_ vs. which get inbound-only handling vs. which get disqualified.
 
@@ -144,7 +144,7 @@ For the outreach skill this is a tangent — but it lands one durable point: **t
 
 ## Source
 
-- **Transcript:** [`2026-05-15-mark-roberge-science-of-scaling-hbs.md`](https://github.com/build-os) (in-repo)
+- **Transcript:** `2026-05-15-mark-roberge-science-of-scaling-hbs.md` (in-repo working transcript, unpublished)
 - **Video:** [A Step-by-Step Guide to Revenue Growth](https://www.youtube.com/watch?v=aIAbNeqn9K8) (SaaStr AI, 2019-02-26, 31:49)
 - **Book:** _The Science of Scaling_ — Stage 2 Capital ([book page](https://www.stage2.capital/science-of-scaling-book))
 - **Earlier book:** _The Sales Acceleration Formula_ — Mark Roberge

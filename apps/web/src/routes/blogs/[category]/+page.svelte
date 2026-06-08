@@ -315,12 +315,12 @@
 		<section class="py-8 sm:py-10 bg-muted/30 border-t border-border">
 			<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 				<h2 class="text-base font-semibold text-foreground mb-4">
-					Explore Other Categories
+					More to explore beyond {data.category.name}
 				</h2>
 
 				<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
 					{#each Object.entries(data.allCategories) as [key, category]}
-						{#if key !== categoryKey}
+						{#if key !== categoryKey && (data.categoryCounts?.[key] ?? 0) > 0}
 							{@const OtherIconComponent =
 								categoryIcons[key as keyof typeof categoryIcons] ?? Brain}
 

@@ -35,7 +35,7 @@ path: apps/web/src/content/blogs/source-analyses/lincoln-murphy-ideal-customer-p
 
 A deep read of Lincoln Murphy's canonical [Ideal Customer Profile framework](https://www.sixteenventures.com/ideal-customer-profile/) on Sixteen Ventures. Murphy has been writing about Customer Success and ICP design since 2009; his framework is the one Mark Roberge, Aaron Ross, and most modern RevOps practitioners cite or extend.
 
-## Why this analysis exists
+## Why this ideal customer profile analysis exists
 
 This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **seven-dimension ICP rubric** and the **six-fit-type taxonomy** that the skill uses to score whether a prospect is worth writing at all — before any trigger, anchor, or offer work begins.
 

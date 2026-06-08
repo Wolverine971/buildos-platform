@@ -256,7 +256,9 @@ function normalizeMessages(
 		content: unknown;
 		tool_calls?: any[];
 		tool_call_id?: string;
+		reasoning?: string;
 		reasoning_content?: string;
+		reasoning_details?: unknown[];
 	}>
 ): OpenRouterChatMessage[] {
 	return messages.map((message) => ({
@@ -264,8 +266,12 @@ function normalizeMessages(
 		content: normalizeMessageContent(message.content),
 		...(Array.isArray(message.tool_calls) ? { tool_calls: message.tool_calls } : {}),
 		...(typeof message.tool_call_id === 'string' ? { tool_call_id: message.tool_call_id } : {}),
+		...(typeof message.reasoning === 'string' ? { reasoning: message.reasoning } : {}),
 		...(typeof message.reasoning_content === 'string'
 			? { reasoning_content: message.reasoning_content }
+			: {}),
+		...(Array.isArray(message.reasoning_details)
+			? { reasoning_details: message.reasoning_details }
 			: {})
 	}));
 }
@@ -1470,7 +1476,9 @@ export class OpenRouterV2Service extends SmartLLMService {
 			content: unknown;
 			tool_calls?: any[];
 			tool_call_id?: string;
+			reasoning?: string;
 			reasoning_content?: string;
+			reasoning_details?: unknown[];
 		}>;
 		tools?: any[];
 		tool_choice?: OpenRouterToolChoice;

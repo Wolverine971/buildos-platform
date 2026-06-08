@@ -70,7 +70,7 @@ This dual structure lets a human read the skill as a content playbook and an age
 
 The framework comes from a single source: Tuan Le, an agency operator who generated 3B+ views for brands like Bulldock (Korean instant ramen, 300K → 1.8M followers, 900M views in 12 months), Stan (creator platform, 20M views for the CEO's personal brand), and a Japanese restaurant (200 views → 1.8M+ per video, 300K followers in three months). The product never changed in any of those cases. The mechanics did.
 
-## When To Use
+## When to use viral content for boring brands
 
 - Plan or audit a single piece of content from a brand or founder account.
 - Diagnose why a brand-account post that "should have worked" died.
@@ -88,7 +88,7 @@ Do **not** use this skill for:
 - **SEO blog content.** Use `content-strategy-beyond-blogging`.
 - **Manufactured-virality / rage-bait playbooks.** This skill explicitly refuses those — see Guardrails.
 
-## Skill Composition
+## How the boring-brands skill is composed
 
 This is a single-source skill distilled from Tuan Le's six-principle framework, with two BuildOS overlay primitives layered on top.
 

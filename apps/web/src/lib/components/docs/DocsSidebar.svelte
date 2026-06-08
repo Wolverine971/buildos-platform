@@ -38,9 +38,9 @@
 	aria-label="Documentation sections"
 	class="rounded-lg border border-border bg-card shadow-ink p-4 sm:p-5 relative tx tx-frame tx-weak"
 >
-	<h2 class="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+	<p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
 		Documentation
-	</h2>
+	</p>
 	<ul class="space-y-0.5">
 		<li>
 			<a

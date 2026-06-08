@@ -1,6 +1,5 @@
 // apps/web/src/lib/services/agentic-chat/tools/libri/manifest.ts
 import { createHash } from 'node:crypto';
-import { env } from '$env/dynamic/private';
 import type { ChatToolDefinition } from '@buildos/shared-types';
 import { isLibriIntegrationEnabled } from './config';
 import type {
@@ -41,13 +40,18 @@ type ToolParameterSchema = ChatToolDefinition['function']['parameters'];
 
 let cachedManifest: ManifestCacheEntry | null = null;
 
+function getProcessEnv(): EnvLike {
+	if (typeof process === 'undefined' || !process.env) return {};
+	return process.env;
+}
+
 function normalizeOptionalString(value: unknown): string | undefined {
 	if (typeof value !== 'string') return undefined;
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : undefined;
 }
 
-function readConfig(source: EnvLike = env): { apiBaseUrl?: string; apiKey?: string } {
+function readConfig(source: EnvLike = getProcessEnv()): { apiBaseUrl?: string; apiKey?: string } {
 	return {
 		apiBaseUrl: normalizeOptionalString(source.LIBRI_API_BASE_URL),
 		apiKey: normalizeOptionalString(source.LIBRI_API_KEY)

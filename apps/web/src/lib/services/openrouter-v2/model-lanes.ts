@@ -172,14 +172,17 @@ export function resolveLaneModels(params: ResolveLaneModelsParams): string[] {
 export function resolveLaneReasoning(lane: ModelLane):
 	| {
 			exclude?: boolean;
-			effort?: 'low' | 'medium' | 'high';
+			effort?: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
 	  }
 	| undefined {
 	if (lane === 'text') {
 		return { exclude: true };
 	}
 	if (lane === 'tool_calling') {
-		return { exclude: true };
+		// Preserve low-cost reasoning blocks for tool-call continuity. The
+		// orchestrator keeps them out of user-visible text and replays them only
+		// to the provider before tool results.
+		return { effort: 'low', exclude: false };
 	}
 	if (lane === 'json') {
 		return { effort: 'low', exclude: true };

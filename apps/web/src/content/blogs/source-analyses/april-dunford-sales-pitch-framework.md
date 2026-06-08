@@ -45,7 +45,7 @@ path: apps/web/src/content/blogs/source-analyses/april-dunford-sales-pitch-frame
 
 A deep read of [April Dunford on Lenny's Podcast](https://www.youtube.com/watch?v=-VqmFI9vY7w). April is the canonical voice on B2B SaaS positioning. Her two books — _Obviously Awesome_ (positioning) and _Sales Pitch_ (translating positioning into a winnable pitch) — are referenced by a generation of SaaS founders.
 
-## Why this analysis exists
+## Why this sales pitch framework analysis exists
 
 This is one of the source layers behind the BuildOS [`landing-page-scorecard-funnel`](/agent-skills/landing-page-scorecard-funnel) skill. The skill uses Dunford's framework as the **positioning layer** — the worldview the scorecard funnel runs on top of. Priestley supplies the funnel mechanics; Dunford supplies the decision rule for when the scorecard needs setup before the ask. This post is the long form: the framework, why it works, and the trade-off concept that makes positioning credible.
 

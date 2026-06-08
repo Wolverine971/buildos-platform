@@ -43,7 +43,7 @@ path: apps/web/src/content/blogs/source-analyses/kallaway-100-viral-hooks.md
 
 A deep read of Kallaway's [I Studied 100 Viral Hooks, These 6 Will Make You Go Viral](https://www.youtube.com/watch?v=xnOe8aA9Pmw) (21:56).
 
-## Why this analysis exists
+## Why this hook archetypes analysis exists
 
 This is one of the source layers behind the BuildOS [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) skill. The skill encodes the six archetypes and the four-component alignment as agent-runnable selection rules. This post is the long form: the catalog, the worked examples, and the universality principle.
 

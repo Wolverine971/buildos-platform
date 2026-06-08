@@ -726,6 +726,11 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Notifications - BuildOS</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
+
 <div class="min-h-screen bg-background rounded-md sm:px-6 py-6">
 	<!-- Header -->
 	<div class="flex items-center gap-3 pb-2 border-b border-border">

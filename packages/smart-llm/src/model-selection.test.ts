@@ -5,6 +5,7 @@ import {
 	AGENTIC_MODEL_RECOMMENDATIONS,
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
+	GEMINI_31_FLASH_LITE_MODEL,
 	KIMI_EXPERIMENT_MODEL,
 	MINIMAX_M3_MODEL,
 	MODEL_CATALOG,
@@ -14,6 +15,7 @@ import {
 	OPENROUTER_V2_TOOL_MODELS,
 	OPENROUTER_V2_TOOL_MODELS_EXACTO,
 	PROJECT_NEXT_STEP_MODELS,
+	QWEN_37_PLUS_EXPERIMENT_MODEL,
 	TENCENT_HY3_PREVIEW_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	TOOL_CALLING_MODEL_ORDER
@@ -205,15 +207,27 @@ describe('ensureToolCompatibleModels', () => {
 	it('routes new OpenRouter models only through compatible lanes', () => {
 		expect(OPENROUTER_V2_TEXT_MODELS[0]).toBe(TENCENT_HY3_PREVIEW_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(XIAOMI_MIMO_V25_MODEL);
+		expect(OPENROUTER_V2_TEXT_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
+		expect(OPENROUTER_V2_TEXT_MODELS).toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
+		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain('google/gemini-3.1-flash-lite-preview');
+		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain('qwen/qwen3.6-plus');
 
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(XIAOMI_MIMO_V25_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(MINIMAX_M3_MODEL);
+		expect(OPENROUTER_V2_JSON_MODELS).toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
+		expect(OPENROUTER_V2_JSON_MODELS).not.toContain('qwen/qwen3.6-plus');
 
 		expect(OPENROUTER_V2_TOOL_MODELS[0]).toBe(TENCENT_HY3_PREVIEW_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(MINIMAX_M3_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS).toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain('qwen/qwen3.6-plus');
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS[0]).toBe(XIAOMI_MIMO_V25_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(MINIMAX_M3_MODEL);
+		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
+		expect(OPENROUTER_V2_MULTIMODAL_MODELS).not.toContain(
+			'google/gemini-3.1-flash-lite-preview'
+		);
 	});
 
 	it('excludes non-json active models from custom JSON selection', () => {
@@ -225,12 +239,14 @@ describe('ensureToolCompatibleModels', () => {
 
 	it('recognizes the new structured-output-capable OpenRouter models', () => {
 		expect(supportsJsonMode('qwen/qwen3.5-flash-02-23')).toBe(true);
+		expect(supportsJsonMode(QWEN_37_PLUS_EXPERIMENT_MODEL)).toBe(true);
 		expect(supportsJsonMode('qwen/qwen3.6-plus')).toBe(true);
 		expect(supportsJsonMode('deepseek/deepseek-v3.2')).toBe(true);
 		expect(supportsJsonMode('openai/gpt-4.1-nano')).toBe(true);
 		expect(supportsJsonMode('openai/gpt-oss-20b')).toBe(true);
 		expect(supportsJsonMode('openai/gpt-oss-20b:free')).toBe(true);
 		expect(supportsJsonMode('openai/gpt-oss-120b')).toBe(true);
+		expect(supportsJsonMode(GEMINI_31_FLASH_LITE_MODEL)).toBe(true);
 		expect(supportsJsonMode('google/gemini-3.1-flash-lite-preview')).toBe(true);
 		expect(supportsJsonMode(DEEPSEEK_V4_FLASH_MODEL)).toBe(true);
 		expect(supportsJsonMode(DEEPSEEK_V4_PRO_MODEL)).toBe(true);

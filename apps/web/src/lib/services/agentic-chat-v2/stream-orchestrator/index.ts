@@ -119,6 +119,9 @@ type StreamFastChatParams = {
 
 type FastChatModelMessage = Omit<FastChatHistoryMessage, 'content'> & {
 	content: string | OpenRouterContentPart[];
+	reasoning?: string;
+	reasoning_content?: string;
+	reasoning_details?: unknown[];
 };
 
 export async function streamFastChat(params: StreamFastChatParams): Promise<{
@@ -791,6 +794,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 
 			let assistantBuffer = '';
+			let assistantReasoningForReplay = '';
+			const assistantReasoningDetailsForReplay: unknown[] = [];
 			const pendingToolCalls: ChatToolCall[] = [];
 			const noToolSynthesisPass = forceNoToolSynthesisPass;
 			forceNoToolSynthesisPass = false;
@@ -830,8 +835,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						await tryEmitEarlyAssistantLeadIn(assistantBuffer);
 					} else if (event.type === 'reasoning') {
 						// Reasoning stays out of the user-visible content buffer.
-						// Track per-pass counters so we can tell at a glance whether
-						// the provider is using the reasoning channel correctly.
+						// Track per-pass counters and preserve blocks for tool-call
+						// continuity when the next request sends tool results.
 						// If a model emits reasoning via delta.content instead, we
 						// will see content tokens climb while these counters stay
 						// at zero, a clear signal to switch models or add a
@@ -840,6 +845,14 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 							reasoning?: string;
 							reasoning_details?: unknown[];
 						};
+						if (typeof reasoningEvent.reasoning === 'string') {
+							assistantReasoningForReplay += reasoningEvent.reasoning;
+						}
+						if (Array.isArray(reasoningEvent.reasoning_details)) {
+							assistantReasoningDetailsForReplay.push(
+								...reasoningEvent.reasoning_details
+							);
+						}
 						const reasoningLen =
 							(typeof reasoningEvent.reasoning === 'string'
 								? reasoningEvent.reasoning.length
@@ -1092,11 +1105,17 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			const replayToolCalls = sanitizeToolCallsForReplay(pendingToolCalls, {
 				redactInvalidDurableText: true
 			});
-			messages.push({
+			const assistantReplayMessage: FastChatModelMessage = {
 				role: 'assistant',
 				content: replayAssistantContent,
 				tool_calls: replayToolCalls
-			});
+			};
+			if (assistantReasoningDetailsForReplay.length > 0) {
+				assistantReplayMessage.reasoning_details = assistantReasoningDetailsForReplay;
+			} else if (assistantReasoningForReplay.trim()) {
+				assistantReplayMessage.reasoning = assistantReasoningForReplay;
+			}
+			messages.push(assistantReplayMessage);
 			activeAssistantBuffer = '';
 			activePendingToolCallCount = 0;
 

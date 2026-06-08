@@ -41,7 +41,7 @@ path: apps/web/src/content/blogs/source-analyses/daniel-priestley-1m-landing-pag
 
 A deep read of Daniel Priestley's [The $1 Million Landing Page](https://www.youtube.com/watch?v=az1Zh-FNSno) (12:02). Priestley is the co-founder of ScoreApp and runs this scorecard system across agencies, software, education, coaching, and consulting businesses.
 
-## Why this analysis exists
+## Why this landing page analysis exists
 
 This is one of the source layers behind the BuildOS [`landing-page-scorecard-funnel`](/agent-skills/landing-page-scorecard-funnel) skill. The skill encodes the 3-part funnel mechanics, the 5-section landing page formula, and the Big 5 qualifying questions as agent-runnable rubrics. This post is the long form: the whole system, section by section.
 

@@ -44,7 +44,7 @@ path: apps/web/src/content/blogs/source-analyses/michael-seibel-cold-email-inves
 
 A deep read of Michael Seibel's Y Combinator video, [How To Cold Email Investors](https://www.youtube.com/watch?v=A3MmYbH1hbs) (7:52). This source fills the v2 skill's **fundraising outreach layer**: cold email to investors has different physics from sales outreach, recruiting outreach, or partnership outreach.
 
-## Why this analysis exists
+## Why this cold-emailing investors analysis exists
 
 The v1 cold-email skill is mostly built for sales and founder-led outbound. Investor outreach needs a separate branch because the recipient is not evaluating a service offer. They are evaluating whether the founder can communicate clearly, whether the company might be fundable, and whether the conversation is worth continuing.
 

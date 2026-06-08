@@ -82,7 +82,7 @@ path: apps/web/src/content/blogs/agent-skills/landing-page-scorecard-funnel.md
 
 Use this skill when an agent needs to turn a landing page into a qualified lead-generation funnel. The page should sell the assessment, not the entire product. The assessment gives value first, then routes each lead to the right next step.
 
-## Skill Composition
+## How the scorecard funnel skill is composed
 
 This is a combo skill distilled from two source analyses: Daniel Priestley's scorecard funnel model and April Dunford's positioning-led sales pitch framework.
 

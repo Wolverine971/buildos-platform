@@ -42,7 +42,7 @@ path: apps/web/src/content/blogs/source-analyses/kole-jain-7-ui-ux-mistakes-begi
 
 A deep read of Kole Jain's [7 UI/UX mistakes that SCREAM you're a beginner](https://www.youtube.com/watch?v=AH_ugxmLeUM) — a 7-minute Figma walkthrough redesigning a recipe app, mistake-by-mistake.
 
-## Why this analysis exists
+## Why this UI/UX mistakes analysis exists
 
 This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill. The skill encodes specific patterns from this video — the three-step shadow recipe, the 10px corner-radius standard, the save → badge-dot pattern, the chart failure modes. This post is the long form: how Kole Jain teaches the same mistakes with concrete before-and-afters.
 

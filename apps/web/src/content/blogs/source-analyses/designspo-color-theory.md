@@ -44,7 +44,7 @@ path: apps/web/src/content/blogs/source-analyses/designspo-color-theory.md
 
 A deep read of DesignSpo's [The ULTIMATE Color Theory Guide For Beginners](https://www.youtube.com/watch?v=tKCORDK0IZU) (19:15).
 
-## Why this analysis exists
+## Why this color theory analysis exists
 
 This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill. The skill encodes color decisions as agent-checkable rules (60/30/10 proportions, dark-mode saturation reduction, hue-rotation for "lighter" colored text). This post is the long form: how DesignSpo teaches color reasoning to a human designer.
 

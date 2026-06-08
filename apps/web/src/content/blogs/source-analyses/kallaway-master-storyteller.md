@@ -44,7 +44,7 @@ path: apps/web/src/content/blogs/source-analyses/kallaway-master-storyteller.md
 
 A deep read of Kallaway's [How To Become A Master Storyteller](https://www.youtube.com/watch?v=t5Z-Q1bg1tU) (11:14, 2.36M views — the flagship of his storytelling content).
 
-## Why this analysis exists
+## Why this master storytelling analysis exists
 
 This is one of the source layers behind the BuildOS [`story-driven-content-craft`](/agent-skills/story-driven-content-craft) skill. The skill encodes the six craft moves as agent-runnable passes over any draft. This post is the long form: the moves, the citations, and the mechanical diagnostics that make each one auditable.
 

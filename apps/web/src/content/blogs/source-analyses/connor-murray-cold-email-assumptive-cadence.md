@@ -44,7 +44,7 @@ path: apps/web/src/content/blogs/source-analyses/connor-murray-cold-email-assump
 
 A deep read of Connor Murray's [10 Years of Expert Cold Email Advice in 36 Minutes (B2B Sales)](https://www.youtube.com/watch?v=XLsAAnNaFOc) (36:09) on the Higher Levels channel. Murray was the #1 SDR at Oracle, then the #1 SDR manager two years running, and now an enterprise AE who still runs this system. He has taught it to thousands of reps.
 
-## Why this analysis exists
+## Why this less-is-more cold email analysis exists
 
 This is one of the source layers behind the BuildOS [`cold-email-engagement-first-outreach`](/agent-skills/cold-email-engagement-first-outreach) skill. It supplies the **body craft + cadence layer** — the three-paragraph structure, assumptive language replacement, and the AB follow-up rhythm. It is the "what you actually type and when you send it" layer of the skill.
 

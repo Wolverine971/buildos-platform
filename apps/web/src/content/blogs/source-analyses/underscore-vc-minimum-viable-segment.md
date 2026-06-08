@@ -50,7 +50,7 @@ path: apps/web/src/content/blogs/source-analyses/underscore-vc-minimum-viable-se
 
 A deep read of the [Minimum Viable Segment (MVS) framework](https://underscore.vc/resources/minimum-viable-segment/) from Underscore VC (Lily Lyman and Gabrielle McCarthy), derived from Michael Skok's _Startup Secrets_ curriculum at Harvard.
 
-## Why this analysis exists
+## Why this minimum viable segment analysis exists
 
 This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **segment-testability gate** — the three hard tests that decide whether a candidate segment is even valid before any timing signal, anchor, or offer work begins. A segment that fails the MVS check produces an uninterpretable campaign no matter how good the email is.
 

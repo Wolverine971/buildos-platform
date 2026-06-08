@@ -46,7 +46,7 @@ path: apps/web/src/content/blogs/source-analyses/florin-tatulea-reply-method-col
 
 A deep read of [Cold Email Showdown: Rookie Sales Rep vs 10-Year Director](https://www.youtube.com/watch?v=Ag-6pB51s5o) (36:01) from 30 Minutes to President's Club. Florin Tatulea and Evan Greek draft cold emails live across three artificial prompts while Jason Bay grades them. The format is a useful source because it exposes **judgment criteria**, not just finished templates.
 
-## Why this analysis exists
+## Why this reply-method cold email analysis exists
 
 The v1 cold-email skill already has infrastructure, segmentation, offer, cadence, and strategic-body layers. This source adds the **packaging and live-drafting layer**: how a strong cold email gets judged in the moment, what role AI should play, how to make a subject line look internal, and why social proof and a soft offer often beat a meeting ask.
 

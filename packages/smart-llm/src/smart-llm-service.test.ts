@@ -533,7 +533,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 		expect(requestBodies.length).toBeGreaterThan(0);
 		expect(requestUrls[0]).toContain('openrouter.ai/api/v1/chat/completions');
 		expect(requestBodies[0]?.model).toBe(TENCENT_HY3_PREVIEW_MODEL);
-		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'low', exclude: true });
+		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'low', exclude: false });
 	});
 });
 

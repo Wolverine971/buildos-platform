@@ -50,7 +50,7 @@ path: apps/web/src/content/blogs/source-analyses/craig-elias-trigger-event-selli
 
 A deep read of [Shift Selling: Turn Your Prospects into Customers](https://www.youtube.com/watch?v=KuRUanwNzSc) (45:45) on Badger Maps's Outside Sales Talk podcast, hosted by Steve Benson. Craig Elias is the creator of Trigger Event Selling and co-author of _SHiFT! Harness the Trigger Events That Turn Prospects into Customers_.
 
-## Why this analysis exists
+## Why this trigger-event selling analysis exists
 
 This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **trigger taxonomy and "first-in" thesis** — what counts as a buying moment, why prospects need _three_ events to actually transact, and how to monitor systematically for those moments instead of guessing.
 
@@ -176,7 +176,7 @@ A single job change announcement should drive outreach to all four targets, not 
 
 ## Source
 
-- **Transcript:** [`2026-05-15-craig-elias-shift-selling-trigger-events.md`](https://github.com/build-os) (in-repo)
+- **Transcript:** `2026-05-15-craig-elias-shift-selling-trigger-events.md` (in-repo working transcript, unpublished)
 - **Video:** [Shift Selling: Turn Your Prospects into Customers](https://www.youtube.com/watch?v=KuRUanwNzSc) (Badger Maps, 2019-07-18, 45:45)
 - **Book:** _SHiFT! Harness the Trigger Events That Turn Prospects into Customers_ — Craig Elias and Tibor Shanto. Free PDF at [shiftselling.com/book/friends](https://shiftselling.com/book/friends/).
 - **Speaker site:** [shiftselling.com](https://shiftselling.com/)

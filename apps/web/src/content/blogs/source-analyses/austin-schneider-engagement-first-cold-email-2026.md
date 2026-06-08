@@ -44,13 +44,13 @@ path: apps/web/src/content/blogs/source-analyses/austin-schneider-engagement-fir
 
 A deep read of Instantly's [The New Way of Cold Emailing in 2026](https://www.youtube.com/watch?v=h8u840Wm-BI) (14:41), hosted by Austin Schneider. Instantly is the cold email tool category leader for unlimited-inbox outbound. This video reflects how Instantly's top users are running campaigns now that AI spam filters have rewritten the rules.
 
-## Why this analysis exists
+## Why this engagement-first cold email analysis exists
 
 This is one of the source layers behind the BuildOS [`cold-email-engagement-first-outreach`](/agent-skills/cold-email-engagement-first-outreach) skill. It supplies the **2026-specific platform layer** — what filters now reward, the deliverability floor required to even reach the inbox, the under-50-recipient reply-rate math, and the two-touch rule that replaced the seven-touch sequence.
 
 ## Core thesis
 
-The old playbook (10,000 emails/month, light personalization, seven-touch cadence) was built for 2022–2023 inboxes that scanned keywords. In 2024, Gmail and Yahoo rolled out AI-driven spam filters that detect **mass campaign patterns** — sender behavior, engagement rates, campaign structure. Microsoft followed in 2025. Result: average cold email reply rates dropped from 1% to 5% across the industry, and **inbox placement for bulk senders fell 10–27% from Q1 2024 to Q1 2025**.
+The old playbook (10,000 emails/month, light personalization, seven-touch cadence) was built for 2022–2023 inboxes that scanned keywords. In 2024, Gmail and Yahoo rolled out AI-driven spam filters that detect **mass campaign patterns** — sender behavior, engagement rates, campaign structure. Microsoft followed in 2025. Result: average cold email reply rates dropped from 5% to 1% across the industry, and **inbox placement for bulk senders fell 10–27% from Q1 2024 to Q1 2025**.
 
 The replacement is **engagement-first outreach**. Filters and recipients now reward (in this order):
 

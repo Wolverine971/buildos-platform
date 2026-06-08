@@ -44,7 +44,7 @@ path: apps/web/src/content/blogs/source-analyses/kallaway-irresistible-hooks.md
 
 A deep read of Kallaway's [How to Create Irresistible Hooks (and blow up your content)](https://www.youtube.com/watch?v=LmXpbP7dD48) (16:34).
 
-## Why this analysis exists
+## Why this irresistible hooks analysis exists
 
 This is one of the source layers behind the BuildOS [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) skill. The skill encodes the three-beat formula and the four lean mechanisms as agent-runnable scaffolding for hook generation. This post is the long form: how Kallaway teaches the same formula with worked examples.
 

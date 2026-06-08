@@ -62,6 +62,11 @@
 	};
 </script>
 
+<svelte:head>
+	<title>Tree Agent - BuildOS</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
+
 <div class="min-h-screen bg-background text-foreground">
 	<div class="mx-auto w-full max-w-4xl px-4 py-6 space-y-4">
 		<header class="space-y-1">

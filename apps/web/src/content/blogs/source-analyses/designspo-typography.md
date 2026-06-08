@@ -43,7 +43,7 @@ path: apps/web/src/content/blogs/source-analyses/designspo-typography.md
 
 A deep read of DesignSpo's [The ULTIMATE Guide To Typography For Beginners](https://www.youtube.com/watch?v=AXpxZMRM1EY) (13:30).
 
-## Why this analysis exists
+## Why this typography analysis exists
 
 This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill. The skill condenses these rules into agent-runnable checks (line-height proportions, letter-spacing rules, role limits, contrast floors). This post is the long form: how DesignSpo teaches the same material to a human designer.
 

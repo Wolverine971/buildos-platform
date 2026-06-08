@@ -2,7 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
-import { GEMINI_31_FLASH_LITE_PREVIEW_MODEL, DEEPSEEK_V4_FLASH_MODEL } from '@buildos/smart-llm';
+import { GEMINI_31_FLASH_LITE_MODEL, DEEPSEEK_V4_FLASH_MODEL } from '@buildos/smart-llm';
 
 const DESCRIPTION_MIN = 4;
 const DESCRIPTION_MAX = 4000;
@@ -59,9 +59,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const raw = await llm.generateText({
 			prompt: `Description:\n${description}\n\nTitle:`,
 			systemPrompt,
-			// Pin Gemini 3.1 Flash Lite Preview as primary (fastest in the runtime set,
+			// Pin Gemini 3.1 Flash Lite as primary (fastest in the runtime set,
 			// speed 4.7), with DeepSeek V4 Flash and the rest of the speed lane as fallback.
-			model: GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
+			model: GEMINI_31_FLASH_LITE_MODEL,
 			models: [DEEPSEEK_V4_FLASH_MODEL],
 			profile: 'speed',
 			temperature: 0.2,

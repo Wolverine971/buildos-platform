@@ -288,7 +288,7 @@ function transformUserSignup(payload: UserSignupEventPayload): NotificationPaylo
 	return {
 		title: 'New User Signup',
 		body: `${payload.user_email} signed up via ${methodText}`,
-		action_url: `/admin/users/${payload.user_id}`,
+		action_url: `/admin/users?search=${encodeURIComponent(payload.user_id)}`,
 		icon_url: '/AppImages/android/android-launchericon-192-192.png',
 		data: {
 			user_id: payload.user_id,

@@ -821,8 +821,13 @@
 </script>
 
 <svelte:head>
-	<title>BuildOS - Your Personal Operating System</title>
-
+	<!--
+		NOTE: No <title> here on purpose. A static title in the root layout competes
+		with page-level titles via Svelte's SSR title resolution and can win on some
+		routes, causing duplicate <title> tags across pages (flagged by SEO crawlers).
+		Each page owns its <title> via SEOHead or a local <svelte:head>. Pages without
+		one fall back to the default in SEOHead.
+	-->
 	<!-- PERFORMANCE: System fonts used — no external font loading needed -->
 	{@html '<script type="application/ld+json">' + siteStructuredData + '<' + '/script>'}
 </svelte:head>

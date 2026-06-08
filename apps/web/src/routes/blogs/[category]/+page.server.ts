@@ -3,7 +3,7 @@ import { error, redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import {
 	AGENT_SKILLS_CATEGORY_KEY,
-	loadBlogPostsByCategory,
+	loadBlogPosts,
 	BLOG_CATEGORIES,
 	type BlogCategory
 } from '$lib/utils/blog';
@@ -20,12 +20,22 @@ export const load: PageServerLoad = async ({ params, url }) => {
 		throw error(404, 'Category not found');
 	}
 
-	const posts = await loadBlogPostsByCategory(category as BlogCategory);
+	const allPosts = await loadBlogPosts();
+	const posts = allPosts.filter((post) => post.category === category);
+
+	// Published-post counts per category so the "Explore Other Categories" grid
+	// can skip empty categories (otherwise it links crawlers/users into the
+	// "No articles yet" empty state).
+	const categoryCounts: Record<string, number> = {};
+	for (const key of Object.keys(BLOG_CATEGORIES)) {
+		categoryCounts[key] = allPosts.filter((p) => p.category === key).length;
+	}
 
 	return {
 		category: BLOG_CATEGORIES[category as BlogCategory],
 		posts,
 		allCategories: BLOG_CATEGORIES,
+		categoryCounts,
 		categoryKey: category
 	};
 };

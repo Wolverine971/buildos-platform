@@ -45,7 +45,7 @@ path: apps/web/src/content/blogs/source-analyses/kallaway-hooks-impossible-to-sk
 
 A deep read of Kallaway's [Give me 15 mins, and I'll make your hooks impossible to skip](https://www.youtube.com/watch?v=2byPP_9F0-Q) (15:48).
 
-## Why this analysis exists
+## Why this unskippable hooks analysis exists
 
 This is one of the source layers behind the BuildOS [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) skill. The skill encodes the four-mistake diagnostic as agent-runnable rewrite passes. This post is the long form: the diagnostic, the A vs B contrast formula, and the before/after rewrite pairs that train the eye.
 

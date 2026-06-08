@@ -44,7 +44,7 @@ path: apps/web/src/content/blogs/source-analyses/designspo-visual-hierarchy.md
 
 A deep read of DesignSpo's [The Complete Guide To Visual Hierarchy](https://www.youtube.com/watch?v=kK1TOpI948o) (15:28).
 
-## Why this analysis exists
+## Why this visual hierarchy analysis exists
 
 This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill. The skill compresses the operating rules into checkable rules for an agent. This post is the long form — the reasoning, levers, and failure modes — the way DesignSpo teaches them.
 

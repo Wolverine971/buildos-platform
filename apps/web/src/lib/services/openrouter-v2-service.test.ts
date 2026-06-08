@@ -4,7 +4,12 @@ import {
 	ACTIVE_EXPERIMENT_MODEL,
 	AGENT_STATE_RECONCILIATION_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
-	KIMI_EXPERIMENT_MODEL
+	GEMINI_31_FLASH_LITE_MODEL,
+	KIMI_EXPERIMENT_MODEL,
+	OPENROUTER_V2_JSON_MODELS,
+	OPENROUTER_V2_MULTIMODAL_MODELS,
+	OPENROUTER_V2_TEXT_MODELS,
+	OPENROUTER_V2_TOOL_MODELS
 } from '@buildos/smart-llm';
 
 vi.mock('$env/static/private', () => ({
@@ -88,6 +93,60 @@ describe('OpenRouterV2Service model routing', () => {
 		vi.unstubAllGlobals();
 	});
 
+	it('preserves assistant reasoning fields when replaying tool-call context', async () => {
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+			return createSseResponse([
+				JSON.stringify({
+					id: 'stream-preserve-reasoning',
+					model: ACTIVE_EXPERIMENT_MODEL,
+					choices: [{ delta: { content: 'done' } }]
+				}),
+				JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] }),
+				'[DONE]'
+			]);
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createService();
+		const reasoningDetails = [
+			{ type: 'reasoning.summary', summary: 'picked the lookup tool', index: 0 }
+		];
+
+		for await (const event of service.streamText({
+			messages: [
+				{ role: 'user', content: 'Look this up.' },
+				{
+					role: 'assistant',
+					content: '',
+					tool_calls: [
+						{
+							id: 'call_lookup',
+							type: 'function',
+							function: { name: 'lookup', arguments: '{}' }
+						}
+					],
+					reasoning: 'Need an external lookup.',
+					reasoning_details: reasoningDetails
+				},
+				{ role: 'tool', tool_call_id: 'call_lookup', content: '{"ok":true}' }
+			],
+			userId: 'user_1'
+		})) {
+			if (event.type === 'done') break;
+		}
+
+		expect(requestBodies[0]?.messages[1]).toMatchObject({
+			role: 'assistant',
+			reasoning: 'Need an external lookup.',
+			reasoning_details: reasoningDetails
+		});
+	});
+
 	it('falls back from DeepSeek JSON primary to the Qwen experiment fallback', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
@@ -151,14 +210,14 @@ describe('OpenRouterV2Service model routing', () => {
 
 		expect(result).toEqual({ ok: true });
 		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
-		expect(requestBodies[0]?.models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(requestBodies[0]?.model).toBe(OPENROUTER_V2_JSON_MODELS[0]);
+		expect(requestBodies[0]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(1, 4));
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true
 		});
-		expect(requestBodies[1]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
-		expect(requestBodies[1]?.models).toBeUndefined();
+		expect(requestBodies[1]?.model).toBe(OPENROUTER_V2_JSON_MODELS[1]);
+		expect(requestBodies[1]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(2, 4));
 	});
 
 	it('honors JSON profile hints while keeping DeepSeek as the primary model', async () => {
@@ -209,9 +268,9 @@ describe('OpenRouterV2Service model routing', () => {
 
 		expect(result).toEqual({ ok: true });
 		expect(fetchMock).toHaveBeenCalledTimes(1);
-		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(requestBodies[0]?.model).toBe(OPENROUTER_V2_JSON_MODELS[0]);
 		expect(requestBodies[0]?.response_format).toEqual({ type: 'json_object' });
-		expect(requestBodies[0]?.models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(requestBodies[0]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(1, 4));
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true
@@ -530,16 +589,22 @@ describe('OpenRouterV2Service model routing', () => {
 			model: KIMI_EXPERIMENT_MODEL,
 			provider: 'moonshotai'
 		});
-		expect(fetchMock).toHaveBeenCalledTimes(3);
-		expect(requestUrls.slice(0, 2).every((url) => url.includes('openrouter.ai'))).toBe(true);
-		expect(requestUrls[2]).toBe('https://api.moonshot.ai/v1/chat/completions');
+		expect(fetchMock).toHaveBeenCalledTimes(OPENROUTER_V2_TOOL_MODELS.length + 1);
+		expect(
+			requestUrls
+				.slice(0, OPENROUTER_V2_TOOL_MODELS.length)
+				.every((url) => url.includes('openrouter.ai'))
+		).toBe(true);
+		expect(requestUrls[OPENROUTER_V2_TOOL_MODELS.length]).toBe(
+			'https://api.moonshot.ai/v1/chat/completions'
+		);
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true
 		});
-		expect(requestBodies[2]?.model).toBe('kimi-k2.6');
-		expect(requestBodies[2]?.tools).toHaveLength(1);
-		expect(requestBodies[2]?.tool_choice).toBe('auto');
+		expect(requestBodies[OPENROUTER_V2_TOOL_MODELS.length]?.model).toBe('kimi-k2.6');
+		expect(requestBodies[OPENROUTER_V2_TOOL_MODELS.length]?.tools).toHaveLength(1);
+		expect(requestBodies[OPENROUTER_V2_TOOL_MODELS.length]?.tool_choice).toBe('auto');
 	});
 
 	it('continues to direct OpenAI when direct Moonshot fallback is unavailable', async () => {
@@ -607,12 +672,22 @@ describe('OpenRouterV2Service model routing', () => {
 			model: 'openai/gpt-4o-mini',
 			provider: 'openai'
 		});
-		expect(fetchMock).toHaveBeenCalledTimes(5);
-		expect(requestUrls.slice(0, 3).every((url) => url.includes('openrouter.ai'))).toBe(true);
-		expect(requestUrls[3]).toBe('https://api.moonshot.ai/v1/chat/completions');
-		expect(requestUrls[4]).toBe('https://api.openai.com/v1/chat/completions');
-		expect(requestBodies[4]?.model).toBe('gpt-4o-mini');
-		expect(requestBodies[4]?.stream_options).toEqual({ include_usage: true });
+		expect(fetchMock).toHaveBeenCalledTimes(OPENROUTER_V2_TEXT_MODELS.length + 2);
+		expect(
+			requestUrls
+				.slice(0, OPENROUTER_V2_TEXT_MODELS.length)
+				.every((url) => url.includes('openrouter.ai'))
+		).toBe(true);
+		expect(requestUrls[OPENROUTER_V2_TEXT_MODELS.length]).toBe(
+			'https://api.moonshot.ai/v1/chat/completions'
+		);
+		expect(requestUrls[OPENROUTER_V2_TEXT_MODELS.length + 1]).toBe(
+			'https://api.openai.com/v1/chat/completions'
+		);
+		expect(requestBodies[OPENROUTER_V2_TEXT_MODELS.length + 1]?.model).toBe('gpt-4o-mini');
+		expect(requestBodies[OPENROUTER_V2_TEXT_MODELS.length + 1]?.stream_options).toEqual({
+			include_usage: true
+		});
 	});
 });
 
@@ -951,8 +1026,8 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		}
 
 		expect(events.find((event) => event.type === 'done')).toMatchObject({ type: 'done' });
-		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
-		expect(requestBodies[0]?.models).toEqual(['google/gemini-3.1-flash-lite-preview']);
+		expect(requestBodies[0]?.model).toBe(OPENROUTER_V2_MULTIMODAL_MODELS[0]);
+		expect(requestBodies[0]?.models).toEqual(OPENROUTER_V2_MULTIMODAL_MODELS.slice(1, 4));
 		expect(requestBodies[0]?.messages[0]?.content).toEqual([
 			{ type: 'text', text: 'Inspect this screenshot.' },
 			{ type: 'image_url', image_url: { url: 'https://signed.example/image.png' } }
@@ -1046,8 +1121,8 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		}
 
 		const toolEvent = events.find((event) => event.type === 'tool_call');
-		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
-		expect(requestBodies[0]?.models).toEqual(['google/gemini-3.1-flash-lite-preview']);
+		expect(requestBodies[0]?.model).toBe(OPENROUTER_V2_MULTIMODAL_MODELS[0]);
+		expect(requestBodies[0]?.models).toEqual(OPENROUTER_V2_MULTIMODAL_MODELS.slice(1, 4));
 		expect(requestBodies[0]?.messages[0]?.content).toEqual([
 			{ type: 'text', text: 'Turn the screenshot into a task.' },
 			{ type: 'image_url', image_url: { url: 'https://signed.example/task.png' } }
@@ -1081,7 +1156,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			if (typeof init?.body === 'string') {
 				requestBodies.push(JSON.parse(init.body));
 			}
-			if (requestBodies.length <= 2) {
+			if (requestBodies.length <= OPENROUTER_V2_MULTIMODAL_MODELS.length) {
 				return new Response(
 					JSON.stringify({ error: { message: 'vision route unavailable' } }),
 					{ status: 400, headers: { 'content-type': 'application/json' } }
@@ -1133,13 +1208,14 @@ describe('OpenRouterV2Service visible text filtering', () => {
 			{ type: 'text', text: 'Inspect this screenshot.\nOCR: Settings' },
 			{ type: 'image_url', image_url: { url: 'https://signed.example/image.png' } }
 		]);
-		expect(requestBodies[2]?.messages[0]?.content).toBe(
+		const textFallbackBody = requestBodies[OPENROUTER_V2_MULTIMODAL_MODELS.length];
+		expect(textFallbackBody?.messages[0]?.content).toBe(
 			'Inspect this screenshot.\nOCR: Settings'
 		);
-		expect(requestBodies[2]?.reasoning).toEqual({ exclude: true });
+		expect(textFallbackBody?.reasoning).toEqual({ exclude: true });
 	});
 
-	it('includes Qwen fallback models for profiled tool-calling streams', async () => {
+	it('uses the refreshed tool-calling fallback route for profiled streams', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
@@ -1190,10 +1266,10 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(events.find((event) => event.type === 'done')).toMatchObject({
 			type: 'done'
 		});
-		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
-		expect(requestBodies[0]?.models).toEqual([ACTIVE_EXPERIMENT_MODEL]);
+		expect(requestBodies[0]?.model).toBe(OPENROUTER_V2_TOOL_MODELS[0]);
+		expect(requestBodies[0]?.models).toEqual(OPENROUTER_V2_TOOL_MODELS.slice(1, 4));
 		expect(requestBodies[0]?.tools).toHaveLength(1);
-		expect(requestBodies[0]?.reasoning).toEqual({ exclude: true });
+		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'low', exclude: false });
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true
@@ -1247,8 +1323,8 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		for await (const event of service.streamText({
 			messages: [{ role: 'user', content: 'hello' }],
 			userId: '11111111-1111-4111-8111-111111111111',
-			model: 'qwen/qwen3.6-plus',
-			models: ['qwen/qwen3.6-plus', 'deepseek/deepseek-v3.2'],
+			model: ACTIVE_EXPERIMENT_MODEL,
+			models: [ACTIVE_EXPERIMENT_MODEL, DEEPSEEK_V4_FLASH_MODEL, GEMINI_31_FLASH_LITE_MODEL],
 			chatSessionId: '22222222-2222-4222-8222-222222222222',
 			turnRunId: '33333333-3333-4333-8333-333333333333',
 			streamRunId: 'stream-run-fallback',
@@ -1263,7 +1339,8 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(requestBodies[0]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
 		expect(requestBodies[0]?.models).toEqual([
 			DEEPSEEK_V4_FLASH_MODEL,
-			'google/gemini-3.1-flash-lite-preview'
+			GEMINI_31_FLASH_LITE_MODEL,
+			OPENROUTER_V2_TEXT_MODELS[0]
 		]);
 		expect(events.find((event) => event.type === 'done')).toMatchObject({
 			type: 'done',

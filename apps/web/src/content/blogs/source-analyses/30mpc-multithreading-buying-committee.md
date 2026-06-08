@@ -69,7 +69,7 @@ A composite analysis of three primary sources on B2B buying committees:
 - [Brent Adamson on the Sales Hacker Podcast Ep. 282](https://www.youtube.com/watch?v=8-zT8Cu6tkQ), co-author of _The Challenger Sale_ and _The Challenger Customer_.
 - [Gartner's B2B Buying Journey research](https://www.gartner.com/en/sales/insights/b2b-buying-journey), the source data for the "6.8 buyers" claim and 2025 updates.
 
-## Why this analysis exists
+## Why this multithreading analysis exists
 
 This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **buying-committee map** the skill returns as part of every segment definition — who the email is for, who else has to agree, and what role each member plays. Cold outreach to a single named contact at a modern B2B account is the most common reason "qualified-looking" campaigns produce no closes.
 

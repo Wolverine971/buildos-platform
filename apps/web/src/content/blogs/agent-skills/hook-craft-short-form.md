@@ -82,7 +82,7 @@ Use this skill when an agent needs to make the first 1 to 5 seconds of a piece o
 
 A hook is not one clever sentence. It is **four aligned signals**: spoken words, key visual, text overlay, and audio cue. Those signals are built from six structural slots, organized across three beats, and audited against four failure modes. The agent's job is to enforce that order, not generate from blank.
 
-## Skill Composition
+## How the hook-craft skill is composed
 
 This is a combo skill distilled from four Kallaway source analyses. The pieces stack in a strict order.
 
@@ -95,7 +95,7 @@ This is a combo skill distilled from four Kallaway source analyses. The pieces s
 | Visual/text/audio alignment  | Make all four signals point at the same opt-in promise.                              | 100 Viral Hooks + Irresistible Hooks    |
 | Variant log and payoff check | Generate multiple variants and verify the body can pay off the promise.              | 6 Words Hook + Hooks Impossible To Skip |
 
-## When To Use
+## When to use hook craft
 
 - Draft or rewrite an opening for TikTok, Reels, Shorts, or vertical YouTube.
 - Draft or rewrite a blog lede, LinkedIn opener, X thread first line, or email subject.

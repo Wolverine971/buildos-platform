@@ -115,7 +115,7 @@ Each principle in this skill ships in two layers:
 
 This dual structure lets a human read the skill as a design manual and an agent run it as a checklist.
 
-## When To Use
+## When to use a UI/UX quality review
 
 - Review a product screen, landing page, dashboard, or mobile flow for practical quality issues.
 - Diagnose why a UI feels amateur, cluttered, or hard to trust.
@@ -125,7 +125,7 @@ This dual structure lets a human read the skill as a design manual and an agent 
 - Turn a rough wireframe into a more polished screen.
 - Review AI-generated UI from v0, Lovable, Cursor, or Bolt before it ships.
 
-## Skill Composition
+## How the UI/UX review skill is composed
 
 This is a combo skill distilled from Kole Jain, DesignSpo, and Nesrine Changuel source layers.
 

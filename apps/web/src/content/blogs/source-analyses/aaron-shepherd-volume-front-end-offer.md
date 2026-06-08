@@ -43,7 +43,7 @@ path: apps/web/src/content/blogs/source-analyses/aaron-shepherd-volume-front-end
 
 A deep read of Aaron Shepherd's [I Sent 1,500,000 Cold Emails Last Month, Here's What Works in 2026](https://www.youtube.com/watch?v=CFZuljj6DrU) (17:59). Shepherd runs GrowthFlare, an outbound agency that sent 1.5M cold emails across its clients in a single month and reports thousands of booked calls from that volume.
 
-## Why this analysis exists
+## Why this cold-email volume analysis exists
 
 This is one of the source layers behind the BuildOS [`cold-email-engagement-first-outreach`](/agent-skills/cold-email-engagement-first-outreach) skill. It supplies the **infrastructure + offer + voice layer** — the math of how much sending capacity is required for a given goal, the offer-design pattern that earns replies from strangers, and the script discipline that keeps emails from sounding like marketing.
 

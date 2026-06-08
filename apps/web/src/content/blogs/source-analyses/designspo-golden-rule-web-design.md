@@ -42,7 +42,7 @@ path: apps/web/src/content/blogs/source-analyses/designspo-golden-rule-web-desig
 
 A deep read of DesignSpo's [The Golden Rule Of Web Design (and why you're breaking it)](https://www.youtube.com/watch?v=CASPWJUsHPM) (9:10).
 
-## Why this analysis exists
+## Why this 4-pixel rule analysis exists
 
 This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill. The skill encodes the 4-pixel rule as a closed scale and reject-rules for off-scale values. This post is the long form: how DesignSpo argues the rule and why 4 (not 1, 2, 6, or 8) is the Goldilocks unit.
 

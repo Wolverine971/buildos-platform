@@ -107,7 +107,7 @@ Use this skill when an agent needs to plan, draft, audit, or rewrite cold outrea
 
 This skill is **not** for newsletter or list email, lifecycle email, or any message to people who already opted in. Those have different physics and belong in a different skill.
 
-## Skill Composition
+## How the engagement-first outreach skill is composed
 
 This is the root combo skill distilled from seven cold-email source analyses plus one earlier contextual-outbound draft. The root skill stays compact enough to use directly, then routes deeper work into reference modules for high-volume sending, strategic/single-target outreach, reply handling, and investor/founder/PR use cases.
 
@@ -132,7 +132,7 @@ This is the root combo skill distilled from seven cold-email source analyses plu
 | Low-friction reply fork             | Use respectful numbered options to convert silence into routeable context.                                 | Efti                                  |
 | Investor outreach mode              | Use a short factual fundraising payload with no meeting-first ask.                                         | Seibel                                |
 
-## When To Use
+## When to use engagement-first outreach
 
 - Launch a new cold outbound campaign (B2B sales, recruiting, partnerships, customer interviews).
 - Draft a single targeted cold email to a strategic prospect.

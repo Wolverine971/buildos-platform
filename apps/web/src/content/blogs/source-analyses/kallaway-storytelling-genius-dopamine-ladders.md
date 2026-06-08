@@ -44,7 +44,7 @@ path: apps/web/src/content/blogs/source-analyses/kallaway-storytelling-genius-do
 
 A deep read of Kallaway's [How to Become a Storytelling Genius (Dopamine Ladders)](https://www.youtube.com/watch?v=jtmstMt4WLc) (22:25).
 
-## Why this analysis exists
+## Why this dopamine ladder analysis exists
 
 This is one of the source layers behind the BuildOS [`story-driven-content-craft`](/agent-skills/story-driven-content-craft) skill. The skill encodes the dopamine ladder as the diagnostic spine — when content underperforms, the agent walks the rungs in order and finds the first failure. This post is the long form: the six rungs, the psychology, and what each rung's failure looks like.
 

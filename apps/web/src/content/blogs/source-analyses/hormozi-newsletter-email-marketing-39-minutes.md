@@ -1,6 +1,6 @@
 ---
 title: 'Newsletter Email Marketing in 39 Minutes: Lessons from Alex Hormozi'
-description: 'A deep read of Alex Hormozi''s "Learn Email Marketing in 39 Minutes" — the reward-every-action loop, the templated newsletter structure (subject → quote → tactic → CTA → P.S.), the 3x/week cadence question, the segmentation 791% Roi anecdote, and the deliverability discipline (plain text, mobile, money-language hygiene).'
+description: 'A deep read of Alex Hormozi''s "Learn Email Marketing in 39 Minutes" — the reward-every-action loop, the templated newsletter structure (subject → quote → tactic → CTA → P.S.), the 3x/week cadence question, the segmentation 791% ROI anecdote, and the deliverability discipline (plain text, mobile, money-language hygiene).'
 author: 'DJ Wayne'
 date: '2026-05-14'
 lastmod: '2026-05-14'
@@ -17,7 +17,7 @@ tags:
         'sales-and-growth',
         'marketing-and-content'
     ]
-readingTime: 12
+readingTime: 9
 excerpt: "This is *not* a cold email playbook. Hormozi is teaching how to email a list of people who opted in — the average ROI is 35–45x because the cost of acquisition was already paid. The frame is content-via-email: reward every action in the chain (open, read, click, reply), template the format so readers know what they're getting, and treat the email like a published artifact (plain text, mobile, no money-language, one CTA per audience)."
 sourceTitle: 'Learn Email Marketing in 39 Minutes!'
 sourceCreator: 'Alex Hormozi'
@@ -41,7 +41,7 @@ path: apps/web/src/content/blogs/source-analyses/hormozi-newsletter-email-market
 
 A deep read of [Learn Email Marketing in 39 Minutes!](https://www.youtube.com/watch?v=pLhQOYMGa88) (39:18) by Alex Hormozi. Acquisition.com sent ~10M emails over a 90-day window across its portfolio and generated tens of millions in revenue from them; this video walks through Hormozi's own _Mozi Money Minute_ newsletter and the ten tactics that drive that economics.
 
-## Why this analysis exists
+## Why this newsletter email marketing analysis exists
 
 This is **not** part of the BuildOS [`cold-email-engagement-first-outreach`](/agent-skills/cold-email-engagement-first-outreach) skill. The audience matters. Hormozi is talking about emailing **people who already opted in** — newsletter, lifecycle, and list-to-customer email — not strangers receiving cold outreach.
 

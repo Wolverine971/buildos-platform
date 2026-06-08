@@ -25,13 +25,15 @@ export type OpenRouterChatMessage = {
 	content: OpenRouterMessageContent | unknown;
 	tool_calls?: unknown[];
 	tool_call_id?: string;
+	reasoning?: string;
 	reasoning_content?: string;
+	reasoning_details?: unknown[];
 };
 
 export type OpenRouterToolChoice = 'auto' | 'none' | 'required';
 
 export type OpenRouterReasoningConfig = {
-	effort?: 'low' | 'medium' | 'high';
+	effort?: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
 	max_tokens?: number;
 	exclude?: boolean;
 };

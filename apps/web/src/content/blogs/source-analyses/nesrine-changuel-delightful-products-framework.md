@@ -43,7 +43,7 @@ path: apps/web/src/content/blogs/source-analyses/nesrine-changuel-delightful-pro
 
 A deep read of [Nesrine Changuel on Lenny's Podcast — A 4-step framework for building delightful products](https://www.youtube.com/watch?v=tX6nwT1Bsuo) (1:24:50). Nesrine was the dedicated "Delight PM" at Google (Chrome, Meet) and Spotify, and is the author of _Product Delight_.
 
-## Why this analysis exists
+## Why this delightful products analysis exists
 
 This is one of the source layers behind the BuildOS [`ui-ux-quality-review`](/agent-skills/ui-ux-quality-review) skill — specifically the optional delight pass. The skill encodes the three pillars, delight grid, anti-delight checks, and demotivator inversion as agent-runnable rules. This post is the long form: the framework, the case studies, and the cultural tactics for shipping delight on a real roadmap.
 

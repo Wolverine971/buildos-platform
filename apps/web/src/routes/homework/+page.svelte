@@ -82,6 +82,11 @@
 	};
 </script>
 
+<svelte:head>
+	<title>Homework - BuildOS</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
+
 <!-- Mode A: Dense command center for homework runs -->
 <section class="p-3 sm:p-4 max-w-7xl mx-auto">
 	<!-- Page header -->

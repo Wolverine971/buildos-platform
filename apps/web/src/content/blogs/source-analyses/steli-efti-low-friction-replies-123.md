@@ -44,7 +44,7 @@ path: apps/web/src/content/blogs/source-analyses/steli-efti-low-friction-replies
 
 A deep read of Steli Efti's Close video, [Get 457% more replies to your sales emails with the 1, 2, 3 hack](https://www.youtube.com/watch?v=hmuMkXntbH0) (10:29). This is an older source, but it fills a durable gap in the v1 skill: **reply handling and silence recovery**.
 
-## Why this analysis exists
+## Why this low-friction replies analysis exists
 
 The v1 cold-email skill already says the goal is a response, not a meeting. Efti gives the clearest mechanism for that principle: reduce the work required to reply until a busy buyer can answer with one keystroke.
 

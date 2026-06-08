@@ -81,7 +81,7 @@ The job is to turn a broad target idea into **one persona x one narrowing signal
 
 This is the pre-writing skill. It decides whether a campaign deserves to exist.
 
-## When To Use
+## When to use ICP and signal design
 
 - The target list is broad, mixed, or based only on job titles.
 - The user cannot explain why this person should receive outreach now.

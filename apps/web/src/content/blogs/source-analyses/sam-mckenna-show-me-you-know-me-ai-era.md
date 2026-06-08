@@ -43,7 +43,7 @@ path: apps/web/src/content/blogs/source-analyses/sam-mckenna-show-me-you-know-me
 
 A deep read of Sam McKenna's Closing Time appearance, [The End of the Line for Cold Calling (& What's Replacing it)](https://www.youtube.com/watch?v=5ln1cGTzXTg) (21:25). This is a longer and more strategic companion to the earlier Apollo clip already used in the cold-email library. The Apollo clip supplies subject line, first sentence, body, and CTA craft. This source supplies the **buyer-journey, executive-research, authenticity, and nurture layer**.
 
-## Why this analysis exists
+## Why this show-me-you-know-me analysis exists
 
 This is a v2 source layer for the BuildOS `cold-email-engagement-first-outreach` skill. It fills a gap in the first draft: how a seller should think about senior buyers in a market where generic cold calls and generic AI-personalized emails are both over-patterned.
 

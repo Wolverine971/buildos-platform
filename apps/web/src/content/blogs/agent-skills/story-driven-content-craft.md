@@ -74,7 +74,7 @@ Use this skill when an agent needs to make nonfiction hold attention past the fi
 
 The traditional story arc was built for captive audiences. The internet has no captive audience. Viewers and readers re-decide whether to stay every few seconds. A story-craft agent's job is to detect where that climb breaks and rewrite that specific rung, not vaguely "improve the writing."
 
-## Skill Composition
+## How the story-driven craft skill is composed
 
 This is a combo skill distilled from three Kallaway source layers.
 
@@ -88,7 +88,7 @@ This is a combo skill distilled from three Kallaway source layers.
 | Rebuy loop map               | After each payoff, open the next real question so the audience repeatedly stays.                                       | 7 Storytelling Mistakes |
 | Seven-mistake reject pass    | Catch flat arcs, bad W-order, no rebuys, missing villain, weak rooting interest, low shareability, and absent visuals. | 7 Storytelling Mistakes |
 
-## When To Use
+## When to use story-driven content craft
 
 - Draft or rewrite a blog post, essay, video script, or social post that already has a thesis.
 - Audit a piece that "feels off" and find the first structural failure.

@@ -53,7 +53,7 @@ path: apps/web/src/content/blogs/source-analyses/becc-holland-personalization-to
 
 A composite analysis of Becc Holland's signature framework, captured across [30MPC Episode 31](https://podcasts.apple.com/us/podcast/31-sell-hooking-relevance-with-personalization-in/id1510861233?i=1000502579117) (with Nick Cegelski and Armand Farrokh) and her [Flip the Script](https://www.flipthescript.com/) webinar series. Becc Holland is the founder of Flip the Script and a former sales leader at Chorus and Gong.
 
-## Why this analysis exists
+## Why this personalization-vs-relevance analysis exists
 
 This is one of the source layers behind the BuildOS [`cold-email-icp-signal-design`](/agent-skills/cold-email-icp-signal-design) child skill. It supplies the **relevance taxonomy** the skill uses to grade the strength of a buying signal before approving a segment for outreach. Most "personalized" cold emails are actually decorative relevance attached to a commodity offer — Holland's framework is the cleanest cut for separating the two.
 

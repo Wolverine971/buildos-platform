@@ -228,6 +228,11 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Time Blocks - BuildOS</title>
+	<meta name="robots" content="noindex, nofollow" />
+</svelte:head>
+
 <div class="relative min-h-[calc(100vh-4rem)] min-h-[calc(100dvh-4rem)] bg-card">
 	<section
 		class="relative mx-auto flex max-w-7xl flex-col gap-2 sm:gap-4 px-3 sm:px-4 md:px-6 lg:px-8 py-2 sm:py-4 md:py-6 lg:gap-5"

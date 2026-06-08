@@ -43,7 +43,7 @@ path: apps/web/src/content/blogs/source-analyses/kallaway-6-words-hook.md
 
 A deep read of Kallaway's [The ONLY 6 Words You Need to Hook ANY Viewer](https://www.youtube.com/watch?v=S9FlxFv9dxg) (16:37).
 
-## Why this analysis exists
+## Why this six-word hook analysis exists
 
 This is one of the source layers behind the BuildOS [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) skill. The skill uses the six-slot grammar as the structural-audit pass — given a draft hook, the agent walks the slots and surfaces the missing or weak one. This post is the long form: how Kallaway teaches the slots and the copy-work drill that makes the formula automatic.
 

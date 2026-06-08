@@ -161,7 +161,8 @@ Output event contract (kept compatible with current orchestration):
 
 No weighted scoring. No complexity analyzer.
 
-Single source of truth in `model-lanes.ts`:
+Single source of truth in `packages/smart-llm/src/model-config.ts`; `model-lanes.ts`
+only resolves lane/profile ordering from those exported route arrays:
 
 - `text` lane: fast conversational models.
 - `json` lane: models with reliable structured output support.
@@ -169,16 +170,16 @@ Single source of truth in `model-lanes.ts`:
 
 Initial lane lists should be short (max 4 per lane) and reviewed weekly.
 
-Example initial config (candidate set, to validate in staging):
+Example current config (candidate set, validate in staging after every provider refresh):
 
-- `text`: `qwen/qwen3.5-flash-02-23`, `google/gemini-3.1-flash-lite-preview`, `openai/gpt-4.1-nano`
-- `json`: `qwen/qwen3.6-plus`, `deepseek/deepseek-v3.2`, `openai/gpt-oss-120b`, `openai/gpt-4.1-nano`
-- `tool_calling`: `x-ai/grok-4.1-fast`, `minimax/minimax-m2.7`, `qwen/qwen3.6-plus`, `openai/gpt-oss-120b`
-- `tool_calling` with Exacto enabled: `deepseek/deepseek-v3.1-terminus:exacto`, `qwen/qwen3-coder:exacto`, `moonshotai/kimi-k2-0905:exacto`, `openai/gpt-4o-mini`
+- `text`: `tencent/hy3-preview`, `deepseek/deepseek-v4-flash`, `xiaomi/mimo-v2.5`, `google/gemini-3.1-flash-lite`, `qwen/qwen3.7-plus`
+- `json`: `deepseek/deepseek-v4-flash`, `xiaomi/mimo-v2.5`, `minimax/minimax-m3`, `qwen/qwen3.7-plus`
+- `tool_calling`: `tencent/hy3-preview`, `deepseek/deepseek-v4-flash`, `minimax/minimax-m3`, `xiaomi/mimo-v2.5`, `qwen/qwen3.7-plus`
+- `multimodal`: `xiaomi/mimo-v2.5`, `minimax/minimax-m3`, `qwen/qwen3.7-plus`, `google/gemini-3.1-flash-lite`
 
 Notes:
 
-- Exacto model IDs above come directly from OpenRouter Exacto docs examples.
+- Exacto routing currently reuses the default tool-calling route unless a validated Exacto-specific route is added.
 - Free aliases are not added to the registry until OpenRouter reports an active endpoint.
 - `nvidia/nemotron-3-super-120b-a12b:free` is available in the shared model registry for explicit free-tier long-context use, but default lanes and generic fallbacks avoid free-tier availability risk.
 - Use `models` fallback list in each request. Primary model is first; fallbacks follow.

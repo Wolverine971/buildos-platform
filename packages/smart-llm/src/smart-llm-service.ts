@@ -112,7 +112,7 @@ const DEFAULT_MOONSHOT_MODEL_MAP: Record<string, string> = {
 	'moonshotai/kimi-k2.5': 'kimi-k2.6'
 };
 const MOONSHOT_REASONING_CONTENT_FALLBACK = '[reasoning omitted]';
-const OPENROUTER_TOOL_STREAM_REASONING = { effort: 'low', exclude: true } as const;
+const OPENROUTER_TOOL_STREAM_REASONING = { effort: 'low', exclude: false } as const;
 const CANONICAL_MODEL_ALIASES: Record<string, string> = {
 	'kimi-k2.6': KIMI_EXPERIMENT_MODEL,
 	'kimi-k2-6': KIMI_EXPERIMENT_MODEL,
@@ -121,6 +121,7 @@ const CANONICAL_MODEL_ALIASES: Record<string, string> = {
 	'moonshotai/kimi-k2.5': KIMI_EXPERIMENT_MODEL,
 	'qwen3.5-flash': 'qwen/qwen3.5-flash-02-23',
 	'qwen-3.5-flash': 'qwen/qwen3.5-flash-02-23',
+	'qwen/qwen3.7-plus-20260602': ACTIVE_EXPERIMENT_MODEL,
 	'qwen/qwen3.6-plus-04-02': 'qwen/qwen3.6-plus',
 	'gpt-4.1-nano': 'openai/gpt-4.1-nano',
 	'gpt-oss-120b': 'openai/gpt-oss-120b'

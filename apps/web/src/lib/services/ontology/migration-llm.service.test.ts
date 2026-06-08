@@ -212,7 +212,7 @@ describe('createLLMUsageMetadata', () => {
 	it('should calculate estimated cost', () => {
 		const metadata = createLLMUsageMetadata('qwen', ACTIVE_EXPERIMENT_MODEL, 1000, 500, 1000);
 
-		expect(metadata.estimatedCost).toBe(0.0013);
+		expect(metadata.estimatedCost).toBe(0.0012);
 	});
 });
 

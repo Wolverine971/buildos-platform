@@ -4,14 +4,16 @@ import type { JSONProfile, ModelCapabilities, ModelProfile, TextProfile } from '
 
 export const KIMI_EXPERIMENT_MODEL = 'moonshotai/kimi-k2.6' as const;
 export const KIMI_EXPERIMENT_MODELS = [KIMI_EXPERIMENT_MODEL] as const;
+export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
 export const QWEN_36_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.6-plus' as const;
 export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
 export const DEEPSEEK_V4_PRO_MODEL = 'deepseek/deepseek-v4-pro' as const;
 export const MINIMAX_M3_MODEL = 'minimax/minimax-m3' as const;
 export const XIAOMI_MIMO_V25_MODEL = 'xiaomi/mimo-v2.5' as const;
 export const TENCENT_HY3_PREVIEW_MODEL = 'tencent/hy3-preview' as const;
+export const GEMINI_31_FLASH_LITE_MODEL = 'google/gemini-3.1-flash-lite' as const;
 export const GEMINI_31_FLASH_LITE_PREVIEW_MODEL = 'google/gemini-3.1-flash-lite-preview' as const;
-export const ACTIVE_EXPERIMENT_MODEL = QWEN_36_PLUS_EXPERIMENT_MODEL;
+export const ACTIVE_EXPERIMENT_MODEL = QWEN_37_PLUS_EXPERIMENT_MODEL;
 export const ACTIVE_EXPERIMENT_MODELS = [ACTIVE_EXPERIMENT_MODEL] as const;
 export const AGENT_STATE_RECONCILIATION_MODEL = 'qwen/qwen3.5-flash-02-23' as const;
 export const AGENT_STATE_RECONCILIATION_MODELS = [AGENT_STATE_RECONCILIATION_MODEL] as const;
@@ -37,9 +39,9 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
-	[GEMINI_31_FLASH_LITE_PREVIEW_MODEL]: {
-		id: GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
-		name: 'Gemini 3.1 Flash Lite Preview',
+	[GEMINI_31_FLASH_LITE_MODEL]: {
+		id: GEMINI_31_FLASH_LITE_MODEL,
+		name: 'Gemini 3.1 Flash Lite',
 		speed: 4.7,
 		smartness: 4.5,
 		creativity: 4.2,
@@ -55,7 +57,35 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			'lightweight-routing',
 			'1m-context'
 		],
-		limitations: ['preview-model', 'provider-availability-variable'],
+		limitations: ['provider-availability-variable'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
+	[GEMINI_31_FLASH_LITE_PREVIEW_MODEL]: {
+		id: GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
+		name: 'Gemini 3.1 Flash Lite Preview',
+		speed: 4.7,
+		smartness: 4.45,
+		creativity: 4.2,
+		cost: 0.25,
+		outputCost: 1.5,
+		provider: 'google',
+		bestFor: [
+			'legacy-preview-route',
+			'ultra-fast',
+			'high-volume-text',
+			'json-mode',
+			'tool-calling',
+			'classification',
+			'1m-context'
+		],
+		limitations: ['legacy-preview-model', 'prefer-google/gemini-3.1-flash-lite'],
 		capabilities: {
 			jsonMode: true,
 			structuredOutputs: true,
@@ -465,8 +495,38 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
-	'qwen/qwen3.6-plus': {
-		id: 'qwen/qwen3.6-plus',
+	[QWEN_37_PLUS_EXPERIMENT_MODEL]: {
+		id: QWEN_37_PLUS_EXPERIMENT_MODEL,
+		name: 'Qwen 3.7 Plus',
+		speed: 3.5,
+		smartness: 4.98,
+		creativity: 4.6,
+		cost: 0.4,
+		outputCost: 1.6,
+		provider: 'qwen',
+		bestFor: [
+			'agentic-coding',
+			'repo-level-problem-solving',
+			'front-end-development',
+			'complex-reasoning',
+			'multimodal',
+			'structured-output',
+			'tool-calling',
+			'1m-context',
+			'current-qwen-plus-route'
+		],
+		limitations: ['reasoning-tokens-can-increase-cost'],
+		capabilities: {
+			jsonMode: true,
+			structuredOutputs: true,
+			tools: true,
+			reasoning: true,
+			multimodal: true,
+			longContext: true
+		}
+	},
+	[QWEN_36_PLUS_EXPERIMENT_MODEL]: {
+		id: QWEN_36_PLUS_EXPERIMENT_MODEL,
 		name: 'Qwen 3.6 Plus',
 		speed: 3.3,
 		smartness: 4.95,
@@ -484,9 +544,10 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			'structured-output',
 			'tool-calling',
 			'1m-context',
-			'swe-bench-verified-78.8%'
+			'swe-bench-verified-78.8%',
+			'legacy-qwen-plus-route'
 		],
-		limitations: ['reasoning-tokens-can-increase-cost'],
+		limitations: ['legacy-model', 'reasoning-tokens-can-increase-cost'],
 		capabilities: {
 			jsonMode: true,
 			structuredOutputs: true,
@@ -690,7 +751,7 @@ const OPENROUTER_TEXT_ROUTE = [
 	TENCENT_HY3_PREVIEW_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
-	GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
+	GEMINI_31_FLASH_LITE_MODEL,
 	ACTIVE_EXPERIMENT_MODEL
 ] as const;
 const OPENROUTER_JSON_ROUTE = [
@@ -710,13 +771,13 @@ const OPENROUTER_MULTIMODAL_ROUTE = [
 	XIAOMI_MIMO_V25_MODEL,
 	MINIMAX_M3_MODEL,
 	ACTIVE_EXPERIMENT_MODEL,
-	GEMINI_31_FLASH_LITE_PREVIEW_MODEL
+	GEMINI_31_FLASH_LITE_MODEL
 ] as const;
 const EMERGENCY_TEXT_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	ACTIVE_EXPERIMENT_MODEL,
-	GEMINI_31_FLASH_LITE_PREVIEW_MODEL
+	GEMINI_31_FLASH_LITE_MODEL
 ] as const;
 
 export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(

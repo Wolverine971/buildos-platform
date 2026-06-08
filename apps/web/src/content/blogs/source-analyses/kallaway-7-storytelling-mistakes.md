@@ -43,7 +43,7 @@ path: apps/web/src/content/blogs/source-analyses/kallaway-7-storytelling-mistake
 
 A deep read of Kallaway's [7 Storytelling Mistakes That Are KILLING Small Creators](https://www.youtube.com/watch?v=wgXGimZvDa4) (13:37).
 
-## Why this analysis exists
+## Why this storytelling mistakes analysis exists
 
 This is one of the source layers behind the BuildOS [`story-driven-content-craft`](/agent-skills/story-driven-content-craft) skill. The skill uses this catalog as the **failure-mode pass** — every mistake here corresponds to something an agent should detect and prevent before publishing. This post is the long form: the seven specific ways modern storytelling breaks, with concrete fixes.
 
