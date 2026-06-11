@@ -13,14 +13,6 @@ legacy_paths:
     - marketing-and-content.algorithm-aware-publishing.skill
     - docs/research/youtube-library/skill-drafts/algorithm-aware-publishing/SKILL.md
 reference_modules:
-    - id: algorithm_aware_publishing.content_games
-      name: 'Pillar 0: The Five Content Games'
-      summary: The strategic decision above the matching loop — five-game table and diagnostic, Trust Formula (Minutes × Relevance × Usefulness), Off-Target Cost Heuristic, Ironman 46M-views-zero-customers anecdote, and the BuildOS Game #4 + #5 hybrid classification with the ~3:1 channel ratio.
-      when_to_load:
-          - Before tagging any piece or channel with its content game, or setting the game ratio.
-          - When evaluating a viral-looking idea that might be off-target for the avatar.
-          - At the start of any publishing-strategy planning run.
-      path: references/content-games.md
     - id: algorithm_aware_publishing.matching_loop_platforms
       name: Matching Loop, Platforms, and Plan / Diagnose Workflows
       summary: The matching-loop mental model (multimodal fingerprint, ~200-stranger sample, tier scaling), the two creator levers, the islands-not-ecosystem rule, the cross-platform signal-weight table with BuildOS hero-platform candidates, the 10-step Plan A Publishing Strategy workflow, and the Diagnose A Flopped Piece workflow.
@@ -54,7 +46,7 @@ Use this skill to publish into interest-media platforms without becoming capture
 
 The hard part for BuildOS is that **the same playbook that wins distribution also includes tactics that violate the brand**. This skill encodes the dual audit: every published artifact must be (a) clean on the matching loop AND (b) routing attention toward the BuildOS interest-media diagnosis, not away from it. Algorithm-aware without being algorithm-captured.
 
-The deep rules live in reference modules. The skill body holds the discipline, the mode dispatch, the output contract, and the guardrails; load the references before producing decisions.
+The skill body holds the discipline, the mode dispatch, Pillar 0 (the content-game decision, which applies in every mode), the output contract, and the guardrails. The mode-specific deep rules live in reference modules; load the matching reference before producing decisions.
 
 ## When to Use
 
@@ -81,12 +73,61 @@ Do not use this skill for hook craft (defer to `hook-craft-short-form`), narrati
 8. **The dual audit is non-negotiable.** Algorithm-clean is necessary. BuildOS-thesis-coherent is also necessary. Either one alone is failure.
 9. **Stop tweaking the wrong layer.** Posting time, hashtags, captions don't matter. Topic precision, hook quality, and the four engagement attributes do.
 
+## Pillar 0: Content Games
+
+Five different content games run on social media simultaneously. Each has different rules, different objectives, different ways to win. **The #1 reason businesses waste months on content is using the wrong game's playbook.** Pure virality is correct for Games 1 and 2. For Games 3, 4, 5, an off-target viral hit _poisons_ the next several videos.
+
+| Game | Name                 | Examples                            | Goal                         | Monetization                                   |
+| ---- | -------------------- | ----------------------------------- | ---------------------------- | ---------------------------------------------- |
+| 1    | Mainstream Fame      | Mr. Beast, Charli D'Amelio          | Max total views              | Ad revenue + broad brand deals (media layer)   |
+| 2    | Category Fame        | Dad Social, Cleo Abram              | Max views in a niche         | Niche brand deals + sponsorships (media layer) |
+| 3    | Intuitive Products   | Clothing brands, CPG                | Build a world around product | Vibes / lifestyle-fit purchases                |
+| 4    | Explanatory Products | AG1, Meta Ray-Ban glasses           | Educate the buyer            | Education-driven purchases                     |
+| 5    | Authority Building   | Consultants, coaches, info products | Build deep trust + expertise | Off-platform conversion (leads / clients)      |
+
+**Quick diagnostic:**
+
+| If you sell…                                               | Play game…             |
+| ---------------------------------------------------------- | ---------------------- |
+| Services, coaching, consulting, info products              | Game #5                |
+| Commodity consumer product                                 | Game #3                |
+| Differentiated product needing explanation before purchase | Game #4                |
+| No offer yet but want a targeted audience                  | Start #2 → shift to #5 |
+
+**The Trust Formula (Game #5 specifically):**
+
+```
+Trust = Minutes Watched × Relevance × Usefulness
+```
+
+Multiplicative. Zero on any axis = zero trust accumulated. A long video with low usefulness builds nothing. A useful video to the wrong audience builds nothing. **1,000 high-trust views from potential buyers is worth more than 100,000 disconnected views from the wrong audience.**
+
+For Game #5 the unit of measurement is **trust accumulation**, not views. View count is vanity for off-platform-monetizing creators. Cohort-level trust signals (returning-viewer minutes, comment specificity, off-platform conversion rate) are the real channel-health metric.
+
+**The Off-Target Cost Heuristic:** when evaluating an idea that _would_ go viral but to the wrong audience —
+
+```
+Estimated upside = (off-target views × ~0% conversion) ≈ 0 leads
+Estimated cost  = (next 5–10 videos × suppressed reach) = N suppressed leads
+
+Decision: refuse the off-target idea unless the algorithmic cost is explicitly justified.
+```
+
+Kallaway's own confession: his Ironman video hit **46M views in 5 days** and produced **zero customers**. Ego full, bank account empty. Going viral with the wrong audience is worse than not going viral at all.
+
+**BuildOS classification:** Game #4 (Explanatory Product) wrapped in a Game #5 (Founder Authority) shell. The two games **complement at the channel level but cannot mix inside a single piece**:
+
+- Game #5 evidence → anti-feed essays, lived-experience POV pieces, contrarian takes on AI-everywhere, founder-direct philosophy. These prime trust upstream.
+- Game #4 evidence → BuildOS demos, brain-dump-to-structure walkthroughs, feature explainers, comparison videos. These convert that trust into sign-ups downstream.
+
+**Channel-level rule of thumb:** ~3:1 ratio of Game #5 (authority) to Game #4 (product). Tag every shipped piece with its game in the content log so the ratio can be audited. **Each piece picks one game. Mixed-game pieces get split or rejected.**
+
 ## Workflow
 
 The four pillars run in order — Pillar 0 (content game) is the strategic decision _above_ the matching loop; skip it and you optimise the wrong system.
 
 1. Identify the mode: **plan** a publishing strategy, **score** a specific draft, or **diagnose** a flopped piece.
-2. In every mode, load `algorithm_aware_publishing.content_games` first and tag the channel or piece with its game (#3 / #4 / #5 / hybrid with a declared piece-level pick). Untagged work does not advance. For BuildOS, confirm the Game #4 + #5 hybrid and the ~3:1 #5:#4 ratio.
+2. In every mode, apply the **Pillar 0: Content Games** section above first and tag the channel or piece with its game (#3 / #4 / #5 / hybrid with a declared piece-level pick). Untagged work does not advance. For BuildOS, confirm the Game #4 + #5 hybrid and the ~3:1 #5:#4 ratio.
 3. **Plan mode:** load `algorithm_aware_publishing.matching_loop_platforms` and run the 10-step Plan A Publishing Strategy workflow — hero platform, topic + avatar in writing, winners library, visual/verbal signature, rented → owned ramp, 30-post calibration window, pre-publish gates.
 4. **Score mode:** load `algorithm_aware_publishing.quality_gate_tactics` and run the 9-step Score A Specific Piece workflow — topic-mapping check, avatar check with the Off-Target Cost Heuristic, non-follower opening test + CCN parse, four-attribute filter or Trust Formula, six-checkpoint walk, trust-hierarchy check, Keep/Modify/Reject scan.
 5. **Diagnose mode:** load `algorithm_aware_publishing.matching_loop_platforms` and run the Diagnose A Flopped Piece workflow — locate the first failed step of the loop (topic-mapping / sample-found / sample-engaged / tier-scaled), stop there, and name the upstream fix.
@@ -118,7 +159,7 @@ For audit-mode runs on flopped content, replace the packet with a **diagnostic r
 
 ## Guardrails
 
-- **Do not produce outputs without loading the matching reference module first.** Game tags need `content_games`; planning and flop diagnosis need `matching_loop_platforms`; draft scoring needs `quality_gate_tactics`; every ship decision needs `buildos_dual_audit`.
+- **Do not produce outputs without loading the matching reference module first.** Game tags use the inline Pillar 0 section; planning and flop diagnosis need `matching_loop_platforms`; draft scoring needs `quality_gate_tactics`; every ship decision needs `buildos_dual_audit`.
 - **No publishing without a game tag.** Every piece declares Game #3, #4, #5, or hybrid before any other check. Untagged pieces don't advance.
 - **No mixed-game pieces.** Game #5 essays don't drill product features; Game #4 demos don't drift into philosophy. Split or kill.
 - **No off-target viral chases regardless of view potential.** A 10M-view hit to the wrong audience corrupts the next 10 pieces. Apply the Off-Target Cost Heuristic; refuse unless the cost is explicitly justified.
@@ -140,6 +181,7 @@ For audit-mode runs on flopped content, replace the packet with a **diagnostic r
 
 ## Notes
 
-- Reference modules: `algorithm_aware_publishing.content_games` (Pillar 0 game decision), `algorithm_aware_publishing.matching_loop_platforms` (Pillar 1 + platform table + plan/diagnose workflows), `algorithm_aware_publishing.quality_gate_tactics` (Pillar 2 + Keep/Modify/Reject catalog + score workflow), `algorithm_aware_publishing.buildos_dual_audit` (Pillar 3 + operating rules + source attribution).
+- Pillar 0 (the five content games, Trust Formula, Off-Target Cost Heuristic, BuildOS #4+#5 hybrid) lives inline in this shell — it loads in every mode, so it is not a reference module.
+- Reference modules: `algorithm_aware_publishing.matching_loop_platforms` (Pillar 1 + platform table + plan/diagnose workflows), `algorithm_aware_publishing.quality_gate_tactics` (Pillar 2 + Keep/Modify/Reject catalog + score workflow), `algorithm_aware_publishing.buildos_dual_audit` (Pillar 3 + operating rules + source attribution).
 - Pairs with `hook-craft-short-form` (opener), `story-driven-content-craft` (curiosity-loop architecture, dopamine ladder, 7-mistakes filter), `viral-video-script-structure` (the body the algorithm reads), `nonfiction-writing-from-lived-conviction` (the lived-experience source upstream of any post), and `content-strategy-beyond-blogging` (the format-vs-intent layer).
 - Full source attribution (Kallaway videos + email, BuildOS internal essays, Galloway / Welsh / DHH sharpeners, underlying analyses, combo index) lives in `algorithm_aware_publishing.buildos_dual_audit`.

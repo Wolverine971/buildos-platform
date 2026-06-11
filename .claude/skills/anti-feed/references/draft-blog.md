@@ -1,3 +1,4 @@
+<!-- .claude/skills/anti-feed/references/draft-blog.md -->
 # Draft a ranked cluster blog (T35–T43)
 
 Load this when the user picks "Draft the next ranked blog" from the menu.
@@ -19,7 +20,7 @@ Load (if not already in this session):
 - `docs/marketing/social-media/FOUNDER_CONTEXT.md`
 - The task brief for T## inside WS09
 - The two most-recently-published cluster posts (for vocabulary continuity + cross-link targets)
-- `youtube-transcripts/2026-04-16-exposing-the-new-manufactured-viral-content-economy.md` — only if the post cites the Devin Nash receipts
+- `docs/research/youtube-library/transcripts/2026-04-16-exposing-the-new-manufactured-viral-content-economy.md` — only if the post cites the Devin Nash receipts
 
 ## Step 3 — Outline before prose
 

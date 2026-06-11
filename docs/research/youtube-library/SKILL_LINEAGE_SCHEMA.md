@@ -9,6 +9,20 @@ database yet. Each skill can keep a small `lineage.yaml` beside its `SKILL.md`.
 The manifest should be easy for humans to edit, useful to agents, and structured
 enough to migrate into database tables later.
 
+## Right-Sizing Policy (2026-06-10)
+
+As of 2026-06-10, lineage requirements are right-sized per skill draft:
+
+- **Required for every skill draft:** a `sources` list — title, creator, url, and
+  local analysis path for each source. This is the non-negotiable minimum lineage.
+- **Optional:** the full claims/edges graph (`source_claims`, `edges`). Reserve it
+  for flagship combo skills that will get public blog write-ups; do not build it
+  for ordinary drafts.
+- **Dropped:** `confidence` scores on edges. The field is deprecated and should not
+  be added to new manifests (existing `lineage.yaml` files are left as-is).
+- **Rationale:** see `SKILL_QUALITY_AUDIT_2026-06-10.md` §5 ("The lineage system:
+  honest take").
+
 ## Design Principle
 
 Start with files. Model relationships explicitly. Only promote to database tables
@@ -129,4 +143,5 @@ edges:
   importing them into the current skill.
 - Keep the graph acyclic where possible for simple authoring, but do not force a
   tree. A primitive can belong to many larger skills.
-- If a relationship feels debatable, include `confidence` and `open_questions`.
+- If a relationship feels debatable, include `open_questions`. (`confidence` is
+  deprecated as of 2026-06-10 — see the Right-Sizing Policy above.)

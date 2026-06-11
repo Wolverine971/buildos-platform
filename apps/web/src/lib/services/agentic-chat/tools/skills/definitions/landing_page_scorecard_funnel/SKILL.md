@@ -16,9 +16,10 @@ reference_modules:
       path: references/setup-layer-positioning.md
     - id: landing_page_scorecard_funnel.funnel_build_specs
       name: Funnel Build Specs
-      summary: Threshold-bearing build rules — the five-section landing page with three hook forms, the CTA stack, the 15-question questionnaire (contact capture, 10 best-practice questions, Big 5 qualification), the dynamic results page, and high/middle/low-fit lead routing.
+      summary: Threshold-bearing build rules — the five-section landing page with three hook forms, the CTA stack (plus waiting-list and group-registration CTA variants), the 15-question questionnaire (contact capture, 10 best-practice questions, Big 5 qualification), the dynamic results page, high/middle/low-fit lead routing, and the funnel KPI / scale-gate layer (LAPS dashboard, allowable cost per sale and per lead, paid-traffic ratchet, traffic prerequisites).
       when_to_load:
           - Before drafting or auditing the landing-page sections, questionnaire, results page, or lead routing.
+          - Before measuring funnel performance, recommending paid traffic, or diagnosing a low-traffic scorecard page.
       path: references/funnel-build-specs.md
 path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/landing_page_scorecard_funnel/SKILL.md
 ---
@@ -97,5 +98,5 @@ Stop conditions before returning:
 ## Notes
 
 - Reference modules: `landing_page_scorecard_funnel.setup_layer_positioning` (Dunford positioning layer), `landing_page_scorecard_funnel.funnel_build_specs` (Priestley funnel mechanics).
-- Primary sources: Daniel Priestley, "The $1 Million Landing Page" (five-section page, 15-question structure, dynamic results page, segmentation); April Dunford's sales-pitch framework on Lenny's Podcast (Setup → Follow-Through structure, differentiated value, anti-FOMO posture). Priestley supplies _what to build_; Dunford supplies _what to write at each stage_ and _whether to wrap it in a Setup layer_.
+- Primary sources: Daniel Priestley, "The $1 Million Landing Page" (five-section page, 15-question structure, dynamic results page, segmentation); Daniel Priestley, "Everyone Who Uses This Playbook Makes $1 Million" (LAPS dashboard, allowable cost per sale/lead, scale gates, traffic prerequisites); April Dunford's sales-pitch framework on Lenny's Podcast (Setup → Follow-Through structure, differentiated value, anti-FOMO posture). Priestley supplies _what to build_ and _how to measure and scale it_; Dunford supplies _what to write at each stage_ and _whether to wrap it in a Setup layer_.
 - Maintainers: the canonical research draft with full claim-level lineage (`lineage.yaml`) lives at `docs/research/youtube-library/skill-drafts/landing-page-scorecard-funnel/` (not available at runtime).

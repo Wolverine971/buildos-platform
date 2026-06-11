@@ -1,6 +1,7 @@
 ---
 name: create-skill
 description: Create, update, or refactor a Claude Code skill — scoped to BuildOS conventions. Use when the user says "create a skill", "add a skill for X", "update the X skill", "split this skill", "heal this skill", or needs to decide between a skill, command, or agent for a new capability. Teaches how to design the frontmatter trigger, body structure, and `references/` split, and includes the BuildOS rules (location, naming, size, no custom frontmatter fields).
+path: .claude/skills/create-skill/SKILL.md
 ---
 
 # Create Skill — BuildOS
@@ -13,6 +14,8 @@ This skill has two jobs:
 2. **Enforce** BuildOS-specific rules (where skills live, what frontmatter fields work in this harness, how skills integrate with our commands).
 
 For deeper upstream guidance there's also `compound-engineering:create-agent-skills` — reach for it if the skill is exotic. For everyday BuildOS skill work, this file is enough.
+
+**Scope check first:** if the skill is for the **agentic-chat runtime** (the in-product agent — files under `apps/web/src/lib/services/agentic-chat/tools/skills/definitions/`), this file does NOT apply. Use `apps/web/src/lib/services/agentic-chat/tools/skills/AUTHORING_GUIDE.md` instead — different parser, different frontmatter, different sizing rules (one-load primary job, the 7 weak-model ingredients, inline > reference > child decision tree, worked-example + eval requirements).
 
 ---
 

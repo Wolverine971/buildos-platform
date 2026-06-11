@@ -7,23 +7,6 @@ preserve_markdown: true
 legacy_paths:
     - cold_email_outreach.learning_review
     - cold_email_outreach.campaign_review
-reference_modules:
-    - id: cold_email_learning_review.metric_diagnostics
-      name: Metric Diagnostics and Benchmark Bands
-      summary: Metric-to-failure diagnostic table, directional benchmark bands with vendor caveats inline (Mailshake, Cognism, Lavender, Schneider, Predictable Revenue), 2026 placement context, and mode quarantine (recruiting 32% vs sales 1–4%).
-      when_to_load:
-          - When interpreting campaign numbers or comparing results against "normal" for the mode.
-          - When deciding which funnel stage (sender, segment, offer, body, proof, cadence, reply handling) a weak metric implicates.
-      path: references/metric-diagnostics-and-benchmarks.md
-      visibility: internal
-    - id: cold_email_learning_review.decision_gates_and_memo
-      name: Decision Gates and Learning Memo
-      summary: Sample-size table and no-peeking rule (Evan Miller), one-variable holding rules, the trust/sample/positive-reply/quality gate tree for stop/iterate/recycle/scale/dead, the learning memo template, and the buyer-language extraction worksheet.
-      when_to_load:
-          - When deciding what to do next after a test, before declaring any verdict.
-          - When writing the learning memo or mining replies for buyer language and objections.
-      path: references/decision-gates-and-learning-memo.md
-      visibility: internal
 path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_learning_review/SKILL.md
 ---
 
@@ -41,12 +24,180 @@ Use this child skill when a campaign or test has results and the user needs to l
 ## Workflow
 
 1. Gather the raw counts, not just rates: sent, delivered, bounces, opens, replies, positive replies, meetings booked, meetings held, complaints, opt-outs, angry replies. Separate by variant and persona. Confirm the mode — recruiting, PR, and investor outreach use their own bands, never sales bands.
-2. Load `cold_email_learning_review.metric_diagnostics` and run the diagnostic table stage by stage: delivered/bounce → opens → replies → positive replies → meetings booked → meetings held → trust cost. Name exactly one most-likely failing layer (sender | segment | offer | body | proof | cadence | reply-handling). In 2026, treat low opens as a compliance/placement suspect before a copy suspect.
-3. Check sample validity BEFORE concluding anything. Load `cold_email_learning_review.decision_gates_and_memo`: below ~200 delivered per variant (or mixed personas) there is no rate verdict — downgrade to qualitative evidence only. If the test was monitored mid-flight and stopped on a "significant" result, flag the read as peeking-inflated and do not treat it as confirmed.
+2. Run the diagnostic table in `## Metric Diagnostics and Benchmark Bands` below, stage by stage: delivered/bounce → opens → replies → positive replies → meetings booked → meetings held → trust cost. Name exactly one most-likely failing layer (sender | segment | offer | body | proof | cadence | reply-handling). In 2026, treat low opens as a compliance/placement suspect before a copy suspect.
+3. Check sample validity BEFORE concluding anything, using the sample-size and test-validity rules in `## Decision Gates, Sample Rules, and the Learning Memo` below: below ~200 delivered per variant (or mixed personas) there is no rate verdict — downgrade to qualitative evidence only. If the test was monitored mid-flight and stopped on a "significant" result, flag the read as peeking-inflated and do not treat it as confirmed.
 4. Extract buyer language and objection patterns with the worksheet: verbatim phrases, named incumbents, timeline state, evidence grade, decision dynamics. Negative replies count.
 5. Run the gate tree in order — trust gate first (it overrides everything), then sample gate, positive-reply gate, quality gate — and decide: stop, iterate, recycle, scale, or dead. State which gate fired and why.
 6. Propose the next test with exactly one variable changed, holding CTA, persona × signal, list source, and sending infrastructure constant. Pre-commit the sample size per arm from the fixed-sample table.
 7. Write the learning memo using the template, including the sample verdict, trust cost, and nurture adds.
+
+## Metric Diagnostics and Benchmark Bands
+
+Every benchmark here is vendor data — the caveat next to each number is part of the number. Do not read any rate as a verdict before passing the sample gate in `## Decision Gates, Sample Rules, and the Learning Memo` below.
+
+### Metric diagnostic table (which metric diagnoses which failure)
+
+Sources: Connor Murray's three-rate diagnostic (practitioner method: track three inputs, not one), extended with Austin Schneider / Instantly deliverability context and 2026 provider-enforcement changes.
+
+| Metric                                      | What it diagnoses                                 | If low, suspect (in order)                                                                                   |
+| ------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Delivered rate / bounce rate                | List hygiene + domain health                      | List source quality, verification skipped, domain reputation                                                 |
+| Open rate                                   | Subject + preview + sender reputation + placement | 2026 note: compliance/placement failure first (auth, complaint rate), then subject/preview, then send timing |
+| Reply rate (all)                            | Body craft + CTA friction                         | Passive language, multi-CTA, ask too large, no artifact offer                                                |
+| **Positive** reply rate                     | Offer + segment fit                               | Offer not useful pre-meeting, wrong persona, stale signal                                                    |
+| Meeting-booked rate (from positive replies) | Relevance paragraph + reply handling speed        | "Why I'm relevant" misses persona priorities; slow reply routing                                             |
+| Meeting held rate                           | Qualification + expectation set in thread         | Front-end offer attracted bad-fit; no pre-call filter                                                        |
+| Complaint / opt-out / angry-reply rate      | Trust consumed                                    | Segment too broad, cadence too long, fake personalization                                                    |
+
+Hard rule (Connor Murray): **never optimize a single composite "reply rate."** Replies include "no," "stop," and "wrong person." Diagnose stage by stage.
+
+Hard rule (Mailshake, State of Cold Email 2025): open rate is "a directional metric, not a definitive one... Use reply rate as your true north, not open rate." Opens are additionally unreliable due to privacy proxies — treat open deltas >10pts as signal, smaller moves as noise.
+
+2026 placement context: Google began server-level rejection (not just spam-foldering) of non-compliant bulk mail in Nov 2025, and Microsoft rejects unauthenticated 5k+/day senders (`550 5.7.515`). **Low opens in 2026 are more likely a compliance/placement failure than a copy failure.** Route to `cold_email_deliverability_readiness` (its `references/provider-requirement-matrix.md` holds the provider rules — do not duplicate them here).
+
+### Benchmark bands (all directional-vendor; triangulate before treating as governing)
+
+Methodology status governs how hard each number may be leaned on:
+
+- **Methodology stated** (usable as directional bands): Mailshake (508-respondent survey, self-reported), Cognism (internal-team dataset with counts, labeled "directional, not diagnostic").
+- **Sample stated, selection bias not characterized** (keep directional): Lavender.
+- **Methodology NOT stated** (named-practitioner patterns only, never governing thresholds): Gem's 32% recruiting reply rate, Schneider's touch-decay percentages, infrastructure economics claims.
+
+#### Mailshake State of Cold Email 2025 (508 self-reporting senders, survey early 2025; methodology stated; self-reported caveat applies)
+
+- Most common reply-rate band: **1–4%**. Only **~16% of senders exceed 5%** reply rate.
+- Most common open-rate band: **10–30%**; few exceed 40%.
+- Bounce: nearly half of senders report **2–5%**; **15% exceed 6%**. "Bounce rates above 5% signal risky list hygiene and can cripple sender reputation." Monitor weekly.
+- **69% of respondents** said performance declined YoY (spam filtering + AI-content fatigue).
+- Top performers who personalize 1:1 report **2–3x higher reply rates**; only **5% of senders** personalize every email individually.
+- High-volume senders (1,000+/mo) were **not** more likely to generate more leads than low/mid volume senders.
+
+#### Austin Schneider / Instantly (named-practitioner pattern; methodology not stated — never a governing threshold)
+
+- Industry-average reply rates fell **~5% → ~1%** after AI spam filters (Gmail 2024, Microsoft 2025); bulk-sender inbox placement fell **10–27%** Q1-2024→Q1-2025.
+- Campaigns **<50 recipients: 5.8% reply** vs **>1,000 recipients: 2.1%** — the relevance ceiling.
+- Touch effects: follow-up #1 **+49% replies**; email 3 **−20%** (2026 vs +9% in 2023); email 4+ **−55%** and trains filters to flag the sender as bulk.
+
+#### Cognism State of Outbound 2026 (internal Cognism team data; methodology stated: 149,376 emails, 451,895 calls, 39,679 meetings; their own label: "directional, not diagnostic")
+
+- SDR cold-call answered rate **13.3%** vs AE warm-call **14.4%** — list quality and timing, not volume, drive connection.
+- Channel task mix in their top motion: calls **57%**, LinkedIn **27%**, email **15%** — email-only learning loops under-read the market when the motion is multichannel.
+- ~70% of SDR calls came from sequences; structure drives consistency, personalization drives meetings.
+
+#### Lavender Cold Email Benchmark (231,818 cold emails as of 2026-02-04, ~50k inboxes; directional-vendor — sample stated, selection bias not characterized; https://www.lavender.ai/blog/the-cold-email-benchmark-report)
+
+- A-grade emails to operations: **5.4% reply** (58% lift over baseline). Finance: **79% lift** for A-grade, but only **6.1% of finance emails earn an A**. Technical buyers baseline ≈ **5.2%**.
+- Use: quality lift is real and measurable per persona — when a campaign underperforms, grade the email quality before declaring the segment dead.
+
+#### Gem (vendor, recruiting mode; methodology not stated)
+
+- Average **32% reply rate for a 4-stage recruiting sequence** — recruiting benchmarks are an order of magnitude above sales benchmarks; **never grade recruiting campaigns against sales bands**, and never let recruiting bands leak into sales-mode guidance (mode quarantine).
+
+#### Predictable Revenue methodology — validation-phase gates and nurture asymmetry
+
+- Validation-phase gates for an outbound system: open rate **>40%**, meeting acceptance **>80%**, ~**20% of opportunities "go deep,"** SDR task on-time execution **>90%**.
+- Nurture asymmetry: assume only **~5% of created opportunities buy within 90 days**; **95% of outbound value is the nurture pipeline**; the channel takes **12–18 months** to mature.
+- Implication: a campaign is not "dead" because it produced no near-term meetings — count nurture-pipeline adds.
+
+### Trust-cost proxy set (internal methodology — not sourced fact)
+
+No external source measures "market trust consumed." The proxy set is: complaint rate, opt-out rate, negative-reply share, spam-foldering trend. The component thresholds come from deliverability and benchmark sources above; the composite is internal BuildOS methodology. Flag it as such whenever it appears in output.
+
+## Decision Gates, Sample Rules, and the Learning Memo
+
+Validity rules come first because the gate tree is meaningless on an invalid read.
+
+### Sample-size and test-validity rules
+
+Sources: Evan Miller, "How Not To Run An A/B Test" (https://www.evanmiller.org/how-not-to-run-an-ab-test.html); Kohavi et al., _Trustworthy Online Controlled Experiments_ ch. 1 (official excerpt) — usable principles: define an Overall Evaluation Criterion, test trustworthiness before interpreting, implement guardrail metrics, beware Twyman's law / carryover effects.
+
+- **No peeking** (Evan Miller). Checking repeatedly and stopping at the first significant result inflates a nominal 5% false-positive rate to as much as **26.1%**. Decide sample size in advance; read once at the end.
+- **Fixed-sample formula** (Evan Miller): n ≈ 16·(σ²/δ²) per arm, with σ² = p(1−p) for rates. Practical cold-email table (baseline 3% positive-reply rate):
+    - detect 3% → 6% (doubling): ≈ **n=560 per arm**.
+    - detect 3% → 4.5%: ≈ **n=2,100 per arm**.
+    - detect 3% → 3.5%: ≈ **n=18,000 per arm** — i.e., micro-segment campaigns can only detect _large_ effects. If the campaign is <100 sends, treat results as qualitative evidence (buyer language, objection mix), never as a rate comparison.
+- **One variable per test.** Holding rules: same CTA across variants, one persona × one signal, same list source per variant, same sending infrastructure per variant — otherwise placement differences masquerade as copy differences.
+- **OEC for this suite** (Kohavi's OEC concept applied to the suite's north star): qualified conversations started per unit of market trust consumed — not replies, not meetings booked. The trust-consumed composite is internal methodology, not sourced fact; flag it as such.
+
+### Stop / Iterate / Recycle / Scale decision tree
+
+Assembled from: Schneider non-responder recycling, Mailshake bands, Aaron Shepherd volume-as-data and back-end qualification, Close "no response is a response," Predictable Revenue nurture asymmetry. **Gate values are defaults to tune per market — internal calibration, not industry standards.**
+
+```text
+0. TRUST GATE (check first, overrides everything):
+   complaints >0.3% absolute or >0.1% sustained, bounce >5%,
+   or spam-foldering evidence → STOP SENDING. Fix sender/list before
+   reading any copy/offer metric. (Google/Yahoo 0.3% ceiling, 0.1% target;
+   Mailshake bounce threshold.)
+
+1. SAMPLE GATE: fewer than ~200 delivered per variant, or mixed personas
+   → NO RATE VERDICT. Extract buyer language + objections only.
+   Next action: keep sending or widen the same segment.
+
+2. POSITIVE-REPLY GATE (offer/segment signal):
+   positive reply ≥3% → candidate to SCALE (step 4).
+   positive reply 1–3% → ITERATE: change ONE of offer artifact / persona
+     priorities paragraph / signal freshness. Re-test same segment.
+   positive reply <1% AND opens ≥30% → offer or segment is wrong:
+     RECYCLE non-responders into a new campaign with a different
+     opener + different artifact offer (Schneider replacement for touches 3–7).
+   positive reply <1% AND opens <20% → packaging or placement problem:
+     route to deliverability child first, then subject/preview rework.
+
+3. QUALITY GATE (before scaling):
+   meetings from positive replies <40%, or bad-fit replies >50% of replies
+   → fix reply routing / qualification before scale (Shepherd back-end filter).
+
+4. SCALE: widen the same persona × signal, add adjacent micro-segments
+   (keep each <50–500 recipients per Schneider relevance cliff), add domains
+   not per-inbox volume. Re-run gates at each expansion.
+
+5. DEAD: two recycle attempts on the same segment with <1% positive reply
+   and no usable buyer language → declare segment dead, document why,
+   move budget. Keep the buyer-language file.
+```
+
+### Buyer-language extraction worksheet
+
+Sources: Close Hail Mary dead-leads case, Fitzpatrick's Mom Test rules, Moesta's demand-side timeline.
+
+For every reply (including negative), capture:
+
+1. **Verbatim objection phrase** (not paraphrase — buyer words feed future copy).
+2. **Named alternative/incumbent** ("going with [competitor] because…" — the Close Hail Mary case surfaced a previously unknown objection: easier hiring for the bigger-brand CRM).
+3. **Timeline state** (Moesta): passive looking / active looking / deciding / onboarding / habit. "Not now" is timeline data → nurture, not failure.
+4. **Evidence grade** (Mom Test): past behavior and current spend = strong; compliments and hypotheticals = weak. Tag compliments as weak unless paired with behavior.
+5. **Decision dynamics** ("CEO made the call," "loved it but no power") → feeds the buying-committee map in `cold_email_icp_signal_design`.
+
+Hail Mary corollary: don't end the conversation at the first reply — the price objection in the Close case only surfaced on the _second_ exchange. One follow-through question per reply minimum.
+
+### Learning memo template
+
+Structure is internal; content fields sourced as cited above.
+
+```markdown
+# Learning Memo — [campaign] — [date]
+
+Mode / segment / signal: [persona × signal, n delivered]
+Test variable (exactly one): [what changed vs control]
+Funnel: delivered % | open % | reply % | positive reply % | meetings | held
+Trust cost: bounces % | complaints % | opt-outs % | angry replies (count)
+Sample verdict: [rate-readable (n≥~200/arm) | qualitative only]
+Diagnosis (one layer): [sender | segment | offer | body | proof | cadence | reply-handling]
+Buyer language (verbatim): - ...
+Objection mix: [counts by class]
+Winning / losing lines: ...
+Decision: [stop | iterate | recycle | scale | dead] + which gate fired
+Next test (one variable): ...
+Nurture adds: [count of good-fit, not-now accounts added]
+```
+
+Nurture accounting (Predictable Revenue): assume only ~5% of created opportunities buy within 90 days; 95% of outbound value is the nurture pipeline; the channel takes 12–18 months to mature. A memo with zero meetings but real nurture adds and verbatim buyer language is a partial win, not a failure.
+
+### Known gaps (do not paper over)
+
+- The trust-consumed composite is internal methodology (see above).
+- No source covers _time-decay of learning_ (how long a memo stays valid). Until sourced, re-validate any memo older than one provider-enforcement cycle before reusing its verdicts.
 
 ## Output Contract
 
@@ -74,6 +225,6 @@ Use this child skill when a campaign or test has results and the user needs to l
 
 ## Notes
 
-- Reference modules: `cold_email_learning_review.metric_diagnostics` (reading the numbers), `cold_email_learning_review.decision_gates_and_memo` (deciding and documenting).
+- Single-shell skill: the former reference modules (metric diagnostics/benchmarks and decision gates/learning memo) are folded inline as `## Metric Diagnostics and Benchmark Bands` and `## Decision Gates, Sample Rules, and the Learning Memo` because both fire on every campaign review — diagnose → gate → memo is the primary job. Shell is ~260 lines / ~21KB, acceptable per the `hook_craft` single-shell precedent.
 - Primary sources: Connor Murray (stage-by-stage rate diagnostics), Mailshake State of Cold Email 2025 (508-sender survey, self-reported), Cognism State of Outbound 2026 ("directional, not diagnostic"), Lavender benchmark (directional-vendor), Austin Schneider / Instantly (practitioner patterns), Predictable Revenue (validation gates, nurture asymmetry), Evan Miller + Kohavi (experiment validity).
 - Maintainers: enrichment lineage lives at `docs/research/youtube-library/cold-email-children-enrichment-plan-2026-06-10.md` (not available at runtime).

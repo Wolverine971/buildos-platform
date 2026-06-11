@@ -9,17 +9,17 @@ upload_date: 2025-10-05
 duration: '22:06'
 views: 265788
 library_category: sales-and-growth
-library_status: transcript
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
+analysis_status: available
+processing_status: needs_synthesis
 processed: false
 skill_candidate: true
 skill_priority: backlog
 skill_draft: ''
 public_article: ''
 indexed_date: '2026-04-28'
-last_reviewed: '2026-04-28'
+last_reviewed: '2026-06-11'
 tags:
     - the diary of a ceo
     - steven bartlett
@@ -83,6 +83,10 @@ path: docs/research/youtube-library/transcripts/2026-04-28_daniel-priestley_how-
 ---
 
 # Everyone Who Uses This Playbook Makes $1 Million
+
+> **Alias note:** This source is nicknamed **"How To Get Noticed"** in the library and is referred to as the **"KPI playbook"** in the skill-combo gap audits. "Everyone Who Uses This Playbook Makes $1 Million" is the actual YouTube title.
+>
+> **Analysis:** [2026-06-11_daniel-priestley_million-dollar-playbook_analysis.md](../analyses/2026-06-11_daniel-priestley_million-dollar-playbook_analysis.md)
 
 ## Skill Combo Links
 

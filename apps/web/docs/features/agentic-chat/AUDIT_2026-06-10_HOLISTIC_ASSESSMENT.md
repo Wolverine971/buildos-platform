@@ -1,4 +1,36 @@
+<!-- apps/web/docs/features/agentic-chat/AUDIT_2026-06-10_HOLISTIC_ASSESSMENT.md -->
+
 # Agentic Chat Holistic Assessment — 2026-06-10
+
+## Progress log
+
+**2026-06-11 — telemetry pull + flag decisions executed (typecheck clean, 252 v2 tests passing):**
+
+_Telemetry (read-only, last 30d: 66 turns, 1,313 turn events — refreshes the assessment's open questions):_
+
+- **Funnel usage is low:** only 13.5% of tool-using turns (7/52) route through a skill first; `first_lane` is `unknown` for 42/59 completed turns. Skills do load reliably when requested (24 `skill_requested` → 24 `skill_loaded`). The funnel exists; the model under-uses it. Future fix is prompt nudges, not machinery.
+- **Deterministic supervisor earns its keep:** 50 `supervisor_status_emitted`, 9 `supervisor_force_synthesis` (~14% of turns), 1 finalization guard, 0 `ask_user`. The LLM judge had **never run once** (config telemetry only).
+- **Prepared prompts had never been exercised:** 0 hits / 60 misses, 100% `missing_key` — the flag was simply off. Context-build cost: `session_cache` ~8ms vs `fresh_load` ~215ms (p50). TTFR p50 ≈ 9s is dominated by LLM passes (p50 3/turn), not context build — expectations for the prewarm trial should be modest.
+- **Turn shape:** tool rounds p50 2 / p90 7; tool calls p50 5 / p90 16; validation failures on 6.8% of turns (all single-failure). ~20 turn-event rows per run — write amplification is a non-issue at current volume.
+
+_Changes shipped:_
+
+1. **LLM turn-supervisor judge deleted** (§2). Removed `turn-supervisor/llm-judge.ts` (+tests), the `turnSupervisorJudge`/`maxSupervisorJudgeCalls` orchestrator params, `resolveTurnSupervisorJudgeConfig` + `supervisor_judge_config` event + wiring from the endpoint, and the judge exports/types. The decision **trigger classification was kept** (renamed `TurnSupervisorDecisionTrigger`) since it's recorded on turn events. **Revert path:** restore from commit `aa585535` (last commit containing the judge) — noted in a code comment at `turn-supervisor/types.ts`.
+2. **Prepared-prompt prewarm enabled by default** (§5 item 2). `isPreparedPromptPrewarmEnabled` default flipped false → true for a ~1-week measured trial; `FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED=false` rolls it back (documented in `.env.example`). Tests added for default-on + env rollback. Hardening: the prewarm endpoint now **fails open** if prepared-prompt build throws (it's a cache — must never fail the prewarm). **Re-check in ~1 week:** `prepared_prompt_hit` rate and `time_to_first_response_ms` by `cache_source`.
+3. **Zod boundary validation on the stream request** (§4 boundary). New `agentic-chat-v2/stream-request.ts`: permissive/passthrough schema (all fields optional, unknown keys allowed, nested payloads shape-checked only) → clear 400 with path-labelled issues instead of downstream `typeof` defense. Composes with the 2026-06-10 alias normalization. Unit tests in `stream-request.test.ts`; imported directly (not via barrel) so endpoint tests exercise real validation.
+4. **Tool-surface slimming: re-evaluated and deliberately NOT shipped** (§1 item 3 — reverses the assessment's recommendation, per DJ). Production snapshot measurement showed the 2026-04-14 handoff is stale: `create_onto_task` is already 2,468 chars (old target ≤2,500 met), `create_onto_project` already ~5.3K (not ~11.8K). The dominant prompt cost is the **system prompt (~27–36K chars, ~2.4× the tool surface)**. New decision doc: `docs/specs/AGENTIC_CHAT_TOOL_SURFACE_REEVALUATION_2026-06-11.md` (current numbers, no-regression bar with telemetry baselines); old handoff marked SUPERSEDED.
+
+---
+
+**2026-06-10 — fixed (typecheck clean, endpoint + agent suites passing):**
+
+1. **`supabase: any` removed from the stream endpoint** (§4). All nine helpers in `/api/agent/v2/stream/+server.ts` now take `FastChatSupabaseClient` (= `SupabaseClient<Database>`); the `(supabase as any).rpc('merge_chat_session_agent_metadata', …)` cast is gone. One deliberate, documented shim remains: `PreparedPromptsTableClient`, because `agentic_chat_prepared_prompts` (migration 20260502000002) is **not in the generated Database types** — run `pnpm gen:types` and delete the shim. (`chat_turn_checkpoints` is also missing; the turn-supervisor module already isolates that behind its own `SupabaseLike`.)
+2. **`tool_result` SSE payload deduplicated** (§4 smaller items). `buildToolResultEventPayload` now emits canonical snake_case only (`tool_name`, `tool_call_id`, `result`); the `toolName`/`toolCallId` duplicates and the `data` alias are gone. Client readers (`agent-chat-sse-handler.ts` `computeToolResultInfo`, `agent-chat-tool-presenter.ts` `extractToolResultPayload`/`resolveProjectId`/`recordDataMutation`) read canonical fields first and keep the legacy names as deploy-window fallbacks only. `FastAgentStreamEvent['tool_result']` type tightened to match.
+3. **Snake/camel dual reads eliminated from the endpoint** (§4 boundary validation). `FastAgentStreamRequestInput` (wire, accepts deprecated `last_turn_context`/`voice_note_group_id`/`prewarmed_context`/`prepared_prompt_key` aliases) is normalized exactly once in `parseRequest` via `normalizeFastAgentStreamRequest` (`agentic-chat-v2/types.ts`); everything downstream reads single canonical fields. Context-snapshot casing normalization is consolidated into `normalizeFastChatContextSnapshot` / `normalizeFastChatContextCache` in `agentic-chat-v2/context-cache.ts` — this deleted the endpoint-local `normalizePrewarmedContextCache` and collapsed the ~50-line camel/snake prepared-`context_payload` block into one call. Note: `context_payload` is only ever written camelCase by the prewarm endpoint, so the snake reads were pure paranoia; they now live in exactly one normalizer.
+
+Not done (per DJ): `djtryserver.ts` stays — known experiment. Pre-existing unrelated test failure: `AgentComposer.test.ts` ("attach existing project image" button lookup) fails on clean main too.
+
+---
 
 **Scope:** Full-system review of the agentic chat: frontend (`AgentChatModal.svelte` + supporting modules), streaming endpoint (`/api/agent/v2/stream`), service layer (`agentic-chat`, `agentic-chat-lite`, `agentic-chat-v2`), capability → skill → tool funnel, context scoping (global / project / entity), domain sensing, and turn supervisor.
 
@@ -131,14 +163,14 @@ The three-scope model (global / project / entity-focus) is coherent end-to-end, 
 
 The extraction work already done is genuinely good:
 
-| Module                          | Role                                       | Tests                            |
-| ------------------------------- | ------------------------------------------ | -------------------------------- |
-| `agent-chat-sse-handler.ts`     | Parses 14–15 SSE event types, DI-injected  | 736 test lines                   |
-| `agent-chat-tool-presenter.ts`  | Tool formatting, entity-name cache, toasts | 514 test lines                   |
-| `agent-chat-session.ts`         | Session snapshot load, prewarm API         | substantive                      |
-| `agent-chat-prewarm.svelte.ts`  | Prewarm lifecycle controller               | substantive                      |
-| `agent-chat-voice.svelte.ts`    | Voice adapter                              | substantive                      |
-| skill/operation activity, formatters | Idempotent activity upserts           | solid                            |
+| Module                               | Role                                       | Tests          |
+| ------------------------------------ | ------------------------------------------ | -------------- |
+| `agent-chat-sse-handler.ts`          | Parses 14–15 SSE event types, DI-injected  | 736 test lines |
+| `agent-chat-tool-presenter.ts`       | Tool formatting, entity-name cache, toasts | 514 test lines |
+| `agent-chat-session.ts`              | Session snapshot load, prewarm API         | substantive    |
+| `agent-chat-prewarm.svelte.ts`       | Prewarm lifecycle controller               | substantive    |
+| `agent-chat-voice.svelte.ts`         | Voice adapter                              | substantive    |
+| skill/operation activity, formatters | Idempotent activity upserts                | solid          |
 
 ~85% of non-modal logic is tested. Svelte 5 runes are used correctly throughout; no legacy reactive syntax, no store misuse. Single app-wide modal instance mounted from `Navigation.svelte`; no state duplication with global stores.
 
@@ -153,11 +185,11 @@ The remaining problem is **`AgentChatModal.svelte` itself: 3,637 lines, ~40 `$st
 
 ## 7. Service layer: three generations, all partially live
 
-| Dir                 | Status         | Notes                                                                                                                       |
-| ------------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `agentic-chat-v2`   | ✅ Primary     | 20 imports from the stream endpoint: orchestrator, context-loader, supervisor, observability.                                |
-| `agentic-chat-lite` | ✅ Required    | Sole prompt builder. Every turn pinned to `LITE_PROMPT_VARIANT` (request `prompt_variant` ignored).                          |
-| `agentic-chat`      | ⚠️ Hybrid      | Shared tool registry, gateway surface, domains, execution service, state reconciliation. Older planner/executor paths dead. |
+| Dir                 | Status      | Notes                                                                                                                       |
+| ------------------- | ----------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `agentic-chat-v2`   | ✅ Primary  | 20 imports from the stream endpoint: orchestrator, context-loader, supervisor, observability.                               |
+| `agentic-chat-lite` | ✅ Required | Sole prompt builder. Every turn pinned to `LITE_PROMPT_VARIANT` (request `prompt_variant` ignored).                         |
+| `agentic-chat`      | ⚠️ Hybrid   | Shared tool registry, gateway surface, domains, execution service, state reconciliation. Older planner/executor paths dead. |
 
 God files beyond the endpoint: `stream-orchestrator/index.ts` (53K), `context-loader.ts` (89K — loads 25+ context shapes), `repair-instructions.ts` (36K — all six repair strategies in one file). Duplicated logic between `tool-arguments.ts` and `turn-supervisor/digest.ts` (both parse/classify tool errors). Zero TODO/FIXME markers — forward work lives in docs instead, which is fine but means the docs must stay honest (see §8).
 
@@ -192,9 +224,9 @@ Roughly a third of the agentic-chat docs are stale or superseded and actively mi
 ## Prioritized recommendations
 
 1. **Make the three flag decisions** (all are carried complexity with no verdict):
-   - LLM judge → recommend **delete**.
-   - Prepared-prompt prewarm → recommend **enable, measure TTFB for a week, keep or delete**.
-   - Domain sensing → **finish Phase 1 or flag off**.
+    - LLM judge → recommend **delete**.
+    - Prepared-prompt prewarm → recommend **enable, measure TTFB for a week, keep or delete**.
+    - Domain sensing → **finish Phase 1 or flag off**.
 2. **Ship the tool-schema slimming** — biggest token/latency win, already spec'd, ~a day of work.
 3. **Query existing telemetry** — `first_lane`/`first_skill_path` distribution (is the funnel used?), supervisor decision rates (are thresholds right?), `cache_source` distribution (is prewarm earning its keep?). The observability is unusually good; make it pay rent.
 4. **Boundary hardening on the endpoint** — zod schema + single wire format; batch turn events; verify detached-turn behavior on Vercel (`waitUntil`).

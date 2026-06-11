@@ -78,6 +78,59 @@ Severity rubric:
 
 Stop conditions before returning: every applicable area has at least one finding or an explicit "no issues"; the top 3 high-severity fixes are ranked by impact; every finding carries Evidence and Severity; out-of-scope concerns are tagged Delegated, not dropped.
 
+## Worked Example
+
+Condensed from a full review of a v0-generated analytics dashboard; the input is in `evals.md` Task 1. Match this shape and rigor.
+
+**Input (summary):** Static Tailwind markup on a saturated `bg-indigo-600` page; every card `rounded-2xl shadow-md border`; three identical gradient "Export" buttons (`h-6`, `hover:opacity-90` only, calling a ~3s API); a "Signups This Week" chart with 16 gradient bars and no y-axis for a 7-day range; an empty `<ul>` for recent signups and a `"Something went wrong"` error div; off-scale values (`p-[13px]`, `text-[22px]`, `space-y-[7px]`). User task: check this week's signup numbers and export a report.
+
+**Preflight:** User task confirmed from the prompt. Markup-only review — no screenshots at 375/768/1280px, no dark mode; responsive and state findings are derived from class strings and flagged for screenshot confirmation before ship. No token system in play, so fixes use Tailwind scale values. Headline: the user cannot complete either half of the job — flow and chart findings lead; cosmetic findings stay brief.
+
+**AI-Generated UI Smoke Test (run first — v0 output):** 5 of 8 fingerprints present, itemized as findings: `rounded-2xl` + `shadow-md` + `border` stacked on all 5 cards; `text-gray-400` on every muted element; the `from-blue-500 to-purple-500` AI gradient on buttons and bars; flat `shadow-md` ladder; default `p-4`/`gap-4` everywhere.
+
+```
+Area: flow
+Finding: Async action ≥ 200ms with no loading indicator
+Evidence: All three Export buttons call a ~3s API; markup defines only `hover:opacity-90` — no loading, disabled, or success state.
+Severity: high
+Fix: On click, set a disabled loading state (spinner or "Exporting…", `disabled:opacity-50 disabled:cursor-not-allowed`), then explicit success feedback when the file is ready. One loading pattern per surface.
+```
+
+```
+Area: spacing
+Finding: Closed-scale spacing violated (arbitrary off-scale values)
+Evidence: `p-[13px]` on the header, `space-y-[7px]` on the signup list.
+Severity: medium
+Fix: Snap to the closed scale {4, 8, 12, 16, 24, 32, 48, 64, 96}: `p-3` (12px) or `p-4` (16px) for the header; `space-y-2` (8px) for the list.
+```
+
+```
+Area: flow
+Finding: No focus/keyboard states defined on interactive elements
+Evidence: Export buttons define only `hover:opacity-90`; no `focus-visible:` styles anywhere in the markup.
+Severity: medium
+Fix: Add `focus-visible:ring-2 focus-visible:ring-offset-2` to all buttons.
+Delegated: accessibility_inclusive_ui_review (keyboard/focus semantics are that skill's scope; flagged here because the state is entirely absent)
+```
+
+```
+Area: charts
+Finding: One-bar-per-data-point violated — 16 bars rendered for a 7-day range
+Evidence: Chart card comment: "16 bars rendered for the 7-day range" inside "Signups This Week"; no y-axis labels, so the screen's core question is unanswerable.
+Severity: high
+Fix: Render exactly 7 bars, one per day, with day labels on the x-axis; add 3–4 y-axis gridline values starting at zero.
+```
+
+_(…12 further findings in the same shape across hierarchy, typography, color, consistency, noise, icons, feedback, and responsive — every applicable area got at least one finding or an explicit "no issues".)_
+
+**Out-of-scope, tagged for escalation (not dropped):** focus/keyboard semantics, button `type` attributes, chart accessible alternative → `accessibility_inclusive_ui_review`; post-fix craft polish (shadow recipe, palette warmth, type pairing) → `visual_craft_fundamentals`.
+
+**Top 3 fixes (ranked by impact on the stated task):**
+
+1. Make the chart readable: 7 bars for 7 days, with a y-axis and day labels; flat tops, solid single-hue fill — this is the entire "check this week's signups" half of the job.
+2. Make export real: one clearly primary "Export report" action with a loading state for the 3s call and visible success confirmation; kill or demote the three ambiguous per-card gradient buttons; bring the button to ≥ 44px.
+3. Fix the color foundation: neutral page background (60/30/10) and raise all `text-gray-400` text to ≥ 4.5:1 (`text-gray-600`+ on white; same-hue light tint, not grey, on any colored surface).
+
 ## Guardrails
 
 - A finding without evidence is not a finding — if it cannot be tied to a specific component, class, region, or coordinate, do not include it.

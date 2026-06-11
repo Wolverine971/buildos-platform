@@ -51,7 +51,7 @@ For BuildOS specifically, the candidate hero platforms are: **X (founder presenc
 
 For a new channel, account, or six-month focus window:
 
-1. **Pick the content game (or game ratio).** Run the Pillar 0 diagnostic (see `algorithm_aware_publishing.content_games`). For BuildOS: confirm the Game #4 + Game #5 hybrid and set the ratio (default ~3:1 #5:#4). Tag every piece with its game in the content log.
+1. **Pick the content game (or game ratio).** Run the Pillar 0 diagnostic (see the `Pillar 0: Content Games` section in the skill body). For BuildOS: confirm the Game #4 + Game #5 hybrid and set the ratio (default ~3:1 #5:#4). Tag every piece with its game in the content log.
 2. **Pick the hero platform.** Where do existing customers cluster? Where does the founder learn the most about the space? Pick **one** + email. Six months. No exceptions.
 3. **Define the topic + avatar.** Narrow. One topic, one avatar. State both in writing. Audit prior 20 posts (if any): same topic, same avatar? If no, the issue is positioning and the algorithm cannot help yet.
 4. **Build the winners library.** Pull 20–40 outlier videos in the niche on the chosen platform. Decompose each into hook + topic + storytelling structure. Use as input for topic validation, not copying.

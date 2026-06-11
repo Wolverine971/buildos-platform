@@ -2,7 +2,7 @@
 
 # Evals — cold_email_taste_review
 
-Golden tasks per `../../EVALS_GUIDE.md`. Run B gets the shell plus both references (`taste-scorecard.md`, `fake-warmth-detector-and-rewrites.md`).
+Golden tasks per `../../EVALS_GUIDE.md`. Run B gets the shell (taste scorecard inline since 2026-06-11) plus the one remaining reference (`fake-warmth-detector-and-rewrites.md`).
 
 ---
 
@@ -43,7 +43,7 @@ Golden tasks per `../../EVALS_GUIDE.md`. Run B gets the shell plus both referenc
 ### Expected load path
 
 - `skill_load(cold_email_taste_review, full)` — the `## Output Contract` is outside short-format parsed sections.
-- References: `taste_scorecard` (always, before scoring), then `fake_warmth_and_rewrites` (dimensions 1/2/7 fail and an auto-fail fires — workflow step 6).
+- References: the taste scorecard is inline in the shell (folded 2026-06-11) — no scorecard reference load expected; `fake_warmth_and_rewrites` still loads conditionally (dimensions 1/2/7 fail and an auto-fail fires — workflow step 6).
 - Should NOT load: compiler/offer-lab references — routing is by name only.
 
 ### Discovery probe
@@ -90,7 +90,7 @@ Golden tasks per `../../EVALS_GUIDE.md`. Run B gets the shell plus both referenc
 ### Expected load path
 
 - `skill_load(cold_email_taste_review, full)`.
-- References: `taste_scorecard` (always). `fake_warmth_and_rewrites` is justified here for the named rewrite moves (feature-first → progress-first, meeting-first → artifact-first live there), even though the trigger dimensions 1/2/8 mostly pass — note in the log whether the agent loaded it for the right reason.
+- References: the taste scorecard is inline in the shell (folded 2026-06-11) — no scorecard reference load expected. `fake_warmth_and_rewrites` still loads conditionally and is justified here for the named rewrite moves (feature-first → progress-first, meeting-first → artifact-first live there), even though the trigger dimensions 1/2/8 mostly pass — note in the log whether the agent loaded it for the right reason.
 - Should NOT load: anything from `cold_email_outreach_compiler` — the rebuild is routed, not performed.
 
 ### Discovery probe
@@ -130,3 +130,5 @@ Notes:
 
 Verdict: **STRONG DELTA (0/12 → 12/12).** Load path: exactly as expected — SKILL.md → `taste_scorecard` (workflow step 2) → `fake_warmth_and_rewrites` (step 6, after dimensions 1/2/7/8 failed). Discovery probe: not run this pass.
 Notes: Both runs reached the correct do-not-send verdict and flagged the same offending lines — the delta is rigor, reproducibility, and actionability, not raw judgment. Judge: the without-run was "a fluent, well-argued editorial teardown… but unfalsifiable"; the with-run "operates from a visible system." The without-run did contribute send-ops detail (throttling, domain rotation) outside this skill's lane — correctly so; that lane belongs to `cold_email_deliverability_readiness`.
+
+2026-06-11 — Task 1 with-skill output trimmed and embedded as ## Worked Example in SKILL.md.

@@ -2,7 +2,7 @@
 
 # Evals — cold_email_outreach_compiler
 
-Golden tasks per `../../EVALS_GUIDE.md`. Run B gets the shell plus all three references (`mode-templates.md`, `subject-preview-rules.md`, `body-lint-and-cadence.md`).
+Golden tasks per `../../EVALS_GUIDE.md`. Run B gets the shell plus its one reference (`mode-templates.md`). The former `subject-preview-rules.md` and `body-lint-and-cadence.md` references were folded into the shell on 2026-06-11.
 
 ---
 
@@ -38,7 +38,7 @@ Golden tasks per `../../EVALS_GUIDE.md`. Run B gets the shell plus all three ref
 ### Expected load path
 
 - `skill_load(cold_email_outreach_compiler, full)` — the `## Output Contract` heading is not a short-format parsed section.
-- References, in workflow order: `mode_templates` (step 4), `packaging_rules` (step 5), `lint_and_cadence` (steps 6–8). All three are required for a full compile.
+- References: `mode_templates` only (step 4 drafting). The packaging pass (step 5) and lint/cadence (steps 6–8) are inline shell sections (folded 2026-06-11) — no load needed; attempting to load `packaging_rules` or `lint_and_cadence` is a stale-reference failure.
 - Should NOT load: sibling skills' references (`cold_email_offer_lab`, `cold_email_reply_os`) — routing is by name only.
 
 ### Discovery probe
@@ -67,7 +67,7 @@ Golden tasks per `../../EVALS_GUIDE.md`. Run B gets the shell plus all three ref
 ### Expected load path
 
 - `skill_load(cold_email_outreach_compiler, full)`.
-- References: NONE required — the refusal is decidable from workflow step 1 in the shell. Loading `lint_and_cadence` for the compile-time refusal triggers is acceptable; loading `mode_templates` or `packaging_rules` to start drafting is an over-load and a usage failure.
+- References: ZERO — shell only. The refusal is decidable from workflow step 1, and the compile-time refusal triggers are now inline in `## Body Lint, Cadence, and Refusal Triggers` (folded 2026-06-11). Loading `mode_templates` to start drafting is an over-load and a usage failure.
 
 ### Discovery probe
 
@@ -86,3 +86,5 @@ Golden tasks per `../../EVALS_GUIDE.md`. Run B gets the shell plus all three ref
 Verdict: STRONG/WEAK/NO DELTA. Load path: as expected / deviations. Discovery probe: pass/fail.
 Notes:
 -->
+
+2026-06-11 — Tasks 1+2 manufacturing runs (with-skill, self-checked): embedded as ## Worked Examples. Markers: 13/13 and 8/8 self-assessed.

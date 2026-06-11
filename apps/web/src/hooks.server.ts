@@ -114,6 +114,15 @@ function getLegacyRedirectPath(pathname: string): string | null {
 	return `/blogs/${category}/${slug}`;
 }
 
+function getRequestSearch(event: RequestEvent): string {
+	const queryStart = event.request.url.indexOf('?');
+	if (queryStart === -1) {
+		return '';
+	}
+
+	return event.request.url.slice(queryStart);
+}
+
 function createConfigProbeHeaders(): Headers {
 	return new Headers({
 		'Cache-Control': 'public, max-age=3600, stale-while-revalidate=86400',
@@ -268,7 +277,7 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	const shouldRedirectToApexDomain = event.url.hostname === 'www.build-os.com';
 
 	if (legacyRedirectPath || shouldRedirectToApexDomain) {
-		const search = event.url.search;
+		const search = getRequestSearch(event);
 		const targetPath = `${legacyRedirectPath ?? pathname}${search}`;
 		if (shouldRedirectToApexDomain) {
 			throw redirect(308, `https://build-os.com${targetPath}`);

@@ -95,3 +95,5 @@ Golden tasks per `../../EVALS_GUIDE.md`. This skill has no reference modules —
 Verdict: STRONG/WEAK/NO DELTA. Load path: as expected / deviations. Discovery probe: pass/fail.
 Notes:
 -->
+
+2026-06-11 — Task 1 manufacturing run (with-skill, self-checked against markers): embedded as ## Worked Example. Markers: 12/12 self-assessed.

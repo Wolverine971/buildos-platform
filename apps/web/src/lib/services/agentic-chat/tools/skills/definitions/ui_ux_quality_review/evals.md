@@ -211,3 +211,5 @@ Notes:
 
 Verdict: **STRONG DELTA (6/12 → 12/12).** Load path: exactly as expected — SKILL.md → `ai_ui_smoke_test` (step 2, AI-generated UI declared) → `foundation_checks` → `polish_and_fit_checks`. No sibling over-loads. Discovery probe: not run this pass.
 Notes: The 6/12 baseline shows the model is already a competent free-form UI reviewer — the skill's delta concentrated in named patterns, closed scales, explicit thresholds, the canonical output shape, and scope discipline (Delegated tags). Judge: the without-run was "richer in remediation artifacts and engineering nuance" (revised markup, `aria-live`, double-submit guard); the with-run "more systematic, more auditable, more consistently evidence-anchored." Possible v2 improvement: an output-contract field for an optional remediation sketch.
+
+2026-06-11 — Task 1 with-skill output trimmed and embedded as ## Worked Example in SKILL.md.

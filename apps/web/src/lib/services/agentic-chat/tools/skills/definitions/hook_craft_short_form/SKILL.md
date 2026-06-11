@@ -202,6 +202,44 @@ Return a hook bundle, never a single line:
 
 For audit-mode runs, replace the variants section with a **diagnostic report** naming the failed pass and the proposed fix.
 
+## Worked Example
+
+Condensed gold-standard bundle for the eval Task 1 fixture (brain-dump demo footage, overwhelmed-founder audience); input in `evals.md`. Match this shape.
+
+**Winning variant (full bundle):**
+
+- **Archetype:** Experimenter — picked from the available footage, not the topic: a live screen recording of a rambling transcript becoming a structured board is an old-method → new-method demo shown live.
+- **Slot map:**
+    - Subject: `you` / `your messy notes`
+    - Action: dump everything into one place
+    - Objective: a plan you can actually act on (relief, not hype)
+    - Contrast: organizing harder across six apps (A) vs one raw dump that structures itself (B)
+    - Proof: the transformation happens on screen, live
+    - Time: ~40 seconds (credible — the body really does it)
+- **Three beats:**
+    - Context Lean: "Your messy notes are scattered across six apps."
+    - Scroll-Stop Interjection: "But organizing them harder was never the fix."
+    - Contrarian Snapback: "Watch one raw ramble become a full plan."
+- **Spoken hook:** "Your messy notes are scattered across six apps. But organizing them harder was never the fix. Watch one raw ramble become a full plan." (8 / 8 / 9 words; topic noun at words 2–3.)
+- **Text overlay:** `Mess in, plan out` — 4 words, emotional category phrase, no product or feature name.
+- **Visual cue:** Cold-open on the screen recording mid-transformation — tasks materializing, phases forming. The board forming IS the motion; no extra zooms or jump-cuts. Talking-head only as a small inset, if at all.
+- **Audio cue:** Voice-led, no music (no recurring audio signature established yet).
+- **Lean mechanism:** Pain/benefit reference (scattered notes, feeling behind).
+- **Contrast mode:** Stated — A = "sort harder across more apps," B = "one raw dump, plan forms itself."
+- **Two-variable score:** Topic clarity: yes (messy notes → plan is explicit). On-target curiosity: yes ("can one ramble really become a plan?" pulls exactly the scattered-notes viewer). 2/2 — ship.
+- **Four-mistake pass result:**
+    - Delay: clean — topic noun in the first 5–7 words.
+    - Confusion: clean — one plausible reading; active voice, 6th-grade level, no nominalisations.
+    - Irrelevance: clean — `you/your` throughout; agitates the scattered-across-six-apps painpoint.
+    - Disinterest: clean — explicit A-vs-B; B re-agitates A's painpoint.
+- **Comprehension sandwich:** Silent: forming board + "Mess in, plan out" reads as transformation. With audio: spoken hook names the same pain and the same demo. Silent again: eye returns to the board and confirms. All four signals point at the forming board — aligned.
+- **Payoff coherence note:** The body shows the full transcript-to-board transformation in ~40 seconds, ending on the organized board — it pays off "watch one raw ramble become a full plan" exactly.
+
+**Alternate variants (archetype + spoken hook only; full run generated 4):**
+
+- Contrarian: "Your six productivity apps are why you feel behind. The fix isn't another system. It's dumping everything into one messy pile — watch."
+- Investigator: "Scattered notes aren't a discipline problem. There's a reason no app fixed it. Watch what happens when everything lands in one place."
+
 ## Source Attribution
 
 Distilled from four Kallaway videos:

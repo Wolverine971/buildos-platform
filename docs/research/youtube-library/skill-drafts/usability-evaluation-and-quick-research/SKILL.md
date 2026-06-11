@@ -4,7 +4,7 @@ description: Source-backed child skill for lightweight UX research, research que
 path: docs/research/youtube-library/skill-drafts/usability-evaluation-and-quick-research/SKILL.md
 status: registered
 promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/usability_quick_research/SKILL.md
-last_promoted: '2026-06-10'
+last_promoted: '2026-06-11'
 ---
 
 # Usability Evaluation And Quick Research

@@ -8,14 +8,6 @@ legacy_paths:
     - cold_email_outreach.reply_os
     - cold_email_outreach.objection_handling
 reference_modules:
-    - id: cold_email_reply_os.reply_taxonomy_sla
-      name: Reply Taxonomy and SLA
-      summary: 12-class reply taxonomy with detection cues, owner/SLA matrix, same-day routing rules, reply-to-call frame, and left-company trigger handoff.
-      when_to_load:
-          - When classifying a reply (workflow step 1) or setting owner and SLA (workflow step 6).
-          - When a "left company" auto-reply or referral needs routing.
-      path: references/reply-taxonomy-and-sla.md
-      visibility: internal
     - id: cold_email_reply_os.objection_routes
       name: Objection Route Table
       summary: 7-objection route table with labels and calibrated questions, Gong 7-step async adaptation, and the objection-bank template structure (acknowledge -> label -> one contrast/artifact -> smallest calibrated question).
@@ -54,14 +46,109 @@ Use this child skill after sending, when a reply arrives, a thread goes quiet, o
 
 ## Workflow
 
-1. Classify the reply. Load `cold_email_reply_os.reply_taxonomy_sla` and assign exactly one of the 12 classes from its detection cues. If ambiguous (class 12), the only move is one calibrated question — do not assume intent.
+1. Classify the reply. Assign exactly one of the 12 classes from the detection cues in `## Reply Taxonomy (12 classes)` below. If ambiguous (class 12), the only move is one calibrated question — do not assume intent.
 2. Route by class. Objection, skeptical, competitor-chosen, or send-info-brushoff → load `cold_email_reply_os.objection_routes` and pick the matching route row. Silence or revival → load `cold_email_reply_os.fork_library` and pick one of the three named forks. For label and calibrated-question phrasing on tense or ambiguous replies, load `cold_email_reply_os.tactical_empathy_routes`.
 3. Preserve the original promise. If they asked for info, send the artifact, not a brochure.
 4. Draft the response in the response shape: one label, one answer or artifact, one calibrated question or next step. Never two CTAs.
-5. Set owner and first-response SLA from the SLA matrix; flag same-day classes (yes/interested, send info, angry/opt-out) explicitly.
-6. Handle special handoffs: a left-company auto-reply fires the trigger workflow to `cold_email_icp_signal_design`; an opt-out suppresses the address immediately.
+5. Set owner and first-response SLA from `## SLA Matrix` below; flag same-day classes (yes/interested, send info, angry/opt-out) explicitly.
+6. Handle special handoffs: a left-company auto-reply fires the trigger workflow to `cold_email_icp_signal_design` (see `## Left-Company Trigger Handoff`); an opt-out suppresses the address immediately.
 7. If silent after meaningful time, use one respectful numbered fork — one fork per thread, ever — and set the revival cadence by mode from the fork library.
 8. Log the exchange: class, route, objection language verbatim (buyer language feeds `cold_email_learning_review`).
+
+## Reply Taxonomy (12 classes)
+
+The goal of the email is a response. The goal of reply handling is to preserve momentum without forcing the wrong next step. Replies are scarce trust signals — route them the same day. Silence is the only dead state.
+
+Classify before you draft anything. A route without a taxonomy class is not a route.
+
+| #   | Class                                            | Detection cues                                             | Intent                                                                                    |
+| --- | ------------------------------------------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1   | Yes / interested                                 | "send it," "tell me more," asks a question about the offer | High                                                                                      |
+| 2   | Send info                                        | "send me something," "what's the pricing"                  | Medium-high                                                                               |
+| 3   | Numbered response                                | replies "1"/"2"/"3" to a fork                              | Per option                                                                                |
+| 4   | Not now / timing                                 | "next quarter," "after [event]"                            | Medium (timeline data — Moesta)                                                           |
+| 5   | Already solved / competitor                      | names incumbent or "we're covered"                         | Low-medium (objection-discovery value — Close Hail Mary)                                  |
+| 6   | Objection (budget / priority / risk / switching) | substantive pushback                                       | Medium                                                                                    |
+| 7   | Skeptical                                        | "does this actually…," challenge to claim                  | Medium (serious buyers get critical — Gong: negative sentiment increases toward purchase) |
+| 8   | Wrong person / referral                          | "talk to X," "not my area"                                 | Routing value (Elias: a referral target is warmer than a cold name)                       |
+| 9   | Compliment-no-action                             | "great email!" with no movement                            | Weak evidence (Mom Test: tag compliments weak)                                            |
+| 10  | Angry / opt-out                                  | "stop emailing me," unsubscribe                            | Stop                                                                                      |
+| 11  | Auto-reply / OOO / left-company                  | bounce text                                                | "Left company" = trigger event for the ICP child (Elias bounce surface)                   |
+| 12  | Ambiguous                                        | unclassifiable one-liner                                   | Ask one calibrated question; do not assume                                                |
+
+## SLA Matrix
+
+Speed rationale: replies are scarce trust signals; route same day. Do not leave high-intent replies overnight when the motion depends on calls. Do-not-import note: Hormozi's 391% speed-to-contact stat is inbound list-email territory — never cite it as a cold-email SLA fact.
+
+| Reply class                  | Owner                              | First response SLA                            | Notes                                                                                                                                    |
+| ---------------------------- | ---------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Yes / interested, numbered 1 | Sender (human)                     | Same business day; within 1–2h if call motion | Keep artifact promise before any meeting push                                                                                            |
+| Send info                    | Sender or assistant                | Same business day                             | Send the promised artifact, never a brochure                                                                                             |
+| Objection / skeptical        | Sender (human — judgment required) | Within 1 business day                         | Use the objection route table (load `cold_email_reply_os.objection_routes`)                                                              |
+| Wrong person / referral      | Sender                             | Within 1 business day                         | Thank, ask routing question, log new contact                                                                                             |
+| Not now                      | Sender                             | Within 2 business days                        | Ask permission for a specific future touch; calendar it (Close follow-up guide: "I'll put that in my calendar and ping them in 14 days") |
+| Angry / opt-out              | Sender                             | Same day                                      | Two lines max, confirm stop, suppress address                                                                                            |
+| Left-company auto-reply      | System → ICP child                 | n/a                                           | Fire trigger workflow (Elias)                                                                                                            |
+| Ambiguous                    | Sender                             | 1 business day                                | One calibrated question only                                                                                                             |
+
+Compliment-no-action (class 9) and OOO auto-replies carry no SLA: tag the compliment as weak evidence and move on; resume cadence after an OOO return date.
+
+## Same-Day Routing
+
+For high-intent replies:
+
+- Alert the sender immediately.
+- Enrich account context and phone only if allowed.
+- Reply while intent is fresh.
+- If a call is appropriate, offer 2-3 specific times.
+- Keep the artifact promise before pushing the meeting.
+
+Do not leave high-intent replies in the inbox overnight when the campaign depends on booked calls.
+
+## Reply-to-Call
+
+Use when the buyer has shown clear interest and the sales motion supports calls.
+
+Safe frame:
+
+```text
+Makes sense. I can send the snapshot first.
+
+If it looks relevant, I have [time 1] or [time 2] open tomorrow to walk through what I found.
+```
+
+Avoid:
+
+- Pushing a call after a weak reply.
+- Calling without context in sensitive markets.
+- Using "my assistant told me" unless that sender model is real and approved.
+
+## After Verbal Interest
+
+Once someone agrees to a meeting, follow up until it is booked or they decline.
+
+Good follow-up assets:
+
+- The promised artifact.
+- Short relevant proof.
+- A concrete agenda.
+- Two specific time options.
+
+Avoid generic "checking in."
+
+## Left-Company Trigger Handoff
+
+A "left company" auto-reply is not a dead address — it is two trigger events (Elias): the departed person is landing somewhere new with fresh budget and old pain, and the old seat has a successor in their decision window. Hand both to `cold_email_icp_signal_design` as trigger-event inputs; do not handle them inside the reply thread.
+
+## Angry Or Opt-Out Replies
+
+Use a short dignified close:
+
+```text
+Understood. I will not follow up.
+```
+
+Do not defend, debate, explain intent, or ask one more question after an opt-out. Suppress the address.
 
 ## Output Contract
 
@@ -90,5 +177,7 @@ Use this child skill after sending, when a reply arrives, a thread goes quiet, o
 
 ## Notes
 
+- The reply taxonomy and SLA material is inline in this shell (sections `## Reply Taxonomy (12 classes)` through `## Angry Or Opt-Out Replies`) because classification is unconditional — every use of this skill starts there. Only the conditional material (objection routes, numbered forks, tactical-empathy phrasing) lives in `references/`.
+- Sources for the inline taxonomy/SLA sections: Close/Steli Efti (reply forks, follow-up calendar discipline), Mailshake State of Cold Email 2025 / Michael Hanson ("If a lead replies to a cold email, typically the answer won't be 'let's have a meeting.' It may be 'we're using a competitor' or 'speak to X person.'"), Gong (skeptical buyers are serious buyers — negative sentiment increases toward purchase), Craig Elias (trigger-event selling — referrals and left-company bounces are warm surface area), Mom Test/Fitzpatrick (compliments are weak evidence).
 - Sources named inline in the references: Steli Efti/Close (forks, follow-up calendar), Gong (objection process, skeptic-signal data), Black Swan Group (labels, calibrated questions), Connor Murray (objection bank, cadence), Craig Elias (trigger events), Austin Schneider (volume touch decay). Async objection adaptations of call-era sources are flagged as derivation inside the modules.
 - Maintainers: enrichment lineage lives at `docs/research/youtube-library/cold-email-children-enrichment-plan-2026-06-10.md` and the draft references at `docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/references/` (not available at runtime).

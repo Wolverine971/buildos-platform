@@ -51,7 +51,7 @@ Use `BUILDOS_INTERNAL_SOURCES.md` for videos that should inform BuildOS product,
 
 Use `skill-combo-indexes/` when a video is not strong enough to become a standalone skill but can strengthen a multi-source workflow.
 
-Use `SKILL_LINEAGE_SCHEMA.md` and skill-local `lineage.yaml` files when a draft skill combines multiple primitive skills, sources, claims, guardrails, or output artifacts.
+Use `SKILL_LINEAGE_SCHEMA.md` and skill-local `lineage.yaml` files when a draft skill combines multiple primitive skills, sources, claims, guardrails, or output artifacts. Note the right-sizing policy (2026-06-10) in `SKILL_LINEAGE_SCHEMA.md`: a `sources` list is required for every draft, but the full claims/edges graph is optional and reserved for flagship combos.
 
 Use `SKILL_LINEAGE_HANDOFF.md` to brief another agent on why lineage exists, what has already been implemented, and how to continue the work.
 
