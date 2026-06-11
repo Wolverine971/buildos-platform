@@ -7,6 +7,9 @@ categories:
     - product-and-design
     - product-strategy
 path: docs/research/youtube-library/skill-drafts/ai-era-craft-and-quality-moat/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/ai_era_craft_and_quality_moat/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # AI-Era Craft And Quality Moat

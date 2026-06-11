@@ -103,8 +103,13 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+// Default flipped false → true on 2026-06-11 for a measured trial: telemetry
+// showed 0 hits / 60 misses (all `missing_key`) because the flag had never
+// been enabled. Re-check prepared_prompt_hit + time_to_first_response by
+// cache_source after ~1 week; set FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED=false
+// to turn it back off.
 export function isPreparedPromptPrewarmEnabled(): boolean {
-	return parseBooleanFlag(process.env.FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED, false);
+	return parseBooleanFlag(process.env.FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED, true);
 }
 
 export function getPreparedPromptTtlMs(): number {

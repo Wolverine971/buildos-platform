@@ -697,45 +697,9 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.toolExecutions).toHaveLength(2);
 	});
 
-	it('does not page the supervisor judge during a normal turn', async () => {
-		const judge = {
-			evaluate: vi.fn()
-		};
-		const llm = {
-			streamText: vi.fn(async function* () {
-				yield { type: 'text', content: 'Normal answer.' };
-				yield { type: 'done', finished_reason: 'stop' };
-			})
-		} as any;
-
-		const result = await streamFastChat({
-			llm,
-			userId: 'user_1',
-			sessionId: 'session_1',
-			contextType: 'global',
-			history: [],
-			message: 'Answer normally.',
-			tools: [],
-			turnSupervisorJudge: judge,
-			onDelta: async () => {}
-		});
-
-		expect(result.finalAssistantText).toBe('Normal answer.');
-		expect(judge.evaluate).not.toHaveBeenCalled();
-	});
-
-	it('lets the paged supervisor judge override a repeated-failure decision', async () => {
+	it('annotates deterministic supervisor decisions with a telemetry trigger', async () => {
 		let streamInvocation = 0;
-		const emittedDeltas: string[] = [];
 		const supervisorRecords: Array<{ action: string; source?: string; trigger?: string }> = [];
-		const judge = {
-			evaluate: vi.fn().mockResolvedValue({
-				action: 'stop_with_message',
-				message: 'I need the exact task before I can safely update it.',
-				reason: 'judge_missing_target',
-				finishedReason: 'supervisor_judge_stop'
-			})
-		};
 		const llm = {
 			streamText: vi.fn(async function* () {
 				streamInvocation += 1;
@@ -744,7 +708,7 @@ describe('streamFastChat direct tool orchestration', () => {
 					tool_call: toolCall(
 						'update_onto_task',
 						{ state_key: 'done' },
-						`update_onto_task:judge-missing-id-${streamInvocation}`
+						`update_onto_task:trigger-missing-id-${streamInvocation}`
 					)
 				};
 				yield { type: 'done', finished_reason: 'tool_calls' };
@@ -764,86 +728,13 @@ describe('streamFastChat direct tool orchestration', () => {
 			toolExecutor: async () => {
 				throw new Error('Tool executor should not run for invalid calls');
 			},
-			turnSupervisorJudge: judge,
-			onDelta: async (delta) => {
-				emittedDeltas.push(delta);
-			},
-			onSupervisorDecision: async ({ decision, source, trigger }) => {
-				supervisorRecords.push({ action: decision.action, source, trigger });
-			}
-		});
-
-		expect(judge.evaluate).toHaveBeenCalledTimes(1);
-		expect(judge.evaluate).toHaveBeenCalledWith(
-			expect.objectContaining({
-				trigger: 'repeated_failures',
-				observationType: 'tool_round_completed'
-			})
-		);
-		expect(result.finishedReason).toBe('supervisor_judge_stop');
-		expect(result.finalAssistantText).toBe(
-			'I need the exact task before I can safely update it.'
-		);
-		expect(emittedDeltas.join('')).toContain('I need the exact task');
-		expect(supervisorRecords).toEqual([
-			{
-				action: 'stop_with_message',
-				source: 'judge',
-				trigger: 'repeated_failures'
-			}
-		]);
-	});
-
-	it('does not let the supervisor judge downgrade a deterministic user question to status', async () => {
-		let streamInvocation = 0;
-		const supervisorRecords: Array<{ action: string; source?: string; trigger?: string }> = [];
-		const judge = {
-			evaluate: vi.fn().mockResolvedValue({
-				action: 'emit_status',
-				message: 'Still checking.',
-				reason: 'judge_status_only'
-			})
-		};
-		const llm = {
-			streamText: vi.fn(async function* () {
-				streamInvocation += 1;
-				yield {
-					type: 'tool_call',
-					tool_call: toolCall(
-						'update_onto_task',
-						{ state_key: 'done' },
-						`update_onto_task:downgrade-missing-id-${streamInvocation}`
-					)
-				};
-				yield { type: 'done', finished_reason: 'tool_calls' };
-			})
-		} as any;
-
-		const result = await streamFastChat({
-			llm,
-			userId: 'user_1',
-			sessionId: 'session_1',
-			contextType: 'project',
-			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
-			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
-			history: [],
-			message: 'Mark the task done.',
-			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'update_onto_task']),
-			toolExecutor: async () => {
-				throw new Error('Tool executor should not run for invalid calls');
-			},
-			turnSupervisorJudge: judge,
 			onDelta: async () => {},
 			onSupervisorDecision: async ({ decision, source, trigger }) => {
 				supervisorRecords.push({ action: decision.action, source, trigger });
 			}
 		});
 
-		expect(judge.evaluate).toHaveBeenCalledTimes(1);
 		expect(result.finishedReason).toBe('supervisor_question');
-		expect(result.finalAssistantText).toBe(
-			'Which exact task should I use? Send the name or ID, and I will continue from here.'
-		);
 		expect(supervisorRecords).toEqual([
 			{
 				action: 'ask_user',

@@ -1,5 +1,6 @@
 ---
 title: 'Cold Email ICP And Signal Design: An Agent Skill For Right-Person Outreach'
+seoTitle: 'Cold Email ICP & Signal Design: Agent Skill'
 description: 'A source-lineaged child skill for defining the right person, right moment, segment, buying signal, timing thesis, buying committee map, and disqualifiers before cold outreach.'
 author: 'DJ Wayne'
 date: '2026-05-15'

@@ -1,5 +1,6 @@
 ---
 title: 'Landing Page Scorecard Funnel: An Agent Skill For Qualified Lead Capture'
+seoTitle: 'Landing Page Scorecard: An Agent Skill'
 description: 'A portable agent skill for designing assessment-driven landing pages that sell the scorecard, capture useful signals, personalize results, and route leads by fit.'
 author: 'DJ Wayne'
 date: '2026-05-01'

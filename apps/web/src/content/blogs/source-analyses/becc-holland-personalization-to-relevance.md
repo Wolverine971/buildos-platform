@@ -1,5 +1,6 @@
 ---
 title: 'Personalization vs. Relevance: Lessons from Becc Holland (Flip the Script)'
+seoTitle: 'Personalization vs. Relevance: Becc Holland'
 description: 'A deep read of Becc Holland''s relevance framework — the four relevance types (Firmographic, Demographic, Technographic, Trigger-based), the three trigger sub-types (Inbound, Postbound, Bridgebound), and the "if you can send it to two people, it''s relevance not personalization" test that separates real research from decorative AI-generated openers.'
 author: 'DJ Wayne'
 date: '2026-05-15'
@@ -107,19 +108,16 @@ This is the screenshot test for any cold email draft. Take the opening line. Cou
 
 The cost of mislabeling is wasted effort. A team that thinks it is doing personalization at scale is producing decorative relevance with high production cost and low conversion. Calling it relevance forces a real question: _is the relevance strong enough to justify the email?_
 
-## What this contributes to the BuildOS ICP and Signal Design child skill
+## How to apply the relevance test
 
-1. **Four-type relevance taxonomy as the signal scoring spine.** The skill's signal scorecard requires every segment to name which of the four relevance types its hook depends on. Firmographic-only and demographic-only segments are downgraded; trigger-based segments are upgraded.
-2. **Three trigger sub-types as the source-of-signal field.** When the segment uses a trigger, the scorecard captures whether it is Inbound, Postbound, or Bridgebound — each has different staleness curves and different opening lines.
-3. **Personalization-vs-relevance disambiguation.** The skill's output explicitly classifies the hook as either Personalization (1:1) or Relevance (1:many). Drafts that mislabel themselves get sent back. The compiler refuses to call a templated opener "personalized."
-4. **The "two people" test as a guardrail.** Every draft anchor is checked against the test. If the line could apply to a second prospect, the skill marks the draft as relevance-grade and downgrades it from "personalized" to "relevance-1:many."
-5. **Reconciles with Sam McKenna's SMYKM and Aaron Shepherd's volume motion.** Sam McKenna's "Show Me You Know Me" is true 1:1 personalization — Holland's framework names it as such. Aaron Shepherd's volume motion is high-quality relevance — Holland's framework grades it as Trigger-based or Technographic 1:many. Both can be right; the skill picks based on mode.
+Before any draft goes out, run it through Holland's framework:
 
-## How this interacts with the other source layers
+1. **Name the relevance type your hook depends on.** Firmographic-only and demographic-only hooks are weak; trigger-based hooks are strong. If all you know about the prospect is their industry and title, the email isn't relevant enough yet.
+2. **For trigger hooks, know which kind you have.** Inbound, postbound, or bridgebound — each has a different staleness curve and a different opening line. A trigger from last week opens differently than one from last quarter.
+3. **Classify the hook honestly: personalization or relevance?** Personalization is 1:1 (true only of this one person); relevance is 1:many (true of a coherent segment). Both are legitimate — but a templated opener is not "personalized," and calling it that is how you fool yourself.
+4. **Run the "send to two people" test.** If the anchor line could apply to a second prospect unchanged, it's relevance-grade, not personalization. That's fine — just don't pay 1:1 production cost for a 1:many line.
 
-- **Craig Elias (A/B/C triggers):** Holland's Bridgebound triggers are Elias's C-changes. Her framework is the categorization; his is the discovery and timing layer.
-- **Ash Maurya (switching triggers):** Maurya's three switching-trigger types (bad experience, change in circumstance, awareness event) describe _why the prospect is shopping_. Holland's three sub-types describe _how you observed it_.
-- **MVS (Underscore):** A segment that passes MVS but cannot name a relevance type is incomplete. The relevance type is a required field for an MVS-passing segment to graduate into outreach.
+The trigger types here are the categorization; [Craig Elias's trigger-event selling](/blogs/source-analyses/craig-elias-trigger-event-selling) is the discovery-and-timing layer that tells you _when_ a bridgebound trigger just fired.
 
 ## Caveats
 

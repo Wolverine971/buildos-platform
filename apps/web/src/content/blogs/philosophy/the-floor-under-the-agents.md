@@ -1,5 +1,6 @@
 ---
 title: 'The Floor Under the Agents: Where Does the Project Live?'
+seoTitle: 'The Floor Under the Agents'
 description: 'YC is flooded with agents, AI coworkers, vertical operating systems, and agent infrastructure. The missing question is where durable project memory lives.'
 author: 'DJ Wayne'
 date: '2026-05-14'

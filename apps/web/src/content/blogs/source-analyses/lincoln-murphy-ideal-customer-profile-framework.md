@@ -1,5 +1,6 @@
 ---
 title: 'Ideal Customer Profile: Lessons from Lincoln Murphy'
+seoTitle: 'Ideal Customer Profile: Lincoln Murphy'
 description: "A deep read of Lincoln Murphy's canonical ICP framework — the seven dimensions (Ready, Willing, Able, Success Potential, Acquisition Efficiency, Ascension, Advocacy), the six fit types inside Success Potential, why the ICP describes a situation rather than a permanent customer type, and how it differs from a buyer persona."
 author: 'DJ Wayne'
 date: '2026-05-15'
@@ -103,13 +104,18 @@ When the company grows, the situation changes, and the ICP changes with it. A st
 
 This is the FOMO antidote. The ICP is not "the only customer you will ever take." It is "the customer this quarter who pays back the most growth-per-effort." Adjacent accounts are not lost forever; they are next quarter's ICP after the product, the team, and the support capacity grow.
 
-## What this contributes to the BuildOS ICP and Signal Design child skill
+## How to apply the ICP framework
 
-1. **Seven-dimension rubric.** The skill's segment scoring uses Murphy's seven dimensions as default columns. Ready / Willing / Able operate as pass/fail gates; Success Potential / Acquisition / Ascension / Advocacy operate as quality multipliers.
-2. **Six fit types as disqualifier checklist.** The disqualifier checklist (a required artifact for the child skill) maps one-to-one onto Murphy's six fit types. Each row is "what disqualifies an account on this fit dimension."
-3. **ICP-then-persona ordering.** The skill explicitly resolves Lincoln Murphy's ordering: define ICP first (situation + fit), then persona inside ICP. The compiler rejects a draft built on persona without ICP.
-4. **Situation-bound ICP.** The skill treats every ICP definition as time-bound (3–6 months) with explicit company-stage assumptions. ICP definitions older than six months trigger a re-test before reuse.
-5. **Reconciles the persona-vs-trigger tension.** Murphy's ICP (situation-bound) and Ash Maurya's switching-trigger ICP (event-bound) are compatible: Murphy describes the _company_ that can succeed; Maurya describes the _moment_ when that company shops. The skill uses both — Murphy for fit scoring, Maurya for timing.
+Turn the framework into a working segment scorecard:
+
+1. **Score on the seven dimensions.** Treat Ready / Willing / Able as pass/fail gates; treat Success Potential / Acquisition / Ascension / Advocacy as quality multipliers on the segments that clear those gates.
+2. **Build a disqualifier checklist from the six fit types.** For each fit type, write the one thing that disqualifies an account on that dimension. The checklist is faster to run than re-scoring every account from scratch.
+3. **Define the ICP before the persona.** The person you email only matters once you know the company that can succeed. A draft built on a persona with no ICP behind it is guessing.
+4. **Treat every ICP as time-bound.** Re-test it every three to six months, and write down the company-stage assumptions it rests on. An ICP from a year ago describes a company you no longer are.
+
+Murphy's situation-bound ICP answers _which company_ can succeed; a trigger-based read answers _when_ that company is actually shopping. You want both — fit scoring tells you who to pursue, timing tells you when the email will land.
+
+This is the deep fit-scoring layer of a three-part segment-targeting read: run the [minimum viable segment gate](/blogs/source-analyses/underscore-vc-minimum-viable-segment) as the fast first pass, score the survivors with Murphy's seven dimensions here, then validate with the PMF-by-segment tiering in [Mark Roberge's science of scaling](/blogs/source-analyses/mark-roberge-science-of-scaling-segment-tiering).
 
 ## Caveats
 

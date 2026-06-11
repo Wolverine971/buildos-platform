@@ -14,7 +14,7 @@
 </script>
 
 <SEOHead
-	title="Roadmap - BuildOS | Thinking Environment Development Timeline"
+	title="BuildOS Roadmap | Thinking Environment Timeline"
 	description="Detailed BuildOS development roadmap with monthly milestones. Track our progress building a thinking environment for complex work and durable project memory."
 	canonical="https://build-os.com/road-map"
 	keywords="BuildOS roadmap, thinking environment development, project management roadmap, project memory roadmap, project context roadmap"

@@ -190,6 +190,10 @@ export function buildSkillLoadPayload(
 		payload.guardrails = skill.guardrails;
 	}
 
+	if (skill.outputContract) {
+		payload.output_contract = skill.outputContract;
+	}
+
 	if (includeExamples && skill.examples?.length) {
 		payload.examples = skill.examples;
 	}

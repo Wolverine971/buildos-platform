@@ -1,5 +1,6 @@
 ---
 title: '7 Storytelling Mistakes: Lessons from Kane Kallaway'
+seoTitle: '7 Storytelling Mistakes: Kane Kallaway'
 description: 'A deep read of Kallaway''s "7 Storytelling Mistakes That Are KILLING Small Creators" — the rolling peak/release arc that replaces the bell curve, the W-stack reorder, the rebuy mechanic, villain framing, and atomic shareability.'
 author: 'DJ Wayne'
 date: '2026-05-04'
@@ -17,7 +18,7 @@ tags:
         'narrative-craft',
         'marketing-and-content'
     ]
-readingTime: 13
+readingTime: 9
 excerpt: 'Time compression has rewired audience attention. The traditional bell-curve story arc was built for captive audiences. On the internet, viewers re-decide every few seconds whether to keep watching. Modern storytelling is a rolling sequence of peaks and releases — and the seven mistakes here are the ways small creators still tell stories as if their viewer were trapped in a movie theater.'
 sourceTitle: '7 Storytelling Mistakes That Are KILLING Small Creators'
 sourceCreator: 'Kane Kallaway'

@@ -3324,6 +3324,32 @@
 {#if embedded}
 	<!-- Embedded mode: render chat content directly without Modal wrapper -->
 	<div class="flex h-full flex-col overflow-hidden bg-card">
+		<!-- INKPRINT header bar (parity with the modal header). The host surface
+		     owns the close affordance, so no onClose is passed here. -->
+		<div class="relative z-20 flex-shrink-0 border-b border-border bg-card tx tx-frame tx-weak">
+			<AgentChatHeader
+				{selectedContextType}
+				{displayContextLabel}
+				{displayContextSubtitle}
+				{isStreaming}
+				showBackButton={false}
+				onBack={handleBackNavigation}
+				projectId={selectedEntityId}
+				{resolvedProjectFocus}
+				onChangeFocus={openFocusSelector}
+				onClearFocus={handleFocusClear}
+				{ontologyLoaded}
+				hasActiveThinkingBlock={!!currentThinkingBlockId}
+				{currentActivity}
+				{sessionStatusLabel}
+				contextUsage={displayContextUsage}
+				{showAdminDebugActions}
+				{adminSessionHref}
+				onExportAudit={exportCurrentSessionAudit}
+				onExportBundle={exportCurrentSessionBundle}
+				{isExportingAudit}
+			/>
+		</div>
 		<!-- Embedded chat content area -->
 		<div class="relative z-10 flex flex-1 flex-col overflow-hidden bg-card">
 			<div class="flex h-full min-h-0 flex-col">

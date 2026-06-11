@@ -8,6 +8,9 @@ categories:
     - sales-and-growth
 lineage: lineage.yaml
 path: docs/research/youtube-library/skill-drafts/landing-page-scorecard-funnel/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/landing_page_scorecard_funnel/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Landing Page Scorecard Funnel

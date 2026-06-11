@@ -14,16 +14,28 @@ import {
 } from './cold-email-outreach.skill';
 import { documentSkill } from './document.skill';
 import { projectForecastSkill } from './forecast.skill';
+import {
+	aiEraCraftAndQualityMoatSkill,
+	contextEngineeringForAgentWorkSkill,
+	nonfictionWritingFromLivedConvictionSkill
+} from './founder-craft.skill';
 import { libriSkill } from './libri.skill';
 import { linkedinCompanyPageGrowthSkill } from './linkedin-company-page-growth.skill';
 import {
 	algorithmAwarePublishingSkill,
 	contentStrategyBeyondBloggingSkill,
+	goingViralSkill,
 	hookCraftShortFormSkill,
 	storyDrivenContentCraftSkill,
+	viralContentForBoringBrandsSkill,
 	viralVideoScriptStructureSkill
 } from './marketing-content.skill';
 import { peopleSkill } from './people.skill';
+import {
+	growthDiagnosticsForStalledProductsSkill,
+	landingPageScorecardFunnelSkill,
+	leadListResearchSkill
+} from './sales-growth.skill';
 import { planSkill } from './plan.skill';
 import { projectCreateSkill } from './project-create.skill';
 import { taskStateUpdatesSkill } from './task-state-updates.skill';
@@ -70,12 +82,20 @@ const ALL_SKILLS: SkillDefinition[] = [
 	coldEmailDeliverabilityReadinessSkill,
 	coldEmailReplyOsSkill,
 	coldEmailLearningReviewSkill,
+	leadListResearchSkill,
+	landingPageScorecardFunnelSkill,
+	growthDiagnosticsForStalledProductsSkill,
 	linkedinCompanyPageGrowthSkill,
 	contentStrategyBeyondBloggingSkill,
 	hookCraftShortFormSkill,
 	viralVideoScriptStructureSkill,
 	storyDrivenContentCraftSkill,
 	algorithmAwarePublishingSkill,
+	goingViralSkill,
+	viralContentForBoringBrandsSkill,
+	aiEraCraftAndQualityMoatSkill,
+	contextEngineeringForAgentWorkSkill,
+	nonfictionWritingFromLivedConvictionSkill,
 	libriSkill,
 	projectAuditSkill,
 	projectForecastSkill

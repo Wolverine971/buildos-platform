@@ -41,7 +41,16 @@ const LEGACY_FEATURE_PATHS = new Set(['/features', '/features/']);
 const LEGACY_PATH_REDIRECTS = new Map<string, string>([
 	['/community', '/contact'],
 	['/community/', '/contact'],
-	['/s-build-os.webp', '/twitter_card_light.webp']
+	['/s-build-os.webp', '/twitter_card_light.webp'],
+	// Merged into the irresistible-hooks deep-read (combined build formula + diagnostic).
+	[
+		'/blogs/source-analyses/kallaway-hooks-impossible-to-skip',
+		'/blogs/source-analyses/kallaway-irresistible-hooks'
+	],
+	[
+		'/blogs/source-analyses/kallaway-hooks-impossible-to-skip/',
+		'/blogs/source-analyses/kallaway-irresistible-hooks'
+	]
 ]);
 const LEGACY_BLOG_MARKDOWN_PATH = /^\/src\/content\/blogs\/([^/]+)\/([^/]+?)(?:\.md)?\/?$/;
 const CROSS_ORIGIN_FORM_POST_ALLOWED_PATHS = new Set(['/oauth/token', '/oauth/revoke']);

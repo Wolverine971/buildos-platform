@@ -1,5 +1,6 @@
 ---
 title: 'The Dopamine Ladder: Kane Kallaway on Storytelling Genius'
+seoTitle: 'The Dopamine Ladder: Kane Kallaway'
 description: 'A deep read of Kallaway''s "How to Become a Storytelling Genius (Dopamine Ladders)" — six rungs from pre-cognitive stimulation to Pavlovian revelation, the curiosity-anticipation-validation cycle, and why faceless content caps out at rung 4.'
 author: 'DJ Wayne'
 date: '2026-05-04'
@@ -18,7 +19,7 @@ tags:
         'viewer-psychology',
         'marketing-and-content'
     ]
-readingTime: 16
+readingTime: 10
 excerpt: "A viewer's attention is not won in a single hook. It is won across six escalating dopamine releases — Stimulation, Captivation, Anticipation, Validation, Affection, Revelation — that move from raw visual stimulation up to a Pavlovian bond with the creator."
 sourceTitle: 'How to Become a Storytelling Genius (Dopamine Ladders)'
 sourceCreator: 'Kane Kallaway'

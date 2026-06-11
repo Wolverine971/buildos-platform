@@ -1,5 +1,6 @@
 ---
 title: 'The 6 Words Every Hook Needs: Lessons from Kane Kallaway'
+seoTitle: 'The 6 Words Every Hook Needs: Kallaway'
 description: 'A deep read of Kallaway''s "The ONLY 6 Words You Need to Hook ANY Viewer" — the six structural slots (Subject, Action, Objective, Contrast, Proof, Time), how they collapse, and the copy-work drill that makes the formula subconscious.'
 author: 'DJ Wayne'
 date: '2026-05-04'
@@ -17,7 +18,7 @@ tags:
         'minimum-viable-hook',
         'marketing-and-content'
     ]
-readingTime: 14
+readingTime: 9
 excerpt: 'A hook does not require a clever formula or strong writing. It requires six structural slots — four mandatory (Subject, Action, Objective, Contrast) and two optional (Proof, Time). Stop trying to "write better" and start stacking power-word chunks in the right order.'
 sourceTitle: 'The ONLY 6 Words You Need to Hook ANY Viewer'
 sourceCreator: 'Kane Kallaway'
@@ -215,8 +216,7 @@ This source informs how the [`hook-craft-short-form`](/agent-skills/hook-craft-s
 ## Related
 
 - Skill: [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) — uses the 6-slot grammar as the audit pass.
-- Companion source analyses (the 4-video Kallaway hook cluster):
-    - [Irresistible Hooks: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-irresistible-hooks) — the three-beat formula.
-    - [Hooks Impossible to Skip: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-hooks-impossible-to-skip) — the four-mistake diagnostic.
+- Companion source analyses in the Kallaway hook cluster:
+    - [Irresistible Hooks: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-irresistible-hooks) — the three-beat build formula and the four-mistake diagnostic.
     - [The 6 Hook Archetypes: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-100-viral-hooks) — the archetype catalog.
 - Source channel: [Kallaway on YouTube](https://www.youtube.com/@kallawaymarketing).

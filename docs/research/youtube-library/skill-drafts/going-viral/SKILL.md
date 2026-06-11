@@ -6,6 +6,9 @@ skill_type: combo
 categories:
     - marketing-and-content
 path: docs/research/youtube-library/skill-drafts/going-viral/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/going_viral/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Going Viral — How Ideas Travel

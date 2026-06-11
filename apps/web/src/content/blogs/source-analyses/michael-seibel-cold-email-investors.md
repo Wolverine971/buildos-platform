@@ -1,5 +1,6 @@
 ---
 title: 'Cold Emailing Investors: Lessons from Michael Seibel'
+seoTitle: 'Cold Emailing Investors: Michael Seibel'
 description: 'A deep read of Michael Seibel and Y Combinator on cold-emailing investors: short factual emails, no jargon, company-address credibility, optional deck discipline, tracking opens, no immediate meeting ask, and the right order of operations for starting an investor conversation.'
 author: 'DJ Wayne'
 date: '2026-05-15'
@@ -18,7 +19,7 @@ tags:
         'sales-and-growth',
         'marketing-and-content'
     ]
-readingTime: 8
+readingTime: 5
 excerpt: 'Michael Seibel reframes investor cold email around one goal: get the investor to understand enough to reply. The first email should not try to secure an investment, force a meeting, or tell a long origin story. It should take less than a minute to read, explain what the company does in simple language, show raw facts that matter to investors, and invite the back-and-forth.'
 sourceTitle: 'How To Cold Email Investors'
 sourceCreator: 'Michael Seibel / Y Combinator'
@@ -117,29 +118,25 @@ The implied CTA is closer to:
 
 The investor should feel pulled into asking for more, not pushed into a meeting.
 
-## What to fold into the skill
+## How to run investor mode
 
-Add a distinct **investor outreach mode**:
+Investor outreach is its own mode. Don't inherit the generic booked-call campaign structure you'd use for sales — the rules change:
 
-| Skill decision | Investor mode rule                                                                         |
-| -------------- | ------------------------------------------------------------------------------------------ |
-| Goal           | Start a back-and-forth, not book a meeting in the first touch                              |
-| Length         | Readable in under 60 seconds                                                               |
-| Body           | Factual schema: problem, solution, status, traction, market, team, technical edge, insight |
-| Voice          | Simple language, no jargon                                                                 |
-| CTA            | Invite reply or permission to send more                                                    |
-| Deck           | Optional; standard startup format only                                                     |
-| Follow-up      | Do not send multiple quick follow-ups, especially after confirmed opens                    |
-| Sender         | Named founder at company domain                                                            |
+| Decision  | Investor-email rule                                                                        |
+| --------- | ------------------------------------------------------------------------------------------ |
+| Goal      | Start a back-and-forth, not book a meeting in the first touch                              |
+| Length    | Readable in under 60 seconds                                                               |
+| Body      | Factual schema: problem, solution, status, traction, market, team, technical edge, insight |
+| Voice     | Simple language, no jargon                                                                 |
+| CTA       | Invite reply or permission to send more                                                    |
+| Deck      | Optional; standard startup format only                                                     |
+| Follow-up | Do not send multiple quick follow-ups, especially after confirmed opens                    |
+| Sender    | Named founder at company domain                                                            |
 
-This mode should sit beside sales, recruiting, podcast/PR, and partnership variants rather than inherit the generic booked-call campaign structure.
+Treat this as a distinct mode sitting beside sales, recruiting, podcast/PR, and partnership outreach — each has its own goal, and investor email's goal is a reply, not a meeting.
 
 ## Critical treatment
 
 Seibel's advice is optimized for venture-scale startup fundraising, especially Silicon Valley investors. It may not map cleanly to grants, local angel investors, private equity, SMB acquisition, real estate capital, or strategic partnerships.
 
-The deeper principle still transfers: high-status recipients do not want a mystery meeting. They want a compressed, clear payload that lets them decide whether to ask for more.
-
-## What this layer contributes to the BuildOS skill
-
-The Seibel analysis supplies the **investor-mode cold email schema**. It should prevent the general cold-email skill from applying sales CTAs to fundraising outreach. Investor email is not "worth a chat." It is "here is the company in plain facts; reply if you want the next layer."
+The deeper principle still transfers: high-status recipients do not want a mystery meeting. They want a compressed, clear payload that lets them decide whether to ask for more. Investor email is not "worth a chat" — it is "here is the company in plain facts; reply if you want the next layer."

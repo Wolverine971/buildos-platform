@@ -6,6 +6,9 @@ skill_type: combo
 categories:
     - marketing-and-content
 path: docs/research/youtube-library/skill-drafts/algorithm-aware-publishing/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/algorithm_aware_publishing/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Algorithm-Aware Publishing

@@ -6,6 +6,9 @@ skill_type: combo
 categories:
     - product-and-design
 path: docs/research/youtube-library/skill-drafts/accessibility-and-inclusive-ui-review/SKILL.md
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/accessibility_inclusive_ui_review/SKILL.md
+last_promoted: '2026-06-10'
+status: registered
 ---
 
 # Accessibility and Inclusive UI Review

@@ -160,13 +160,15 @@ When a decision-maker moves, four trigger events fire simultaneously:
 
 A single job change announcement should drive outreach to all four targets, not just the new hire.
 
-## What this contributes to the BuildOS ICP and Signal Design child skill
+## How to act on trigger events
 
-1. **Trigger taxonomy.** A/B/C maps cleanly onto Ash Maurya's switching-trigger types (bad experience, change in circumstance, awareness event) but adds the _observability_ layer — _where you find the trigger from outside the company_.
-2. **Three-event model.** The skill's "Why now?" check should not stop at Event 1. The rubric should ask whether Events 2 and 3 are reachable or whether the cold touch is purely an Event 1 entry point.
-3. **The 33% / 75% data anchors.** Two citable numbers for the skill's source-backed guardrails: a salesperson-change at the incumbent drives roughly a third of all vendor changes, and the first-in vendor wins three out of four times.
-4. **Monitoring surfaces.** Six concrete trigger-discovery channels usable without any intent-data tool: LinkedIn saved searches, Google Alerts, job postings, "left the company" bounces, prospect self-disclosure, and competitor announcements.
-5. **Mobilizer hookup.** Elias's "new in role = Mobilizer" claim is the bridge between trigger theory and the buying-committee map. The skill's stakeholder template should flag tenure as a signal of mobilizer probability.
+Turn trigger theory into a monitoring habit:
+
+1. **Add an observability layer to every "why now?"** A/B/C triggers map onto the classic switching triggers (bad experience, change in circumstance, awareness event), but the useful question is _where you can spot the trigger from outside the company_.
+2. **Don't stop at Event 1.** A single trigger is just an entry point. Ask whether Events 2 and 3 are reachable, or whether your cold touch is the only thing happening.
+3. **Keep two numbers in your pocket.** A salesperson change at the incumbent drives roughly a third of all vendor changes, and the first vendor in wins about three out of four times.
+4. **Monitor without an intent-data tool.** Six free surfaces: LinkedIn saved searches, Google Alerts, job postings, "left the company" bounces, prospect self-disclosure, and competitor announcements.
+5. **Treat new-in-role as a Mobilizer signal.** A recent hire is both a trigger and a likely internal mover — the bridge between trigger timing and the [buying-committee map](/blogs/source-analyses/30mpc-multithreading-buying-committee).
 
 ## Caveats
 

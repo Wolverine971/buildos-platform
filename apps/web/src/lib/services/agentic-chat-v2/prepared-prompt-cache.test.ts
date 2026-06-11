@@ -1,9 +1,10 @@
 // apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-cache.test.ts
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { ChatToolDefinition } from '@buildos/shared-types';
 import { buildLitePromptEnvelope } from '$lib/services/agentic-chat-lite/prompt';
 import {
 	buildPreparedPromptSurface,
+	isPreparedPromptPrewarmEnabled,
 	isPreparedPromptSurfaceCurrent
 } from './prepared-prompt-cache';
 
@@ -20,6 +21,27 @@ function tool(name: string, description: string): ChatToolDefinition {
 		}
 	};
 }
+
+describe('isPreparedPromptPrewarmEnabled', () => {
+	afterEach(() => {
+		delete process.env.FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED;
+	});
+
+	it('is enabled by default (2026-06-11 trial)', () => {
+		delete process.env.FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED;
+		expect(isPreparedPromptPrewarmEnabled()).toBe(true);
+	});
+
+	it('can be turned off via env for rollback', () => {
+		process.env.FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED = 'false';
+		expect(isPreparedPromptPrewarmEnabled()).toBe(false);
+	});
+
+	it('treats unparseable values as the default (on)', () => {
+		process.env.FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED = 'banana';
+		expect(isPreparedPromptPrewarmEnabled()).toBe(true);
+	});
+});
 
 describe('prepared-prompt-cache', () => {
 	it('accepts a prepared surface when the current prompt and tool surface still match', () => {

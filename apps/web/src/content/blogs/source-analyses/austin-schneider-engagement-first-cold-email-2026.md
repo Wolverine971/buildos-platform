@@ -1,5 +1,6 @@
 ---
 title: 'Engagement-First Cold Email: Lessons from Austin Schneider (Instantly)'
+seoTitle: 'Engagement-First Cold Email: Austin Schneider'
 description: 'A deep read of Instantly''s "The New Way of Cold Emailing in 2026" — why AI spam filters killed the seven-touch playbook, the deliverability infrastructure floor (5 emails per domain, ~30/day each), micro-targeted value campaigns (the under-50-recipient reply-rate cliff), and the two-touch rule with non-responder recycling.'
 author: 'DJ Wayne'
 date: '2026-05-14'
@@ -17,7 +18,7 @@ tags:
         'sales-and-growth',
         'marketing-and-content'
     ]
-readingTime: 11
+readingTime: 7
 excerpt: 'Gmail rolled out AI spam filters in 2024. Microsoft followed in 2025. The seven-touch, 10,000-emails-a-month playbook that worked in 2022–2023 now gets you flagged as a bulk sender. The 2026 version is engagement-first: deliverability infrastructure first, micro-targeted value campaigns second, a strict two-touch rule third — and the value in the email has to be an actual deliverable, not "worth a chat."'
 sourceTitle: 'The New Way of Cold Emailing in 2026'
 sourceCreator: 'Austin Schneider (Instantly)'
@@ -162,6 +163,6 @@ The Murray and Schneider playbooks look like they disagree on follow-up cadence 
 
 The skill should let the agent ask which mode the campaign is in. For most BuildOS users running founder-led outreach, Schneider's 2-touch with recycled non-responders is the safer default. For strategic-account or high-trust founder relationships, Murray's 4-touch is more appropriate.
 
-## What this layer contributes to the BuildOS skill
+## The one-line takeaway
 
-The Schneider analysis supplies the **deliverability floor, the relevance-via-segmentation math, the "value is a deliverable not a meeting" rule, and the two-touch cadence** of the skill. It is the platform-realist layer that prevents the agent from recommending tactics that work in theory but get the sender's domain torched in practice.
+Schneider's piece is the **platform-realist layer**: the deliverability floor, the relevance-via-segmentation math, the "value is a deliverable, not a meeting" rule, and the two-touch cadence. It's the check against tactics that work in theory but get your sending domain torched in practice. Read it alongside [Connor Murray's body-and-cadence craft](/blogs/source-analyses/connor-murray-cold-email-assumptive-cadence) and [Aaron Shepherd's volume math](/blogs/source-analyses/aaron-shepherd-volume-front-end-offer).

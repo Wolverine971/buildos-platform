@@ -6,6 +6,8 @@ skill_type: combo
 categories:
     - sales-and-growth
 path: docs/research/youtube-library/skill-drafts/local-ai-services-sales/SKILL.md
+status: archived
+archive_reason: 'Off-strategy for BuildOS (local AI services sales); revisit only if a services revenue lane opens.'
 ---
 
 # Local AI Services Sales

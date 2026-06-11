@@ -1,5 +1,6 @@
 ---
 title: 'UI/UX Quality Review: An Agent Skill For Product Interface Audits'
+seoTitle: 'UI/UX Quality Review: An Agent Skill'
 description: 'A source-lineaged agent skill for reviewing product screens, landing pages, dashboards, and mobile flows. Each principle ships in two layers: human-readable principle + agent-checkable rules with thresholds and named patterns.'
 author: 'DJ Wayne'
 date: '2026-05-02'
@@ -17,7 +18,7 @@ tags:
         'product-and-design',
         'buildos'
     ]
-readingTime: 18
+readingTime: 22
 excerpt: 'A practical UI/UX review skill for agents and humans. Each principle has a human view and an agent view: the principle on top, then the checkable rules and thresholds an agent runs against the screen.'
 skillId: 'product-and-design/ui-ux-quality-review'
 skillType: 'combo'

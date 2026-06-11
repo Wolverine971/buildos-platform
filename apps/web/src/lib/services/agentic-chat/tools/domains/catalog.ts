@@ -24,6 +24,11 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 			{
 				id: 'linkedin_company_page_growth',
 				useWhen: 'the user asks about growing a LinkedIn Company Page or company account'
+			},
+			{
+				id: 'ai_era_craft_and_quality_moat',
+				useWhen:
+					'the user is deciding whether or where to fund craft and quality as a differentiation strategy — roadmap arbitration, craft hiring, quality north star, or AI-slop diagnosis — rather than performing a tactical design review'
 			}
 		],
 		relatedDomainIds: [
@@ -75,6 +80,16 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 				id: 'algorithm_aware_publishing',
 				useWhen:
 					'the user needs platform choice, topic discipline, algorithm fit, rented-to-owned distribution, or brand-safe publishing decisions'
+			},
+			{
+				id: 'going_viral',
+				useWhen:
+					'the user is planning or post-morteming a specific piece of social content and platform-specific 2025/2026 algorithm behavior on TikTok, Instagram, X, or LinkedIn matters'
+			},
+			{
+				id: 'viral_content_for_boring_brands',
+				useWhen:
+					'a brand or founder account needs content for a boring product (B2B SaaS, dev tools, commodity goods) to earn attention and spread, or needs to diagnose why a brand post died'
 			}
 		],
 		recommendedSkillStacks: [
@@ -333,6 +348,21 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 				id: 'cold_email_engagement_first_outreach',
 				useWhen:
 					'the user needs cold outreach planning, drafting, auditing, reply handling, or campaign learning'
+			},
+			{
+				id: 'lead_list_research',
+				useWhen:
+					'the user needs to source, score, or clean a qualified account or lead list before any outreach is written'
+			},
+			{
+				id: 'landing_page_scorecard_funnel',
+				useWhen:
+					'the user needs to design or audit a scorecard, quiz, or assessment-driven landing page that qualifies, segments, and routes leads instead of just collecting emails'
+			},
+			{
+				id: 'growth_diagnostics_for_stalled_products',
+				useWhen:
+					'growth has stalled or plateaued and the user needs the highest-leverage constraint (churn, pricing, expansion, channels, or end-state) diagnosed before proposing tactics'
 			}
 		],
 		relatedDomainIds: ['sales_and_growth.cold_email', 'marketing']
@@ -390,6 +420,11 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 			{
 				id: 'cold_email_reply_os',
 				useWhen: 'a reply, objection, silence, or thread follow-up needs routing'
+			},
+			{
+				id: 'lead_list_research',
+				useWhen:
+					'the campaign needs a sourced, scored, and cleaned lead list before ICP signals or outreach drafting'
 			}
 		],
 		recommendedSkillStacks: [
@@ -661,6 +696,11 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 				id: 'story_driven_content_craft',
 				useWhen:
 					'a nonfiction essay, blog post, script, or founder narrative has a thesis but needs stronger structure'
+			},
+			{
+				id: 'nonfiction_writing_from_lived_conviction',
+				useWhen:
+					'the user wants an essay or blog post written from their own experience and voice, or wants a generic or AI-flavored draft rebuilt around a real speaker'
 			}
 		],
 		relatedDomainIds: ['marketing.content_strategy', 'marketing.short_form_video'],

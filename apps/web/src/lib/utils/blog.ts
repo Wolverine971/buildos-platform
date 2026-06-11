@@ -22,6 +22,8 @@ export interface BlogPost {
 	slug: string;
 	category: string;
 	title: string;
+	/** Optional SEO-only title for the <title>/OG/Twitter tags. Keeps the on-page H1 (`title`) intact while trimming the meta title under ~60 chars. Falls back to `title` when unset. */
+	seoTitle?: string;
 	description: string;
 	author: string;
 	date: string;
@@ -232,6 +234,7 @@ function buildBlogPost(
 		category,
 		readingTime: calculateModuleReadingTime(module, metadata),
 		title: typeof metadata.title === 'string' ? metadata.title : slug,
+		seoTitle: typeof metadata.seoTitle === 'string' ? metadata.seoTitle : undefined,
 		description,
 		author: typeof metadata.author === 'string' ? metadata.author : 'BuildOS Team',
 		date: normalizedDate,

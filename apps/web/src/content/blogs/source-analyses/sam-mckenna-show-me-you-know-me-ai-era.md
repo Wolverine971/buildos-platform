@@ -1,5 +1,6 @@
 ---
 title: 'AI-Era Show Me You Know Me: Lessons from Sam McKenna'
+seoTitle: 'Show Me You Know Me in the AI Era: Sam McKenna'
 description: 'A deep read of Sam McKenna on why seller-centered cold calling and spray-and-pray email underperform modern buyer behavior, and how Show Me You Know Me research, LinkedIn signals, authentic personal connection, thread-based nurturing, and buyer-timed follow-up create executive replies.'
 author: 'DJ Wayne'
 date: '2026-05-15'
@@ -17,7 +18,7 @@ tags:
         'sales-and-growth',
         'marketing-and-content'
     ]
-readingTime: 10
+readingTime: 7
 excerpt: 'Sam McKenna frames the modern outbound problem as a buyer-journey problem, not a channel problem. Cold calls interrupt. Spray-and-pray email signals seller self-interest. Show Me You Know Me earns the right to the meeting by proving the seller invested real attention before asking for time. The strongest ideas here are going higher in the org, using LinkedIn and public interviews as research surfaces, making personal hooks feel authentic instead of pasted, and nurturing replies in the original thread when executives are actually working.'
 sourceTitle: "100th Episode: The End of the Line for Cold Calling (& What's Replacing it) -- with Sam McKenna"
 sourceCreator: 'Sam McKenna'
@@ -117,24 +118,24 @@ The skill should not treat LinkedIn as just an enrichment input. In strategic mo
 - Connect after a reply or a clear signal.
 - Use LinkedIn to nurture "not now" responses without forcing another email sequence.
 
-## Where this source disagrees with or extends v1
+## Where this clashes with volume-first outreach
 
-This source reinforces the Sam McKenna Apollo analysis but pushes against the pure volume layer.
+McKenna's method pushes directly against the high-volume cold email playbook — and the tension is the useful part:
 
-- **Against volume-first for executives.** McKenna's 10 to 20 quality emails per week is incompatible with agency-scale outbound, but it fits named executive targets.
-- **For deeper personal research.** Austin Schneider says relevance beats personalization at scale. McKenna says deep personalization still wins when the target value justifies the work.
-- **For relationship outcomes.** The current skill focuses on replies and booked meetings. McKenna adds the value of "good no," LinkedIn connection, and future nurture.
-- **For timing nuance.** Existing v1 cadence rules specify touch count. McKenna adds when senior buyers may actually read.
+- **Against volume-first for executives.** Her 10 to 20 quality emails per week is incompatible with agency-scale outbound, but it's exactly right for named executive targets.
+- **For deeper personal research.** [Austin Schneider argues relevance beats personalization at scale](/blogs/source-analyses/austin-schneider-engagement-first-cold-email-2026). McKenna's counter: deep personalization still wins when the target's value justifies the work. Both are true — they're aimed at different tiers.
+- **For relationship outcomes.** Volume playbooks score replies and booked meetings. McKenna counts a "good no," a LinkedIn connection, and a future-timing cue as wins too.
+- **For timing nuance.** Cadence rules obsess over touch count; McKenna cares about _when_ senior buyers actually read.
 
-## What to fold into the skill
+## What to actually use
 
-Add or strengthen these primitives:
+Five primitives carry over to any high-touch outreach:
 
-1. **Executive attention mode.** For senior named targets, cap daily volume and require a Level 4 or Level 5 research anchor.
-2. **Authenticity bridge.** A personal hook must connect naturally to the reason for outreach; otherwise it is pattern-matched as fake.
-3. **Thread-based nurture.** Strategic follow-ups should preserve the original researched thread.
+1. **Executive attention mode.** For senior named targets, cap your daily volume and require a deep research anchor before you send.
+2. **Authenticity bridge.** A personal hook has to connect naturally to the reason you're reaching out — otherwise it gets pattern-matched as fake.
+3. **Thread-based nurture.** Keep strategic follow-ups on the original researched thread instead of starting a new sequence.
 4. **Buyer-timed sends.** For executives, test Thursday, Friday, and weekend timing rather than defaulting to Monday.
-5. **Conversation value.** A no, referral, future timing cue, or LinkedIn connection can be a successful outcome.
+5. **Conversation value.** A no, a referral, a future-timing cue, or a LinkedIn connection can all count as a win.
 
 ## Critical treatment
 
@@ -144,6 +145,4 @@ The deeper caveat is scalability. McKenna's method works when the recipient valu
 
 The strongest universal lesson is not "write longer emails" or "research pets." It is this: the buyer can tell whether the sender paid attention. That is the bar.
 
-## What this layer contributes to the BuildOS skill
-
-The McKenna Closing Time analysis supplies the **executive-research and authenticity layer**. It should sit next to Murray's strategic three-paragraph body and the earlier McKenna Apollo micro-anatomy. Together, those sources define the high-touch side of the skill: go higher, research for real, bridge honestly, ask respectfully, keep the thread, and nurture the relationship after the first reply.
+The high-touch playbook in one line: go higher, research for real, bridge honestly, ask respectfully, keep the thread, and nurture the relationship after the first reply.

@@ -108,8 +108,8 @@ export type TurnSupervisorDecisionRecord = {
 	decision: TurnSupervisorDecision;
 	digest: TurnDigest;
 	at: string;
-	source?: 'monitor' | 'judge';
-	trigger?: TurnSupervisorJudgeTrigger;
+	source?: 'monitor';
+	trigger?: TurnSupervisorDecisionTrigger;
 };
 
 export type TurnSupervisor = {
@@ -117,7 +117,10 @@ export type TurnSupervisor = {
 	getDigest(): TurnDigest;
 };
 
-export type TurnSupervisorJudgeTrigger =
+// Telemetry classification for supervisor decisions. (Previously named
+// TurnSupervisorJudgeTrigger — the optional LLM judge was removed 2026-06-11;
+// restore from commit aa585535 if it's ever needed again.)
+export type TurnSupervisorDecisionTrigger =
 	| 'long_silence'
 	| 'long_running_operation'
 	| 'repeated_failures'
@@ -125,17 +128,6 @@ export type TurnSupervisorJudgeTrigger =
 	| 'low_novelty_reads'
 	| 'near_tool_budget'
 	| 'empty_final_candidate';
-
-export type TurnSupervisorJudgeInput = {
-	trigger: TurnSupervisorJudgeTrigger;
-	digest: TurnDigest;
-	deterministicDecision: TurnSupervisorDecision;
-	observationType: TurnSupervisorObservation['type'];
-};
-
-export type TurnSupervisorJudge = {
-	evaluate(input: TurnSupervisorJudgeInput): Promise<TurnSupervisorDecision | null>;
-};
 
 export type TurnSupervisorConfig = {
 	statusSilenceMs?: number;

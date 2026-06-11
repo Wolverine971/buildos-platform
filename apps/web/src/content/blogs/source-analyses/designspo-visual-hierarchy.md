@@ -18,7 +18,7 @@ tags:
         'web-design',
         'product-and-design'
     ]
-readingTime: 13
+readingTime: 10
 excerpt: 'Hierarchy is a ranking decision, not a styling decision. Decide what should be seen first, second, third — then apply contrast levers in rank order. Most of the design must be uniform; primacy is scarce.'
 sourceTitle: 'The Complete Guide To Visual Hierarchy'
 sourceCreator: 'DesignSpo'

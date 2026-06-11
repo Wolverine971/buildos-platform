@@ -1,5 +1,6 @@
 ---
 title: 'BuildOS vs ChatGPT: Why Your Projects Need More Than Memory'
+seoTitle: 'BuildOS vs ChatGPT: Beyond Memory'
 description: "ChatGPT is incredibly powerful. But it doesn't know your projects. Here's why context that compounds beats memory that forgets."
 slug: 'buildos-vs-chatgpt-context-that-compounds'
 author: 'DJ Wayne'

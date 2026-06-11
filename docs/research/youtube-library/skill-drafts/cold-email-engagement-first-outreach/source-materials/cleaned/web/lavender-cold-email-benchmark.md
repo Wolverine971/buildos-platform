@@ -6,10 +6,13 @@ slug: 'Lavender Cold Email Benchmark'
 title: 'Updated: The Cold Email Benchmark Report (Added Content Insights)'
 source_url: 'https://www.lavender.ai/blog/the-cold-email-benchmark-report'
 source_label: 'Lavender Cold Email Benchmark Report'
-status: 'acquired; directional-vendor'
+status: 'acquired; directional-vendor; interactive table not capturable'
 cleaned_path: 'docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/cleaned/web/lavender-cold-email-benchmark.md'
 raw_artifact_removed: 'web/lavender-cold-email-benchmark.html'
 created: 2026-05-15
+rescraped: '2026-06-10'
+rescrape_method: 'origin (WebFetch, lavender.ai; 2 fetches — JS benchmark table did not render)'
+rescrape_note: 'Original 2026-05-15 scrape captured only "Read next" footer boilerplate. Re-fetch recovered the article prose and dataset facts; the segment-level reply-rate table is an interactive JS embed and was not capturable via static fetch.'
 visibility: internal
 publish: false
 path: docs/research/youtube-library/skill-drafts/cold-email-engagement-first-outreach/source-materials/cleaned/web/lavender-cold-email-benchmark.md
@@ -25,28 +28,44 @@ Raw artifact policy: raw HTML snapshot replaced by this cleaned Markdown note.
 
 ## Use In Cold Email Architecture
 
-Benchmarks, quality scoring, inbox psychology.
+Benchmarks, quality scoring, inbox psychology. The canonical citation for the 231,818-email / ~50k-inbox dataset behind Lavender's numbers. Vendor data — directional, not diagnostic.
 
 ## Source Notes
 
-- Acquisition status: acquired; directional-vendor.
+- Acquisition status: acquired; directional-vendor. Article prose captured; the interactive benchmark table (segment-level reply rates) did not render via static fetch and is NOT in this card.
 - Source label: Lavender Cold Email Benchmark Report.
-- Source description: Cold Email, Cold email benchmarking report, industry specific benchmarking report for cold email performance
+- Source description: Cold email benchmarking report; industry/department/seniority-specific benchmarking for cold email performance.
 
 ## Cleaned Extract
 
-#### Benchmark Learnings: Emailing Operations
+### Dataset and methodology (as stated on page, 2026-06-10 fetch)
 
-#### Benchmark Learnings: Emailing Finance
+- **231,818 recent cold emails analyzed, as of February 4, 2026.**
+- Drawn from "~50k active inboxes connected to Lavender's Email Coach" (page frames its history as "billions of emails we've analyzed" across those inboxes).
+- Automated replies excluded (OOO messages, bounces); both positive and negative responses counted as replies.
+- Outputs are organized by recipient **department, seniority, and industry**, with filterable/sortable table segments.
+- "Content insights" (what works/doesn't for email content) are available for department and seniority segments — inside the interactive table, not the prose.
 
-#### Benchmark Learnings: Emailing Technical Buyers
+### Metrics the report tracks
 
-Read nextBenchmark Learnings: Emailing OperationsWhen sellers write A-level emails to operations, the reply rate climbs to 5.4%.
+- Overall reply rate per segment.
+- "Reply Rate When Sending 90+ Scoring Emails with Lavender" (their A-grade band).
+- "Reply Rate Lift" — improvement percentage for high-scoring emails vs segment average.
+- Average email scores by segment.
 
-That's one of the larger quality lifts across all departments.
+### Lavender's own framing (use as the caveat language)
 
-They just need to be able to quickly understand the very specific reason that they should.ByWill Allred-Mar 30, 2026Benchmark Learnings: Emailing FinanceOnly 6.1% of emails to finance earned a Lavender “A” grade.
+- "You may find you're above averages. You may find you're behind. This is all normal and should be taken with a grain of salt as no one offering is the same."
+- "Lavender's analysis of your inbox is the only true benchmarking."
+- Some teams using Lavender reportedly achieve double-digit reply rates (vendor self-claim).
 
-Let's break down how to do it.ByWill Allred-Mar 24, 2026Benchmark Learnings: Emailing Technical BuyersOut of 231,818 cold emails in our latest Cold Email Benchmark Report, engineering and product are two of the most prospected technical departments in B2B.
+### Adjacent persona learnings (from Lavender's "Benchmark Learnings" companion posts)
 
-Lets dig into what drives the highest reply rates.ByWill Allred-Mar 17, 2026
+- Operations: A-level emails reach a 5.4% reply rate — one of the larger quality lifts across departments.
+- Finance: only 6.1% of emails to finance earned a Lavender "A" grade.
+- Technical buyers: engineering and product are among the most-prospected technical departments in the 231,818-email dataset.
+
+### Caveats
+
+- The segment-level benchmark numbers themselves live in a JS-rendered interactive table that a static fetch cannot capture; only the dataset description and metric definitions are verified here. If segment numbers are needed, pull them manually in a browser.
+- Sample size is stated but selection bias (Lavender users are senders who bought an email coach) is not characterized — keep "directional-vendor."

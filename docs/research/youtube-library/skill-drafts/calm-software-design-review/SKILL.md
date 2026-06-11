@@ -6,6 +6,9 @@ skill_type: combo
 categories:
     - product-and-design
 path: docs/research/youtube-library/skill-drafts/calm-software-design-review/SKILL.md
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/calm_software_design_review/SKILL.md
+last_promoted: '2026-06-10'
+status: registered
 ---
 
 # Calm Software Design Review

@@ -1,5 +1,6 @@
 ---
 title: 'BuildOS: The Anti-AI-Assistant That Actually Helps You Ship'
+seoTitle: 'The Anti-AI-Assistant That Helps You Ship'
 description: 'Why BuildOS refuses to do everything for you, and why that makes it work. How context engineering beats autonomous agents for actually shipping products.'
 author: 'DJ Wayne'
 date: '2025-08-24'

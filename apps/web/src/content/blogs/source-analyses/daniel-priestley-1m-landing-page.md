@@ -1,5 +1,6 @@
 ---
 title: 'The $1 Million Landing Page: Lessons from Daniel Priestley'
+seoTitle: 'The $1 Million Landing Page: Daniel Priestley'
 description: 'A deep read of Daniel Priestley''s "$1 Million Landing Page" — the 3-part scorecard funnel (landing page sells the assessment, 15-question quiz in 3 buckets, dynamic results page), the Big 5 qualifying questions, and the 20–40% conversion benchmark.'
 author: 'DJ Wayne'
 date: '2026-05-04'
@@ -18,7 +19,7 @@ tags:
         'sales-and-growth',
         'marketing-and-content'
     ]
-readingTime: 11
+readingTime: 8
 excerpt: 'Sell the assessment, not the product. The whole landing page is for one click — start the quiz. A 5-section landing page + 15 questions in 3 buckets + a dynamic results page produces a qualified, segmented sales pipeline with intent data baked in. Target: 20–40% of visitors start the quiz.'
 sourceTitle: 'The $1 Million Landing Page'
 sourceCreator: 'Daniel Priestley'

@@ -25,7 +25,7 @@ Use this child skill when scaled sending, cold domains, inbox health, or low ope
 
 - The user wants to send at volume
 - Sending domains or inboxes are new
-- SPF/DKIM/DMARC, warmup, complaints, bounces, or spam placement are unknown
+- SPF/DKIM/DMARC, warmup, complaints, bounces, spam placement, or server-level rejections are unknown (as of Nov 2025 Google rejects non-compliant bulk mail outright; Microsoft rejects unauthenticated 5k+/day senders with `550 5.7.515`)
 - Open rate dropped or replies disappeared
 - The campaign may exceed manual one-off sending
 

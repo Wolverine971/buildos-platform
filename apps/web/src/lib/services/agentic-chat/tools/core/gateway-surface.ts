@@ -25,6 +25,7 @@ const GATEWAY_DISCOVERY_TOOL_NAMES = [
 
 export const GATEWAY_SURFACE_PROFILE_NAMES = [
 	'global_basic',
+	'global_write',
 	'project_basic',
 	'project_write',
 	'project_document',
@@ -43,6 +44,22 @@ const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
 	'call_corsair_mcp_tool',
 	'search_onto_projects',
 	'search_all_projects'
+] as const;
+
+// Cross-project action surface for contexts whose whole point is acting on
+// items that live in many projects (daily brief). Task and calendar writes are
+// direct so a "bump these tasks, create that meeting" turn never depends on a
+// tool_search round the turn supervisor may cut short. Deletes stay behind
+// discovery so they keep their confirm-first path.
+const GLOBAL_WRITE_DIRECT_TOOL_NAMES = [
+	...GLOBAL_BASIC_DIRECT_TOOL_NAMES,
+	'get_onto_task_details',
+	'create_onto_task',
+	'update_onto_task',
+	'list_calendar_events',
+	'get_calendar_event_details',
+	'create_calendar_event',
+	'update_calendar_event'
 ] as const;
 
 const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
@@ -104,6 +121,7 @@ const GATEWAY_SURFACE_DIRECT_TOOLS_BY_PROFILE: Record<
 	readonly string[]
 > = {
 	global_basic: GLOBAL_BASIC_DIRECT_TOOL_NAMES,
+	global_write: GLOBAL_WRITE_DIRECT_TOOL_NAMES,
 	project_basic: PROJECT_BASIC_DIRECT_TOOL_NAMES,
 	project_write: PROJECT_WRITE_DIRECT_TOOL_NAMES,
 	project_document: PROJECT_DOCUMENT_DIRECT_TOOL_NAMES,
@@ -142,7 +160,12 @@ export function resolveGatewaySurfaceProfileForContextType(
 			return 'project_basic';
 		case 'project_create':
 			return 'project_create_minimal';
+		// The daily brief is an action surface: "bump these tasks, reschedule
+		// that, create a meeting" is the expected workload, and follow-up turns
+		// ("ok did you finish?") carry no mutation keywords for intent routing
+		// to catch. Keep writes available on every brief turn.
 		case 'daily_brief':
+			return 'global_write';
 		case 'global':
 		case 'general':
 		default:

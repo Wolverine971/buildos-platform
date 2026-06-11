@@ -7,6 +7,9 @@ categories:
     - marketing-and-content
 lineage: lineage.yaml
 path: docs/research/youtube-library/skill-drafts/viral-content-for-boring-brands/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/viral_content_for_boring_brands/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Viral Content For Boring Brands

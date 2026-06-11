@@ -1,5 +1,6 @@
 ---
 title: 'Story-Driven Content Craft: An Agent Skill For Nonfiction That Holds Attention'
+seoTitle: 'Story-Driven Content Craft: Agent Skill'
 description: 'A source-lineaged agent skill for structuring founder essays, video scripts, social posts, and pitch narratives with stronger loops, rhythm, lens, payoff, and retention craft.'
 author: 'DJ Wayne'
 date: '2026-05-02'

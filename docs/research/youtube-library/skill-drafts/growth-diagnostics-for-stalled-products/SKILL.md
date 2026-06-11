@@ -7,6 +7,9 @@ categories:
     - product-strategy
     - sales-and-growth
 path: docs/research/youtube-library/skill-drafts/growth-diagnostics-for-stalled-products/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/growth_diagnostics_for_stalled_products/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Growth Diagnostics For Stalled Products

@@ -1,5 +1,6 @@
 ---
 title: 'Hook Craft For Short-Form: An Agent Skill For Better Openers'
+seoTitle: 'Hook Craft For Short-Form: Agent Skill'
 description: 'A source-lineaged agent skill for drafting, auditing, and rewriting hooks across short-form video, blog leads, social posts, demo openers, and pitch slide 1.'
 author: 'DJ Wayne'
 date: '2026-05-02'
@@ -252,7 +253,6 @@ This skill is distilled from four Kallaway source layers.
 
 Each source video is also published as a standalone deep-read post:
 
-- [Irresistible Hooks: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-irresistible-hooks) — the three-beat formula (lean → stop → snapback), the four lean mechanisms, visual hooks, lead with pain, cult-hopping.
-- [Hooks Impossible to Skip: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-hooks-impossible-to-skip) — the four-mistake diagnostic (Delay / Confusion / Irrelevance / Disinterest), the A vs B contrast formula, before/after rewrite pairs.
+- [Irresistible Hooks: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-irresistible-hooks) — the three-beat build formula (lean → stop → snapback) and the four-mistake diagnostic (Delay / Confusion / Irrelevance / Disinterest), plus the A vs B contrast formula, visual hooks, and before/after rewrite pairs.
 - [The 6 Hook Archetypes: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-100-viral-hooks) — Fortune Teller, Experimenter, Teacher, Magician, Investigator, Contrarian; the four-component alignment; visual → audio → visual sandwich.
 - [The 6 Words Every Hook Needs: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-6-words-hook) — Subject, Action, Objective, Contrast, Proof, Time; slot collapse patterns; the copy-work drill.

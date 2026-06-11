@@ -6,6 +6,9 @@ skill_type: combo
 categories:
     - technology-and-agent-systems
 path: docs/research/youtube-library/skill-drafts/context-engineering-for-agent-work/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/context_engineering_for_agent_work/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Context Engineering For Agent Work

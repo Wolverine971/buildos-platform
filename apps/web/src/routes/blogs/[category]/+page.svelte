@@ -110,10 +110,12 @@
 	}
 
 	let jsonLdString = $derived(generateCategoryJsonLd(data.category, data.posts, categoryKey));
+	// SEO <title>: keep under ~60 chars. Long blog suffix was pushing every
+	// category name over the limit, so the blog branch is trimmed to "<name> | BuildOS Blog".
 	let pageTitle = $derived(
-		`${data.category.name} - BuildOS${
-			isSkillRepo ? ' | Agent Skill Library' : ' Blog | Thinking Environment Insights'
-		}`
+		isSkillRepo
+			? `${data.category.name} - BuildOS | Agent Skill Library`
+			: `${data.category.name} | BuildOS Blog`
 	);
 	let ogTitle = $derived(
 		`${data.category.name} - BuildOS${

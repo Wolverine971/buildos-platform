@@ -1,5 +1,6 @@
 ---
 title: 'Reply-Method Cold Email: Lessons from Florin Tatulea and 30MPC'
+seoTitle: 'Reply-Method Cold Email: Florin Tatulea'
 description: "A deep read of the 30 Minutes to President's Club cold email showdown with Florin Tatulea, Evan Greek, and Jason Bay: packaging, subject-plus-preview, mobile-readable body copy, personality, social proof, AI-assisted research, and soft offer CTAs."
 author: 'DJ Wayne'
 date: '2026-05-15'
@@ -18,7 +19,7 @@ tags:
         'sales-and-growth',
         'marketing-and-content'
     ]
-readingTime: 12
+readingTime: 7
 excerpt: 'The 30MPC cold email showdown is useful because it makes cold email judgment visible. Jason Bay grades packaging, body, and style while Florin Tatulea and Evan Greek draft live against weird prompts. The strongest transferable ideas: subject plus preview is the open mechanism, mobile-readable formatting matters, social proof lifts reply likelihood, AI is useful for research and ideation but not final judgment, and the CTA should often offer a small deliverable instead of asking for a meeting.'
 sourceTitle: 'Cold Email Showdown: Rookie Sales Rep vs 10-Year Director'
 sourceCreator: "Florin Tatulea, Evan Greek, Jason Bay, 30 Minutes to President's Club"
@@ -148,16 +149,16 @@ The synthesis is mode-based:
 
 The common rule is simpler: no subject line should look like a campaign.
 
-## What to fold into the skill
+## The transferable primitives
 
-Add or strengthen these primitives:
+Strip away the gameshow framing and six reusable primitives are left:
 
-1. **Packaging pass.** Score subject plus preview before body quality.
-2. **Internal-looking subject.** The subject should look like something a coworker might send.
+1. **Packaging pass.** Judge the subject plus preview before you judge the body.
+2. **Internal-looking subject.** It should read like something a coworker might send, not a campaign.
 3. **Mobile body standard.** 50 to 100 words, one sentence per paragraph, readable on a phone.
-4. **Proof slot.** Include a relevant peer, customer, or "seen this before" line when credible.
-5. **Artifact CTA.** Ask to send a sample, snapshot, signals, ideas, or teardown before asking for a meeting.
-6. **AI-assisted research ladder.** Industry -> company -> department -> person -> second-order trigger.
+4. **Proof slot.** A relevant peer, customer, or "seen this before" line when you can make it credible.
+5. **Artifact CTA.** Offer to send a sample, snapshot, signal set, or teardown before you ask for a meeting.
+6. **AI-assisted research ladder.** Industry → company → department → person → second-order trigger.
 
 ## Critical treatment
 
@@ -167,6 +168,4 @@ The value is in the judging surface. The criteria are highly transferable: packa
 
 Also, the "short subject" rule should not override strategic specificity. For named executive outreach, a longer subject can work if it carries a real recognizable hook. For volume, shorter and internal-looking is safer.
 
-## What this layer contributes to the BuildOS skill
-
-The 30MPC/Florin analysis supplies the **packaging, proof, AI-assisted drafting, and artifact-CTA layer**. It should be used to upgrade the skill's email anatomy: subject plus preview first, then body, then style. It also provides the cleanest bridge between personalization and relevance: use AI to find the context, but use human judgment to make the final email feel specific, credible, and small enough to answer.
+The cleanest takeaway is the bridge between personalization and relevance: use AI to _find_ the context, but use human judgment to make the final email feel specific, credible, and small enough to answer.

@@ -7,6 +7,9 @@ categories:
     - sales-and-growth
     - technology-and-agent-systems
 path: docs/research/youtube-library/skill-drafts/lead-list-research-with-claude-code/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/lead_list_research/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Lead List Research With Claude Code

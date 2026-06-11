@@ -1,5 +1,6 @@
 ---
 title: 'Brain Dumps That Actually Work: From Chaos to Context'
+seoTitle: 'Brain Dumps That Actually Work'
 description: "Your brain dump doesn't have to become another abandoned note. How BuildOS turns scattered thoughts into goals, plans, and tasks that connect."
 author: 'DJ Wayne'
 date: '2025-06-28'

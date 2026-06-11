@@ -1,5 +1,6 @@
 ---
 title: 'Newsletter Email Marketing in 39 Minutes: Lessons from Alex Hormozi'
+seoTitle: 'Newsletter Email Marketing: Alex Hormozi'
 description: 'A deep read of Alex Hormozi''s "Learn Email Marketing in 39 Minutes" — the reward-every-action loop, the templated newsletter structure (subject → quote → tactic → CTA → P.S.), the 3x/week cadence question, the segmentation 791% ROI anecdote, and the deliverability discipline (plain text, mobile, money-language hygiene).'
 author: 'DJ Wayne'
 date: '2026-05-14'

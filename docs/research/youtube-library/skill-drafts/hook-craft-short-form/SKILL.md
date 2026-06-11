@@ -8,6 +8,9 @@ categories:
     - writing
 lineage: lineage.yaml
 path: docs/research/youtube-library/skill-drafts/hook-craft-short-form/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/hook_craft_short_form/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Hook Craft For Short-Form Content

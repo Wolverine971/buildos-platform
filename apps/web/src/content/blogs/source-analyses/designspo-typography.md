@@ -17,7 +17,7 @@ tags:
         'web-design',
         'product-and-design'
     ]
-readingTime: 18
+readingTime: 10
 excerpt: 'Text commands the most visual attention in any design. A typeface is a tone of voice; ten controllable variables (size, weight, line-height, letter-spacing, kerning, contrast, alignment, etc.) determine whether the result is legible or not. A real type system replaces ad-hoc decisions with four roles and a grid.'
 sourceTitle: 'The ULTIMATE Guide To Typography For Beginners'
 sourceCreator: 'DesignSpo'

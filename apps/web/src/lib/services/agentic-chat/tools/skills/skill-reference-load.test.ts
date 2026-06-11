@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/skill-reference-load.test.ts
 import { describe, expect, it } from 'vitest';
 import { loadSkillReference } from './skill-reference-load';
+import { listAllSkills } from './registry';
 
 describe('skill reference loading', () => {
 	it('loads a declared reference module by id', () => {
@@ -97,6 +98,20 @@ describe('skill reference loading', () => {
 		expect(result.content).toContain(
 			'qualified conversations per unit of market trust consumed'
 		);
+	});
+
+	it('bundles content for every declared reference module across the registry', () => {
+		for (const skill of listAllSkills()) {
+			for (const module of skill.referenceModules ?? []) {
+				const result = loadSkillReference(skill.id, module.id) as Record<string, unknown>;
+
+				expect(result.type, `${skill.id} → ${module.id}`).toBe('skill_reference');
+				expect(
+					typeof result.content === 'string' && result.content.trim().length > 0,
+					`${skill.id} → ${module.id} should have non-empty bundled content`
+				).toBe(true);
+			}
+		}
 	});
 
 	it('loads the LinkedIn company page growth playbook reference', () => {

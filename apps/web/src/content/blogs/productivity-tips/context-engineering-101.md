@@ -1,5 +1,6 @@
 ---
 title: 'Prompt Engineering is Out. Context Engineering is In.'
+seoTitle: 'Context Engineering, Not Prompt Engineering'
 description: "Prompt engineering crafts one-off asks. Context engineering builds persistent systems the model can reason over. Here's how BuildOS puts it into practice."
 author: 'DJ Wayne'
 date: '2025-08-05'

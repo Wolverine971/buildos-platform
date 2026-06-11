@@ -1,5 +1,6 @@
 ---
 title: '7 UI/UX Mistakes That Scream Beginner: Lessons from Kole Jain'
+seoTitle: '7 UI/UX Mistakes That Scream Beginner'
 description: 'A deep read of Kole Jain''s "7 UI/UX mistakes that SCREAM you''re a beginner" — flow before pixels, the three-step shadow recipe, the 10px corner-radius standard, and why subtraction beats addition.'
 author: 'DJ Wayne'
 date: '2026-05-04'
@@ -16,7 +17,7 @@ tags:
         'product-and-design',
         'figma'
     ]
-readingTime: 11
+readingTime: 8
 excerpt: "Beginner UIs aren't broken from lack of skill — they're broken from a small set of repeatable, fixable mistakes. Polish comes from subtraction, consistency, and respect for the user's flow, not from adding more visual flair."
 sourceTitle: "7 UI/UX mistakes that SCREAM you're a beginner"
 sourceCreator: 'Kole Jain'

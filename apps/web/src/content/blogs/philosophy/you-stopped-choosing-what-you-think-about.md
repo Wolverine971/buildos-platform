@@ -54,7 +54,7 @@ enough; cross-linked.
 RELATED DOCS:
 - Topic map: docs/marketing/strategy/anti-feed-content-topic-map.md
 - Work stream: docs/marketing/distribution/workstreams/WS09-anti-feed-cluster.md
-- Source transcript: youtube-transcripts/2026-04-16-exposing-the-new-manufactured-viral-content-economy.md
+- Source transcript: docs/research/youtube-library/transcripts/2026-04-16-exposing-the-new-manufactured-viral-content-economy.md
 - Sibling posts:
   - apps/web/src/content/blogs/philosophy/your-morning-without-the-algorithm.md
   - apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md

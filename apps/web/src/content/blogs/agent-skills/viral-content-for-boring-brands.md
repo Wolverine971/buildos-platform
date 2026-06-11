@@ -1,5 +1,6 @@
 ---
 title: 'Viral Content For Boring Brands: An Agent Skill For Brand-Account Content'
+seoTitle: 'Viral Content For Boring Brands: Agent Skill'
 description: 'A source-lineaged agent skill for designing or auditing brand-account content (B2B SaaS, dev tools, commodity products) against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds.'
 author: 'DJ Wayne'
 date: '2026-05-10'
@@ -18,7 +19,7 @@ tags:
         'marketing-and-content',
         'buildos'
     ]
-readingTime: 14
+readingTime: 20
 excerpt: "Six pre-conscious filters fire in the viewer's brain before the first second is over. Pass all six, the viewer stays and shares. Fail one, they scroll. This skill turns that into an agent-readable audit and design playbook for brand and founder accounts."
 skillId: 'marketing-and-content/viral-content-for-boring-brands'
 skillType: 'combo'

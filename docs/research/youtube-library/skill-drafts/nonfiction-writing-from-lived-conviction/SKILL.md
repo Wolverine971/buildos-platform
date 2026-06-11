@@ -6,6 +6,9 @@ skill_type: combo
 categories:
     - writing
 path: docs/research/youtube-library/skill-drafts/nonfiction-writing-from-lived-conviction/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/nonfiction_writing_from_lived_conviction/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Nonfiction Writing From Lived Conviction

@@ -8,6 +8,9 @@ categories:
     - writing
 lineage: lineage.yaml
 path: docs/research/youtube-library/skill-drafts/story-driven-content-craft/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/story_driven_content_craft/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Story-Driven Content Craft

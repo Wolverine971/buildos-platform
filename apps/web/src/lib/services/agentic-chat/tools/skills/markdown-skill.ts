@@ -292,6 +292,9 @@ export function defineMarkdownSkill({ id, markdown }: MarkdownSkillOptions): Ski
 	const guardrails = parseBulletList(sections['guardrails'] ?? []);
 	const examples = parseExamples(sections['examples'] ?? []);
 	const notes = parseBulletList(sections['notes'] ?? []);
+	const outputContract = (sections['output'] ?? sections['output contract'] ?? [])
+		.join('\n')
+		.trim();
 	const parentId = parseOptionalString(frontmatter.parent_id);
 	const depth = parseOptionalNumber(frontmatter.depth);
 	const childSkills = parseLinkedResources(frontmatter.child_skills);
@@ -310,7 +313,8 @@ export function defineMarkdownSkill({ id, markdown }: MarkdownSkillOptions): Ski
 		workflow: parseWorkflowSections(sections),
 		guardrails: guardrails.length > 0 ? guardrails : undefined,
 		examples: examples.length > 0 ? examples : undefined,
-		notes: notes.length > 0 ? notes : undefined
+		notes: notes.length > 0 ? notes : undefined,
+		outputContract: outputContract.length > 0 ? outputContract : undefined
 	};
 
 	if (parentId) skill.parentId = parentId;

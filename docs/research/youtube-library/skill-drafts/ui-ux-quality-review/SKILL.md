@@ -7,6 +7,9 @@ categories:
     - product-and-design
 lineage: lineage.yaml
 path: docs/research/youtube-library/skill-drafts/ui-ux-quality-review/SKILL.md
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/ui_ux_quality_review/SKILL.md
+last_promoted: '2026-06-10'
+status: registered
 ---
 
 # UI UX Quality Review

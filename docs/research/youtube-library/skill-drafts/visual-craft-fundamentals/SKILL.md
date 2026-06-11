@@ -6,6 +6,9 @@ skill_type: combo
 categories:
     - product-and-design
 path: docs/research/youtube-library/skill-drafts/visual-craft-fundamentals/SKILL.md
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/visual_craft_fundamentals/SKILL.md
+last_promoted: '2026-06-10'
+status: registered
 ---
 
 # Visual Craft Fundamentals

@@ -1,5 +1,6 @@
 ---
 title: "Personal Knowledge Management Is Broken, Here's What's Next"
+seoTitle: 'Personal Knowledge Management Is Broken'
 description: "Studies suggest 80% of notes are never revisited. Most PKM is productivity theater. See what's replacing static archives with systems that turn notes into action."
 author: 'DJ Wayne'
 date: '2025-10-09'

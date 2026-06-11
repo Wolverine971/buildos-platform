@@ -137,15 +137,20 @@ export interface ToolResultInfo {
 	toolErrorMessage: string | undefined;
 }
 
-/** Extract the routing metadata from a tool_result payload. */
+/**
+ * Extract the routing metadata from a tool_result payload.
+ * Canonical wire fields are snake_case (`tool_call_id`, `tool_name`); the
+ * camelCase reads are fallbacks for stale clients/servers during a deploy
+ * window (duplicated fields removed server-side 2026-06-10).
+ */
 export function computeToolResultInfo(
 	toolResult: Record<string, any> | undefined,
 	presenter: ToolPresenter
 ): ToolResultInfo {
-	const resultToolCallId = toolResult?.toolCallId ?? toolResult?.tool_call_id;
+	const resultToolCallId = toolResult?.tool_call_id ?? toolResult?.toolCallId;
 	const rawResultToolName =
-		(typeof toolResult?.toolName === 'string' && toolResult.toolName) ||
 		(typeof toolResult?.tool_name === 'string' && toolResult.tool_name) ||
+		(typeof toolResult?.toolName === 'string' && toolResult.toolName) ||
 		undefined;
 	const success = toolResult?.success ?? true;
 	const toolError = toolResult?.error;

@@ -2,6 +2,9 @@
 name: usability-evaluation-and-quick-research
 description: Source-backed child skill for lightweight UX research, research questions, assumption checks, stakeholder buy-in, old-research audits, interviews, 3-user tests, and synthesis.
 path: docs/research/youtube-library/skill-drafts/usability-evaluation-and-quick-research/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/usability_quick_research/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Usability Evaluation And Quick Research

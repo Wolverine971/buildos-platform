@@ -1,5 +1,6 @@
 ---
 title: 'The Evolution of Note-Taking: From Collection to Action'
+seoTitle: 'The Evolution of Note-Taking'
 description: "GTD, Notion, AI-powered notes — each promised a better filing cabinet. The real shift is from collecting ideas to making them move. Here's why BuildOS holds up."
 author: 'DJ Wayne'
 date: '2025-07-08'

@@ -1,5 +1,6 @@
 ---
 title: 'How to Become a Master Storyteller: Lessons from Kane Kallaway'
+seoTitle: 'How to Become a Master Storyteller: Kallaway'
 description: 'A deep read of Kallaway''s "How To Become A Master Storyteller" — the six craft moves: dance (but/therefore), rhythm (Gary Provost), tone (one close friend), direction (write the ending first), lens (category-of-one), and hook (show while you tell).'
 author: 'DJ Wayne'
 date: '2026-05-04'
@@ -18,7 +19,7 @@ tags:
         'short-form-video',
         'marketing-and-content'
     ]
-readingTime: 13
+readingTime: 10
 excerpt: 'Storytelling is a learnable stack of six craft moves, not a personality trait. Stories perform when they alternate context and conflict, pace through varied sentence rhythm, hold attention via conversational tone, are written end-first, get differentiated through unique story lenses, and open with visual hooks that show before they tell.'
 sourceTitle: 'How To Become A Master Storyteller'
 sourceCreator: 'Kane Kallaway'

@@ -1,5 +1,6 @@
 ---
 title: 'Hooks Impossible to Skip: Lessons from Kane Kallaway'
+seoTitle: 'Hooks Impossible to Skip: Kane Kallaway'
 description: 'A deep read of Kallaway''s "Give me 15 mins, and I''ll make your hooks impossible to skip" — the four-mistake diagnostic (Delay / Confusion / Irrelevance / Disinterest), the A vs B contrast formula, and a verbatim AI clarity-rewrite prompt.'
 author: 'DJ Wayne'
 date: '2026-05-04'

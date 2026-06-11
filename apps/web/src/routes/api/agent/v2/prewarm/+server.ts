@@ -382,8 +382,12 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 		});
 	}
 
-	const preparedPrompt = shouldPreparePrompt
-		? await buildPreparedPrompt({
+	// Prepared prompts are a latency optimization — any failure here must
+	// degrade to a normal prewarm response, never fail the request.
+	let preparedPrompt = null;
+	if (shouldPreparePrompt) {
+		try {
+			preparedPrompt = await buildPreparedPrompt({
 				supabase,
 				session,
 				userId: user.id,
@@ -392,8 +396,15 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 				projectFocus,
 				cacheKey,
 				prewarmedContext
-			})
-		: null;
+			});
+		} catch (error) {
+			logger.warn('Prepared prompt build failed during v2 prewarm; continuing without it', {
+				error,
+				sessionId: session?.id,
+				contextType
+			});
+		}
+	}
 
 	return ApiResponse.success({
 		warmed: true,

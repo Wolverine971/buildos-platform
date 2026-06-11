@@ -17,7 +17,7 @@ tags:
         'viral-patterns',
         'marketing-and-content'
     ]
-readingTime: 18
+readingTime: 11
 excerpt: 'All winning hooks open a curiosity loop by creating contrast between A (what the viewer believes) and B (what the video introduces). Across thousands of videos, the patterns reduce to six archetypes. Pick the archetype downstream of what visual you actually have — never from the topic.'
 sourceTitle: 'I Studied 100 Viral Hooks, These 6 Will Make You Go Viral'
 sourceCreator: 'Kane Kallaway'
@@ -262,8 +262,7 @@ This source informs how the [`hook-craft-short-form`](/agent-skills/hook-craft-s
 ## Related
 
 - Skill: [`hook-craft-short-form`](/agent-skills/hook-craft-short-form) — uses the archetype catalog as the selection rubric.
-- Companion source analyses (the 4-video Kallaway hook cluster):
-    - [Irresistible Hooks: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-irresistible-hooks) — the three-beat formula.
-    - [Hooks Impossible to Skip: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-hooks-impossible-to-skip) — the four-mistake diagnostic.
+- Companion source analyses in the Kallaway hook cluster:
+    - [Irresistible Hooks: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-irresistible-hooks) — the three-beat build formula and the four-mistake diagnostic.
     - [The 6 Words Every Hook Needs: Lessons from Kane Kallaway](/blogs/source-analyses/kallaway-6-words-hook) — the slot grammar.
 - Source channel: [Kallaway on YouTube](https://www.youtube.com/@kallawaymarketing).

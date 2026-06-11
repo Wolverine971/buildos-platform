@@ -14,7 +14,12 @@ import type {
 } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { FastChatContextCache } from './context-cache';
+import { normalizeFastChatContextCache } from './context-cache';
 
+/**
+ * Canonical, already-normalized stream request. Every field has exactly one
+ * name; endpoint code must read these fields only.
+ */
 export type FastAgentStreamRequest = {
 	message?: string;
 	session_id?: string;
@@ -24,16 +29,66 @@ export type FastAgentStreamRequest = {
 	attachments?: ChatAttachmentRef[];
 	projectFocus?: ProjectFocus | null;
 	lastTurnContext?: LastTurnContext | null;
-	last_turn_context?: LastTurnContext | null;
 	stream_run_id?: string | number;
 	client_turn_id?: string;
 	voiceNoteGroupId?: string;
-	voice_note_group_id?: string;
 	prewarmedContext?: FastChatContextCache | null;
-	prewarmed_context?: FastChatContextCache | null;
+	/** Trimmed; null when absent or empty. */
 	preparedPromptKey?: string | null;
+};
+
+/**
+ * Wire shape accepted by POST /api/agent/v2/stream. The snake_case variants
+ * are deprecated aliases kept for older callers; they are resolved exactly
+ * once by `normalizeFastAgentStreamRequest` and never read past the boundary.
+ */
+export type FastAgentStreamRequestInput = FastAgentStreamRequest & {
+	/** @deprecated Use `lastTurnContext`. */
+	last_turn_context?: LastTurnContext | null;
+	/** @deprecated Use `voiceNoteGroupId`. */
+	voice_note_group_id?: string;
+	/** @deprecated Use `prewarmedContext`. */
+	prewarmed_context?: FastChatContextCache | null;
+	/** @deprecated Use `preparedPromptKey`. */
 	prepared_prompt_key?: string | null;
 };
+
+function normalizeOptionalKey(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Resolves the deprecated snake_case wire aliases into the canonical request
+ * shape. This is the only place where both casings are read.
+ */
+export function normalizeFastAgentStreamRequest(
+	input: FastAgentStreamRequestInput
+): FastAgentStreamRequest {
+	const {
+		last_turn_context,
+		voice_note_group_id,
+		prewarmed_context,
+		prepared_prompt_key,
+		...rest
+	} = input ?? {};
+
+	return {
+		...rest,
+		lastTurnContext: rest.lastTurnContext ?? last_turn_context ?? null,
+		voiceNoteGroupId:
+			typeof rest.voiceNoteGroupId === 'string'
+				? rest.voiceNoteGroupId
+				: typeof voice_note_group_id === 'string'
+					? voice_note_group_id
+					: undefined,
+		prewarmedContext: normalizeFastChatContextCache(rest.prewarmedContext ?? prewarmed_context),
+		preparedPromptKey:
+			normalizeOptionalKey(rest.preparedPromptKey) ??
+			normalizeOptionalKey(prepared_prompt_key)
+	};
+}
 
 export type FastAgentPrewarmRequest = {
 	session_id?: string;
@@ -68,11 +123,12 @@ export type FastAgentStreamEvent =
 	| { type: 'tool_call'; tool_call: ChatToolCall }
 	| {
 			type: 'tool_result';
+			// Canonical wire shape: snake_case only. The legacy camelCase
+			// duplicates (toolName/toolCallId) and the `data` alias for
+			// `result` were removed 2026-06-10; clients read `tool_name`,
+			// `tool_call_id`, and `result`.
 			result: ChatToolResult & {
-				tool_name?: string;
-				toolName?: string;
-				toolCallId?: string;
-				data?: any;
+				tool_name: string;
 			};
 	  }
 	| { type: 'context_shift'; context_shift: ContextShiftPayload }

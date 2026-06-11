@@ -1,5 +1,6 @@
 ---
 title: "The 4-Pixel Rule: Lessons from DesignSpo's Golden Rule of Web Design"
+seoTitle: 'The 4-Pixel Rule of Web Design: DesignSpo'
 description: 'A deep read of DesignSpo''s "Golden Rule Of Web Design" — the mathematical system behind professional-feeling layouts. Every spacing, padding, gap, container width, and font size is a multiple of 4.'
 author: 'DJ Wayne'
 date: '2026-05-04'

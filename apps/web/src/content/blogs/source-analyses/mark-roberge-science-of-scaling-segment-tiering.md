@@ -128,13 +128,16 @@ Negatively correlated traits in his data: closing ability, convincing-ness, obje
 
 For the outreach skill this is a tangent — but it lands one durable point: **the skills that look like sales (closing, convincing) are anti-predictive of success in a consultative B2B motion.** Cold outreach that _sounds_ like sales is doing the same thing in writing.
 
-## What this contributes to the BuildOS ICP and Signal Design child skill
+## How to use segment tiering
 
-1. **LIR formula as ICP validation.** The skill's segment definition includes an LIR target field: "P% of customers achieve E events every T days." If the segment cannot define one, the ICP is unverified — outreach is exploratory, not scaled.
-2. **Green/Yellow/Red tiering for outreach prioritization.** The skill's segment scorecard outputs one of three tiers. Green segments get manual, high-effort outreach. Yellow segments get experimental small-batch tests with a one-variable change. Red segments are explicitly excluded from campaigns.
-3. **Quality × Engagement grid as the inbound-signal layer.** When a target account has inbound signals (demo request, pricing-page visit, trial signup), the skill upgrades it on the Engagement axis. A C/A combination (small company, demo requested) is treated as a stronger signal than an A/C combination (big company, blog signup).
-4. **The "we only have PMF in a slice" check.** The skill's pre-outreach review asks explicitly: _which slice of the ICP currently has measured PMF?_ Outbound runs only against that slice unless the campaign is explicitly a PMF experiment.
-5. **The 75% Series-C failure rate as scope guardrail.** When a user asks for a high-volume campaign in a segment without LIR or unit-economics data, the skill returns a refusal note pointing to the missing measurement.
+Turn the talk into a prioritization discipline for your own outreach:
+
+1. **Define an LIR target per segment.** "P% of customers hit E events every T days." If you can't write one, the segment is unproven — your outreach there is an experiment, not a scaled campaign.
+2. **Tier segments Green / Yellow / Red.** Green earns manual, high-effort outreach. Yellow gets small-batch tests that change one variable. Red stays out of campaigns entirely.
+3. **Let inbound signals upgrade an account.** A demo request, pricing-page visit, or trial signup matters more than company size — a small company that requested a demo is a stronger target than a big one that read a blog post.
+4. **Only run volume against the slice with measured PMF.** Ask which slice of the ICP actually retains today, and point the campaign there. Everything else is a PMF experiment — label it as one before you scale it.
+
+This is the PMF-validation layer of a three-part segment-targeting read: start with the [minimum viable segment gate](/blogs/source-analyses/underscore-vc-minimum-viable-segment) for a fast first pass, score fit with [Lincoln Murphy's ICP framework](/blogs/source-analyses/lincoln-murphy-ideal-customer-profile-framework), then use the Green/Yellow/Red tiering here to decide where real budget goes.
 
 ## Caveats
 

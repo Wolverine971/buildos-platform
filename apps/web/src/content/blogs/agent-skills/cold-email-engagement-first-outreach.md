@@ -1,5 +1,6 @@
 ---
 title: 'Cold Email Engagement-First Outreach: An Agent Skill For 2026 Cold Campaigns'
+seoTitle: 'Cold Email Engagement-First Outreach'
 description: 'A source-lineaged root combo skill for planning, drafting, auditing, and rewriting cold outreach. Distilled from seven cold-email source analyses into one master playbook for high-volume campaigns, strategic accounts, single-target relationship outreach, reply revival, investor fundraising, founder-led outreach, recruiting, PR, partnerships, and customer research.'
 author: 'DJ Wayne'
 date: '2026-05-14'
@@ -17,7 +18,7 @@ tags:
         'marketing-and-content',
         'buildos'
     ]
-readingTime: 16
+readingTime: 39
 excerpt: 'Cold email in 2026 is not one template. It is a mode router plus a drafting and audit system: deliverability floor, persona-times-signal segmentation, packaging, real artifact offers, researched bridges, reply routing, and mode-locked cadence.'
 skillId: 'sales-and-growth/cold-email-engagement-first-outreach'
 skillType: 'combo'

@@ -1,5 +1,6 @@
 ---
 title: 'Creating Your First Project in BuildOS: Just Start Talking'
+seoTitle: 'Creating Your First Project in BuildOS'
 description: 'Learn how to create your first project in BuildOS by simply having a conversation. No forms, no templates, just tell BuildOS what you want to build.'
 author: 'DJ Wayne'
 date: '2025-06-26'

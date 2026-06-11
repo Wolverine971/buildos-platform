@@ -91,7 +91,7 @@ export interface ToolPresenter {
 		toolName: string | undefined,
 		args: string | Record<string, unknown> | undefined,
 		success: boolean,
-		toolResult?: { data?: any }
+		toolResult?: { result?: any; data?: any }
 	): void;
 	resetMutationTracking(): void;
 	buildMutationSummary(
@@ -428,9 +428,11 @@ function extractEntityDisplayName(entity: Record<string, any>): string | undefin
 function extractToolResultPayload(toolResult: unknown): Record<string, any> | null {
 	if (!toolResult || typeof toolResult !== 'object') return null;
 	const record = toolResult as Record<string, any>;
+	// `result` is the canonical payload field; `data`/`tool_result` are legacy
+	// aliases kept as read-side fallbacks only.
 	const candidate =
-		(record.data && typeof record.data === 'object' && record.data) ||
 		(record.result && typeof record.result === 'object' && record.result) ||
+		(record.data && typeof record.data === 'object' && record.data) ||
 		(record.tool_result && typeof record.tool_result === 'object' && record.tool_result);
 	if (candidate) return candidate as Record<string, any>;
 
@@ -1288,14 +1290,16 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 
 	function resolveProjectId(
 		args: Record<string, unknown>,
-		toolResult?: { data?: any }
+		toolResult?: { result?: any; data?: any }
 	): string | undefined {
 		const argsProjectId = args?.project_id;
 		if (typeof argsProjectId === 'string' && argsProjectId.length > 0) {
 			return argsProjectId;
 		}
 
-		const data = toolResult?.data;
+		// `result` is the canonical payload field; `data` is the legacy alias
+		// removed from the wire 2026-06-10.
+		const data = toolResult?.result ?? toolResult?.data;
 		const dataProjectId =
 			data?.project_id ??
 			data?.project?.id ??
@@ -1321,11 +1325,12 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		toolName: string | undefined,
 		argsJson: string | Record<string, unknown> | undefined,
 		success: boolean,
-		toolResult?: { data?: any }
+		toolResult?: { result?: any; data?: any }
 	): void {
 		if (!toolName || !success || !MUTATION_TRACKED_TOOLS_SET.has(toolName)) return;
 
-		if (toolName === 'create_onto_project' && toolResult?.data?.clarifications?.length) {
+		const resultPayload = toolResult?.result ?? toolResult?.data;
+		if (toolName === 'create_onto_project' && resultPayload?.clarifications?.length) {
 			return;
 		}
 

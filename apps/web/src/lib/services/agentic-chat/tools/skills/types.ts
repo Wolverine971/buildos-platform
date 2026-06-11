@@ -42,6 +42,7 @@ export interface SkillDefinition {
 	guardrails?: string[];
 	examples?: SkillExample[];
 	notes?: string[];
+	outputContract?: string;
 }
 
 export interface SkillHelpPayload {
@@ -65,6 +66,7 @@ export interface SkillHelpPayload {
 	guardrails?: string[];
 	examples?: SkillExample[];
 	notes?: string[];
+	output_contract?: string;
 }
 
 export function isSkillHelpPayload(value: unknown): value is SkillHelpPayload {

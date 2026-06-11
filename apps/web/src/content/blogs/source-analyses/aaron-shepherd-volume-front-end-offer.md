@@ -1,5 +1,6 @@
 ---
 title: 'Volume, Front-End Offer, And Human-Sounding Scripts: Lessons from Aaron Shepherd'
+seoTitle: 'Volume & Front-End Offers: Aaron Shepherd'
 description: 'A deep read of Aaron Shepherd''s "I Sent 1,500,000 Cold Emails Last Month, Here''s What Works in 2026" — the volume-as-data thesis, the 70/30 Outlook-Google domain infrastructure, the front-end-offer test-drive, and the human-sounding script discipline.'
 author: 'DJ Wayne'
 date: '2026-05-14'
@@ -17,7 +18,7 @@ tags:
         'sales-and-growth',
         'marketing-and-content'
     ]
-readingTime: 11
+readingTime: 8
 excerpt: "Send a small list of perfect-fit leads and you cannot tell whether good or bad results were luck or signal. Volume is data. After 1.5 million cold emails in 30 days, Aaron Shepherd's framework collapses to three pillars: send enough to get statistical signal (and filter quality on the back end with a pre-call form), wrap whatever you sell in a front-end offer that feels like a test drive, and write scripts so casual they look like they were typed from a phone."
 sourceTitle: "I Sent 1,500,000 Cold Emails Last Month, Here's What Works in 2026"
 sourceCreator: 'Aaron Shepherd (GrowthFlare)'
@@ -141,6 +142,6 @@ Shepherd builds a custom Claude project trained on his best-performing scripts t
 - **The offer matters more than the message.** Shepherd is direct: "Nothing in a cold email strategy is more important than your offer." Most cold-email training is body-craft training. He says it's offer-craft training.
 - **Casual beats polished.** Lowercase subjects, no greeting, one-sentence body. The opposite of what most agencies teach.
 
-## What this layer contributes to the BuildOS skill
+## Where the volume play fits
 
-The Shepherd analysis supplies the **infrastructure math, the offer mechanic, and the casual-voice register** of the skill. It pairs with Connor Murray's body craft and cadence (in many ways their voices disagree — Murray is more formal, Shepherd is more casual) and with Austin Schneider's engagement-first / micro-targeting math at Instantly. The skill should let the agent ask which register the campaign requires and route to the appropriate voice.
+Shepherd's contribution is the **infrastructure math, the front-end offer mechanic, and the casual-voice register** — the high-volume end of the spectrum. Read it against the other two cold-email source analyses, because the voices genuinely disagree: [Connor Murray](/blogs/source-analyses/connor-murray-cold-email-assumptive-cadence) is more formal and craft-driven, and [Austin Schneider at Instantly](/blogs/source-analyses/austin-schneider-engagement-first-cold-email-2026) supplies the engagement-first deliverability math. The real skill is knowing which register a given campaign needs.

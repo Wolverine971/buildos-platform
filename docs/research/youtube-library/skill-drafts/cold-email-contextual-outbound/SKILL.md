@@ -6,6 +6,8 @@ skill_type: combo
 categories:
     - sales-and-growth
 path: docs/research/youtube-library/skill-drafts/cold-email-contextual-outbound/SKILL.md
+status: superseded
+superseded_by: cold_email_engagement_first_outreach
 ---
 
 # Cold Email Contextual Outbound

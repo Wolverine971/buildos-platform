@@ -114,6 +114,13 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 	}),
 	loadFastChatPromptContext: mocks.loadPromptContext,
 	normalizeChatAttachmentRefs: () => ({ attachments: [], rejected: 0 }),
+	normalizeFastAgentStreamRequest: (input: Record<string, any>) => ({
+		...input,
+		lastTurnContext: input?.lastTurnContext ?? input?.last_turn_context ?? null,
+		voiceNoteGroupId: input?.voiceNoteGroupId ?? input?.voice_note_group_id,
+		prewarmedContext: input?.prewarmedContext ?? input?.prewarmed_context ?? null,
+		preparedPromptKey: input?.preparedPromptKey ?? input?.prepared_prompt_key ?? null
+	}),
 	normalizeFastContextType: (value?: string) => value ?? 'global',
 	resolveFastChatSurfaceProfileForTurn: () => 'general',
 	sanitizeAttachmentRefsForMetadata: () => [],
@@ -660,50 +667,6 @@ describe('/api/agent/v2/stream', () => {
 				actions: ['ask_user'],
 				sources: { monitor: 1 },
 				triggers: { repeated_failures: 1 }
-			})
-		);
-	});
-
-	it('enables the turn supervisor judge from runtime env and records config telemetry', async () => {
-		runtimeEnv.values.FASTCHAT_TURN_SUPERVISOR_LLM_ENABLED = 'true';
-		runtimeEnv.values.FASTCHAT_TURN_SUPERVISOR_LLM_TIMEOUT_MS = '1234';
-		runtimeEnv.values.FASTCHAT_TURN_SUPERVISOR_LLM_MAX_CALLS = '2';
-		runtimeEnv.values.FASTCHAT_TURN_SUPERVISOR_LLM_MODEL = 'openai/supervisor-test';
-		const supabase = createStreamingSupabase();
-		const response = await POST({
-			request: new Request('http://localhost/api/agent/v2/stream', {
-				method: 'POST',
-				body: JSON.stringify({
-					message: 'Hello',
-					context_type: 'global',
-					stream_run_id: 'stream-run-judge',
-					client_turn_id: 'client-turn-judge'
-				})
-			}),
-			locals: {
-				supabase,
-				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
-			},
-			fetch: vi.fn()
-		} as any);
-
-		expect(response.status).toBe(200);
-		await response.text();
-		await new Promise((resolve) => setTimeout(resolve, 0));
-		const streamParams = mocks.streamFastChat.mock.calls[0]?.[0];
-		expect(streamParams?.turnSupervisorJudge?.evaluate).toEqual(expect.any(Function));
-		expect(streamParams?.maxSupervisorJudgeCalls).toBe(2);
-
-		const configEvent = supabase.insertedRows.chat_turn_events?.find(
-			(row) => row.event_type === 'supervisor_judge_config'
-		);
-		expect(configEvent?.payload).toEqual(
-			expect.objectContaining({
-				enabled: true,
-				enabled_env_present: true,
-				timeout_ms: 1234,
-				max_calls: 2,
-				model: 'openai/supervisor-test'
 			})
 		);
 	});

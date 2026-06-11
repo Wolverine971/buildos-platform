@@ -1,5 +1,6 @@
 ---
 title: 'Less Is More Cold Email: Lessons from Connor Murray'
+seoTitle: 'Less Is More Cold Email: Connor Murray'
 description: 'A deep read of Connor Murray''s "10 Years of Expert Cold Email Advice in 36 Minutes" — the three-paragraph body, assumptive language replacement, the coiled-spring prep system, and the AB follow-up cadence that turns a 10-email day into a 100-email day.'
 author: 'DJ Wayne'
 date: '2026-05-14'
@@ -176,6 +177,6 @@ The two templates are structurally identical. The only thing that changes betwee
 - **No Monday-Monday-Monday automation rhythm.** Buyers pattern-match it as automation; reply rates drop.
 - **No coast after a clean first email.** The first email is the bait. 70–80% of meetings come from the follow-up that redirects them back to it.
 
-## What this layer contributes to the BuildOS skill
+## Where the craft layer fits
 
-The Murray analysis supplies the **body, cadence, and prep system** of the skill. It is the "what to type and when to hit send" layer. Two other source layers handle infrastructure/volume math ([Aaron Shepherd](/blogs/source-analyses/aaron-shepherd-volume-front-end-offer)) and engagement-first / two-touch / micro-targeting math ([Austin Schneider at Instantly](/blogs/source-analyses/austin-schneider-engagement-first-cold-email-2026)). Murray's piece is where the agent's actual _email draft_ gets shaped.
+Murray's piece is the **body, cadence, and prep system** — the "what to type and when to hit send" layer, and where your actual draft gets shaped. The other two cold-email source analyses handle the surrounding math: infrastructure and volume ([Aaron Shepherd](/blogs/source-analyses/aaron-shepherd-volume-front-end-offer)) and engagement-first deliverability and the two-touch cadence ([Austin Schneider at Instantly](/blogs/source-analyses/austin-schneider-engagement-first-cold-email-2026)).

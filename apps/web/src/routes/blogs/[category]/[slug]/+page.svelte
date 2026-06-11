@@ -47,6 +47,9 @@
 	const categoryUrl = $derived(getContentCollectionUrl(SITE_URL, data.post.category));
 
 	const articleUrl = $derived(getContentPostUrl(SITE_URL, data.post));
+	// SEO meta title: prefer a trimmed `seoTitle` (kept under ~60 chars incl. " | BuildOS")
+	// while the visible H1 keeps the full `title`. Falls back to `title` when unset.
+	const metaTitle = $derived(`${data.post.seoTitle ?? data.post.title} | BuildOS`);
 	const lineageSources = $derived(data.post.lineageSources ?? []);
 	const lineagePeople = $derived(data.post.lineagePeople ?? []);
 
@@ -399,7 +402,7 @@
 </script>
 
 <svelte:head>
-	<title>{data.post.title} | BuildOS</title>
+	<title>{metaTitle}</title>
 	<meta name="description" content={data.post.description} />
 	<meta name="author" content={data.post.author || 'BuildOS Team'} />
 	<meta
@@ -413,7 +416,7 @@
 	<!-- Open Graph / Facebook -->
 	<meta property="og:type" content="article" />
 	<meta property="og:url" content={articleUrl} />
-	<meta property="og:title" content="{data.post.title} | BuildOS" />
+	<meta property="og:title" content={metaTitle} />
 	<meta property="og:description" content={data.post.description} />
 	<meta property="og:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta property="og:image:secure_url" content={DEFAULT_SOCIAL_IMAGE_URL} />
@@ -439,7 +442,7 @@
 	<meta name="twitter:url" content={articleUrl} />
 	<meta name="twitter:site" content={DEFAULT_TWITTER_SITE} />
 	<meta name="twitter:creator" content={DEFAULT_TWITTER_CREATOR} />
-	<meta name="twitter:title" content="{data.post.title} | BuildOS" />
+	<meta name="twitter:title" content={metaTitle} />
 	<meta name="twitter:description" content={data.post.description} />
 	<meta name="twitter:image" content={DEFAULT_SOCIAL_IMAGE_URL} />
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />

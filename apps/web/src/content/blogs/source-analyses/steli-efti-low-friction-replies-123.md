@@ -18,7 +18,7 @@ tags:
         'sales-and-growth',
         'marketing-and-content'
     ]
-readingTime: 9
+readingTime: 5
 excerpt: 'Steli Efti starts from a blunt operating truth: the worst cold-email outcome is silence. The 1-2-3 hack works by turning a vague reply burden into a finite choice. Instead of asking the buyer to compose a thoughtful answer, the email names three or four plausible situations and asks them to reply with a number. Used carefully, this becomes a qualification tool, a dead-lead revival tool, and an objection-discovery tool.'
 sourceTitle: 'Get 457% more replies to your sales emails with the 1, 2, 3 hack'
 sourceCreator: 'Steli Efti / Close'
@@ -144,19 +144,19 @@ Rules:
 
 The best version reads like helpful triage. The worst version reads like a sales trick.
 
-## What to fold into the skill
+## How to put the 1-2-3 fork to work
 
-Add a **low-friction reply module** with three variants:
+The tactic generalizes into three reusable forks. Reach for it in reply handling, objection banks, dead-lead revival, and any high-touch follow-up:
 
-1. **Qualification fork.** Used before a call ask, when the buyer's situation is unknown.
-2. **Ghosted-thread fork.** Used after silence to learn whether to continue, pause, redirect, or close.
-3. **Objection fork.** Used when the sender expects common objections and wants the buyer to self-select the real blocker.
+1. **Qualification fork.** Use before a call ask, when the buyer's situation is unknown.
+2. **Ghosted-thread fork.** Use after silence to learn whether to continue, pause, redirect, or close.
+3. **Objection fork.** Use when you expect common objections and want the buyer to self-select the real blocker.
 
-Add output requirements:
+Whichever fork you use, keep it disciplined:
 
 - Numbered options.
-- Intended reply route for each option.
-- One respectful opt-out or close-loop path.
+- A clear next step for each option.
+- One respectful opt-out or close-the-loop path.
 - No second CTA.
 
 ## Critical treatment
@@ -166,7 +166,3 @@ The "457% more replies" claim should be treated as a marketing claim unless inde
 The tactic is still valuable because the mechanism is sound: reducing response friction increases the chance of response. The skill should treat it as a **reply-conversion pattern**, not as a guaranteed performance lift.
 
 This source also predates modern AI spam filters. That means the tactic should be used in strategic follow-up or carefully segmented campaigns, not blasted at scale as a repeatable fingerprint.
-
-## What this layer contributes to the BuildOS skill
-
-The Steli Efti analysis supplies the **low-friction reply and silence-recovery layer**. It turns the existing "response over meeting" principle into a concrete format: name the likely states, let the buyer answer with a number, then route the next action based on their reply. This belongs in reply handling, objection banks, dead-lead revival, and high-touch follow-up.

@@ -19,7 +19,7 @@ tags:
         'shareability',
         'marketing-and-content'
     ]
-readingTime: 10
+readingTime: 7
 excerpt: "Virality is not about the product being exciting. Tuan Le's framework argues that the viewer's brain runs six fast filters before conscious evaluation: familiar format, curiosity gap, identity relevance, credential, sharer payoff, and story."
 sourceTitle: 'What Getting 3 Billion Views Taught Me About Human Psychology'
 sourceCreator: 'Tuan Le'
@@ -193,22 +193,12 @@ Agent checks:
 - **Story skeleton with no story:** using the shape without a lived receipt.
 - **Cutting for cuts' sake:** fast edits only help when each cut adds information.
 
-## What this contributes to the BuildOS skill
+## How to apply the six principles
 
-This source gives the [`viral-content-for-boring-brands`](/agent-skills/viral-content-for-boring-brands) skill its diagnostic order. The skill audits brand content through the same sequence: format, curiosity, identity, credential, shareability, story.
+Use the six principles as a diagnostic order — audit any piece of content through the same sequence: format, curiosity, identity, credential, shareability, story. Two of them need an ethics check, because the easiest implementations turn into low-trust slop:
 
-The BuildOS implementation keeps the cognitive mechanics and adds an ethics layer:
+- **Lean on:** the curiosity gap (that actually closes), identity layers, and the story skeleton — these are pure upside.
+- **Extend:** share-as-status, but tie it to a real identity payoff rather than manufactured outrage.
+- **Handle with care:** format recognition and the credential shortcut. Use familiar formats without stealing low-trust patterns, and use real receipts as credentials rather than borrowed authority.
 
-- Use familiar formats without stealing low-trust slop.
-- Use curiosity gaps that close.
-- Lead with identity, not product features.
-- Use real receipts as credentials.
-- Design for sharer status without manufacturing outrage.
-- Structure every piece as a story with a real payoff.
-
-## BuildOS use tally
-
-- **Keep:** curiosity gap, identity layers, story skeleton.
-- **Keep with extension:** share-as-status, extended into anti-feed identity payoff.
-- **Modify heavily:** format recognition and credential shortcut, because the easiest implementations become low-trust.
-- **Reject:** no principle outright; the rejection happens at the tactical layer.
+This is the source layer behind the [`viral-content-for-boring-brands`](/agent-skills/viral-content-for-boring-brands) skill, which runs this exact audit order.

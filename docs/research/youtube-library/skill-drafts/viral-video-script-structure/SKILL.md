@@ -6,6 +6,9 @@ skill_type: combo
 categories:
     - marketing-and-content
 path: docs/research/youtube-library/skill-drafts/viral-video-script-structure/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/viral_video_script_structure/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Viral Video Script Structure

@@ -34,6 +34,31 @@ describe('skill loading', () => {
 		expect(forecast?.whenToUse.join(' ')).toContain('context type is `project`');
 	});
 
+	it('includes the output contract in short-format loads', () => {
+		const result = loadSkill('ui_ux_quality_review', { format: 'short' }) as Record<
+			string,
+			unknown
+		>;
+
+		expect(result.type).toBe('skill');
+		expect(typeof result.output_contract).toBe('string');
+		expect(result.output_contract).toContain('Severity rubric');
+		expect(result.output_contract).toContain('Evidence');
+	});
+
+	it('parses an output contract for every skill that declares an ## Output section', () => {
+		for (const skill of listRootSkills()) {
+			if (!skill.sourceMarkdown) continue;
+			const declaresOutput = /^##\s+Output(\s+Contract)?\s*$/im.test(skill.sourceMarkdown);
+			if (declaresOutput) {
+				expect(
+					skill.outputContract && skill.outputContract.length > 0,
+					`${skill.id} declares ## Output but parsed no output contract`
+				).toBe(true);
+			}
+		}
+	});
+
 	it('returns a markdown playbook for full skill loads', () => {
 		const result = loadSkill('project_creation', {
 			format: 'full',

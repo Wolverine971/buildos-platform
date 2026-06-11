@@ -16,6 +16,7 @@ export const config = {
 };
 
 import type { RequestHandler } from './$types';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { dev } from '$app/environment';
 import { env as privateEnv } from '$env/dynamic/private';
 import { ApiResponse } from '$lib/utils/api-response';
@@ -40,6 +41,7 @@ import type {
 	ChatToolResult,
 	ContextShiftPayload,
 	ContextUsageSnapshot,
+	Database,
 	Json,
 	LastTurnContext,
 	AgentTimingSummary
@@ -85,6 +87,7 @@ import {
 	normalizeFastContextType,
 	normalizeChatAttachmentRefs,
 	composeFastChatHistory,
+	normalizeFastAgentStreamRequest,
 	resolveFastChatSurfaceProfileForTurn,
 	sanitizeAttachmentRefsForMetadata,
 	selectFastChatTools,
@@ -92,6 +95,7 @@ import {
 	streamFastChat,
 	type ChatAttachmentAssetRow,
 	type FastAgentStreamRequest,
+	type FastAgentStreamRequestInput,
 	type FastChatHistoryMessage
 } from '$lib/services/agentic-chat-v2';
 import type { FastChatHistoryCompositionResult } from '$lib/services/agentic-chat-v2/history-composer';
@@ -141,6 +145,7 @@ import {
 	buildFastChatContextCacheEntry,
 	buildFastChatContextCacheKey as buildContextCacheKey,
 	isFastChatContextCacheFresh as isCacheFresh,
+	normalizeFastChatContextSnapshot,
 	type FastChatContextCache
 } from '$lib/services/agentic-chat-v2/context-cache';
 import {
@@ -158,11 +163,11 @@ import {
 	readFastChatCancelReasonFromMetadata,
 	type FastChatCancelReason
 } from '$lib/services/agentic-chat-v2/cancel-reason-channel';
+import { parseFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request';
 import { isRunningTurnUniqueViolation } from '$lib/services/agentic-chat-v2/turn-run-conflicts';
 import { sanitizeAssistantFinalText } from '$lib/services/agentic-chat-v2/stream-orchestrator/assistant-text-sanitization';
 import {
 	buildCheckpointResumeSystemMessage,
-	createLLMTurnSupervisorJudge,
 	createTurnCheckpoint,
 	loadLatestActiveCheckpoint,
 	markCheckpointResumed,
@@ -174,6 +179,16 @@ import {
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const logger = createLogger('API:AgentStreamV2');
+
+type FastChatSupabaseClient = SupabaseClient<Database>;
+
+// `agentic_chat_prepared_prompts` (migration 20260502000002) is not yet in the
+// generated Database types. Regenerate with `pnpm gen:types`, then query the
+// typed client directly and delete this shim.
+type PreparedPromptsTableClient = {
+	from(table: 'agentic_chat_prepared_prompts'): any;
+};
+
 const FASTCHAT_STREAM_ENDPOINT = '/api/agent/v2/stream';
 const FASTCHAT_STREAM_METHOD = 'POST';
 const FASTCHAT_CLEAN_RESPONSE_FALLBACK =
@@ -308,27 +323,6 @@ function readRuntimeEnv(name: string): string | undefined {
 	return privateEnv[name] ?? process.env[name];
 }
 
-function resolveTurnSupervisorJudgeConfig(): {
-	enabled: boolean;
-	timeoutMs: number;
-	maxCalls: number;
-	model?: string;
-	enabledEnvPresent: boolean;
-} {
-	const enabledValue = readRuntimeEnv('FASTCHAT_TURN_SUPERVISOR_LLM_ENABLED');
-	const model = readRuntimeEnv('FASTCHAT_TURN_SUPERVISOR_LLM_MODEL')?.trim() || undefined;
-	return {
-		enabled: parseBooleanFlag(enabledValue, false),
-		timeoutMs: parsePositiveInt(
-			readRuntimeEnv('FASTCHAT_TURN_SUPERVISOR_LLM_TIMEOUT_MS'),
-			4000
-		),
-		maxCalls: parsePositiveInt(readRuntimeEnv('FASTCHAT_TURN_SUPERVISOR_LLM_MAX_CALLS'), 3),
-		model,
-		enabledEnvPresent: enabledValue !== undefined
-	};
-}
-
 function countBy(values: readonly string[]): Record<string, number> {
 	return values.reduce<Record<string, number>>((counts, value) => {
 		counts[value] = (counts[value] ?? 0) + 1;
@@ -367,9 +361,22 @@ function isAbortLikeError(error: unknown): boolean {
 	);
 }
 
+class FastChatRequestValidationError extends Error {
+	constructor(public readonly issues: string[]) {
+		super(`Invalid stream request: ${issues.join('; ')}`);
+		this.name = 'FastChatRequestValidationError';
+	}
+}
+
 async function parseRequest(request: Request): Promise<FastAgentStreamRequest> {
-	const body = (await request.json()) as FastAgentStreamRequest;
-	return body;
+	const body = (await request.json()) as unknown;
+	const parsed = parseFastAgentStreamRequestBody(body);
+	if (!parsed.ok) {
+		throw new FastChatRequestValidationError(parsed.issues);
+	}
+	// Resolve deprecated snake_case wire aliases exactly once; everything past
+	// this point reads canonical fields only.
+	return normalizeFastAgentStreamRequest(parsed.input);
 }
 
 function waitMs(ms: number): Promise<void> {
@@ -378,7 +385,7 @@ function waitMs(ms: number): Promise<void> {
 }
 
 async function readCancelReasonFromSessionMetadata(params: {
-	supabase: any;
+	supabase: FastChatSupabaseClient;
 	userId: string;
 	sessionId: string;
 	streamRunId: string;
@@ -398,7 +405,7 @@ async function readCancelReasonFromSessionMetadata(params: {
 }
 
 async function resolveInterruptedReason(params: {
-	supabase: any;
+	supabase: FastChatSupabaseClient;
 	userId: string;
 	sessionId: string;
 	streamRunId?: string;
@@ -447,7 +454,7 @@ async function resolveInterruptedReason(params: {
 }
 
 function startFastChatCancelWatcher(params: {
-	supabase: any;
+	supabase: FastChatSupabaseClient;
 	userId: string;
 	sessionId: string;
 	streamRunId: string;
@@ -515,7 +522,7 @@ function resolveChatAttachmentProjectId(
 }
 
 async function loadValidatedChatAttachments(params: {
-	supabase: any;
+	supabase: FastChatSupabaseClient;
 	userId: string;
 	projectId: string | null;
 	attachments: ChatAttachmentRef[];
@@ -700,7 +707,7 @@ type LiveVisionSignedImage = {
 };
 
 async function recordAgentChatMediaEvent(params: {
-	supabase: any;
+	supabase: FastChatSupabaseClient;
 	userId: string;
 	projectId: string | null;
 	sessionId?: string | null;
@@ -737,7 +744,7 @@ async function recordAgentChatMediaEvent(params: {
 }
 
 async function createLiveVisionSignedImages(params: {
-	supabase: any;
+	supabase: FastChatSupabaseClient;
 	userId: string;
 	projectId: string | null;
 	sessionId: string;
@@ -889,51 +896,6 @@ function readRecentContextShiftHint(
 	};
 }
 
-function normalizePrewarmedContextCache(raw: unknown): FastChatContextCache | null {
-	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-	const record = raw as Record<string, unknown>;
-	const key = typeof record.key === 'string' ? record.key : null;
-	const createdAt = typeof record.created_at === 'string' ? record.created_at : null;
-	const version = typeof record.version === 'number' ? record.version : null;
-	const contextRaw =
-		record.context && typeof record.context === 'object' && !Array.isArray(record.context)
-			? (record.context as Record<string, unknown>)
-			: null;
-	if (!key || !createdAt || version === null || !contextRaw) return null;
-
-	const contextTypeRaw =
-		typeof contextRaw.contextType === 'string'
-			? contextRaw.contextType
-			: typeof contextRaw.context_type === 'string'
-				? contextRaw.context_type
-				: null;
-	if (!contextTypeRaw) return null;
-
-	return {
-		version,
-		key,
-		created_at: createdAt,
-		context: {
-			contextType: normalizeFastContextType(contextTypeRaw as ChatContextType),
-			entityId: typeof contextRaw.entityId === 'string' ? contextRaw.entityId : null,
-			projectId: typeof contextRaw.projectId === 'string' ? contextRaw.projectId : null,
-			projectName: typeof contextRaw.projectName === 'string' ? contextRaw.projectName : null,
-			focusEntityType:
-				typeof contextRaw.focusEntityType === 'string' ? contextRaw.focusEntityType : null,
-			focusEntityId:
-				typeof contextRaw.focusEntityId === 'string' ? contextRaw.focusEntityId : null,
-			focusEntityName:
-				typeof contextRaw.focusEntityName === 'string' ? contextRaw.focusEntityName : null,
-			data:
-				contextRaw.data && typeof contextRaw.data === 'object'
-					? (contextRaw.data as Record<string, unknown>)
-					: typeof contextRaw.data === 'string'
-						? contextRaw.data
-						: null
-		}
-	};
-}
-
 const PREPARED_HISTORY_ROLES = new Set<FastChatHistoryMessage['role']>([
 	'user',
 	'assistant',
@@ -978,7 +940,7 @@ function normalizePreparedHistoryStrategy(
 }
 
 async function consumePreparedPrompt(params: {
-	supabase: any;
+	supabase: FastChatSupabaseClient;
 	key: string | null;
 	userId: string;
 	sessionId: string;
@@ -1010,7 +972,8 @@ async function consumePreparedPrompt(params: {
 		return { hit: false, reason: 'bad_format' };
 	}
 
-	const { data, error } = await params.supabase
+	const preparedPrompts = params.supabase as unknown as PreparedPromptsTableClient;
+	const { data, error } = await preparedPrompts
 		.from('agentic_chat_prepared_prompts')
 		.select('*')
 		.eq('id', parsed.id)
@@ -1056,7 +1019,7 @@ async function consumePreparedPrompt(params: {
 	}
 
 	const consumedAt = new Date().toISOString();
-	const { data: updated, error: updateError } = await params.supabase
+	const { data: updated, error: updateError } = await preparedPrompts
 		.from('agentic_chat_prepared_prompts')
 		.update({ consumed_at: consumedAt, updated_at: consumedAt })
 		.eq('id', row.id)
@@ -1332,7 +1295,7 @@ function buildContextToolSummary(params: {
 }
 
 async function updateAgentMetadata(
-	supabase: any,
+	supabase: FastChatSupabaseClient,
 	sessionId: string,
 	patch: Record<string, unknown>,
 	options?: {
@@ -1342,7 +1305,7 @@ async function updateAgentMetadata(
 	}
 ): Promise<void> {
 	const errorLogger = options?.errorLogger;
-	const { data, error } = await (supabase as any).rpc('merge_chat_session_agent_metadata', {
+	const { data, error } = await supabase.rpc('merge_chat_session_agent_metadata', {
 		p_session_id: sessionId,
 		p_patch: patch as Json
 	});
@@ -1410,15 +1373,15 @@ function emitToolCall(
 		});
 }
 
+// Canonical tool_result wire shape: snake_case fields only. The camelCase
+// duplicates (toolName/toolCallId) and the `data` alias for `result` were
+// dropped 2026-06-10; the SSE handler and tool presenter read tool_name,
+// tool_call_id, and result.
 function buildToolResultEventPayload(toolCall: ChatToolCall, result: ChatToolResult) {
-	const toolName = toolCall.function.name;
 	return {
 		...result,
-		tool_name: toolName,
-		toolName,
-		toolCallId: result.tool_call_id ?? toolCall.id,
-		tool_call_id: result.tool_call_id ?? toolCall.id,
-		data: result.result
+		tool_name: toolCall.function.name,
+		tool_call_id: result.tool_call_id ?? toolCall.id
 	};
 }
 
@@ -2237,7 +2200,7 @@ function buildToolExecutionInsertRows(params: {
 }
 
 async function persistToolExecutionRows(params: {
-	supabase: any;
+	supabase: FastChatSupabaseClient;
 	sessionId: string;
 	messageId: string | null;
 	turnRunId?: string | null;
@@ -2403,15 +2366,22 @@ export const POST: RequestHandler = async ({
 	try {
 		streamRequest = await parseRequest(request);
 	} catch (error) {
+		const validationIssues =
+			error instanceof FastChatRequestValidationError ? error.issues : null;
 		logger.warn('Failed to parse V2 stream request', { error });
 		logFastChatError({
 			error,
 			operationType: 'fastchat_stream_parse',
 			metadata: {
-				parseStage: 'request_json'
+				parseStage: validationIssues ? 'request_schema' : 'request_json',
+				...(validationIssues ? { validationIssues } : {})
 			}
 		});
-		return ApiResponse.badRequest('Invalid request body');
+		return ApiResponse.badRequest(
+			validationIssues
+				? `Invalid request body: ${validationIssues.join('; ')}`
+				: 'Invalid request body'
+		);
 	}
 
 	const message = typeof streamRequest.message === 'string' ? streamRequest.message.trim() : '';
@@ -2441,17 +2411,11 @@ export const POST: RequestHandler = async ({
 		clientTurnId,
 		createFallbackId: uuidv4
 	});
-	const requestPrewarmedContext = normalizePrewarmedContextCache(
-		streamRequest.prewarmedContext ?? streamRequest.prewarmed_context ?? null
-	);
-	const requestPreparedPromptKey =
-		typeof streamRequest.preparedPromptKey === 'string' &&
-		streamRequest.preparedPromptKey.trim().length > 0
-			? streamRequest.preparedPromptKey.trim()
-			: typeof streamRequest.prepared_prompt_key === 'string' &&
-				  streamRequest.prepared_prompt_key.trim().length > 0
-				? streamRequest.prepared_prompt_key.trim()
-				: null;
+	// Both fields are normalized at parseRequest: prewarmedContext is a
+	// validated FastChatContextCache (or null) and preparedPromptKey is
+	// trimmed-or-null.
+	const requestPrewarmedContext = streamRequest.prewarmedContext ?? null;
+	const requestPreparedPromptKey = streamRequest.preparedPromptKey ?? null;
 
 	const initialContextType = normalizeFastContextType(streamRequest.context_type);
 	const attachmentProjectId = requestAttachmentRefs.length
@@ -2864,12 +2828,7 @@ export const POST: RequestHandler = async ({
 			endpoint: FASTCHAT_STREAM_ENDPOINT,
 			httpMethod: FASTCHAT_STREAM_METHOD
 		});
-		const voiceGroupId =
-			typeof streamRequest.voiceNoteGroupId === 'string'
-				? streamRequest.voiceNoteGroupId
-				: typeof streamRequest.voice_note_group_id === 'string'
-					? streamRequest.voice_note_group_id
-					: undefined;
+		const voiceGroupId = streamRequest.voiceNoteGroupId;
 		let stopCancelWatcher: (() => void) | null = null;
 		let activeSupervisorCheckpoint: ChatTurnCheckpoint | null = null;
 		let resumingSupervisorCheckpoint: ChatTurnCheckpoint | null = null;
@@ -3173,8 +3132,7 @@ export const POST: RequestHandler = async ({
 				});
 			}
 
-			const requestLastTurnContext =
-				streamRequest.lastTurnContext ?? streamRequest.last_turn_context ?? null;
+			const requestLastTurnContext = streamRequest.lastTurnContext ?? null;
 			const continuityHint = buildLastTurnContinuityHint(requestLastTurnContext);
 			const conversationSummary =
 				typeof session.summary === 'string' ? session.summary : null;
@@ -3217,14 +3175,6 @@ export const POST: RequestHandler = async ({
 				httpReferer: request.headers.get('referer') ?? undefined,
 				appName: 'BuildOS Agentic Chat V2'
 			});
-			const turnSupervisorJudgeConfig = resolveTurnSupervisorJudgeConfig();
-			const turnSupervisorJudge = turnSupervisorJudgeConfig.enabled
-				? createLLMTurnSupervisorJudge({
-						llm,
-						timeoutMs: turnSupervisorJudgeConfig.timeoutMs,
-						model: turnSupervisorJudgeConfig.model
-					})
-				: undefined;
 			const gatewayEnabled = true;
 			const toolSelectionStartedAtMs = Date.now();
 			const selectedSurfaceProfile = resolveFastChatSurfaceProfileForTurn({
@@ -3414,13 +3364,6 @@ export const POST: RequestHandler = async ({
 				queueTimingMetric(failedReason);
 				return;
 			}
-			recordTurnEvent('llm', 'supervisor_judge_config', {
-				enabled: turnSupervisorJudgeConfig.enabled,
-				enabled_env_present: turnSupervisorJudgeConfig.enabledEnvPresent,
-				timeout_ms: turnSupervisorJudgeConfig.timeoutMs,
-				max_calls: turnSupervisorJudgeConfig.maxCalls,
-				model: turnSupervisorJudgeConfig.model ?? null
-			});
 			if (activeSupervisorCheckpoint) {
 				try {
 					resumingSupervisorCheckpoint = await markCheckpointResuming({
@@ -3621,60 +3564,9 @@ export const POST: RequestHandler = async ({
 					requestPrewarmedContext.key === cacheKey &&
 					isCacheFresh(requestPrewarmedContext);
 				if (preparedPromptForTurn.hit) {
-					const preparedContext = preparedPromptForTurn.row.context_payload;
-					const preparedContextType =
-						typeof preparedContext.contextType === 'string'
-							? preparedContext.contextType
-							: typeof preparedContext.context_type === 'string'
-								? preparedContext.context_type
-								: contextType;
-					promptContext = {
-						contextType: normalizeFastContextType(
-							preparedContextType as ChatContextType
-						),
-						entityId:
-							(typeof preparedContext.entityId === 'string'
-								? preparedContext.entityId
-								: typeof preparedContext.entity_id === 'string'
-									? preparedContext.entity_id
-									: null) ?? null,
-						projectId:
-							(typeof preparedContext.projectId === 'string'
-								? preparedContext.projectId
-								: typeof preparedContext.project_id === 'string'
-									? preparedContext.project_id
-									: null) ?? null,
-						projectName:
-							typeof preparedContext.projectName === 'string'
-								? preparedContext.projectName
-								: typeof preparedContext.project_name === 'string'
-									? preparedContext.project_name
-									: null,
-						focusEntityType:
-							typeof preparedContext.focusEntityType === 'string'
-								? preparedContext.focusEntityType
-								: typeof preparedContext.focus_entity_type === 'string'
-									? preparedContext.focus_entity_type
-									: null,
-						focusEntityId:
-							typeof preparedContext.focusEntityId === 'string'
-								? preparedContext.focusEntityId
-								: typeof preparedContext.focus_entity_id === 'string'
-									? preparedContext.focus_entity_id
-									: null,
-						focusEntityName:
-							typeof preparedContext.focusEntityName === 'string'
-								? preparedContext.focusEntityName
-								: typeof preparedContext.focus_entity_name === 'string'
-									? preparedContext.focus_entity_name
-									: null,
-						data:
-							preparedContext.data && typeof preparedContext.data === 'object'
-								? (preparedContext.data as Record<string, unknown>)
-								: typeof preparedContext.data === 'string'
-									? preparedContext.data
-									: null
-					};
+					promptContext = normalizeFastChatContextSnapshot(
+						preparedPromptForTurn.row.context_payload
+					) ?? { contextType };
 					systemPrompt = preparedPromptForTurn.surface.system_prompt;
 					litePromptEnvelope = {
 						promptVariant: LITE_PROMPT_VARIANT,
@@ -4129,8 +4021,6 @@ export const POST: RequestHandler = async ({
 				maxToolRounds: Math.max(1, gatewayRoundCap),
 				allowAutonomousRecovery: FASTCHAT_AUTONOMOUS_RECOVERY_ENABLED,
 				tools,
-				turnSupervisorJudge,
-				maxSupervisorJudgeCalls: turnSupervisorJudgeConfig.maxCalls,
 				// Live orchestration-budget snapshot from provider-reported tokens.
 				// Not re-emitted to the UI badge because the UI uses a different
 				// (smaller) budget calibrated for chat length; mixing them would

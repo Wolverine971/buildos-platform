@@ -69,6 +69,47 @@ describe('selectFastChatTools', () => {
 		expect(names).not.toContain('update_onto_task');
 	});
 
+	it('gives daily-brief turns cross-project task and calendar writes', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+
+		const names = selectFastChatTools({
+			contextType: 'daily_brief',
+			latestUserMessage: 'Please update everything so it’s up to date.'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		// Read + discovery surface from global_basic stays intact
+		expect(names).toContain('search_onto_projects');
+		expect(names).toContain('search_all_projects');
+		expect(names).toContain('get_project_overview');
+		expect(names).toContain('tool_search');
+		// Direct writes so brief follow-ups never depend on a tool_search round
+		expect(names).toContain('create_onto_task');
+		expect(names).toContain('update_onto_task');
+		expect(names).toContain('get_onto_task_details');
+		expect(names).toContain('create_calendar_event');
+		expect(names).toContain('update_calendar_event');
+		expect(names).toContain('list_calendar_events');
+		// Deletes keep their confirm-first discovery path
+		expect(names).not.toContain('delete_onto_task');
+		expect(names).not.toContain('delete_calendar_event');
+	});
+
+	it('keeps writes available on daily-brief follow-up turns without mutation keywords', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+
+		const names = selectFastChatTools({
+			contextType: 'daily_brief',
+			latestUserMessage: 'ok did you finish?'
+		})
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).toContain('update_onto_task');
+		expect(names).toContain('create_calendar_event');
+	});
+
 	it('uses the minimal project-create hot path', () => {
 		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
 

@@ -2,6 +2,9 @@
 name: Build Quality UI/UX
 description: Root source-backed skill architecture for UI/UX quality work, routing to child skills for general UI review, visual craft, accessibility, marketing pages, calm software, delight, design systems, information architecture, usability research, and implementation verification gaps.
 path: docs/research/youtube-library/skill-drafts/build-quality-ui-ux/SKILL.md
+status: registered
+promoted_to: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/build_quality_ui_ux/SKILL.md
+last_promoted: '2026-06-10'
 ---
 
 # Build Quality UI/UX

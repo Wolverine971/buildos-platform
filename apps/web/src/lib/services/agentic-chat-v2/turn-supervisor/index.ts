@@ -1,7 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/index.ts
 export { createDeterministicTurnSupervisor } from './deterministic-supervisor';
 export { applyFinalizationGuard } from './finalization-guard';
-export { createLLMTurnSupervisorJudge } from './llm-judge';
 export {
 	buildCheckpointResumeSystemMessage,
 	createTurnCheckpoint,
@@ -24,9 +23,6 @@ export type {
 	TurnSupervisorConfig,
 	TurnSupervisorDecision,
 	TurnSupervisorDecisionRecord,
-	TurnSupervisorJudge,
-	TurnSupervisorJudgeInput,
-	TurnSupervisorJudgeTrigger,
+	TurnSupervisorDecisionTrigger,
 	TurnSupervisorObservation
 } from './types';
-export type { LLMTurnSupervisorJudgeOptions } from './llm-judge';

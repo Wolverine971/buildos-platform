@@ -1,5 +1,6 @@
 ---
 title: 'Google Calendar For AI Agents: Search Before You Create'
+seoTitle: 'Google Calendar For AI Agents: Agent Skill'
 description: 'A portable Google Calendar skill for AI agents: choose scope first, search before creating events, use exact IDs for mutations, and treat recurrence as high risk.'
 author: 'DJ Wayne'
 date: '2026-04-27'

@@ -18,7 +18,7 @@ tags:
         'web-design',
         'product-and-design'
     ]
-readingTime: 16
+readingTime: 10
 excerpt: 'Reject pop-psychology color rules. Color is personal, contextual, connotative, relational, and cultural. Pick the right model for the medium (CMYK / RGB / HSB), build palettes through structured frameworks, and proportion them with 60/30/10 — not by guessing what feels premium.'
 sourceTitle: 'The ULTIMATE Color Theory Guide For Beginners'
 sourceCreator: 'DesignSpo'

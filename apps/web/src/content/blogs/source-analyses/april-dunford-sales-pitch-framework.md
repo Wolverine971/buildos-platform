@@ -1,5 +1,6 @@
 ---
 title: 'The Sales Pitch Framework: Lessons from April Dunford'
+seoTitle: 'The Sales Pitch Framework: April Dunford'
 description: "A deep read of April Dunford on Lenny's Podcast — the two-part Setup → Follow-Through structure, differentiated value, why the setup eliminates most objections, and why FOMO marketing produces churning buyers."
 author: 'DJ Wayne'
 date: '2026-05-04'
@@ -19,7 +20,7 @@ tags:
         'product-strategy',
         'marketing-and-content'
     ]
-readingTime: 11
+readingTime: 8
 excerpt: "A sales pitch is not a product expo. It's a two-part story — The Setup (market context, alternatives, perfect-world scenario) and The Follow-Through (introduction, differentiated value, proof, objections, ask) — designed to align the prospect with your worldview before you ever describe what you sell."
 sourceTitle: 'A step-by-step guide to crafting a sales pitch that wins (April Dunford)'
 sourceCreator: 'April Dunford'

@@ -43,8 +43,7 @@ import {
 	type FinalizationGuardResult,
 	type TurnSupervisor,
 	type TurnSupervisorDecisionRecord,
-	type TurnSupervisorJudge,
-	type TurnSupervisorJudgeTrigger,
+	type TurnSupervisorDecisionTrigger,
 	type TurnSupervisorObservation
 } from '../turn-supervisor';
 import {
@@ -107,8 +106,6 @@ type StreamFastChatParams = {
 	onToolResult?: (execution: FastToolExecution) => Promise<void> | void;
 	onContextUsageUpdate?: (snapshot: ContextUsageSnapshot) => Promise<void> | void;
 	turnSupervisor?: TurnSupervisor;
-	turnSupervisorJudge?: TurnSupervisorJudge;
-	maxSupervisorJudgeCalls?: number;
 	onSupervisorDecision?: (record: TurnSupervisorDecisionRecord) => Promise<void> | void;
 	orchestrationTokenBudget?: number;
 	maxToolRounds?: number;
@@ -233,10 +230,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			}
 		});
 	const supervisorDecisions: TurnSupervisorDecisionRecord[] = [];
-	const supervisorJudge = params.turnSupervisorJudge;
-	const maxSupervisorJudgeCalls = Math.max(0, params.maxSupervisorJudgeCalls ?? 3);
-	let supervisorJudgeCallCount = 0;
-	const supervisorJudgeKeys = new Set<string>();
 	let observeSupervisor: (
 		observation: TurnSupervisorObservation
 	) => Promise<void> = async () => {};
@@ -582,10 +575,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		toolLeadInEmitted = true;
 	};
 
-	const resolveSupervisorJudgeTrigger = (
+	// Classifies a supervisor decision for telemetry (recorded as `trigger` on
+	// chat_turn_events). Originally fed the LLM judge, which was removed
+	// 2026-06-11 — the classification stayed because it's useful on its own.
+	const resolveSupervisorDecisionTrigger = (
 		record: TurnSupervisorDecisionRecord,
 		observation: TurnSupervisorObservation
-	): TurnSupervisorJudgeTrigger | null => {
+	): TurnSupervisorDecisionTrigger | null => {
 		const { decision, digest } = record;
 		if (decision.action === 'emit_status') {
 			return decision.reason === 'long_running_operation'
@@ -612,77 +608,6 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			if (digest.risks.includes('many_tool_calls')) return 'many_tool_calls';
 		}
 		return null;
-	};
-
-	const normalizeJudgeDecisionForTrigger = (
-		trigger: TurnSupervisorJudgeTrigger,
-		decision: TurnSupervisorDecisionRecord['decision'],
-		monitorDecision: TurnSupervisorDecisionRecord['decision']
-	): TurnSupervisorDecisionRecord['decision'] | null => {
-		if (decision.action === 'continue') return null;
-		if (monitorDecision.action === 'emit_status' && decision.action === 'emit_status') {
-			return null;
-		}
-		if (
-			(monitorDecision.action === 'ask_user' ||
-				monitorDecision.action === 'stop_with_message' ||
-				monitorDecision.action === 'force_synthesis') &&
-			(decision.action === 'emit_status' || decision.action === 'flag_eval')
-		) {
-			return null;
-		}
-		if (
-			trigger === 'long_running_operation' &&
-			decision.action !== 'emit_status' &&
-			decision.action !== 'flag_eval'
-		) {
-			return null;
-		}
-		if (trigger === 'long_silence' && decision.action === 'ask_user') {
-			return null;
-		}
-		return decision;
-	};
-
-	const maybeRunSupervisorJudge = async (
-		record: TurnSupervisorDecisionRecord,
-		observation: TurnSupervisorObservation
-	): Promise<TurnSupervisorDecisionRecord | null> => {
-		if (!supervisorJudge || supervisorJudgeCallCount >= maxSupervisorJudgeCalls) {
-			return null;
-		}
-		const trigger = resolveSupervisorJudgeTrigger(record, observation);
-		if (!trigger) return null;
-
-		const key = `${trigger}:${record.decision.action}:${'reason' in record.decision ? record.decision.reason : ''}`;
-		if (supervisorJudgeKeys.has(key)) return null;
-		supervisorJudgeKeys.add(key);
-		supervisorJudgeCallCount += 1;
-
-		try {
-			const judgedDecision = await supervisorJudge.evaluate({
-				trigger,
-				digest: record.digest,
-				deterministicDecision: record.decision,
-				observationType: observation.type
-			});
-			if (!judgedDecision) return null;
-			const normalizedDecision = normalizeJudgeDecisionForTrigger(
-				trigger,
-				judgedDecision,
-				record.decision
-			);
-			if (!normalizedDecision) return null;
-			return {
-				decision: normalizedDecision,
-				digest: record.digest,
-				at: new Date().toISOString(),
-				source: 'judge',
-				trigger
-			};
-		} catch {
-			return null;
-		}
 	};
 
 	const handleSupervisorDecisionRecord = async (
@@ -739,22 +664,12 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				at: new Date().toISOString(),
 				source: 'monitor'
 			};
-			const monitorTrigger = resolveSupervisorJudgeTrigger(monitorRecord, observation);
+			const monitorTrigger = resolveSupervisorDecisionTrigger(monitorRecord, observation);
 			if (monitorTrigger) {
 				monitorRecord.trigger = monitorTrigger;
 			}
 
-			if (decision.action === 'emit_status') {
-				await handleSupervisorDecisionRecord(monitorRecord);
-				const judgeRecord = await maybeRunSupervisorJudge(monitorRecord, observation);
-				if (judgeRecord) {
-					await handleSupervisorDecisionRecord(judgeRecord);
-				}
-				continue;
-			}
-
-			const judgeRecord = await maybeRunSupervisorJudge(monitorRecord, observation);
-			await handleSupervisorDecisionRecord(judgeRecord ?? monitorRecord);
+			await handleSupervisorDecisionRecord(monitorRecord);
 		}
 	};
 

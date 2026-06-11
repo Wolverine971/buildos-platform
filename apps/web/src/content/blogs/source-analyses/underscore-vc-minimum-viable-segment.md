@@ -1,5 +1,6 @@
 ---
 title: 'Minimum Viable Segment: Lessons from Underscore VC (Michael Skok)'
+seoTitle: "Minimum Viable Segment: Michael Skok's Framework"
 description: 'A deep read of the Minimum Viable Segment (MVS) framework from Underscore VC and Michael Skok — the three criteria a segment must meet (Common Needs, Dominability, Viability with MVP), the disqualifiers that pull a segment out of scope, and why divergent needs are the real reason MVPs fail to land.'
 author: 'DJ Wayne'
 date: '2026-05-15'
@@ -113,19 +114,17 @@ Beyond the three required criteria, Underscore VC names four practical reinforce
 | Customization needs exceed MVP scope                           | "Win" customers become a service load that prevents serving the next ten.                |
 | Members do not talk to each other                              | No word-of-mouth compounding; every customer is a fresh cold start.                      |
 
-## What this contributes to the BuildOS ICP and Signal Design child skill
+## How to use the MVS gate
 
-1. **Three-test segment gate.** Every segment definition the skill produces must pass the three MVS tests explicitly. The output contract has a `mvs_check: { common_needs: pass | fail, dominability: pass | fail, viability: pass | fail }` field. A single fail blocks the segment from outreach.
-2. **The "size" inversion.** The skill defaults to recommending the _smallest_ dominable segment, not the largest serviceable segment. The compiler rejects "broader is better" framings.
-3. **Channel reachability as a required field.** Segment definitions require a named, consistent reach channel (a LinkedIn search, an industry list, a trade publication, a specific community). "Mixed channels" is treated as a soft-fail and triggers a sub-segment proposal.
-4. **Shared-vocabulary requirement.** The skill asks for the _exact language_ the segment uses for its primary pain. If the segment uses multiple incompatible phrasings, the segment is incoherent and gets split or recut.
-5. **Reconciles the MVS-vs-TAM tension.** The skill explicitly separates "ICP for outreach this quarter" (must pass MVS) from "TAM over time" (the segments you graduate into after dominating MVS). The first is the skill's scope; the second is out of scope.
+Run every candidate segment through the three tests before you spend a dollar of outreach on it:
 
-## How MVS interacts with the other source layers
+1. **Common needs.** The segment must share one specific, namable pain — in their own words. If they describe the problem in incompatible ways, it isn't one segment; split it.
+2. **Dominability.** Default to the _smallest_ segment you can dominate, not the largest you can serve. "Broader is better" is the trap.
+3. **Viability.** Your current MVP has to actually serve them, and you need one consistent way to reach them — a single LinkedIn search, industry list, or community. Mixed channels are a soft fail; sub-segment until the channel is clean.
 
-- **Maurya (switching triggers)**: Trigger types describe _when_ a segment is in-market. MVS is the gate _before_ trigger analysis — a segment that fails MVS is not worth monitoring triggers for.
-- **Murphy (seven dimensions)**: Murphy's "Able" dimension overlaps with MVS Viability. Murphy's "Acquisition Efficiency" overlaps with MVS Channel Reachability. MVS is the cleaner first-pass gate; Murphy is the deeper quality scorer.
-- **Roberge (Green/Yellow/Red)**: A Green segment is by definition an MVS-passing segment that has passed LIR validation. MVS is necessary but not sufficient for Green status.
+And keep two horizons separate: the ICP you can win _this quarter_ (must pass MVS) versus the TAM you graduate into _over time_ (the segments you earn after dominating the first). MVS governs the first; it has nothing to say about the second.
+
+This gate pairs naturally with the deeper fit scoring in [Lincoln Murphy's ICP framework](/blogs/source-analyses/lincoln-murphy-ideal-customer-profile-framework) and the PMF validation in [Mark Roberge's segment tiering](/blogs/source-analyses/mark-roberge-science-of-scaling-segment-tiering): MVS is the fast first-pass gate, Murphy is the deeper quality score, and a Roberge "Green" segment is an MVS-passing segment that has also cleared retention validation.
 
 ## Caveats
 

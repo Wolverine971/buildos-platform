@@ -209,6 +209,7 @@
 				},
 				"troubleshooting-common-issues": {
 					"title": "BuildOS Troubleshooting Guide: Fix Common Issues Fast",
+					"seoTitle": "BuildOS Troubleshooting: Fix Common Issues",
 					"description": "Quick fixes for the most common BuildOS problems. Calendar sync not working? Brain dump not parsing right? Projects feeling off? Start here.",
 					"author": "DJ Wayne",
 					"date": "2025-06-27",
@@ -242,6 +243,7 @@
 			"posts": {
 				"cold-email-engagement-first-outreach": {
 					"title": "Cold Email Engagement-First Outreach: An Agent Skill For 2026 Cold Campaigns",
+					"seoTitle": "Cold Email Engagement-First Outreach",
 					"description": "A source-lineaged root combo skill for planning, drafting, auditing, and rewriting cold outreach. Distilled from seven cold-email source analyses into one master playbook for high-volume campaigns, strategic accounts, single-target relationship outreach, reply revival, investor fundraising, founder-led outreach, recruiting, PR, partnerships, and customer research.",
 					"author": "DJ Wayne",
 					"date": "2026-05-14",
@@ -258,7 +260,7 @@
 						"marketing-and-content",
 						"buildos"
 					],
-					"readingTime": 16,
+					"readingTime": 39,
 					"excerpt": "Cold email in 2026 is not one template. It is a mode router plus a drafting and audit system: deliverability floor, persona-times-signal segmentation, packaging, real artifact offers, researched bridges, reply routing, and mode-locked cadence.",
 					"skillId": "sales-and-growth/cold-email-engagement-first-outreach",
 					"skillType": "combo",
@@ -368,6 +370,7 @@
 				},
 				"cold-email-icp-signal-design": {
 					"title": "Cold Email ICP And Signal Design: An Agent Skill For Right-Person Outreach",
+					"seoTitle": "Cold Email ICP & Signal Design: Agent Skill",
 					"description": "A source-lineaged child skill for defining the right person, right moment, segment, buying signal, timing thesis, buying committee map, and disqualifiers before cold outreach.",
 					"author": "DJ Wayne",
 					"date": "2026-05-15",
@@ -469,6 +472,7 @@
 				},
 				"google-calendar-for-ai-agents-search-before-you-create": {
 					"title": "Google Calendar For AI Agents: Search Before You Create",
+					"seoTitle": "Google Calendar For AI Agents: Agent Skill",
 					"description": "A portable Google Calendar skill for AI agents: choose scope first, search before creating events, use exact IDs for mutations, and treat recurrence as high risk.",
 					"author": "DJ Wayne",
 					"date": "2026-04-27",
@@ -510,6 +514,7 @@
 				},
 				"hook-craft-short-form": {
 					"title": "Hook Craft For Short-Form: An Agent Skill For Better Openers",
+					"seoTitle": "Hook Craft For Short-Form: Agent Skill",
 					"description": "A source-lineaged agent skill for drafting, auditing, and rewriting hooks across short-form video, blog leads, social posts, demo openers, and pitch slide 1.",
 					"author": "DJ Wayne",
 					"date": "2026-05-02",
@@ -602,6 +607,7 @@
 				},
 				"landing-page-scorecard-funnel": {
 					"title": "Landing Page Scorecard Funnel: An Agent Skill For Qualified Lead Capture",
+					"seoTitle": "Landing Page Scorecard: An Agent Skill",
 					"description": "A portable agent skill for designing assessment-driven landing pages that sell the scorecard, capture useful signals, personalize results, and route leads by fit.",
 					"author": "DJ Wayne",
 					"date": "2026-05-01",
@@ -692,6 +698,7 @@
 				},
 				"story-driven-content-craft": {
 					"title": "Story-Driven Content Craft: An Agent Skill For Nonfiction That Holds Attention",
+					"seoTitle": "Story-Driven Content Craft: Agent Skill",
 					"description": "A source-lineaged agent skill for structuring founder essays, video scripts, social posts, and pitch narratives with stronger loops, rhythm, lens, payoff, and retention craft.",
 					"author": "DJ Wayne",
 					"date": "2026-05-02",
@@ -774,6 +781,7 @@
 				},
 				"ui-ux-quality-review": {
 					"title": "UI/UX Quality Review: An Agent Skill For Product Interface Audits",
+					"seoTitle": "UI/UX Quality Review: An Agent Skill",
 					"description": "A source-lineaged agent skill for reviewing product screens, landing pages, dashboards, and mobile flows. Each principle ships in two layers: human-readable principle + agent-checkable rules with thresholds and named patterns.",
 					"author": "DJ Wayne",
 					"date": "2026-05-02",
@@ -790,7 +798,7 @@
 						"product-and-design",
 						"buildos"
 					],
-					"readingTime": 18,
+					"readingTime": 22,
 					"excerpt": "A practical UI/UX review skill for agents and humans. Each principle has a human view and an agent view: the principle on top, then the checkable rules and thresholds an agent runs against the screen.",
 					"skillId": "product-and-design/ui-ux-quality-review",
 					"skillType": "combo",
@@ -896,6 +904,7 @@
 				},
 				"viral-content-for-boring-brands": {
 					"title": "Viral Content For Boring Brands: An Agent Skill For Brand-Account Content",
+					"seoTitle": "Viral Content For Boring Brands: Agent Skill",
 					"description": "A source-lineaged agent skill for designing or auditing brand-account content (B2B SaaS, dev tools, commodity products) against the six pre-conscious filters that decide whether a viewer scrolls or stays in the first two seconds.",
 					"author": "DJ Wayne",
 					"date": "2026-05-10",
@@ -913,7 +922,7 @@
 						"marketing-and-content",
 						"buildos"
 					],
-					"readingTime": 14,
+					"readingTime": 20,
 					"excerpt": "Six pre-conscious filters fire in the viewer's brain before the first second is over. Pass all six, the viewer stays and shares. Fail one, they scroll. This skill turns that into an agent-readable audit and design playbook for brand and founder accounts.",
 					"skillId": "marketing-and-content/viral-content-for-boring-brands",
 					"skillType": "combo",
@@ -1013,6 +1022,7 @@
 				},
 				"buildos-vs-chatgpt-context-that-compounds": {
 					"title": "BuildOS vs ChatGPT: Why Your Projects Need More Than Memory",
+					"seoTitle": "BuildOS vs ChatGPT: Beyond Memory",
 					"description": "ChatGPT is incredibly powerful. But it doesn't know your projects. Here's why context that compounds beats memory that forgets.",
 					"slug": "buildos-vs-chatgpt-context-that-compounds",
 					"author": "DJ Wayne",
@@ -1260,6 +1270,7 @@
 				},
 				"effective-brain-dumping": {
 					"title": "Brain Dumps That Actually Work: From Chaos to Context",
+					"seoTitle": "Brain Dumps That Actually Work",
 					"description": "Your brain dump doesn't have to become another abandoned note. How BuildOS turns scattered thoughts into goals, plans, and tasks that connect.",
 					"author": "DJ Wayne",
 					"date": "2025-06-28",
@@ -1286,6 +1297,7 @@
 				},
 				"first-project-setup": {
 					"title": "Creating Your First Project in BuildOS: Just Start Talking",
+					"seoTitle": "Creating Your First Project in BuildOS",
 					"description": "Learn how to create your first project in BuildOS by simply having a conversation. No forms, no templates, just tell BuildOS what you want to build.",
 					"author": "DJ Wayne",
 					"date": "2025-06-26",
@@ -1334,6 +1346,7 @@
 				},
 				"under-the-hood": {
 					"title": "Under the Hood: How BuildOS Organizes Your Thoughts",
+					"seoTitle": "Under the Hood: How BuildOS Organizes Ideas",
 					"description": "A peek behind the curtain at the BuildOS context architecture — where goals, milestones, plans, tasks, and documents stay connected as one evolving system.",
 					"author": "DJ Wayne",
 					"date": "2025-12-17",
@@ -1448,6 +1461,7 @@
 				},
 				"anti-ai-assistant-execution-engine": {
 					"title": "BuildOS: The Anti-AI-Assistant That Actually Helps You Ship",
+					"seoTitle": "The Anti-AI-Assistant That Helps You Ship",
 					"description": "Why BuildOS refuses to do everything for you, and why that makes it work. How context engineering beats autonomous agents for actually shipping products.",
 					"author": "DJ Wayne",
 					"date": "2025-08-24",
@@ -1530,6 +1544,7 @@
 				},
 				"future-of-personal-knowledge-management": {
 					"title": "Personal Knowledge Management Is Broken, Here's What's Next",
+					"seoTitle": "Personal Knowledge Management Is Broken",
 					"description": "Studies suggest 80% of notes are never revisited. Most PKM is productivity theater. See what's replacing static archives with systems that turn notes into action.",
 					"author": "DJ Wayne",
 					"date": "2025-10-09",
@@ -1690,6 +1705,7 @@
 				},
 				"social-media-is-dead-interest-media": {
 					"title": "Social Media Is Dead. What You're Using Is Interest Media.",
+					"seoTitle": "Social Media Is Dead. It's Interest Media.",
 					"description": "\"Social media\" stopped being accurate years ago. What replaced it is interest media — a manifesto on the category shift, and what it means for your mind.",
 					"author": "DJ Wayne",
 					"date": "2026-04-17",
@@ -1720,6 +1736,7 @@
 				},
 				"the-floor-under-the-agents": {
 					"title": "The Floor Under the Agents: Where Does the Project Live?",
+					"seoTitle": "The Floor Under the Agents",
 					"description": "YC is flooded with agents, AI coworkers, vertical operating systems, and agent infrastructure. The missing question is where durable project memory lives.",
 					"author": "DJ Wayne",
 					"date": "2026-05-14",
@@ -2068,6 +2085,7 @@
 				},
 				"context-engineering-101": {
 					"title": "Prompt Engineering is Out. Context Engineering is In.",
+					"seoTitle": "Context Engineering, Not Prompt Engineering",
 					"description": "Prompt engineering crafts one-off asks. Context engineering builds persistent systems the model can reason over. Here's how BuildOS puts it into practice.",
 					"author": "DJ Wayne",
 					"date": "2025-08-05",
@@ -2100,6 +2118,7 @@
 				},
 				"evolution-of-note-taking": {
 					"title": "The Evolution of Note-Taking: From Collection to Action",
+					"seoTitle": "The Evolution of Note-Taking",
 					"description": "GTD, Notion, AI-powered notes — each promised a better filing cabinet. The real shift is from collecting ideas to making them move. Here's why BuildOS holds up.",
 					"author": "DJ Wayne",
 					"date": "2025-07-08",
@@ -2310,6 +2329,7 @@
 			"posts": {
 				"30mpc-multithreading-buying-committee": {
 					"title": "Multithreading and the Buying Committee: Lessons from 30MPC and Brent Adamson",
+					"seoTitle": "Multithreading the Buying Committee: 30MPC",
 					"description": "A deep read of the 30 Minutes to President's Club multithreading playbook and Brent Adamson's Mobilizer typology — the Golden Path (Champion → Department Leads → Power), why the rep who gets to power first wins the deal, the buyer-benefit framing that earns stakeholder loop-ins, and the 6.8-buyer committee data from Gartner that makes solo-decision-maker outreach a 2010s artifact.",
 					"author": "DJ Wayne",
 					"date": "2026-05-15",
@@ -2385,6 +2405,7 @@
 				},
 				"aaron-shepherd-volume-front-end-offer": {
 					"title": "Volume, Front-End Offer, And Human-Sounding Scripts: Lessons from Aaron Shepherd",
+					"seoTitle": "Volume & Front-End Offers: Aaron Shepherd",
 					"description": "A deep read of Aaron Shepherd's \"I Sent 1,500,000 Cold Emails Last Month, Here's What Works in 2026\" — the volume-as-data thesis, the 70/30 Outlook-Google domain infrastructure, the front-end-offer test-drive, and the human-sounding script discipline.",
 					"author": "DJ Wayne",
 					"date": "2026-05-14",
@@ -2401,7 +2422,7 @@
 						"sales-and-growth",
 						"marketing-and-content"
 					],
-					"readingTime": 11,
+					"readingTime": 8,
 					"excerpt": "Send a small list of perfect-fit leads and you cannot tell whether good or bad results were luck or signal. Volume is data. After 1.5 million cold emails in 30 days, Aaron Shepherd's framework collapses to three pillars: send enough to get statistical signal (and filter quality on the back end with a pre-call form), wrap whatever you sell in a front-end offer that feels like a test drive, and write scripts so casual they look like they were typed from a phone.",
 					"sourceTitle": "I Sent 1,500,000 Cold Emails Last Month, Here's What Works in 2026",
 					"sourceCreator": "Aaron Shepherd (GrowthFlare)",
@@ -2428,6 +2449,7 @@
 				},
 				"april-dunford-sales-pitch-framework": {
 					"title": "The Sales Pitch Framework: Lessons from April Dunford",
+					"seoTitle": "The Sales Pitch Framework: April Dunford",
 					"description": "A deep read of April Dunford on Lenny's Podcast — the two-part Setup → Follow-Through structure, differentiated value, why the setup eliminates most objections, and why FOMO marketing produces churning buyers.",
 					"author": "DJ Wayne",
 					"date": "2026-05-04",
@@ -2446,7 +2468,7 @@
 						"product-strategy",
 						"marketing-and-content"
 					],
-					"readingTime": 11,
+					"readingTime": 8,
 					"excerpt": "A sales pitch is not a product expo. It's a two-part story — The Setup (market context, alternatives, perfect-world scenario) and The Follow-Through (introduction, differentiated value, proof, objections, ask) — designed to align the prospect with your worldview before you ever describe what you sell.",
 					"sourceTitle": "A step-by-step guide to crafting a sales pitch that wins (April Dunford)",
 					"sourceCreator": "April Dunford",
@@ -2472,6 +2494,7 @@
 				},
 				"austin-schneider-engagement-first-cold-email-2026": {
 					"title": "Engagement-First Cold Email: Lessons from Austin Schneider (Instantly)",
+					"seoTitle": "Engagement-First Cold Email: Austin Schneider",
 					"description": "A deep read of Instantly's \"The New Way of Cold Emailing in 2026\" — why AI spam filters killed the seven-touch playbook, the deliverability infrastructure floor (5 emails per domain, ~30/day each), micro-targeted value campaigns (the under-50-recipient reply-rate cliff), and the two-touch rule with non-responder recycling.",
 					"author": "DJ Wayne",
 					"date": "2026-05-14",
@@ -2488,7 +2511,7 @@
 						"sales-and-growth",
 						"marketing-and-content"
 					],
-					"readingTime": 11,
+					"readingTime": 7,
 					"excerpt": "Gmail rolled out AI spam filters in 2024. Microsoft followed in 2025. The seven-touch, 10,000-emails-a-month playbook that worked in 2022–2023 now gets you flagged as a bulk sender. The 2026 version is engagement-first: deliverability infrastructure first, micro-targeted value campaigns second, a strict two-touch rule third — and the value in the email has to be an actual deliverable, not \"worth a chat.\"",
 					"sourceTitle": "The New Way of Cold Emailing in 2026",
 					"sourceCreator": "Austin Schneider (Instantly)",
@@ -2515,6 +2538,7 @@
 				},
 				"becc-holland-personalization-to-relevance": {
 					"title": "Personalization vs. Relevance: Lessons from Becc Holland (Flip the Script)",
+					"seoTitle": "Personalization vs. Relevance: Becc Holland",
 					"description": "A deep read of Becc Holland's relevance framework — the four relevance types (Firmographic, Demographic, Technographic, Trigger-based), the three trigger sub-types (Inbound, Postbound, Bridgebound), and the \"if you can send it to two people, it's relevance not personalization\" test that separates real research from decorative AI-generated openers.",
 					"author": "DJ Wayne",
 					"date": "2026-05-15",
@@ -2570,6 +2594,7 @@
 				},
 				"connor-murray-cold-email-assumptive-cadence": {
 					"title": "Less Is More Cold Email: Lessons from Connor Murray",
+					"seoTitle": "Less Is More Cold Email: Connor Murray",
 					"description": "A deep read of Connor Murray's \"10 Years of Expert Cold Email Advice in 36 Minutes\" — the three-paragraph body, assumptive language replacement, the coiled-spring prep system, and the AB follow-up cadence that turns a 10-email day into a 100-email day.",
 					"author": "DJ Wayne",
 					"date": "2026-05-14",
@@ -2666,6 +2691,7 @@
 				},
 				"daniel-priestley-1m-landing-page": {
 					"title": "The $1 Million Landing Page: Lessons from Daniel Priestley",
+					"seoTitle": "The $1 Million Landing Page: Daniel Priestley",
 					"description": "A deep read of Daniel Priestley's \"$1 Million Landing Page\" — the 3-part scorecard funnel (landing page sells the assessment, 15-question quiz in 3 buckets, dynamic results page), the Big 5 qualifying questions, and the 20–40% conversion benchmark.",
 					"author": "DJ Wayne",
 					"date": "2026-05-04",
@@ -2683,7 +2709,7 @@
 						"sales-and-growth",
 						"marketing-and-content"
 					],
-					"readingTime": 11,
+					"readingTime": 8,
 					"excerpt": "Sell the assessment, not the product. The whole landing page is for one click — start the quiz. A 5-section landing page + 15 questions in 3 buckets + a dynamic results page produces a qualified, segmented sales pipeline with intent data baked in. Target: 20–40% of visitors start the quiz.",
 					"sourceTitle": "The $1 Million Landing Page",
 					"sourceCreator": "Daniel Priestley",
@@ -2724,7 +2750,7 @@
 						"web-design",
 						"product-and-design"
 					],
-					"readingTime": 16,
+					"readingTime": 10,
 					"excerpt": "Reject pop-psychology color rules. Color is personal, contextual, connotative, relational, and cultural. Pick the right model for the medium (CMYK / RGB / HSB), build palettes through structured frameworks, and proportion them with 60/30/10 — not by guessing what feels premium.",
 					"sourceTitle": "The ULTIMATE Color Theory Guide For Beginners",
 					"sourceCreator": "DesignSpo",
@@ -2751,6 +2777,7 @@
 				},
 				"designspo-golden-rule-web-design": {
 					"title": "The 4-Pixel Rule: Lessons from DesignSpo's Golden Rule of Web Design",
+					"seoTitle": "The 4-Pixel Rule of Web Design: DesignSpo",
 					"description": "A deep read of DesignSpo's \"Golden Rule Of Web Design\" — the mathematical system behind professional-feeling layouts. Every spacing, padding, gap, container width, and font size is a multiple of 4.",
 					"author": "DJ Wayne",
 					"date": "2026-05-04",
@@ -2811,7 +2838,7 @@
 						"web-design",
 						"product-and-design"
 					],
-					"readingTime": 18,
+					"readingTime": 10,
 					"excerpt": "Text commands the most visual attention in any design. A typeface is a tone of voice; ten controllable variables (size, weight, line-height, letter-spacing, kerning, contrast, alignment, etc.) determine whether the result is legible or not. A real type system replaces ad-hoc decisions with four roles and a grid.",
 					"sourceTitle": "The ULTIMATE Guide To Typography For Beginners",
 					"sourceCreator": "DesignSpo",
@@ -2855,7 +2882,7 @@
 						"web-design",
 						"product-and-design"
 					],
-					"readingTime": 13,
+					"readingTime": 10,
 					"excerpt": "Hierarchy is a ranking decision, not a styling decision. Decide what should be seen first, second, third — then apply contrast levers in rank order. Most of the design must be uniform; primacy is scarce.",
 					"sourceTitle": "The Complete Guide To Visual Hierarchy",
 					"sourceCreator": "DesignSpo",
@@ -2882,6 +2909,7 @@
 				},
 				"florin-tatulea-reply-method-cold-email-showdown": {
 					"title": "Reply-Method Cold Email: Lessons from Florin Tatulea and 30MPC",
+					"seoTitle": "Reply-Method Cold Email: Florin Tatulea",
 					"description": "A deep read of the 30 Minutes to President's Club cold email showdown with Florin Tatulea, Evan Greek, and Jason Bay: packaging, subject-plus-preview, mobile-readable body copy, personality, social proof, AI-assisted research, and soft offer CTAs.",
 					"author": "DJ Wayne",
 					"date": "2026-05-15",
@@ -2899,7 +2927,7 @@
 						"sales-and-growth",
 						"marketing-and-content"
 					],
-					"readingTime": 12,
+					"readingTime": 7,
 					"excerpt": "The 30MPC cold email showdown is useful because it makes cold email judgment visible. Jason Bay grades packaging, body, and style while Florin Tatulea and Evan Greek draft live against weird prompts. The strongest transferable ideas: subject plus preview is the open mechanism, mobile-readable formatting matters, social proof lifts reply likelihood, AI is useful for research and ideation but not final judgment, and the CTA should often offer a small deliverable instead of asking for a meeting.",
 					"sourceTitle": "Cold Email Showdown: Rookie Sales Rep vs 10-Year Director",
 					"sourceCreator": "Florin Tatulea, Evan Greek, Jason Bay, 30 Minutes to President's Club",
@@ -2930,7 +2958,8 @@
 				},
 				"hormozi-newsletter-email-marketing-39-minutes": {
 					"title": "Newsletter Email Marketing in 39 Minutes: Lessons from Alex Hormozi",
-					"description": "A deep read of Alex Hormozi's \"Learn Email Marketing in 39 Minutes\" — the reward-every-action loop, the templated newsletter structure (subject → quote → tactic → CTA → P.S.), the 3x/week cadence question, the segmentation 791% Roi anecdote, and the deliverability discipline (plain text, mobile, money-language hygiene).",
+					"seoTitle": "Newsletter Email Marketing: Alex Hormozi",
+					"description": "A deep read of Alex Hormozi's \"Learn Email Marketing in 39 Minutes\" — the reward-every-action loop, the templated newsletter structure (subject → quote → tactic → CTA → P.S.), the 3x/week cadence question, the segmentation 791% ROI anecdote, and the deliverability discipline (plain text, mobile, money-language hygiene).",
 					"author": "DJ Wayne",
 					"date": "2026-05-14",
 					"lastmod": "2026-05-14",
@@ -2946,7 +2975,7 @@
 						"sales-and-growth",
 						"marketing-and-content"
 					],
-					"readingTime": 12,
+					"readingTime": 9,
 					"excerpt": "This is *not* a cold email playbook. Hormozi is teaching how to email a list of people who opted in — the average ROI is 35–45x because the cost of acquisition was already paid. The frame is content-via-email: reward every action in the chain (open, read, click, reply), template the format so readers know what they're getting, and treat the email like a published artifact (plain text, mobile, no money-language, one CTA per audience).",
 					"sourceTitle": "Learn Email Marketing in 39 Minutes!",
 					"sourceCreator": "Alex Hormozi",
@@ -2988,7 +3017,7 @@
 						"viral-patterns",
 						"marketing-and-content"
 					],
-					"readingTime": 18,
+					"readingTime": 11,
 					"excerpt": "All winning hooks open a curiosity loop by creating contrast between A (what the viewer believes) and B (what the video introduces). Across thousands of videos, the patterns reduce to six archetypes. Pick the archetype downstream of what visual you actually have — never from the topic.",
 					"sourceTitle": "I Studied 100 Viral Hooks, These 6 Will Make You Go Viral",
 					"sourceCreator": "Kane Kallaway",
@@ -3015,6 +3044,7 @@
 				},
 				"kallaway-6-words-hook": {
 					"title": "The 6 Words Every Hook Needs: Lessons from Kane Kallaway",
+					"seoTitle": "The 6 Words Every Hook Needs: Kallaway",
 					"description": "A deep read of Kallaway's \"The ONLY 6 Words You Need to Hook ANY Viewer\" — the six structural slots (Subject, Action, Objective, Contrast, Proof, Time), how they collapse, and the copy-work drill that makes the formula subconscious.",
 					"author": "DJ Wayne",
 					"date": "2026-05-04",
@@ -3031,7 +3061,7 @@
 						"minimum-viable-hook",
 						"marketing-and-content"
 					],
-					"readingTime": 14,
+					"readingTime": 9,
 					"excerpt": "A hook does not require a clever formula or strong writing. It requires six structural slots — four mandatory (Subject, Action, Objective, Contrast) and two optional (Proof, Time). Stop trying to \"write better\" and start stacking power-word chunks in the right order.",
 					"sourceTitle": "The ONLY 6 Words You Need to Hook ANY Viewer",
 					"sourceCreator": "Kane Kallaway",
@@ -3058,6 +3088,7 @@
 				},
 				"kallaway-7-storytelling-mistakes": {
 					"title": "7 Storytelling Mistakes: Lessons from Kane Kallaway",
+					"seoTitle": "7 Storytelling Mistakes: Kane Kallaway",
 					"description": "A deep read of Kallaway's \"7 Storytelling Mistakes That Are KILLING Small Creators\" — the rolling peak/release arc that replaces the bell curve, the W-stack reorder, the rebuy mechanic, villain framing, and atomic shareability.",
 					"author": "DJ Wayne",
 					"date": "2026-05-04",
@@ -3074,7 +3105,7 @@
 						"narrative-craft",
 						"marketing-and-content"
 					],
-					"readingTime": 13,
+					"readingTime": 9,
 					"excerpt": "Time compression has rewired audience attention. The traditional bell-curve story arc was built for captive audiences. On the internet, viewers re-decide every few seconds whether to keep watching. Modern storytelling is a rolling sequence of peaks and releases — and the seven mistakes here are the ways small creators still tell stories as if their viewer were trapped in a movie theater.",
 					"sourceTitle": "7 Storytelling Mistakes That Are KILLING Small Creators",
 					"sourceCreator": "Kane Kallaway",
@@ -3101,6 +3132,7 @@
 				},
 				"kallaway-hooks-impossible-to-skip": {
 					"title": "Hooks Impossible to Skip: Lessons from Kane Kallaway",
+					"seoTitle": "Hooks Impossible to Skip: Kane Kallaway",
 					"description": "A deep read of Kallaway's \"Give me 15 mins, and I'll make your hooks impossible to skip\" — the four-mistake diagnostic (Delay / Confusion / Irrelevance / Disinterest), the A vs B contrast formula, and a verbatim AI clarity-rewrite prompt.",
 					"author": "DJ Wayne",
 					"date": "2026-05-04",
@@ -3146,10 +3178,10 @@
 				},
 				"kallaway-irresistible-hooks": {
 					"title": "Irresistible Hooks: Lessons from Kane Kallaway",
-					"description": "A deep read of Kallaway's \"How to Create Irresistible Hooks\" — the three-beat formula (context lean → scroll-stop interjection → contrarian snapback), the four lean mechanisms, visual hooks, lead with pain, and cult-hopping.",
+					"description": "A deep read of two Kane Kallaway hook videos — the three-beat build formula (context lean → scroll-stop interjection → contrarian snapback) and the four-mistake diagnostic (Delay / Confusion / Irrelevance / Disinterest), plus the A/B contrast formula and his AI clarity-rewrite prompt.",
 					"author": "DJ Wayne",
 					"date": "2026-05-04",
-					"lastmod": "2026-05-04",
+					"lastmod": "2026-06-09",
 					"changefreq": "monthly",
 					"priority": "0.7",
 					"published": true,
@@ -3160,11 +3192,13 @@
 						"content-craft",
 						"retention",
 						"curiosity-loop",
+						"contrast",
 						"visual-hooks",
+						"rewrite-passes",
 						"marketing-and-content"
 					],
-					"readingTime": 14,
-					"excerpt": "Don't memorize hook lists. Master the psychology of the curiosity loop and run a repeatable three-step formula: Context Lean → Scroll-Stop Interjection → Contrarian Snapback. The hook's job is to make the viewer feel that the next sentence is the only sentence they could possibly want to hear.",
+					"readingTime": 13,
+					"excerpt": "A hook has one job: get the right viewer to opt in and stay. Kallaway gives you two tools for it — a three-beat formula to build a hook from scratch (Context Lean → Scroll-Stop Interjection → Contrarian Snapback) and a four-mistake checklist to fix one that isn't working (Delay, Confusion, Irrelevance, Disinterest). Build with the first; rewrite with the second.",
 					"sourceTitle": "How to Create Irresistible Hooks (and blow up your content)",
 					"sourceCreator": "Kane Kallaway",
 					"sourceUrl": "https://www.youtube.com/watch?v=LmXpbP7dD48",
@@ -3180,6 +3214,16 @@
 							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
 							"sourceType": "youtube_video",
 							"url": "https://www.youtube.com/watch?v=LmXpbP7dD48"
+						},
+						{
+							"title": "Give me 15 mins, and I'll make your hooks impossible to skip",
+							"creator": "Kane Kallaway",
+							"creatorType": "Person",
+							"creatorUrl": "https://www.youtube.com/@kallawaymarketing",
+							"channelName": "Kallaway",
+							"channelUrl": "https://www.youtube.com/@kallawaymarketing",
+							"sourceType": "youtube_video",
+							"url": "https://www.youtube.com/watch?v=2byPP_9F0-Q"
 						}
 					],
 					"relatedSkills": ["hook-craft-short-form"],
@@ -3190,6 +3234,7 @@
 				},
 				"kallaway-master-storyteller": {
 					"title": "How to Become a Master Storyteller: Lessons from Kane Kallaway",
+					"seoTitle": "How to Become a Master Storyteller: Kallaway",
 					"description": "A deep read of Kallaway's \"How To Become A Master Storyteller\" — the six craft moves: dance (but/therefore), rhythm (Gary Provost), tone (one close friend), direction (write the ending first), lens (category-of-one), and hook (show while you tell).",
 					"author": "DJ Wayne",
 					"date": "2026-05-04",
@@ -3207,7 +3252,7 @@
 						"short-form-video",
 						"marketing-and-content"
 					],
-					"readingTime": 13,
+					"readingTime": 10,
 					"excerpt": "Storytelling is a learnable stack of six craft moves, not a personality trait. Stories perform when they alternate context and conflict, pace through varied sentence rhythm, hold attention via conversational tone, are written end-first, get differentiated through unique story lenses, and open with visual hooks that show before they tell.",
 					"sourceTitle": "How To Become A Master Storyteller",
 					"sourceCreator": "Kane Kallaway",
@@ -3234,6 +3279,7 @@
 				},
 				"kallaway-storytelling-genius-dopamine-ladders": {
 					"title": "The Dopamine Ladder: Kane Kallaway on Storytelling Genius",
+					"seoTitle": "The Dopamine Ladder: Kane Kallaway",
 					"description": "A deep read of Kallaway's \"How to Become a Storytelling Genius (Dopamine Ladders)\" — six rungs from pre-cognitive stimulation to Pavlovian revelation, the curiosity-anticipation-validation cycle, and why faceless content caps out at rung 4.",
 					"author": "DJ Wayne",
 					"date": "2026-05-04",
@@ -3251,7 +3297,7 @@
 						"viewer-psychology",
 						"marketing-and-content"
 					],
-					"readingTime": 16,
+					"readingTime": 10,
 					"excerpt": "A viewer's attention is not won in a single hook. It is won across six escalating dopamine releases — Stimulation, Captivation, Anticipation, Validation, Affection, Revelation — that move from raw visual stimulation up to a Pavlovian bond with the creator.",
 					"sourceTitle": "How to Become a Storytelling Genius (Dopamine Ladders)",
 					"sourceCreator": "Kane Kallaway",
@@ -3278,6 +3324,7 @@
 				},
 				"kole-jain-7-ui-ux-mistakes-beginner": {
 					"title": "7 UI/UX Mistakes That Scream Beginner: Lessons from Kole Jain",
+					"seoTitle": "7 UI/UX Mistakes That Scream Beginner",
 					"description": "A deep read of Kole Jain's \"7 UI/UX mistakes that SCREAM you're a beginner\" — flow before pixels, the three-step shadow recipe, the 10px corner-radius standard, and why subtraction beats addition.",
 					"author": "DJ Wayne",
 					"date": "2026-05-04",
@@ -3293,7 +3340,7 @@
 						"product-and-design",
 						"figma"
 					],
-					"readingTime": 11,
+					"readingTime": 8,
 					"excerpt": "Beginner UIs aren't broken from lack of skill — they're broken from a small set of repeatable, fixable mistakes. Polish comes from subtraction, consistency, and respect for the user's flow, not from adding more visual flair.",
 					"sourceTitle": "7 UI/UX mistakes that SCREAM you're a beginner",
 					"sourceCreator": "Kole Jain",
@@ -3320,6 +3367,7 @@
 				},
 				"lincoln-murphy-ideal-customer-profile-framework": {
 					"title": "Ideal Customer Profile: Lessons from Lincoln Murphy",
+					"seoTitle": "Ideal Customer Profile: Lincoln Murphy",
 					"description": "A deep read of Lincoln Murphy's canonical ICP framework — the seven dimensions (Ready, Willing, Able, Success Potential, Acquisition Efficiency, Ascension, Advocacy), the six fit types inside Success Potential, why the ICP describes a situation rather than a permanent customer type, and how it differs from a buyer persona.",
 					"author": "DJ Wayne",
 					"date": "2026-05-15",
@@ -3424,6 +3472,7 @@
 				},
 				"michael-seibel-cold-email-investors": {
 					"title": "Cold Emailing Investors: Lessons from Michael Seibel",
+					"seoTitle": "Cold Emailing Investors: Michael Seibel",
 					"description": "A deep read of Michael Seibel and Y Combinator on cold-emailing investors: short factual emails, no jargon, company-address credibility, optional deck discipline, tracking opens, no immediate meeting ask, and the right order of operations for starting an investor conversation.",
 					"author": "DJ Wayne",
 					"date": "2026-05-15",
@@ -3441,7 +3490,7 @@
 						"sales-and-growth",
 						"marketing-and-content"
 					],
-					"readingTime": 8,
+					"readingTime": 5,
 					"excerpt": "Michael Seibel reframes investor cold email around one goal: get the investor to understand enough to reply. The first email should not try to secure an investment, force a meeting, or tell a long origin story. It should take less than a minute to read, explain what the company does in simple language, show raw facts that matter to investors, and invite the back-and-forth.",
 					"sourceTitle": "How To Cold Email Investors",
 					"sourceCreator": "Michael Seibel / Y Combinator",
@@ -3467,10 +3516,11 @@
 				},
 				"nesrine-changuel-delightful-products-framework": {
 					"title": "Building Delightful Products: Nesrine Changuel's 4-Step Framework",
+					"seoTitle": "Building Delightful Products: Nesrine Changuel",
 					"description": "A deep read of Nesrine Changuel on Lenny's Podcast — the 4-step Delight Model, the three pillars (remove friction, anticipate needs, exceed expectations), the 50/40/10 roadmap rule, and why anti-delight destroys trust faster than no delight.",
 					"author": "DJ Wayne",
 					"date": "2026-05-04",
-					"lastmod": "2026-05-04",
+					"lastmod": "2026-06-09",
 					"changefreq": "monthly",
 					"priority": "0.7",
 					"published": true,
@@ -3483,7 +3533,7 @@
 						"frameworks",
 						"product-and-design"
 					],
-					"readingTime": 22,
+					"readingTime": 10,
 					"excerpt": "Delight is a strategy, not confetti. A product that solves a functional need AND honors an emotional need at the same time — that's deep delight, and it's the differentiator in any crowded category. The framework: motivators → opportunities → delight grid → checklist.",
 					"sourceTitle": "A 4-step framework for building delightful products",
 					"sourceCreator": "Nesrine Changuel",
@@ -3509,6 +3559,7 @@
 				},
 				"sam-mckenna-show-me-you-know-me-ai-era": {
 					"title": "AI-Era Show Me You Know Me: Lessons from Sam McKenna",
+					"seoTitle": "Show Me You Know Me in the AI Era: Sam McKenna",
 					"description": "A deep read of Sam McKenna on why seller-centered cold calling and spray-and-pray email underperform modern buyer behavior, and how Show Me You Know Me research, LinkedIn signals, authentic personal connection, thread-based nurturing, and buyer-timed follow-up create executive replies.",
 					"author": "DJ Wayne",
 					"date": "2026-05-15",
@@ -3525,7 +3576,7 @@
 						"sales-and-growth",
 						"marketing-and-content"
 					],
-					"readingTime": 10,
+					"readingTime": 7,
 					"excerpt": "Sam McKenna frames the modern outbound problem as a buyer-journey problem, not a channel problem. Cold calls interrupt. Spray-and-pray email signals seller self-interest. Show Me You Know Me earns the right to the meeting by proving the seller invested real attention before asking for time. The strongest ideas here are going higher in the org, using LinkedIn and public interviews as research surfaces, making personal hooks feel authentic instead of pasted, and nurturing replies in the original thread when executives are actually working.",
 					"sourceTitle": "100th Episode: The End of the Line for Cold Calling (& What's Replacing it) -- with Sam McKenna",
 					"sourceCreator": "Sam McKenna",
@@ -3568,7 +3619,7 @@
 						"sales-and-growth",
 						"marketing-and-content"
 					],
-					"readingTime": 9,
+					"readingTime": 5,
 					"excerpt": "Steli Efti starts from a blunt operating truth: the worst cold-email outcome is silence. The 1-2-3 hack works by turning a vague reply burden into a finite choice. Instead of asking the buyer to compose a thoughtful answer, the email names three or four plausible situations and asks them to reply with a number. Used carefully, this becomes a qualification tool, a dead-lead revival tool, and an objection-discovery tool.",
 					"sourceTitle": "Get 457% more replies to your sales emails with the 1, 2, 3 hack",
 					"sourceCreator": "Steli Efti / Close",
@@ -3612,7 +3663,7 @@
 						"shareability",
 						"marketing-and-content"
 					],
-					"readingTime": 10,
+					"readingTime": 7,
 					"excerpt": "Virality is not about the product being exciting. Tuan Le's framework argues that the viewer's brain runs six fast filters before conscious evaluation: familiar format, curiosity gap, identity relevance, credential, sharer payoff, and story.",
 					"sourceTitle": "What Getting 3 Billion Views Taught Me About Human Psychology",
 					"sourceCreator": "Tuan Le",
@@ -3639,6 +3690,7 @@
 				},
 				"underscore-vc-minimum-viable-segment": {
 					"title": "Minimum Viable Segment: Lessons from Underscore VC (Michael Skok)",
+					"seoTitle": "Minimum Viable Segment: Michael Skok's Framework",
 					"description": "A deep read of the Minimum Viable Segment (MVS) framework from Underscore VC and Michael Skok — the three criteria a segment must meet (Common Needs, Dominability, Viability with MVP), the disqualifiers that pull a segment out of scope, and why divergent needs are the real reason MVPs fail to land.",
 					"author": "DJ Wayne",
 					"date": "2026-05-15",
@@ -3692,7 +3744,7 @@
 			}
 		}
 	},
-	"generatedAt": "2026-06-02T01:35:29.268Z",
+	"generatedAt": "2026-06-11T14:34:29.840Z",
 	"totalPosts": 100,
 	"totalCategories": 8
 }

@@ -1,5 +1,6 @@
 ---
 title: 'Multithreading and the Buying Committee: Lessons from 30MPC and Brent Adamson'
+seoTitle: 'Multithreading the Buying Committee: 30MPC'
 description: "A deep read of the 30 Minutes to President's Club multithreading playbook and Brent Adamson's Mobilizer typology — the Golden Path (Champion → Department Leads → Power), why the rep who gets to power first wins the deal, the buyer-benefit framing that earns stakeholder loop-ins, and the 6.8-buyer committee data from Gartner that makes solo-decision-maker outreach a 2010s artifact."
 author: 'DJ Wayne'
 date: '2026-05-15'
@@ -154,20 +155,18 @@ The Economic Buyer is also distinct:
 
 For cold outreach, this means a champion-targeted email and an economic-buyer-targeted email are _different emails_. The champion's email leads with their personal win; the economic buyer's email leads with the business case.
 
-## What this contributes to the BuildOS ICP and Signal Design child skill
+## How to run committee-aware outreach
 
-1. **Committee shape as a required segment field.** Every segment definition includes an expected committee map: Champion, Economic Buyer, User, Blocker, and a typical committee size. Cold outreach to a segment without a committee map is treated as research mode, not campaign mode.
-2. **Mobilizer / Talker / Blocker rubric.** The skill outputs a stakeholder-grading worksheet using Adamson's three-class cut. New-in-role hires are tagged as probable Mobilizers. Long-tenured incumbents in the path of change are flagged as probable Blockers.
-3. **Golden Path as outreach sequencing.** The skill chooses Top-Down vs. Bottom-Up based on mode (strategic / founder-led / PR → Top-Down; volume B2B / SaaS → Bottom-Up) and recommends which committee member to write _first_.
-4. **Buyer-benefit framing for follow-up.** Once a champion responds, the skill's follow-up template uses 30MPC's "reflect stake → name failure mode → ask loop-in as risk reduction" pattern, not "loop in your team so we can move faster."
-5. **McMahon's Champion test as disqualifier.** A "warm" reply that fails the Champion test (no power, no personal win, no willingness to fight) is reclassified as a coach. The skill recommends maintaining the relationship but routing the _next outreach_ to a power contact.
-6. **Gartner data as guardrail.** When a user asks for a single-contact campaign in B2B, the skill cites the 6.8-buyer / 74%-conflict data as the reason to add at least two backup contacts per account.
+Turn the committee research into an outreach plan:
 
-## How this interacts with the other source layers
+1. **Map the committee before you write.** For each account, sketch the likely Champion, Economic Buyer, User, and Blocker, plus the typical committee size. If you can't, you're in research mode, not campaign mode.
+2. **Grade stakeholders on Adamson's three classes.** Tag probable Mobilizers (often new-in-role hires) and probable Blockers (long-tenured incumbents in the path of change). Aim your energy at the Mobilizers.
+3. **Pick a direction: top-down or bottom-up.** Strategic, founder-led, and PR outreach usually goes top-down; volume B2B and SaaS usually goes bottom-up. Decide who you write _first_.
+4. **Frame the loop-in as risk reduction.** Once a champion replies, don't say "loop in your team so we can move faster." Reflect their stake, name the failure mode, and ask for the loop-in as a way to de-risk.
+5. **Run McMahon's Champion test.** A warm reply with no power, no personal win, and no willingness to fight is a coach, not a champion. Keep the relationship, but route the next outreach to someone with power.
+6. **Never send a single-contact B2B campaign.** With a 6.8-person median committee and 74% reporting internal conflict, add at least two backup contacts per account.
 
-- **Maurya / Elias (triggers):** New-in-role trigger events are the highest-leverage Mobilizer creation moments. The trigger layer feeds the committee layer.
-- **Murphy (seven dimensions):** Murphy's _Able_ dimension (financial authority + buying process) maps onto the Economic Buyer slot. Murphy's _Acquisition Efficiency_ maps onto the Bottom-Up vs. Top-Down route choice.
-- **MVS (Underscore):** A segment that passes MVS but has a fragmented committee (no consistent role map across accounts) is downgraded; the segment is coherent on need but incoherent on decision pattern.
+New-in-role moments are where Mobilizers get created, so pair this with [Craig Elias's trigger-event selling](/blogs/source-analyses/craig-elias-trigger-event-selling) to catch them. And a segment that passes the [minimum viable segment gate](/blogs/source-analyses/underscore-vc-minimum-viable-segment) on need but has no consistent committee shape across accounts is coherent on pain and incoherent on decision pattern — a sign to recut it.
 
 ## Caveats
 

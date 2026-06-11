@@ -143,17 +143,31 @@ describe('computeToolResultInfo', () => {
 		expect(info.toolErrorMessage).toBeUndefined();
 	});
 
-	it('picks toolName / tool_name in order of preference', () => {
+	it('prefers canonical tool_name over the legacy toolName fallback', () => {
 		expect(
 			computeToolResultInfo(
-				{ toolName: 'create_onto_task', tool_name: 'ignored' },
+				{ tool_name: 'create_onto_task', toolName: 'ignored' },
 				makePresenter()
 			).rawResultToolName
 		).toBe('create_onto_task');
 
 		expect(
-			computeToolResultInfo({ tool_name: 'fallback' }, makePresenter()).rawResultToolName
-		).toBe('fallback');
+			computeToolResultInfo({ toolName: 'legacy_fallback' }, makePresenter())
+				.rawResultToolName
+		).toBe('legacy_fallback');
+	});
+
+	it('prefers canonical tool_call_id over the legacy toolCallId fallback', () => {
+		expect(
+			computeToolResultInfo(
+				{ tool_call_id: 'canonical', toolCallId: 'legacy' },
+				makePresenter()
+			).resultToolCallId
+		).toBe('canonical');
+
+		expect(
+			computeToolResultInfo({ toolCallId: 'legacy' }, makePresenter()).resultToolCallId
+		).toBe('legacy');
 	});
 
 	it('formats the error message on failure', () => {
