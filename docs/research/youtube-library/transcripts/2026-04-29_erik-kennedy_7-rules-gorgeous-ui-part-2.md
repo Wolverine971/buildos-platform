@@ -6,18 +6,18 @@ author: Erik D. Kennedy
 publication: Learn UI Design
 upload_date: 2024-06-01
 library_category: product-and-design
-library_status: 'transcript'
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
-processed: false
+analysis_status: available
+processing_status: draft_skill_created
+processed: true
 buildos_use: both
 skill_candidate: true
 skill_priority: high
-skill_draft: ''
+skill_draft: 'docs/research/youtube-library/skill-drafts/visual-craft-fundamentals/SKILL.md'
 public_article: ''
 indexed_date: '2026-04-29'
-last_reviewed: '2026-04-29'
+last_reviewed: '2026-06-11'
 transcribed_date: '2026-04-29'
 path: docs/research/youtube-library/transcripts/2026-04-29_erik-kennedy_7-rules-gorgeous-ui-part-2.md
 ---
@@ -34,6 +34,7 @@ path: docs/research/youtube-library/transcripts/2026-04-29_erik-kennedy_7-rules-
 - **Author:** Erik D. Kennedy
 - **Publication:** Learn UI Design
 - **URL:** https://www.learnui.design/blog/7-rules-for-creating-gorgeous-ui-part-2.html
+- **Analysis:** `docs/research/youtube-library/analyses/2026-04-29_erik-kennedy_7-rules-gorgeous-ui_analysis.md` (combined Part 1 + Part 2)
 
 ## Rule 4: Learn the Methods of Overlaying Text on Images
 

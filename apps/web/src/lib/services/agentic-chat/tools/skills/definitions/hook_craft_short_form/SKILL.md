@@ -202,6 +202,10 @@ Return a hook bundle, never a single line:
 
 For audit-mode runs, replace the variants section with a **diagnostic report** naming the failed pass and the proposed fix.
 
+## Notes
+
+- Three rules in this skill are intentionally craft-judgment, not binary judge-checkable: **on-target curiosity** (two-variable score), the snapback traveling in a **different direction** (Pillar 3), and **motion calibration** (the deer-peripheral-vision feel). They stay as taste calls by design — future eval authors should not re-flag them as vague or operationalize them into fake thresholds.
+
 ## Worked Example
 
 Condensed gold-standard bundle for the eval Task 1 fixture (brain-dump demo footage, overwhelmed-founder audience); input in `evals.md`. Match this shape.
@@ -249,7 +253,9 @@ Distilled from four Kallaway videos:
 - [I Studied 100 Viral Hooks, These 6 Will Make You Go Viral](https://www.youtube.com/watch?v=xnOe8aA9Pmw) — six-archetype catalog (Fortune Teller / Experimenter / Teacher / Magician / Investigator / Contrarian), four-component alignment (spoken / visual / text / audio), visual → audio → visual sandwich, pick-archetype-from-the-visual rule, kill-the-video-if-the-visual-is-weak rule.
 - [The ONLY 6 Words You Need to Hook ANY Viewer](https://www.youtube.com/watch?v=S9FlxFv9dxg) — six-slot grammar (Subject / Action / Objective / Contrast / Proof / Time), copy-work drill, slot-collapse patterns, audit-mode-as-primary-use rule.
 
-Underlying analyses live at:
+Converging second source — **Brendan Kane** (_Hook Point: How to Stand Out in a 3-Second World_), via [interview](https://www.youtube.com/watch?v=pGXiK8b7d-E). Kane arrives independently at the same load-bearing rules already distilled from Kallaway above — he adds no new mechanics, thresholds, or workflow steps, but corroborates the core at the principle level: the under-three-second hook threshold, the visual/multi-channel hook ("text, colors, action on screen, facial expressions" — not just words), and the empty-snapback guardrail (a misleading hook tanks the retention graph and viewers churn — _"we're pretty close to the end of the clickbait days"_). Kane's one BuildOS-native addition is the **follower-ROI reframe**, which pairs with the skill's anti-vanity-metrics register: _"how much did you spend to acquire followers… it's the wrong question. The question should be: what was my return on investment?"_ — 10–20K engaged followers can out-earn millions of dead ones. Analysis: `docs/research/youtube-library/analyses/2026-06-11_brendan-kane_hook-point-three-second-world_analysis.md`.
+
+Underlying Kallaway analyses live at:
 
 - `docs/research/youtube-library/analyses/2026-04-29_kallaway_irresistible-hooks_analysis.md`
 - `docs/research/youtube-library/analyses/2026-04-29_kallaway_hooks-impossible-to-skip_analysis.md`

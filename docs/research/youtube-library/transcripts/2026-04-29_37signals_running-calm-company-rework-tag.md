@@ -5,10 +5,10 @@ url: 'https://37signals.com/podcast/tag/running-a-calm-company/'
 author: 37signals (Jason Fried, David Heinemeier Hansson, et al.)
 publication: REWORK Podcast
 library_category: product-and-design
-library_status: 'transcript'
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
+analysis_status: available
+processing_status: needs_synthesis
 processed: false
 buildos_use: both
 skill_candidate: true
@@ -16,7 +16,7 @@ skill_priority: high
 skill_draft: ''
 public_article: ''
 indexed_date: '2026-04-29'
-last_reviewed: '2026-04-29'
+last_reviewed: '2026-06-12'
 transcribed_date: '2026-04-29'
 path: docs/research/youtube-library/transcripts/2026-04-29_37signals_running-calm-company-rework-tag.md
 ---
@@ -31,6 +31,7 @@ path: docs/research/youtube-library/transcripts/2026-04-29_37signals_running-cal
 
 - **Publication:** 37signals REWORK Podcast
 - **URL:** https://37signals.com/podcast/tag/running-a-calm-company/
+- **Analysis:** `docs/research/youtube-library/analyses/2026-04-29_jason-fried-dhh_calm-company_analysis.md` (calm-company canon analysis; this REWORK tag is the corroborating source)
 
 ## Episode Index (Calm Company tag)
 

@@ -305,6 +305,7 @@ export function defineMarkdownSkill({ id, markdown }: MarkdownSkillOptions): Ski
 		name: frontmatter.name.trim(),
 		summary: frontmatter.description.trim(),
 		bodyLineCount: body.split(/\r?\n/).length,
+		rawMarkdown: markdown.trim(),
 		sourceMarkdown: body,
 		preserveMarkdown: parseOptionalBoolean(frontmatter.preserve_markdown),
 		legacyPaths: parseStringArray(frontmatter.legacy_paths),

@@ -31,6 +31,7 @@ export interface SkillDefinition {
 	parentId?: string;
 	depth?: number;
 	bodyLineCount?: number;
+	rawMarkdown?: string;
 	sourceMarkdown?: string;
 	preserveMarkdown?: boolean;
 	legacyPaths: string[];

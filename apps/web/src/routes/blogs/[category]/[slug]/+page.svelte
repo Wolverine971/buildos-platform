@@ -47,11 +47,17 @@
 	const categoryUrl = $derived(getContentCollectionUrl(SITE_URL, data.post.category));
 
 	const articleUrl = $derived(getContentPostUrl(SITE_URL, data.post));
+	const agentSkillMarkdownUrl = $derived(`${articleUrl}/skill.md`);
+	const portableSkillMarkdownUrl = $derived(`${articleUrl}/portable/SKILL.md`);
+	const skillBundleUrl = $derived(`${articleUrl}/bundle.zip`);
+	const agentSkillIndexUrl = `${SITE_URL}/agent-skills/index.json`;
 	// SEO meta title: prefer a trimmed `seoTitle` (kept under ~60 chars incl. " | BuildOS")
 	// while the visible H1 keeps the full `title`. Falls back to `title` when unset.
 	const metaTitle = $derived(`${data.post.seoTitle ?? data.post.title} | BuildOS`);
 	const lineageSources = $derived(data.post.lineageSources ?? []);
 	const lineagePeople = $derived(data.post.lineagePeople ?? []);
+	const lineageStatEntries = $derived(Object.entries(data.post.lineageStats ?? {}));
+	const stackWith = $derived(data.post.stackWith ?? []);
 
 	type JsonLdNode = Record<string, unknown>;
 
@@ -534,6 +540,47 @@
 				{/if}
 			</div>
 
+			{#if isAgentSkillPost}
+				<div
+					class="mt-6 rounded-lg border border-border bg-background p-4 text-sm text-muted-foreground shadow-ink"
+				>
+					<span class="block text-xs font-medium uppercase tracking-wide text-foreground">
+						For agents
+					</span>
+					<div class="mt-2 flex flex-wrap gap-2">
+						<a
+							href={portableSkillMarkdownUrl}
+							class="inline-flex items-center rounded border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:border-accent hover:text-accent"
+						>
+							Portable SKILL.md
+						</a>
+						<a
+							href={skillBundleUrl}
+							class="inline-flex items-center rounded border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:border-accent hover:text-accent"
+						>
+							bundle.zip
+						</a>
+						<a
+							href={agentSkillMarkdownUrl}
+							class="inline-flex items-center rounded border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:border-accent hover:text-accent"
+						>
+							BuildOS SKILL.md
+						</a>
+						<a
+							href={agentSkillIndexUrl}
+							class="inline-flex items-center rounded border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground hover:border-accent hover:text-accent"
+						>
+							index.json
+						</a>
+					</div>
+					<code
+						class="mt-3 block overflow-x-auto rounded border border-border bg-muted px-3 py-2 text-xs text-foreground"
+					>
+						curl -L {portableSkillMarkdownUrl}
+					</code>
+				</div>
+			{/if}
+
 			{#if isAgentSkillPost && (lineageSources.length || lineagePeople.length)}
 				<div
 					class="mt-6 rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground"
@@ -545,6 +592,24 @@
 						<p class="mt-2 text-xs">
 							<span class="font-medium text-foreground">People referenced:</span>
 							{lineagePeople.join(', ')}
+						</p>
+					{/if}
+					{#if lineageStatEntries.length}
+						<div class="mt-3 flex flex-wrap gap-1.5">
+							{#each lineageStatEntries as [key, value]}
+								<span
+									class="inline-flex items-center rounded border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground"
+								>
+									<span class="font-medium text-foreground">{value}</span>
+									<span class="ml-1">{key.replace(/([A-Z])/g, ' $1').toLowerCase()}</span>
+								</span>
+							{/each}
+						</div>
+					{/if}
+					{#if stackWith.length}
+						<p class="mt-2 text-xs">
+							<span class="font-medium text-foreground">Stacks with:</span>
+							{stackWith.join(', ')}
 						</p>
 					{/if}
 					{#if lineageChannels.length}

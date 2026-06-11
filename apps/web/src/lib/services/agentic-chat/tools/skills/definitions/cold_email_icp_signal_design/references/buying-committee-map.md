@@ -25,6 +25,26 @@ Sources: 30 Minutes to President's Club, Brent Adamson (_Challenger Customer_), 
 
 Implication: the seller's job is enabling consensus across the committee, not convincing one person. The cold email is one input the committee will reference long after the email is sent.
 
+## Role Map Table (the artifact the skill returns)
+
+One row per committee role. The "email leads with" column is the per-role outreach implication: a champion-targeted email and an economic-buyer-targeted email are _different emails_ (McMahon).
+
+| Role               | Function in the committee                                            | Email leads with                                                                  | Write them when                                                                                      | Likely Adamson class                                  |
+| ------------------ | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| **Champion**       | Drives the process; must pass McMahon's three-test (see below)        | Their personal win — the career or operational gain from this closing              | First, in Bottom-Up; second (via intro), in Top-Down                                                   | Mobilizer if real; Talker if they fail the three-test  |
+| **Economic Buyer** | The only person who can create or reallocate budget                   | The business case — cost of inaction, risk, payback; never a personal-win framing   | First, in Top-Down; after champion consensus, in Bottom-Up                                             | Varies; test before assuming Mobilizer                 |
+| **User**           | Lives with the product day-to-day; loudest on requirements            | Day-to-day workflow relief in their own vocabulary (internal default)              | As a backup contact, or first when user-level pain is the acute trigger                                | Talker-prone — friendly engagement ≠ movement          |
+| **Blocker**        | Interest opposes the change: procurement, security, legal, incumbent loyalist | Nothing directly at cold stage — name them as the failure mode in buyer-benefit framing | Do not cold-email first. Surface them early via the champion ("if security isn't in early, this dies") | Blocker by definition                                  |
+
+## The Six Multithreading Rules (30MPC)
+
+1. **Map the committee before you write.** For each account, sketch the likely Champion, Economic Buyer, User, and Blocker plus typical committee size. If you cannot, you are in research mode, not campaign mode.
+2. **Grade stakeholders on Adamson's three classes.** Tag probable Mobilizers (often new-in-role hires) and probable Blockers (long-tenured incumbents in the path of change). Aim energy at the Mobilizers.
+3. **Pick a direction: Top-Down or Bottom-Up.** Strategic, founder-led, and PR outreach usually goes Top-Down; volume B2B SaaS usually goes Bottom-Up. Decide who you write _first_ before drafting.
+4. **Frame every loop-in as risk reduction for the buyer, not speed for the seller.** Reflect their stake, name the failure mode, ask for the loop-in (full pattern in `## Buyer-Benefit Framing for Loop-Ins` below).
+5. **Run McMahon's Champion test on every warm reply.** A warm responder with no power, no personal win, and no willingness to fight is a coach — keep the relationship, route the next outreach to someone with power.
+6. **Never send a single-contact B2B campaign.** With a 6.8-person median committee and 74% reporting internal conflict (Gartner), plan at least two backup contacts per account.
+
 ## Role Taxonomy
 
 Every B2B segment definition includes the expected role map below. Roles are not titles - they are functions inside the committee.
@@ -113,6 +133,7 @@ buying_committee:
         - role: champion
           typical_title: string
           typical_seniority: string
+          adamson_class: mobilizer | talker | blocker | unknown
           mcmahon_test_required: true | false
         - role: economic_buyer
           typical_title: string

@@ -82,6 +82,50 @@ Stop conditions before returning:
 - Each lead segment routes to a different next step; no two segments share the same CTA.
 - The CTA stacks action, time cost, price, and payoff — with no scarcity or FOMO line anywhere in the copy.
 
+## Worked Example
+
+Condensed from a full from-scratch funnel design for a solo operations consultant selling a $5,000 "Agency Ops Reset" (6 weeks) to owners of 10–25-person agencies drowning in client-delivery chaos; the input is in `evals.md` Task 1. Match this shape and rigor.
+
+**Input (summary):** Buyer feels the pain daily and says so unprompted. Current site: one-pager with "Book a call." ~300 visits/month from LinkedIn (3 posts/week) + ~12 podcast guest spots. $1–2k/month available for ads; consultant planned an "only 5 client slots this quarter" urgency line.
+
+**Mode: standalone scorecard.** Diagnostic applied: the buyer can already answer "yes, I have this problem and I want to solve it" before hitting the page — agency owners complain about delivery chaos unprompted, and ops consulting needs no category framing. A setup layer would add friction, not framing; `setup_layer_positioning` not loaded.
+
+**Landing page (five sections, in order):**
+
+1. **Hook (frustration form):** "Frustrated that client delivery still descends into chaos — even though you've hired good people and bought every PM tool?" _(Readiness alternate: "Are you ready to run a 20-person agency that doesn't need you in every Slack thread?")_
+2. **Assessment promise:** "15 questions, about 3 minutes. You'll get your Agency Ops Score across the 3 systems that decide whether delivery runs without the owner — and the single fix to make first."
+3. **Differentiated-value proposition** — three measured areas, each framed against an alternative the buyer already considers, not a capability recital:
+    - _Delivery handoffs_ — vs. "buy another PM tool": tools don't fix undefined handoffs; the score shows whether your problem is process or software.
+    - _Owner dependency_ — vs. "hire an ops director": a $90k hire inherits the same chaos; the score shows what must be systematized before a hire can stick.
+    - _Capacity & scope visibility_ — vs. "just push harder / do nothing": shows the margin leaking through unpriced scope creep.
+4. **Credibility:** who built the assessment, the engagements it distills, and the evidence behind the three categories.
+5. **CTA stack:** "Get your Agency Ops Score → 15 questions, ~3 minutes, free, instant scorecard with your first fix." Action + time cost + price + payoff. **The planned "only 5 client slots this quarter" line is cut by rule** — manufactured scarcity converts the first taking but breaks the trust the segmentation step depends on.
+
+**Questionnaire (15 questions, three buckets):**
+
+- _Contact capture:_ name (required), email (required), location inferred — not asked; phone optional at capture (require it at call booking instead, where the funnel actually depends on it).
+- _10 best-practice questions_ (score-driving, insight-bearing before any call): documented handoff checklist per project stage? capacity planned in hours or vibes? scope changes repriced or silently absorbed? weekly delivery review that runs without the owner? _(…6 more in the same shape, one per ops best practice.)_
+- _Big 5 qualification:_ (1) current situation — team size and role mix; (2) desired outcome in the next 90 days; (3) what they've already tried that didn't stick; (4) preferred solution type — template/course, group program, 1:1 consulting, or done-for-you (the budget and service-fit signal); (5) open "anything else we should know?"
+
+**Scoring model:** 10 best-practice questions × 0–2 = 0–20. Bands: 0–8 Firefighting, 9–14 Stabilizing, 15–20 Systematized. The score drives the insights; the Big 5 — not the score — drives the routing.
+
+**Dynamic results page:** overall score on a Firefighting→Systematized gauge; three personalized insights generated from their three lowest-scoring areas (each names the missing practice); next step selected by qualification; footer with contact and trust links. The page is only called personalized because the insights actually use the answers.
+
+**Lead routing (no two segments share a CTA):**
+
+- **High fit** — 10–25-person agency + 90-day outcome matching the Reset + preferred solution "1:1 consulting"/"done-for-you" → book a 30-minute Ops Reset consult.
+- **Middle fit** — right problem, smaller team or "group program" preference → monthly live workshop ("Fix your worst handoff in 60 minutes") + nurture keyed to their lowest-scoring area.
+- **Low fit** — under 10 people, "template/course" preference, or already 15+ score → free Ops Reset checklist + video walkthrough; no call offered.
+
+**Follow-up:** sequences branch on lowest-scoring area and Big 5 answers; the obstacle answer (q3) opens the high-fit outreach email. Nobody gets a generic blast.
+
+**Funnel KPIs and scale gates:**
+
+- **LAPS dashboard first** (a spreadsheet is enough): leads → appointments → presentations → sales, weekly, against the 100 → 15 → 10 → 3 baseline shape. Improve one stage per week.
+- **Allowable-cost math:** ACPS = $5,000 × 15% = **$750**. ACPL = $750 × (3 sales ÷ 100 leads) = **$22.50** — replace the baseline ratio with tracked LAPS numbers once they exist.
+- **Ads verdict: not yet.** The scale gate requires tracked CPL ≤ $22.50 and tracked cost per sale ≤ $750; with no LAPS history both are unknown, so paid traffic waits. When the gate opens, ratchet spend stepwise ($1k → $1.5k → $2k), re-verifying ACPL/ACPS at each step. ~$22.50/lead is attainable on Meta/LinkedIn; assessment IP often pulls leads under $10.
+- **Traffic prerequisites:** _Noticed_ — 11 short-form impressions within 90 days; 3 LinkedIn posts/week clears the window with little slack, so protect the cadence. _Known_ — the ~12 podcast spots satisfy the 2–7 hours of long-form depth. _Rated_ — audit which ~4 names/brands appear around the funnel; they must match a $5k niche-expert price band.
+
 ## Guardrails
 
 - Do not ask for more data than needed.

@@ -26,13 +26,13 @@ const fastAgentStreamRequestBodySchema = z
 		lastTurnContext: looseRecord.nullish(),
 		stream_run_id: z.union([z.string(), z.number()]).optional(),
 		client_turn_id: z.string().optional(),
-		voiceNoteGroupId: z.string().optional(),
+		voiceNoteGroupId: z.string().nullish(),
 		prewarmedContext: looseRecord.nullish(),
 		preparedPromptKey: z.string().nullish(),
 		// Deprecated snake_case wire aliases — resolved by
 		// normalizeFastAgentStreamRequest, never read past the boundary.
 		last_turn_context: looseRecord.nullish(),
-		voice_note_group_id: z.string().optional(),
+		voice_note_group_id: z.string().nullish(),
 		prewarmed_context: looseRecord.nullish(),
 		prepared_prompt_key: z.string().nullish()
 	})

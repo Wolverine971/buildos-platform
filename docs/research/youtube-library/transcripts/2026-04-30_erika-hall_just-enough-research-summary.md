@@ -6,10 +6,10 @@ author: Erika Hall
 publication: Mule Design / A Book Apart
 upload_date: 2019-11-12
 library_category: product-and-design
-library_status: 'transcript'
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
+analysis_status: available
+processing_status: needs_synthesis
 processed: false
 buildos_use: both
 skill_candidate: true
@@ -17,7 +17,7 @@ skill_priority: medium
 skill_draft: ''
 public_article: ''
 indexed_date: '2026-04-30'
-last_reviewed: '2026-04-30'
+last_reviewed: '2026-06-12'
 transcribed_date: '2026-04-30'
 path: docs/research/youtube-library/transcripts/2026-04-30_erika-hall_just-enough-research-summary.md
 ---
@@ -29,6 +29,8 @@ path: docs/research/youtube-library/transcripts/2026-04-30_erika-hall_just-enoug
 - [Product And Design Skill Combos](../skill-combo-indexes/PRODUCT_AND_DESIGN.md): Usability evaluation and quick research (proposed); Information architecture and interaction fundamentals (proposed)
 
 ## Source Note
+
+**Analysis:** `docs/research/youtube-library/analyses/2026-04-30_usability-research-canon_krug-hall_analysis.md`
 
 > **Source coverage is summary-level.** _Just Enough Research_ (Hall, A Book Apart, 2013; 2nd ed. 2019) is the canonical book in the "lightweight design research" tradition. WebFetch returned no useful page content (404s); yt-dlp was rate-limited on the BayCHI 2019 talk video `PpQKr2jhA_8`. This document captures the canonical methodology widely cited across the UX research community. Read alongside the original book and the BayCHI talk.
 

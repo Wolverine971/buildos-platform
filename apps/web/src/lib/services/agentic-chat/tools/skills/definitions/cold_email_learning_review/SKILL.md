@@ -211,6 +211,56 @@ Nurture accounting (Predictable Revenue): assume only ~5% of created opportuniti
 - Next test: one variable, pre-committed sample size per arm
 - Learning memo (filled template)
 
+## Worked Example
+
+Condensed from a full campaign review; the input is in `evals.md` Task 1. Match this order — trust gate, sample gate, stage diagnostics, ONE layer, gate decision, memo — and never skip the gates to get to the verdict.
+
+**Input:** Sales mode, one variant, one segment (heads of data, Series B SaaS × first-data-engineer hire signal), offering a "pipeline health checklist." 400 sent · 0.9% bounce · ~38% opens · 2 replies · 1 positive · 0 meetings · 0 complaints · 1 opt-out. Replies: _"Sure — send the checklist over… the pipeline alerting situation is rough"_ and _"We already use Monte Carlo for this. Not interested."_ User's ask: "38% opens — subject's working, double the volume next month?"
+
+**Gate 0 — trust (first, overrides everything):** bounce 0.9% < 5% stop line; complaints 0 < 0.3% ceiling (0.1% sustained target); no spam-foldering evidence → **pass**. Safe to read further.
+
+**Gate 1 — sample (before ANY rate verdict):** 400 sent − ~4 bounces ≈ **396 delivered**, single variant, single persona × signal ≥ ~200/variant floor → **rate-readable**, with the qualifier that n≈400 detects only large effects (per the fixed-sample table).
+
+**Stage diagnostics (never a composite reply rate — replies include "no"):**
+
+| Stage          | Value             | Read                                                                                                                                        |
+| -------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Delivered      | ~99.1%            | List hygiene + domain healthy                                                                                                               |
+| Opens          | ~38%              | Above Mailshake's common 10–30% band (508-sender self-reported survey — directional); privacy-proxy-inflated, directional, NOT buying intent |
+| Replies (all)  | 2/396 ≈ 0.5%      | Low — but diagnose the next stage before blaming body copy                                                                                  |
+| Positive reply | 1/396 ≈ **0.25%** | The diagnostic stage: positive-reply rate reads **offer + segment fit**                                                                     |
+| Meetings       | 0                 | Not a death sentence — see nurture accounting                                                                                               |
+
+2026 placement check: opens ≥30% and bounce <1% → compliance/placement is **ruled out**; no deliverability routing.
+
+**Diagnosis (one layer):** **offer** — checklist not useful enough pre-meeting to this persona (segment is the secondary suspect). Evidence: positive 0.25% (<1%) while opens ≥30% — the funnel dies exactly where the offer is judged.
+
+**Buyer language (worksheet, verbatim):** _"the pipeline alerting situation is rough"_ — pain language for the next opener; behavior (asked for the artifact) = strong-ish evidence. _"We already use Monte Carlo"_ — **named incumbent**, current spend = strong evidence the segment buys the category; objection class: already-solved/competitor. Hail Mary corollary: one follow-through learning question owed on the Monte Carlo reply (route via `cold_email_reply_os`).
+
+**Gate decision:** Positive-reply gate fired on the `<1% positive AND opens ≥30%` branch → **RECYCLE** non-responders into a new campaign with a different opener + different artifact offer (Schneider replacement for touches 3–7). The scale ask is refused: opens are not the gate metric. _Gate values are internal calibration defaults, not industry standards._
+
+**Learning memo (filled template):**
+
+```markdown
+# Learning Memo — DataPilot heads-of-data v1 — 2026-06-11
+
+Mode / segment / signal: sales; heads of data, Series B SaaS × first-data-eng hire; n≈396 delivered
+Test variable (exactly one): n/a — single-variant baseline
+Funnel: delivered 99.1% | open ~38% | reply 0.5% | positive reply 0.25% | meetings 0 | held 0
+Trust cost: bounces 0.9% | complaints 0% | opt-outs 1 | angry 0 — internal proxy composite: low
+Sample verdict: rate-readable (≈396 ≥ ~200/variant, single persona; large effects only)
+Diagnosis (one layer): offer — positive <1% with opens ≥30%; placement and list ruled out
+Buyer language (verbatim): - "the pipeline alerting situation is rough" - "We already use Monte Carlo for this"
+Objection mix: already-solved/competitor ×1 (Monte Carlo)
+Winning / losing lines: subject/preview earning opens (keep) | checklist offer not converting (replace)
+Decision: recycle — positive-reply gate (<1% positive AND opens ≥30%); do NOT scale on opens
+Next test (one variable): swap artifact to an alert-noise teardown built on the verbatim pain; hold CTA,
+persona × signal, list source, sending infra; pre-commit ≈560/arm (3%→6% detection), read once at end
+Nurture adds: 1 (positive replier — artifact sent, conversation live)
+```
+
+**Nurture accounting:** 0 meetings ≠ dead (Predictable Revenue: ~5% of opportunities buy within 90 days; 95% of outbound value is nurture). One live conversation + a named incumbent + verbatim pain language = a partial win, documented.
+
 ## Guardrails
 
 - Do not optimize a single composite reply rate — diagnose stage by stage.
@@ -225,6 +275,6 @@ Nurture accounting (Predictable Revenue): assume only ~5% of created opportuniti
 
 ## Notes
 
-- Single-shell skill: the former reference modules (metric diagnostics/benchmarks and decision gates/learning memo) are folded inline as `## Metric Diagnostics and Benchmark Bands` and `## Decision Gates, Sample Rules, and the Learning Memo` because both fire on every campaign review — diagnose → gate → memo is the primary job. Shell is ~260 lines / ~21KB, acceptable per the `hook_craft` single-shell precedent.
+- Single-shell skill: the former reference modules (metric diagnostics/benchmarks and decision gates/learning memo) are folded inline as `## Metric Diagnostics and Benchmark Bands` and `## Decision Gates, Sample Rules, and the Learning Memo` because both fire on every campaign review — diagnose → gate → memo is the primary job. Shell is ~280 lines / ~25KB incl. the worked example, acceptable per the `hook_craft` single-shell precedent (no conditional seam).
 - Primary sources: Connor Murray (stage-by-stage rate diagnostics), Mailshake State of Cold Email 2025 (508-sender survey, self-reported), Cognism State of Outbound 2026 ("directional, not diagnostic"), Lavender benchmark (directional-vendor), Austin Schneider / Instantly (practitioner patterns), Predictable Revenue (validation gates, nurture asymmetry), Evan Miller + Kohavi (experiment validity).
 - Maintainers: enrichment lineage lives at `docs/research/youtube-library/cold-email-children-enrichment-plan-2026-06-10.md` (not available at runtime).

@@ -161,6 +161,41 @@ Do not defend, debate, explain intent, or ask one more question after an opt-out
 - Stop or follow-up rule (cadence by mode, or suppression)
 - Buyer-language log line for the learning review
 
+## Worked Example
+
+Condensed from a full classify-and-respond run on a "send me some info" reply to a strategic first touch; the input thread is in `evals.md` Task 1. Match this shape: class before draft, route row named, one CTA, log line at the end.
+
+**Input:** First touch (strategic, 8 hand-picked accounts) offered Dana, VP RevOps, a 2-page pipeline-review teardown ("Want me to send the Meridian-relevant version?"). Her reply: _"Thanks Alex. Sounds interesting — send me some info and I'll take a look when I get a chance."_ The sender's instinct: send the company deck and ask if she's free Thursday or Friday for a call.
+
+**1. Classification (before any draft):** Class **2 — Send info** ("send me some info" is the detection cue). Intent: **medium-high**. Not class 1 (yes/interested) — "when I get a chance" is deferral language, so handle it as the **send-me-info-as-brushoff** pattern from the objection route table. A route without a taxonomy class is not a route; the class came first.
+
+**2. Owner + SLA:** Sender or assistant, **same business day** — send-info is a same-day class. Reply while the thread is warm.
+
+**3. Route (objection route table, brushoff row):** No label needed. Send the **real artifact + one-line fork: active vs. polite-no**. Two corrections to the sender's plan, by rule:
+
+- **Deck refused — artifact, not brochure.** The email promised the Meridian-relevant 2-page teardown. Send exactly that; substituting a company deck breaks the original promise ("send the promised artifact, never a brochure").
+- **Call ask refused.** "Free Thursday or Friday?" is a call push after weak interest — guardrail violation. Reply-to-call is reserved for clear interest. It would also make two CTAs; never two CTAs.
+
+**4. Response draft** (artifact + one calibrated question, what/how only, never "why"):
+
+```text
+Here it is — the 2-page teardown, with the Meridian pod-structure notes on page 2.
+
+No deck and no drip sequence behind this. One question so I don't clutter your
+inbox: should I close the loop after this, or is the noisy-pipeline-review
+problem still live this quarter?
+
+— Alex
+```
+
+The question is the route row's active-vs-polite-no fork: either answer is useful, and "close the loop" gives her a dignified no.
+
+**5. Stop / follow-up rule:** If silence follows the artifact, strategic cadence allows up to 4 touches over ~7–8 days, then stop. The ghosted-thread numbered fork stays in reserve — **one fork per thread, ever** — so it is not spent here while the thread is live.
+
+**6. Buyer-language log (for `cold_email_learning_review`):** class 2 send-info-brushoff · route: artifact + active-vs-polite-no fork · verbatim: _"Sounds interesting — send me some info and I'll take a look when I get a chance."_ — deferral phrasing, no named pain; grade as weak evidence until behavior follows.
+
+**Output contract check:** class ✓ intent ✓ route row named ✓ draft ✓ artifact ✓ owner/SLA ✓ stop rule ✓ log line ✓.
+
 ## Guardrails
 
 - Do not respond without classifying first; a route without a taxonomy class is not a route.

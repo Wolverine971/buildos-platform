@@ -5,18 +5,18 @@ url: 'https://linear.app/now/why-is-quality-so-rare'
 author: Karri Saarinen
 publication: Linear
 library_category: product-and-design
-library_status: 'transcript'
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
-processed: false
+analysis_status: available
+processing_status: draft_skill_created
+processed: true
 buildos_use: both
 skill_candidate: true
 skill_priority: high
-skill_draft: ''
+skill_draft: 'docs/research/youtube-library/skill-drafts/ai-era-craft-and-quality-moat/SKILL.md'
 public_article: ''
 indexed_date: '2026-04-29'
-last_reviewed: '2026-04-29'
+last_reviewed: '2026-06-11'
 transcribed_date: '2026-04-29'
 path: docs/research/youtube-library/transcripts/2026-04-29_linear_why-is-quality-so-rare.md
 ---
@@ -32,6 +32,7 @@ path: docs/research/youtube-library/transcripts/2026-04-29_linear_why-is-quality
 - **Author:** Karri Saarinen
 - **Publication:** Linear (linear.app/now)
 - **URL:** https://linear.app/now/why-is-quality-so-rare
+- **Analysis:** `docs/research/youtube-library/analyses/2026-04-29_karri-saarinen-linear_craft-and-calm-software_analysis.md` (consolidated Saarinen/Linear analysis; this essay is the "essay" source)
 
 ## The Central Premise
 

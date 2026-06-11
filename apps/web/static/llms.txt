@@ -29,11 +29,23 @@
 ## Agent Skills
 
 - [Agent Skills](https://build-os.com/agent-skills): Portable skill guides, definitions, operating playbooks, and source lineages for AI agents
+- [Agent Skills JSON Index](https://build-os.com/agent-skills/index.json): Machine-readable catalog of public BuildOS agent skills with raw BuildOS SKILL.md URLs, portable SKILL.md URLs, downloadable bundle.zip URLs, source lineage, compatible agents, stacks, and reference modules
 - [Google Calendar For AI Agents: Search Before You Create](https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create): Calendar operating rules for agent-safe reads, creates, updates, recurrence handling, and duplicate prevention
+- [Google Calendar SKILL.md](https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create/skill.md): Raw portable agent skill definition
+- [Cold Email Engagement-First Outreach](https://build-os.com/agent-skills/cold-email-engagement-first-outreach): Source-lineaged root combo skill for cold outreach campaigns, targeted emails, reply handling, and trust-preserving outreach workflows
+- [Cold Email Engagement-First Outreach SKILL.md](https://build-os.com/agent-skills/cold-email-engagement-first-outreach/skill.md): Raw BuildOS runtime skill definition
+- [Cold Email ICP and Signal Design](https://build-os.com/agent-skills/cold-email-icp-signal-design): Source-lineaged skill for defining the right person, right moment, segment, buying signal, timing thesis, and disqualifiers before outreach
+- [Cold Email ICP and Signal Design SKILL.md](https://build-os.com/agent-skills/cold-email-icp-signal-design/skill.md): Raw BuildOS runtime skill definition
 - [Landing Page Scorecard Funnel](https://build-os.com/agent-skills/landing-page-scorecard-funnel): Source-lineaged skill for designing assessment-driven landing pages, questionnaires, dynamic results, and lead routing
+- [Landing Page Scorecard Funnel SKILL.md](https://build-os.com/agent-skills/landing-page-scorecard-funnel/skill.md): Raw BuildOS runtime skill definition
 - [Hook Craft For Short-Form](https://build-os.com/agent-skills/hook-craft-short-form): Source-lineaged skill for drafting, auditing, and rewriting hooks across video, social, email, and pitch openers
+- [Hook Craft For Short-Form SKILL.md](https://build-os.com/agent-skills/hook-craft-short-form/skill.md): Raw BuildOS runtime skill definition
 - [Story-Driven Content Craft](https://build-os.com/agent-skills/story-driven-content-craft): Source-lineaged skill for structuring nonfiction essays, video scripts, social posts, and founder narratives that hold attention
+- [Story-Driven Content Craft SKILL.md](https://build-os.com/agent-skills/story-driven-content-craft/skill.md): Raw BuildOS runtime skill definition
 - [UI/UX Quality Review](https://build-os.com/agent-skills/ui-ux-quality-review): Source-lineaged skill for reviewing product screens, landing pages, dashboards, and mobile flows for practical interface quality
+- [UI/UX Quality Review SKILL.md](https://build-os.com/agent-skills/ui-ux-quality-review/skill.md): Raw BuildOS runtime skill definition
+- [Viral Content For Boring Brands](https://build-os.com/agent-skills/viral-content-for-boring-brands): Source-lineaged skill for designing and auditing brand-account content for products that are not inherently exciting
+- [Viral Content For Boring Brands SKILL.md](https://build-os.com/agent-skills/viral-content-for-boring-brands/skill.md): Raw BuildOS runtime skill definition
 
 ## Philosophy
 

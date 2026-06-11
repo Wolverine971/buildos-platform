@@ -18,6 +18,10 @@ Five independent sources arrive at the same conclusion from different vantage po
 
 5. **The AI-era twist: prior tech cycles outsourced labor; AI tries to outsource judgment.** This is the reason the craft argument has new urgency. The team that refuses to outsource judgment wins the next decade.
 
+**Craft-cycle stage as a positioning diagnostic.** (Saarinen — the Calkins cycle.) The cycle runs `craft → new tech → easier/faster production → process focus → quality decline → renewed longing for craft`. Use the stage as a rarity gauge: **the deeper a market has slid into the speed/process-focus stage, the higher the rarity premium on craft** — and the stronger a craft-moat play. Diagnostic check when framing differentiation: name where the target market sits on the cycle. If competitors are all racing to ship AI features at the floor (deep speed-focus stage), craft is _underpriced_ and the moat is wide; if the market still rewards bespoke craft broadly, the premium is thin and craft is table stakes, not a moat.
+
+**Quality is a daily individual choice, not a company policy.** (Saarinen.) "It has to come from the individuals — you believe in it and you try to do it every day." Operational consequence: a quality posture that lives only in a doc, an OKR, or a leadership statement is not yet real. Check: can you point to a specific person making a specific better-than-spec choice _this week_? If quality only exists as policy and not as observable daily individual choices, it's aspiration — the same failure shape as a quality commitment with no owner.
+
 The five sources agree because they're describing the same underlying mechanic from five vantage points: a CEO of a $20B design platform (Field), a former design director now Head of Design at Anthropic (Wen), a Head of Design at Cursor shipping live (Lu), a CEO/co-founder of a profitable craft-moat product (Saarinen), and a tactical-craft operator behind Tailwind/Refactoring UI (Schoger). The convergence is the argument.
 
 ## The Saarinen / Field / Wen / Lu Consensus

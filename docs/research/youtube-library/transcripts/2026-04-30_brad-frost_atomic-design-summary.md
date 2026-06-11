@@ -5,10 +5,10 @@ url: 'https://atomicdesign.bradfrost.com/'
 author: Brad Frost
 publication: Atomic Design (book, freely available online)
 library_category: product-and-design
-library_status: 'transcript'
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
+analysis_status: available
+processing_status: needs_synthesis
 processed: false
 buildos_use: both
 skill_candidate: true
@@ -16,7 +16,7 @@ skill_priority: high
 skill_draft: ''
 public_article: ''
 indexed_date: '2026-04-30'
-last_reviewed: '2026-04-30'
+last_reviewed: '2026-06-12'
 transcribed_date: '2026-04-30'
 path: docs/research/youtube-library/transcripts/2026-04-30_brad-frost_atomic-design-summary.md
 ---
@@ -28,6 +28,8 @@ path: docs/research/youtube-library/transcripts/2026-04-30_brad-frost_atomic-des
 - [Product And Design Skill Combos](../skill-combo-indexes/PRODUCT_AND_DESIGN.md): Design system architecture review (proposed); Visual craft fundamentals; AI-era craft and quality moat
 
 ## Source Note
+
+**Analysis:** `docs/research/youtube-library/analyses/2026-04-30_design-systems-canon_frost-curtis-kravets_analysis.md`
 
 > **Source coverage is summary-level.** The full Brad Frost _Atomic Design_ book and 2013 essay are publicly readable online but copyright-protected; WebFetch refused to reproduce them in full. This document captures the canonical methodology from (a) explicit summaries returned by WebFetch and WebSearch, and (b) widely-documented atomic-design conventions cited across the design-systems community. Read alongside the originals.
 

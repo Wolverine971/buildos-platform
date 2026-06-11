@@ -61,6 +61,41 @@ Return:
 
 Stop conditions before returning: every layer has either a finding or an explicit "insufficient evidence" note; the highest-priority broken layer is named once, not hedged across layers; the next actions are ordered and attack the broken layer first.
 
+## Worked Example
+
+Condensed from a full five-layer diagnosis of a field-service-scheduling SaaS stuck at $40k MRR for 9 months; the input is in `evals.md` Task 1. Match this shape and rigor.
+
+**Input (summary):** $49/month single flat plan, self-serve, ~810 customers. ~57 new customers/month (70% Google Ads, 25% SEO, 5% referral; Google CAC up $180 → $310 in 12 months). Monthly logo churn 7%; ~60% of cancellations inside the first 30 days. Exit survey is a fixed dropdown; top answer "too expensive" (45%). No seats, add-ons, or annual plan — NRR ≈ 93%. Team is shipping features and pushing for influencer marketing and a second pricing tier.
+
+**Growth ceiling (compute first):**
+
+```text
+maximum customer base = new customers/month ÷ monthly cancellation rate
+                      = 57 ÷ 0.07 ≈ 814 customers ≈ $39.9k MRR at $49
+```
+
+They have ~810 customers. The plateau is not a marketing mystery — it is the ceiling, reached. At this churn rate, 10% more leads moves the ceiling to ~$44k and sticks again; no acquisition tactic changes the asymptote.
+
+**Layer 1 — Logo churn: BROKEN (binding constraint).** 7% monthly churn with 60% of cancellations inside 30 days is an activation/onboarding failure — the most expensive churn, because CAC (now $310) is fully spent and value was never realized. The 45% "too expensive" dropdown answer is not accepted at face value: a fixed dropdown with a price option harvests its own confirmation. Required research: free-form "**What made you cancel?**" (not "why"); read raw responses before deciding what to fix; cluster themes but keep customer IDs and links to originals; inspect the delta between customers who reached first value and those with missing setup data or zero activity.
+
+**Layer 2 — Pricing/positioning: suspect, second order.** $49 flat is positioning, not just a price: it selects price-sensitive small operators who churn easily and signals thin support. A higher tier may open a steadier market — but only with the new buyer expectations named (onboarding help, support promise, possibly integrations). Do not ship the second tier as a churn band-aid before Layer 1 research says which promise is failing.
+
+**Layer 3 — Expansion/NRR: missing counterweight.** NRR ≈ 93% with zero expansion paths means churn has no offset that scales with the installed base. Candidate paths — crew/seat pricing, SMS-dispatch add-on, annual plans — each must pass the filter: _"Is this actually good for the customer, or only good for us?"_ An annual-plan discount fails the filter today: with 60% of churn inside 30 days it locks in customers who haven't reached first value. Sequence it after activation is fixed.
+
+**Layer 4 — Channels: saturating, not the constraint.** CAC climbing $180 → $310 on the 70% channel is saturation evidence. But fixing acquisition while 60% of new customers churn in 30 days pours more into the leak. When the time comes, apply the adjacency rule — one foot in an existing strength (SEO content, field-service vocabulary), the other into buyer-native routes (trade associations, equipment dealers, bookkeepers who serve contractors). Influencer marketing is a pure greenfield move with no asset advantage: declined.
+
+**Layer 5 — Is growth still the goal?** Insufficient evidence on founder intent. Note the separation: the business question (a ~$40k plateau can be a fine profit engine) is distinct from the founder question (needing a new challenge). Revisit after Layers 1–3 move.
+
+**Verdict — highest-priority broken layer: Layer 1 (early churn / onboarding).** Evidence still missing: free-form cancellation responses, an activation-step funnel, cohort churn by signup month.
+
+**Next actions, in order:**
+
+1. Define first value and instrument the first-30-day journey; measure how many customers reach it.
+2. Replace the dropdown exit survey with free-form "What made you cancel?"; read 50 raw responses before fixing anything.
+3. Rebuild onboarding around the failure points found (target 7% → 4–5% monthly churn ⇒ ceiling ≈ 1,140–1,425 customers ≈ $56–70k MRR with zero new marketing).
+4. Add one expansion path that passes the customer-value filter (likely crew seats; annual plans only after activation is fixed).
+5. Only then revisit channels: hold Google Ads spend at current CAC; no influencer spend.
+
 ## Guardrails
 
 - Do not start with acquisition if churn or activation is broken.

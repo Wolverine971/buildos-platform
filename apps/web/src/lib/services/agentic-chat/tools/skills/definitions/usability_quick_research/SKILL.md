@@ -27,7 +27,7 @@ Use this child when a UI decision needs user evidence instead of another interna
 
 1. Name the decision first (Hall's sequence): define goals, define success, identify what must be known, identify driving assumptions — then choose a method. Answer the decision-first questions: What will change based on the learning? What does the team currently believe? What would change the team's mind (disconfirming evidence)? How big is the bet?
 2. Estimate bet size (low / medium / high) from reversibility, cost of being wrong, and how much is already known. Every research plan must carry a bet-size estimate.
-3. Brainstorm questions, not ideas: produce a ranked unknowns list before any solution ideas. Separate discovery questions from evaluative usability questions. One primary research question per round, at most 1–2 secondary.
+3. Brainstorm questions, not ideas: produce a ranked unknowns list before any solution ideas. Rank by Hall's question-quality ladder — a **good** question is specific, actionable, practical, and within your means; the **great** question is "What do we really know vs. what are we just assuming?"; the **best** question is "the unknown that carries the most risk." Research the best question (highest-risk unknown) first. Separate discovery questions from evaluative usability questions. One primary research question per round, at most 1–2 secondary.
 4. Pick the smallest credible method from the matrix below. If buy-in or alignment is weak, research the organization first: stakeholder interviews and decision-maker mapping before user studies.
 5. Write the hypothesis and the disconfirming-evidence list before any user contact. If you cannot write what would change your mind, you are running validation theater, not research.
 6. Prepare neutral prompts (run the leading-question lint), representative participants or named proxies with explicit limitations, and observable success criteria.
@@ -35,7 +35,7 @@ Use this child when a UI decision needs user evidence instead of another interna
 
 ## Bet Size → Method Selection
 
-The amount of research depends on how large the decision is, how much is already known, and how uncertain the team is (Hall). Method rows are drawn from the Hall/Krug method catalog; the bet-size grouping is derived from Hall's "bigger bets need more confidence" rule plus Krug's reversibility limit on small-sample testing.
+"The amount of research depends on how large the decision is, how much is already known, and how uncertain the team is" — Hall states this verbatim (BayCHI primary source), so the bet-size grouping is now a primary rule, not a derivation. Method rows are drawn from the Hall/Krug method catalog; Krug's reversibility limit on small-sample testing sets the High-tier floor.
 
 | Bet size   | Decision profile                                                                          | Smallest credible methods                                                                                                                                   | Floor                                                                                                                                                              |
 | ---------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -45,11 +45,21 @@ The amount of research depends on how large the decision is, how much is already
 
 Cross-rules:
 
-- When stakeholders resist "research," reframe around bet size and decision risk: better-informed decisions, higher chance of success, lower risk.
+- When stakeholders resist "research," reframe around bet size and decision risk. Hall's sourced reframe: "All business is about making bets on human behavior" (WSJ, via Hall) — this takes certainty off the table and reframes research as placing a better-informed bet, not seeking proof. Better-informed decisions, higher chance of success, lower risk.
+- Two data types → method (Hall): there are only two kinds of data, and the data type picks the method. A **quantitative** question (how many / how much) needs a quantitative method; a **qualitative** question (why / what you didn't think to ask) needs a qualitative method. "You cannot math your way to why." Qualitative is the only method that surfaces "what you didn't think to ask" — surveys and analytics cannot. High-bet tiers often need both ("you need to know what's happening and how much"), but quant tells you whether something matters, never why.
 - Old research is not automatically authoritative: audit it against today's question, evidence quality, date, participant fit, and decision relevance before reusing it.
 - Participant quality is the insight quality: every plan names who qualifies, why they represent the target, and what proxy limitations remain.
 - When users misunderstand a UI, pair research with copy and label review — interface quality is language quality.
 - Recommend a cadence, not a one-off study, when the user asks how to institutionalize research.
+
+### Survey guardrail (Hall, 2nd-edition surveys chapter)
+
+Before recommending a survey at any tier, run it through this test. Surveys feel objective because you can count the answers — but you may just be counting the lies.
+
+- **Answerable-truthfully-and-willingly test.** A survey question is valid only if the respondent (a) knows the answer truthfully and (b) is willing to give it. Good: factual, knowable questions ("How many kids under 18 live in your home?"). Fails the willingness test: sensitive questions (income). Fails the truthfully test: anything asking people to predict their own behavior or rate feelings.
+- **No feature-ranking.** People cannot rank features, and prioritizing the product is the designer's paid job — a feature-ranking survey or dot-vote outsources the decision to people who can't and shouldn't make it. Reject it; route the question to qualitative behavior observation instead.
+- **Do not turn feelings into math.** Satisfaction/1–10/"rate how easy" scales are invalid — "no human has feelings in 10 degrees of granularity." Defer to qualitative for the why.
+- **Large N ≠ statistical confidence.** Surveying 1,000 people is not statistical confidence; "anecdotes you can count is not the same as quantitative data." Real probabilistic sampling requires target population → sampling frame → representative sample, plus handling non-response and self-selection bias. Absent that, a large-N survey gives no more valid conclusions than talking to 12 well-screened users — so prefer the qualitative round unless the survey clears the test above.
 
 ## Moderated 3-User Test Script (fill-in)
 
@@ -68,7 +78,7 @@ Protocol rules from Krug's rocket-surgery canon: 3 users per round, hour-long on
 Run every scripted prompt through this before the session. The governing rule is Hall's: a prompt that cannot elicit disconfirming evidence is validation theater — rewrite it. Items marked (default) are internal-practice defaults derived from that rule, not verbatim from sources.
 
 - Reject prompts that embed the team's preferred answer, framing, or feature name.
-- Reject future hypotheticals ("Would you use…?", "Would X be useful?") — replace with past behavior: "Walk me through the last time you…". (default)
+- Reject future hypotheticals ("Would you use…?", "Would X be useful?") — replace with past behavior: "Walk me through the last time you…". (Hall: what you need to know ≠ what you ask; "Nobody can predict their own behavior," so the worst market-research question is "How likely are you to adopt my product in the next six months?" — re-source the prompt to observed past behavior.)
 - Reject valence-loaded words that presuppose a reaction: easy, simple, intuitive, love, annoying. (default)
 - Reject yes/no prompts where "yes" confirms the hypothesis; prefer open "how/what/walk me through". (default)
 - Reject double-barreled prompts asking two things at once. (default)
@@ -92,7 +102,7 @@ Every research plan this skill produces must contain, in order:
 
 ## Guardrails
 
-- Do not use research as validation theater. Start with what you need to know, not what you hope to prove.
+- Do not use research as validation theater. Hall: "validation" is a forbidden word — "all validation means is prove me right because we're launching next week." Start with what you need to know, not what you hope to prove; refuse to run a study structured to confirm a decision already made.
 - Do not pick a method before the decision, bet size, and unknowns are named.
 - Do not overbuild a research plan when three good sessions would answer the current design risk — and do not stop at three users for high-bet, hard-to-reverse decisions.
 - Do not recruit poor-fit participants and treat their feedback as truth; do not recruit only happy users.
@@ -102,6 +112,7 @@ Every research plan this skill produces must contain, in order:
 
 ## Notes
 
-- Sourced: Erika Hall decision-first model, bet-size rule, organizational-research-first, old-research audit, participant/proxy rules (`docs/research/youtube-library/analyses/2026-05-15_erika-hall_research-at-scale_analysis.md`); Krug rocket-surgery 3-user protocol, scenario/moderation rules, method catalog (`docs/research/youtube-library/analyses/2026-04-30_usability-research-canon_krug-hall_analysis.md`).
-- The bet-size → method matrix groups sourced methods by sourced rules; the grouping itself and lint items marked (default) are internal-practice defaults, not verbatim canon.
+- Sourced: Erika Hall decision-first model, bet-size rule, organizational-research-first, old-research audit, participant/proxy rules (`docs/research/youtube-library/analyses/2026-05-15_erika-hall_research-at-scale_analysis.md`); Krug rocket-surgery 3-user protocol, scenario/moderation rules, method catalog (`docs/research/youtube-library/analyses/2026-04-30_usability-research-canon_krug-hall_analysis.md`); Hall BayCHI "Even More Just Enough Research" — verbatim bet-size rule, "all business is making bets on human behavior," validation-as-forbidden-word, good/great/best question-quality ladder, "walk me through your last…" + worst-question example, two-data-types → method rule, and the surveys-chapter guardrail (`docs/research/youtube-library/analyses/2026-06-11_erika-hall_even-more-just-enough-research_analysis.md`).
+- The bet-size → method matrix groups sourced methods by sourced rules; the matrix preamble and the future-hypothetical lint item are now Hall-primary (BayCHI). Remaining lint items marked (default) are internal-practice defaults, not verbatim canon.
+- **Enrichment 2026-06-11:** added Hall BayCHI primary source — upgraded the bet-size matrix preamble and the future-hypothetical lint item from derived/(default) to Hall-primary; added the survey guardrail (answerable-truthfully-and-willingly test, no feature-ranking, large-N ≠ confidence) and the two-data-types → method cross-rule; re-sourced the stakeholder reframe to "all business is making bets on human behavior," strengthened the validation-theater guardrail with the forbidden-word quote, and added the good/great/best question-quality ladder to workflow step 3.
 - **Named gaps (do not invent numbers for these):** NN/g heuristic evaluation severity scoring is not yet sourced; SUS/SEQ/PSSUQ quantitative thresholds and benchmarks (Sauro & Lewis) are not yet sourced. Both are queued acquisitions in the 2026-06-11 gap plan. Until sourced, recommend the instrument by name only and defer scoring.

@@ -12,7 +12,6 @@
 
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { page } from '$app/stores';
 	import { browser, dev } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
@@ -85,11 +84,6 @@
 	} from './agent-chat-sse-handler';
 	import { createVoiceAdapter } from './agent-chat-voice.svelte';
 	import { createPrewarmController } from './agent-chat-prewarm.svelte';
-	import {
-		downloadChatSessionAuditMarkdown,
-		fetchChatSessionAuditPayload
-	} from '$lib/services/admin/chat-session-audit-export';
-	import { downloadChatSessionAuditBundle } from '$lib/services/admin/chat-session-audit-bundle';
 
 	interface AutoInitProjectConfig {
 		projectId: string;
@@ -107,6 +101,9 @@
 		initialChatSessionId?: string | null;
 		initialProjectFocus?: ProjectFocus | null;
 		embedded?: boolean;
+		/** Reports the active chat session id so embedding surfaces can render
+		 * session-level chrome (e.g. ChatSessionAuditActions) in their own header. */
+		onSessionChange?: (sessionId: string | null) => void;
 	}
 
 	type ContextSelectionType = ChatContextType | 'agent_to_agent';
@@ -151,7 +148,8 @@
 		autoInitProject = null,
 		initialChatSessionId = null,
 		initialProjectFocus = null,
-		embedded = false
+		embedded = false,
+		onSessionChange
 	}: Props = $props();
 
 	// Context selection state
@@ -216,7 +214,6 @@
 	// Conversation state
 	let messages = $state<UIMessage[]>([]);
 	let currentSession = $state<ChatSession | null>(null);
-	let isExportingAudit = $state(false);
 	let isStreaming = $state(false);
 	let currentStreamController: AbortController | null = null;
 	let activeStreamRunId = $state(0);
@@ -263,17 +260,11 @@
 	let activeStreamTiming = $state<ClientStreamTimingState | null>(null);
 	let _lastCompletedStreamTiming = $state<ClientStreamTimingState | null>(null);
 
-	const isAdminUser = $derived(Boolean($page.data?.user?.is_admin));
-
-	const adminSessionHref = $derived.by(() => {
-		const sessionId = currentSession?.id;
-		if (!sessionId) return null;
-		return `/admin/chat/sessions?chat_session_id=${encodeURIComponent(sessionId)}`;
+	// Let embedding surfaces (e.g. BriefChatModal) mirror the active session id
+	// into their own header chrome.
+	$effect(() => {
+		onSessionChange?.(currentSession?.id ?? null);
 	});
-
-	const showAdminDebugActions = $derived.by(
-		() => isAdminUser && Boolean(currentSession?.id) && Boolean(adminSessionHref)
-	);
 
 	const displayContextUsage = $derived.by(() => {
 		if (!selectedContextType) {
@@ -1747,54 +1738,6 @@
 		presenter.resetMutationTracking();
 
 		if (onClose) onClose(summary);
-	}
-
-	async function exportCurrentSessionAudit() {
-		if (!browser) return;
-
-		const sessionId = currentSession?.id;
-		if (!sessionId) {
-			toastService.error('Start or resume a chat session before exporting the audit.');
-			return;
-		}
-
-		isExportingAudit = true;
-		try {
-			const payload = await fetchChatSessionAuditPayload(sessionId);
-			downloadChatSessionAuditMarkdown(payload);
-			toastService.success('Session audit exported as markdown');
-		} catch (err) {
-			console.error('Failed exporting current session audit', err);
-			toastService.error(
-				err instanceof Error ? err.message : 'Failed to export session audit markdown'
-			);
-		} finally {
-			isExportingAudit = false;
-		}
-	}
-
-	async function exportCurrentSessionBundle() {
-		if (!browser) return;
-
-		const sessionId = currentSession?.id;
-		if (!sessionId) {
-			toastService.error('Start or resume a chat session before exporting the audit.');
-			return;
-		}
-
-		isExportingAudit = true;
-		try {
-			const payload = await fetchChatSessionAuditPayload(sessionId);
-			downloadChatSessionAuditBundle(payload);
-			toastService.success('Session audit bundle exported as zip');
-		} catch (err) {
-			console.error('Failed exporting current session bundle', err);
-			toastService.error(
-				err instanceof Error ? err.message : 'Failed to export session audit bundle'
-			);
-		} finally {
-			isExportingAudit = false;
-		}
 	}
 
 	function resolveAttachmentProjectId(): string | null {
@@ -3322,34 +3265,10 @@
 {/snippet}
 
 {#if embedded}
-	<!-- Embedded mode: render chat content directly without Modal wrapper -->
+	<!-- Embedded mode: render chat content directly without Modal wrapper.
+	     The host surface owns the header chrome; session actions are exposed
+	     to it via onSessionChange + ChatSessionAuditActions. -->
 	<div class="flex h-full flex-col overflow-hidden bg-card">
-		<!-- INKPRINT header bar (parity with the modal header). The host surface
-		     owns the close affordance, so no onClose is passed here. -->
-		<div class="relative z-20 flex-shrink-0 border-b border-border bg-card tx tx-frame tx-weak">
-			<AgentChatHeader
-				{selectedContextType}
-				{displayContextLabel}
-				{displayContextSubtitle}
-				{isStreaming}
-				showBackButton={false}
-				onBack={handleBackNavigation}
-				projectId={selectedEntityId}
-				{resolvedProjectFocus}
-				onChangeFocus={openFocusSelector}
-				onClearFocus={handleFocusClear}
-				{ontologyLoaded}
-				hasActiveThinkingBlock={!!currentThinkingBlockId}
-				{currentActivity}
-				{sessionStatusLabel}
-				contextUsage={displayContextUsage}
-				{showAdminDebugActions}
-				{adminSessionHref}
-				onExportAudit={exportCurrentSessionAudit}
-				onExportBundle={exportCurrentSessionBundle}
-				{isExportingAudit}
-			/>
-		</div>
 		<!-- Embedded chat content area -->
 		<div class="relative z-10 flex flex-1 flex-col overflow-hidden bg-card">
 			<div class="flex h-full min-h-0 flex-col">
@@ -3400,11 +3319,7 @@
 					{currentActivity}
 					{sessionStatusLabel}
 					contextUsage={displayContextUsage}
-					{showAdminDebugActions}
-					{adminSessionHref}
-					onExportAudit={exportCurrentSessionAudit}
-					onExportBundle={exportCurrentSessionBundle}
-					{isExportingAudit}
+					sessionId={currentSession?.id ?? null}
 				/>
 			</div>
 		{/snippet}

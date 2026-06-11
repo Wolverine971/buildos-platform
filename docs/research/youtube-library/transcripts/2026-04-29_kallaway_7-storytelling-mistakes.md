@@ -97,10 +97,10 @@ description: |
 transcribed_date: '2026-04-29'
 source_type: youtube_transcript
 library_category: marketing-and-content
-library_status: transcript
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
+analysis_status: available
+processing_status: needs_synthesis
 processed: false
 buildos_use: both
 skill_candidate: true
@@ -108,7 +108,7 @@ skill_priority: high
 skill_draft: ''
 public_article: ''
 indexed_date: '2026-04-29'
-last_reviewed: '2026-04-29'
+last_reviewed: '2026-06-12'
 path: docs/research/youtube-library/transcripts/2026-04-29_kallaway_7-storytelling-mistakes.md
 ---
 
@@ -121,6 +121,7 @@ path: docs/research/youtube-library/transcripts/2026-04-29_kallaway_7-storytelli
 - **Duration**: 13:37
 - **Upload Date**: 2025-02-06
 - **Views**: 142,640
+- **Analysis**: `docs/research/youtube-library/analyses/2026-04-29_kallaway_7-storytelling-mistakes_analysis.md`
 
 ## Timestamps
 

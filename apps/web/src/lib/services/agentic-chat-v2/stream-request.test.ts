@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-request.test.ts
 import { describe, expect, it } from 'vitest';
 import { parseFastAgentStreamRequestBody } from './stream-request';
+import { normalizeFastAgentStreamRequest } from './types';
 
 describe('parseFastAgentStreamRequestBody', () => {
 	it('accepts a minimal valid body', () => {
@@ -31,6 +32,20 @@ describe('parseFastAgentStreamRequestBody', () => {
 			prewarmed_context: { key: 'v2|global', version: 2 }
 		});
 		expect(result.ok).toBe(true);
+	});
+
+	it('accepts null voice note group ids as absent optional values', () => {
+		const result = parseFastAgentStreamRequestBody({
+			message: 'Hello',
+			voiceNoteGroupId: null,
+			voice_note_group_id: null
+		});
+		expect(result.ok).toBe(true);
+		if (result.ok) {
+			expect(result.input.voiceNoteGroupId).toBeNull();
+			expect(result.input.voice_note_group_id).toBeNull();
+			expect(normalizeFastAgentStreamRequest(result.input).voiceNoteGroupId).toBeUndefined();
+		}
 	});
 
 	it('rejects a non-object body with a path-labelled issue', () => {

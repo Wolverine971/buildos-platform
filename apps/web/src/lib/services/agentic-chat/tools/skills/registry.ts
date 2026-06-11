@@ -28,7 +28,8 @@ import {
 	hookCraftShortFormSkill,
 	storyDrivenContentCraftSkill,
 	viralContentForBoringBrandsSkill,
-	viralVideoScriptStructureSkill
+	viralVideoScriptStructureSkill,
+	youtubeChannelCraftForFoundersSkill
 } from './marketing-content.skill';
 import { peopleSkill } from './people.skill';
 import {
@@ -93,6 +94,7 @@ const ALL_SKILLS: SkillDefinition[] = [
 	algorithmAwarePublishingSkill,
 	goingViralSkill,
 	viralContentForBoringBrandsSkill,
+	youtubeChannelCraftForFoundersSkill,
 	aiEraCraftAndQualityMoatSkill,
 	contextEngineeringForAgentWorkSkill,
 	nonfictionWritingFromLivedConvictionSkill,

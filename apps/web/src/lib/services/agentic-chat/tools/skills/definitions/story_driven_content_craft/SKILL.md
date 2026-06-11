@@ -164,7 +164,7 @@ The Kallaway register skews toward shock and creator-economy hype ("0 to 100K su
 - **No piece without explicit audience-mapping** in the first 30 seconds (video) or first paragraph (blog).
 - **No "knowing-only" payoffs.** Predictable validation produces no dopamine. If a smart on-topic reader could have written your payoff, rewrite or layer in a counter-intuitive frame.
 - **No talking-head-only video** longer than 60 seconds without at least one visual cue.
-- **No prose without rhythm variation.** Standard-deviation of sentence length below threshold = monotony = swipe.
+- **No prose without rhythm variation.** Apply the jagged-edge / read-aloud test: render one sentence per line and sentences must vary visibly in length (jagged right edge, not a straight one). Read aloud — a run of same-length sentences is the failure. A straight edge or a monotone run = rewrite.
 - **No piece without a last line written first.** No exceptions; this is upstream of the body.
 - **No Tier 1 lens** unless a non-obvious proof is attached.
 - **No level-5/6 advice ("be more likable")** for creators who haven't fixed levels 1–4. And no level-1/2 advice ("strengthen your hook") for creators with traction but no fandom — they need consistency, not a better hook.
@@ -195,6 +195,41 @@ Return a structured piece bundle:
 - **Identity-contract check** — does this piece reinforce the founder's defined problem area? If no, flag for drift
 
 For audit-mode runs, replace the first set with a **diagnostic report**: the first failed rung, the corresponding craft-move fix, and the rewrite plan.
+
+## Worked Example
+
+Condensed gold-standard bundle for the eval Task 1 fixture (rambling solo-founder anecdote → ~600-word founder essay, overwhelmed-founder audience); input in `evals.md`. Match this shape.
+
+- **Inquiry / thesis:** I did everything the productivity gospel says — six apps, real discipline — and still missed my own launch. The fix was the opposite of organizing. (Lived material supplied; no upstream skill load needed.)
+- **Lens (5 candidates, tier-ranked):**
+    - T1: "My two-year solo-building journey" — rejected, saturated.
+    - T2: "Why I abandoned six note apps" — comparison, common.
+    - T2: "Behind the scenes of shipping a feature I almost cut."
+    - T3: "Productivity apps fail because they tax you at the moment of capture" — mechanism.
+    - **T4 (chosen):** "I missed my own launch with the plan written down in three apps — so I stopped organizing." Category-of-one: only this founder has the missed-launch receipt AND built the product the inversion produced. Narrates into the T3 mechanism.
+- **Last line (written first):** "The structure was never the work. The capture was." Stranger-text test: pass — survives with zero context.
+- **First line (with visual analog):** "I missed my own launch deadline with the plan written down in three different apps." Concrete scene + number; names the topic; no throat-clearing. Loop test vs last line: capture→structure recast — continuous.
+- **Atomic shareability line (≤10 words):** "It's not a discipline problem. It's a capture problem." (9 words)
+- **Villain:** the "organize harder" doctrine — every app's demand that you file, tag, and sort at the moment of capture. They say more structure; the piece says structure was the tax.
+- **Audience map (first paragraph):** "If you're a solo founder with notes in six apps and a plan that lives nowhere, this happened to you too — you just haven't named it yet."
+- **Beat outline (every transition tagged; intensity / 100):**
+    1. Missed launch; plan in three apps, nowhere real. (open ~75)
+    2. **but** I'd done everything right — the apps, the systems, the discipline. (~90, first peak inside 200 words — implants the question: how does a prepared founder still miss?)
+    3. **therefore** I assumed discipline failure and organized harder — and abandoned every app within three weeks. (release ~35)
+    4. **but** the breaking point flipped the question: what if organizing was the tax, not the fix? (loop 2 opens)
+    5. **therefore** I stopped organizing. Every morning, one raw ramble into one place. (~55)
+    6. **but** then the strange part: structure showed up on its own. (re-peak ~80, ~word 420)
+    7. **therefore** that became the product's core — and I almost cut it for feeling too simple. (~65)
+    8. **but** users keep saying the same sentence back to me: "I thought it was discipline." (validation ~85)
+    9. Last dab. (Dog-notebook line: cut — funny, off-plot.)
+- **W-stack:** what + why = beats 1–2 (missed launch, the contradiction); who + how = beats 3–5; where + when ("two years," app inventory) demoted to beat 7's aside.
+- **Rebuy map:** Loop 1 (prepared founder misses — how?) closes at beat 3 → Loop 2 (is organizing the tax?) opens beat 4, closes beat 6 → Loop 3 (why does structure emerge on its own?) opens beat 6, closes beat 8. Lede carries loops 1–2 inside the first 200 words.
+- **Visual brief per beat:** 1 = screenshot grid of the three apps with the same plan fragmented; 2 = pull-quote; 5 = raw transcript excerpt; 6 = the structured board; 8 = verbatim user quote as block quote.
+- **Tone audit:** written to Marcus (one named founder friend, two apps deep into his own graveyard); "In this post I'll share…" phrasing banned; direct address verified ("you just haven't named it yet").
+- **Rhythm audit:** rendered one sentence per line; right edge jagged (4 / 18 / 7 / 22 / 3-word runs in the lede); read-aloud pass logged; one long crescendo sentence reserved for beat 6.
+- **Ladder diagnostic:** implanted question at first paragraph = "how do you miss a launch you planned three times?"; mid-piece anticipation = "what replaced the organizing?"; validation = discipline→capture inversion — non-obvious, lands as relief, not gotcha.
+- **Seven-mistake reject pass:** arc = clean (75→90→35→80 curve, not bell) · W's = clean · rebuy = clean (3 loops) · villain = clean ("organize harder" doctrine) · rooting = clean (audience-mapped) · atomic = clean (9 words) · picture = clean (visual per beat).
+- **Identity-contract check:** reinforces the capture-first / thinking-environment problem area — no drift.
 
 ## Source Attribution
 

@@ -132,3 +132,23 @@ Verdict: **STRONG DELTA (0/12 → 12/12).** Load path: exactly as expected — S
 Notes: Both runs reached the correct do-not-send verdict and flagged the same offending lines — the delta is rigor, reproducibility, and actionability, not raw judgment. Judge: the without-run was "a fluent, well-argued editorial teardown… but unfalsifiable"; the with-run "operates from a visible system." The without-run did contribute send-ops detail (throttling, domain rotation) outside this skill's lane — correctly so; that lane belongs to `cold_email_deliverability_readiness`.
 
 2026-06-11 — Task 1 with-skill output trimmed and embedded as ## Worked Example in SKILL.md.
+
+### 2026-06-12 — Task 2 — BLIND A/B (the owed pair; prior wave-2 entry was a with-skill self-check) — performer (with/without) + blind judge: claude-opus-4-8 (workflow subagents)
+
+| Marker | without | with |
+| --- | --- | --- |
+| M1 | miss | hit |
+| M2 | miss | hit |
+| M3 | miss | miss |
+| M4 | miss | hit |
+| M5 | miss | hit |
+| M6 | miss | hit |
+| M7 | miss | hit |
+| M8 | miss | hit |
+| M9 | miss | hit |
+| M10 | miss | hit |
+| M11 | miss | hit |
+
+Verdict: **STRONG DELTA**. With-skill hit 10/11 markers; gap over no-skill = 10 markers. Refusal missed by skill run: False.
+Load path (expected, not re-tested this run): skill_load(cold_email_taste_review, full); taste scorecard is inline in the shell (no scorecard reference load); fake_warmth_and_rewrites loads conditionally, justified for the named rewrite moves (feature-first -> progress-first, meeting-first -> artifact-first); should NOT load anything from cold_email_outreach_compiler (rebuild is routed, not performed).
+Notes: Output Y (skill run) hits 10/11; Output X (no-skill) hits 0 — X is a competent rewrite but does exactly what M1 forbids (polishes instead of reviewing) and never invokes the scorecard/north-star/routing machinery. Gap includes multiple named-rule + threshold + guardrail markers, easily clearing STRONG DELTA. Both miss M3: the marker expects the honest answer to be that NO auto-fail fires, but Y asserts two auto-fails (fake warmth + screenshot-embarrassing claim) — Y arguably over-fires here rather than reporting clean, so it's a genuine miss, not a refusal failure. M4 graded HIT on substance (dim3=0, inverted ratio, sender-bio open, we/our-dominant) though Y states 'badly inverted' rather than the explicit >=3:1 number.

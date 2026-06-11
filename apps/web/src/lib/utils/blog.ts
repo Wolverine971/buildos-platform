@@ -18,6 +18,8 @@ export interface BlogLineageSource {
 	channelUrl?: string;
 }
 
+export type BlogLineageStats = Record<string, number | string | boolean>;
+
 export interface BlogPost {
 	slug: string;
 	category: string;
@@ -36,6 +38,15 @@ export interface BlogPost {
 	pic?: string;
 	excerpt?: string;
 	faq?: BlogFaqItem[];
+	skillId?: string;
+	skillType?: string;
+	skillCategory?: string;
+	providers?: string[];
+	compatibleAgents?: string[];
+	stackWith?: string[];
+	skillSource?: string;
+	lineagePath?: string;
+	lineageStats?: BlogLineageStats;
 	lineagePeople?: string[];
 	lineageSources?: BlogLineageSource[];
 	sourceTitle?: string;
@@ -201,6 +212,26 @@ function normalizeLineageSources(value: unknown): BlogLineageSource[] | undefine
 	return normalized.length > 0 ? normalized : undefined;
 }
 
+function normalizeScalarRecord(value: unknown): BlogLineageStats | undefined {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
+
+	const normalized = Object.fromEntries(
+		Object.entries(value as Record<string, unknown>).filter((entry): entry is [
+			string,
+			number | string | boolean
+		] => {
+			const [, item] = entry;
+			return (
+				typeof item === 'number' ||
+				typeof item === 'string' ||
+				typeof item === 'boolean'
+			);
+		})
+	);
+
+	return Object.keys(normalized).length > 0 ? normalized : undefined;
+}
+
 function buildBlogPost(
 	path: string,
 	slug: string,
@@ -246,6 +277,16 @@ function buildBlogPost(
 		pic: typeof metadata.pic === 'string' ? metadata.pic : undefined,
 		excerpt: typeof metadata.excerpt === 'string' ? metadata.excerpt : description,
 		faq,
+		skillId: typeof metadata.skillId === 'string' ? metadata.skillId : undefined,
+		skillType: typeof metadata.skillType === 'string' ? metadata.skillType : undefined,
+		skillCategory:
+			typeof metadata.skillCategory === 'string' ? metadata.skillCategory : undefined,
+		providers: normalizeStringArray(metadata.providers),
+		compatibleAgents: normalizeStringArray(metadata.compatibleAgents),
+		stackWith: normalizeStringArray(metadata.stackWith),
+		skillSource: typeof metadata.skillSource === 'string' ? metadata.skillSource : undefined,
+		lineagePath: typeof metadata.lineagePath === 'string' ? metadata.lineagePath : undefined,
+		lineageStats: normalizeScalarRecord(metadata.lineageStats),
 		lineagePeople: normalizeStringArray(metadata.lineagePeople),
 		lineageSources: normalizeLineageSources(metadata.lineageSources),
 		sourceTitle: typeof metadata.sourceTitle === 'string' ? metadata.sourceTitle : undefined,

@@ -7,13 +7,13 @@ publish: false
 path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_icp_signal_design/references/segment-examples.md
 ---
 
-# Segment Examples and Disqualifier Checklist
+# Segment Examples
 
 Use when grading a candidate segment definition, comparing alternatives, or showing the user what good and bad segments look like.
 
 Three examples below, each labeled as weak, acceptable, or strong. Each illustrates a different layer of the segment definition — fit, signal, committee shape, MVS check.
 
-A complete disqualifier checklist follows the examples.
+The binary disqualifier kill-list lives inline in the shell (`## Disqualifier Kill-List`) — run it there; these examples show what passing and failing segments look like in full.
 
 ## Weak segment
 
@@ -168,59 +168,8 @@ Why this is strong:
 - Segment is small (50-150 accounts globally per quarter) but addressable - the Underscore VC MVS "smallest dominable" criterion.
 - Recommends Mafia-Offer-quality manual outreach per account, not volume automation.
 
-## Disqualifier Checklist
+## Reading These Against the Kill-List
 
-Run every candidate segment through this checklist. Any single fail blocks the segment from cold-outreach campaign mode.
-
-### Fit disqualifiers (Lincoln Murphy six fit types)
-
-- [ ] Technical fit: their tech stack supports our product (or our integration path)
-- [ ] Functional fit: our product solves their actual job-to-be-done
-- [ ] Resource fit: they have time, headcount, and budget to deploy
-- [ ] Competence fit: their team has the skills to use the product correctly
-- [ ] Experience fit: they are not first-time buyers evaluating on wrong criteria
-- [ ] Cultural fit: how they work matches how the product works
-
-### MVS disqualifiers (Underscore VC / Michael Skok)
-
-- [ ] Common Needs: customers share a single dominant need
-- [ ] Dominability: segment small enough to dominate, not just serve
-- [ ] Viability: current product serves the segment without divergent customization
-
-### Signal disqualifiers (Holland / Elias / Maurya)
-
-- [ ] Signal is not just a firmographic or demographic filter
-- [ ] Signal is fresh (within 30-90 days)
-- [ ] Signal is verifiable from at least one external source
-- [ ] Signal has a plausible link to a recognized pain
-- [ ] Reply data from this segment will be interpretable on a 25-50 person batch
-
-### Committee disqualifiers
-
-- [ ] Committee size estimable from segment data
-- [ ] At least one identifiable champion role
-- [ ] McMahon's three-test (power + personal win + willingness to fight) plausible for the champion role
-- [ ] Blocker is named, not ignored
-- [ ] Mode-appropriate Golden Path chosen (Top-Down or Bottom-Up)
-
-### Stage and capacity disqualifiers (Mark Roberge)
-
-- [ ] LIR target ("P% of customers achieve E events every T days") is defined for the segment
-- [ ] Segment tier (Green / Yellow / Red) is named
-- [ ] Red segments are excluded from campaign mode
-- [ ] Yellow segments are run only as one-variable experiments, not scaled
-
-### Inverted disqualifiers (Jen Abel)
-
-- [ ] No "mid-market" framing - the segment is either SMB-shaped or enterprise-shaped
-- [ ] If campaigning at enterprise ACV, pricing assumption is at least $75-150k landed
-- [ ] If the prospect grinds on price, segment-level expectation is reset (price-sensitivity is a disqualifier signal in enterprise)
-
-### Persona-style disqualifiers (Ash Maurya)
-
-- [ ] Segment does not lead with demographics (age, role, title) as the primary identifier
-- [ ] Switching-trigger type is named (bad experience / change in circumstance / awareness)
-- [ ] Desired outcome and current solution are named
-- [ ] Pet peeves / struggling moments / workarounds for the current solution are named
-
-A segment that passes every checklist row is ready for campaign-mode outreach. A segment that fails one row in the Fit / MVS / Signal / Committee groups is sent back to research. A segment that fails only in the Stage / Inverted / Persona groups can be run as a low-volume, one-variable experiment with explicit notes.
+- The weak segment fails shell kill-list questions 7-14 at minimum (MVS + every signal question) before fit is even assessable.
+- The acceptable segment passes all 19 hard kills; its soft spots (pain likelihood 1, testability 1) show up as scorecard points, not kill-list fails.
+- The strong segment passes everything with a scorecard of 8 — the profile that earns manual, per-account outreach instead of volume automation.

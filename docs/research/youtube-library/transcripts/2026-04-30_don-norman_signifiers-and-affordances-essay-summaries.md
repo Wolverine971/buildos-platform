@@ -5,10 +5,10 @@ url: 'https://jnd.org/'
 author: Don Norman
 publication: JND.org
 library_category: product-and-design
-library_status: 'transcript'
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
+analysis_status: available
+processing_status: needs_synthesis
 processed: false
 buildos_use: both
 skill_candidate: true
@@ -16,7 +16,7 @@ skill_priority: high
 skill_draft: ''
 public_article: ''
 indexed_date: '2026-04-30'
-last_reviewed: '2026-04-30'
+last_reviewed: '2026-06-12'
 transcribed_date: '2026-04-30'
 path: docs/research/youtube-library/transcripts/2026-04-30_don-norman_signifiers-and-affordances-essay-summaries.md
 ---
@@ -28,6 +28,8 @@ path: docs/research/youtube-library/transcripts/2026-04-30_don-norman_signifiers
 - [Product And Design Skill Combos](../skill-combo-indexes/PRODUCT_AND_DESIGN.md): Information architecture and interaction fundamentals (proposed); UI/UX quality review
 
 ## Source Note
+
+**Analysis:** `docs/research/youtube-library/analyses/2026-04-30_ia-ixd-fundamentals_norman-cooper_analysis.md`
 
 > **Source coverage is summary-level.** Don Norman's canonical essays at JND.org are copyrighted (originally published in ACM _Interactions_) and the WebFetch service refused full reproduction. This document is a synthesis of (a) explicit summary content returned by WebFetch and WebSearch, and (b) widely-documented canonical material from _The Design of Everyday Things_ and Norman's interaction-design teaching that aligns with the source essay arguments. Direct citations are flagged. Read alongside the original essays at the URLs below.
 

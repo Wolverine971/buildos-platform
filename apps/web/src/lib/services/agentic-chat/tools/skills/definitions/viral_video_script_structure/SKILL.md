@@ -284,7 +284,7 @@ Return a structured script bundle:
 - **Body** — each point with Value Loop and rehook into next
 - **Outro** — recap + pain solved + high note
 - **Native CTA tags** — which body points anchor which CTAs (1–2 max for long-form, 1 max for short-form)
-- **Hook variants** — 5–8 iterations with the chosen one and read-aloud notes
+- **Hook variants** — ONLY when no locked hook was supplied: 5–8 iterations with the chosen one and read-aloud notes. If a locked hook IS supplied, skip variants entirely, carry the locked hook through unchanged, and note "locked hook — variants deferred to `hook-craft-short-form` if wanted."
 - **Cadence map** — sentence-length pattern with bridge phrases marked
 - **Word audit** — flagged jargon / abstract entities replaced
 - **Read time** — vs. target window (e.g., 1:42 / 1:30 = cut 12s from expansions)
@@ -292,6 +292,38 @@ Return a structured script bundle:
 - **Expectation-vs-reality scorecard** — for each beat: raise / hold / shrink
 
 For audit-mode runs, replace the bundle with a **diagnostic report**: which step of the skeleton failed (packaging / outline / intro / body / outro / CTA), which phase of the live process broke (signal / simplification / plot line / middle / hook / pacing / cut), and the specific rewrite plan.
+
+## Worked Example
+
+Condensed gold-standard bundle for the eval Task 1 fixture (locked hook, 60–90s vertical, brain-dump demo footage, overwhelmed-founder audience); input in `evals.md`. Hook is locked upstream, so hook variants are skipped and the 5-part intro compresses to the first-3s click confirm. Match this shape.
+
+- **Title (working caption):** "Stop organizing your notes. Watch this instead." — locked before drafting.
+- **Thumbnail/cover brief (loose):** mid-transformation board frame, overlay "Mess in, plan out."
+- **Signal check:** passed — a rough 20s clip of the same transformation pulled 4× usual saves.
+- **Plot line (locked):** organizing-at-capture is the tax that kills every productivity app; skip it and structure shows up on its own — demonstrated live. **Cut angles, named:** daily brief, calendar sync, AI-agents-changing-founder-work riff (teased nowhere; kept for separate videos).
+- **Ranked points (2-1-3-4):** Best = the live ramble→plan transformation (lived proof on screen). Second-best = why every app failed you: they make you organize while you capture. Third = the capture-first take. **Reorder justification:** the why-apps-fail point opens because it re-agitates the hook's pain and trains an ascending-value slope into the demo; leading with the demo would flip the slope downward after 20 seconds.
+- **Body (Value Loops + rehooks):**
+    - **Point A — organizing at capture is the tax** (talking-head)
+        - Context: "Every productivity app makes you organize while you capture."
+        - Application: "Pick the project. Pick the tag. Pick the folder. Mid-thought."
+        - Framing: "That tax is why you quit every app in three weeks."
+    - **Rehook:** "But if organizing at capture is the problem — watch what happens when you skip it entirely."
+    - **Point B — the live transformation** (screen recording)
+        - Context: "This is one raw voice ramble. Zero structure." (transcript on screen)
+        - Application: "Watch. Tasks pull themselves out. Phases form. Deadlines attach." (board forming)
+        - Framing: "Forty seconds ago this was a mess in my head. Now it's a plan I can start."
+    - **Rehook:** "And here's the part nobody tells you."
+    - **Point C — the take** (talking-head)
+        - Context: "You never had a discipline problem."
+        - Application: "You had a capture problem. Dump everything, every morning, one place."
+        - Framing: "Structure isn't something you impose. It shows up once everything's finally in one spot."
+- **Objection + dismissal:** "Sounds too simple? That's exactly why I almost didn't ship it."
+- **Conviction ending (verdict, hedges stripped):** "This is the only way I've found to stop my projects from rotting across six apps." (ends on the finished board — pays the hook's promise exactly)
+- **Native CTA tag:** none in the spoken script; pinned-comment link to the brain-dump flow, anchored to Point C's pain. Removal test: script reads complete without it — pass.
+- **Cadence map:** A = LONG/SHORT-staccato/MEDIUM · rehook SHORT · B = MEDIUM/SHORT-SHORT-SHORT/LONG · rehook SHORT · C = SHORT/MEDIUM/LONG · objection SHORT · verdict MEDIUM. Read-aloud pass: no 4-in-a-row same-length runs.
+- **Word audit:** "context engineering" / "ontology" never used; "AI structures it" renamed to "tasks pull themselves out"; every line passes the would-I-say-it-out-loud test.
+- **Read time:** ~190 words incl. hook ≈ 0:76 at 150 wpm — inside 90s; no cuts needed (expansion to cut first if it ran long: the three-staccato line in Point A).
+- **Expectation-vs-reality scorecard:** hook = raise · A-context = hold · A-framing = raise · rehook 1 = raise · B-application = raise (the payoff) · B-framing = hold · rehook 2 = raise · C = raise (reframe) · objection = hold · verdict = raise.
 
 ## Source Attribution
 

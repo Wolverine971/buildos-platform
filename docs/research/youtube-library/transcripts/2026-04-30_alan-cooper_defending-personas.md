@@ -6,10 +6,10 @@ author: Alan Cooper
 publication: Medium
 upload_date: 2021-03-09
 library_category: product-and-design
-library_status: 'transcript'
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
+analysis_status: available
+processing_status: needs_synthesis
 processed: false
 buildos_use: both
 skill_candidate: true
@@ -17,7 +17,7 @@ skill_priority: high
 skill_draft: ''
 public_article: ''
 indexed_date: '2026-04-30'
-last_reviewed: '2026-04-30'
+last_reviewed: '2026-06-12'
 transcribed_date: '2026-04-30'
 path: docs/research/youtube-library/transcripts/2026-04-30_alan-cooper_defending-personas.md
 ---
@@ -34,6 +34,7 @@ path: docs/research/youtube-library/transcripts/2026-04-30_alan-cooper_defending
 - **Publication:** Medium (mralancooper)
 - **Date:** 2021-03-09
 - **URL:** https://mralancooper.medium.com/defending-personas-2657fe26dd0f
+- **Analysis:** `docs/research/youtube-library/analyses/2026-04-30_ia-ixd-fundamentals_norman-cooper_analysis.md` (consolidated Norman + Cooper IA/IxD fundamentals analysis)
 
 ---
 

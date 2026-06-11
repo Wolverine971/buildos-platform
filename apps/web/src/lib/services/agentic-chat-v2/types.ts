@@ -42,11 +42,12 @@ export type FastAgentStreamRequest = {
  * are deprecated aliases kept for older callers; they are resolved exactly
  * once by `normalizeFastAgentStreamRequest` and never read past the boundary.
  */
-export type FastAgentStreamRequestInput = FastAgentStreamRequest & {
+export type FastAgentStreamRequestInput = Omit<FastAgentStreamRequest, 'voiceNoteGroupId'> & {
+	voiceNoteGroupId?: string | null;
 	/** @deprecated Use `lastTurnContext`. */
 	last_turn_context?: LastTurnContext | null;
 	/** @deprecated Use `voiceNoteGroupId`. */
-	voice_note_group_id?: string;
+	voice_note_group_id?: string | null;
 	/** @deprecated Use `prewarmedContext`. */
 	prewarmed_context?: FastChatContextCache | null;
 	/** @deprecated Use `preparedPromptKey`. */

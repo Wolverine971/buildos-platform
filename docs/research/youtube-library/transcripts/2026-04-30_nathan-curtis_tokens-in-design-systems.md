@@ -6,10 +6,10 @@ author: Nathan Curtis
 publication: EightShapes (Medium)
 upload_date: 2016-06-24
 library_category: product-and-design
-library_status: 'transcript'
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
+analysis_status: available
+processing_status: needs_synthesis
 processed: false
 buildos_use: both
 skill_candidate: true
@@ -17,7 +17,7 @@ skill_priority: high
 skill_draft: ''
 public_article: ''
 indexed_date: '2026-04-30'
-last_reviewed: '2026-04-30'
+last_reviewed: '2026-06-12'
 transcribed_date: '2026-04-30'
 path: docs/research/youtube-library/transcripts/2026-04-30_nathan-curtis_tokens-in-design-systems.md
 ---
@@ -34,6 +34,7 @@ path: docs/research/youtube-library/transcripts/2026-04-30_nathan-curtis_tokens-
 - **Publication:** EightShapes (Medium)
 - **Date:** 2016-06-24
 - **URL:** https://medium.com/eightshapes-llc/tokens-in-design-systems-25dd82d58421
+- **Analysis:** `docs/research/youtube-library/analyses/2026-04-30_design-systems-canon_frost-curtis-kravets_analysis.md` (consolidated Design Systems canon analysis)
 
 ## Introduction
 

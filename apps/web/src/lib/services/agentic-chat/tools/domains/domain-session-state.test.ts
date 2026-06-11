@@ -109,9 +109,6 @@ describe('domain session state', () => {
 		expect(getNewDomainResearchBacklogEntries(next, null)).toEqual([
 			expect.objectContaining({
 				id: 'skill:youtube_channel_diagnostics'
-			}),
-			expect.objectContaining({
-				id: 'skill:youtube_channel_craft_for_founders'
 			})
 		]);
 	});

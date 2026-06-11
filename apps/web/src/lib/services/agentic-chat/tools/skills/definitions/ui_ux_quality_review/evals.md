@@ -213,3 +213,22 @@ Verdict: **STRONG DELTA (6/12 → 12/12).** Load path: exactly as expected — S
 Notes: The 6/12 baseline shows the model is already a competent free-form UI reviewer — the skill's delta concentrated in named patterns, closed scales, explicit thresholds, the canonical output shape, and scope discipline (Delegated tags). Judge: the without-run was "richer in remediation artifacts and engineering nuance" (revised markup, `aria-live`, double-submit guard); the with-run "more systematic, more auditable, more consistently evidence-anchored." Possible v2 improvement: an output-contract field for an optional remediation sketch.
 
 2026-06-11 — Task 1 with-skill output trimmed and embedded as ## Worked Example in SKILL.md.
+
+### 2026-06-12 — Task 2 — BLIND A/B (the owed pair; prior wave-2 entry was a with-skill self-check) — performer (with/without) + blind judge: claude-opus-4-8 (workflow subagents)
+
+| Marker | without | with |
+| --- | --- | --- |
+| M1 | miss | hit |
+| M2 | miss | hit |
+| M3 | miss | hit |
+| M4 | hit | hit |
+| M5 | hit | hit |
+| M6 | miss | hit |
+| M7 | miss | hit |
+| M8 | hit | hit |
+| M9 | hit | hit |
+| M10 | hit | hit |
+
+Verdict: **STRONG DELTA**. With-skill hit 10/10 markers; gap over no-skill = 5 markers. Refusal missed by skill run: False.
+Load path (expected, not re-tested this run): skill_load(ui_ux_quality_review, full); references: foundation_checks ONLY (typography is area 4; targeted-question rule loads just the covering reference). Should NOT load polish_and_fit_checks or ai_ui_smoke_test.
+Notes: X (likely skill run) hits all 10: canonical Area/Finding/Evidence/Severity/Fix contract, cites the closed scale {16,20,24,28,32,40,48,64}, severity rubric with high-sev gray-400, serif/sans-in-product-UI rule, and 'Delegated:' tagging for the button. Y is strong freeform typography advice and catches line-height inversion, tracking, th-as-label, and button feedback — but misses the contract shape (M1), the closed-scale citation (M2), the 2-3-heading-level rule (M3), the serif/sans pairing rule (M6), and any rubric severity assignment incl. high-sev contrast (M7). Gap is 5 markers spanning named-rule + threshold, with X at 100% — STRONG DELTA. No guardrail miss: both stayed type-scoped and avoided a full multi-area audit.

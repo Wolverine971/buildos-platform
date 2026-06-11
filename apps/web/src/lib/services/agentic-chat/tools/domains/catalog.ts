@@ -243,6 +243,11 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 			{
 				id: 'algorithm_aware_publishing',
 				useWhen: 'the user needs platform strategy, topic discipline, or publishing cadence'
+			},
+			{
+				id: 'youtube_channel_craft_for_founders',
+				useWhen:
+					'the user wants channel-level diagnosis, title+thumbnail packaging, format/series design, upload cadence, or a next-videos plan for a founder-led YouTube channel'
 			}
 		],
 		recommendedSkillStacks: [
@@ -252,6 +257,7 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 				useWhen:
 					'the user wants a channel growth plan, positioning, publishing rhythm, or first-video roadmap',
 				skillIds: [
+					'youtube_channel_craft_for_founders',
 					'content_strategy_beyond_blogging',
 					'algorithm_aware_publishing',
 					'viral_video_script_structure'
@@ -278,14 +284,8 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 				missingSkillId: 'youtube_channel_diagnostics',
 				userNeed:
 					'diagnose channel growth blockers from analytics, packaging, and content history',
-				summary: 'No dedicated YouTube analytics or channel-diagnostics skill exists yet.'
-			},
-			{
-				missingSkillId: 'youtube_channel_craft_for_founders',
-				userNeed:
-					'plan founder-led long-form YouTube channel packaging and first-video sequence',
 				summary:
-					'The combo index marks this as ready to draft but it is not registered as a runtime skill yet.'
+					'No dedicated YouTube analytics or channel-diagnostics skill exists yet; youtube_channel_craft_for_founders names this gap rather than faking benchmarks.'
 			}
 		]
 	},
@@ -656,6 +656,11 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 			{
 				id: 'algorithm_aware_publishing',
 				useWhen: 'the user needs platform-fit or algorithm-aware publishing decisions'
+			},
+			{
+				id: 'youtube_channel_craft_for_founders',
+				useWhen:
+					'the creator platform is YouTube and the unit of work is the whole channel — positioning, packaging discipline, cadence, or what to make next'
 			}
 		],
 		relatedDomainIds: [

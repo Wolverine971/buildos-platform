@@ -1,8 +1,10 @@
 ---
 title: 'Exposing the New Manufactured Viral Content Economy'
+source_type: youtube_transcript
+video_id: '-5lqJF5BTvo'
+url: 'https://www.youtube.com/watch?v=-5lqJF5BTvo'
 channel: 'Devin Nash'
 channel_url: 'https://www.youtube.com/channel/UCZ1fbizRtEOC3dbiFsVUaCQ'
-video_url: 'https://www.youtube.com/watch?v=-5lqJF5BTvo'
 upload_date: '2026-04-16'
 duration: '00:49:06'
 views: 3411
@@ -30,8 +32,21 @@ tags:
     - algorithms
     - astroturfing
     - ftc disclosure
+library_category: marketing-and-content
+library_status: 'transcript, blog-reference, skill-draft'
+transcript_status: available
+analysis_status: available
+processing_status: draft_skill_created
+processed: true
+buildos_use: both
+skill_candidate: true
+skill_priority: backlog
+skill_draft: 'docs/research/youtube-library/skill-drafts/content-strategy-beyond-blogging/SKILL.md'
+public_article: 'apps/web/src/content/blogs/philosophy/social-media-is-dead-interest-media.md'
+indexed_date: '2026-06-10'
+last_reviewed: '2026-06-10'
 transcribed_date: '2026-04-16'
-path: youtube-transcripts/2026-04-16-exposing-the-new-manufactured-viral-content-economy.md
+path: docs/research/youtube-library/transcripts/2026-04-16-exposing-the-new-manufactured-viral-content-economy.md
 ---
 
 # Exposing the New Manufactured Viral Content Economy
@@ -40,7 +55,7 @@ path: youtube-transcripts/2026-04-16-exposing-the-new-manufactured-viral-content
 
 This source contributes to these multi-source skill combo indexes:
 
-- [Marketing And Content Skill Combos](../docs/research/youtube-library/skill-combo-indexes/MARKETING_AND_CONTENT.md): Content strategy beyond blogging; Ethical interest-media distribution; SaaS social distribution system
+- [Marketing And Content Skill Combos](../skill-combo-indexes/MARKETING_AND_CONTENT.md): Content strategy beyond blogging; Ethical interest-media distribution; SaaS social distribution system
 
 ## Metadata
 

@@ -6,10 +6,10 @@ author: Steve Krug
 publication: Sensible.com / New Riders Press
 upload_date: 2014-01-01
 library_category: product-and-design
-library_status: 'transcript'
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
+analysis_status: available
+processing_status: needs_synthesis
 processed: false
 buildos_use: both
 skill_candidate: true
@@ -17,7 +17,7 @@ skill_priority: high
 skill_draft: ''
 public_article: ''
 indexed_date: '2026-04-30'
-last_reviewed: '2026-04-30'
+last_reviewed: '2026-06-12'
 transcribed_date: '2026-04-30'
 path: docs/research/youtube-library/transcripts/2026-04-30_steve-krug_dont-make-me-think-summary.md
 ---
@@ -29,6 +29,8 @@ path: docs/research/youtube-library/transcripts/2026-04-30_steve-krug_dont-make-
 - [Product And Design Skill Combos](../skill-combo-indexes/PRODUCT_AND_DESIGN.md): Usability evaluation and quick research (proposed); UI/UX quality review
 
 ## Source Note
+
+**Analysis:** `docs/research/youtube-library/analyses/2026-04-30_usability-research-canon_krug-hall_analysis.md`
 
 > **Source coverage is summary-level.** _Don't Make Me Think_ (Krug, 2000 / 2nd ed. 2006 / 3rd ed. _Revisited_ 2014) is the canonical text in this space. WebFetch returned only the marketing page and Wikipedia summary; the book itself is copyrighted. This document captures the canonical principles widely cited across the usability-engineering and UX research communities, attributed where summary text was directly returned. Read alongside the original book.
 

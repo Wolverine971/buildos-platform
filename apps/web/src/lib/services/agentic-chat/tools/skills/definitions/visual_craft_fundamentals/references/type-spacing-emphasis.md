@@ -13,7 +13,9 @@ Use this reference when tuning typography, picking or pairing fonts, normalizing
     - **Body sizes (16–20):** default tracking.
     - **Small text (12–14):** loosen slightly.
     - **Bold buttons:** add tracking so letters do not squish.
+- **Uppercase text always gets extra letter-spacing** (Adam Wathan / Steve Schoger, RefactoringUI build). Every uppercase label, button, or section eyebrow (`SUBSCRIBE`, `DESIGN TIPS`, table headers) needs widened tracking (`tracking-wide`, ~+0.05em) so the caps don't squish — Schoger's standing habit: "always does that on uppercase stuff." Agent-check: any `uppercase` / all-caps element with default or tight tracking is a finding; fix is `+ tracking-wide`.
 - **Line-height is inversely proportional to size.** ~1.0× for big headlines, ~1.5× for body. Override the browser default 125% — calibrated to be okay everywhere and great nowhere.
+- **Set global type defaults once, then override per role** (Adam Wathan, RefactoringUI build). On the root/body, set the default family, default text color, and a global tight line-height (`leading-tight`), then switch body paragraphs specifically to `leading-normal` — UI elements keep the tighter default. Also enable site-wide anti-aliasing (`-webkit-font-smoothing: antialiased`, e.g. `antialiased`): design mocks render type with non-subpixel smoothing, so without it rendered type looks heavier than the comp — "looks a lot nicer on dark backgrounds." Agent-check: type that looks heavier than the reference on dark surfaces, or page-wide default leading left at the browser 125%, is a finding.
 - **One hierarchy with four roles:** headings (2–3 levels, never all 6), paragraphs, buttons, labels. New screens assemble from this Lego set; never invent new roles per screen.
 - **Body text contrast ≥ 4.5:1** (WebAIM AA), 7:1 where possible.
 - **Match typeface category to brand voice.** Serif = traditional / editorial; sans-serif = modern / neutral; display = personality (headlines only, never body); script = elegant (rarely); mono = technical.
@@ -42,6 +44,17 @@ Use this reference when tuning typography, picking or pairing fonts, normalizing
 - **Top-nav text/icons:** occupy ~**20% of bar height**. The other 80% is breathing room.
 - **Whitespace must exist at all three levels** simultaneously: between lines (line-height), between elements (padding/margin), between groupings (section gaps). If only one level breathes, the screen still looks crowded.
 - **Mobile needs more whitespace than desktop**, not less. Cramped mobile is a tell.
+
+## Layout patterns
+
+Concrete, named layout recipes — apply the fill-in pattern verbatim, don't freelance the structure.
+
+- **Equal-height cards with bottom-pinned footers — the flex chain** (Adam Wathan, RefactoringUI build). When a card grid needs every card the same height and a footer (link, meta, CTA) pinned to the bottom regardless of title length, a single `flex` declaration won't do it — you need the full chain. Fill-in recipe:
+    1. Each grid **column/track** → `flex flex-col`. (A flex parent makes children fill the parent's height; `flex-col` keeps items full-width — `flex-1` on the column "defeats our width," so use `flex-col`.)
+    2. The **card** itself → `flex flex-col` (e.g. image stacked over a content section).
+    3. The card's **content section** → `flex-1` ("fill all available space") so content height equalizes across cards.
+    4. That same content section → also `flex flex-col justify-between`, pushing the title to the top and the footer to the bottom. (`mt-auto` on the footer is an equivalent alternative.)
+    - Rationale: _"When a parent is set to display flex the child elements will fill the parent's height by default."_ Agent-check: a card grid with ragged heights, or a footer floating mid-card instead of pinned to the bottom, is a finding — the fix is the full column→card→content-`flex-1`→`justify-between` chain, not a lone `flex`.
 
 ## Up-pop / down-pop
 

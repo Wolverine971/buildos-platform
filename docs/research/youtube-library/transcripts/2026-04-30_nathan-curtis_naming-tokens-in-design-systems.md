@@ -5,10 +5,10 @@ url: 'https://medium.com/eightshapes-llc/naming-tokens-in-design-systems-9e86c74
 author: Nathan Curtis
 publication: EightShapes (Medium)
 library_category: product-and-design
-library_status: 'transcript'
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
+analysis_status: available
+processing_status: needs_synthesis
 processed: false
 buildos_use: both
 skill_candidate: true
@@ -16,7 +16,7 @@ skill_priority: high
 skill_draft: ''
 public_article: ''
 indexed_date: '2026-04-30'
-last_reviewed: '2026-04-30'
+last_reviewed: '2026-06-12'
 transcribed_date: '2026-04-30'
 path: docs/research/youtube-library/transcripts/2026-04-30_nathan-curtis_naming-tokens-in-design-systems.md
 ---
@@ -32,6 +32,7 @@ path: docs/research/youtube-library/transcripts/2026-04-30_nathan-curtis_naming-
 - **Author:** Nathan Curtis
 - **Publication:** EightShapes (Medium)
 - **URL:** https://medium.com/eightshapes-llc/naming-tokens-in-design-systems-9e86c7444676
+- **Analysis:** `docs/research/youtube-library/analyses/2026-04-30_design-systems-canon_frost-curtis-kravets_analysis.md` (consolidated Design Systems canon analysis)
 
 ## Overview
 

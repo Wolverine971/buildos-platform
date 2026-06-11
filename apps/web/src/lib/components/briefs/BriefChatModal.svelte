@@ -25,6 +25,7 @@
 	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
 	import { renderMarkdown } from '$lib/utils/markdown';
 	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
+	import ChatSessionAuditActions from '$lib/components/agent/ChatSessionAuditActions.svelte';
 	import type { DailyBrief } from '$lib/types/daily-brief';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 
@@ -49,6 +50,9 @@
 	let activeTab = $state<'brief' | 'chat'>('chat');
 	let scrollLockHeld = $state(false);
 	let lastSummary = $state<DataMutationSummary | undefined>(undefined);
+	// Active chat session id, mirrored up from the embedded AgentChatModal so
+	// session actions (Logs / Export) can live in this modal's header bar.
+	let chatSessionId = $state<string | null>(initialChatSessionId);
 	let briefChatEntityId = $derived(brief.chat_brief_id || brief.id);
 	let displayTitle = $derived(title ?? `Daily Brief — ${formatBriefDate(brief.brief_date)}`);
 
@@ -195,6 +199,7 @@
 			briefTabHasUpdates = false;
 			dragTranslateY = 0;
 			isDragging = false;
+			chatSessionId = initialChatSessionId;
 		}
 	});
 
@@ -260,18 +265,21 @@
 						<h2 class="text-sm font-semibold text-foreground truncate">
 							{displayTitle}
 						</h2>
-						<button
-							type="button"
-							onclick={requestClose}
-							class="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg
-								border border-border bg-card text-muted-foreground shadow-ink
-								transition-all pressable tx-button
-								hover:border-destructive/50 hover:text-destructive
-								focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-							aria-label="Close dialog"
-						>
-							<X class="h-4 w-4" />
-						</button>
+						<div class="flex shrink-0 items-center gap-1.5 sm:gap-2">
+							<ChatSessionAuditActions sessionId={chatSessionId} />
+							<button
+								type="button"
+								onclick={requestClose}
+								class="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg
+									border border-border bg-card text-muted-foreground shadow-ink
+									transition-all pressable tx-button
+									hover:border-destructive/50 hover:text-destructive
+									focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+								aria-label="Close dialog"
+							>
+								<X class="h-4 w-4" />
+							</button>
+						</div>
 					</div>
 
 					<!-- Mobile tab selector -->
@@ -349,6 +357,7 @@
 								entityId={briefChatEntityId}
 								{initialChatSessionId}
 								onClose={handleChatClose}
+								onSessionChange={(sessionId) => (chatSessionId = sessionId)}
 							/>
 						</div>
 					</div>

@@ -103,6 +103,7 @@ describe('domain discovery', () => {
 				expect.objectContaining({
 					id: 'youtube_growth_strategy_plan',
 					skill_ids: [
+						'youtube_channel_craft_for_founders',
 						'content_strategy_beyond_blogging',
 						'algorithm_aware_publishing',
 						'viral_video_script_structure'

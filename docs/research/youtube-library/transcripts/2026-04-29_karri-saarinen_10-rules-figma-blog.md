@@ -5,18 +5,18 @@ url: 'https://www.figma.com/blog/karri-saarinens-10-rules-for-crafting-products-
 author: Karri Saarinen (interviewed)
 publication: Figma Blog
 library_category: product-and-design
-library_status: 'transcript'
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
-processed: false
+analysis_status: available
+processing_status: draft_skill_created
+processed: true
 buildos_use: both
 skill_candidate: true
 skill_priority: high
-skill_draft: ''
+skill_draft: 'docs/research/youtube-library/skill-drafts/ai-era-craft-and-quality-moat/SKILL.md'
 public_article: ''
 indexed_date: '2026-04-29'
-last_reviewed: '2026-04-29'
+last_reviewed: '2026-06-11'
 transcribed_date: '2026-04-29'
 path: docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_10-rules-figma-blog.md
 ---
@@ -32,6 +32,7 @@ path: docs/research/youtube-library/transcripts/2026-04-29_karri-saarinen_10-rul
 - **Author:** Karri Saarinen (interviewed)
 - **Publication:** Figma Blog
 - **URL:** https://www.figma.com/blog/karri-saarinens-10-rules-for-crafting-products-that-stand-out/
+- **Analysis:** `docs/research/youtube-library/analyses/2026-04-29_karri-saarinen-linear_craft-and-calm-software_analysis.md` (consolidated Saarinen/Linear analysis; this article is the "tenets" source)
 
 ## 1. Commit to Quality at the Leadership Level
 

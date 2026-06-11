@@ -5,10 +5,10 @@ url: 'https://culturedcode.com/about/'
 author: Cultured Code
 publication: Cultured Code
 library_category: product-and-design
-library_status: 'transcript'
+library_status: 'transcript, analysis'
 transcript_status: available
-analysis_status: missing
-processing_status: needs_analysis
+analysis_status: available
+processing_status: needs_synthesis
 processed: false
 buildos_use: both
 skill_candidate: true
@@ -16,7 +16,7 @@ skill_priority: medium
 skill_draft: ''
 public_article: ''
 indexed_date: '2026-04-29'
-last_reviewed: '2026-04-29'
+last_reviewed: '2026-06-12'
 transcribed_date: '2026-04-29'
 path: docs/research/youtube-library/transcripts/2026-04-29_cultured-code_about-page.md
 ---
@@ -30,6 +30,7 @@ path: docs/research/youtube-library/transcripts/2026-04-29_cultured-code_about-p
 ## Source
 
 - **URL:** https://culturedcode.com/about/
+- **Analysis:** `docs/research/youtube-library/analyses/2026-04-29_werner-jainek-cultured-code_things-design-philosophy_analysis.md` (Cultured Code / Things design-philosophy analysis; this about page is the secondary source)
 
 ## Company Overview
 
