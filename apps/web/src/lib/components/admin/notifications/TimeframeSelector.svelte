@@ -52,7 +52,7 @@
 			type="checkbox"
 			bind:checked={autoRefresh}
 			onchange={handleAutoRefreshToggle}
-			class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer"
+			class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer"
 		/>
 		<span class="text-sm text-muted-foreground">Auto Refresh (30s)</span>
 	</label>

@@ -24,7 +24,7 @@
 			<div
 				class="flex-shrink-0 w-12 h-12 dither-subtle rounded-lg flex items-center justify-center"
 			>
-				<Smartphone class="w-6 h-6 text-green-600 dark:text-green-400" />
+				<Smartphone class="w-6 h-6 text-success" />
 			</div>
 			<div class="flex-1">
 				<h3 class="font-semibold text-foreground mb-1">

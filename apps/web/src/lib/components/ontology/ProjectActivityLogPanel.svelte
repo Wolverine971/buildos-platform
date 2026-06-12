@@ -171,11 +171,11 @@
 	function getActionColor(action: string): string {
 		switch (action) {
 			case 'created':
-				return 'text-emerald-500';
+				return 'text-success';
 			case 'updated':
-				return 'text-blue-500';
+				return 'text-info';
 			case 'deleted':
-				return 'text-red-500';
+				return 'text-destructive';
 			default:
 				return 'text-muted-foreground';
 		}

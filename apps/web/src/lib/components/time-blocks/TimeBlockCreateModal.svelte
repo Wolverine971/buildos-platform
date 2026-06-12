@@ -179,41 +179,40 @@
 	onSubmit={handleSubmit}
 	onClose={() => dispatch('close')}
 	size="lg"
-	customClasses="z-[100]"
 >
 	<!-- Block type selector and project selector before form fields -->
 	{#snippet beforeForm()}
-		<div class="px-6 pt-6 pb-0 space-y-5">
-			<fieldset class="space-y-3">
+		<div class="px-3 pt-3 sm:px-4 sm:pt-4 pb-0 space-y-3">
+			<fieldset class="space-y-2">
 				<legend class="text-sm font-semibold text-foreground">Block type</legend>
-				<div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
 					<button
 						type="button"
-						class={`rounded-xl border px-4 py-4 text-left text-sm font-medium transition-all touch-manipulation ${
+						class={`rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-all touch-manipulation pressable ${
 							blockType === 'project'
-								? 'border-blue-600 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-ink ring-2 ring-blue-200 dark:border-blue-400 dark:from-blue-900/20 dark:to-indigo-900/20 dark:text-blue-100 dark:ring-blue-800'
-								: 'border-border bg-card text-foreground hover:border-blue-300 hover:bg-blue-50/50 hover:text-blue-600 dark:text-muted-foreground dark:hover:border-blue-400 dark:hover:bg-blue-900/10 dark:hover:text-blue-200'
+								? 'border-accent bg-accent/10 text-foreground shadow-ink ring-1 ring-accent/40'
+								: 'border-border bg-card text-foreground hover:border-accent/50 hover:bg-accent/5'
 						}`}
 						aria-pressed={blockType === 'project'}
 						onclick={() => (blockType = 'project')}
 						disabled={projects.length === 0}
 					>
-						<span class="block font-semibold text-base mb-1">Project focus</span>
+						<span class="block font-semibold text-sm mb-0.5">Project focus</span>
 						<span class="block text-xs text-muted-foreground">
 							Attach to a project for tailored suggestions.
 						</span>
 					</button>
 					<button
 						type="button"
-						class={`rounded-xl border px-4 py-4 text-left text-sm font-medium transition-all touch-manipulation ${
+						class={`rounded-lg border px-3 py-2.5 text-left text-sm font-medium transition-all touch-manipulation pressable ${
 							blockType === 'build'
-								? 'border-indigo-600 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 shadow-ink ring-2 ring-indigo-200 dark:border-indigo-400 dark:from-indigo-900/20 dark:to-purple-900/20 dark:text-indigo-100 dark:ring-indigo-800'
-								: 'border-border bg-card text-foreground hover:border-indigo-300 hover:bg-indigo-50/50 hover:text-indigo-600 dark:text-muted-foreground dark:hover:border-indigo-400 dark:hover:bg-indigo-900/10 dark:hover:text-indigo-200'
+								? 'border-accent bg-accent/10 text-foreground shadow-ink ring-1 ring-accent/40'
+								: 'border-border bg-card text-foreground hover:border-accent/50 hover:bg-accent/5'
 						}`}
 						aria-pressed={blockType === 'build'}
 						onclick={() => (blockType = 'build')}
 					>
-						<span class="block font-semibold text-base mb-1">Build block</span>
+						<span class="block font-semibold text-sm mb-0.5">Build block</span>
 						<span class="block text-xs text-muted-foreground">
 							Protect flexible time across all projects.
 						</span>
@@ -228,7 +227,7 @@
 			{#if blockType === 'project'}
 				<!-- Project selector with card-style matching FormModal pattern -->
 				<div
-					class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-800 border-blue-200 rounded-xl border p-5 shadow-ink"
+					class="bg-card border-border rounded-lg border p-3 shadow-ink tx tx-frame tx-weak"
 				>
 					<div class="flex items-center gap-2 mb-3">
 						<svg
@@ -249,15 +248,15 @@
 							class="text-sm font-semibold text-foreground uppercase tracking-wider"
 						>
 							Project
-							<span class="text-red-500 ml-0.5">*</span>
+							<span class="text-destructive ml-0.5">*</span>
 						</label>
 					</div>
-					<p class="text-xs text-muted-foreground mb-3">
+					<p class="text-xs text-muted-foreground mb-2">
 						Select the project this focus block is for
 					</p>
 					<select
 						id="project-select"
-						class="w-full rounded-lg border border-border bg-card px-4 py-3 text-sm font-medium text-foreground transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-foreground"
+						class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
 						bind:value={selectedProjectId}
 						required={blockType === 'project'}
 					>
@@ -269,7 +268,7 @@
 				</div>
 			{:else}
 				<div
-					class="rounded-xl border border-indigo-200 bg-gradient-to-br from-indigo-50/80 to-purple-50/80 px-4 py-3.5 text-sm text-indigo-900 dark:border-indigo-800 dark:bg-gradient-to-br dark:from-indigo-900/20 dark:to-purple-900/20 dark:text-indigo-100"
+					class="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 text-sm text-foreground tx tx-frame tx-weak"
 				>
 					<div class="flex items-start gap-2">
 						<svg
@@ -295,9 +294,3 @@
 		</div>
 	{/snippet}
 </FormModal>
-
-<style lang="postcss">
-	:global(.modal-content) {
-		z-index: 100;
-	}
-</style>

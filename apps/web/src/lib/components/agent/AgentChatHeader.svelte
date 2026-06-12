@@ -76,9 +76,9 @@
 			showWarningIcon: contextUsage.status !== 'ok',
 			className:
 				contextUsage.status === 'over_budget'
-					? 'border-red-600/30 bg-red-50 text-red-700 dark:bg-red-950/30 dark:text-red-300'
+					? 'border-destructive/30 bg-destructive/10 text-destructive'
 					: contextUsage.status === 'near_limit'
-						? 'border-amber-500/30 bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'
+						? 'border-warning/30 bg-warning/10 text-warning'
 						: 'border-border bg-muted text-muted-foreground'
 		};
 	});
@@ -178,7 +178,7 @@
 				{#if ontologyLoaded}
 					<!-- Hidden on mobile, visible on sm+ -->
 					<span
-						class="micro-label hidden rounded-lg border border-purple-600/30 bg-purple-50 px-2.5 py-1.5 text-purple-700 tx tx-thread tx-weak sm:inline-flex dark:bg-purple-950/30 dark:text-purple-400"
+						class="micro-label hidden rounded-lg border border-accent/30 bg-accent/10 px-2.5 py-1.5 text-accent tx tx-thread tx-weak sm:inline-flex"
 					>
 						ONTO
 					</span>
@@ -186,7 +186,7 @@
 
 				{#if currentActivity && !hasActiveThinkingBlock}
 					<span
-						class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-600 dark:bg-emerald-400"
+						class="inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-success"
 						title={currentActivity}
 					></span>
 				{/if}
@@ -215,7 +215,7 @@
 			<button
 				type="button"
 				onclick={onClose}
-				class="flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:hover:border-red-400/50 dark:hover:text-red-400"
+				class="flex h-9 w-9 sm:h-7 sm:w-7 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				style="-webkit-tap-highlight-color: transparent;"
 				aria-label="Close modal"
 			>

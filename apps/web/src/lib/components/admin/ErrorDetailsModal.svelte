@@ -21,23 +21,23 @@
 		switch (severity) {
 			case 'critical':
 				return {
-					badge: 'bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30',
-					dot: 'bg-red-500'
+					badge: 'bg-destructive/15 text-destructive border border-destructive/30',
+					dot: 'bg-destructive'
 				};
 			case 'error':
 				return {
-					badge: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30',
-					dot: 'bg-orange-500'
+					badge: 'bg-accent/15 text-accent border border-accent/30',
+					dot: 'bg-accent'
 				};
 			case 'warning':
 				return {
-					badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30',
-					dot: 'bg-amber-500'
+					badge: 'bg-warning/15 text-warning border border-warning/30',
+					dot: 'bg-warning'
 				};
 			case 'info':
 				return {
-					badge: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30',
-					dot: 'bg-blue-500'
+					badge: 'bg-info/15 text-info border border-info/30',
+					dot: 'bg-info'
 				};
 			default:
 				return {
@@ -247,7 +247,7 @@
 						</span>
 						{#if error.error_code}
 							<span
-								class="bg-red-500/10 text-red-600 dark:text-red-400 px-2 py-1 rounded text-xs font-mono border border-red-500/20"
+								class="bg-destructive/10 text-destructive px-2 py-1 rounded text-xs font-mono border border-destructive/20"
 							>
 								{error.error_code}
 							</span>
@@ -255,10 +255,8 @@
 					</div>
 
 					{#if error.user || error.user_id}
-						<div class="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
-							<p
-								class="text-[0.65rem] uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-2"
-							>
+						<div class="bg-info/5 border border-info/20 rounded-lg p-3">
+							<p class="text-[0.65rem] uppercase tracking-wider text-info mb-2">
 								User Information
 							</p>
 							{#if error.user}
@@ -282,10 +280,10 @@
 								</p>
 							{/if}
 							{#if userAdminHref}
-								<div class="mt-3 pt-3 border-t border-blue-500/20">
+								<div class="mt-3 pt-3 border-t border-info/20">
 									<a
 										href={userAdminHref}
-										class="inline-flex items-center gap-1.5 rounded-md border border-blue-500/30 bg-background px-2.5 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-500/10 dark:text-blue-300"
+										class="inline-flex items-center gap-1.5 rounded-md border border-info/30 bg-background px-2.5 py-1.5 text-xs font-medium text-info transition-colors hover:bg-info/10"
 									>
 										<span>Open in Users</span>
 										<ArrowUpRight class="w-3.5 h-3.5" />
@@ -366,10 +364,8 @@
 					{/if}
 
 					{#if chatSessionId || streamRunId || clientTurnId || turnRunId || contextType || entityId || metadataProjectId || activeTurnConflict !== undefined}
-						<div class="bg-violet-500/5 border border-violet-500/20 rounded-lg p-3">
-							<p
-								class="text-[0.65rem] uppercase tracking-wider text-violet-600 dark:text-violet-400 mb-2"
-							>
+						<div class="bg-accent/5 border border-accent/20 rounded-lg p-3">
+							<p class="text-[0.65rem] uppercase tracking-wider text-accent mb-2">
 								Chat Correlation
 							</p>
 							<div class="grid grid-cols-2 gap-2 text-xs">
@@ -384,7 +380,7 @@
 										{#if chatSessionHref}
 											<a
 												href={chatSessionHref}
-												class="mt-1 inline-flex items-center gap-1 text-[0.65rem] font-medium text-violet-700 hover:underline dark:text-violet-300"
+												class="mt-1 inline-flex items-center gap-1 text-[0.65rem] font-medium text-accent hover:underline"
 											>
 												<span>Open chat audit</span>
 												<ArrowUpRight class="w-3 h-3" />
@@ -480,9 +476,9 @@
 					</div>
 
 					{#if originalErrorCode || originalErrorDetails || originalErrorHint}
-						<div class="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+						<div class="bg-destructive/5 border border-destructive/20 rounded-lg p-3">
 							<p
-								class="text-[0.65rem] uppercase tracking-wider text-red-600 dark:text-red-400 mb-2"
+								class="text-[0.65rem] uppercase tracking-wider text-destructive mb-2"
 							>
 								Original Error
 							</p>
@@ -516,10 +512,8 @@
 					{/if}
 
 					{#if isToolExecution}
-						<div class="bg-sky-500/5 border border-sky-500/20 rounded-lg p-3">
-							<p
-								class="text-[0.65rem] uppercase tracking-wider text-sky-600 dark:text-sky-400 mb-2"
-							>
+						<div class="bg-info/5 border border-info/20 rounded-lg p-3">
+							<p class="text-[0.65rem] uppercase tracking-wider text-info mb-2">
 								Tool Execution
 							</p>
 							<div class="grid grid-cols-2 gap-2 text-xs">
@@ -661,10 +655,8 @@
 					{/if}
 
 					{#if !isToolExecution && (error.operation_type || error.table_name || error.record_id || error.project_id || error.brain_dump_id)}
-						<div class="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3">
-							<p
-								class="text-[0.65rem] uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2"
-							>
+						<div class="bg-warning/5 border border-warning/20 rounded-lg p-3">
+							<p class="text-[0.65rem] uppercase tracking-wider text-warning mb-2">
 								Operation Context
 							</p>
 							<div class="grid grid-cols-2 gap-2 text-xs">
@@ -719,10 +711,8 @@
 					{/if}
 
 					{#if error.llm_provider}
-						<div class="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
-							<p
-								class="text-[0.65rem] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2"
-							>
+						<div class="bg-success/5 border border-success/20 rounded-lg p-3">
+							<p class="text-[0.65rem] uppercase tracking-wider text-success mb-2">
 								LLM Details
 							</p>
 							<div class="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
@@ -786,14 +776,10 @@
 					{/if}
 
 					{#if error.resolved}
-						<div class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
+						<div class="bg-success/10 border border-success/30 rounded-lg p-3">
 							<div class="flex items-center gap-2 mb-2">
-								<CircleCheck class="w-4 h-4 text-emerald-500" />
-								<p
-									class="text-xs font-semibold text-emerald-600 dark:text-emerald-400"
-								>
-									Resolved
-								</p>
+								<CircleCheck class="w-4 h-4 text-success" />
+								<p class="text-xs font-semibold text-success">Resolved</p>
 							</div>
 							<div class="space-y-1 text-xs">
 								<p class="text-muted-foreground">

@@ -50,9 +50,9 @@
 
 	const badgeColors = {
 		default: 'bg-muted text-foreground',
-		success: 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400',
-		warning: 'bg-amber-500/20 text-amber-600 dark:text-amber-400',
-		danger: 'bg-red-500/20 text-red-600 dark:text-red-400'
+		success: 'bg-success/20 text-success',
+		warning: 'bg-warning/20 text-warning',
+		danger: 'bg-destructive/20 text-destructive'
 	};
 </script>
 

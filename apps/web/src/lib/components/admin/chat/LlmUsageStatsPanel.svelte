@@ -376,15 +376,15 @@
 		switch (status) {
 			case 'success':
 			case 'completed':
-				return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400';
+				return 'bg-success/10 text-success';
 			case 'failure':
 			case 'failed':
-				return 'bg-red-500/10 text-red-600 dark:text-red-400';
+				return 'bg-destructive/10 text-destructive';
 			case 'timeout':
 			case 'cancelled':
-				return 'bg-amber-500/10 text-amber-600 dark:text-amber-400';
+				return 'bg-warning/10 text-warning';
 			case 'running':
-				return 'bg-sky-500/10 text-sky-600 dark:text-sky-400';
+				return 'bg-info/10 text-info';
 			default:
 				return 'bg-muted text-muted-foreground';
 		}
@@ -394,7 +394,7 @@
 <section id={headingId} class="space-y-6 scroll-mt-8" aria-labelledby={`${headingId}-heading`}>
 	<div>
 		<div class="flex items-center gap-2">
-			<Zap class="h-5 w-5 text-amber-500" />
+			<Zap class="h-5 w-5 text-warning" />
 			<h2 id={`${headingId}-heading`} class="text-lg font-semibold text-foreground">
 				LLM Usage
 			</h2>
@@ -416,31 +416,27 @@
 		</div>
 	{:else if error}
 		<div
-			class="rounded-lg border border-red-500/30 bg-red-500/10 p-4 tx tx-static tx-weak"
+			class="rounded-lg border border-destructive/30 bg-destructive/10 p-4 tx tx-static tx-weak"
 			role="alert"
 		>
 			<div class="flex items-start gap-3">
-				<AlertCircle class="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
+				<AlertCircle class="mt-0.5 h-5 w-5 shrink-0 text-destructive" />
 				<div>
-					<p class="font-semibold text-red-600 dark:text-red-400">Error loading stats</p>
-					<p class="mt-1 text-sm text-red-500">{error}</p>
+					<p class="font-semibold text-destructive">Error loading stats</p>
+					<p class="mt-1 text-sm text-destructive">{error}</p>
 				</div>
 			</div>
 		</div>
 	{:else if stats}
 		{#if hasTruncatedData}
-			<div
-				class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300"
-			>
+			<div class="rounded-lg border border-warning/30 bg-warning/10 p-4 text-sm text-warning">
 				Some source tables hit the dashboard row cap. Metrics are still useful for
 				direction, but the largest tables may be undercounted for this range.
 			</div>
 		{/if}
 
 		{#if !stats.dataHealth.hasBillableUsage && stats.dataHealth.hasAgenticTelemetry}
-			<div
-				class="rounded-lg border border-sky-500/30 bg-sky-500/10 p-4 text-sm text-sky-700 dark:text-sky-300"
-			>
+			<div class="rounded-lg border border-info/30 bg-info/10 p-4 text-sm text-info">
 				No billable `llm_usage_logs` rows were found for this range. Agentic model charts
 				are using turn telemetry and estimated prices from the local model registry.
 			</div>
@@ -452,16 +448,16 @@
 					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 						Billable Cost
 					</p>
-					<DollarSign class="h-4 w-4 text-emerald-500" />
+					<DollarSign class="h-4 w-4 text-success" />
 				</div>
 				<p class="mt-2 text-2xl font-bold text-foreground">
 					{formatCurrency(stats.overview.totalCost)}
 				</p>
 				<div class="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
 					{#if stats.overview.costTrend.direction === 'up'}
-						<TrendingUp class="h-3.5 w-3.5 text-red-500" />
+						<TrendingUp class="h-3.5 w-3.5 text-destructive" />
 					{:else}
-						<TrendingDown class="h-3.5 w-3.5 text-emerald-500" />
+						<TrendingDown class="h-3.5 w-3.5 text-success" />
 					{/if}
 					<span>{formatPercent(stats.overview.costTrend.value)} vs previous</span>
 				</div>
@@ -472,7 +468,7 @@
 					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 						Billable Requests
 					</p>
-					<Activity class="h-4 w-4 text-sky-500" />
+					<Activity class="h-4 w-4 text-info" />
 				</div>
 				<p class="mt-2 text-2xl font-bold text-foreground">
 					{formatNumber(stats.overview.totalRequests)}
@@ -487,7 +483,7 @@
 					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 						Billable Tokens
 					</p>
-					<Zap class="h-4 w-4 text-amber-500" />
+					<Zap class="h-4 w-4 text-warning" />
 				</div>
 				<p class="mt-2 text-2xl font-bold text-foreground">
 					{formatCompact(stats.overview.totalTokens)}
@@ -502,7 +498,7 @@
 					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 						Models
 					</p>
-					<BarChart3 class="h-4 w-4 text-violet-500" />
+					<BarChart3 class="h-4 w-4 text-accent" />
 				</div>
 				<p class="mt-2 text-2xl font-bold text-foreground">
 					{formatNumber(stats.overview.activeModels)}
@@ -515,7 +511,7 @@
 					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 						Turns
 					</p>
-					<Bot class="h-4 w-4 text-teal-500" />
+					<Bot class="h-4 w-4 text-accent" />
 				</div>
 				<p class="mt-2 text-2xl font-bold text-foreground">
 					{formatNumber(stats.agenticOverview.totalTurns)}
@@ -530,7 +526,7 @@
 					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 						Passes
 					</p>
-					<Gauge class="h-4 w-4 text-fuchsia-500" />
+					<Gauge class="h-4 w-4 text-accent" />
 				</div>
 				<p class="mt-2 text-2xl font-bold text-foreground">
 					{formatNumber(stats.agenticOverview.llmPasses)}
@@ -545,7 +541,7 @@
 					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 						Tools
 					</p>
-					<Wrench class="h-4 w-4 text-cyan-500" />
+					<Wrench class="h-4 w-4 text-info" />
 				</div>
 				<p class="mt-2 text-2xl font-bold text-foreground">
 					{formatNumber(stats.agenticOverview.totalToolCalls)}
@@ -560,7 +556,7 @@
 					<p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
 						P95 Turn
 					</p>
-					<Timer class="h-4 w-4 text-rose-500" />
+					<Timer class="h-4 w-4 text-accent" />
 				</div>
 				<p class="mt-2 text-2xl font-bold text-foreground">
 					{formatDuration(stats.agenticOverview.p95TurnDurationMs)}
@@ -599,19 +595,19 @@
 								<div class="space-y-1.5">
 									<div class="h-2 rounded-full bg-muted">
 										<div
-											class="h-2 rounded-full bg-emerald-500"
+											class="h-2 rounded-full bg-success"
 											style:width={barWidth(day.total_cost_usd, maxDailyCost)}
 										></div>
 									</div>
 									<div class="h-2 rounded-full bg-muted">
 										<div
-											class="h-2 rounded-full bg-sky-500"
+											class="h-2 rounded-full bg-info"
 											style:width={barWidth(day.total_tokens, maxDailyTokens)}
 										></div>
 									</div>
 									<div class="h-2 rounded-full bg-muted">
 										<div
-											class="h-2 rounded-full bg-teal-500"
+											class="h-2 rounded-full bg-accent"
 											style:width={barWidth(
 												day.agentic_turns,
 												maxDailyAgenticTurns
@@ -631,13 +627,13 @@
 					</div>
 					<div class="mt-4 flex flex-wrap gap-4 text-xs text-muted-foreground">
 						<span class="inline-flex items-center gap-1"
-							><span class="h-2 w-2 rounded-full bg-emerald-500"></span>Cost</span
+							><span class="h-2 w-2 rounded-full bg-success"></span>Cost</span
 						>
 						<span class="inline-flex items-center gap-1"
-							><span class="h-2 w-2 rounded-full bg-sky-500"></span>Tokens</span
+							><span class="h-2 w-2 rounded-full bg-info"></span>Tokens</span
 						>
 						<span class="inline-flex items-center gap-1"
-							><span class="h-2 w-2 rounded-full bg-teal-500"></span>Agentic turns</span
+							><span class="h-2 w-2 rounded-full bg-accent"></span>Agentic turns</span
 						>
 					</div>
 				{:else}
@@ -656,13 +652,13 @@
 					<div>
 						<div class="mb-2 flex items-center justify-between text-sm">
 							<span class="text-foreground">Input</span>
-							<span class="font-medium text-sky-500"
+							<span class="font-medium text-info"
 								>{formatCompact(stats.overview.promptTokens)}</span
 							>
 						</div>
 						<div class="h-3 rounded-full bg-muted">
 							<div
-								class="h-3 rounded-full bg-sky-500"
+								class="h-3 rounded-full bg-info"
 								style:width={barWidth(
 									stats.overview.promptTokens,
 									stats.overview.totalTokens
@@ -673,13 +669,13 @@
 					<div>
 						<div class="mb-2 flex items-center justify-between text-sm">
 							<span class="text-foreground">Output</span>
-							<span class="font-medium text-fuchsia-500"
+							<span class="font-medium text-accent"
 								>{formatCompact(stats.overview.completionTokens)}</span
 							>
 						</div>
 						<div class="h-3 rounded-full bg-muted">
 							<div
-								class="h-3 rounded-full bg-fuchsia-500"
+								class="h-3 rounded-full bg-accent"
 								style:width={barWidth(
 									stats.overview.completionTokens,
 									stats.overview.totalTokens
@@ -690,13 +686,13 @@
 					<div>
 						<div class="mb-2 flex items-center justify-between text-sm">
 							<span class="text-foreground">Reasoning</span>
-							<span class="font-medium text-amber-500"
+							<span class="font-medium text-warning"
 								>{formatCompact(stats.agenticOverview.reasoningTokens)}</span
 							>
 						</div>
 						<div class="h-3 rounded-full bg-muted">
 							<div
-								class="h-3 rounded-full bg-amber-500"
+								class="h-3 rounded-full bg-warning"
 								style:width={barWidth(
 									stats.agenticOverview.reasoningTokens,
 									stats.agenticOverview.totalTokens
@@ -752,7 +748,7 @@
 									</p>
 								</div>
 								<div class="shrink-0 text-right">
-									<p class="text-sm font-semibold text-emerald-500">
+									<p class="text-sm font-semibold text-success">
 										{formatCurrency(model.total_cost)}
 									</p>
 									<p class="text-xs text-muted-foreground">
@@ -762,7 +758,7 @@
 							</div>
 							<div class="h-2.5 rounded-full bg-muted">
 								<div
-									class="h-2.5 rounded-full bg-emerald-500"
+									class="h-2.5 rounded-full bg-success"
 									style:width={barWidth(model.total_cost, maxModelCost)}
 								></div>
 							</div>
@@ -796,7 +792,7 @@
 									</p>
 								</div>
 								<div class="shrink-0 text-right">
-									<p class="text-sm font-semibold text-teal-500">
+									<p class="text-sm font-semibold text-accent">
 										{formatNumber(model.passes)} passes
 									</p>
 									<p class="text-xs text-muted-foreground">
@@ -808,7 +804,7 @@
 							</div>
 							<div class="h-2.5 rounded-full bg-muted">
 								<div
-									class="h-2.5 rounded-full bg-teal-500"
+									class="h-2.5 rounded-full bg-accent"
 									style:width={barWidth(model.passes, maxAgenticPasses)}
 								></div>
 							</div>
@@ -835,13 +831,13 @@
 									<p class="truncate text-sm font-medium text-foreground">
 										{operation.operation}
 									</p>
-									<p class="shrink-0 text-sm font-semibold text-emerald-500">
+									<p class="shrink-0 text-sm font-semibold text-success">
 										{formatCurrency(operation.total_cost)}
 									</p>
 								</div>
 								<div class="mt-1 h-2 rounded-full bg-muted">
 									<div
-										class="h-2 rounded-full bg-emerald-500"
+										class="h-2 rounded-full bg-success"
 										style:width={barWidth(
 											operation.total_cost,
 											maxOperationCost
@@ -876,13 +872,13 @@
 								<p class="min-w-0 truncate text-sm font-medium text-foreground">
 									{operation.operation}
 								</p>
-								<p class="shrink-0 text-sm font-semibold text-teal-500">
+								<p class="shrink-0 text-sm font-semibold text-accent">
 									{formatNumber(operation.turns)} turns
 								</p>
 							</div>
 							<div class="h-2 rounded-full bg-muted">
 								<div
-									class="h-2 rounded-full bg-teal-500"
+									class="h-2 rounded-full bg-accent"
 									style:width={barWidth(
 										operation.turns,
 										maxAgenticOperationTurns

@@ -47,15 +47,15 @@
 		switch (status.toLowerCase()) {
 			case 'delivered':
 			case 'sent':
-				return 'text-green-600 dark:text-green-400';
+				return 'text-success';
 			case 'failed':
 			case 'bounced':
-				return 'text-red-600 dark:text-red-400';
+				return 'text-destructive';
 			case 'pending':
-				return 'text-yellow-600 dark:text-yellow-400';
+				return 'text-warning';
 			case 'opened':
 			case 'clicked':
-				return 'text-blue-600 dark:text-blue-400';
+				return 'text-info';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -70,7 +70,7 @@
 		class="w-full px-4 py-3 bg-muted flex items-center justify-between hover:bg-muted transition-colors"
 	>
 		<div class="flex items-center space-x-2">
-			<Bell class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+			<Bell class="w-5 h-5 text-info" />
 			<h3 class="text-sm font-semibold text-foreground">User Notification Context</h3>
 		</div>
 		{#if expanded}
@@ -124,13 +124,13 @@
 						{@const Icon = getChannelIcon(capability.channel)}
 						<div class="flex items-center space-x-2">
 							{#if capability.available}
-								<CheckCircle class="w-4 h-4 text-green-500" />
+								<CheckCircle class="w-4 h-4 text-success" />
 							{:else}
 								<XCircle class="w-4 h-4 text-muted-foreground" />
 							{/if}
 							<Icon
 								class="w-4 h-4 {capability.available
-									? 'text-blue-600'
+									? 'text-info'
 									: 'text-muted-foreground'}"
 							/>
 							<div class="flex-1">
@@ -176,15 +176,13 @@
 									>
 								</tr>
 							</thead>
-							<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+							<tbody class="divide-y divide-border">
 								{#each context.preferences as pref}
 									<tr class="hover:bg-muted">
 										<td class="px-2 py-1 text-foreground">{pref.event_type}</td>
 										<td class="px-2 py-1 text-center">
 											{#if pref.push_enabled}
-												<CheckCircle
-													class="w-4 h-4 text-green-500 mx-auto"
-												/>
+												<CheckCircle class="w-4 h-4 text-success mx-auto" />
 											{:else}
 												<XCircle
 													class="w-4 h-4 text-muted-foreground mx-auto"
@@ -193,9 +191,7 @@
 										</td>
 										<td class="px-2 py-1 text-center">
 											{#if pref.email_enabled}
-												<CheckCircle
-													class="w-4 h-4 text-green-500 mx-auto"
-												/>
+												<CheckCircle class="w-4 h-4 text-success mx-auto" />
 											{:else}
 												<XCircle
 													class="w-4 h-4 text-muted-foreground mx-auto"
@@ -204,9 +200,7 @@
 										</td>
 										<td class="px-2 py-1 text-center">
 											{#if pref.sms_enabled}
-												<CheckCircle
-													class="w-4 h-4 text-green-500 mx-auto"
-												/>
+												<CheckCircle class="w-4 h-4 text-success mx-auto" />
 											{:else}
 												<XCircle
 													class="w-4 h-4 text-muted-foreground mx-auto"
@@ -215,9 +209,7 @@
 										</td>
 										<td class="px-2 py-1 text-center">
 											{#if pref.in_app_enabled}
-												<CheckCircle
-													class="w-4 h-4 text-green-500 mx-auto"
-												/>
+												<CheckCircle class="w-4 h-4 text-success mx-auto" />
 											{:else}
 												<XCircle
 													class="w-4 h-4 text-muted-foreground mx-auto"
@@ -226,10 +218,7 @@
 										</td>
 										<td class="px-2 py-1 text-center">
 											{#if pref.is_subscribed}
-												<span
-													class="text-green-600 dark:text-green-400 font-medium"
-													>Yes</span
-												>
+												<span class="text-success font-medium">Yes</span>
 											{:else}
 												<span class="text-muted-foreground">No</span>
 											{/if}
@@ -250,19 +239,19 @@
 				<div class="grid grid-cols-3 gap-2 text-sm">
 					<div>
 						<div class="text-muted-foreground">Projects</div>
-						<div class="text-lg font-semibold text-purple-600">
+						<div class="text-lg font-semibold text-foreground">
 							{context.activity.project_count}
 						</div>
 					</div>
 					<div>
 						<div class="text-muted-foreground">Captured Context</div>
-						<div class="text-lg font-semibold text-indigo-600">
+						<div class="text-lg font-semibold text-foreground">
 							{context.activity.brain_dump_count}
 						</div>
 					</div>
 					<div>
 						<div class="text-muted-foreground">Briefs</div>
-						<div class="text-lg font-semibold text-blue-600">
+						<div class="text-lg font-semibold text-foreground">
 							{context.activity.brief_count}
 						</div>
 					</div>

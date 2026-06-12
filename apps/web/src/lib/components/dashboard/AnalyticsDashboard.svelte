@@ -898,7 +898,7 @@
 					{#if !hasNoProjects}
 						<a
 							href="/projects"
-							class="text-sm sm:text-xs text-muted-foreground hover:text-accent transition-colors"
+							class="text-sm text-muted-foreground hover:text-accent transition-colors"
 						>
 							All projects &rarr;
 						</a>
@@ -1036,7 +1036,7 @@
 						</div>
 						<a
 							href="/projects"
-							class="text-sm sm:text-xs text-muted-foreground hover:text-accent transition-colors"
+							class="text-sm text-muted-foreground hover:text-accent transition-colors"
 						>
 							View all &rarr;
 						</a>
@@ -1185,7 +1185,7 @@
 						</h2>
 						<a
 							href="/history?type=chats"
-							class="text-sm sm:text-xs text-muted-foreground hover:text-accent transition-colors"
+							class="text-sm text-muted-foreground hover:text-accent transition-colors"
 						>
 							All chats &rarr;
 						</a>

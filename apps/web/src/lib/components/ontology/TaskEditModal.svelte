@@ -805,7 +805,7 @@
 					type="button"
 					onclick={handleClose}
 					disabled={isSaving || isDeleting}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 					aria-label="Close modal"
 				>
 					<X class="w-5 h-5" />
@@ -1050,7 +1050,7 @@
 
 											{#if stateKey === 'done' && completedAt}
 												<div
-													class="rounded-md border border-emerald-200 bg-emerald-50/60 px-3 py-2 text-xs text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/10 dark:text-emerald-300"
+													class="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-xs text-success"
 												>
 													Completed {format(
 														new Date(completedAt),

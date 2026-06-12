@@ -85,7 +85,7 @@
 						{/if}
 						{#if run.validation_failure_count > 0}
 							<span
-								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-700 dark:text-red-300"
+								class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive"
 							>
 								{formatNumber(run.validation_failure_count)}
 								validation
@@ -113,7 +113,7 @@
 						</span>
 						{#if group.counts.errors > 0}
 							<span
-								class="rounded-full bg-red-500/10 px-2 py-0.5 text-red-700 dark:text-red-300"
+								class="rounded-full bg-destructive/10 px-2 py-0.5 text-destructive"
 							>
 								{formatNumber(group.counts.errors)}
 								{pluralize(group.counts.errors, 'error')}

@@ -48,6 +48,7 @@
 	}: Props = $props();
 
 	let activeTab = $state<'brief' | 'chat'>('chat');
+	let modalContentEl = $state<HTMLDivElement | undefined>(undefined);
 	let scrollLockHeld = $state(false);
 	let lastSummary = $state<DataMutationSummary | undefined>(undefined);
 	// Active chat session id, mirrored up from the embedded AgentChatModal so
@@ -78,18 +79,29 @@
 		onClose?.(summary);
 	}
 
-	function handleBackdropClick(event: MouseEvent | TouchEvent) {
-		if (event.target === event.currentTarget) {
+	/**
+	 * Outside-click dismissal, mirroring base Modal: the topmost full-screen
+	 * layer owns the click and anything outside the dialog element dismisses.
+	 * Click only — touchend alongside click double-fires onClose on mobile
+	 * (see the note in ui/Modal.svelte).
+	 */
+	function handleOutsideClick(event: MouseEvent) {
+		if (!modalContentEl) return;
+		const target = event.target as Node | null;
+		if (target && !modalContentEl.contains(target)) {
 			requestClose();
 		}
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
 		if (!isOpen) return;
-		if (event.key === 'Escape') {
-			event.preventDefault();
-			requestClose();
-		}
+		if (event.key !== 'Escape') return;
+		// Base Modals (confirmations etc.) stack above this fork and route
+		// Escape to their topmost instance; if any is open, this one must not
+		// also close underneath it.
+		if (document.querySelector('.modal-root')) return;
+		event.preventDefault();
+		requestClose();
 	}
 
 	function requestClose() {
@@ -215,17 +227,20 @@
 
 {#if isOpen}
 	<div use:portal class="brief-chat-root" transition:fade={{ duration: 100 }} role="presentation">
-		<!-- Backdrop -->
+		<!-- Backdrop (visual only — the container layer above owns outside clicks) -->
 		<div
 			class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998]"
 			style="touch-action: none;"
-			onclick={handleBackdropClick}
-			ontouchend={handleBackdropClick}
 			aria-hidden="true"
 		></div>
 
-		<!-- Modal container -->
-		<div class="fixed inset-0 z-[9999] overflow-hidden" style="touch-action: none;">
+		<!-- Modal container — owns outside-click dismissal since it covers the backdrop -->
+		<div
+			class="fixed inset-0 z-[9999] overflow-hidden"
+			style="touch-action: none;"
+			onclick={handleOutsideClick}
+			role="presentation"
+		>
 			<div
 				class="flex h-full justify-center
 					items-end md:items-center
@@ -234,6 +249,7 @@
 			>
 				<!-- Modal content -->
 				<div
+					bind:this={modalContentEl}
 					use:touchGesture
 					class="brief-modal-container w-full max-w-7xl
 						bg-card border border-border shadow-ink-strong
@@ -389,14 +405,21 @@
 		-webkit-touch-callout: none;
 		touch-action: manipulation;
 
-		/* Mobile: near-full height with safe area subtraction */
-		height: calc(100dvh - env(safe-area-inset-top, 0px) - 0.5rem);
+		/* Mobile: near-full height with safe area subtraction.
+		   The embedded AgentChatModal sets --keyboard-height (visualViewport) on
+		   <html>; iOS doesn't shrink dvh for the keyboard, so subtract it here
+		   AND lift with margin-bottom — the layout-viewport bottom this sheet is
+		   anchored to sits behind the keyboard (same pattern as
+		   .agent-chat-keyboard-modal in AgentChatModal.svelte). */
+		height: calc(100dvh - env(safe-area-inset-top, 0px) - 0.5rem - var(--keyboard-height, 0px));
+		margin-bottom: var(--keyboard-height, 0px);
 	}
 
 	/* Desktop: fixed 90dvh centered */
 	@media (min-width: 768px) {
 		.brief-modal-container {
 			height: 90dvh;
+			margin-bottom: 0;
 			will-change: auto;
 		}
 	}
@@ -518,10 +541,10 @@
 
 	@supports (-webkit-touch-callout: none) {
 		.brief-modal-container {
-			/* Account for notch and home indicator */
+			/* Account for notch, home indicator, and the software keyboard */
 			max-height: calc(
 				100dvh - env(safe-area-inset-top, 0px) -
-					max(env(safe-area-inset-bottom, 0px), 0.5rem)
+					max(env(safe-area-inset-bottom, 0px), 0.5rem) - var(--keyboard-height, 0px)
 			);
 		}
 	}
@@ -531,7 +554,10 @@
 	@media (orientation: landscape) and (max-height: 500px) {
 		.brief-modal-container {
 			/* Maximize space in landscape */
-			height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+			height: calc(
+				100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) -
+					var(--keyboard-height, 0px)
+			);
 			border-radius: 0.5rem;
 		}
 

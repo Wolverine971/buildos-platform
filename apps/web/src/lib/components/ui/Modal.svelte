@@ -85,6 +85,7 @@
 	import { browser } from '$app/environment';
 	import { portal } from '$lib/actions/portal';
 	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
+	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
 	import type { Snippet } from 'svelte';
 
 	interface Props {
@@ -157,14 +158,14 @@
 		if (variant === 'bottom-sheet') {
 			return {
 				container: 'items-end sm:items-center',
-				modal: 'rounded-t-lg sm:rounded-lg mb-0 sm:mb-4', // 0.5rem radius (card/plate weight)
+				modal: 'rounded-t-lg sm:rounded-lg mb-0 sm:mb-4', // 12px (overridden Tailwind scale); wins over wt-plate's 6px
 				animation: 'animate-modal-slide-up sm:animate-modal-scale'
 			};
 		}
 		// Default: center variant
 		return {
 			container: 'items-center',
-			modal: 'rounded-lg', // 0.5rem radius (card/plate weight)
+			modal: 'rounded-lg', // 12px (overridden Tailwind scale); wins over wt-plate's 6px
 			animation: 'animate-modal-scale'
 		};
 	});
@@ -192,6 +193,10 @@
 	let animationComplete = $state(false);
 	let scrollLockHeld = $state(false);
 	let unlockRafId = $state<number | null>(null);
+	// visualViewport keyboard tracking (iOS doesn't shrink dvh for the software
+	// keyboard). Sets --keyboard-height on <html>; consumed by the max-height
+	// calcs and mobile margin-bottom below.
+	let keyboardCleanup: (() => void) | null = null;
 	let animationCompleteTimeoutId = $state<ReturnType<typeof setTimeout> | null>(null);
 
 	// Touch gesture state
@@ -457,6 +462,19 @@
 		}
 
 		trapFocus();
+
+		// Keep the dialog above the iOS software keyboard. CSS-property-only
+		// (no transform): the container's max-height and margin-bottom react to
+		// --keyboard-height. Writes are idempotent, so modals that run their own
+		// keyboard handling (e.g. AgentChatModal) coexist fine.
+		if (browser && isTouchDevice && modalElement && !keyboardCleanup) {
+			keyboardCleanup = initKeyboardAvoiding({
+				element: modalElement,
+				applyTransform: false,
+				setCSSProperty: true
+			});
+		}
+
 		onOpen?.();
 
 		// Set animation complete flag after animation duration
@@ -475,6 +493,11 @@
 		if (focusTrapCleanup) {
 			focusTrapCleanup();
 			focusTrapCleanup = null;
+		}
+
+		if (keyboardCleanup) {
+			keyboardCleanup();
+			keyboardCleanup = null;
 		}
 
 		animationComplete = false;
@@ -531,6 +554,10 @@
 		}
 		if (focusTrapCleanup) {
 			focusTrapCleanup();
+		}
+		if (keyboardCleanup) {
+			keyboardCleanup();
+			keyboardCleanup = null;
 		}
 		// Defensive: if this instance is somehow still in the stack at destroy
 		// (e.g. component unmounted while open), pop it and clear inert if it
@@ -593,8 +620,8 @@
 					class="relative {sizeClasses[size]}
 						wt-plate
 						{variantClasses.modal}
-						max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem)]
-						landscape:max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-0.5rem)]
+						max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-1rem-var(--keyboard-height,0px))]
+						landscape:max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-0.5rem-var(--keyboard-height,0px))]
 						sm:max-h-[85dvh]
 						overflow-hidden
 						{customClasses}
@@ -637,7 +664,7 @@
 							{#if title}
 								<h2
 									id={titleId}
-									class="text-sm font-semibold text-foreground truncate"
+									class="text-base font-semibold text-foreground truncate"
 								>
 									{title}
 								</h2>
@@ -824,6 +851,20 @@
 		touch-action: manipulation;
 	}
 
+	/* ==================== Keyboard Avoidance (mobile) ==================== */
+
+	/* iOS anchors the layout viewport bottom BEHIND the software keyboard, so
+	   shrinking max-height alone isn't enough: lift the dialog with a matching
+	   margin. For bottom sheets (items-end) this raises the sheet above the
+	   keyboard; for centered dialogs flexbox centers the margin box, shifting
+	   the dialog up into the visible viewport. No-op while the keyboard is
+	   closed (--keyboard-height: 0px). */
+	@media (max-width: 639px) {
+		.modal-container {
+			margin-bottom: var(--keyboard-height, 0px);
+		}
+	}
+
 	/* ==================== Enhanced Breakpoints (xs: 480px) ==================== */
 
 	/* Extra small devices (landscape phones) */
@@ -848,10 +889,11 @@
 	@supports (-webkit-touch-callout: none) {
 		/* iOS-specific fixes */
 		.modal-container {
-			/* Account for notch and home indicator - use dvh for dynamic viewport */
+			/* Account for notch, home indicator, and software keyboard - use dvh
+			   for dynamic viewport */
 			max-height: calc(
 				100dvh - env(safe-area-inset-top, 0px) -
-					max(env(safe-area-inset-bottom, 0px), 1rem) - 1rem
+					max(env(safe-area-inset-bottom, 0px), 1rem) - 1rem - var(--keyboard-height, 0px)
 			);
 		}
 
@@ -868,7 +910,8 @@
 		.modal-container {
 			/* Reduce margins in landscape to maximize content area */
 			max-height: calc(
-				100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.5rem
+				100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 0.5rem -
+					var(--keyboard-height, 0px)
 			);
 		}
 

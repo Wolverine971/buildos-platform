@@ -52,14 +52,14 @@
 	>
 		<!-- Migrated (green) -->
 		<div
-			class="absolute left-0 top-0 h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-500"
+			class="absolute left-0 top-0 h-full bg-success transition-all duration-500"
 			style="width: {migratedPercent}%"
 		></div>
 
 		<!-- Failed (red) -->
 		{#if failedPercent > 0}
 			<div
-				class="absolute top-0 h-full bg-gradient-to-r from-rose-500 to-rose-400 transition-all duration-500"
+				class="absolute top-0 h-full bg-destructive transition-all duration-500"
 				style="left: {migratedPercent}%; width: {failedPercent}%"
 			></div>
 		{/if}
@@ -71,12 +71,12 @@
 		<div class="flex justify-between text-xs text-muted-foreground">
 			<div class="flex items-center gap-3">
 				<span class="flex items-center gap-1">
-					<span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+					<span class="h-2 w-2 rounded-full bg-success"></span>
 					{progress.migrated.toLocaleString()} migrated
 				</span>
 				{#if progress.failed > 0}
 					<span class="flex items-center gap-1">
-						<span class="h-2 w-2 rounded-full bg-rose-500"></span>
+						<span class="h-2 w-2 rounded-full bg-destructive"></span>
 						{progress.failed.toLocaleString()} failed
 					</span>
 				{/if}

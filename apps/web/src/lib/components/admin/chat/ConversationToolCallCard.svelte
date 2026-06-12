@@ -35,9 +35,9 @@
 			<div class="flex flex-wrap items-center gap-1.5 text-[11px] font-medium">
 				<span
 					class="rounded-full px-2 py-0.5 {tool.success === false
-						? 'bg-red-500/10 text-red-700 dark:text-red-300'
+						? 'bg-destructive/10 text-destructive'
 						: tool.success === true
-							? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+							? 'bg-success/10 text-success'
 							: 'bg-muted text-foreground/70'}"
 				>
 					{tool.statusLabel}
@@ -67,7 +67,7 @@
 
 		{#if tool.error}
 			<div
-				class="rounded border border-red-500/20 bg-red-500/10 px-2.5 py-2 text-xs text-red-700 dark:text-red-300"
+				class="rounded border border-destructive/20 bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
 			>
 				{tool.error}
 			</div>

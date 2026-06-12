@@ -48,19 +48,19 @@
 		trend={stats.projects.percentComplete > 0 ? 'up' : 'neutral'}
 		trendValue={formatPercent(stats.projects.percentComplete)}
 		icon={FolderGit2}
-		iconColor="purple"
+		iconColor="text-accent"
 	>
 		<div class="mt-2 flex gap-2 text-xs">
-			<span class="text-emerald-600 dark:text-emerald-400">
+			<span class="text-success">
 				{formatNumber(stats.projects.migrated)} done
 			</span>
 			<span class="text-muted-foreground">|</span>
-			<span class="text-amber-600 dark:text-amber-400">
+			<span class="text-warning">
 				{formatNumber(stats.projects.pending)} pending
 			</span>
 			{#if stats.projects.failed > 0}
 				<span class="text-muted-foreground">|</span>
-				<span class="text-rose-600 dark:text-rose-400">
+				<span class="text-destructive">
 					{formatNumber(stats.projects.failed)} failed
 				</span>
 			{/if}
@@ -75,14 +75,14 @@
 		trend={stats.tasks.percentComplete > 0 ? 'up' : 'neutral'}
 		trendValue={formatPercent(stats.tasks.percentComplete)}
 		icon={CheckSquare}
-		iconColor="blue"
+		iconColor="text-info"
 	>
 		<div class="mt-2 flex gap-2 text-xs">
-			<span class="text-emerald-600 dark:text-emerald-400">
+			<span class="text-success">
 				{formatNumber(stats.tasks.migrated)} done
 			</span>
 			<span class="text-muted-foreground">|</span>
-			<span class="text-amber-600 dark:text-amber-400">
+			<span class="text-warning">
 				{formatNumber(stats.tasks.pending)} pending
 			</span>
 		</div>
@@ -96,14 +96,14 @@
 		trend={stats.users.fullyMigrated > 0 ? 'up' : 'neutral'}
 		trendValue={`${stats.users.withProjects > 0 ? Math.round((stats.users.fullyMigrated / stats.users.withProjects) * 100) : 0}%`}
 		icon={Users}
-		iconColor="emerald"
+		iconColor="text-success"
 	>
 		<div class="mt-2 flex gap-2 text-xs">
-			<span class="text-emerald-600 dark:text-emerald-400">
+			<span class="text-success">
 				{formatNumber(stats.users.fullyMigrated)} complete
 			</span>
 			<span class="text-muted-foreground">|</span>
-			<span class="text-amber-600 dark:text-amber-400">
+			<span class="text-warning">
 				{formatNumber(stats.users.partiallyMigrated)} partial
 			</span>
 			<span class="text-muted-foreground">|</span>
@@ -123,19 +123,19 @@
 			? `${formatNumber(stats.errors.recoverable)} retryable`
 			: 'All clear'}
 		icon={AlertTriangle}
-		iconColor={stats.errors.total > 0 ? 'rose' : 'emerald'}
+		iconColor={stats.errors.total > 0 ? 'text-destructive' : 'text-success'}
 	>
 		{#if stats.errors.total > 0}
 			<div class="mt-2 flex gap-2 text-xs">
-				<span class="text-amber-600 dark:text-amber-400">
+				<span class="text-warning">
 					{formatNumber(stats.errors.recoverable)} recoverable
 				</span>
 				<span class="text-muted-foreground">|</span>
-				<span class="text-orange-600 dark:text-orange-400">
+				<span class="text-accent">
 					{formatNumber(stats.errors.dataErrors)} data
 				</span>
 				<span class="text-muted-foreground">|</span>
-				<span class="text-rose-600 dark:text-rose-400">
+				<span class="text-destructive">
 					{formatNumber(stats.errors.fatal)} fatal
 				</span>
 			</div>

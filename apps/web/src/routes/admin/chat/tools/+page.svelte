@@ -207,28 +207,28 @@
 	function categoryClass(category: string): string {
 		switch (category) {
 			case 'ontology':
-				return 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30';
+				return 'bg-info/10 text-info border-info/30';
 			case 'ontology_action':
-				return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+				return 'bg-success/10 text-success border-success/30';
 			case 'calendar':
-				return 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30';
+				return 'bg-warning/10 text-warning border-warning/30';
 			case 'utility':
-				return 'bg-zinc-500/10 text-zinc-700 dark:text-zinc-300 border-zinc-500/30';
+				return 'bg-muted text-muted-foreground border-border';
 			case 'web_research':
-				return 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/30';
+				return 'bg-info/10 text-info border-info/30';
 			case 'gateway_execution':
 			case 'gateway_discovery':
 			case 'gateway_skill':
-				return 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30';
+				return 'bg-info/10 text-info border-info/30';
 			default:
 				return 'bg-muted text-muted-foreground border-border';
 		}
 	}
 
 	function successClass(rate: number): string {
-		if (rate >= 95) return 'text-emerald-600 dark:text-emerald-400';
-		if (rate >= 80) return 'text-amber-600 dark:text-amber-400';
-		return 'text-red-600 dark:text-red-400';
+		if (rate >= 95) return 'text-success';
+		if (rate >= 80) return 'text-warning';
+		return 'text-destructive';
 	}
 
 	function sessionHref(sessionId: string | null): string {
@@ -289,12 +289,12 @@
 
 	{#if error}
 		<div
-			class="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 p-3 tx tx-static tx-weak"
+			class="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 p-3 tx tx-static tx-weak"
 			role="alert"
 		>
 			<div class="flex items-center gap-2">
-				<AlertTriangle class="h-5 w-5 shrink-0 text-red-500" />
-				<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
+				<AlertTriangle class="h-5 w-5 shrink-0 text-destructive" />
+				<p class="text-sm text-destructive">{error}</p>
 			</div>
 		</div>
 	{/if}
@@ -414,10 +414,10 @@
 		</div>
 	{:else if toolData}
 		{#if toolData.data_source.truncated}
-			<div class="mb-6 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
+			<div class="mb-6 rounded-lg border border-warning/30 bg-warning/10 p-3">
 				<div class="flex items-start gap-2">
-					<AlertTriangle class="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
-					<p class="text-sm text-amber-800 dark:text-amber-200">
+					<AlertTriangle class="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+					<p class="text-sm text-warning">
 						Showing the newest {formatNumber(toolData.data_source.row_count)} of
 						{formatNumber(toolData.data_source.total_rows_available)} rows for this window.
 						Narrow the timeframe or filters for exact totals.
@@ -435,7 +435,7 @@
 							{formatNumber(toolData.overview.total_executions)}
 						</p>
 					</div>
-					<Activity class="h-7 w-7 shrink-0 text-sky-500" />
+					<Activity class="h-7 w-7 shrink-0 text-info" />
 				</div>
 				<p class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(toolData.overview.unique_tools_used)} tools across
@@ -455,7 +455,7 @@
 							{formatPercentage(toolData.overview.success_rate)}
 						</p>
 					</div>
-					<CheckCircle class="h-7 w-7 shrink-0 text-emerald-500" />
+					<CheckCircle class="h-7 w-7 shrink-0 text-success" />
 				</div>
 				<p class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(toolData.overview.successful_executions)} succeeded,
@@ -471,7 +471,7 @@
 							{formatDuration(toolData.overview.p95_execution_time_ms)}
 						</p>
 					</div>
-					<Clock class="h-7 w-7 shrink-0 text-amber-500" />
+					<Clock class="h-7 w-7 shrink-0 text-warning" />
 				</div>
 				<p class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(toolData.overview.duration_sample_count)} duration samples,
@@ -487,7 +487,7 @@
 							{formatNumber(toolData.overview.unique_turns)}
 						</p>
 					</div>
-					<Layers class="h-7 w-7 shrink-0 text-indigo-500" />
+					<Layers class="h-7 w-7 shrink-0 text-info" />
 				</div>
 				<p class="mt-2 text-xs text-muted-foreground">
 					{formatDecimal(toolData.overview.avg_calls_per_turn)} calls per turn,
@@ -531,7 +531,7 @@
 								<div class="text-muted-foreground">{formatBucket(trend)}</div>
 								<div class="h-2 rounded-full bg-muted">
 									<div
-										class="h-2 rounded-full bg-sky-500"
+										class="h-2 rounded-full bg-info"
 										style="width: {barWidth(trend.total_executions, trendMax)}"
 									></div>
 								</div>
@@ -577,7 +577,7 @@
 								</div>
 								<div class="h-2 rounded-full bg-muted">
 									<div
-										class="h-2 rounded-full bg-emerald-500"
+										class="h-2 rounded-full bg-success"
 										style="width: {barWidth(
 											category.total_executions,
 											toolData.overview.total_executions
@@ -757,7 +757,7 @@
 												</div>
 												<div class="h-1.5 rounded-full bg-background">
 													<div
-														class="h-1.5 rounded-full bg-indigo-500"
+														class="h-1.5 rounded-full bg-info"
 														style="width: {barWidth(
 															row.total_executions,
 															toolData.overview.total_executions
@@ -797,7 +797,7 @@
 							{:else}
 								<div class="space-y-2">
 									{#each toolData.most_problematic_tools.slice(0, 6) as tool}
-										<div class="rounded-lg bg-red-500/10 p-2">
+										<div class="rounded-lg bg-destructive/10 p-2">
 											<div class="flex items-center justify-between gap-3">
 												<span
 													class="truncate text-sm font-medium text-foreground"
@@ -805,7 +805,7 @@
 													{tool.tool_name}
 												</span>
 												<span
-													class="text-sm font-semibold text-red-600 dark:text-red-400"
+													class="text-sm font-semibold text-destructive"
 												>
 													{formatPercentage(tool.failure_rate)}
 												</span>
@@ -829,14 +829,14 @@
 								<div class="space-y-2">
 									{#each toolData.reliability.top_errors.slice(0, 5) as errorData}
 										<div
-											class="rounded-lg border border-red-500/20 bg-red-500/10 p-2"
+											class="rounded-lg border border-destructive/20 bg-destructive/10 p-2"
 										>
 											<div class="flex items-start justify-between gap-3">
 												<p class="line-clamp-2 text-xs text-foreground">
 													{errorData.error_message}
 												</p>
 												<span
-													class="shrink-0 text-xs font-semibold text-red-600 dark:text-red-400"
+													class="shrink-0 text-xs font-semibold text-destructive"
 												>
 													{formatNumber(errorData.count)}
 												</span>

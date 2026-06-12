@@ -318,7 +318,7 @@
 					{/if}
 					{#if message.metadata?.interrupted}
 						<div
-							class="clear-both mt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-amber-600 dark:text-amber-400"
+							class="clear-both mt-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-warning"
 							role="status"
 							aria-live="polite"
 						>
@@ -414,7 +414,7 @@
 			{:else if message.type === 'activity'}
 				{#if dev}
 					<div
-						class="rounded-lg border border-amber-600/30 bg-amber-50 px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-amber-700 tx tx-static tx-weak dark:bg-amber-950/20 dark:text-amber-400"
+						class="rounded-lg border border-warning/30 bg-warning/10 px-2.5 py-1.5 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-warning tx tx-static tx-weak"
 					>
 						⚠️ Dev Warning: Legacy activity message
 					</div>

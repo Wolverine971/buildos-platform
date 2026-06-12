@@ -56,11 +56,11 @@
 				<span
 					class="inline-flex ml-2 px-2 py-1 text-xs font-medium rounded-full {emailData.status ===
 					'sent'
-						? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+						? 'bg-success/10 text-success'
 						: emailData.status === 'scheduled'
-							? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+							? 'bg-info/10 text-info'
 							: emailData.status === 'failed'
-								? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+								? 'bg-destructive/10 text-destructive'
 								: 'bg-muted text-foreground dark:text-muted-foreground'}"
 				>
 					{emailData.status}
@@ -78,27 +78,23 @@
 
 	<!-- Tracking Information -->
 	{#if showTracking && trackingData}
-		<div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-			<h3 class="font-medium text-blue-900 dark:text-blue-300 mb-3 flex items-center">
+		<div class="bg-info/10 rounded-lg p-4">
+			<h3 class="font-medium text-info mb-3 flex items-center">
 				<Eye class="h-4 w-4 mr-2" />
 				Email Tracking
 			</h3>
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
 				<div>
-					<span class="font-medium text-blue-700 dark:text-blue-300">Total Opens:</span>
-					<span class="text-blue-900 dark:text-blue-100 ml-2"
-						>{trackingData.total_opens || 0}</span
-					>
+					<span class="font-medium text-info">Total Opens:</span>
+					<span class="text-foreground ml-2">{trackingData.total_opens || 0}</span>
 				</div>
 				<div>
-					<span class="font-medium text-blue-700 dark:text-blue-300">Unique Opens:</span>
-					<span class="text-blue-900 dark:text-blue-100 ml-2"
-						>{trackingData.unique_opens || 0}</span
-					>
+					<span class="font-medium text-info">Unique Opens:</span>
+					<span class="text-foreground ml-2">{trackingData.unique_opens || 0}</span>
 				</div>
 				<div>
-					<span class="font-medium text-blue-700 dark:text-blue-300">Open Rate:</span>
-					<span class="text-blue-900 dark:text-blue-100 ml-2">
+					<span class="font-medium text-info">Open Rate:</span>
+					<span class="text-foreground ml-2">
 						{trackingData.open_rate ? `${trackingData.open_rate.toFixed(1)}%` : '0%'}
 					</span>
 				</div>
@@ -121,7 +117,7 @@
 						}}
 						variant="ghost"
 						size="sm"
-						class="!text-blue-600 dark:!text-blue-400 hover:!text-blue-800 dark:hover:!text-blue-300"
+						class="!text-info hover:!text-info/80"
 					>
 						Open in new window
 					</Button>
@@ -135,11 +131,7 @@
 			<div class="p-4 border-b border-border bg-muted">
 				<div class="flex items-center justify-center space-x-4">
 					<span class="text-sm text-muted-foreground">Preview:</span>
-					<Button
-						variant="secondary"
-						size="sm"
-						class="!bg-blue-100 !text-blue-800 dark:!bg-blue-900 dark:!text-blue-300"
-					>
+					<Button variant="secondary" size="sm" class="!bg-info/10 !text-info">
 						Desktop
 					</Button>
 				</div>
@@ -167,17 +159,15 @@
 				</h3>
 			</div>
 			<div class="max-h-64 overflow-y-auto">
-				<div class="divide-y divide-gray-200 dark:divide-gray-600">
+				<div class="divide-y divide-border">
 					{#each emailData.recipients as recipient}
 						<div class="px-4 py-3 flex items-center justify-between">
 							<div class="flex items-center space-x-3">
 								<div class="flex-shrink-0">
 									<div
-										class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
+										class="h-8 w-8 rounded-full bg-info/10 flex items-center justify-center"
 									>
-										<span
-											class="text-xs font-medium text-blue-800 dark:text-blue-200"
-										>
+										<span class="text-xs font-medium text-info">
 											{recipient.recipient_name
 												? recipient.recipient_name.charAt(0).toUpperCase()
 												: recipient.recipient_email.charAt(0).toUpperCase()}
@@ -198,20 +188,18 @@
 									<span
 										class="inline-flex px-2 py-1 text-xs font-medium rounded-full {recipient.status ===
 										'sent'
-											? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+											? 'bg-success/10 text-success'
 											: recipient.status === 'delivered'
-												? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+												? 'bg-info/10 text-info'
 												: recipient.status === 'failed'
-													? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+													? 'bg-destructive/10 text-destructive'
 													: 'bg-muted text-foreground dark:text-muted-foreground'}"
 									>
 										{recipient.status}
 									</span>
 								{/if}
 								{#if recipient.opened_at}
-									<span
-										class="text-xs text-green-600 dark:text-green-400 flex items-center"
-									>
+									<span class="text-xs text-success flex items-center">
 										<Eye class="h-3 w-3 mr-1" />
 										Opened
 									</span>

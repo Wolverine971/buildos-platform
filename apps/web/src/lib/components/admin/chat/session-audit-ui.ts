@@ -37,11 +37,11 @@ export function eventIcon(type: AuditTimelineType) {
 export function eventSeverityClasses(severity: AuditTimelineSeverity): string {
 	switch (severity) {
 		case 'success':
-			return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20';
+			return 'bg-success/10 text-success border-success/20';
 		case 'warning':
-			return 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20';
+			return 'bg-warning/10 text-warning border-warning/20';
 		case 'error':
-			return 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/20';
+			return 'bg-destructive/10 text-destructive border-destructive/20';
 		case 'info':
 		default:
 			return 'bg-accent/10 text-foreground border-accent/30';
@@ -51,11 +51,11 @@ export function eventSeverityClasses(severity: AuditTimelineSeverity): string {
 export function timelineDotClasses(severity: AuditTimelineSeverity): string {
 	switch (severity) {
 		case 'success':
-			return 'bg-emerald-500';
+			return 'bg-success';
 		case 'warning':
-			return 'bg-amber-500';
+			return 'bg-warning';
 		case 'error':
-			return 'bg-red-500';
+			return 'bg-destructive';
 		case 'info':
 		default:
 			return 'bg-accent';
@@ -65,13 +65,13 @@ export function timelineDotClasses(severity: AuditTimelineSeverity): string {
 export function statusBadge(status: string): string {
 	switch (status) {
 		case 'active':
-			return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+			return 'bg-success/10 text-success';
 		case 'archived':
 			return 'bg-muted text-muted-foreground';
 		case 'compressed':
 			return 'bg-accent/15 text-foreground';
 		case 'failed':
-			return 'bg-red-500/10 text-red-700 dark:text-red-300';
+			return 'bg-destructive/10 text-destructive';
 		default:
 			return 'bg-muted text-muted-foreground';
 	}
@@ -82,15 +82,15 @@ export function libriStatusClasses(status: string): string {
 		case 'sent':
 		case 'found':
 		case 'queued':
-			return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+			return 'bg-success/10 text-success';
 		case 'partial':
 		case 'pending':
 		case 'needs_input':
 		case 'not_configured':
-			return 'bg-amber-500/10 text-amber-700 dark:text-amber-300';
+			return 'bg-warning/10 text-warning';
 		case 'failed':
 		case 'error':
-			return 'bg-red-500/10 text-red-700 dark:text-red-300';
+			return 'bg-destructive/10 text-destructive';
 		default:
 			return 'bg-muted text-muted-foreground';
 	}

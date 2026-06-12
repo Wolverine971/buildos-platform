@@ -312,10 +312,10 @@
 	<!-- Success Message -->
 	{#if successMessage}
 		<div
-			class="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3 shadow-ink tx tx-grain tx-weak"
+			class="bg-success/10 border border-success/30 rounded-lg p-3 shadow-ink tx tx-grain tx-weak"
 		>
 			<div class="flex items-center gap-2">
-				<CircleCheck class="w-4 h-4 text-emerald-500" />
+				<CircleCheck class="w-4 h-4 text-success" />
 				<p class="text-sm text-foreground">{successMessage}</p>
 			</div>
 		</div>
@@ -324,10 +324,10 @@
 	<!-- Error Messages -->
 	{#if errors.length > 0}
 		<div
-			class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 shadow-ink tx tx-static tx-weak"
+			class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 shadow-ink tx tx-static tx-weak"
 		>
 			<div class="flex items-start gap-2">
-				<TriangleAlert class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+				<TriangleAlert class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
 				<div class="text-sm text-foreground">
 					{#each errors as error}
 						<p>{error}</p>
@@ -601,9 +601,9 @@
 			labelledById="delete-account-heading"
 		>
 			<div class="space-y-4">
-				<div class="bg-card rounded-lg p-3 border border-red-500/30">
+				<div class="bg-card rounded-lg p-3 border border-destructive/30">
 					<div class="flex items-start gap-2.5">
-						<TriangleAlert class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+						<TriangleAlert class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
 						<div class="text-xs sm:text-sm">
 							<p class="text-foreground font-medium mb-1">
 								This action cannot be undone
@@ -629,7 +629,7 @@
 						disabled={loading}
 						variant="outline"
 						size="sm"
-						class="text-red-500 hover:text-white hover:bg-red-600 border-red-500 shadow-ink pressable"
+						class="text-destructive hover:text-destructive-foreground hover:bg-destructive border-destructive shadow-ink pressable"
 						icon={Trash2}
 					>
 						Delete My Account

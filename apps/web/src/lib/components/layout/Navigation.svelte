@@ -25,6 +25,7 @@
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { logout } from '$lib/utils/auth';
+	import { lockBodyScroll, unlockBodyScroll } from '$lib/utils/body-scroll-lock';
 	import { toastService, TOAST_DURATION } from '$lib/stores/toast.store';
 	import { browser, dev } from '$app/environment';
 	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
@@ -279,8 +280,10 @@
 		if (!browser) return;
 		if (!showMobileMenu) return;
 
-		const previousOverflow = document.body.style.overflow;
-		document.body.style.overflow = 'hidden';
+		// Ref-counted position:fixed lock — raw `body.style.overflow = 'hidden'`
+		// doesn't reliably stop background scroll on iOS Safari, and interleaves
+		// badly with the lock that modals hold.
+		lockBodyScroll();
 		elementToRestoreFocus = document.activeElement as HTMLElement | null;
 
 		const rafId = requestAnimationFrame(() => {
@@ -292,7 +295,7 @@
 
 		return () => {
 			cancelAnimationFrame(rafId);
-			document.body.style.overflow = previousOverflow;
+			unlockBodyScroll();
 			// Return focus to whatever opened the menu (typically the hamburger).
 			elementToRestoreFocus?.focus?.();
 			elementToRestoreFocus = null;

@@ -66,7 +66,7 @@
 				aria-expanded="false"
 			>
 				<div class="flex items-center gap-2 min-w-0">
-					<Globe class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+					<Globe class="w-4 h-4 text-success shrink-0" />
 					<span class="text-sm font-semibold text-foreground">Published</span>
 				</div>
 				<ChevronDown
@@ -105,7 +105,7 @@
 		count={skeletonCounts.goal_count}
 		description="What success looks like"
 		expanded={true}
-		iconStyles="bg-amber-500/10 text-amber-500"
+		iconStyles="bg-warning/10 text-warning"
 		{canEdit}
 	/>
 	<InsightPanelSkeleton
@@ -113,7 +113,7 @@
 		label="Plans"
 		count={skeletonCounts.plan_count}
 		description="Execution scaffolding"
-		iconStyles="bg-indigo-500/10 text-indigo-500"
+		iconStyles="bg-accent/10 text-accent"
 		{canEdit}
 	/>
 	<InsightPanelSkeleton
@@ -121,7 +121,7 @@
 		label="Tasks"
 		count={skeletonCounts.task_count}
 		description="What needs to move"
-		iconStyles="bg-slate-500/10 text-muted-foreground"
+		iconStyles="bg-muted/40 text-muted-foreground"
 		{canEdit}
 	/>
 	<InsightPanelSkeleton
@@ -129,7 +129,7 @@
 		label="Events"
 		count={0}
 		description="Meetings and time blocks"
-		iconStyles="bg-blue-500/10 text-blue-500"
+		iconStyles="bg-info/10 text-info"
 		{canEdit}
 	/>
 	<InsightPanelSkeleton
@@ -137,7 +137,7 @@
 		label="Images"
 		count={skeletonCounts.image_count}
 		description="Visual context and OCR"
-		iconStyles="bg-emerald-500/10 text-emerald-500"
+		iconStyles="bg-success/10 text-success"
 		{canEdit}
 	/>
 	<InsightPanelSkeleton
@@ -145,7 +145,7 @@
 		label="Risks"
 		count={skeletonCounts.risk_count}
 		description="What could go wrong"
-		iconStyles="bg-red-500/10 text-red-500"
+		iconStyles="bg-destructive/10 text-destructive"
 		{canEdit}
 	/>
 

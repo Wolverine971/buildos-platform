@@ -90,7 +90,7 @@
 			<div class="px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 					<div
-						class="flex items-center justify-center gap-2 text-sm sm:text-xs font-semibold tracking-tight text-muted-foreground"
+						class="flex items-center justify-center gap-2 text-sm font-semibold tracking-tight text-muted-foreground"
 					>
 						<span>© {CURRENT_YEAR} BuildOS</span>
 						{#if user?.is_admin}
@@ -106,7 +106,7 @@
 					</div>
 					<nav
 						aria-label="App footer links"
-						class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm sm:text-xs font-semibold tracking-tight"
+						class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm font-semibold tracking-tight"
 					>
 						{#each SUPPORT_LINKS as link}
 							<a

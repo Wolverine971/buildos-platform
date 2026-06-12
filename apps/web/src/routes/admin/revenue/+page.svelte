@@ -149,8 +149,8 @@
 	}
 
 	function getChangeColor(current: number, previous: number): string {
-		if (current > previous) return 'text-green-600';
-		if (current < previous) return 'text-red-600';
+		if (current > previous) return 'text-success';
+		if (current < previous) return 'text-destructive';
 		return 'text-muted-foreground';
 	}
 
@@ -222,19 +222,17 @@
 		</div>
 
 		{#if error}
-			<div
-				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
-			>
+			<div class="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-4">
 				<div class="flex items-center">
-					<AlertCircle class="h-5 w-5 text-red-600 mr-2" />
-					<p class="text-red-800 dark:text-red-200">{error}</p>
+					<AlertCircle class="h-5 w-5 text-destructive mr-2" />
+					<p class="text-destructive">{error}</p>
 				</div>
 			</div>
 		{/if}
 
 		{#if isLoading}
 			<div class="flex items-center justify-center py-12">
-				<RefreshCw class="h-8 w-8 animate-spin text-blue-600" />
+				<RefreshCw class="h-8 w-8 animate-spin text-info" />
 			</div>
 		{:else}
 			{@const change = calculateChange(
@@ -246,8 +244,8 @@
 				<!-- Recognized Revenue -->
 				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between mb-4">
-						<div class="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-							<DollarSign class="h-6 w-6 text-green-600 dark:text-green-400" />
+						<div class="p-2 bg-success/10 rounded-lg">
+							<DollarSign class="h-6 w-6 text-success" />
 						</div>
 						<span class="text-sm text-muted-foreground">
 							{selectedPeriod === 'month'
@@ -264,11 +262,11 @@
 
 					<div class="mt-2 flex items-center text-sm">
 						{#if change > 0}
-							<ArrowUpRight class="w-4 h-4 text-green-500 mr-1" />
-							<span class="text-green-600">+{change.toFixed(1)}%</span>
+							<ArrowUpRight class="w-4 h-4 text-success mr-1" />
+							<span class="text-success">+{change.toFixed(1)}%</span>
 						{:else if change < 0}
-							<ArrowDownRight class="w-4 h-4 text-red-500 mr-1" />
-							<span class="text-red-600">{change.toFixed(1)}%</span>
+							<ArrowDownRight class="w-4 h-4 text-destructive mr-1" />
+							<span class="text-destructive">{change.toFixed(1)}%</span>
 						{:else}
 							<span class="text-muted-foreground">No change</span>
 						{/if}
@@ -279,8 +277,8 @@
 				<!-- Deferred Revenue -->
 				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between mb-4">
-						<div class="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-							<Calendar class="h-6 w-6 text-blue-600 dark:text-blue-400" />
+						<div class="p-2 bg-info/10 rounded-lg">
+							<Calendar class="h-6 w-6 text-info" />
 						</div>
 						<span class="text-sm text-muted-foreground">Total</span>
 					</div>
@@ -296,8 +294,8 @@
 				<!-- Refunds -->
 				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between mb-4">
-						<div class="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-							<TrendingDown class="h-6 w-6 text-red-600 dark:text-red-400" />
+						<div class="p-2 bg-destructive/10 rounded-lg">
+							<TrendingDown class="h-6 w-6 text-destructive" />
 						</div>
 						<span class="text-sm text-muted-foreground">This Period</span>
 					</div>
@@ -313,8 +311,8 @@
 				<!-- Net Revenue -->
 				<div class="admin-panel p-6">
 					<div class="flex items-center justify-between mb-4">
-						<div class="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-							<BarChart class="h-6 w-6 text-purple-600 dark:text-purple-400" />
+						<div class="p-2 bg-accent/10 rounded-lg">
+							<BarChart class="h-6 w-6 text-accent" />
 						</div>
 						<span class="text-sm text-muted-foreground">Net</span>
 					</div>
@@ -347,7 +345,7 @@
 									Additional revenue from plan upgrades
 								</p>
 							</div>
-							<p class="text-lg font-semibold text-green-600">
+							<p class="text-lg font-semibold text-success">
 								+{formatCurrency(revenueData.prorations.upgrades)}
 							</p>
 						</div>
@@ -358,7 +356,7 @@
 									Credits from plan downgrades
 								</p>
 							</div>
-							<p class="text-lg font-semibold text-red-600">
+							<p class="text-lg font-semibold text-destructive">
 								-{formatCurrency(revenueData.prorations.downgrades)}
 							</p>
 						</div>
@@ -369,8 +367,8 @@
 							</div>
 							<p
 								class="text-lg font-semibold {revenueData.prorations.net >= 0
-									? 'text-green-600'
-									: 'text-red-600'}"
+									? 'text-success'
+									: 'text-destructive'}"
 							>
 								{revenueData.prorations.net >= 0 ? '+' : ''}{formatCurrency(
 									revenueData.prorations.net
@@ -436,7 +434,7 @@
 							Deferred Revenue Schedule
 						</h3>
 						<div class="overflow-x-auto">
-							<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+							<table class="min-w-full divide-y divide-border">
 								<thead>
 									<tr>
 										<th
@@ -456,7 +454,7 @@
 										</th>
 									</tr>
 								</thead>
-								<tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+								<tbody class="divide-y divide-border">
 									{#each revenueData.deferred.breakdown as item}
 										<tr>
 											<td
@@ -485,15 +483,17 @@
 				<!-- Chargebacks Alert -->
 				{#if revenueData.chargebacks.count > 0}
 					<div
-						class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 lg:col-span-2"
+						class="bg-destructive/10 border border-destructive/30 rounded-lg p-6 lg:col-span-2"
 					>
 						<div class="flex items-start">
-							<AlertCircle class="h-5 w-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+							<AlertCircle
+								class="h-5 w-5 text-destructive mr-3 mt-0.5 flex-shrink-0"
+							/>
 							<div class="flex-1">
-								<h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+								<h3 class="text-sm font-medium text-destructive">
 									Chargeback Alert
 								</h3>
-								<p class="text-sm text-red-700 dark:text-red-300 mt-1">
+								<p class="text-sm text-destructive mt-1">
 									{revenueData.chargebacks.count} chargeback{revenueData
 										.chargebacks.count > 1
 										? 's'
@@ -501,7 +501,7 @@
 									totaling {formatCurrency(revenueData.chargebacks.total)}
 									(Rate: {formatPercentage(revenueData.chargebacks.rate)})
 								</p>
-								<p class="text-sm text-red-600 dark:text-red-400 mt-2">
+								<p class="text-sm text-destructive mt-2">
 									Review payment processes and fraud prevention measures.
 								</p>
 							</div>

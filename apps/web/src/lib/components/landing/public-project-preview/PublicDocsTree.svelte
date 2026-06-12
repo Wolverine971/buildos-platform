@@ -87,8 +87,8 @@
 		aria-expanded={isExpanded}
 	>
 		<div class="flex items-center gap-2">
-			<div class="w-7 h-7 rounded-md bg-sky-500/10 flex items-center justify-center">
-				<Folder class="w-3.5 h-3.5 text-sky-500" />
+			<div class="w-7 h-7 rounded-md bg-info/10 flex items-center justify-center">
+				<Folder class="w-3.5 h-3.5 text-info" />
 			</div>
 			<div class="text-left">
 				<p class="text-xs sm:text-sm font-semibold text-foreground">Documents</p>
@@ -171,7 +171,7 @@
 						<ChevronRight class="w-3 h-3" />
 					{/if}
 				</button>
-				<Folder class="w-3.5 h-3.5 mt-0.5 shrink-0 text-sky-500" />
+				<Folder class="w-3.5 h-3.5 mt-0.5 shrink-0 text-info" />
 			{:else}
 				<span class="w-4 h-4 shrink-0"></span>
 				<FileText class="w-3.5 h-3.5 mt-0.5 shrink-0 text-muted-foreground" />

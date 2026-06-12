@@ -158,12 +158,12 @@
 	function getItemColorClass(item: CalendarItem): string {
 		if (item.item_type === 'task') {
 			if (item.item_kind === 'range') {
-				return 'bg-emerald-500/10 border border-emerald-500/30';
+				return 'bg-success/10 border border-success/30';
 			}
 			if (item.item_kind === 'start') {
-				return 'bg-sky-500/10 border border-sky-500/30';
+				return 'bg-info/10 border border-info/30';
 			}
-			return 'bg-amber-500/10 border border-amber-500/30';
+			return 'bg-warning/10 border border-warning/30';
 		}
 		return 'bg-muted border border-border';
 	}
@@ -601,15 +601,15 @@
 		if (!stateKey) return 'bg-muted text-muted-foreground';
 		const colors: Record<string, string> = {
 			todo: 'bg-muted text-muted-foreground',
-			in_progress: 'bg-sky-500/10 text-sky-600',
-			blocked: 'bg-red-500/10 text-red-600',
-			done: 'bg-emerald-500/10 text-emerald-600',
-			planning: 'bg-violet-500/10 text-violet-600',
-			active: 'bg-sky-500/10 text-sky-600',
-			paused: 'bg-amber-500/10 text-amber-600',
-			completed: 'bg-emerald-500/10 text-emerald-600',
+			in_progress: 'bg-info/10 text-info',
+			blocked: 'bg-destructive/10 text-destructive',
+			done: 'bg-success/10 text-success',
+			planning: 'bg-accent/10 text-accent',
+			active: 'bg-info/10 text-info',
+			paused: 'bg-warning/10 text-warning',
+			completed: 'bg-success/10 text-success',
 			cancelled: 'bg-muted text-muted-foreground line-through',
-			scheduled: 'bg-sky-500/10 text-sky-600'
+			scheduled: 'bg-info/10 text-info'
 		};
 		return colors[stateKey] || 'bg-muted text-muted-foreground';
 	}
@@ -625,9 +625,9 @@
 
 	function getPriorityColor(priority: number | null | undefined): string {
 		if (priority == null) return '';
-		if (priority >= 4) return 'bg-red-500/10 text-red-600';
-		if (priority === 3) return 'bg-orange-500/10 text-orange-600';
-		if (priority === 2) return 'bg-amber-500/10 text-amber-600';
+		if (priority >= 4) return 'bg-destructive/10 text-destructive';
+		if (priority === 3) return 'bg-accent/10 text-accent';
+		if (priority === 2) return 'bg-warning/10 text-warning';
 		return 'bg-muted text-muted-foreground';
 	}
 
@@ -862,7 +862,7 @@
 						</div>
 					{/if}
 					{#if detail.data?.completed_at}
-						<div class="flex items-center gap-2 text-sm text-emerald-600">
+						<div class="flex items-center gap-2 text-sm text-success">
 							<CheckCircle2 class="h-3.5 w-3.5 shrink-0" />
 							<span
 								>Completed: {format(
@@ -921,7 +921,7 @@
 									<div
 										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
 									>
-										<ListChecks class="h-3.5 w-3.5 shrink-0 text-violet-500" />
+										<ListChecks class="h-3.5 w-3.5 shrink-0 text-accent" />
 										<span class="text-foreground truncate"
 											>{plan.name || plan.title || 'Untitled Plan'}</span
 										>
@@ -931,7 +931,7 @@
 									<div
 										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
 									>
-										<Target class="h-3.5 w-3.5 shrink-0 text-amber-500" />
+										<Target class="h-3.5 w-3.5 shrink-0 text-warning" />
 										<span class="text-foreground truncate"
 											>{goal.name || goal.title || 'Untitled Goal'}</span
 										>
@@ -941,7 +941,7 @@
 									<div
 										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
 									>
-										<Milestone class="h-3.5 w-3.5 shrink-0 text-teal-500" />
+										<Milestone class="h-3.5 w-3.5 shrink-0 text-info" />
 										<span class="text-foreground truncate"
 											>{milestone.title ||
 												milestone.name ||
@@ -960,7 +960,7 @@
 									<div
 										class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted/50"
 									>
-										<FileText class="h-3.5 w-3.5 shrink-0 text-sky-500" />
+										<FileText class="h-3.5 w-3.5 shrink-0 text-info" />
 										<span class="text-foreground truncate"
 											>{doc.title || doc.name || 'Untitled Document'}</span
 										>

@@ -194,17 +194,17 @@
 					class="h-9 w-9 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0 border border-accent/20"
 				>
 					{#if selectedNode.type === 'goal'}
-						<Target class="w-4 h-4 text-amber-500" />
+						<Target class="w-4 h-4 text-accent" />
 					{:else if selectedNode.type === 'milestone'}
-						<Flag class="w-4 h-4 text-emerald-500" />
+						<Flag class="w-4 h-4 text-success" />
 					{:else if selectedNode.type === 'plan'}
-						<Calendar class="w-4 h-4 text-indigo-500" />
+						<Calendar class="w-4 h-4 text-info" />
 					{:else if selectedNode.type === 'task'}
 						<ListChecks class="w-4 h-4 text-muted-foreground" />
 					{:else if selectedNode.type === 'document'}
-						<FileText class="w-4 h-4 text-sky-500" />
+						<FileText class="w-4 h-4 text-info" />
 					{:else if selectedNode.type === 'risk'}
-						<AlertTriangle class="w-4 h-4 text-red-500" />
+						<AlertTriangle class="w-4 h-4 text-destructive" />
 					{:else}
 						<GitBranch class="w-4 h-4 text-accent" />
 					{/if}

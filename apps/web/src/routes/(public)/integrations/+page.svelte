@@ -226,9 +226,7 @@ Content-Type: application/json
 
 <div class="min-h-screen bg-background text-foreground">
 	<section class="relative overflow-hidden border-b border-border">
-		<div
-			class="absolute inset-0 bg-gradient-to-br from-accent/10 via-transparent to-emerald-500/5"
-		></div>
+		<div class="absolute inset-0 bg-accent/5"></div>
 
 		<div class="container relative mx-auto px-4 py-16 sm:px-6 sm:py-20 lg:px-8 lg:py-24">
 			<div class="mx-auto max-w-5xl text-center">
@@ -411,7 +409,7 @@ Content-Type: application/json
 						<div class="space-y-4">
 							{#each ['BuildOS is the system of record for your projects, tasks, docs, and decisions.', 'Your tools never get direct database access. They go through a scoped session.', 'BuildOS verifies the caller before any tool runs. Per-project, per-op, per-key.', 'No vendor SDK. No OAuth dance. No retraining your agents on your context every session.'] as point}
 								<div class="flex gap-3">
-									<CheckCircle2 class="mt-1 h-5 w-5 shrink-0 text-emerald-500" />
+									<CheckCircle2 class="mt-1 h-5 w-5 shrink-0 text-success" />
 									<p class="text-sm text-foreground sm:text-base">{point}</p>
 								</div>
 							{/each}
@@ -582,7 +580,7 @@ Content-Type: application/json
 										onclick={() => copySnippet('env', envSnippet)}
 									>
 										{#if copiedTarget === 'env'}
-											<Check class="h-4 w-4 text-emerald-500" />
+											<Check class="h-4 w-4 text-success" />
 											Copied
 										{:else}
 											<Copy class="h-4 w-4" />
@@ -616,7 +614,7 @@ Content-Type: application/json
 										onclick={() => copySnippet('dial', dialSnippet)}
 									>
 										{#if copiedTarget === 'dial'}
-											<Check class="h-4 w-4 text-emerald-500" />
+											<Check class="h-4 w-4 text-success" />
 											Copied
 										{:else}
 											<Copy class="h-4 w-4" />
@@ -654,7 +652,7 @@ Content-Type: application/json
 						<div
 							class="flex gap-3 rounded-lg border border-border bg-card p-4 shadow-ink tx tx-grain tx-weak"
 						>
-							<CheckCircle2 class="mt-1 h-5 w-5 shrink-0 text-emerald-500" />
+							<CheckCircle2 class="mt-1 h-5 w-5 shrink-0 text-success" />
 							<p class="text-sm text-foreground">{guardrail}</p>
 						</div>
 					{/each}

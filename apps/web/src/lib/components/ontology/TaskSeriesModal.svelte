@@ -161,9 +161,7 @@
 			class="flex-shrink-0 bg-muted border-b border-border px-3 py-2 sm:px-4 sm:py-2.5 flex items-center justify-between gap-2 tx tx-strip tx-weak"
 		>
 			<div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-				<div
-					class="p-1.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0"
-				>
+				<div class="p-1.5 rounded bg-success/10 text-success shrink-0">
 					<RefreshCw class="w-4 h-4" />
 				</div>
 				<div class="min-w-0 flex-1">
@@ -182,7 +180,7 @@
 				type="button"
 				onclick={() => onClose?.()}
 				disabled={isSubmitting}
-				class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400"
+				class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 				aria-label="Close modal"
 			>
 				<X class="h-4 w-4" />

@@ -295,7 +295,7 @@
 								{assetTitle(asset)}
 							</p>
 							<div
-								class="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+								class="flex items-center gap-0.5 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
 							>
 								<button
 									class="rounded p-0.5 hover:bg-muted transition-colors"

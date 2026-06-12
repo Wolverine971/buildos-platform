@@ -506,10 +506,10 @@
 		<div class="px-3 sm:px-4 py-3 border-t border-border bg-muted/50">
 			<!-- Email opt-in banner if not opted in -->
 			{#if !hasEmailOptIn && !$notificationPreferencesStore.isLoading}
-				<div class="mb-4 p-3 bg-accent/5 border border-accent/20 rounded-lg">
-					<div class="flex items-center justify-between">
-						<div class="flex items-center space-x-2">
-							<Mail class="h-5 w-5 text-accent" />
+				<div class="mb-3 p-2.5 bg-accent/5 border border-accent/20 rounded-lg">
+					<div class="flex flex-wrap items-center justify-between gap-2">
+						<div class="flex items-center gap-2 min-w-0">
+							<Mail class="h-4 w-4 text-accent shrink-0" />
 							<p class="text-sm text-foreground">
 								Get your daily briefs delivered to your inbox
 							</p>
@@ -519,7 +519,6 @@
 							variant="primary"
 							size="sm"
 							loading={emailOptInLoading}
-							class="ml-4"
 						>
 							Enable Email
 						</Button>
@@ -528,50 +527,57 @@
 			{/if}
 
 			{#if displayBrief}
-				<div class="flex flex-col sm:flex-row gap-3 sm:justify-between">
-					<div class="flex flex-col sm:flex-row gap-2 w-full">
-						{#if onchat}
-							<Button
-								onclick={() => onchat(displayBrief)}
-								variant="primary"
-								size="sm"
-								icon={MessageCircle}
-								disabled={isRegenerating}
-								class="w-full sm:w-auto"
-							>
-								Chat about Brief
-							</Button>
-						{/if}
+				<!-- Single row on mobile: the primary action keeps its label,
+				     secondary actions collapse to icon buttons (labels return at
+				     sm+). Stacking four full-width buttons ate ~300px of a phone
+				     viewport in a flex-shrink-0 footer. -->
+				<div class="flex flex-wrap items-center gap-2">
+					{#if onchat}
 						<Button
-							onclick={copyToClipboard}
-							variant="outline"
+							onclick={() => onchat(displayBrief)}
+							variant="primary"
 							size="sm"
-							icon={copiedToClipboard ? CircleCheck : Copy}
+							icon={MessageCircle}
 							disabled={isRegenerating}
-							class="w-full sm:w-auto"
+							class="flex-1 min-w-0 sm:flex-none"
 						>
-							{copiedToClipboard ? 'Copied!' : 'Copy to Clipboard'}
+							Chat about Brief
 						</Button>
-						<Button
-							onclick={downloadBrief}
-							variant="outline"
-							size="sm"
-							icon={Download}
-							disabled={isRegenerating}
-							class="w-full sm:w-auto"
+					{/if}
+					<Button
+						onclick={copyToClipboard}
+						variant="outline"
+						size="sm"
+						icon={copiedToClipboard ? CircleCheck : Copy}
+						disabled={isRegenerating}
+						aria-label="Copy brief to clipboard"
+					>
+						<span class="hidden sm:inline"
+							>{copiedToClipboard ? 'Copied!' : 'Copy to Clipboard'}</span
 						>
-							Download
-						</Button>
-						<Button
-							onclick={regenerateBrief}
-							variant={onchat ? 'outline' : 'primary'}
-							size="sm"
-							icon={RefreshCw}
-							class="w-full sm:w-auto ml-auto"
+					</Button>
+					<Button
+						onclick={downloadBrief}
+						variant="outline"
+						size="sm"
+						icon={Download}
+						disabled={isRegenerating}
+						aria-label="Download brief"
+					>
+						<span class="hidden sm:inline">Download</span>
+					</Button>
+					<Button
+						onclick={regenerateBrief}
+						variant={onchat ? 'outline' : 'primary'}
+						size="sm"
+						icon={RefreshCw}
+						aria-label="Regenerate brief"
+						class="sm:ml-auto {onchat ? '' : 'flex-1 min-w-0 sm:flex-none'}"
+					>
+						<span class={onchat ? 'hidden sm:inline' : ''}
+							>{isRegenerating ? 'Regenerating...' : 'Regenerate Brief'}</span
 						>
-							{isRegenerating ? 'Regenerating...' : 'Regenerate Brief'}
-						</Button>
-					</div>
+					</Button>
 				</div>
 			{/if}
 		</div>

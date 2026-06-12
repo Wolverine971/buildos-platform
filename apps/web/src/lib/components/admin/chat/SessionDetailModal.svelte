@@ -93,7 +93,7 @@
 			{/each}
 		</div>
 	{:else if detailError}
-		<div class="p-3 text-sm text-red-600 dark:text-red-400 flex items-start gap-2">
+		<div class="p-3 text-sm text-destructive flex items-start gap-2">
 			<AlertCircle class="h-4 w-4 mt-0.5 shrink-0" />
 			<span>{detailError}</span>
 		</div>

@@ -38,44 +38,41 @@
 			Icon: Check,
 			// Grain texture = execution, steady progress - success is work completed
 			texture: 'tx tx-grain tx-weak',
-			containerClass:
-				'bg-emerald-50/95 dark:bg-emerald-950/90 border-emerald-300 dark:border-emerald-800',
-			iconContainerClass: 'bg-emerald-500 dark:bg-emerald-600',
-			iconClass: 'text-white',
-			textClass: 'text-emerald-900 dark:text-emerald-100',
-			progressClass: 'bg-emerald-500 dark:bg-emerald-400'
+			containerClass: 'bg-card border-success/40',
+			iconContainerClass: 'bg-success',
+			iconClass: 'text-success-foreground',
+			textClass: 'text-foreground',
+			progressClass: 'bg-success'
 		},
 		error: {
 			Icon: AlertCircle,
 			// Static texture = blockers, risk - error is a blocker
 			texture: 'tx tx-static tx-weak',
-			containerClass: 'bg-red-50/95 dark:bg-red-950/90 border-red-300 dark:border-red-800',
-			iconContainerClass: 'bg-red-500 dark:bg-red-600',
-			iconClass: 'text-white',
-			textClass: 'text-red-900 dark:text-red-100',
-			progressClass: 'bg-red-500 dark:bg-red-400'
+			containerClass: 'bg-card border-destructive/40',
+			iconContainerClass: 'bg-destructive',
+			iconClass: 'text-destructive-foreground',
+			textClass: 'text-foreground',
+			progressClass: 'bg-destructive'
 		},
 		warning: {
 			Icon: AlertTriangle,
 			// Static texture = blockers, noise, risk - warning is potential risk
 			texture: 'tx tx-static tx-weak',
-			containerClass:
-				'bg-amber-50/95 dark:bg-amber-950/90 border-amber-300 dark:border-amber-800',
-			iconContainerClass: 'bg-amber-500 dark:bg-amber-600',
-			iconClass: 'text-white',
-			textClass: 'text-amber-900 dark:text-amber-100',
-			progressClass: 'bg-amber-500 dark:bg-amber-400'
+			containerClass: 'bg-card border-warning/40',
+			iconContainerClass: 'bg-warning',
+			iconClass: 'text-warning-foreground',
+			textClass: 'text-foreground',
+			progressClass: 'bg-warning'
 		},
 		info: {
 			Icon: Info,
 			// Thread texture = relationships, information flow
 			texture: 'tx tx-thread tx-weak',
-			containerClass:
-				'bg-blue-50/95 dark:bg-blue-950/90 border-blue-300 dark:border-blue-800',
-			iconContainerClass: 'bg-blue-500 dark:bg-blue-600',
-			iconClass: 'text-white',
-			textClass: 'text-blue-900 dark:text-blue-100',
-			progressClass: 'bg-blue-500 dark:bg-blue-400'
+			containerClass: 'bg-card border-info/40',
+			iconContainerClass: 'bg-info',
+			iconClass: 'text-info-foreground',
+			textClass: 'text-foreground',
+			progressClass: 'bg-info'
 		}
 	};
 

@@ -163,7 +163,7 @@
 					</p>
 				</div>
 
-				<div class="bg-amber-500/10 rounded-lg p-6 mb-4">
+				<div class="bg-warning/10 rounded-lg p-6 mb-4">
 					<p class="text-accent-foreground font-medium font-medium mb-2">
 						AI Processing Notice
 					</p>

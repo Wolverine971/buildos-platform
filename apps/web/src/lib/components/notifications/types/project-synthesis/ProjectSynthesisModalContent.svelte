@@ -109,10 +109,10 @@
 
 	const statusIconClasses = $derived(
 		notification.status === 'success'
-			? 'text-green-600 dark:text-green-400'
+			? 'text-success'
 			: notification.status === 'error'
-				? 'text-red-600 dark:text-red-400'
-				: 'text-blue-600 dark:text-blue-400'
+				? 'text-destructive'
+				: 'text-info'
 	);
 
 	const showRetry = $derived(notification.status === 'error');
@@ -133,7 +133,7 @@
 				<section class="rounded-xl border border-border bg-card p-6 shadow-ink/70">
 					<div class="flex flex-wrap items-center gap-3">
 						<div
-							class="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/40"
+							class="flex h-12 w-12 items-center justify-center rounded-full bg-accent/10"
 						>
 							{#if notification.status === 'success'}
 								<CheckCircle class={`h-6 w-6 ${statusIconClasses}`} />
@@ -168,9 +168,7 @@
 					</div>
 
 					{#if notification.status === 'error' && notification.data.error}
-						<p
-							class="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700 dark:bg-red-900/20 dark:text-red-200"
-						>
+						<p class="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
 							{notification.data.error}
 						</p>
 					{/if}
@@ -185,7 +183,7 @@
 						{#each notification.data.selectedModules as module}
 							{@const meta = MODULE_METADATA[module]}
 							<div
-								class="flex items-center gap-2 bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 px-3 py-1.5 rounded-full text-xs font-medium"
+								class="flex items-center gap-2 bg-accent/10 text-accent px-3 py-1.5 rounded-full text-xs font-medium"
 							>
 								{#if meta?.icon}
 									{@const MetaIcon = meta.icon}
@@ -221,11 +219,11 @@
 									<div
 										class={`flex h-8 w-8 items-center justify-center rounded-full border ${
 											step.status === 'completed'
-												? 'border-green-200 bg-green-50 text-green-600 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-300'
+												? 'border-success/30 bg-success/10 text-success'
 												: step.status === 'processing'
-													? 'border-blue-200 bg-blue-50 text-blue-600 dark:border-blue-900/40 dark:bg-blue-900/20 dark:text-blue-300'
+													? 'border-info/30 bg-info/10 text-info'
 													: step.status === 'error'
-														? 'border-red-200 bg-red-50 text-red-600 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-300'
+														? 'border-destructive/30 bg-destructive/10 text-destructive'
 														: 'border-border bg-card text-muted-foreground'
 										}`}
 									>
@@ -272,18 +270,16 @@
 				{#if notification.status === 'success' && result}
 					<!-- Insights Card -->
 					<section
-						class="rounded-xl border border-green-200 bg-green-50 p-6 shadow-ink dark:border-green-800 dark:bg-green-900/20"
+						class="rounded-xl border border-success/30 bg-success/10 p-6 shadow-ink"
 					>
-						<header
-							class="mb-4 flex items-center gap-3 text-green-700 dark:text-green-200"
-						>
+						<header class="mb-4 flex items-center gap-3 text-success">
 							<Lightbulb class="h-5 w-5" />
 							<h3 class="text-sm font-semibold uppercase tracking-wide">
 								Key Insights
 							</h3>
 						</header>
 
-						<div class="space-y-3 text-sm text-green-800 dark:text-green-100">
+						<div class="space-y-3 text-sm text-foreground">
 							<p class="leading-relaxed">{result.insights}</p>
 						</div>
 					</section>
@@ -296,36 +292,28 @@
 							Operations Summary
 						</h3>
 						<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-							<div class="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+							<div class="text-center p-4 bg-info/10 rounded-lg">
 								<div class="flex items-center justify-center gap-2 mb-2">
-									<Edit2 class="h-5 w-5 text-blue-600 dark:text-blue-400" />
-									<div
-										class="text-2xl font-bold text-blue-600 dark:text-blue-400"
-									>
+									<Edit2 class="h-5 w-5 text-info" />
+									<div class="text-2xl font-bold text-info">
 										{result.consolidationCount}
 									</div>
 								</div>
 								<div class="text-xs text-muted-foreground">Consolidations</div>
 							</div>
-							<div
-								class="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg"
-							>
+							<div class="text-center p-4 bg-success/10 rounded-lg">
 								<div class="flex items-center justify-center gap-2 mb-2">
-									<PlusCircle
-										class="h-5 w-5 text-green-600 dark:text-green-400"
-									/>
-									<div
-										class="text-2xl font-bold text-green-600 dark:text-green-400"
-									>
+									<PlusCircle class="h-5 w-5 text-success" />
+									<div class="text-2xl font-bold text-success">
 										{result.newTasksCount}
 									</div>
 								</div>
 								<div class="text-xs text-muted-foreground">New Tasks</div>
 							</div>
-							<div class="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+							<div class="text-center p-4 bg-destructive/10 rounded-lg">
 								<div class="flex items-center justify-center gap-2 mb-2">
-									<MinusCircle class="h-5 w-5 text-red-600 dark:text-red-400" />
-									<div class="text-2xl font-bold text-red-600 dark:text-red-400">
+									<MinusCircle class="h-5 w-5 text-destructive" />
+									<div class="text-2xl font-bold text-destructive">
 										{result.deletionsCount}
 									</div>
 								</div>
@@ -354,10 +342,10 @@
 											<span
 												class={`px-2 py-0.5 rounded text-xs font-medium ${
 													item.type === 'consolidated'
-														? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+														? 'bg-info/10 text-info'
 														: item.type === 'suggested'
-															? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300'
-															: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+															? 'bg-success/10 text-success'
+															: 'bg-destructive/10 text-destructive'
 												}`}
 											>
 												{item.type === 'consolidated'
@@ -374,7 +362,7 @@
 								{/each}
 							</div>
 
-							<p class="text-xs text-blue-600 dark:text-blue-400 mt-4">
+							<p class="text-xs text-info mt-4">
 								Click "Review Results" to see full analysis and edit operations
 							</p>
 						</section>

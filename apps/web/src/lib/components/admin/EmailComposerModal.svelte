@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import UserContextPanel from './UserContextPanel.svelte';
 	import EmailHistoryViewerModal from './EmailHistoryViewerModal.svelte';
@@ -506,9 +507,9 @@ Guidelines:
 <Modal {isOpen} onClose={closeModal} size="xl">
 	<div class="flex flex-col h-full max-h-[90vh]">
 		<!-- Header -->
-		<div class="px-3 py-2 border-b border-border bg-muted">
-			<div class="flex items-center justify-between gap-2">
-				<h2 class="text-sm sm:text-base font-semibold text-foreground truncate">
+		<div class="px-4 py-2.5 border-b border-border bg-muted">
+			<div class="flex items-center justify-between gap-3">
+				<h2 class="text-base font-semibold text-foreground truncate">
 					{userName || userEmail}
 				</h2>
 				{#if emailHistory.length > 0}
@@ -801,7 +802,7 @@ Guidelines:
 							<button
 								onclick={useAiContent}
 								disabled={!generatedEmail}
-								class="text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1 hover:underline disabled:opacity-40"
+								class="text-success inline-flex items-center gap-1 hover:underline disabled:opacity-40"
 							>
 								<ArrowRight class="w-3 h-3"></ArrowRight>
 								Use AI
@@ -875,40 +876,25 @@ Guidelines:
 		</div>
 
 		<!-- Footer -->
-		<div class="px-3 py-2 border-t border-border bg-muted">
-			<div class="flex items-center justify-between gap-2">
-				<button
-					onclick={closeModal}
-					class="px-3 py-1.5 text-xs rounded border border-border bg-card text-foreground
-						   hover:bg-muted shadow-ink pressable"
-				>
-					Cancel
-				</button>
+		<div class="px-3 sm:px-4 py-3 border-t border-border bg-muted/30">
+			<div class="flex items-center justify-between gap-3">
+				<Button onclick={closeModal} variant="outline" size="sm">Cancel</Button>
 
 				{#if generatedEmail || manualEmail}
-					<div class="flex items-center gap-2">
-						<button
-							onclick={copyToClipboard}
-							class="px-2 py-1.5 text-xs rounded border border-border bg-card text-foreground
-								   hover:bg-muted shadow-ink pressable flex items-center gap-1.5"
-						>
-							<Copy class="w-3.5 h-3.5" />
+					<div class="flex items-center gap-3">
+						<Button onclick={copyToClipboard} variant="outline" size="sm" icon={Copy}>
 							<span class="hidden sm:inline">Copy</span>
-						</button>
-						<button
+						</Button>
+						<Button
 							onclick={sendEmail}
 							disabled={isSending}
-							class="px-3 py-1.5 text-xs rounded bg-accent text-accent-foreground
-								   shadow-ink pressable disabled:opacity-50 flex items-center gap-1.5"
+							loading={isSending}
+							variant="primary"
+							size="sm"
+							icon={Send}
 						>
-							{#if isSending}
-								<LoaderCircle class="w-3.5 h-3.5 animate-spin" />
-								Sending...
-							{:else}
-								<Send class="w-3.5 h-3.5" />
-								Send
-							{/if}
-						</button>
+							{isSending ? 'Sending...' : 'Send'}
+						</Button>
 					</div>
 				{/if}
 			</div>

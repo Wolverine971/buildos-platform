@@ -48,7 +48,7 @@
 		if (state === 'completed') {
 			return {
 				icon: CheckCircle2,
-				iconColor: 'text-emerald-500',
+				iconColor: 'text-success',
 				isCompleted: true,
 				isMissed: false
 			};
@@ -130,7 +130,7 @@
 	onkeydown={handleKeyDown}
 	role="button"
 	tabindex="0"
-	class="w-full flex items-center gap-2 text-left cursor-pointer px-3 py-2 hover:bg-emerald-50/30 dark:hover:bg-emerald-900/10 transition-colors group"
+	class="w-full flex items-center gap-2 text-left cursor-pointer px-3 py-2 hover:bg-success/10 transition-colors group"
 	class:py-1.5={compact}
 	aria-label="Edit milestone: {milestone.title}"
 >
@@ -163,7 +163,7 @@
 		<button
 			type="button"
 			onclick={handleToggleComplete}
-			class="hidden group-hover:flex items-center justify-center w-4 h-4 rounded-md shrink-0 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 transition-colors pressable"
+			class="flex sm:hidden sm:group-hover:flex items-center justify-center w-4 h-4 rounded-md shrink-0 bg-success/10 hover:bg-success/20 text-success transition-colors pressable"
 			aria-label="Mark {milestone.title} as complete"
 			title="Mark as complete"
 		>

@@ -454,14 +454,14 @@
 								<div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
 									{#if version.is_merged && version.change_count > 1}
 										<span
-											class="text-[10px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400"
+											class="text-[10px] px-1 py-0.5 rounded bg-info/10 text-info"
 										>
 											{version.change_count} edits
 										</span>
 									{/if}
 									{#if version.is_restore}
 										<span
-											class="text-[10px] px-1 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400"
+											class="text-[10px] px-1 py-0.5 rounded bg-warning/10 text-warning"
 										>
 											Restored from v{version.restore_of_version}
 										</span>
@@ -552,7 +552,7 @@
 						<button
 							type="button"
 							onclick={handleRestore}
-							class="w-full inline-flex items-center justify-center gap-1.5 h-7 px-2 text-[10px] font-medium rounded-md text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors pressable"
+							class="w-full inline-flex items-center justify-center gap-1.5 h-7 px-2 text-[10px] font-medium rounded-md text-warning hover:bg-warning/10 transition-colors pressable"
 						>
 							<RotateCcw class="w-3 h-3" />
 							Restore this version

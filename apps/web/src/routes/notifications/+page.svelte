@@ -248,32 +248,32 @@
 		if (clickedAt) {
 			return {
 				label: 'Clicked',
-				color: 'text-green-600 dark:text-green-400',
-				bgColor: 'bg-green-50 dark:bg-green-950/50',
+				color: 'text-success',
+				bgColor: 'bg-success/10',
 				icon: MousePointer
 			};
 		}
 		if (openedAt) {
 			return {
 				label: 'Opened',
-				color: 'text-blue-600 dark:text-blue-400',
-				bgColor: 'bg-blue-50 dark:bg-blue-950/50',
+				color: 'text-info',
+				bgColor: 'bg-info/10',
 				icon: Eye
 			};
 		}
 		if (failedAt || status === 'failed') {
 			return {
 				label: 'Failed',
-				color: 'text-red-600 dark:text-red-400',
-				bgColor: 'bg-red-50 dark:bg-red-950/50',
+				color: 'text-destructive',
+				bgColor: 'bg-destructive/10',
 				icon: XCircle
 			};
 		}
 		if (status === 'cancelled') {
 			return {
 				label: 'Cancelled',
-				color: 'text-amber-700 dark:text-amber-400',
-				bgColor: 'bg-amber-50 dark:bg-amber-950/50',
+				color: 'text-warning',
+				bgColor: 'bg-warning/10',
 				icon: Clock
 			};
 		}
@@ -288,8 +288,8 @@
 		if (status === 'pending') {
 			return {
 				label: 'Pending',
-				color: 'text-amber-600 dark:text-amber-400',
-				bgColor: 'bg-amber-50 dark:bg-amber-950/50',
+				color: 'text-warning',
+				bgColor: 'bg-warning/10',
 				icon: Clock
 			};
 		}
@@ -344,8 +344,8 @@
 		if (hasFailedRow && hasSuccessfulRow) {
 			return {
 				label: 'Partially Delivered',
-				color: 'text-amber-700 dark:text-amber-400',
-				bgColor: 'bg-amber-50 dark:bg-amber-950/50',
+				color: 'text-warning',
+				bgColor: 'bg-warning/10',
 				icon: AlertTriangle
 			};
 		}
@@ -731,7 +731,7 @@
 	<meta name="robots" content="noindex, nofollow" />
 </svelte:head>
 
-<div class="min-h-screen bg-background rounded-md sm:px-6 py-6">
+<div class="min-h-screen bg-background rounded-md px-3 sm:px-6 py-6">
 	<!-- Header -->
 	<div class="flex items-center gap-3 pb-2 border-b border-border">
 		<div class="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
@@ -906,7 +906,7 @@
 										<!-- Error message for failed notifications -->
 										{#if erroredRow}
 											<div
-												class="mt-2 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 px-2 py-1.5 rounded border border-red-200 dark:border-red-900"
+												class="mt-2 text-xs text-destructive bg-destructive/10 px-2 py-1.5 rounded border border-destructive/30"
 											>
 												{erroredRow.last_error}
 											</div>

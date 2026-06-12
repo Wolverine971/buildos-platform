@@ -178,7 +178,7 @@
 				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
-					<Bell class="h-8 w-8 text-blue-600 mr-3" />
+					<Bell class="h-8 w-8 text-info mr-3" />
 					<div>
 						<h3 class="text-lg font-semibold text-foreground">Analytics</h3>
 						<p class="text-sm text-muted-foreground">View dashboard</p>
@@ -188,10 +188,10 @@
 
 			<a
 				href="/admin/notifications/test-bed"
-				class="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800 rounded-lg p-6 hover:shadow-ink-strong transition-shadow"
+				class="bg-success/10 border-2 border-success/30 rounded-lg p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
-					<Send class="h-8 w-8 text-green-600 mr-3" />
+					<Send class="h-8 w-8 text-success mr-3" />
 					<div>
 						<h3 class="text-lg font-semibold text-foreground">Test Bed</h3>
 						<p class="text-sm text-muted-foreground">Current page</p>
@@ -204,7 +204,7 @@
 				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
-					<Calendar class="h-8 w-8 text-orange-600 mr-3" />
+					<Calendar class="h-8 w-8 text-accent mr-3" />
 					<div>
 						<h3 class="text-lg font-semibold text-foreground">SMS Scheduler</h3>
 						<p class="text-sm text-muted-foreground">Manual trigger</p>
@@ -217,7 +217,7 @@
 				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
-					<Eye class="h-8 w-8 text-purple-600 mr-3" />
+					<Eye class="h-8 w-8 text-accent mr-3" />
 					<div>
 						<h3 class="text-lg font-semibold text-foreground">Logs</h3>
 						<p class="text-sm text-muted-foreground">Event & delivery logs</p>
@@ -227,18 +227,14 @@
 		</div>
 
 		{#if error}
-			<div
-				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
-			>
-				<p class="text-red-800 dark:text-red-200">{error}</p>
+			<div class="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-4">
+				<p class="text-destructive">{error}</p>
 			</div>
 		{/if}
 
 		{#if successMessage}
-			<div
-				class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4 dark:bg-green-900/20 dark:border-green-800"
-			>
-				<p class="text-green-800 dark:text-green-200">{successMessage}</p>
+			<div class="bg-success/10 border border-success/30 rounded-lg p-4 mb-4">
+				<p class="text-success">{successMessage}</p>
 			</div>
 		{/if}
 
@@ -258,11 +254,11 @@
 								type="text"
 								bind:value={recipientSearch}
 								placeholder="Search users by email or name..."
-								class="w-full pl-10 pr-10 py-3 border border-border rounded-lg focus:ring-2 focus:ring-blue-500"
+								class="w-full pl-10 pr-10 py-3 border border-border rounded-lg focus:ring-2 focus:ring-ring"
 							/>
 							{#if isSearching}
 								<div class="absolute right-3 top-1/2 transform -translate-y-1/2">
-									<LoaderCircle class="w-5 h-5 animate-spin text-blue-600" />
+									<LoaderCircle class="w-5 h-5 animate-spin text-info" />
 								</div>
 							{/if}
 						</div>
@@ -298,7 +294,7 @@
 				{:else}
 					<!-- Selected User Display -->
 					<div
-						class="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+						class="flex items-center justify-between p-4 bg-info/10 border border-info/30 rounded-lg"
 					>
 						<div>
 							<div class="text-sm font-medium text-foreground">
@@ -319,7 +315,7 @@
 			{#if selectedUser}
 				{#if contextLoading}
 					<div class="admin-panel p-8 text-center">
-						<LoaderCircle class="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+						<LoaderCircle class="w-8 h-8 animate-spin text-info mx-auto mb-4" />
 						<p class="text-muted-foreground">Loading user notification context...</p>
 					</div>
 				{:else if userContext}
@@ -353,7 +349,7 @@
 										value={capability.channel}
 										bind:group={selectedChannels}
 										disabled={!capability.available}
-										class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 disabled:opacity-50"
+										class="h-4 w-4 rounded border-border text-accent focus:ring-ring disabled:opacity-50"
 									/>
 									<div class="flex-1">
 										<div class="flex items-center space-x-2">
@@ -361,9 +357,7 @@
 												{capability.channel}
 											</div>
 											{#if capability.available}
-												<span
-													class="text-xs text-green-600 dark:text-green-400"
-													>✓ Available</span
+												<span class="text-xs text-success">✓ Available</span
 												>
 											{:else}
 												<span class="text-xs text-muted-foreground"

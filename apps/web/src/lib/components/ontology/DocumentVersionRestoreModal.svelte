@@ -147,10 +147,10 @@
 <Modal bind:isOpen onClose={handleClose} size="sm" closeOnBackdrop={!isRestoring}>
 	{#snippet header()}
 		<div
-			class="flex-shrink-0 bg-amber-50/50 dark:bg-amber-900/10 border-b border-amber-200/50 dark:border-amber-800/50 px-4 py-3 flex items-center gap-3"
+			class="flex-shrink-0 bg-warning/10 border-b border-warning/30 px-4 py-3 flex items-center gap-3"
 		>
 			<div
-				class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"
+				class="flex h-10 w-10 items-center justify-center rounded-full bg-warning/15 text-warning"
 			>
 				<RotateCcw class="w-5 h-5" />
 			</div>
@@ -165,12 +165,12 @@
 		<div class="p-4 space-y-4">
 			<!-- Warning -->
 			<div
-				class="flex items-start gap-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-200/50 dark:border-amber-800/50"
+				class="flex items-start gap-3 p-3 rounded-lg bg-warning/10 border border-warning/30"
 			>
-				<AlertTriangle class="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-				<div class="text-sm text-amber-800 dark:text-amber-200">
+				<AlertTriangle class="w-5 h-5 text-warning shrink-0 mt-0.5" />
+				<div class="text-sm text-warning">
 					<p class="font-medium mb-1">This action will overwrite the current document.</p>
-					<p class="text-amber-700 dark:text-amber-300">
+					<p class="text-warning">
 						The document content will be replaced with the content from version
 						{version.number}. A new version will be created to track this restore.
 					</p>
@@ -240,7 +240,9 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div class="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted">
+		<div
+			class="flex items-center justify-end gap-3 px-3 sm:px-4 py-3 border-t border-border bg-muted/30"
+		>
 			<Button variant="ghost" size="sm" onclick={handleClose} disabled={isRestoring}>
 				Cancel
 			</Button>
@@ -249,7 +251,7 @@
 				size="sm"
 				onclick={handleRestore}
 				disabled={!confirmed || isRestoring}
-				class="bg-amber-600 hover:bg-amber-700 text-white"
+				class="bg-warning hover:bg-warning/90 text-warning-foreground"
 			>
 				{#if isRestoring}
 					<LoaderCircle class="w-4 h-4 mr-1.5 animate-spin" />

@@ -1104,7 +1104,7 @@
 
 	{#if selectedSecurityEvent}
 		<div
-			class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur"
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur"
 		>
 			<div class="admin-panel max-h-[90vh] w-full max-w-3xl overflow-y-auto p-6">
 				<div class="flex items-start justify-between gap-4">

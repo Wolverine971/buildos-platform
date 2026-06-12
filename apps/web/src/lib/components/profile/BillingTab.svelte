@@ -185,25 +185,25 @@
 					</p>
 					<div class="space-y-2 text-left max-w-sm mx-auto mb-5">
 						<div class="flex items-start gap-2">
-							<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+							<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
 							<p class="text-sm text-foreground">
 								Google Calendar integration for automatic task scheduling
 							</p>
 						</div>
 						<div class="flex items-start gap-2">
-							<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+							<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
 							<p class="text-sm text-foreground">
 								AI-powered daily briefs to keep you on track
 							</p>
 						</div>
 						<div class="flex items-start gap-2">
-							<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+							<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
 							<p class="text-sm text-foreground">
 								Advanced project phases and timeline management
 							</p>
 						</div>
 						<div class="flex items-start gap-2">
-							<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+							<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
 							<p class="text-sm text-foreground">
 								Priority support and early access to new features
 							</p>

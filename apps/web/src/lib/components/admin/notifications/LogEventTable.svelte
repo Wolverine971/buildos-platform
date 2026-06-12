@@ -54,26 +54,23 @@
 	}
 
 	function getEventTypeBadgeColor(eventType: string): string {
-		if (eventType.includes('brief'))
-			return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-		if (eventType.includes('task'))
-			return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-		if (eventType.includes('project'))
-			return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+		if (eventType.includes('brief')) return 'bg-success/10 text-success';
+		if (eventType.includes('task')) return 'bg-info/10 text-info';
+		if (eventType.includes('project')) return 'bg-accent/10 text-accent';
 		if (eventType.includes('system'))
 			return 'bg-muted text-foreground dark:text-muted-foreground';
-		return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200';
+		return 'bg-info/10 text-info';
 	}
 
 	function getStatusBadgeColor(status: string): string {
 		const statusColors: Record<string, string> = {
-			pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-			sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-			delivered: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-			failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-			bounced: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-			opened: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
-			clicked: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+			pending: 'bg-warning/10 text-warning',
+			sent: 'bg-info/10 text-info',
+			delivered: 'bg-success/10 text-success',
+			failed: 'bg-destructive/10 text-destructive',
+			bounced: 'bg-accent/10 text-accent',
+			opened: 'bg-info/10 text-info',
+			clicked: 'bg-accent/10 text-accent'
 		};
 		return statusColors[status] || 'bg-muted text-foreground';
 	}

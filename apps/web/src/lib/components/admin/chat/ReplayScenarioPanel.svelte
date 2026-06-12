@@ -80,7 +80,7 @@
 		</div>
 	{/if}
 	{#if replayError}
-		<div class="text-xs text-red-600 dark:text-red-400">{replayError}</div>
+		<div class="text-xs text-destructive">{replayError}</div>
 	{/if}
 	{#if lastReplayResult}
 		<div class="text-xs text-muted-foreground">

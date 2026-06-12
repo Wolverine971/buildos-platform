@@ -105,7 +105,7 @@
 	<div class="flex flex-col gap-2.5">
 		{#each blocks as block (block.id)}
 			<article
-				class="group relative overflow-hidden rounded-lg border border-border bg-card px-3 py-3 shadow-ink transition hover:-translate-y-[1px] hover:border-blue-200 hover:shadow-ink-strong tx tx-frame tx-weak sm:px-4 sm:py-4"
+				class="group relative overflow-hidden rounded-lg border border-border bg-card px-3 py-3 shadow-ink transition hover:-translate-y-[1px] hover:border-info/30 hover:shadow-ink-strong tx tx-frame tx-weak sm:px-4 sm:py-4"
 				style="content-visibility: auto; contain-intrinsic-size: 0 180px;"
 			>
 				<div
@@ -125,7 +125,7 @@
 									{blockTypeLabel(block)}
 								</span>
 								<span
-									class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 shadow-ink dark:bg-blue-900 dark:text-blue-200"
+									class="rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info shadow-ink"
 								>
 									{block.duration_minutes}m
 								</span>
@@ -151,7 +151,7 @@
 									href={block.calendar_event_link}
 									target="_blank"
 									rel="noreferrer"
-									class="inline-flex items-center justify-center rounded-md border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-600 transition hover:bg-blue-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 dark:border-blue-400/40 dark:bg-blue-400/10 dark:text-blue-200 dark:hover:bg-blue-400/20"
+									class="inline-flex items-center justify-center rounded-md border border-info/30 bg-info/10 px-3 py-1.5 text-xs font-medium text-info transition hover:bg-info/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								>
 									View
 								</a>
@@ -159,13 +159,13 @@
 							<div class="flex flex-wrap items-center gap-1.5">
 								<button
 									type="button"
-									class="inline-flex items-center justify-center rounded-md border border-blue-400/40 bg-blue-500/10 px-3 py-1.5 text-xs font-medium text-blue-600 transition hover:bg-blue-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 disabled:cursor-not-allowed disabled:opacity-50 dark:border-blue-500/40 dark:bg-blue-500/20 dark:text-blue-100 dark:hover:bg-blue-500/30"
+									class="inline-flex items-center justify-center rounded-md border border-info/30 bg-info/10 px-3 py-1.5 text-xs font-medium text-info transition hover:bg-info/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
 									onclick={() => handleRegenerate(block.id)}
 									disabled={isRegenerating(block.id)}
 								>
 									{#if isRegenerating(block.id)}
 										<span
-											class="mr-1.5 h-3 w-3 animate-spin rounded-full border-2 border-blue-400 border-t-transparent"
+											class="mr-1.5 h-3 w-3 animate-spin rounded-full border-2 border-info border-t-transparent"
 										></span>
 										Refreshing
 									{:else}
@@ -174,7 +174,7 @@
 								</button>
 								<button
 									type="button"
-									class="inline-flex items-center justify-center rounded-md border border-rose-400/40 bg-rose-500/10 px-3 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40 dark:border-rose-400/40 dark:bg-rose-400/10 dark:text-rose-200 dark:hover:bg-rose-400/20"
+									class="inline-flex items-center justify-center rounded-md border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									onclick={() => handleDelete(block.id)}
 								>
 									Delete
@@ -184,7 +184,7 @@
 					</div>
 
 					<div
-						class="rounded-lg border border-border/80 bg-slate-50/80 px-3 py-2.5 text-xs shadow-ink/70/40 dark:text-muted-foreground"
+						class="rounded-lg border border-border/80 bg-muted/50 px-3 py-2.5 text-xs text-muted-foreground"
 					>
 						{#if getSuggestions(block).length > 0}
 							<div class="space-y-2">

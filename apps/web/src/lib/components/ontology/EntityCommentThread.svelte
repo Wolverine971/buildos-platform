@@ -136,7 +136,7 @@
 					<Button
 						variant="ghost"
 						size="sm"
-						class="pressable hover:text-red-600"
+						class="pressable hover:text-destructive"
 						onclick={() => onDelete(comment.id)}
 						disabled={deletingId === comment.id}
 					>

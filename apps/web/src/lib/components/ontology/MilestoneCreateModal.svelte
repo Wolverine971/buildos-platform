@@ -137,11 +137,11 @@
 	function getGoalStateColor(state: string): string {
 		switch (state) {
 			case 'achieved':
-				return 'text-emerald-500';
+				return 'text-success';
 			case 'active':
-				return 'text-amber-500';
+				return 'text-warning';
 			case 'abandoned':
-				return 'text-red-500';
+				return 'text-destructive';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -279,7 +279,7 @@
 				type="button"
 				onclick={handleClose}
 				disabled={isSaving}
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400 tx tx-grain tx-weak"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 				aria-label="Close modal"
 			>
 				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -310,7 +310,7 @@
 								<!-- Header -->
 								<div class="flex items-center gap-3 pb-4 border-b border-border">
 									<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
-										<Target class="w-5 h-5 text-amber-500" />
+										<Target class="w-5 h-5 text-warning" />
 									</div>
 									<div>
 										<h3 class="text-lg font-semibold text-foreground">
@@ -334,7 +334,7 @@
 											bind:value={goalSearchQuery}
 											placeholder="Search goals..."
 											class="w-full pl-10 pr-3 py-2.5 rounded-lg border border-border bg-background text-foreground
-												focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500"
+												focus:outline-none focus:ring-2 focus:ring-ring focus:border-accent"
 										/>
 									</div>
 								{/if}
@@ -364,7 +364,7 @@
 												</p>
 											{:else}
 												<CheckCircle2
-													class="w-8 h-8 mx-auto mb-2 text-emerald-500"
+													class="w-8 h-8 mx-auto mb-2 text-success"
 												/>
 												<p class="text-sm text-muted-foreground">
 													All goals are completed or abandoned
@@ -391,7 +391,7 @@
 															class="p-2 rounded bg-muted shrink-0 group-hover:bg-accent/10 transition-colors"
 														>
 															<Target
-																class="w-4 h-4 text-amber-500 group-hover:text-accent transition-colors"
+																class="w-4 h-4 text-warning group-hover:text-accent transition-colors"
 															/>
 														</div>
 														<div class="min-w-0 flex-1">
@@ -438,7 +438,7 @@
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex items-center gap-3 flex-1 min-w-0">
 												<div class="p-2 rounded bg-card shadow-ink">
-													<Target class="w-4 h-4 text-amber-500" />
+													<Target class="w-4 h-4 text-warning" />
 												</div>
 												<div class="flex-1 min-w-0">
 													<p class="text-xs text-muted-foreground">
@@ -507,7 +507,7 @@
 											bind:value={dueAt}
 											class="w-full pl-10 pr-3 py-2.5 rounded-lg border bg-background text-foreground
 												{!dueAt && error ? 'border-destructive' : 'border-border'}
-												focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500
+												focus:outline-none focus:ring-2 focus:ring-ring focus:border-accent
 												disabled:opacity-50 disabled:cursor-not-allowed"
 											disabled={isSaving}
 										/>

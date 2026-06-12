@@ -55,7 +55,7 @@
 		<button
 			type="button"
 			class="px-2 py-1 rounded-full border text-xs font-medium transition-colors {showOnlyErrors
-				? 'border-red-500/60 bg-red-500/15 text-red-700 dark:text-red-300'
+				? 'border-destructive/60 bg-destructive/15 text-destructive'
 				: 'border-border bg-background text-foreground/50 hover:text-foreground/70'}"
 			onclick={() => (showOnlyErrors = !showOnlyErrors)}
 		>

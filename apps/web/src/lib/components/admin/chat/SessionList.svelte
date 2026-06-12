@@ -58,7 +58,7 @@
 			{/each}
 		</div>
 	{:else if sessionsError}
-		<div class="p-3 text-sm text-red-600 dark:text-red-400 flex items-start gap-2">
+		<div class="p-3 text-sm text-destructive flex items-start gap-2">
 			<AlertCircle class="h-4 w-4 mt-0.5 shrink-0" />
 			<span>{sessionsError}</span>
 		</div>
@@ -87,7 +87,7 @@
 						</div>
 						{#if session.has_errors}
 							<span
-								class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-red-500/10 text-red-700 dark:text-red-300 shrink-0"
+								class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-destructive/10 text-destructive shrink-0"
 							>
 								<XCircle class="h-3 w-3" />
 								Error

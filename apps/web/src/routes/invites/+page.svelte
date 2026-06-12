@@ -162,9 +162,9 @@
 			<div class="rounded-lg border border-border bg-card p-4 shadow-ink">
 				<div class="flex items-start gap-3">
 					<div
-						class="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-red-500/10"
+						class="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-destructive/10"
 					>
-						<AlertCircle class="w-5 h-5 text-red-500" />
+						<AlertCircle class="w-5 h-5 text-destructive" />
 					</div>
 					<div class="min-w-0 flex-1">
 						<p class="text-xs uppercase tracking-[0.15em] text-muted-foreground mb-1">
@@ -207,7 +207,7 @@
 			</div>
 		{:else}
 			{#if actionError}
-				<p class="mb-4 text-sm text-red-500">{actionError}</p>
+				<p class="mb-4 text-sm text-destructive">{actionError}</p>
 			{/if}
 			<div class="space-y-4">
 				{#each invites as invite (invite.invite_id)}

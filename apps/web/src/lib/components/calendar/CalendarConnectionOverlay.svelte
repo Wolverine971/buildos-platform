@@ -58,20 +58,20 @@
 >
 	<!-- Backdrop with elegant blur -->
 	<div
-		class="fixed inset-0 bg-card/60 dark:bg-black/60 backdrop-blur-xl z-[100]"
+		class="fixed inset-0 bg-card/60 dark:bg-black/60 backdrop-blur-xl z-[9999]"
 		aria-hidden="true"
 	></div>
 
 	<!-- Content Container -->
 	<div
-		class="fixed inset-0 z-[100] flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
+		class="fixed inset-0 z-[9999] flex items-center justify-center p-4 pt-[max(1rem,env(safe-area-inset-top,0px))] pb-[max(1rem,env(safe-area-inset-bottom,0px))]"
 	>
 		<div
 			class="relative w-full max-w-md max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem)] overflow-y-auto bg-card rounded-2xl shadow-ink-strong border border-border"
 			transition:fade={{ duration: 300, delay: 100 }}
 		>
 			<!-- Decorative gradient top bar -->
-			<div class="h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+			<div class="h-1 bg-accent"></div>
 
 			<!-- Content -->
 			<div class="px-5 py-6 sm:px-10 sm:py-12 text-center">
@@ -80,20 +80,17 @@
 					<div class="relative">
 						<!-- Animated rings -->
 						<div
-							class="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 animate-ping opacity-20"
+							class="absolute inset-0 rounded-full bg-accent/20 animate-ping opacity-20"
 						></div>
 						<div
-							class="absolute inset-0 rounded-full bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-950 dark:to-indigo-950 animate-ping animation-delay-200 opacity-15"
+							class="absolute inset-0 rounded-full bg-accent/20 animate-ping animation-delay-200 opacity-15"
 						></div>
 
 						<!-- Icon circle -->
 						<div
 							class="relative w-20 h-20 rounded-full bg-accent/10 border border-accent flex items-center justify-center"
 						>
-							<Calendar
-								class="w-10 h-10 text-blue-600 dark:text-blue-400"
-								strokeWidth={1.5}
-							></Calendar>
+							<Calendar class="w-10 h-10 text-accent" strokeWidth={1.5}></Calendar>
 						</div>
 					</div>
 				</div>
@@ -119,9 +116,9 @@
 				<div class="space-y-3 mb-8">
 					<div class="flex items-center gap-3 text-left">
 						<div
-							class="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-50 dark:bg-emerald-950 flex items-center justify-center"
+							class="flex-shrink-0 w-8 h-8 rounded-full bg-success/10 flex items-center justify-center"
 						>
-							<Clock class="w-4 h-4 text-emerald-600 dark:text-emerald-400"></Clock>
+							<Clock class="w-4 h-4 text-success"></Clock>
 						</div>
 						<p class="text-sm text-foreground">
 							Blocks sync to your calendar automatically
@@ -129,9 +126,9 @@
 					</div>
 					<div class="flex items-center gap-3 text-left">
 						<div
-							class="flex-shrink-0 w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-950 flex items-center justify-center"
+							class="flex-shrink-0 w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center"
 						>
-							<Shield class="w-4 h-4 text-purple-600 dark:text-purple-400"></Shield>
+							<Shield class="w-4 h-4 text-accent"></Shield>
 						</div>
 						<p class="text-sm text-foreground">
 							See available time slots between events
@@ -142,9 +139,9 @@
 				<!-- Error Message -->
 				{#if hasError}
 					<div
-						class="mb-6 px-4 py-3 rounded-lg bg-rose-50 dark:bg-rose-950 border border-rose-200 dark:border-rose-900"
+						class="mb-6 px-4 py-3 rounded-lg bg-destructive/10 border border-destructive/30"
 					>
-						<p class="text-sm text-rose-700 dark:text-rose-400">
+						<p class="text-sm text-destructive">
 							{errorMessage}
 						</p>
 					</div>
@@ -156,7 +153,7 @@
 					disabled={isConnecting}
 					variant="primary"
 					size="lg"
-					class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium px-6 py-3 rounded-lg shadow-ink-strong hover:shadow-ink-strong transform transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+					class="w-full font-medium px-6 py-3 rounded-lg shadow-ink-strong hover:shadow-ink-strong transform transition-all hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
 				>
 					{#if isConnecting}
 						<div class="flex items-center justify-center gap-2">

@@ -222,20 +222,20 @@
 			case 'warning':
 				return 'bg-warning/10 border-warning/40 text-warning-foreground';
 			default:
-				return 'bg-blue-500/10 border-blue-500/40 text-blue-700 dark:text-blue-300';
+				return 'bg-info/10 border-info/40 text-info';
 		}
 	}
 
 	function getStatusColor(status: string) {
 		switch (status) {
 			case 'active':
-				return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+				return 'bg-success/10 text-success';
 			case 'trialing':
-				return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+				return 'bg-info/10 text-info';
 			case 'canceled':
-				return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+				return 'bg-destructive/10 text-destructive';
 			case 'past_due':
-				return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+				return 'bg-accent/10 text-accent';
 			case 'unpaid':
 				return 'bg-muted text-foreground dark:text-muted-foreground';
 			default:
@@ -278,9 +278,9 @@
 			case 'upgrade_required_frozen':
 				return 'bg-warning/20 text-warning-foreground border border-warning/40';
 			case 'pro_active':
-				return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+				return 'bg-info/10 text-info';
 			case 'power_active':
-				return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200';
+				return 'bg-info/10 text-info';
 			case 'explorer_active':
 				return 'bg-muted text-foreground dark:text-muted-foreground';
 			default:
@@ -523,12 +523,10 @@
 	</div>
 
 	{#if opsMetricsError}
-		<div
-			class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 dark:bg-red-900/20 dark:border-red-800"
-		>
+		<div class="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-6">
 			<div class="flex items-center">
-				<AlertCircle class="h-5 w-5 text-red-600 mr-2" />
-				<p class="text-red-800 dark:text-red-200">{opsMetricsError}</p>
+				<AlertCircle class="h-5 w-5 text-destructive mr-2" />
+				<p class="text-destructive">{opsMetricsError}</p>
 			</div>
 		</div>
 	{/if}
@@ -664,12 +662,10 @@
 	</div>
 
 	{#if error}
-		<div
-			class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 dark:bg-red-900/20 dark:border-red-800"
-		>
+		<div class="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-6">
 			<div class="flex items-center">
-				<AlertCircle class="h-5 w-5 text-red-600 mr-2" />
-				<p class="text-red-800 dark:text-red-200">{error}</p>
+				<AlertCircle class="h-5 w-5 text-destructive mr-2" />
+				<p class="text-destructive">{error}</p>
 			</div>
 		</div>
 	{/if}
@@ -787,7 +783,7 @@
 	<div class="admin-panel overflow-hidden">
 		{#if isLoading}
 			<div class="p-8 text-center">
-				<RefreshCw class="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
+				<RefreshCw class="h-8 w-8 animate-spin text-info mx-auto mb-4" />
 				<p class="text-muted-foreground">Loading users...</p>
 			</div>
 		{:else if users.length === 0}
@@ -877,7 +873,7 @@
 			</ul>
 
 			<div class="hidden overflow-x-auto lg:block">
-				<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+				<table class="min-w-full divide-y divide-border">
 					<thead class="bg-muted">
 						<tr>
 							<th
@@ -910,7 +906,7 @@
 							</th>
 						</tr>
 					</thead>
-					<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
+					<tbody class="bg-card divide-y divide-border">
 						{#each users as user}
 							{@const subscription = user.customer_subscriptions?.[0]}
 							<tr class="hover:bg-muted/50">

@@ -74,15 +74,11 @@
 		</button>
 
 		<div class="flex items-center gap-1.5 px-2 min-w-0">
-			<span
-				class="text-xs font-mono font-semibold text-rose-600 dark:text-rose-400 whitespace-nowrap"
-			>
+			<span class="text-xs font-mono font-semibold text-destructive whitespace-nowrap">
 				{fromLabel}
 			</span>
 			<ArrowRight class="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-			<span
-				class="text-xs font-mono font-semibold text-emerald-600 dark:text-emerald-400 whitespace-nowrap"
-			>
+			<span class="text-xs font-mono font-semibold text-success whitespace-nowrap">
 				{toLabel}
 			</span>
 		</div>
@@ -167,7 +163,7 @@
 	<button
 		type="button"
 		onclick={onExit}
-		class="flex h-7 items-center gap-1 px-2 rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:text-foreground hover:border-red-500/50 hover:text-red-500"
+		class="flex h-7 items-center gap-1 px-2 rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:text-foreground hover:border-destructive/50 hover:text-destructive"
 		aria-label="Exit comparison mode"
 		title="Exit comparison"
 	>

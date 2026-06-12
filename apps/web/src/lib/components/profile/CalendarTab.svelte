@@ -519,8 +519,8 @@
 			{#snippet actions()}
 				{#if calendarConnected}
 					<div class="flex items-center gap-1.5 text-xs">
-						<CircleCheck class="w-3.5 h-3.5 text-emerald-500" />
-						<span class="font-medium text-emerald-500">Connected</span>
+						<CircleCheck class="w-3.5 h-3.5 text-success" />
+						<span class="font-medium text-success">Connected</span>
 						{#if calendarData.calendarStatus?.lastSync}
 							<span class="text-muted-foreground">
 								· Last sync {formatLastSync(calendarData.calendarStatus.lastSync)}
@@ -569,7 +569,7 @@
 			</h4>
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
 				<div class="flex items-start gap-2">
-					<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+					<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
 					<div class="min-w-0">
 						<p class="text-xs sm:text-sm font-medium text-foreground">
 							Automatic Task Scheduling
@@ -580,7 +580,7 @@
 					</div>
 				</div>
 				<div class="flex items-start gap-2">
-					<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+					<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
 					<div class="min-w-0">
 						<p class="text-xs sm:text-sm font-medium text-foreground">
 							Smart Time Slots
@@ -591,7 +591,7 @@
 					</div>
 				</div>
 				<div class="flex items-start gap-2">
-					<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+					<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
 					<div class="min-w-0">
 						<p class="text-xs sm:text-sm font-medium text-foreground">Two-way Sync</p>
 						<p class="text-xs text-muted-foreground">
@@ -600,7 +600,7 @@
 					</div>
 				</div>
 				<div class="flex items-start gap-2">
-					<CircleCheck class="w-4 h-4 text-emerald-500 mt-0.5 flex-shrink-0" />
+					<CircleCheck class="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
 					<div class="min-w-0">
 						<p class="text-xs sm:text-sm font-medium text-foreground">
 							Holiday Awareness
@@ -806,7 +806,7 @@
 							>
 								{#snippet labelHtml()}
 									<span class="flex items-center">
-										<Sun class="w-4 h-4 mr-1 text-amber-500" />
+										<Sun class="w-4 h-4 mr-1 text-warning" />
 										Schedule important tasks in the morning
 									</span>
 								{/snippet}
@@ -901,7 +901,7 @@
 				>
 					<!-- Analysis Button -->
 					<div
-						class="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3 tx tx-grain tx-weak"
+						class="bg-accent/10 border border-accent/30 rounded-lg p-3 tx tx-grain tx-weak"
 					>
 						<div
 							class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
@@ -910,7 +910,7 @@
 								<h4
 									class="text-sm font-semibold text-foreground flex items-center gap-1.5"
 								>
-									<Sparkles class="w-4 h-4 text-purple-500" />
+									<Sparkles class="w-4 h-4 text-accent" />
 									Analyze Your Calendar
 								</h4>
 								<p class="text-xs text-muted-foreground mt-0.5">
@@ -954,7 +954,7 @@
 								{#each calendarProjects.slice(0, 5) as project}
 									<a
 										href="/projects/{project.id}"
-										class="block p-3 bg-card border border-border rounded-lg hover:shadow-ink transition-all hover:border-purple-500/50 pressable"
+										class="block p-3 bg-card border border-border rounded-lg hover:shadow-ink transition-all hover:border-accent/50 pressable"
 									>
 										<div class="flex items-center justify-between gap-3">
 											<div class="flex-1 min-w-0">
@@ -1007,7 +1007,7 @@
 		{/if}
 	{:else}
 		<div class="text-center py-12 tx tx-bloom tx-weak rounded-lg">
-			<CircleAlert class="w-10 h-10 text-red-500 mx-auto mb-3" />
+			<CircleAlert class="w-10 h-10 text-destructive mx-auto mb-3" />
 			<p class="text-sm text-muted-foreground mb-4">
 				Failed to load calendar settings. Please try again.
 			</p>

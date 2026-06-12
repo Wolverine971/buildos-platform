@@ -2306,7 +2306,7 @@
 	closeOnEscape={!blockingSave}
 	enableGestures={false}
 	showCloseButton={false}
-	customClasses="lg:!max-w-6xl xl:!max-w-7xl document-modal-container !max-h-[100dvh] !h-[100dvh] sm:!h-auto sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg"
+	customClasses="lg:!max-w-6xl xl:!max-w-7xl document-modal-container !max-h-[calc(100dvh-var(--keyboard-height,0px))] !h-[calc(100dvh-var(--keyboard-height,0px))] sm:!h-auto sm:!max-h-[95dvh] !rounded-none sm:!rounded-lg"
 >
 	{#snippet header()}
 		<!-- Compact Inkprint header with strip texture -->
@@ -2376,18 +2376,18 @@
 									/>
 									<span class="text-muted-foreground">SAVING</span>
 								{:else if saveStatus === 'saved'}
-									<Check class="w-2.5 h-2.5 text-green-600 dark:text-green-400" />
-									<span class="text-green-600 dark:text-green-400"
+									<Check class="w-2.5 h-2.5 text-success" />
+									<span class="text-success"
 										>{lastSavePublishedLive ? 'LIVE UPDATED' : 'SAVED'}</span
 									>
 								{:else if saveStatus === 'error'}
 									<AlertTriangle class="w-2.5 h-2.5 text-destructive" />
 									<span class="text-destructive">SAVE FAILED</span>
 								{:else if saveStatus === 'conflict'}
-									<AlertTriangle class="w-2.5 h-2.5 text-amber-500" />
-									<span class="text-amber-500">CONFLICT</span>
+									<AlertTriangle class="w-2.5 h-2.5 text-warning" />
+									<span class="text-warning">CONFLICT</span>
 								{:else if saveStatus === 'dirty'}
-									<span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
+									<span class="w-1.5 h-1.5 rounded-full bg-warning shrink-0"
 									></span>
 									<span class="text-muted-foreground/50">UNSAVED</span>
 								{/if}
@@ -2508,7 +2508,7 @@
 					type="button"
 					onclick={requestClose}
 					disabled={isCloseBlocked}
-					class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
+					class="flex h-9 w-9 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak wt-paper"
 					aria-label="Close modal"
 				>
 					<X class="w-5 h-5" />
@@ -2659,27 +2659,27 @@
 										{:else if isLiveDocument && publicPageState}
 											<div
 												class="rounded-md border px-2 py-1.5 space-y-1.5 tx tx-grain tx-weak wt-paper {liveDocumentNeedsAttention
-													? 'border-amber-300/70 bg-amber-50/80'
-													: 'border-emerald-300/70 bg-emerald-50/70'}"
+													? 'border-warning/30 bg-warning/10'
+													: 'border-success/30 bg-success/10'}"
 											>
 												<div class="flex items-start gap-2">
 													<Globe
 														class="w-3.5 h-3.5 mt-0.5 shrink-0 {liveDocumentNeedsAttention
-															? 'text-amber-700'
-															: 'text-emerald-700'}"
+															? 'text-warning'
+															: 'text-success'}"
 													/>
 													<div class="min-w-0">
 														<p
 															class="micro-label {liveDocumentNeedsAttention
-																? 'text-amber-900'
-																: 'text-emerald-900'}"
+																? 'text-warning'
+																: 'text-success'}"
 														>
 															{liveDocumentStatusLabel}
 														</p>
 														<p
 															class="text-[11px] leading-snug {liveDocumentNeedsAttention
-																? 'text-amber-800'
-																: 'text-emerald-800'}"
+																? 'text-warning'
+																: 'text-success'}"
 														>
 															{liveDocumentStatusText}
 														</p>
@@ -2687,16 +2687,16 @@
 												</div>
 												<div
 													class="text-[11px] font-mono truncate {liveDocumentNeedsAttention
-														? 'text-amber-900'
-														: 'text-emerald-900'}"
+														? 'text-warning'
+														: 'text-success'}"
 												>
 													{publicPageUrlPath}
 												</div>
 												{#if publicPageLastLiveUpdateLabel}
 													<div
 														class="flex items-center gap-1 text-[11px] {liveDocumentNeedsAttention
-															? 'text-amber-800'
-															: 'text-emerald-800'}"
+															? 'text-warning'
+															: 'text-success'}"
 													>
 														<Clock class="w-3 h-3 shrink-0" />
 														<span
@@ -2707,8 +2707,8 @@
 												{#if publicPageState.view_count_all > 0}
 													<div
 														class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] {liveDocumentNeedsAttention
-															? 'text-amber-800'
-															: 'text-emerald-800'}"
+															? 'text-warning'
+															: 'text-success'}"
 													>
 														<span>
 															{publicPageState.view_count_all.toLocaleString()}
@@ -2719,8 +2719,8 @@
 														{#if publicPageState.view_count_30d > 0}
 															<span
 																class={liveDocumentNeedsAttention
-																	? 'text-amber-900/50'
-																	: 'text-emerald-900/50'}>·</span
+																	? 'text-warning/50'
+																	: 'text-success/50'}>·</span
 															>
 															<span>
 																{publicPageState.view_count_30d.toLocaleString()}
@@ -2735,8 +2735,8 @@
 														onclick={handleCopyPublicPageUrl}
 														aria-label="Copy public page link"
 														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors pressable {liveDocumentNeedsAttention
-															? 'border-amber-300/70 bg-amber-100/70 text-amber-900 hover:bg-amber-200/70'
-															: 'border-emerald-300/70 bg-emerald-100/70 text-emerald-900 hover:bg-emerald-200/70'}"
+															? 'border-warning/30 bg-warning/15 text-warning hover:bg-warning/25'
+															: 'border-success/30 bg-success/15 text-success hover:bg-success/25'}"
 													>
 														<Link class="w-3 h-3" />
 														Copy link
@@ -2746,8 +2746,8 @@
 														onclick={openPublicPageInNewTab}
 														aria-label="Open public page in new tab"
 														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
-															? 'border-amber-200/60 text-amber-900 hover:bg-amber-100/70'
-															: 'border-emerald-200/60 text-emerald-900 hover:bg-emerald-100/70'}"
+															? 'border-warning/30 text-warning hover:bg-warning/10'
+															: 'border-success/30 text-success hover:bg-success/10'}"
 													>
 														Open
 														<ExternalLink class="w-3 h-3" />
@@ -2756,8 +2756,8 @@
 														type="button"
 														onclick={handleMakeDocumentPublic}
 														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
-															? 'text-amber-900 hover:bg-amber-100/70'
-															: 'text-emerald-900 hover:bg-emerald-100/70'}"
+															? 'text-warning hover:bg-warning/10'
+															: 'text-success hover:bg-success/10'}"
 													>
 														{livePageHasUnpublishedChanges
 															? 'Review changes'
@@ -2768,15 +2768,15 @@
 														onclick={handleUnpublishPublicPage}
 														disabled={publicPageActionLoading}
 														aria-label="Unpublish public page"
-														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-rose-800 hover:bg-rose-100/60 transition-colors pressable disabled:opacity-50"
+														class="inline-flex min-h-[32px] items-center justify-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10 transition-colors pressable disabled:opacity-50"
 													>
 														Unpublish
 													</button>
 												</div>
 												<label
 													class="flex items-center justify-between gap-2 text-[11px] {liveDocumentNeedsAttention
-														? 'text-amber-900'
-														: 'text-emerald-900'}"
+														? 'text-warning'
+														: 'text-success'}"
 												>
 													<span>Live sync on save</span>
 													<input
@@ -2793,7 +2793,7 @@
 												</label>
 												{#if publicPageState.last_live_sync_error}
 													<p
-														class="text-[11px] text-amber-700 leading-snug"
+														class="text-[11px] text-warning leading-snug"
 													>
 														Last live sync error: {publicPageState.last_live_sync_error}
 													</p>
@@ -2813,7 +2813,7 @@
 													</p>
 												{:else if publicPageState?.public_status === 'pending_confirmation'}
 													<p
-														class="text-[11px] text-amber-700 leading-snug"
+														class="text-[11px] text-warning leading-snug"
 													>
 														Publish in progress — awaiting review. Try
 														again in a moment.
@@ -2853,21 +2853,21 @@
 
 										{#if hasFlaggedPublicPageReview && latestPublicPageReview}
 											<div
-												class="rounded-md border border-red-300/70 bg-red-50/70 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
+												class="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
 											>
-												<p class="micro-label text-red-900">
+												<p class="micro-label text-destructive">
 													CONTENT REVIEW FLAGGED
 												</p>
 												{#if latestPublicPageReview.summary}
 													<p
-														class="text-[11px] text-red-800 leading-snug"
+														class="text-[11px] text-destructive leading-snug"
 													>
 														{latestPublicPageReview.summary}
 													</p>
 												{/if}
 												{#if latestPublicPageReviewReasons.length > 0}
 													<ul
-														class="space-y-0.5 text-[11px] text-red-800 list-disc pl-4"
+														class="space-y-0.5 text-[11px] text-destructive list-disc pl-4"
 													>
 														{#each latestPublicPageReviewReasons as reason}
 															<li>{reason}</li>
@@ -2876,7 +2876,7 @@
 												{/if}
 												{#if latestPublicPageReview.admin_decision}
 													<p
-														class="text-[11px] text-red-800 leading-snug"
+														class="text-[11px] text-destructive leading-snug"
 													>
 														Admin decision:
 														{latestPublicPageReview.admin_decision ===
@@ -2892,14 +2892,14 @@
 												{/if}
 												{#if latestPublicPageReview.admin_decision_reason}
 													<p
-														class="text-[11px] text-red-800 leading-snug"
+														class="text-[11px] text-destructive leading-snug"
 													>
 														{latestPublicPageReview.admin_decision_reason}
 													</p>
 												{/if}
 												{#if latestPublicPageReviewGuidance}
 													<p
-														class="text-[11px] text-red-800 leading-snug"
+														class="text-[11px] text-destructive leading-snug"
 													>
 														{latestPublicPageReviewGuidance}
 													</p>
@@ -3210,11 +3210,8 @@
 															>SAVING</span
 														>
 													{:else if saveStatus === 'saved'}
-														<Check
-															class="w-2.5 h-2.5 text-green-600 dark:text-green-400"
-														/>
-														<span
-															class="text-green-600 dark:text-green-400"
+														<Check class="w-2.5 h-2.5 text-success" />
+														<span class="text-success"
 															>{lastSavePublishedLive
 																? 'LIVE UPDATED'
 																: 'SAVED'}</span
@@ -3226,12 +3223,12 @@
 														<span class="text-destructive">FAILED</span>
 													{:else if saveStatus === 'conflict'}
 														<AlertTriangle
-															class="w-2.5 h-2.5 text-amber-500"
+															class="w-2.5 h-2.5 text-warning"
 														/>
-														<span class="text-amber-500">CONFLICT</span>
+														<span class="text-warning">CONFLICT</span>
 													{:else if saveStatus === 'dirty'}
 														<span
-															class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
+															class="w-1.5 h-1.5 rounded-full bg-warning shrink-0"
 														></span>
 														<span class="text-muted-foreground/50"
 															>UNSAVED</span
@@ -3427,20 +3424,20 @@
 													{:else if isLiveDocument && publicPageState}
 														<div
 															class="rounded-md border px-2 py-1.5 space-y-1.5 {liveDocumentNeedsAttention
-																? 'border-amber-300/70 bg-amber-50/80'
-																: 'border-emerald-300/70 bg-emerald-50/70'}"
+																? 'border-warning/30 bg-warning/10'
+																: 'border-success/30 bg-success/10'}"
 														>
 															<p
 																class="micro-label {liveDocumentNeedsAttention
-																	? 'text-amber-900'
-																	: 'text-emerald-900'}"
+																	? 'text-warning'
+																	: 'text-success'}"
 															>
 																{liveDocumentStatusLabel}
 															</p>
 															<p
 																class="text-[11px] leading-snug {liveDocumentNeedsAttention
-																	? 'text-amber-800'
-																	: 'text-emerald-800'}"
+																	? 'text-warning'
+																	: 'text-success'}"
 															>
 																{liveDocumentStatusText}
 															</p>
@@ -3449,8 +3446,8 @@
 															>
 																<span
 																	class="text-[11px] font-mono truncate {liveDocumentNeedsAttention
-																		? 'text-amber-900'
-																		: 'text-emerald-900'}"
+																		? 'text-warning'
+																		: 'text-success'}"
 																>
 																	{publicPageUrlPath}
 																</span>
@@ -3458,8 +3455,8 @@
 															{#if publicPageLastLiveUpdateLabel}
 																<div
 																	class="flex items-center gap-1 text-[11px] {liveDocumentNeedsAttention
-																		? 'text-amber-800'
-																		: 'text-emerald-800'}"
+																		? 'text-warning'
+																		: 'text-success'}"
 																>
 																	<Clock
 																		class="w-3 h-3 shrink-0"
@@ -3472,8 +3469,8 @@
 															{#if publicPageState.view_count_all > 0}
 																<div
 																	class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] {liveDocumentNeedsAttention
-																		? 'text-amber-800'
-																		: 'text-emerald-800'}"
+																		? 'text-warning'
+																		: 'text-success'}"
 																>
 																	<span>
 																		{publicPageState.view_count_all.toLocaleString()}
@@ -3485,8 +3482,8 @@
 																	{#if publicPageState.view_count_30d > 0}
 																		<span
 																			class={liveDocumentNeedsAttention
-																				? 'text-amber-900/50'
-																				: 'text-emerald-900/50'}
+																				? 'text-warning/50'
+																				: 'text-success/50'}
 																			>·</span
 																		>
 																		<span>
@@ -3504,8 +3501,8 @@
 																	onclick={handleCopyPublicPageUrl}
 																	aria-label="Copy public page link"
 																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition-colors pressable {liveDocumentNeedsAttention
-																		? 'border-amber-300/70 bg-amber-100/70 text-amber-900 hover:bg-amber-200/70'
-																		: 'border-emerald-300/70 bg-emerald-100/70 text-emerald-900 hover:bg-emerald-200/70'}"
+																		? 'border-warning/30 bg-warning/15 text-warning hover:bg-warning/25'
+																		: 'border-success/30 bg-success/15 text-success hover:bg-success/25'}"
 																>
 																	<Link class="w-3 h-3" />
 																	Copy link
@@ -3515,8 +3512,8 @@
 																	onclick={openPublicPageInNewTab}
 																	aria-label="Open public page in new tab"
 																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
-																		? 'text-amber-900 hover:bg-amber-100/70'
-																		: 'text-emerald-900 hover:bg-emerald-100/70'}"
+																		? 'text-warning hover:bg-warning/10'
+																		: 'text-success hover:bg-success/10'}"
 																>
 																	Open
 																	<ExternalLink class="w-3 h-3" />
@@ -3525,8 +3522,8 @@
 																	type="button"
 																	onclick={handleMakeDocumentPublic}
 																	class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors pressable {liveDocumentNeedsAttention
-																		? 'text-amber-900 hover:bg-amber-100/70'
-																		: 'text-emerald-900 hover:bg-emerald-100/70'}"
+																		? 'text-warning hover:bg-warning/10'
+																		: 'text-success hover:bg-success/10'}"
 																>
 																	{livePageHasUnpublishedChanges
 																		? 'Review changes'
@@ -3537,15 +3534,15 @@
 																	onclick={handleUnpublishPublicPage}
 																	disabled={publicPageActionLoading}
 																	aria-label="Unpublish public page"
-																	class="ml-auto inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-rose-800 hover:bg-rose-100/60 transition-colors pressable disabled:opacity-50"
+																	class="ml-auto inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10 transition-colors pressable disabled:opacity-50"
 																>
 																	Unpublish
 																</button>
 															</div>
 															<label
 																class="flex items-center justify-between gap-2 text-[11px] {liveDocumentNeedsAttention
-																	? 'text-amber-900'
-																	: 'text-emerald-900'}"
+																	? 'text-warning'
+																	: 'text-success'}"
 															>
 																<span>Live sync on save</span>
 																<input
@@ -3562,7 +3559,7 @@
 															</label>
 															{#if publicPageState.last_live_sync_error}
 																<p
-																	class="text-[11px] text-amber-700 leading-snug"
+																	class="text-[11px] text-warning leading-snug"
 																>
 																	Last live sync error: {publicPageState.last_live_sync_error}
 																</p>
@@ -3583,7 +3580,7 @@
 																</p>
 															{:else if publicPageState?.public_status === 'pending_confirmation'}
 																<p
-																	class="text-[11px] text-amber-700 leading-snug"
+																	class="text-[11px] text-warning leading-snug"
 																>
 																	Publish in progress — awaiting
 																	review. Try again in a moment.
@@ -3615,21 +3612,21 @@
 
 													{#if hasFlaggedPublicPageReview && latestPublicPageReview}
 														<div
-															class="rounded-md border border-red-300/70 bg-red-50/70 px-2 py-1.5 space-y-1"
+															class="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 space-y-1"
 														>
-															<p class="micro-label text-red-900">
+															<p class="micro-label text-destructive">
 																CONTENT REVIEW FLAGGED
 															</p>
 															{#if latestPublicPageReview.summary}
 																<p
-																	class="text-[11px] text-red-800 leading-snug"
+																	class="text-[11px] text-destructive leading-snug"
 																>
 																	{latestPublicPageReview.summary}
 																</p>
 															{/if}
 															{#if latestPublicPageReviewReasons.length > 0}
 																<ul
-																	class="space-y-0.5 text-[11px] text-red-800 list-disc pl-4"
+																	class="space-y-0.5 text-[11px] text-destructive list-disc pl-4"
 																>
 																	{#each latestPublicPageReviewReasons as reason}
 																		<li>{reason}</li>
@@ -3638,7 +3635,7 @@
 															{/if}
 															{#if latestPublicPageReview.admin_decision}
 																<p
-																	class="text-[11px] text-red-800 leading-snug"
+																	class="text-[11px] text-destructive leading-snug"
 																>
 																	Admin decision:
 																	{latestPublicPageReview.admin_decision ===
@@ -3649,7 +3646,7 @@
 															{/if}
 															{#if latestPublicPageReviewGuidance}
 																<p
-																	class="text-[11px] text-red-800 leading-snug"
+																	class="text-[11px] text-destructive leading-snug"
 																>
 																	{latestPublicPageReviewGuidance}
 																</p>
@@ -3806,13 +3803,11 @@
 
 					{#if saveStatus === 'conflict'}
 						<div
-							class="mx-3 mb-2 flex flex-col sm:flex-row items-start sm:items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg tx tx-static tx-weak"
+							class="mx-3 mb-2 flex flex-col sm:flex-row items-start sm:items-center gap-2 px-3 py-2 bg-warning/10 border border-warning/30 rounded-lg tx tx-static tx-weak"
 						>
 							<div class="flex items-center gap-2 flex-1 min-w-0">
-								<AlertTriangle
-									class="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0"
-								/>
-								<span class="text-sm text-amber-800 dark:text-amber-200">
+								<AlertTriangle class="w-4 h-4 text-warning shrink-0" />
+								<span class="text-sm text-warning">
 									This document was modified by someone else.
 								</span>
 							</div>
@@ -3820,7 +3815,7 @@
 								<button
 									type="button"
 									onclick={handleConflictReload}
-									class="text-xs font-medium px-2.5 py-1 rounded bg-amber-100 dark:bg-amber-800/50 text-amber-800 dark:text-amber-200 hover:bg-amber-200 dark:hover:bg-amber-800 transition-colors pressable"
+									class="text-xs font-medium px-2.5 py-1 rounded bg-warning/15 text-warning hover:bg-warning/25 transition-colors pressable"
 								>
 									Reload latest
 								</button>
@@ -4077,23 +4072,23 @@
 				</p>
 				{#if hasFlaggedPublicPageReview && latestPublicPageReview}
 					<div
-						class="rounded-md border border-red-300/70 bg-red-50/70 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
+						class="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 space-y-1 tx tx-grain tx-weak wt-paper"
 					>
-						<p class="micro-label text-red-900">LAST REVIEW WAS FLAGGED</p>
+						<p class="micro-label text-destructive">LAST REVIEW WAS FLAGGED</p>
 						{#if latestPublicPageReview.summary}
-							<p class="text-xs text-red-800 leading-snug">
+							<p class="text-xs text-destructive leading-snug">
 								{latestPublicPageReview.summary}
 							</p>
 						{/if}
 						{#if latestPublicPageReviewReasons.length > 0}
-							<ul class="space-y-0.5 text-xs text-red-800 list-disc pl-4">
+							<ul class="space-y-0.5 text-xs text-destructive list-disc pl-4">
 								{#each latestPublicPageReviewReasons as reason}
 									<li>{reason}</li>
 								{/each}
 							</ul>
 						{/if}
 						{#if latestPublicPageReview.admin_decision}
-							<p class="text-xs text-red-800 leading-snug">
+							<p class="text-xs text-destructive leading-snug">
 								Admin decision:
 								{latestPublicPageReview.admin_decision === 'approved'
 									? 'OK to publish'
@@ -4104,12 +4099,12 @@
 							</p>
 						{/if}
 						{#if latestPublicPageReview.admin_decision_reason}
-							<p class="text-xs text-red-800 leading-snug">
+							<p class="text-xs text-destructive leading-snug">
 								{latestPublicPageReview.admin_decision_reason}
 							</p>
 						{/if}
 						{#if latestPublicPageReviewGuidance}
-							<p class="text-xs text-red-800 leading-snug">
+							<p class="text-xs text-destructive leading-snug">
 								{latestPublicPageReviewGuidance}
 							</p>
 						{/if}

@@ -146,13 +146,13 @@
 		switch (status) {
 			case 'active':
 			case 'in_progress':
-				return 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30';
+				return 'bg-info/10 text-info border-info/30';
 			case 'done':
 			case 'completed':
-				return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+				return 'bg-success/10 text-success border-success/30';
 			case 'paused':
 			case 'blocked':
-				return 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30';
+				return 'bg-warning/10 text-warning border-warning/30';
 			default:
 				return 'bg-muted text-muted-foreground border-border';
 		}
@@ -161,11 +161,11 @@
 	function getTaskBadgeClass(state: string | null | undefined): string {
 		switch (state) {
 			case 'done':
-				return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+				return 'bg-success/10 text-success border-success/30';
 			case 'in_progress':
-				return 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30';
+				return 'bg-info/10 text-info border-info/30';
 			case 'blocked':
-				return 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30';
+				return 'bg-warning/10 text-warning border-warning/30';
 			default:
 				return 'bg-muted text-muted-foreground border-border';
 		}
@@ -174,13 +174,13 @@
 	function getErrorSeverityClass(severity: string | null | undefined): string {
 		switch (severity) {
 			case 'critical':
-				return 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30';
+				return 'bg-destructive/10 text-destructive border-destructive/30';
 			case 'error':
-				return 'bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/30';
+				return 'bg-accent/10 text-accent border-accent/30';
 			case 'warning':
-				return 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30';
+				return 'bg-warning/10 text-warning border-warning/30';
 			case 'info':
-				return 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30';
+				return 'bg-info/10 text-info border-info/30';
 			default:
 				return 'bg-muted text-muted-foreground border-border';
 		}
@@ -189,14 +189,14 @@
 	function getSessionStatusClass(status: string | null | undefined): string {
 		switch (status) {
 			case 'active':
-				return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30';
+				return 'bg-success/10 text-success border-success/30';
 			case 'archived':
 				return 'bg-muted text-muted-foreground border-border';
 			case 'error':
 			case 'failed':
-				return 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30';
+				return 'bg-destructive/10 text-destructive border-destructive/30';
 			default:
-				return 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30';
+				return 'bg-info/10 text-info border-info/30';
 		}
 	}
 
@@ -218,7 +218,7 @@
 
 <Modal {isOpen} onClose={handleClose} size="xl" customClasses="max-h-[95vh] overflow-y-auto">
 	{#snippet header()}
-		<div class="flex items-center gap-2 px-3 py-2 border-b border-border min-w-0">
+		<div class="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-muted min-w-0">
 			<div
 				class="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0"
 			>
@@ -235,8 +235,8 @@
 			<div class="flex items-center gap-1.5 shrink-0">
 				<span
 					class="px-1.5 py-0.5 text-[0.6rem] rounded border {user.onboarding_completed_at
-						? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-						: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'}"
+						? 'bg-success/10 text-success border-success/30'
+						: 'bg-warning/10 text-warning border-warning/30'}"
 				>
 					{user.onboarding_completed_at ? 'Onboarded' : 'Pending'}
 				</span>
@@ -265,13 +265,13 @@
 					</p>
 				</div>
 				<div class="bg-card rounded border border-border p-1.5 text-center shadow-ink">
-					<p class="text-sm font-bold text-sky-600 dark:text-sky-400">
+					<p class="text-sm font-bold text-info">
 						{activityStats.open_tasks || 0}
 					</p>
 					<p class="text-[0.55rem] text-muted-foreground uppercase tracking-wide">Open</p>
 				</div>
 				<div class="bg-card rounded border border-border p-1.5 text-center shadow-ink">
-					<p class="text-sm font-bold text-emerald-600 dark:text-emerald-400">
+					<p class="text-sm font-bold text-success">
 						{activityStats.completed_tasks || 0}
 					</p>
 					<p class="text-[0.55rem] text-muted-foreground uppercase tracking-wide">Done</p>
@@ -297,7 +297,7 @@
 					<p class="text-[0.55rem] text-muted-foreground uppercase tracking-wide">Msgs</p>
 				</div>
 				<div class="bg-card rounded border border-border p-1.5 text-center shadow-ink">
-					<p class="text-sm font-bold text-rose-600 dark:text-rose-400">
+					<p class="text-sm font-bold text-destructive">
 						{activityStats.total_errors || 0}
 					</p>
 					<p class="text-[0.55rem] text-muted-foreground uppercase tracking-wide">
@@ -315,9 +315,9 @@
 				</div>
 			{:else if contextError}
 				<div
-					class="bg-rose-500/5 border border-rose-500/20 rounded p-2 tx tx-static tx-weak flex items-center justify-between gap-2"
+					class="bg-destructive/5 border border-destructive/20 rounded p-2 tx tx-static tx-weak flex items-center justify-between gap-2"
 				>
-					<p class="text-xs text-rose-600 dark:text-rose-400">Error: {contextError}</p>
+					<p class="text-xs text-destructive">Error: {contextError}</p>
 					<Button
 						onclick={loadUserContext}
 						variant="outline"
@@ -395,9 +395,7 @@
 									</div>
 								</div>
 								<div class="rounded border border-border bg-card px-2 py-1.5">
-									<div
-										class="text-sm font-semibold text-emerald-600 dark:text-emerald-400"
-									>
+									<div class="text-sm font-semibold text-success">
 										{recentProject.completed_task_count || 0}
 									</div>
 									<div
@@ -552,9 +550,7 @@
 												<div
 													class="rounded border border-border bg-card px-2 py-1.5"
 												>
-													<div
-														class="text-sm font-semibold text-sky-600 dark:text-sky-400"
-													>
+													<div class="text-sm font-semibold text-info">
 														{project.open_task_count || 0}
 													</div>
 													<div
@@ -566,9 +562,7 @@
 												<div
 													class="rounded border border-border bg-card px-2 py-1.5"
 												>
-													<div
-														class="text-sm font-semibold text-emerald-600 dark:text-emerald-400"
-													>
+													<div class="text-sm font-semibold text-success">
 														{project.completed_task_count || 0}
 													</div>
 													<div
@@ -961,7 +955,7 @@
 					<h3
 						class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground flex items-center gap-1"
 					>
-						<CircleAlert class="h-3 w-3 text-rose-500 flex-shrink-0" />
+						<CircleAlert class="h-3 w-3 text-destructive flex-shrink-0" />
 						User Errors
 					</h3>
 					<span class="text-[0.6rem] text-muted-foreground">
@@ -982,7 +976,7 @@
 							</div>
 						</div>
 						<div class="rounded border border-border bg-card px-2 py-1.5">
-							<div class="text-sm font-semibold text-rose-600 dark:text-rose-400">
+							<div class="text-sm font-semibold text-destructive">
 								{errorSummary.unresolved_errors || 0}
 							</div>
 							<div
@@ -992,7 +986,7 @@
 							</div>
 						</div>
 						<div class="rounded border border-border bg-card px-2 py-1.5">
-							<div class="text-sm font-semibold text-red-600 dark:text-red-400">
+							<div class="text-sm font-semibold text-destructive">
 								{errorSummary.critical_errors || 0}
 							</div>
 							<div
@@ -1046,8 +1040,8 @@
 												</span>
 												<span
 													class="px-1.5 py-0.5 rounded border text-[0.6rem] {error.resolved
-														? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
-														: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30'}"
+														? 'bg-success/10 text-success border-success/30'
+														: 'bg-destructive/10 text-destructive border-destructive/30'}"
 												>
 													{error.resolved ? 'Resolved' : 'Open'}
 												</span>
@@ -1093,7 +1087,7 @@
 				<h3
 					class="text-[0.65rem] font-medium uppercase tracking-wide text-muted-foreground mb-1.5 flex items-center gap-1"
 				>
-					<Activity class="h-3 w-3 text-emerald-500 flex-shrink-0" />
+					<Activity class="h-3 w-3 text-success flex-shrink-0" />
 					Activity Timeline
 				</h3>
 				<ActivityTimelineChart activities={recentActivity} />
@@ -1102,10 +1096,8 @@
 	{/snippet}
 
 	{#snippet footer()}
-		<div class="flex justify-end px-3 py-2 border-t border-border">
-			<Button onclick={handleClose} variant="secondary" size="sm" class="pressable text-xs">
-				Close
-			</Button>
+		<div class="flex justify-end px-3 sm:px-4 py-3 border-t border-border bg-muted/30">
+			<Button onclick={handleClose} variant="secondary" size="sm">Close</Button>
 		</div>
 	{/snippet}
 </Modal>

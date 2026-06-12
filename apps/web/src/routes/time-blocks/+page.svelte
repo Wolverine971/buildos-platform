@@ -96,6 +96,12 @@
 			displayMode = savedMode;
 		}
 
+		// Day view is the mobile-intended mode — a 7-column week renders ~45px
+		// columns at 390px and is unreadable.
+		if (window.innerWidth < 640) {
+			calendarViewMode = 'day';
+		}
+
 		// Load initial data (blocks + allocation)
 		// This ensures the allocation panel has data on first load
 		timeBlocksStore.loadBlocks(calendarDateRange.start, calendarDateRange.end);
@@ -259,7 +265,7 @@
 							? 'bg-card text-foreground shadow-ink'
 							: 'text-muted-foreground hover:text-foreground dark:hover:text-muted-foreground'
 					}`}
-					onclick={() => displayMode === 'calendar'}
+					onclick={() => (displayMode = 'calendar')}
 					aria-pressed={displayMode === 'calendar'}
 				>
 					Calendar
@@ -291,7 +297,7 @@
 				</Button>
 
 				{#if data.projects.length === 0}
-					<p class="text-xs text-blue-600 dark:text-blue-400">Add a project first</p>
+					<p class="text-xs text-info">Add a project first</p>
 				{/if}
 			</div>
 		</div>
@@ -306,13 +312,13 @@
 
 		{#if $timeBlocksStore.error}
 			<div
-				class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700 dark:border-rose-500/40 dark:bg-rose-950/20 dark:text-rose-300 sm:text-sm"
+				class="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive sm:text-sm"
 			>
 				{$timeBlocksStore.error}
 			</div>
 		{:else if feedback}
 			<div
-				class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-950/20 dark:text-emerald-300 sm:text-sm"
+				class="rounded-lg border border-success/30 bg-success/10 px-3 py-2 text-xs text-success sm:text-sm"
 			>
 				{feedback}
 			</div>

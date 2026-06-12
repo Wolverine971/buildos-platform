@@ -270,19 +270,19 @@
 	function entityAccent(kind: ProjectLogEntityType | UpcomingKind): string {
 		switch (kind) {
 			case 'task':
-				return 'text-sky-500';
+				return 'text-info';
 			case 'milestone':
-				return 'text-amber-500';
+				return 'text-warning';
 			case 'goal':
-				return 'text-violet-500';
+				return 'text-accent';
 			case 'plan':
-				return 'text-indigo-500';
+				return 'text-accent';
 			case 'event':
-				return 'text-rose-500';
+				return 'text-info';
 			case 'document':
 			case 'note':
 			case 'requirement':
-				return 'text-emerald-500';
+				return 'text-success';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -365,12 +365,12 @@
 			onclick={() => (mobileTab = 'next')}
 			class="flex-1 px-3 py-2.5 flex items-center justify-center gap-1.5 text-xs font-semibold transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset {mobileTab ===
 			'next'
-				? 'text-foreground bg-amber-500/5 border-b-2 border-amber-500 -mb-px'
+				? 'text-foreground bg-warning/5 border-b-2 border-warning -mb-px'
 				: 'text-muted-foreground hover:text-foreground hover:bg-muted/40'}"
 		>
 			<ArrowRight
 				class="w-3.5 h-3.5 {mobileTab === 'next'
-					? 'text-amber-500'
+					? 'text-warning'
 					: 'text-muted-foreground'}"
 			/>
 			<span>Up next</span>
@@ -420,14 +420,10 @@
 									</span>
 									{#if item.kind === 'task' && item.state === 'in_progress'}
 										<span class="text-muted-foreground/50">·</span>
-										<span class="text-sky-600 dark:text-sky-400 font-medium"
-											>in progress</span
-										>
+										<span class="text-info font-medium">in progress</span>
 									{:else if item.kind === 'task' && item.state === 'blocked'}
 										<span class="text-muted-foreground/50">·</span>
-										<span class="text-rose-600 dark:text-rose-400 font-medium"
-											>blocked</span
-										>
+										<span class="text-destructive font-medium">blocked</span>
 									{/if}
 								</p>
 							</div>
@@ -575,8 +571,8 @@
 			class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-3 border-b border-border/60"
 		>
 			<div class="flex items-center gap-2">
-				<div class="w-7 h-7 rounded-md bg-amber-500/10 flex items-center justify-center">
-					<ArrowRight class="w-3.5 h-3.5 text-amber-500" />
+				<div class="w-7 h-7 rounded-md bg-warning/10 flex items-center justify-center">
+					<ArrowRight class="w-3.5 h-3.5 text-warning" />
 				</div>
 				<div>
 					<p class="text-xs sm:text-sm font-semibold text-foreground">Up next</p>
@@ -633,14 +629,10 @@
 									</span>
 									{#if item.kind === 'task' && item.state === 'in_progress'}
 										<span class="text-muted-foreground/50">·</span>
-										<span class="text-sky-600 dark:text-sky-400 font-medium"
-											>in progress</span
-										>
+										<span class="text-info font-medium">in progress</span>
 									{:else if item.kind === 'task' && item.state === 'blocked'}
 										<span class="text-muted-foreground/50">·</span>
-										<span class="text-rose-600 dark:text-rose-400 font-medium"
-											>blocked</span
-										>
+										<span class="text-destructive font-medium">blocked</span>
 									{/if}
 								</p>
 							</div>

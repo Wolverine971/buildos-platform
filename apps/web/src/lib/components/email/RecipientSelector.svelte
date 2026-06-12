@@ -291,16 +291,14 @@
 		<div class="space-y-4">
 			<!-- Error Message -->
 			{#if error}
-				<div
-					class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3"
-				>
+				<div class="bg-destructive/10 border border-destructive/30 rounded-md p-3">
 					<div class="flex justify-between items-center">
-						<p class="text-red-800 dark:text-red-200 text-sm">{error}</p>
+						<p class="text-destructive text-sm">{error}</p>
 						<Button
 							onclick={clearMessages}
 							variant="ghost"
 							size="sm"
-							class="!text-red-400 hover:!text-red-600 p-1"
+							class="!text-destructive/70 hover:!text-destructive p-1"
 						>
 							<X class="h-4 w-4" />
 						</Button>
@@ -311,7 +309,7 @@
 			<!-- Header with Selection Count -->
 			<div class="flex items-center justify-between bg-muted rounded-lg p-4">
 				<div class="flex items-center space-x-3">
-					<Users class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+					<Users class="h-5 w-5 text-info" />
 					<span class="font-medium text-foreground">
 						{totalSelected} recipient{totalSelected !== 1 ? 's' : ''} selected
 					</span>
@@ -339,7 +337,7 @@
 						variant="ghost"
 						size="sm"
 						class="py-2 px-1 border-b-2 font-medium {activeTab === 'beta_users'
-							? 'border-blue-500 text-blue-600 dark:text-blue-400'
+							? 'border-accent text-accent'
 							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						<User class="h-4 w-4 mr-2" />
@@ -350,7 +348,7 @@
 						variant="ghost"
 						size="sm"
 						class="py-2 px-1 border-b-2 font-medium {activeTab === 'beta_members'
-							? 'border-blue-500 text-blue-600 dark:text-blue-400'
+							? 'border-accent text-accent'
 							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						<Shield class="h-4 w-4 mr-2" />
@@ -361,7 +359,7 @@
 						variant="ghost"
 						size="sm"
 						class="py-2 px-1 border-b-2 font-medium {activeTab === 'custom'
-							? 'border-blue-500 text-blue-600 dark:text-blue-400'
+							? 'border-accent text-accent'
 							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						<Plus class="h-4 w-4 mr-2" />
@@ -375,7 +373,7 @@
 				{#if isLoading}
 					<div class="flex justify-center py-8">
 						<div
-							class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"
+							class="animate-spin rounded-full h-8 w-8 border-b-2 border-accent"
 						></div>
 					</div>
 				{:else}
@@ -414,15 +412,13 @@
 												type="checkbox"
 												checked={selectedUserIds.has(user.id)}
 												onchange={() => toggleUserSelection(user.id)}
-												class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer dark:checked:bg-blue-600"
+												class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer"
 											/>
 											<div class="flex-shrink-0">
 												<div
-													class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
+													class="h-10 w-10 rounded-full bg-info/10 flex items-center justify-center"
 												>
-													<span
-														class="text-sm font-medium text-blue-800 dark:text-blue-200"
-													>
+													<span class="text-sm font-medium text-info">
 														{user.name.charAt(0).toUpperCase()}
 													</span>
 												</div>
@@ -451,7 +447,7 @@
 										</div>
 										<div class="flex items-center space-x-2">
 											<span
-												class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 rounded-full"
+												class="inline-flex px-2 py-1 text-xs font-medium bg-success/10 text-success rounded-full"
 											>
 												{user.status}
 											</span>
@@ -484,15 +480,13 @@
 												type="checkbox"
 												checked={selectedMemberIds.has(member.id)}
 												onchange={() => toggleMemberSelection(member.id)}
-												class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer dark:checked:bg-blue-600"
+												class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer"
 											/>
 											<div class="flex-shrink-0">
 												<div
-													class="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center"
+													class="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center"
 												>
-													<span
-														class="text-sm font-medium text-purple-800 dark:text-purple-200"
-													>
+													<span class="text-sm font-medium text-accent">
 														{member.name.charAt(0).toUpperCase()}
 													</span>
 												</div>
@@ -523,13 +517,13 @@
 										</div>
 										<div class="flex items-center space-x-2">
 											<span
-												class="inline-flex px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300 rounded-full"
+												class="inline-flex px-2 py-1 text-xs font-medium bg-accent/10 text-accent rounded-full"
 											>
 												{member.tier}
 											</span>
 											{#if member.active}
 												<span
-													class="inline-flex px-2 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 rounded-full"
+													class="inline-flex px-2 py-1 text-xs font-medium bg-success/10 text-success rounded-full"
 												>
 													Active
 												</span>
@@ -619,7 +613,7 @@
 													checked={selectedCustomIds.has(custom.email)}
 													onchange={() =>
 														toggleCustomSelection(custom.email)}
-													class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer dark:checked:bg-blue-600"
+													class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer"
 												/>
 												<div class="flex-shrink-0">
 													<div
@@ -658,7 +652,7 @@
 													variant="ghost"
 													size="sm"
 													icon={X}
-													class="!text-red-400 hover:!text-red-600"
+													class="!text-destructive/70 hover:!text-destructive"
 													title="Remove recipient"
 												/>
 											</div>

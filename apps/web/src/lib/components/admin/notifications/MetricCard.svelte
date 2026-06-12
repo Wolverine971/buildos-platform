@@ -26,12 +26,12 @@
 
 	let colorClasses = $derived(
 		{
-			blue: 'text-blue-600',
-			green: 'text-green-600',
-			red: 'text-red-600',
-			yellow: 'text-yellow-600',
-			purple: 'text-purple-600',
-			orange: 'text-orange-600'
+			blue: 'text-info',
+			green: 'text-success',
+			red: 'text-destructive',
+			yellow: 'text-warning',
+			purple: 'text-accent',
+			orange: 'text-accent'
 		}[color]
 	);
 
@@ -66,11 +66,11 @@
 			{#if trend !== null && trend !== undefined}
 				<div class="mt-2 flex items-center text-sm">
 					{#if trend > 0}
-						<TrendingUp class="w-4 h-4 text-green-500 mr-1" />
-						<span class="text-green-600">+{trend.toFixed(1)}%</span>
+						<TrendingUp class="w-4 h-4 text-success mr-1" />
+						<span class="text-success">+{trend.toFixed(1)}%</span>
 					{:else if trend < 0}
-						<TrendingDown class="w-4 h-4 text-red-500 mr-1" />
-						<span class="text-red-600">{trend.toFixed(1)}%</span>
+						<TrendingDown class="w-4 h-4 text-destructive mr-1" />
+						<span class="text-destructive">{trend.toFixed(1)}%</span>
 					{:else}
 						<span class="text-muted-foreground">No change</span>
 					{/if}

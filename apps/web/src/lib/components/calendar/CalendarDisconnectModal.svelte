@@ -74,8 +74,8 @@
 	<div class="px-4 sm:px-6 py-4">
 		<!-- Header with warning icon -->
 		<div class="flex items-start gap-3 mb-6">
-			<div class="p-2 bg-amber-100 dark:bg-amber-900 rounded-lg flex-shrink-0">
-				<AlertTriangle class="w-5 h-5 text-amber-600 dark:text-amber-400" />
+			<div class="p-2 bg-warning/10 rounded-lg flex-shrink-0">
+				<AlertTriangle class="w-5 h-5 text-warning" />
 			</div>
 			<div class="flex-1">
 				<h2 class="text-xl font-semibold text-foreground">Disconnect Google Calendar?</h2>
@@ -99,7 +99,7 @@
 				<div class="space-y-2">
 					{#if calendarData.scheduledTasks > 0}
 						<div class="flex items-center gap-2">
-							<Calendar class="w-4 h-4 text-blue-500 flex-shrink-0" />
+							<Calendar class="w-4 h-4 text-info flex-shrink-0" />
 							<span class="text-sm text-foreground">
 								{calendarData.scheduledTasks} scheduled task{calendarData.scheduledTasks !==
 								1
@@ -111,7 +111,7 @@
 
 					{#if calendarData.timeBlocks > 0}
 						<div class="flex items-center gap-2">
-							<Clock class="w-4 h-4 text-purple-500 flex-shrink-0" />
+							<Clock class="w-4 h-4 text-accent flex-shrink-0" />
 							<span class="text-sm text-foreground">
 								{calendarData.timeBlocks} time block{calendarData.timeBlocks !== 1
 									? 's'
@@ -122,7 +122,7 @@
 
 					{#if calendarData.calendarTasks > 0}
 						<div class="flex items-center gap-2">
-							<CheckCircle class="w-4 h-4 text-green-500 flex-shrink-0" />
+							<CheckCircle class="w-4 h-4 text-success flex-shrink-0" />
 							<span class="text-sm text-foreground">
 								{calendarData.calendarTasks} task{calendarData.calendarTasks !== 1
 									? 's'
@@ -143,14 +143,14 @@
 				<label
 					class="flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all
 							hover:bg-muted
-							{selectedAction === 'keep' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900' : 'border-border'}"
+							{selectedAction === 'keep' ? 'border-accent bg-accent/10' : 'border-border'}"
 				>
 					<input
 						type="radio"
 						bind:group={selectedAction}
 						value="keep"
 						disabled={loading}
-						class="mt-1 text-blue-600 focus:ring-blue-500"
+						class="mt-1 text-accent focus:ring-ring"
 					/>
 					<div class="flex-1">
 						<div class="font-medium text-foreground">Keep tasks and time blocks</div>
@@ -164,14 +164,14 @@
 				<label
 					class="flex items-start gap-3 p-3 border-2 rounded-lg cursor-pointer transition-all
 							hover:bg-muted
-							{selectedAction === 'remove' ? 'border-red-500 bg-red-50 dark:bg-red-900' : 'border-border'}"
+							{selectedAction === 'remove' ? 'border-destructive bg-destructive/10' : 'border-border'}"
 				>
 					<input
 						type="radio"
 						bind:group={selectedAction}
 						value="remove"
 						disabled={loading}
-						class="mt-1 text-red-600 focus:ring-red-500"
+						class="mt-1 text-destructive focus:ring-ring"
 					/>
 					<div class="flex-1">
 						<div class="font-medium text-foreground">Remove all calendar data</div>
@@ -180,7 +180,7 @@
 						</div>
 						{#if selectedAction === 'remove'}
 							<div
-								class="mt-2 p-2 bg-red-100 dark:bg-red-900 rounded text-xs text-red-700 dark:text-red-300 flex items-center gap-1"
+								class="mt-2 p-2 bg-destructive/10 rounded text-xs text-destructive flex items-center gap-1"
 							>
 								<AlertTriangle class="w-3 h-3" />
 								<span>This action cannot be undone</span>
@@ -191,10 +191,8 @@
 			</div>
 		{:else}
 			<!-- No data message -->
-			<div
-				class="bg-blue-50 dark:bg-blue-900 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6"
-			>
-				<p class="text-sm text-blue-800 dark:text-blue-200">
+			<div class="bg-info/10 border border-info/30 rounded-lg p-4 mb-6">
+				<p class="text-sm text-info">
 					You don't have any scheduled tasks or time blocks. You can safely disconnect
 					your calendar.
 				</p>

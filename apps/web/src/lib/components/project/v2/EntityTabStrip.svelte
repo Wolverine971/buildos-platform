@@ -280,16 +280,16 @@
 				label: 'Briefs',
 				count: briefsLoaded ? briefsTotal : null,
 				icon: Sparkles,
-				accent: 'text-violet-500',
-				bg: 'bg-violet-500/10'
+				accent: 'text-accent',
+				bg: 'bg-accent/10'
 			},
 			{
 				key: 'chats',
 				label: 'Chats',
 				count: null,
 				icon: MessagesSquare,
-				accent: 'text-teal-500',
-				bg: 'bg-teal-500/10',
+				accent: 'text-info',
+				bg: 'bg-info/10',
 				action: true,
 				hidden: !onOpenRecentChats
 			},
@@ -298,48 +298,48 @@
 				label: 'Graph',
 				count: null,
 				icon: GitBranch,
-				accent: 'text-sky-500',
-				bg: 'bg-sky-500/10'
+				accent: 'text-info',
+				bg: 'bg-info/10'
 			},
 			{
 				key: 'goals',
 				label: 'Goals',
 				count: goals.length,
 				icon: Target,
-				accent: 'text-amber-500',
-				bg: 'bg-amber-500/10'
+				accent: 'text-warning',
+				bg: 'bg-warning/10'
 			},
 			{
 				key: 'milestones',
 				label: 'Milestones',
 				count: milestones.length,
 				icon: Flag,
-				accent: 'text-emerald-500',
-				bg: 'bg-emerald-500/10'
+				accent: 'text-success',
+				bg: 'bg-success/10'
 			},
 			{
 				key: 'plans',
 				label: 'Plans',
 				count: plans.length,
 				icon: Calendar,
-				accent: 'text-indigo-500',
-				bg: 'bg-indigo-500/10'
+				accent: 'text-accent',
+				bg: 'bg-accent/10'
 			},
 			{
 				key: 'risks',
 				label: 'Risks',
 				count: risks.length,
 				icon: AlertTriangle,
-				accent: 'text-rose-500',
-				bg: 'bg-rose-500/10'
+				accent: 'text-destructive',
+				bg: 'bg-destructive/10'
 			},
 			{
 				key: 'events',
 				label: 'Events',
 				count: getUpcomingEvents(events).length,
 				icon: Clock,
-				accent: 'text-teal-500',
-				bg: 'bg-teal-500/10',
+				accent: 'text-info',
+				bg: 'bg-info/10',
 				action: true,
 				hidden: !onOpenEvents
 			}
@@ -398,25 +398,25 @@
 
 	const goalStateAccents: Record<string, string> = {
 		draft: 'bg-muted/40 text-muted-foreground border-border/60',
-		active: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
-		achieved: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
-		abandoned: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30'
+		active: 'bg-warning/10 text-warning border-warning/30',
+		achieved: 'bg-success/10 text-success border-success/30',
+		abandoned: 'bg-destructive/10 text-destructive border-destructive/30'
 	};
 	const planStateAccents: Record<string, string> = {
 		draft: 'bg-muted/40 text-muted-foreground border-border/60',
-		active: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30',
-		completed: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
+		active: 'bg-accent/10 text-accent border-accent/30',
+		completed: 'bg-success/10 text-success border-success/30'
 	};
 	const milestoneStateAccents: Record<string, string> = {
 		pending: 'bg-muted/40 text-muted-foreground border-border/60',
-		in_progress: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30',
-		completed: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
-		missed: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30'
+		in_progress: 'bg-info/10 text-info border-info/30',
+		completed: 'bg-success/10 text-success border-success/30',
+		missed: 'bg-destructive/10 text-destructive border-destructive/30'
 	};
 	const riskStateAccents: Record<string, string> = {
-		identified: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
-		mitigated: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
-		occurred: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30',
+		identified: 'bg-warning/10 text-warning border-warning/30',
+		mitigated: 'bg-success/10 text-success border-success/30',
+		occurred: 'bg-destructive/10 text-destructive border-destructive/30',
 		closed: 'bg-muted/40 text-muted-foreground border-border/60'
 	};
 
@@ -702,7 +702,7 @@
 															<Flag
 																class="w-2.5 h-2.5 shrink-0 {mState ===
 																'completed'
-																	? 'text-emerald-500'
+																	? 'text-success'
 																	: 'text-muted-foreground'}"
 															/>
 															<span
@@ -778,8 +778,8 @@
 													<Flag
 														class="w-3 h-3 shrink-0 {mState ===
 														'completed'
-															? 'text-emerald-500'
-															: 'text-amber-500'}"
+															? 'text-success'
+															: 'text-warning'}"
 													/>
 													<p
 														class="text-xs sm:text-sm font-medium text-foreground line-clamp-1 {mState ===
@@ -849,7 +849,7 @@
 											<div class="min-w-0 flex-1">
 												<div class="flex items-center gap-2 min-w-0">
 													<Calendar
-														class="w-3 h-3 shrink-0 text-indigo-500"
+														class="w-3 h-3 shrink-0 text-accent"
 													/>
 													<p
 														class="text-xs sm:text-sm font-medium text-foreground line-clamp-1"
@@ -908,7 +908,7 @@
 											<div class="min-w-0 flex-1">
 												<div class="flex items-center gap-2 min-w-0">
 													<AlertTriangle
-														class="w-3 h-3 shrink-0 text-rose-500"
+														class="w-3 h-3 shrink-0 text-destructive"
 													/>
 													<p
 														class="text-xs sm:text-sm font-medium text-foreground line-clamp-1"

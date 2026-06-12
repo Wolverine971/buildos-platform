@@ -94,8 +94,8 @@
 			key: 'in_progress',
 			label: 'In progress',
 			hint: 'Actively working',
-			accent: 'text-sky-500',
-			bg: 'bg-sky-500/10',
+			accent: 'text-info',
+			bg: 'bg-info/10',
 			icon: Flame,
 			dropAction: 'state',
 			targetState: 'in_progress'
@@ -104,8 +104,8 @@
 			key: 'scheduled',
 			label: 'Scheduled',
 			hint: 'On the calendar',
-			accent: 'text-violet-500',
-			bg: 'bg-violet-500/10',
+			accent: 'text-accent',
+			bg: 'bg-accent/10',
 			icon: CalendarClock,
 			dropAction: 'none'
 		},
@@ -113,8 +113,8 @@
 			key: 'overdue',
 			label: 'Overdue',
 			hint: 'Past due date',
-			accent: 'text-rose-500',
-			bg: 'bg-rose-500/10',
+			accent: 'text-destructive',
+			bg: 'bg-destructive/10',
 			icon: AlertTriangle,
 			dropAction: 'none'
 		},
@@ -122,8 +122,8 @@
 			key: 'blocked',
 			label: 'Blocked',
 			hint: 'Stuck or waiting',
-			accent: 'text-amber-500',
-			bg: 'bg-amber-500/10',
+			accent: 'text-warning',
+			bg: 'bg-warning/10',
 			icon: PauseCircle,
 			dropAction: 'state',
 			targetState: 'blocked'
@@ -132,8 +132,8 @@
 			key: 'done',
 			label: 'Done',
 			hint: 'Completed',
-			accent: 'text-emerald-500',
-			bg: 'bg-emerald-500/10',
+			accent: 'text-success',
+			bg: 'bg-success/10',
 			icon: CheckCircle2,
 			dropAction: 'state',
 			targetState: 'done'
@@ -469,9 +469,9 @@
 		className: string;
 	} | null {
 		if (typeof p !== 'number') return null;
-		if (p <= 1) return { label: 'P1', className: 'text-rose-600 dark:text-rose-400' };
-		if (p === 2) return { label: 'P2', className: 'text-amber-600 dark:text-amber-400' };
-		if (p === 3) return { label: 'P3', className: 'text-sky-600 dark:text-sky-400' };
+		if (p <= 1) return { label: 'P1', className: 'text-destructive' };
+		if (p === 2) return { label: 'P2', className: 'text-warning' };
+		if (p === 3) return { label: 'P3', className: 'text-info' };
 		return null;
 	}
 
@@ -565,7 +565,7 @@
 			class="flex flex-col rounded-md border bg-background/60 min-h-[220px] transition-colors
 				{isOver ? 'border-foreground/40 bg-foreground/[0.03]' : 'border-border/60'}
 				{isViewOnly ? 'border-dashed' : ''}
-				{isDanger && items.length > 0 ? 'border-rose-500/40 bg-rose-500/[0.03]' : ''}"
+				{isDanger && items.length > 0 ? 'border-destructive/40 bg-destructive/5' : ''}"
 			ondragover={(e) => handleDragOver(e, col)}
 			ondragleave={() => handleDragLeave(col)}
 			ondrop={(e) => handleDrop(e, col)}

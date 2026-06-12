@@ -60,6 +60,19 @@
 		touch-action: manipulation;
 	}
 
+	/* iOS Safari zooms the page when a focused control's computed font-size is
+	   below 16px. The input selector above is specific enough (0,5,1) to beat
+	   sub-16px text utilities, but the bare `textarea`/`select` selectors
+	   (0,0,1) LOSE to `.text-sm`/`.text-xs` (0,1,0). On phone widths, outrank
+	   single-class utilities (0,1,1) so no select/textarea dips below the zoom
+	   threshold. */
+	@media (max-width: 639px) {
+		textarea[class],
+		select[class] {
+			font-size: max(16px, 1rem);
+		}
+	}
+
 	button {
 		background: none;
 		padding: 0;
@@ -81,17 +94,6 @@
 	:focus-visible {
 		outline: 2px solid hsl(var(--ring));
 		outline-offset: 2px;
-	}
-
-	:global(.focus\:not-sr-only:focus) {
-		position: absolute;
-		width: auto;
-		height: auto;
-		padding: 0.5rem 1rem;
-		margin: 0;
-		overflow: visible;
-		clip: auto;
-		white-space: normal;
 	}
 
 	/* Selection styling */
@@ -121,9 +123,11 @@
 }
 
 @layer components {
-	/* Prose styling for markdown content */
+	/* Prose styling for markdown content.
+	   No prose-slate: colors come from the Inkprint typography config
+	   (tailwind.config.js) so markdown stays on warm ink tokens. */
 	.prose {
-		@apply prose-slate max-w-none;
+		@apply max-w-none;
 	}
 
 	.dark .prose {
@@ -147,41 +151,6 @@
 
 	.gpu-accelerated:not(:hover):not(:focus-visible):not(:active) {
 		will-change: auto;
-	}
-}
-
-@layer utilities {
-	/* Line clamp utilities */
-	.line-clamp-1 {
-		display: -webkit-box;
-		-webkit-line-clamp: 1;
-		line-clamp: 1;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-	}
-
-	.line-clamp-2 {
-		display: -webkit-box;
-		-webkit-line-clamp: 2;
-		line-clamp: 2;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-	}
-
-	.line-clamp-3 {
-		display: -webkit-box;
-		-webkit-line-clamp: 3;
-		line-clamp: 3;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
-	}
-
-	.line-clamp-4 {
-		display: -webkit-box;
-		-webkit-line-clamp: 4;
-		line-clamp: 4;
-		-webkit-box-orient: vertical;
-		overflow: hidden;
 	}
 }
 

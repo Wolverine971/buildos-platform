@@ -65,31 +65,31 @@
 
 	// INKPRINT activity styles with semantic meanings
 	const ACTIVITY_STYLES: Record<ActivityType, { icon: string; color: string; prefix: string }> = {
-		tool_call: { icon: '🔧', color: 'text-blue-600 dark:text-blue-400', prefix: 'TOOL' },
-		tool_result: { icon: '✓', color: 'text-emerald-600 dark:text-emerald-400', prefix: 'TOOL' },
+		tool_call: { icon: '🔧', color: 'text-info', prefix: 'TOOL' },
+		tool_result: { icon: '✓', color: 'text-success', prefix: 'TOOL' },
 		state_change: {
 			icon: '🟢',
-			color: 'text-emerald-600 dark:text-emerald-400',
+			color: 'text-success',
 			prefix: 'STATE'
 		},
 		context_shift: {
 			icon: '🔄',
-			color: 'text-amber-600 dark:text-amber-400',
+			color: 'text-warning',
 			prefix: 'CONTEXT'
 		},
 		operation: {
 			icon: '⚡',
-			color: 'text-sky-600 dark:text-sky-400',
+			color: 'text-info',
 			prefix: 'OP'
 		},
 		ontology_loaded: {
 			icon: '📚',
-			color: 'text-indigo-600 dark:text-indigo-400',
+			color: 'text-info',
 			prefix: 'ONTO'
 		},
 		clarification: {
 			icon: '❓',
-			color: 'text-blue-600 dark:text-blue-400',
+			color: 'text-info',
 			prefix: 'CLARIFY'
 		},
 		general: { icon: 'ℹ️', color: 'text-muted-foreground', prefix: 'INFO' }
@@ -144,9 +144,9 @@
 						{#if showAnimatedHammer}
 							<span class="glowing-hammer">⚒</span>
 						{:else if block.status === 'completed'}
-							<Check class="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+							<Check class="h-3.5 w-3.5 text-success" />
 						{:else if block.status === 'error'}
-							<X class="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+							<X class="h-3.5 w-3.5 text-destructive" />
 						{:else}
 							<Loader class="h-3.5 w-3.5 animate-spin text-muted-foreground" />
 						{/if}
@@ -228,12 +228,12 @@
 									/>
 								{:else if activity.status === 'completed'}
 									<Check
-										class="h-2.5 w-2.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+										class="h-2.5 w-2.5 shrink-0 text-success"
 										aria-label="Completed"
 									/>
 								{:else if activity.status === 'failed'}
 									<X
-										class="h-2.5 w-2.5 shrink-0 text-red-600 dark:text-red-400"
+										class="h-2.5 w-2.5 shrink-0 text-destructive"
 										aria-label="Failed"
 									/>
 								{/if}

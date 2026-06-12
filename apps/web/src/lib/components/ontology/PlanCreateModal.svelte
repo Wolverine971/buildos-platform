@@ -297,7 +297,7 @@
 				type="button"
 				onclick={onClose}
 				disabled={isSaving}
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400 tx tx-grain tx-weak"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 				aria-label="Close modal"
 			>
 				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -314,12 +314,16 @@
 
 	{#snippet children()}
 		<div class="px-2 py-2 sm:px-6 sm:py-4 space-y-3 sm:space-y-4">
-			<div class="relative min-h-[420px]">
+			<!-- Stacked grid cell instead of absolute panes: content stays in normal
+			     flow, so the pane grows with its content and the modal's own
+			     .modal-content scroll applies (no fixed 420px inner scroll window).
+			     During the slide transition both panes share grid-area 1/1. -->
+			<div class="grid min-h-[420px] overflow-hidden">
 				{#key showTemplateSelection}
 					<div
 						in:fly={{ x: slideDirection * 120, duration: 300, easing: cubicOut }}
 						out:fly={{ x: slideDirection * -120, duration: 300, easing: cubicOut }}
-						class="absolute inset-0 overflow-y-auto pr-1"
+						class="[grid-area:1/1] min-w-0"
 					>
 						{#if showTemplateSelection}
 							<div class="space-y-5">

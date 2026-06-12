@@ -284,10 +284,10 @@
 		const now = new Date();
 		const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
 
-		if (diffDays <= 1) return 'text-emerald-600 dark:text-emerald-400';
-		if (diffDays <= 7) return 'text-amber-600 dark:text-amber-400';
-		if (diffDays <= 30) return 'text-orange-600 dark:text-orange-400';
-		return 'text-rose-600 dark:text-rose-400';
+		if (diffDays <= 1) return 'text-success';
+		if (diffDays <= 7) return 'text-warning';
+		if (diffDays <= 30) return 'text-accent';
+		return 'text-destructive';
 	}
 
 	function nextPage() {
@@ -399,11 +399,7 @@
 	</div>
 
 	{#if error}
-		<AdminCard
-			tone="danger"
-			padding="sm"
-			class="text-sm font-medium text-rose-900 dark:text-rose-100"
-		>
+		<AdminCard tone="danger" padding="sm" class="text-sm font-medium text-destructive">
 			{error}
 		</AdminCard>
 	{/if}
@@ -444,7 +440,7 @@
 										{user.name || 'No name'}
 									</span>
 									{#if user.is_admin}
-										<Shield class="h-3.5 w-3.5 shrink-0 text-rose-500" />
+										<Shield class="h-3.5 w-3.5 shrink-0 text-destructive" />
 									{/if}
 								</div>
 								<div class="truncate text-xs text-muted-foreground">
@@ -481,7 +477,7 @@
 						<div class="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
 							<div class="flex items-center justify-between gap-2">
 								<span class="text-muted-foreground">Projects</span>
-								<span class="font-medium text-purple-600 dark:text-purple-400">
+								<span class="font-medium text-accent">
 									{user.project_count || 0}
 								</span>
 							</div>
@@ -493,7 +489,7 @@
 							</div>
 							<div class="flex items-center justify-between gap-2">
 								<span class="text-muted-foreground">Chat msgs</span>
-								<span class="font-medium text-indigo-600 dark:text-indigo-400">
+								<span class="font-medium text-info">
 									{user.agentic_message_count || 0}
 								</span>
 							</div>
@@ -508,7 +504,7 @@
 								<span class="text-muted-foreground">Calendar</span>
 								<span
 									class="font-medium {user.calendar_connected
-										? 'text-emerald-600 dark:text-emerald-400'
+										? 'text-success'
 										: 'text-muted-foreground'}"
 								>
 									{user.calendar_connected ? 'Yes' : 'No'}
@@ -516,7 +512,7 @@
 							</div>
 							<div class="flex items-center justify-between gap-2">
 								<span class="text-muted-foreground">Ontology</span>
-								<span class="font-medium text-indigo-600 dark:text-indigo-400">
+								<span class="font-medium text-info">
 									{user.ontology_entity_total || 0}
 								</span>
 							</div>
@@ -524,8 +520,8 @@
 								<span class="text-muted-foreground">Onboarding</span>
 								<span
 									class="font-medium {user.onboarding_completed_at
-										? 'text-emerald-600 dark:text-emerald-400'
-										: 'text-amber-600 dark:text-amber-400'}"
+										? 'text-success'
+										: 'text-warning'}"
 								>
 									{user.onboarding_completed_at ? 'Complete' : 'Pending'}
 								</span>
@@ -888,7 +884,7 @@
 												>
 												{#if user.is_admin}
 													<Shield
-														class="h-3.5 w-3.5 text-rose-500 flex-shrink-0"
+														class="h-3.5 w-3.5 text-destructive flex-shrink-0"
 													/>
 												{/if}
 											</div>
@@ -916,7 +912,7 @@
 									{formatDate(user.created_at)}
 								</td>
 								<td class="px-3 py-2 whitespace-nowrap text-xs">
-									<span class="font-medium text-purple-600 dark:text-purple-400">
+									<span class="font-medium text-accent">
 										{user.project_count || 0}
 									</span>
 								</td>
@@ -930,12 +926,8 @@
 								</td>
 								<td class="px-3 py-2 whitespace-nowrap">
 									<div class="flex items-center gap-1">
-										<MessageSquare
-											class="h-3.5 w-3.5 text-indigo-500 dark:text-indigo-400"
-										/>
-										<span
-											class="text-xs font-medium text-indigo-600 dark:text-indigo-400"
-										>
+										<MessageSquare class="h-3.5 w-3.5 text-info" />
+										<span class="text-xs font-medium text-info">
 											{user.agentic_message_count || 0}
 										</span>
 									</div>
@@ -943,10 +935,8 @@
 								<td class="px-3 py-2 whitespace-nowrap">
 									<div class="flex items-center gap-1">
 										{#if user.daily_brief_opt_in}
-											<CheckCircle class="h-3.5 w-3.5 text-emerald-500" />
-											<span
-												class="text-xs text-emerald-600 dark:text-emerald-400"
-											>
+											<CheckCircle class="h-3.5 w-3.5 text-success" />
+											<span class="text-xs text-success">
 												On · {user.daily_brief_count || 0}
 											</span>
 										{:else}
@@ -960,11 +950,8 @@
 								<td class="px-3 py-2 whitespace-nowrap">
 									<div class="flex items-center gap-1">
 										{#if user.calendar_connected}
-											<Calendar class="h-3.5 w-3.5 text-emerald-500" />
-											<span
-												class="text-xs text-emerald-600 dark:text-emerald-400"
-												>Yes</span
-											>
+											<Calendar class="h-3.5 w-3.5 text-success" />
+											<span class="text-xs text-success">Yes</span>
 										{:else}
 											<Calendar
 												class="h-3.5 w-3.5 text-muted-foreground/50"
@@ -975,9 +962,7 @@
 								</td>
 								<td class="px-3 py-2 whitespace-nowrap">
 									<div class="text-xs">
-										<div
-											class="font-medium text-indigo-600 dark:text-indigo-400"
-										>
+										<div class="font-medium text-info">
 											{user.ontology_entity_total || 0} total
 										</div>
 										<div class="text-[0.65rem] text-muted-foreground">
@@ -996,16 +981,11 @@
 								<td class="px-3 py-2 whitespace-nowrap">
 									<div class="flex items-center gap-1">
 										{#if user.onboarding_completed_at}
-											<CheckCircle class="h-3.5 w-3.5 text-emerald-500" />
-											<span
-												class="text-xs text-emerald-600 dark:text-emerald-400"
-												>Complete</span
-											>
+											<CheckCircle class="h-3.5 w-3.5 text-success" />
+											<span class="text-xs text-success">Complete</span>
 										{:else}
-											<Clock class="h-3.5 w-3.5 text-amber-500" />
-											<span class="text-xs text-amber-600 dark:text-amber-400"
-												>Pending</span
-											>
+											<Clock class="h-3.5 w-3.5 text-warning" />
+											<span class="text-xs text-warning">Pending</span>
 										{/if}
 									</div>
 								</td>
@@ -1019,7 +999,7 @@
 											variant="ghost"
 											size="sm"
 											icon={Mail}
-											class="!p-1.5 text-muted-foreground hover:text-indigo-600 dark:hover:text-indigo-400"
+											class="!p-1.5 text-muted-foreground hover:text-info"
 											title="Send email"
 										/>
 										<!-- View Activity -->
@@ -1028,7 +1008,7 @@
 											variant="ghost"
 											size="sm"
 											icon={Activity}
-											class="!p-1.5 text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400"
+											class="!p-1.5 text-muted-foreground hover:text-accent"
 											title="View activity details"
 										/>
 
@@ -1052,7 +1032,7 @@
 											variant="ghost"
 											size="sm"
 											icon={Eye}
-											class="!p-1.5 text-muted-foreground hover:text-emerald-600 dark:hover:text-emerald-400"
+											class="!p-1.5 text-muted-foreground hover:text-success"
 											title="View basic details"
 										/>
 									</div>
@@ -1171,8 +1151,8 @@
 						</div>
 						<span
 							class="inline-flex px-2 py-0.5 text-xs font-medium rounded-full {selectedUser.is_admin
-								? 'bg-rose-500/10 text-rose-600 dark:text-rose-400'
-								: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}"
+								? 'bg-destructive/10 text-destructive'
+								: 'bg-success/10 text-success'}"
 						>
 							{selectedUser.is_admin ? 'Admin' : 'Regular User'}
 						</span>
@@ -1186,15 +1166,11 @@
 						</div>
 						<div class="flex items-center gap-1.5 mt-0.5">
 							{#if selectedUser.onboarding_completed_at}
-								<CheckCircle class="h-3.5 w-3.5 text-emerald-500" />
-								<span class="text-xs text-emerald-600 dark:text-emerald-400"
-									>Completed</span
-								>
+								<CheckCircle class="h-3.5 w-3.5 text-success" />
+								<span class="text-xs text-success">Completed</span>
 							{:else}
-								<XCircle class="h-3.5 w-3.5 text-rose-500" />
-								<span class="text-xs text-rose-600 dark:text-rose-400"
-									>Not completed</span
-								>
+								<XCircle class="h-3.5 w-3.5 text-destructive" />
+								<span class="text-xs text-destructive">Not completed</span>
 							{/if}
 						</div>
 					</div>
@@ -1220,10 +1196,8 @@
 						</div>
 						<div class="flex items-center gap-1.5 mt-0.5">
 							{#if selectedUser.calendar_connected}
-								<Calendar class="h-3.5 w-3.5 text-emerald-500" />
-								<span class="text-xs text-emerald-600 dark:text-emerald-400"
-									>Connected</span
-								>
+								<Calendar class="h-3.5 w-3.5 text-success" />
+								<span class="text-xs text-success">Connected</span>
 							{:else}
 								<Calendar class="h-3.5 w-3.5 text-muted-foreground/50" />
 								<span class="text-xs text-muted-foreground">Not connected</span>
@@ -1275,7 +1249,7 @@
 						}}
 						variant="primary"
 						size="sm"
-						class="bg-purple-600 hover:bg-purple-700 pressable"
+						class="bg-accent hover:bg-accent/90 pressable"
 					>
 						View Activity
 					</Button>

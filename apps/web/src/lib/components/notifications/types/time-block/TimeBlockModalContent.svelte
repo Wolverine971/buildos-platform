@@ -52,7 +52,7 @@
 		if (status === 'processing') {
 			return {
 				icon: LoaderCircle,
-				iconClass: 'w-6 h-6 text-purple-600 dark:text-purple-400 animate-spin',
+				iconClass: 'w-6 h-6 text-accent animate-spin',
 				message:
 					notification.data.suggestionsState?.progress ?? 'Generating AI suggestions...'
 			};
@@ -60,14 +60,14 @@
 		if (status === 'warning') {
 			return {
 				icon: AlertCircle,
-				iconClass: 'w-6 h-6 text-amber-600 dark:text-amber-400',
+				iconClass: 'w-6 h-6 text-warning',
 				message: 'AI suggestions unavailable. Time block created successfully.'
 			};
 		}
 		if (status === 'success') {
 			return {
 				icon: CheckCircle,
-				iconClass: 'w-6 h-6 text-green-600 dark:text-green-400',
+				iconClass: 'w-6 h-6 text-success',
 				message: 'Suggestions ready!'
 			};
 		}
@@ -195,7 +195,7 @@
 											</span>
 										{/if}
 										{#if suggestion.project_name && notification.data.blockType === 'build'}
-											<span class="text-blue-600 dark:text-blue-400">
+											<span class="text-info">
 												{suggestion.project_name}
 											</span>
 										{/if}
@@ -206,9 +206,7 @@
 					</div>
 
 					{#if notification.data.suggestionsSummary}
-						<div
-							class="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded text-sm text-blue-800 dark:text-blue-200"
-						>
+						<div class="p-3 bg-info/10 border border-info/30 rounded text-sm text-info">
 							{notification.data.suggestionsSummary}
 						</div>
 					{/if}
@@ -216,7 +214,7 @@
 			{/if}
 
 			{#if status === 'warning' && !notification.data.suggestions?.length}
-				<div class="flex items-center text-amber-700 dark:text-amber-300">
+				<div class="flex items-center text-warning">
 					<AlertCircle class="w-5 h-5 mr-2" />
 					<span class="text-sm">
 						AI suggestions unavailable. Your time block was still created successfully.
@@ -225,7 +223,7 @@
 			{/if}
 
 			{#if status === 'processing'}
-				<div class="flex items-center text-purple-700 dark:text-purple-300">
+				<div class="flex items-center text-accent">
 					<LoaderCircle class="w-5 h-5 mr-2 animate-spin" />
 					<span class="text-sm">
 						{notification.data.suggestionsState?.progress ??
@@ -238,7 +236,7 @@
 				<div class="flex gap-2 pt-2">
 					<button
 						onclick={handleOpenCalendar}
-						class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+						class="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded hover:bg-accent/90 transition-colors"
 					>
 						<Calendar class="w-4 h-4" />
 						Open in Google Calendar

@@ -254,9 +254,9 @@
 			>
 				<div class="flex items-start gap-3">
 					<div
-						class="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-red-500/10"
+						class="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg bg-destructive/10"
 					>
-						<AlertCircle class="w-5 h-5 text-red-500" />
+						<AlertCircle class="w-5 h-5 text-destructive" />
 					</div>
 					<div class="min-w-0 flex-1">
 						<p
@@ -319,7 +319,7 @@
 				</div>
 
 				{#if actionError}
-					<p class="mt-3 text-sm text-red-500">{actionError}</p>
+					<p class="mt-3 text-sm text-destructive">{actionError}</p>
 				{/if}
 
 				{#if data?.status === 'unauthenticated'}

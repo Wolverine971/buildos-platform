@@ -278,7 +278,7 @@
 								class="block text-sm font-medium text-muted-foreground"
 							>
 								What type of feedback do you have?
-								<span class="text-red-500">*</span>
+								<span class="text-destructive">*</span>
 							</legend>
 							<div
 								class="grid grid-cols-1 md:grid-cols-2 gap-4"

@@ -16,33 +16,34 @@
 
 	/* Muted surfaces */
 	--muted: 40 12% 90%; /* nudged darker to keep tier separation from card */
-	--muted-foreground: 240 5% 45%;
+	--muted-foreground: 240 5% 42%; /* L42 clears 4.5:1 on card AND muted (was L45 = 4.1 on muted) */
 
 	/* Border */
-	--border: 40 10% 82%; /* slightly darker so borders survive on the new lighter bg */
+	--border: 40 10% 82%; /* decorative edges only — fails 3:1 by design, use border-strong for controls */
+	--border-strong: 40 10% 52%; /* input/control boundaries: 3.3:1 on bg, 3.1:1 on card (WCAG 1.4.11) */
 
 	/* Accent (BuildOS signal color) */
-	--accent: 24 80% 55%; /* warm orange-amber */
-	--accent-foreground: 0 0% 100%;
+	--accent: 24 80% 40%; /* deep burnt orange (was L55); text-accent on bg = 4.6:1 (was 2.8) */
+	--accent-foreground: 0 0% 100%; /* white = 4.8:1 on L40 (ink fails below ~L48 — no L passes both) */
 
 	/* Ring for focus states */
-	--ring: 24 80% 55%;
+	--ring: 24 80% 40%;
 
 	/* Destructive (danger/error states) */
-	--destructive: 6 70% 52%; /* warm-shifted red (less candy, more terracotta) */
-	--destructive-foreground: 0 0% 100%;
+	--destructive: 6 70% 47%; /* terracotta red; L47 = 4.9:1 as text on bg + luminance gap vs accent for CVD */
+	--destructive-foreground: 0 0% 100%; /* 5.1:1 on L47 */
 
 	/* Warning (caution/alert states) */
-	--warning: 45 95% 52%; /* true yellow — pushed away from accent's amber hue */
-	--warning-foreground: 30 10% 12%; /* dark ink — white is unreadable on yellow */
+	--warning: 45 88% 38%; /* goldenrod (was L52 highlighter-yellow, 1.6:1 on bg); 3.0:1 = passes for icons/large text/UI; luminance stays ~1.7x accent for CVD separation. Body-size warning text: pair with icon or use foreground. */
+	--warning-foreground: 30 10% 12%; /* dark ink = 5.3:1 on goldenrod */
 
 	/* Success (positive/completed states) */
-	--success: 150 55% 42%; /* warm-shifted sage green */
-	--success-foreground: 0 0% 100%;
+	--success: 150 55% 33%; /* warm-shifted sage green; L33 = 4.6:1 as text on bg (was L42 = 3.0) */
+	--success-foreground: 0 0% 100%; /* 4.7:1 on L33 */
 
 	/* Info (status indicator - informational/neutral states) */
-	--info: 200 60% 52%; /* teal-leaning, less candy blue, sits with warm paper */
-	--info-foreground: 0 0% 100%;
+	--info: 200 60% 40%; /* teal-leaning blue; L40 = 4.6:1 as text on bg (was L52 = 2.9) */
+	--info-foreground: 0 0% 100%; /* 5.2:1 on L40 */
 
 	/* Inkprint texture base color */
 	--tx-ink: 240 10% 10%;
@@ -65,10 +66,11 @@
 
 	/* Muted surfaces */
 	--muted: 32 5% 19%;
-	--muted-foreground: 40 5% 58%;
+	--muted-foreground: 40 5% 62%; /* L62 clears 4.5:1 on muted (was L58 = 4.4) */
 
 	/* Border */
-	--border: 32 5% 24%;
+	--border: 32 5% 24%; /* decorative edges only */
+	--border-strong: 32 5% 45%; /* input/control boundaries: 3.6:1 on bg, 3.2:1 on card */
 
 	/* Accent (glows slightly in dark) */
 	--accent: 24 85% 58%;
@@ -77,9 +79,11 @@
 	/* Ring */
 	--ring: 24 85% 58%;
 
+	/* Status foregrounds: uniform rule — any status surface at L>=50 takes ink, not white */
+
 	/* Destructive (brighter in dark mode for visibility) */
 	--destructive: 6 72% 58%;
-	--destructive-foreground: 0 0% 100%;
+	--destructive-foreground: 30 6% 11%; /* ink = 4.6:1 (white was 3.7:1) */
 
 	/* Warning (brighter in dark mode) */
 	--warning: 45 90% 58%;
@@ -87,11 +91,11 @@
 
 	/* Success (brighter in dark mode) */
 	--success: 150 50% 50%;
-	--success-foreground: 0 0% 100%;
+	--success-foreground: 30 6% 11%; /* ink = 7.3:1 (white was 2.3:1) */
 
 	/* Info (brighter in dark mode) */
 	--info: 200 55% 60%;
-	--info-foreground: 0 0% 100%;
+	--info-foreground: 30 6% 11%; /* ink = 6.7:1 (white was 2.5:1) */
 
 	/* Dark mode texture ink */
 	--tx-ink: 40 10% 92%;
@@ -435,13 +439,14 @@
 	margin-top: -0.75rem;
 }
 
-/* “Float” for callouts / hero blocks (Mode B only) */
-.float-left {
+/* “Float” for callouts / hero blocks (Mode B only).
+   Named ink-float-* to avoid shadowing Tailwind's float-left/float-right utilities. */
+.ink-float-left {
 	float: left;
 	margin-right: 0.75rem;
 	margin-bottom: 0.5rem;
 }
-.float-right {
+.ink-float-right {
 	float: right;
 	margin-left: 0.75rem;
 	margin-bottom: 0.5rem;
@@ -515,39 +520,8 @@
 	box-shadow: var(--shadow-ink-inner);
 }
 
-/* ============================================
-   Motion - Ink Set Animation
-   ============================================ */
-
-@keyframes ink-in {
-	from {
-		opacity: 0;
-		transform: translateY(4px);
-	}
-	to {
-		opacity: 1;
-		transform: translateY(0);
-	}
-}
-
-@keyframes ink-out {
-	from {
-		opacity: 1;
-		transform: translateY(0);
-	}
-	to {
-		opacity: 0;
-		transform: translateY(-4px);
-	}
-}
-
-.animate-ink-in {
-	animation: ink-in 180ms cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.animate-ink-out {
-	animation: ink-out 120ms cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* Motion: ink-in/ink-out animations live in tailwind.config.js
+   (animation + keyframes) — single source of truth. */
 
 /* ============================================
    Utility Classes

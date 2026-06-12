@@ -13,12 +13,12 @@
 			border: 'border-border'
 		},
 		active: {
-			bg: 'bg-indigo-50 dark:bg-indigo-900/30',
-			border: 'border-indigo-500'
+			bg: 'bg-accent/10',
+			border: 'border-accent'
 		},
 		complete: {
-			bg: 'bg-indigo-100 dark:bg-indigo-900/50',
-			border: 'border-indigo-600'
+			bg: 'bg-accent/15',
+			border: 'border-accent'
 		},
 		archived: {
 			bg: 'bg-muted',
@@ -36,14 +36,14 @@
 
 <div
 	class="plan-node px-3 py-2 rounded-lg border-2 shadow-ink min-w-[120px] max-w-[180px] transition-all duration-200
-		{selected ? 'ring-2 ring-amber-400 ring-offset-2' : ''}
+		{selected ? 'ring-2 ring-accent ring-offset-2' : ''}
 		{style.bg} {style.border}"
 >
-	<Handle type="target" position={Position.Top} class="!bg-indigo-500 !w-2 !h-2" />
+	<Handle type="target" position={Position.Top} class="!bg-accent !w-2 !h-2" />
 
 	<div class="flex items-center gap-2">
-		<Calendar class="w-4 h-4 flex-shrink-0 text-indigo-500 dark:text-indigo-400" />
-		<span class="text-xs font-semibold truncate text-indigo-700 dark:text-indigo-300">
+		<Calendar class="w-4 h-4 flex-shrink-0 text-accent" />
+		<span class="text-xs font-semibold truncate text-accent">
 			{data.label}
 		</span>
 	</div>
@@ -51,14 +51,14 @@
 	{#if data.state}
 		<div class="mt-1">
 			<span
-				class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-400"
+				class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-accent/15 text-accent"
 			>
 				{data.state}
 			</span>
 		</div>
 	{/if}
 
-	<Handle type="source" position={Position.Bottom} class="!bg-indigo-500 !w-2 !h-2" />
+	<Handle type="source" position={Position.Bottom} class="!bg-accent !w-2 !h-2" />
 </div>
 
 <style>

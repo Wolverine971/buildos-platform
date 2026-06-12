@@ -23,15 +23,15 @@
 >
 	<div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 sm:gap-x-6 text-xs">
 		<div class="flex items-center gap-1.5">
-			<Target class="w-3.5 h-3.5 text-amber-500" />
+			<Target class="w-3.5 h-3.5 text-accent" />
 			<span class="text-muted-foreground">{stats.totalGoals} Goals</span>
 		</div>
 		<div class="flex items-center gap-1.5">
-			<Flag class="w-3.5 h-3.5 text-emerald-500" />
+			<Flag class="w-3.5 h-3.5 text-success" />
 			<span class="text-muted-foreground">{stats.totalMilestones} Milestones</span>
 		</div>
 		<div class="flex items-center gap-1.5">
-			<Calendar class="w-3.5 h-3.5 text-indigo-500" />
+			<Calendar class="w-3.5 h-3.5 text-info" />
 			<span class="text-muted-foreground">{stats.totalPlans} Plans</span>
 		</div>
 		<div class="flex items-center gap-1.5">
@@ -39,18 +39,18 @@
 			<span class="text-muted-foreground">{stats.totalTasks} Tasks</span>
 		</div>
 		<div class="hidden sm:flex items-center gap-1.5">
-			<FileText class="w-3.5 h-3.5 text-sky-500" />
+			<FileText class="w-3.5 h-3.5 text-info" />
 			<span class="text-muted-foreground">{stats.totalDocuments} Docs</span>
 		</div>
 		{#if stats.totalRisks > 0}
 			<div class="hidden md:flex items-center gap-1.5">
-				<AlertTriangle class="w-3.5 h-3.5 text-red-500" />
+				<AlertTriangle class="w-3.5 h-3.5 text-destructive" />
 				<span class="text-muted-foreground">{stats.totalRisks} Risks</span>
 			</div>
 		{/if}
 		{#if stats.totalDecisions && stats.totalDecisions > 0}
 			<div class="hidden md:flex items-center gap-1.5">
-				<Scale class="w-3.5 h-3.5 text-violet-500" />
+				<Scale class="w-3.5 h-3.5 text-accent" />
 				<span class="text-muted-foreground">{stats.totalDecisions} Decisions</span>
 			</div>
 		{/if}

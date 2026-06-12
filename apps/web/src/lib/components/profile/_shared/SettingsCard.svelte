@@ -24,17 +24,17 @@
 
 	const containerClass = $derived(
 		variant === 'danger'
-			? 'bg-card border border-red-500/30 rounded-lg shadow-ink tx tx-static tx-weak overflow-hidden'
+			? 'bg-card border border-destructive/30 rounded-lg shadow-ink tx tx-static tx-weak overflow-hidden'
 			: 'bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden'
 	);
 
 	const stripClass = $derived(
 		variant === 'danger'
-			? 'px-4 sm:px-5 py-3 border-b border-red-500/30 bg-red-500/5'
+			? 'px-4 sm:px-5 py-3 border-b border-destructive/30 bg-destructive/5'
 			: 'px-4 sm:px-5 py-3 border-b border-border'
 	);
 
-	const iconClass = $derived(variant === 'danger' ? 'text-red-500' : 'text-accent');
+	const iconClass = $derived(variant === 'danger' ? 'text-destructive' : 'text-accent');
 </script>
 
 <section class={containerClass} aria-labelledby={labelledById || undefined}>

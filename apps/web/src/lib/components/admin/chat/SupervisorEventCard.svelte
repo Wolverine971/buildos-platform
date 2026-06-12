@@ -13,12 +13,12 @@
 	let payload = $derived(event.payload ?? {});
 </script>
 
-<details class="rounded-lg border border-amber-500/20 bg-amber-500/5">
+<details class="rounded-lg border border-warning/20 bg-warning/5">
 	<summary class="cursor-pointer list-none px-3 py-2">
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<div class="flex min-w-0 items-center gap-2">
 				<span
-					class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+					class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-warning/20 bg-warning/10 text-warning"
 				>
 					<ShieldCheck class="h-3.5 w-3.5" />
 				</span>
@@ -53,7 +53,7 @@
 			</div>
 		</div>
 	</summary>
-	<div class="border-t border-amber-500/20 p-3 space-y-2">
+	<div class="border-t border-warning/20 p-3 space-y-2">
 		<div class="grid grid-cols-1 gap-1.5 text-xs sm:grid-cols-2 lg:grid-cols-4">
 			<div class="rounded border border-border bg-card px-2 py-1.5">
 				<div class="font-medium text-foreground/60">Event</div>
@@ -82,7 +82,7 @@
 		</div>
 		{#if payloadField(payload, 'supervisor_question')}
 			<div
-				class="rounded border border-amber-500/20 bg-background px-2.5 py-2 text-xs text-foreground"
+				class="rounded border border-warning/20 bg-background px-2.5 py-2 text-xs text-foreground"
 			>
 				{stringValue(payloadField(payload, 'supervisor_question'))}
 			</div>

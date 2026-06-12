@@ -3158,13 +3158,11 @@
 			class="flex flex-1 items-center justify-center bg-muted px-6 py-12 text-center sm:py-16"
 		>
 			<div
-				class="max-w-sm space-y-3 rounded-lg border border-red-600/30 bg-red-50 p-4 shadow-ink tx tx-static tx-weak dark:bg-red-950/20"
+				class="max-w-sm space-y-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4 shadow-ink tx tx-static tx-weak"
 				role="alert"
 			>
-				<p class="text-sm font-semibold text-red-700 dark:text-red-300">
-					Couldn't load this chat
-				</p>
-				<p class="text-xs text-red-600 dark:text-red-400">
+				<p class="text-sm font-semibold text-destructive">Couldn't load this chat</p>
+				<p class="text-xs text-destructive">
 					{sessionLoadError}
 				</p>
 				{#if retrySessionId}
@@ -3195,7 +3193,7 @@
 
 	{#if error && !showSessionLoadErrorState}
 		<div
-			class="border-t border-red-600/30 bg-red-50 p-2 text-xs font-semibold text-red-700 tx tx-static tx-weak dark:bg-red-950/20 dark:text-red-400 sm:p-2.5"
+			class="border-t border-destructive/30 bg-destructive/10 p-2 text-xs font-semibold text-destructive tx tx-static tx-weak sm:p-2.5"
 			role="alert"
 			aria-live="assertive"
 		>
@@ -3464,7 +3462,7 @@
 								{#if agentTurnsRemaining <= 0}
 									<!-- INKPRINT warning badge with Static texture -->
 									<span
-										class="rounded-lg bg-amber-100 px-2.5 py-1.5 text-[0.65rem] font-semibold text-amber-700 tx tx-static tx-weak dark:bg-amber-900/30 dark:text-amber-300"
+										class="rounded-lg bg-warning/10 px-2.5 py-1.5 text-[0.65rem] font-semibold text-warning tx tx-static tx-weak"
 									>
 										Turn limit reached — adjust and resume.
 									</span>

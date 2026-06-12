@@ -111,7 +111,7 @@
 						<!-- Day Header -->
 						<div class="day-header">
 							<svg
-								class="h-4 w-4 text-emerald-600 dark:text-emerald-400"
+								class="h-4 w-4 text-success"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
@@ -193,22 +193,20 @@
 
 <style lang="postcss">
 	.available-slot-list {
-		@apply rounded-2xl border border-emerald-200 bg-emerald-50 shadow-ink;
-		@apply dark:border-emerald-500 dark:bg-emerald-900;
+		@apply rounded-2xl border border-success/30 bg-success/10 shadow-ink;
 	}
 
 	.section-header {
 		@apply w-full px-6 py-4 text-left transition-colors;
-		@apply text-emerald-900 dark:text-emerald-100;
-		@apply hover:bg-emerald-100 dark:hover:bg-emerald-900;
-		@apply focus:outline-none focus:ring-2 focus:ring-emerald-500/40;
+		@apply text-foreground;
+		@apply hover:bg-success/20;
+		@apply focus:outline-none focus:ring-2 focus:ring-ring;
 		border-radius: 1rem 1rem 0 0;
 	}
 
 	.count-badge {
 		@apply inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded-full px-2 text-xs font-bold;
-		@apply bg-emerald-500 text-white;
-		@apply dark:bg-emerald-600;
+		@apply bg-success text-success-foreground;
 	}
 
 	.slots-content {
@@ -220,7 +218,7 @@
 	}
 
 	.day-header {
-		@apply flex items-center gap-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300;
+		@apply flex items-center gap-2 text-sm font-semibold text-success;
 	}
 
 	.day-slots {
@@ -228,11 +226,9 @@
 	}
 
 	.slot-item {
-		@apply flex w-full items-center justify-between rounded-lg border border-emerald-200 bg-card px-4 py-3 text-left transition-all shadow-ink;
-		@apply hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-ink-strong;
-		@apply dark:border-emerald-700 dark:bg-card;
-		@apply dark:hover:border-emerald-500 dark:hover:bg-emerald-900;
-		@apply focus:outline-none focus:ring-2 focus:ring-emerald-500/40;
+		@apply flex w-full items-center justify-between rounded-lg border border-success/30 bg-card px-4 py-3 text-left transition-all shadow-ink;
+		@apply hover:border-success/50 hover:bg-success/10 hover:shadow-ink-strong;
+		@apply focus:outline-none focus:ring-2 focus:ring-ring;
 	}
 
 	.slot-info {
@@ -248,7 +244,7 @@
 	}
 
 	.slot-action {
-		@apply flex items-center gap-2 text-sm font-medium text-emerald-600 dark:text-emerald-400;
+		@apply flex items-center gap-2 text-sm font-medium text-success;
 	}
 
 	.empty-state {

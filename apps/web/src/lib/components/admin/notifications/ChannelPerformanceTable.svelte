@@ -26,24 +26,24 @@
 
 	function getSuccessRateColor(rate: number | null | undefined): string {
 		if (rate == null) return 'text-muted-foreground';
-		if (rate >= 95) return 'text-green-600';
-		if (rate >= 85) return 'text-yellow-600';
-		return 'text-red-600';
+		if (rate >= 95) return 'text-success';
+		if (rate >= 85) return 'text-warning';
+		return 'text-destructive';
 	}
 
 	function getDeliveryRateColor(rate: number | null | undefined): string {
 		if (rate == null) return 'text-muted-foreground';
-		if (rate >= 90) return 'text-green-600';
-		if (rate >= 75) return 'text-yellow-600';
-		return 'text-red-600';
+		if (rate >= 90) return 'text-success';
+		if (rate >= 75) return 'text-warning';
+		return 'text-destructive';
 	}
 
 	function getChannelBadgeColor(channel: string): string {
 		const colors: Record<string, string> = {
-			push: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-			email: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-			sms: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-			in_app: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+			push: 'bg-info/10 text-info',
+			email: 'bg-accent/10 text-accent',
+			sms: 'bg-success/10 text-success',
+			in_app: 'bg-muted text-muted-foreground'
 		};
 		return colors[channel] || 'bg-muted text-foreground dark:text-muted-foreground';
 	}
@@ -175,7 +175,7 @@
 										</div>
 										<div class="w-16 bg-muted rounded-full h-1.5 mt-1">
 											<div
-												class="bg-blue-600 h-1.5 rounded-full"
+												class="bg-info h-1.5 rounded-full"
 												style="width: {channel.success_rate ?? 0}%"
 											></div>
 										</div>
@@ -195,7 +195,7 @@
 										</div>
 										<div class="w-16 bg-muted rounded-full h-1.5 mt-1">
 											<div
-												class="bg-green-600 h-1.5 rounded-full"
+												class="bg-success h-1.5 rounded-full"
 												style="width: {channel.delivery_rate ?? 0}%"
 											></div>
 										</div>

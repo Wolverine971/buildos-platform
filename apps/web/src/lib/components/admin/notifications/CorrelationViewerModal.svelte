@@ -70,13 +70,13 @@
 			case 'debug':
 				return 'text-muted-foreground';
 			case 'info':
-				return 'text-blue-600 dark:text-blue-400';
+				return 'text-info';
 			case 'warn':
-				return 'text-yellow-600 dark:text-yellow-400';
+				return 'text-warning';
 			case 'error':
-				return 'text-red-600 dark:text-red-400';
+				return 'text-destructive';
 			case 'fatal':
-				return 'text-purple-600 dark:text-purple-400';
+				return 'text-destructive';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -87,13 +87,13 @@
 			case 'debug':
 				return 'bg-muted';
 			case 'info':
-				return 'bg-blue-50 dark:bg-blue-950';
+				return 'bg-info/10';
 			case 'warn':
-				return 'bg-yellow-50 dark:bg-yellow-950';
+				return 'bg-warning/10';
 			case 'error':
-				return 'bg-red-50 dark:bg-red-950';
+				return 'bg-destructive/10';
 			case 'fatal':
-				return 'bg-purple-50 dark:bg-purple-950';
+				return 'bg-destructive/10';
 			default:
 				return 'bg-muted';
 		}
@@ -105,10 +105,10 @@
 
 	function getStatusBadgeColor(status: string): string {
 		const colors: Record<string, string> = {
-			pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-			sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-			delivered: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-			failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+			pending: 'bg-warning/10 text-warning',
+			sent: 'bg-info/10 text-info',
+			delivered: 'bg-success/10 text-success',
+			failed: 'bg-destructive/10 text-destructive'
 		};
 		return colors[status] || 'bg-muted text-foreground';
 	}
@@ -116,15 +116,15 @@
 
 <Modal {isOpen} onClose={onClose || (() => {})} size="xl">
 	{#snippet header()}
-		<div class="p-4 sm:p-5 md:p-6 border-b border-border">
-			<h2 class="text-lg sm:text-xl font-semibold text-foreground">Correlation Tracking</h2>
-			<div class="flex items-center gap-2 mt-2">
+		<div class="px-4 py-2.5 border-b border-border bg-muted">
+			<h2 class="text-base font-semibold text-foreground">Correlation Tracking</h2>
+			<div class="flex items-center gap-2 mt-1">
 				<span class="text-sm text-muted-foreground font-mono truncate">
 					{correlationId}
 				</span>
 				<button
 					onclick={() => copyToClipboard(correlationId)}
-					class="flex-shrink-0 p-2 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg transition-colors"
+					class="flex-shrink-0 p-2 text-info hover:bg-info/10 rounded-lg transition-colors"
 					aria-label="Copy correlation ID"
 				>
 					<Copy class="w-4 h-4" />
@@ -133,12 +133,10 @@
 		</div>
 	{/snippet}
 	{#snippet children()}
-		<div class="p-4 sm:p-5 md:p-6">
+		<div class="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
 			{#if loading}
 				<div class="flex items-center justify-center h-64">
-					<div
-						class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"
-					></div>
+					<div class="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
 				</div>
 			{:else if !data}
 				<div class="text-center text-muted-foreground py-12">
@@ -147,10 +145,10 @@
 			{:else}
 				<div class="space-y-6">
 					<!-- Timeline Summary -->
-					<div class="bg-blue-50 dark:bg-blue-950 rounded-lg p-4">
+					<div class="bg-info/10 rounded-lg p-4">
 						<div class="flex items-center justify-between">
 							<div class="flex items-center gap-2">
-								<Clock class="w-5 h-5 text-blue-600 dark:text-blue-400" />
+								<Clock class="w-5 h-5 text-info" />
 								<span class="font-medium text-foreground">Timeline</span>
 							</div>
 							<div class="text-sm text-foreground">
@@ -166,15 +164,13 @@
 							</div>
 							<div>
 								<div class="text-xs text-muted-foreground">Errors</div>
-								<div class="text-lg font-semibold text-red-600 dark:text-red-400">
+								<div class="text-lg font-semibold text-destructive">
 									{data.timeline.error_count}
 								</div>
 							</div>
 							<div>
 								<div class="text-xs text-muted-foreground">Warnings</div>
-								<div
-									class="text-lg font-semibold text-yellow-600 dark:text-yellow-400"
-								>
+								<div class="text-lg font-semibold text-warning">
 									{data.timeline.warn_count}
 								</div>
 							</div>
@@ -185,7 +181,7 @@
 					{#if data.notification_event}
 						<div class="bg-card border border-border rounded-lg p-4">
 							<div class="flex items-center gap-2 mb-4">
-								<Info class="w-5 h-5 text-purple-600 dark:text-purple-400" />
+								<Info class="w-5 h-5 text-info" />
 								<span class="font-medium text-foreground">Notification Event</span>
 							</div>
 							<div class="space-y-2">
@@ -209,7 +205,7 @@
 					{#if data.deliveries && data.deliveries.length > 0}
 						<div class="bg-card border border-border rounded-lg p-4">
 							<div class="flex items-center gap-2 mb-4">
-								<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
+								<CheckCircle class="w-5 h-5 text-success" />
 								<span class="font-medium text-foreground">
 									Deliveries ({data.deliveries.length})
 								</span>
@@ -254,7 +250,7 @@
 											{namespace}
 										</span>
 									</div>
-									<div class="divide-y divide-gray-100 dark:divide-gray-800">
+									<div class="divide-y divide-border">
 										{#each data.logs_by_namespace[namespace] as log}
 											<div
 												class="p-3 {getLevelBgColor(
@@ -290,7 +286,7 @@
 														{/if}
 														{#if log.error_stack}
 															<pre
-																class="mt-2 text-xs bg-red-100 dark:bg-red-900 text-red-900 dark:text-red-100 border border-red-200 dark:border-red-800 rounded p-2 overflow-x-auto">{log.error_stack}</pre>
+																class="mt-2 text-xs bg-destructive/10 text-destructive border border-destructive/30 rounded p-2 overflow-x-auto">{log.error_stack}</pre>
 														{/if}
 													</div>
 												</div>
@@ -306,7 +302,9 @@
 		</div>
 	{/snippet}
 	{#snippet footer()}
-		<div class="p-4 sm:p-5 md:p-6 border-t border-border flex justify-end">
+		<div
+			class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
+		>
 			<Button onclick={onClose} variant="secondary">Close</Button>
 		</div>
 	{/snippet}

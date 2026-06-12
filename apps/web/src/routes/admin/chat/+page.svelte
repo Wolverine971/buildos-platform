@@ -417,7 +417,7 @@
 	function trendClass(trend: Trend, higherIsBad = false): string {
 		const isUp = trend.direction === 'up';
 		const isBad = higherIsBad ? isUp : !isUp;
-		return isBad ? 'text-red-500' : 'text-emerald-500';
+		return isBad ? 'text-destructive' : 'text-success';
 	}
 
 	function getActivityIcon(type: string) {
@@ -556,7 +556,7 @@
 			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
 		>
 			<div class="flex items-center gap-3">
-				<MessageSquare class="h-7 w-7 text-blue-500 shrink-0" />
+				<MessageSquare class="h-7 w-7 text-info shrink-0" />
 				<div>
 					<h3 class="text-base font-semibold text-foreground">Sessions</h3>
 					<p class="text-sm text-muted-foreground">View all chats</p>
@@ -569,7 +569,7 @@
 			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
 		>
 			<div class="flex items-center gap-3">
-				<Activity class="h-7 w-7 text-purple-500 shrink-0" />
+				<Activity class="h-7 w-7 text-accent shrink-0" />
 				<div>
 					<h3 class="text-base font-semibold text-foreground">Runtime</h3>
 					<p class="text-sm text-muted-foreground">Turn analytics</p>
@@ -582,7 +582,7 @@
 			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
 		>
 			<div class="flex items-center gap-3">
-				<DollarSign class="h-7 w-7 text-emerald-500 shrink-0" />
+				<DollarSign class="h-7 w-7 text-success shrink-0" />
 				<div>
 					<h3 class="text-base font-semibold text-foreground">Costs</h3>
 					<p class="text-sm text-muted-foreground">Token analytics</p>
@@ -595,7 +595,7 @@
 			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
 		>
 			<div class="flex items-center gap-3">
-				<Zap class="h-7 w-7 text-amber-500 shrink-0" />
+				<Zap class="h-7 w-7 text-warning shrink-0" />
 				<div>
 					<h3 class="text-base font-semibold text-foreground">Tools</h3>
 					<p class="text-sm text-muted-foreground">Tool usage</p>
@@ -608,7 +608,7 @@
 			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
 		>
 			<div class="flex items-center gap-3">
-				<Network class="h-7 w-7 text-sky-500 shrink-0" />
+				<Network class="h-7 w-7 text-info shrink-0" />
 				<div>
 					<h3 class="text-base font-semibold text-foreground">Domains</h3>
 					<p class="text-sm text-muted-foreground">Research queue</p>
@@ -621,7 +621,7 @@
 			class="bg-card border border-border rounded-lg p-4 shadow-ink hover:shadow-ink-strong hover:border-accent transition-all pressable focus:outline-none focus:ring-2 focus:ring-ring"
 		>
 			<div class="flex items-center gap-3">
-				<Clock class="h-7 w-7 text-cyan-500 shrink-0" />
+				<Clock class="h-7 w-7 text-info shrink-0" />
 				<div>
 					<h3 class="text-base font-semibold text-foreground">Timing</h3>
 					<p class="text-sm text-muted-foreground">Latency metrics</p>
@@ -632,24 +632,24 @@
 
 	{#if error}
 		<div
-			class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
+			class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
 			role="alert"
 		>
 			<div class="flex items-center gap-2">
-				<AlertCircle class="h-5 w-5 text-red-500 shrink-0" />
-				<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
+				<AlertCircle class="h-5 w-5 text-destructive shrink-0" />
+				<p class="text-sm text-destructive">{error}</p>
 			</div>
 		</div>
 	{/if}
 
 	{#if hasTruncatedDashboardData}
 		<div
-			class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
+			class="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
 			role="status"
 		>
 			<div class="flex items-center gap-2">
-				<AlertCircle class="h-5 w-5 text-amber-500 shrink-0" />
-				<p class="text-sm text-amber-700 dark:text-amber-300">
+				<AlertCircle class="h-5 w-5 text-warning shrink-0" />
+				<p class="text-sm text-warning">
 					Some dashboard source queries hit their row limit. Totals are directionally
 					useful, but high-volume slices may be undercounted.
 				</p>
@@ -659,12 +659,12 @@
 
 	{#if !dataHealth.hasBillableUsage && dataHealth.hasTurnTelemetry}
 		<div
-			class="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
+			class="bg-info/10 border border-info/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
 			role="status"
 		>
 			<div class="flex items-center gap-2">
-				<DollarSign class="h-5 w-5 text-blue-500 shrink-0" />
-				<p class="text-sm text-blue-700 dark:text-blue-300">
+				<DollarSign class="h-5 w-5 text-info shrink-0" />
+				<p class="text-sm text-info">
 					No chat-linked billing logs were found for this period, so cost uses model pass
 					telemetry estimates.
 				</p>
@@ -674,24 +674,24 @@
 
 	{#if mediaUsageError}
 		<div
-			class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
+			class="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
 			role="status"
 		>
 			<div class="flex items-center gap-2">
-				<Image class="h-5 w-5 text-amber-500 shrink-0" />
-				<p class="text-sm text-amber-700 dark:text-amber-300">{mediaUsageError}</p>
+				<Image class="h-5 w-5 text-warning shrink-0" />
+				<p class="text-sm text-warning">{mediaUsageError}</p>
 			</div>
 		</div>
 	{/if}
 
 	{#if hasTruncatedMediaData}
 		<div
-			class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
+			class="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
 			role="status"
 		>
 			<div class="flex items-center gap-2">
-				<HardDrive class="h-5 w-5 text-amber-500 shrink-0" />
-				<p class="text-sm text-amber-700 dark:text-amber-300">
+				<HardDrive class="h-5 w-5 text-warning shrink-0" />
+				<p class="text-sm text-warning">
 					Media usage queries hit their row limit. Storage and upload counts may be
 					undercounted for this period.
 				</p>
@@ -720,11 +720,11 @@
 						>
 							Chat Sessions
 						</p>
-						<p class="text-2xl font-bold text-blue-500 mt-1">
+						<p class="text-2xl font-bold text-info mt-1">
 							{formatNumber(dashboardKPIs.totalSessions)}
 						</p>
 					</div>
-					<MessageSquare class="h-7 w-7 text-blue-500 shrink-0 ml-3" />
+					<MessageSquare class="h-7 w-7 text-info shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(dashboardKPIs.newSessions)} new • {formatNumber(
@@ -743,11 +743,11 @@
 						>
 							Active Users
 						</p>
-						<p class="text-2xl font-bold text-indigo-500 mt-1">
+						<p class="text-2xl font-bold text-info mt-1">
 							{formatNumber(dashboardKPIs.uniqueUsers)}
 						</p>
 					</div>
-					<Activity class="h-7 w-7 text-indigo-500 shrink-0 ml-3" />
+					<Activity class="h-7 w-7 text-info shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(dashboardKPIs.totalMessages)} messages • avg {dashboardKPIs.avgMessagesPerSession.toFixed(
@@ -766,11 +766,11 @@
 						>
 							Turns
 						</p>
-						<p class="text-2xl font-bold text-emerald-500 mt-1">
+						<p class="text-2xl font-bold text-success mt-1">
 							{formatNumber(dashboardKPIs.totalTurns)}
 						</p>
 					</div>
-					<Zap class="h-7 w-7 text-emerald-500 shrink-0 ml-3" />
+					<Zap class="h-7 w-7 text-success shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(dashboardKPIs.completedTurns)} completed • {formatNumber(
@@ -783,9 +783,9 @@
 				</div>
 				<div class="mt-1 flex items-center gap-1 text-xs">
 					{#if dashboardKPIs.turnTrend.direction === 'up'}
-						<TrendingUp class="w-3.5 h-3.5 text-emerald-500" />
+						<TrendingUp class="w-3.5 h-3.5 text-success" />
 					{:else}
-						<TrendingUp class="w-3.5 h-3.5 text-red-500 rotate-180" />
+						<TrendingUp class="w-3.5 h-3.5 text-destructive rotate-180" />
 					{/if}
 					<span class={trendClass(dashboardKPIs.turnTrend)}>
 						{trendPrefix(dashboardKPIs.turnTrend)}{dashboardKPIs.turnTrend.value}%
@@ -803,11 +803,11 @@
 						>
 							{dashboardKPIs.isCostEstimated ? 'Estimated Cost' : 'Billable Cost'}
 						</p>
-						<p class="text-2xl font-bold text-amber-500 mt-1">
+						<p class="text-2xl font-bold text-warning mt-1">
 							{formatCurrency(dashboardKPIs.estimatedCost)}
 						</p>
 					</div>
-					<DollarSign class="h-7 w-7 text-amber-500 shrink-0 ml-3" />
+					<DollarSign class="h-7 w-7 text-warning shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{#if dashboardKPIs.billableRequests > 0}
@@ -818,9 +818,9 @@
 				</div>
 				<div class="mt-1 flex items-center gap-1 text-xs">
 					{#if dashboardKPIs.costTrend.direction === 'up'}
-						<TrendingUp class="w-3.5 h-3.5 text-red-500" />
+						<TrendingUp class="w-3.5 h-3.5 text-destructive" />
 					{:else}
-						<TrendingUp class="w-3.5 h-3.5 text-emerald-500 rotate-180" />
+						<TrendingUp class="w-3.5 h-3.5 text-success rotate-180" />
 					{/if}
 					<span class={trendClass(dashboardKPIs.costTrend, true)}>
 						{trendPrefix(dashboardKPIs.costTrend)}{dashboardKPIs.costTrend.value}%
@@ -838,20 +838,20 @@
 						>
 							Chat Tokens
 						</p>
-						<p class="text-2xl font-bold text-purple-500 mt-1">
+						<p class="text-2xl font-bold text-accent mt-1">
 							{formatCompact(dashboardKPIs.totalTokensUsed)}
 						</p>
 					</div>
-					<CheckCircle class="h-7 w-7 text-purple-500 shrink-0 ml-3" />
+					<CheckCircle class="h-7 w-7 text-accent shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatCompact(dashboardKPIs.avgTokensPerTurn)} per turn
 				</div>
 				<div class="mt-1 flex items-center gap-1 text-xs">
 					{#if dashboardKPIs.tokenTrend.direction === 'up'}
-						<TrendingUp class="w-3.5 h-3.5 text-red-500" />
+						<TrendingUp class="w-3.5 h-3.5 text-destructive" />
 					{:else}
-						<TrendingUp class="w-3.5 h-3.5 text-emerald-500 rotate-180" />
+						<TrendingUp class="w-3.5 h-3.5 text-success rotate-180" />
 					{/if}
 					<span class={trendClass(dashboardKPIs.tokenTrend, true)}>
 						{trendPrefix(dashboardKPIs.tokenTrend)}{dashboardKPIs.tokenTrend.value}%
@@ -869,11 +869,11 @@
 						>
 							Tool Calls
 						</p>
-						<p class="text-2xl font-bold text-cyan-500 mt-1">
+						<p class="text-2xl font-bold text-info mt-1">
 							{formatNumber(dashboardKPIs.toolCalls)}
 						</p>
 					</div>
-					<Zap class="h-7 w-7 text-cyan-500 shrink-0 ml-3" />
+					<Zap class="h-7 w-7 text-info shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatPercentage(dashboardKPIs.toolSuccessRate)} success • {formatNumber(
@@ -895,11 +895,11 @@
 						>
 							P95 Turn
 						</p>
-						<p class="text-2xl font-bold text-blue-500 mt-1">
+						<p class="text-2xl font-bold text-info mt-1">
 							{formatDuration(dashboardKPIs.p95TurnDurationMs)}
 						</p>
 					</div>
-					<Clock class="h-7 w-7 text-blue-500 shrink-0 ml-3" />
+					<Clock class="h-7 w-7 text-info shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					Avg {formatDuration(dashboardKPIs.avgTurnDurationMs)} • LLM p95 {formatDuration(
@@ -917,11 +917,11 @@
 						>
 							LLM Passes / Turn
 						</p>
-						<p class="text-2xl font-bold text-emerald-500 mt-1">
+						<p class="text-2xl font-bold text-success mt-1">
 							{dashboardKPIs.avgLlmPassesPerTurn.toFixed(2)}x
 						</p>
 					</div>
-					<Sparkles class="h-7 w-7 text-emerald-500 shrink-0 ml-3" />
+					<Sparkles class="h-7 w-7 text-success shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(dashboardKPIs.llmPasses)} passes • {dashboardKPIs.avgToolsPerTurn.toFixed(
@@ -961,11 +961,11 @@
 							<p class="text-xs uppercase tracking-wide text-muted-foreground">
 								Storage
 							</p>
-							<p class="text-xl font-bold text-sky-500 mt-1">
+							<p class="text-xl font-bold text-info mt-1">
 								{formatBytes(mediaUsage.kpis.currentImageStorageBytes)}
 							</p>
 						</div>
-						<HardDrive class="h-6 w-6 text-sky-500 shrink-0" />
+						<HardDrive class="h-6 w-6 text-info shrink-0" />
 					</div>
 					<p class="text-xs text-muted-foreground mt-2">
 						{formatNumber(mediaUsage.kpis.currentImageAssets)} images • avg {formatBytes(
@@ -980,11 +980,11 @@
 							<p class="text-xs uppercase tracking-wide text-muted-foreground">
 								Uploads
 							</p>
-							<p class="text-xl font-bold text-emerald-500 mt-1">
+							<p class="text-xl font-bold text-success mt-1">
 								{formatNumber(mediaUsage.kpis.uploadRequests)}
 							</p>
 						</div>
-						<Image class="h-6 w-6 text-emerald-500 shrink-0" />
+						<Image class="h-6 w-6 text-success shrink-0" />
 					</div>
 					<p class="text-xs text-muted-foreground mt-2">
 						{formatBytes(mediaUsage.kpis.uploadedBytes)} new bytes • {formatPercentage(
@@ -998,11 +998,11 @@
 					<div class="flex items-center justify-between gap-3">
 						<div>
 							<p class="text-xs uppercase tracking-wide text-muted-foreground">OCR</p>
-							<p class="text-xl font-bold text-amber-500 mt-1">
+							<p class="text-xl font-bold text-warning mt-1">
 								{formatNumber(mediaUsage.kpis.ocrQueued)}
 							</p>
 						</div>
-						<CheckCircle class="h-6 w-6 text-amber-500 shrink-0" />
+						<CheckCircle class="h-6 w-6 text-warning shrink-0" />
 					</div>
 					<p class="text-xs text-muted-foreground mt-2">
 						{formatNumber(mediaUsage.kpis.ocrFailed)} failed • {formatPercentage(
@@ -1018,11 +1018,11 @@
 							<p class="text-xs uppercase tracking-wide text-muted-foreground">
 								Live Vision
 							</p>
-							<p class="text-xl font-bold text-purple-500 mt-1">
+							<p class="text-xl font-bold text-accent mt-1">
 								{formatNumber(mediaUsage.kpis.liveVisionRequests)}
 							</p>
 						</div>
-						<Sparkles class="h-6 w-6 text-purple-500 shrink-0" />
+						<Sparkles class="h-6 w-6 text-accent shrink-0" />
 					</div>
 					<p class="text-xs text-muted-foreground mt-2">
 						{formatNumber(mediaUsage.kpis.liveVisionFailures)} failed • {formatPercentage(
@@ -1056,7 +1056,7 @@
 										</div>
 									</div>
 									<div class="text-right shrink-0">
-										<div class="text-sm font-bold text-sky-500">
+										<div class="text-sm font-bold text-info">
 											{formatBytes(project.current_storage_bytes)}
 										</div>
 										<div class="text-xs text-muted-foreground">
@@ -1120,13 +1120,13 @@
 											success • p95 {formatDuration(route.p95_duration_ms)}
 										</div>
 									</div>
-									<span class="text-sm font-bold text-blue-500 shrink-0">
+									<span class="text-sm font-bold text-info shrink-0">
 										{formatNumber(route.count)}
 									</span>
 								</div>
 								<div class="w-full bg-muted rounded-full h-2.5">
 									<div
-										class="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
+										class="bg-info h-2.5 rounded-full transition-all duration-300"
 										style="width: {distributionWidth(
 											route,
 											runtimeDistribution.first_actions
@@ -1167,7 +1167,7 @@
 										tokens • {formatCurrency(user.total_cost)}
 									</div>
 								</div>
-								<div class="text-sm font-bold text-blue-500 shrink-0">
+								<div class="text-sm font-bold text-info shrink-0">
 									{formatNumber(user.session_count)} sessions
 								</div>
 							</div>

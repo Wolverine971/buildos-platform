@@ -408,18 +408,18 @@
 
 	function getStatusColor(status: string): string {
 		const colors = {
-			pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-			approved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-			declined: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-			waitlist: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
+			pending: 'bg-warning/10 text-warning',
+			approved: 'bg-success/10 text-success',
+			declined: 'bg-destructive/10 text-destructive',
+			waitlist: 'bg-info/10 text-info'
 		};
 		return colors[status as keyof typeof colors] || colors.pending;
 	}
 
 	function getTierColor(tier: string): string {
 		const colors = {
-			founder: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
-			early: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+			founder: 'bg-accent/10 text-accent',
+			early: 'bg-info/10 text-info',
 			standard: 'bg-muted text-foreground dark:text-muted-foreground'
 		};
 		return colors[tier as keyof typeof colors] || colors.standard;
@@ -526,7 +526,7 @@
 						size="md"
 						icon={Download}
 						iconPosition="left"
-						class="bg-green-600 hover:bg-green-700"
+						class="bg-success hover:bg-success/90"
 						title="Export to CSV"
 					>
 						<span class="hidden lg:inline">Export CSV</span>
@@ -558,7 +558,7 @@
 				size="md"
 				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
 				'signups'
-					? 'border-blue-500 text-blue-600'
+					? 'border-info text-info'
 					: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
 				icon={UserPlus}
 			>
@@ -570,7 +570,7 @@
 				size="md"
 				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
 				'dataview'
-					? 'border-blue-500 text-blue-600'
+					? 'border-info text-info'
 					: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
 				icon={Table}
 			>
@@ -582,7 +582,7 @@
 				size="md"
 				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
 				'members'
-					? 'border-blue-500 text-blue-600'
+					? 'border-info text-info'
 					: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
 				icon={Users}
 			>
@@ -594,7 +594,7 @@
 				size="md"
 				class="flex-shrink-0 py-2 px-3 sm:px-4 border-b-2 font-medium text-sm rounded-none {activeTab ===
 				'emails'
-					? 'border-blue-500 text-blue-600'
+					? 'border-info text-info'
 					: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'}"
 				icon={Mail}
 			>
@@ -620,7 +620,7 @@
 						<input
 							type="checkbox"
 							bind:checked={dataViewFilters.showAllColumns}
-							class="mr-2 rounded border-border text-blue-600 focus:ring-blue-500"
+							class="mr-2 rounded border-border text-accent focus:ring-ring"
 						/>
 						Show all columns
 					</div>
@@ -672,11 +672,7 @@
 		</div>
 
 		{#if error}
-			<AdminCard
-				tone="danger"
-				padding="sm"
-				class="text-sm font-medium text-rose-900 dark:text-rose-100"
-			>
+			<AdminCard tone="danger" padding="sm" class="text-sm font-medium text-destructive">
 				{error}
 			</AdminCard>
 		{/if}
@@ -701,7 +697,7 @@
 			{:else}
 				<!-- Responsive Data Table with Clickable Headers -->
 				<div class="overflow-x-auto">
-					<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+					<table class="min-w-full divide-y divide-border">
 						<thead class="bg-muted">
 							<tr>
 								<!-- Contact Info - Sticky Column (Non-sortable for UX) -->
@@ -935,7 +931,7 @@
 								</th>
 							</tr>
 						</thead>
-						<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
+						<tbody class="bg-card divide-y divide-border">
 							{#each signups as signup}
 								<tr class="hover:bg-muted">
 									<!-- Contact Info - Sticky Column -->
@@ -968,7 +964,7 @@
 										<div class="max-w-32">
 											{#if signup.referral_source}
 												<span
-													class="inline-flex px-2 py-1 text-xs bg-indigo-100 text-indigo-800 rounded dark:bg-indigo-900 dark:text-indigo-300"
+													class="inline-flex px-2 py-1 text-xs bg-info/10 text-info rounded"
 												>
 													{signup.referral_source}
 												</span>
@@ -1085,18 +1081,12 @@
 										<td class="px-4 py-4 text-sm">
 											<div class="space-y-1">
 												{#if signup.wants_weekly_calls}
-													<div
-														class="text-green-600 dark:text-green-400 text-xs"
-													>
+													<div class="text-success text-xs">
 														✓ Weekly calls
 													</div>
 												{/if}
 												{#if signup.wants_community_access}
-													<div
-														class="text-blue-600 dark:text-blue-400 text-xs"
-													>
-														✓ Community
-													</div>
+													<div class="text-info text-xs">✓ Community</div>
 												{/if}
 												{#if !signup.wants_weekly_calls && !signup.wants_community_access}
 													<div class="text-muted-foreground text-xs">
@@ -1133,7 +1123,7 @@
 												variant="ghost"
 												size="sm"
 												icon={Eye}
-												class="p-2 text-muted-foreground hover:text-blue-600"
+												class="p-2 text-muted-foreground hover:text-info"
 												title="View full details"
 											></Button>
 
@@ -1148,7 +1138,7 @@
 												variant="ghost"
 												size="sm"
 												icon={Mail}
-												class="p-2 text-muted-foreground hover:text-indigo-600"
+												class="p-2 text-muted-foreground hover:text-info"
 												title="Send email"
 											></Button>
 
@@ -1165,7 +1155,7 @@
 													variant="ghost"
 													size="sm"
 													icon={CheckCircle}
-													class="p-2 text-muted-foreground hover:text-green-600"
+													class="p-2 text-muted-foreground hover:text-success"
 													title="Approve and create member"
 												></Button>
 												<Button
@@ -1175,7 +1165,7 @@
 													variant="ghost"
 													size="sm"
 													icon={XCircle}
-													class="p-2 text-muted-foreground hover:text-red-600"
+													class="p-2 text-muted-foreground hover:text-destructive"
 													title="Decline"
 												></Button>
 											{/if}
@@ -1332,7 +1322,7 @@
 							<input
 								type="checkbox"
 								bind:checked={memberFilters.activeOnly}
-								class="rounded border-border text-blue-600 focus:ring-blue-500"
+								class="rounded border-border text-accent focus:ring-ring"
 							/>
 							<span class="text-sm text-foreground">Active Only</span>
 						</div>
@@ -1401,7 +1391,7 @@
 							<input
 								type="checkbox"
 								bind:checked={memberFilters.activeOnly}
-								class="rounded border-border text-blue-600 focus:ring-blue-500"
+								class="rounded border-border text-accent focus:ring-ring"
 							/>
 							<span class="text-sm text-muted-foreground">Active Only</span>
 						</div>
@@ -1411,10 +1401,8 @@
 		</div>
 
 		{#if error}
-			<div
-				class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 dark:bg-red-900/20 dark:border-red-800"
-			>
-				<p class="text-red-800 dark:text-red-200">{error}</p>
+			<div class="bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-4">
+				<p class="text-destructive">{error}</p>
 			</div>
 		{/if}
 
@@ -1451,11 +1439,9 @@
 									<div class="flex items-center flex-1 min-w-0">
 										<div class="flex-shrink-0 h-8 w-8">
 											<div
-												class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
+												class="h-8 w-8 rounded-full bg-info/10 flex items-center justify-center"
 											>
-												<span
-													class="text-xs font-medium text-blue-800 dark:text-blue-200"
-												>
+												<span class="text-xs font-medium text-info">
 													{signup.full_name.charAt(0).toUpperCase()}
 												</span>
 											</div>
@@ -1477,7 +1463,7 @@
 										variant="ghost"
 										size="sm"
 										icon={Eye}
-										class="ml-2 p-2 text-muted-foreground hover:text-blue-600"
+										class="ml-2 p-2 text-muted-foreground hover:text-info"
 										title="View details"
 									></Button>
 								</div>
@@ -1510,7 +1496,7 @@
 											variant="primary"
 											size="sm"
 											fullWidth={true}
-											class="bg-green-100 text-green-800 hover:bg-green-200"
+											class="bg-success/10 text-success hover:bg-success/20"
 										>
 											Approve & Email
 										</Button>
@@ -1521,7 +1507,7 @@
 											variant="danger"
 											size="sm"
 											fullWidth={true}
-											class="bg-red-100 text-red-800 hover:bg-red-200"
+											class="bg-destructive/10 text-destructive hover:bg-destructive/20"
 										>
 											Decline
 										</Button>
@@ -1536,11 +1522,9 @@
 									<div class="flex items-center flex-1 min-w-0">
 										<div class="flex-shrink-0 h-8 w-8">
 											<div
-												class="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center"
+												class="h-8 w-8 rounded-full bg-accent/10 flex items-center justify-center"
 											>
-												<span
-													class="text-xs font-medium text-purple-800 dark:text-purple-200"
-												>
+												<span class="text-xs font-medium text-accent">
 													{member.full_name.charAt(0).toUpperCase()}
 												</span>
 											</div>
@@ -1553,7 +1537,7 @@
 													{member.full_name}
 												</p>
 												{#if !member.is_active}
-													<span class="ml-2 text-red-500 text-xs"
+													<span class="ml-2 text-destructive text-xs"
 														>(Inactive)</span
 													>
 												{/if}
@@ -1572,7 +1556,7 @@
 										size="sm"
 										icon={Eye}
 										iconPosition="left"
-										class="ml-2 p-2 text-muted-foreground hover:text-blue-600"
+										class="ml-2 p-2 text-muted-foreground hover:text-info"
 										title="View details"
 									/>
 								</div>
@@ -1608,8 +1592,8 @@
 										size="sm"
 										fullWidth={true}
 										class={member.is_active
-											? 'bg-red-100 text-red-800 hover:bg-red-200'
-											: 'bg-green-100 text-green-800 hover:bg-green-200'}
+											? 'bg-destructive/10 text-destructive hover:bg-destructive/20'
+											: 'bg-success/10 text-success hover:bg-success/20'}
 									>
 										{member.is_active ? 'Deactivate' : 'Activate'}
 									</Button>
@@ -1621,7 +1605,7 @@
 
 				<!-- Desktop Table View -->
 				<div class="hidden sm:block overflow-x-auto">
-					<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+					<table class="min-w-full divide-y divide-border">
 						<thead class="bg-muted">
 							<tr>
 								{#if activeTab === 'signups'}
@@ -1868,7 +1852,7 @@
 								</th>
 							</tr>
 						</thead>
-						<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
+						<tbody class="bg-card divide-y divide-border">
 							{#if activeTab === 'signups'}
 								{#each signups as signup}
 									<tr class="hover:bg-muted">
@@ -1876,11 +1860,9 @@
 											<div class="flex items-center">
 												<div class="flex-shrink-0 h-10 w-10">
 													<div
-														class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
+														class="h-10 w-10 rounded-full bg-info/10 flex items-center justify-center"
 													>
-														<span
-															class="text-sm font-medium text-blue-800 dark:text-blue-200"
-														>
+														<span class="text-sm font-medium text-info">
 															{signup.full_name
 																.charAt(0)
 																.toUpperCase()}
@@ -1937,7 +1919,7 @@
 													size="sm"
 													icon={Eye}
 													iconPosition="left"
-													class="p-2 text-muted-foreground hover:text-blue-600 transition-colors"
+													class="p-2 text-muted-foreground hover:text-info transition-colors"
 													title="View details"
 												/>
 
@@ -1953,7 +1935,7 @@
 													size="sm"
 													icon={Mail}
 													iconPosition="left"
-													class="p-2 text-muted-foreground hover:text-indigo-600 transition-colors"
+													class="p-2 text-muted-foreground hover:text-info transition-colors"
 													title="Send email"
 												/>
 
@@ -1967,7 +1949,7 @@
 														size="sm"
 														icon={CheckCircle}
 														iconPosition="left"
-														class="p-2 text-muted-foreground hover:text-green-600 transition-colors"
+														class="p-2 text-muted-foreground hover:text-success transition-colors"
 														title="Approve and send email"
 													/>
 													<Button
@@ -1981,7 +1963,7 @@
 														size="sm"
 														icon={XCircle}
 														iconPosition="left"
-														class="p-2 text-muted-foreground hover:text-red-600 transition-colors"
+														class="p-2 text-muted-foreground hover:text-destructive transition-colors"
 														title="Decline"
 													/>
 												{/if}
@@ -1996,10 +1978,10 @@
 											<div class="flex items-center">
 												<div class="flex-shrink-0 h-10 w-10">
 													<div
-														class="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center"
+														class="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center"
 													>
 														<span
-															class="text-sm font-medium text-purple-800 dark:text-purple-200"
+															class="text-sm font-medium text-accent"
 														>
 															{member.full_name
 																.charAt(0)
@@ -2013,7 +1995,8 @@
 													>
 														{member.full_name}
 														{#if !member.is_active}
-															<span class="ml-2 text-red-500 text-xs"
+															<span
+																class="ml-2 text-destructive text-xs"
 																>(Inactive)</span
 															>
 														{/if}
@@ -2064,7 +2047,7 @@
 													size="sm"
 													icon={Mail}
 													iconPosition="left"
-													class="p-2 text-muted-foreground hover:text-indigo-600 transition-colors"
+													class="p-2 text-muted-foreground hover:text-info transition-colors"
 													title="Send email"
 												/>
 												<!-- View Details -->
@@ -2077,7 +2060,7 @@
 													size="sm"
 													icon={Eye}
 													iconPosition="left"
-													class="p-2 text-muted-foreground hover:text-blue-600 transition-colors"
+													class="p-2 text-muted-foreground hover:text-info transition-colors"
 													title="View details"
 												/>
 
@@ -2092,7 +2075,7 @@
 													size="sm"
 													icon={member.is_active ? ShieldOff : Shield}
 													iconPosition="left"
-													class="p-2 text-muted-foreground hover:text-yellow-600 transition-colors"
+													class="p-2 text-muted-foreground hover:text-warning transition-colors"
 													title={member.is_active
 														? 'Deactivate'
 														: 'Activate'}
@@ -2201,8 +2184,8 @@
 					</ul>
 				</div>
 
-				<div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-lg">
-					<p class="text-sm text-blue-800 dark:text-blue-200">
+				<div class="bg-info/10 p-4 rounded-lg">
+					<p class="text-sm text-info">
 						<strong>Email will be sent to:</strong>
 						{pendingApprovalSignup.email}
 					</p>
@@ -2310,7 +2293,7 @@
 								<div class="mt-1 flex flex-wrap gap-2">
 									{#each selectedItem.productivity_tools as tool}
 										<span
-											class="inline-flex px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-md dark:bg-blue-900 dark:text-blue-300"
+											class="inline-flex px-3 py-1 text-sm font-medium bg-info/10 text-info rounded-md"
 										>
 											{tool}
 										</span>
@@ -2411,8 +2394,8 @@
 								</div>
 								<span
 									class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {selectedItem.is_active
-										? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-										: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'}"
+										? 'bg-success/10 text-success'
+										: 'bg-destructive/10 text-destructive'}"
 								>
 									{selectedItem.is_active ? 'Active' : 'Inactive'}
 								</span>
@@ -2474,7 +2457,7 @@
 										Lifetime Pricing
 									</div>
 									<span
-										class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300"
+										class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-accent/10 text-accent"
 									>
 										Enabled
 									</span>
@@ -2535,7 +2518,7 @@
 										<div class="mt-1 flex flex-wrap gap-2">
 											{#each selectedItem.beta_signups.productivity_tools as tool}
 												<span
-													class="inline-flex px-3 py-1 text-sm font-medium bg-blue-100 text-blue-800 rounded-md dark:bg-blue-900 dark:text-blue-300"
+													class="inline-flex px-3 py-1 text-sm font-medium bg-info/10 text-info rounded-md"
 												>
 													{tool}
 												</span>
@@ -2598,7 +2581,7 @@
 							disabled={isUpdating}
 							variant="primary"
 							size="md"
-							class="bg-green-600 hover:bg-green-700"
+							class="bg-success hover:bg-success/90"
 						>
 							Approve & Create Member
 						</Button>
@@ -2638,8 +2621,8 @@
 							variant={selectedItem.is_active ? 'danger' : 'primary'}
 							size="md"
 							class={selectedItem.is_active
-								? 'bg-red-600 hover:bg-red-700'
-								: 'bg-green-600 hover:bg-green-700'}
+								? 'bg-destructive hover:bg-destructive/90'
+								: 'bg-success hover:bg-success/90'}
 						>
 							{selectedItem.is_active ? 'Deactivate' : 'Activate'} Member
 						</Button>

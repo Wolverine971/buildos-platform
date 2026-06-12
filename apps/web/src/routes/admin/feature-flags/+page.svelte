@@ -90,19 +90,15 @@
 	/>
 
 	{#if errorMessage}
-		<AdminCard
-			tone="danger"
-			padding="sm"
-			class="text-sm font-medium text-rose-900 dark:text-rose-100"
-		>
+		<AdminCard tone="danger" padding="sm" class="text-sm font-medium text-destructive">
 			{errorMessage}
 		</AdminCard>
 	{/if}
 
 	<AdminCard padding="none" class="overflow-hidden">
 		<div class="overflow-x-auto">
-			<table class="min-w-full divide-y divide-slate-200/70 text-sm dark:divide-slate-800/70">
-				<thead class="bg-slate-50/80/60">
+			<table class="min-w-full divide-y divide-border text-sm">
+				<thead class="bg-muted/60">
 					<tr
 						class="text-left text-xs font-semibold uppercase tracking-[0.24em] text-muted-foreground"
 					>
@@ -113,11 +109,9 @@
 						{/each}
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-slate-200/60 dark:divide-slate-800/60">
+				<tbody class="divide-y divide-border">
 					{#each data.users as user}
-						<tr
-							class="transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50"
-						>
+						<tr class="transition-colors hover:bg-muted/50">
 							<td class="px-5 py-4 align-middle">
 								<div class="flex flex-col gap-1.5">
 									<span class="text-sm font-semibold text-foreground">
@@ -144,7 +138,7 @@
 												<Badge
 													size="sm"
 													variant="info"
-													class="bg-slate-100 text-muted-foreground border-border dark:text-muted-foreground"
+													class="bg-muted text-muted-foreground border-border dark:text-muted-foreground"
 												>
 													Disabled
 												</Badge>

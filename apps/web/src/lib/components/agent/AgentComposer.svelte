@@ -186,7 +186,7 @@
 		if (attachment.status === 'error')
 			return 'border-destructive/30 bg-destructive/10 text-destructive';
 		if (attachment.status === 'ready' || attachment.status === 'deduped') {
-			return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+			return 'border-success/30 bg-success/10 text-success';
 		}
 		return 'border-accent/30 bg-accent/10 text-accent';
 	}

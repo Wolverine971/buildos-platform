@@ -65,7 +65,7 @@
 	{#if showProgressBar}
 		<div class="h-1 bg-muted rounded-t-lg">
 			<div
-				class="h-full bg-purple-600 transition-all duration-300"
+				class="h-full bg-accent transition-all duration-300"
 				style="width: {notification.progress?.percentage ?? 0}%"
 			></div>
 		</div>
@@ -74,11 +74,11 @@
 	<div class="p-4 flex items-center justify-between">
 		<div class="flex-shrink-0 mr-3">
 			{#if statusInfo.icon === 'processing'}
-				<LoaderCircle class="w-5 h-5 text-purple-600 animate-spin" />
+				<LoaderCircle class="w-5 h-5 text-accent animate-spin" />
 			{:else if statusInfo.icon === 'completed'}
-				<CheckCircle class="w-5 h-5 text-green-600" />
+				<CheckCircle class="w-5 h-5 text-success" />
 			{:else if statusInfo.icon === 'warning'}
-				<AlertCircle class="w-5 h-5 text-amber-600" />
+				<AlertCircle class="w-5 h-5 text-warning" />
 			{:else}
 				<Clock class="w-5 h-5 text-muted-foreground" />
 			{/if}
@@ -96,9 +96,7 @@
 		</div>
 
 		{#if notification.data.projectName}
-			<div
-				class="ml-2 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 rounded text-xs text-blue-700 dark:text-blue-300"
-			>
+			<div class="ml-2 px-2 py-1 bg-info/10 rounded text-xs text-info">
 				{notification.data.projectName}
 			</div>
 		{/if}

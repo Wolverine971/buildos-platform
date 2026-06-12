@@ -464,36 +464,30 @@
 	<!-- Poll error banner -->
 	{#if pollError}
 		<div
-			class="px-3 py-2 mb-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg tx tx-pulse tx-weak"
+			class="px-3 py-2 mb-4 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-pulse tx-weak"
 		>
-			<p class="text-sm font-medium text-red-900 dark:text-red-100">Data refresh error</p>
-			<p class="text-xs text-red-700 dark:text-red-300">{pollError}</p>
+			<p class="text-sm font-medium text-destructive">Data refresh error</p>
+			<p class="text-xs text-destructive">{pollError}</p>
 		</div>
 	{/if}
 
 	{#if actionError && run.status !== 'waiting_on_user'}
-		<div
-			class="px-3 py-2 mb-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg"
-		>
-			<p class="text-sm text-red-700 dark:text-red-300">{actionError}</p>
+		<div class="px-3 py-2 mb-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+			<p class="text-sm text-destructive">{actionError}</p>
 		</div>
 	{/if}
 
 	<!-- Waiting banner -->
 	{#if run.status === 'waiting_on_user'}
-		<div
-			class="px-3 py-2 mb-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg tx tx-pulse tx-weak"
-		>
-			<p class="text-sm font-medium text-blue-900 dark:text-blue-100">Action required.</p>
-			<p class="text-xs text-blue-700 dark:text-blue-300">
+		<div class="px-3 py-2 mb-4 bg-info/10 border border-info/30 rounded-lg tx tx-pulse tx-weak">
+			<p class="text-sm font-medium text-info">Action required.</p>
+			<p class="text-xs text-info">
 				{waitingQuestions.length > 0
 					? `Answer ${waitingQuestions.length} blocking question${waitingQuestions.length === 1 ? '' : 's'} below and continue.`
 					: 'Add answers below and press Continue.'}
 			</p>
 			{#if pausePollingForAnswer}
-				<p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
-					Live refresh is paused while you type.
-				</p>
+				<p class="text-xs text-info mt-1">Live refresh is paused while you type.</p>
 			{/if}
 		</div>
 	{/if}
@@ -507,13 +501,13 @@
 			<div class="micro-label text-muted-foreground mb-1">STATUS</div>
 			<div
 				class="text-base font-semibold capitalize {run.status === 'running'
-					? 'text-blue-600 dark:text-blue-400'
+					? 'text-info'
 					: run.status === 'stopped'
-						? 'text-amber-600 dark:text-amber-400'
+						? 'text-warning'
 						: run.status === 'completed'
-							? 'text-emerald-600 dark:text-emerald-400'
+							? 'text-success'
 							: run.status === 'waiting_on_user'
-								? 'text-purple-600 dark:text-purple-400'
+								? 'text-accent'
 								: 'text-foreground'}"
 			>
 				{run.status}
@@ -682,7 +676,7 @@
 				{#if scratchpadSaveStatus === 'saving'}
 					<span class="text-xs text-muted-foreground animate-pulse">Saving...</span>
 				{:else if scratchpadSaveStatus === 'saved'}
-					<span class="text-xs text-emerald-600 dark:text-emerald-400">Saved</span>
+					<span class="text-xs text-success">Saved</span>
 				{:else if scratchpadSaveStatus === 'error'}
 					<span class="text-xs text-destructive">Save failed</span>
 				{/if}
@@ -783,22 +777,22 @@
 								{@const iteration = step.iteration ?? latestPlan.iteration}
 								<li
 									class="flex items-start gap-3 p-2 rounded-lg {status === 'done'
-										? 'bg-emerald-50/50 dark:bg-emerald-950/20'
+										? 'bg-success/10'
 										: status === 'doing'
-											? 'bg-blue-50/50 dark:bg-blue-950/20'
+											? 'bg-info/10'
 											: status === 'blocked'
-												? 'bg-amber-50/50 dark:bg-amber-950/20'
+												? 'bg-warning/10'
 												: 'bg-muted/30'}"
 								>
 									<!-- Step number -->
 									<span
 										class="shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-medium {status ===
 										'done'
-											? 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+											? 'bg-success/20 text-success'
 											: status === 'doing'
-												? 'bg-blue-500/20 text-blue-700 dark:text-blue-300'
+												? 'bg-info/20 text-info'
 												: status === 'blocked'
-													? 'bg-amber-500/20 text-amber-700 dark:text-amber-300'
+													? 'bg-warning/20 text-warning'
 													: 'bg-muted text-muted-foreground'}"
 									>
 										{idx + 1}
@@ -810,7 +804,7 @@
 											<!-- Step title -->
 											<span
 												class="text-sm font-medium {status === 'done'
-													? 'text-emerald-900 dark:text-emerald-100 line-through'
+													? 'text-success line-through'
 													: 'text-foreground'}"
 											>
 												{step.title}
@@ -822,10 +816,10 @@
 												'pending'
 													? 'bg-muted text-muted-foreground'
 													: status === 'doing'
-														? 'bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300'
+														? 'bg-info/10 text-info'
 														: status === 'blocked'
-															? 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300'
-															: 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'}"
+															? 'bg-warning/10 text-warning'
+															: 'bg-success/10 text-success'}"
 											>
 												{status}
 											</span>
@@ -835,8 +829,8 @@
 										<div class="flex items-center gap-2 mt-1 text-[10px]">
 											<span
 												class="px-1 py-0.5 rounded {owner === 'executor'
-													? 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300'
-													: 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'}"
+													? 'bg-accent/10 text-accent'
+													: 'bg-info/10 text-info'}"
 											>
 												{owner}
 											</span>
@@ -881,9 +875,7 @@
 						</h3>
 						<ul class="space-y-1">
 							{#each latestPlan.completion_evidence as item}
-								<li
-									class="flex items-start gap-2 text-sm text-emerald-700 dark:text-emerald-300"
-								>
+								<li class="flex items-start gap-2 text-sm text-success">
 									<svg
 										class="w-4 h-4 shrink-0 mt-0.5"
 										fill="currentColor"
@@ -910,13 +902,13 @@
 							{@const hint = latestPlan.next_action_hint}
 							<span
 								class="px-2 py-0.5 text-xs font-medium rounded {hint === 'execute'
-									? 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
+									? 'bg-info/10 text-info'
 									: hint === 'replan'
-										? 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300'
+										? 'bg-warning/10 text-warning'
 										: hint === 'ask_user'
-											? 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300'
+											? 'bg-accent/10 text-accent'
 											: hint === 'stop'
-												? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
+												? 'bg-success/10 text-success'
 												: 'bg-muted text-muted-foreground'}"
 							>
 								{hint}
@@ -972,9 +964,7 @@
 				>
 					<div class="flex items-center gap-2">
 						<h2 class="text-sm font-semibold text-foreground">Executor Scratchpads</h2>
-						<span
-							class="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 rounded-full"
-						>
+						<span class="px-2 py-0.5 text-xs bg-accent/10 text-accent rounded-full">
 							{executorPads.length}
 						</span>
 					</div>
@@ -1016,11 +1006,11 @@
 	<!-- User Input (prominent when waiting on questions) -->
 	{#if run.status === 'waiting_on_user'}
 		<section
-			class="mb-6 p-4 sm:p-5 bg-amber-50/80 dark:bg-amber-950/20 border-2 border-amber-300 dark:border-amber-700 rounded-xl shadow-ink tx tx-grid tx-weak"
+			class="mb-6 p-4 sm:p-5 bg-warning/10 border-2 border-warning/40 rounded-xl shadow-ink tx tx-grid tx-weak"
 		>
 			<div class="flex items-start gap-3 mb-4">
 				<div
-					class="shrink-0 w-8 h-8 rounded-full bg-amber-200 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 flex items-center justify-center"
+					class="shrink-0 w-8 h-8 rounded-full bg-warning/20 text-warning flex items-center justify-center"
 				>
 					<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<path
@@ -1032,15 +1022,13 @@
 					</svg>
 				</div>
 				<div class="min-w-0">
-					<p
-						class="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-300"
-					>
+					<p class="text-xs font-semibold uppercase tracking-wider text-warning">
 						Homework blocked
 					</p>
 					<h2 class="text-xl font-semibold text-foreground">
 						Answer these question{waitingQuestions.length === 1 ? '' : 's'} to continue
 					</h2>
-					<p class="text-sm text-amber-900/80 dark:text-amber-200/80 mt-1">
+					<p class="text-sm text-muted-foreground mt-1">
 						The run will stay paused until you submit your response.
 					</p>
 				</div>
@@ -1049,12 +1037,8 @@
 			{#if waitingQuestions.length > 0}
 				<ol class="space-y-2 mb-4">
 					{#each waitingQuestions as question, idx}
-						<li
-							class="p-3 bg-background/70 border border-amber-200 dark:border-amber-800 rounded-lg"
-						>
-							<p
-								class="text-xs font-semibold text-amber-800 dark:text-amber-300 mb-1"
-							>
+						<li class="p-3 bg-background/70 border border-warning/30 rounded-lg">
+							<p class="text-xs font-semibold text-warning mb-1">
 								Question {idx + 1}
 							</p>
 							<p class="text-sm text-foreground">{question}</p>
@@ -1069,9 +1053,9 @@
 
 			{#if actionError}
 				<div
-					class="mb-3 px-3 py-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg"
+					class="mb-3 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg"
 				>
-					<p class="text-sm text-red-700 dark:text-red-300">{actionError}</p>
+					<p class="text-sm text-destructive">{actionError}</p>
 				</div>
 			{/if}
 
@@ -1100,7 +1084,7 @@
 
 			<div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 				{#if pausePollingForAnswer}
-					<p class="text-xs text-amber-800 dark:text-amber-300">
+					<p class="text-xs text-warning">
 						Background refresh paused while you compose your answer.
 					</p>
 				{:else}
@@ -1144,18 +1128,18 @@
 										<span
 											class="px-2 py-0.5 text-[0.65rem] uppercase tracking-wider font-medium rounded-full {iteration.status ===
 											'running'
-												? 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'
+												? 'bg-info/10 text-info'
 												: iteration.status === 'completed'
-													? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300'
+													? 'bg-success/10 text-success'
 													: iteration.status === 'failed'
-														? 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300'
+														? 'bg-destructive/10 text-destructive'
 														: 'bg-muted text-muted-foreground'}"
 										>
 											{iteration.status}
 										</span>
 										{#if iteration.error}
 											<span
-												class="px-2 py-0.5 text-[0.65rem] uppercase tracking-wider font-medium bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300 rounded-full"
+												class="px-2 py-0.5 text-[0.65rem] uppercase tracking-wider font-medium bg-destructive/10 text-destructive rounded-full"
 											>
 												Error
 											</span>
@@ -1204,13 +1188,11 @@
 									<!-- Error Details -->
 									{#if iteration.error}
 										<div>
-											<div
-												class="micro-label text-red-600 dark:text-red-400 mb-1"
-											>
+											<div class="micro-label text-destructive mb-1">
 												ERROR
 											</div>
 											<div
-												class="p-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded text-xs text-red-900 dark:text-red-100 font-mono"
+												class="p-2 bg-destructive/10 border border-destructive/30 rounded text-xs text-destructive font-mono"
 											>
 												{iteration.error}
 											</div>

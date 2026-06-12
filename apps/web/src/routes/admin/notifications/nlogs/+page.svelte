@@ -256,7 +256,7 @@
 				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
-					<Bell class="h-8 w-8 text-blue-600 mr-3" />
+					<Bell class="h-8 w-8 text-info mr-3" />
 					<div>
 						<h3 class="text-lg font-semibold text-foreground">Analytics</h3>
 						<p class="text-sm text-muted-foreground">View dashboard</p>
@@ -269,7 +269,7 @@
 				class="admin-panel p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
-					<Send class="h-8 w-8 text-green-600 mr-3" />
+					<Send class="h-8 w-8 text-success mr-3" />
 					<div>
 						<h3 class="text-lg font-semibold text-foreground">Test Bed</h3>
 						<p class="text-sm text-muted-foreground">Send test notifications</p>
@@ -279,10 +279,10 @@
 
 			<a
 				href="/admin/notifications/nlogs"
-				class="bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-200 dark:border-purple-800 rounded-lg p-6 hover:shadow-ink-strong transition-shadow"
+				class="bg-accent/10 border-2 border-accent/30 rounded-lg p-6 hover:shadow-ink-strong transition-shadow"
 			>
 				<div class="flex items-center">
-					<Eye class="h-8 w-8 text-purple-600 mr-3" />
+					<Eye class="h-8 w-8 text-accent mr-3" />
 					<div>
 						<h3 class="text-lg font-semibold text-foreground">Logs</h3>
 						<p class="text-sm text-muted-foreground">Current page</p>
@@ -299,7 +299,7 @@
 						type="checkbox"
 						bind:checked={autoRefresh}
 						onchange={toggleAutoRefresh}
-						class="h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500 cursor-pointer"
+						class="h-4 w-4 rounded border-border text-accent focus:ring-ring cursor-pointer"
 					/>
 					<span class="text-sm text-muted-foreground">Auto Refresh (30s)</span>
 				</label>
@@ -328,7 +328,7 @@
 						onclick={() => handleTabChange('events')}
 						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
 						'events'
-							? 'border-blue-500 text-blue-600 dark:text-blue-400'
+							? 'border-info text-info'
 							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						Event Log
@@ -338,7 +338,7 @@
 						onclick={() => handleTabChange('deliveries')}
 						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
 						'deliveries'
-							? 'border-blue-500 text-blue-600 dark:text-blue-400'
+							? 'border-info text-info'
 							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						Delivery Log
@@ -348,7 +348,7 @@
 						onclick={() => handleTabChange('system')}
 						class="shrink-0 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors {activeTab ===
 						'system'
-							? 'border-blue-500 text-blue-600 dark:text-blue-400'
+							? 'border-info text-info'
 							: 'border-transparent text-muted-foreground hover:text-foreground hover:border-border dark:text-muted-foreground dark:hover:text-muted-foreground'}"
 					>
 						System Logs

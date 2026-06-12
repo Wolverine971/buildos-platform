@@ -323,10 +323,12 @@
 			<p class="text-sm text-muted-foreground">Loading notification preferences...</p>
 		</div>
 	{:else if loadError}
-		<div class="bg-card rounded-lg border border-red-500/30 shadow-ink tx tx-static tx-weak">
+		<div
+			class="bg-card rounded-lg border border-destructive/30 shadow-ink tx tx-static tx-weak"
+		>
 			<div class="p-4">
 				<div class="flex items-start gap-3">
-					<AlertCircle class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+					<AlertCircle class="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
 					<div class="flex-1">
 						<h3 class="text-base font-semibold text-foreground mb-1">
 							Unable to Load Preferences
@@ -351,7 +353,7 @@
 		<div class="bg-card rounded-lg border border-border shadow-ink tx tx-frame tx-weak">
 			<div class="px-4 py-3 border-b border-border">
 				<div class="flex items-center gap-3">
-					<Bell class="w-5 h-5 text-purple-500" />
+					<Bell class="w-5 h-5 text-accent" />
 					<div>
 						<h3 class="text-base font-semibold text-foreground">
 							Daily Brief Notifications
@@ -368,7 +370,7 @@
 					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 				>
 					<div class="flex items-start gap-3">
-						<Mail class="w-5 h-5 text-blue-500 mt-0.5" />
+						<Mail class="w-5 h-5 text-info mt-0.5" />
 						<div>
 							<label
 								for="daily-brief-email"
@@ -390,7 +392,7 @@
 							onchange={(e) => handleDailyBriefEmailToggle(e.currentTarget.checked)}
 						/>
 						<div
-							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"
+							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"
 						></div>
 					</label>
 				</div>
@@ -400,7 +402,7 @@
 					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 				>
 					<div class="flex items-start gap-3">
-						<MessageSquare class="w-5 h-5 text-orange-500 mt-0.5" />
+						<MessageSquare class="w-5 h-5 text-accent mt-0.5" />
 						<div class="flex-1">
 							<label
 								for="daily-brief-sms"
@@ -412,9 +414,7 @@
 								Receive text messages when your brief is ready
 							</p>
 							{#if !phoneVerified}
-								<div
-									class="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600"
-								>
+								<div class="mt-1.5 flex items-center gap-1.5 text-xs text-warning">
 									<AlertCircle class="w-3.5 h-3.5" />
 									<span>Phone verification required</span>
 								</div>
@@ -434,7 +434,7 @@
 							onchange={(e) => handleDailyBriefSmsToggle(e.currentTarget.checked)}
 						/>
 						<div
-							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-600"
+							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"
 						></div>
 					</label>
 				</div>
@@ -445,7 +445,7 @@
 		<div class="bg-card rounded-lg border border-border shadow-ink tx tx-frame tx-weak">
 			<div class="px-4 py-3 border-b border-border">
 				<div class="flex items-center gap-3">
-					<Bell class="w-5 h-5 text-purple-500" />
+					<Bell class="w-5 h-5 text-accent" />
 					<div>
 						<h3 class="text-base font-semibold text-foreground">
 							Additional Notification Channels
@@ -462,7 +462,7 @@
 					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 				>
 					<div class="flex items-start gap-3">
-						<Smartphone class="w-5 h-5 text-green-500 mt-0.5" />
+						<Smartphone class="w-5 h-5 text-success mt-0.5" />
 						<div class="flex-1">
 							<label
 								for="push-notifications"
@@ -496,22 +496,24 @@
 									</span>
 								</div>
 							{:else if pushEnabled && !pushSubscribed}
-								<div
-									class="mt-1.5 flex items-center gap-1.5 text-xs text-amber-600"
-								>
+								<div class="mt-1.5 flex items-center gap-1.5 text-xs text-warning">
 									<AlertCircle class="w-3.5 h-3.5" />
 									<span>Browser permission required</span>
 								</div>
 							{:else if pushEnabled && pushSubscribed}
-								<div class="mt-1 text-xs text-green-600">✓ Active subscription</div>
+								<div class="mt-1 text-xs text-success">✓ Active subscription</div>
 							{:else if pushPermissionStatus === 'denied'}
-								<div class="mt-1.5 flex items-center gap-1.5 text-xs text-red-500">
+								<div
+									class="mt-1.5 flex items-center gap-1.5 text-xs text-destructive"
+								>
 									<AlertCircle class="w-3.5 h-3.5" />
 									<span>Permission denied - check browser settings</span>
 								</div>
 							{/if}
 							{#if pushSubscriptionError}
-								<div class="mt-1.5 flex items-start gap-1.5 text-xs text-red-500">
+								<div
+									class="mt-1.5 flex items-start gap-1.5 text-xs text-destructive"
+								>
 									<AlertCircle class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
 									<span>{pushSubscriptionError}</span>
 								</div>
@@ -528,7 +530,7 @@
 							disabled={!pushSupported}
 						/>
 						<div
-							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
 						></div>
 					</label>
 				</div>
@@ -538,7 +540,7 @@
 					class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 				>
 					<div class="flex items-start gap-3">
-						<Bell class="w-5 h-5 text-purple-500 mt-0.5" />
+						<Bell class="w-5 h-5 text-accent mt-0.5" />
 						<div>
 							<label
 								for="in-app-notifications"
@@ -560,16 +562,16 @@
 							onchange={(e) => handleInAppToggle(e.currentTarget.checked)}
 						/>
 						<div
-							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"
+							class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"
 						></div>
 					</label>
 				</div>
 
 				{#if !hasAnyChannelEnabled}
 					<div
-						class="flex items-start gap-3 p-3 bg-amber-500/10 rounded-lg border border-amber-500/30"
+						class="flex items-start gap-3 p-3 bg-warning/10 rounded-lg border border-warning/30"
 					>
-						<Moon class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+						<Moon class="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
 						<p class="text-sm text-foreground">
 							All notification channels are disabled. Enable at least one channel
 							above to receive daily brief notifications.
@@ -580,7 +582,7 @@
 				<!-- Quiet Hours -->
 				<div class="border-t border-border pt-4">
 					<div class="flex items-start gap-3 mb-3">
-						<Moon class="w-5 h-5 text-indigo-500 mt-0.5" />
+						<Moon class="w-5 h-5 text-info mt-0.5" />
 						<div class="flex-1">
 							<div class="flex items-center justify-between">
 								<div>
@@ -597,7 +599,7 @@
 										bind:checked={quietHoursEnabled}
 									/>
 									<div
-										class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"
+										class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"
 									></div>
 								</label>
 							</div>

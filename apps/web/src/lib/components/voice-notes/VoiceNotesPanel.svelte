@@ -82,7 +82,7 @@
 	/>
 
 	{#if errorMessage}
-		<p class="text-sm text-red-600">{errorMessage}</p>
+		<p class="text-sm text-destructive">{errorMessage}</p>
 	{/if}
 
 	{#if isLoading}

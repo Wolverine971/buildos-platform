@@ -164,13 +164,11 @@
 	<div class="text-center mb-10" in:scale={{ duration: 400, start: 0.8 }}>
 		<div class="flex justify-center mb-6">
 			<div class="relative">
+				<div class="absolute inset-0 bg-success/20 blur-2xl opacity-40 animate-pulse"></div>
 				<div
-					class="absolute inset-0 bg-emerald-500/20 blur-2xl opacity-40 animate-pulse"
-				></div>
-				<div
-					class="relative w-20 h-20 bg-emerald-600 rounded-full flex items-center justify-center shadow-ink-strong tx tx-bloom tx-weak"
+					class="relative w-20 h-20 bg-success rounded-full flex items-center justify-center shadow-ink-strong tx tx-bloom tx-weak"
 				>
-					<CheckCircle class="w-10 h-10 text-white" />
+					<CheckCircle class="w-10 h-10 text-success-foreground" />
 				</div>
 			</div>
 		</div>
@@ -228,7 +226,7 @@
 
 			{#if usernameSaved}
 				<div
-					class="flex items-center gap-2 rounded-md bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-400"
+					class="flex items-center gap-2 rounded-md bg-success/10 px-3 py-2 text-sm text-success"
 				>
 					<Check class="w-4 h-4 shrink-0" />
 					<span>

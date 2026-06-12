@@ -160,7 +160,7 @@
 		<div class="bg-card rounded-lg border border-border shadow-ink tx tx-frame tx-weak">
 			<div class="px-4 py-3 border-b border-border">
 				<div class="flex items-center gap-3">
-					<Phone class="w-5 h-5 text-blue-500" />
+					<Phone class="w-5 h-5 text-info" />
 					<div>
 						<h3 class="text-base font-semibold text-foreground">Phone Number</h3>
 						<p class="text-sm text-muted-foreground">
@@ -175,10 +175,10 @@
 				{:else}
 					<div class="space-y-3">
 						<div
-							class="flex items-center justify-between rounded-lg p-3 bg-emerald-500/10 border border-emerald-500/30"
+							class="flex items-center justify-between rounded-lg p-3 bg-success/10 border border-success/30"
 						>
 							<div class="flex items-center gap-3">
-								<Phone class="w-5 h-5 text-emerald-600" />
+								<Phone class="w-5 h-5 text-success" />
 								<div>
 									<p class="font-medium text-foreground">Verified Phone</p>
 									<p class="text-sm text-muted-foreground">
@@ -186,7 +186,7 @@
 									</p>
 								</div>
 							</div>
-							<div class="flex items-center gap-2 text-emerald-600">
+							<div class="flex items-center gap-2 text-success">
 								<Check class="w-5 h-5" />
 								<span class="font-medium">Verified</span>
 							</div>
@@ -194,11 +194,9 @@
 
 						{#if isOptedOut}
 							<div
-								class="flex items-start gap-3 p-3 bg-amber-500/10 rounded-lg border border-amber-500/30"
+								class="flex items-start gap-3 p-3 bg-warning/10 rounded-lg border border-warning/30"
 							>
-								<AlertTriangle
-									class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
-								/>
+								<AlertTriangle class="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
 								<p class="text-sm text-foreground">
 									You have opted out of SMS notifications. Re-enable notifications
 									below to start receiving them again.
@@ -215,7 +213,7 @@
 			<div class="bg-card rounded-lg border border-border shadow-ink tx tx-frame tx-weak">
 				<div class="px-4 py-3 border-b border-border">
 					<div class="flex items-center gap-3">
-						<Bell class="w-5 h-5 text-purple-500" />
+						<Bell class="w-5 h-5 text-accent" />
 						<div>
 							<h3 class="text-base font-semibold text-foreground">
 								SMS Notifications
@@ -233,7 +231,7 @@
 							class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 						>
 							<div class="flex items-start gap-3">
-								<Bell class="w-5 h-5 text-blue-500 mt-0.5" />
+								<Bell class="w-5 h-5 text-info mt-0.5" />
 								<div>
 									<label
 										for="event-reminders"
@@ -255,7 +253,7 @@
 									disabled={isOptedOut}
 								/>
 								<div
-									class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+									class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
 								></div>
 							</label>
 						</div>
@@ -285,7 +283,7 @@
 							class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 						>
 							<div class="flex items-start gap-3">
-								<Sun class="w-5 h-5 text-amber-500 mt-0.5" />
+								<Sun class="w-5 h-5 text-warning mt-0.5" />
 								<div>
 									<label
 										for="morning-kickoff"
@@ -307,7 +305,7 @@
 									disabled={isOptedOut}
 								/>
 								<div
-									class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+									class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
 								></div>
 							</label>
 						</div>
@@ -332,7 +330,7 @@
 						class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 					>
 						<div class="flex items-start gap-3">
-							<Moon class="w-5 h-5 text-indigo-500 mt-0.5" />
+							<Moon class="w-5 h-5 text-info mt-0.5" />
 							<div>
 								<label
 									for="evening-recap"
@@ -354,7 +352,7 @@
 								disabled={isOptedOut}
 							/>
 							<div
-								class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+								class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
 							></div>
 						</label>
 					</div>
@@ -364,7 +362,7 @@
 						class="flex items-start justify-between p-3 rounded-lg hover:bg-muted transition-colors"
 					>
 						<div class="flex items-start gap-3">
-							<AlertTriangle class="w-5 h-5 text-red-500 mt-0.5" />
+							<AlertTriangle class="w-5 h-5 text-destructive mt-0.5" />
 							<div>
 								<label
 									for="urgent-alerts"
@@ -386,7 +384,7 @@
 								disabled={isOptedOut}
 							/>
 							<div
-								class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
+								class="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-card after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"
 							></div>
 						</label>
 					</div>
@@ -394,7 +392,7 @@
 					<!-- Quiet Hours -->
 					<div class="border-t border-border pt-4">
 						<div class="flex items-start gap-3 mb-3">
-							<Moon class="w-5 h-5 text-indigo-500 mt-0.5" />
+							<Moon class="w-5 h-5 text-info mt-0.5" />
 							<div>
 								<h4 class="font-medium text-foreground">Quiet Hours</h4>
 								<p class="text-sm text-muted-foreground mt-0.5">
@@ -445,7 +443,7 @@
 								onclick={handleOptOut}
 								variant="outline"
 								icon={XCircle}
-								class="border-red-500/30 text-red-600 hover:bg-red-500/10 hover:text-red-700 hover:border-red-500/50 pressable"
+								class="border-destructive/30 text-destructive hover:bg-destructive/10 hover:border-destructive/50 pressable"
 							>
 								Opt Out of SMS
 							</Button>

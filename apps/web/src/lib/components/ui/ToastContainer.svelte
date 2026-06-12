@@ -3,16 +3,21 @@
 	import { toasts, toastService } from '$lib/stores/toast.store';
 	import Toast from './Toast.svelte';
 	import { flip } from 'svelte/animate';
-	import { fly, fade } from 'svelte/transition';
+	import { fly } from 'svelte/transition';
 	import { cubicOut, cubicIn } from 'svelte/easing';
 
 	function handleDismiss(id: string) {
 		toastService.remove(id);
 	}
 
-	// Determine if we're on mobile (for animation direction)
-	// Using a simple approach - animations adapt based on container position
+	// Toasts are bottom-anchored below md (768px) and top-right above it; the
+	// exit animation direction must match (slide down on mobile, slide right
+	// on desktop).
+	let viewportWidth = $state(0);
+	const isBottomAnchored = $derived(viewportWidth > 0 && viewportWidth < 768);
 </script>
+
+<svelte:window bind:innerWidth={viewportWidth} />
 
 <!--
 	Toast Container - Mobile-first positioning
@@ -59,8 +64,8 @@
 				easing: cubicOut
 			}}
 			out:fly={{
-				y: 0,
-				x: 100,
+				y: isBottomAnchored ? 20 : 0,
+				x: isBottomAnchored ? 0 : 100,
 				duration: 200,
 				easing: cubicIn
 			}}
@@ -71,16 +76,7 @@
 	{/each}
 </div>
 
-<!-- Mobile-specific slide-up animation override -->
 <style>
-	/* On mobile + landscape phones (<md:768), override exit animation to slide down */
-	@media (max-width: 767px) {
-		div > div {
-			--exit-y: 20px;
-			--exit-x: 0;
-		}
-	}
-
 	/* Ensure container doesn't block interactions when empty */
 	div:empty {
 		display: none;

@@ -156,11 +156,9 @@
 				<h2 class="text-2xl font-bold text-foreground mb-4">
 					Data Sharing with AI Providers
 				</h2>
-				<div class="bg-amber-500/10 rounded-lg p-6 mb-4">
+				<div class="bg-warning/10 rounded-lg p-6 mb-4">
 					<div class="flex items-start">
-						<ExternalLink
-							class="w-5 h-5 text-amber-600 dark:text-amber-400 mr-3 mt-0.5 flex-shrink-0"
-						/>
+						<ExternalLink class="w-5 h-5 text-warning mr-3 mt-0.5 flex-shrink-0" />
 						<div>
 							<h3 class="font-semibold text-foreground mb-2">
 								Important: AI Processing
@@ -347,9 +345,9 @@
 							You can download your projects, tasks, and notes at any time.
 						</p>
 					</div>
-					<div class="bg-red-500/10 rounded-lg p-6">
+					<div class="bg-destructive/10 rounded-lg p-6">
 						<div class="flex items-center mb-3">
-							<Trash2 class="w-5 h-5 text-red-600 dark:text-red-400 mr-2" />
+							<Trash2 class="w-5 h-5 text-destructive mr-2" />
 							<h3 class="font-semibold text-foreground">Data Deletion</h3>
 						</div>
 						<p class="text-sm text-muted-foreground">

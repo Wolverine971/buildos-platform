@@ -53,6 +53,8 @@
 		shortLabel: string;
 		accent: string;
 		bg: string;
+		/** Literal active-tab tint class (Tailwind needs literals, not derived strings). */
+		activeBg?: string;
 		icon: typeof Circle;
 		/** Optional accent applied to count chip when bucket has items even
 		    when its tab is not selected — used to keep Overdue visibly red. */
@@ -64,33 +66,37 @@
 			key: 'overdue',
 			label: 'Overdue',
 			shortLabel: 'Overdue',
-			accent: 'text-rose-500',
-			bg: 'bg-rose-500/10',
+			accent: 'text-destructive',
+			bg: 'bg-destructive/10',
+			activeBg: 'bg-destructive/5',
 			icon: AlertTriangle,
-			populatedAccent: 'text-rose-600 dark:text-rose-400'
+			populatedAccent: 'text-destructive'
 		},
 		{
 			key: 'in_progress',
 			label: 'In progress',
 			shortLabel: 'Active',
-			accent: 'text-sky-500',
-			bg: 'bg-sky-500/10',
+			accent: 'text-info',
+			bg: 'bg-info/10',
+			activeBg: 'bg-info/5',
 			icon: Flame
 		},
 		{
 			key: 'scheduled',
 			label: 'Scheduled',
 			shortLabel: 'Scheduled',
-			accent: 'text-violet-500',
-			bg: 'bg-violet-500/10',
+			accent: 'text-accent',
+			bg: 'bg-accent/10',
+			activeBg: 'bg-accent/5',
 			icon: CalendarClock
 		},
 		{
 			key: 'blocked',
 			label: 'Blocked',
 			shortLabel: 'Blocked',
-			accent: 'text-amber-500',
-			bg: 'bg-amber-500/10',
+			accent: 'text-warning',
+			bg: 'bg-warning/10',
+			activeBg: 'bg-warning/5',
 			icon: PauseCircle
 		},
 		{
@@ -105,8 +111,9 @@
 			key: 'done',
 			label: 'Done',
 			shortLabel: 'Done',
-			accent: 'text-emerald-500',
-			bg: 'bg-emerald-500/10',
+			accent: 'text-success',
+			bg: 'bg-success/10',
+			activeBg: 'bg-success/5',
 			icon: CheckCircle2
 		},
 		{
@@ -268,9 +275,9 @@
 		className: string;
 	} | null {
 		if (typeof p !== 'number') return null;
-		if (p <= 1) return { label: 'P1', className: 'text-rose-600 dark:text-rose-400' };
-		if (p === 2) return { label: 'P2', className: 'text-amber-600 dark:text-amber-400' };
-		if (p === 3) return { label: 'P3', className: 'text-sky-600 dark:text-sky-400' };
+		if (p <= 1) return { label: 'P1', className: 'text-destructive' };
+		if (p === 2) return { label: 'P2', className: 'text-warning' };
+		if (p === 3) return { label: 'P3', className: 'text-info' };
 		return null;
 	}
 
@@ -415,7 +422,7 @@
 								onclick={() => selectTab(bucket.key)}
 								class="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold whitespace-nowrap transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset border-b-2 min-h-[44px]
 							{isActive
-									? `${bucket.accent} ${bucket.bg.replace('/10', '/5')} border-current`
+									? `${bucket.accent} ${bucket.activeBg ?? bucket.bg} border-current`
 									: 'text-muted-foreground hover:text-foreground hover:bg-muted/40 border-transparent'}"
 							>
 								<bucket.icon
@@ -432,7 +439,7 @@
 									{isActive
 											? 'bg-background/80 text-foreground border border-border/40'
 											: isPopulated && bucket.populatedAccent
-												? `${bucket.populatedAccent} bg-rose-500/10`
+												? `${bucket.populatedAccent} bg-destructive/10`
 												: 'text-muted-foreground bg-muted/60'}"
 									>
 										{count}

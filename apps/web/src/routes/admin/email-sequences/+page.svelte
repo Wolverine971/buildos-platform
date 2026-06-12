@@ -468,13 +468,13 @@
 
 	function statusClasses(status: string): string {
 		if (status === 'override' || status === 'ready' || status === 'active') {
-			return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+			return 'bg-success/10 text-success';
 		}
 		if (status === 'waiting' || status === 'paused' || status === 'processing') {
-			return 'bg-amber-500/10 text-amber-700 dark:text-amber-300';
+			return 'bg-warning/10 text-warning';
 		}
 		if (status === 'blocked' || status === 'failed' || status === 'errored') {
-			return 'bg-red-500/10 text-red-700 dark:text-red-300';
+			return 'bg-destructive/10 text-destructive';
 		}
 		return 'bg-muted text-muted-foreground';
 	}
@@ -496,7 +496,7 @@
 		</AdminCard>
 	{:else if form?.success}
 		<AdminCard tone="success" padding="sm">
-			<div class="flex items-start gap-3 text-sm text-emerald-800">
+			<div class="flex items-start gap-3 text-sm text-success">
 				<CheckCircle2 class="mt-0.5 h-4 w-4 shrink-0" />
 				<p>{form.message}</p>
 			</div>
@@ -528,14 +528,14 @@
 		</AdminCard>
 		<AdminCard tone="info" padding="md">
 			<div class="flex items-center gap-2">
-				<Users class="h-4 w-4 text-sky-700" />
+				<Users class="h-4 w-4 text-info" />
 				<p class="text-sm font-medium text-muted-foreground">People In View</p>
 			</div>
 			<p class="mt-2 text-3xl font-bold text-foreground">{recipients.length}</p>
 		</AdminCard>
 		<AdminCard tone="success" padding="md">
 			<div class="flex items-center gap-2">
-				<Clock3 class="h-4 w-4 text-emerald-700" />
+				<Clock3 class="h-4 w-4 text-success" />
 				<p class="text-sm font-medium text-muted-foreground">Ready Or Active</p>
 			</div>
 			<p class="mt-2 text-3xl font-bold text-foreground">
@@ -614,7 +614,7 @@
 			{/if}
 
 			{#if (data.reactivation?.cohortOptions ?? []).length === 0}
-				<div class="mt-4 rounded-md border border-amber-500/30 bg-amber-500/10 p-4">
+				<div class="mt-4 rounded-md border border-warning/30 bg-warning/10 p-4">
 					<div class="flex flex-wrap items-start justify-between gap-4">
 						<div>
 							<p class="text-sm font-semibold text-foreground">
@@ -650,7 +650,7 @@
 				</div>
 			{:else if cohortMessage}
 				<div
-					class="mt-4 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-800"
+					class="mt-4 rounded-md border border-success/40 bg-success/10 p-3 text-sm text-success"
 				>
 					{cohortMessage}
 				</div>
@@ -1011,7 +1011,7 @@
 									</span>
 								</div>
 								{#if recipient.returnedAt}
-									<p class="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
+									<p class="mt-1 text-xs text-success">
 										Returned {formatCompactDate(recipient.returnedAt)}
 									</p>
 								{/if}
@@ -1019,7 +1019,7 @@
 							<td class="px-4 py-3 text-muted-foreground">
 								<p>{formatCompactDate(recipient.lastActivityAt)}</p>
 								{#if recipient.firstActionAt}
-									<p class="mt-1 text-xs text-emerald-700 dark:text-emerald-300">
+									<p class="mt-1 text-xs text-success">
 										Action {formatCompactDate(recipient.firstActionAt)}
 									</p>
 								{/if}
@@ -1113,7 +1113,7 @@
 				</div>
 			{:else if form?.success}
 				<div
-					class="flex items-start gap-3 rounded-md border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-800"
+					class="flex items-start gap-3 rounded-md border border-success/40 bg-success/10 p-3 text-sm text-success"
 				>
 					<CheckCircle2 class="mt-0.5 h-4 w-4 shrink-0" />
 					<p>{form.message}</p>
@@ -1355,7 +1355,7 @@
 											</p>
 											{#if item.afterFirstSend}
 												<span
-													class="rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300"
+													class="rounded-md bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success"
 												>
 													after email
 												</span>

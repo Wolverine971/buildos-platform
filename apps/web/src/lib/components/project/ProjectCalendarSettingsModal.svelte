@@ -180,12 +180,12 @@
 	function getItemColorClass(item: CalendarItem): string {
 		if (item.item_type === 'task') {
 			if (item.item_kind === 'range') {
-				return 'bg-emerald-500/10 border border-emerald-500/30';
+				return 'bg-success/10 border border-success/30';
 			}
 			if (item.item_kind === 'start') {
-				return 'bg-sky-500/10 border border-sky-500/30';
+				return 'bg-info/10 border border-info/30';
 			}
-			return 'bg-amber-500/10 border border-amber-500/30';
+			return 'bg-warning/10 border border-warning/30';
 		}
 		return 'bg-muted border border-border';
 	}
@@ -465,7 +465,7 @@
 		) {
 			return {
 				label: `Retrying (${target.queue_attempts ?? 0}/${target.queue_max_attempts ?? '?'})`,
-				className: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-500/30'
+				className: 'bg-info/10 text-info border border-info/30'
 			};
 		}
 		if (target.sync_status === 'failed' || target.queue_status === 'failed') {
@@ -477,8 +477,7 @@
 		if (target.sync_status === 'synced') {
 			return {
 				label: 'Synced',
-				className:
-					'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+				className: 'bg-success/10 text-success border border-success/30'
 			};
 		}
 		if (target.sync_status === 'cancelled') {
@@ -578,15 +577,13 @@
 		if (!member.sync_enabled) {
 			return {
 				label: 'Sync off',
-				className:
-					'bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30'
+				className: 'bg-warning/10 text-warning border border-warning/30'
 			};
 		}
 
 		return {
 			label: 'Synced',
-			className:
-				'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+			className: 'bg-success/10 text-success border border-success/30'
 		};
 	}
 
@@ -748,7 +745,11 @@
 	{/snippet}
 
 	{#snippet children()}
-		<div class="flex h-[72vh] max-h-[72vh] flex-col bg-background tx tx-frame tx-weak">
+		<!-- dvh (not vh) so the fixed pane never exceeds the visible iOS viewport;
+		     subtract --keyboard-height so internal scroll stays usable while typing -->
+		<div
+			class="flex h-[calc(72dvh-var(--keyboard-height,0px))] max-h-[calc(72dvh-var(--keyboard-height,0px))] flex-col bg-background tx tx-frame tx-weak"
+		>
 			<div class="px-3 sm:px-4 pt-2 border-b border-border">
 				<TabNav
 					{tabs}
@@ -853,7 +854,7 @@
 										</div>
 										{#if calendarExists}
 											<div
-												class="flex items-center gap-1.5 px-2 py-1 bg-emerald-500/10 rounded-lg text-xs font-medium text-emerald-600 dark:text-emerald-400"
+												class="flex items-center gap-1.5 px-2 py-1 bg-success/10 rounded-lg text-xs font-medium text-success"
 											>
 												<Check class="h-3 w-3" />
 												<span class="hidden sm:inline">Connected</span>
@@ -1091,7 +1092,7 @@
 												{/each}
 												{#each collaborationSummary.pending_invites as invite}
 													<div
-														class="flex items-start justify-between gap-2 rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 px-2.5 py-2"
+														class="flex items-start justify-between gap-2 rounded-md border border-dashed border-warning/40 bg-warning/5 px-2.5 py-2"
 													>
 														<div class="min-w-0">
 															<p
@@ -1107,7 +1108,7 @@
 														</div>
 														<div class="flex flex-col items-end gap-1">
 															<span
-																class="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30"
+																class="shrink-0 rounded px-2 py-0.5 text-[10px] font-medium bg-warning/10 text-warning border border-warning/30"
 															>
 																Pending invite
 															</span>

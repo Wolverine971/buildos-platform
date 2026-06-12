@@ -1536,7 +1536,7 @@
 					{:else if showAddedFeedback}
 						<!-- Extended "Added" indicator (shows for 1.5 seconds) -->
 						<span
-							class="flex items-center gap-1.5 text-green-600 dark:text-green-400 animate-in fade-in duration-200"
+							class="flex items-center gap-1.5 text-success animate-in fade-in duration-200"
 						>
 							<svg
 								class="h-3.5 w-3.5 shrink-0"

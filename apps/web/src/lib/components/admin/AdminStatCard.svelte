@@ -80,9 +80,9 @@
 	let changeClasses = $derived.by(() => {
 		switch (resolvedDirection) {
 			case 'up':
-				return 'text-emerald-600 dark:text-emerald-400';
+				return 'text-success';
 			case 'down':
-				return 'text-rose-600 dark:text-rose-400';
+				return 'text-destructive';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -106,7 +106,7 @@
 	let iconWrapperClasses = $derived(
 		ultraCompact
 			? 'flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground'
-			: `flex ${compact ? 'h-10 w-10' : 'h-11 w-11'} items-center justify-center rounded-xl bg-muted text-muted-foreground ${iconColor ? `text-${iconColor}-600` : ''}`
+			: `flex ${compact ? 'h-10 w-10' : 'h-11 w-11'} items-center justify-center rounded-xl bg-muted text-muted-foreground ${iconColor ?? ''}`
 	);
 
 	let iconSize = $derived(ultraCompact ? 'h-3.5 w-3.5' : compact ? 'h-5 w-5' : 'h-6 w-6');
@@ -158,9 +158,9 @@
 		{#if changeText}
 			<div class={`flex items-center gap-3 text-sm ${compact ? 'mt-3' : 'mt-4'}`}>
 				{#if resolvedDirection === 'up'}
-					<TrendingUp class="h-4 w-4 text-emerald-500" />
+					<TrendingUp class="h-4 w-4 text-success" />
 				{:else if resolvedDirection === 'down'}
-					<TrendingDown class="h-4 w-4 text-rose-500" />
+					<TrendingDown class="h-4 w-4 text-destructive" />
 				{:else}
 					<span class="h-2 w-2 rounded-full bg-muted-foreground/50"></span>
 				{/if}

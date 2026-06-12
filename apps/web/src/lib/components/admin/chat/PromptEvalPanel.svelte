@@ -64,7 +64,7 @@
 		</div>
 	</div>
 	{#if evalErrorByTurnId[run.id]}
-		<div class="text-xs text-red-600 dark:text-red-400">
+		<div class="text-xs text-destructive">
 			{evalErrorByTurnId[run.id]}
 		</div>
 	{/if}
@@ -85,10 +85,10 @@
 								<span
 									class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium {evalRun.status ===
 									'passed'
-										? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+										? 'bg-success/10 text-success'
 										: evalRun.status === 'failed'
-											? 'bg-red-500/10 text-red-700 dark:text-red-300'
-											: 'bg-amber-500/10 text-amber-700 dark:text-amber-300'}"
+											? 'bg-destructive/10 text-destructive'
+											: 'bg-warning/10 text-warning'}"
 								>
 									{evalRun.status}
 								</span>

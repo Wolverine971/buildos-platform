@@ -216,7 +216,7 @@
 
 	function getGainClass(ms: number | null | undefined): string {
 		if (ms === null || ms === undefined || Math.abs(ms) < 1) return 'text-muted-foreground';
-		return ms > 0 ? 'text-emerald-500' : 'text-red-500';
+		return ms > 0 ? 'text-success' : 'text-destructive';
 	}
 
 	function formatDate(dateString: string): string {
@@ -433,12 +433,12 @@
 
 	{#if error}
 		<div
-			class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
+			class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
 			role="alert"
 		>
 			<div class="flex items-center gap-2">
-				<AlertCircle class="h-5 w-5 text-red-500 shrink-0" />
-				<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
+				<AlertCircle class="h-5 w-5 text-destructive shrink-0" />
+				<p class="text-sm text-destructive">{error}</p>
 			</div>
 		</div>
 	{/if}
@@ -464,11 +464,11 @@
 						>
 							TTFR p50
 						</p>
-						<p class="text-2xl font-bold text-blue-500 mt-1">
+						<p class="text-2xl font-bold text-info mt-1">
 							{formatMs(timingData.percentiles.ttfr.p50)}
 						</p>
 					</div>
-					<Clock class="h-7 w-7 text-blue-500 shrink-0 ml-3" />
+					<Clock class="h-7 w-7 text-info shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					p95: {formatMs(timingData.percentiles.ttfr.p95)}
@@ -484,11 +484,11 @@
 						>
 							TTFE p50
 						</p>
-						<p class="text-2xl font-bold text-indigo-500 mt-1">
+						<p class="text-2xl font-bold text-info mt-1">
 							{formatMs(timingData.percentiles.ttfe.p50)}
 						</p>
 					</div>
-					<Zap class="h-7 w-7 text-indigo-500 shrink-0 ml-3" />
+					<Zap class="h-7 w-7 text-info shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					p95: {formatMs(timingData.percentiles.ttfe.p95)}
@@ -504,11 +504,11 @@
 						>
 							Plan Invoked
 						</p>
-						<p class="text-2xl font-bold text-purple-500 mt-1">
+						<p class="text-2xl font-bold text-accent mt-1">
 							{formatPercent(timingData.summary.percent_plan_invoked)}
 						</p>
 					</div>
-					<Target class="h-7 w-7 text-purple-500 shrink-0 ml-3" />
+					<Target class="h-7 w-7 text-accent shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{timingData.summary.total_requests} total requests
@@ -524,11 +524,11 @@
 						>
 							Clarification
 						</p>
-						<p class="text-2xl font-bold text-amber-500 mt-1">
+						<p class="text-2xl font-bold text-warning mt-1">
 							{formatPercent(timingData.summary.percent_clarification)}
 						</p>
 					</div>
-					<Activity class="h-7 w-7 text-amber-500 shrink-0 ml-3" />
+					<Activity class="h-7 w-7 text-warning shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">Required clarifying questions</div>
 			</div>
@@ -538,7 +538,7 @@
 		<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak mb-6">
 			<div class="p-4 border-b border-border">
 				<h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
-					<Zap class="h-4 w-4 text-indigo-500" />
+					<Zap class="h-4 w-4 text-info" />
 					Prewarm Impact
 				</h3>
 			</div>
@@ -561,7 +561,7 @@
 						>
 							Prepared Hit Rate
 						</p>
-						<p class="text-xl font-bold text-emerald-500 mt-1">
+						<p class="text-xl font-bold text-success mt-1">
 							{formatPercent(timingData.prepared_prompt.hit_rate)}
 						</p>
 					</div>
@@ -571,7 +571,7 @@
 						>
 							Prepared Hits
 						</p>
-						<p class="text-xl font-bold text-indigo-500 mt-1">
+						<p class="text-xl font-bold text-info mt-1">
 							{timingData.prepared_prompt.hit_count}
 						</p>
 					</div>
@@ -581,7 +581,7 @@
 						>
 							Prepared Misses
 						</p>
-						<p class="text-xl font-bold text-amber-500 mt-1">
+						<p class="text-xl font-bold text-warning mt-1">
 							{timingData.prepared_prompt.miss_count}
 						</p>
 					</div>
@@ -744,7 +744,7 @@
 						</div>
 						<div class="w-full bg-muted rounded-full h-2">
 							<div
-								class="bg-blue-500 h-2 rounded-full transition-all duration-300"
+								class="bg-info h-2 rounded-full transition-all duration-300"
 								style="width: {getLatencyPercent(
 									timingData.latency_breakdown.context_build_ms
 								)}"
@@ -760,11 +760,11 @@
 								class="text-xs font-medium {getToolSelectionWarning(
 									timingData.latency_breakdown.tool_selection_ms
 								) === 'critical'
-									? 'text-red-500'
+									? 'text-destructive'
 									: getToolSelectionWarning(
 												timingData.latency_breakdown.tool_selection_ms
 										  ) === 'warning'
-										? 'text-amber-500'
+										? 'text-warning'
 										: 'text-foreground'}"
 							>
 								{formatMs(timingData.latency_breakdown.tool_selection_ms)}
@@ -772,7 +772,7 @@
 						</div>
 						<div class="w-full bg-muted rounded-full h-2">
 							<div
-								class="bg-indigo-500 h-2 rounded-full transition-all duration-300"
+								class="bg-info h-2 rounded-full transition-all duration-300"
 								style="width: {getLatencyPercent(
 									timingData.latency_breakdown.tool_selection_ms
 								)}"
@@ -790,7 +790,7 @@
 						</div>
 						<div class="w-full bg-muted rounded-full h-2">
 							<div
-								class="bg-amber-500 h-2 rounded-full transition-all duration-300"
+								class="bg-warning h-2 rounded-full transition-all duration-300"
 								style="width: {getLatencyPercent(
 									timingData.latency_breakdown.clarification_ms
 								)}"
@@ -808,7 +808,7 @@
 						</div>
 						<div class="w-full bg-muted rounded-full h-2">
 							<div
-								class="bg-purple-500 h-2 rounded-full transition-all duration-300"
+								class="bg-accent h-2 rounded-full transition-all duration-300"
 								style="width: {getLatencyPercent(
 									timingData.latency_breakdown.plan_creation_ms
 								)}"
@@ -824,11 +824,11 @@
 								class="text-xs font-medium {getPlanExecutionWarning(
 									timingData.latency_breakdown.plan_execution_ms
 								) === 'critical'
-									? 'text-red-500'
+									? 'text-destructive'
 									: getPlanExecutionWarning(
 												timingData.latency_breakdown.plan_execution_ms
 										  ) === 'warning'
-										? 'text-amber-500'
+										? 'text-warning'
 										: 'text-foreground'}"
 							>
 								{formatMs(timingData.latency_breakdown.plan_execution_ms)}
@@ -836,7 +836,7 @@
 						</div>
 						<div class="w-full bg-muted rounded-full h-2">
 							<div
-								class="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+								class="bg-success h-2 rounded-full transition-all duration-300"
 								style="width: {getLatencyPercent(
 									timingData.latency_breakdown.plan_execution_ms
 								)}"
@@ -873,13 +873,13 @@
 								>
 								<div class="flex items-center gap-4">
 									<span class="text-foreground">
-										<span class="text-blue-500">{formatMs(day.ttfr_p50)}</span>
+										<span class="text-info">{formatMs(day.ttfr_p50)}</span>
 										<span class="text-muted-foreground mx-1">/</span>
 										<span
 											class={day.ttfr_p95 > 10000
-												? 'text-red-500'
+												? 'text-destructive'
 												: day.ttfr_p95 > 5000
-													? 'text-amber-500'
+													? 'text-warning'
 													: 'text-foreground'}
 										>
 											{formatMs(day.ttfr_p95)}
@@ -918,7 +918,7 @@
 								title="{bucket.min}-{bucket.max}ms: {bucket.count} requests"
 							>
 								<div
-									class="w-full bg-blue-500 rounded-t transition-all duration-300"
+									class="w-full bg-info rounded-t transition-all duration-300"
 									style="height: {height}%"
 								></div>
 							</div>
@@ -955,9 +955,9 @@
 								<div class="flex items-center gap-3">
 									<span
 										class="font-medium {ctx.median_ttfr_ms > 5000
-											? 'text-red-500'
+											? 'text-destructive'
 											: ctx.median_ttfr_ms > 3000
-												? 'text-amber-500'
+												? 'text-warning'
 												: 'text-foreground'}"
 									>
 										{formatMs(ctx.median_ttfr_ms)}
@@ -981,7 +981,7 @@
 		<div class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak">
 			<div class="p-4 border-b border-border">
 				<h3 class="text-sm font-semibold text-foreground flex items-center gap-2">
-					<AlertCircle class="h-4 w-4 text-red-500" />
+					<AlertCircle class="h-4 w-4 text-destructive" />
 					Slowest Sessions (by TTFR)
 				</h3>
 			</div>
@@ -1027,7 +1027,7 @@
 									<td class="px-4 py-2">
 										<a
 											href="/admin/chat/sessions?search={session.session_id}"
-											class="text-blue-500 hover:underline font-mono text-xs"
+											class="text-info hover:underline font-mono text-xs"
 										>
 											{session.session_id?.slice(0, 8)}...
 										</a>
@@ -1042,7 +1042,7 @@
 											{formatCacheSource(session.cache_source)}
 										</span>
 										{#if session.prepared_prompt_miss_reason}
-											<span class="text-xs text-amber-500 ml-1">
+											<span class="text-xs text-warning ml-1">
 												{formatCacheSource(
 													session.prepared_prompt_miss_reason
 												)}
@@ -1053,9 +1053,9 @@
 										<span
 											class="font-medium {getTtfrWarning(session.ttfr_ms) ===
 											'critical'
-												? 'text-red-500'
+												? 'text-destructive'
 												: getTtfrWarning(session.ttfr_ms) === 'warning'
-													? 'text-amber-500'
+													? 'text-warning'
 													: 'text-foreground'}"
 										>
 											{formatMs(session.ttfr_ms)}
@@ -1069,9 +1069,9 @@
 											<span
 												class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
 												{session.plan_status === 'completed'
-													? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+													? 'bg-success/10 text-success'
 													: session.plan_status === 'failed'
-														? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+														? 'bg-destructive/10 text-destructive'
 														: 'bg-muted text-foreground/30 dark:text-muted-foreground'}"
 											>
 												{session.plan_status}

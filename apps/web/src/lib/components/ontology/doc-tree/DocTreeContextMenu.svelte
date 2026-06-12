@@ -121,7 +121,7 @@
 					onclick={() => handleAction('copy-public-link')}
 					class="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-accent/10 transition-colors"
 				>
-					<Link class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+					<Link class="w-4 h-4 text-success" />
 					Copy public link
 				</button>
 				<button

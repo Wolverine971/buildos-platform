@@ -64,25 +64,25 @@
 		},
 		goal: {
 			icon: Target,
-			color: 'text-amber-600 dark:text-amber-400',
-			bgColor: 'bg-amber-50 dark:bg-amber-950/50',
-			borderColor: 'border-amber-200 dark:border-amber-800',
+			color: 'text-warning',
+			bgColor: 'bg-warning/10',
+			borderColor: 'border-warning/30',
 			texture: 'tx tx-bloom tx-weak',
 			label: 'Goal'
 		},
 		milestone: {
 			icon: Flag,
-			color: 'text-emerald-600 dark:text-emerald-400',
-			bgColor: 'bg-emerald-50 dark:bg-emerald-950/50',
-			borderColor: 'border-emerald-200 dark:border-emerald-800',
+			color: 'text-success',
+			bgColor: 'bg-success/10',
+			borderColor: 'border-success/30',
 			texture: 'tx tx-grain tx-weak',
 			label: 'Milestone'
 		},
 		plan: {
 			icon: Calendar,
-			color: 'text-indigo-600 dark:text-indigo-400',
-			bgColor: 'bg-indigo-50 dark:bg-indigo-950/50',
-			borderColor: 'border-indigo-200 dark:border-indigo-800',
+			color: 'text-accent',
+			bgColor: 'bg-accent/10',
+			borderColor: 'border-accent/30',
 			texture: 'tx tx-thread tx-weak',
 			label: 'Plan'
 		},
@@ -96,33 +96,33 @@
 		},
 		document: {
 			icon: FileText,
-			color: 'text-sky-600 dark:text-sky-400',
-			bgColor: 'bg-sky-50 dark:bg-sky-950/50',
-			borderColor: 'border-sky-200 dark:border-sky-800',
+			color: 'text-info',
+			bgColor: 'bg-info/10',
+			borderColor: 'border-info/30',
 			texture: 'tx tx-frame tx-weak',
 			label: 'Document'
 		},
 		note: {
 			icon: FileText,
-			color: 'text-sky-600 dark:text-sky-400',
-			bgColor: 'bg-sky-50 dark:bg-sky-950/50',
-			borderColor: 'border-sky-200 dark:border-sky-800',
+			color: 'text-info',
+			bgColor: 'bg-info/10',
+			borderColor: 'border-info/30',
 			texture: 'tx tx-frame tx-weak',
 			label: 'Note'
 		},
 		event: {
 			icon: CalendarDays,
-			color: 'text-violet-600 dark:text-violet-400',
-			bgColor: 'bg-violet-50 dark:bg-violet-950/50',
-			borderColor: 'border-violet-200 dark:border-violet-800',
+			color: 'text-muted-foreground',
+			bgColor: 'bg-muted',
+			borderColor: 'border-border',
 			texture: 'tx tx-thread tx-weak',
 			label: 'Event'
 		},
 		risk: {
 			icon: AlertTriangle,
-			color: 'text-red-600 dark:text-red-400',
-			bgColor: 'bg-red-50 dark:bg-red-950/50',
-			borderColor: 'border-red-200 dark:border-red-800',
+			color: 'text-destructive',
+			bgColor: 'bg-destructive/10',
+			borderColor: 'border-destructive/30',
 			texture: 'tx tx-static tx-weak',
 			label: 'Risk'
 		},
@@ -149,18 +149,18 @@
 			label: 'Planning'
 		},
 		active: {
-			color: 'text-amber-700 dark:text-amber-300',
-			bgColor: 'bg-amber-100 dark:bg-amber-900/50',
+			color: 'text-warning',
+			bgColor: 'bg-warning/15',
 			label: 'Active'
 		},
 		completed: {
-			color: 'text-emerald-700 dark:text-emerald-300',
-			bgColor: 'bg-emerald-100 dark:bg-emerald-900/50',
+			color: 'text-success',
+			bgColor: 'bg-success/15',
 			label: 'Completed'
 		},
 		cancelled: {
-			color: 'text-red-700 dark:text-red-300',
-			bgColor: 'bg-red-100 dark:bg-red-900/50',
+			color: 'text-destructive',
+			bgColor: 'bg-destructive/15',
 			label: 'Cancelled'
 		},
 		// Task states
@@ -170,18 +170,18 @@
 			label: 'To Do'
 		},
 		in_progress: {
-			color: 'text-amber-700 dark:text-amber-300',
-			bgColor: 'bg-amber-100 dark:bg-amber-900/50',
+			color: 'text-warning',
+			bgColor: 'bg-warning/15',
 			label: 'In Progress'
 		},
 		done: {
-			color: 'text-emerald-700 dark:text-emerald-300',
-			bgColor: 'bg-emerald-100 dark:bg-emerald-900/50',
+			color: 'text-success',
+			bgColor: 'bg-success/15',
 			label: 'Done'
 		},
 		blocked: {
-			color: 'text-red-700 dark:text-red-300',
-			bgColor: 'bg-red-100 dark:bg-red-900/50',
+			color: 'text-destructive',
+			bgColor: 'bg-destructive/15',
 			label: 'Blocked'
 		},
 		// Goal states
@@ -191,13 +191,13 @@
 			label: 'Defined'
 		},
 		achieved: {
-			color: 'text-emerald-700 dark:text-emerald-300',
-			bgColor: 'bg-emerald-100 dark:bg-emerald-900/50',
+			color: 'text-success',
+			bgColor: 'bg-success/15',
 			label: 'Achieved'
 		},
 		abandoned: {
-			color: 'text-red-700 dark:text-red-300',
-			bgColor: 'bg-red-100 dark:bg-red-900/50',
+			color: 'text-destructive',
+			bgColor: 'bg-destructive/15',
 			label: 'Abandoned'
 		},
 		// Plan states
@@ -208,34 +208,34 @@
 		},
 		// Risk states
 		identified: {
-			color: 'text-amber-700 dark:text-amber-300',
-			bgColor: 'bg-amber-100 dark:bg-amber-900/50',
+			color: 'text-warning',
+			bgColor: 'bg-warning/15',
 			label: 'Identified'
 		},
 		mitigated: {
-			color: 'text-emerald-700 dark:text-emerald-300',
-			bgColor: 'bg-emerald-100 dark:bg-emerald-900/50',
+			color: 'text-success',
+			bgColor: 'bg-success/15',
 			label: 'Mitigated'
 		},
 		occurred: {
-			color: 'text-red-700 dark:text-red-300',
-			bgColor: 'bg-red-100 dark:bg-red-900/50',
+			color: 'text-destructive',
+			bgColor: 'bg-destructive/15',
 			label: 'Occurred'
 		},
 		closed: {
 			color: 'text-foreground',
-			bgColor: 'bg-slate-100',
+			bgColor: 'bg-muted',
 			label: 'Closed'
 		},
 		// Document states
 		review: {
-			color: 'text-amber-700 dark:text-amber-300',
-			bgColor: 'bg-amber-100 dark:bg-amber-900/50',
+			color: 'text-warning',
+			bgColor: 'bg-warning/15',
 			label: 'In Review'
 		},
 		published: {
-			color: 'text-emerald-700 dark:text-emerald-300',
-			bgColor: 'bg-emerald-100 dark:bg-emerald-900/50',
+			color: 'text-success',
+			bgColor: 'bg-success/15',
 			label: 'Published'
 		}
 	};
@@ -520,7 +520,7 @@
 						<div class="flex flex-wrap gap-4">
 							{#if targetDate}
 								<div class="flex items-center gap-2">
-									<CalendarDays class="w-3.5 h-3.5 text-amber-500" />
+									<CalendarDays class="w-3.5 h-3.5 text-warning" />
 									<div>
 										<p
 											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
@@ -535,7 +535,7 @@
 							{/if}
 							{#if completedAt}
 								<div class="flex items-center gap-2">
-									<CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
+									<CheckCircle2 class="w-3.5 h-3.5 text-success" />
 									<div>
 										<p
 											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
@@ -572,7 +572,7 @@
 						<div class="flex flex-wrap gap-4">
 							{#if dueAt}
 								<div class="flex items-center gap-2">
-									<Clock class="w-3.5 h-3.5 text-amber-500" />
+									<Clock class="w-3.5 h-3.5 text-warning" />
 									<div>
 										<p
 											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
@@ -587,7 +587,7 @@
 							{/if}
 							{#if milestoneCompletedAt}
 								<div class="flex items-center gap-2">
-									<CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
+									<CheckCircle2 class="w-3.5 h-3.5 text-success" />
 									<div>
 										<p
 											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
@@ -627,7 +627,7 @@
 					<div class="flex flex-wrap gap-4">
 						{#if priority !== null}
 							<div class="flex items-center gap-2">
-								<Lightbulb class="w-3.5 h-3.5 text-indigo-500" />
+								<Lightbulb class="w-3.5 h-3.5 text-accent" />
 								<div>
 									<p
 										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
@@ -640,7 +640,7 @@
 						{/if}
 						{#if taskDueAt}
 							<div class="flex items-center gap-2">
-								<Clock class="w-3.5 h-3.5 text-amber-500" />
+								<Clock class="w-3.5 h-3.5 text-warning" />
 								<div>
 									<p
 										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
@@ -655,7 +655,7 @@
 						{/if}
 						{#if taskStartAt}
 							<div class="flex items-center gap-2">
-								<Calendar class="w-3.5 h-3.5 text-sky-500" />
+								<Calendar class="w-3.5 h-3.5 text-info" />
 								<div>
 									<p
 										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
@@ -670,7 +670,7 @@
 						{/if}
 						{#if taskCompletedAt}
 							<div class="flex items-center gap-2">
-								<CheckCircle2 class="w-3.5 h-3.5 text-emerald-500" />
+								<CheckCircle2 class="w-3.5 h-3.5 text-success" />
 								<div>
 									<p
 										class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
@@ -712,7 +712,7 @@
 						<div class="flex flex-wrap gap-4">
 							{#if probability !== null}
 								<div class="flex items-center gap-2">
-									<Target class="w-3.5 h-3.5 text-amber-500" />
+									<Target class="w-3.5 h-3.5 text-warning" />
 									<div>
 										<p
 											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
@@ -727,7 +727,7 @@
 							{/if}
 							{#if impact}
 								<div class="flex items-center gap-2">
-									<AlertTriangle class="w-3.5 h-3.5 text-red-500" />
+									<AlertTriangle class="w-3.5 h-3.5 text-destructive" />
 									<div>
 										<p
 											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"
@@ -742,7 +742,7 @@
 							{/if}
 							{#if mitigatedAt}
 								<div class="flex items-center gap-2">
-									<Shield class="w-3.5 h-3.5 text-emerald-500" />
+									<Shield class="w-3.5 h-3.5 text-success" />
 									<div>
 										<p
 											class="text-[0.6rem] uppercase tracking-wide text-muted-foreground"

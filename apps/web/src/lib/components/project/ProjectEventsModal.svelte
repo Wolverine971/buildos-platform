@@ -29,11 +29,11 @@
 	} = $props();
 
 	const eventStateAccents: Record<string, string> = {
-		scheduled: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/30',
-		confirmed: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30',
-		in_progress: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
-		completed: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
-		cancelled: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30'
+		scheduled: 'bg-info/10 text-info border-info/30',
+		confirmed: 'bg-info/10 text-info border-info/30',
+		in_progress: 'bg-warning/10 text-warning border-warning/30',
+		completed: 'bg-success/10 text-success border-success/30',
+		cancelled: 'bg-destructive/10 text-destructive border-destructive/30'
 	};
 	const tabLabels: Record<ProjectEventBucketKey, string> = {
 		upcoming: 'Upcoming',
@@ -148,7 +148,7 @@
 	<div class="p-3 sm:p-4 space-y-3">
 		<div class="flex items-center justify-between gap-3">
 			<div class="flex items-center gap-2 min-w-0 text-xs text-muted-foreground">
-				<CalendarClock class="w-4 h-4 shrink-0 text-teal-500" />
+				<CalendarClock class="w-4 h-4 shrink-0 text-info" />
 				<span>
 					{eventBuckets.upcoming.length}
 					{eventBuckets.upcoming.length === 1 ? 'upcoming event' : 'upcoming events'}
@@ -209,7 +209,7 @@
 						<div class="flex items-start justify-between gap-3">
 							<div class="min-w-0 flex-1">
 								<div class="flex items-center gap-2 min-w-0">
-									<Clock class="w-3.5 h-3.5 shrink-0 text-teal-500" />
+									<Clock class="w-3.5 h-3.5 shrink-0 text-info" />
 									<p class="text-sm font-medium text-foreground line-clamp-1">
 										{event.title}
 									</p>

@@ -316,12 +316,10 @@
 	{#if data.lockStatus?.isLocked}
 		<AdminCard tone="warning" padding="md">
 			<div class="flex items-center gap-3">
-				<AlertTriangle class="h-5 w-5 text-amber-600 dark:text-amber-400" />
+				<AlertTriangle class="h-5 w-5 text-warning" />
 				<div>
-					<p class="font-medium text-amber-900 dark:text-amber-100">
-						Platform Migration In Progress
-					</p>
-					<p class="text-sm text-amber-700 dark:text-amber-300">
+					<p class="font-medium text-warning">Platform Migration In Progress</p>
+					<p class="text-sm text-warning">
 						Locked by {data.lockStatus.lockedByEmail ?? data.lockStatus.lockedBy}
 						until {data.lockStatus.expiresAt
 							? new Date(data.lockStatus.expiresAt).toLocaleString()
@@ -336,7 +334,7 @@
 	<div class="flex border-b border-border overflow-x-auto">
 		<button
 			class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'overview'
-				? 'border-b-2 border-purple-500 text-purple-600 dark:text-purple-400'
+				? 'border-b-2 border-accent text-accent'
 				: 'text-muted-foreground hover:text-foreground dark:hover:text-foreground'}"
 			onclick={() => switchTab('overview')}
 		>
@@ -345,7 +343,7 @@
 		</button>
 		<button
 			class="px-4 py-2 text-sm font-medium transition-colors {activeTab === 'users'
-				? 'border-b-2 border-purple-500 text-purple-600 dark:text-purple-400'
+				? 'border-b-2 border-accent text-accent'
 				: 'text-muted-foreground hover:text-foreground dark:hover:text-foreground'}"
 			onclick={() => switchTab('users')}
 		>
@@ -414,7 +412,7 @@
 						</div>
 						<div class="flex items-center justify-between">
 							<span class="text-muted-foreground">Fully Migrated Users</span>
-							<span class="font-semibold text-emerald-600 dark:text-emerald-400">
+							<span class="font-semibold text-success">
 								{progressStats.users.fullyMigrated.toLocaleString()}
 							</span>
 						</div>
@@ -422,7 +420,7 @@
 							<span class="text-muted-foreground">Errors Pending</span>
 							<span
 								class="font-semibold {progressStats.errors.total > 0
-									? 'text-rose-600 dark:text-rose-400'
+									? 'text-destructive'
 									: 'text-foreground'}"
 							>
 								{progressStats.errors.total.toLocaleString()}
@@ -460,7 +458,7 @@
 			{:else if usersLoading}
 				<div class="flex items-center justify-center py-12">
 					<div
-						class="h-8 w-8 animate-spin rounded-full border-2 border-purple-600 border-t-transparent"
+						class="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent"
 					></div>
 				</div>
 			{:else}

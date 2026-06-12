@@ -31,16 +31,16 @@
 
 	function getRateColor(rate: number | null | undefined): string {
 		if (rate == null) return 'text-muted-foreground';
-		if (rate >= 90) return 'text-green-600';
-		if (rate >= 70) return 'text-yellow-600';
-		return 'text-red-600';
+		if (rate >= 90) return 'text-success';
+		if (rate >= 70) return 'text-warning';
+		return 'text-destructive';
 	}
 </script>
 
 <Card variant="elevated">
 	<CardHeader variant="accent">
 		<div class="flex items-center">
-			<Smartphone class="h-6 w-6 text-purple-600 dark:text-purple-400 mr-2" />
+			<Smartphone class="h-6 w-6 text-accent mr-2" />
 			<h3 class="text-lg font-semibold text-foreground">SMS Notification Insights</h3>
 		</div>
 	</CardHeader>
@@ -76,42 +76,34 @@
 						</div>
 
 						<!-- Verified -->
-						<div
-							class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800"
-						>
+						<div class="bg-success/10 rounded-lg p-4 border border-success/30">
 							<div class="flex items-center justify-between">
 								<div>
 									<p class="text-xs text-muted-foreground">Verified</p>
-									<p
-										class="text-2xl font-bold text-green-600 dark:text-green-400 mt-1"
-									>
+									<p class="text-2xl font-bold text-success mt-1">
 										{formatNumber(data.users_phone_verified)}
 									</p>
-									<p class="text-xs text-green-600 dark:text-green-400 mt-1">
+									<p class="text-xs text-success mt-1">
 										{formatPercentage(data.phone_verification_rate)}
 									</p>
 								</div>
-								<CheckCircle class="h-8 w-8 text-green-400" />
+								<CheckCircle class="h-8 w-8 text-success" />
 							</div>
 						</div>
 
 						<!-- Opted Out -->
-						<div
-							class="bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border border-red-200 dark:border-red-800"
-						>
+						<div class="bg-destructive/10 rounded-lg p-4 border border-destructive/30">
 							<div class="flex items-center justify-between">
 								<div>
 									<p class="text-xs text-muted-foreground">Opted Out</p>
-									<p
-										class="text-2xl font-bold text-red-600 dark:text-red-400 mt-1"
-									>
+									<p class="text-2xl font-bold text-destructive mt-1">
 										{formatNumber(data.users_opted_out)}
 									</p>
-									<p class="text-xs text-red-600 dark:text-red-400 mt-1">
+									<p class="text-xs text-destructive mt-1">
 										{formatPercentage(data.opt_out_rate)} of verified
 									</p>
 								</div>
-								<UserX class="h-8 w-8 text-red-400" />
+								<UserX class="h-8 w-8 text-destructive" />
 							</div>
 						</div>
 					</div>
@@ -122,18 +114,14 @@
 					<h4 class="text-sm font-medium text-foreground mb-3">SMS Notifications</h4>
 					<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<!-- Users with SMS Enabled -->
-						<div
-							class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800"
-						>
+						<div class="bg-info/10 rounded-lg p-4 border border-info/30">
 							<div class="flex items-center justify-between">
 								<div class="flex-1">
 									<p class="text-xs text-muted-foreground mb-2">
 										SMS Notifications Enabled
 									</p>
 									<div class="flex items-baseline gap-2">
-										<p
-											class="text-2xl font-bold text-blue-600 dark:text-blue-400"
-										>
+										<p class="text-2xl font-bold text-info">
 											{formatNumber(data.users_sms_enabled)}
 										</p>
 										<p class="text-sm text-muted-foreground">users</p>
@@ -149,7 +137,7 @@
 										</div>
 										<div class="w-full bg-muted rounded-full h-2">
 											<div
-												class="bg-blue-600 h-2 rounded-full transition-all"
+												class="bg-info h-2 rounded-full transition-all"
 												style="width: {data.sms_adoption_rate ?? 0}%"
 											></div>
 										</div>
@@ -158,23 +146,19 @@
 										</p>
 									</div>
 								</div>
-								<UserCheck class="h-8 w-8 text-blue-400 ml-4" />
+								<UserCheck class="h-8 w-8 text-info ml-4" />
 							</div>
 						</div>
 
 						<!-- Recent Performance -->
-						<div
-							class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800"
-						>
+						<div class="bg-accent/10 rounded-lg p-4 border border-accent/30">
 							<div class="flex items-center justify-between">
 								<div class="flex-1">
 									<p class="text-xs text-muted-foreground mb-2">
 										Selected Period ({timeframeLabel})
 									</p>
 									<div class="flex items-baseline gap-2 mb-3">
-										<p
-											class="text-2xl font-bold text-purple-600 dark:text-purple-400"
-										>
+										<p class="text-2xl font-bold text-accent">
 											{formatNumber(data.total_sms_sent_24h)}
 										</p>
 										<p class="text-sm text-muted-foreground">sent</p>
@@ -203,7 +187,7 @@
 										</div>
 									</div>
 								</div>
-								<Clock class="h-8 w-8 text-purple-400 ml-4" />
+								<Clock class="h-8 w-8 text-accent ml-4" />
 							</div>
 						</div>
 					</div>
@@ -211,9 +195,7 @@
 
 				<!-- Insights Summary -->
 				{#if data.users_phone_verified > 0}
-					<div
-						class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/10 dark:to-purple-900/10 rounded-lg p-4 border border-blue-200 dark:border-blue-800"
-					>
+					<div class="bg-info/10 rounded-lg p-4 border border-info/30">
 						<h4 class="text-sm font-semibold text-foreground mb-2">Key Insights</h4>
 						<ul class="space-y-1 text-sm text-foreground">
 							{#if data.sms_adoption_rate < 50}
@@ -248,8 +230,8 @@
 							{/if}
 							{#if data.sms_adoption_rate >= 70 && data.sms_delivery_rate_24h >= 95}
 								<li class="flex items-start">
-									<span class="mr-2 text-green-600">✓</span>
-									<span class="text-green-700 dark:text-green-400"
+									<span class="mr-2 text-success">✓</span>
+									<span class="text-success"
 										>SMS channel is performing well with {formatPercentage(
 											data.sms_adoption_rate
 										)} adoption and {formatPercentage(

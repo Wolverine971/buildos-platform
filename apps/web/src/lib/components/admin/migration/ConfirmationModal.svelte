@@ -76,13 +76,13 @@
 	function getIconColor() {
 		switch (type) {
 			case 'danger':
-				return 'text-rose-600 dark:text-rose-400';
+				return 'text-destructive';
 			case 'warning':
-				return 'text-amber-600 dark:text-amber-400';
+				return 'text-warning';
 			case 'info':
-				return 'text-blue-600 dark:text-blue-400';
+				return 'text-info';
 			default:
-				return 'text-emerald-600 dark:text-emerald-400';
+				return 'text-success';
 		}
 	}
 
@@ -99,10 +99,10 @@
 		<div
 			class="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full {type ===
 			'danger'
-				? 'bg-rose-100 dark:bg-rose-900/30'
+				? 'bg-destructive/10'
 				: type === 'warning'
-					? 'bg-amber-100 dark:bg-amber-900/30'
-					: 'bg-blue-100 dark:bg-blue-900/30'}"
+					? 'bg-warning/10'
+					: 'bg-info/10'}"
 		>
 			<Icon class="h-6 w-6 {getIconColor()}" />
 		</div>
@@ -137,52 +137,42 @@
 
 		<!-- Cost Estimate -->
 		{#if showCostEstimate && costEstimate}
-			<div
-				class="mb-4 rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-800 dark:bg-purple-900/20"
-			>
+			<div class="mb-4 rounded-lg border border-accent/30 bg-accent/10 p-3">
 				<div class="flex items-center justify-center gap-2 mb-2">
-					<DollarSign class="h-4 w-4 text-purple-600 dark:text-purple-400" />
-					<span class="text-sm font-medium text-purple-900 dark:text-purple-100">
-						LLM Cost Estimate
-					</span>
+					<DollarSign class="h-4 w-4 text-accent" />
+					<span class="text-sm font-medium text-accent"> LLM Cost Estimate </span>
 				</div>
 				<div class="grid grid-cols-3 gap-3 text-center">
 					<div>
-						<div
-							class="flex items-center justify-center gap-1 text-xs text-purple-600 dark:text-purple-400"
-						>
+						<div class="flex items-center justify-center gap-1 text-xs text-accent">
 							<Zap class="h-3 w-3" />
 							Tokens
 						</div>
-						<p class="font-semibold text-purple-900 dark:text-purple-100">
+						<p class="font-semibold text-foreground">
 							{costEstimate.tokens.toLocaleString()}
 						</p>
 					</div>
 					<div>
-						<div
-							class="flex items-center justify-center gap-1 text-xs text-purple-600 dark:text-purple-400"
-						>
+						<div class="flex items-center justify-center gap-1 text-xs text-accent">
 							<DollarSign class="h-3 w-3" />
 							Cost
 						</div>
-						<p class="font-semibold text-purple-900 dark:text-purple-100">
+						<p class="font-semibold text-foreground">
 							${costEstimate.cost.toFixed(2)}
 						</p>
 					</div>
 					<div>
-						<div
-							class="flex items-center justify-center gap-1 text-xs text-purple-600 dark:text-purple-400"
-						>
+						<div class="flex items-center justify-center gap-1 text-xs text-accent">
 							<Clock class="h-3 w-3" />
 							Time
 						</div>
-						<p class="font-semibold text-purple-900 dark:text-purple-100">
+						<p class="font-semibold text-foreground">
 							{costEstimate.estimatedDuration}
 						</p>
 					</div>
 				</div>
 				{#if costEstimate.model}
-					<p class="mt-2 text-xs text-center text-purple-600 dark:text-purple-400">
+					<p class="mt-2 text-xs text-center text-accent">
 						Using {costEstimate.model}
 					</p>
 				{/if}
@@ -197,7 +187,7 @@
 				</p>
 				<input
 					type="text"
-					class="w-full rounded-lg border border-border px-3 py-2 text-center text-sm focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:focus:ring-purple-800"
+					class="w-full rounded-lg border border-border px-3 py-2 text-center text-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
 					placeholder={confirmText}
 					bind:value={inputValue}
 					onkeydown={(e) => e.key === 'Enter' && handleConfirm()}

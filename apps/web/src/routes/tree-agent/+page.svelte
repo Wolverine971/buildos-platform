@@ -98,7 +98,7 @@
 			</div>
 			{#if error}
 				<div
-					class="px-3 py-2 text-xs bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-200 rounded-lg border border-red-200 dark:border-red-800 tx tx-static tx-weak wt-paper"
+					class="px-3 py-2 text-xs bg-destructive/10 text-destructive rounded-lg border border-destructive/30 tx tx-static tx-weak wt-paper"
 				>
 					{error}
 				</div>

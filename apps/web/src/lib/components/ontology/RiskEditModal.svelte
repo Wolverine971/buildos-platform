@@ -90,10 +90,10 @@
 	let { riskId, projectId, onClose, onUpdated, onDeleted }: Props = $props();
 
 	const IMPACT_OPTIONS = [
-		{ value: 'low', label: 'Low', color: 'bg-emerald-500/10 text-emerald-600' },
-		{ value: 'medium', label: 'Medium', color: 'bg-amber-500/10 text-amber-600' },
-		{ value: 'high', label: 'High', color: 'bg-orange-500/10 text-orange-600' },
-		{ value: 'critical', label: 'Critical', color: 'bg-red-500/10 text-red-600' }
+		{ value: 'low', label: 'Low', color: 'bg-success/10 text-success' },
+		{ value: 'medium', label: 'Medium', color: 'bg-warning/10 text-warning' },
+		{ value: 'high', label: 'High', color: 'bg-accent/10 text-accent' },
+		{ value: 'critical', label: 'Critical', color: 'bg-destructive/10 text-destructive' }
 	];
 
 	const PROBABILITY_OPTIONS = [
@@ -442,7 +442,7 @@
 					type="button"
 					onclick={handleClose}
 					disabled={isSaving || isDeleting}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400 tx tx-grain tx-weak"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 					aria-label="Close modal"
 				>
 					<X class="w-5 h-5" />

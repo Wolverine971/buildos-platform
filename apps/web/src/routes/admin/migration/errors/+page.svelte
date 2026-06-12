@@ -270,14 +270,12 @@
 			<div class="flex items-center justify-between">
 				<div>
 					<p class="text-sm text-muted-foreground">Recoverable</p>
-					<p class="text-2xl font-bold text-amber-600 dark:text-amber-400">
+					<p class="text-2xl font-bold text-warning">
 						{data.categoryCounts.recoverable}
 					</p>
 				</div>
-				<div
-					class="h-10 w-10 rounded-full bg-amber-100 flex items-center justify-center dark:bg-amber-900/30"
-				>
-					<RotateCcw class="h-5 w-5 text-amber-600 dark:text-amber-400" />
+				<div class="h-10 w-10 rounded-full bg-warning/10 flex items-center justify-center">
+					<RotateCcw class="h-5 w-5 text-warning" />
 				</div>
 			</div>
 		</AdminCard>
@@ -285,14 +283,12 @@
 			<div class="flex items-center justify-between">
 				<div>
 					<p class="text-sm text-muted-foreground">Data Issues</p>
-					<p class="text-2xl font-bold text-orange-600 dark:text-orange-400">
+					<p class="text-2xl font-bold text-accent">
 						{data.categoryCounts.data}
 					</p>
 				</div>
-				<div
-					class="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center dark:bg-orange-900/30"
-				>
-					<TriangleAlert class="h-5 w-5 text-orange-600 dark:text-orange-400" />
+				<div class="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center">
+					<TriangleAlert class="h-5 w-5 text-accent" />
 				</div>
 			</div>
 		</AdminCard>
@@ -300,14 +296,14 @@
 			<div class="flex items-center justify-between">
 				<div>
 					<p class="text-sm text-muted-foreground">Fatal</p>
-					<p class="text-2xl font-bold text-rose-600 dark:text-rose-400">
+					<p class="text-2xl font-bold text-destructive">
 						{data.categoryCounts.fatal}
 					</p>
 				</div>
 				<div
-					class="h-10 w-10 rounded-full bg-rose-100 flex items-center justify-center dark:bg-rose-900/30"
+					class="h-10 w-10 rounded-full bg-destructive/10 flex items-center justify-center"
 				>
-					<TriangleAlert class="h-5 w-5 text-rose-600 dark:text-rose-400" />
+					<TriangleAlert class="h-5 w-5 text-destructive" />
 				</div>
 			</div>
 		</AdminCard>
@@ -386,10 +382,8 @@
 			<!-- Error Details -->
 			<div>
 				<p class="text-xs font-medium uppercase text-muted-foreground">Error Message</p>
-				<div
-					class="mt-1 rounded-lg border border-rose-200 bg-rose-50 p-3 dark:border-rose-800 dark:bg-rose-900/20"
-				>
-					<p class="text-sm text-rose-800 dark:text-rose-200">
+				<div class="mt-1 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+					<p class="text-sm text-destructive">
 						{selectedError.errorMessage}
 					</p>
 				</div>
@@ -398,13 +392,11 @@
 			<!-- Suggested Action -->
 			<div>
 				<p class="text-xs font-medium uppercase text-muted-foreground">Suggested Action</p>
-				<div
-					class="mt-1 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20"
-				>
-					<p class="text-sm font-medium capitalize text-blue-800 dark:text-blue-200">
+				<div class="mt-1 rounded-lg border border-info/30 bg-info/10 p-3">
+					<p class="text-sm font-medium capitalize text-info">
 						{selectedError.suggestedAction.replace(/_/g, ' ')}
 					</p>
-					<p class="mt-1 text-sm text-blue-700 dark:text-blue-300">
+					<p class="mt-1 text-sm text-info">
 						{selectedError.suggestedActionDescription}
 					</p>
 				</div>
@@ -433,7 +425,7 @@
 				<div>
 					<p class="text-xs font-medium uppercase text-muted-foreground">Metadata</p>
 					<pre
-						class="mt-1 max-h-48 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-foreground">{JSON.stringify(
+						class="mt-1 max-h-48 overflow-auto rounded-lg bg-gray-900 p-3 text-xs text-gray-100">{JSON.stringify(
 							selectedError.metadata,
 							null,
 							2
@@ -485,10 +477,8 @@
 <Modal bind:isOpen={showDeleteConfirmModal} title="Delete Errors" size="sm" onClose={cancelDelete}>
 	<div class="space-y-4 p-4">
 		<div class="flex items-center gap-3">
-			<div
-				class="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30"
-			>
-				<Trash2 class="h-5 w-5 text-rose-600 dark:text-rose-400" />
+			<div class="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
+				<Trash2 class="h-5 w-5 text-destructive" />
 			</div>
 			<div>
 				<p class="font-medium text-foreground">

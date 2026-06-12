@@ -26,18 +26,16 @@
 	}
 </script>
 
-<div
-	class="relative bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-4"
->
+<div class="relative bg-destructive/10 border border-destructive/30 rounded-lg p-4 mb-4">
 	<div class="flex">
 		<div class="flex-shrink-0">
-			<AlertTriangle class="h-5 w-5 text-red-600 dark:text-red-400" />
+			<AlertTriangle class="h-5 w-5 text-destructive" />
 		</div>
 		<div class="ml-3 flex-1">
-			<h3 class="text-sm font-medium text-red-800 dark:text-red-200">
+			<h3 class="text-sm font-medium text-destructive">
 				{notification.title}
 			</h3>
-			<div class="mt-2 text-sm text-red-700 dark:text-red-300">
+			<div class="mt-2 text-sm text-destructive">
 				<p>{notification.message}</p>
 			</div>
 			{#if notification.action_url}
@@ -60,7 +58,7 @@
 				variant="ghost"
 				size="sm"
 				icon={X}
-				class="text-red-400 hover:text-red-500 p-1 min-h-0"
+				class="text-destructive/70 hover:text-destructive p-1 min-h-0"
 				aria-label="Dismiss"
 			></Button>
 		</div>

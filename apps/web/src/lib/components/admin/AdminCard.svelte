@@ -26,10 +26,10 @@
 		default: 'border-border bg-card',
 		muted: 'border-border bg-muted',
 		brand: 'border-accent/40 bg-accent/10',
-		success: 'border-emerald-500/40 bg-emerald-500/10',
+		success: 'border-success/40 bg-success/10',
 		danger: 'border-destructive/40 bg-destructive/10',
-		warning: 'border-amber-500/40 bg-amber-500/10',
-		info: 'border-sky-500/40 bg-sky-500/10'
+		warning: 'border-warning/40 bg-warning/10',
+		info: 'border-info/40 bg-info/10'
 	};
 
 	const paddingClasses: Record<Padding, string> = {

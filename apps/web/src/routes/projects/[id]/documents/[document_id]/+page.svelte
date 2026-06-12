@@ -583,7 +583,7 @@
 				</section>
 
 				<div
-					class="sm:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-2 px-3 py-2.5 bg-card/95 backdrop-blur border-t border-border shadow-ink-strong"
+					class="sm:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-2 px-3 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] bg-card/95 backdrop-blur border-t border-border shadow-ink-strong"
 				>
 					<button
 						type="button"
@@ -608,7 +608,7 @@
 						<span>Save Document</span>
 					</button>
 				</div>
-				<div class="sm:hidden h-16"></div>
+				<div class="sm:hidden h-[calc(4rem+env(safe-area-inset-bottom))]"></div>
 			</div>
 
 			<aside

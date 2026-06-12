@@ -34,8 +34,12 @@
 		icon = 'warning',
 		content,
 		details,
-		footer,
-		children,
+		// Renamed locally: the `{#snippet children()}`/`{#snippet footer()}`
+		// declarations below shadow same-named props, and the server compiler
+		// resolves the inner `{@render}` to the snippet itself — infinite
+		// recursion if ever SSR'd open (see InfoModal for the same fix).
+		footer: footerContent,
+		children: childrenContent,
 		onconfirm,
 		oncancel
 	}: Props = $props();
@@ -107,9 +111,9 @@
 					<!-- Main Content Snippet -->
 					{#if content}
 						{@render content()}
-					{:else if children}
+					{:else if childrenContent}
 						<p class="text-sm text-muted-foreground">
-							{@render children()}
+							{@render childrenContent()}
 						</p>
 					{:else}
 						<p class="text-sm text-muted-foreground">
@@ -127,8 +131,8 @@
 	{/snippet}
 
 	{#snippet footer()}
-		{#if footer}
-			{@render footer()}
+		{#if footerContent}
+			{@render footerContent()}
 		{:else}
 			<div
 				class="flex flex-col sm:flex-row gap-3 sm:justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"

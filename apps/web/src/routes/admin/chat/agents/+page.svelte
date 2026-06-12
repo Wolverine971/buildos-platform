@@ -214,24 +214,24 @@
 
 	{#if error}
 		<div
-			class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
+			class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
 			role="alert"
 		>
 			<div class="flex items-center gap-2">
-				<AlertCircle class="h-5 w-5 text-red-500 shrink-0" />
-				<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
+				<AlertCircle class="h-5 w-5 text-destructive shrink-0" />
+				<p class="text-sm text-destructive">{error}</p>
 			</div>
 		</div>
 	{/if}
 
 	{#if hasTruncatedData}
 		<div
-			class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
+			class="bg-warning/10 border border-warning/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
 			role="status"
 		>
 			<div class="flex items-center gap-2">
-				<AlertCircle class="h-5 w-5 text-amber-500 shrink-0" />
-				<p class="text-sm text-amber-700 dark:text-amber-300">
+				<AlertCircle class="h-5 w-5 text-warning shrink-0" />
+				<p class="text-sm text-warning">
 					Some runtime queries hit their row limit. Large-volume totals may be
 					undercounted.
 				</p>
@@ -260,11 +260,11 @@
 						>
 							Turns
 						</p>
-						<p class="text-2xl font-bold text-blue-500 mt-1">
+						<p class="text-2xl font-bold text-info mt-1">
 							{formatNumber(kpis.totalTurns || 0)}
 						</p>
 					</div>
-					<Activity class="h-7 w-7 text-blue-500 shrink-0 ml-3" />
+					<Activity class="h-7 w-7 text-info shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatPercentage(kpis.turnSuccessRate || 0)} success • {formatNumber(
@@ -282,11 +282,11 @@
 						>
 							P95 Turn
 						</p>
-						<p class="text-2xl font-bold text-indigo-500 mt-1">
+						<p class="text-2xl font-bold text-info mt-1">
 							{formatDuration(kpis.p95TurnDurationMs || 0)}
 						</p>
 					</div>
-					<Clock class="h-7 w-7 text-indigo-500 shrink-0 ml-3" />
+					<Clock class="h-7 w-7 text-info shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					Avg {formatDuration(kpis.avgTurnDurationMs || 0)} • LLM p95 {formatDuration(
@@ -303,11 +303,11 @@
 						>
 							Tool Calls
 						</p>
-						<p class="text-2xl font-bold text-cyan-500 mt-1">
+						<p class="text-2xl font-bold text-info mt-1">
 							{formatNumber(kpis.toolCalls || 0)}
 						</p>
 					</div>
-					<Zap class="h-7 w-7 text-cyan-500 shrink-0 ml-3" />
+					<Zap class="h-7 w-7 text-info shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatPercentage(kpis.toolSuccessRate || 0)} success • {formatNumber(
@@ -325,11 +325,11 @@
 						>
 							{kpis.isCostEstimated ? 'Estimated Cost' : 'Billable Cost'}
 						</p>
-						<p class="text-2xl font-bold text-amber-500 mt-1">
+						<p class="text-2xl font-bold text-warning mt-1">
 							{formatCurrency(kpis.estimatedCost || 0)}
 						</p>
 					</div>
-					<DollarSign class="h-7 w-7 text-amber-500 shrink-0 ml-3" />
+					<DollarSign class="h-7 w-7 text-warning shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(kpis.billableRequests || 0)} billable requests
@@ -346,11 +346,11 @@
 						>
 							Tokens
 						</p>
-						<p class="text-2xl font-bold text-emerald-500 mt-1">
+						<p class="text-2xl font-bold text-success mt-1">
 							{formatCompact(kpis.totalTokensUsed || 0)}
 						</p>
 					</div>
-					<Sparkles class="h-7 w-7 text-emerald-500 shrink-0 ml-3" />
+					<Sparkles class="h-7 w-7 text-success shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatCompact(kpis.avgTokensPerTurn || 0)} per turn
@@ -365,11 +365,11 @@
 						>
 							LLM Passes / Turn
 						</p>
-						<p class="text-2xl font-bold text-purple-500 mt-1">
+						<p class="text-2xl font-bold text-accent mt-1">
 							{(kpis.avgLlmPassesPerTurn || 0).toFixed(2)}x
 						</p>
 					</div>
-					<MessageSquare class="h-7 w-7 text-purple-500 shrink-0 ml-3" />
+					<MessageSquare class="h-7 w-7 text-accent shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(kpis.llmPasses || 0)} total passes
@@ -384,11 +384,11 @@
 						>
 							Active Users
 						</p>
-						<p class="text-2xl font-bold text-blue-500 mt-1">
+						<p class="text-2xl font-bold text-info mt-1">
 							{formatNumber(kpis.uniqueUsers || 0)}
 						</p>
 					</div>
-					<CheckCircle class="h-7 w-7 text-blue-500 shrink-0 ml-3" />
+					<CheckCircle class="h-7 w-7 text-info shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(kpis.totalSessions || 0)} sessions • {formatNumber(
@@ -406,11 +406,11 @@
 						>
 							Runtime Signals
 						</p>
-						<p class="text-2xl font-bold text-emerald-500 mt-1">
+						<p class="text-2xl font-bold text-success mt-1">
 							{formatPercentage(kpis.gatewayEnabledRate || 0)}
 						</p>
 					</div>
-					<Zap class="h-7 w-7 text-emerald-500 shrink-0 ml-3" />
+					<Zap class="h-7 w-7 text-success shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatPercentage(kpis.prewarmedContextRate || 0)} prewarmed • {formatPercentage(
@@ -440,13 +440,13 @@
 											success • p95 {formatDuration(route.p95_duration_ms)}
 										</div>
 									</div>
-									<span class="text-sm font-bold text-blue-500 shrink-0">
+									<span class="text-sm font-bold text-info shrink-0">
 										{formatNumber(route.count)}
 									</span>
 								</div>
 								<div class="w-full bg-muted rounded-full h-2.5">
 									<div
-										class="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
+										class="bg-info h-2.5 rounded-full transition-all duration-300"
 										style="width: {distributionWidth(route, firstActions)}"
 									></div>
 								</div>
@@ -478,13 +478,13 @@
 											success
 										</div>
 									</div>
-									<span class="text-sm font-bold text-cyan-500 shrink-0">
+									<span class="text-sm font-bold text-info shrink-0">
 										{formatNumber(context.count)}
 									</span>
 								</div>
 								<div class="w-full bg-muted rounded-full h-2.5">
 									<div
-										class="bg-cyan-500 h-2.5 rounded-full transition-all duration-300"
+										class="bg-info h-2.5 rounded-full transition-all duration-300"
 										style="width: {distributionWidth(context, contextTypes)}"
 									></div>
 								</div>
@@ -510,13 +510,13 @@
 									<span class="text-sm font-medium text-foreground truncate">
 										{status.label}
 									</span>
-									<span class="text-sm font-bold text-emerald-500 shrink-0">
+									<span class="text-sm font-bold text-success shrink-0">
 										{formatNumber(status.count)}
 									</span>
 								</div>
 								<div class="w-full bg-muted rounded-full h-2.5">
 									<div
-										class="bg-emerald-500 h-2.5 rounded-full transition-all duration-300"
+										class="bg-success h-2.5 rounded-full transition-all duration-300"
 										style="width: {distributionWidth(status, statuses)}"
 									></div>
 								</div>
@@ -540,13 +540,13 @@
 									<span class="text-sm font-medium text-foreground truncate">
 										{source.label}
 									</span>
-									<span class="text-sm font-bold text-purple-500 shrink-0">
+									<span class="text-sm font-bold text-accent shrink-0">
 										{formatNumber(source.count)}
 									</span>
 								</div>
 								<div class="w-full bg-muted rounded-full h-2.5">
 									<div
-										class="bg-purple-500 h-2.5 rounded-full transition-all duration-300"
+										class="bg-accent h-2.5 rounded-full transition-all duration-300"
 										style="width: {distributionWidth(source, cacheSources)}"
 									></div>
 								</div>
@@ -570,10 +570,10 @@
 				</h3>
 				<div class="space-y-3 max-h-48 overflow-y-auto scrollbar-thin">
 					{#each errorEvents as errorItem}
-						<div class="flex items-start gap-3 p-3 bg-red-500/10 rounded-lg">
-							<XCircle class="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+						<div class="flex items-start gap-3 p-3 bg-destructive/10 rounded-lg">
+							<XCircle class="h-5 w-5 text-destructive shrink-0 mt-0.5" />
 							<div class="flex-1 min-w-0">
-								<p class="text-sm text-red-600 dark:text-red-400 break-words">
+								<p class="text-sm text-destructive break-words">
 									{errorItem.details}
 								</p>
 								<p class="text-xs text-muted-foreground mt-1">

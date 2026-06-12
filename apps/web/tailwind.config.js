@@ -29,7 +29,11 @@ export default {
 				// Core semantic tokens (paper + ink + accent)
 				background: hslVar('--background'),
 				foreground: hslVar('--foreground'),
-				border: hslVar('--border'),
+				border: {
+					DEFAULT: hslVar('--border'),
+					// 3:1 boundary for inputs/controls (WCAG 1.4.11); plain border is decorative
+					strong: hslVar('--border-strong')
+				},
 				ring: hslVar('--ring'),
 
 				// Card surfaces
@@ -87,6 +91,12 @@ export default {
 			// ============================================
 			// Typography
 			// ============================================
+			fontSize: {
+				// Canonical micro size for chips/timestamps/counts.
+				// Replaces ad-hoc text-[10px]/text-[11px]/text-[0.6rem] etc.
+				// For uppercase eyebrow labels use .micro-label instead.
+				'2xs': ['0.6875rem', { lineHeight: '0.9375rem' }]
+			},
 			fontFamily: {
 				// Primary font for UI/Action items
 				ui: ['system-ui', '-apple-system', 'sans-serif'],
@@ -172,6 +182,9 @@ export default {
 					css: {
 						maxWidth: 'none',
 						color: 'hsl(var(--foreground))',
+						'--tw-prose-lead': 'hsl(var(--muted-foreground))',
+						'--tw-prose-captions': 'hsl(var(--muted-foreground))',
+						'--tw-prose-kbd': 'hsl(var(--foreground))',
 						lineHeight: theme('lineHeight.relaxed'),
 						a: {
 							color: 'hsl(var(--accent))',
@@ -243,6 +256,9 @@ export default {
 				},
 				invert: {
 					css: {
+						'--tw-prose-lead': 'hsl(var(--muted-foreground))',
+						'--tw-prose-captions': 'hsl(var(--muted-foreground))',
+						'--tw-prose-kbd': 'hsl(var(--foreground))',
 						'--tw-prose-body': 'hsl(var(--foreground))',
 						'--tw-prose-headings': 'hsl(var(--foreground))',
 						'--tw-prose-links': 'hsl(var(--accent))',

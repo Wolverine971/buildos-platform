@@ -41,7 +41,7 @@
 		{/if}
 		{#if toolError}
 			<span
-				class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-red-500/10 text-red-700 dark:text-red-300"
+				class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-destructive/10 text-destructive"
 			>
 				Error
 			</span>
@@ -64,9 +64,9 @@
 			<div class="text-foreground/60 font-medium">Success</div>
 			<div
 				class="font-semibold {toolSuccess === false
-					? 'text-red-600 dark:text-red-400'
+					? 'text-destructive'
 					: toolSuccess === true
-						? 'text-emerald-600 dark:text-emerald-400'
+						? 'text-success'
 						: 'text-foreground'}"
 			>
 				{toolSuccess === null ? '-' : toolSuccess ? 'true' : 'false'}
@@ -80,7 +80,7 @@
 		</div>
 	</div>
 	{#if toolError}
-		<div class="mt-2 text-xs text-red-600 dark:text-red-400">
+		<div class="mt-2 text-xs text-destructive">
 			{toolError}
 		</div>
 	{/if}

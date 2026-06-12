@@ -23,7 +23,6 @@
 		TrendingUp,
 		FileText,
 		Plus,
-		Menu,
 		MessageCircle
 	} from 'lucide-svelte';
 	import {
@@ -80,7 +79,6 @@
 	let isInitialLoading = $state(true);
 	let isLoading = $state(false);
 	let error = $state<string | null>(null);
-	let showMobileMenu = $state(false);
 	let isRefreshing = $state(false);
 
 	// Search and filter state
@@ -522,7 +520,6 @@
 			activeBriefId = null;
 		}
 		fetchBriefData(currentDate, newView, newView === 'single' ? activeBriefId : null);
-		showMobileMenu = false;
 	}
 
 	function selectBriefSnapshot(brief: DailyBrief) {
@@ -696,22 +693,25 @@
 	</div>
 {:else}
 	<div class="min-h-screen bg-background">
-		<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+		<div class="mx-auto max-w-7xl px-2 sm:px-4 lg:px-6 py-2 sm:py-4 lg:py-6">
 			<!-- Improved Header -->
-			<div class="mb-6">
+			<div class="mb-3 sm:mb-4">
 				<!-- Main Header -->
-				<div class="flex items-center justify-between mb-6">
-					<div class="flex items-center">
-						<Calendar class="w-8 h-8 mr-3 text-accent" />
-						<div>
-							<h1 class="text-3xl font-bold text-foreground">Daily Briefs</h1>
-							<p class="text-sm text-muted-foreground mt-1">
+				<div class="flex items-center justify-between mb-2 sm:mb-4">
+					<div class="flex items-center min-w-0">
+						<Calendar class="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-accent shrink-0" />
+						<div class="min-w-0">
+							<h1 class="text-lg sm:text-xl font-bold text-foreground truncate">
+								Daily Briefs
+							</h1>
+							<p class="hidden sm:block text-sm text-muted-foreground">
 								AI-generated insights and priority actions
 							</p>
 						</div>
 					</div>
-					<div class="flex items-center space-x-2">
-						<!-- Next Scheduled Brief Display -->
+					<div class="flex items-center space-x-2 shrink-0">
+						<!-- Next Scheduled Brief Display (desktop; mobile gets the
+						     compact line below the header) -->
 						{#if isLoadingNextBrief}
 							<div class="hidden sm:flex items-center text-sm text-muted-foreground">
 								<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
@@ -734,21 +734,28 @@
 							onclick={() => (showSettingsModal = true)}
 							variant="ghost"
 							size="sm"
-							class="hidden sm:flex items-center gap-2 px-3 py-2"
+							class="flex items-center gap-2 px-2 sm:px-3 py-2"
 							icon={Settings}
+							aria-label="Brief settings"
 						>
-							Settings
+							<span class="hidden sm:inline">Settings</span>
 						</Button>
-						<Button
-							type="button"
-							onclick={() => (showMobileMenu = !showMobileMenu)}
-							variant="ghost"
-							size="sm"
-							class="sm:hidden p-2"
-							icon={Menu}
-						></Button>
 					</div>
 				</div>
+
+				<!-- Mobile: compact next-brief line, always visible (was hidden
+				     behind the hamburger menu) -->
+				{#if nextScheduledBrief}
+					<div
+						class="sm:hidden flex items-center gap-1.5 text-xs text-muted-foreground mb-2 min-w-0"
+					>
+						<Clock class="w-3.5 h-3.5 text-accent shrink-0" />
+						<span class="font-medium shrink-0">Next:</span>
+						<span class="truncate"
+							>{formatDateTime(nextScheduledBrief.scheduledFor, 'full')}</span
+						>
+					</div>
+				{/if}
 
 				<!-- Desktop Navigation Bar -->
 				<div class="hidden sm:block">
@@ -833,54 +840,24 @@
 					</div>
 				</div>
 
-				<!-- Mobile View Navigation -->
-				{#if showMobileMenu}
-					<div class="sm:hidden mt-4 space-y-2">
-						<!-- Mobile Next Scheduled Brief Display -->
-						{#if isLoadingNextBrief}
-							<div class="bg-card rounded-lg p-3 shadow-ink border border-border">
-								<div class="flex items-center text-sm text-muted-foreground">
-									<LoaderCircle class="w-4 h-4 mr-2 animate-spin" />
-									<span>Loading next brief...</span>
-								</div>
-							</div>
-						{:else if nextScheduledBrief}
-							<div
-								class="bg-accent/10 rounded-lg p-3 shadow-ink border border-accent/30"
-							>
-								<div class="flex items-center text-sm text-muted-foreground">
-									<Clock class="w-4 h-4 mr-2 text-accent" />
-									<span class="font-medium">Next Brief:</span>
-									<span class="ml-1"
-										>{formatDateTime(
-											nextScheduledBrief.scheduledFor,
-											'full'
-										)}</span
-									>
-								</div>
-							</div>
-						{/if}
-
-						<div
-							class="flex flex-col space-y-2 bg-card rounded-lg p-2 shadow-ink border border-border"
+				<!-- Mobile View Navigation: always-visible segmented control (was a
+				     vertical stack of full-width buttons behind a hamburger) -->
+				<div class="sm:hidden flex bg-muted rounded-lg p-1">
+					{#each viewConfigs as view}
+						<Button
+							type="button"
+							onclick={() => changeView(view.id)}
+							variant={selectedView === view.id ? 'primary' : 'ghost'}
+							size="sm"
+							class="flex-1 {selectedView === view.id
+								? 'bg-card text-accent shadow-ink'
+								: 'text-muted-foreground hover:text-foreground'}"
+							icon={view.icon}
 						>
-							{#each viewConfigs as view}
-								<Button
-									type="button"
-									onclick={() => changeView(view.id)}
-									variant={selectedView === view.id ? 'primary' : 'ghost'}
-									size="md"
-									class={selectedView === view.id
-										? 'bg-accent text-white shadow-ink justify-start'
-										: 'justify-start'}
-									icon={view.icon}
-								>
-									{view.label}
-								</Button>
-							{/each}
-						</div>
-					</div>
-				{/if}
+							{view.label}
+						</Button>
+					{/each}
+				</div>
 
 				<!-- Mobile Date Navigation (for single view) -->
 				{#if selectedView === 'single'}
@@ -1119,7 +1096,7 @@
 												onclick={() => copyBrief(brief)}
 												variant="ghost"
 												size="sm"
-												class="p-1.5 text-muted-foreground hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+												class="p-1.5 text-muted-foreground hover:text-success hover:bg-success/10"
 												title="Copy"
 												icon={Copy}
 											></Button>
@@ -1128,7 +1105,7 @@
 												onclick={() => exportBrief(brief)}
 												variant="ghost"
 												size="sm"
-												class="p-1.5 text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+												class="p-1.5 text-muted-foreground hover:text-accent hover:bg-accent/10"
 												title="Export"
 												icon={Download}
 											></Button>
@@ -1270,7 +1247,7 @@
 										onclick={() => exportBrief(displayDailyBrief)}
 										variant="ghost"
 										size="sm"
-										class="p-1.5 text-muted-foreground hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+										class="p-1.5 text-muted-foreground hover:text-accent hover:bg-accent/10"
 										title="Export"
 										icon={Download}
 									></Button>
@@ -1279,7 +1256,7 @@
 										onclick={() => copyBrief(displayDailyBrief)}
 										variant="ghost"
 										size="sm"
-										class="p-1.5 text-muted-foreground hover:text-green-600 dark:hover:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+										class="p-1.5 text-muted-foreground hover:text-success hover:bg-success/10"
 										title="Copy"
 										icon={Copy}
 									></Button>
@@ -1300,7 +1277,7 @@
 										onclick={() => handleBriefChat(displayDailyBrief)}
 										variant="ghost"
 										size="sm"
-										class="p-1.5 text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+										class="p-1.5 text-muted-foreground hover:text-info hover:bg-info/10"
 										title="Chat about Brief"
 										icon={MessageCircle}
 									></Button>

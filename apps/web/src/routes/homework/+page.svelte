@@ -190,9 +190,9 @@
 			<!-- Error message -->
 			{#if formError}
 				<div
-					class="px-3 py-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg tx tx-static tx-weak"
+					class="px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
 				>
-					<p class="text-sm text-red-600 dark:text-red-400">{formError}</p>
+					<p class="text-sm text-destructive">{formError}</p>
 				</div>
 			{/if}
 
@@ -210,9 +210,9 @@
 	<!-- Runs list -->
 	{#if data.error}
 		<div
-			class="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg tx tx-static tx-weak"
+			class="p-3 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak"
 		>
-			<p class="text-sm text-red-600 dark:text-red-400">{data.error}</p>
+			<p class="text-sm text-destructive">{data.error}</p>
 		</div>
 	{:else if data.runs.length === 0}
 		<div class="p-4 bg-muted border border-border rounded-lg">
@@ -228,15 +228,10 @@
 					<!-- Context badge -->
 					<div class="mb-2">
 						<span
-							class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.65rem] uppercase tracking-wider font-medium"
-							class:bg-slate-100={run.scope === 'global'}
-							class:text-muted-foreground={run.scope === 'global'}
-							class:dark:bg-slate-800={run.scope === 'global'}
-							class:dark:text-muted-foreground={run.scope === 'global'}
-							class:bg-indigo-100={run.scope !== 'global'}
-							class:text-indigo-700={run.scope !== 'global'}
-							class:dark:bg-indigo-950={run.scope !== 'global'}
-							class:dark:text-indigo-400={run.scope !== 'global'}
+							class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[0.65rem] uppercase tracking-wider font-medium {run.scope ===
+							'global'
+								? 'bg-muted text-muted-foreground'
+								: 'bg-accent/10 text-accent'}"
 						>
 							{#if run.scope === 'global'}
 								<svg
@@ -282,35 +277,16 @@
 					<div class="flex flex-wrap items-center gap-2 text-xs">
 						<!-- Status badge -->
 						<span
-							class="px-2 py-0.5 rounded-full text-[0.65rem] uppercase tracking-wider font-medium"
-							class:bg-blue-100={run.status === 'running'}
-							class:text-blue-700={run.status === 'running'}
-							class:dark:bg-blue-950={run.status === 'running'}
-							class:dark:text-blue-400={run.status === 'running'}
-							class:bg-amber-100={run.status === 'stopped'}
-							class:text-amber-700={run.status === 'stopped'}
-							class:dark:bg-amber-950={run.status === 'stopped'}
-							class:dark:text-amber-400={run.status === 'stopped'}
-							class:bg-emerald-100={run.status === 'completed'}
-							class:text-emerald-700={run.status === 'completed'}
-							class:dark:bg-emerald-950={run.status === 'completed'}
-							class:dark:text-emerald-400={run.status === 'completed'}
-							class:bg-purple-100={run.status === 'waiting_on_user'}
-							class:text-purple-700={run.status === 'waiting_on_user'}
-							class:dark:bg-purple-950={run.status === 'waiting_on_user'}
-							class:dark:text-purple-400={run.status === 'waiting_on_user'}
-							class:bg-muted={![
-								'running',
-								'stopped',
-								'completed',
-								'waiting_on_user'
-							].includes(run.status)}
-							class:text-muted-foreground={![
-								'running',
-								'stopped',
-								'completed',
-								'waiting_on_user'
-							].includes(run.status)}
+							class="px-2 py-0.5 rounded-full text-[0.65rem] uppercase tracking-wider font-medium {run.status ===
+							'running'
+								? 'bg-info/10 text-info'
+								: run.status === 'stopped'
+									? 'bg-warning/10 text-warning'
+									: run.status === 'completed'
+										? 'bg-success/10 text-success'
+										: run.status === 'waiting_on_user'
+											? 'bg-accent/10 text-accent'
+											: 'bg-muted text-muted-foreground'}"
 						>
 							{run.status}
 						</span>

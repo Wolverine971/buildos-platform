@@ -208,11 +208,11 @@
 	function actionBadgeClasses(action: string): string {
 		switch (action) {
 			case 'send':
-				return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+				return 'bg-success/10 text-success';
 			case 'skip':
-				return 'bg-amber-500/10 text-amber-700 dark:text-amber-300';
+				return 'bg-warning/10 text-warning';
 			case 'wait':
-				return 'bg-sky-500/10 text-sky-700 dark:text-sky-300';
+				return 'bg-info/10 text-info';
 			case 'complete':
 				return 'bg-muted text-muted-foreground';
 			default:
@@ -267,7 +267,7 @@
 		</AdminCard>
 	{:else if form?.success}
 		<AdminCard tone="success" padding="sm">
-			<div class="flex items-start gap-3 text-sm text-emerald-800">
+			<div class="flex items-start gap-3 text-sm text-success">
 				<CheckCircle2 class="mt-0.5 h-4 w-4 shrink-0" />
 				<p>{form.message ?? 'Welcome sequence admin action completed.'}</p>
 			</div>
@@ -276,7 +276,7 @@
 
 	<AdminCard tone="info" padding="sm">
 		<div class="flex flex-wrap items-center gap-2 text-xs text-muted-foreground sm:text-sm">
-			<Code2 class="h-4 w-4 shrink-0 text-sky-700 dark:text-sky-300" />
+			<Code2 class="h-4 w-4 shrink-0 text-info" />
 			<span class="text-foreground font-medium">Copy lives in source.</span>
 			<span>Supabase stores state, schedule, and stats only.</span>
 			<code
@@ -326,7 +326,7 @@
 			{:else}
 				<AdminCard tone="success" padding="md" class="lg:col-span-3">
 					<div class="flex items-start gap-3">
-						<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
+						<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-success" />
 						<div>
 							<h2 class="text-sm font-semibold text-foreground">
 								No active alert thresholds
@@ -380,7 +380,7 @@
 			</AdminCard>
 			<AdminCard tone="info" padding="md">
 				<div class="flex items-center gap-2">
-					<Activity class="h-4 w-4 text-sky-700" />
+					<Activity class="h-4 w-4 text-info" />
 					<p class="text-sm font-medium text-muted-foreground">Unique Opens</p>
 				</div>
 				<p class="mt-2 text-3xl font-bold text-foreground">{engagement.uniqueOpened}</p>
@@ -525,7 +525,7 @@
 							<td class="px-4 py-3 text-muted-foreground">{step.status}</td>
 							<td class="px-4 py-3">
 								<span
-									class="rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700"
+									class="rounded-md bg-success/10 px-2 py-1 text-xs font-medium text-success"
 								>
 									No
 								</span>
@@ -726,9 +726,7 @@
 					{sandbox.preview.action}
 				</span>
 				{#if sandbox.preview.branchKey}
-					<span
-						class="rounded-md bg-sky-500/10 px-2 py-1 text-xs font-medium text-sky-700"
-					>
+					<span class="rounded-md bg-info/10 px-2 py-1 text-xs font-medium text-info">
 						{sandbox.preview.branchKey}
 					</span>
 				{/if}
@@ -824,7 +822,7 @@
 							</span>
 							{#if preview.branchKey}
 								<span
-									class="rounded-md bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:text-sky-300"
+									class="rounded-md bg-info/10 px-2 py-0.5 text-[11px] font-medium text-info"
 								>
 									{preview.branchKey}
 								</span>
@@ -1109,7 +1107,7 @@
 						</thead>
 						<tbody class="divide-y divide-border">
 							{#each rows as row}
-								<tr class={row.diffCount > 0 ? 'bg-amber-500/5' : ''}>
+								<tr class={row.diffCount > 0 ? 'bg-warning/5' : ''}>
 									<td class="px-4 py-3 align-top">
 										<div class="font-medium text-foreground">
 											{row.email || 'No email'}
@@ -1149,7 +1147,7 @@
 									<td class="px-4 py-3 align-top">
 										{#if row.diffCount === 0}
 											<div
-												class="inline-flex items-center gap-2 rounded-md bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700"
+												class="inline-flex items-center gap-2 rounded-md bg-success/10 px-2 py-1 text-xs font-medium text-success"
 											>
 												<CheckCircle2 class="h-3.5 w-3.5" />
 												Matched
@@ -1157,7 +1155,7 @@
 										{:else}
 											<div class="space-y-2">
 												<div
-													class="inline-flex items-center gap-2 rounded-md bg-amber-500/10 px-2 py-1 text-xs font-medium text-amber-700"
+													class="inline-flex items-center gap-2 rounded-md bg-warning/10 px-2 py-1 text-xs font-medium text-warning"
 												>
 													<TriangleAlert class="h-3.5 w-3.5" />
 													{row.diffCount} difference{row.diffCount === 1

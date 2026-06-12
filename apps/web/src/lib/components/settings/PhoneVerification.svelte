@@ -113,19 +113,17 @@
 	}
 </script>
 
-<div class="space-y-6">
+<div class="space-y-4">
 	{#if !verificationSent}
-		<div class="dither-soft rounded-lg p-6 border border-blue-200 dark:border-blue-800">
+		<div class="dither-soft rounded-lg p-3 sm:p-4 border border-info/30">
 			<FormField
 				label="Phone Number"
 				labelFor="phone"
 				hint="Enter your phone number to receive SMS notifications"
 			>
 				<!-- Twilio Consent Language -->
-				<div
-					class="mb-4 p-3 bg-card rounded-md border border-blue-300 dark:border-blue-700"
-				>
-					<p class="text-sm text-foreground">
+				<div class="mb-3 p-2.5 bg-card rounded-md border border-info/30">
+					<p class="text-xs sm:text-sm text-foreground">
 						By providing your phone number, you agree to receive SMS reminders and
 						notifications from BuildOS. Message & data rates may apply. Reply <strong
 							>STOP</strong
@@ -162,9 +160,9 @@
 			</FormField>
 		</div>
 	{:else}
-		<div class="dither-soft rounded-lg p-6 border border-green-200 dark:border-green-800">
-			<div class="mb-4">
-				<div class="flex items-center gap-2 text-green-700 dark:text-green-300 mb-2">
+		<div class="dither-soft rounded-lg p-3 sm:p-4 border border-success/30">
+			<div class="mb-3">
+				<div class="flex items-center gap-2 text-success mb-2">
 					<Check class="w-5 h-5" />
 					<span class="font-semibold">Code sent to {phoneNumber}</span>
 				</div>
@@ -185,6 +183,8 @@
 						disabled={isVerifying}
 						class="flex-1 font-mono text-lg text-center"
 						autocomplete="one-time-code"
+						inputmode="numeric"
+						pattern="[0-9]*"
 					/>
 					<Button
 						onclick={confirmVerification}
@@ -198,7 +198,7 @@
 				</div>
 			</FormField>
 
-			<div class="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
+			<div class="mt-4 pt-4 border-t border-success/30">
 				<button
 					onclick={resetVerification}
 					class="text-sm text-muted-foreground hover:text-foreground dark:hover:text-muted-foreground transition-colors"

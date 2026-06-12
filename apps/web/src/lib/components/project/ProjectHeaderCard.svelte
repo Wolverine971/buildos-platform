@@ -71,7 +71,7 @@
 				/>
 				<div class="min-w-0">
 					<h1
-						class="text-sm sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
+						class="text-lg sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
 						style:view-transition-name="project-title-{project.id}"
 					>
 						{project.name || 'Untitled Project'}

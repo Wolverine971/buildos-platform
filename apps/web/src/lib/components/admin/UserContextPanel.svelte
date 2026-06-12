@@ -145,13 +145,13 @@
 	function getHealthColor(status: string): string {
 		switch (status) {
 			case 'healthy':
-				return 'text-emerald-600 dark:text-emerald-400';
+				return 'text-success';
 			case 'at-risk':
-				return 'text-amber-600 dark:text-amber-400';
+				return 'text-warning';
 			case 'churning':
-				return 'text-red-600 dark:text-red-400';
+				return 'text-destructive';
 			case 'new':
-				return 'text-blue-600 dark:text-blue-400';
+				return 'text-info';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -160,13 +160,13 @@
 	function getHealthBg(status: string): string {
 		switch (status) {
 			case 'healthy':
-				return 'bg-emerald-500/10 border-emerald-500/30';
+				return 'bg-success/10 border-success/30';
 			case 'at-risk':
-				return 'bg-amber-500/10 border-amber-500/30';
+				return 'bg-warning/10 border-warning/30';
 			case 'churning':
-				return 'bg-red-500/10 border-red-500/30';
+				return 'bg-destructive/10 border-destructive/30';
 			case 'new':
-				return 'bg-blue-500/10 border-blue-500/30';
+				return 'bg-info/10 border-info/30';
 			default:
 				return 'bg-muted border-border';
 		}
@@ -176,22 +176,22 @@
 		switch (status) {
 			case 'active':
 				return {
-					class: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+					class: 'bg-success/10 text-success border-success/30',
 					label: 'Active'
 				};
 			case 'trialing':
 				return {
-					class: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
+					class: 'bg-warning/10 text-warning border-warning/30',
 					label: 'Trial'
 				};
 			case 'past_due':
 				return {
-					class: 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30',
+					class: 'bg-destructive/10 text-destructive border-destructive/30',
 					label: 'Past Due'
 				};
 			case 'beta':
 				return {
-					class: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30',
+					class: 'bg-accent/10 text-accent border-accent/30',
 					label: 'Beta'
 				};
 			default:
@@ -318,27 +318,27 @@
 		switch (status) {
 			case 'sent':
 				return {
-					class: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30',
+					class: 'bg-info/10 text-info border-info/30',
 					label: 'Sent'
 				};
 			case 'delivered':
 				return {
-					class: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+					class: 'bg-success/10 text-success border-success/30',
 					label: 'Delivered'
 				};
 			case 'failed':
 				return {
-					class: 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30',
+					class: 'bg-destructive/10 text-destructive border-destructive/30',
 					label: 'Failed'
 				};
 			case 'bounced':
 				return {
-					class: 'bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/30',
+					class: 'bg-accent/10 text-accent border-accent/30',
 					label: 'Bounced'
 				};
 			case 'complaint':
 				return {
-					class: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
+					class: 'bg-warning/10 text-warning border-warning/30',
 					label: 'Complaint'
 				};
 			default:
@@ -431,7 +431,7 @@
 					title="Copy context as Markdown"
 				>
 					{#if copyButtonState === 'success'}
-						<Check class="w-4 h-4 text-emerald-500" />
+						<Check class="w-4 h-4 text-success" />
 					{:else}
 						<Copy class="w-4 h-4 text-muted-foreground" />
 					{/if}
@@ -470,7 +470,7 @@
 			<div class="text-center">
 				<div
 					class="text-lg font-bold {userContext.activity.tasks_completed > 0
-						? 'text-emerald-600 dark:text-emerald-400'
+						? 'text-success'
 						: 'text-foreground'}"
 				>
 					{userContext.activity.tasks_completed}
@@ -488,21 +488,21 @@
 				<div class="flex flex-wrap gap-1.5">
 					<button
 						onclick={() => quickEmail('welcome')}
-						class="px-2 py-1 text-xs rounded-md bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/30 hover:bg-blue-500/20 transition-colors pressable"
+						class="px-2 py-1 text-xs rounded-md bg-info/10 text-info border border-info/30 hover:bg-info/20 transition-colors pressable"
 					>
 						<Sparkles class="w-3 h-3 inline -mt-0.5 mr-0.5" />
 						Welcome
 					</button>
 					<button
 						onclick={() => quickEmail('check-in')}
-						class="px-2 py-1 text-xs rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20 transition-colors pressable"
+						class="px-2 py-1 text-xs rounded-md bg-success/10 text-success border border-success/30 hover:bg-success/20 transition-colors pressable"
 					>
 						<MessageSquare class="w-3 h-3 inline -mt-0.5 mr-0.5" />
 						Check-in
 					</button>
 					<button
 						onclick={() => quickEmail('feedback')}
-						class="px-2 py-1 text-xs rounded-md bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/30 hover:bg-violet-500/20 transition-colors pressable"
+						class="px-2 py-1 text-xs rounded-md bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 transition-colors pressable"
 					>
 						<Star class="w-3 h-3 inline -mt-0.5 mr-0.5" />
 						Feedback
@@ -510,7 +510,7 @@
 					{#if userHealth.status === 'at-risk' || userHealth.status === 'churning'}
 						<button
 							onclick={() => quickEmail('re-engage')}
-							class="px-2 py-1 text-xs rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 transition-colors pressable"
+							class="px-2 py-1 text-xs rounded-md bg-warning/10 text-warning border border-warning/30 hover:bg-warning/20 transition-colors pressable"
 						>
 							<Zap class="w-3 h-3 inline -mt-0.5 mr-0.5" />
 							Re-engage
@@ -522,11 +522,11 @@
 
 		<!-- Key Signals (if any) -->
 		{#if userHealth.signals.length > 0}
-			<div class="px-3 py-2 border-b border-border bg-amber-500/5">
+			<div class="px-3 py-2 border-b border-border bg-warning/5">
 				<div class="flex items-center gap-2 flex-wrap">
-					<AlertCircle class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+					<AlertCircle class="w-3.5 h-3.5 text-warning shrink-0" />
 					{#each userHealth.signals as signal}
-						<span class="text-xs text-amber-700 dark:text-amber-300">{signal}</span>
+						<span class="text-xs text-warning">{signal}</span>
 					{/each}
 				</div>
 			</div>
@@ -592,11 +592,11 @@
 						{:else}
 							<ChevronRight class="w-3.5 h-3.5 text-muted-foreground" />
 						{/if}
-						<Star class="w-3.5 h-3.5 text-amber-500" />
+						<Star class="w-3.5 h-3.5 text-warning" />
 						<span class="text-xs font-medium text-foreground">Beta Program</span>
 						{#if userContext.beta.beta_tier}
 							<span
-								class="ml-auto px-1.5 py-0.5 text-[0.65rem] rounded bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/30"
+								class="ml-auto px-1.5 py-0.5 text-[0.65rem] rounded bg-accent/10 text-accent border border-accent/30"
 							>
 								{userContext.beta.beta_tier}
 							</span>
@@ -648,8 +648,7 @@
 								{#if userContext.beta.discount_percentage}
 									<div class="flex justify-between col-span-2">
 										<span class="text-muted-foreground">Discount</span>
-										<span
-											class="text-emerald-600 dark:text-emerald-400 font-medium"
+										<span class="text-success font-medium"
 											>{userContext.beta.discount_percentage}% lifetime</span
 										>
 									</div>
@@ -681,10 +680,10 @@
 							<!-- Challenge -->
 							{#if userContext.beta.biggest_challenge}
 								<div
-									class="p-2 rounded-md bg-amber-500/5 border border-amber-500/20 tx tx-static tx-weak"
+									class="p-2 rounded-md bg-warning/5 border border-warning/20 tx tx-static tx-weak"
 								>
 									<div
-										class="text-[0.65rem] uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-0.5"
+										class="text-[0.65rem] uppercase tracking-wide text-warning mb-0.5"
 									>
 										Challenge
 									</div>
@@ -709,7 +708,7 @@
 					{:else}
 						<ChevronRight class="w-3.5 h-3.5 text-muted-foreground" />
 					{/if}
-					<Activity class="w-3.5 h-3.5 text-blue-500" />
+					<Activity class="w-3.5 h-3.5 text-info" />
 					<span class="text-xs font-medium text-foreground">Activity</span>
 					<span class="ml-auto text-[0.65rem] text-muted-foreground">30 days</span>
 				</button>
@@ -721,7 +720,7 @@
 							<div class="flex items-center gap-2">
 								<div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
 									<div
-										class="h-full bg-emerald-500 rounded-full transition-all"
+										class="h-full bg-success rounded-full transition-all"
 										style="width: {Math.round(
 											(userContext.activity.tasks_completed /
 												userContext.activity.tasks_created) *
@@ -797,12 +796,10 @@
 						{:else}
 							<ChevronRight class="w-3.5 h-3.5 text-muted-foreground" />
 						{/if}
-						<BookOpen class="w-3.5 h-3.5 text-emerald-500" />
+						<BookOpen class="w-3.5 h-3.5 text-success" />
 						<span class="text-xs font-medium text-foreground">Onboarding</span>
 						{#if userContext.onboarding.completedAt}
-							<span
-								class="ml-auto text-[0.65rem] text-emerald-600 dark:text-emerald-400"
-							>
+							<span class="ml-auto text-[0.65rem] text-success">
 								<CheckCircle class="w-3 h-3 inline -mt-0.5" /> Done
 							</span>
 						{/if}
@@ -811,9 +808,9 @@
 					{#if expandedSections.has('onboarding')}
 						<div class="px-3 pb-2 space-y-2">
 							{#if userContext.onboarding.projects}
-								<div class="p-2 rounded-md bg-blue-500/5 border border-blue-500/20">
+								<div class="p-2 rounded-md bg-info/5 border border-info/20">
 									<div
-										class="text-[0.65rem] uppercase tracking-wide text-blue-600 dark:text-blue-400 mb-0.5"
+										class="text-[0.65rem] uppercase tracking-wide text-info mb-0.5"
 									>
 										Projects
 									</div>
@@ -823,11 +820,9 @@
 								</div>
 							{/if}
 							{#if userContext.onboarding.challenges}
-								<div
-									class="p-2 rounded-md bg-amber-500/5 border border-amber-500/20"
-								>
+								<div class="p-2 rounded-md bg-warning/5 border border-warning/20">
 									<div
-										class="text-[0.65rem] uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-0.5"
+										class="text-[0.65rem] uppercase tracking-wide text-warning mb-0.5"
 									>
 										Challenges
 									</div>
@@ -837,11 +832,9 @@
 								</div>
 							{/if}
 							{#if userContext.onboarding.helpFocus}
-								<div
-									class="p-2 rounded-md bg-violet-500/5 border border-violet-500/20"
-								>
+								<div class="p-2 rounded-md bg-accent/5 border border-accent/20">
 									<div
-										class="text-[0.65rem] uppercase tracking-wide text-violet-600 dark:text-violet-400 mb-0.5"
+										class="text-[0.65rem] uppercase tracking-wide text-accent mb-0.5"
 									>
 										Focus
 									</div>
@@ -867,7 +860,7 @@
 						{:else}
 							<ChevronRight class="w-3.5 h-3.5 text-muted-foreground" />
 						{/if}
-						<Mail class="w-3.5 h-3.5 text-indigo-500" />
+						<Mail class="w-3.5 h-3.5 text-accent" />
 						<span class="text-xs font-medium text-foreground">Email History</span>
 						<span
 							class="ml-auto px-1.5 py-0.5 text-[0.65rem] rounded bg-muted text-muted-foreground"
@@ -924,7 +917,7 @@
 												>
 												{#if email.opened_at}
 													<span
-														class="text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5"
+														class="text-success flex items-center gap-0.5"
 													>
 														<Eye class="w-3 h-3" />
 														{email.open_count || 1}x
@@ -932,7 +925,7 @@
 												{/if}
 												{#if email.error_message}
 													<span
-														class="text-red-500 flex items-center gap-0.5"
+														class="text-destructive flex items-center gap-0.5"
 													>
 														<AlertCircle class="w-3 h-3" />
 														Error
@@ -985,8 +978,7 @@
 														<span class="text-muted-foreground"
 															>First opened</span
 														>
-														<span
-															class="text-emerald-600 dark:text-emerald-400"
+														<span class="text-success"
 															>{formatDate(email.opened_at)}</span
 														>
 													</div>
@@ -1030,7 +1022,7 @@
 											{#if email.error_message}
 												<div class="px-3 pb-3">
 													<div
-														class="p-2 rounded-md bg-red-500/10 border border-red-500/30 text-xs text-red-700 dark:text-red-300 flex items-start gap-2"
+														class="p-2 rounded-md bg-destructive/10 border border-destructive/30 text-xs text-destructive flex items-start gap-2"
 													>
 														<AlertCircle
 															class="w-3.5 h-3.5 shrink-0 mt-0.5"

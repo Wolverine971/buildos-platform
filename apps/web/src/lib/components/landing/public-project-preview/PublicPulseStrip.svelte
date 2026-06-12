@@ -249,17 +249,17 @@
 	function accentFor(kind: ActivityKind | UpcomingKind): string {
 		switch (kind) {
 			case 'task':
-				return 'text-sky-500';
+				return 'text-info';
 			case 'milestone':
-				return 'text-amber-500';
+				return 'text-accent';
 			case 'goal':
-				return 'text-violet-500';
+				return 'text-accent';
 			case 'plan':
-				return 'text-indigo-500';
+				return 'text-info';
 			case 'event':
-				return 'text-rose-500';
+				return 'text-accent';
 			case 'risk':
-				return 'text-red-500';
+				return 'text-destructive';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -299,13 +299,11 @@
 				onclick={() => (mobileTab = 'next')}
 				class="flex-1 px-3 py-2 flex items-center justify-center gap-1.5 text-[11px] font-semibold transition-colors {mobileTab ===
 				'next'
-					? 'text-foreground bg-amber-500/5 border-b-2 border-amber-500 -mb-px'
+					? 'text-foreground bg-accent/5 border-b-2 border-accent -mb-px'
 					: 'text-muted-foreground hover:text-foreground hover:bg-muted/40'}"
 			>
 				<ArrowRight
-					class="w-3 h-3 {mobileTab === 'next'
-						? 'text-amber-500'
-						: 'text-muted-foreground'}"
+					class="w-3 h-3 {mobileTab === 'next' ? 'text-accent' : 'text-muted-foreground'}"
 				/>
 				<span>Up next</span>
 				{#if upcomingItems.length > 0}
@@ -445,10 +443,8 @@
 				class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-border/60"
 			>
 				<div class="flex items-center gap-2">
-					<div
-						class="w-7 h-7 rounded-md bg-amber-500/10 flex items-center justify-center"
-					>
-						<ArrowRight class="w-3.5 h-3.5 text-amber-500" />
+					<div class="w-7 h-7 rounded-md bg-accent/10 flex items-center justify-center">
+						<ArrowRight class="w-3.5 h-3.5 text-accent" />
 					</div>
 					<div>
 						<p class="text-xs sm:text-sm font-semibold text-foreground">Up next</p>

@@ -135,7 +135,7 @@
 
 	function getStateIconColor(state: string | null | undefined): string {
 		const s = state || 'pending';
-		if (s === 'completed') return 'text-emerald-500';
+		if (s === 'completed') return 'text-success';
 		if (s === 'missed') return 'text-destructive';
 		if (s === 'in_progress') return 'text-accent';
 		return 'text-muted-foreground';
@@ -199,7 +199,7 @@
 		aria-expanded={isExpanded}
 	>
 		<div class="flex items-center gap-2">
-			<Flag class="w-3.5 h-3.5 text-amber-500" />
+			<Flag class="w-3.5 h-3.5 text-warning" />
 			<span class="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
 				Milestones
 			</span>
@@ -225,7 +225,7 @@
 					<div class="flex items-center gap-2">
 						<div class="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
 							<div
-								class="h-full bg-emerald-500/70 rounded-full transition-all duration-300"
+								class="h-full bg-success/70 rounded-full transition-all duration-300"
 								style="width: {progressPercent}%"
 							></div>
 						</div>
@@ -292,7 +292,7 @@
 								<button
 									type="button"
 									onclick={(e) => handleToggleComplete(e, m)}
-									class="hidden group-hover:flex items-center justify-center w-6 h-6 rounded shrink-0 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-500 transition-colors pressable"
+									class="flex sm:hidden sm:group-hover:flex items-center justify-center w-6 h-6 rounded shrink-0 bg-success/10 hover:bg-success/20 text-success transition-colors pressable"
 									aria-label="Mark as complete"
 									title="Mark as complete"
 								>

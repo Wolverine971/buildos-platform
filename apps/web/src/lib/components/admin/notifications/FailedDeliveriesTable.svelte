@@ -44,10 +44,10 @@
 
 	function getChannelBadgeColor(channel: string): string {
 		const colors: Record<string, string> = {
-			push: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-			email: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-			sms: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-			in_app: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+			push: 'bg-info/10 text-info',
+			email: 'bg-accent/10 text-accent',
+			sms: 'bg-success/10 text-success',
+			in_app: 'bg-muted text-muted-foreground'
 		};
 		return colors[channel] || 'bg-muted text-foreground';
 	}
@@ -58,8 +58,8 @@
 >
 	<div class="px-3 py-2.5 border-b border-border">
 		<div class="flex items-center">
-			<AlertCircle class="h-5 w-5 text-red-600 mr-2" />
-			<h3 class="text-lg font-semibold text-red-800 dark:text-red-200">
+			<AlertCircle class="h-5 w-5 text-destructive mr-2" />
+			<h3 class="text-lg font-semibold text-destructive">
 				Failed Deliveries ({timeframeLabel})
 			</h3>
 		</div>
@@ -81,37 +81,37 @@
 				<thead class="bg-muted">
 					<tr>
 						<th
-							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-destructive uppercase tracking-wider"
 						>
 							Time
 						</th>
 						<th
-							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-destructive uppercase tracking-wider"
 						>
 							Event Type
 						</th>
 						<th
-							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-destructive uppercase tracking-wider"
 						>
 							Channel
 						</th>
 						<th
-							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-destructive uppercase tracking-wider"
 						>
 							Recipient
 						</th>
 						<th
-							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-destructive uppercase tracking-wider"
 						>
 							Error
 						</th>
 						<th
-							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-destructive uppercase tracking-wider"
 						>
 							Attempts
 						</th>
 						<th
-							class="px-3 py-2 text-left text-xs font-medium text-red-900 dark:text-red-200 uppercase tracking-wider"
+							class="px-3 py-2 text-left text-xs font-medium text-destructive uppercase tracking-wider"
 						>
 							Actions
 						</th>
@@ -119,7 +119,7 @@
 				</thead>
 				<tbody class="bg-card divide-y divide-border">
 					{#each data as delivery}
-						<tr class="hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
+						<tr class="hover:bg-destructive/10 transition-colors">
 							<td class="px-3 py-2.5 whitespace-nowrap text-sm text-foreground">
 								{formatDate(delivery.created_at)}
 							</td>
@@ -141,7 +141,7 @@
 							<td class="px-3 py-2.5 text-sm max-w-xs">
 								<button
 									type="button"
-									class="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline decoration-dotted cursor-pointer text-left truncate block w-full"
+									class="text-destructive hover:text-destructive/80 underline decoration-dotted cursor-pointer text-left truncate block w-full"
 									onclick={() => openErrorModal(delivery)}
 									title="Click to view full error"
 								>
@@ -224,13 +224,9 @@
 			</div>
 
 			<!-- Error Message -->
-			<div
-				class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4"
-			>
-				<h4 class="font-semibold text-red-800 dark:text-red-200 mb-2">Error Message</h4>
-				<div
-					class="text-sm text-red-600 dark:text-red-400 font-mono whitespace-pre-wrap break-words"
-				>
+			<div class="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+				<h4 class="font-semibold text-destructive mb-2">Error Message</h4>
+				<div class="text-sm text-destructive font-mono whitespace-pre-wrap break-words">
 					{delivery.last_error}
 				</div>
 			</div>

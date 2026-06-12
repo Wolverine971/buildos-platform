@@ -235,7 +235,7 @@
 					<img src={data.user.avatarUrl} alt="" class="h-16 w-16 rounded-full" />
 				{:else}
 					<div
-						class="flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 text-2xl font-semibold text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+						class="flex h-16 w-16 items-center justify-center rounded-full bg-accent/10 text-2xl font-semibold text-accent"
 					>
 						{(data.user.name?.[0] ?? data.user.email[0] ?? '?').toUpperCase()}
 					</div>
@@ -260,13 +260,13 @@
 					<p class="text-xs text-muted-foreground">Projects</p>
 				</div>
 				<div>
-					<p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+					<p class="text-2xl font-bold text-success">
 						{data.summary.migratedProjects}
 					</p>
 					<p class="text-xs text-muted-foreground">Migrated</p>
 				</div>
 				<div>
-					<p class="text-2xl font-bold text-amber-600 dark:text-amber-400">
+					<p class="text-2xl font-bold text-warning">
 						{data.summary.pendingProjects}
 					</p>
 					<p class="text-xs text-muted-foreground">Pending</p>
@@ -292,7 +292,7 @@
 	<div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
 		<AdminCard padding="md">
 			<div class="text-center">
-				<FolderGit2 class="mx-auto h-6 w-6 text-purple-500" />
+				<FolderGit2 class="mx-auto h-6 w-6 text-accent" />
 				<p class="mt-2 text-2xl font-bold text-foreground">
 					{data.summary.migratedProjects}/{data.summary.totalProjects}
 				</p>
@@ -301,7 +301,7 @@
 		</AdminCard>
 		<AdminCard padding="md">
 			<div class="text-center">
-				<CheckSquare class="mx-auto h-6 w-6 text-blue-500" />
+				<CheckSquare class="mx-auto h-6 w-6 text-info" />
 				<p class="mt-2 text-2xl font-bold text-foreground">
 					{data.summary.migratedTasks}/{data.summary.totalTasks}
 				</p>
@@ -310,7 +310,7 @@
 		</AdminCard>
 		<AdminCard padding="md">
 			<div class="text-center">
-				<FolderGit2 class="mx-auto h-6 w-6 text-emerald-500" />
+				<FolderGit2 class="mx-auto h-6 w-6 text-success" />
 				<p class="mt-2 text-2xl font-bold text-foreground">
 					{data.summary.migratedPhases}/{data.summary.totalPhases}
 				</p>
@@ -321,12 +321,12 @@
 			<div class="text-center">
 				<AlertTriangle
 					class="mx-auto h-6 w-6 {data.errors.length > 0
-						? 'text-rose-500'
+						? 'text-destructive'
 						: 'text-muted-foreground'}"
 				/>
 				<p
 					class="mt-2 text-2xl font-bold {data.errors.length > 0
-						? 'text-rose-600 dark:text-rose-400'
+						? 'text-destructive'
 						: 'text-foreground'}"
 				>
 					{data.errors.length}
@@ -394,7 +394,7 @@
 
 			<!-- Desktop Table View -->
 			<div class="hidden overflow-hidden rounded-lg border border-border lg:block">
-				<table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
+				<table class="min-w-full divide-y divide-border text-sm">
 					<thead class="bg-muted/50">
 						<tr
 							class="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
@@ -406,7 +406,7 @@
 							<th class="px-4 py-3 text-right">Actions</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-gray-200 bg-card dark:divide-gray-700">
+					<tbody class="divide-y divide-border bg-card">
 						{#each data.projects as project}
 							{@const status = getStatusBadge(project)}
 							{@const StatusIcon = getStatusIcon(project)}
@@ -415,7 +415,7 @@
 									<div class="flex items-center gap-3">
 										<div
 											class="flex h-8 w-8 items-center justify-center rounded-lg {project.isMigrated
-												? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+												? 'bg-success/10 text-success'
 												: 'bg-muted text-muted-foreground dark:text-muted-foreground'}"
 										>
 											<StatusIcon class="h-4 w-4" />
@@ -445,7 +445,7 @@
 									<div class="flex items-center gap-2">
 										<div class="h-2 w-16 overflow-hidden rounded-full bg-muted">
 											<div
-												class="h-full bg-emerald-500 transition-all"
+												class="h-full bg-success transition-all"
 												style="width: {project.taskCount > 0
 													? (project.migratedTaskCount /
 															project.taskCount) *
@@ -489,10 +489,7 @@
 												Retry
 											</Button>
 										{:else}
-											<span
-												class="text-xs text-emerald-600 dark:text-emerald-400"
-												>Complete</span
-											>
+											<span class="text-xs text-success">Complete</span>
 										{/if}
 									</div>
 								</td>
@@ -513,7 +510,7 @@
 				</h3>
 				<a
 					href="/admin/migration/errors?userId={data.user.id}"
-					class="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300"
+					class="text-sm text-accent hover:text-accent"
 				>
 					View All
 					<ExternalLink class="ml-1 inline h-3 w-3" />
@@ -545,7 +542,7 @@
 								{error.errorCategory ?? 'unknown'}
 							</Badge>
 						</div>
-						<p class="mt-2 text-sm text-rose-700 dark:text-rose-300 line-clamp-2">
+						<p class="mt-2 text-sm text-destructive line-clamp-2">
 							{error.errorMessage}
 						</p>
 					</div>
@@ -581,7 +578,7 @@
 	<div class="p-4">
 		{#if previewData}
 			<pre
-				class="max-h-96 overflow-auto rounded-lg bg-gray-900 p-4 text-xs text-foreground">{JSON.stringify(
+				class="max-h-96 overflow-auto rounded-lg bg-gray-900 p-4 text-xs text-gray-100">{JSON.stringify(
 					previewData,
 					null,
 					2

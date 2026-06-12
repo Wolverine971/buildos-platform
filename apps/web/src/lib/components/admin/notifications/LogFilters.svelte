@@ -148,7 +148,7 @@
 						value={filters.search || ''}
 						oninput={(e) => updateFilter('search', e.currentTarget.value)}
 						placeholder="Search messages, namespaces..."
-						class="w-full pl-10 pr-3 py-2 border border-border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+						class="w-full pl-10 pr-3 py-2 border border-border rounded-md focus:ring-ring focus:border-ring text-sm"
 					/>
 				</div>
 			</div>
@@ -273,7 +273,7 @@
 					value={filters.namespace || ''}
 					oninput={(e) => updateFilter('namespace', e.currentTarget.value)}
 					placeholder="e.g. web:api:emit"
-					class="w-full px-3 py-2 border border-border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+					class="w-full px-3 py-2 border border-border rounded-md focus:ring-ring focus:border-ring text-sm"
 				/>
 			</div>
 		{/if}
@@ -293,7 +293,7 @@
 						type="datetime-local"
 						value={filters.from || ''}
 						oninput={(e) => updateFilter('from', e.currentTarget.value)}
-						class="w-full pl-10 pr-3 py-2 border border-border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+						class="w-full pl-10 pr-3 py-2 border border-border rounded-md focus:ring-ring focus:border-ring text-sm"
 					/>
 				</div>
 			</div>
@@ -311,7 +311,7 @@
 						type="datetime-local"
 						value={filters.to || ''}
 						oninput={(e) => updateFilter('to', e.currentTarget.value)}
-						class="w-full pl-10 pr-3 py-2 border border-border rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+						class="w-full pl-10 pr-3 py-2 border border-border rounded-md focus:ring-ring focus:border-ring text-sm"
 					/>
 				</div>
 			</div>

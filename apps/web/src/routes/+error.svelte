@@ -84,14 +84,14 @@
 			{ bg: string; border: string; icon: string }
 		> = {
 			amber: {
-				bg: 'bg-amber-500/10',
-				border: 'border-amber-500/30',
-				icon: 'text-amber-500'
+				bg: 'bg-warning/10',
+				border: 'border-warning/30',
+				icon: 'text-warning'
 			},
 			red: {
-				bg: 'bg-red-500/10',
-				border: 'border-red-500/30',
-				icon: 'text-red-500'
+				bg: 'bg-destructive/10',
+				border: 'border-destructive/30',
+				icon: 'text-destructive'
 			},
 			blue: {
 				bg: 'bg-accent/10',
@@ -99,9 +99,9 @@
 				icon: 'text-accent'
 			},
 			orange: {
-				bg: 'bg-amber-500/10',
-				border: 'border-amber-500/30',
-				icon: 'text-amber-500'
+				bg: 'bg-warning/10',
+				border: 'border-warning/30',
+				icon: 'text-warning'
 			},
 			gray: {
 				bg: 'bg-muted',

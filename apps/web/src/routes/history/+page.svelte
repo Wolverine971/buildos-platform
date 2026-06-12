@@ -193,17 +193,17 @@
 			case 'processed':
 			case 'completed':
 			case 'done':
-				return 'text-emerald-500';
+				return 'text-success';
 			case 'processing':
 				return 'text-accent animate-spin';
 			case 'queued':
-				return 'text-amber-500';
+				return 'text-warning';
 			case 'recent':
-				return 'text-sky-500';
+				return 'text-info';
 			case 'needs_summary':
 				return 'text-muted-foreground';
 			case 'pending':
-				return 'text-amber-500';
+				return 'text-warning';
 			case 'failed':
 				return 'text-destructive';
 			case 'active':
@@ -218,14 +218,14 @@
 			case 'processed':
 			case 'completed':
 			case 'done':
-				return 'border-emerald-500/25 bg-emerald-500/10 text-emerald-500';
+				return 'border-success/25 bg-success/10 text-success';
 			case 'processing':
 				return 'border-accent/25 bg-accent/10 text-accent';
 			case 'queued':
 			case 'pending':
-				return 'border-amber-500/25 bg-amber-500/10 text-amber-500';
+				return 'border-warning/25 bg-warning/10 text-warning';
 			case 'recent':
-				return 'border-sky-500/25 bg-sky-500/10 text-sky-500';
+				return 'border-info/25 bg-info/10 text-info';
 			case 'failed':
 				return 'border-destructive/25 bg-destructive/10 text-destructive';
 			case 'needs_summary':
@@ -274,9 +274,7 @@
 	}
 
 	function getTypeColor(type: HistoryItem['type']) {
-		return type === 'chat_session'
-			? 'bg-accent/15 text-accent'
-			: 'bg-purple-500/15 text-purple-600 dark:text-purple-400';
+		return type === 'chat_session' ? 'bg-accent/15 text-accent' : 'bg-info/15 text-info';
 	}
 
 	function formatDate(dateStr: string) {
@@ -426,8 +424,8 @@
 					class="rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
 				>
 					<div class="flex items-center gap-1 sm:gap-2">
-						<Lightbulb class="h-3 w-3 sm:h-5 sm:w-5 text-purple-500 hidden sm:block" />
-						<span class="text-base sm:text-2xl font-bold text-purple-500">
+						<Lightbulb class="h-3 w-3 sm:h-5 sm:w-5 text-info hidden sm:block" />
+						<span class="text-base sm:text-2xl font-bold text-info">
 							{stats.totalBraindumps}
 						</span>
 					</div>
@@ -447,7 +445,7 @@
 				<div
 					class="rounded-lg border border-border bg-card p-2 sm:p-4 shadow-ink tx tx-frame tx-weak"
 				>
-					<div class="text-base sm:text-2xl font-bold text-emerald-500">
+					<div class="text-base sm:text-2xl font-bold text-success">
 						{stats.processedBraindumps + stats.chatSessionsWithSummary}
 					</div>
 					<div class="text-[9px] sm:text-sm text-muted-foreground">Done</div>
@@ -479,12 +477,12 @@
 					<span class="hidden sm:inline">Captures</span>
 					<span class="sm:hidden">Captures</span>
 					<span
-						class="rounded-full bg-purple-500/15 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-xs text-purple-600 dark:text-purple-400"
+						class="rounded-full bg-info/15 px-1 sm:px-1.5 py-0.5 text-[9px] sm:text-xs text-info"
 					>
 						{stats.totalBraindumps}
 					</span>
 					{#if typeFilter === 'braindumps'}
-						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500"></span>
+						<span class="absolute bottom-0 left-0 right-0 h-0.5 bg-info"></span>
 					{/if}
 				</button>
 				<button
@@ -628,7 +626,7 @@
 											}}
 											disabled={classifyStatus === 'loading' ||
 												classifyStatus === 'queued'}
-											class="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[8px] sm:text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition pressable hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-70"
+											class="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground transition pressable hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-70"
 											aria-label="Summarize chat session"
 										>
 											{#if classifyStatus === 'error'}
@@ -641,7 +639,7 @@
 										</button>
 									{/if}
 									<span
-										class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[8px] sm:text-[10px] font-medium {getStatusBadgeClass(
+										class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium {getStatusBadgeClass(
 											displayStatus
 										)}"
 									>
@@ -664,9 +662,10 @@
 								{item.title}
 							</h3>
 
-							<!-- Preview / Summary - hidden on mobile for density -->
+							<!-- Preview / Summary - clamped to one line on mobile (compact,
+							     don't hide: this is the card's most informative field) -->
 							<p
-								class="hidden sm:block mb-3 line-clamp-3 flex-1 text-sm text-muted-foreground"
+								class="mb-1.5 sm:mb-3 line-clamp-1 sm:line-clamp-3 flex-1 text-[11px] sm:text-sm text-muted-foreground"
 							>
 								{item.preview}
 							</p>
@@ -676,15 +675,13 @@
 								<div class="mb-1.5 sm:mb-3 flex flex-wrap gap-0.5 sm:gap-1">
 									{#each item.topics.slice(0, 2) as topic}
 										<span
-											class="inline-flex items-center rounded-full bg-muted px-1 sm:px-1.5 py-0.5 text-[8px] sm:text-[10px] text-muted-foreground truncate max-w-[60px] sm:max-w-none"
+											class="inline-flex items-center rounded-full bg-muted px-1 sm:px-1.5 py-0.5 text-[10px] text-muted-foreground truncate max-w-[60px] sm:max-w-none"
 										>
 											{topic}
 										</span>
 									{/each}
 									{#if item.topics.length > 2}
-										<span
-											class="text-[8px] sm:text-[10px] text-muted-foreground"
-										>
+										<span class="text-[10px] text-muted-foreground">
 											+{item.topics.length - 2}
 										</span>
 									{/if}

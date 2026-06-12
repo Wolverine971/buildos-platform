@@ -386,10 +386,8 @@
 			<!-- Version metadata cards -->
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
 				<!-- From version info -->
-				<div
-					class="px-3 py-2 rounded-lg bg-rose-50/50 dark:bg-rose-900/10 border border-rose-200/50 dark:border-rose-800/30"
-				>
-					<p class="text-xs font-medium text-rose-600 dark:text-rose-400 mb-0.5">
+				<div class="px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30">
+					<p class="text-xs font-medium text-destructive mb-0.5">
 						{fromVersionNumber === null
 							? 'Empty baseline'
 							: `Version ${fromVersionNumber}`}
@@ -406,9 +404,7 @@
 								>
 							{/if}
 							{#if fromVersion.is_merged && fromVersion.change_count > 1}
-								<span
-									class="text-[10px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400"
-								>
+								<span class="text-[10px] px-1 py-0.5 rounded bg-info/10 text-info">
 									{fromVersion.change_count} edits
 								</span>
 							{/if}
@@ -426,20 +422,12 @@
 				</div>
 
 				<!-- To version info -->
-				<div
-					class="px-3 py-2 rounded-lg bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30"
-				>
+				<div class="px-3 py-2 rounded-lg bg-success/10 border border-success/30">
 					{#if toVersionNumber === 'current'}
-						<p
-							class="text-xs font-medium text-emerald-600 dark:text-emerald-400 mb-0.5"
-						>
-							Current document
-						</p>
+						<p class="text-xs font-medium text-success mb-0.5">Current document</p>
 						<p class="text-[10px] text-muted-foreground/50">Live editor state</p>
 					{:else if toVersion}
-						<p
-							class="text-xs font-medium text-emerald-600 dark:text-emerald-400 mb-0.5"
-						>
+						<p class="text-xs font-medium text-success mb-0.5">
 							Version {toVersion.number}
 						</p>
 						<p class="text-[10px] text-muted-foreground">
@@ -453,9 +441,7 @@
 								>
 							{/if}
 							{#if toVersion.is_merged && toVersion.change_count > 1}
-								<span
-									class="text-[10px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400"
-								>
+								<span class="text-[10px] px-1 py-0.5 rounded bg-info/10 text-info">
 									{toVersion.change_count} edits
 								</span>
 							{/if}
@@ -477,17 +463,17 @@
 					class="flex items-center gap-3 px-3 py-1.5 mb-3 rounded bg-muted/50 border border-border/50 text-[10px] tabular-nums"
 				>
 					{#if totalStats.added > 0}
-						<span class="text-emerald-600 dark:text-emerald-400">
+						<span class="text-success">
 							+{totalStats.added} line{totalStats.added === 1 ? '' : 's'} added
 						</span>
 					{/if}
 					{#if totalStats.removed > 0}
-						<span class="text-rose-600 dark:text-rose-400">
+						<span class="text-destructive">
 							&minus;{totalStats.removed} line{totalStats.removed === 1 ? '' : 's'} removed
 						</span>
 					{/if}
 					{#if totalStats.modified > 0}
-						<span class="text-amber-600 dark:text-amber-400">
+						<span class="text-warning">
 							~{totalStats.modified} line{totalStats.modified === 1 ? '' : 's'} modified
 						</span>
 					{/if}

@@ -193,13 +193,11 @@
 				{:else if agentProjectsError}
 					<!-- INKPRINT error card with Static texture -->
 					<div
-						class="rounded-lg border border-red-600/30 bg-red-50 p-4 shadow-ink tx tx-static tx-weak dark:bg-red-950/20"
+						class="rounded-lg border border-destructive/30 bg-destructive/10 p-4 shadow-ink tx tx-static tx-weak"
 						role="alert"
 					>
-						<p class="text-xs font-semibold text-red-700 dark:text-red-300">
-							Couldn't load projects
-						</p>
-						<p class="mt-0.5 text-xs text-red-600 dark:text-red-400">
+						<p class="text-xs font-semibold text-destructive">Couldn't load projects</p>
+						<p class="mt-0.5 text-xs text-destructive">
 							{agentProjectsError}
 						</p>
 					</div>
@@ -271,15 +269,12 @@
 							<button
 								type="button"
 								onclick={() => jumpToStepIfBack('project')}
-								class="inline-flex items-center gap-1 rounded-lg border border-emerald-600/30 bg-emerald-50 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-emerald-700 transition pressable hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:bg-emerald-950/30 dark:text-emerald-400 dark:hover:bg-emerald-950/50"
+								class="inline-flex items-center gap-1 rounded-lg border border-success/30 bg-success/10 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-success transition pressable hover:bg-success/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								aria-label="Change project"
 								title="Tap to change project"
 							>
 								<span>Project: {selectedContextLabel}</span>
-								<span
-									aria-hidden="true"
-									class="text-emerald-700/60 dark:text-emerald-400/60">·</span
-								>
+								<span aria-hidden="true" class="text-success/60">·</span>
 								<span aria-hidden="true">Change</span>
 							</button>
 						{/if}

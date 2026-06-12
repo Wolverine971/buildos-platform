@@ -132,11 +132,11 @@
 	function getGoalStateColor(state: string): string {
 		switch (state) {
 			case 'achieved':
-				return 'text-emerald-500';
+				return 'text-success';
 			case 'active':
-				return 'text-amber-500';
+				return 'text-warning';
 			case 'abandoned':
-				return 'text-red-500';
+				return 'text-destructive';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -146,9 +146,9 @@
 		switch (state) {
 			case 'mitigated':
 			case 'closed':
-				return 'text-emerald-500';
+				return 'text-success';
 			case 'occurred':
-				return 'text-red-500';
+				return 'text-destructive';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -157,9 +157,9 @@
 	function getPlanStateColor(state: string): string {
 		switch (state) {
 			case 'completed':
-				return 'text-emerald-500';
+				return 'text-success';
 			case 'active':
-				return 'text-amber-500';
+				return 'text-warning';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -168,13 +168,13 @@
 	function getEventStateColor(state: string): string {
 		switch (state) {
 			case 'completed':
-				return 'text-emerald-500';
+				return 'text-success';
 			case 'confirmed':
-				return 'text-sky-500';
+				return 'text-info';
 			case 'in_progress':
-				return 'text-amber-500';
+				return 'text-warning';
 			case 'cancelled':
-				return 'text-red-500';
+				return 'text-destructive';
 			default:
 				// Default 'scheduled' state
 				return 'text-muted-foreground';
@@ -190,7 +190,7 @@
 			panelKey="goals"
 			label="Goals"
 			icon={Target}
-			iconColor="text-amber-500"
+			iconColor="text-warning"
 			count={goals.length}
 			expanded={expandedPanel === 'goals'}
 			partnerExpanded={false}
@@ -271,7 +271,7 @@
 			panelKey="plans"
 			label="Plans"
 			icon={Calendar}
-			iconColor="text-indigo-500"
+			iconColor="text-accent"
 			count={plans.length}
 			expanded={expandedPanel === 'plans'}
 			partnerExpanded={isPartnerExpanded('plans')}
@@ -315,7 +315,7 @@
 			panelKey="risks"
 			label="Risks"
 			icon={AlertTriangle}
-			iconColor="text-red-500"
+			iconColor="text-destructive"
 			count={risks.length}
 			expanded={expandedPanel === 'risks'}
 			partnerExpanded={isPartnerExpanded('risks')}
@@ -362,7 +362,7 @@
 			panelKey="events"
 			label="Events"
 			icon={Clock}
-			iconColor="text-teal-500"
+			iconColor="text-info"
 			count={events.length}
 			expanded={expandedPanel === 'events'}
 			partnerExpanded={false}

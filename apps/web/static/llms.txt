@@ -31,7 +31,7 @@
 - [Agent Skills](https://build-os.com/agent-skills): Portable skill guides, definitions, operating playbooks, and source lineages for AI agents
 - [Agent Skills JSON Index](https://build-os.com/agent-skills/index.json): Machine-readable catalog of public BuildOS agent skills with raw BuildOS SKILL.md URLs, portable SKILL.md URLs, downloadable bundle.zip URLs, source lineage, compatible agents, stacks, and reference modules
 - [Google Calendar For AI Agents: Search Before You Create](https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create): Calendar operating rules for agent-safe reads, creates, updates, recurrence handling, and duplicate prevention
-- [Google Calendar SKILL.md](https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create/skill.md): Raw portable agent skill definition
+- [Google Calendar SKILL.md](https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create/skill.md): Raw BuildOS runtime skill definition
 - [Cold Email Engagement-First Outreach](https://build-os.com/agent-skills/cold-email-engagement-first-outreach): Source-lineaged root combo skill for cold outreach campaigns, targeted emails, reply handling, and trust-preserving outreach workflows
 - [Cold Email Engagement-First Outreach SKILL.md](https://build-os.com/agent-skills/cold-email-engagement-first-outreach/skill.md): Raw BuildOS runtime skill definition
 - [Cold Email ICP and Signal Design](https://build-os.com/agent-skills/cold-email-icp-signal-design): Source-lineaged skill for defining the right person, right moment, segment, buying signal, timing thesis, and disqualifiers before outreach

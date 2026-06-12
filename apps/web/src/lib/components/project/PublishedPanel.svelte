@@ -148,11 +148,11 @@
 		aria-expanded={isExpanded}
 	>
 		<div class="flex items-center gap-2 min-w-0">
-			<Globe class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+			<Globe class="w-4 h-4 text-success shrink-0" />
 			<span class="text-sm font-semibold text-foreground">Published</span>
 			{#if displayedLiveCount > 0}
 				<span
-					class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px] font-semibold"
+					class="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-success/10 text-success text-[10px] font-semibold"
 				>
 					{displayedLiveCount}
 				</span>
@@ -214,7 +214,7 @@
 									>
 										{#if row.public_status !== 'live'}
 											<span
-												class="inline-flex items-center rounded px-1 py-0.5 bg-amber-500/10 text-amber-800 dark:text-amber-400 font-semibold text-[9px] uppercase tracking-wide"
+												class="inline-flex items-center rounded px-1 py-0.5 bg-warning/10 text-warning font-semibold text-[9px] uppercase tracking-wide"
 											>
 												{row.public_status.replace('_', ' ')}
 											</span>

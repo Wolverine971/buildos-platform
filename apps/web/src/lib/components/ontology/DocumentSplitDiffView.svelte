@@ -73,9 +73,9 @@
 		if (!line) return 'bg-muted/30';
 		switch (line.type) {
 			case 'added':
-				return 'bg-emerald-50 dark:bg-emerald-900/15';
+				return 'bg-success/10';
 			case 'removed':
-				return 'bg-rose-50 dark:bg-rose-900/15';
+				return 'bg-destructive/10';
 			default:
 				return '';
 		}
@@ -85,9 +85,9 @@
 		if (!line) return 'text-muted-foreground/20';
 		switch (line.type) {
 			case 'added':
-				return 'text-emerald-600 dark:text-emerald-400';
+				return 'text-success';
 			case 'removed':
-				return 'text-rose-600 dark:text-rose-400';
+				return 'text-destructive';
 			default:
 				return 'text-muted-foreground/40';
 		}
@@ -115,19 +115,13 @@
 					<span class="micro-label text-foreground">{field.label.toUpperCase()}</span>
 					<span class="text-[10px] text-muted-foreground/60 tabular-nums">
 						{#if field.stats.modified > 0}
-							<span class="text-amber-600 dark:text-amber-400"
-								>~{field.stats.modified}</span
-							>
+							<span class="text-warning">~{field.stats.modified}</span>
 						{/if}
 						{#if field.stats.added > 0}
-							<span class="text-emerald-600 dark:text-emerald-400"
-								>+{field.stats.added}</span
-							>
+							<span class="text-success">+{field.stats.added}</span>
 						{/if}
 						{#if field.stats.removed > 0}
-							<span class="text-rose-600 dark:text-rose-400"
-								>-{field.stats.removed}</span
-							>
+							<span class="text-destructive">-{field.stats.removed}</span>
 						{/if}
 					</span>
 				</div>
@@ -135,14 +129,10 @@
 				<!-- Column headers -->
 				<div class="grid grid-cols-2 divide-x divide-border border-b border-border">
 					<div class="px-3 py-1">
-						<span class="text-[10px] font-medium text-rose-600 dark:text-rose-400"
-							>{fromLabel}</span
-						>
+						<span class="text-[10px] font-medium text-destructive">{fromLabel}</span>
 					</div>
 					<div class="px-3 py-1">
-						<span class="text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
-							>{toLabel}</span
-						>
+						<span class="text-[10px] font-medium text-success">{toLabel}</span>
 					</div>
 				</div>
 
@@ -180,8 +170,7 @@
 											{#if row.left.wordSpans && row.left.wordSpans.length > 0}
 												{#each row.left.wordSpans as span}
 													{#if span.type === 'removed'}
-														<span
-															class="bg-rose-200/60 dark:bg-rose-700/40 rounded-sm"
+														<span class="bg-destructive/25 rounded-sm"
 															>{span.text}</span
 														>
 													{:else}
@@ -211,8 +200,7 @@
 											{#if row.right.wordSpans && row.right.wordSpans.length > 0}
 												{#each row.right.wordSpans as span}
 													{#if span.type === 'added'}
-														<span
-															class="bg-emerald-200/60 dark:bg-emerald-700/40 rounded-sm"
+														<span class="bg-success/25 rounded-sm"
 															>{span.text}</span
 														>
 													{:else}

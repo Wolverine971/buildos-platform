@@ -57,11 +57,11 @@
 				<!-- Error Icon -->
 				<div
 					class="w-20 h-20 mx-auto mb-6 rounded-full {status === 404
-						? 'bg-amber-500/15'
+						? 'bg-warning/15'
 						: 'bg-destructive/15'} flex items-center justify-center"
 				>
 					{#if status === 404}
-						<FileX class="w-10 h-10 text-amber-600 dark:text-amber-400" />
+						<FileX class="w-10 h-10 text-warning" />
 					{:else}
 						<AlertCircle class="w-10 h-10 text-destructive" />
 					{/if}

@@ -38,9 +38,7 @@
 						</span>
 					{/if}
 					{#if turn.supervisorEvents.length > 0}
-						<span
-							class="rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-300"
-						>
+						<span class="rounded-full bg-warning/10 px-2 py-0.5 text-warning">
 							{formatNumber(turn.supervisorEvents.length)}
 							supervisor
 						</span>

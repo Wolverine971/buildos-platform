@@ -100,11 +100,11 @@
 {#if email}
 	<Modal {isOpen} onClose={closeViewer} size="lg">
 		{#snippet header()}
-			<div class="p-4 sm:p-5 md:p-6 border-b border-border">
-				<div class="flex items-center gap-2 sm:gap-3 min-w-0">
-					<Mail class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+			<div class="px-4 py-2.5 border-b border-border bg-muted">
+				<div class="flex items-center gap-3 min-w-0">
+					<Mail class="w-5 h-5 text-info flex-shrink-0" />
 					<div class="min-w-0">
-						<h2 class="text-base sm:text-lg font-semibold text-foreground truncate">
+						<h2 class="text-base font-semibold text-foreground truncate">
 							{email.subject || 'Email'}
 						</h2>
 						{#if email.to}
@@ -160,7 +160,9 @@
 			</div>
 		{/snippet}
 		{#snippet footer()}
-			<div class="p-4 sm:p-5 md:p-6 border-t border-border bg-muted/50">
+			<div
+				class="flex justify-end px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
+			>
 				<Button variant="outline" onclick={closeViewer} class="w-full sm:w-auto"
 					>Close</Button
 				>
@@ -189,7 +191,7 @@
 	}
 
 	:global(.prose a) {
-		@apply text-blue-600 dark:text-blue-400 hover:underline;
+		@apply text-info hover:underline;
 	}
 
 	:global(.prose img) {

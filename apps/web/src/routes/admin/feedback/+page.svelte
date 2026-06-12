@@ -157,10 +157,10 @@
 
 	function getStatusColor(status: string): string {
 		const colors = {
-			new: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
-			reviewed: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
-			in_progress: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-			resolved: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
+			new: 'bg-destructive/10 text-destructive',
+			reviewed: 'bg-warning/10 text-warning',
+			in_progress: 'bg-info/10 text-info',
+			resolved: 'bg-success/10 text-success',
 			closed: 'bg-muted text-foreground dark:text-muted-foreground'
 		};
 		return colors[status as keyof typeof colors] || colors.new;
@@ -179,9 +179,9 @@
 
 	function getCategoryColor(category: string): string {
 		const colors = {
-			feature: 'text-blue-600',
-			bug: 'text-red-600',
-			improvement: 'text-green-600',
+			feature: 'text-info',
+			bug: 'text-destructive',
+			improvement: 'text-success',
 			general: 'text-muted-foreground'
 		};
 		return colors[category as keyof typeof colors] || 'text-muted-foreground';
@@ -346,11 +346,7 @@
 	</div>
 
 	{#if error}
-		<AdminCard
-			tone="danger"
-			padding="sm"
-			class="text-sm font-medium text-rose-900 dark:text-rose-100"
-		>
+		<AdminCard tone="danger" padding="sm" class="text-sm font-medium text-destructive">
 			{error}
 		</AdminCard>
 	{/if}
@@ -438,7 +434,7 @@
 							<div class="flex items-center space-x-2">
 								{#if item.rating}
 									<div class="flex items-center">
-										<Star class="h-3 w-3 text-yellow-500 mr-1" />
+										<Star class="h-3 w-3 text-warning mr-1" />
 										<span>{item.rating}/5</span>
 									</div>
 								{/if}
@@ -456,7 +452,7 @@
 									disabled={isUpdating}
 									variant="secondary"
 									size="sm"
-									class="bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
+									class="bg-warning/10 text-warning hover:bg-warning/20"
 								>
 									Review
 								</Button>
@@ -467,7 +463,7 @@
 									disabled={isUpdating}
 									variant="secondary"
 									size="sm"
-									class="bg-green-100 text-green-800 hover:bg-green-200"
+									class="bg-success/10 text-success hover:bg-success/20"
 								>
 									Resolve
 								</Button>
@@ -479,7 +475,7 @@
 
 			<!-- Desktop Table View -->
 			<div class="hidden sm:block overflow-x-auto">
-				<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+				<table class="min-w-full divide-y divide-border">
 					<thead class="bg-muted">
 						<tr>
 							<th
@@ -514,7 +510,7 @@
 							</th>
 						</tr>
 					</thead>
-					<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
+					<tbody class="bg-card divide-y divide-border">
 						{#each feedback as item}
 							<tr class="hover:bg-muted">
 								<td class="px-6 py-4">
@@ -539,7 +535,7 @@
 								<td class="px-6 py-4 whitespace-nowrap">
 									{#if item.rating}
 										<div class="flex items-center">
-											<Star class="h-4 w-4 text-yellow-500 mr-1" />
+											<Star class="h-4 w-4 text-warning mr-1" />
 											<span class="text-sm text-foreground">
 												{item.rating}/5
 											</span>
@@ -592,7 +588,7 @@
 												variant="ghost"
 												size="sm"
 												title="Send email"
-												class="p-2 hover:text-indigo-600"
+												class="p-2 hover:text-info"
 												icon={Mail}
 											></Button>
 										{/if}
@@ -606,7 +602,7 @@
 												variant="ghost"
 												size="sm"
 												title="Mark as reviewed"
-												class="p-2 hover:text-yellow-600"
+												class="p-2 hover:text-warning"
 												icon={CheckSquare}
 											></Button>
 										{/if}
@@ -619,7 +615,7 @@
 												variant="ghost"
 												size="sm"
 												title="Mark as resolved"
-												class="p-2 hover:text-green-600"
+												class="p-2 hover:text-success"
 												icon={CheckCircle}
 											></Button>
 										{/if}
@@ -729,7 +725,7 @@
 									{#each Array(5) as _, i}
 										<Star
 											class="h-4 w-4 {i < selectedFeedback.rating
-												? 'text-yellow-500'
+												? 'text-warning'
 												: 'text-muted-foreground'}"
 										/>
 									{/each}
@@ -837,7 +833,7 @@
 							disabled={isUpdating}
 							variant="primary"
 							size="sm"
-							class="bg-yellow-600 hover:bg-yellow-700"
+							class="bg-warning hover:bg-warning/90"
 						>
 							Mark as Reviewed
 						</Button>
@@ -866,7 +862,7 @@
 							disabled={isUpdating}
 							variant="primary"
 							size="sm"
-							class="bg-green-600 hover:bg-green-700"
+							class="bg-success hover:bg-success/90"
 						>
 							Mark as Resolved
 						</Button>
@@ -881,7 +877,6 @@
 							disabled={isUpdating}
 							variant="secondary"
 							size="sm"
-							class="bg-gray-600 hover:bg-gray-700"
 						>
 							Close
 						</Button>

@@ -339,7 +339,7 @@
 				onclick={handleCopyPublicLink}
 				onmousedown={(e) => e.stopPropagation()}
 				ontouchstart={(e) => e.stopPropagation()}
-				class="mr-2 inline-flex min-h-[24px] items-center gap-1 flex-shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors pressable"
+				class="mr-2 inline-flex min-h-[24px] items-center gap-1 flex-shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold bg-success/10 text-success hover:bg-success/20 transition-colors pressable"
 				aria-label={node.public_slug
 					? `Copy public link for ${node.title}`
 					: 'Copy public link'}

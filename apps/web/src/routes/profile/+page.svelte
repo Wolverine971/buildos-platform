@@ -1,7 +1,8 @@
 <!-- apps/web/src/routes/profile/+page.svelte -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, slide } from 'svelte/transition';
+	import { slide } from 'svelte/transition';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import { userContextStore } from '$lib/stores/userContext';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
@@ -16,7 +17,6 @@
 		AlertCircle,
 		Bell,
 		XCircle,
-		X,
 		CreditCard
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
@@ -265,11 +265,11 @@
 		<!-- Success Banner -->
 		{#if showOnboardingComplete}
 			<div
-				class="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg shadow-ink tx tx-grain tx-weak"
+				class="mb-4 p-3 bg-success/10 border border-success/30 rounded-lg shadow-ink tx tx-grain tx-weak"
 				transition:slide
 			>
 				<div class="flex items-center gap-2">
-					<CircleCheck class="w-4 h-4 text-emerald-500 flex-shrink-0" />
+					<CircleCheck class="w-4 h-4 text-success flex-shrink-0" />
 					<p class="text-sm text-foreground font-medium">
 						Setup complete! BuildOS is now personalized to your workflow.
 					</p>
@@ -279,12 +279,12 @@
 
 		{#if saveSuccess}
 			<div
-				class="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg shadow-ink tx tx-grain tx-weak"
+				class="mb-4 p-3 bg-success/10 border border-success/30 rounded-lg shadow-ink tx tx-grain tx-weak"
 				transition:slide
 			>
 				<div class="flex items-center justify-between gap-2">
 					<div class="flex items-center gap-2">
-						<CircleCheck class="w-4 h-4 text-emerald-500" />
+						<CircleCheck class="w-4 h-4 text-success" />
 						<p class="text-sm text-foreground font-medium">
 							{successMessage}
 						</p>
@@ -293,7 +293,7 @@
 						onclick={() => (saveSuccess = false)}
 						variant="ghost"
 						size="sm"
-						class="p-1 text-emerald-500 hover:text-emerald-600"
+						class="p-1 text-success hover:text-success/80"
 						icon={XCircle}
 					></Button>
 				</div>
@@ -302,12 +302,12 @@
 
 		{#if saveError}
 			<div
-				class="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg shadow-ink tx tx-static tx-weak"
+				class="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg shadow-ink tx tx-static tx-weak"
 				transition:slide
 			>
 				<div class="flex items-center justify-between gap-2">
 					<div class="flex items-center gap-2">
-						<AlertCircle class="w-4 h-4 text-red-500" />
+						<AlertCircle class="w-4 h-4 text-destructive" />
 						<p class="text-sm text-foreground font-medium">
 							{errorMessage || 'An error occurred'}
 						</p>
@@ -316,7 +316,7 @@
 						onclick={() => (saveError = false)}
 						variant="ghost"
 						size="sm"
-						class="p-1 text-red-500 hover:text-red-600"
+						class="p-1 text-destructive hover:text-destructive/80"
 						icon={XCircle}
 					></Button>
 				</div>
@@ -427,138 +427,119 @@
 			<BillingTab subscriptionDetails={data.subscriptionDetails} />
 		{/if}
 
-		<!-- Template Editor/Preview Modal -->
+		<!-- Template Editor/Preview Modal (base Modal: portal, scroll lock,
+		     dvh sizing, Escape/backdrop stack handling) -->
 		{#if editingTemplate}
-			<div
-				class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-				transition:fade
+			<Modal
+				isOpen={true}
+				onClose={closeTemplateEditor}
+				size="lg"
+				title={editingTemplate.preview
+					? `Preview Template: ${editingTemplate.name}`
+					: editingTemplate.id
+						? 'Edit Template'
+						: 'Create New Template'}
 			>
-				<div
-					class="bg-card rounded-xl shadow-ink-strong border border-border max-w-4xl w-full max-h-[90vh] overflow-hidden tx tx-frame tx-weak"
-					transition:slide
-				>
-					<div class="p-6 border-b border-border">
-						<div class="flex items-center justify-between">
-							<h3 class="text-lg font-semibold text-foreground">
-								{#if editingTemplate.preview}
-									Preview Template: {editingTemplate.name}
-								{:else if editingTemplate.id}
-									Edit Template
-								{:else}
-									Create New Template
-								{/if}
-							</h3>
-							<Button
-								onclick={closeTemplateEditor}
-								variant="ghost"
-								size="sm"
-								class="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted pressable"
-								icon={X}
-							></Button>
-						</div>
-					</div>
-
-					{#if editingTemplate.preview}
-						<!-- Preview Mode -->
-						<div class="p-6 overflow-y-auto max-h-[60vh]">
-							<div class="space-y-4">
-								<div>
-									<h4 class="text-sm font-medium text-foreground mb-2">
-										Description
-									</h4>
-									<p class="text-muted-foreground">
-										{editingTemplate.description || 'No description provided'}
-									</p>
-								</div>
-								<div>
-									<h4 class="text-sm font-medium text-foreground mb-2">
-										Template Content
-									</h4>
-									<pre
-										class="bg-muted p-4 rounded-lg text-sm font-mono whitespace-pre-wrap overflow-x-auto border border-border text-foreground">
+				{#if editingTemplate.preview}
+					<!-- Preview Mode -->
+					<div class="p-4">
+						<div class="space-y-4">
+							<div>
+								<h4 class="text-sm font-medium text-foreground mb-2">
+									Description
+								</h4>
+								<p class="text-muted-foreground">
+									{editingTemplate.description || 'No description provided'}
+								</p>
+							</div>
+							<div>
+								<h4 class="text-sm font-medium text-foreground mb-2">
+									Template Content
+								</h4>
+								<pre
+									class="bg-muted p-4 rounded-lg text-sm font-mono whitespace-pre-wrap overflow-x-auto border border-border text-foreground">
 {editingTemplate.template_content}
 									</pre>
-								</div>
 							</div>
 						</div>
-					{:else}
-						<!-- Edit Mode -->
-						<form
-							method="POST"
-							action={editingTemplate.id ? '?/updateTemplate' : '?/createTemplate'}
-							use:enhance
-							class="contents"
-						>
-							{#if editingTemplate.id}
-								<input type="hidden" name="id" value={editingTemplate.id} />
-							{/if}
-							<input type="hidden" name="type" value={creatingTemplate} />
+					</div>
+				{:else}
+					<!-- Edit Mode -->
+					<form
+						method="POST"
+						action={editingTemplate.id ? '?/updateTemplate' : '?/createTemplate'}
+						use:enhance
+						class="contents"
+					>
+						{#if editingTemplate.id}
+							<input type="hidden" name="id" value={editingTemplate.id} />
+						{/if}
+						<input type="hidden" name="type" value={creatingTemplate} />
 
-							<div class="p-6 overflow-y-auto max-h-[60vh]">
-								<div class="space-y-4">
-									<FormField label="Name" labelFor="templateName" required>
-										<TextInput
-											id="templateName"
-											name="name"
-											bind:value={editingTemplate.name}
-											type="text"
-											required
-											placeholder="Template name"
-											size="md"
-										/>
-									</FormField>
-									<FormField label="Description" labelFor="templateDescription">
-										<TextInput
-											id="templateDescription"
-											name="description"
-											bind:value={editingTemplate.description}
-											type="text"
-											placeholder="What this template is used for"
-											size="md"
-										/>
-									</FormField>
-									<FormField
-										label="Template Content"
-										labelFor="template_content"
+						<div class="p-4">
+							<div class="space-y-4">
+								<FormField label="Name" labelFor="templateName" required>
+									<TextInput
+										id="templateName"
+										name="name"
+										bind:value={editingTemplate.name}
+										type="text"
 										required
-										hint=""
-									>
-										<Textarea
-											name="template_content"
-											bind:value={editingTemplate.template_content}
-											rows={12}
-											size="md"
-											required
-											class="font-mono text-sm"
-											placeholder="Enter your template content."
-										/>
-									</FormField>
-								</div>
+										placeholder="Template name"
+										size="md"
+									/>
+								</FormField>
+								<FormField label="Description" labelFor="templateDescription">
+									<TextInput
+										id="templateDescription"
+										name="description"
+										bind:value={editingTemplate.description}
+										type="text"
+										placeholder="What this template is used for"
+										size="md"
+									/>
+								</FormField>
+								<FormField
+									label="Template Content"
+									labelFor="template_content"
+									required
+									hint=""
+								>
+									<Textarea
+										name="template_content"
+										bind:value={editingTemplate.template_content}
+										rows={12}
+										size="md"
+										required
+										class="font-mono text-sm"
+										placeholder="Enter your template content."
+									/>
+								</FormField>
 							</div>
+						</div>
 
-							<div class="p-6 border-t border-border flex justify-end space-x-3">
-								<Button
-									type="button"
-									onclick={closeTemplateEditor}
-									variant="ghost"
-									size="md"
-									class="pressable"
-								>
-									Cancel
-								</Button>
-								<Button
-									type="submit"
-									variant="primary"
-									size="md"
-									class="shadow-ink pressable"
-								>
-									{editingTemplate.id ? 'Update' : 'Create'} Template
-								</Button>
-							</div>
-						</form>
-					{/if}
-				</div>
-			</div>
+						<div class="px-4 py-3 border-t border-border flex justify-end space-x-3">
+							<Button
+								type="button"
+								onclick={closeTemplateEditor}
+								variant="ghost"
+								size="md"
+								class="pressable"
+							>
+								Cancel
+							</Button>
+							<Button
+								type="submit"
+								variant="primary"
+								size="md"
+								class="shadow-ink pressable"
+							>
+								{editingTemplate.id ? 'Update' : 'Create'} Template
+							</Button>
+						</div>
+					</form>
+				{/if}
+			</Modal>
 		{/if}
 	</div>
 </div>

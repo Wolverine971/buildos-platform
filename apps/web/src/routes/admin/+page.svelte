@@ -573,13 +573,13 @@
 			key: 'agentChats',
 			title: 'Agent Chats Started',
 			icon: MessageSquare,
-			accent: 'text-sky-600'
+			accent: 'text-info'
 		},
 		{
 			key: 'agentMessages',
 			title: 'Most Agent Chat Messages',
 			icon: Eye,
-			accent: 'text-indigo-600'
+			accent: 'text-accent'
 		},
 		{
 			key: 'projectUpdates',
@@ -591,13 +591,13 @@
 			key: 'tasksCreated',
 			title: 'Top Task Creators',
 			icon: Activity,
-			accent: 'text-green-600'
+			accent: 'text-success'
 		},
 		{
 			key: 'tasksScheduled',
 			title: 'Top Task Schedulers',
 			icon: Globe,
-			accent: 'text-orange-600'
+			accent: 'text-accent'
 		}
 	];
 
@@ -831,14 +831,14 @@
 
 	function getSystemHealthColor(value: number, unit: string | null): string {
 		if (unit === 'percentage') {
-			if (value >= 95) return 'text-green-600';
-			if (value >= 85) return 'text-yellow-600';
-			return 'text-red-600';
+			if (value >= 95) return 'text-success';
+			if (value >= 85) return 'text-warning';
+			return 'text-destructive';
 		}
 		if (unit === 'milliseconds') {
-			if (value <= 200) return 'text-green-600';
-			if (value <= 500) return 'text-yellow-600';
-			return 'text-red-600';
+			if (value <= 200) return 'text-success';
+			if (value <= 500) return 'text-warning';
+			return 'text-destructive';
 		}
 		return 'text-muted-foreground';
 	}
@@ -901,8 +901,8 @@
 	function getCategoryColor(category: string): string {
 		const colors = {
 			feature: 'text-accent',
-			bug: 'text-red-600 dark:text-red-400',
-			improvement: 'text-emerald-600 dark:text-emerald-400',
+			bug: 'text-destructive',
+			improvement: 'text-success',
 			general: 'text-muted-foreground'
 		};
 		return colors[category as keyof typeof colors] || 'text-muted-foreground';
@@ -1004,7 +1004,7 @@
 			<AdminCard tone="danger" padding="md" class="mb-4">
 				<div class="flex items-center gap-3 text-sm">
 					<AlertCircle class="h-5 w-5" />
-					<p class="text-red-900 dark:text-red-100">{error}</p>
+					<p class="text-destructive">{error}</p>
 				</div>
 			</AdminCard>
 		{/if}
@@ -1024,15 +1024,15 @@
 				<AdminCard tone="danger" padding="md" class="mb-4">
 					<div class="flex items-start gap-4">
 						<span
-							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-card/40 text-rose-600/30 dark:text-rose-200"
+							class="flex h-10 w-10 items-center justify-center rounded-2xl bg-card/40 text-destructive/30"
 						>
 							<AlertTriangle class="h-5 w-5" />
 						</span>
 						<div class="flex-1">
-							<h3 class="text-base font-semibold text-rose-900 dark:text-rose-100">
+							<h3 class="text-base font-semibold text-destructive">
 								System Errors Need Attention
 							</h3>
-							<div class="mt-2 text-sm text-rose-800 dark:text-rose-200 space-y-1">
+							<div class="mt-2 text-sm text-destructive space-y-1">
 								{#if errorsData.critical_errors > 0}
 									<p>
 										{errorsData.critical_errors} critical error{errorsData.critical_errors >
@@ -1053,7 +1053,7 @@
 							</div>
 							<a
 								href="/admin/errors"
-								class="mt-3 inline-flex items-center text-sm font-semibold text-rose-800 underline-offset-4 hover:underline dark:text-rose-200"
+								class="mt-3 inline-flex items-center text-sm font-semibold text-destructive underline-offset-4 hover:underline"
 							>
 								View error logs
 								<ExternalLink class="w-3.5 h-3.5 ml-1" />
@@ -1106,7 +1106,7 @@
 						title="Agent Chat"
 						subtitle={timeframeRangeLabel}
 						icon={MessageSquare}
-						iconColor="text-sky-500"
+						iconColor="text-info"
 						badge={agentChatUsage.totalSessions}
 					>
 						<div class="grid grid-cols-2 gap-1.5 p-2">
@@ -1240,7 +1240,7 @@
 						<AdminCollapsibleSection
 							title="Subscriptions"
 							icon={CreditCard}
-							iconColor="text-emerald-500"
+							iconColor="text-success"
 							badge={formatCurrency(subscriptionData.revenue.current_mrr)}
 							badgeColor="success"
 						>
@@ -1270,12 +1270,10 @@
 							<div class="flex items-start gap-3">
 								<AlertTriangle class="h-5 w-5 flex-shrink-0" />
 								<div>
-									<h3
-										class="text-sm font-semibold text-red-900 dark:text-red-100"
-									>
+									<h3 class="text-sm font-semibold text-destructive">
 										Failed Payments Require Attention
 									</h3>
-									<p class="text-sm text-red-800 dark:text-red-200 mt-1">
+									<p class="text-sm text-destructive mt-1">
 										{subscriptionData.failedPayments.length} payment{subscriptionData
 											.failedPayments.length > 1
 											? 's'
@@ -1283,7 +1281,7 @@
 									</p>
 									<a
 										href="/admin/subscriptions"
-										class="inline-flex items-center text-sm font-medium text-red-800 hover:text-red-600 dark:text-red-200 mt-2"
+										class="inline-flex items-center text-sm font-medium text-destructive hover:text-destructive mt-2"
 									>
 										View details
 										<ExternalLink class="w-3 h-3 ml-1" />
@@ -1308,16 +1306,14 @@
 											<div class="flex-shrink-0">
 												{#if typedChange.status === 'active'}
 													<div
-														class="w-2 h-2 bg-green-500 rounded-full"
+														class="w-2 h-2 bg-success rounded-full"
 													></div>
 												{:else if typedChange.status === 'canceled'}
 													<div
-														class="w-2 h-2 bg-red-500 rounded-full"
+														class="w-2 h-2 bg-destructive rounded-full"
 													></div>
 												{:else if typedChange.status === 'trialing'}
-													<div
-														class="w-2 h-2 bg-sky-500 rounded-full"
-													></div>
+													<div class="w-2 h-2 bg-info rounded-full"></div>
 												{:else}
 													<div
 														class="w-2 h-2 bg-muted-foreground rounded-full"
@@ -1370,7 +1366,7 @@
 					<AdminCollapsibleSection
 						title="Feedback"
 						icon={Star}
-						iconColor="text-amber-500"
+						iconColor="text-warning"
 						badge={feedbackOverview.overview.unresolved_count}
 						badgeColor={feedbackOverview.overview.unresolved_count > 0
 							? 'warning'
@@ -1592,7 +1588,7 @@
 														class="flex shrink-0 items-center gap-2 text-xs text-muted-foreground"
 													>
 														{#if feedback.rating}
-															<span class="text-amber-600">
+															<span class="text-warning">
 																{feedback.rating}/5
 															</span>
 														{/if}
@@ -1678,7 +1674,7 @@
 					<AdminCollapsibleSection
 						title="Brief Delivery"
 						icon={Bell}
-						iconColor="text-emerald-500"
+						iconColor="text-success"
 						badge={briefDelivery.emailDelivered + briefDelivery.smsDelivered}
 					>
 						<div class="divide-y divide-border/50">
@@ -1833,7 +1829,7 @@
 					<AdminCollapsibleSection
 						title="Beta Activity"
 						icon={UserPlus}
-						iconColor="text-sky-500"
+						iconColor="text-info"
 						badge={betaOverview.recent_activity.length}
 					>
 						{#if betaOverview.recent_activity.length > 0}
@@ -1846,7 +1842,7 @@
 												<UserPlus class="h-3 w-3 text-accent shrink-0" />
 											{:else}
 												<MessageSquare
-													class="h-3 w-3 text-green-500 shrink-0"
+													class="h-3 w-3 text-success shrink-0"
 												/>
 											{/if}
 											<span class="text-xs text-foreground truncate">
@@ -1897,7 +1893,7 @@
 											/>
 										{:else}
 											<MessageSquare
-												class="h-4 w-4 text-green-500 flex-shrink-0 mt-1"
+												class="h-4 w-4 text-success flex-shrink-0 mt-1"
 											/>
 										{/if}
 										<div class="flex-1 min-w-0">
@@ -1947,7 +1943,7 @@
 					<AdminCollapsibleSection
 						title="System Health"
 						icon={Zap}
-						iconColor="text-yellow-500"
+						iconColor="text-warning"
 						badge={systemMetrics.length}
 					>
 						{#if systemMetrics.length > 0}
@@ -1982,7 +1978,7 @@
 				<!-- Desktop: Full panel -->
 				<div class="hidden sm:block admin-panel p-4 sm:p-6">
 					<h3 class="text-lg font-semibold text-foreground mb-4 flex items-center">
-						<Zap class="mr-2 h-5 w-5 text-yellow-600" />
+						<Zap class="mr-2 h-5 w-5 text-warning" />
 						System Health
 					</h3>
 					{#if systemMetrics.length > 0}

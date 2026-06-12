@@ -182,9 +182,9 @@
          cursor-pointer hover:shadow-ink-strong transition-all duration-200 min-w-[320px] max-w-[400px]
          pointer-events-auto
          {notification.status === 'success'
-		? 'ring-2 ring-green-500/50'
+		? 'ring-2 ring-success/50'
 		: notification.status === 'error'
-			? 'ring-2 ring-red-500/50'
+			? 'ring-2 ring-destructive/50'
 			: ''}"
 	onclick={handleClick}
 	onkeydown={handleKeyDown}
@@ -204,13 +204,11 @@
 				<!-- Status Icon -->
 				<div class="flex-shrink-0">
 					{#if notification.status === 'processing'}
-						<LoaderCircle
-							class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin"
-						/>
+						<LoaderCircle class="w-5 h-5 text-info animate-spin" />
 					{:else if notification.status === 'success'}
-						<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
+						<CheckCircle class="w-5 h-5 text-success" />
 					{:else if notification.status === 'error'}
-						<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400" />
+						<AlertCircle class="w-5 h-5 text-destructive" />
 					{:else if notification.status === 'cancelled'}
 						<XCircle class="w-5 h-5 text-muted-foreground" />
 					{/if}
@@ -238,7 +236,7 @@
 			{#if notification.progress?.type === 'percentage' && notification.progress.percentage !== undefined}
 				<div class="mt-3 h-1 bg-muted rounded-full overflow-hidden">
 					<div
-						class="h-full bg-blue-600 dark:bg-blue-400 transition-all duration-300"
+						class="h-full bg-info transition-all duration-300"
 						style="width: {notification.progress.percentage}%"
 					></div>
 				</div>

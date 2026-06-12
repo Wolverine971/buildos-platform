@@ -454,7 +454,7 @@
 									></div>
 									{#if bucket.write_count > 0}
 										<div
-											class="absolute bottom-0 left-1 right-1 rounded-t bg-emerald-500/80"
+											class="absolute bottom-0 left-1 right-1 rounded-t bg-success/80"
 											style="height: {heightPercent(
 												bucket.write_count,
 												maxDailyActivity,
@@ -465,7 +465,7 @@
 									{/if}
 									{#if bucket.error_count > 0 || bucket.denied_count > 0}
 										<div
-											class="absolute bottom-0 left-1 right-1 rounded-t bg-red-500/85"
+											class="absolute bottom-0 left-1 right-1 rounded-t bg-destructive/85"
 											style="height: {heightPercent(
 												bucket.error_count + bucket.denied_count,
 												maxDailyActivity,
@@ -490,10 +490,10 @@
 						<span class="h-2 w-2 rounded-sm bg-accent/75"></span>Tool calls
 					</span>
 					<span class="inline-flex items-center gap-1">
-						<span class="h-2 w-2 rounded-sm bg-emerald-500/80"></span>Writes
+						<span class="h-2 w-2 rounded-sm bg-success/80"></span>Writes
 					</span>
 					<span class="inline-flex items-center gap-1">
-						<span class="h-2 w-2 rounded-sm bg-red-500/85"></span>Errors / denied
+						<span class="h-2 w-2 rounded-sm bg-destructive/85"></span>Errors / denied
 					</span>
 				</div>
 			</section>
@@ -578,7 +578,7 @@
 								</div>
 								<div class="h-2 overflow-hidden rounded-full bg-muted">
 									<div
-										class="h-full rounded-full bg-emerald-500"
+										class="h-full rounded-full bg-success"
 										style="width: {widthPercent(
 											project.tool_call_count,
 											maxProjectCount
@@ -679,7 +679,7 @@
 											{eventMetaLabel(event)}
 										</p>
 										{#if event.error_message}
-											<p class="mt-1 text-xs text-red-600 dark:text-red-400">
+											<p class="mt-1 text-xs text-destructive">
 												{event.error_message}
 											</p>
 										{/if}

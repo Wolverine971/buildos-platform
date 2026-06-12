@@ -74,7 +74,7 @@
 			<a
 				href="/projects/{projectId}"
 				onclick={(e) => e.stopPropagation()}
-				class="ml-2 p-1.5 text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+				class="ml-2 p-1.5 text-muted-foreground hover:text-info transition-colors"
 				title="Go to project"
 			>
 				<ExternalLink class="w-4 h-4" />
@@ -97,7 +97,7 @@
 					<span class="flex items-center">
 						<div class="w-3 h-3 mr-1 rounded-full bg-muted relative overflow-hidden">
 							<div
-								class="absolute inset-0 bg-green-500"
+								class="absolute inset-0 bg-success"
 								style="width: {brief.metadata.completion_rate}%"
 							></div>
 						</div>
@@ -117,9 +117,9 @@
 		<div class="mt-4 flex items-center justify-between">
 			<span class="text-xs text-muted-foreground"> Click to view full brief </span>
 			<div
-				class="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 transition-colors"
+				class="w-8 h-8 rounded-full bg-info/10 flex items-center justify-center group-hover:bg-info/20 transition-colors"
 			>
-				<FileText class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+				<FileText class="w-4 h-4 text-info" />
 			</div>
 		</div>
 	</CardBody>

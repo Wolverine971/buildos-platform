@@ -1836,7 +1836,7 @@
 
 					{#if editingCaller && unavailableProjectCount(editingCaller) > 0}
 						<div
-							class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200"
+							class="rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning"
 						>
 							{projectCountLabel(unavailableProjectCount(editingCaller))} previously scoped
 							to this key are no longer available in your workspace. Rotating the key will
@@ -1923,8 +1923,8 @@
 		{#if showKeyCreatedModal && latestProvisioned}
 			<div class="p-4 sm:p-6 space-y-4">
 				<div class="flex items-start gap-3">
-					<div class="p-1.5 rounded-full bg-emerald-500/10">
-						<CircleCheck class="w-5 h-5 text-emerald-500" />
+					<div class="p-1.5 rounded-full bg-success/10">
+						<CircleCheck class="w-5 h-5 text-success" />
 					</div>
 					<div>
 						<p class="text-sm font-medium text-foreground">

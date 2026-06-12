@@ -58,12 +58,12 @@
 		if (currentPage.public_status === 'live') {
 			return currentPage.visibility === 'unlisted'
 				? 'bg-muted/70 text-muted-foreground'
-				: 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-400';
+				: 'bg-success/15 text-success';
 		}
 		if (currentPage.public_status === 'unpublished')
-			return 'bg-rose-500/10 text-rose-800 dark:text-rose-400';
+			return 'bg-destructive/10 text-destructive';
 		if (currentPage.public_status === 'pending_confirmation')
-			return 'bg-amber-500/15 text-amber-800 dark:text-amber-400';
+			return 'bg-warning/15 text-warning';
 		return 'bg-muted/70 text-muted-foreground';
 	});
 
@@ -212,7 +212,7 @@
 					onclick={handleToggleLiveSync}
 					disabled={actionLoading}
 					class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium hover:bg-accent/10 transition-colors pressable disabled:opacity-50 {currentPage.live_sync_enabled
-						? 'text-emerald-800 dark:text-emerald-400'
+						? 'text-success'
 						: 'text-muted-foreground'}"
 				>
 					Live sync {currentPage.live_sync_enabled ? 'on' : 'off'}
@@ -221,7 +221,7 @@
 					type="button"
 					onclick={handleUnpublish}
 					disabled={actionLoading}
-					class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-rose-800 dark:text-rose-400 hover:bg-rose-500/10 transition-colors pressable disabled:opacity-50"
+					class="inline-flex min-h-[32px] items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-destructive hover:bg-destructive/10 transition-colors pressable disabled:opacity-50"
 				>
 					Unpublish
 				</button>
@@ -338,7 +338,7 @@
 							void handleUnpublish();
 						}}
 						disabled={actionLoading}
-						class="flex items-center gap-3 px-4 py-3 text-sm text-rose-800 dark:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-50 border-t border-border"
+						class="flex items-center gap-3 px-4 py-3 text-sm text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 border-t border-border"
 					>
 						<X class="w-4 h-4" />
 						Unpublish

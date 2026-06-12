@@ -43,28 +43,25 @@
 
 	// Get role badge styling
 	const roleBadgeClass = $derived.by(() => {
-		if (docRole === 'workspace')
-			return 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300';
-		if (docRole === 'scratchpad')
-			return 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300';
-		if (docRole === 'scratchpad_exec')
-			return 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300';
+		if (docRole === 'workspace') return 'bg-info/10 text-info';
+		if (docRole === 'scratchpad') return 'bg-success/10 text-success';
+		if (docRole === 'scratchpad_exec') return 'bg-accent/10 text-accent';
 		return 'bg-muted text-muted-foreground';
 	});
 
 	// Get icon background styling based on role
 	const iconBgClass = $derived.by(() => {
-		if (docRole === 'workspace') return 'bg-blue-500/10';
-		if (docRole === 'scratchpad') return 'bg-emerald-500/10';
-		if (docRole === 'scratchpad_exec') return 'bg-purple-500/10';
+		if (docRole === 'workspace') return 'bg-info/10';
+		if (docRole === 'scratchpad') return 'bg-success/10';
+		if (docRole === 'scratchpad_exec') return 'bg-accent/10';
 		return 'bg-accent/10';
 	});
 
 	// Get icon color styling based on role
 	const iconColorClass = $derived.by(() => {
-		if (docRole === 'workspace') return 'text-blue-500';
-		if (docRole === 'scratchpad') return 'text-emerald-500';
-		if (docRole === 'scratchpad_exec') return 'text-purple-500';
+		if (docRole === 'workspace') return 'text-info';
+		if (docRole === 'scratchpad') return 'text-success';
+		if (docRole === 'scratchpad_exec') return 'text-accent';
 		return 'text-accent';
 	});
 
@@ -158,7 +155,7 @@
 		<!-- Open button -->
 		<button
 			onclick={handleOpenDocument}
-			class="shrink-0 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg border border-accent/20 hover:bg-accent hover:text-accent-foreground transition-all pressable opacity-0 group-hover:opacity-100"
+			class="shrink-0 px-3 py-1.5 text-xs bg-accent/10 text-accent rounded-lg border border-accent/20 hover:bg-accent hover:text-accent-foreground transition-all pressable sm:opacity-0 sm:group-hover:opacity-100"
 		>
 			Open
 		</button>

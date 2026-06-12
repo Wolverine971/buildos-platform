@@ -25,9 +25,9 @@
 	function getLineClass(line: DiffLine): string {
 		switch (line.type) {
 			case 'added':
-				return 'bg-emerald-50 dark:bg-emerald-900/20 border-l-4 border-emerald-500';
+				return 'bg-success/10 border-l-4 border-success';
 			case 'removed':
-				return 'bg-rose-50 dark:bg-rose-900/20 border-l-4 border-rose-500';
+				return 'bg-destructive/10 border-l-4 border-destructive';
 			default:
 				return 'bg-muted/50';
 		}
@@ -42,8 +42,8 @@
 	}
 
 	function getGutterColorClass(line: DiffLine): string {
-		if (line.type === 'added') return 'text-emerald-600 dark:text-emerald-400';
-		if (line.type === 'removed') return 'text-rose-600 dark:text-rose-400';
+		if (line.type === 'added') return 'text-success';
+		if (line.type === 'removed') return 'text-destructive';
 		return 'text-muted-foreground/50';
 	}
 </script>
@@ -77,9 +77,7 @@
 						class="p-3 sm:p-4"
 						aria-label={`${diff.label} — ${fromVersionLabel} (removed lines)`}
 					>
-						<h4
-							class="text-xs sm:text-sm font-medium text-rose-600 dark:text-rose-400 mb-2 sm:mb-3"
-						>
+						<h4 class="text-xs sm:text-sm font-medium text-destructive mb-2 sm:mb-3">
 							{fromVersionLabel}
 						</h4>
 						<div class="font-mono text-xs sm:text-sm space-y-1 max-h-96 overflow-auto">
@@ -113,9 +111,7 @@
 						class="p-3 sm:p-4"
 						aria-label={`${diff.label} — ${toVersionLabel} (added lines)`}
 					>
-						<h4
-							class="text-xs sm:text-sm font-medium text-emerald-600 dark:text-emerald-400 mb-2 sm:mb-3"
-						>
+						<h4 class="text-xs sm:text-sm font-medium text-success mb-2 sm:mb-3">
 							{toVersionLabel}
 						</h4>
 						<div class="font-mono text-xs sm:text-sm space-y-1 max-h-96 overflow-auto">

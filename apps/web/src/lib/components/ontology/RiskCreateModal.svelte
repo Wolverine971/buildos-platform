@@ -100,25 +100,25 @@
 			value: 'low',
 			label: 'Low',
 			description: 'Minor impact, easily recoverable',
-			color: 'text-emerald-600'
+			color: 'text-success'
 		},
 		{
 			value: 'medium',
 			label: 'Medium',
 			description: 'Moderate impact, requires attention',
-			color: 'text-amber-600'
+			color: 'text-warning'
 		},
 		{
 			value: 'high',
 			label: 'High',
 			description: 'Significant impact on timeline or quality',
-			color: 'text-orange-600'
+			color: 'text-accent'
 		},
 		{
 			value: 'critical',
 			label: 'Critical',
 			description: 'Project-threatening, immediate action needed',
-			color: 'text-red-600'
+			color: 'text-destructive'
 		}
 	];
 
@@ -284,7 +284,7 @@
 				type="button"
 				onclick={handleClose}
 				disabled={isSaving}
-				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-red-600/50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 dark:hover:border-red-400/50 dark:hover:text-red-400 tx tx-grain tx-weak"
+				class="flex h-9 w-9 shrink-0 items-center justify-center rounded border border-border bg-card text-muted-foreground shadow-ink transition-all pressable hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 				aria-label="Close modal"
 			>
 				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -315,7 +315,7 @@
 								<!-- Header -->
 								<div class="flex items-center gap-3 pb-4 border-b border-border">
 									<div class="p-2 rounded bg-muted tx tx-bloom tx-weak">
-										<AlertTriangle class="w-5 h-5 text-amber-500" />
+										<AlertTriangle class="w-5 h-5 text-warning" />
 									</div>
 									<div>
 										<h3 class="text-lg font-semibold text-foreground">
@@ -333,7 +333,7 @@
 											<h3
 												class="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-2"
 											>
-												<span class="w-1.5 h-1.5 bg-amber-500 rounded-full"
+												<span class="w-1.5 h-1.5 bg-warning rounded-full"
 												></span>
 												{category}
 											</h3>
@@ -378,7 +378,7 @@
 										<button
 											type="button"
 											onclick={skipTypeSelection}
-											class="w-full bg-muted border border-dashed border-border p-2.5 sm:p-4 rounded-lg text-left hover:bg-muted hover:border-amber-500/50 transition-all duration-200"
+											class="w-full bg-muted border border-dashed border-border p-2.5 sm:p-4 rounded-lg text-left hover:bg-muted hover:border-warning/50 transition-all duration-200"
 										>
 											<div class="flex items-center justify-between">
 												<div class="flex items-center gap-3">
@@ -416,7 +416,7 @@
 											<div class="flex items-center gap-3 flex-1 min-w-0">
 												<div class="p-2 rounded bg-card shadow-ink">
 													<SelectedTypeIcon
-														class="w-4 h-4 text-amber-500"
+														class="w-4 h-4 text-warning"
 													/>
 												</div>
 												<div class="flex-1 min-w-0">

@@ -12,7 +12,7 @@
 	<div class="text-center">
 		<div class="flex justify-center mb-4">
 			<div class="relative">
-				<Calendar class="w-16 h-16 text-green-600 dark:text-green-400" />
+				<Calendar class="w-16 h-16 text-success" />
 				<LoaderCircle
 					class="w-16 h-16 absolute inset-0 animate-spin text-muted-foreground"
 				/>

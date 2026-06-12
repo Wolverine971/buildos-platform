@@ -105,13 +105,13 @@
 <div class="p-4 flex items-center gap-3">
 	<div class="flex-shrink-0">
 		{#if statusInfo.icon === 'processing'}
-			<LoaderCircle class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin" />
+			<LoaderCircle class="w-5 h-5 text-info animate-spin" />
 		{:else if statusInfo.icon === 'success'}
-			<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
+			<CheckCircle class="w-5 h-5 text-success" />
 		{:else if statusInfo.icon === 'error'}
-			<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400" />
+			<AlertCircle class="w-5 h-5 text-destructive" />
 		{:else}
-			<CalendarClock class="w-5 h-5 text-blue-500 dark:text-blue-300" />
+			<CalendarClock class="w-5 h-5 text-info" />
 		{/if}
 	</div>
 
@@ -125,7 +125,7 @@
 			</div>
 		{/if}
 		{#if secondaryMeta}
-			<div class="text-[11px] uppercase tracking-wide text-blue-500 dark:text-blue-300 mt-1">
+			<div class="text-[11px] uppercase tracking-wide text-info mt-1">
 				{secondaryMeta}
 			</div>
 		{/if}
@@ -133,7 +133,7 @@
 
 	{#if notification.status === 'success'}
 		<div class="flex-shrink-0">
-			<CalendarCheck class="w-4 h-4 text-blue-500 dark:text-blue-300" />
+			<CalendarCheck class="w-4 h-4 text-info" />
 		</div>
 	{/if}
 </div>

@@ -306,7 +306,7 @@
 							class="text-base sm:text-lg font-semibold text-foreground dark:!text-white flex items-center mb-2 sm:mb-0"
 						>
 							<svg
-								class="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-blue-600"
+								class="mr-2 h-4 w-4 sm:h-5 sm:w-5 text-info"
 								fill="none"
 								stroke="currentColor"
 								viewBox="0 0 24 24"
@@ -444,7 +444,7 @@
 						<div class="flex flex-col space-y-0.5 sm:space-y-1">
 							{#each week as day, dayIndex}
 								<div
-									class="w-2 h-2 sm:w-3 sm:h-3 rounded-sm transition-all duration-200 hover:ring-1 sm:hover:ring-2 hover:ring-blue-300 hover:ring-opacity-50 hover:scale-110 cursor-pointer"
+									class="w-2 h-2 sm:w-3 sm:h-3 rounded-sm transition-all duration-200 hover:ring-1 sm:hover:ring-2 hover:ring-info/50 hover:scale-110 cursor-pointer"
 									style="background-color: {getVisitorColor(day?.level || 0)}"
 									title={day
 										? `${day.visitor_count} visitor${day.visitor_count !== 1 ? 's' : ''} on ${formatTooltipDate(day.date)}`

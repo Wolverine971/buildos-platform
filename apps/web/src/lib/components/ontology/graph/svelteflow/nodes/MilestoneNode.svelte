@@ -24,26 +24,26 @@
 
 <div
 	class="milestone-node px-3 py-2 border-2 shadow-ink min-w-[110px] max-w-[170px] transition-all duration-200
-		bg-emerald-50 dark:bg-emerald-900/30 border-emerald-500
-		{selected ? 'ring-2 ring-amber-400 ring-offset-2' : ''}"
+		bg-success/10 border-success
+		{selected ? 'ring-2 ring-accent ring-offset-2' : ''}"
 	style="clip-path: polygon(0 0, 100% 0, 100% 75%, 50% 100%, 0 75%);"
 >
-	<Handle type="target" position={Position.Top} class="!bg-emerald-500 !w-2 !h-2" />
+	<Handle type="target" position={Position.Top} class="!bg-success !w-2 !h-2" />
 
 	<div class="flex items-center gap-1.5 pb-2">
-		<Flag class="w-4 h-4 flex-shrink-0 text-emerald-500 dark:text-emerald-400" />
-		<span class="text-xs font-semibold truncate text-emerald-700 dark:text-emerald-300">
+		<Flag class="w-4 h-4 flex-shrink-0 text-success" />
+		<span class="text-xs font-semibold truncate text-success">
 			{data.label}
 		</span>
 	</div>
 
 	{#if dueDate}
-		<div class="text-[10px] text-emerald-600 dark:text-emerald-400/70">
+		<div class="text-[10px] text-success/70">
 			Due: {dueDate}
 		</div>
 	{/if}
 
-	<Handle type="source" position={Position.Bottom} class="!bg-emerald-500 !w-2 !h-2" />
+	<Handle type="source" position={Position.Bottom} class="!bg-success !w-2 !h-2" />
 </div>
 
 <style>

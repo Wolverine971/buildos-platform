@@ -113,6 +113,11 @@
 		afterForm?: Snippet;
 	} = $props();
 
+	// Stable per-instance id so footer buttons (outside the <form> element, in
+	// the Modal footer snippet) can submit via the `form` attribute.
+	const propsId = $props.id();
+	const formId = `form-modal-${propsId}`;
+
 	let loading = $state(false);
 	let isBusy = $derived(loading || externalLoading);
 	let errors = $state<string[]>([]);
@@ -375,9 +380,9 @@
 				</div>
 				{#if title}
 					<div
-						class="flex h-12 items-center justify-between gap-2 px-3 sm:px-4 border-b border-border bg-muted"
+						class="flex h-12 items-center justify-between gap-3 px-4 border-b border-border bg-muted"
 					>
-						<h2 class="text-sm font-semibold text-foreground truncate">
+						<h2 class="text-base font-semibold text-foreground truncate">
 							{title}
 						</h2>
 						<!-- Inkprint close button -->
@@ -400,7 +405,7 @@
 		{#if beforeForm}
 			{@render beforeForm()}
 		{/if}
-		<form onsubmit={handleSubmit} class="flex flex-col flex-1 min-h-0">
+		<form id={formId} onsubmit={handleSubmit}>
 			{#if errors.length > 0}
 				<div
 					class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mx-3 sm:mx-4 mb-3 tx tx-static tx-med"
@@ -416,7 +421,8 @@
 				</div>
 			{/if}
 
-			<div class="space-y-4 overflow-y-auto px-4 py-4 flex-1 min-h-0 bg-background">
+			<!-- Scrolling is owned by the base Modal's .modal-content -->
+			<div class="space-y-4 px-4 py-4 bg-background">
 				{#each Object.entries(formConfig) as [field, config] (field)}
 					{@const FieldIcon = getFieldIcon(field, config)}
 					{@const fieldError = fieldErrors[field]}
@@ -634,53 +640,44 @@
 			{#if afterForm}
 				{@render afterForm()}
 			{/if}
+		</form>
+	{/snippet}
 
-			<div
-				class="flex flex-col gap-2 sm:gap-3 pt-3 pb-4 sm:pb-3 px-3 sm:px-4 border-t border-border bg-muted safe-area-bottom flex-shrink-0"
-			>
-				<!-- Mobile Layout: Stack buttons with proper hierarchy -->
-				<div class="sm:hidden space-y-2">
-					<!-- Primary action at top for mobile -->
+	{#snippet footer()}
+		<!-- Pinned action bar: lives in the base Modal footer (outside the scroll
+		     area) so long forms can't scroll the actions out of view. Buttons
+		     submit via the `form` attribute. The .modal-footer wrapper already
+		     clears the iOS home indicator. -->
+		<div
+			class="flex flex-col gap-3 py-3 sm:py-4 px-3 sm:px-4 lg:px-6 border-t border-border bg-muted/30"
+		>
+			<!-- Mobile Layout: Stack buttons with proper hierarchy -->
+			<div class="sm:hidden space-y-2">
+				<!-- Primary action at top for mobile -->
+				<Button
+					type="submit"
+					form={formId}
+					disabled={isBusy}
+					variant="primary"
+					size="lg"
+					loading={isBusy}
+					class="w-full font-semibold shadow-ink"
+				>
+					{isBusy ? loadingText : submitText}
+				</Button>
+
+				<!-- Secondary actions in a row -->
+				<div class="grid grid-cols-2 gap-2">
 					<Button
-						type="submit"
+						type="button"
+						onclick={handleClose}
 						disabled={isBusy}
-						variant="primary"
-						size="lg"
-						loading={isBusy}
-						class="w-full font-semibold shadow-ink"
+						variant="ghost"
+						size="md"
+						class="w-full"
 					>
-						{isBusy ? loadingText : submitText}
+						Cancel
 					</Button>
-
-					<!-- Secondary actions in a row -->
-					<div class="grid grid-cols-2 gap-2">
-						<Button
-							type="button"
-							onclick={handleClose}
-							disabled={isBusy}
-							variant="ghost"
-							size="md"
-							class="w-full"
-						>
-							Cancel
-						</Button>
-						{#if (formData.id || initialData.id) && onDelete}
-							<Button
-								type="button"
-								onclick={handleDelete}
-								disabled={isBusy}
-								variant="danger"
-								size="md"
-								class="w-full"
-							>
-								Delete
-							</Button>
-						{/if}
-					</div>
-				</div>
-
-				<!-- Desktop Layout: Original horizontal layout -->
-				<div class="hidden sm:flex sm:justify-between sm:items-center">
 					{#if (formData.id || initialData.id) && onDelete}
 						<Button
 							type="button"
@@ -688,51 +685,52 @@
 							disabled={isBusy}
 							variant="danger"
 							size="md"
+							class="w-full"
 						>
 							Delete
 						</Button>
-					{:else}
-						<div></div>
 					{/if}
-
-					<div class="flex gap-3">
-						<Button
-							type="button"
-							onclick={handleClose}
-							disabled={isBusy}
-							variant="outline"
-							size="md"
-						>
-							Cancel
-						</Button>
-						<Button
-							type="submit"
-							disabled={isBusy}
-							variant="primary"
-							size="md"
-							loading={isBusy}
-						>
-							{isBusy ? loadingText : submitText}
-						</Button>
-					</div>
 				</div>
 			</div>
-		</form>
+
+			<!-- Desktop Layout: Original horizontal layout -->
+			<div class="hidden sm:flex sm:justify-between sm:items-center">
+				{#if (formData.id || initialData.id) && onDelete}
+					<Button
+						type="button"
+						onclick={handleDelete}
+						disabled={isBusy}
+						variant="danger"
+						size="md"
+					>
+						Delete
+					</Button>
+				{:else}
+					<div></div>
+				{/if}
+
+				<div class="flex gap-3">
+					<Button
+						type="button"
+						onclick={handleClose}
+						disabled={isBusy}
+						variant="outline"
+						size="md"
+					>
+						Cancel
+					</Button>
+					<Button
+						type="submit"
+						form={formId}
+						disabled={isBusy}
+						variant="primary"
+						size="md"
+						loading={isBusy}
+					>
+						{isBusy ? loadingText : submitText}
+					</Button>
+				</div>
+			</div>
+		</div>
 	{/snippet}
 </Modal>
-
-<style>
-	/* Safe area support for iOS */
-	.safe-area-bottom {
-		padding-bottom: max(1rem, env(safe-area-inset-bottom));
-	}
-
-	/* Mobile form input optimization */
-	@media (max-width: 640px) {
-		:global(.modal-content) {
-			max-height: calc(
-				100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 2rem
-			);
-		}
-	}
-</style>

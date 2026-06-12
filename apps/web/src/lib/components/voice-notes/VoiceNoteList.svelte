@@ -148,7 +148,7 @@
 					{#if onDelete}
 						<button
 							type="button"
-							class="opacity-0 group-hover:opacity-100 focus:opacity-100 text-destructive/60 hover:text-destructive transition-opacity"
+							class="sm:opacity-0 sm:group-hover:opacity-100 focus:opacity-100 text-destructive/60 hover:text-destructive transition-opacity"
 							onclick={() => promptDelete(voiceNote)}
 							aria-label="Delete voice note"
 						>

@@ -74,7 +74,7 @@
 					class="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 shadow-ink tx tx-frame tx-weak"
 				>
 					<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-					<span class="text-[0.65rem] uppercase tracking-[0.2em] text-muted-foreground">
+					<span class="micro-label">
 						For authors, YouTubers, podcasters, and course creators
 					</span>
 				</div>
@@ -119,7 +119,7 @@
 				class="rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
 			>
 				<div
-					class="h-10 border-b border-border tx tx-strip tx-med flex items-center px-4 text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground"
+					class="h-10 border-b border-border tx tx-strip tx-med flex items-center px-4 micro-label"
 				>
 					Rough thinking → organized project
 				</div>
@@ -127,11 +127,7 @@
 					<div
 						class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-static tx-weak p-4"
 					>
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground mb-3"
-						>
-							What you say
-						</div>
+						<div class="micro-label mb-3">What you say</div>
 						<p class="text-sm text-muted-foreground leading-relaxed">
 							"Chapter 12 drags, Maya's motivation feels weak, I keep losing track of
 							my magic rules, and beta-reader notes are scattered across email and
@@ -141,11 +137,7 @@
 					<div
 						class="rounded-lg border border-border bg-background shadow-ink-inner tx tx-grain tx-weak p-4"
 					>
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.18em] text-muted-foreground mb-3"
-						>
-							What BuildOS holds
-						</div>
+						<div class="micro-label mb-3">What BuildOS holds</div>
 						<ul class="text-sm leading-relaxed space-y-1 text-foreground">
 							<li>▸ Project: Novel revision</li>
 							<li>▸ Doc: Character arc — Maya</li>
@@ -221,9 +213,7 @@
 		<section id="split" class="border-b border-border bg-card/40">
 			<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16">
 				<div class="text-center mb-8 sm:mb-10">
-					<div
-						class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
-					>
+					<div class="micro-label inline-flex items-center gap-3">
 						<span class="h-px w-10 bg-border"></span>
 						<span>§02 — Do you work with AI agents yet?</span>
 						<span class="h-px w-10 bg-border"></span>
@@ -235,9 +225,7 @@
 					<article
 						class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-5 sm:p-6 flex flex-col"
 					>
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground mb-3 flex items-center gap-2"
-						>
+						<div class="micro-label mb-3 flex items-center gap-2">
 							<span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/60"></span>
 							<span>§02A — No</span>
 						</div>
@@ -274,9 +262,7 @@
 					<article
 						class="rounded-lg border border-border bg-background shadow-ink tx tx-grain tx-weak p-5 sm:p-6 flex flex-col"
 					>
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground mb-3 flex items-center gap-2"
-						>
+						<div class="micro-label mb-3 flex items-center gap-2">
 							<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 							<span>§02B — Yes</span>
 						</div>
@@ -298,11 +284,7 @@
 							<div
 								class="rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-frame tx-weak"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
-								>
-									Framework — for you
-								</div>
+								<div class="micro-label mb-1">Framework — for you</div>
 								<p class="text-xs sm:text-sm text-foreground leading-snug">
 									Daily brief, return-and-update, the ritual of clarity. You stay
 									in the work, not above it.
@@ -311,11 +293,7 @@
 							<div
 								class="rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-grain tx-weak"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
-								>
-									Harness — for your agent
-								</div>
+								<div class="micro-label mb-1">Harness — for your agent</div>
 								<p class="text-xs sm:text-sm text-foreground leading-snug">
 									Persistent project memory, structured tool calls, the context an
 									agent needs to actually be useful in production.
@@ -324,11 +302,7 @@
 							<div
 								class="rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-thread tx-weak"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
-								>
-									Shared context
-								</div>
+								<div class="micro-label mb-1">Shared context</div>
 								<p class="text-xs sm:text-sm text-foreground leading-snug">
 									Both sides read from the same project state. Parallel work, not
 									delegation.
@@ -366,11 +340,7 @@
 							>
 								<span class="h-1.5 w-1.5 rounded-full bg-muted-foreground/60"
 								></span>
-								<span
-									class="text-[0.55rem] uppercase tracking-[0.22em] text-muted-foreground"
-								>
-									↓ from §02A — no
-								</span>
+								<span class="micro-label"> ↓ from §02A — no </span>
 							</div>
 						</div>
 					</div>
@@ -385,9 +355,7 @@
 					class="lg:max-w-[78%] rounded-lg border border-border bg-background shadow-ink-strong tx tx-frame tx-weak p-5 sm:p-8 space-y-8"
 				>
 					<div class="text-center">
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
-						>
+						<div class="micro-label inline-flex items-center gap-3">
 							<span class="h-px w-10 bg-border"></span>
 							<span>§03 — The loop</span>
 							<span class="h-px w-10 bg-border"></span>
@@ -405,11 +373,7 @@
 						<!-- TIME marker: Day 1 -->
 						<div class="flex items-center gap-3">
 							<div class="flex-1 border-t border-dashed border-border"></div>
-							<span
-								class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground font-medium"
-							>
-								Day 1
-							</span>
+							<span class="micro-label font-medium"> Day 1 </span>
 							<div class="flex-1 border-t border-dashed border-border"></div>
 						</div>
 
@@ -420,11 +384,7 @@
 							<div
 								class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-4"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
-								>
-									You · brain dump
-								</div>
+								<div class="micro-label mb-2">You · brain dump</div>
 								<p class="text-sm leading-relaxed">
 									"I want to write a fantasy novel — queen losing her magic. Magic
 									rules are loose. Maya's motivation feels weak. Beta readers
@@ -438,11 +398,7 @@
 							<div
 								class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-4"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
-								>
-									BuildOS · project created
-								</div>
+								<div class="micro-label mb-2">BuildOS · project created</div>
 								<ul class="text-sm space-y-1.5">
 									<li class="flex items-center gap-1.5">
 										<FolderKanban
@@ -485,11 +441,7 @@
 						<!-- TIME SKIP: 1 week later -->
 						<div class="flex items-center gap-3 py-2">
 							<div class="flex-1 border-t border-dashed border-border"></div>
-							<span
-								class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground font-medium"
-							>
-								1 week later
-							</span>
+							<span class="micro-label font-medium"> 1 week later </span>
 							<div class="flex-1 border-t border-dashed border-border"></div>
 						</div>
 
@@ -500,11 +452,7 @@
 							<div
 								class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-4"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
-								>
-									You · brain dump
-								</div>
+								<div class="micro-label mb-2">You · brain dump</div>
 								<p class="text-sm leading-relaxed">
 									"Worked Maya's arc all week. Queen's motive should hinge on her
 									sister. Add a beta-reader pass after Ch. 14."
@@ -517,32 +465,20 @@
 							<div
 								class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-4"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
-								>
-									BuildOS · project updates
-								</div>
+								<div class="micro-label mb-2">BuildOS · project updates</div>
 								<ul class="text-sm space-y-1.5">
 									<li class="flex items-center gap-1.5">
-										<FileText
-											class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"
-										/>
+										<FileText class="w-3.5 h-3.5 text-success flex-shrink-0" />
 										<span>
 											Doc: Maya —
-											<span class="text-emerald-700 dark:text-emerald-400"
-												>updated</span
-											>
+											<span class="text-success">updated</span>
 										</span>
 									</li>
 									<li class="flex items-center gap-1.5">
-										<FileText
-											class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"
-										/>
+										<FileText class="w-3.5 h-3.5 text-success flex-shrink-0" />
 										<span>
 											Doc: Queen's motive —
-											<span class="text-emerald-700 dark:text-emerald-400"
-												>new</span
-											>
+											<span class="text-success">new</span>
 										</span>
 									</li>
 									<li class="flex items-center gap-1.5">
@@ -551,9 +487,7 @@
 										/>
 										<span>
 											Task: Beta-reader pass after Ch. 14
-											<span class="text-emerald-700 dark:text-emerald-400"
-												>(new)</span
-											>
+											<span class="text-success">(new)</span>
 										</span>
 									</li>
 								</ul>
@@ -567,9 +501,7 @@
 							<div
 								class="rounded-lg border border-border bg-background shadow-ink tx tx-pulse tx-weak p-4"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2 flex items-center gap-1.5"
-								>
+								<div class="micro-label mb-2 flex items-center gap-1.5">
 									<Mail class="w-3 h-3" />
 									<span>You · daily brief (next morning)</span>
 								</div>
@@ -589,11 +521,7 @@
 							<div
 								class="rounded-lg border border-border bg-card shadow-ink tx tx-frame tx-weak p-4"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
-								>
-									BuildOS · sends brief
-								</div>
+								<div class="micro-label mb-2">BuildOS · sends brief</div>
 								<p class="text-sm leading-relaxed">
 									Pulls progress, today's tasks, open questions, and calendar
 									holds — into your inbox and the app. Same content, same context.
@@ -604,11 +532,7 @@
 						<!-- TIME SKIP: later that day -->
 						<div class="flex items-center gap-3 py-2">
 							<div class="flex-1 border-t border-dashed border-border"></div>
-							<span
-								class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground font-medium"
-							>
-								later that day
-							</span>
+							<span class="micro-label font-medium"> later that day </span>
 							<div class="flex-1 border-t border-dashed border-border"></div>
 						</div>
 
@@ -619,11 +543,7 @@
 							<div
 								class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-4"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
-								>
-									You · brain dump
-								</div>
+								<div class="micro-label mb-2">You · brain dump</div>
 								<p class="text-sm leading-relaxed">
 									"Finally finished the Ch. 12 rewrite. Feels much tighter.
 									Pushing the beta-reader pass to next week."
@@ -636,22 +556,16 @@
 							<div
 								class="rounded-lg border border-border bg-card shadow-ink tx tx-grain tx-weak p-4"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.2em] text-muted-foreground mb-2"
-								>
-									BuildOS · state syncs
-								</div>
+								<div class="micro-label mb-2">BuildOS · state syncs</div>
 								<ul class="text-sm space-y-1.5">
 									<li class="flex items-center gap-1.5">
 										<CircleCheck
-											class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"
+											class="w-3.5 h-3.5 text-success flex-shrink-0"
 										/>
 										<span class="line-through text-muted-foreground"
 											>Rewrite Ch. 12 opening</span
 										>
-										<span
-											class="text-[0.55rem] uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400 font-semibold"
-										>
+										<span class="micro-label text-success font-semibold">
 											done
 										</span>
 									</li>
@@ -703,11 +617,7 @@
 								class="inline-flex items-center gap-1.5 rounded-full border border-border bg-card shadow-ink-inner px-3 py-1.5 tx tx-grain tx-weak whitespace-nowrap"
 							>
 								<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
-								<span
-									class="text-[0.55rem] uppercase tracking-[0.22em] text-muted-foreground"
-								>
-									↓ from §02B — yes
-								</span>
+								<span class="micro-label"> ↓ from §02B — yes </span>
 							</div>
 						</div>
 					</div>
@@ -721,9 +631,7 @@
 					class="rounded-lg border border-border bg-background shadow-ink-strong tx tx-frame tx-weak p-5 sm:p-8 space-y-6"
 				>
 					<div class="text-center">
-						<div
-							class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
-						>
+						<div class="micro-label inline-flex items-center gap-3">
 							<span class="h-px w-10 bg-border"></span>
 							<span>§04 — Same context</span>
 							<span class="h-px w-10 bg-border"></span>
@@ -744,11 +652,7 @@
 							<article
 								class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak p-5 flex flex-col"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground mb-2"
-								>
-									Framework — for you
-								</div>
+								<div class="micro-label mb-2">Framework — for you</div>
 								<h3 class="text-lg font-semibold tracking-tight">
 									High-level direction.
 								</h3>
@@ -759,11 +663,7 @@
 								<div
 									class="mt-4 rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-grid tx-weak"
 								>
-									<div
-										class="text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
-									>
-										You · brain dump
-									</div>
+									<div class="micro-label mb-1">You · brain dump</div>
 									<p class="text-xs leading-relaxed">
 										"Push the beta-reader pass to next week. Maya's act-3 turn
 										should hinge on her sister."
@@ -775,11 +675,7 @@
 							<article
 								class="rounded-lg border border-accent/40 bg-accent/5 shadow-ink-strong tx tx-frame tx-med p-5 flex flex-col"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.22em] text-accent mb-2"
-								>
-									Shared project state
-								</div>
+								<div class="micro-label text-accent mb-2">Shared project state</div>
 								<h3 class="text-lg font-semibold tracking-tight">
 									The same context.
 								</h3>
@@ -812,7 +708,7 @@
 									</div>
 									<div class="flex items-center gap-1.5">
 										<CircleCheck
-											class="w-3.5 h-3.5 text-emerald-600 flex-shrink-0"
+											class="w-3.5 h-3.5 text-success flex-shrink-0"
 										/>
 										<span class="line-through text-muted-foreground">
 											Ch. 12 rewrite
@@ -825,11 +721,7 @@
 							<article
 								class="rounded-lg border border-border bg-background shadow-ink tx tx-grain tx-weak p-5 flex flex-col"
 							>
-								<div
-									class="text-[0.6rem] uppercase tracking-[0.22em] text-muted-foreground mb-2"
-								>
-									Harness — for your agent
-								</div>
+								<div class="micro-label mb-2">Harness — for your agent</div>
 								<h3 class="text-lg font-semibold tracking-tight">
 									Grounded execution.
 								</h3>
@@ -841,11 +733,7 @@
 
 								<!-- compatible agents row -->
 								<div class="mt-4 space-y-2">
-									<div
-										class="text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground"
-									>
-										Works with
-									</div>
+									<div class="micro-label">Works with</div>
 									<div class="flex flex-wrap items-center gap-2">
 										<span
 											class="inline-flex items-center gap-1.5 rounded-md border border-border bg-card shadow-ink-inner px-2 py-1"
@@ -861,9 +749,7 @@
 													d="M17.3041 3.541h-3.6718l6.696 16.918H24Zm-10.6082 0L0 20.459h3.7442l1.3693-3.5527h7.0052l1.3693 3.5527h3.7442L10.5363 3.541Zm-.3712 10.2232 2.2914-5.9456 2.2914 5.9456Z"
 												/>
 											</svg>
-											<span
-												class="text-[0.65rem] font-medium text-foreground"
-											>
+											<span class="text-2xs font-medium text-foreground">
 												Claude
 											</span>
 										</span>
@@ -881,9 +767,7 @@
 													d="M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z"
 												/>
 											</svg>
-											<span
-												class="text-[0.65rem] font-medium text-foreground"
-											>
+											<span class="text-2xs font-medium text-foreground">
 												ChatGPT / Codex
 											</span>
 										</span>
@@ -900,9 +784,7 @@
 												height="16"
 												decoding="async"
 											/>
-											<span
-												class="text-[0.65rem] font-medium text-foreground"
-											>
+											<span class="text-2xs font-medium text-foreground">
 												OpenClaw
 											</span>
 										</span>
@@ -912,11 +794,7 @@
 								<div
 									class="mt-4 rounded-md border border-border bg-card shadow-ink-inner p-3 tx tx-thread tx-weak"
 								>
-									<div
-										class="text-[0.55rem] uppercase tracking-[0.2em] text-muted-foreground mb-1"
-									>
-										Agent · acting on it
-									</div>
+									<div class="micro-label mb-1">Agent · acting on it</div>
 									<p class="text-xs leading-relaxed">
 										"Drafting beta-reader email with the latest Ch. 12.
 										Rescheduling the calendar block. Logging notes back to the
@@ -928,7 +806,7 @@
 
 						<!-- bidirectional flow indicators -->
 						<div
-							class="mt-5 grid md:grid-cols-3 gap-3 sm:gap-4 text-[0.55rem] uppercase tracking-[0.22em] text-muted-foreground/80 text-center"
+							class="mt-5 grid md:grid-cols-3 gap-3 sm:gap-4 micro-label text-muted-foreground/80 text-center"
 						>
 							<div class="flex items-center justify-center gap-2">
 								<span>writes & reads</span>
@@ -967,9 +845,7 @@
 	<section class="border-b border-border">
 		<div class="mx-auto max-w-6xl px-4 py-10 sm:py-12 space-y-6">
 			<div class="text-center">
-				<div
-					class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
-				>
+				<div class="micro-label inline-flex items-center gap-3">
 					<span class="h-px w-10 bg-border"></span>
 					<span>§05 — What it holds</span>
 					<span class="h-px w-10 bg-border"></span>
@@ -998,9 +874,7 @@
 	<section class="border-b border-border bg-card/40">
 		<div class="mx-auto max-w-6xl px-4 py-12 sm:py-16 space-y-8">
 			<div class="text-center">
-				<div
-					class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
-				>
+				<div class="micro-label inline-flex items-center gap-3">
 					<span class="h-px w-10 bg-border"></span>
 					<span>§06 — What it becomes</span>
 					<span class="h-px w-10 bg-border"></span>
@@ -1017,9 +891,7 @@
 			<div class="grid md:grid-cols-3 gap-4 sm:gap-5">
 				<!-- DAY 1 -->
 				<article class="space-y-3">
-					<div
-						class="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground flex items-center gap-2"
-					>
+					<div class="micro-label flex items-center gap-2">
 						<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 						<span>Day 1 — first brain dump</span>
 					</div>
@@ -1027,7 +899,7 @@
 						class="rounded-lg border border-border bg-background shadow-ink tx tx-bloom tx-weak overflow-hidden"
 					>
 						<div
-							class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center text-[0.55rem] uppercase tracking-[0.18em] text-muted-foreground"
+							class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
 						>
 							New project
 						</div>
@@ -1059,9 +931,7 @@
 
 				<!-- WEEK 3 -->
 				<article class="space-y-3">
-					<div
-						class="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground flex items-center gap-2"
-					>
+					<div class="micro-label flex items-center gap-2">
 						<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 						<span>Week 3 — momentum visible</span>
 					</div>
@@ -1069,20 +939,20 @@
 						class="rounded-lg border border-border bg-background shadow-ink tx tx-grain tx-weak overflow-hidden"
 					>
 						<div
-							class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center text-[0.55rem] uppercase tracking-[0.18em] text-muted-foreground"
+							class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center micro-label"
 						>
 							Fading Crown — active
 						</div>
 						<div class="p-3 space-y-2 text-xs">
 							<div class="space-y-1">
 								<div class="flex items-center gap-1.5 text-foreground">
-									<CircleCheck class="w-3 h-3 text-emerald-600" />
+									<CircleCheck class="w-3 h-3 text-success" />
 									<span class="line-through text-muted-foreground"
 										>Outline act 1 beats</span
 									>
 								</div>
 								<div class="flex items-center gap-1.5 text-foreground">
-									<CircleCheck class="w-3 h-3 text-emerald-600" />
+									<CircleCheck class="w-3 h-3 text-success" />
 									<span class="line-through text-muted-foreground"
 										>Magic system v2 draft</span
 									>
@@ -1096,9 +966,7 @@
 									Reconcile Maya's motivation
 								</div>
 							</div>
-							<div
-								class="border-t border-border/60 pt-2 text-[0.6rem] uppercase tracking-[0.18em] text-muted-foreground"
-							>
+							<div class="border-t border-border/60 pt-2 micro-label">
 								Recently captured · 4 docs · 12 tasks
 							</div>
 						</div>
@@ -1111,9 +979,7 @@
 
 				<!-- MONTH 2 -->
 				<article class="space-y-3">
-					<div
-						class="text-[0.65rem] uppercase tracking-[0.22em] text-muted-foreground flex items-center gap-2"
-					>
+					<div class="micro-label flex items-center gap-2">
 						<span class="h-1.5 w-1.5 rounded-full bg-accent"></span>
 						<span>Month 2 — the daily ritual</span>
 					</div>
@@ -1121,7 +987,7 @@
 						class="rounded-lg border border-border bg-background shadow-ink tx tx-pulse tx-weak overflow-hidden"
 					>
 						<div
-							class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center justify-between text-[0.55rem] uppercase tracking-[0.18em] text-muted-foreground"
+							class="h-7 border-b border-border tx tx-strip tx-weak px-3 flex items-center justify-between micro-label"
 						>
 							<span class="flex items-center gap-1.5">
 								<Mail class="w-3 h-3" /> Daily brief — Tue
@@ -1137,9 +1003,7 @@
 								<div>▸ Calendar: 2pm writing block, 4pm beta call</div>
 								<div>▸ Open question: Maya's act-3 turn</div>
 							</div>
-							<div
-								class="border-t border-border/60 pt-2 text-[0.6rem] uppercase tracking-[0.18em] text-muted-foreground"
-							>
+							<div class="border-t border-border/60 pt-2 micro-label">
 								Synced to inbox · synced to calendar
 							</div>
 						</div>
@@ -1157,9 +1021,7 @@
 	<section class="py-12 sm:py-16">
 		<div class="mx-auto max-w-6xl px-4 space-y-8">
 			<div class="text-center">
-				<div
-					class="text-[0.65rem] uppercase tracking-[0.28em] text-muted-foreground inline-flex items-center gap-3"
-				>
+				<div class="micro-label inline-flex items-center gap-3">
 					<span class="h-px w-10 bg-border"></span>
 					<span>§07 — You have three options</span>
 					<span class="h-px w-10 bg-border"></span>

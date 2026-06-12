@@ -35,11 +35,11 @@
 		Layers,
 		CircleCheck,
 		RefreshCw,
-		X,
 		FolderOpen
 	} from 'lucide-svelte';
 	import type { PageData } from './$types';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Modal from '$lib/components/ui/Modal.svelte';
 	import Select from '$lib/components/ui/Select.svelte';
 	import FormField from '$lib/components/ui/FormField.svelte';
 	import TextInput from '$lib/components/ui/TextInput.svelte';
@@ -1367,7 +1367,7 @@
 
 				<!-- Mobile Save/Delete Actions - Fixed Bottom Bar -->
 				<div
-					class="sm:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-2 px-3 py-2.5 bg-card/95 backdrop-blur border-t border-border shadow-ink-strong"
+					class="sm:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-between gap-2 px-3 pt-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] bg-card/95 backdrop-blur border-t border-border shadow-ink-strong"
 				>
 					<button
 						type="button"
@@ -1393,7 +1393,7 @@
 					</button>
 				</div>
 				<!-- Spacer for fixed bottom bar on mobile -->
-				<div class="sm:hidden h-16"></div>
+				<div class="sm:hidden h-[calc(4rem+env(safe-area-inset-bottom))]"></div>
 			</div>
 
 			<!-- Right Column: Sidebar -->
@@ -1934,41 +1934,16 @@
 	</button>
 {/if}
 
-<!-- Mobile Project Context Slide-up Sheet -->
+<!-- Mobile Project Context Slide-up Sheet (base Modal: scroll lock, dvh
+     sizing, safe areas, swipe-to-dismiss, Escape/backdrop stack handling) -->
 {#if showMobileContextSheet}
-	<div
-		class="lg:hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm"
-		onclick={() => (showMobileContextSheet = false)}
-		onkeydown={(e) => e.key === 'Escape' && (showMobileContextSheet = false)}
-		role="button"
-		tabindex="0"
-		aria-label="Close context sheet"
-	></div>
-
-	<div
-		class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border rounded-t-2xl shadow-ink-strong max-h-[75vh] flex flex-col animate-in slide-in-from-bottom duration-300"
+	<Modal
+		isOpen={showMobileContextSheet}
+		onClose={() => (showMobileContextSheet = false)}
+		variant="bottom-sheet"
+		title="Project Context"
 	>
-		<div class="sticky top-0 bg-card border-b border-border rounded-t-2xl">
-			<div class="flex justify-center py-2">
-				<div class="w-10 h-1 bg-muted-foreground/30 rounded-full"></div>
-			</div>
-			<div class="flex items-center justify-between px-4 pb-3">
-				<div class="flex items-center gap-2">
-					<FolderOpen class="w-4 h-4 text-accent" />
-					<span class="text-sm font-semibold text-foreground">Project Context</span>
-				</div>
-				<button
-					type="button"
-					onclick={() => (showMobileContextSheet = false)}
-					class="p-1.5 rounded-lg hover:bg-muted transition-colors pressable"
-					aria-label="Close"
-				>
-					<X class="w-4 h-4 text-muted-foreground" />
-				</button>
-			</div>
-		</div>
-
-		<div class="flex-1 overflow-y-auto p-3 space-y-2">
+		<div class="p-3 space-y-2">
 			{#if events.length > 0}
 				<div
 					class="bg-muted/50 border border-border rounded-lg tx tx-frame tx-weak overflow-hidden"
@@ -2204,5 +2179,5 @@
 				</div>
 			{/if}
 		</div>
-	</div>
+	</Modal>
 {/if}

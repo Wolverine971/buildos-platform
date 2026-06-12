@@ -23,7 +23,7 @@
 		) === 'user'
 			? 'bg-accent/8 border-accent/20'
 			: stringValue(payloadField(payload, 'role')) === 'assistant'
-				? 'bg-emerald-500/8 border-emerald-500/20'
+				? 'bg-success/8 border-success/20'
 				: 'bg-muted/40 border-border'}"
 	>
 		<div class="text-xs text-foreground/60 uppercase tracking-wide font-semibold mb-1">
@@ -36,7 +36,7 @@
 			Tokens: {formatNumber(Number(payloadField(payload, 'total_tokens') || 0))}
 		</span>
 		{#if payloadField(payload, 'error_message')}
-			<span class="text-red-600 dark:text-red-400">
+			<span class="text-destructive">
 				Error:
 				{stringValue(payloadField(payload, 'error_message'))}
 			</span>

@@ -73,51 +73,50 @@
 		project: {
 			label: 'Project',
 			icon: GitBranch,
-			iconClass: 'text-sky-500',
-			badgeClass: 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300'
+			iconClass: 'text-info',
+			badgeClass: 'border-info/30 bg-info/10 text-info'
 		},
 		document: {
 			label: 'Document',
 			icon: FileText,
-			iconClass: 'text-zinc-500',
-			badgeClass: 'border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300'
+			iconClass: 'text-muted-foreground',
+			badgeClass: 'border-border bg-muted/40 text-muted-foreground'
 		},
 		task: {
 			label: 'Task',
 			icon: ListChecks,
-			iconClass: 'text-blue-500',
-			badgeClass: 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300'
+			iconClass: 'text-info',
+			badgeClass: 'border-info/30 bg-info/10 text-info'
 		},
 		plan: {
 			label: 'Plan',
 			icon: Calendar,
-			iconClass: 'text-indigo-500',
-			badgeClass: 'border-indigo-500/30 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300'
+			iconClass: 'text-accent',
+			badgeClass: 'border-accent/30 bg-accent/10 text-accent'
 		},
 		goal: {
 			label: 'Goal',
 			icon: Target,
-			iconClass: 'text-amber-500',
-			badgeClass: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+			iconClass: 'text-warning',
+			badgeClass: 'border-warning/30 bg-warning/10 text-warning'
 		},
 		milestone: {
 			label: 'Milestone',
 			icon: Flag,
-			iconClass: 'text-emerald-500',
-			badgeClass:
-				'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+			iconClass: 'text-success',
+			badgeClass: 'border-success/30 bg-success/10 text-success'
 		},
 		risk: {
 			label: 'Risk',
 			icon: AlertTriangle,
-			iconClass: 'text-rose-500',
-			badgeClass: 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300'
+			iconClass: 'text-destructive',
+			badgeClass: 'border-destructive/30 bg-destructive/10 text-destructive'
 		},
 		event: {
 			label: 'Event',
 			icon: CalendarDays,
-			iconClass: 'text-teal-500',
-			badgeClass: 'border-teal-500/30 bg-teal-500/10 text-teal-700 dark:text-teal-300'
+			iconClass: 'text-info',
+			badgeClass: 'border-info/30 bg-info/10 text-info'
 		}
 	};
 

@@ -116,8 +116,8 @@
 				: state === 'in_progress'
 					? 'bg-accent/10 text-accent'
 					: state === 'completed'
-						? 'bg-emerald-500/10 text-emerald-600'
-						: 'bg-red-500/10 text-red-600'
+						? 'bg-success/10 text-success'
+						: 'bg-destructive/10 text-destructive'
 	}));
 
 	let modalOpen = $state(true);
@@ -483,7 +483,7 @@
 					type="button"
 					onclick={handleClose}
 					disabled={isSaving || isDeleting}
-					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-red-500/50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak dark:hover:border-red-400/50 dark:hover:text-red-400"
+					class="flex h-9 w-9 shrink-0 items-center justify-center rounded bg-card border border-border text-muted-foreground shadow-ink transition-all pressable hover:bg-card hover:border-destructive/50 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50 tx tx-grain tx-weak"
 					aria-label="Close modal"
 				>
 					<X class="w-5 h-5" />

@@ -6,28 +6,13 @@
 	padding-top: env(safe-area-inset-top, 0px);
 }
 
-/* Bottom navigation adjustments for home indicator */
-.pwa-installed .bottom-nav,
-.pwa-installed .tab-bar {
-	padding-bottom: calc(1rem + env(safe-area-inset-bottom));
-}
-
 /* Prevent text selection on UI elements in PWA */
 .pwa-installed button,
 .pwa-installed .btn,
-.pwa-installed nav,
-.pwa-installed .tab-bar {
+.pwa-installed nav {
 	-webkit-user-select: none;
 	user-select: none;
 	-webkit-touch-callout: none;
-}
-
-/* Improve tap targets for mobile */
-.pwa-installed button,
-.pwa-installed a,
-.pwa-installed .clickable {
-	min-height: 44px;
-	min-width: 44px;
 }
 
 /* Smooth transitions for theme changes */

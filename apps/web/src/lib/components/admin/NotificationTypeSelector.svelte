@@ -213,16 +213,16 @@
 			onchange={handleChange}
 			class="w-full px-3 py-2 border border-border rounded-lg
 				   bg-card text-foreground
-				   focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+				   focus:ring-2 focus:ring-ring focus:border-transparent"
 		>
-			<optgroup label="Admin Events" class="text-red-600 dark:text-red-400">
+			<optgroup label="Admin Events" class="text-destructive">
 				{#each adminEvents as event}
 					<option value={event.value}>
 						🔒 {event.label}
 					</option>
 				{/each}
 			</optgroup>
-			<optgroup label="User Events" class="text-blue-600 dark:text-blue-400">
+			<optgroup label="User Events" class="text-info">
 				{#each userEvents as event}
 					<option value={event.value}>
 						👤 {event.label}
@@ -243,14 +243,14 @@
 						</h4>
 						{#if selectedEvent.adminOnly}
 							<span
-								class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+								class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-destructive/10 text-destructive"
 							>
 								<Shield class="w-3 h-3 mr-1" />
 								Admin Only
 							</span>
 						{:else}
 							<span
-								class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+								class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-info/10 text-info"
 							>
 								<User class="w-3 h-3 mr-1" />
 								User Event
@@ -279,13 +279,9 @@
 						<span class="text-muted-foreground">
 							Selected user is
 							{#if userIsSubscribed}
-								<span class="text-green-600 dark:text-green-400 font-medium"
-									>subscribed</span
-								>
+								<span class="text-success font-medium">subscribed</span>
 							{:else}
-								<span class="text-orange-600 dark:text-orange-400 font-medium"
-									>not subscribed</span
-								>
+								<span class="text-accent font-medium">not subscribed</span>
 							{/if}
 							to this event type
 						</span>

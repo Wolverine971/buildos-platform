@@ -177,7 +177,9 @@
 	</div>
 
 	{#snippet footer()}
-		<div class="flex justify-end gap-2">
+		<div
+			class="flex justify-end gap-3 px-3 sm:px-4 py-3 sm:py-4 border-t border-border bg-muted/30"
+		>
 			<Button variant="ghost" onclick={handleClose} disabled={deleting}>Cancel</Button>
 			<Button variant="danger" onclick={handleDelete} disabled={deleting}>
 				{#if deleting}

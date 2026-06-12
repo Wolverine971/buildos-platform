@@ -315,7 +315,7 @@
 								<div
 									class="flex flex-wrap items-center gap-2 text-sm text-foreground"
 								>
-									<Clock class="h-4 w-4 text-blue-500 dark:text-blue-300" />
+									<Clock class="h-4 w-4 text-info" />
 									<span class="font-semibold text-foreground">{timeRange}</span>
 									{#if durationDisplay}
 										<span class="text-muted-foreground">|</span>
@@ -338,14 +338,14 @@
 								</span>
 								{#if block.block_type === 'build'}
 									<span
-										class="inline-flex items-center rounded-full bg-amber-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:bg-amber-500/20 dark:text-amber-300"
+										class="inline-flex items-center rounded-full bg-warning/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-warning"
 									>
 										Flexible window
 									</span>
 								{/if}
 								{#if block.block_type === 'project' && block.project?.name}
 									<span
-										class="inline-flex items-center rounded-full bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-500/15 dark:text-blue-300"
+										class="inline-flex items-center rounded-full bg-info/10 px-3 py-1 text-xs font-semibold text-info"
 									>
 										{block.project.name}
 									</span>
@@ -388,7 +388,7 @@
 									href={block.calendar_event_link}
 									target="_blank"
 									rel="noopener noreferrer"
-									class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-blue-200/60 bg-blue-50/70 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:border-blue-300 hover:bg-blue-100 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300 dark:hover:border-blue-400/40 dark:hover:bg-blue-500/20"
+									class="inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl border border-info/30 bg-info/10 px-4 py-2 text-sm font-semibold text-info transition hover:border-info/50 hover:bg-info/20"
 								>
 									<Calendar class="h-4 w-4" />
 									<span>Open calendar event</span>
@@ -434,11 +434,11 @@
 											class="group relative overflow-hidden rounded-xl border border-border bg-card p-4 shadow-ink transition-all hover:shadow-ink-strong tx tx-frame tx-weak"
 										>
 											<div
-												class="pointer-events-none absolute inset-0 bg-gradient-to-br from-blue-500/0 via-purple-500/0 to-blue-500/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:from-blue-400/5 dark:to-purple-400/5"
+												class="pointer-events-none absolute inset-0 bg-accent/5 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
 											></div>
 											<div class="relative flex gap-3">
 												<div
-													class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 text-sm font-bold text-white shadow-ink-strong"
+													class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-accent text-sm font-bold text-accent-foreground shadow-ink-strong"
 												>
 													{index + 1}
 												</div>
@@ -573,7 +573,7 @@
 							</h4>
 							{#if validationErrors.length > 0 || saveError}
 								<div
-									class="space-y-2 rounded-xl border border-rose-200/70 bg-rose-50/80 px-3 py-2 text-sm text-rose-700 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200"
+									class="space-y-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
 								>
 									{#each validationErrors as error}
 										<p>{error}</p>
@@ -593,7 +593,7 @@
 										id="edit-start"
 										type="datetime-local"
 										bind:value={editFormData.start_time}
-										class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+										class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
 									/>
 								</div>
 								<div class="space-y-2">
@@ -605,7 +605,7 @@
 										id="edit-end"
 										type="datetime-local"
 										bind:value={editFormData.end_time}
-										class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+										class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
 									/>
 								</div>
 								<div class="space-y-2">
@@ -616,7 +616,7 @@
 									<select
 										id="edit-timezone"
 										bind:value={editFormData.timezone}
-										class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+										class="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground shadow-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-ring"
 									>
 										{#each TIMEZONES as tz}
 											<option value={tz}>{tz}</option>
@@ -629,7 +629,7 @@
 									<input
 										type="checkbox"
 										bind:checked={editFormData.regenerate_suggestions}
-										class="h-3.5 w-3.5 rounded border-border text-blue-600 focus:ring-blue-500"
+										class="h-3.5 w-3.5 rounded border-border text-accent focus:ring-ring"
 									/>
 									<span>Regenerate suggestions after saving</span>
 								</label>
@@ -656,8 +656,8 @@
 						<div class="flex items-center gap-2 text-xs text-foreground">
 							<div
 								class="h-2.5 w-2.5 rounded-full {block.sync_status === 'synced'
-									? 'bg-emerald-500'
-									: 'bg-amber-500'}"
+									? 'bg-success'
+									: 'bg-warning'}"
 							></div>
 							<span class="font-medium">
 								{block.sync_status === 'synced'
@@ -749,7 +749,7 @@
 
 	{#snippet footer()}
 		<div
-			class="flex flex-col sm:flex-row gap-3 sm:justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted"
+			class="flex flex-col sm:flex-row gap-3 sm:justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
 		>
 			{#if isEditMode}
 				<div class="flex flex-col sm:flex-row gap-3 w-full sm:justify-end">

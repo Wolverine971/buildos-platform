@@ -48,7 +48,7 @@
 			<div class="space-y-3">
 				{#if event.status === 'cancelled'}
 					<div
-						class="inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900 dark:text-red-300"
+						class="inline-flex items-center gap-2 rounded-full bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive"
 					>
 						<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 							<path
@@ -175,11 +175,11 @@
 										<span
 											class={`h-2 w-2 rounded-full ${
 												attendee.responseStatus === 'accepted'
-													? 'bg-green-500'
+													? 'bg-success'
 													: attendee.responseStatus === 'declined'
-														? 'bg-red-500'
+														? 'bg-destructive'
 														: attendee.responseStatus === 'tentative'
-															? 'bg-yellow-500'
+															? 'bg-warning'
 															: 'bg-muted-foreground'
 											}`}
 										></span>
@@ -219,7 +219,7 @@
 								href={event.hangoutLink}
 								target="_blank"
 								rel="noopener noreferrer"
-								class="text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+								class="text-sm font-medium text-info hover:text-info/80"
 							>
 								Join with Google Meet
 							</a>
@@ -255,13 +255,13 @@
 	{#snippet footer()}
 		<!-- Actions in Footer -->
 		<div
-			class="flex flex-col sm:flex-row gap-3 sm:justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted"
+			class="flex flex-col sm:flex-row gap-3 sm:justify-between px-3 sm:px-4 lg:px-6 py-3 sm:py-4 border-t border-border bg-muted/30"
 		>
 			<a
 				href={event.htmlLink}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="order-2 sm:order-1 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-3 sm:py-2 text-sm font-medium text-white transition hover:bg-blue-600 touch-manipulation"
+				class="order-2 sm:order-1 w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-3 sm:py-2 text-sm font-medium text-accent-foreground transition hover:bg-accent/90 touch-manipulation"
 			>
 				<svg class="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
 					<path

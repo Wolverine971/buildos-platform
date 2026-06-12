@@ -125,7 +125,7 @@
 				<input
 					type="text"
 					placeholder="Search users by email or name..."
-					class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:text-foreground dark:placeholder:text-muted-foreground dark:focus:border-purple-500 dark:focus:ring-purple-900"
+					class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30 dark:text-foreground dark:placeholder:text-muted-foreground"
 					bind:value={searchQuery}
 					onkeydown={(e) => e.key === 'Enter' && handleSearch()}
 				/>
@@ -147,7 +147,7 @@
 				<button
 					class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedStatus ===
 					option.value
-						? 'bg-purple-600 text-white'
+						? 'bg-accent text-accent-foreground'
 						: 'bg-muted text-foreground hover:bg-muted dark:text-muted-foreground'}"
 					onclick={() => handleStatusFilter(option.value)}
 				>
@@ -165,7 +165,7 @@
 				<button
 					class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedStatus ===
 					option.value
-						? 'bg-purple-600 text-white'
+						? 'bg-accent text-accent-foreground'
 						: 'bg-muted text-foreground hover:bg-muted dark:text-muted-foreground'}"
 					onclick={() => handleStatusFilter(option.value)}
 				>
@@ -179,7 +179,7 @@
 	{#if isLoading}
 		<div class="flex items-center justify-center py-12">
 			<div
-				class="h-8 w-8 animate-spin rounded-full border-2 border-purple-600 border-t-transparent"
+				class="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent"
 			></div>
 		</div>
 	{:else if users.length === 0}
@@ -200,7 +200,7 @@
 								<img src={user.avatarUrl} alt="" class="h-10 w-10 rounded-full" />
 							{:else}
 								<div
-									class="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+									class="flex h-10 w-10 items-center justify-center rounded-full bg-accent/10 text-accent"
 								>
 									{(user.name?.[0] ?? user.email[0] ?? '?').toUpperCase()}
 								</div>
@@ -246,7 +246,7 @@
 
 		<!-- Desktop Table View -->
 		<div class="hidden max-h-[60vh] overflow-auto rounded-lg border border-border sm:block">
-			<table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
+			<table class="min-w-full divide-y divide-border text-sm">
 				<thead class="sticky top-0 bg-muted/50">
 					<tr
 						class="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
@@ -260,7 +260,7 @@
 						<th class="px-4 py-3 text-right">Action</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-gray-200 bg-card dark:divide-gray-700">
+				<tbody class="divide-y divide-border bg-card">
 					{#each users as user}
 						<tr class="transition-colors hover:bg-muted/30">
 							<td class="px-4 py-3">
@@ -273,7 +273,7 @@
 										/>
 									{:else}
 										<div
-											class="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-sm font-medium text-purple-600 dark:bg-purple-900/30 dark:text-purple-400"
+											class="flex h-8 w-8 items-center justify-center rounded-full bg-accent/10 text-sm font-medium text-accent"
 										>
 											{(user.name?.[0] ?? user.email[0] ?? '?').toUpperCase()}
 										</div>
@@ -299,19 +299,19 @@
 								</Badge>
 							</td>
 							<td class="px-4 py-3 text-foreground">
-								<span class="text-emerald-600 dark:text-emerald-400">
+								<span class="text-success">
 									{user.stats.migratedProjects}
 								</span>
 								<span class="text-muted-foreground"> / </span>
 								{user.stats.totalProjects}
 								{#if user.stats.failedProjects > 0}
-									<span class="text-rose-600 dark:text-rose-400">
+									<span class="text-destructive">
 										({user.stats.failedProjects} failed)
 									</span>
 								{/if}
 							</td>
 							<td class="px-4 py-3 text-foreground">
-								<span class="text-emerald-600 dark:text-emerald-400">
+								<span class="text-success">
 									{user.stats.migratedTasks}
 								</span>
 								<span class="text-muted-foreground"> / </span>
@@ -321,7 +321,7 @@
 								<div class="flex items-center gap-2">
 									<div class="h-2 w-16 overflow-hidden rounded-full bg-muted">
 										<div
-											class="h-full bg-emerald-500 transition-all"
+											class="h-full bg-success transition-all"
 											style="width: {user.stats.percentComplete}%"
 										></div>
 									</div>

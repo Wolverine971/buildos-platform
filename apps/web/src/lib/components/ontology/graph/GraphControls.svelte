@@ -414,12 +414,12 @@
 						<span class="text-muted-foreground">Documents</span>
 					</div>
 					<div
-						class="flex flex-col items-center p-2 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50"
+						class="flex flex-col items-center p-2 rounded-lg bg-destructive/10 border border-destructive/30"
 					>
-						<span class="text-lg font-bold text-red-600 dark:text-red-400"
+						<span class="text-lg font-bold text-destructive"
 							>{stats.totalRisks ?? 0}</span
 						>
-						<span class="text-red-600/70 dark:text-red-400/70">Risks</span>
+						<span class="text-destructive/70">Risks</span>
 					</div>
 					<div
 						class="flex flex-col items-center p-2 rounded-lg bg-muted border border-border"

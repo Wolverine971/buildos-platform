@@ -282,19 +282,19 @@
 	function statusClass(status: DomainResearchQueueStatus): string {
 		switch (status) {
 			case 'queued':
-				return 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300';
+				return 'border-info/30 bg-info/10 text-info';
 			case 'researching':
-				return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300';
+				return 'border-warning/30 bg-warning/10 text-warning';
 			case 'draft_ready':
-				return 'border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300';
+				return 'border-info/30 bg-info/10 text-info';
 			case 'reviewing':
-				return 'border-indigo-500/30 bg-indigo-500/10 text-indigo-700 dark:text-indigo-300';
+				return 'border-info/30 bg-info/10 text-info';
 			case 'approved':
-				return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+				return 'border-success/30 bg-success/10 text-success';
 			case 'rejected':
-				return 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300';
+				return 'border-destructive/30 bg-destructive/10 text-destructive';
 			case 'archived':
-				return 'border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300';
+				return 'border-border bg-muted text-muted-foreground';
 			default:
 				return 'border-border bg-muted text-muted-foreground';
 		}
@@ -303,11 +303,11 @@
 	function priorityClass(priority: DomainResearchQueuePriority): string {
 		switch (priority) {
 			case 'high':
-				return 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300';
+				return 'border-destructive/30 bg-destructive/10 text-destructive';
 			case 'medium':
-				return 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300';
+				return 'border-warning/30 bg-warning/10 text-warning';
 			case 'low':
-				return 'border-zinc-500/30 bg-zinc-500/10 text-zinc-700 dark:text-zinc-300';
+				return 'border-border bg-muted text-muted-foreground';
 			default:
 				return 'border-border bg-muted text-muted-foreground';
 		}
@@ -375,12 +375,12 @@
 
 	{#if error}
 		<div
-			class="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 p-3 tx tx-static tx-weak"
+			class="mb-6 rounded-lg border border-destructive/30 bg-destructive/10 p-3 tx tx-static tx-weak"
 			role="alert"
 		>
 			<div class="flex items-center gap-2">
-				<XCircle class="h-5 w-5 shrink-0 text-red-500" />
-				<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
+				<XCircle class="h-5 w-5 shrink-0 text-destructive" />
+				<p class="text-sm text-destructive">{error}</p>
 			</div>
 		</div>
 	{/if}
@@ -466,7 +466,7 @@
 							{formatNumber(domainData?.overview.total_domains)}
 						</p>
 					</div>
-					<Network class="h-7 w-7 shrink-0 text-sky-500" />
+					<Network class="h-7 w-7 shrink-0 text-info" />
 				</div>
 				<p class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(domainData?.overview.total_domain_occurrences)} total occurrences
@@ -481,7 +481,7 @@
 							{formatNumber(domainData?.overview.total_research_backlog_items)}
 						</p>
 					</div>
-					<FileText class="h-7 w-7 shrink-0 text-amber-500" />
+					<FileText class="h-7 w-7 shrink-0 text-warning" />
 				</div>
 				<p class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(domainData?.overview.total_coverage_gaps)} coverage gaps
@@ -496,7 +496,7 @@
 							{formatNumber(domainData?.research_queue_candidates.length)}
 						</p>
 					</div>
-					<Database class="h-7 w-7 shrink-0 text-cyan-500" />
+					<Database class="h-7 w-7 shrink-0 text-info" />
 				</div>
 				<p class="mt-2 text-xs text-muted-foreground">Promoted by stable queue key</p>
 			</div>
@@ -509,7 +509,7 @@
 							{formatNumber(queueData?.overview.total_matching_rows)}
 						</p>
 					</div>
-					<Clock class="h-7 w-7 shrink-0 text-indigo-500" />
+					<Clock class="h-7 w-7 shrink-0 text-info" />
 				</div>
 				<p class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(queueData?.overview.status_counts.queued)} queued,

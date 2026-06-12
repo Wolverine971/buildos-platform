@@ -23,6 +23,13 @@ export const inkprintEditorTheme = EditorView.theme({
 		fontSize: '14px',
 		lineHeight: '1.6'
 	},
+	// iOS Safari zooms the page when a focused editable's font-size is below
+	// 16px; .cm-content is contenteditable and inherits this size.
+	'@media (max-width: 639px)': {
+		'&': {
+			fontSize: '16px'
+		}
+	},
 	'&.cm-focused': {
 		outline: 'none'
 	},

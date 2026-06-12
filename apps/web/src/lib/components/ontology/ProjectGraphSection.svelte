@@ -149,7 +149,7 @@
 			bind:value={selectedLayout}
 			size="sm"
 			placeholder="Layout"
-			class="!min-h-[26px] sm:!min-h-[28px] !py-0 !pl-2 !pr-6 sm:!pr-8 !text-[10px] sm:!text-xs w-[90px] sm:w-[110px]"
+			class="!min-h-[26px] sm:!min-h-[28px] !py-0 !pl-2 !pr-6 sm:!pr-8 !text-base sm:!text-xs w-[90px] sm:w-[110px]"
 			aria-label="Graph layout"
 		>
 			{#each layouts as layout}

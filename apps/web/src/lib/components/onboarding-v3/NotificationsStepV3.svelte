@@ -172,8 +172,8 @@
 	{/if}
 
 	{#if wantSMS && phoneVerified}
-		<div class="mb-8 p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/30">
-			<p class="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+		<div class="mb-8 p-4 bg-success/10 rounded-xl border border-success/30">
+			<p class="text-sm text-success flex items-center gap-2">
 				<CheckCircle2 class="w-4 h-4" />
 				Phone verified — you'll get event reminders and morning check-ins by text
 			</p>

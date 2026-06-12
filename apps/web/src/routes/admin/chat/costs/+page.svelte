@@ -219,12 +219,12 @@
 
 	{#if error}
 		<div
-			class="bg-red-500/10 border border-red-500/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
+			class="bg-destructive/10 border border-destructive/30 rounded-lg p-3 mb-6 tx tx-static tx-weak"
 			role="alert"
 		>
 			<div class="flex items-center gap-2">
-				<AlertCircle class="h-5 w-5 text-red-500 shrink-0" />
-				<p class="text-sm text-red-600 dark:text-red-400">{error}</p>
+				<AlertCircle class="h-5 w-5 text-destructive shrink-0" />
+				<p class="text-sm text-destructive">{error}</p>
 			</div>
 		</div>
 	{/if}
@@ -250,21 +250,21 @@
 						>
 							Total Cost
 						</p>
-						<p class="text-2xl font-bold text-emerald-500 mt-1">
+						<p class="text-2xl font-bold text-success mt-1">
 							{formatCurrency(dashboardData.overview.total_cost || 0)}
 						</p>
 					</div>
-					<DollarSign class="h-7 w-7 text-emerald-500 shrink-0 ml-3" />
+					<DollarSign class="h-7 w-7 text-success shrink-0 ml-3" />
 				</div>
 				{#if dashboardData.cost_trends.length >= 2}
 					{@const trend = getCostTrend()}
 					<div class="mt-2 flex items-center text-xs">
 						{#if trend.direction === 'up'}
-							<TrendingUp class="w-3.5 h-3.5 text-red-500 mr-1" />
-							<span class="text-red-500">+{formatPercentage(trend.value)}</span>
+							<TrendingUp class="w-3.5 h-3.5 text-destructive mr-1" />
+							<span class="text-destructive">+{formatPercentage(trend.value)}</span>
 						{:else}
-							<TrendingDown class="w-3.5 h-3.5 text-emerald-500 mr-1" />
-							<span class="text-emerald-500">-{formatPercentage(trend.value)}</span>
+							<TrendingDown class="w-3.5 h-3.5 text-success mr-1" />
+							<span class="text-success">-{formatPercentage(trend.value)}</span>
 						{/if}
 						<span class="text-muted-foreground ml-1">from previous</span>
 					</div>
@@ -284,11 +284,11 @@
 						>
 							Total Tokens
 						</p>
-						<p class="text-2xl font-bold text-blue-500 mt-1">
+						<p class="text-2xl font-bold text-info mt-1">
 							{formatNumber(dashboardData.overview.total_tokens || 0)}
 						</p>
 					</div>
-					<Zap class="h-7 w-7 text-blue-500 shrink-0 ml-3" />
+					<Zap class="h-7 w-7 text-info shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(dashboardData.overview.prompt_tokens || 0)} in,
@@ -305,11 +305,11 @@
 						>
 							Avg Cost / Turn
 						</p>
-						<p class="text-2xl font-bold text-purple-500 mt-1">
+						<p class="text-2xl font-bold text-accent mt-1">
 							{formatPreciseCurrency(dashboardData.overview.avg_cost_per_turn || 0)}
 						</p>
 					</div>
-					<MessageSquare class="h-7 w-7 text-purple-500 shrink-0 ml-3" />
+					<MessageSquare class="h-7 w-7 text-accent shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					{formatNumber(dashboardData.overview.turn_count || 0)} attributed turns
@@ -325,11 +325,11 @@
 						>
 							P95 Turn Cost
 						</p>
-						<p class="text-2xl font-bold text-indigo-500 mt-1">
+						<p class="text-2xl font-bold text-info mt-1">
 							{formatPreciseCurrency(dashboardData.overview.p95_turn_cost || 0)}
 						</p>
 					</div>
-					<Bot class="h-7 w-7 text-indigo-500 shrink-0 ml-3" />
+					<Bot class="h-7 w-7 text-info shrink-0 ml-3" />
 				</div>
 				<div class="mt-2 text-xs text-muted-foreground">
 					Max {formatPreciseCurrency(dashboardData.overview.max_turn_cost || 0)}
@@ -373,13 +373,13 @@
 									(${dashboardData.pricing.INPUT_COST_PER_M || 0}/1M)
 								</span>
 							</div>
-							<span class="text-sm font-bold text-blue-500">
+							<span class="text-sm font-bold text-info">
 								{formatCurrency(dashboardData.overview.input_cost || 0)}
 							</span>
 						</div>
 						<div class="w-full bg-muted rounded-full h-2.5">
 							<div
-								class="bg-blue-500 h-2.5 rounded-full transition-all duration-300"
+								class="bg-info h-2.5 rounded-full transition-all duration-300"
 								style="width: {dashboardData.overview.total_cost > 0
 									? ((dashboardData.overview.input_cost || 0) /
 											dashboardData.overview.total_cost) *
@@ -401,13 +401,13 @@
 									(${dashboardData.pricing.OUTPUT_COST_PER_M || 0}/1M)
 								</span>
 							</div>
-							<span class="text-sm font-bold text-purple-500">
+							<span class="text-sm font-bold text-accent">
 								{formatCurrency(dashboardData.overview.output_cost || 0)}
 							</span>
 						</div>
 						<div class="w-full bg-muted rounded-full h-2.5">
 							<div
-								class="bg-purple-500 h-2.5 rounded-full transition-all duration-300"
+								class="bg-accent h-2.5 rounded-full transition-all duration-300"
 								style="width: {dashboardData.overview.total_cost > 0
 									? ((dashboardData.overview.output_cost || 0) /
 											dashboardData.overview.total_cost) *
@@ -426,7 +426,7 @@
 			<div class="bg-card border border-border rounded-lg p-4 shadow-ink tx tx-grain tx-weak">
 				<h3 class="text-sm font-semibold text-foreground mb-4">Turn Cost Growth</h3>
 				<div class="flex items-center justify-center py-6">
-					<BarChart3 class="h-12 w-12 text-emerald-500 mr-4 shrink-0" />
+					<BarChart3 class="h-12 w-12 text-success mr-4 shrink-0" />
 					<div>
 						<div class="text-lg font-bold text-foreground">
 							{growthLabel(dashboardData.growth_summary.shape)}
@@ -465,7 +465,7 @@
 							<div class="min-w-0">
 								<div class="h-3 rounded bg-muted overflow-hidden">
 									<div
-										class="h-3 rounded bg-emerald-500"
+										class="h-3 rounded bg-success"
 										style="width: {Math.max(
 											4,
 											((turnData.avg_cost || 0) / maxTurnAverageCost()) * 100
@@ -480,7 +480,7 @@
 								</div>
 							</div>
 							<div class="text-right">
-								<div class="text-sm font-bold text-emerald-500">
+								<div class="text-sm font-bold text-success">
 									{formatPreciseCurrency(turnData.avg_cost || 0)}
 								</div>
 								<div class="text-xs text-muted-foreground">avg</div>
@@ -525,7 +525,7 @@
 									</div>
 								{/if}
 							</div>
-							<div class="text-right text-sm font-bold text-blue-500 shrink-0">
+							<div class="text-right text-sm font-bold text-info shrink-0">
 								{formatCurrency(modelData.cost || 0)}
 							</div>
 						</div>
@@ -577,7 +577,7 @@
 									</div>
 								</div>
 								<div class="shrink-0 text-right">
-									<div class="text-sm font-bold text-emerald-500">
+									<div class="text-sm font-bold text-success">
 										{formatPreciseCurrency(turn.cost || 0)}
 									</div>
 									<div
@@ -631,7 +631,7 @@
 								{/if}
 							</div>
 							<div class="text-right ml-4 shrink-0">
-								<div class="text-sm font-bold text-emerald-500">
+								<div class="text-sm font-bold text-success">
 									{formatCurrency(session.cost)}
 								</div>
 								<div class="text-xs text-muted-foreground">
@@ -667,7 +667,7 @@
 									{formatNumber(userData.total_tokens)} tokens
 								</div>
 							</div>
-							<div class="text-sm font-bold text-emerald-500 shrink-0">
+							<div class="text-sm font-bold text-success shrink-0">
 								{formatCurrency(userData.total_cost)}
 							</div>
 						</div>

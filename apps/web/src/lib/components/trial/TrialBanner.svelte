@@ -67,28 +67,28 @@
 {#if showBanner}
 	<div
 		class="relative {bannerClass.warning
-			? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+			? 'bg-destructive/10 border-destructive/30'
 			: bannerClass.info
-				? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
-				: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800'} border-b"
+				? 'bg-warning/10 border-warning/30'
+				: 'bg-info/10 border-info/30'} border-b"
 	>
 		<div class="container mx-auto px-4 sm:px-6 lg:px-8">
 			<div class="flex items-center justify-between py-3">
 				<div class="flex items-center flex-1">
 					<div class="flex-shrink-0">
 						{#if bannerClass.warning}
-							<AlertTriangle class="h-5 w-5 text-red-600 dark:text-red-400" />
+							<AlertTriangle class="h-5 w-5 text-destructive" />
 						{:else}
-							<Clock class="h-5 w-5 text-blue-600 dark:text-blue-400" />
+							<Clock class="h-5 w-5 text-info" />
 						{/if}
 					</div>
 					<div class="ml-3 flex-1">
 						<p
 							class="text-sm font-medium {bannerClass.warning
-								? 'text-red-800 dark:text-red-200'
+								? 'text-destructive'
 								: bannerClass.info
-									? 'text-yellow-800 dark:text-yellow-200'
-									: 'text-blue-800 dark:text-blue-200'}"
+									? 'text-warning'
+									: 'text-info'}"
 						>
 							{message}
 						</p>

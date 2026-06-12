@@ -30,7 +30,7 @@ export default {
 
 		alias: {
 			$components: 'src/lib/components',
-			$ui: 'src/lib/ui',
+			$ui: 'src/lib/components/ui',
 			$utils: 'src/lib/utils'
 		},
 

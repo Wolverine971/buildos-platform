@@ -32,7 +32,7 @@
 		</span>
 	{/if}
 	{#if turn.errors > 0}
-		<span class="rounded-full bg-red-500/10 px-2 py-0.5 text-red-700 dark:text-red-300">
+		<span class="rounded-full bg-destructive/10 px-2 py-0.5 text-destructive">
 			{formatNumber(turn.errors)}
 			{pluralize(turn.errors, 'error')}
 		</span>

@@ -100,7 +100,7 @@
 
 		{#snippet footer()}
 			<div
-				class="flex items-center justify-between gap-2 px-3 sm:px-4 py-2 sm:py-3 border-t border-border"
+				class="flex items-center justify-between gap-3 px-3 sm:px-4 py-3 border-t border-border bg-muted/30"
 			>
 				<p class="text-[10px] sm:text-xs text-muted-foreground truncate">
 					Generated {new Date(brief.created_at || brief.brief_date).toLocaleDateString(

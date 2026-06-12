@@ -97,13 +97,13 @@
 			case 'debug':
 				return 'bg-muted text-foreground dark:text-muted-foreground';
 			case 'info':
-				return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+				return 'bg-info/10 text-info';
 			case 'warn':
-				return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+				return 'bg-warning/10 text-warning';
 			case 'error':
-				return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+				return 'bg-destructive/10 text-destructive';
 			case 'fatal':
-				return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+				return 'bg-destructive/10 text-destructive';
 			default:
 				return 'bg-muted text-foreground';
 		}
@@ -114,13 +114,13 @@
 			case 'debug':
 				return 'text-muted-foreground';
 			case 'info':
-				return 'text-blue-600 dark:text-blue-400';
+				return 'text-info';
 			case 'warn':
-				return 'text-yellow-600 dark:text-yellow-400';
+				return 'text-warning';
 			case 'error':
-				return 'text-red-600 dark:text-red-400';
+				return 'text-destructive';
 			case 'fatal':
-				return 'text-purple-600 dark:text-purple-400';
+				return 'text-destructive';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -191,7 +191,7 @@
 						<tr
 							class="hover:bg-muted transition-colors {log.level === 'error' ||
 							log.level === 'fatal'
-								? 'bg-red-50 dark:bg-red-950'
+								? 'bg-destructive/10'
 								: ''}"
 						>
 							<td class="px-4 py-3">
@@ -232,7 +232,7 @@
 									{log.message}
 								</div>
 								{#if log.error_stack}
-									<div class="text-xs text-red-600 dark:text-red-400 mt-1">
+									<div class="text-xs text-destructive mt-1">
 										Error: Click to view stack trace
 									</div>
 								{/if}
@@ -240,7 +240,7 @@
 							<td class="px-3 py-2.5 whitespace-nowrap">
 								<button
 									onclick={() => copyToClipboard(log.correlation_id)}
-									class="font-mono text-xs text-blue-600 dark:text-blue-400 hover:underline"
+									class="font-mono text-xs text-info hover:underline"
 									title="Click to copy: {log.correlation_id}"
 								>
 									{truncateCorrelationId(log.correlation_id)}
@@ -366,12 +366,12 @@
 										{#if log.error_stack}
 											<div>
 												<div
-													class="text-xs font-medium text-red-700 dark:text-red-300 mb-1"
+													class="text-xs font-medium text-destructive mb-1"
 												>
 													Error Stack Trace:
 												</div>
 												<pre
-													class="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded p-3 text-xs overflow-x-auto text-red-900 dark:text-red-100">{log.error_stack}</pre>
+													class="bg-destructive/10 border border-destructive/30 rounded p-3 text-xs overflow-x-auto text-destructive">{log.error_stack}</pre>
 											</div>
 										{/if}
 									</div>

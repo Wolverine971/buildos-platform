@@ -83,7 +83,7 @@
 	{#if !readOnly}
 		<button
 			type="button"
-			class="p-0.5 sm:p-1 rounded opacity-0 group-hover:opacity-100
+			class="p-0.5 sm:p-1 rounded sm:opacity-0 sm:group-hover:opacity-100
 				text-muted-foreground hover:text-destructive hover:bg-destructive/10
 				transition-all duration-[120ms] focus:opacity-100 focus:outline-none
 				focus-visible:ring-2 focus-visible:ring-destructive pressable"

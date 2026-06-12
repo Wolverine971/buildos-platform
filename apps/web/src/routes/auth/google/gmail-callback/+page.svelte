@@ -65,9 +65,7 @@
 				</div>
 			{:else if timeoutReached}
 				<div class="space-y-4">
-					<h2 class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-						Taking Longer Than Expected
-					</h2>
+					<h2 class="text-2xl font-bold text-warning">Taking Longer Than Expected</h2>
 					<p class="text-muted-foreground">
 						The authentication process is taking longer than usual. Please try again.
 					</p>

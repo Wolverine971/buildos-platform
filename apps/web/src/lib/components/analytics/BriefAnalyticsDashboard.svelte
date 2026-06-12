@@ -51,16 +51,16 @@
 	}
 
 	function getStreakColor(streakDays: number): string {
-		if (streakDays >= 30) return 'text-green-600 dark:text-green-400';
-		if (streakDays >= 14) return 'text-blue-600 dark:text-blue-400';
-		if (streakDays >= 7) return 'text-yellow-600 dark:text-yellow-400';
+		if (streakDays >= 30) return 'text-success';
+		if (streakDays >= 14) return 'text-info';
+		if (streakDays >= 7) return 'text-warning';
 		return 'text-muted-foreground';
 	}
 
 	function getStreakBg(streakDays: number): string {
-		if (streakDays >= 30) return 'bg-green-100 dark:bg-green-900/20';
-		if (streakDays >= 14) return 'bg-blue-100 dark:bg-blue-900/20';
-		if (streakDays >= 7) return 'bg-yellow-100 dark:bg-yellow-900/20';
+		if (streakDays >= 30) return 'bg-success/10';
+		if (streakDays >= 14) return 'bg-info/10';
+		if (streakDays >= 7) return 'bg-warning/10';
 		return 'bg-muted';
 	}
 
@@ -82,7 +82,8 @@
 				title: 'Week Warrior',
 				description: '7+ day streak',
 				icon: Zap,
-				color: 'yellow'
+				bgClass: 'bg-warning/10',
+				iconClass: 'text-warning'
 			});
 		}
 
@@ -92,7 +93,8 @@
 				title: 'Monthly Master',
 				description: '30+ day streak',
 				icon: Calendar,
-				color: 'green'
+				bgClass: 'bg-success/10',
+				iconClass: 'text-success'
 			});
 		}
 
@@ -102,7 +104,8 @@
 				title: 'Century Club',
 				description: '100+ total briefs',
 				icon: Award,
-				color: 'purple'
+				bgClass: 'bg-accent/10',
+				iconClass: 'text-accent'
 			});
 		}
 
@@ -112,7 +115,8 @@
 				title: 'Template Creator',
 				description: 'Created custom templates',
 				icon: BookOpen,
-				color: 'blue'
+				bgClass: 'bg-info/10',
+				iconClass: 'text-info'
 			});
 		}
 
@@ -128,7 +132,7 @@
 		<CardBody padding="md">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center">
-					<BarChart3 class="mr-3 h-6 w-6 text-blue-600 dark:text-blue-400" />
+					<BarChart3 class="mr-3 h-6 w-6 text-info" />
 					<div>
 						<h2 class="text-xl font-bold text-foreground">Analytics</h2>
 						<p class="text-sm text-muted-foreground">
@@ -157,15 +161,10 @@
 
 	{#if error}
 		<Card variant="default">
-			<CardBody
-				padding="md"
-				class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
-			>
+			<CardBody padding="md" class="bg-destructive/10 border border-destructive/30">
 				<div class="flex items-center">
-					<AlertTriangle
-						class="h-4 w-4 text-red-600 dark:text-red-400 mr-2 flex-shrink-0"
-					/>
-					<p class="text-sm text-red-800 dark:text-red-200 font-medium">{error}</p>
+					<AlertTriangle class="h-4 w-4 text-destructive mr-2 flex-shrink-0" />
+					<p class="text-sm text-destructive font-medium">{error}</p>
 				</div>
 			</CardBody>
 		</Card>
@@ -193,8 +192,8 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<div class="flex items-center justify-between mb-2">
-						<div class="bg-blue-100 dark:bg-blue-900/20 rounded-lg p-2">
-							<Calendar class="h-4 w-4 text-blue-600 dark:text-blue-400" />
+						<div class="bg-info/10 rounded-lg p-2">
+							<Calendar class="h-4 w-4 text-info" />
 						</div>
 						<div class="text-right">
 							<p class="text-xl font-bold text-foreground">
@@ -204,7 +203,7 @@
 						</div>
 					</div>
 					<div class="flex items-center text-xs">
-						<span class="text-green-600 dark:text-green-400 font-medium">
+						<span class="text-success font-medium">
 							+{analytics.generation_frequency.briefs_this_month}
 						</span>
 						<span class="text-muted-foreground ml-1">this month</span>
@@ -250,8 +249,8 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<div class="flex items-center justify-between mb-2">
-						<div class="bg-green-100 dark:bg-green-900/20 rounded-lg p-2">
-							<Activity class="h-4 w-4 text-green-600 dark:text-green-400" />
+						<div class="bg-success/10 rounded-lg p-2">
+							<Activity class="h-4 w-4 text-success" />
 						</div>
 						<div class="text-right">
 							<p class="text-xl font-bold text-foreground">
@@ -268,8 +267,8 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<div class="flex items-center justify-between mb-2">
-						<div class="bg-purple-100 dark:bg-purple-900/20 rounded-lg p-2">
-							<Target class="h-4 w-4 text-purple-600 dark:text-purple-400" />
+						<div class="bg-accent/10 rounded-lg p-2">
+							<Target class="h-4 w-4 text-accent" />
 						</div>
 						<div class="text-right">
 							<p class="text-xl font-bold text-foreground">
@@ -289,7 +288,7 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<h3 class="text-base font-semibold text-foreground mb-4 flex items-center">
-						<FolderOpen class="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
+						<FolderOpen class="mr-2 h-4 w-4 text-info" />
 						Most Active Projects
 					</h3>
 
@@ -298,11 +297,9 @@
 							{#each analytics.engagement_metrics.most_active_projects.slice(0, 5) as project, index}
 								<div class="flex items-center space-x-3">
 									<div
-										class="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center"
+										class="flex-shrink-0 w-6 h-6 bg-info/10 rounded-full flex items-center justify-center"
 									>
-										<span
-											class="text-xs font-semibold text-blue-600 dark:text-blue-400"
-										>
+										<span class="text-xs font-semibold text-info">
 											{index + 1}
 										</span>
 									</div>
@@ -312,7 +309,7 @@
 										</p>
 										<div class="w-full bg-muted rounded-full h-1.5 mt-1">
 											<div
-												class="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
+												class="bg-info h-1.5 rounded-full transition-all duration-500"
 												style="width: {getProgressBarWidth(
 													project.brief_count,
 													analytics.engagement_metrics
@@ -342,7 +339,7 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<h3 class="text-base font-semibold text-foreground mb-4 flex items-center">
-						<Target class="mr-2 h-4 w-4 text-purple-600 dark:text-purple-400" />
+						<Target class="mr-2 h-4 w-4 text-accent" />
 						Most Active Goals
 					</h3>
 
@@ -351,11 +348,9 @@
 							{#each analytics.engagement_metrics.most_active_goals.slice(0, 5) as goal, index}
 								<div class="flex items-center space-x-3">
 									<div
-										class="flex-shrink-0 w-6 h-6 bg-purple-100 dark:bg-purple-900/20 rounded-full flex items-center justify-center"
+										class="flex-shrink-0 w-6 h-6 bg-accent/10 rounded-full flex items-center justify-center"
 									>
-										<span
-											class="text-xs font-semibold text-purple-600 dark:text-purple-400"
-										>
+										<span class="text-xs font-semibold text-accent">
 											{index + 1}
 										</span>
 									</div>
@@ -365,7 +360,7 @@
 										</p>
 										<div class="w-full bg-muted rounded-full h-1.5 mt-1">
 											<div
-												class="bg-purple-600 h-1.5 rounded-full transition-all duration-500"
+												class="bg-accent h-1.5 rounded-full transition-all duration-500"
 												style="width: {getProgressBarWidth(
 													goal.brief_count,
 													analytics.engagement_metrics
@@ -398,7 +393,7 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<h3 class="text-sm font-semibold text-foreground mb-3 flex items-center">
-						<PieChart class="mr-2 h-4 w-4 text-green-600 dark:text-green-400" />
+						<PieChart class="mr-2 h-4 w-4 text-success" />
 						Template Usage
 					</h3>
 
@@ -429,7 +424,7 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<h3 class="text-sm font-semibold text-foreground mb-3 flex items-center">
-						<Clock class="mr-2 h-4 w-4 text-orange-600 dark:text-orange-400" />
+						<Clock class="mr-2 h-4 w-4 text-accent" />
 						Weekly Activity
 					</h3>
 
@@ -454,7 +449,7 @@
 									<div
 										class="flex-1 h-3 rounded-sm transition-colors {i <
 										analytics.generation_frequency.briefs_this_week
-											? 'bg-orange-500'
+											? 'bg-accent'
 											: 'bg-muted'}"
 										title="Day {i + 1}"
 									></div>
@@ -469,7 +464,7 @@
 			<Card variant="default">
 				<CardBody padding="md">
 					<h3 class="text-sm font-semibold text-foreground mb-3 flex items-center">
-						<Award class="mr-2 h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+						<Award class="mr-2 h-4 w-4 text-warning" />
 						Achievements
 					</h3>
 
@@ -479,11 +474,9 @@
 								{@const Icon = achievement.icon}
 								<div class="flex items-center space-x-2 p-2 bg-muted/50 rounded">
 									<div
-										class="w-6 h-6 bg-{achievement.color}-100 dark:bg-{achievement.color}-900/20 rounded-full flex items-center justify-center flex-shrink-0"
+										class="w-6 h-6 {achievement.bgClass} rounded-full flex items-center justify-center flex-shrink-0"
 									>
-										<Icon
-											class="w-3 h-3 text-{achievement.color}-600 dark:text-{achievement.color}-400"
-										/>
+										<Icon class="w-3 h-3 {achievement.iconClass}" />
 									</div>
 									<div class="min-w-0">
 										<p class="text-xs font-medium text-foreground">
@@ -510,28 +503,23 @@
 
 		<!-- Compact Insights Section -->
 		<Card variant="default">
-			<CardBody
-				padding="md"
-				class="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/10 dark:to-indigo-900/10 border border-blue-200 dark:border-blue-800/50"
-			>
+			<CardBody padding="md" class="bg-info/10 border border-info/30">
 				<h3 class="text-lg font-semibold text-foreground mb-4 flex items-center">
-					<TrendingUp class="mr-2 h-5 w-5 text-blue-600 dark:text-blue-400" />
+					<TrendingUp class="mr-2 h-5 w-5 text-info" />
 					Insights & Recommendations
 				</h3>
 
 				<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div>
 						<h4 class="font-medium text-foreground mb-2 flex items-center text-sm">
-							<CheckCircle
-								class="w-4 h-4 mr-1.5 text-green-600 dark:text-green-400"
-							/>
+							<CheckCircle class="w-4 h-4 mr-1.5 text-success" />
 							Highlights
 						</h4>
 						<ul class="space-y-1.5">
 							{#if analytics.generation_frequency.streak_days > 0}
 								<li class="flex items-start space-x-2">
 									<div
-										class="w-1 h-1 bg-green-500 rounded-full mt-1.5 flex-shrink-0"
+										class="w-1 h-1 bg-success rounded-full mt-1.5 flex-shrink-0"
 									></div>
 									<span class="text-xs text-foreground">
 										{analytics.generation_frequency.streak_days}-day streak! 🔥
@@ -541,7 +529,7 @@
 							{#if analytics.engagement_metrics.avg_priority_actions > 3}
 								<li class="flex items-start space-x-2">
 									<div
-										class="w-1 h-1 bg-purple-500 rounded-full mt-1.5 flex-shrink-0"
+										class="w-1 h-1 bg-accent rounded-full mt-1.5 flex-shrink-0"
 									></div>
 									<span class="text-xs text-foreground">
 										High action generation ({Math.round(
@@ -553,7 +541,7 @@
 							{#if analytics.engagement_metrics.most_active_projects?.length}
 								<li class="flex items-start space-x-2">
 									<div
-										class="w-1 h-1 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"
+										class="w-1 h-1 bg-info rounded-full mt-1.5 flex-shrink-0"
 									></div>
 									<span class="text-xs text-foreground">
 										Most active: {analytics.engagement_metrics
@@ -567,14 +555,14 @@
 
 					<div>
 						<h4 class="font-medium text-foreground mb-2 flex items-center text-sm">
-							<Target class="w-4 h-4 mr-1.5 text-blue-600 dark:text-blue-400" />
+							<Target class="w-4 h-4 mr-1.5 text-info" />
 							Suggestions
 						</h4>
 						<ul class="space-y-1.5">
 							{#if analytics.generation_frequency.briefs_this_week < 5}
 								<li class="flex items-start space-x-2">
 									<div
-										class="w-1 h-1 bg-orange-500 rounded-full mt-1.5 flex-shrink-0"
+										class="w-1 h-1 bg-accent rounded-full mt-1.5 flex-shrink-0"
 									></div>
 									<span class="text-xs text-foreground">
 										Try more consistent daily generation ⏰
@@ -584,7 +572,7 @@
 							{#if analytics.template_usage.custom_template_count === 0}
 								<li class="flex items-start space-x-2">
 									<div
-										class="w-1 h-1 bg-indigo-500 rounded-full mt-1.5 flex-shrink-0"
+										class="w-1 h-1 bg-info rounded-full mt-1.5 flex-shrink-0"
 									></div>
 									<span class="text-xs text-foreground">
 										Create custom templates ✨
@@ -594,7 +582,7 @@
 							{#if analytics.engagement_metrics.avg_brief_length < 200}
 								<li class="flex items-start space-x-2">
 									<div
-										class="w-1 h-1 bg-green-500 rounded-full mt-1.5 flex-shrink-0"
+										class="w-1 h-1 bg-success rounded-full mt-1.5 flex-shrink-0"
 									></div>
 									<span class="text-xs text-foreground">
 										Add more context for richer briefs 📝

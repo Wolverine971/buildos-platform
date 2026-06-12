@@ -128,9 +128,9 @@
 				return 'text-accent bg-accent/10 border border-accent/30';
 			case 'sent':
 			case 'delivered':
-				return 'text-emerald-600 bg-emerald-500/10 border border-emerald-500/30';
+				return 'text-success bg-success/10 border border-success/30';
 			case 'failed':
-				return 'text-red-600 bg-red-500/10 border border-red-500/30';
+				return 'text-destructive bg-destructive/10 border border-destructive/30';
 			case 'cancelled':
 				return 'text-muted-foreground bg-muted border border-border';
 			default:
@@ -230,11 +230,11 @@
 	{:else if error}
 		<!-- Error State -->
 		<div
-			class="bg-red-500/10 border border-red-500/30 rounded-lg p-4 shadow-ink tx tx-static tx-weak"
+			class="bg-destructive/10 border border-destructive/30 rounded-lg p-4 shadow-ink tx tx-static tx-weak"
 			transition:slide
 		>
 			<div class="flex items-start gap-3">
-				<AlertCircle class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+				<AlertCircle class="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
 				<div>
 					<p class="text-sm font-medium text-foreground">Error loading messages</p>
 					<p class="text-sm text-muted-foreground mt-1">{error}</p>
@@ -287,7 +287,7 @@
 								</span>
 								{#if message.generated_via === 'llm'}
 									<span
-										class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-600 border border-purple-500/30"
+										class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-accent border border-accent/30"
 									>
 										AI-generated
 									</span>

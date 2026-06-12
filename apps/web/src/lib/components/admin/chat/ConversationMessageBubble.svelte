@@ -63,7 +63,7 @@
 						<span>{formatNumber(message.totalTokens)} tokens</span>
 					{/if}
 					{#if message.errorMessage}
-						<span class="text-red-600 dark:text-red-400">{message.errorMessage}</span>
+						<span class="text-destructive">{message.errorMessage}</span>
 					{/if}
 				</div>
 			{/if}
@@ -118,7 +118,7 @@
 						<span>{formatNumber(message.totalTokens)} tokens</span>
 					{/if}
 					{#if message.errorMessage}
-						<span class="text-red-600 dark:text-red-400">{message.errorMessage}</span>
+						<span class="text-destructive">{message.errorMessage}</span>
 					{/if}
 				</div>
 			{/if}

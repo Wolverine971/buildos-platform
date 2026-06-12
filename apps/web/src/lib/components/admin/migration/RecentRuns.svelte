@@ -103,23 +103,19 @@
 <div class="space-y-4">
 	<!-- Active Run Banner -->
 	{#if activeRun}
-		<div
-			class="rounded-lg border-2 border-purple-500 bg-purple-50 p-4 dark:border-purple-400 dark:bg-purple-900/20"
-		>
+		<div class="rounded-lg border-2 border-accent bg-accent/10 p-4">
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div class="flex items-center gap-3">
 					<div
-						class="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500 text-white"
+						class="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-accent-foreground"
 					>
 						<Play class="h-5 w-5" />
 					</div>
 					<div>
-						<p class="font-semibold text-purple-900 dark:text-purple-100">
-							Migration In Progress
-						</p>
-						<p class="text-sm text-purple-700 dark:text-purple-300">
+						<p class="font-semibold text-foreground">Migration In Progress</p>
+						<p class="text-sm text-accent">
 							{activeRun.projectsProcessed} projects processed
-							<span class="text-purple-500">•</span>
+							<span class="text-accent">•</span>
 							Started {formatDate(activeRun.startedAt)}
 						</p>
 					</div>
@@ -150,7 +146,7 @@
 					{/if}
 				</div>
 			</div>
-			<p class="mt-2 flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400">
+			<p class="mt-2 flex items-center gap-1 text-xs text-accent">
 				<User class="h-3 w-3" />
 				Locked by {activeRun.lockedBy}
 			</p>
@@ -179,10 +175,10 @@
 								<div
 									class="flex h-8 w-8 items-center justify-center rounded-full {run.status ===
 									'completed'
-										? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+										? 'bg-success/10 text-success'
 										: run.status === 'failed'
-											? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400'
-											: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'}"
+											? 'bg-destructive/10 text-destructive'
+											: 'bg-warning/10 text-warning'}"
 								>
 									<StatusIcon class="h-4 w-4" />
 								</div>
@@ -190,7 +186,7 @@
 									<p class="font-medium text-foreground">
 										{run.projectsProcessed} projects
 										{#if run.projectsFailed > 0}
-											<span class="text-rose-600 dark:text-rose-400">
+											<span class="text-destructive">
 												({run.projectsFailed} failed)
 											</span>
 										{/if}

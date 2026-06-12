@@ -57,22 +57,16 @@
 	<!-- Icon -->
 	<div class="flex-shrink-0 mt-1">
 		{#if notification.status === 'success'}
-			<div
-				class="flex h-8 w-8 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
-			>
-				<CheckCircle class="w-5 h-5 text-green-600 dark:text-green-400" />
+			<div class="flex h-8 w-8 items-center justify-center rounded-full bg-success/10">
+				<CheckCircle class="w-5 h-5 text-success" />
 			</div>
 		{:else if notification.status === 'error'}
-			<div
-				class="flex h-8 w-8 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30"
-			>
-				<AlertCircle class="w-5 h-5 text-red-600 dark:text-red-400" />
+			<div class="flex h-8 w-8 items-center justify-center rounded-full bg-destructive/10">
+				<AlertCircle class="w-5 h-5 text-destructive" />
 			</div>
 		{:else}
-			<div
-				class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30"
-			>
-				<LoaderCircle class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin" />
+			<div class="flex h-8 w-8 items-center justify-center rounded-full bg-info/10">
+				<LoaderCircle class="w-5 h-5 text-info animate-spin" />
 			</div>
 		{/if}
 	</div>
@@ -81,7 +75,7 @@
 	<div class="flex-1 min-w-0">
 		<!-- Header -->
 		<div class="flex items-center gap-2 mb-1">
-			<Sparkles class="w-4 h-4 text-purple-500 dark:text-purple-400" />
+			<Sparkles class="w-4 h-4 text-accent" />
 			<h4 class="font-medium text-sm truncate text-foreground">
 				{notification.status === 'success' ? 'Synthesis Complete' : 'Project Synthesis'}
 				<span class="text-muted-foreground">—</span>
@@ -99,7 +93,7 @@
 			<!-- Progress bar -->
 			<div class="w-full bg-muted rounded-full h-1.5 mb-2">
 				<div
-					class="bg-blue-600 dark:bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+					class="bg-info h-1.5 rounded-full transition-all duration-300"
 					style="width: {progressPercentage}%"
 				></div>
 			</div>
@@ -117,9 +111,7 @@
 
 			<div class="flex items-center gap-2 flex-wrap mb-2">
 				{#if result.consolidationCount > 0}
-					<span
-						class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-xs font-medium"
-					>
+					<span class="bg-info/10 text-info px-2 py-0.5 rounded text-xs font-medium">
 						{result.consolidationCount} Consolidation{result.consolidationCount === 1
 							? ''
 							: 's'}
@@ -127,14 +119,14 @@
 				{/if}
 				{#if result.newTasksCount > 0}
 					<span
-						class="bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 px-2 py-0.5 rounded text-xs font-medium"
+						class="bg-success/10 text-success px-2 py-0.5 rounded text-xs font-medium"
 					>
 						{result.newTasksCount} New
 					</span>
 				{/if}
 				{#if result.deletionsCount > 0}
 					<span
-						class="bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 px-2 py-0.5 rounded text-xs font-medium"
+						class="bg-destructive/10 text-destructive px-2 py-0.5 rounded text-xs font-medium"
 					>
 						{result.deletionsCount} Deletion{result.deletionsCount === 1 ? '' : 's'}
 					</span>
@@ -143,9 +135,7 @@
 
 			{#if result.insights}
 				<div class="flex items-start gap-1.5 mb-2">
-					<Lightbulb
-						class="w-3.5 h-3.5 text-yellow-500 dark:text-yellow-400 flex-shrink-0 mt-0.5"
-					/>
+					<Lightbulb class="w-3.5 h-3.5 text-warning flex-shrink-0 mt-0.5" />
 					<p class="text-xs text-muted-foreground italic line-clamp-2">
 						{result.insights.substring(0, 100)}{result.insights.length > 100
 							? '...'
@@ -160,14 +150,14 @@
 					e.stopPropagation();
 					notification.actions.reviewResults?.();
 				}}
-				class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors"
+				class="text-xs text-info hover:text-info/80 font-medium transition-colors"
 			>
 				Review Results →
 			</button>
 
 			<!-- Error state -->
 		{:else if notification.status === 'error'}
-			<p class="text-xs text-red-600 dark:text-red-400 mb-1">
+			<p class="text-xs text-destructive mb-1">
 				{notification.data.error ?? 'Synthesis failed'}
 			</p>
 			<button
@@ -176,7 +166,7 @@
 					e.stopPropagation();
 					notification.actions.retry?.();
 				}}
-				class="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium transition-colors"
+				class="text-xs text-destructive hover:text-destructive/80 font-medium transition-colors"
 			>
 				Retry Synthesis
 			</button>

@@ -62,41 +62,41 @@
 	};
 
 	const tabs = $derived<TabDef[]>([
-		{ key: 'graph', label: 'Graph', count: null, icon: GitBranch, accent: 'text-sky-500' },
+		{ key: 'graph', label: 'Graph', count: null, icon: GitBranch, accent: 'text-info' },
 		{
 			key: 'goals',
 			label: 'Goals',
 			count: goals.length,
 			icon: Target,
-			accent: 'text-amber-500'
+			accent: 'text-accent'
 		},
 		{
 			key: 'milestones',
 			label: 'Milestones',
 			count: milestones.length,
 			icon: Flag,
-			accent: 'text-emerald-500'
+			accent: 'text-success'
 		},
 		{
 			key: 'plans',
 			label: 'Plans',
 			count: plans.length,
 			icon: Calendar,
-			accent: 'text-indigo-500'
+			accent: 'text-info'
 		},
 		{
 			key: 'risks',
 			label: 'Risks',
 			count: risks.length,
 			icon: AlertTriangle,
-			accent: 'text-rose-500'
+			accent: 'text-destructive'
 		},
 		{
 			key: 'events',
 			label: 'Events',
 			count: events.length,
 			icon: Clock,
-			accent: 'text-teal-500'
+			accent: 'text-info'
 		}
 	]);
 
@@ -192,9 +192,7 @@
 								{#each goals as g (g.id)}
 									{@const due = dueLabel(g.target_date)}
 									<li class="px-3 py-2.5 flex items-start gap-2">
-										<Target
-											class="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500"
-										/>
+										<Target class="w-3.5 h-3.5 mt-0.5 shrink-0 text-accent" />
 										<div class="min-w-0 flex-1">
 											<p class="text-sm text-foreground leading-snug">
 												{g.name}
@@ -237,9 +235,7 @@
 								{#each milestones as m (m.id)}
 									{@const due = dueLabel(m.due_at)}
 									<li class="px-3 py-2.5 flex items-start gap-2">
-										<Flag
-											class="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-500"
-										/>
+										<Flag class="w-3.5 h-3.5 mt-0.5 shrink-0 text-success" />
 										<div class="min-w-0 flex-1">
 											<p class="text-sm text-foreground leading-snug">
 												{m.title}
@@ -281,9 +277,7 @@
 							{:else}
 								{#each plans as p (p.id)}
 									<li class="px-3 py-2.5 flex items-start gap-2">
-										<Calendar
-											class="w-3.5 h-3.5 mt-0.5 shrink-0 text-indigo-500"
-										/>
+										<Calendar class="w-3.5 h-3.5 mt-0.5 shrink-0 text-info" />
 										<div class="min-w-0 flex-1">
 											<p class="text-sm text-foreground leading-snug">
 												{p.name}
@@ -317,7 +311,7 @@
 								{#each risks as r (r.id)}
 									<li class="px-3 py-2.5 flex items-start gap-2">
 										<AlertTriangle
-											class="w-3.5 h-3.5 mt-0.5 shrink-0 text-rose-500"
+											class="w-3.5 h-3.5 mt-0.5 shrink-0 text-destructive"
 										/>
 										<div class="min-w-0 flex-1">
 											<p class="text-sm text-foreground leading-snug">
@@ -351,7 +345,7 @@
 							{:else}
 								{#each events as e (e.id)}
 									<li class="px-3 py-2.5 flex items-start gap-2">
-										<Clock class="w-3.5 h-3.5 mt-0.5 shrink-0 text-teal-500" />
+										<Clock class="w-3.5 h-3.5 mt-0.5 shrink-0 text-info" />
 										<div class="min-w-0 flex-1">
 											<p class="text-sm text-foreground leading-snug">
 												{e.title}

@@ -83,7 +83,10 @@
 	);
 
 	function normalizeSearchText(value: string): string {
-		return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+		return value
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, ' ')
+			.trim();
 	}
 
 	function humanize(value?: string): string {
@@ -233,7 +236,9 @@
 		<div class="mx-auto max-w-6xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
 			<div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
 				<div class="max-w-3xl">
-					<div class="mb-4 inline-flex items-center gap-2 text-xs font-medium uppercase text-accent">
+					<div
+						class="mb-4 inline-flex items-center gap-2 text-xs font-medium uppercase text-accent"
+					>
 						<Brain class="h-4 w-4" />
 						BuildOS Skill Repository
 					</div>
@@ -274,7 +279,9 @@
 		<div class="mx-auto max-w-6xl px-4 py-4 sm:px-6 lg:px-8">
 			<div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 				<div class="relative max-w-xl flex-1">
-					<Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<Search
+						class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+					/>
 					<input
 						bind:value={query}
 						type="search"
@@ -373,7 +380,9 @@
 						<div class="mt-4 grid grid-cols-3 gap-2 text-sm">
 							<div class="rounded border border-border bg-background p-2">
 								<p class="text-xs text-muted-foreground">Sources</p>
-								<p class="mt-1 font-semibold">{sourceCount || skill.lineage_sources?.length || 0}</p>
+								<p class="mt-1 font-semibold">
+									{sourceCount || skill.lineage_sources?.length || 0}
+								</p>
 							</div>
 							<div class="rounded border border-border bg-background p-2">
 								<p class="text-xs text-muted-foreground">Primitives</p>
@@ -438,7 +447,7 @@
 									onclick={() => copyBundleCommand(skill)}
 								>
 									{#if copiedSlug === skill.slug}
-										<Check class="h-3.5 w-3.5 text-emerald-500" />
+										<Check class="h-3.5 w-3.5 text-success" />
 										Copied
 									{:else}
 										<Copy class="h-3.5 w-3.5" />
@@ -448,7 +457,10 @@
 							</div>
 
 							<div class="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-								<a href={getBuildOsSkillPath(skill)} class="inline-flex items-center gap-1 hover:text-accent">
+								<a
+									href={getBuildOsSkillPath(skill)}
+									class="inline-flex items-center gap-1 hover:text-accent"
+								>
 									BuildOS runtime <ExternalLink class="h-3 w-3" />
 								</a>
 								{#if skill.runtime_skill_id}

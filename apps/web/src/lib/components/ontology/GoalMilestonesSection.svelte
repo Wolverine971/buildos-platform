@@ -132,14 +132,12 @@
 </script>
 
 <!-- Achievement zone: tx-frame + subtle emerald background for visual grouping -->
-<div
-	class="border-t border-l border-border tx tx-frame tx-weak bg-emerald-50/5 dark:bg-emerald-900/5"
->
+<div class="border-t border-l border-border tx tx-frame tx-weak bg-success/5">
 	{#if milestones.length === 0}
 		<!-- Empty state: single compact row -->
 		<div class="w-full flex items-center justify-between gap-2 px-3 py-1.5">
 			<div class="flex items-center gap-2 min-w-0">
-				<Flag class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+				<Flag class="w-3.5 h-3.5 text-success shrink-0" />
 				<span class="text-xs text-muted-foreground truncate">No Milestones</span>
 			</div>
 			{#if canEdit && !isGoalTerminal}
@@ -158,12 +156,12 @@
 		<button
 			type="button"
 			onclick={handleToggle}
-			class="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-emerald-50/20 dark:hover:bg-emerald-900/10 transition-colors"
+			class="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-success/10 transition-colors"
 			aria-expanded={isExpanded}
 			aria-label={isExpanded ? 'Collapse milestones' : 'Expand milestones'}
 		>
 			<div class="flex items-center gap-2 min-w-0">
-				<Flag class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+				<Flag class="w-3.5 h-3.5 text-success shrink-0" />
 				<span class="text-xs text-muted-foreground truncate">
 					{completedCount}/{totalCount} milestones
 				</span>
@@ -203,7 +201,7 @@
 							<button
 								type="button"
 								onclick={() => (completedExpanded = !completedExpanded)}
-								class="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-emerald-50/20 dark:hover:bg-emerald-900/10 transition-colors"
+								class="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-left hover:bg-success/10 transition-colors"
 								aria-expanded={completedExpanded}
 								aria-label={completedExpanded
 									? 'Collapse completed milestones'

@@ -625,11 +625,11 @@
 					<span
 						class="inline-flex px-1.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-[0.15em] rounded shrink-0 {emailData.status ===
 						'sent'
-							? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+							? 'bg-success/10 text-success'
 							: emailData.status === 'scheduled'
 								? 'bg-accent/10 text-accent'
 								: emailData.status === 'failed'
-									? 'bg-red-500/10 text-red-600 dark:text-red-400'
+									? 'bg-destructive/10 text-destructive'
 									: 'bg-muted text-muted-foreground'}"
 					>
 						{emailData.status}
@@ -691,13 +691,13 @@
 	<!-- Messages - compact inline alerts -->
 	{#if error}
 		<div
-			class="mx-4 mt-3 px-3 py-2 rounded-lg border border-red-500/20 bg-red-500/5 tx tx-static tx-weak"
+			class="mx-4 mt-3 px-3 py-2 rounded-lg border border-destructive/20 bg-destructive/5 tx tx-static tx-weak"
 		>
 			<div class="flex justify-between items-center gap-2">
-				<p class="text-xs text-red-600 dark:text-red-400">{error}</p>
+				<p class="text-xs text-destructive">{error}</p>
 				<button
 					onclick={clearMessages}
-					class="p-0.5 rounded text-red-400 hover:text-red-600 hover:bg-red-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50 transition-colors shrink-0"
+					class="p-0.5 rounded text-destructive/70 hover:text-destructive hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/50 transition-colors shrink-0"
 				>
 					<Trash2 class="h-3.5 w-3.5" />
 				</button>
@@ -707,13 +707,13 @@
 
 	{#if success}
 		<div
-			class="mx-4 mt-3 px-3 py-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 tx tx-grain tx-weak"
+			class="mx-4 mt-3 px-3 py-2 rounded-lg border border-success/20 bg-success/5 tx tx-grain tx-weak"
 		>
 			<div class="flex justify-between items-center gap-2">
-				<p class="text-xs text-emerald-600 dark:text-emerald-400">{success}</p>
+				<p class="text-xs text-success">{success}</p>
 				<button
 					onclick={clearMessages}
-					class="p-0.5 rounded text-emerald-400 hover:text-emerald-600 hover:bg-emerald-500/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 transition-colors shrink-0"
+					class="p-0.5 rounded text-success/70 hover:text-success hover:bg-success/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-success/50 transition-colors shrink-0"
 				>
 					<Trash2 class="h-3.5 w-3.5" />
 				</button>
@@ -756,7 +756,7 @@
 								disabled={!aiGeneratedContent ||
 									aiGeneratedContent ===
 										'<p>AI-generated email will appear here...</p>'}
-								class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+								class="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded text-success hover:bg-success/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
 								title="Use AI content in main editor"
 							>
 								<ArrowRight class="h-3.5 w-3.5" />
@@ -971,7 +971,7 @@
 							</div>
 							{#if emailData.recipients.length === 0}
 								<div
-									class="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-1.5 rounded-lg tx tx-static tx-weak"
+									class="flex items-center gap-1.5 text-[11px] text-warning bg-warning/10 px-2 py-1.5 rounded-lg tx tx-static tx-weak"
 								>
 									<Users class="h-3.5 w-3.5 shrink-0" />
 									<span>Add recipients first</span>

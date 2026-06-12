@@ -187,7 +187,7 @@
 		<button
 			class={`relative flex h-12 w-12 items-center justify-center rounded-full border transition-all ${
 				isCurrentlyRecording
-					? 'border-red-600 bg-red-600 text-white shadow-ink-strong'
+					? 'border-destructive bg-destructive text-destructive-foreground shadow-ink-strong'
 					: 'border-border bg-card text-foreground shadow-ink'
 			} ${!isVoiceSupported || isUploading ? 'opacity-50 cursor-not-allowed' : 'pressable'}`}
 			disabled={!isVoiceSupported || isUploading || isInitializing}
@@ -198,7 +198,8 @@
 				<LoaderCircle class="h-5 w-5 animate-spin" />
 			{:else if isCurrentlyRecording}
 				<Square class="h-5 w-5" />
-				<span class="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-red-500"
+				<span
+					class="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-destructive"
 				></span>
 			{:else}
 				<Mic class="h-5 w-5" />
@@ -265,7 +266,7 @@
 	{/if}
 
 	{#if errorMessage}
-		<div class="mt-4 flex items-center gap-2 text-sm text-red-600">
+		<div class="mt-4 flex items-center gap-2 text-sm text-destructive">
 			<AlertCircle class="h-4 w-4" />
 			<span>{errorMessage}</span>
 		</div>

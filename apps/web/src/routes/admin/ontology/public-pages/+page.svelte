@@ -22,15 +22,16 @@
 	}
 
 	function statusTone(status: string): string {
-		if (status === 'flagged') return 'text-red-700 bg-red-100 border-red-200';
-		if (status === 'passed') return 'text-emerald-700 bg-emerald-100 border-emerald-200';
-		return 'text-amber-700 bg-amber-100 border-amber-200';
+		if (status === 'flagged') return 'text-destructive bg-destructive/10 border-destructive/30';
+		if (status === 'passed') return 'text-success bg-success/10 border-success/30';
+		return 'text-warning bg-warning/10 border-warning/30';
 	}
 
 	function decisionTone(decision: string | null): string {
-		if (decision === 'approved') return 'text-emerald-700 bg-emerald-100 border-emerald-200';
-		if (decision === 'rejected') return 'text-red-700 bg-red-100 border-red-200';
-		return 'text-amber-700 bg-amber-100 border-amber-200';
+		if (decision === 'approved') return 'text-success bg-success/10 border-success/30';
+		if (decision === 'rejected')
+			return 'text-destructive bg-destructive/10 border-destructive/30';
+		return 'text-warning bg-warning/10 border-warning/30';
 	}
 </script>
 
@@ -56,7 +57,7 @@
 		</div>
 	{:else if form?.success}
 		<div
-			class="rounded-lg border border-emerald-300/70 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+			class="rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm text-success"
 		>
 			Review decision saved.
 		</div>
@@ -77,7 +78,9 @@
 		</div>
 		<div class="rounded-lg border border-border bg-card p-4 shadow-ink">
 			<p class="text-xs uppercase tracking-wide text-muted-foreground">Flagged (7d)</p>
-			<p class="mt-2 text-2xl font-semibold text-red-700">{data.stats.flagged_reviews_7d}</p>
+			<p class="mt-2 text-2xl font-semibold text-destructive">
+				{data.stats.flagged_reviews_7d}
+			</p>
 		</div>
 	</div>
 
@@ -134,7 +137,7 @@
 										{page.live_sync_enabled ? 'Enabled' : 'Paused'}
 									</p>
 									{#if page.last_live_sync_error}
-										<p class="text-xs text-amber-700">
+										<p class="text-xs text-warning">
 											{page.last_live_sync_error}
 										</p>
 									{/if}

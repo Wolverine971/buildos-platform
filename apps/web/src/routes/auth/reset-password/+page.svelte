@@ -62,7 +62,7 @@
 
 				{#if !canSubmit}
 					<div
-						class="rounded-lg border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-4 py-3"
+						class="rounded-lg border border-warning/50 bg-warning/10 text-warning px-4 py-3"
 					>
 						Open the password reset link from your email to continue.
 					</div>

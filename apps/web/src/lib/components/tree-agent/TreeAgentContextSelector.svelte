@@ -188,7 +188,7 @@
 							</div>
 						{:else if error}
 							<div
-								class="rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950 p-3 text-sm text-red-700 dark:text-red-200 tx tx-static tx-weak"
+								class="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive tx tx-static tx-weak"
 							>
 								{error}
 							</div>

@@ -226,10 +226,10 @@
 	function getStatusColor(status: string): string {
 		const colors = {
 			draft: 'bg-muted text-foreground dark:text-muted-foreground',
-			scheduled: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
-			sent: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-			delivered: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
-			failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+			scheduled: 'bg-info/10 text-info',
+			sent: 'bg-success/10 text-success',
+			delivered: 'bg-success/10 text-success',
+			failed: 'bg-destructive/10 text-destructive'
 		};
 		return colors[status as keyof typeof colors] || colors.draft;
 	}
@@ -263,7 +263,7 @@
 			{/if}
 			<div class="flex items-center">
 				<h2 class="text-2xl font-bold text-foreground flex items-center">
-					<Mail class="mr-3 h-6 w-6 text-blue-600 dark:text-blue-400" />
+					<Mail class="mr-3 h-6 w-6 text-info" />
 					{activeView === 'list'
 						? 'Email Management'
 						: activeView === 'compose'
@@ -302,10 +302,8 @@
 
 	<!-- Error Message -->
 	{#if error}
-		<div
-			class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4"
-		>
-			<p class="text-red-800 dark:text-red-200">{error}</p>
+		<div class="bg-destructive/10 border border-destructive/30 rounded-md p-4">
+			<p class="text-destructive">{error}</p>
 		</div>
 	{/if}
 
@@ -321,7 +319,7 @@
 					size="md"
 					icon={Filter}
 					iconPosition="right"
-					class="!w-full !justify-between !p-3 !bg-muted dark:!bg-gray-700"
+					class="!w-full !justify-between !p-3 !bg-muted"
 				>
 					Filters & Search
 				</Button>
@@ -471,7 +469,7 @@
 										variant="ghost"
 										size="sm"
 										icon={Eye}
-										class="!p-2 !text-muted-foreground hover:!text-blue-600"
+										class="!p-2 !text-muted-foreground hover:!text-info"
 										title="View email"
 									/>
 									{#if email.status === 'draft' || email.status === 'scheduled'}
@@ -480,7 +478,7 @@
 											variant="ghost"
 											size="sm"
 											icon={Edit}
-											class="!p-2 !text-muted-foreground hover:!text-yellow-600"
+											class="!p-2 !text-muted-foreground hover:!text-warning"
 											title="Edit email"
 										/>
 									{/if}
@@ -490,7 +488,7 @@
 											variant="ghost"
 											size="sm"
 											icon={Trash2}
-											class="!p-2 !text-muted-foreground hover:!text-red-600"
+											class="!p-2 !text-muted-foreground hover:!text-destructive"
 											title="Delete email"
 										/>
 									{/if}
@@ -528,7 +526,7 @@
 
 				<!-- Desktop Table View -->
 				<div class="hidden sm:block overflow-x-auto">
-					<table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+					<table class="min-w-full divide-y divide-border">
 						<thead class="bg-muted">
 							<tr>
 								<th
@@ -558,18 +556,16 @@
 								</th>
 							</tr>
 						</thead>
-						<tbody class="bg-card divide-y divide-gray-200 dark:divide-gray-700">
+						<tbody class="bg-card divide-y divide-border">
 							{#each emails as email}
 								<tr class="hover:bg-muted">
 									<td class="px-6 py-4">
 										<div class="flex items-center">
 											<div class="flex-shrink-0 h-10 w-10">
 												<div
-													class="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"
+													class="h-10 w-10 rounded-full bg-info/10 flex items-center justify-center"
 												>
-													<Mail
-														class="h-5 w-5 text-blue-600 dark:text-blue-400"
-													/>
+													<Mail class="h-5 w-5 text-info" />
 												</div>
 											</div>
 											<div class="ml-4">
@@ -618,7 +614,7 @@
 												variant="ghost"
 												size="sm"
 												icon={Eye}
-												class="!p-2 !text-muted-foreground hover:!text-blue-600 !transition-colors"
+												class="!p-2 !text-muted-foreground hover:!text-info !transition-colors"
 												title="View email"
 											/>
 											{#if email.status === 'draft' || email.status === 'scheduled'}
@@ -627,7 +623,7 @@
 													variant="ghost"
 													size="sm"
 													icon={Edit}
-													class="!p-2 !text-muted-foreground hover:!text-yellow-600 !transition-colors"
+													class="!p-2 !text-muted-foreground hover:!text-warning !transition-colors"
 													title="Edit email"
 												/>
 											{/if}
@@ -637,7 +633,7 @@
 													variant="ghost"
 													size="sm"
 													icon={Trash2}
-													class="!p-2 !text-muted-foreground hover:!text-red-600 !transition-colors"
+													class="!p-2 !text-muted-foreground hover:!text-destructive !transition-colors"
 													title="Delete email"
 												/>
 											{/if}

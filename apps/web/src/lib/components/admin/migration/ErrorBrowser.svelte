@@ -219,7 +219,7 @@
 				<input
 					type="text"
 					placeholder="Search error messages..."
-					class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-200 dark:text-foreground dark:placeholder:text-muted-foreground"
+					class="w-full rounded-lg border border-border bg-card py-2 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30 dark:text-foreground dark:placeholder:text-muted-foreground"
 					bind:value={searchQuery}
 					onkeydown={(e) => e.key === 'Enter' && handleSearch()}
 				/>
@@ -273,7 +273,7 @@
 			<button
 				class="rounded-full px-3 py-1 text-xs font-medium transition-colors {selectedCategory ===
 				option.value
-					? 'bg-purple-600 text-white'
+					? 'bg-accent text-accent-foreground'
 					: 'bg-muted text-foreground hover:bg-muted dark:text-muted-foreground'}"
 				onclick={() => handleCategoryFilter(option.value)}
 			>
@@ -300,7 +300,7 @@
 	{#if isLoading}
 		<div class="flex items-center justify-center py-12">
 			<div
-				class="h-8 w-8 animate-spin rounded-full border-2 border-purple-600 border-t-transparent"
+				class="h-8 w-8 animate-spin rounded-full border-2 border-accent border-t-transparent"
 			></div>
 		</div>
 	{:else if errors.length === 0}
@@ -310,7 +310,7 @@
 		</div>
 	{:else}
 		<div class="overflow-x-auto rounded-lg border border-border">
-			<table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
+			<table class="min-w-full divide-y divide-border text-sm">
 				<thead class="bg-muted/50">
 					<tr
 						class="text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
@@ -332,7 +332,7 @@
 						<th class="px-3 py-3 text-right">Action</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-gray-200 bg-card dark:divide-gray-700">
+				<tbody class="divide-y divide-border bg-card">
 					{#each errors as error}
 						{@const CategoryIcon = getCategoryIcon(error.errorCategory)}
 						<tr class="transition-colors hover:bg-muted/30">
@@ -408,7 +408,7 @@
 										size="sm"
 										onclick={() => onDelete([error.id])}
 										title="Delete"
-										class="text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+										class="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
 									>
 										<Trash2 class="h-3 w-3" />
 									</Button>

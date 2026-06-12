@@ -43,9 +43,9 @@
 	function getLineBgClass(type: DocumentDiffLine['type']): string {
 		switch (type) {
 			case 'added':
-				return 'bg-emerald-50 dark:bg-emerald-900/15';
+				return 'bg-success/10';
 			case 'removed':
-				return 'bg-rose-50 dark:bg-rose-900/15';
+				return 'bg-destructive/10';
 			default:
 				return '';
 		}
@@ -56,9 +56,9 @@
 	function getLineBorderClass(type: DocumentDiffLine['type']): string {
 		switch (type) {
 			case 'added':
-				return 'border-l-4 border-emerald-500';
+				return 'border-l-4 border-success';
 			case 'removed':
-				return 'border-l-4 border-rose-500';
+				return 'border-l-4 border-destructive';
 			default:
 				return 'border-l-4 border-transparent';
 		}
@@ -67,9 +67,9 @@
 	function getGutterClass(type: DocumentDiffLine['type']): string {
 		switch (type) {
 			case 'added':
-				return 'text-emerald-600 dark:text-emerald-400';
+				return 'text-success';
 			case 'removed':
-				return 'text-rose-600 dark:text-rose-400';
+				return 'text-destructive';
 			default:
 				return 'text-muted-foreground/40';
 		}
@@ -91,19 +91,13 @@
 					<span class="micro-label text-foreground">{field.label.toUpperCase()}</span>
 					<span class="text-[10px] text-muted-foreground/60 tabular-nums">
 						{#if field.stats.modified > 0}
-							<span class="text-amber-600 dark:text-amber-400"
-								>~{field.stats.modified}</span
-							>
+							<span class="text-warning">~{field.stats.modified}</span>
 						{/if}
 						{#if field.stats.added > 0}
-							<span class="text-emerald-600 dark:text-emerald-400"
-								>+{field.stats.added}</span
-							>
+							<span class="text-success">+{field.stats.added}</span>
 						{/if}
 						{#if field.stats.removed > 0}
-							<span class="text-rose-600 dark:text-rose-400"
-								>-{field.stats.removed}</span
-							>
+							<span class="text-destructive">-{field.stats.removed}</span>
 						{/if}
 					</span>
 				</div>
@@ -194,13 +188,11 @@
 									{#if line.wordSpans && line.wordSpans.length > 0}
 										{#each line.wordSpans as span}
 											{#if span.type === 'added'}
-												<span
-													class="bg-emerald-200/60 dark:bg-emerald-700/40 rounded-sm"
+												<span class="bg-success/30 rounded-sm"
 													>{span.text}</span
 												>
 											{:else if span.type === 'removed'}
-												<span
-													class="bg-rose-200/60 dark:bg-rose-700/40 rounded-sm"
+												<span class="bg-destructive/30 rounded-sm"
 													>{span.text}</span
 												>
 											{:else}

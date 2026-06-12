@@ -377,7 +377,7 @@
 						{initials}
 					</div>
 					<span
-						class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-emerald-500"
+						class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-success"
 					></span>
 				</div>
 				{#if !sidebarCollapsed}
@@ -497,7 +497,7 @@
 						<div class="relative">
 							<div class={avatarClasses}>{initials}</div>
 							<span
-								class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-emerald-500"
+								class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-card bg-success"
 							></span>
 						</div>
 						<div class="flex-1 min-w-0">

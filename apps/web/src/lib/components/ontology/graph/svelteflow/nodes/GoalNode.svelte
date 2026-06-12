@@ -10,25 +10,25 @@
 
 <div
 	class="goal-node px-3 py-2.5 rounded-lg border-2 shadow-ink-strong min-w-[130px] max-w-[200px] transition-all duration-200
-		bg-amber-50 dark:bg-amber-900/30 border-amber-500
-		{selected ? 'ring-2 ring-amber-400 ring-offset-2' : ''}"
+		bg-warning/10 border-warning
+		{selected ? 'ring-2 ring-accent ring-offset-2' : ''}"
 >
-	<Handle type="target" position={Position.Top} class="!bg-amber-500 !w-2.5 !h-2.5" />
+	<Handle type="target" position={Position.Top} class="!bg-warning !w-2.5 !h-2.5" />
 
 	<div class="flex items-center gap-2">
-		<Target class="w-5 h-5 flex-shrink-0 text-amber-500 dark:text-amber-400" />
-		<span class="text-sm font-bold truncate text-amber-700 dark:text-amber-300">
+		<Target class="w-5 h-5 flex-shrink-0 text-warning" />
+		<span class="text-sm font-bold truncate text-warning">
 			{data.label}
 		</span>
 	</div>
 
 	{#if data.metadata?.typeKey}
-		<div class="mt-1 text-[10px] text-amber-600 dark:text-amber-400/70 truncate">
+		<div class="mt-1 text-[10px] text-warning/70 truncate">
 			{data.metadata.typeKey}
 		</div>
 	{/if}
 
-	<Handle type="source" position={Position.Bottom} class="!bg-amber-500 !w-2.5 !h-2.5" />
+	<Handle type="source" position={Position.Bottom} class="!bg-warning !w-2.5 !h-2.5" />
 </div>
 
 <style>

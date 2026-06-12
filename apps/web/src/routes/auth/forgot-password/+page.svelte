@@ -78,7 +78,7 @@
 
 				{#if form?.success}
 					<div
-						class="rounded-lg border border-green-500/50 bg-green-500/10 text-green-700 dark:text-green-300 px-4 py-3"
+						class="rounded-lg border border-success/50 bg-success/10 text-success px-4 py-3"
 					>
 						{form.message}
 					</div>

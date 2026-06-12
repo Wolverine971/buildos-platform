@@ -61,40 +61,40 @@
 			key: 'in_progress',
 			label: 'In progress',
 			hint: 'Actively working',
-			accent: 'text-sky-500',
-			bg: 'bg-sky-500/10',
+			accent: 'text-info',
+			bg: 'bg-info/10',
 			icon: Flame
 		},
 		{
 			key: 'scheduled',
 			label: 'Scheduled',
 			hint: 'On the calendar',
-			accent: 'text-violet-500',
-			bg: 'bg-violet-500/10',
+			accent: 'text-accent',
+			bg: 'bg-accent/10',
 			icon: CalendarClock
 		},
 		{
 			key: 'overdue',
 			label: 'Overdue',
 			hint: 'Past due date',
-			accent: 'text-rose-500',
-			bg: 'bg-rose-500/10',
+			accent: 'text-destructive',
+			bg: 'bg-destructive/10',
 			icon: AlertTriangle
 		},
 		{
 			key: 'blocked',
 			label: 'Blocked',
 			hint: 'Stuck or waiting',
-			accent: 'text-amber-500',
-			bg: 'bg-amber-500/10',
+			accent: 'text-warning',
+			bg: 'bg-warning/10',
 			icon: PauseCircle
 		},
 		{
 			key: 'done',
 			label: 'Done',
 			hint: 'Completed',
-			accent: 'text-emerald-500',
-			bg: 'bg-emerald-500/10',
+			accent: 'text-success',
+			bg: 'bg-success/10',
 			icon: CheckCircle2
 		},
 		{

@@ -31,7 +31,9 @@ function handleFocusIn(e: FocusEvent) {
 	document.body.style.width = '';
 	document.body.style.overflow = 'hidden';
 	document.documentElement.style.overflow = 'hidden';
-	window.scrollTo(0, savedY);
+	// 'instant' bypasses `html { scroll-behavior: smooth }` — otherwise this
+	// restoration visibly animates from the top of the page.
+	window.scrollTo({ top: savedY, behavior: 'instant' });
 }
 
 function handleFocusOut(e: FocusEvent) {
@@ -83,7 +85,9 @@ export const unlockBodyScroll = (): void => {
 		document.body.style.width = '';
 		document.body.style.overflow = '';
 		document.documentElement.style.overflow = '';
-		window.scrollTo(0, lockedScrollY);
+		// 'instant' bypasses `html { scroll-behavior: smooth }` — otherwise every
+		// modal close visibly animates the page from top back to position.
+		window.scrollTo({ top: lockedScrollY, behavior: 'instant' });
 
 		document.removeEventListener('focusin', handleFocusIn, true);
 		document.removeEventListener('focusout', handleFocusOut, true);

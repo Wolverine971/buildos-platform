@@ -412,10 +412,8 @@
 
 	function getConfidenceColorClass(score: number | null): string {
 		if (!score) return 'bg-muted text-muted-foreground';
-		if (score >= 0.8)
-			return 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300';
-		if (score >= 0.6)
-			return 'bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300';
+		if (score >= 0.8) return 'bg-success/10 text-success';
+		if (score >= 0.6) return 'bg-warning/10 text-warning';
 		return 'bg-muted text-muted-foreground';
 	}
 </script>
@@ -428,7 +426,7 @@
 	>
 		{#if errorMessage}
 			<div
-				class="rounded-lg border border-border p-3 text-sm text-red-700 dark:text-red-300 tx tx-static tx-weak shadow-ink"
+				class="rounded-lg border border-destructive/30 p-3 text-sm text-destructive tx tx-static tx-weak shadow-ink"
 			>
 				{errorMessage}
 			</div>
@@ -680,7 +678,7 @@
 
 												<div
 													class="p-3 rounded transition-all duration-200 {isPastTask
-														? 'bg-amber-50 dark:bg-amber-900/20'
+														? 'bg-warning/10'
 														: 'bg-muted/50'}"
 												>
 													<!-- Task Header -->
@@ -732,13 +730,13 @@
 																			<span
 																				class="px-2 py-0.5 text-xs rounded-full font-medium
 																				{task.status === 'done'
-																					? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+																					? 'bg-success/10 text-success'
 																					: task.status ===
 																						  'in_progress'
-																						? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+																						? 'bg-info/10 text-info'
 																						: task.status ===
 																							  'blocked'
-																							? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+																							? 'bg-destructive/10 text-destructive'
 																							: 'bg-muted text-foreground/30 dark:text-muted-foreground'}"
 																			>
 																				{task.status.replace(
@@ -749,7 +747,7 @@
 																		{/if}
 																		{#if isPastTask}
 																			<span
-																				class="px-2 py-0.5 text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-full"
+																				class="px-2 py-0.5 text-xs bg-warning/10 text-warning rounded-full"
 																			>
 																				Past Event
 																			</span>
@@ -791,11 +789,11 @@
 																			<span
 																				class="inline-flex px-2 py-0.5 rounded-full font-medium
 																				{task.priority === 'high'
-																					? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+																					? 'bg-destructive/10 text-destructive'
 																					: task.priority ===
 																						  'medium'
-																						? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-																						: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'}"
+																						? 'bg-warning/10 text-warning'
+																						: 'bg-info/10 text-info'}"
 																			>
 																				{task.priority} priority
 																			</span>

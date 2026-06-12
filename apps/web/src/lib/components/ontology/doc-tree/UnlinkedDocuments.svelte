@@ -105,7 +105,7 @@
 										onTouchStart(e, toEnrichedNode(doc), parent);
 									}
 								}}
-								class="p-1 text-muted-foreground/50 hover:text-muted-foreground cursor-grab opacity-0 group-hover:opacity-100 transition-opacity"
+								class="p-1 text-muted-foreground/50 hover:text-muted-foreground cursor-grab sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
 								title="Drag to tree"
 							>
 								<GripVertical class="w-3.5 h-3.5" />

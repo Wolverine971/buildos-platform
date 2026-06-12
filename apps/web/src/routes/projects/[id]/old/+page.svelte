@@ -962,17 +962,17 @@
 	function getPanelIconStyles(key: InsightPanelKey): string {
 		switch (key) {
 			case 'goals':
-				return 'bg-amber-500/10 text-amber-500';
+				return 'bg-accent/10 text-accent';
 			case 'plans':
-				return 'bg-indigo-500/10 text-indigo-500';
+				return 'bg-info/10 text-info';
 			case 'tasks':
-				return 'bg-slate-500/10 text-muted-foreground';
+				return 'bg-muted text-muted-foreground';
 			case 'risks':
-				return 'bg-red-500/10 text-red-500';
+				return 'bg-destructive/10 text-destructive';
 			case 'events':
-				return 'bg-blue-500/10 text-blue-500';
+				return 'bg-info/10 text-info';
 			case 'images':
-				return 'bg-emerald-500/10 text-emerald-500';
+				return 'bg-success/10 text-success';
 			default:
 				return 'bg-accent/10 text-accent';
 		}
@@ -1796,7 +1796,7 @@
 							class="w-full h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden flex items-center justify-between px-2.5 py-2"
 						>
 							<div class="flex items-center gap-2 min-w-0">
-								<Target class="w-4 h-4 shrink-0 text-amber-500" />
+								<Target class="w-4 h-4 shrink-0 text-accent" />
 								<span class="text-xs font-semibold text-foreground truncate"
 									>Goals</span
 								>
@@ -1826,7 +1826,7 @@
 								class="w-[calc(50%-3px)] h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden flex items-center justify-between px-2.5 py-2"
 							>
 								<div class="flex items-center gap-2 min-w-0">
-									<Calendar class="w-4 h-4 shrink-0 text-indigo-500" />
+									<Calendar class="w-4 h-4 shrink-0 text-info" />
 									<span class="text-xs font-semibold text-foreground truncate"
 										>Plans</span
 									>
@@ -1843,7 +1843,7 @@
 								class="w-[calc(50%-3px)] h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden flex items-center justify-between px-2.5 py-2"
 							>
 								<div class="flex items-center gap-2 min-w-0">
-									<AlertTriangle class="w-4 h-4 shrink-0 text-red-500" />
+									<AlertTriangle class="w-4 h-4 shrink-0 text-destructive" />
 									<span class="text-xs font-semibold text-foreground truncate"
 										>Risks</span
 									>
@@ -1857,7 +1857,7 @@
 								class="w-[calc(50%-3px)] h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden flex items-center justify-between px-2.5 py-2"
 							>
 								<div class="flex items-center gap-2 min-w-0">
-									<FileText class="w-4 h-4 shrink-0 text-sky-500" />
+									<FileText class="w-4 h-4 shrink-0 text-info" />
 									<span class="text-xs font-semibold text-foreground truncate"
 										>Documents</span
 									>
@@ -1873,7 +1873,7 @@
 							class="w-full h-14 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak overflow-hidden flex items-center justify-between px-2.5 py-2"
 						>
 							<div class="flex items-center gap-2 min-w-0">
-								<Clock class="w-4 h-4 shrink-0 text-teal-500" />
+								<Clock class="w-4 h-4 shrink-0 text-info" />
 								<span class="text-xs font-semibold text-foreground truncate"
 									>Events</span
 								>

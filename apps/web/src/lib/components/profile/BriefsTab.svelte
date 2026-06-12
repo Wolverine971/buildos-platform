@@ -359,7 +359,7 @@
 			</div>
 		{:else if briefPreferencesState.error}
 			<div class="text-center py-8">
-				<CircleAlert class="w-10 h-10 text-red-500 mx-auto mb-3" />
+				<CircleAlert class="w-10 h-10 text-destructive mx-auto mb-3" />
 				<p class="text-sm text-muted-foreground mb-4">Failed to load brief preferences</p>
 				<Button
 					onclick={loadBriefPreferences}
@@ -645,7 +645,7 @@
 									onclick={() => (cancelJobTarget = job)}
 									variant="ghost"
 									size="sm"
-									class="p-1 text-red-500 hover:text-red-600 rounded pressable"
+									class="p-1 text-destructive hover:text-destructive/80 rounded pressable"
 									title="Cancel job"
 								>
 									<XCircle class="w-4 h-4" />
@@ -678,7 +678,7 @@
 							</Badge>
 							{#if job.error_message}
 								<span
-									class="text-xs text-red-500 truncate"
+									class="text-xs text-destructive truncate"
 									title={job.error_message}
 								>
 									Error

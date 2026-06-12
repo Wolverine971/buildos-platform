@@ -69,9 +69,9 @@
 
 	function getChannelBadgeColor(channel: NotificationChannel): string {
 		const colors: Record<NotificationChannel, string> = {
-			push: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-			email: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-			sms: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+			push: 'bg-info/10 text-info',
+			email: 'bg-accent/10 text-accent',
+			sms: 'bg-success/10 text-success',
 			in_app: 'bg-muted text-foreground dark:text-muted-foreground'
 		};
 		return colors[channel] || 'bg-muted text-foreground';
@@ -79,14 +79,14 @@
 
 	function getStatusBadgeColor(status: string): string {
 		const colors: Record<string, string> = {
-			pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-			cancelled: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200',
-			sent: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-			delivered: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-			failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-			bounced: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-			opened: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
-			clicked: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+			pending: 'bg-warning/10 text-warning',
+			cancelled: 'bg-muted text-muted-foreground',
+			sent: 'bg-info/10 text-info',
+			delivered: 'bg-success/10 text-success',
+			failed: 'bg-destructive/10 text-destructive',
+			bounced: 'bg-accent/10 text-accent',
+			opened: 'bg-info/10 text-info',
+			clicked: 'bg-accent/10 text-accent'
 		};
 		return colors[status] || 'bg-muted text-foreground';
 	}
@@ -112,15 +112,15 @@
 		if (!completed) return 'text-muted-foreground';
 		switch (stage) {
 			case 'created':
-				return 'text-blue-500';
+				return 'text-info';
 			case 'sent':
-				return 'text-indigo-500';
+				return 'text-info';
 			case 'delivered':
-				return 'text-green-500';
+				return 'text-success';
 			case 'cancelled':
-				return 'text-amber-500';
+				return 'text-warning';
 			case 'failed':
-				return 'text-red-500';
+				return 'text-destructive';
 			default:
 				return 'text-muted-foreground';
 		}
@@ -224,9 +224,7 @@
 									{delivery.status.toUpperCase()}
 								</span>
 								{#if delivery.last_error}
-									<div
-										class="text-xs text-red-600 dark:text-red-400 mt-1 max-w-xs truncate"
-									>
+									<div class="text-xs text-destructive mt-1 max-w-xs truncate">
 										{delivery.last_error}
 									</div>
 								{/if}

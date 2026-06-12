@@ -78,28 +78,28 @@
 				s
 			)
 		)
-			return 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+			return 'bg-success/10 text-success border-success/20';
 		if (['blocked', 'occurred', 'missed'].includes(s))
-			return 'bg-red-500/10 text-red-600 border-red-500/20';
-		if (['in_review'].includes(s)) return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+			return 'bg-destructive/10 text-destructive border-destructive/20';
+		if (['in_review'].includes(s)) return 'bg-warning/10 text-warning border-warning/20';
 		return 'bg-muted text-muted-foreground border-border';
 	}
 
 	// Priority: lower number = higher priority (matches insight-panel-config.ts getPriorityGroup)
 	function priorityClasses(priority: number): string {
-		if (priority <= 2) return 'bg-red-500/10 text-red-600 border-red-500/20';
-		if (priority === 3) return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+		if (priority <= 2) return 'bg-destructive/10 text-destructive border-destructive/20';
+		if (priority === 3) return 'bg-warning/10 text-warning border-warning/20';
 		return 'bg-muted text-muted-foreground border-border';
 	}
 
 	function impactClasses(impact: string): string {
 		switch (impact) {
 			case 'critical':
-				return 'bg-red-500/10 text-red-600 border-red-500/20';
+				return 'bg-destructive/10 text-destructive border-destructive/20';
 			case 'high':
-				return 'bg-orange-500/10 text-orange-600 border-orange-500/20';
+				return 'bg-accent/10 text-accent border-accent/20';
 			case 'medium':
-				return 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+				return 'bg-warning/10 text-warning border-warning/20';
 			default:
 				return 'bg-muted text-muted-foreground border-border';
 		}
@@ -327,11 +327,11 @@
 	</div>
 {:else if errorMessage}
 	<div
-		class="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5 shadow-ink tx tx-static tx-weak"
+		class="rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 shadow-ink tx tx-static tx-weak"
 		role="alert"
 	>
-		<p class="text-xs font-semibold text-red-600">Error</p>
-		<p class="mt-0.5 text-xs text-red-600/80">{errorMessage}</p>
+		<p class="text-xs font-semibold text-destructive">Error</p>
+		<p class="mt-0.5 text-xs text-destructive/80">{errorMessage}</p>
 	</div>
 {:else if entities.length === 0}
 	{@const currentType = focusTypes.find((t) => t.value === selectedType)}

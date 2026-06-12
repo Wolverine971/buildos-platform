@@ -118,9 +118,9 @@
 					<div class="text-foreground/60 font-medium">Success</div>
 					<div
 						class="font-semibold {turnEventToolSuccess === false
-							? 'text-red-600 dark:text-red-400'
+							? 'text-destructive'
 							: turnEventToolSuccess === true
-								? 'text-emerald-600 dark:text-emerald-400'
+								? 'text-success'
 								: 'text-foreground'}"
 					>
 						{turnEventToolSuccess === null
@@ -144,7 +144,7 @@
 				</div>
 			</div>
 			{#if turnEventToolError}
-				<div class="mt-2 text-xs text-red-600 dark:text-red-400">
+				<div class="mt-2 text-xs text-destructive">
 					{turnEventToolError}
 				</div>
 			{/if}

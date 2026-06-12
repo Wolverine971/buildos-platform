@@ -194,9 +194,9 @@
 >
 	<div class="flex items-start gap-4">
 		<div
-			class="flex-shrink-0 w-12 h-12 bg-emerald-500/10 rounded-lg flex items-center justify-center shadow-ink"
+			class="flex-shrink-0 w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center shadow-ink"
 		>
-			<Phone class="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+			<Phone class="w-6 h-6 text-success" />
 		</div>
 
 		<div class="flex-1">
@@ -219,16 +219,12 @@
 			{:else if verified}
 				<!-- Success State -->
 				<div
-					class="flex items-center gap-2 p-3 bg-emerald-500/10 rounded-lg border border-emerald-500/30 tx tx-grain tx-weak"
+					class="flex items-center gap-2 p-3 bg-success/10 rounded-lg border border-success/30 tx tx-grain tx-weak"
 				>
-					<CheckCircle
-						class="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0"
-					/>
+					<CheckCircle class="w-5 h-5 text-success flex-shrink-0" />
 					<div class="flex-1">
-						<p class="font-medium text-emerald-700 dark:text-emerald-300">
-							Phone verified!
-						</p>
-						<p class="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
+						<p class="font-medium text-success">Phone verified!</p>
+						<p class="text-xs text-success mt-0.5">
 							{phoneNumber}
 						</p>
 					</div>
@@ -253,6 +249,7 @@
 							onkeypress={handleKeyPress}
 							type="tel"
 							inputmode="tel"
+							autocomplete="tel"
 							enterkeyhint="send"
 							placeholder="(555) 123-4567"
 							disabled={isSending}
@@ -266,12 +263,10 @@
 
 					{#if error}
 						<div
-							class="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/30 tx tx-static tx-weak"
+							class="flex items-start gap-2 p-3 bg-destructive/10 rounded-lg border border-destructive/30 tx tx-static tx-weak"
 						>
-							<AlertCircle
-								class="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0"
-							/>
-							<p class="text-sm text-red-700 dark:text-red-300">{error}</p>
+							<AlertCircle class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+							<p class="text-sm text-destructive">{error}</p>
 						</div>
 					{/if}
 
@@ -335,12 +330,10 @@
 
 					{#if error}
 						<div
-							class="flex items-start gap-2 p-3 bg-red-500/10 rounded-lg border border-red-500/30 tx tx-static tx-weak"
+							class="flex items-start gap-2 p-3 bg-destructive/10 rounded-lg border border-destructive/30 tx tx-static tx-weak"
 						>
-							<AlertCircle
-								class="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0"
-							/>
-							<p class="text-sm text-red-700 dark:text-red-300">{error}</p>
+							<AlertCircle class="w-4 h-4 text-destructive mt-0.5 flex-shrink-0" />
+							<p class="text-sm text-destructive">{error}</p>
 						</div>
 					{/if}
 
