@@ -13,6 +13,16 @@ legacy_paths:
     - story-driven-content-craft
     - marketing-and-content.story-driven-content-craft.skill
     - docs/research/youtube-library/skill-drafts/story-driven-content-craft/SKILL.md
+reference_modules:
+    - id: story_driven_content_craft.public_story_audit
+      name: Public Story Audit Checklist
+      summary: Portable checklist for diagnosing the first broken retention rung, loop structure, lens quality, rhythm, and final-story readiness.
+      when_to_load:
+          - When using the portable bundle outside BuildOS.
+          - When auditing or rewriting a draft essay, script, social post, or founder narrative.
+          - When a piece feels flat and needs a structural diagnosis before line editing.
+      path: references/public-story-audit.md
+      visibility: public
 lineage: lineage.yaml
 path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/story_driven_content_craft/SKILL.md
 ---

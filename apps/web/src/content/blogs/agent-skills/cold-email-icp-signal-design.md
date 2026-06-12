@@ -42,6 +42,12 @@ lineagePeople:
     - 'Armand Farrokh'
     - 'Brent Adamson'
     - 'John McMahon'
+lineageStats:
+    sources: 6
+    primitives: 9
+    sourceClaims: 12
+    edges: 22
+    referenceModules: 4
 lineageSources:
     - title: 'Minimum Viable Segment'
       creator: 'Underscore VC / Michael Skok'

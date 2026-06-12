@@ -1,6 +1,10 @@
+// apps/web/src/lib/server/agent-skills.ts
 import { SITE_URL } from '$lib/constants/seo';
 import { AGENT_SKILLS_CATEGORY_KEY, loadAgentSkillPosts, type BlogPost } from '$lib/utils/blog';
-import { getSkillByReference, listAllSkills } from '$lib/services/agentic-chat/tools/skills/registry';
+import {
+	getSkillByReference,
+	listAllSkills
+} from '$lib/services/agentic-chat/tools/skills/registry';
 import { loadSkillReference } from '$lib/services/agentic-chat/tools/skills/skill-reference-load';
 import { stringify as stringifyYaml } from 'yaml';
 import type {
@@ -61,6 +65,26 @@ export type PortableAgentSkillBundle = {
 	slug: string;
 	directory: string;
 	files: Record<string, string>;
+};
+
+export type AgentSkillValidationSeverity = 'error' | 'warning';
+
+export type AgentSkillValidationIssue = {
+	severity: AgentSkillValidationSeverity;
+	code: string;
+	message: string;
+	slug?: string;
+};
+
+export type AgentSkillValidationReport = {
+	ok: boolean;
+	total_skills: number;
+	runtime_skill_count: number;
+	embedded_portable_count: number;
+	public_reference_count: number;
+	errors: number;
+	warnings: number;
+	issues: AgentSkillValidationIssue[];
 };
 
 function kebabToSnake(value: string): string {
@@ -146,22 +170,10 @@ function rewriteReferenceLoadLanguage(
 		const safePath = escapeRegExp(reference.path);
 		const localPath = reference.path;
 		nextBody = nextBody
-			.replace(
-				new RegExp(`load\\s+\`${safeId}\``, 'gi'),
-				`read \`${localPath}\``
-			)
-			.replace(
-				new RegExp(`load\\s+\`${safePath}\``, 'gi'),
-				`read \`${localPath}\``
-			)
-			.replace(
-				new RegExp(`Load\\s+\`${safeId}\``, 'g'),
-				`Read \`${localPath}\``
-			)
-			.replace(
-				new RegExp(`Load\\s+\`${safePath}\``, 'g'),
-				`Read \`${localPath}\``
-			);
+			.replace(new RegExp(`load\\s+\`${safeId}\``, 'gi'), `read \`${localPath}\``)
+			.replace(new RegExp(`load\\s+\`${safePath}\``, 'gi'), `read \`${localPath}\``)
+			.replace(new RegExp(`Load\\s+\`${safeId}\``, 'g'), `Read \`${localPath}\``)
+			.replace(new RegExp(`Load\\s+\`${safePath}\``, 'g'), `Read \`${localPath}\``);
 	}
 
 	return nextBody;
@@ -200,7 +212,9 @@ function buildPortableSkillMarkdown(
 	const name = toPortableSkillName(post, runtimeSkill);
 	const description = runtimeSkill?.summary ?? post.description;
 	const sourceMarkdown = runtimeSkill?.rawMarkdown ?? embeddedPortable;
-	const body = sourceMarkdown ? stripFrontmatter(sourceMarkdown) : `# ${post.title}\n\n${post.description}`;
+	const body = sourceMarkdown
+		? stripFrontmatter(sourceMarkdown)
+		: `# ${post.title}\n\n${post.description}`;
 	const rewrittenBody = rewriteReferenceLoadLanguage(body, references);
 	const referenceSection = buildPortableReferenceSection(references);
 
@@ -278,7 +292,9 @@ export function getAgentSkillMarkdown(post: BlogPost): AgentSkillMarkdownResult 
 	return undefined;
 }
 
-function isPublicReferenceModule(reference: SkillLinkedResource): reference is SkillLinkedResource & {
+function isPublicReferenceModule(
+	reference: SkillLinkedResource
+): reference is SkillLinkedResource & {
 	path: string;
 } {
 	return Boolean(reference.path) && reference.visibility !== 'internal';
@@ -371,9 +387,10 @@ export function getPortableAgentSkillFile(
 	const content = bundle.files[filePath];
 	if (typeof content !== 'string') return undefined;
 
-	const contentType = filePath.endsWith('.yaml') || filePath.endsWith('.yml')
-		? 'application/yaml; charset=utf-8'
-		: 'text/markdown; charset=utf-8';
+	const contentType =
+		filePath.endsWith('.yaml') || filePath.endsWith('.yml')
+			? 'application/yaml; charset=utf-8'
+			: 'text/markdown; charset=utf-8';
 
 	return {
 		content,
@@ -395,8 +412,8 @@ export function getAgentSkillReference(
 		normalizedPath.startsWith('references/') ? normalizedPath : `references/${normalizedPath}`
 	]);
 
-	const reference = getPublicReferenceModules(runtimeSkill).find(
-		(module) => candidatePaths.has(normalizeReferencePath(module.path) ?? '')
+	const reference = getPublicReferenceModules(runtimeSkill).find((module) =>
+		candidatePaths.has(normalizeReferencePath(module.path) ?? '')
 	);
 	if (!reference) return undefined;
 
@@ -451,4 +468,344 @@ export async function loadAgentSkillIndex(): Promise<{
 		generated_at: new Date().toISOString(),
 		skills: posts.map(buildAgentSkillIndexItem)
 	};
+}
+
+function addValidationIssue(
+	issues: AgentSkillValidationIssue[],
+	severity: AgentSkillValidationSeverity,
+	code: string,
+	message: string,
+	slug?: string
+) {
+	issues.push({
+		severity,
+		code,
+		message,
+		slug
+	});
+}
+
+function hasPositiveNumericStat(post: BlogPost, key: string): boolean {
+	const value = post.lineageStats?.[key];
+	return typeof value === 'number' && value > 0;
+}
+
+function validateRequiredUrl(
+	issues: AgentSkillValidationIssue[],
+	slug: string,
+	label: string,
+	url: string | undefined,
+	expectedPath: string
+) {
+	if (!url) {
+		addValidationIssue(issues, 'error', `missing_${label}`, `Missing ${label}.`, slug);
+		return;
+	}
+
+	if (!url.startsWith(`${SITE_URL}${expectedPath}`)) {
+		addValidationIssue(
+			issues,
+			'error',
+			`invalid_${label}`,
+			`${label} should start with ${SITE_URL}${expectedPath}.`,
+			slug
+		);
+	}
+}
+
+export function validateAgentSkillCatalogPosts(posts: BlogPost[]): AgentSkillValidationReport {
+	const issues: AgentSkillValidationIssue[] = [];
+	const slugs = new Set<string>();
+	let runtimeSkillCount = 0;
+	let embeddedPortableCount = 0;
+	let publicReferenceCount = 0;
+
+	for (const post of posts) {
+		const slug = post.slug || '(missing-slug)';
+		if (!post.slug) {
+			addValidationIssue(issues, 'error', 'missing_slug', 'Post is missing a slug.');
+		} else if (slugs.has(post.slug)) {
+			addValidationIssue(
+				issues,
+				'error',
+				'duplicate_slug',
+				`Duplicate skill slug ${post.slug}.`,
+				slug
+			);
+		} else {
+			slugs.add(post.slug);
+		}
+
+		if (!post.title.trim()) {
+			addValidationIssue(issues, 'error', 'missing_title', 'Skill is missing a title.', slug);
+		}
+		if (!post.description.trim()) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_description',
+				'Skill is missing a description.',
+				slug
+			);
+		}
+		if (!post.skillId) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_public_skill_id',
+				'Skill is missing public skillId metadata.',
+				slug
+			);
+		}
+		if (!post.skillType) {
+			addValidationIssue(
+				issues,
+				'warning',
+				'missing_skill_type',
+				'Skill is missing skillType metadata.',
+				slug
+			);
+		}
+		if (!post.skillCategory) {
+			addValidationIssue(
+				issues,
+				'warning',
+				'missing_skill_category',
+				'Skill is missing skillCategory metadata.',
+				slug
+			);
+		}
+		if (!post.compatibleAgents?.length) {
+			addValidationIssue(
+				issues,
+				'warning',
+				'missing_compatible_agents',
+				'Skill is missing compatibleAgents metadata.',
+				slug
+			);
+		}
+
+		const indexItem = buildAgentSkillIndexItem(post);
+		validateRequiredUrl(issues, slug, 'url', indexItem.url, `/agent-skills/${post.slug}`);
+		validateRequiredUrl(
+			issues,
+			slug,
+			'skill_md_url',
+			indexItem.skill_md_url,
+			`/agent-skills/${post.slug}/skill.md`
+		);
+		validateRequiredUrl(
+			issues,
+			slug,
+			'portable_skill_md_url',
+			indexItem.portable_skill_md_url,
+			`/agent-skills/${post.slug}/portable/SKILL.md`
+		);
+		validateRequiredUrl(
+			issues,
+			slug,
+			'bundle_zip_url',
+			indexItem.bundle_zip_url,
+			`/agent-skills/${post.slug}/bundle.zip`
+		);
+
+		const runtimeSkill = resolveRuntimeSkillForPost(post);
+		if (runtimeSkill) {
+			runtimeSkillCount += 1;
+			if (!runtimeSkill.rawMarkdown?.trim()) {
+				addValidationIssue(
+					issues,
+					'error',
+					'missing_runtime_markdown',
+					'Runtime skill is registered but does not expose rawMarkdown.',
+					slug
+				);
+			}
+		}
+
+		const markdown = getAgentSkillMarkdown(post);
+		if (!markdown?.content.trim()) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_agent_markdown',
+				'Skill has neither runtime SKILL.md markdown nor an embedded portable skill block.',
+				slug
+			);
+		} else if (markdown.source === 'embedded-portable') {
+			embeddedPortableCount += 1;
+		}
+
+		const references = listPublicAgentSkillReferences(post, runtimeSkill);
+		publicReferenceCount += references.length;
+		if (!runtimeSkill) {
+			addValidationIssue(
+				issues,
+				'warning',
+				'missing_runtime_skill',
+				'Skill is portable-only and does not currently map to a registered BuildOS runtime skill.',
+				slug
+			);
+		}
+		if (references.length === 0) {
+			addValidationIssue(
+				issues,
+				'warning',
+				'missing_public_references',
+				'Skill has no public reference modules in its portable bundle.',
+				slug
+			);
+		}
+
+		if (!hasPositiveNumericStat(post, 'sources')) {
+			addValidationIssue(
+				issues,
+				'warning',
+				'missing_lineage_source_count',
+				'Skill is missing lineageStats.sources.',
+				slug
+			);
+		}
+		if (!post.lineagePeople?.length && !post.lineageSources?.length) {
+			addValidationIssue(
+				issues,
+				'warning',
+				'missing_lineage_people_or_sources',
+				'Skill is missing lineagePeople or lineageSources metadata.',
+				slug
+			);
+		}
+
+		const bundle = buildPortableAgentSkillBundle(post);
+		const portableSkill = bundle.files['SKILL.md'];
+		const buildOsMetadata = bundle.files['buildos.yaml'];
+		if (!portableSkill?.trim()) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_portable_skill_file',
+				'Portable bundle is missing SKILL.md.',
+				slug
+			);
+		} else {
+			if (!portableSkill.startsWith('---\n')) {
+				addValidationIssue(
+					issues,
+					'error',
+					'invalid_portable_frontmatter',
+					'Portable SKILL.md must start with YAML frontmatter.',
+					slug
+				);
+			}
+			if (!portableSkill.includes('\nname:') && !portableSkill.includes('\nname: ')) {
+				addValidationIssue(
+					issues,
+					'error',
+					'missing_portable_name',
+					'Portable SKILL.md frontmatter is missing name.',
+					slug
+				);
+			}
+			if (
+				!portableSkill.includes('\ndescription:') &&
+				!portableSkill.includes('\ndescription: ')
+			) {
+				addValidationIssue(
+					issues,
+					'error',
+					'missing_portable_description',
+					'Portable SKILL.md frontmatter is missing description.',
+					slug
+				);
+			}
+			if (portableSkill.includes('skill_reference_load')) {
+				addValidationIssue(
+					issues,
+					'error',
+					'unrewritten_reference_loader',
+					'Portable SKILL.md still references BuildOS-only skill_reference_load.',
+					slug
+				);
+			}
+		}
+
+		if (!buildOsMetadata?.trim()) {
+			addValidationIssue(
+				issues,
+				'error',
+				'missing_buildos_metadata',
+				'Portable bundle is missing buildos.yaml.',
+				slug
+			);
+		}
+
+		for (const reference of references) {
+			if (!bundle.files[reference.path]?.trim()) {
+				addValidationIssue(
+					issues,
+					'error',
+					'missing_portable_reference_file',
+					`Portable bundle is missing ${reference.path}.`,
+					slug
+				);
+			}
+		}
+	}
+
+	const errors = issues.filter((issue) => issue.severity === 'error').length;
+	const warnings = issues.filter((issue) => issue.severity === 'warning').length;
+
+	return {
+		ok: errors === 0,
+		total_skills: posts.length,
+		runtime_skill_count: runtimeSkillCount,
+		embedded_portable_count: embeddedPortableCount,
+		public_reference_count: publicReferenceCount,
+		errors,
+		warnings,
+		issues
+	};
+}
+
+export async function validatePublicAgentSkillCatalog(): Promise<AgentSkillValidationReport> {
+	const posts = await loadAgentSkillPosts();
+	return validateAgentSkillCatalogPosts(posts);
+}
+
+export function formatAgentSkillValidationReport(
+	report: AgentSkillValidationReport,
+	options: { strictWarnings?: boolean } = {}
+): string[] {
+	const strictWarnings = options.strictWarnings === true;
+	const lines = [
+		'AGENT SKILL CATALOG CHECK',
+		'',
+		`Skills: ${report.total_skills}`,
+		`Runtime-backed skills: ${report.runtime_skill_count}`,
+		`Embedded portable skills: ${report.embedded_portable_count}`,
+		`Public reference files: ${report.public_reference_count}`,
+		`Errors: ${report.errors}`,
+		`Warnings: ${report.warnings}`
+	];
+
+	if (report.issues.length > 0) {
+		lines.push('', 'Issues:');
+		for (const issue of report.issues) {
+			const slug = issue.slug ? `${issue.slug}: ` : '';
+			lines.push(`- [${issue.severity}] ${slug}${issue.code} - ${issue.message}`);
+		}
+	}
+
+	lines.push('');
+	if (report.errors > 0) {
+		lines.push('Result: failed with blocking errors.');
+	} else if (strictWarnings && report.warnings > 0) {
+		lines.push('Result: failed because strict mode treats warnings as blocking.');
+	} else if (report.warnings > 0) {
+		lines.push('Result: passed with warnings.');
+	} else {
+		lines.push('Result: passed.');
+	}
+
+	return lines;
 }

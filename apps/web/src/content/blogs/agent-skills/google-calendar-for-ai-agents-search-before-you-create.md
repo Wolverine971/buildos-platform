@@ -26,7 +26,55 @@ skillCategory: 'google-workspace'
 providers: ['Google Calendar', 'Google Workspace']
 compatibleAgents: ['BuildOS-compatible agents', 'Claude Code', 'Codex', 'portable Agent Skills']
 stackWith: ['OAuth 2.0 for agents', 'Gmail for agents', 'Founder assistant stack']
-skillSource: 'apps/web/src/content/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create.md'
+skillSource: 'apps/web/src/lib/services/agentic-chat/tools/skills/definitions/google_calendar/SKILL.md'
+lineagePath: 'apps/web/src/content/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create.md'
+lineageStats:
+    sources: 8
+    primitives: 7
+    sourceClaims: 8
+    edges: 14
+    referenceModules: 1
+lineageSources:
+    - title: 'Google Calendar API Events resource'
+      creator: 'Google Workspace'
+      creatorType: 'Organization'
+      sourceType: 'official_docs'
+      url: 'https://developers.google.com/workspace/calendar/api/v3/reference/events'
+    - title: 'Google Calendar events.list'
+      creator: 'Google Workspace'
+      creatorType: 'Organization'
+      sourceType: 'official_docs'
+      url: 'https://developers.google.com/workspace/calendar/api/v3/reference/events/list'
+    - title: 'Google Calendar events.insert'
+      creator: 'Google Workspace'
+      creatorType: 'Organization'
+      sourceType: 'official_docs'
+      url: 'https://developers.google.com/workspace/calendar/api/v3/reference/events/insert'
+    - title: 'Google Calendar events.patch'
+      creator: 'Google Workspace'
+      creatorType: 'Organization'
+      sourceType: 'official_docs'
+      url: 'https://developers.google.com/workspace/calendar/api/v3/reference/events/patch'
+    - title: 'Google Calendar recurring events guide'
+      creator: 'Google Workspace'
+      creatorType: 'Organization'
+      sourceType: 'official_docs'
+      url: 'https://developers.google.com/workspace/calendar/api/guides/recurringevents'
+    - title: 'Google Calendar extended properties guide'
+      creator: 'Google Workspace'
+      creatorType: 'Organization'
+      sourceType: 'official_docs'
+      url: 'https://developers.google.com/workspace/calendar/api/guides/extended-properties'
+    - title: 'Google Calendar push notifications guide'
+      creator: 'Google Workspace'
+      creatorType: 'Organization'
+      sourceType: 'official_docs'
+      url: 'https://developers.google.com/workspace/calendar/api/guides/push'
+    - title: 'Google Calendar free/busy query'
+      creator: 'Google Workspace'
+      creatorType: 'Organization'
+      sourceType: 'official_docs'
+      url: 'https://developers.google.com/workspace/calendar/api/v3/reference/freebusy/query'
 path: apps/web/src/content/blogs/agent-skills/google-calendar-for-ai-agents-search-before-you-create.md
 ---
 

@@ -8,6 +8,14 @@ legacy_paths:
     - cold_email_outreach.icp_signal
     - cold_email_outreach.signal_design
 reference_modules:
+    - id: cold_email_icp_signal_design.public_campaign_gate
+      name: Public Campaign Gate
+      summary: Portable public checklist for approving or rejecting a cold-outreach segment before any email is written.
+      when_to_load:
+          - When using the portable bundle outside BuildOS.
+          - When a target segment, timing signal, or buying committee map needs a fast public-facing approval gate.
+      path: references/public-campaign-gate.md
+      visibility: public
     - id: cold_email_icp_signal_design.signal_scoring_rubric
       name: Signal Taxonomy Deep-Dive
       summary: Trigger sub-classifiers behind the inline scorecard — Holland inbound/postbound/bridgebound sub-types, Elias A/B/C trigger families, Maurya switching-trigger types, the three-taxonomy cross-validation rule, and compound-relevance multipliers.
@@ -70,16 +78,16 @@ The skill's core deliverable. Fill in one row per campaign — one row = one cam
 
 Template (every cell is required; an empty cell blocks the segment):
 
-| Column | Fill in | Validity rule |
-| --- | --- | --- |
-| Persona | One role + seniority + tenure band + company filters | More than one persona → split into separate rows/campaigns. |
-| Signal | One observable event + at least one verifiable external source + date observed | No verifiable source → row invalid. Static filters (industry, title) are not signals. |
+| Column     | Fill in                                                                                     | Validity rule                                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Persona    | One role + seniority + tenure band + company filters                                        | More than one persona → split into separate rows/campaigns.                                                         |
+| Signal     | One observable event + at least one verifiable external source + date observed              | No verifiable source → row invalid. Static filters (industry, title) are not signals.                               |
 | Reason-Now | Complete the sentence: "[signal] means [pain] means [action] is on the table this quarter." | If the sentence cannot be completed honestly, the segment is not approved. No stacked inferences (one hop maximum). |
 
 Completed example row:
 
-| Persona | Signal | Reason-Now |
-| --- | --- | --- |
+| Persona                                                                         | Signal                                                                                                               | Reason-Now                                                                                                                                                                                                         |
+| ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | CTO, hired in last 30–60 days, at Series A B2B SaaS, 30–150 employees, US-based | CTO joined within the last 30–60 days — source: LinkedIn job-change notification + press release, observed this week | New-in-role exec window (~70% of budget spent in first 100 days — Florin Tatulea, practitioner data) means they are auditing the stack with a political mandate, so a tooling change is on the table this quarter. |
 
 ## Signal Scoring Rubric
@@ -88,20 +96,20 @@ Score the row's signal before any list-building. Two layers: type strength, then
 
 **Layer 1 — type strength** (Becc Holland's four-type relevance taxonomy; rank order is practitioner consensus, not experimental):
 
-| Signal type | Strength | Rule |
-| --- | --- | --- |
-| Firmographic / Demographic | Weak | A filter, not a signal. Alone it never passes — add a layer or do not send. |
-| Technographic | Medium | Implies a current job-to-be-done; still static. |
-| Trigger-based | Strong | Time-sensitive. Sub-classify via the signal taxonomy reference before scoring. |
+| Signal type                | Strength | Rule                                                                           |
+| -------------------------- | -------- | ------------------------------------------------------------------------------ |
+| Firmographic / Demographic | Weak     | A filter, not a signal. Alone it never passes — add a layer or do not send.    |
+| Technographic              | Medium   | Implies a current job-to-be-done; still static.                                |
+| Trigger-based              | Strong   | Time-sensitive. Sub-classify via the signal taxonomy reference before scoring. |
 
 **Layer 2 — scorecard.** Score each dimension 0 / 1 / 2; total is 0–8. (Score bands and day windows are internal defaults, not sourced thresholds.)
 
-| Dimension | 0 — weak | 1 — acceptable | 2 — strong |
-| --- | --- | --- | --- |
-| Freshness | >90 days old, or static | Within 30–90 days | Within 30 days, or actively unfolding |
-| Reliability | Inferred or auto-generated; unverifiable | Single source, manually verified | Multiple sources confirm, or the prospect themselves stated it |
-| Pain likelihood | Speculative connection to a buying motive | Plausible link to a recognized pain | Buyer language or behavior directly confirms the pain |
-| Testability | Reply data uninterpretable; mixed segment | Readable on a 25–50 person batch | Readable on a sub-25 person batch (high-conviction micro-campaign) |
+| Dimension       | 0 — weak                                  | 1 — acceptable                      | 2 — strong                                                         |
+| --------------- | ----------------------------------------- | ----------------------------------- | ------------------------------------------------------------------ |
+| Freshness       | >90 days old, or static                   | Within 30–90 days                   | Within 30 days, or actively unfolding                              |
+| Reliability     | Inferred or auto-generated; unverifiable  | Single source, manually verified    | Multiple sources confirm, or the prospect themselves stated it     |
+| Pain likelihood | Speculative connection to a buying motive | Plausible link to a recognized pain | Buyer language or behavior directly confirms the pain              |
+| Testability     | Reply data uninterpretable; mixed segment | Readable on a 25–50 person batch    | Readable on a sub-25 person batch (high-conviction micro-campaign) |
 
 **Threshold rule: total must be ≥ 5 before list-building begins** (internal default). Verdict bands:
 
@@ -116,38 +124,38 @@ Binary kill-questions. Run every candidate segment through both tables after sco
 
 **Hard kills — any NO blocks campaign mode and returns the segment to research:**
 
-| # | Group | Kill question (answer YES to survive) |
-| --- | --- | --- |
-| 1 | Fit | Does their tech stack support the product (or an integration path)? (Murphy: technical fit) |
-| 2 | Fit | Does the product solve their actual job-to-be-done? (functional fit) |
-| 3 | Fit | Do they have the time, headcount, and budget to deploy? (resource fit) |
-| 4 | Fit | Does their team have the skills to use the product correctly? (competence fit) |
-| 5 | Fit | Do they know what good looks like in this category — not a first-time buyer judging on wrong criteria? (experience fit) |
-| 6 | Fit | Does how they work match how the product works? (cultural fit) |
-| 7 | MVS | Do the segment's customers share one single dominant need? |
-| 8 | MVS | Is the segment small enough to dominate, not just serve? |
-| 9 | MVS | Can the current product serve the segment without divergent customization? |
-| 10 | Signal | Is the signal more than a firmographic or demographic filter? |
-| 11 | Signal | Is the signal fresh — within 90 days (internal default)? |
-| 12 | Signal | Is the signal verifiable from at least one external source? |
-| 13 | Signal | Does the signal have a plausible link to a recognized pain? |
-| 14 | Signal | Will reply data from this segment be interpretable on a 25–50 person batch? |
-| 15 | Committee | Is the committee size estimable from segment data? (B2B only) |
-| 16 | Committee | Is there at least one identifiable champion role? |
-| 17 | Committee | Is McMahon's three-test (power + personal win + will fight for you) plausible for that champion role? |
-| 18 | Committee | Is the likely Blocker named, not ignored? |
-| 19 | Committee | Is a mode-appropriate Golden Path chosen (Top-Down or Bottom-Up)? |
+| #   | Group     | Kill question (answer YES to survive)                                                                                   |
+| --- | --------- | ----------------------------------------------------------------------------------------------------------------------- |
+| 1   | Fit       | Does their tech stack support the product (or an integration path)? (Murphy: technical fit)                             |
+| 2   | Fit       | Does the product solve their actual job-to-be-done? (functional fit)                                                    |
+| 3   | Fit       | Do they have the time, headcount, and budget to deploy? (resource fit)                                                  |
+| 4   | Fit       | Does their team have the skills to use the product correctly? (competence fit)                                          |
+| 5   | Fit       | Do they know what good looks like in this category — not a first-time buyer judging on wrong criteria? (experience fit) |
+| 6   | Fit       | Does how they work match how the product works? (cultural fit)                                                          |
+| 7   | MVS       | Do the segment's customers share one single dominant need?                                                              |
+| 8   | MVS       | Is the segment small enough to dominate, not just serve?                                                                |
+| 9   | MVS       | Can the current product serve the segment without divergent customization?                                              |
+| 10  | Signal    | Is the signal more than a firmographic or demographic filter?                                                           |
+| 11  | Signal    | Is the signal fresh — within 90 days (internal default)?                                                                |
+| 12  | Signal    | Is the signal verifiable from at least one external source?                                                             |
+| 13  | Signal    | Does the signal have a plausible link to a recognized pain?                                                             |
+| 14  | Signal    | Will reply data from this segment be interpretable on a 25–50 person batch?                                             |
+| 15  | Committee | Is the committee size estimable from segment data? (B2B only)                                                           |
+| 16  | Committee | Is there at least one identifiable champion role?                                                                       |
+| 17  | Committee | Is McMahon's three-test (power + personal win + will fight for you) plausible for that champion role?                   |
+| 18  | Committee | Is the likely Blocker named, not ignored?                                                                               |
+| 19  | Committee | Is a mode-appropriate Golden Path chosen (Top-Down or Bottom-Up)?                                                       |
 
 **Downgrades — any NO converts the campaign to a low-volume, one-variable experiment with explicit notes:**
 
-| # | Group | Question (answer YES to keep campaign mode) |
-| --- | --- | --- |
-| 20 | Stage | Is an LIR target defined for the segment — "P% of customers achieve E events every T days" (Roberge)? |
-| 21 | Stage | Is the segment tier named, and is it Green? (Yellow → experiment only; Red → hard kill, return to PMF work) |
-| 22 | Abel | Is the segment cleanly SMB-shaped or enterprise-shaped — no "mid-market" framing? |
-| 23 | Abel | If enterprise ACV, is the pricing assumption at least $75–150k landed (Jen Abel)? |
-| 24 | Persona | Does the segment lead with a switching trigger and desired outcome rather than demographics (Maurya)? |
-| 25 | Persona | Are the current solution and its pet peeves / workarounds / struggling moments named? |
+| #   | Group   | Question (answer YES to keep campaign mode)                                                                 |
+| --- | ------- | ----------------------------------------------------------------------------------------------------------- |
+| 20  | Stage   | Is an LIR target defined for the segment — "P% of customers achieve E events every T days" (Roberge)?       |
+| 21  | Stage   | Is the segment tier named, and is it Green? (Yellow → experiment only; Red → hard kill, return to PMF work) |
+| 22  | Abel    | Is the segment cleanly SMB-shaped or enterprise-shaped — no "mid-market" framing?                           |
+| 23  | Abel    | If enterprise ACV, is the pricing assumption at least $75–150k landed (Jen Abel)?                           |
+| 24  | Persona | Does the segment lead with a switching trigger and desired outcome rather than demographics (Maurya)?       |
+| 25  | Persona | Are the current solution and its pet peeves / workarounds / struggling moments named?                       |
 
 ## Output Contract
 

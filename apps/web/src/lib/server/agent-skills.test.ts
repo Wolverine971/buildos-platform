@@ -1,12 +1,16 @@
+// apps/web/src/lib/server/agent-skills.test.ts
 import { describe, expect, it } from 'vitest';
 import { parse as parseYaml } from 'yaml';
 import {
 	buildPortableAgentSkillBundle,
+	formatAgentSkillValidationReport,
 	getAgentSkillMarkdown,
 	getAgentSkillReference,
-	loadAgentSkillIndex
+	loadAgentSkillIndex,
+	validateAgentSkillCatalogPosts,
+	validatePublicAgentSkillCatalog
 } from './agent-skills';
-import { AGENT_SKILLS_CATEGORY_KEY, loadBlogPostMetadata } from '$lib/utils/blog';
+import { AGENT_SKILLS_CATEGORY_KEY, loadBlogPostMetadata, type BlogPost } from '$lib/utils/blog';
 
 describe('public agent skill serving', () => {
 	it('builds a machine-readable index for published agent skills', async () => {
@@ -25,9 +29,13 @@ describe('public agent skill serving', () => {
 				(skill) => skill.slug === 'google-calendar-for-ai-agents-search-before-you-create'
 			)
 		).toMatchObject({
-			runtime_skill_id: undefined,
+			runtime_skill_id: 'google_calendar',
 			skill_md_url:
-				'https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create/skill.md'
+				'https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create/skill.md',
+			portable_skill_md_url:
+				'https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create/portable/SKILL.md',
+			bundle_zip_url:
+				'https://build-os.com/agent-skills/google-calendar-for-ai-agents-search-before-you-create/bundle.zip'
 		});
 	});
 
@@ -42,7 +50,7 @@ describe('public agent skill serving', () => {
 		expect(result?.content).toContain('skill_id: hook-craft-short-form');
 	});
 
-	it('falls back to the embedded portable skill block when no runtime skill exists', async () => {
+	it('serves dedicated runtime markdown for the Google Calendar public skill', async () => {
 		const post = await loadBlogPostMetadata(
 			AGENT_SKILLS_CATEGORY_KEY,
 			'google-calendar-for-ai-agents-search-before-you-create'
@@ -50,13 +58,18 @@ describe('public agent skill serving', () => {
 		const result = getAgentSkillMarkdown(post);
 
 		expect(result).toMatchObject({
-			source: 'embedded-portable'
+			source: 'runtime',
+			runtimeSkillId: 'google_calendar'
 		});
-		expect(result?.content).toContain('name: google-calendar');
+		expect(result?.content).toContain('name: Google Calendar');
+		expect(result?.content.toLowerCase()).toContain('search before create');
 	});
 
 	it('serves public reference modules and hides internal reference modules', async () => {
-		const uiUxPost = await loadBlogPostMetadata(AGENT_SKILLS_CATEGORY_KEY, 'ui-ux-quality-review');
+		const uiUxPost = await loadBlogPostMetadata(
+			AGENT_SKILLS_CATEGORY_KEY,
+			'ui-ux-quality-review'
+		);
 		const publicReference = getAgentSkillReference(uiUxPost, 'foundation-checks.md');
 
 		expect(publicReference).toMatchObject({
@@ -69,6 +82,15 @@ describe('public agent skill serving', () => {
 			AGENT_SKILLS_CATEGORY_KEY,
 			'cold-email-engagement-first-outreach'
 		);
+		const publicColdEmailReference = getAgentSkillReference(
+			coldEmailPost,
+			'public-mode-router.md'
+		);
+		expect(publicColdEmailReference).toMatchObject({
+			runtimeSkillId: 'cold_email_engagement_first_outreach',
+			referenceId: 'cold_email_engagement_first_outreach.public_mode_router'
+		});
+		expect(publicColdEmailReference?.content).toContain('Public Outreach Mode Router');
 		expect(getAgentSkillReference(coldEmailPost, 'source-map.md')).toBeUndefined();
 	});
 
@@ -99,6 +121,53 @@ describe('public agent skill serving', () => {
 		expect(buildosMetadata.runtime_skill_id).toBe('ui_ux_quality_review');
 		expect(buildosMetadata.bundle_url).toBe(
 			'https://build-os.com/agent-skills/ui-ux-quality-review/bundle.zip'
+		);
+	});
+
+	it('validates the current public skill catalog without blocking errors', async () => {
+		const report = await validatePublicAgentSkillCatalog();
+
+		expect(report).toMatchObject({
+			ok: true,
+			total_skills: 8,
+			runtime_skill_count: 8,
+			embedded_portable_count: 0,
+			public_reference_count: 13,
+			errors: 0,
+			warnings: 0
+		});
+		expect(report.issues).toEqual([]);
+		expect(formatAgentSkillValidationReport(report).join('\n')).toContain('Result: passed.');
+	});
+
+	it('reports blocking errors for malformed public skill posts', () => {
+		const brokenPost: BlogPost = {
+			slug: 'broken-agent-skill',
+			category: AGENT_SKILLS_CATEGORY_KEY,
+			title: '',
+			description: '',
+			author: 'BuildOS Team',
+			date: '2026-06-11',
+			lastmod: '2026-06-11',
+			changefreq: 'monthly',
+			priority: '0.7',
+			published: true,
+			tags: [],
+			readingTime: 1
+		};
+
+		const report = validateAgentSkillCatalogPosts([brokenPost, brokenPost]);
+
+		expect(report.ok).toBe(false);
+		expect(report.errors).toBeGreaterThan(0);
+		expect(report.issues).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ severity: 'error', code: 'duplicate_slug' }),
+				expect.objectContaining({ severity: 'error', code: 'missing_title' }),
+				expect.objectContaining({ severity: 'error', code: 'missing_description' }),
+				expect.objectContaining({ severity: 'error', code: 'missing_public_skill_id' }),
+				expect.objectContaining({ severity: 'error', code: 'missing_agent_markdown' })
+			])
 		);
 	});
 });

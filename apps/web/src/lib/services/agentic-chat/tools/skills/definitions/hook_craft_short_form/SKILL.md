@@ -13,6 +13,16 @@ legacy_paths:
     - hook-craft-short-form
     - marketing-and-content.hook-craft-short-form.skill
     - docs/research/youtube-library/skill-drafts/hook-craft-short-form/SKILL.md
+reference_modules:
+    - id: hook_craft_short_form.public_hook_audit
+      name: Public Hook Audit Checklist
+      summary: Portable checklist for auditing hooks against archetype, slot grammar, three-beat structure, visual alignment, and failure modes.
+      when_to_load:
+          - When using the portable bundle outside BuildOS.
+          - When scoring or rewriting an existing hook.
+          - When a draft hook needs a short, agent-checkable QA pass before shipping.
+      path: references/public-hook-audit.md
+      visibility: public
 lineage: lineage.yaml
 path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/hook_craft_short_form/SKILL.md
 ---

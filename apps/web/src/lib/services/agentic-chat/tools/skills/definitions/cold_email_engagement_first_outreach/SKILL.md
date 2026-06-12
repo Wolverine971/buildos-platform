@@ -57,6 +57,14 @@ child_skills:
           - When a campaign or test has results and the user needs to decide stop, iterate, recycle, or scale.
       path: apps/web/src/lib/services/agentic-chat/tools/skills/definitions/cold_email_learning_review/SKILL.md
 reference_modules:
+    - id: cold_email_engagement_first_outreach.public_mode_router
+      name: Public Outreach Mode Router
+      summary: Portable public routing guide for choosing the right cold-outreach mode, required inputs, child skill handoffs, and output shape.
+      when_to_load:
+          - When using the portable bundle outside BuildOS.
+          - When the task needs a fast decision between campaign, strategic-account, single-target, investor, recruiting, PR, partnership, or customer-research outreach modes.
+      path: references/public-mode-router.md
+      visibility: public
     - id: cold_email_engagement_first_outreach.source_map
       name: Cold Email Source Map
       summary: Runtime source map for the cleaned source corpus, foundational source layers, tactical gap-fill sources, and local research lineage.

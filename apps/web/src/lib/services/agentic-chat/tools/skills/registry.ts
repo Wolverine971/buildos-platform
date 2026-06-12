@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat/tools/skills/registry.ts
 import { projectAuditSkill } from './audit.skill';
-import { calendarSkill } from './calendar.skill';
+import { calendarSkill, googleCalendarSkill } from './calendar.skill';
 import {
 	coldEmailDeliverabilityReadinessSkill,
 	coldEmailEngagementFirstOutreachSkill,
@@ -58,6 +58,7 @@ import { isLibriIntegrationEnabled } from '$lib/services/agentic-chat/tools/libr
 
 const ALL_SKILLS: SkillDefinition[] = [
 	calendarSkill,
+	googleCalendarSkill,
 	documentSkill,
 	planSkill,
 	projectCreateSkill,

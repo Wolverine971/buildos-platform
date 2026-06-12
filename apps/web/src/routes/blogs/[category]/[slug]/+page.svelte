@@ -50,6 +50,8 @@
 	const agentSkillMarkdownUrl = $derived(`${articleUrl}/skill.md`);
 	const portableSkillMarkdownUrl = $derived(`${articleUrl}/portable/SKILL.md`);
 	const skillBundleUrl = $derived(`${articleUrl}/bundle.zip`);
+	const skillBundleCommand = $derived(`curl -L ${skillBundleUrl} -o ${data.post.slug}.zip`);
+	const portableSkillCommand = $derived(`curl -L ${portableSkillMarkdownUrl}`);
 	const agentSkillIndexUrl = `${SITE_URL}/agent-skills/index.json`;
 	// SEO meta title: prefer a trimmed `seoTitle` (kept under ~60 chars incl. " | BuildOS")
 	// while the visible H1 keeps the full `title`. Falls back to `title` when unset.
@@ -573,11 +575,18 @@
 							index.json
 						</a>
 					</div>
-					<code
-						class="mt-3 block overflow-x-auto rounded border border-border bg-muted px-3 py-2 text-xs text-foreground"
-					>
-						curl -L {portableSkillMarkdownUrl}
-					</code>
+					<div class="mt-3 grid gap-2">
+						<code
+							class="block overflow-x-auto rounded border border-border bg-muted px-3 py-2 text-xs text-foreground"
+						>
+							{skillBundleCommand}
+						</code>
+						<code
+							class="block overflow-x-auto rounded border border-border bg-muted px-3 py-2 text-xs text-foreground"
+						>
+							{portableSkillCommand}
+						</code>
+					</div>
 				</div>
 			{/if}
 
@@ -601,7 +610,9 @@
 									class="inline-flex items-center rounded border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground"
 								>
 									<span class="font-medium text-foreground">{value}</span>
-									<span class="ml-1">{key.replace(/([A-Z])/g, ' $1').toLowerCase()}</span>
+									<span class="ml-1"
+										>{key.replace(/([A-Z])/g, ' $1').toLowerCase()}</span
+									>
 								</span>
 							{/each}
 						</div>
