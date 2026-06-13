@@ -132,7 +132,7 @@
 			<div class="max-w-md mx-auto" role="region" aria-label="Pricing plan">
 				<!-- BuildOS Pro -->
 				<article
-					class="rounded-lg border border-border bg-card shadow-ink p-6 sm:p-8 relative tx tx-frame tx-weak wt-card"
+					class="border border-border bg-card shadow-ink p-6 sm:p-8 relative tx tx-frame tx-weak wt-card"
 					aria-labelledby="pro-plan-heading"
 				>
 					{#if data.trialStatus?.is_in_trial}

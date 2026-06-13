@@ -121,7 +121,7 @@
 							onclick={() => handleContextTypeChange('global')}
 							class:ring-2={selectedContextType === 'global'}
 							class:ring-accent={selectedContextType === 'global'}
-							class="w-full rounded-lg border border-border bg-card p-3 text-left transition-all hover:bg-muted/50 focus:ring-1 focus:ring-ring focus:border-accent tx tx-grain tx-weak wt-paper sp-block"
+							class="w-full border border-border bg-card p-3 text-left transition-all hover:bg-muted/50 focus:ring-1 focus:ring-ring focus:border-accent tx tx-grain tx-weak wt-paper sp-block"
 						>
 							<div class="flex items-start gap-3">
 								<div
@@ -147,7 +147,7 @@
 							onclick={() => handleContextTypeChange('project')}
 							class:ring-2={selectedContextType === 'project'}
 							class:ring-accent={selectedContextType === 'project'}
-							class="w-full rounded-lg border border-border bg-card p-3 text-left transition-all hover:bg-muted/50 focus:ring-1 focus:ring-ring focus:border-accent tx tx-grain tx-weak wt-paper sp-block"
+							class="w-full border border-border bg-card p-3 text-left transition-all hover:bg-muted/50 focus:ring-1 focus:ring-ring focus:border-accent tx tx-grain tx-weak wt-paper sp-block"
 						>
 							<div class="flex items-start gap-3">
 								<div
@@ -202,7 +202,7 @@
 							<select
 								id="project-select"
 								bind:value={selectedProjectId}
-								class="w-full rounded-lg border border-border bg-card px-3 py-2 text-foreground outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-ring tx tx-grain tx-weak wt-paper"
+								class="w-full border border-border bg-card px-3 py-2 text-foreground outline-none transition-colors focus:border-accent focus:ring-1 focus:ring-ring tx tx-grain tx-weak wt-paper"
 							>
 								<option value="">-- Choose a project --</option>
 								{#each projects as project}
@@ -218,14 +218,14 @@
 			<div class="border-t border-border bg-muted/30 px-4 py-3 flex gap-2 justify-end">
 				<button
 					onclick={handleClose}
-					class="rounded-lg border border-border px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted/50 focus:ring-1 focus:ring-ring focus:border-accent pressable tx tx-frame tx-weak wt-paper"
+					class="border border-border px-4 py-2 font-medium text-foreground transition-colors hover:bg-muted/50 focus:ring-1 focus:ring-ring focus:border-accent pressable tx tx-frame tx-weak wt-paper"
 				>
 					Cancel
 				</button>
 				<button
 					onclick={handleSubmit}
 					disabled={selectedContextType === 'project' && !selectedProjectId}
-					class="rounded-lg bg-accent px-4 py-2 font-medium text-accent-foreground transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shadow-ink pressable focus:ring-1 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background tx tx-grain tx-weak wt-paper"
+					class="bg-accent px-4 py-2 font-medium text-accent-foreground transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shadow-ink pressable focus:ring-1 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background tx tx-grain tx-weak wt-paper"
 				>
 					Set Context
 				</button>

@@ -434,7 +434,7 @@
 		{#if !analyzing && !analysisId && suggestions.length === 0 && !autoStart}
 			<!-- Date Range Selection (only show if not autoStart) -->
 			<div
-				class="bg-card rounded-lg p-3 border border-border shadow-ink tx tx-grid tx-weak wt-paper sp-block"
+				class="bg-card p-3 border border-border shadow-ink tx tx-grid tx-weak wt-paper sp-block"
 			>
 				<h3 class="text-sm font-semibold text-foreground mb-2">Select Analysis Period</h3>
 				<p class="text-sm text-muted-foreground mb-2">
@@ -527,9 +527,7 @@
 			</div>
 		{:else if suggestions.length > 0}
 			<!-- Summary -->
-			<div
-				class="bg-card rounded-lg p-3 border border-border shadow-ink tx tx-frame tx-weak wt-card"
-			>
+			<div class="bg-card p-3 border border-border shadow-ink tx tx-frame tx-weak wt-card">
 				<div class="flex items-center justify-between">
 					<div>
 						<h3 class="text-sm font-semibold text-foreground">
@@ -558,7 +556,7 @@
 					{@const patterns = suggestion.event_patterns as EventPatternsData | null}
 
 					<div
-						class="border rounded-lg p-3 transition-colors shadow-ink tx tx-bloom tx-weak wt-paper sp-block {isSelected
+						class="border p-3 transition-colors shadow-ink tx tx-bloom tx-weak wt-paper sp-block {isSelected
 							? 'border-accent bg-accent/5'
 							: 'border-border'}"
 					>

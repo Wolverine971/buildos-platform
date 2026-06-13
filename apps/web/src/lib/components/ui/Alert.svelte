@@ -126,7 +126,7 @@
 			{#if closeable}
 				<button
 					type="button"
-					class="flex-shrink-0 flex items-start pt-0.5 hover:opacity-70 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded pressable"
+					class="flex-shrink-0 flex items-start pt-0.5 hover:opacity-70 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 rounded-md pressable"
 					onclick={handleClose}
 					aria-label="Close alert"
 				>

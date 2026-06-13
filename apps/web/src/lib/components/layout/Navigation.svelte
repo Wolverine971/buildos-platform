@@ -472,7 +472,7 @@
 							<a
 								href={item.href}
 								onclick={() => handleMenuItemClick(item.href)}
-								class="relative inline-flex items-center px-2 lg:px-3 py-1.5 md:py-2 text-xs md:text-sm font-bold tracking-tight rounded transition-all duration-200 whitespace-nowrap
+								class="relative inline-flex items-center px-2 lg:px-3 py-1.5 md:py-2 text-xs md:text-sm font-bold tracking-tight rounded-md transition-all duration-200 whitespace-nowrap
 								{currentPath === item.href
 									? 'text-accent bg-muted'
 									: 'text-muted-foreground hover:text-foreground hover:bg-muted'}
@@ -521,7 +521,7 @@
 						variant="outline"
 						size="sm"
 						onclick={handleOpenChat}
-						class={`relative flex items-center gap-2 px-3 h-9 rounded font-bold tracking-tight text-xs md:text-sm transition-all duration-200 group pressable border tx tx-grain tx-weak ${showChatModal ? 'text-accent-foreground bg-accent border-accent shadow-ink' : 'text-muted-foreground bg-card border-border hover:border-accent hover:bg-accent/10 hover:text-accent shadow-ink'}`}
+						class={`relative flex items-center gap-2 px-3 h-9 rounded-md font-bold tracking-tight text-xs md:text-sm transition-all duration-200 group pressable border tx tx-grain tx-weak ${showChatModal ? 'text-accent-foreground bg-accent border-accent shadow-ink' : 'text-muted-foreground bg-card border-border hover:border-accent hover:bg-accent/10 hover:text-accent shadow-ink'}`}
 						aria-label={`Open ${chatLabel}`}
 						title={chatLabel}
 						btnType="container"
@@ -629,7 +629,7 @@
 						variant="outline"
 						size="sm"
 						btnType="container"
-						class="md:hidden relative flex items-center justify-center px-3 h-9 rounded border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 pressable transition-all duration-200 tx tx-grain tx-weak group !overflow-visible"
+						class="md:hidden relative flex items-center justify-center px-3 h-9 rounded-md border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 pressable transition-all duration-200 tx tx-grain tx-weak group !overflow-visible"
 						aria-expanded={showMobileMenu}
 						aria-label="Toggle mobile menu"
 					>
@@ -661,7 +661,7 @@
 							variant="outline"
 							size="sm"
 							btnType="container"
-							class="flex items-center gap-1.5 px-3 h-9 text-xs md:text-sm rounded font-bold tracking-tight text-muted-foreground border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 hover:text-accent pressable transition-all duration-100"
+							class="flex items-center gap-1.5 px-3 h-9 text-xs md:text-sm rounded-md font-bold tracking-tight text-muted-foreground border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 hover:text-accent pressable transition-all duration-100"
 							aria-expanded={showUserMenu}
 							aria-haspopup="true"
 							aria-label="User menu"
@@ -687,7 +687,7 @@
 											{user?.name || 'User'}
 											{#if user?.is_admin}
 												<span
-													class="ml-2 px-2 py-0.5 text-xs bg-destructive text-destructive-foreground rounded font-bold"
+													class="ml-2 px-2 py-0.5 text-xs bg-destructive text-destructive-foreground rounded-full font-bold"
 												>
 													Admin
 												</span>
@@ -878,7 +878,7 @@
 						variant="outline"
 						size="sm"
 						btnType="container"
-						class="md:hidden flex items-center justify-center px-3 h-9 rounded border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 pressable transition-all duration-200 tx tx-grain tx-weak group"
+						class="md:hidden flex items-center justify-center px-3 h-9 rounded-md border border-border bg-card shadow-ink hover:border-accent hover:bg-accent/10 pressable transition-all duration-200 tx tx-grain tx-weak group"
 						aria-expanded={showMobileMenu}
 						aria-label="Toggle mobile menu"
 					>
@@ -947,7 +947,7 @@
 						<a
 							href={item.href}
 							onclick={() => handleMenuItemClick(item.href)}
-							class="relative flex items-center px-3 py-2 text-base font-bold rounded transition-colors
+							class="relative flex items-center px-3 py-2 text-base font-bold rounded-md transition-colors
 							{currentPath === item.href
 								? 'text-accent bg-muted'
 								: 'text-muted-foreground hover:text-foreground hover:bg-muted'}

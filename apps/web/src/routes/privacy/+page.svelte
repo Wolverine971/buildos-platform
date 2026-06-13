@@ -18,7 +18,7 @@
 		<div class="text-center mb-16">
 			<div class="flex justify-center mb-6">
 				<div
-					class="w-16 h-16 rounded bg-card border border-border shadow-ink flex items-center justify-center tx tx-frame tx-weak"
+					class="w-16 h-16 rounded-lg bg-card border border-border shadow-ink flex items-center justify-center tx tx-frame tx-weak"
 				>
 					<Shield class="w-8 h-8 text-foreground" />
 				</div>
@@ -30,7 +30,9 @@
 		</div>
 
 		<!-- Quick Summary -->
-		<div class="bg-card rounded border border-border p-8 mb-12 shadow-ink tx tx-frame tx-weak">
+		<div
+			class="bg-card rounded-lg border border-border p-8 mb-12 shadow-ink tx tx-frame tx-weak"
+		>
 			<h2 class="text-2xl font-bold text-foreground mb-6 flex items-center">
 				<Eye class="w-6 h-6 mr-3 text-foreground" />
 				Privacy at a Glance
@@ -38,7 +40,7 @@
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 				<div class="text-center">
 					<div
-						class="w-12 h-12 rounded bg-muted border border-border flex items-center justify-center mb-3 mx-auto"
+						class="w-12 h-12 rounded-lg bg-muted border border-border flex items-center justify-center mb-3 mx-auto"
 					>
 						<Download class="w-6 h-6 text-foreground" />
 					</div>
@@ -49,7 +51,7 @@
 				</div>
 				<div class="text-center">
 					<div
-						class="w-12 h-12 rounded bg-muted border border-border flex items-center justify-center mb-3 mx-auto"
+						class="w-12 h-12 rounded-lg bg-muted border border-border flex items-center justify-center mb-3 mx-auto"
 					>
 						<Trash2 class="w-6 h-6 text-foreground" />
 					</div>
@@ -60,7 +62,7 @@
 				</div>
 				<div class="text-center">
 					<div
-						class="w-12 h-12 rounded bg-muted border border-border flex items-center justify-center mb-3 mx-auto"
+						class="w-12 h-12 rounded-lg bg-muted border border-border flex items-center justify-center mb-3 mx-auto"
 					>
 						<Lock class="w-6 h-6 text-foreground" />
 					</div>
@@ -74,7 +76,7 @@
 
 		<!-- Main Content -->
 		<div
-			class="bg-card rounded border border-border p-8 md:p-12 shadow-ink tx tx-grain tx-weak space-y-8"
+			class="bg-card rounded-lg border border-border p-8 md:p-12 shadow-ink tx tx-grain tx-weak space-y-8"
 		>
 			<section>
 				<h2 class="text-2xl font-bold text-foreground mb-4">Data We Collect</h2>

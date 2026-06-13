@@ -67,7 +67,7 @@
 	let textareaClasses = $derived(
 		twMerge(
 			// Base classes - Inkprint design
-			'w-full rounded resize-y',
+			'w-full rounded-md resize-y',
 			'border transition-all duration-200',
 			'focus:outline-none',
 			'disabled:cursor-not-allowed disabled:opacity-50 disabled:resize-none',

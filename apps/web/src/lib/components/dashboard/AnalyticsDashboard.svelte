@@ -76,6 +76,7 @@
 				state_key: string;
 				due_at: string | null;
 				updated_at: string;
+				action_label: string;
 				href: string;
 		  }
 		| {
@@ -86,6 +87,7 @@
 				project_name: string;
 				state_key: string;
 				updated_at: string;
+				action_label: string;
 				href: string;
 		  }
 		| {
@@ -97,6 +99,7 @@
 				state_key: string;
 				target_date: string | null;
 				updated_at: string;
+				action_label: string;
 				href: string;
 		  };
 
@@ -240,6 +243,7 @@
 				state_key: t.state_key,
 				due_at: t.due_at,
 				updated_at: t.updated_at,
+				action_label: t.action_label,
 				href: `/projects/${t.project_id}/tasks/${t.id}`
 			});
 		}
@@ -253,6 +257,7 @@
 				project_name: d.project_name,
 				state_key: d.state_key,
 				updated_at: d.updated_at,
+				action_label: d.action_label,
 				href: `/projects/${d.project_id}`
 			});
 		}
@@ -267,6 +272,7 @@
 				state_key: g.state_key,
 				target_date: g.target_date,
 				updated_at: g.updated_at,
+				action_label: g.action_label,
 				href: `/projects/${g.project_id}`
 			});
 		}
@@ -690,7 +696,7 @@
 			</section>
 
 			{#if showAgentConnectionCta}
-				<section class="rounded-lg border border-accent/25 bg-accent/5 shadow-ink wt-card">
+				<section class="border border-accent/25 bg-accent/5 shadow-ink wt-card">
 					<div
 						class="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between"
 					>
@@ -722,7 +728,7 @@
 
 			{#if actionableInvites.length > 0}
 				<section
-					class="rounded-lg border border-accent/25 bg-accent/5 shadow-ink wt-card overflow-hidden"
+					class="border border-accent/25 bg-accent/5 shadow-ink wt-card overflow-hidden"
 				>
 					<div class="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
 						<div class="min-w-0 flex items-start gap-2.5">
@@ -824,9 +830,7 @@
 			{/if}
 
 			{#if overdueTasks > 0}
-				<section
-					class="rounded-lg border border-border bg-card shadow-ink wt-card overflow-hidden"
-				>
+				<section class="border border-border bg-card shadow-ink wt-card overflow-hidden">
 					<div class="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
 						<div class="min-w-0 flex items-start gap-2.5">
 							<div
@@ -908,7 +912,7 @@
 				{#if hasNoProjects}
 					<!-- Brand new user with nothing -->
 					<div
-						class="wt-paper p-5 sm:p-6 tx tx-bloom tx-weak rounded-lg border border-dashed border-accent/40 text-center space-y-3"
+						class="wt-paper p-5 sm:p-6 tx tx-bloom tx-weak border border-dashed border-accent/40 text-center space-y-3"
 					>
 						<div class="flex justify-center">
 							<img
@@ -933,9 +937,7 @@
 						</Button>
 					</div>
 				{:else if projectsToDisplay.length === 0}
-					<div
-						class="wt-paper p-4 tx tx-frame tx-weak rounded-lg border border-border text-center"
-					>
+					<div class="wt-paper p-4 tx tx-frame tx-weak border border-border text-center">
 						<p class="text-sm text-muted-foreground">No projects to show right now.</p>
 						<Button
 							variant="outline"
@@ -958,7 +960,7 @@
 							<a
 								href={resolveProjectHref(project)}
 								onclick={(event) => handleProjectCardClick(event, project)}
-								class="group relative block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
+								class="group relative block wt-paper border border-border bg-card px-3 py-2.5
 								hover:border-accent/40 transition-colors pressable"
 							>
 								<div class="flex items-center justify-between gap-2">
@@ -1048,7 +1050,7 @@
 							<a
 								href={resolveProjectHref(project)}
 								onclick={(event) => handleProjectCardClick(event, project)}
-								class="group relative block wt-paper rounded-lg border border-border bg-card px-3 py-2.5
+								class="group relative block wt-paper border border-border bg-card px-3 py-2.5
 								hover:border-accent/40 transition-colors pressable"
 							>
 								<div class="flex items-center justify-between gap-2">
@@ -1104,14 +1106,12 @@
 
 					{#if unifiedFeed.length === 0}
 						<div
-							class="wt-paper p-4 tx tx-frame tx-weak rounded-lg border border-border text-center"
+							class="wt-paper p-4 tx tx-frame tx-weak border border-border text-center"
 						>
 							<p class="text-sm text-muted-foreground">No recent activity yet.</p>
 						</div>
 					{:else}
-						<div
-							class="wt-paper rounded-lg border border-border divide-y divide-border"
-						>
+						<div class="wt-paper border border-border divide-y divide-border">
 							{#each unifiedFeed as item (item.kind + '-' + item.id)}
 								<a
 									href={item.href}
@@ -1143,6 +1143,16 @@
 											{/if}
 										</div>
 										<div class="flex items-center gap-1.5 mt-0.5">
+											<span
+												class="text-[11px] font-medium {item.action_label ===
+												'Created'
+													? 'text-success'
+													: item.action_label === 'Completed'
+														? 'text-info'
+														: 'text-muted-foreground'}"
+												>{item.action_label} {item.kind}</span
+											>
+											<span class="text-[11px] text-muted-foreground">·</span>
 											<span class="text-[11px] text-muted-foreground truncate"
 												>{item.project_name}</span
 											>
@@ -1193,14 +1203,12 @@
 
 					{#if recentChats.length === 0}
 						<div
-							class="wt-paper p-4 tx tx-frame tx-weak rounded-lg border border-border text-center"
+							class="wt-paper p-4 tx tx-frame tx-weak border border-border text-center"
 						>
 							<p class="text-sm text-muted-foreground">No recent chats.</p>
 						</div>
 					{:else}
-						<div
-							class="wt-paper rounded-lg border border-border divide-y divide-border"
-						>
+						<div class="wt-paper border border-border divide-y divide-border">
 							{#each recentChats as session (session.id)}
 								<a
 									href="/history?type=chats&id={session.id}&itemType=chat_session"

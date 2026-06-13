@@ -275,7 +275,7 @@
 		<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
 			{#each assets as asset (asset.id)}
 				<div
-					class="group rounded-lg border border-border overflow-hidden shadow-ink tx tx-thread tx-weak wt-paper
+					class="group border border-border overflow-hidden shadow-ink tx tx-thread tx-weak wt-paper
 						hover:border-accent/50 hover:shadow-ink-strong transition-all"
 				>
 					<button

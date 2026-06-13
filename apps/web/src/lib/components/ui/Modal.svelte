@@ -158,14 +158,14 @@
 		if (variant === 'bottom-sheet') {
 			return {
 				container: 'items-end sm:items-center',
-				modal: 'rounded-t-lg sm:rounded-lg mb-0 sm:mb-4', // 12px (overridden Tailwind scale); wins over wt-plate's 6px
+				modal: 'rounded-t-lg sm:rounded-lg mb-0 sm:mb-4', // 12px, agrees with wt-plate (both 0.75rem)
 				animation: 'animate-modal-slide-up sm:animate-modal-scale'
 			};
 		}
 		// Default: center variant
 		return {
 			container: 'items-center',
-			modal: 'rounded-lg', // 12px (overridden Tailwind scale); wins over wt-plate's 6px
+			modal: 'rounded-lg', // 12px, agrees with wt-plate (both 0.75rem)
 			animation: 'animate-modal-scale'
 		};
 	});

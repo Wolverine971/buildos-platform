@@ -99,7 +99,7 @@
 
 	<!-- Start new homework card (Mode B moment: creation) -->
 	<section
-		class="bg-card border border-border rounded-lg shadow-ink tx tx-bloom tx-weak wt-paper sp-block mb-4"
+		class="bg-card border border-border shadow-ink tx tx-bloom tx-weak wt-paper sp-block mb-4"
 	>
 		<div class="px-3 py-2 sm:px-4 sm:py-3 border-b border-border">
 			<h2 class="text-base sm:text-lg font-semibold text-foreground">Start New Homework</h2>
@@ -223,7 +223,7 @@
 			{#each data.runs as run}
 				<a
 					href={`/homework/runs/${run.id}`}
-					class="block p-3 bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/50 transition-all tx tx-grain tx-weak wt-paper sp-inline pressable no-underline"
+					class="block p-3 bg-card border border-border shadow-ink hover:shadow-ink-strong hover:border-accent/50 transition-all tx tx-grain tx-weak wt-paper sp-inline pressable no-underline"
 				>
 					<!-- Context badge -->
 					<div class="mb-2">

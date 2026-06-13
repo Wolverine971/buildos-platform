@@ -247,7 +247,7 @@
 			<article class="group pt-6 pb-2">
 				<a
 					href={getContentPostPath(featuredPost)}
-					class="block bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
+					class="block bg-card border border-border shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
 				>
 					<div class="p-5 sm:p-7">
 						<div
@@ -300,7 +300,7 @@
 						<article class="group">
 							<a
 								href={getContentPostPath(post)}
-								class="flex flex-col h-full bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
+								class="flex flex-col h-full bg-card border border-border shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
 							>
 								<div class="p-4 sm:p-5 flex flex-col flex-1">
 									<div

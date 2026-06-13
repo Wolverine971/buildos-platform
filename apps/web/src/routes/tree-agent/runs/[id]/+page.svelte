@@ -147,14 +147,14 @@
 			<div class="flex flex-col gap-2">
 				{#if currentContextType === 'global'}
 					<span
-						class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-border text-sm text-foreground font-medium w-fit tx tx-frame tx-weak wt-paper"
+						class="inline-flex items-center gap-2 px-3 py-1.5 bg-muted/50 border border-border text-sm text-foreground font-medium w-fit tx tx-frame tx-weak wt-paper"
 					>
 						<span>🌐</span>
 						<span>Global Context</span>
 					</span>
 				{:else if currentProjectId && currentProjectName}
 					<span
-						class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-border text-sm text-foreground font-medium w-fit tx tx-frame tx-weak wt-paper"
+						class="inline-flex items-center gap-2 px-3 py-1.5 bg-muted/50 border border-border text-sm text-foreground font-medium w-fit tx tx-frame tx-weak wt-paper"
 					>
 						<span>📁</span>
 						<span>{currentProjectName}</span>
@@ -164,7 +164,7 @@
 				<button
 					onclick={() => (contextSelectorOpen = true)}
 					disabled={isChangingContext}
-					class="px-4 py-2 rounded-lg bg-accent text-accent-foreground font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shadow-ink pressable text-sm tx tx-grain tx-weak wt-paper"
+					class="px-4 py-2 bg-accent text-accent-foreground font-medium transition-colors hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shadow-ink pressable text-sm tx tx-grain tx-weak wt-paper"
 				>
 					{isChangingContext ? 'Switching...' : 'Change Context'}
 				</button>

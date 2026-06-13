@@ -10,9 +10,11 @@
 	Single-expansion model: click a pill, it expands to full width with its
 	content body underneath. Other pills wrap above and below via flex-wrap
 	(any pill takes `w-full` when expanded, which forces a line break).
+	Chats, Graph, and Events are action pills that open modals instead of
+	expanding inline.
 
-	Briefs lazy-fetches on first expand; Graph mounts ProjectGraphSection on
-	first expand; entity tabs render from props passed in by the page.
+	Briefs lazy-fetches on first expand; entity tabs render from props
+	passed in by the page.
 
 	Note: there used to be an "Activity" tab here, but PulseStrip's
 	"Recently done" surfaces the same activity-log signal in a more
@@ -46,10 +48,9 @@
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import type { DailyBrief } from '$lib/types/daily-brief';
 	import type { Goal, Milestone, OntoEvent, Plan, Risk } from '$lib/types/onto';
-	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 
-	type TabKey = 'briefs' | 'graph' | 'goals' | 'milestones' | 'plans' | 'risks';
-	type TabActionKey = 'chats' | 'events';
+	type TabKey = 'briefs' | 'goals' | 'milestones' | 'plans' | 'risks';
+	type TabActionKey = 'chats' | 'graph' | 'events';
 	type TabItemKey = TabKey | TabActionKey;
 
 	let {
@@ -67,7 +68,7 @@
 		onEditPlan,
 		onEditRisk,
 		onEntityClick,
-		onGraphNodeClick,
+		onOpenGraph,
 		onAddGoal,
 		onAddMilestoneFromGoal,
 		onAddPlan,
@@ -89,7 +90,7 @@
 		onEditPlan: (id: string) => void;
 		onEditRisk: (id: string) => void;
 		onEntityClick: (kind: ProjectLogEntityType, id: string) => void;
-		onGraphNodeClick?: (node: GraphNode) => void;
+		onOpenGraph?: () => void;
 		onAddGoal?: () => void;
 		onAddMilestoneFromGoal?: (goalId: string, goalName: string) => void;
 		onAddPlan?: () => void;
@@ -299,7 +300,9 @@
 				count: null,
 				icon: GitBranch,
 				accent: 'text-info',
-				bg: 'bg-info/10'
+				bg: 'bg-info/10',
+				action: true,
+				hidden: !onOpenGraph
 			},
 			{
 				key: 'goals',
@@ -432,6 +435,12 @@
 	function isMilestoneStandalone(m: Milestone): boolean {
 		return !m.goal_id;
 	}
+
+	function handleAction(key: TabActionKey) {
+		if (key === 'chats') onOpenRecentChats?.();
+		else if (key === 'graph') onOpenGraph?.();
+		else onOpenEvents?.();
+	}
 </script>
 
 <section class="flex flex-wrap gap-1.5 sm:gap-2 items-start" aria-label="Project context tabs">
@@ -446,7 +455,7 @@
 			{#if tab.action}
 				<button
 					type="button"
-					onclick={() => (tab.key === 'chats' ? onOpenRecentChats?.() : onOpenEvents?.())}
+					onclick={() => handleAction(tab.key as TabActionKey)}
 					class="w-full flex items-center justify-between gap-1.5 px-2 py-1.5 hover:bg-muted/50 transition-colors pressable focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
 					aria-haspopup="dialog"
 					title={tab.label}
@@ -561,36 +570,6 @@
 									</button>
 								{/if}
 							{/if}
-						</div>
-					{:else if tab.key === 'graph'}
-						<div class="h-[60vh] min-h-[420px]">
-							{#await import('$lib/components/ontology/ProjectGraphSection.svelte')}
-								<div class="flex items-center justify-center h-full">
-									<LoaderCircle
-										class="w-4 h-4 animate-spin text-muted-foreground"
-									/>
-								</div>
-							{:then { default: ProjectGraphSection }}
-								<ProjectGraphSection
-									{projectId}
-									onNodeClick={(node) => {
-										if (onGraphNodeClick) {
-											onGraphNodeClick(node);
-										} else {
-											onEntityClick(
-												node.type as ProjectLogEntityType,
-												node.id
-											);
-										}
-									}}
-								/>
-							{:catch}
-								<div
-									class="flex items-center justify-center h-full text-xs text-muted-foreground italic"
-								>
-									Unable to load graph.
-								</div>
-							{/await}
 						</div>
 					{:else if tab.key === 'goals'}
 						<div class="p-2 sm:p-3 space-y-2 max-h-[60vh] overflow-y-auto">

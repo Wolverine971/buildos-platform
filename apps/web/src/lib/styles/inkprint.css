@@ -577,7 +577,7 @@
 	--wt-paper-border-width: 1px;
 	--wt-paper-border-style: solid;
 	--wt-paper-border-color: hsl(var(--border));
-	--wt-paper-radius: 0.5rem;
+	--wt-paper-radius: 0.75rem;
 	--wt-paper-duration: 150ms;
 	--wt-paper-easing: ease;
 
@@ -586,7 +586,7 @@
 	--wt-card-border-width: 1.5px;
 	--wt-card-border-style: solid;
 	--wt-card-border-color: hsl(var(--border));
-	--wt-card-radius: 0.5rem;
+	--wt-card-radius: 0.75rem;
 	--wt-card-duration: 200ms;
 	--wt-card-easing: ease-in-out;
 
@@ -595,7 +595,7 @@
 	--wt-plate-border-width: 2px;
 	--wt-plate-border-style: solid;
 	--wt-plate-border-color: hsl(var(--border));
-	--wt-plate-radius: 0.375rem;
+	--wt-plate-radius: 0.75rem;
 	--wt-plate-duration: 280ms;
 	--wt-plate-easing: cubic-bezier(0.4, 0, 0.2, 1);
 }

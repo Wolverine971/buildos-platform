@@ -347,9 +347,7 @@
 		</div>
 
 		<!-- Form Section -->
-		<div
-			class="rounded-lg border border-border bg-card p-6 sm:p-8 shadow-ink tx tx-frame tx-weak wt-card"
-		>
+		<div class="border border-border bg-card p-6 sm:p-8 shadow-ink tx tx-frame tx-weak wt-card">
 			<!-- Google OAuth Button -->
 			<div class="mb-6">
 				<button

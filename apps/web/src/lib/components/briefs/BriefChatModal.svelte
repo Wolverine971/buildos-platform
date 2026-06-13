@@ -255,7 +255,7 @@
 						bg-card border border-border shadow-ink-strong
 						flex flex-col overflow-hidden
 						tx tx-frame tx-weak
-						rounded-t-2xl md:rounded-lg
+						rounded-t-lg md:rounded-lg
 						brief-animate-slide-up md:brief-animate-scale"
 					style="
 						transform: translateY({dragTranslateY}px) translateZ(0);

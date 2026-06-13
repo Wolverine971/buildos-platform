@@ -37,6 +37,8 @@ export interface DashboardProjectActivity {
 	document_count: number;
 }
 
+export type DashboardActivityAction = 'Created' | 'Updated' | 'Completed';
+
 export interface DashboardTaskActivity {
 	id: string;
 	project_id: string;
@@ -45,7 +47,10 @@ export interface DashboardTaskActivity {
 	description: string | null;
 	state_key: string;
 	due_at: string | null;
+	created_at: string | null;
+	completed_at: string | null;
 	updated_at: string;
+	action_label: DashboardActivityAction;
 }
 
 export interface DashboardDocumentActivity {
@@ -55,7 +60,9 @@ export interface DashboardDocumentActivity {
 	title: string;
 	description: string | null;
 	state_key: string;
+	created_at: string | null;
 	updated_at: string;
+	action_label: DashboardActivityAction;
 }
 
 export interface DashboardGoalActivity {
@@ -66,7 +73,10 @@ export interface DashboardGoalActivity {
 	description: string | null;
 	state_key: string;
 	target_date: string | null;
+	created_at: string | null;
+	completed_at: string | null;
 	updated_at: string;
+	action_label: DashboardActivityAction;
 }
 
 export interface DashboardChatSessionActivity {

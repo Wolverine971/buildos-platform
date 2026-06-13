@@ -242,7 +242,7 @@
 						<article class="group">
 							<a
 								href={getContentPostPath(post)}
-								class="flex h-full flex-col bg-card border border-border rounded-lg shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
+								class="flex h-full flex-col bg-card border border-border shadow-ink hover:shadow-ink-strong hover:border-accent/40 transition-all duration-200 tx tx-frame tx-weak wt-paper overflow-hidden"
 							>
 								<div class="flex flex-1 flex-col p-4 sm:p-5">
 									<div

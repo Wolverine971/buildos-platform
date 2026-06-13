@@ -2,6 +2,9 @@
 
 # BuildOS Design System Guide
 
+> [!WARNING]
+> **STALE — DO NOT FOLLOW.** This doc predates the Inkprint design system (blue/purple gradients, glassmorphism, cool grays — all superseded). The current source of truth is [INKPRINT_DESIGN_SYSTEM.md](./INKPRINT_DESIGN_SYSTEM.md); tokens live in `apps/web/src/lib/styles/inkprint.css`. Flagged stale in [DESIGN_AUDIT_2026-06-12.md](./DESIGN_AUDIT_2026-06-12.md).
+
 **📍 Status**: Phase 3 Complete - Badge & Alert components + 10 component refactorings (v1.2.0)
 **✅ Design Health Score**: 92/100 (Complete initiative target achieved)
 **🔗 Related**: See [DESIGN_REFACTOR_STATUS.md](./DESIGN_REFACTOR_STATUS.md) for refactoring progress and WCAG AA compliance status.

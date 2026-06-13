@@ -217,9 +217,9 @@ Each weight level affects multiple visual properties:
 | Weight  | Shadow              | Border      | Radius   | Motion Duration    |
 | ------- | ------------------- | ----------- | -------- | ------------------ |
 | `ghost` | None                | 1px dashed  | 0.75rem  | 100ms (snappy)     |
-| `paper` | `shadow-ink`        | 1px solid   | 0.5rem   | 150ms (default)    |
-| `card`  | `shadow-ink-strong` | 1.5px solid | 0.5rem   | 200ms (deliberate) |
-| `plate` | Deep + inset        | 2px solid   | 0.375rem | 280ms (weighty)    |
+| `paper` | `shadow-ink`        | 1px solid   | 0.75rem  | 150ms (default)    |
+| `card`  | `shadow-ink-strong` | 1.5px solid | 0.75rem  | 200ms (deliberate) |
+| `plate` | Deep + inset        | 2px solid   | 0.75rem  | 280ms (weighty)    |
 
 ### 4.5 Weight and Motion
 
@@ -266,6 +266,22 @@ Weight must feel consistent across modes, but implementation differs:
 - Plate elements get luminous edge highlights
 
 The CSS variables automatically handle these differences.
+
+### 4.8 Radius Vocabulary
+
+All `wt-*` weight classes provide **12px (0.75rem)** border-radius. Use `rounded-*` utilities only when deliberately overriding this.
+
+| Use case                                              | Class          | Value |
+| ----------------------------------------------------- | -------------- | ----- |
+| Cards, modals, buttons, large inputs                  | `rounded-lg`   | 12px  |
+| Small/dense controls (icon buttons, toolbar selects)  | `rounded-md`   | 8px   |
+| Chips, pills, badges, avatars                         | `rounded-full` | —     |
+
+**Rules:**
+
+- When a `wt-*` class is present, do not stack `rounded-lg` — the weight class already provides 12px. The utility is redundant and creates a silent cascade dependency.
+- Use a stacked `rounded-*` only for deliberate shape overrides (directional variants like `rounded-t-lg`, or dense-control 8px within a weighted container). Document the exception in a comment.
+- `rounded-full` (pills/avatars) and directional variants (`rounded-t-*`) are always valid overrides.
 
 ---
 

@@ -2,6 +2,9 @@
 
 # Design System Refactoring Status
 
+> [!WARNING]
+> **STALE — DO NOT FOLLOW.** This doc predates the Inkprint design system (blue/purple gradients, glassmorphism, cool grays — all superseded). The current source of truth is [INKPRINT_DESIGN_SYSTEM.md](./INKPRINT_DESIGN_SYSTEM.md); tokens live in `apps/web/src/lib/styles/inkprint.css`. Flagged stale in [DESIGN_AUDIT_2026-06-12.md](./DESIGN_AUDIT_2026-06-12.md).
+
 **Last Updated**: October 25, 2025
 **Status**: ✅ COMPLETE (All 3 Phases Complete)
 **Design Health Score**: 92/100 (↑ from 62/100)

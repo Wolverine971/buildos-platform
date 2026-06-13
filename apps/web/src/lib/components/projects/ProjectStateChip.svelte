@@ -19,7 +19,7 @@
 </script>
 
 <span
-	class="inline-flex items-center rounded font-semibold uppercase tracking-wide {sizeClass} {meta.chipClass} {className}"
+	class="inline-flex items-center rounded-full font-semibold uppercase tracking-wide {sizeClass} {meta.chipClass} {className}"
 	aria-label="Project state: {meta.label}"
 >
 	{meta.label}

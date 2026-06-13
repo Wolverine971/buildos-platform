@@ -57,7 +57,7 @@
 				<ProjectStateChip state={project.state_key} size="xs" />
 				{#if project.is_shared}
 					<span
-						class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent border border-accent/20"
+						class="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold bg-accent/15 text-accent border border-accent/20"
 					>
 						<Share2 class="h-2.5 w-2.5" aria-hidden="true" />
 						<span class="hidden sm:inline">

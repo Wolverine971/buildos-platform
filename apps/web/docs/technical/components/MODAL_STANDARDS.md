@@ -2,6 +2,9 @@
 
 # Modal Standards & Guidelines
 
+> [!WARNING]
+> **PARTIALLY STALE.** Templates below use Svelte 4 syntax (`export let`, `slot=`, `on:click`) and pre-Inkprint colors (`bg-blue-600`, `text-gray-700`). The base `Modal.svelte` / structural guidance is still valid, but write new code in Svelte 5 runes + Inkprint tokens, and use the living padding convention `px-3 sm:px-4 lg:px-6 py-3 sm:py-4` (see ConfirmationModal.svelte). Flagged in [DESIGN_AUDIT_2026-06-12.md](./DESIGN_AUDIT_2026-06-12.md).
+
 ## Overview
 
 All modals in the Build OS application follow a standardized approach for consistency, accessibility, and mobile responsiveness.

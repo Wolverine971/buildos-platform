@@ -83,13 +83,13 @@
 			<div class="text-sm font-medium">New Run</div>
 			<div class="flex flex-col gap-3 md:flex-row">
 				<input
-					class="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-ring transition-colors tx tx-frame tx-weak wt-paper"
+					class="flex-1 px-3 py-2 border border-border bg-background text-foreground placeholder:text-muted-foreground shadow-ink-inner focus:border-accent focus:ring-1 focus:ring-ring transition-colors tx tx-frame tx-weak wt-paper"
 					placeholder="Describe the objective..."
 					bind:value={objective}
 					onkeydown={(e) => e.key === 'Enter' && createRun()}
 				/>
 				<button
-					class="px-4 py-2 rounded-lg bg-accent text-accent-foreground font-medium shadow-ink hover:bg-accent/90 disabled:opacity-60 transition-colors pressable tx tx-grain tx-weak wt-paper"
+					class="px-4 py-2 bg-accent text-accent-foreground font-medium shadow-ink hover:bg-accent/90 disabled:opacity-60 transition-colors pressable tx tx-grain tx-weak wt-paper"
 					disabled={creating}
 					onclick={createRun}
 				>
@@ -98,7 +98,7 @@
 			</div>
 			{#if error}
 				<div
-					class="px-3 py-2 text-xs bg-destructive/10 text-destructive rounded-lg border border-destructive/30 tx tx-static tx-weak wt-paper"
+					class="px-3 py-2 text-xs bg-destructive/10 text-destructive border border-destructive/30 tx tx-static tx-weak wt-paper"
 				>
 					{error}
 				</div>

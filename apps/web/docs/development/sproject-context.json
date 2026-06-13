@@ -160,7 +160,7 @@
 		{
 			"file": "src/lib/components/project/v2/EntityTabStrip.svelte",
 			"type": "component",
-			"components": ["BriefChatModal", "ProjectGraphSection"]
+			"components": ["BriefChatModal"]
 		},
 		{
 			"file": "src/routes/admin/ontology/graph/+page.svelte",

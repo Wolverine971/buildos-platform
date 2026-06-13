@@ -116,7 +116,7 @@
 
 			<!-- single demonstration card -->
 			<div
-				class="rounded-lg border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
+				class="border border-border bg-card shadow-ink-strong tx tx-frame tx-weak overflow-hidden wt-card"
 			>
 				<div
 					class="h-10 border-b border-border tx tx-strip tx-med flex items-center px-4 micro-label"

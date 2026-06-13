@@ -2,6 +2,9 @@
 
 # BuildOS Style Guide (Legacy Reference)
 
+> [!WARNING]
+> **STALE — DO NOT FOLLOW.** This doc predates the Inkprint design system (blue/purple gradients, glassmorphism, cool grays — all superseded). The current source of truth is [INKPRINT_DESIGN_SYSTEM.md](./INKPRINT_DESIGN_SYSTEM.md); tokens live in `apps/web/src/lib/styles/inkprint.css`. Flagged stale in [DESIGN_AUDIT_2026-06-12.md](./DESIGN_AUDIT_2026-06-12.md).
+
 > **IMPORTANT: This style guide has been superseded by the Inkprint Design System.**
 >
 > **New Primary Reference:** [INKPRINT_DESIGN_SYSTEM.md](./INKPRINT_DESIGN_SYSTEM.md)

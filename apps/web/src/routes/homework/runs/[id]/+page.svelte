@@ -495,9 +495,7 @@
 	<!-- Metrics summary grid -->
 	<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 mb-4">
 		<!-- Status -->
-		<div
-			class="p-3 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak wt-paper"
-		>
+		<div class="p-3 bg-card border border-border shadow-ink tx tx-frame tx-weak wt-paper">
 			<div class="micro-label text-muted-foreground mb-1">STATUS</div>
 			<div
 				class="text-base font-semibold capitalize {run.status === 'running'
@@ -515,17 +513,13 @@
 		</div>
 
 		<!-- Iterations -->
-		<div
-			class="p-3 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak wt-paper"
-		>
+		<div class="p-3 bg-card border border-border shadow-ink tx tx-frame tx-weak wt-paper">
 			<div class="micro-label text-muted-foreground mb-1">ITERATIONS</div>
 			<div class="text-base font-semibold text-foreground">{run.iteration ?? 0}</div>
 		</div>
 
 		<!-- Cost -->
-		<div
-			class="p-3 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak wt-paper"
-		>
+		<div class="p-3 bg-card border border-border shadow-ink tx tx-frame tx-weak wt-paper">
 			<div class="micro-label text-muted-foreground mb-1">COST (LIVE)</div>
 			<div class="text-base font-semibold text-foreground">
 				${getMetric(run.metrics, 'cost_total_usd').toFixed(4)}
@@ -533,9 +527,7 @@
 		</div>
 
 		<!-- Tokens -->
-		<div
-			class="p-3 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak wt-paper"
-		>
+		<div class="p-3 bg-card border border-border shadow-ink tx tx-frame tx-weak wt-paper">
 			<div class="micro-label text-muted-foreground mb-1">TOKENS</div>
 			<div class="text-base font-semibold text-foreground">
 				{getMetric(run.metrics, 'tokens_total')}
@@ -543,17 +535,13 @@
 		</div>
 
 		<!-- Running Time -->
-		<div
-			class="p-3 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak wt-paper"
-		>
+		<div class="p-3 bg-card border border-border shadow-ink tx tx-frame tx-weak wt-paper">
 			<div class="micro-label text-muted-foreground mb-1">RUNNING TIME</div>
 			<div class="text-base font-semibold text-foreground">{formatMinutes(runningMs)}</div>
 		</div>
 
 		<!-- Budget (time) -->
-		<div
-			class="p-3 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak wt-paper"
-		>
+		<div class="p-3 bg-card border border-border shadow-ink tx tx-frame tx-weak wt-paper">
 			<div class="micro-label text-muted-foreground mb-1">BUDGET (TIME)</div>
 			<div class="text-base font-semibold text-foreground">
 				{formatMinutes(getBudget('max_wall_clock_ms') ?? null)}
@@ -561,9 +549,7 @@
 		</div>
 
 		<!-- Budget (cost) -->
-		<div
-			class="p-3 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak wt-paper"
-		>
+		<div class="p-3 bg-card border border-border shadow-ink tx tx-frame tx-weak wt-paper">
 			<div class="micro-label text-muted-foreground mb-1">BUDGET (COST)</div>
 			<div class="text-base font-semibold text-foreground">
 				{#if getBudget('max_cost_usd')}${getBudget('max_cost_usd')}{:else}—{/if}
@@ -571,9 +557,7 @@
 		</div>
 
 		<!-- Budget (tokens) -->
-		<div
-			class="p-3 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak wt-paper"
-		>
+		<div class="p-3 bg-card border border-border shadow-ink tx tx-frame tx-weak wt-paper">
 			<div class="micro-label text-muted-foreground mb-1">BUDGET (TOKENS)</div>
 			<div class="text-base font-semibold text-foreground">
 				{#if getBudget('max_total_tokens')}{getBudget('max_total_tokens')}{:else}—{/if}
@@ -585,9 +569,7 @@
 	{#if run.report}
 		<section class="mb-6">
 			<h2 class="text-lg font-semibold text-foreground mb-3">Run Report</h2>
-			<div
-				class="p-4 bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak wt-card"
-			>
+			<div class="p-4 bg-card border border-border shadow-ink tx tx-frame tx-weak wt-card">
 				<h3 class="text-base font-semibold text-foreground mb-2">
 					{run.report.title || 'Homework Report'}
 				</h3>
@@ -758,7 +740,7 @@
 				{/if}
 			</div>
 			<div
-				class="p-4 bg-card border border-border rounded-lg shadow-ink tx tx-thread tx-weak wt-paper space-y-4"
+				class="p-4 bg-card border border-border shadow-ink tx tx-thread tx-weak wt-paper space-y-4"
 			>
 				<!-- Plan Steps with Status Pills -->
 				{#if latestPlan.steps?.length}
@@ -941,9 +923,7 @@
 				<p class="text-sm text-muted-foreground">No workspace documents yet.</p>
 			</div>
 		{:else}
-			<div
-				class="p-3 bg-card border border-border rounded-lg shadow-ink tx tx-thread tx-weak wt-paper"
-			>
+			<div class="p-3 bg-card border border-border shadow-ink tx tx-thread tx-weak wt-paper">
 				{#each treeRoots as node}
 					<WorkspaceTreeNode {node} onOpenDocument={openDocumentModal} />
 				{/each}
@@ -1386,7 +1366,7 @@
 			onkeydown={(e) => e.key === 'Escape' && (showLiveModal = false)}
 		>
 			<div
-				class="bg-card border border-border rounded-lg shadow-ink-strong tx tx-frame tx-weak wt-plate w-full max-w-3xl max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem)] overflow-auto"
+				class="bg-card border border-border shadow-ink-strong tx tx-frame tx-weak wt-plate w-full max-w-3xl max-h-[calc(100dvh-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)-2rem)] overflow-auto"
 				role="document"
 			>
 				<!-- Modal Header -->

@@ -166,7 +166,7 @@
 	<div class="mx-auto flex items-center gap-2 px-4 py-2 sm:px-8">
 		<!-- Status pill -->
 		<span
-			class={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusColor}`}
+			class={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusColor}`}
 		>
 			<Globe class="w-2.5 h-2.5" />
 			{statusLabel}

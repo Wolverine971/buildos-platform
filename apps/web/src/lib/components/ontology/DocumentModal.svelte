@@ -3832,7 +3832,7 @@
 
 					{#if globalFormError}
 						<div
-							class="mx-3 mb-2 flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 rounded-lg tx tx-static tx-weak wt-card"
+							class="mx-3 mb-2 flex items-center gap-2 px-3 py-2 bg-destructive/10 border border-destructive/30 tx tx-static tx-weak wt-card"
 						>
 							<span class="text-sm text-destructive">{globalFormError}</span>
 						</div>

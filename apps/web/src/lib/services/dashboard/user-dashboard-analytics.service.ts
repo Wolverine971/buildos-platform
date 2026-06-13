@@ -18,23 +18,40 @@ import type {
 	DashboardProjectActivity,
 	DashboardTaskActivity,
 	DashboardDocumentActivity,
-	DashboardGoalActivity
+	DashboardGoalActivity,
+	DashboardActivityAction
 } from '$lib/types/dashboard-analytics';
 import { createEmptyUserDashboardAnalytics } from '$lib/types/dashboard-analytics';
 
 type TaskRow = Pick<
 	Database['public']['Tables']['onto_tasks']['Row'],
-	'id' | 'project_id' | 'title' | 'description' | 'state_key' | 'updated_at' | 'due_at'
+	| 'id'
+	| 'project_id'
+	| 'title'
+	| 'description'
+	| 'state_key'
+	| 'updated_at'
+	| 'due_at'
+	| 'created_at'
+	| 'completed_at'
 >;
 
 type DocumentRow = Pick<
 	Database['public']['Tables']['onto_documents']['Row'],
-	'id' | 'project_id' | 'title' | 'description' | 'state_key' | 'updated_at'
+	'id' | 'project_id' | 'title' | 'description' | 'state_key' | 'updated_at' | 'created_at'
 >;
 
 type GoalRow = Pick<
 	Database['public']['Tables']['onto_goals']['Row'],
-	'id' | 'project_id' | 'name' | 'description' | 'state_key' | 'updated_at' | 'target_date'
+	| 'id'
+	| 'project_id'
+	| 'name'
+	| 'description'
+	| 'state_key'
+	| 'updated_at'
+	| 'target_date'
+	| 'created_at'
+	| 'completed_at'
 >;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -139,6 +156,10 @@ function normalizeRecentTasks(raw: unknown): DashboardTaskActivity[] {
 		const projectId = toTrimmedString(entry.project_id);
 		if (!id || !projectId) return [];
 
+		const createdAt = toNullableString(entry.created_at);
+		const completedAt = toNullableString(entry.completed_at);
+		const updatedAt = toIsoTimestamp(entry.updated_at);
+
 		return [
 			{
 				id,
@@ -148,7 +169,10 @@ function normalizeRecentTasks(raw: unknown): DashboardTaskActivity[] {
 				description: toNullableString(entry.description),
 				state_key: toTrimmedString(entry.state_key) ?? '',
 				due_at: toNullableString(entry.due_at),
-				updated_at: toIsoTimestamp(entry.updated_at)
+				created_at: createdAt,
+				completed_at: completedAt,
+				updated_at: updatedAt,
+				action_label: inferActionLabel(createdAt, updatedAt, completedAt)
 			}
 		];
 	});
@@ -164,6 +188,9 @@ function normalizeRecentDocuments(raw: unknown): DashboardDocumentActivity[] {
 		const projectId = toTrimmedString(entry.project_id);
 		if (!id || !projectId) return [];
 
+		const createdAt = toNullableString(entry.created_at);
+		const updatedAt = toIsoTimestamp(entry.updated_at);
+
 		return [
 			{
 				id,
@@ -172,7 +199,9 @@ function normalizeRecentDocuments(raw: unknown): DashboardDocumentActivity[] {
 				title: toTrimmedString(entry.title) ?? 'Untitled document',
 				description: toNullableString(entry.description),
 				state_key: toTrimmedString(entry.state_key) ?? '',
-				updated_at: toIsoTimestamp(entry.updated_at)
+				created_at: createdAt,
+				updated_at: updatedAt,
+				action_label: inferActionLabel(createdAt, updatedAt, null)
 			}
 		];
 	});
@@ -188,6 +217,10 @@ function normalizeRecentGoals(raw: unknown): DashboardGoalActivity[] {
 		const projectId = toTrimmedString(entry.project_id);
 		if (!id || !projectId) return [];
 
+		const createdAt = toNullableString(entry.created_at);
+		const completedAt = toNullableString(entry.completed_at);
+		const updatedAt = toIsoTimestamp(entry.updated_at);
+
 		return [
 			{
 				id,
@@ -197,7 +230,10 @@ function normalizeRecentGoals(raw: unknown): DashboardGoalActivity[] {
 				description: toNullableString(entry.description),
 				state_key: toTrimmedString(entry.state_key) ?? '',
 				target_date: toNullableString(entry.target_date),
-				updated_at: toIsoTimestamp(entry.updated_at)
+				created_at: createdAt,
+				completed_at: completedAt,
+				updated_at: updatedAt,
+				action_label: inferActionLabel(createdAt, updatedAt, completedAt)
 			}
 		];
 	});
@@ -280,6 +316,30 @@ function normalizeDashboardAnalyticsPayload(raw: unknown): UserDashboardAnalytic
 			chatSessions
 		}
 	};
+}
+
+const CREATED_THRESHOLD_MS = 10_000;
+
+function inferActionLabel(
+	createdAt: string | null | undefined,
+	updatedAt: string | null | undefined,
+	completedAt: string | null | undefined
+): DashboardActivityAction {
+	if (completedAt) {
+		const completedMs = Date.parse(completedAt);
+		const updatedMs = Date.parse(updatedAt ?? '');
+		if (!Number.isNaN(completedMs) && !Number.isNaN(updatedMs)) {
+			if (Math.abs(completedMs - updatedMs) < CREATED_THRESHOLD_MS) return 'Completed';
+		}
+	}
+	if (createdAt && updatedAt) {
+		const createdMs = Date.parse(createdAt);
+		const updatedMs = Date.parse(updatedAt);
+		if (!Number.isNaN(createdMs) && !Number.isNaN(updatedMs)) {
+			if (Math.abs(updatedMs - createdMs) < CREATED_THRESHOLD_MS) return 'Created';
+		}
+	}
+	return 'Updated';
 }
 
 function normalizeStateKey(stateKey: string | null | undefined): string {
@@ -623,7 +683,9 @@ export async function getUserDashboardAnalytics(
 				if (projectIds.length === 0) return [] as TaskRow[];
 				const { data, error } = await client
 					.from('onto_tasks')
-					.select('id, project_id, title, description, state_key, due_at, updated_at')
+					.select(
+						'id, project_id, title, description, state_key, due_at, created_at, completed_at, updated_at'
+					)
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
 					.order('updated_at', { ascending: false })
@@ -640,7 +702,7 @@ export async function getUserDashboardAnalytics(
 				if (projectIds.length === 0) return [] as DocumentRow[];
 				const { data, error } = await client
 					.from('onto_documents')
-					.select('id, project_id, title, description, state_key, updated_at')
+					.select('id, project_id, title, description, state_key, created_at, updated_at')
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
 					.order('updated_at', { ascending: false })
@@ -657,7 +719,9 @@ export async function getUserDashboardAnalytics(
 				if (projectIds.length === 0) return [] as GoalRow[];
 				const { data, error } = await client
 					.from('onto_goals')
-					.select('id, project_id, name, description, state_key, target_date, updated_at')
+					.select(
+						'id, project_id, name, description, state_key, target_date, created_at, completed_at, updated_at'
+					)
 					.in('project_id', projectIds)
 					.is('deleted_at', null)
 					.order('updated_at', { ascending: false, nullsFirst: false })
@@ -685,37 +749,54 @@ export async function getUserDashboardAnalytics(
 		payload.snapshot.chatSessions7d = chatSessions7d;
 		payload.attention.overdueTasks = overdueTasksCount;
 
-		payload.recent.tasks = recentTasksResult.map((task) => ({
-			id: task.id,
-			project_id: task.project_id,
-			project_name: projectById.get(task.project_id)?.name ?? 'Unknown project',
-			title: task.title,
-			description: task.description,
-			state_key: task.state_key,
-			due_at: task.due_at,
-			updated_at: task.updated_at
-		}));
+		payload.recent.tasks = recentTasksResult.map((task) => {
+			const updatedAt = task.updated_at;
+			return {
+				id: task.id,
+				project_id: task.project_id,
+				project_name: projectById.get(task.project_id)?.name ?? 'Unknown project',
+				title: task.title,
+				description: task.description,
+				state_key: task.state_key,
+				due_at: task.due_at,
+				created_at: task.created_at,
+				completed_at: task.completed_at,
+				updated_at: updatedAt,
+				action_label: inferActionLabel(task.created_at, updatedAt, task.completed_at)
+			};
+		});
 
-		payload.recent.documents = recentDocumentsResult.map((document) => ({
-			id: document.id,
-			project_id: document.project_id,
-			project_name: projectById.get(document.project_id)?.name ?? 'Unknown project',
-			title: document.title,
-			description: document.description,
-			state_key: document.state_key,
-			updated_at: document.updated_at
-		}));
+		payload.recent.documents = recentDocumentsResult.map((document) => {
+			const updatedAt = document.updated_at;
+			return {
+				id: document.id,
+				project_id: document.project_id,
+				project_name: projectById.get(document.project_id)?.name ?? 'Unknown project',
+				title: document.title,
+				description: document.description,
+				state_key: document.state_key,
+				created_at: document.created_at,
+				updated_at: updatedAt,
+				action_label: inferActionLabel(document.created_at, updatedAt, null)
+			};
+		});
 
-		payload.recent.goals = recentGoalsResult.map((goal) => ({
-			id: goal.id,
-			project_id: goal.project_id,
-			project_name: projectById.get(goal.project_id)?.name ?? 'Unknown project',
-			name: goal.name,
-			description: goal.description,
-			state_key: goal.state_key,
-			target_date: goal.target_date,
-			updated_at: goal.updated_at ?? new Date(0).toISOString()
-		}));
+		payload.recent.goals = recentGoalsResult.map((goal) => {
+			const updatedAt = goal.updated_at ?? new Date(0).toISOString();
+			return {
+				id: goal.id,
+				project_id: goal.project_id,
+				project_name: projectById.get(goal.project_id)?.name ?? 'Unknown project',
+				name: goal.name,
+				description: goal.description,
+				state_key: goal.state_key,
+				target_date: goal.target_date,
+				created_at: goal.created_at,
+				completed_at: goal.completed_at,
+				updated_at: updatedAt,
+				action_label: inferActionLabel(goal.created_at, updatedAt, goal.completed_at)
+			};
+		});
 
 		payload.recent.chatSessions = toChatActivity(recentChatSessions, projectById);
 

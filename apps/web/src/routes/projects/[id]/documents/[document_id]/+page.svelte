@@ -424,7 +424,7 @@
 		>
 			<div class="min-w-0 space-y-2 sm:space-y-3">
 				<section
-					class="bg-card border border-border rounded-lg shadow-ink tx tx-grain tx-weak wt-paper sp-block overflow-hidden"
+					class="bg-card border border-border shadow-ink tx tx-grain tx-weak wt-paper sp-block overflow-hidden"
 				>
 					<div class="p-3 sm:p-4">
 						<form
@@ -498,7 +498,7 @@
 				</section>
 
 				<section
-					class="bg-card border border-border rounded-lg shadow-ink tx tx-grain tx-weak wt-paper overflow-hidden"
+					class="bg-card border border-border shadow-ink tx tx-grain tx-weak wt-paper overflow-hidden"
 				>
 					<div class="p-2 sm:p-3">
 						<RichMarkdownEditor
@@ -615,7 +615,7 @@
 				class="min-w-0 space-y-2 lg:sticky lg:top-16 lg:max-h-[calc(100vh-80px)] lg:overflow-y-auto lg:pr-1"
 			>
 				<section
-					class="bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak wt-paper sp-block overflow-hidden"
+					class="bg-card border border-border shadow-ink tx tx-frame tx-weak wt-paper sp-block overflow-hidden"
 				>
 					<div class="px-3 py-2.5 flex items-center gap-2">
 						<Button

@@ -1106,8 +1106,8 @@
 
 		<!-- Entity tabs (shared mobile + desktop). All entity surfaces live
 			 here: Briefs · Chats · Graph · Goals · Milestones · Plans · Risks
-			 · Events. Pills wrap on narrow screens. Chats and Events open
-			 modals; the rest expand inline. -->
+			 · Events. Pills wrap on narrow screens. Chats, Graph, and Events
+			 open modals; the rest expand inline. -->
 		{#if isHydrating}
 			<div class="mb-2 sm:mb-3 flex flex-wrap gap-1.5 sm:gap-2">
 				{#each Array(8) as _, i (i)}
@@ -1133,7 +1133,7 @@
 					onEditPlan={(id) => (editingPlanId = id)}
 					onEditRisk={(id) => (editingRiskId = id)}
 					onEntityClick={handleEntityClick}
-					onGraphNodeClick={handleGraphNodeClick}
+					onOpenGraph={() => (showGraphModal = true)}
 					onAddGoal={canEdit ? () => (showGoalCreateModal = true) : undefined}
 					onAddMilestoneFromGoal={canEdit ? handleAddMilestoneFromGoal : undefined}
 					onAddPlan={canEdit ? () => (showPlanCreateModal = true) : undefined}
