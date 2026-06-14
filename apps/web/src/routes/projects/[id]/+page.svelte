@@ -42,6 +42,8 @@
 	} from '$lib/services/ontology/doc-structure.service';
 	import ProjectHeaderCard from '$lib/components/project/ProjectHeaderCard.svelte';
 	import ProjectDocumentsSection from '$lib/components/project/ProjectDocumentsSection.svelte';
+	import ProjectSuggestionsPanel from '$lib/components/project/ProjectSuggestionsPanel.svelte';
+	import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 	import ProjectEventsModal from '$lib/components/project/ProjectEventsModal.svelte';
 	import RecentProjectChatsModal from '$lib/components/project/RecentProjectChatsModal.svelte';
 	import PulseStrip from '$lib/components/project/v2/PulseStrip.svelte';
@@ -1193,6 +1195,13 @@
 				/>
 			{/if}
 		</div>
+
+		<!-- Project Review (project loops) — dev-only until green-lit -->
+		{#if PROJECT_LOOPS_ENABLED && !isHydrating && project?.id}
+			<div class="mt-2 sm:mt-3">
+				<ProjectSuggestionsPanel projectId={project.id} {canEdit} />
+			</div>
+		{/if}
 
 		<!-- Documents (shared mobile + desktop) -->
 		{#if !isHydrating}

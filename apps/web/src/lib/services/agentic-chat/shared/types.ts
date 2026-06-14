@@ -41,6 +41,11 @@ export interface ServiceContext {
 	userId: string;
 	contextType: ChatContextType;
 	entityId?: string;
+	originalTurnContext?: {
+		contextType: ChatContextType;
+		entityId?: string | null;
+		entityName?: string | null;
+	};
 	plannerAgentId?: string;
 	/** Optional timing metrics record for latency tracking */
 	timingMetricsId?: string;

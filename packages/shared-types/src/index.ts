@@ -32,3 +32,6 @@ export * from './tree-agent.types';
 
 // Export external agent call gateway types
 export * from './agent-call.types';
+
+// Export Project Loops (reconciliation suggestions) types
+export * from './project-loops.types';

@@ -8,6 +8,8 @@ import { supabase } from './lib/supabase';
 import { queueConfig } from './config/queueConfig';
 import { cleanupStaleJobs } from './lib/utils/queueCleanup';
 import { queue } from './worker';
+import { PROJECT_LOOPS_ENABLED } from './config/projectLoops';
+import { enqueueEndOfDayProjectLoops } from './workers/project-loop/enqueue';
 import type { DailyBriefJobMetadata, Database } from '@buildos/shared-types';
 import { BriefBackoffCalculator } from './lib/briefBackoffCalculator';
 import { type Alert, smsAlertsService, smsMetricsService } from '@buildos/shared-utils';
@@ -173,6 +175,19 @@ export function startScheduler() {
 	cron.schedule('17 3 * * *', async () => {
 		console.log('👀 Refreshing public-page 30d view counts...');
 		await refreshPublicPage30dViewCounts();
+	});
+
+	// End-of-day project loops: reconcile active projects touched in the last
+	// 24h. No-ops unless ENABLE_PROJECT_LOOPS is set (off in prod by default).
+	cron.schedule('0 4 * * *', async () => {
+		if (!PROJECT_LOOPS_ENABLED) return;
+		console.log('🔁 Enqueuing end-of-day project loops...');
+		try {
+			const { enqueued, scanned } = await enqueueEndOfDayProjectLoops();
+			console.log(`🔁 Project loops: enqueued ${enqueued}/${scanned} active projects`);
+		} catch (error) {
+			console.error('🔁 Project loop scheduling failed:', error);
+		}
 	});
 
 	// Run queue retention cleanup on a cron schedule

@@ -211,6 +211,13 @@ export interface ProjectContextSnapshotJobMetadata {
 	force?: boolean;
 }
 
+export interface ProjectLoopJobMetadata {
+	runId: string;
+	projectId: string;
+	userId: string;
+	triggerReason: 'end_of_day' | 'burst' | 'manual';
+}
+
 export interface ProjectIconGenerationJobMetadata {
 	generationId: string;
 	projectId: string;
@@ -253,6 +260,7 @@ export interface JobMetadataMap {
 	buildos_homework: HomeworkJobMetadata;
 	buildos_tree_agent: TreeAgentJobMetadata;
 	build_project_context_snapshot: ProjectContextSnapshotJobMetadata;
+	buildos_project_loop: ProjectLoopJobMetadata;
 	generate_project_icon: ProjectIconGenerationJobMetadata;
 	project_activity_batch_flush: ProjectActivityBatchFlushJobMetadata;
 	extract_onto_asset_ocr: AssetOcrJobMetadata;

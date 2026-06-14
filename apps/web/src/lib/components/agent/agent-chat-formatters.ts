@@ -16,6 +16,18 @@ export function formatTime(date: Date): string {
 	});
 }
 
+export function formatElapsedDuration(ms?: number | null): string | null {
+	if (typeof ms !== 'number' || !Number.isFinite(ms) || ms < 0) return null;
+	if (ms < 1000) return '<1s';
+
+	const totalSeconds = Math.round(ms / 1000);
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+
+	if (minutes < 1) return `${totalSeconds}s`;
+	return `${minutes}m ${seconds}s`;
+}
+
 export function formatTokensEstimate(value?: number | null): string {
 	if (value === undefined || value === null || Number.isNaN(value)) return '0';
 	if (value >= 10000) return `${Math.round(value / 1000)}k`;

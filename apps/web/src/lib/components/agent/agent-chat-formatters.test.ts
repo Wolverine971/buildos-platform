@@ -8,6 +8,7 @@ import {
 	deriveContextOverheadTokens,
 	estimateConversationTokens,
 	estimateTokensFromText,
+	formatElapsedDuration,
 	shouldRenderAsMarkdown
 } from './agent-chat-formatters';
 
@@ -108,6 +109,13 @@ describe('agent-chat-formatters', () => {
 			estimateTokensFromText('1234') + estimateTokensFromText('1234')
 		);
 		expect(liveSnapshot.tokenBudget).toBe(DEFAULT_AGENT_CHAT_TOKEN_BUDGET);
+	});
+
+	it('formats elapsed durations without exposing raw milliseconds', () => {
+		expect(formatElapsedDuration(184)).toBe('<1s');
+		expect(formatElapsedDuration(11_580)).toBe('12s');
+		expect(formatElapsedDuration(65_000)).toBe('1m 5s');
+		expect(formatElapsedDuration(Number.NaN)).toBeNull();
 	});
 
 	it('detects GFM pipe tables as markdown content', () => {

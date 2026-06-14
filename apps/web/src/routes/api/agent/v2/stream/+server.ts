@@ -4054,6 +4054,11 @@ export const POST: RequestHandler = async ({
 								userId,
 								contextType: effectiveContextType,
 								entityId: effectiveEntityId ?? undefined,
+								originalTurnContext: {
+									contextType,
+									entityId: entityId ?? null,
+									entityName: promptContext?.projectName ?? null
+								},
 								conversationHistory: conversationHistoryForTools,
 								contextScope
 							};

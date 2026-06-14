@@ -12,6 +12,7 @@ import type { VoiceNote } from '$lib/types/voice-notes';
 import type { FastAgentPrewarmRequest } from '$lib/services/agentic-chat-v2';
 import type { FastChatContextCache } from '$lib/services/agentic-chat-v2/context-cache';
 import type { ActivityEntry, ThinkingBlockMessage, UIMessage } from './agent-chat.types';
+import { formatElapsedDuration } from './agent-chat-formatters';
 
 export type PreparedPromptClient = {
 	id: string;
@@ -533,10 +534,8 @@ function formatRestoredToolActivity(source: RestoredToolActivitySource): string 
 	const action = restoredToolAction(source);
 	const target = extractToolTarget(source);
 	const targetSuffix = target ? `: "${target}"` : '';
-	const durationSuffix =
-		typeof source.durationMs === 'number' && Number.isFinite(source.durationMs)
-			? ` (${Math.round(source.durationMs)}ms)`
-			: '';
+	const formattedDuration = formatElapsedDuration(source.durationMs);
+	const durationSuffix = formattedDuration ? ` (${formattedDuration})` : '';
 
 	if (source.success) {
 		return `${action.completed}${targetSuffix}${durationSuffix}`;

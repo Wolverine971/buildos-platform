@@ -214,12 +214,12 @@ Think of weight like paper types in a print shop:
 
 Each weight level affects multiple visual properties:
 
-| Weight  | Shadow              | Border      | Radius   | Motion Duration    |
-| ------- | ------------------- | ----------- | -------- | ------------------ |
-| `ghost` | None                | 1px dashed  | 0.75rem  | 100ms (snappy)     |
-| `paper` | `shadow-ink`        | 1px solid   | 0.75rem  | 150ms (default)    |
-| `card`  | `shadow-ink-strong` | 1.5px solid | 0.75rem  | 200ms (deliberate) |
-| `plate` | Deep + inset        | 2px solid   | 0.75rem  | 280ms (weighty)    |
+| Weight  | Shadow              | Border      | Radius  | Motion Duration    |
+| ------- | ------------------- | ----------- | ------- | ------------------ |
+| `ghost` | None                | 1px dashed  | 0.75rem | 100ms (snappy)     |
+| `paper` | `shadow-ink`        | 1px solid   | 0.75rem | 150ms (default)    |
+| `card`  | `shadow-ink-strong` | 1.5px solid | 0.75rem | 200ms (deliberate) |
+| `plate` | Deep + inset        | 2px solid   | 0.75rem | 280ms (weighty)    |
 
 ### 4.5 Weight and Motion
 
@@ -271,11 +271,11 @@ The CSS variables automatically handle these differences.
 
 All `wt-*` weight classes provide **12px (0.75rem)** border-radius. Use `rounded-*` utilities only when deliberately overriding this.
 
-| Use case                                              | Class          | Value |
-| ----------------------------------------------------- | -------------- | ----- |
-| Cards, modals, buttons, large inputs                  | `rounded-lg`   | 12px  |
-| Small/dense controls (icon buttons, toolbar selects)  | `rounded-md`   | 8px   |
-| Chips, pills, badges, avatars                         | `rounded-full` | —     |
+| Use case                                             | Class          | Value |
+| ---------------------------------------------------- | -------------- | ----- |
+| Cards, modals, buttons, large inputs                 | `rounded-lg`   | 12px  |
+| Small/dense controls (icon buttons, toolbar selects) | `rounded-md`   | 8px   |
+| Chips, pills, badges, avatars                        | `rounded-full` | —     |
 
 **Rules:**
 

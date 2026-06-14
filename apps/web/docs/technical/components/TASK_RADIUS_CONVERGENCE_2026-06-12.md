@@ -107,6 +107,7 @@ Acceptance criteria:
 All 5 steps executed. Extended sweep caught additional issues in the post-step-4 review:
 
 **Original scope (Steps 1–5) — done:**
+
 - `inkprint.css`: `--wt-paper/card/plate-radius` all → 0.75rem (from 0.5rem / 0.375rem)
 - Navigation: 6 bare `rounded` (6px) → `rounded-md`; admin badge → `rounded-full`
 - BriefChatModal: `rounded-t-2xl` → `rounded-t-lg`
@@ -116,6 +117,7 @@ All 5 steps executed. Extended sweep caught additional issues in the post-step-4
 - `DESIGN_AUDIT_2026-06-12.md`: Tier 2 item 6 marked ✅
 
 **Extended sweep (post-step-4 review) — done:**
+
 - `ProjectStateChip.svelte`: `rounded` → `rounded-full` (chips/badges rule)
 - `ProjectStateRow.svelte`: inline share badge `rounded` → `rounded-full`
 - `OwnerBar.svelte`: status pill `rounded` → `rounded-full`
@@ -125,6 +127,7 @@ All 5 steps executed. Extended sweep caught additional issues in the post-step-4
 - `routes/privacy/+page.svelte`: all card/icon containers `rounded` → `rounded-lg`
 
 **Intentionally left as bare `rounded` (6px) — documented exceptions:**
+
 - `routes/time-blocks/+page.svelte:263,275`: tab buttons inside a `rounded-md` container with `p-0.5` — the 6px is mathematically correct for nesting (inner = outer − padding).
 - Checkboxes (`h-4 w-4 rounded border-border`): HTML form input, standard browser pattern.
 - Skeleton/pulse loaders (`bg-muted rounded animate-pulse`): invisible at runtime, irrelevant.

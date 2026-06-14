@@ -15,6 +15,7 @@ Project creation playbook for turning a user idea into the smallest valid BuildO
 - The chat is in project_create mode
 - The user wants to start a new project from scratch
 - You need to infer project name, type_key, and a minimal initial graph from a rough idea
+- If the chat is already inside a project and the user asks to create/start another project, ask: "You're already in this project. Are you sure you want to create a new project?" Do not call `change_chat_context` or `create_onto_project` until they confirm.
 
 ## Workflow
 
@@ -40,6 +41,7 @@ Project creation playbook for turning a user idea into the smallest valid BuildO
 - Do not add goals, plans, milestones, risks, or documents the user did not mention.
 - Do not encode relationships as raw temp_id strings like ["g1", "t1"]. Include temp_id and kind for both sides.
 - Do not over-structure a new project just because the schema allows it.
+- Do not silently create a second project from inside an existing project chat; ask the confirmation warning first.
 
 ## Examples
 

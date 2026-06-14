@@ -56,6 +56,10 @@ import {
 } from '../shared/update-value-validation';
 
 const logger = createLogger('ToolExecutionService');
+const PROJECT_CREATE_FROM_PROJECT_CONTEXT_WARNING =
+	"You're already in this project. Are you sure you want to create a new project?";
+const PROJECT_CREATE_CONFIRMATION_MARKER =
+	'already in this project. are you sure you want to create a new project';
 const GATEWAY_TOOL_NAMES = new Set([
 	'domain_search',
 	'domain_load',
@@ -366,6 +370,15 @@ export class ToolExecutionService implements BaseService {
 		if (toolName === 'create_onto_project') {
 			args = normalizeProjectCreateArgs(args);
 		}
+		const projectCreateContextGuard = this.guardProjectCreateFromProjectContext(
+			toolName,
+			args,
+			context,
+			toolCall.id
+		);
+		if (projectCreateContextGuard) {
+			return finalizeResult(projectCreateContextGuard);
+		}
 
 		if (toolName === 'create_onto_document') {
 			const description = typeof args.description === 'string' ? args.description.trim() : '';
@@ -566,6 +579,125 @@ export class ToolExecutionService implements BaseService {
 				abortListener();
 			}
 		}
+	}
+
+	private guardProjectCreateFromProjectContext(
+		toolName: string,
+		args: Record<string, any>,
+		context: ServiceContext,
+		toolCallId: string
+	): ToolExecutionResult | null {
+		const original = context.originalTurnContext;
+		const originalProjectId =
+			original?.contextType === 'project' && typeof original.entityId === 'string'
+				? original.entityId.trim()
+				: '';
+		if (!originalProjectId) {
+			return null;
+		}
+		const originalProjectName =
+			typeof original?.entityName === 'string' && original.entityName.trim()
+				? original.entityName.trim()
+				: 'Project';
+
+		const isCreateProject = toolName === 'create_onto_project';
+		const isProjectCreationZoomOut =
+			toolName === 'change_chat_context' &&
+			this.isGlobalContextTarget(args.target) &&
+			this.isLikelyNewProjectRequest(args, context);
+		if (!isCreateProject && !isProjectCreationZoomOut) {
+			return null;
+		}
+
+		if (this.hasConfirmedNewProjectFromProjectContext(context)) {
+			return null;
+		}
+
+		return {
+			success: false,
+			error: PROJECT_CREATE_FROM_PROJECT_CONTEXT_WARNING,
+			errorType: 'validation_error',
+			toolName,
+			toolCallId,
+			data: {
+				type: 'project_creation_confirmation_required',
+				message: PROJECT_CREATE_FROM_PROJECT_CONTEXT_WARNING,
+				context_shift: {
+					new_context: 'project',
+					entity_id: originalProjectId,
+					entity_name: originalProjectName,
+					entity_type: 'project',
+					message: PROJECT_CREATE_FROM_PROJECT_CONTEXT_WARNING
+				}
+			}
+		};
+	}
+
+	private isGlobalContextTarget(value: unknown): boolean {
+		if (typeof value !== 'string') return false;
+		const normalized = value.trim().toLowerCase();
+		return normalized === 'global' || normalized === 'workspace' || normalized === 'general';
+	}
+
+	private isLikelyNewProjectRequest(args: Record<string, any>, context: ServiceContext): boolean {
+		const values = [
+			this.getLatestUserMessageText(context),
+			typeof args.reason === 'string' ? args.reason : ''
+		]
+			.join(' ')
+			.toLowerCase();
+		if (!values.includes('project')) {
+			return false;
+		}
+		return /\b(create|start|new|another|separate)\b/.test(values);
+	}
+
+	private hasConfirmedNewProjectFromProjectContext(context: ServiceContext): boolean {
+		const latestUserMessage = this.getLatestUserMessageText(context).trim().toLowerCase();
+		if (!latestUserMessage) {
+			return false;
+		}
+		if (!this.isAffirmativeProjectCreateConfirmation(latestUserMessage)) {
+			return false;
+		}
+
+		const previousAssistantMessage =
+			this.getPreviousAssistantMessageText(context).toLowerCase();
+		return previousAssistantMessage.includes(PROJECT_CREATE_CONFIRMATION_MARKER);
+	}
+
+	private isAffirmativeProjectCreateConfirmation(message: string): boolean {
+		if (/\b(no|don't|do not|cancel|stop|never mind|nevermind)\b/.test(message)) {
+			return false;
+		}
+		return /\b(yes|yeah|yep|sure|confirm|confirmed|correct|go ahead|do it|create it|make it|new project)\b/.test(
+			message
+		);
+	}
+
+	private getLatestUserMessageText(context: ServiceContext): string {
+		for (let index = context.conversationHistory.length - 1; index >= 0; index -= 1) {
+			const message = context.conversationHistory[index];
+			if (message?.role !== 'user') continue;
+			return typeof message.content === 'string' ? message.content : '';
+		}
+		return '';
+	}
+
+	private getPreviousAssistantMessageText(context: ServiceContext): string {
+		let seenLatestUser = false;
+		for (let index = context.conversationHistory.length - 1; index >= 0; index -= 1) {
+			const message = context.conversationHistory[index];
+			if (!seenLatestUser) {
+				if (message?.role === 'user') {
+					seenLatestUser = true;
+				}
+				continue;
+			}
+			if (message?.role !== 'assistant') continue;
+			return typeof message.content === 'string' ? message.content : '';
+		}
+		return '';
 	}
 
 	private logToolError(

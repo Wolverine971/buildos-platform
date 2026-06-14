@@ -5,6 +5,7 @@ import type {
 	HomeworkJobMetadata,
 	ProjectContextSnapshotJobMetadata,
 	ProjectIconGenerationJobMetadata,
+	ProjectLoopJobMetadata,
 	TreeAgentJobMetadata,
 	VoiceNoteTranscriptionJobMetadata
 } from '@buildos/shared-types';
@@ -33,6 +34,7 @@ import { processHomeworkJob } from './workers/homework/homeworkWorker';
 import { processTreeAgentJob } from './workers/tree-agent/treeAgentWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
 import { processProjectIconJob } from './workers/project-icon/projectIconWorker';
+import { processProjectLoopJob } from './workers/project-loop/projectLoopWorker';
 import { processCalendarSyncJob } from './workers/calendar/calendarSyncWorker';
 import { processBriefAudio as processBriefAudioJob } from './workers/briefAudio/briefAudioWorker';
 import { createLegacyJob } from './workers/shared/jobAdapter';
@@ -371,6 +373,22 @@ async function processProjectIcon(job: ProcessingJob<ProjectIconGenerationJobMet
 }
 
 /**
+ * Project loop (reconciliation suggestions) processor
+ */
+async function processProjectLoop(job: ProcessingJob<ProjectLoopJobMetadata>) {
+	await job.log('Project loop job received');
+
+	try {
+		const result = await processProjectLoopJob(job);
+		await job.log('Project loop job completed');
+		return result;
+	} catch (error) {
+		await job.log(`Project loop job failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
+/**
  * Calendar sync projection processor
  */
 async function processCalendarSync(job: ProcessingJob) {
@@ -430,6 +448,9 @@ export async function startWorker() {
 
 	// Register project icon generation processor
 	queue.process('generate_project_icon', processProjectIcon);
+
+	// Register project loop (reconciliation suggestions) processor
+	queue.process('buildos_project_loop', processProjectLoop);
 
 	// Register calendar sync projection processor
 	queue.process('sync_calendar', processCalendarSync);

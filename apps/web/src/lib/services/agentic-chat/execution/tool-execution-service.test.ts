@@ -257,6 +257,185 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('should warn before creating a second project from an existing project turn', async () => {
+			const projectId = '06691c72-8c01-4f77-a79f-d0ef7f40124a';
+			const guardedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'global',
+				entityId: undefined,
+				originalTurnContext: {
+					contextType: 'project',
+					entityId: projectId,
+					entityName: 'The Last Ember'
+				},
+				conversationHistory: [
+					{
+						role: 'user',
+						content:
+							'Start a blog project for a productivity tips series. I want to write 10 articles over the next 3 months.'
+					} as any
+				]
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_create_project_guard',
+				name: 'create_onto_project',
+				arguments: {
+					project: {
+						name: 'Productivity Tips Blog Series',
+						type_key: 'project.content.blog'
+					},
+					entities: [],
+					relationships: []
+				}
+			};
+			const createProjectDefinition: ChatToolDefinition = {
+				name: 'create_onto_project',
+				description: 'Create project',
+				parameters: {
+					type: 'object',
+					properties: {
+						project: { type: 'object' },
+						entities: { type: 'array' },
+						relationships: { type: 'array' }
+					},
+					required: ['project', 'entities', 'relationships']
+				}
+			};
+
+			const result = await service.executeTool(toolCall, guardedContext, [
+				createProjectDefinition
+			]);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toBe(
+				"You're already in this project. Are you sure you want to create a new project?"
+			);
+			expect(result.data).toMatchObject({
+				type: 'project_creation_confirmation_required',
+				context_shift: {
+					new_context: 'project',
+					entity_id: projectId,
+					entity_name: 'The Last Ember'
+				}
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('should warn before zooming out to create another project from a project turn', async () => {
+			const guardedContext: ServiceContext = {
+				...mockContext,
+				originalTurnContext: {
+					contextType: 'project',
+					entityId: '06691c72-8c01-4f77-a79f-d0ef7f40124a',
+					entityName: 'The Last Ember'
+				},
+				conversationHistory: [
+					{
+						role: 'user',
+						content:
+							'Start a blog project for a productivity tips series. I want to write 10 articles over the next 3 months.'
+					} as any
+				]
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_context_guard',
+				name: 'change_chat_context',
+				arguments: {
+					target: 'global',
+					reason: 'User wants to create a new blog project'
+				}
+			};
+			const changeContextDefinition: ChatToolDefinition = {
+				name: 'change_chat_context',
+				description: 'Change chat context',
+				parameters: {
+					type: 'object',
+					properties: {
+						target: { type: 'string' },
+						reason: { type: 'string' }
+					},
+					required: ['target']
+				}
+			};
+
+			const result = await service.executeTool(toolCall, guardedContext, [
+				changeContextDefinition
+			]);
+
+			expect(result.success).toBe(false);
+			expect(result.error).toBe(
+				"You're already in this project. Are you sure you want to create a new project?"
+			);
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
+		it('should allow new project creation after the user confirms the warning', async () => {
+			const confirmedContext: ServiceContext = {
+				...mockContext,
+				contextType: 'project',
+				entityId: '06691c72-8c01-4f77-a79f-d0ef7f40124a',
+				originalTurnContext: {
+					contextType: 'project',
+					entityId: '06691c72-8c01-4f77-a79f-d0ef7f40124a',
+					entityName: 'The Last Ember'
+				},
+				conversationHistory: [
+					{
+						role: 'assistant',
+						content:
+							"You're already in this project. Are you sure you want to create a new project?"
+					} as any,
+					{ role: 'user', content: 'Yes, create it as a new project.' } as any
+				]
+			};
+			const toolCall: ChatToolCall = {
+				id: 'call_confirmed_create_project',
+				name: 'create_onto_project',
+				arguments: {
+					project: {
+						name: 'Productivity Tips Blog Series',
+						type_key: 'project.content.blog'
+					},
+					entities: [],
+					relationships: []
+				}
+			};
+			const createProjectDefinition: ChatToolDefinition = {
+				name: 'create_onto_project',
+				description: 'Create project',
+				parameters: {
+					type: 'object',
+					properties: {
+						project: { type: 'object' },
+						entities: { type: 'array' },
+						relationships: { type: 'array' }
+					},
+					required: ['project', 'entities', 'relationships']
+				}
+			};
+			mockToolExecutor.mockResolvedValueOnce({
+				data: { project_id: '972064c0-c2aa-4c74-a735-313802ffd456' }
+			});
+
+			const result = await service.executeTool(toolCall, confirmedContext, [
+				createProjectDefinition
+			]);
+
+			expect(result.success).toBe(true);
+			expect(mockToolExecutor).toHaveBeenCalledWith(
+				'create_onto_project',
+				{
+					project: {
+						name: 'Productivity Tips Blog Series',
+						type_key: 'project.content.blog'
+					},
+					entities: [],
+					relationships: []
+				},
+				confirmedContext
+			);
+		});
+
 		it('should alias external_event_id to event_id for calendar update', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_calendar_external_event_alias',

@@ -159,7 +159,7 @@ describe('agent-chat-session helpers', () => {
 		expect((block as any).activities[0]).toMatchObject({
 			activityType: 'tool_call',
 			status: 'completed',
-			content: 'Created task: "Fix restored chat tool calls" (184ms)'
+			content: 'Created task: "Fix restored chat tool calls" (<1s)'
 		});
 	});
 
@@ -245,6 +245,7 @@ describe('agent-chat-session helpers', () => {
 								tool_call_id: 'call-1',
 								tool_name: 'update_onto_project',
 								success: true,
+								duration_ms: 11580,
 								arguments_preview: '{"project_name":"Website refresh"}'
 							}
 						]
@@ -256,7 +257,7 @@ describe('agent-chat-session helpers', () => {
 		expect(snapshot.messages[0]?.type).toBe('thinking_block');
 		expect((snapshot.messages[0] as any).activities[0]).toMatchObject({
 			status: 'completed',
-			content: 'Updated project: "Website refresh"'
+			content: 'Updated project: "Website refresh" (12s)'
 		});
 	});
 
@@ -336,7 +337,7 @@ describe('agent-chat-session helpers', () => {
 		expect(snapshot.messages[0]?.type).toBe('thinking_block');
 		expect((snapshot.messages[0] as any).activities[0]).toMatchObject({
 			status: 'completed',
-			content: 'Loaded project overview: "9takes" (55ms)'
+			content: 'Loaded project overview: "9takes" (<1s)'
 		});
 	});
 

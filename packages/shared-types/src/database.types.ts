@@ -9083,6 +9083,68 @@ export type Database = {
           },
         ]
       }
+      project_loop_runs: {
+        Row: {
+          chat_session_id: string | null
+          cost_usd: number | null
+          created_at: string
+          error_message: string | null
+          finished_at: string | null
+          id: string
+          project_id: string
+          queue_job_id: string | null
+          started_at: string | null
+          status: string
+          suggestion_count: number
+          summary: string | null
+          trigger_reason: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat_session_id?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          project_id: string
+          queue_job_id?: string | null
+          started_at?: string | null
+          status?: string
+          suggestion_count?: number
+          summary?: string | null
+          trigger_reason?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chat_session_id?: string | null
+          cost_usd?: number | null
+          created_at?: string
+          error_message?: string | null
+          finished_at?: string | null
+          id?: string
+          project_id?: string
+          queue_job_id?: string | null
+          started_at?: string | null
+          status?: string
+          suggestion_count?: number
+          summary?: string | null
+          trigger_reason?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_loop_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_notification_batches: {
         Row: {
           action_counts: Json
@@ -9246,6 +9308,112 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_suggestions: {
+        Row: {
+          applied_at: string | null
+          confidence: number | null
+          created_at: string
+          decided_at: string | null
+          depends_on: string | null
+          evidence_refs: Json
+          freshness_state: string
+          id: string
+          kind: string
+          operations: Json
+          preview: Json | null
+          project_id: string
+          rationale: string | null
+          result: Json | null
+          reversible: boolean | null
+          risk_tier: number
+          run_id: string
+          sort_order: number
+          source_fingerprint: string | null
+          status: string
+          title: string
+          undo_operations: Json | null
+          updated_at: string
+          user_feedback: Json | null
+          why_now: string | null
+        }
+        Insert: {
+          applied_at?: string | null
+          confidence?: number | null
+          created_at?: string
+          decided_at?: string | null
+          depends_on?: string | null
+          evidence_refs?: Json
+          freshness_state?: string
+          id?: string
+          kind: string
+          operations?: Json
+          preview?: Json | null
+          project_id: string
+          rationale?: string | null
+          result?: Json | null
+          reversible?: boolean | null
+          risk_tier?: number
+          run_id: string
+          sort_order?: number
+          source_fingerprint?: string | null
+          status?: string
+          title: string
+          undo_operations?: Json | null
+          updated_at?: string
+          user_feedback?: Json | null
+          why_now?: string | null
+        }
+        Update: {
+          applied_at?: string | null
+          confidence?: number | null
+          created_at?: string
+          decided_at?: string | null
+          depends_on?: string | null
+          evidence_refs?: Json
+          freshness_state?: string
+          id?: string
+          kind?: string
+          operations?: Json
+          preview?: Json | null
+          project_id?: string
+          rationale?: string | null
+          result?: Json | null
+          reversible?: boolean | null
+          risk_tier?: number
+          run_id?: string
+          sort_order?: number
+          source_fingerprint?: string | null
+          status?: string
+          title?: string
+          undo_operations?: Json | null
+          updated_at?: string
+          user_feedback?: Json | null
+          why_now?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_suggestions_depends_on_fkey"
+            columns: ["depends_on"]
+            isOneToOne: false
+            referencedRelation: "project_suggestions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_suggestions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_suggestions_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "project_loop_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -15182,6 +15350,7 @@ export type Database = {
         | "buildos_homework"
         | "buildos_tree_agent"
         | "build_project_context_snapshot"
+        | "buildos_project_loop"
         | "project_activity_batch_flush"
         | "generate_project_icon"
         | "extract_onto_asset_ocr"
@@ -15458,6 +15627,7 @@ export const Constants = {
         "buildos_homework",
         "buildos_tree_agent",
         "build_project_context_snapshot",
+        "buildos_project_loop",
         "project_activity_batch_flush",
         "generate_project_icon",
         "extract_onto_asset_ocr",
