@@ -50,8 +50,6 @@ Libri is the durable library and enrichment system connected to BuildOS. BuildOS
 
 - `libri.resource.resolve`
 - `libri.library.query`
-- `resolve_libri_resource`
-- `query_libri_library`
 
 ## Guardrails
 

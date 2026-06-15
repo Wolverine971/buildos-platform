@@ -20,7 +20,6 @@ const fastAgentStreamRequestBodySchema = z
 		session_id: z.string().optional(),
 		context_type: z.string().optional(),
 		entity_id: z.string().optional(),
-		ontologyEntityType: z.string().optional(),
 		attachments: z.array(looseRecord).optional(),
 		projectFocus: looseRecord.nullish(),
 		lastTurnContext: looseRecord.nullish(),

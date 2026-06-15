@@ -101,11 +101,6 @@ Lookup and sync are different jobs.
 
 ## Related Tools
 
-- `google_calendar.list_events`
-- `google_calendar.create_event`
-- `google_calendar.update_event`
-- `google_calendar.delete_event`
-- `google_calendar.freebusy`
 - `cal.event.list`
 - `cal.event.create`
 - `cal.event.update`

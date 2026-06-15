@@ -192,17 +192,13 @@ export function loadDomain(domainId: string): DomainLoadPayload | Record<string,
 				user_need: gap.userNeed,
 				summary: gap.summary
 			})) ?? [],
-		materialized_tools:
-			workCapabilities.length > 0 ||
-			domain.skills.length > 0 ||
-			(domain.resources?.length ?? 0) > 0
-				? [
-						...(workCapabilities.length > 0 ? ['work_capability_load'] : []),
-						...(domain.skills.length > 0 || (domain.resources?.length ?? 0) > 0
-							? ['resource_search']
-							: [])
-					]
-				: [],
+		materialized_tools: [
+			...(workCapabilities.length > 0
+				? ['work_capability_load', 'work_capability_search']
+				: []),
+			...(domain.skills.length > 0 ? ['skill_load'] : []),
+			...((domain.resources?.length ?? 0) > 0 ? ['resource_search'] : [])
+		],
 		next_step:
 			'Use the domain as routing context. Load a work capability when the current task needs an outcome card; load a skill only when the turn needs its workflow playbook.'
 	};

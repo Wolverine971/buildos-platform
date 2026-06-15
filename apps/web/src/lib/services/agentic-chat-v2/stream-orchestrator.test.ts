@@ -200,6 +200,79 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.finalAssistantText).toBe('Loaded the task_management skill.');
 	});
 
+	// BUG-1 (2026-06-15): skill_load surfaces canonical op names (related_ops) such
+	// as "onto.milestone.create" alongside the callable tool name
+	// "create_onto_milestone". If the model calls the op name, the on-miss path must
+	// resolve op -> callable tool, materialize it, and instruct a retry with the real
+	// name — instead of dead-ending on "Tool not available in this context".
+	it('recovers when the model calls a canonical op name instead of the callable tool name', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation === 1) {
+					// Model calls the op name, which is NOT a mounted tool.
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'onto.milestone.create',
+							{ project_id: projectId, title: 'January: Complete chapters 1-10' },
+							'op-name-call'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				if (streamInvocation === 2) {
+					// Retry with the callable tool name the orchestrator surfaced.
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'create_onto_milestone',
+							{ project_id: projectId, title: 'January: Complete chapters 1-10' },
+							'tool-name-call'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Created the January milestone.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(
+			async (call: ChatToolCall): Promise<ChatToolResult> => ({
+				tool_call_id: call.id,
+				result: { ok: true },
+				success: true
+			})
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Create a January milestone.',
+			// Lean launch surface — neither the op name nor the tool is preloaded.
+			tools: tools(['skill_search', 'domain_search']),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		const executedNames = toolExecutor.mock.calls.map(([call]) => call.function.name);
+		// The op-name call is blocked at the allow-list and never reaches the executor;
+		// the orchestrator resolves it to the callable tool, which the retry executes.
+		expect(executedNames).not.toContain('onto.milestone.create');
+		expect(executedNames).toContain('create_onto_milestone');
+		expect(result.finalAssistantText).toBe('Created the January milestone.');
+	});
+
 	it('emits a finalization guard summary when tools ran but the model gives no final text', async () => {
 		let streamInvocation = 0;
 		const emittedDeltas: string[] = [];

@@ -80,8 +80,7 @@ describe('parseFastAgentStreamRequestBody', () => {
 			context_type: 3,
 			entity_id: 4,
 			client_turn_id: 5,
-			voiceNoteGroupId: 6,
-			ontologyEntityType: 7
+			voiceNoteGroupId: 6
 		});
 		expect(result.ok).toBe(false);
 		if (!result.ok) {

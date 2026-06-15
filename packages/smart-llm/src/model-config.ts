@@ -15,6 +15,11 @@ export const GEMINI_31_FLASH_LITE_MODEL = 'google/gemini-3.1-flash-lite' as cons
 export const GEMINI_31_FLASH_LITE_PREVIEW_MODEL = 'google/gemini-3.1-flash-lite-preview' as const;
 export const ACTIVE_EXPERIMENT_MODEL = QWEN_37_PLUS_EXPERIMENT_MODEL;
 export const ACTIVE_EXPERIMENT_MODELS = [ACTIVE_EXPERIMENT_MODEL] as const;
+// Universal last-resort fallback used only when lane resolution yields no models.
+// Deliberately decoupled from ACTIVE_EXPERIMENT_MODEL so rotating the current
+// experiment never silently changes the global safety net. DeepSeek V4 Flash is a
+// stable, widely available, strong tool-caller present across the text/json/tool lanes.
+export const LAST_RESORT_MODEL = DEEPSEEK_V4_FLASH_MODEL;
 export const AGENT_STATE_RECONCILIATION_MODEL = 'qwen/qwen3.5-flash-02-23' as const;
 export const AGENT_STATE_RECONCILIATION_MODELS = [AGENT_STATE_RECONCILIATION_MODEL] as const;
 
@@ -861,21 +866,11 @@ const MODEL_ROUTES = {
 			taskExtraction: OPENROUTER_JSON_ROUTE,
 			clarification: OPENROUTER_TEXT_ROUTE
 		},
-		agentChat: {
-			planner: {
-				simple: OPENROUTER_TEXT_ROUTE,
-				complex: OPENROUTER_JSON_ROUTE,
-				toolHeavy: OPENROUTER_TOOL_ROUTE
-			},
-			executor: {
-				default: OPENROUTER_TOOL_ROUTE,
-				toolHeavy: OPENROUTER_TOOL_ROUTE
-			},
-			synthesis: {
-				simple: OPENROUTER_TEXT_ROUTE,
-				complex: OPENROUTER_TEXT_ROUTE
-			}
-		},
+		// NOTE: there is intentionally no `agentChat` recommendation here. The live
+		// agentic chat path (agentic-chat-v2 stream orchestrator) selects a lane purely
+		// from message shape (tools present -> tool_calling, etc.), not from a
+		// planner/executor/synthesis split. A descriptive split was removed 2026-06-15
+		// because it described routing that does not exist and misled readers.
 		dailyBriefs: {
 			projectBrief: OPENROUTER_TEXT_ROUTE,
 			generation: OPENROUTER_TEXT_ROUTE,

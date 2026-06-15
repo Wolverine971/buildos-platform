@@ -2526,19 +2526,6 @@
 			currentStreamController = streamController;
 			isStartingStream = false;
 
-			// Determine ontology entity type from context
-			let ontologyEntityType:
-				| 'task'
-				| 'plan'
-				| 'goal'
-				| 'document'
-				| 'milestone'
-				| 'risk'
-				| 'requirement'
-				| undefined;
-			if (requestProjectFocus && requestProjectFocus.focusType !== 'project-wide') {
-				ontologyEntityType = requestProjectFocus.focusType;
-			}
 			const matchingPrewarmedContext = prewarm.matchingFreshContext(
 				prewarm.resolveCurrentKey()
 			);
@@ -2558,7 +2545,6 @@
 					session_id: sessionForTurn.id,
 					context_type: requestContextType,
 					entity_id: requestEntityId,
-					ontologyEntityType: ontologyEntityType, // Pass entity type for ontology loading
 					attachments: streamAttachmentRefs,
 					projectFocus: requestProjectFocus,
 					lastTurnContext: lastTurnContext, // Pass last turn context for conversation continuity

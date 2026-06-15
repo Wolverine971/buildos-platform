@@ -408,14 +408,6 @@ export interface EnhancedAgentStreamRequest {
 	// Optional fields
 	session_id?: string;
 	entity_id?: string;
-	ontologyEntityType?:
-		| 'task'
-		| 'plan'
-		| 'goal'
-		| 'document'
-		| 'milestone'
-		| 'risk'
-		| 'requirement';
 	lastTurnContext?: LastTurnContext;
 	projectFocus?: ProjectFocus | null;
 	conversation_history?: ChatMessage[];

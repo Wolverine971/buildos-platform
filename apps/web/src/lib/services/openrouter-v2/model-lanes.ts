@@ -3,7 +3,7 @@
 import {
 	ACTIVE_RUNTIME_MODEL_SET,
 	ensureToolCompatibleModels,
-	ACTIVE_EXPERIMENT_MODEL,
+	LAST_RESORT_MODEL,
 	type JSONProfile,
 	MODEL_CATALOG,
 	OPENROUTER_V2_JSON_MODELS,
@@ -166,7 +166,7 @@ export function resolveLaneModels(params: ResolveLaneModelsParams): string[] {
 		return merged;
 	}
 
-	return [ACTIVE_EXPERIMENT_MODEL];
+	return [LAST_RESORT_MODEL];
 }
 
 export function resolveLaneReasoning(lane: ModelLane):

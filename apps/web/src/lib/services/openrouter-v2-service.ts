@@ -5,7 +5,7 @@ import { env as dynamicEnv } from '$env/dynamic/private';
 import {
 	analyzeComplexity,
 	estimateResponseLength,
-	ACTIVE_EXPERIMENT_MODEL,
+	LAST_RESORT_MODEL,
 	KIMI_EXPERIMENT_MODEL,
 	resolveModelPricingProfile,
 	repairTruncatedJSONResponse,
@@ -1112,7 +1112,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		const providersAttempted = new Set<string>();
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
-			const model = laneModels[modelAttempt] || laneModels[0] || ACTIVE_EXPERIMENT_MODEL;
+			const model = laneModels[modelAttempt] || laneModels[0] || LAST_RESORT_MODEL;
 			const models = [
 				model,
 				...laneModels.slice(modelAttempt + 1).filter((entry) => entry !== model)
@@ -1327,7 +1327,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		const providersAttempted = new Set<string>();
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
-			const model = laneModels[attempt] || laneModels[0] || ACTIVE_EXPERIMENT_MODEL;
+			const model = laneModels[attempt] || laneModels[0] || LAST_RESORT_MODEL;
 			const models = [
 				model,
 				...laneModels.slice(attempt + 1).filter((entry) => entry !== model)
@@ -1523,7 +1523,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		const maxAttempts = Math.max(laneModels.length, 1);
 		let lastError: Error | null = null;
 		let streamResponse: Response | null = null;
-		let resolvedModel = laneModels[0] || ACTIVE_EXPERIMENT_MODEL;
+		let resolvedModel = laneModels[0] || LAST_RESORT_MODEL;
 		let resolvedProvider: string | undefined;
 		let requestModelForStartedStream = resolvedModel;
 		let routingModelsForStartedStream = [...laneModels];
@@ -1540,7 +1540,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		const startTime = performance.now();
 
 		for (let attempt = 0; attempt < maxAttempts; attempt++) {
-			const model = laneModels[attempt] || laneModels[0] || ACTIVE_EXPERIMENT_MODEL;
+			const model = laneModels[attempt] || laneModels[0] || LAST_RESORT_MODEL;
 			const models = [
 				model,
 				...laneModels.slice(attempt + 1).filter((entry) => entry !== model)
@@ -1595,7 +1595,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 			);
 			for (let attempt = 0; attempt < Math.max(fallbackLaneModels.length, 1); attempt++) {
 				const model =
-					fallbackLaneModels[attempt] || fallbackLaneModels[0] || ACTIVE_EXPERIMENT_MODEL;
+					fallbackLaneModels[attempt] || fallbackLaneModels[0] || LAST_RESORT_MODEL;
 				const models = [
 					model,
 					...fallbackLaneModels.slice(attempt + 1).filter((entry) => entry !== model)

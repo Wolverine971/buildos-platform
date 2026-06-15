@@ -25,7 +25,6 @@ export type FastAgentStreamRequest = {
 	session_id?: string;
 	context_type?: ChatContextType;
 	entity_id?: string;
-	ontologyEntityType?: string;
 	attachments?: ChatAttachmentRef[];
 	projectFocus?: ProjectFocus | null;
 	lastTurnContext?: LastTurnContext | null;

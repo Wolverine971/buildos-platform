@@ -1226,19 +1226,39 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 				let result: ChatToolResult;
 				if (!allowedToolNames.has(toolCall.function.name)) {
-					const addedToolNames = gatewayModeActive
+					const requestedName = toolCall.function.name;
+					let addedToolNames = gatewayModeActive
 						? materializeDirectTools(
-								[toolCall.function.name],
-								`The tool "${toolCall.function.name}" was not preloaded.`
+								[requestedName],
+								`The tool "${requestedName}" was not preloaded.`
 							)
 						: [];
+					// The model sometimes calls a canonical op name (e.g. "onto.task.update")
+					// instead of the callable tool name surfaced as a skill's related op.
+					// Resolve op -> tool and materialize the callable tool so the next round
+					// can succeed, instead of dead-ending on "tool not available".
+					let resolvedOpToolName: string | null = null;
+					if (gatewayModeActive && addedToolNames.length === 0) {
+						const opToolName =
+							getToolRegistry().ops[normalizeGatewayOpName(requestedName)]?.tool_name;
+						if (opToolName && opToolName !== requestedName) {
+							addedToolNames = materializeDirectTools(
+								[opToolName],
+								`"${requestedName}" is an op reference, not a callable tool.`
+							);
+							if (addedToolNames.length > 0) {
+								resolvedOpToolName = opToolName;
+							}
+						}
+					}
 					result = {
 						tool_call_id: originalToolCall.id,
 						result: null,
 						success: false,
-						error:
-							addedToolNames.length > 0
-								? `Tool "${toolCall.function.name}" is now loaded for this turn. Retry with the direct tool and exact arguments.`
+						error: resolvedOpToolName
+							? `"${requestedName}" is an op name. Call "${resolvedOpToolName}" instead with the exact arguments.`
+							: addedToolNames.length > 0
+								? `Tool "${requestedName}" is now loaded for this turn. Retry with the direct tool and exact arguments.`
 								: 'Tool not available in this context'
 					};
 				} else {

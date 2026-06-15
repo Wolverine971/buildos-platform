@@ -63,7 +63,11 @@ describe('domain discovery', () => {
 		expect(result.work_capability_ids).toEqual(
 			expect.arrayContaining(['cold_email_campaign_build', 'cold_email_sender_readiness'])
 		);
-		expect(result.materialized_tools).toEqual(['work_capability_load', 'resource_search']);
+		expect(result.materialized_tools).toEqual([
+			'work_capability_load',
+			'work_capability_search',
+			'skill_load'
+		]);
 		expect(result.boundaries.join(' ')).toContain('child skills');
 	});
 
