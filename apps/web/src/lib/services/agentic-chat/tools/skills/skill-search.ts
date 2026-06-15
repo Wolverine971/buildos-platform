@@ -164,6 +164,10 @@ export function searchSkills(options: SkillSearchOptions = {}): Record<string, u
 		},
 		total_matches: matches.length,
 		matches,
+		// Auto-mount skill_load so the search -> load hop is round-free and does not
+		// depend on a weaker model correctly recovering from an "unknown tool" miss.
+		// No-op when skill_load is already on the surface (non-lean discovery).
+		materialized_tools: ['skill_load'],
 		next_step:
 			'Pick the most relevant root skill by default. Load a child skill only when the user intent or loaded root skill makes that narrow lens clear.'
 	};

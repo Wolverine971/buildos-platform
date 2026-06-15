@@ -153,18 +153,25 @@ describe('buildLitePromptEnvelope', () => {
 		expect(envelope.systemPrompt).toContain(
 			'Use domains to orient the conversation, not to preload everything.'
 		);
-		expect(envelope.systemPrompt).toContain(
+		// The full 13-domain index is no longer inlined (2026-06-14 Tier 2 item 6):
+		// it is replaced by a domain_search pointer; the relevant domain is still
+		// injected on demand via the Active Domain Signals section.
+		expect(envelope.systemPrompt).toContain('call `domain_search` to browse them');
+		expect(envelope.systemPrompt).not.toContain(
 			'Compact domain index (load domain details only when relevant):'
 		);
-		expect(envelope.systemPrompt).toContain('`marketing.youtube_growth`');
-		expect(envelope.systemPrompt).toContain('Coverage: partial.');
+		expect(envelope.systemPrompt).not.toContain('Coverage: partial.');
 		expect(envelope.systemPrompt).toContain(
 			'Use resource_search only after it is exposed by a loaded domain, work capability, or skill-linked resource path.'
 		);
 		expect(envelope.systemPrompt).toContain('Root skill catalog');
-		expect(envelope.systemPrompt).toContain('Registered child skills');
 		expect(envelope.systemPrompt).toContain('| `task_management` |');
-		expect(envelope.systemPrompt).toContain('| `task_state_updates` | `task_management` |');
+		// Child skills are no longer inlined as a table (2026-06-14 Tier 1): they
+		// stay discoverable via skill_search / loading the matching root skill
+		// instead of paying the ~23-row table cost on every turn.
+		expect(envelope.systemPrompt).toContain('Some root skills expose child skills');
+		expect(envelope.systemPrompt).not.toContain('Registered child skills');
+		expect(envelope.systemPrompt).not.toContain('| `task_state_updates` | `task_management` |');
 		expect(envelope.systemPrompt).toContain(
 			'Use skill_reference_load only for a reference_modules entry returned by skill_load.'
 		);
@@ -821,8 +828,9 @@ describe('buildLitePromptEnvelope', () => {
 		const section = envelope.sections.find((s) => s.id === 'capabilities_skills_tools');
 		expect(section?.content).toContain('| Root Skill ID | Description |');
 		expect(section?.content).toContain('|---|---|');
-		expect(section?.content).toContain('| Child Skill ID | Parent | Description |');
-		expect(section?.content).toContain('|---|---|---|');
+		// Child-skill table removed (2026-06-14 Tier 1) — only the root table remains.
+		expect(section?.content).not.toContain('| Child Skill ID | Parent | Description |');
+		expect(section?.content).not.toContain('|---|---|---|');
 		expect(section?.content).toMatch(/\|\s*`\w+`\s*\|/);
 		expect(section?.content).not.toContain('Skill metadata:');
 	});

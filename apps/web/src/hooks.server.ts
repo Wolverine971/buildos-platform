@@ -1,5 +1,6 @@
 // apps/web/src/hooks.server.ts
 import { json, redirect } from '@sveltejs/kit';
+import { sequence } from '@sveltejs/kit/hooks';
 import type { Handle, HandleServerError, RequestEvent } from '@sveltejs/kit';
 import { env as privateEnv } from '$env/dynamic/private';
 import { createSupabaseServer } from '$lib/supabase';
@@ -700,8 +701,39 @@ const handleSupabase: Handle = async ({ event, resolve }) => {
 	return response;
 };
 
-// Export handle
-export const handle = handleSupabase;
+// Security headers applied to every response.
+//
+// These live here rather than in vercel.json on purpose: @sveltejs/adapter-vercel
+// emits its own Build Output API config (.vercel/output/config.json), which causes
+// Vercel to ignore the `headers` block in vercel.json (only crons/buildCommand/
+// installCommand are still honored from that file). Setting them in the handle hook
+// guarantees they reach every SSR response.
+const SECURITY_HEADERS: Record<string, string> = {
+	'X-Frame-Options': 'DENY',
+	'X-Content-Type-Options': 'nosniff',
+	'Referrer-Policy': 'strict-origin-when-cross-origin',
+	// microphone=(self) keeps in-app voice notes working; camera/geolocation stay off.
+	'Permissions-Policy': 'camera=(), microphone=(self), geolocation=()'
+};
+
+const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
+	const response = await resolve(event);
+	for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+		response.headers.set(key, value);
+	}
+	// HSTS only over HTTPS (skip on local http dev to avoid pinning localhost).
+	if (!dev) {
+		response.headers.set(
+			'Strict-Transport-Security',
+			'max-age=63072000; includeSubDomains; preload'
+		);
+	}
+	return response;
+};
+
+// Export handle — security headers wrap handleSupabase so they apply to every
+// response, including handleSupabase's early returns.
+export const handle = sequence(handleSecurityHeaders, handleSupabase);
 
 // PERFORMANCE: Optimized error handler with minimal logging overhead
 export const handleError: HandleServerError = async ({ error, event }) => {

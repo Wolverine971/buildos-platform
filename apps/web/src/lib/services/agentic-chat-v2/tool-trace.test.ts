@@ -107,6 +107,9 @@ describe('classifyTraceEntry', () => {
 	it('classifies discovery tools as read_discovery', () => {
 		expect(classifyTraceEntry(entry('skill_load'))).toBe('read_discovery');
 		expect(classifyTraceEntry(entry('tool_search'))).toBe('read_discovery');
+		// Lean-discovery launch entry points are discovery tools too (2026-06-14).
+		expect(classifyTraceEntry(entry('skill_search'))).toBe('read_discovery');
+		expect(classifyTraceEntry(entry('domain_search'))).toBe('read_discovery');
 	});
 
 	it('classifies onto/calendar mutations and context change as write', () => {

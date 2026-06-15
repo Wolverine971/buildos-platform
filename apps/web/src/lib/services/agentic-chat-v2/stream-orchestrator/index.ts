@@ -179,10 +179,19 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let allowedToolNames = new Set(
 		tools.map((tool) => tool.function?.name).filter((name): name is string => Boolean(name))
 	);
+	// "Gateway mode" arms on-demand tool materialization (on-miss + discover-then-load)
+	// and the gateway recovery/repair machinery. It must key off discovery tools that
+	// actually remain on the launch surface. Under lean discovery (Tier 2 item 4) only
+	// skill_search + domain_search mount at launch, so recognize those too — otherwise
+	// removing tool_search/tool_schema/skill_load from launch would silently disable
+	// on-demand loading. Behavior-identical when lean discovery is off, because those
+	// entry tools co-mount with the full discovery set today.
 	const gatewayModeActive =
 		allowedToolNames.has('tool_search') ||
 		allowedToolNames.has('tool_schema') ||
-		allowedToolNames.has('skill_load');
+		allowedToolNames.has('skill_load') ||
+		allowedToolNames.has('skill_search') ||
+		allowedToolNames.has('domain_search');
 	const maxToolRounds = Math.max(1, params.maxToolRounds ?? FASTCHAT_LIMITS.MAX_TOOL_ROUNDS);
 	const maxToolCalls = Math.max(1, params.maxToolCalls ?? FASTCHAT_LIMITS.MAX_TOOL_CALLS);
 	const maxValidationRepairRounds = gatewayModeActive ? 3 : 2;

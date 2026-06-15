@@ -125,6 +125,81 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(result.finalAssistantText).toBe('Created the January milestone.');
 	});
 
+	// Lean discovery (Tier 2 item 4): when only skill_search + domain_search mount at
+	// launch, a skill_load call must still resolve via on-miss materialization. This
+	// fails under the pre-2026-06-14 gatewayModeActive definition (which keyed only off
+	// tool_search/tool_schema/skill_load and would be false for a lean launch surface).
+	it('materializes skill_load on miss when only the lean discovery surface is mounted', async () => {
+		let streamInvocation = 0;
+		const llm = {
+			streamText: vi.fn(async function* () {
+				streamInvocation += 1;
+				if (streamInvocation <= 2) {
+					// First call misses (not preloaded); second is the retry after the
+					// orchestrator materializes it.
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'skill_load',
+							{ skill: 'task_management' },
+							`skill_load:attempt-${streamInvocation}`
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+				yield { type: 'text', content: 'Loaded the task_management skill.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const executedSkillLoadWithTools: boolean[] = [];
+		const toolExecutor = vi.fn(
+			async (
+				call: ChatToolCall,
+				availableTools?: ChatToolDefinition[]
+			): Promise<ChatToolResult> => {
+				const availableToolNames = new Set(
+					(availableTools ?? [])
+						.map((tool) => tool.function?.name)
+						.filter((name): name is string => Boolean(name))
+				);
+				if (call.function.name === 'skill_load') {
+					executedSkillLoadWithTools.push(availableToolNames.has('skill_load'));
+					return {
+						tool_call_id: call.id,
+						result: { type: 'skill', skill: 'task_management' },
+						success: true
+					};
+				}
+				return { tool_call_id: call.id, result: { ok: true }, success: true };
+			}
+		);
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Load the task management skill.',
+			// Lean launch surface — the other discovery tools are NOT preloaded.
+			tools: tools(['skill_search', 'domain_search']),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		// skill_load reached the executor (it was materialized on miss) and was present
+		// on the surface at execution time.
+		expect(toolExecutor.mock.calls.some(([call]) => call.function.name === 'skill_load')).toBe(
+			true
+		);
+		expect(executedSkillLoadWithTools.some((present) => present)).toBe(true);
+		expect(result.finalAssistantText).toBe('Loaded the task_management skill.');
+	});
+
 	it('emits a finalization guard summary when tools ran but the model gives no final text', async () => {
 		let streamInvocation = 0;
 		const emittedDeltas: string[] = [];

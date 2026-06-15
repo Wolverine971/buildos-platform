@@ -14,7 +14,7 @@
 		"dev:split": "concurrently \"pnpm run dev:fast\" \"pnpm run check:watch\"",
 		"dev:profile": "NODE_OPTIONS='--inspect' pnpm run dev",
 		"build:deps": "pnpm --filter @buildos/web^... build",
-		"build": "svelte-kit sync && pnpm run build:deps && vite build",
+		"build": "pnpm run gen:blog-context && pnpm run gen:sitemap && svelte-kit sync && pnpm run build:deps && vite build",
 		"build:prod": "svelte-kit sync && NODE_ENV=production vite build",
 		"build:analyze": "ANALYZE=true vite build",
 		"build:log": "node scripts/build-logger.js",

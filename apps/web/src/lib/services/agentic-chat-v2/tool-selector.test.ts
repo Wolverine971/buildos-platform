@@ -40,6 +40,39 @@ describe('selectFastChatTools', () => {
 		expect(names).not.toContain('resolve_libri_resource');
 	});
 
+	it('mounts only skill_search + domain_search at launch under FASTCHAT_LEAN_DISCOVERY', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+		vi.stubEnv('FASTCHAT_LEAN_DISCOVERY', 'true');
+
+		const names = selectFastChatTools({ contextType: 'global' })
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		// Lean launch keeps the two discovery entry points...
+		expect(names).toContain('skill_search');
+		expect(names).toContain('domain_search');
+		// ...and drops the step-2 discovery tools from launch (they load on demand
+		// via the orchestrator's on-miss + discover-then-load paths).
+		expect(names).not.toContain('skill_load');
+		expect(names).not.toContain('skill_reference_load');
+		expect(names).not.toContain('tool_search');
+		expect(names).not.toContain('tool_schema');
+		// Direct tools are unaffected by the discovery trim.
+		expect(names).toContain('get_workspace_overview');
+		expect(names).toContain('search_onto_projects');
+	});
+
+	it('keeps project-create minimal unaffected by lean discovery', () => {
+		vi.stubEnv('LIBRI_INTEGRATION_ENABLED', 'true');
+		vi.stubEnv('FASTCHAT_LEAN_DISCOVERY', 'true');
+
+		const names = selectFastChatTools({ contextType: 'project_create' })
+			.map((tool) => tool.function?.name)
+			.filter(Boolean);
+
+		expect(names).toEqual(['create_onto_project']);
+	});
+
 	it('materializes work capability gateway tools without preloading them', () => {
 		const currentTools = selectFastChatTools({ contextType: 'global' });
 		const materialized = materializeGatewayTools(currentTools, [

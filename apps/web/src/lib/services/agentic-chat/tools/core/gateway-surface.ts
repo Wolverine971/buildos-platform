@@ -23,6 +23,23 @@ const GATEWAY_DISCOVERY_TOOL_NAMES = [
 	'tool_schema'
 ] as const;
 
+// Lean launch discovery set (2026-06-14, Tier 2 item 4). When FASTCHAT_LEAN_DISCOVERY
+// is on, only these two discovery entry points mount at turn start. The remaining
+// discovery tools (skill_load, skill_reference_load, tool_search, tool_schema) — and
+// any direct tool the model reaches for that was not preloaded — are materialized on
+// demand by the orchestrator (on-miss + discover-then-load paths). This keeps the
+// opening tool menu small without losing any capability.
+const GATEWAY_LAUNCH_DISCOVERY_TOOL_NAMES = ['skill_search', 'domain_search'] as const;
+
+const FASTCHAT_LEAN_DISCOVERY_ENV = 'FASTCHAT_LEAN_DISCOVERY';
+
+function isLeanDiscoveryEnabled(): boolean {
+	if (typeof process === 'undefined' || !process.env) return false;
+	const raw = process.env[FASTCHAT_LEAN_DISCOVERY_ENV];
+	if (!raw) return false;
+	return ['1', 'true', 'yes', 'on'].includes(String(raw).trim().toLowerCase());
+}
+
 export const GATEWAY_SURFACE_PROFILE_NAMES = [
 	'global_basic',
 	'global_write',
@@ -192,9 +209,12 @@ export function getGatewayDirectToolNamesForContextType(contextType: ChatContext
 }
 
 function getGatewayDiscoveryTools(): ChatToolDefinition[] {
-	return GATEWAY_DISCOVERY_TOOL_NAMES.map((name) => GATEWAY_TOOL_DEFINITION_MAP.get(name)).filter(
-		(tool): tool is ChatToolDefinition => Boolean(tool)
-	);
+	const names = isLeanDiscoveryEnabled()
+		? GATEWAY_LAUNCH_DISCOVERY_TOOL_NAMES
+		: GATEWAY_DISCOVERY_TOOL_NAMES;
+	return names
+		.map((name) => GATEWAY_TOOL_DEFINITION_MAP.get(name))
+		.filter((tool): tool is ChatToolDefinition => Boolean(tool));
 }
 
 export function getGatewaySurfaceForContextType(

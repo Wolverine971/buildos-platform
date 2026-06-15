@@ -13,6 +13,9 @@ describe('skill search', () => {
 		expect(result.matches[0]).toMatchObject({
 			skill_id: 'cold_email_deliverability_readiness'
 		});
+		// Auto-mounts skill_load so the search -> load hop is round-free under lean
+		// discovery (Tier 2 item 4).
+		expect(result.materialized_tools).toContain('skill_load');
 	});
 
 	it('filters skills through a domain card', () => {

@@ -33,6 +33,8 @@ const MAX_PERSISTED_TOOL_ARGUMENT_PREVIEW_CHARS = 420;
 const MAX_PERSISTED_TOOL_RESULT_PREVIEW_CHARS = 600;
 
 const GATEWAY_DISCOVERY_TOOL_NAMES_FOR_TRACE = new Set([
+	'skill_search',
+	'domain_search',
 	'skill_load',
 	'tool_search',
 	'tool_schema'

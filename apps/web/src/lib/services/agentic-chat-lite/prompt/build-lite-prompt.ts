@@ -6,10 +6,9 @@ import {
 	renderDomainSensingPromptContent,
 	senseDomains
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
-import { listDomains } from '$lib/services/agentic-chat/tools/domains/catalog';
 import { extractToolNamesFromDefinitions } from '$lib/services/agentic-chat/tools/core/tools.config';
 import { listCapabilities } from '$lib/services/agentic-chat/tools/registry/capability-catalog';
-import { listChildSkills, listRootSkills } from '$lib/services/agentic-chat/tools/skills/registry';
+import { listRootSkills } from '$lib/services/agentic-chat/tools/skills/registry';
 import type {
 	FastChatProjectIntelligence,
 	FastChatRecentChange,
@@ -93,7 +92,7 @@ const PROJECT_ANALYSIS_SKILL_GUIDANCE_LITE = [
 const PROJECT_CREATE_WORKFLOW_LITE = [
 	'Project creation workflow:',
 	'- The project_creation workflow is preloaded here and create_onto_project is already available. Do not spend a separate round on skill_load, tool_search, or tool_schema when the user message gives enough signal to create.',
-	'- Turn a rough idea into the smallest valid project structure with a clear name, type_key, description / props, and only the entities and relationships the user actually described.',
+	'- Turn a rough idea into the smallest valid project structure with a clear name, type_key, description / props (use snake_case prop keys), and only the entities and relationships the user actually described.',
 	'- project.type_key must start with "project.", for example project.creative.novel.',
 	'- Always include entities: [] and relationships: [] arrays even when empty.',
 	'- If the user stated an outcome, add one goal. If they listed concrete actions, add only those task entities. Add plans or milestones only when they clearly described workstreams, phases, or date-driven structure.',
@@ -301,11 +300,7 @@ function buildLocationLoadedContextSection(
 				'Project creation scope:',
 				'- This chat is in project_create mode before a project exists.',
 				'- The direct create_onto_project tool is preloaded as the project creation execution surface.',
-				'- Use the user message as the source of truth for the new project; call create_onto_project directly once project.name and project.type_key can be inferred.',
-				'- Minimum valid payload: project { name, type_key }, entities: [], relationships: []. Always include all three top-level fields.',
-				'- Put concrete details in project.description and project.props when the user provided them. Use snake_case prop keys.',
-				'- Add one goal only when the user stated an outcome. Add task entities only for concrete actions the user actually mentioned.',
-				'- Ask at most one clarifying question only when the project cannot be named or classified at all.',
+				'- Use the project_creation workflow in Current Focus and Purpose above as the single source for the create_onto_project payload; do not restate those rules here.',
 				data ? ['', serializeLoadedContext(data)].join('\n') : null
 			]
 				.filter(Boolean)
@@ -493,31 +488,14 @@ function buildCapabilitiesSkillsToolsSection(): LitePromptSection {
 	const capabilities = listCapabilities('available').map(
 		(capability) => `${capability.name}: ${capability.summary}`
 	);
-	const domainIndexRows = listDomains()
-		.sort((a, b) => a.id.localeCompare(b.id))
-		.map((domain) => {
-			const summary = truncateText(domain.summary, 150) ?? domain.summary;
-			return `\`${domain.id}\`: ${summary} Coverage: ${domain.coverageStatus}.`;
-		});
 	const rootSkillRows = listRootSkills()
 		.sort((a, b) => a.id.localeCompare(b.id))
 		.map((skill) => `| \`${skill.id}\` | ${skill.summary} |`);
-	const childSkillRows = listChildSkills()
-		.sort((a, b) => a.id.localeCompare(b.id))
-		.map((skill) => `| \`${skill.id}\` | \`${skill.parentId ?? ''}\` | ${skill.summary} |`);
 
 	const rootSkillTable =
 		rootSkillRows.length > 0
 			? ['| Root Skill ID | Description |', '|---|---|', ...rootSkillRows].join('\n')
 			: 'No root skills are registered.';
-	const childSkillTable =
-		childSkillRows.length > 0
-			? [
-					'| Child Skill ID | Parent | Description |',
-					'|---|---|---|',
-					...childSkillRows
-				].join('\n')
-			: 'No child skills are registered.';
 
 	return makeSection({
 		id: 'capabilities_skills_tools',
@@ -539,16 +517,13 @@ function buildCapabilitiesSkillsToolsSection(): LitePromptSection {
 			'Capabilities:',
 			formatBullets(capabilities, 'No capabilities are registered.'),
 			'',
-			'Compact domain index (load domain details only when relevant):',
-			formatBullets(domainIndexRows, 'No domains are registered.'),
+			'Domains are the subject areas BuildOS can route into. The full list is not inlined here to keep the seed lean; call `domain_search` to browse them, and the Active Domain Signals section surfaces the relevant domain automatically when your message names one.',
 			'',
 			'Root skill catalog (use `skill_load` to fetch the playbook):',
 			'',
 			rootSkillTable,
 			'',
-			'Registered child skills (load only when the root skill or user intent makes the niche clear):',
-			'',
-			childSkillTable,
+			'Some root skills expose child skills for narrower niches. Child skills are not listed here to keep the seed lean; discover them with `skill_search` or by loading the matching root skill, then `skill_load` a child only when the niche clearly matches.',
 			'',
 			'See Operating Strategy for when to call `skill_load`. Tool names live in the tool surface section below.'
 		].join('\n')
