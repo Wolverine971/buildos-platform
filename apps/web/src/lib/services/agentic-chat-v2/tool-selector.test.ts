@@ -6,6 +6,7 @@ import {
 	getGatewaySurfaceForProfile,
 	materializeGatewayTools
 } from '$lib/services/agentic-chat/tools/core/gateway-surface';
+import { GATEWAY_TOOL_DEFINITIONS } from '$lib/services/agentic-chat/tools/core/definitions/gateway';
 import { selectFastChatTools } from './tool-selector';
 
 afterEach(() => {
@@ -21,6 +22,8 @@ describe('selectFastChatTools', () => {
 
 		expect(names).toContain('domain_search');
 		expect(names).not.toContain('domain_load');
+		expect(names).not.toContain('outcome_card_search');
+		expect(names).not.toContain('outcome_card_load');
 		expect(names).not.toContain('work_capability_search');
 		expect(names).not.toContain('work_capability_load');
 		expect(names).toContain('skill_search');
@@ -73,17 +76,46 @@ describe('selectFastChatTools', () => {
 		expect(names).toEqual(['create_onto_project']);
 	});
 
-	it('materializes work capability gateway tools without preloading them', () => {
+	it('materializes outcome card gateway tools without preloading them', () => {
+		const currentTools = selectFastChatTools({ contextType: 'global' });
+		const materialized = materializeGatewayTools(currentTools, [
+			'outcome_card_search',
+			'outcome_card_load'
+		]);
+
+		expect(materialized.addedToolNames).toEqual(['outcome_card_search', 'outcome_card_load']);
+	});
+
+	it('normalizes legacy work capability materialization names to outcome cards', () => {
 		const currentTools = selectFastChatTools({ contextType: 'global' });
 		const materialized = materializeGatewayTools(currentTools, [
 			'work_capability_search',
 			'work_capability_load'
 		]);
 
-		expect(materialized.addedToolNames).toEqual([
+		expect(materialized.addedToolNames).toEqual(['outcome_card_search', 'outcome_card_load']);
+	});
+
+	it('dedupes legacy and canonical outcome card materialization names', () => {
+		const currentTools = selectFastChatTools({ contextType: 'global' });
+		const materialized = materializeGatewayTools(currentTools, [
+			'work_capability_load',
+			'outcome_card_load',
 			'work_capability_search',
-			'work_capability_load'
+			'outcome_card_search'
 		]);
+
+		expect(materialized.addedToolNames).toEqual(['outcome_card_load', 'outcome_card_search']);
+	});
+
+	it('treats legacy current tools as already satisfying canonical outcome card requests', () => {
+		const legacyCurrentTools = GATEWAY_TOOL_DEFINITIONS.filter(
+			(tool) => tool.function?.name === 'work_capability_load'
+		);
+		const materialized = materializeGatewayTools(legacyCurrentTools, ['outcome_card_load']);
+
+		expect(materialized.addedToolNames).toEqual([]);
+		expect(materialized.tools).toHaveLength(1);
 	});
 
 	it('keeps project context on the basic read profile', () => {
@@ -250,9 +282,9 @@ describe('selectFastChatTools', () => {
 			extractGatewayMaterializedToolNames({
 				type: 'domain',
 				domain_id: 'product_and_design.ui_ux_quality',
-				materialized_tools: ['work_capability_load', 'resource_search']
+				materialized_tools: ['work_capability_load', 'outcome_card_load', 'resource_search']
 			})
-		).toEqual(['work_capability_load', 'resource_search']);
+		).toEqual(['outcome_card_load', 'resource_search']);
 
 		expect(
 			extractGatewayMaterializedToolNames({

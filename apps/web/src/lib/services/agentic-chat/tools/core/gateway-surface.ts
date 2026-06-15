@@ -153,12 +153,23 @@ const GATEWAY_TOOL_DEFINITION_MAP = new Map(
 	)
 );
 
+function normalizeGatewayToolName(name: string): string {
+	if (name === 'work_capability_search') return 'outcome_card_search';
+	if (name === 'work_capability_load') return 'outcome_card_load';
+	return name;
+}
+
+function uniqueToolNames(names: string[]): string[] {
+	return Array.from(new Set(names));
+}
+
 function resolveGatewayToolDefinition(name: string): ChatToolDefinition | undefined {
-	if (!isGatewayToolEnabled(name)) return undefined;
+	const normalizedName = normalizeGatewayToolName(name);
+	if (!isGatewayToolEnabled(normalizedName)) return undefined;
 	return (
-		GATEWAY_TOOL_DEFINITION_MAP.get(name) ??
-		extractTools([name])[0] ??
-		resolveDynamicLibriToolDefinition(name)
+		GATEWAY_TOOL_DEFINITION_MAP.get(normalizedName) ??
+		extractTools([normalizedName])[0] ??
+		resolveDynamicLibriToolDefinition(normalizedName)
 	);
 }
 
@@ -247,26 +258,32 @@ export function extractGatewayMaterializedToolNames(payload: unknown): string[] 
 		? record.materialized_tools
 				.map((name) => (typeof name === 'string' ? name.trim() : ''))
 				.filter((name): name is string => name.length > 0)
+				.map(normalizeGatewayToolName)
 		: [];
 	if (materializedTools.length > 0) {
-		return materializedTools;
+		return uniqueToolNames(materializedTools);
 	}
 
 	const type = typeof record.type === 'string' ? record.type : '';
 	if (type === 'tool_search_results') {
 		const matches = Array.isArray(record.matches) ? record.matches : [];
-		return matches
-			.map((match) =>
-				match && typeof match === 'object'
-					? (match as Record<string, unknown>).tool_name
-					: undefined
-			)
-			.filter((name): name is string => typeof name === 'string' && name.trim().length > 0);
+		return uniqueToolNames(
+			matches
+				.map((match) =>
+					match && typeof match === 'object'
+						? (match as Record<string, unknown>).tool_name
+						: undefined
+				)
+				.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+				.map((name) => normalizeGatewayToolName(name.trim()))
+		);
 	}
 
 	if (type === 'tool_schema' || type === 'op') {
 		const toolName = record.tool_name;
-		return typeof toolName === 'string' && toolName.trim().length > 0 ? [toolName] : [];
+		return typeof toolName === 'string' && toolName.trim().length > 0
+			? [normalizeGatewayToolName(toolName.trim())]
+			: [];
 	}
 
 	return [];
@@ -276,12 +293,16 @@ export function materializeGatewayTools(
 	currentTools: ChatToolDefinition[],
 	toolNames: string[]
 ): { tools: ChatToolDefinition[]; addedToolNames: string[] } {
-	const currentNames = new Set(extractToolNamesFromDefinitions(currentTools));
+	const currentNames = new Set(
+		extractToolNamesFromDefinitions(currentTools).map(normalizeGatewayToolName)
+	);
 	const nextNames = toolNames
 		.map((name) => name.trim())
 		.filter((name) => name.length > 0)
+		.map(normalizeGatewayToolName)
 		.filter(isGatewayToolEnabled)
-		.filter((name) => !currentNames.has(name));
+		.filter((name) => !currentNames.has(name))
+		.filter((name, index, names) => names.indexOf(name) === index);
 	if (nextNames.length === 0) {
 		return { tools: currentTools, addedToolNames: [] };
 	}

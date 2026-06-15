@@ -184,6 +184,7 @@ export function buildPromptEvalTarget(target: PromptEvalLoadedTarget): PromptEva
 					: null
 		})),
 		toolExecutions: target.toolExecutions.map((tool) => ({
+			tool_name: tool.tool_name,
 			gateway_op: tool.gateway_op,
 			help_path: tool.help_path,
 			success: tool.success,

@@ -41,6 +41,16 @@ People context playbook for profile lookup, contact search and updates, candidat
 - `util.contact.candidate.resolve`
 - `util.contact.link`
 
+## Output
+
+After a people or contact action, report:
+
+- What was found or changed: the contact/person record and the specific fields, links, or merges applied.
+- Redaction state: explicitly note when sensitive values (phone, email) were withheld by default, and that they can be disclosed on request.
+- For candidate resolution: which records were compared and why a merge was or was not performed.
+
+Stop conditions before replying: no two records were merged on name similarity alone; no confirmed-merge action ran without explicit user confirmation; sensitive values were disclosed only when the user explicitly asked; contact link and candidate-resolve used exact IDs.
+
 ## Guardrails
 
 - Do not assume two records are the same person based only on name similarity.

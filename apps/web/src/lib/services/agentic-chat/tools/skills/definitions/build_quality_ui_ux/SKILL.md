@@ -110,4 +110,4 @@ Build Quality UI/UX is the router and operating frame for UI/UX work. Use it to 
 
 - Current strongest children: `ui_ux_quality_review`, `visual_craft_fundamentals`, `accessibility_inclusive_ui_review`, `marketing_site_design_review`, `calm_software_design_review`, and `delightful_product_review`.
 - Newly strengthened children: `design_system_architecture_review` and `usability_quick_research`, backed by fresh 2026-05-15 transcript pulls for Brad Frost, Nathan Curtis, and Erika Hall.
-- Still-source-thin child: `information_architecture_review`; it has strong canonical article/book analysis, but still needs a deeper long-form video transcript pass.
+- Structure-first child rebuilt 2026-06-15: `information_architecture_review` now carries a full structural-map Output contract, a worked example, and the `ia_heuristics` reference module (Norman gulfs/stages, Cooper model-gap, the IA-relevant Nielsen heuristics, Morville wayfinding). It is the holistic structure-before-polish lens; sequence it first. Source backing is canonical book/article analysis — a long-form transcript pass would deepen it further.

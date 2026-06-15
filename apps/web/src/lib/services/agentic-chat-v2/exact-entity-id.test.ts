@@ -22,6 +22,8 @@ describe('exact-entity-id helpers', () => {
 		expect(shouldCollectExactEntityReferencesFromToolName('create_onto_document')).toBe(true);
 		expect(shouldCollectExactEntityReferencesFromToolName('domain_search')).toBe(false);
 		expect(shouldCollectExactEntityReferencesFromToolName('domain_load')).toBe(false);
+		expect(shouldCollectExactEntityReferencesFromToolName('outcome_card_search')).toBe(false);
+		expect(shouldCollectExactEntityReferencesFromToolName('outcome_card_load')).toBe(false);
 		expect(shouldCollectExactEntityReferencesFromToolName('work_capability_search')).toBe(
 			false
 		);

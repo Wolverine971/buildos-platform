@@ -52,7 +52,7 @@ export interface DomainSearchMatch {
 	parent_ids: string[];
 	aliases_hit: string[];
 	skill_ids: string[];
-	work_capability_ids: string[];
+	outcome_card_ids: string[];
 	related_domain_ids: string[];
 	next_step: string;
 }
@@ -82,7 +82,7 @@ export interface DomainLoadPayload {
 	related_domain_ids: string[];
 	boundaries: string[];
 	capability_ids: string[];
-	work_capability_ids: string[];
+	outcome_card_ids: string[];
 	skills: Array<{
 		id: string;
 		use_when: string;

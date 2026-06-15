@@ -34,6 +34,7 @@ export type PromptEvalTurnEvent = {
 };
 
 export type PromptEvalToolExecution = {
+	tool_name?: string | null;
 	gateway_op?: string | null;
 	help_path?: string | null;
 	success?: boolean | null;
@@ -103,6 +104,22 @@ function collectObservedOps(target: PromptEvalTarget): string[] {
 	return Array.from(observed).sort();
 }
 
+function collectObservedToolNames(target: PromptEvalTarget): string[] {
+	const observed = new Set<string>();
+	const toolNames =
+		target.toolExecutions?.map((item) => item.tool_name).filter(Boolean) ?? [];
+	for (const toolName of toolNames) {
+		observed.add(toolName as string);
+	}
+	for (const event of target.events) {
+		const payload =
+			event.payload && typeof event.payload === 'object' ? event.payload : undefined;
+		const toolName = typeof payload?.tool_name === 'string' ? payload.tool_name : null;
+		if (toolName) observed.add(toolName);
+	}
+	return Array.from(observed).sort();
+}
+
 function collectObservedSkillPaths(target: PromptEvalTarget): string[] {
 	const observed = new Set<string>();
 	if (target.turnRun.first_skill_path) {
@@ -140,6 +157,7 @@ export function evaluatePromptScenario(
 	const assistantText = target.assistantMessage?.content?.trim() ?? '';
 	const eventTypes = collectEventTypes(target);
 	const observedOps = collectObservedOps(target);
+	const observedToolNames = collectObservedToolNames(target);
 	const observedSkills = collectObservedSkillPaths(target);
 	const validationFailures = Number(target.turnRun.validation_failure_count ?? 0);
 
@@ -257,6 +275,40 @@ export function evaluatePromptScenario(
 	}
 
 	if (
+		Array.isArray(scenario.requiredObservedToolNames) &&
+		scenario.requiredObservedToolNames.length > 0
+	) {
+		for (const toolName of scenario.requiredObservedToolNames) {
+			pushAssertion(assertions, {
+				assertionKey: `observed_tool:${toolName}`,
+				passed: observedToolNames.includes(toolName),
+				expected: toolName,
+				actual: observedToolNames,
+				details: observedToolNames.includes(toolName)
+					? null
+					: `Observed tool names did not include ${toolName}.`
+			});
+		}
+	}
+
+	if (
+		Array.isArray(scenario.forbiddenObservedToolNames) &&
+		scenario.forbiddenObservedToolNames.length > 0
+	) {
+		for (const toolName of scenario.forbiddenObservedToolNames) {
+			pushAssertion(assertions, {
+				assertionKey: `forbidden_tool:${toolName}`,
+				passed: !observedToolNames.includes(toolName),
+				expected: `not ${toolName}`,
+				actual: observedToolNames,
+				details: observedToolNames.includes(toolName)
+					? `Observed forbidden tool name ${toolName}.`
+					: null
+			});
+		}
+	}
+
+	if (
 		Array.isArray(scenario.requiredObservedSkillPaths) &&
 		scenario.requiredObservedSkillPaths.length > 0
 	) {
@@ -320,6 +372,7 @@ export function evaluatePromptScenario(
 			first_skill_path: target.turnRun.first_skill_path ?? null,
 			first_canonical_op: target.turnRun.first_canonical_op ?? null,
 			observed_ops: observedOps,
+			observed_tool_names: observedToolNames,
 			observed_skill_paths: observedSkills,
 			event_types: eventTypes,
 			finished_reason: target.turnRun.finished_reason ?? null,

@@ -115,10 +115,10 @@ The harness is at the **"successful but over-grown"** stage. Every guardrail tra
 
 ### Tier 3 — debt cleanup
 
-8. Merge the two read-loop detectors.
-9. Delete LLM-judge vestiges + stale digest cost.
+8. **NEEDS STAGED ROLLOUT (not done)** — Merge the read-loop detectors. Investigation 2026-06-15 found **three** overlapping force-synthesis systems (`read-loop-escalation.ts`, `context-gathering-ledger.ts`, `turn-supervisor/deterministic-supervisor.ts`) with genuinely different threshold semantics (discovery-round exclusion, budget 8 vs 12, gateway-gating asymmetry, a token-saturation trigger unique to the ledger). A naive merge would **move when synthesis fires** on real traffic → reliability risk on weak models. Verdict: shadow-compare → flag (`AGENTIC_CHAT_CONSOLIDATED_READ_LOOP=off|shadow|on`) → delete, with golden fire-round characterization tests first. Held pending DJ go-ahead.
+9. **CANCELLED (premise wrong)** — "Delete LLM-judge vestiges." On inspection these are NOT dead: the LLM judge was already cleanly removed 2026-06-11 (commit aa585535). What remains — `resolveSupervisorDecisionTrigger`, `TurnSupervisorDecisionTrigger`, the `trigger` field, and the `digest` — is **live telemetry** persisted to `chat_turn_events` (`+server.ts:4352-4368`) and summarized in turn logs (`:4496-4507`), deliberately retained ("useful on its own"). Especially valuable during the lean-discovery canary. No change made.
 10. Finish Phase 4 (extract `gateway-recovery.ts`, fix stale line counts), reconcile round budgets.
-11. Rename last-resort `ACTIVE_EXPERIMENT_MODEL` fallbacks to a stable named model; delete/wire the dead `agentRecommendations.agentChat` config; remove the dead `ontologyEntityType` field.
+11. **DONE 2026-06-15** — Introduced `LAST_RESORT_MODEL` (= DeepSeek V4 Flash) decoupling the universal fallback from `ACTIVE_EXPERIMENT_MODEL`; deleted the dead `agentRecommendations.agentChat` config (no source consumers); removed the dead `ontologyEntityType` field end-to-end (UI, types, request schema, test).
 
 ---
 
@@ -161,10 +161,50 @@ The harness is at the **"successful but over-grown"** stage. Every guardrail tra
 - [x] **Verify** pre-existing `tool-executor.test.ts` failures (5) confirmed unrelated via `git stash` (fail identically on base)
 
 ### Design decision (important)
+
 Item 5 was implemented as a **minimal broadening**, not the originally-planned "lazy arm-on-first-miss." Lazy arming would disarm write-recovery on write turns (writes don't trigger a tool miss), which is exactly the reliability the weak-model pool depends on. The broadening keeps the recovery machinery armed for every gateway-capable turn while still enabling on-demand discovery under lean.
 
 ### Rollout
+
 `FASTCHAT_LEAN_DISCOVERY` ships **dark (OFF)**. Enable in canary/shadow, watch project-creation success + skill-load behavior across the weak end of the model pool before defaulting ON. Trace category `read_discovery` now covers the lean launch tools for that analysis.
 
 ### Measured impact (Tier 2)
+
 - Launch discovery surface drops from 6 tools → 2 under the flag (the other 4 load on demand); ~4 fewer tool schemas in the opening menu on every non-create turn, on top of the ~700 tokens saved by removing the domain index.
+
+---
+
+## 8. Tier 3 progress (2026-06-15)
+
+### Item 11 — ✅ COMPLETE (3 cleanups, no behavior change)
+
+- [x] **11a** `LAST_RESORT_MODEL` (= `DEEPSEEK_V4_FLASH_MODEL`) added in `smart-llm/model-config.ts`; the universal last-resort fallback in `model-lanes.ts:169` and the five `|| ...` defaults in `openrouter-v2-service.ts` now point to it instead of `ACTIVE_EXPERIMENT_MODEL`. Rotating the experiment no longer changes the safety net. (Experiment model still intentionally appended to route tails — unchanged.)
+- [x] **11b** Deleted dead `agentRecommendations.agentChat.{planner,executor,synthesis}` config (no source consumers; described routing that doesn't exist).
+- [x] **11c** Removed dead `ontologyEntityType` field end-to-end: `AgentChatModal.svelte`, `agent-chat-enhancement.ts`, `agentic-chat-v2/types.ts`, `stream-request.ts` (zod), `stream-request.test.ts`.
+- [x] **Verify** `smart-llm` rebuilt; tests green — smart-llm (39), model-lanes (16), openrouter-v2-service (18), stream-request (7); `svelte-check` 0 errors.
+
+### Item 9 — ❌ CANCELLED (premise wrong; no change)
+
+The "vestiges" are live telemetry. The LLM judge was already cleanly removed 2026-06-11 (commit aa585535); what remains (`resolveSupervisorDecisionTrigger`, `TurnSupervisorDecisionTrigger`, `trigger`, `digest`) is persisted to `chat_turn_events` (`+server.ts:4352-4368`) and summarized in turn logs (`:4496-4507`), deliberately retained. Especially useful during the lean-discovery canary. Left intact.
+
+### Item 8 — 🟡 IN PROGRESS — Phase 1 (golden characterization) DONE 2026-06-15
+
+Staged plan: (1) golden fire-round characterization tests to lock current behavior ✅, (2) shadow-compare a consolidated supervisor decision, (3) flag `AGENTIC_CHAT_CONSOLIDATED_READ_LOOP`, (4) delete after parity. Phases 2–4 not started — behavior-changing, awaiting go-ahead.
+
+**Phase 1 deliverable:** `apps/web/src/lib/services/agentic-chat-v2/read-loop-synthesis.golden.test.ts` — drives the real `streamFastChat` round loop and asserts the exact round at which a no-tool synthesis pass is forced. This is the regression contract: any consolidation must keep these numbers (or change them as a reviewed decision). No production code changed in Phase 1.
+
+**Baseline force-synthesis behavior (snapshot, 5 scenarios):**
+
+| Scenario                               | gateway? | Binding trigger                                               | Synthesis at toolRounds |
+| -------------------------------------- | -------- | ------------------------------------------------------------- | ----------------------- |
+| Same read op repeated                  | yes      | `repeatedReadOpSetCount >= 3` (`index.ts:1388`)               | **3**                   |
+| Varied search ops, repeated entity ids | yes      | ledger low-novelty (`lowNoveltyRounds >= 3`)                  | **4**                   |
+| Varied novel reads                     | yes      | read-round cap (escalation / supervisor `readRounds`)         | **6**                   |
+| Varied novel reads, NO discovery tool  | no       | supervisor alone (ledger + escalation off)                    | **6**                   |
+| Read → write@3 → read                  | yes      | write resets + sticky-disables gateway block; supervisor only | **11**                  |
+
+**Findings that change the consolidation design:**
+
+- The **dominant real-world trigger is `repeatedReadOpSetCount >= 3`** (model repeats the same search → fires at round 3) — a _fourth_ force-synthesis path beyond the three named detectors. The investigation under-counted it. Any consolidation must preserve this.
+- A **write sticky-disables the entire gateway read-loop block** (`hasWriteAttempt` never resets, `index.ts:1354`). After any write, only the supervisor can force synthesis, which is why the write scenario runs to 11. This asymmetry must be preserved or deliberately changed.
+- The ledger's **low-novelty trigger is fragile**: a single detail (`get_*`) read of an already-seen id resets `lowNoveltyRounds` (re-counts it as "newly opened" evidence), so low-novelty only fires cleanly under search-only loops. Consolidation could accidentally make it fire more aggressively.

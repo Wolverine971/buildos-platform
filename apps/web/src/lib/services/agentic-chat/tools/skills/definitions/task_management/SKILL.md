@@ -73,6 +73,17 @@ Task workflow playbook for deciding when work should become a task and how to ma
 - `onto.goal.get`
 - `onto.milestone.get`
 
+## Output
+
+After a task write, report in user-facing terms:
+
+- What changed: the task title and the specific fields you set (state, dates, owner, parent, priority).
+- The parent context the task now sits under (plan, goal, milestone, or direct project scope), or that it is intentionally unparented.
+- Any still-missing field that matters — owner, due date, or parent relationship — named explicitly rather than left silently blank.
+- When you decided NOT to create a task because the work is doable now in chat, say so and do the work instead.
+
+Stop conditions before replying: no write was emitted without an exact `task_id` (updates) or a concrete `title` (creates); `state_key` was included whenever real task progress moved; you have not claimed a task was created or updated until the tool call returned success.
+
 ## Guardrails
 
 - Do not create tasks for research, analysis, brainstorming, or drafting that the agent can do now in chat.

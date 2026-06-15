@@ -3726,8 +3726,7 @@ export const POST: RequestHandler = async ({
 					recordTurnEvent('prompt', 'domain_sensing_applied', {
 						source: turnDomainSensing.source,
 						domain_ids: turnDomainSensing.active_domains.map((domain) => domain.id),
-						candidate_work_capability_ids:
-							turnDomainSensing.candidate_work_capability_ids,
+						candidate_outcome_card_ids: turnDomainSensing.candidate_outcome_card_ids,
 						recommended_skill_ids: turnDomainSensing.recommended_skill_ids,
 						coverage_gap_skill_ids: turnDomainSensing.coverage_gap_skill_ids,
 						coverage_gap_resource_ids: turnDomainSensing.coverage_gap_resource_ids,

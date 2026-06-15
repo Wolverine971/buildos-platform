@@ -2,17 +2,19 @@
 import { loadDomain, searchDomains } from './domain-load';
 import type { DomainCoverageStatus, DomainLoadPayload, DomainSearchMatch } from './types';
 import {
-	getWorkCapabilityById,
-	searchWorkCapabilities,
-	type WorkCapabilityCoverageStatus,
-	type WorkCapabilityDefinition
-} from '../work-capabilities';
+	getOutcomeCardById,
+	searchOutcomeCards,
+	type OutcomeCardCoverageStatus,
+	type OutcomeCardDefinition
+} from '../outcome-cards';
 
 export type DomainSensingInput = {
 	currentUserMessage?: string | null;
 	conversationSummary?: string | null;
 	priorDomainIds?: string[] | null;
+	/** @deprecated Use priorOutcomeCardIds. */
 	priorWorkCapabilityIds?: string[] | null;
+	priorOutcomeCardIds?: string[] | null;
 	limit?: number;
 };
 
@@ -24,7 +26,7 @@ export type SensedDomain = {
 	parent_ids: string[];
 	aliases_hit: string[];
 	skill_ids: string[];
-	work_capability_ids: string[];
+	outcome_card_ids: string[];
 	recommended_skill_stack_ids: string[];
 	gaps: Array<{
 		missing_skill_id?: string;
@@ -36,7 +38,7 @@ export type SensedDomain = {
 	gap_resource_ids: string[];
 };
 
-export type SensedWorkCapability = {
+export type SensedOutcomeCard = {
 	id: string;
 	name: string;
 	confidence: number;
@@ -45,7 +47,7 @@ export type SensedWorkCapability = {
 	buildos_capability_ids: string[];
 	default_skill_id?: string;
 	skill_ids: string[];
-	coverage_status: WorkCapabilityCoverageStatus;
+	coverage_status: OutcomeCardCoverageStatus;
 	load_hint: string;
 };
 
@@ -54,8 +56,8 @@ export type DomainSensingResult = {
 	source: 'current_user_message' | 'conversation_summary' | 'session_state';
 	query: string;
 	active_domains: SensedDomain[];
-	candidate_work_capabilities: SensedWorkCapability[];
-	candidate_work_capability_ids: string[];
+	candidate_outcome_cards: SensedOutcomeCard[];
+	candidate_outcome_card_ids: string[];
 	recommended_skill_ids: string[];
 	coverage_gap_skill_ids: string[];
 	coverage_gap_resource_ids: string[];
@@ -95,7 +97,7 @@ function toSensedDomain(domainId: string, match?: DomainSearchMatch): SensedDoma
 		parent_ids: loaded.parent_ids,
 		aliases_hit: match?.aliases_hit ?? [],
 		skill_ids: loaded.skills.map((skill) => skill.id),
-		work_capability_ids: loaded.work_capability_ids,
+		outcome_card_ids: loaded.outcome_card_ids,
 		recommended_skill_stack_ids: loaded.recommended_skill_stacks.map((stack) => stack.id),
 		gaps: loaded.gaps.map((gap) => ({
 			missing_skill_id: gap.missing_skill_id,
@@ -118,11 +120,11 @@ function domainIdsOverlap(left: string[], right: string[]): boolean {
 	return left.some((item) => rightSet.has(item));
 }
 
-function toSensedWorkCapability(
-	capability: WorkCapabilityDefinition,
+function toSensedOutcomeCard(
+	capability: OutcomeCardDefinition,
 	confidence: number,
-	loadHint = 'Reuse this prior work capability when the follow-up still fits the same outcome lane.'
-): SensedWorkCapability {
+	loadHint = 'Reuse this prior outcome card when the follow-up still fits the same outcome lane.'
+): SensedOutcomeCard {
 	return {
 		id: capability.id,
 		name: capability.name,
@@ -137,32 +139,32 @@ function toSensedWorkCapability(
 	};
 }
 
-function buildCandidateWorkCapabilities(
+function buildCandidateOutcomeCards(
 	activeDomains: SensedDomain[],
 	query: string,
-	priorWorkCapabilityIds: string[],
+	priorOutcomeCardIds: string[],
 	limit: number
-): SensedWorkCapability[] {
-	const byId = new Map<string, SensedWorkCapability>();
+): SensedOutcomeCard[] {
+	const byId = new Map<string, SensedOutcomeCard>();
 	const activeDomainIds = activeDomains.map((domain) => domain.id);
-	for (const id of priorWorkCapabilityIds) {
-		const capability = getWorkCapabilityById(id);
+	for (const id of priorOutcomeCardIds) {
+		const capability = getOutcomeCardById(id);
 		if (!capability) continue;
 		if (!domainIdsOverlap(capability.domainIds, activeDomainIds)) continue;
-		byId.set(capability.id, toSensedWorkCapability(capability, 0.6));
+		byId.set(capability.id, toSensedOutcomeCard(capability, 0.6));
 	}
 
 	for (const domain of activeDomains) {
-		const result = searchWorkCapabilities({
+		const result = searchOutcomeCards({
 			query,
 			domain: domain.id,
 			limit: Math.max(2, Math.min(4, limit))
 		});
 		for (const match of result.matches) {
-			const existing = byId.get(match.work_capability_id);
+			const existing = byId.get(match.outcome_card_id);
 			if (existing && existing.confidence >= match.confidence) continue;
-			byId.set(match.work_capability_id, {
-				id: match.work_capability_id,
+			byId.set(match.outcome_card_id, {
+				id: match.outcome_card_id,
 				name: match.name,
 				confidence: match.confidence,
 				summary: match.summary,
@@ -193,10 +195,10 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 				typeof domainId === 'string' && domainId.trim().length > 0
 		)
 	).slice(0, input.limit ?? 4);
-	const priorWorkCapabilityIds = unique(
-		(input.priorWorkCapabilityIds ?? []).filter(
-			(workCapabilityId): workCapabilityId is string =>
-				typeof workCapabilityId === 'string' && workCapabilityId.trim().length > 0
+	const priorOutcomeCardIds = unique(
+		(input.priorOutcomeCardIds ?? input.priorWorkCapabilityIds ?? []).filter(
+			(outcomeCardId): outcomeCardId is string =>
+				typeof outcomeCardId === 'string' && outcomeCardId.trim().length > 0
 		)
 	).slice(0, input.limit ?? 4);
 	let source: DomainSensingResult['source'] = currentUserMessage
@@ -224,10 +226,10 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 
 	if (activeDomains.length === 0) return null;
 
-	const candidateWorkCapabilities = buildCandidateWorkCapabilities(
+	const candidateOutcomeCards = buildCandidateOutcomeCards(
 		activeDomains,
 		query,
-		priorWorkCapabilityIds,
+		priorOutcomeCardIds,
 		Math.max(2, Math.min(6, input.limit ?? 4))
 	);
 	const recommendedSkillIds = unique(activeDomains.flatMap((domain) => domain.skill_ids)).slice(
@@ -246,13 +248,13 @@ export function senseDomains(input: DomainSensingInput): DomainSensingResult | n
 		source,
 		query: query || priorDomainIds.join(', '),
 		active_domains: activeDomains,
-		candidate_work_capabilities: candidateWorkCapabilities,
-		candidate_work_capability_ids: candidateWorkCapabilities.map((capability) => capability.id),
+		candidate_outcome_cards: candidateOutcomeCards,
+		candidate_outcome_card_ids: candidateOutcomeCards.map((capability) => capability.id),
 		recommended_skill_ids: recommendedSkillIds,
 		coverage_gap_skill_ids: coverageGapSkillIds,
 		coverage_gap_resource_ids: coverageGapResourceIds,
 		next_step:
-			'Use these domains and work capabilities as routing hints. Load a work capability when output contract or quality criteria would help; load a skill only when the user needs workflow depth.'
+			'Use these domains and outcome cards as routing hints. Load an outcome card when output contract or quality criteria would help; load a skill only when the user needs workflow depth.'
 	};
 }
 
@@ -266,8 +268,8 @@ export function renderDomainSensingPromptContent(
 			`${domain.coverage_status} coverage`,
 			`confidence ${domain.confidence}`,
 			domain.aliases_hit.length ? `aliases: ${domain.aliases_hit.join(', ')}` : null,
-			domain.work_capability_ids.length
-				? `work capabilities: ${domain.work_capability_ids.slice(0, 5).join(', ')}`
+			domain.outcome_card_ids.length
+				? `outcome cards: ${domain.outcome_card_ids.slice(0, 5).join(', ')}`
 				: null,
 			domain.skill_ids.length ? `skills: ${domain.skill_ids.slice(0, 6).join(', ')}` : null,
 			domain.recommended_skill_stack_ids.length
@@ -279,7 +281,7 @@ export function renderDomainSensingPromptContent(
 		].filter((item): item is string => Boolean(item));
 		return `- ${domain.id} (${domain.name}): ${details.join('; ')}`;
 	});
-	const workCapabilityLines = result.candidate_work_capabilities.map((capability) => {
+	const outcomeCardLines = result.candidate_outcome_cards.map((capability) => {
 		const details = [
 			`${capability.coverage_status} coverage`,
 			`confidence ${capability.confidence}`,
@@ -297,8 +299,8 @@ export function renderDomainSensingPromptContent(
 		'Candidate domains:',
 		...domainLines,
 		'',
-		'Candidate work capabilities:',
-		...(workCapabilityLines.length > 0 ? workCapabilityLines : ['- none']),
+		'Candidate outcome cards:',
+		...(outcomeCardLines.length > 0 ? outcomeCardLines : ['- none']),
 		'',
 		'Recommended skill ids:',
 		`- ${result.recommended_skill_ids.length ? result.recommended_skill_ids.join(', ') : 'none'}`,

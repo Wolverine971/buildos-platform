@@ -54,6 +54,17 @@ BuildOS plan workflow playbook for turning a goal or milestone into a durable ex
 - `onto.document.get`
 - `onto.edge.link`
 
+## Output
+
+After a plan write, summarize in user-facing terms:
+
+- Plan scope and the goal or milestone it executes toward.
+- The plan body anatomy you wrote or revised (Objective, Scope, Success Criteria, Timeline, Task Breakdown, Dependencies, Risks, Review Cadence) — note any section deliberately left TBD.
+- Task count created or updated under the plan, plus the important dates.
+- Unresolved assumptions or open questions that still block execution.
+
+Stop conditions before replying: the detailed plan lives in `plan`, not only `description`; the plan references goals/milestones rather than redefining them; no exact owners, dates, or dependencies were invented (TBD instead); tasks are linked to the plan rather than left floating; you have not reported the plan as written until the tool call returned success.
+
 ## Guardrails
 
 - Do not create a plan for vague brainstorming unless the user explicitly asks to structure it.

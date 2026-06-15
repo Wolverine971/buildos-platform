@@ -68,7 +68,7 @@ describe('domain research queue candidates', () => {
 		const secondSensed = senseDomains({
 			currentUserMessage: 'Now diagnose the blockers.',
 			priorDomainIds: ['marketing.youtube_growth'],
-			priorWorkCapabilityIds: ['youtube_growth_strategy_plan']
+			priorOutcomeCardIds: ['youtube_growth_strategy_plan']
 		});
 		if (!secondSensed) throw new Error('Expected continuing domain sensing');
 		const second = mergeDomainSessionState(secondInitial, secondSensed, {

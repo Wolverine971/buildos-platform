@@ -5,6 +5,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { Upload, X } from 'lucide-svelte';
 	import type { AssetLinkRole, OntologyImageAsset } from './image-assets/types';
+	import { uploadFileToSignedStorageUrl } from '$lib/utils/signed-storage-upload';
 
 	interface Props {
 		isOpen?: boolean;
@@ -130,21 +131,17 @@
 			}
 
 			const asset = createPayload?.data?.asset as OntologyImageAsset | undefined;
-			const uploadUrl = createPayload?.data?.upload?.signed_url as string | undefined;
-			if (!asset?.id || !uploadUrl) {
+			const upload = createPayload?.data?.upload;
+			if (!asset?.id || !upload) {
 				throw new Error('Upload metadata missing from server response');
 			}
 
-			const uploadResponse = await fetch(uploadUrl, {
-				method: 'PUT',
-				headers: {
-					'Content-Type': selectedFile.type || 'application/octet-stream'
-				},
-				body: selectedFile
+			await uploadFileToSignedStorageUrl({
+				bucket: asset.storage_bucket ?? 'onto-assets',
+				upload,
+				file: selectedFile,
+				contentType: selectedFile.type || 'application/octet-stream'
 			});
-			if (!uploadResponse.ok) {
-				throw new Error('Storage upload failed');
-			}
 
 			const completeResponse = await fetch(`/api/onto/assets/${asset.id}/complete`, {
 				method: 'POST'

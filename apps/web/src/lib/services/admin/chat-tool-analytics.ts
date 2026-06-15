@@ -385,6 +385,8 @@ const normalizeToolCategory = (row: ToolExecutionAnalyticsRow): string => {
 	if (
 		toolName === 'tool_search' ||
 		toolName === 'tool_schema' ||
+		toolName === 'outcome_card_search' ||
+		toolName === 'outcome_card_load' ||
 		toolName === 'work_capability_search' ||
 		toolName === 'work_capability_load'
 	) {

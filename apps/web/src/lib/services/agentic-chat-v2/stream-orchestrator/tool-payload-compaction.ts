@@ -24,6 +24,8 @@ export function buildToolPayloadForModel(
 	if (
 		toolName === 'domain_search' ||
 		toolName === 'domain_load' ||
+		toolName === 'outcome_card_search' ||
+		toolName === 'outcome_card_load' ||
 		toolName === 'work_capability_search' ||
 		toolName === 'work_capability_load' ||
 		toolName === 'tool_schema' ||
@@ -55,6 +57,26 @@ function compactExampleToolCall(payload: unknown): Record<string, any> | undefin
 		name: record.name,
 		arguments: args
 	};
+}
+
+function normalizeMaterializedToolName(name: string): string {
+	if (name === 'work_capability_search') return 'outcome_card_search';
+	if (name === 'work_capability_load') return 'outcome_card_load';
+	return name;
+}
+
+function compactMaterializedTools(value: unknown, limit = 4): string[] {
+	if (!Array.isArray(value)) return [];
+	return value
+		.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+		.map((name) => normalizeMaterializedToolName(name.trim()))
+		.slice(0, limit);
+}
+
+function compactOutcomeCardIds(record: Record<string, any>): string[] {
+	if (Array.isArray(record.outcome_card_ids)) return record.outcome_card_ids.slice(0, 8);
+	if (Array.isArray(record.work_capability_ids)) return record.work_capability_ids.slice(0, 8);
+	return [];
 }
 
 function compactGatewayMetaPayload(payload: unknown): unknown {
@@ -165,9 +187,7 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 			type,
 			query: record.query,
 			total_matches: record.total_matches,
-			materialized_tools: Array.isArray(record.materialized_tools)
-				? record.materialized_tools.slice(0, 4)
-				: [],
+			materialized_tools: compactMaterializedTools(record.materialized_tools),
 			matches: Array.isArray(record.matches)
 				? record.matches.slice(0, 8).map((match: Record<string, any>) => ({
 						domain_id: match?.domain_id,
@@ -183,9 +203,7 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 						skill_ids: Array.isArray(match?.skill_ids)
 							? match.skill_ids.slice(0, 10)
 							: [],
-						work_capability_ids: Array.isArray(match?.work_capability_ids)
-							? match.work_capability_ids.slice(0, 8)
-							: [],
+						outcome_card_ids: compactOutcomeCardIds(match),
 						related_domain_ids: Array.isArray(match?.related_domain_ids)
 							? match.related_domain_ids.slice(0, 6)
 							: [],
@@ -214,9 +232,7 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 			capability_ids: Array.isArray(record.capability_ids)
 				? record.capability_ids.slice(0, 8)
 				: [],
-			work_capability_ids: Array.isArray(record.work_capability_ids)
-				? record.work_capability_ids.slice(0, 8)
-				: [],
+			outcome_card_ids: compactOutcomeCardIds(record),
 			skills: Array.isArray(record.skills) ? record.skills.slice(0, 12) : [],
 			recommended_skill_stacks: Array.isArray(record.recommended_skill_stacks)
 				? record.recommended_skill_stacks.slice(0, 6).map((stack: Record<string, any>) => ({
@@ -231,25 +247,21 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 			resources: Array.isArray(record.resources) ? record.resources.slice(0, 8) : [],
 			gaps: Array.isArray(record.gaps) ? record.gaps.slice(0, 8) : [],
 			notes: Array.isArray(record.notes) ? record.notes.slice(0, 6) : [],
-			materialized_tools: Array.isArray(record.materialized_tools)
-				? record.materialized_tools.slice(0, 4)
-				: [],
+			materialized_tools: compactMaterializedTools(record.materialized_tools),
 			next_step: record.next_step
 		});
 	}
 
-	if (type === 'work_capability_search_results') {
+	if (type === 'outcome_card_search_results' || type === 'work_capability_search_results') {
 		return applyToolPayloadSizeGuard({
-			type,
+			type: 'outcome_card_search_results',
 			query: record.query,
 			filters: record.filters,
 			total_matches: record.total_matches,
-			materialized_tools: Array.isArray(record.materialized_tools)
-				? record.materialized_tools.slice(0, 4)
-				: [],
+			materialized_tools: compactMaterializedTools(record.materialized_tools),
 			matches: Array.isArray(record.matches)
 				? record.matches.slice(0, 8).map((match: Record<string, any>) => ({
-						work_capability_id: match?.work_capability_id,
+						outcome_card_id: match?.outcome_card_id ?? match?.work_capability_id,
 						name: match?.name,
 						confidence: match?.confidence,
 						summary:
@@ -274,9 +286,9 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 		});
 	}
 
-	if (type === 'work_capability') {
+	if (type === 'outcome_card' || type === 'work_capability') {
 		return applyToolPayloadSizeGuard({
-			type,
+			type: 'outcome_card',
 			id: record.id,
 			name: record.name,
 			summary: record.summary,
@@ -299,9 +311,7 @@ function compactGatewayMetaPayload(payload: unknown): unknown {
 			coverage_status: record.coverage_status,
 			gaps: Array.isArray(record.gaps) ? record.gaps.slice(0, 8) : [],
 			notes: Array.isArray(record.notes) ? record.notes.slice(0, 6) : [],
-			materialized_tools: Array.isArray(record.materialized_tools)
-				? record.materialized_tools.slice(0, 4)
-				: [],
+			materialized_tools: compactMaterializedTools(record.materialized_tools),
 			next_step: record.next_step
 		});
 	}

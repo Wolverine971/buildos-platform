@@ -2,9 +2,11 @@
 
 # BuildOS Inkprint Design System
 
-> **Version:** 1.0
-> **Last Updated:** 2025-12-07
+> **Version:** 1.1
+> **Last Updated:** 2026-06-15
 > **Status:** Active - Primary Design System
+>
+> v1.1 (2026-06-15): §6 color tokens updated to current WCAG-tuned values (deep accent, goldenrod warning, sage/teal status, `border-strong`); §6.4 status table now uses semantic tokens not raw palette; §7 typography adds `text-2xs` + `.micro-label` guidance; §4.8 radius vocabulary. See `DESIGN_AUDIT_2026-06-12.md`.
 
 ---
 
@@ -385,57 +387,90 @@ Color provides:
 
 ### 6.2 Semantic Tokens
 
-Use these everywhere in Tailwind:
+Use these everywhere in Tailwind. **Never use raw palette classes** (`bg-red-500`, `text-emerald-600`, etc.) — every status has a token, and tokens flip to dark mode automatically (no `dark:` variant needed).
 
-| Purpose         | Token                              | Example               |
-| --------------- | ---------------------------------- | --------------------- |
-| Page background | `bg-background`                    | Main page background  |
-| Text            | `text-foreground`                  | Primary text          |
-| Muted text      | `text-muted-foreground`            | Secondary/helper text |
-| Cards           | `bg-card`                          | Card backgrounds      |
-| Muted areas     | `bg-muted`                         | Subtle backgrounds    |
-| Borders         | `border-border`                    | All borders           |
-| Accent          | `bg-accent text-accent-foreground` | Primary actions       |
-| Focus rings     | `ring-ring`                        | Focus states          |
+| Purpose         | Token                                        | Example                       |
+| --------------- | -------------------------------------------- | ----------------------------- |
+| Page background | `bg-background`                              | Main page background          |
+| Text            | `text-foreground`                            | Primary text                  |
+| Muted text      | `text-muted-foreground`                      | Secondary/helper text         |
+| Cards           | `bg-card`                                    | Card backgrounds              |
+| Muted areas     | `bg-muted`                                   | Subtle backgrounds            |
+| Borders         | `border-border`                              | Decorative card/section edges |
+| Control borders | `border-border-strong`                       | Inputs/controls (3:1, WCAG)   |
+| Accent          | `bg-accent text-accent-foreground`           | Primary actions               |
+| Danger          | `bg-destructive text-destructive-foreground` | Delete/error actions          |
+| Warning         | `bg-warning text-warning-foreground`         | Caution states                |
+| Success         | `bg-success text-success-foreground`         | Completed/positive            |
+| Info            | `bg-info text-info-foreground`               | Informational/neutral         |
+| Focus rings     | `ring-ring`                                  | Focus states                  |
+
+**Tint pattern:** soft panels use `bg-{token}/10`, borders `border-{token}/30`, colored text `text-{token}`. Solid fills pair `bg-{token}` with `text-{token}-foreground`.
+
+**Contrast caveats (light mode):** `border` is decorative only (fails 3:1 — use `border-border-strong` on inputs/controls). `text-warning` is goldenrod and only clears 3:1 — fine for icons/large text/badges, but pair body-size warning text with an icon or use `text-foreground`. `text-accent`/`text-success`/`text-info` were darkened to clear 4.5:1.
 
 ### 6.3 CSS Variable Definitions
+
+`src/lib/styles/inkprint.css` is the source of truth — values below mirror it (verified WCAG ratios in the file comments). Status foregrounds follow one rule: **any surface at L ≥ 50 takes ink, not white.**
 
 ```css
 /* Light mode (paper studio) */
 :root {
-	--background: 40 20% 98%; /* Warm off-white */
-	--foreground: 240 10% 10%; /* Deep ink black */
-	--card: 40 15% 96%; /* Slightly warmer */
-	--muted: 40 10% 92%; /* Muted backgrounds */
-	--muted-foreground: 240 5% 45%;
-	--border: 40 10% 85%;
-	--accent: 24 80% 55%; /* Warm orange-amber */
-	--accent-foreground: 0 0% 100%;
-	--ring: 24 80% 55%;
+	--background: 40 15% 98%; /* warm paper white */
+	--foreground: 240 10% 10%; /* deep ink black */
+	--card: 40 12% 94%;
+	--muted: 40 12% 90%;
+	--muted-foreground: 240 5% 42%; /* clears 4.5:1 on card + muted */
+	--border: 40 10% 82%; /* decorative edges only */
+	--border-strong: 40 10% 52%; /* input/control boundaries (3:1) */
+	--accent: 24 80% 40%; /* deep burnt orange; text-accent = 4.6:1 */
+	--accent-foreground: 0 0% 100%; /* white (ink fails below ~L48) */
+	--ring: 24 80% 40%;
+	--destructive: 6 70% 47%; /* terracotta */
+	--destructive-foreground: 0 0% 100%;
+	--warning: 45 88% 38%; /* goldenrod (not highlighter yellow) */
+	--warning-foreground: 30 10% 12%; /* dark ink */
+	--success: 150 55% 33%; /* sage green */
+	--success-foreground: 0 0% 100%;
+	--info: 200 60% 40%; /* teal-leaning blue */
+	--info-foreground: 0 0% 100%;
 }
 
-/* Dark mode (ink room) */
+/* Dark mode (ink room) — warm charcoal, status surfaces brighten and take ink fg */
 .dark {
-	--background: 240 10% 6%; /* Near-black */
-	--foreground: 40 10% 92%; /* Off-white */
-	--card: 240 10% 10%;
-	--muted: 240 10% 14%;
-	--muted-foreground: 40 5% 55%;
-	--border: 240 10% 18%;
-	--accent: 24 85% 58%; /* Slightly brighter */
-	--accent-foreground: 240 10% 6%;
+	--background: 32 4% 11%;
+	--foreground: 40 10% 92%;
+	--card: 32 5% 15%;
+	--muted: 32 5% 19%;
+	--muted-foreground: 40 5% 62%;
+	--border: 32 5% 24%;
+	--border-strong: 32 5% 45%;
+	--accent: 24 85% 58%;
+	--accent-foreground: 30 6% 11%; /* ink on bright orange */
 	--ring: 24 85% 58%;
+	--destructive: 6 72% 58%;
+	--destructive-foreground: 30 6% 11%;
+	--warning: 45 90% 58%;
+	--warning-foreground: 30 6% 11%;
+	--success: 150 50% 50%;
+	--success-foreground: 30 6% 11%;
+	--info: 200 55% 60%;
+	--info-foreground: 30 6% 11%;
 }
 ```
 
 ### 6.4 Status Colors + Texture Pairing
 
-| Status  | Color         | Texture           |
+Use the **token**, never the raw palette class. Hue is tuned to sit on warm paper (terracotta/goldenrod/sage/teal, not stock Tailwind).
+
+| Status  | Token         | Texture           |
 | ------- | ------------- | ----------------- |
-| Success | `emerald-600` | Grain             |
-| Warning | `amber-600`   | Static            |
-| Danger  | `red-600`     | Static (stronger) |
-| Info    | `blue-600`    | Thread            |
+| Success | `success`     | Grain             |
+| Warning | `warning`     | Static            |
+| Danger  | `destructive` | Static (stronger) |
+| Info    | `info`        | Thread            |
+
+> Colorblind note: `destructive` (6°) and `accent` (24°) are close in hue — always pair destructive UI with an icon or label, never color alone.
 
 ### 6.5 Light vs Dark Mode Philosophy
 
@@ -469,21 +504,27 @@ Use `font-notes` for longform thinking, journaling, scratchpad.
 
 ### 7.2 Type Hierarchy
 
-| Role            | Size                   | Weight                        | Use             |
-| --------------- | ---------------------- | ----------------------------- | --------------- |
-| H1 / Hero       | `text-3xl sm:text-5xl` | `font-semibold`               | Page titles     |
-| H2 / Section    | `text-2xl sm:text-3xl` | `font-semibold`               | Section headers |
-| H3 / Card title | `text-lg`              | `font-semibold`               | Card headers    |
-| Body            | `text-sm sm:text-base` | `font-normal`                 | Regular content |
-| Small           | `text-xs`              | `font-normal`                 | Helper text     |
-| Micro-label     | `text-[0.65rem]`       | `uppercase tracking-[0.15em]` | Metadata        |
+| Role            | Size                   | Weight          | Use                      |
+| --------------- | ---------------------- | --------------- | ------------------------ |
+| H1 / Hero       | `text-3xl sm:text-5xl` | `font-semibold` | Page titles              |
+| H2 / Section    | `text-2xl sm:text-3xl` | `font-semibold` | Section headers          |
+| H3 / Card title | `text-lg`              | `font-semibold` | Card headers             |
+| Body            | `text-sm sm:text-base` | `font-normal`   | Regular content          |
+| Small           | `text-xs`              | `font-normal`   | Helper text              |
+| Micro / chips   | `text-2xs`             | `font-medium`   | Timestamps, counts       |
+| Micro-label     | `.micro-label`         | (built-in)      | Uppercase eyebrow labels |
+
+**Never use arbitrary font sizes** (`text-[10px]`, `text-[0.6rem]`, etc.). The scale stops at `text-2xs` (0.6875rem / 11px) — anything smaller is unreadable. Uppercase metadata labels use the `.micro-label` class (0.65rem / 0.15em tracking, defined in `inkprint.css`), never a hand-rolled `text-[…] uppercase tracking-[…]` stack.
+
+> Mobile dominance: ensure one clearly dominant element per view. Don't let a project/page title collapse to `text-sm` (= a list-row) on mobile, and avoid inverted responsive sizes (`text-sm sm:text-xs`). Exception: form controls use `text-base sm:text-sm` deliberately — the `text-base` floor stops iOS from zooming on focus.
 
 ### 7.3 Micro-Label Pattern
 
 ```svelte
 <p class="micro-label text-accent">ONTOLOGY</p>
-<!-- or -->
-<p class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground">UPDATED: 2H AGO</p>
+<p class="micro-label">UPDATED: 2H AGO</p>
+<!-- non-uppercase micro metadata (counts, timestamps): -->
+<span class="text-2xs font-medium text-muted-foreground">3 tasks</span>
 ```
 
 Use micro-labels for metadata anchors — users know what section they're in.

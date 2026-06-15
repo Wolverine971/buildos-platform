@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { senseDomains } from './domain-sensing';
 import {
 	getActiveDomainIds,
+	getActiveOutcomeCardIds,
 	getActiveWorkCapabilityIds,
 	getNewDomainResearchBacklogEntries,
 	mergeDomainSessionState,
@@ -26,7 +27,7 @@ describe('domain session state', () => {
 			id: 'marketing.youtube_growth',
 			occurrences: 1
 		});
-		expect(state.active_work_capabilities[0]).toMatchObject({
+		expect(state.active_outcome_cards[0]).toMatchObject({
 			id: 'youtube_growth_strategy_plan',
 			occurrences: 1,
 			default_skill_id: 'content_strategy_beyond_blogging'
@@ -52,10 +53,11 @@ describe('domain session state', () => {
 			stream_run_id: 'stream-1',
 			source: 'current_user_message'
 		});
-		expect(state.recent_observations[0]?.candidate_work_capability_ids).toContain(
+		expect(state.recent_observations[0]?.candidate_outcome_card_ids).toContain(
 			'youtube_growth_strategy_plan'
 		);
 		expect(getActiveDomainIds(state)[0]).toBe('marketing.youtube_growth');
+		expect(getActiveOutcomeCardIds(state)[0]).toBe('youtube_growth_strategy_plan');
 		expect(getActiveWorkCapabilityIds(state)[0]).toBe('youtube_growth_strategy_plan');
 	});
 
@@ -69,7 +71,7 @@ describe('domain session state', () => {
 		const second = senseDomains({
 			currentUserMessage: 'Ok, make the plan.',
 			priorDomainIds: getActiveDomainIds(initial),
-			priorWorkCapabilityIds: getActiveWorkCapabilityIds(initial)
+			priorOutcomeCardIds: getActiveOutcomeCardIds(initial)
 		});
 		if (!second) throw new Error('Expected second sensing');
 		const next = mergeDomainSessionState(initial, second, {
@@ -88,7 +90,7 @@ describe('domain session state', () => {
 			last_seen_at: '2026-05-17T12:05:00.000Z',
 			occurrences: 2
 		});
-		expect(next.active_work_capabilities[0]).toMatchObject({
+		expect(next.active_outcome_cards[0]).toMatchObject({
 			id: 'youtube_growth_strategy_plan',
 			first_seen_at: '2026-05-17T12:00:00.000Z',
 			last_seen_at: '2026-05-17T12:05:00.000Z',
@@ -166,7 +168,7 @@ describe('domain session state', () => {
 		});
 
 		expect(parsed?.active_domains).toHaveLength(1);
-		expect(parsed?.active_work_capabilities).toHaveLength(1);
+		expect(parsed?.active_outcome_cards).toHaveLength(1);
 		expect(parsed?.research_backlog).toHaveLength(1);
 		expect(getActiveDomainIds(parsed)).toEqual(['marketing.youtube_growth']);
 		expect(getActiveWorkCapabilityIds(parsed)).toEqual(['youtube_growth_strategy_plan']);

@@ -227,4 +227,19 @@ describe('buildChatToolAnalytics', () => {
 		});
 		expect(payload.most_problematic_tools[0].failure_rate).toBe(100);
 	});
+
+	it('classifies outcome card tools as gateway discovery', () => {
+		const payload = buildChatToolAnalytics([
+			row({
+				id: 'exec-1',
+				tool_name: 'outcome_card_load'
+			})
+		]);
+
+		expect(payload.by_tool[0]).toMatchObject({
+			tool_name: 'outcome_card_load',
+			tool_category: 'gateway_discovery'
+		});
+		expect(payload.filter_options.categories).toContain('gateway_discovery');
+	});
 });

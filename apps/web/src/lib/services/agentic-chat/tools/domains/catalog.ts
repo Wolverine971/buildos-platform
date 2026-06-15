@@ -716,6 +716,41 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 				summary: 'No dedicated writing craft skill exists yet.'
 			}
 		]
+	},
+	{
+		id: 'agent_engineering',
+		name: 'Agent and Context Engineering',
+		parentIds: [],
+		aliases: [
+			'context engineering',
+			'agent engineering',
+			'agent harness',
+			'context for an agent',
+			'agent context',
+			'prompt bloat',
+			'system prompt design',
+			'ai-readable context',
+			'structure context for ai',
+			'agent reliability'
+		],
+		summary:
+			'Designing the context an AI agent works with — selecting and structuring files, docs, memories, and tool outputs; building or debugging agent harnesses; reducing prompt bloat; and right-sizing evals.',
+		boundaries: [
+			'Use when the work is about how an AI agent is fed context or how an agent workflow is structured, not about deterministic code behavior unrelated to LLMs.',
+			'Do not treat a generic prompt-wording request as harness design unless the user is structuring context, workflow stages, or reliability.'
+		],
+		coverageStatus: 'partial',
+		capabilityIds: ['planning', 'documents'],
+		skills: [
+			{
+				id: 'context_engineering_for_agent_work',
+				useWhen:
+					'the user wants to set up or structure context for an agent, convert messy notes into an AI-readable data layer, reduce a bloated system prompt, build or debug an agent harness, or figure out why an agent seems confused or ignores rules'
+			}
+		],
+		notes: [
+			'Single-skill root domain; coverage is the context_engineering_for_agent_work playbook. This is BuildOS-adjacent (the product is itself an agent context layer), so route real agent-context questions here instead of answering from generic knowledge.'
+		]
 	}
 ];
 

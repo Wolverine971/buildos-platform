@@ -23,11 +23,11 @@ describe('domain sensing', () => {
 				'viral_video_script_structure'
 			])
 		);
-		expect(result?.active_domains[0]?.work_capability_ids).toEqual(
+		expect(result?.active_domains[0]?.outcome_card_ids).toEqual(
 			expect.arrayContaining(['youtube_growth_strategy_plan', 'youtube_video_improvement'])
 		);
-		expect(result?.candidate_work_capability_ids).toContain('youtube_growth_strategy_plan');
-		expect(result?.candidate_work_capabilities[0]).toMatchObject({
+		expect(result?.candidate_outcome_card_ids).toContain('youtube_growth_strategy_plan');
+		expect(result?.candidate_outcome_cards[0]).toMatchObject({
 			id: 'youtube_growth_strategy_plan',
 			default_skill_id: 'content_strategy_beyond_blogging'
 		});
@@ -43,7 +43,7 @@ describe('domain sensing', () => {
 
 		expect(block).toContain('## Active Domain Signals');
 		expect(block).toContain('sales_and_growth.cold_email');
-		expect(block).toContain('Candidate work capabilities:');
+		expect(block).toContain('Candidate outcome cards:');
 		expect(block).toContain('cold_email_campaign_build');
 		expect(block).toContain('cold_email_engagement_first_outreach');
 		expect(block).toContain('Next step:');

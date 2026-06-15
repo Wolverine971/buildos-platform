@@ -12,7 +12,7 @@
 **Connection Level:** 3rd+
 **Audience Quality:** Medium (builder voice, business-analytics audience)
 **Profile Created:** 2026-05-15
-**Last Reviewed:** 2026-05-15
+**Last Reviewed:** 2026-06-14
 **Last Engaged:** Never
 **Source of First Discovery:** 2026-05-15 LinkedIn warmup — `"AI memory"` past-24h content search
 
@@ -55,6 +55,7 @@
 
 ## Open Loops
 
+- **2026-06-14 scan:** No new content. His "monthly business reviews" post is now his latest (4w old, past window); prior post was 10mo before that. **Ross is a very infrequent poster** — not a reliable recurring engagement source. Re-check only when an `"AI memory"` search surfaces him fresh.
 - First engagement attempt 2026-05-15 — 5m fresh post, low comment competition at scan. Watch for Ross's reaction.
 - If he engages with DJ's comment, worth a connection request after one round-trip — geo distance (China) means relationship is long-tail but his content lane is exactly on-thesis.
 

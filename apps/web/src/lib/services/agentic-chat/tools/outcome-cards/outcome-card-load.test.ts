@@ -1,20 +1,20 @@
-// apps/web/src/lib/services/agentic-chat/tools/work-capabilities/work-capability-load.test.ts
+// apps/web/src/lib/services/agentic-chat/tools/outcome-cards/outcome-card-load.test.ts
 import { describe, expect, it } from 'vitest';
 import { listDomains } from '../domains/catalog';
 import { listCapabilities } from '../registry/capability-catalog';
 import { listResources } from '../resources/resource-registry';
 import { getSkillById } from '../skills/registry';
-import { listWorkCapabilities } from './catalog';
-import { loadWorkCapability } from './work-capability-load';
-import { searchWorkCapabilities } from './work-capability-search';
+import { getOutcomeCardById, listOutcomeCards } from './catalog';
+import { loadOutcomeCard } from './outcome-card-load';
+import { searchOutcomeCards } from './outcome-card-search';
 
-describe('work capability discovery', () => {
+describe('outcome card discovery', () => {
 	it('keeps catalog links internally resolvable', () => {
 		const domainIds = new Set(listDomains().map((domain) => domain.id));
 		const buildosCapabilityIds = new Set(listCapabilities().map((capability) => capability.id));
 		const resourceIds = new Set(listResources().map((resource) => resource.id));
 
-		for (const capability of listWorkCapabilities()) {
+		for (const capability of listOutcomeCards()) {
 			for (const domainId of capability.domainIds) {
 				expect(domainIds.has(domainId), `${capability.id} domain ${domainId}`).toBe(true);
 			}
@@ -42,43 +42,52 @@ describe('work capability discovery', () => {
 	});
 
 	it('finds YouTube strategy as an outcome instead of a generic skill', () => {
-		const result = searchWorkCapabilities({
+		const result = searchOutcomeCards({
 			query: 'grow my YouTube audience and plan the next videos',
 			limit: 3
 		});
 
-		expect(result.type).toBe('work_capability_search_results');
+		expect(result.type).toBe('outcome_card_search_results');
 		expect(result.matches[0]).toMatchObject({
-			work_capability_id: 'youtube_growth_strategy_plan',
+			outcome_card_id: 'youtube_growth_strategy_plan',
 			coverage_status: 'partial',
 			default_skill_id: 'content_strategy_beyond_blogging'
 		});
-		expect(result.materialized_tools).toEqual(['work_capability_load']);
+		expect(result.materialized_tools).toEqual(['outcome_card_load']);
 	});
 
-	it('filters work capabilities by domain', () => {
-		const result = searchWorkCapabilities({
+	it('filters outcome cards by domain', () => {
+		const result = searchOutcomeCards({
 			domain: 'sales_and_growth.cold_email',
 			query: 'cold email',
 			limit: 5
 		});
-		const ids = result.matches.map((match) => match.work_capability_id);
+		const ids = result.matches.map((match) => match.outcome_card_id);
 
 		expect(ids).toContain('cold_email_campaign_build');
 		expect(ids).toContain('cold_email_sender_readiness');
 		expect(ids).not.toContain('youtube_growth_strategy_plan');
 	});
 
+	it('keeps project_audit as a legacy alias for the renamed outcome card', () => {
+		expect(getOutcomeCardById('project_audit')?.id).toBe('project_health_audit');
+		expect(loadOutcomeCard('project_audit')).toMatchObject({
+			type: 'outcome_card',
+			id: 'project_health_audit',
+			default_skill_id: 'project_audit'
+		});
+	});
+
 	it('loads an outcome card without materializing broad direct tools', () => {
-		const result = loadWorkCapability('linkedin_company_page_growth_plan');
+		const result = loadOutcomeCard('linkedin_company_page_growth_plan');
 
 		expect(result).toMatchObject({
-			type: 'work_capability',
+			type: 'outcome_card',
 			id: 'linkedin_company_page_growth_plan',
 			coverage_status: 'strong'
 		});
-		if (result.type !== 'work_capability') {
-			throw new Error('Expected work capability payload');
+		if (result.type !== 'outcome_card') {
+			throw new Error('Expected outcome card payload');
 		}
 		expect(result.skill_ids).toEqual(['linkedin_company_page_growth']);
 		expect(result.resource_ids).toEqual(['linkedin_company_page_growth.growth_playbook']);

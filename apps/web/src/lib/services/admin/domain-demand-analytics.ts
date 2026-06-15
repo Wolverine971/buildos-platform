@@ -179,7 +179,7 @@ function hasDomainStateSignal(state: ReturnType<typeof readDomainSessionState>):
 	if (!state) return false;
 	return (
 		state.active_domains.length > 0 ||
-		state.active_work_capabilities.length > 0 ||
+		state.active_outcome_cards.length > 0 ||
 		state.coverage_gaps.length > 0 ||
 		state.research_backlog.length > 0 ||
 		state.recent_observations.length > 0

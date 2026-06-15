@@ -41,6 +41,16 @@ Calendar workflow playbook for BuildOS agentic chat. Use for event reads/writes,
 - `cal.project.get`
 - `cal.project.set`
 
+## Output
+
+After a calendar write, tell the user:
+
+- What changed: event title, the resolved time window (with timezone), scope (user, project, or explicit calendar_id), and any task link.
+- Sync implications when they matter — for example that a synced event will propagate to the connected calendar.
+- For reads: the events in the requested window, stated in the user's terms, plus the exact window you queried.
+
+Stop conditions before replying: scope was chosen explicitly before the write; start/end times are timezone-safe; update/delete used an exact `onto_event_id` or `event_id` discovered from a read rather than guessed; you have not claimed an event was created, moved, or cancelled until the tool call returned success.
+
 ## Guardrails
 
 - Prefer onto_event_id when available for update/delete.

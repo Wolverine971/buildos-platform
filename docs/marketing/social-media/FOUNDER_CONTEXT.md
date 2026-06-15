@@ -10,10 +10,11 @@ Use this doc before writing founder-facing copy, social posts in DJ's voice, or 
 
 Related docs:
 
+- **[Founder Deep Context (Master Life Story)](./FOUNDER_DEEP_CONTEXT.md)** — the full synthesized narrative (life timeline, chapters, story bank, sensitive rulings). Go there for depth; stay here for voice.
 - [Social Media Documentation Hub](./README.md)
 - [Why I Built BuildOS](../content/drafts/why-i-built-buildos.md)
-- [Founder Deep-Dive Interview - Round 2](./FOUNDER_DEEP_DIVE_INTERVIEW_R2.md)
-- [DJ's Life Story Interview](./FOUNDER_LIFE_STORY_INTERVIEW.md)
+- [Founder Deep-Dive Interview - Round 2](./FOUNDER_DEEP_DIVE_INTERVIEW_R2.md) — raw answers
+- [DJ's Life Story Interview](./FOUNDER_LIFE_STORY_INTERVIEW.md) — raw answers
 - [Founder Interview for LinkedIn Content](./LINKEDIN_FOUNDER_INTERVIEW.md)
 
 ---
@@ -266,13 +267,23 @@ Core frustration: "I wanted a thing I could just talk to, and it understands whe
 1. **Agentic chat** - "just chat with the OS, it understands the tools"
 2. **Ontology and graph view** - "we think in terms of goals and tasks"
 
-### Current State (As of Jan 2026)
+### Current State (As of June 2026)
 
-- ~70 signups, no active users yet
-- Few beta users
-- **Hardest problem**: Making it as good as ChatGPT + figuring out marketing
-- **What keeps him up**: "Is it solving a real problem? It's solving it for me, but explaining to others is hard. Differentiating from ChatGPT/Claude is hard."
+- Focus has shifted from "is the solution right" to **getting users and growing the product with them**: "I do have a decent solution, but it's more about getting users and growing the product with the users."
+- Active surface areas: project sharing / collaboration (no teams using it yet — figuring that out), skills, agentic chat
+- **The thesis, in his words**: "Your context will compound. You just need to store the context, and as the AI agents get better, they'll be able to take more advantage of it."
+- **Most excited about**: collaboration, skills, and using cheaper models to do work — "If you can do a lot more with cheaper models, you're punching above your weight class." Enables non-technical people to do crazy stuff.
+- **Honest retro**: overengineered the ontology, backed off to basics — good building-in-public material
 - **What he loves**: "It's building context. That part is really powerful."
+
+<details>
+<summary>Historical: Jan 2026 snapshot</summary>
+
+- ~70 signups, no active users yet; few beta users
+- Hardest problem: making it as good as ChatGPT + figuring out marketing
+- What kept him up: "Is it solving a real problem? It's solving it for me, but explaining to others is hard. Differentiating from ChatGPT/Claude is hard."
+
+</details>
 
 ---
 

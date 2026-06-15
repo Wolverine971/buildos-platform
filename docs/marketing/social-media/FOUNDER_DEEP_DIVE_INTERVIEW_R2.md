@@ -10,6 +10,8 @@
 
 This is raw source material, not the founder-voice source of truth.
 
+> **Status (2026-06-12):** COMPLETE — all 119 questions answered inline (Sections 1–5 in Jan 2026; Sections 6–10 answered 2026-06-11 and distributed into place 2026-06-12; Q66 consolidated from the Life Story + 9takes interviews). Synthesized into [FOUNDER_DEEP_CONTEXT.md](./FOUNDER_DEEP_CONTEXT.md); use that doc, not this one, when writing content.
+
 Use [DJ's Founder Context](./FOUNDER_CONTEXT.md) for the distilled version and [Why I Built BuildOS](../content/drafts/why-i-built-buildos.md) for reusable founder narrative.
 
 ---
@@ -398,19 +400,35 @@ I have several:
 
 66. Tell me about your wife. How did you meet? What's she like?
 
-She's amazing.
+She's amazing. She's my friend's younger sister — five years younger than me. I met her in passing and thought she was cool, but I didn't pursue anything for a long time because I didn't want to make things complicated; I was in the military at the time. Before my last deployment I reached out, because I figured I want whoever I end up marrying to know what it was like for me in the Marine Corps. I said, "Hey, I'm about to deploy. Do you want to stay in contact? Because I like you and I think you're cool." She was like, "Yeah, let's stay in contact," and we ended up dating and falling in love. When I deployed, our relationship really grew — a lot of people, when they deploy, their relationships fizzle and burn out, but ours was growing.
 
-<!-- todo finish -->
+We got back from deployment, went to Coachella, had a great time, and she moved out to California so we could make stuff work and be together. We had no money, but we already wanted to get married, and you get basic housing allowance if you're married — so we found a crappy one-bedroom apartment outside 29 Palms on a Saturday, eloped on a Sunday, and moved in on a Monday. She quit her job that Sunday so she could meet me there. No bed, just luggage. We stayed up all night talking. We were just so happy.
+
+She's my ride or die and I freaking love her. We have three kids together. She's hilarious — we're a dynamic duo and we've been through a lot together.
+
+_(Consolidated from DJ's Life Story interview and the 9takes founder interview, 2026-06-11.)_
 
 67. What does your wife think of the founder journey? How does she support you - or push back?
 
+She wasn't that excited about 9takes because it was all about psychology. I think she's hopeful for me, and she knows I work hard, and she thinks eventually something will work out. That's kind of what I think her mindset is.
+
 68. Who's your best friend? How did you meet and what makes that friendship work?
+
+Man, I'm not sure. I have several friends, but I don't know. I'm really kind of a lone wolf, isolated.
 
 69. Do you have a mentor right now? Who do you go to for advice?
 
+No, I don't. I used to go to my dad for advice a lot, but I just haven't in a long time — well, he passed away, so I don't really have people that I'm that vulnerable with. That's an issue.
+
 70. Who's someone you admire that you've never met? What do you admire about them?
 
+Man, there's a lot of people. Tim Ferriss, Peter Thiel, Elon Musk, Ernest Shackleton. I admire the My First Million guys, Shaan Puri and Sam Parr. They just have interesting ideas. I like Peter Thiel's thing of zero to one — that was great. I like Tim Ferriss's thing of experimenting and learning. Shaan Puri and Sam Parr, bootstrapping businesses and just being curious dudes that make stuff work. I like Ernest Shackleton's determination and his can-do-it-ness and his planning and attention to detail. All that stuff is great. Those are some people that I really admire.
+
+One person I _have_ met, just recently: Travis Haley from Haley Strategic. He was a Marine Corps recon sniper dude. That guy's an Enneagram 8, and we had so many deep conversations around the campfire. I really respect and admire that guy.
+
 71. Is there someone who believed in you before you believed in yourself?
+
+I'd say my dad believed in me. He believed in me, but also he wasn't just easily impressed by me, and that meant so much. I remember in high school when I started doing wrestling and I would do these workouts at night. My dad was impressed that I would work out at night, and he was just like, "Wow, my son's really putting in effort and becoming a man." When I joined the Marine Corps, he was really proud of me, and that just meant a lot to me. I'd say my wife believes in me the most right now.
 
 ---
 
@@ -418,13 +436,23 @@ She's amazing.
 
 72. How would your wife describe you to a stranger?
 
+She would say I'm weird, quirky, tough, kind, loving, stubborn, not a good listener but also a good listener — something like that.
+
 73. How would your Marine buddies describe you?
+
+Quirky, a good dude, nice, kind, tough — stuff like that.
 
 74. How would a former coworker describe you?
 
+Extroverted, kind, asks good questions, can-do-it personality, someone who just likes to tackle stuff.
+
 75. What do people misunderstand about you most often?
 
+Sometimes they are intimidated by my intensity. And sometimes I ask dumb questions because I just want to know stuff — I'm just trying to catch up, and I'm paying attention deeply.
+
 76. What do you wish people knew about you that they don't?
+
+That I care. And that I'm trying to think outside the box — because if you just do what everyone else has done, you're not going to get that much value, but if you think outside the box, you have the potential to create massive value and find secrets.
 
 ---
 
@@ -434,17 +462,33 @@ She's amazing.
 
 77. What do you geek out about that has nothing to do with tech or building?
 
+Beyond tech, building, wrestling, AI, kids, psychology, and the Enneagram? Lots of things. _(From the Life Story interview: psychology, AI stuff, shooting, the idea of a bunch of things — and recently picked League of Legends back up.)_
+
 78. What would you do for a living if money didn't matter and success was guaranteed?
+
+I'd teach kids for a little bit, and I'd shoot guns — shoot long range. Not sure.
 
 79. What's a hobby or interest you've kept coming back to throughout your life?
 
+- I work out a lot. I try to work out a lot. I do sprints right now.
+- I'd love to do wrestling more. I'd love to do jiu-jitsu more.
+- I don't read much, but I listen to a bunch of audiobooks.
+
 80. Do you read? What kind of books? What's a book that changed your thinking?
+
+I do not read much, but I do listen to a bunch of audiobooks. I've listened to all of Tim Ferriss's books, and I love them. I love Peter Thiel's "Zero to One." I really like Andrew Chen's book, "The Cold Start Problem." I also like "The Third Door" by Alex Banayan — that was interesting.
 
 81. What kind of music are you into? Does it mean something to you, or is it just background?
 
+Not much. I listen to Bring Me The Horizon — I went to a concert and I really liked it — but I'm not that big into music.
+
 82. Do you watch sports? Play any? Is there a team or athlete you follow obsessively?
 
+Not really. I'll check out wrestling if it's on, maybe catch a little bit of the UFC, but I don't watch sports that much.
+
 83. What's something you're weirdly good at that most people don't know about?
+
+Wrestling, jiu-jitsu, chess.
 
 ---
 
@@ -452,17 +496,31 @@ She's amazing.
 
 84. Are you a morning person or night owl? When do you do your best work?
 
+A night owl, but I'm also forced to become a morning person because I wake up with the kids. I think I do my best work at night. I love working late into the night, but I'm also pounding energy drinks, so I'm trying to cut back a little bit.
+
 85. What's your relationship with food? Do you cook? Do you eat healthy or survive on energy drinks and chaos?
+
+Yes, I cook, but I just haven't been prioritizing food recently. I pound energy drinks — probably around 500 mg of caffeine per day, something around there.
 
 86. How do you decompress? What do you do when you're NOT working?
 
+Just hang out with my kids, take naps when I can.
+
 87. What's a small thing that makes you irrationally happy?
+
+When my wife makes me breakfast in the morning. That's super sweet, and I really like it.
 
 88. What's a small thing that makes you irrationally annoyed?
 
+When people talk more than me. Not that I want people to talk more than me, but people are just so self-absorbed in their own story. I've had situations where I'm the one asking questions, asking about the other person, and they're just so content with talking. They don't even realize that they haven't asked me any questions or shown interest.
+
 89. Do you have any rituals or routines that are non-negotiable?
 
+I have this morning routine where I go outside and do these Chinese arm-swinging exercises — try to get some sunlight.
+
 90. What's a guilty pleasure you'd be embarrassed to admit?
+
+My energy drink consumption.
 
 ---
 
@@ -470,15 +528,27 @@ She's amazing.
 
 91. What's something you believe strongly that most people would disagree with?
 
+There's a lot to personality and psychology that's not well understood — and it's kind of a conspiracy theory of mine, but I think personality and psychology stay not-well-understood because they're extremely powerful if you do understand that kind of stuff.
+
 92. What's a value you will never compromise on?
+
+I don't know. I feel like I've compromised a lot in marriage, but I don't know.
 
 93. What do you think is wrong with the world right now? What gives you hope?
 
+I think the world's just really fucked up. But the younger generation — people think they're stupid, but I think they're just going to surprise us.
+
 94. What do you think about fame and status? Do you want it? Fear it? Find it irrelevant?
+
+I guess I want it, but I'm not desperately trying to have it.
 
 95. What does success actually mean to you - not the cliche answer, the real one?
 
+It means being financially stable, having the freedom to do what I want, and being able to provide for my family.
+
 96. What do you want your legacy to be?
+
+I'm not even thinking like that yet — right now I'm in survival mode. I want to basically help my family, provide for people, and do something that is positive in the world. Hopefully inspire people to challenge themselves and challenge the status quo and build ridiculously awesome stuff.
 
 ---
 
@@ -488,15 +558,27 @@ She's amazing.
 
 97. What's a pattern you notice in the world that most people miss?
 
+I'm very contrarian by nature, and there are so many patterns that I go down — but it's just hard to think of them right now.
+
 98. What's an unpopular opinion you hold about how people work, think, or behave?
+
+I don't know.
 
 99. What's something you learned in the Marines that applies to building startups - but that most "startup advice" gets wrong?
 
+The idea of planning for contingencies. You plan for contingencies when you're doing mission planning, and it's the same thing with startups: you need to plan for contingencies. I'm accustomed to building a foolproof plan and thinking in terms of SOPs — what would we do in response to this situation or that situation, that kind of thing.
+
 100.    What's something you learned about yourself that surprised you during the BuildOS journey?
+
+I don't know. _(DJ skipped past this one in the 2026-06-11 session.)_
 
 101.    If you could go back and give 20-year-old DJ one piece of advice, what would it be?
 
+Maybe don't watch porn. Learn to code.
+
 102.    What's a question you wish people asked you more often?
+
+I would say people need to ask how they're similar and different to other people.
 
 ---
 
@@ -504,13 +586,23 @@ She's amazing.
 
 103. What's the most interesting thing about you that has nothing to do with being a founder?
 
+I think one of the most interesting things about me is that I was a pastor's son who became a Marine Corps scout sniper — that's an interesting tidbit. Also: I lean conservative and my wife leans liberal, and that's something most people don't understand or will ever experience.
+
 104. What experiences have you had that most people never will?
+
+Becoming a scout sniper. Being a pastor's son is an experience that not many people have. Being a dad of three kids. Going from Marine Corps infantry to software engineer — I think that's interesting and not many people do it.
 
 105. What have you done that you're proud of that you almost never talk about?
 
+The scout sniper stuff.
+
 106. If someone spent a week with you, what would surprise them most?
 
+If they were just observing me, I think they would be surprised by how much I work. But also maybe by how much fun I have with my wife. My wife is hilarious.
+
 107. What would your tombstone say?
+
+"You don't know until you try." I got in trouble in the Marines for saying that during a brief. A military JAG was briefing us on the rules of engagement, explaining the idea of hostile act versus hostile intent — a hostile act is someone shooting at you; hostile intent is someone planting an IED in the ground. She asked, "How do you know the difference between a hostile act and hostile intent?" We had just come back from a training mission and I was half paying attention, but I knew what she was saying, and I said, "Well, you don't know until you try." Everyone in the room was like, what did you just say? They were disgusted with me and embarrassed by me — I was like a boo to the Marines. What I was trying to say was: you don't know exactly what they're doing, so you need to read the situation. But it came out as "you don't know until you try." And honestly, that's kind of the idea — I'll fuck around and find out, and I'll challenge myself.
 
 ---
 
@@ -520,19 +612,35 @@ She's amazing.
 
 108. When someone you care about is struggling, what do you do? What do you say?
 
+I just try to meet them on their level, and I also think about timing — I don't want to reach out when they're bombarded by stuff. In the quiet moments, when they have time to think, I'll ask them about stuff.
+
 109. What kind of energy do you want to bring to a room - or an online conversation?
+
+Energy, empathy, outside-the-box thinking.
 
 110. Who are you rooting for right now? What founders, creators, or people are you cheering on?
 
+I don't know a lot of people. I'm very online, I would say.
+
 111. What does "we're all on the same team" mean to you practically? How do you live that out?
+
+It means we've got to make the world better. I struggled with anger in the beginning, and I think a lot of people in this world are struggling — they get angry about stuff. You need to find common ground. I'm really disgusted at the political division in America, and I feel like just starting conversations with people is a big win. If you're a liberal, you don't really talk to cops or even see the good parts of conservatives — and vice versa, if you're conservative, you don't see the good parts of liberals. People just live in silos, and that's a big problem.
 
 112. When you see someone succeed - even a competitor - how do you actually feel?
 
+I don't know — I try to be happy for them. I do get angry if they copied me, things like that.
+
 113. What makes you want to help someone? What signals tell you "this is someone I want to support"?
+
+I do try to help people a lot, and I've offered a ton of free advice. But it's the idea of: you can lead a horse to water, but you can't make them drink. You've got to find someone who actually wants it and is hungry to learn.
 
 114. What does "adding value" to a conversation look like in your mind?
 
+Asking the right questions. That's the big deal — asking the right questions, reading the mood, reading the vibe, reading the emotions of the other person.
+
 115. What does "providing encouragement" look like when you don't have expertise to share?
+
+Just admiring what somebody has done, I would say. I'm not sure.
 
 ---
 
@@ -540,11 +648,19 @@ She's amazing.
 
 116. What didn't I ask about that I should have?
 
+I don't know. You asked about a lot of stuff.
+
 117. What stories do you want to tell that haven't come up yet?
+
+My wife and I are like a dynamic duo. We've been through a lot together and we have so many interesting stories together. And my kids are crazy — I'm in full dad mode as well.
 
 118. Is there anything you want to be known for that we haven't covered?
 
+One thing: before joining the Marine Corps, I thought, "I want to do something really badass where I have to face the harsh realities of the world — but then I want to go back to something soft, like teach kindergarten." I thought that would really give me a full, balanced perspective on stuff.
+
 119. If this interview could magically capture ONE thing about who you are - what would you want that to be?
+
+I'm very contrarian, I would say. And I try to really think outside the box. People give me advice, and I try to take their advice, but I also think of it in terms of "you don't know until you try." You've kind of got to test out their advice.
 
 ---
 

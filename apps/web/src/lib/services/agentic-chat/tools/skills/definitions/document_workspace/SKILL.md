@@ -42,6 +42,16 @@ Project document hierarchy playbook for doc tree operations, unlinked docs, task
 - `onto.task.docs.create_or_attach`
 - `onto.edge.link`
 
+## Output
+
+After a document write, report:
+
+- What changed: document title, type, and the content action (created, replaced, appended, or merged).
+- Placement: the parent it is nested under in the doc tree, or that it is currently unlinked — stated only after the create/move response confirmed it.
+- For reorganization: which documents moved and where, derived from a single tree read.
+
+Stop conditions before replying: hierarchy changes went through doc_structure / tree-move, not document-to-document edges or graph reorganize; append/merge writes included non-empty `content`; you have not claimed a document is "nested under X" or "placed in" until the create returned without a tree placement error or the move call returned success.
+
 ## Guardrails
 
 - Do not use onto.project.graph.reorganize for document hierarchy.

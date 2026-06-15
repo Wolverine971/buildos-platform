@@ -2,9 +2,9 @@
 
 # Todd Baur
 
-**Slug:** todd-baur
+**Slug:** toadkicker
 **Display Name:** Todd Baur
-**Profile URL:** https://www.linkedin.com/in/todd-baur/ (slug to confirm on first navigation)
+**Profile URL:** https://www.linkedin.com/in/toadkicker/ (confirmed 2026-06-14 — `todd-baur` 404s)
 **Category:** Founder / Zero-Trust Security / AI Category Commentary
 **Tier:** 3
 **Strategic Role:** Peer
@@ -12,7 +12,7 @@
 **Connection Level:** 1st
 **Audience Quality:** Medium (founder/builder ecosystem, premium account)
 **Profile Created:** 2026-04-27
-**Last Reviewed:** 2026-04-27
+**Last Reviewed:** 2026-06-14
 **Last Engaged:** Never
 **Source of First Discovery:** LinkedIn notifications (2026-04-27, his post + Ash Vaid reaction surfaced)
 
@@ -54,9 +54,15 @@
 | 2026-04-27 | Post    | "Got declined for investment because we're an AI company" — category-overload reflection | https://www.linkedin.com/feed/update/urn:li:activity:7454315596785025024/ | Queued  | Queued for reply          | Mention fit 1 — share the parallel from BuildOS positioning ("the same reason BuildOS leads with 'thinking environment,' not AI"); cheerleader-mode for the self-reflection                                                                                                                                                                   | Pending | 2026-04-27_linkedin-warmup.md  |
 | 2026-04-27 | Post    | "AI company" rejection — anti-AI marketing parallel                                      | https://www.linkedin.com/feed/update/urn:li:activity:7454315596785025024/ | Drafted | Drafted - Pending Posting | 3 options, mention fit 1: (1) cheerleader + value with soft BuildOS mention ("we made the same call deliberately on BuildOS"); (2) "words matter" extension, soft mention via "we"; (3) friendly nuance — pure founder solidarity, no mention. If Alain Tovel Option 1 is used today, prefer Todd Option 3 to stay under the one-mention cap. | Pending | 2026-04-27_linkedin-replies.md |
 
+## 2026-06-14 Scan (reviewed, no queue)
+
+- Confirmed slug: `toadkicker`. Surfaced via notifications ("Todd Baur posted: When you ask for it", 13h).
+- Recent posts all weak/off-thesis today: (1) "When you ask for it" (13h) — image-only, 1 reaction; (2) repost of Mike Singleton AI/ML terms (5d); (3) "I haven't used Fable or Opus 4.8 because we built our own frontier coding solutions. You don't need to pay a subscription to Claude Max to get the same results your laptop can produce without a cloud." (2d) — contrarian local-beats-frontier claim.
+- **Disposition: Reviewed, no comment.** The 2d post is awkward for DJ to engage — it's a dubious local-vs-Claude-Max claim and DJ is a heavy Claude Code user; agreeing is inauthentic, disagreeing risks a warm 1st-conn relationship. Wait for a category/positioning post where the anti-AI-marketing angle lands naturally.
+
 ## Open Loops
 
-- First engagement on a Todd Baur post — confirm the exact slug from his profile URL on first navigation
+- First engagement on a Todd Baur post — slug now confirmed (`toadkicker`)
 - Watch for any future posts where Todd reflects on category framing — DJ's anti-AI angle is highly compatible
 
 ## Next Best Angles

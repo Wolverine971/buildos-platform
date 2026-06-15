@@ -307,26 +307,26 @@ describe('buildToolPayloadForModel', () => {
 		expect(payload.recommended_skill_stacks[0]).toEqual(
 			expect.objectContaining({ id: 'linkedin_growth_plan' })
 		);
-		expect(payload.work_capability_ids).toEqual(['linkedin_company_page_growth_plan']);
-		expect(payload.materialized_tools).toEqual(['work_capability_load', 'resource_search']);
+		expect(payload.outcome_card_ids).toEqual(['linkedin_company_page_growth_plan']);
+		expect(payload.materialized_tools).toEqual(['outcome_card_load', 'resource_search']);
 		expect(payload.boundaries[0]).toContain('Company Pages');
 	});
 
-	it('preserves compact work capability search metadata', () => {
+	it('preserves compact outcome card search metadata', () => {
 		const payload = buildToolPayloadForModel(
-			toolCall('work_capability_search'),
+			toolCall('outcome_card_search'),
 			toolResult({
-				type: 'work_capability_search_results',
+				type: 'outcome_card_search_results',
 				query: 'youtube growth',
 				filters: {
 					domain: 'marketing.youtube_growth',
 					buildos_capability: null
 				},
 				total_matches: 1,
-				materialized_tools: ['work_capability_load'],
+				materialized_tools: ['outcome_card_load'],
 				matches: [
 					{
-						work_capability_id: 'youtube_growth_strategy_plan',
+						outcome_card_id: 'youtube_growth_strategy_plan',
 						name: 'YouTube Growth Strategy Plan',
 						confidence: 0.91,
 						summary: 'Plan channel positioning and content cadence.'.repeat(40),
@@ -339,7 +339,7 @@ describe('buildToolPayloadForModel', () => {
 							'viral_video_script_structure'
 						],
 						coverage_status: 'partial',
-						load_hint: 'Load this work capability.'
+						load_hint: 'Load this outcome card.'
 					}
 				],
 				next_step: 'Pick the closest outcome.'
@@ -348,24 +348,24 @@ describe('buildToolPayloadForModel', () => {
 		) as Record<string, any>;
 
 		expect(payload).toMatchObject({
-			type: 'work_capability_search_results',
+			type: 'outcome_card_search_results',
 			query: 'youtube growth',
-			materialized_tools: ['work_capability_load']
+			materialized_tools: ['outcome_card_load']
 		});
 		expect(payload.matches[0]).toEqual(
 			expect.objectContaining({
-				work_capability_id: 'youtube_growth_strategy_plan',
+				outcome_card_id: 'youtube_growth_strategy_plan',
 				default_skill_id: 'content_strategy_beyond_blogging'
 			})
 		);
 		expect(payload.matches[0].summary.length).toBeLessThan(360);
 	});
 
-	it('preserves compact work capability card metadata', () => {
+	it('preserves compact outcome card metadata', () => {
 		const payload = buildToolPayloadForModel(
-			toolCall('work_capability_load'),
+			toolCall('outcome_card_load'),
 			toolResult({
-				type: 'work_capability',
+				type: 'outcome_card',
 				id: 'cold_email_campaign_build',
 				name: 'Cold Email Campaign Build',
 				summary: 'Build a cold email campaign.',
@@ -389,7 +389,7 @@ describe('buildToolPayloadForModel', () => {
 		) as Record<string, any>;
 
 		expect(payload).toMatchObject({
-			type: 'work_capability',
+			type: 'outcome_card',
 			id: 'cold_email_campaign_build',
 			materialized_tools: ['skill_load']
 		});

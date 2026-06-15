@@ -44,7 +44,7 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 	{
 		type: 'function',
 		function: {
-			name: 'work_capability_search',
+			name: 'outcome_card_search',
 			description:
 				'Find outcome cards within a domain. Use after domain context is known when the task needs a specialized output lane before choosing skills.',
 			parameters: {
@@ -67,7 +67,58 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 					},
 					limit: {
 						type: 'integer',
-						description: 'Maximum number of matching work capabilities to return.'
+						description: 'Maximum number of matching outcome cards to return.'
+					}
+				}
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'outcome_card_load',
+			description:
+				'Load one compact outcome card. This exposes relevant skills, resource handles, outputs, quality criteria, and tool hints without granting direct write tools.',
+			parameters: {
+				type: 'object',
+				properties: {
+					outcomeCard: {
+						type: 'string',
+						description:
+							'Canonical outcome card id such as "cold_email_campaign_build", "youtube_growth_strategy_plan", or "ui_ux_screen_review".'
+					}
+				},
+				required: ['outcomeCard']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'work_capability_search',
+			description:
+				'Legacy alias for outcome_card_search. Prefer outcome_card_search for new calls.',
+			parameters: {
+				type: 'object',
+				properties: {
+					query: {
+						type: 'string',
+						description:
+							'Natural-language outcome search, e.g. "cold email campaign", "YouTube growth plan", or "UI screen review".'
+					},
+					domain: {
+						type: 'string',
+						description:
+							'Optional BuildOS domain id such as "sales_and_growth.cold_email" or "marketing.youtube_growth".'
+					},
+					buildosCapability: {
+						type: 'string',
+						description:
+							'Optional BuildOS runtime capability id such as "planning", "documents", or "project_audit".'
+					},
+					limit: {
+						type: 'integer',
+						description: 'Maximum number of matching outcome cards to return.'
 					}
 				}
 			}
@@ -77,15 +128,14 @@ export const GATEWAY_TOOL_DEFINITIONS: ChatToolDefinition[] = [
 		type: 'function',
 		function: {
 			name: 'work_capability_load',
-			description:
-				'Load one compact WorkCapability outcome card. This exposes relevant skills, resource handles, outputs, quality criteria, and tool hints without granting direct write tools.',
+			description: 'Legacy alias for outcome_card_load. Prefer outcome_card_load for new calls.',
 			parameters: {
 				type: 'object',
 				properties: {
 					workCapability: {
 						type: 'string',
 						description:
-							'Canonical work capability id such as "cold_email_campaign_build", "youtube_growth_strategy_plan", or "ui_ux_screen_review".'
+							'Canonical outcome card id such as "cold_email_campaign_build", "youtube_growth_strategy_plan", or "ui_ux_screen_review".'
 					}
 				},
 				required: ['workCapability']

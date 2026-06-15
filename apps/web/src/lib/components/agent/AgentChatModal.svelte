@@ -58,6 +58,7 @@
 	import { haptic } from '$lib/utils/haptic';
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
 	import { createProjectInvalidation } from '$lib/utils/invalidation';
+	import { uploadFileToSignedStorageUrl } from '$lib/utils/signed-storage-upload';
 	import {
 		buildProjectWideFocus,
 		deriveSessionTitle,
@@ -2063,17 +2064,13 @@
 				throw new Error('Attachment asset metadata missing from server response');
 			}
 
-			if (createPayload?.data?.upload?.signed_url) {
-				const uploadResponse = await fetch(createPayload.data.upload.signed_url, {
-					method: 'PUT',
-					headers: {
-						'Content-Type': file.type || 'application/octet-stream'
-					},
-					body: file
+			if (createPayload?.data?.upload) {
+				await uploadFileToSignedStorageUrl({
+					bucket: asset.storage_bucket ?? 'onto-assets',
+					upload: createPayload.data.upload,
+					file,
+					contentType: file.type || 'application/octet-stream'
 				});
-				if (!uploadResponse.ok) {
-					throw new Error('Storage upload failed');
-				}
 
 				if (!asset.project_id || asset.kind === 'temporary_file') {
 					updateImageAttachment(attachmentId, {

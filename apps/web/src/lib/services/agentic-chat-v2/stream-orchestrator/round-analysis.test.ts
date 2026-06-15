@@ -82,12 +82,12 @@ describe('round analysis helpers', () => {
 		const pattern = buildRoundToolPattern([
 			createToolCall('domain_search', { query: 'linkedin company page growth' }),
 			createToolCall('domain_load', { domain: 'marketing.linkedin_company_page_growth' }),
-			createToolCall('work_capability_search', {
+			createToolCall('outcome_card_search', {
 				domain: 'marketing.linkedin_company_page_growth',
 				query: 'growth plan'
 			}),
-			createToolCall('work_capability_load', {
-				workCapability: 'linkedin_company_page_growth_plan'
+			createToolCall('outcome_card_load', {
+				outcomeCard: 'linkedin_company_page_growth_plan'
 			}),
 			createToolCall('skill_search', { domain: 'marketing.youtube_growth', query: 'script' }),
 			createToolCall('resource_search', {

@@ -33,6 +33,19 @@ Project creation playbook for turning a user idea into the smallest valid BuildO
 
 - `onto.project.create`
 
+## Output
+
+The create payload always has this shape:
+
+- `project`: `{ name, type_key }`, plus `description` and `props` when the user supplied concrete attributes.
+- `entities`: only the goals, tasks, plans, or milestones the user actually described (empty array otherwise).
+- `relationships`: entity refs with `temp_id` and `kind` on both sides (empty array otherwise).
+- `clarifications[]`: only for critical info that cannot be inferred — still send the skeleton alongside it.
+
+After creation succeeds, briefly summarize the new project (name, type, and what initial structure was created) and continue in the created project context.
+
+Stop conditions before replying: `project`, `entities`, and `relationships` are all present even when the arrays are empty; `name` and `type_key` are not blank when inferable; no goals/tasks/plans/milestones were added that the user did not mention; relationships use `{ temp_id, kind }`, never raw id strings; from inside an existing project, the second-project confirmation was asked before any create.
+
 ## Guardrails
 
 - Do not call `create_onto_project({})` or omit the required project payload.

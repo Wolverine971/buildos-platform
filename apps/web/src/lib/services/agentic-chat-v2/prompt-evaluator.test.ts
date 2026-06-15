@@ -88,6 +88,75 @@ describe('evaluatePromptScenario', () => {
 		).toBe('failed');
 	});
 
+	it('passes an outcome-card scenario when the outcome card loader is observed', () => {
+		const scenario = getPromptEvalScenario('workflow.outcome_card.cold_email_campaign_build');
+		expect(scenario).not.toBeNull();
+
+		const result = evaluatePromptScenario(scenario!, {
+			turnRun: {
+				id: 'run-outcome-card',
+				status: 'completed',
+				first_lane: 'skill_first',
+				first_canonical_op: null,
+				first_skill_path: null,
+				validation_failure_count: 0,
+				prompt_snapshot: { id: 'snapshot-outcome-card' }
+			},
+			assistantMessage: {
+				id: 'assistant-outcome-card',
+				content: 'I drafted the campaign structure and next steps.'
+			},
+			events: [
+				{ event_type: 'prompt_snapshot_created', payload: {} },
+				{ event_type: 'done_emitted', payload: {} }
+			],
+			toolExecutions: [{ tool_name: 'outcome_card_load', success: true }]
+		});
+
+		expect(result.status).toBe('passed');
+		expect(
+			result.assertions.find(
+				(assertion) => assertion.assertionKey === 'observed_tool:outcome_card_load'
+			)?.status
+		).toBe('passed');
+	});
+
+	it('fails the project-audit scenario when the outcome card loader is used', () => {
+		const scenario = getPromptEvalScenario('workflow.audit.project_health');
+		expect(scenario).not.toBeNull();
+
+		const result = evaluatePromptScenario(scenario!, {
+			turnRun: {
+				id: 'run-audit-outcome-card',
+				status: 'completed',
+				first_lane: 'overview',
+				first_canonical_op: 'util.project.overview',
+				first_skill_path: 'workflow.audit.skill',
+				validation_failure_count: 0,
+				prompt_snapshot: { id: 'snapshot-audit-outcome-card' }
+			},
+			assistantMessage: {
+				id: 'assistant-audit-outcome-card',
+				content: 'I audited the project health.'
+			},
+			events: [
+				{ event_type: 'skill_loaded', payload: { path: 'workflow.audit.skill' } },
+				{ event_type: 'done_emitted', payload: {} }
+			],
+			toolExecutions: [
+				{ tool_name: 'outcome_card_load', success: true },
+				{ gateway_op: 'util.project.overview', success: true }
+			]
+		});
+
+		expect(result.status).toBe('failed');
+		expect(
+			result.assertions.find(
+				(assertion) => assertion.assertionKey === 'forbidden_tool:outcome_card_load'
+			)?.status
+		).toBe('failed');
+	});
+
 	it('passes a supervisor question turn with checkpoint events', () => {
 		const scenario = getPromptEvalScenario('safety.supervisor_question_repeated_validation');
 		expect(scenario).not.toBeNull();

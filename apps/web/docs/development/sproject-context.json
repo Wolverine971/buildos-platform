@@ -143,14 +143,14 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal", "ProjectModalsHost"]
-		},
-		{
 			"file": "src/routes/projects/create/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal", "ProjectModalsHost"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -979,6 +979,17 @@
 			]
 		},
 		{
+			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"PROJECT_COMMANDERS",
+				"DEFAULT_PUBLIC_PROJECT_ID",
+				"getCommander",
+				"formatTimelineYearRange"
+			]
+		},
+		{
 			"file": "src/lib/components/ontology/graph/lib/g6.service.ts",
 			"type": "component",
 			"components": [],
@@ -1010,17 +1021,6 @@
 			"type": "component",
 			"components": [],
 			"exports": ["SvelteFlowGraphService"]
-		},
-		{
-			"file": "src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"PROJECT_COMMANDERS",
-				"DEFAULT_PUBLIC_PROJECT_ID",
-				"getCommander",
-				"formatTimelineYearRange"
-			]
 		}
 	],
 	"dependencies": {
@@ -1112,10 +1112,10 @@
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",
 		"src/lib/components/ui/codemirror/voice-widget.ts",
+		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts",
 		"src/lib/components/ontology/graph/lib/g6.service.ts",
 		"src/lib/components/ontology/graph/lib/graph.filters.ts",
 		"src/lib/components/ontology/graph/lib/graph.service.ts",
-		"src/lib/components/ontology/graph/lib/svelteflow.service.ts",
-		"src/lib/components/landing/public-project-preview/lib/public-project-types.ts"
+		"src/lib/components/ontology/graph/lib/svelteflow.service.ts"
 	]
 }

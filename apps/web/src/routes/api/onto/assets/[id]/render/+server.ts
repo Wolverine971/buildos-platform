@@ -2,6 +2,7 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { ensureAssetAccess } from '../../shared';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30; // 30 minutes
 
@@ -40,7 +41,7 @@ export const GET: RequestHandler = async ({ params, locals, url }) => {
 		transform.format = format;
 	}
 
-	const { data, error } = await (locals.supabase.storage as any)
+	const { data, error } = await (createAdminSupabaseClient().storage as any)
 		.from(String(asset.storage_bucket))
 		.createSignedUrl(String(asset.storage_path), SIGNED_URL_TTL_SECONDS, {
 			transform: Object.keys(transform).length ? transform : undefined

@@ -14,7 +14,7 @@ export type DomainSessionStateEntry = {
 	gap_skill_ids: string[];
 };
 
-export type WorkCapabilitySessionEntry = {
+export type OutcomeCardSessionEntry = {
 	id: string;
 	name: string;
 	coverage_status: DomainCoverageStatus;
@@ -58,7 +58,7 @@ export type DomainSessionObservation = {
 	source: DomainSensingResult['source'];
 	query_preview: string;
 	domain_ids: string[];
-	candidate_work_capability_ids: string[];
+	candidate_outcome_card_ids: string[];
 	recommended_skill_ids: string[];
 	coverage_gap_skill_ids: string[];
 	coverage_gap_resource_ids: string[];
@@ -68,7 +68,7 @@ export type DomainSessionState = {
 	version: 1;
 	updated_at: string;
 	active_domains: DomainSessionStateEntry[];
-	active_work_capabilities: WorkCapabilitySessionEntry[];
+	active_outcome_cards: OutcomeCardSessionEntry[];
 	coverage_gaps: DomainGapSessionEntry[];
 	research_backlog: DomainResearchBacklogEntry[];
 	recent_observations: DomainSessionObservation[];
@@ -94,7 +94,7 @@ type DomainGapMergeCandidate = DomainGapCandidate & {
 };
 
 const ACTIVE_DOMAIN_LIMIT = 6;
-const ACTIVE_WORK_CAPABILITY_LIMIT = 6;
+const ACTIVE_OUTCOME_CARD_LIMIT = 6;
 const COVERAGE_GAP_LIMIT = 12;
 const RESEARCH_BACKLOG_LIMIT = 16;
 const RECENT_OBSERVATION_LIMIT = 8;
@@ -195,7 +195,7 @@ function readActiveDomain(value: unknown): DomainSessionStateEntry | null {
 	};
 }
 
-function readActiveWorkCapability(value: unknown): WorkCapabilitySessionEntry | null {
+function readActiveOutcomeCard(value: unknown): OutcomeCardSessionEntry | null {
 	if (!isRecord(value)) return null;
 	const id = readString(value.id);
 	const name = readString(value.name);
@@ -302,7 +302,10 @@ function readObservation(value: unknown): DomainSessionObservation | null {
 		source,
 		query_preview: readString(value.query_preview) ?? '',
 		domain_ids: readStringArray(value.domain_ids),
-		candidate_work_capability_ids: readStringArray(value.candidate_work_capability_ids),
+		candidate_outcome_card_ids:
+			readStringArray(value.candidate_outcome_card_ids).length > 0
+				? readStringArray(value.candidate_outcome_card_ids)
+				: readStringArray(value.candidate_work_capability_ids),
 		recommended_skill_ids: readStringArray(value.recommended_skill_ids),
 		coverage_gap_skill_ids: readStringArray(value.coverage_gap_skill_ids),
 		coverage_gap_resource_ids: readStringArray(value.coverage_gap_resource_ids)
@@ -311,6 +314,11 @@ function readObservation(value: unknown): DomainSessionObservation | null {
 
 export function readDomainSessionState(value: unknown): DomainSessionState | null {
 	if (!isRecord(value)) return null;
+	const activeOutcomeCardsRaw = Array.isArray(value.active_outcome_cards)
+		? value.active_outcome_cards
+		: Array.isArray(value.active_work_capabilities)
+			? value.active_work_capabilities
+			: [];
 	return {
 		version: 1,
 		updated_at: readString(value.updated_at) ?? new Date(0).toISOString(),
@@ -319,11 +327,9 @@ export function readDomainSessionState(value: unknown): DomainSessionState | nul
 					.map(readActiveDomain)
 					.filter((item): item is DomainSessionStateEntry => Boolean(item))
 			: [],
-		active_work_capabilities: Array.isArray(value.active_work_capabilities)
-			? value.active_work_capabilities
-					.map(readActiveWorkCapability)
-					.filter((item): item is WorkCapabilitySessionEntry => Boolean(item))
-			: [],
+		active_outcome_cards: activeOutcomeCardsRaw
+			.map(readActiveOutcomeCard)
+			.filter((item): item is OutcomeCardSessionEntry => Boolean(item)),
 		coverage_gaps: Array.isArray(value.coverage_gaps)
 			? value.coverage_gaps
 					.map(readGap)
@@ -358,12 +364,12 @@ export function getActiveDomainIds(
 		.slice(0, limit);
 }
 
-export function getActiveWorkCapabilityIds(
+export function getActiveOutcomeCardIds(
 	state: DomainSessionState | null | undefined,
 	limit = 3
 ): string[] {
 	if (!state) return [];
-	return state.active_work_capabilities
+	return state.active_outcome_cards
 		.slice()
 		.sort((a, b) => {
 			const timeOrder = b.last_seen_at.localeCompare(a.last_seen_at);
@@ -372,6 +378,14 @@ export function getActiveWorkCapabilityIds(
 		})
 		.map((capability) => capability.id)
 		.slice(0, limit);
+}
+
+/** @deprecated Use getActiveOutcomeCardIds. */
+export function getActiveWorkCapabilityIds(
+	state: DomainSessionState | null | undefined,
+	limit = 3
+): string[] {
+	return getActiveOutcomeCardIds(state, limit);
 }
 
 export function mergeDomainSessionState(
@@ -400,13 +414,13 @@ export function mergeDomainSessionState(
 		});
 	}
 
-	const activeWorkCapabilitiesById = new Map<string, WorkCapabilitySessionEntry>();
-	for (const capability of previous?.active_work_capabilities ?? []) {
-		activeWorkCapabilitiesById.set(capability.id, capability);
+	const activeOutcomeCardsById = new Map<string, OutcomeCardSessionEntry>();
+	for (const capability of previous?.active_outcome_cards ?? []) {
+		activeOutcomeCardsById.set(capability.id, capability);
 	}
-	for (const capability of result.candidate_work_capabilities) {
-		const existing = activeWorkCapabilitiesById.get(capability.id);
-		activeWorkCapabilitiesById.set(capability.id, {
+	for (const capability of result.candidate_outcome_cards) {
+		const existing = activeOutcomeCardsById.get(capability.id);
+		activeOutcomeCardsById.set(capability.id, {
 			id: capability.id,
 			name: capability.name,
 			coverage_status: capability.coverage_status,
@@ -505,7 +519,7 @@ export function mergeDomainSessionState(
 		query_preview:
 			result.query.length > 220 ? `${result.query.slice(0, 217).trim()}...` : result.query,
 		domain_ids: result.active_domains.map((domain) => domain.id).slice(0, 8),
-		candidate_work_capability_ids: result.candidate_work_capability_ids.slice(0, 8),
+		candidate_outcome_card_ids: result.candidate_outcome_card_ids.slice(0, 8),
 		recommended_skill_ids: result.recommended_skill_ids.slice(0, 12),
 		coverage_gap_skill_ids: result.coverage_gap_skill_ids.slice(0, 8),
 		coverage_gap_resource_ids: result.coverage_gap_resource_ids.slice(0, 8)
@@ -517,9 +531,9 @@ export function mergeDomainSessionState(
 		active_domains: [...activeById.values()]
 			.sort((a, b) => b.last_seen_at.localeCompare(a.last_seen_at))
 			.slice(0, ACTIVE_DOMAIN_LIMIT),
-		active_work_capabilities: [...activeWorkCapabilitiesById.values()]
+		active_outcome_cards: [...activeOutcomeCardsById.values()]
 			.sort((a, b) => b.last_seen_at.localeCompare(a.last_seen_at))
-			.slice(0, ACTIVE_WORK_CAPABILITY_LIMIT),
+			.slice(0, ACTIVE_OUTCOME_CARD_LIMIT),
 		coverage_gaps: [...gapsById.values()]
 			.sort((a, b) => b.last_seen_at.localeCompare(a.last_seen_at))
 			.slice(0, COVERAGE_GAP_LIMIT),

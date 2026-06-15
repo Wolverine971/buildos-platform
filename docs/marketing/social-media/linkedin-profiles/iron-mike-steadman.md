@@ -12,7 +12,7 @@
 **Connection Level:** 1st
 **Audience Quality:** Medium
 **Profile Created:** 2026-04-15
-**Last Reviewed:** 2026-05-15
+**Last Reviewed:** 2026-06-14
 **Last Engaged:** Never
 **Source of First Discovery:** 2026-04-15_linkedin-warmup-pm.md (found via Tim Hsia VetraFi reaction signal)
 
@@ -28,7 +28,7 @@
 
 - **Headline:** OP4 & Venture Partner | The Market Is An Opposing Force. I Prepare Founders To Survive It. Adversarial GTM
 - **About / bio:** US Naval Academy, MisFits, New York City Metropolitan Area. Founder/operator voice with overlap in Tim Hsia's veteran/founder community.
-- **Followers / audience:** 11,411 followers (refreshed 2026-05-15)
+- **Followers / audience:** 11,486 followers (refreshed 2026-06-14; was 11,411 on 2026-05-15)
 - **Role / company:** OP4 (co-founder) + Venture Partner role
 - **Formats:** Short text posts, frameworks, real-world brand examples
 - **Audience vibe:** Practitioner-oriented, not hype-heavy; comment culture is constructive
@@ -56,8 +56,18 @@
 | 2026-05-13 | Post    | "I think a lot of founders get confused because they actually don't know what category they're in" — Facebook → Meta category-strategy example, "founders moving so fast they don't have the time or space to think"                                                                       | https://www.linkedin.com/feed/update/urn:li:activity:7459955706281164801/                                                           | Queued   | Drafted-not-posted (~3d window now); Dev Chandra commented 8h ago — thread is still warm | Mention fit 0 — peer founder-to-founder reaction. The "no time to think" line is the BuildOS thesis in one sentence. Past primary window but the fresh Dev Chandra comment 8h ago keeps the thread alive.                                                    | Pending                              | 2026-05-13_linkedin-warmup.md    |
 | 2026-05-15 | Post    | "I think a lot of veterans accidentally recreate environments they were trying to leave. They get out chasing freedom, ownership, flexibility, and purpose, only to build businesses that consume all their time, energy, and peace." — alignment between business model and life-you-want | https://www.linkedin.com/feed/update/urn:li:activity:7460720178591596546/                                                           | Queued   | Queued for reply (top priority — 1st conn, veteran-to-veteran, fresh today)              | Mention fit 0 — pure veteran-founder peer voice. DJ has natural standing (Marine, solo founder by choice, has wrestled with operations-vs-leverage business model question). Cheerleader-mode + one specific lived parallel. Single take, no option library. | Pending                              | 2026-05-15_linkedin-warmup.md    |
 
+## 2026-06-14 Post (HYROX)
+
+- **Post:** "HYROX didn't beat the competition. They made it irrelevant." — category design / dominant design (Paul Geroski). Uber/ChatGPT/CrossFit as category reference-points. "That's the work. And most founders skip it." Translation Tax mini-book teaser.
+- **URL:** https://www.linkedin.com/feed/update/urn:li:activity:7471218019835260929/
+- **Age at scan:** 2d. Engagement: 9 reactions / 5 comments (low competition).
+- **Status:** Drafted - Pending Posting (`2026-06-14_linkedin-replies.md`). Relationship priority (5th queue / 0th ship). Recommended order puts this FIRST so it actually ships.
+- **Mention fit:** 0. Peer founder voice on DJ's exact territory (category formation). "Most founders skip the slow translation work" is BuildOS-thesis-adjacent. Lived founder reflection, no BuildOS pitch. Single take.
+- **Drafts:** 3 options — (1) value/lived "the translation part is the one I skipped longest" [recommended, veteran peer], (2) friendly-nuance "the self-deception trap," (3) cheerleader light. No question at the end. **Must actually post this scan.**
+
 ## Open Loops
 
+- **6th scan, still never engaged.** 2026-04-15, 2026-05-09 (skipped), 2026-05-13 (drafted not posted), 2026-05-15 (drafted not posted), 2026-06-14 (HYROX queued). This 1st-conn relationship has been queued 4x and shipped 0x. If DJ doesn't ship the HYROX comment, treat the relationship as effectively dormant.
 - 2026-05-13 category-strategy post (URN 7459955706281164801): never replied, but Dev Chandra commented 8h ago — thread is still active. Could be a "second-chance" reply slot if today's fresh post doesn't move; otherwise drop.
 - 2026-05-15 veteran-founder reflection: first substantive engagement attempt on a high-relationship-value 1st-conn post.
 - If Mike engages with any DJ comment, this relationship is worth building — overlap in founder/category territory + Naval Academy/Marine peer network.

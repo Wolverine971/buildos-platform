@@ -51,6 +51,19 @@ Project-scoped audit playbook for evaluating structure, documentation, timeline 
 - `onto.document.tree.get`
 - `cal.event.list`
 
+## Output
+
+Return the audit as a structured readout, not a flat defect list:
+
+1. Executive readout — the shape of the project in 2-3 sentences.
+2. Strongest findings — ranked by severity, each with evidence (the specific entities or data inspected), impact, and the smallest practical correction.
+3. Timeline and velocity assessment — realism of dates vs. task volume, blocked work, and what can and cannot be inferred from available history.
+4. Structural gaps — broken or thin links in the goal → milestone → plan → task chain.
+5. Documentation gaps — goals, plans, or risky workstreams lacking the docs needed to execute.
+6. Prioritized next corrections — kept separate from observations; what to change first.
+
+Stop conditions before replying: every material finding cites visible evidence, not generic project-management advice; confirmed blockers are separated from inferred risks; no "all clear" or "nothing exists" claim is made without having fetched enough data to support it; observations are reported before recommendations.
+
 ## Guardrails
 
 - Do not claim an audit is exhaustive unless you actually fetched enough targeted data to support that claim.

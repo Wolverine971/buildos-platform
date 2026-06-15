@@ -197,7 +197,7 @@ Landing page (`HomepageV2.svelte`) is the best-composed surface: hero `text-4xl�
 **Tier 2 — system convergence (a focused week):**
 
 6. ✅ Radius split-brain resolved 2026-06-12 (Option A): `--wt-paper/card/plate-radius` all → 0.75rem; nav bare `rounded` → `rounded-md`; BriefChatModal `rounded-t-2xl` → `rounded-t-lg`; ~50 stacked `rounded-lg`+`wt-*` sites de-stacked; radius vocabulary added to INKPRINT_DESIGN_SYSTEM.md §4.8.
-7. 🔶 IN PROGRESS — `text-2xs` token added (0.6875rem, tailwind.config). Homepage fully converged 2026-06-12: 44 hand-rolled eyebrows → `.micro-label`, zero arbitrary font sizes remain in HomepageV2. Remaining: dashboard, triage modals, nav tagline (~1,300 arbitrary sizes app-wide).
+7. 🔶 IN PROGRESS — `text-2xs` token added (0.6875rem, tailwind.config). Homepage fully converged 2026-06-12: 44 hand-rolled eyebrows → `.micro-label`, zero arbitrary font sizes remain in HomepageV2. **Remaining (final-scan 2026-06-15): 1,090 arbitrary `text-[…]` sizes outside `routes/design-system`** (worst: admin/UserActivityModal 69, ontology/DocumentModal 48, admin/ErrorDetailsModal 39, projects/[id]/tasks/[task_id] 31). Mechanical sweep, not yet done.
 8. Commit a font-weight role table; align Navigation to the Button dialect.
 9. ✅ Mobile dominance restored 2026-06-12: project title `text-sm→text-lg` mobile (ProjectHeaderCard), modal titles `text-sm→text-base` (base Modal → inherits to 54 modals), inverted `text-sm sm:text-xs` links → constant `text-sm` (Footer ×2, AnalyticsDashboard ×3). Input `text-base sm:text-sm` kept — deliberate iOS-zoom guard, not an inversion.
 10. Documented z-index scale.
@@ -207,4 +207,26 @@ Landing page (`HomepageV2.svelte`) is the best-composed surface: hero `text-4xl�
 
 **Tier 3 status-token migration — ✅ EXECUTED 2026-06-12 (items 11+12):** six parallel agents migrated **~4,100 raw palette occurrences → 51 documented exceptions** across ~140 files (ontology 561→6, lib/admin 999→32, routes/admin 1,045→4, core user components ~1,100→~5, remaining user surfaces 233→8, mop-up sweep of 16 missed files ~120→0). All paired `dark:` variants deleted (tokens flip themselves); all gradients replaced with flat token tints per Inkprint doctrine; class-map objects in scripts migrated. Remaining exceptions (intentional): chart legends paired to literal canvas/SVG series colors (ActivityTimelineChart 26, VisitorContributionChart 8, ProjectActivityChart 6, GraphControls 6), terminal JSON panes (admin/migration ×2 ×2), NotificationStack overflow pill (1), test pages, `routes/design-system` (204 — spec/showcase pages, intentionally raw). Chart hex piping (item 13) still pending. Notable judgment calls logged in agent reports: entity-type color language unified (tasks/events=info, goals=warning, milestones=success, plans=accent, risks=destructive, docs=muted); toggle switches unified on accent; Toast redesigned to bg-card + token accents (most visible change); severity ladders compressed to 5 tokens with labels carrying distinctions.
 
-**Tier 3 — the long campaign (opportunistic):** 11. Status-token migration codemod: red→destructive, emerald/green→success, amber/yellow→warning, blue/sky→info — start with the 10 worst files (~1,050 occurrences = 22% of all bypasses). 12. Kill the blue/purple shadow brand in user-facing components (time-blocks, email, analytics, ontology panels). 13. Pipe chart hex colors through CSS vars (~280 of 318 hexes). 14. Stale-doc cleanup: banner or delete BUILDOS_STYLE_GUIDE, DESIGN_SYSTEM_GUIDE, DESIGN_REFACTOR_STATUS; rewrite MODAL_STANDARDS. 15. Duration tokens (180/120ms) and converge the duration soup.
+**Tier 3 — the long campaign (opportunistic):** 11. ✅ Status-token migration DONE (see above). 12. ✅ Blue/purple shadow brand killed in the migration. 13. ⏳ Pipe chart hex colors through CSS vars (~280 of 318 hexes) — NOT done; the 51 remaining palette exceptions are mostly these chart legends. 14. ✅ Stale-doc banners added (item 11 above). 15. ⏳ Duration tokens (180/120ms) and converge the duration soup — NOT done.
+
+---
+
+## 7. Final scan & wrap-up (2026-06-15)
+
+**Verified complete:**
+
+- **Colors:** ~4,100 raw palette classes → semantic tokens. **51 deliberate exceptions remain**, all confirmed intentional (chart legends bound to canvas series colors, terminal JSON panes, one notification overflow pill, + `routes/design-system` showcase pages which are intentionally raw). `text-white` on token surfaces: **0**. `bg-gradient`: **1**, and it's a functional scroll-fade mask (`MobileTaskBoard.svelte:456`, `from-card to-transparent`), not decorative — correctly left.
+- **Token layer:** all contrast fixes live in `:root`/`.dark`; `svelte-check` passes **0 errors**.
+- **Radius:** split-brain resolved (Option A, 12px).
+- **Docs:** `INKPRINT_DESIGN_SYSTEM.md` updated to v1.1 (§6 tokens, §6.4 semantic status table, §7 `text-2xs`/`.micro-label`, §4.8 radius). 4 stale docs bannered.
+
+**Genuinely remaining (none blocking; all mechanical/opportunistic):**
+
+1. **Micro-typography sweep** — 1,090 arbitrary `text-[…]` sizes outside design-system → `text-2xs`/`.micro-label`/scale. Biggest open item; cosmetically minor per-instance.
+2. **Font-weight role table** (item 8) — `font-medium` (1,605) vs `font-semibold` (1,576) still interchangeable; nav still `font-bold` vs Button `font-semibold`.
+3. **`border-border-strong` adoption** — token exists, **0 usages**; inputs/controls still on decorative `border`.
+4. **z-index scale** (item 10) — documented scale not yet written.
+5. **Chart hex → CSS vars** (item 13) — would clear most of the 51 exceptions.
+6. **Duration tokens** (item 15) — 180/120ms motion spec not enforced.
+
+**Committed** in `557c7fd5` (229 `.svelte` files + token changes) and `64282cf6` (27 files, radius/follow-ups). Only this doc + `INKPRINT_DESIGN_SYSTEM.md` v1.1 updates remain uncommitted as of 2026-06-15.

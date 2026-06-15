@@ -36,7 +36,7 @@ import { getToolSchema } from '../tools/registry/tool-schema';
 import { loadDomain, searchDomains } from '../tools/domains/domain-load';
 import { loadResource, searchResources } from '../tools/resources/resource-registry';
 import { searchSkills } from '../tools/skills/skill-search';
-import { loadWorkCapability, searchWorkCapabilities } from '../tools/work-capabilities';
+import { loadOutcomeCard, searchOutcomeCards } from '../tools/outcome-cards';
 import {
 	normalizeProjectCreateArgs,
 	validateProjectCreateArgs
@@ -63,6 +63,8 @@ const PROJECT_CREATE_CONFIRMATION_MARKER =
 const GATEWAY_TOOL_NAMES = new Set([
 	'domain_search',
 	'domain_load',
+	'outcome_card_search',
+	'outcome_card_load',
 	'work_capability_search',
 	'work_capability_load',
 	'skill_search',
@@ -831,8 +833,8 @@ export class ToolExecutionService implements BaseService {
 			return { success: true, data: result, toolName, toolCallId: 'gateway' };
 		}
 
-		if (toolName === 'work_capability_search') {
-			const result = searchWorkCapabilities({
+		if (toolName === 'outcome_card_search' || toolName === 'work_capability_search') {
+			const result = searchOutcomeCards({
 				query: typeof args.query === 'string' ? args.query : undefined,
 				domain: typeof args.domain === 'string' ? args.domain : undefined,
 				buildosCapability:
@@ -846,16 +848,16 @@ export class ToolExecutionService implements BaseService {
 			return { success: true, data: result, toolName, toolCallId: 'gateway' };
 		}
 
-		if (toolName === 'work_capability_load') {
-			const workCapability =
-				typeof args.workCapability === 'string'
-					? args.workCapability
-					: typeof args.work_capability === 'string'
-						? args.work_capability
-						: typeof args.id === 'string'
-							? args.id
-							: '';
-			const result = loadWorkCapability(workCapability);
+		if (toolName === 'outcome_card_load' || toolName === 'work_capability_load') {
+			const outcomeCard =
+				[
+					args.outcomeCard,
+					args.outcome_card,
+					args.workCapability,
+					args.work_capability,
+					args.id
+				].find((value): value is string => typeof value === 'string') ?? '';
+			const result = loadOutcomeCard(outcomeCard);
 			return { success: true, data: result, toolName, toolCallId: 'gateway' };
 		}
 

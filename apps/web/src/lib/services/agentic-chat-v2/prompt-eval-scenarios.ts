@@ -21,6 +21,8 @@ export type PromptEvalScenario = {
 	expectedFirstOps?: string[];
 	expectedFirstSkills?: string[];
 	requiredObservedOps?: string[];
+	requiredObservedToolNames?: string[];
+	forbiddenObservedToolNames?: string[];
 	requiredObservedSkillPaths?: string[];
 	requiredEventTypes?: string[];
 	expectedFinishedReason?: string;
@@ -100,6 +102,7 @@ const SCENARIOS: PromptEvalScenario[] = [
 		},
 		requiredObservedOps: ['util.project.overview'],
 		requiredObservedSkillPaths: ['workflow.audit.skill'],
+		forbiddenObservedToolNames: ['outcome_card_load', 'work_capability_load'],
 		requiredEventTypes: ['skill_loaded', 'done_emitted'],
 		maxValidationFailures: 0,
 		requirePromptSnapshot: true,
@@ -121,6 +124,64 @@ const SCENARIOS: PromptEvalScenario[] = [
 		requiredObservedOps: ['util.project.overview'],
 		requiredObservedSkillPaths: ['workflow.forecast.skill'],
 		requiredEventTypes: ['skill_loaded', 'done_emitted'],
+		maxValidationFailures: 0,
+		requirePromptSnapshot: true,
+		requireAssistantAnswer: true,
+		requireCompletedStatus: true,
+		forbiddenAssistantPatterns: DEFAULT_FORBIDDEN_ASSISTANT_PATTERNS
+	},
+	{
+		slug: 'workflow.outcome_card.cold_email_campaign_build',
+		version: '1',
+		title: 'Cold Email Campaign Outcome Card',
+		description:
+			'Checks that a known composite cold-email campaign request loads the outcome card before choosing deeper skills or tools.',
+		category: 'workflow',
+		replayRequest: {
+			message: 'Build a cold email campaign for founders at AI devtools startups.',
+			contextType: 'global'
+		},
+		requiredObservedToolNames: ['outcome_card_load'],
+		requiredEventTypes: ['done_emitted'],
+		maxValidationFailures: 0,
+		requirePromptSnapshot: true,
+		requireAssistantAnswer: true,
+		requireCompletedStatus: true,
+		forbiddenAssistantPatterns: DEFAULT_FORBIDDEN_ASSISTANT_PATTERNS
+	},
+	{
+		slug: 'workflow.outcome_card.youtube_growth_strategy',
+		version: '1',
+		title: 'YouTube Growth Strategy Outcome Card',
+		description:
+			'Checks that a channel-level YouTube growth request routes through the strategy outcome card instead of only generic skill search.',
+		category: 'workflow',
+		replayRequest: {
+			message: 'I want to grow my YouTube audience and plan the next videos.',
+			contextType: 'global'
+		},
+		requiredObservedToolNames: ['outcome_card_load'],
+		requiredEventTypes: ['done_emitted'],
+		maxValidationFailures: 0,
+		requirePromptSnapshot: true,
+		requireAssistantAnswer: true,
+		requireCompletedStatus: true,
+		forbiddenAssistantPatterns: DEFAULT_FORBIDDEN_ASSISTANT_PATTERNS
+	},
+	{
+		slug: 'workflow.outcome_card.ui_ux_screen_review',
+		version: '1',
+		title: 'UI/UX Screen Review Outcome Card',
+		description:
+			'Checks that a product screen review routes through the UI/UX screen review outcome card when a cross-lens quality bar would help.',
+		category: 'workflow',
+		replayRequest: {
+			message:
+				'Review this dashboard screen for UX clarity, visual hierarchy, accessibility, and concrete fixes.',
+			contextType: 'global'
+		},
+		requiredObservedToolNames: ['outcome_card_load'],
+		requiredEventTypes: ['done_emitted'],
 		maxValidationFailures: 0,
 		requirePromptSnapshot: true,
 		requireAssistantAnswer: true,
