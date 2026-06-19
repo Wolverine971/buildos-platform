@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
 	executeAgentOp,
 	AGENT_OP_READ_CATALOG,
+	AGENT_OP_WRITE_CATALOG,
 	type AgentOpContext
 } from '@buildos/shared-agent-ops';
 
@@ -70,13 +71,43 @@ describe('executeAgentOp policy + dispatch', () => {
 		expect(r.error?.code).toBe('NOT_FOUND');
 	});
 
-	it('rejects a write op as UNSUPPORTED (read-first cut)', async () => {
+	it('exposes a write catalog including onto.task.create (non-calendar writes)', () => {
+		expect(AGENT_OP_WRITE_CATALOG.length).toBeGreaterThan(0);
+		expect(AGENT_OP_WRITE_CATALOG).toContain('onto.task.create');
+		expect(AGENT_OP_WRITE_CATALOG.every((op) => !op.startsWith('cal.'))).toBe(true);
+	});
+
+	it('rejects a write op in a read_only run as FORBIDDEN (before any DB handler)', async () => {
+		const r = await executeAgentOp({ ...ctx(), scope: { mode: 'read_only' } }, 'onto.task.create');
+		expect(r.ok).toBe(false);
+		expect(r.error?.code).toBe('FORBIDDEN');
+	});
+
+	it('validates a write op’s args before reaching the DB handler', async () => {
+		// read_write scope allows the op; the gateway write path validates required
+		// args against the external write schema and short-circuits with the
+		// throwing admin untouched.
 		const r = await executeAgentOp(
 			{ ...ctx(), scope: { mode: 'read_write' } },
-			'onto.task.create'
+			'onto.task.create',
+			{}
 		);
 		expect(r.ok).toBe(false);
-		expect(r.error?.code).toBe('UNSUPPORTED');
+		expect(r.error?.code).toBe('VALIDATION_ERROR');
+	});
+
+	it('fences a write op to its project-scoped run before any DB handler', async () => {
+		const r = await executeAgentOp(
+			{
+				...ctx(),
+				scope: { mode: 'read_write' },
+				runContext: { context_type: 'project', project_id: 'project-1' }
+			},
+			'onto.task.create',
+			{ project_id: 'project-2', title: 'x' }
+		);
+		expect(r.ok).toBe(false);
+		expect(r.error?.code).toBe('FORBIDDEN');
 	});
 
 	it('rejects a read op outside granted allowed_ops as FORBIDDEN', async () => {

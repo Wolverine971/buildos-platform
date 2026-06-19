@@ -1,10 +1,33 @@
 // apps/web/vitest.config.ts
 import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { fileURLToPath } from 'node:url';
+
+const sharedAgentOpsSrc = (sub: string) =>
+	fileURLToPath(new URL(`../../packages/shared-agent-ops/src/${sub}`, import.meta.url));
+
+// Resolve the carved op-execution gateway and the dependency modules it imports
+// to @buildos/shared-agent-ops SOURCE (not the bundled dist). This lets the
+// agent-call gateway guardrail tests intercept those dependencies via vi.mock
+// of the canonical `@buildos/shared-agent-ops/...` specifiers, since the source
+// gateway's relative imports and the mocked subpaths dedupe to the same files.
+const sharedAgentOpsTestAliases = [
+	'gateway/op-execution-gateway',
+	'ontology/ontology-projects.service',
+	'ontology/doc-structure.service',
+	'ontology/versioning.service',
+	'ontology/instantiation.service',
+	'ops/async-activity-logger',
+	'ops/entity-mention-notification.service'
+].map((sub) => ({
+	find: `@buildos/shared-agent-ops/${sub}`,
+	replacement: sharedAgentOpsSrc(`${sub}.ts`)
+}));
 
 export default defineConfig({
 	plugins: [sveltekit()],
 	resolve: {
+		alias: sharedAgentOpsTestAliases,
 		// Ensure Svelte uses browser/client exports in tests (not SSR)
 		conditions: ['browser']
 	},

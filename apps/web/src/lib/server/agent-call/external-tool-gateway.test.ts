@@ -23,12 +23,18 @@ const calendarExecutorMocks = vi.hoisted(() => ({
 	setProjectCalendar: vi.fn()
 }));
 
-vi.mock('$lib/services/ontology/ontology-projects.service', () => ({
+// NOTE: The op-execution core was carved into @buildos/shared-agent-ops
+// (op-execution-gateway). vitest.config.ts aliases that gateway and the
+// dependency modules below to package SOURCE, so these vi.mock calls target the
+// canonical `@buildos/shared-agent-ops/...` specifiers (which dedupe with the
+// gateway's relative imports). The calendar-executor + task-event-sync mocks
+// stay on the $lib paths because those ports are wired from the web adapter.
+vi.mock('@buildos/shared-agent-ops/ontology/ontology-projects.service', () => ({
 	ensureActorId: ensureActorIdMock,
 	fetchProjectSummaries: fetchProjectSummariesMock
 }));
 
-vi.mock('$lib/services/async-activity-logger', () => ({
+vi.mock('@buildos/shared-agent-ops/ops/async-activity-logger', () => ({
 	logCreateAsync: logCreateAsyncMock,
 	logUpdateAsync: logUpdateAsyncMock
 }));
@@ -39,16 +45,16 @@ vi.mock('$lib/services/ontology/task-event-sync.service', () => ({
 	}
 }));
 
-vi.mock('$lib/server/entity-mention-notification.service', () => ({
+vi.mock('@buildos/shared-agent-ops/ops/entity-mention-notification.service', () => ({
 	resolveEntityMentionUserIds: resolveEntityMentionUserIdsMock,
 	notifyEntityMentionsAdded: notifyEntityMentionsAddedMock
 }));
 
-vi.mock('$lib/services/ontology/doc-structure.service', () => ({
+vi.mock('@buildos/shared-agent-ops/ontology/doc-structure.service', () => ({
 	addDocumentToTree: addDocumentToTreeMock
 }));
 
-vi.mock('$lib/services/ontology/versioning.service', () => ({
+vi.mock('@buildos/shared-agent-ops/ontology/versioning.service', () => ({
 	createOrMergeDocumentVersion: createOrMergeDocumentVersionMock,
 	toDocumentSnapshot: (document: Record<string, unknown>) => ({
 		title: typeof document.title === 'string' ? document.title : null,
@@ -64,7 +70,7 @@ vi.mock('$lib/services/ontology/versioning.service', () => ({
 	})
 }));
 
-vi.mock('$lib/services/ontology/instantiation.service', () => ({
+vi.mock('@buildos/shared-agent-ops/ontology/instantiation.service', () => ({
 	instantiateProject: instantiateProjectMock,
 	validateProjectSpec: validateProjectSpecMock,
 	OntologyInstantiationError: class OntologyInstantiationError extends Error {

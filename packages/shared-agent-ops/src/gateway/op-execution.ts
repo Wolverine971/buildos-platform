@@ -14,11 +14,12 @@
 // SHARED_AGENT_OPS_EXTRACTION_PLAN.md (Wave 7).
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, BuildosAgentScopeMode } from '@buildos/shared-types';
+import type { AgentCallScope, Database, BuildosAgentScopeMode } from '@buildos/shared-types';
 import { defaultAllowedOpsForMode, isReadOp, isSupportedOp, isWriteOp } from '../policy';
 import { ensureActorId } from '../ontology/ontology-projects.service';
 import { loadProjectGraphData, loadUserProjectSummaries } from '../ontology/project-graph-loader';
 import { getDocTree } from '../ontology/doc-structure.service';
+import { AGENT_OP_GATEWAY_WRITE_CATALOG, runGatewayWriteOp } from './op-execution-gateway';
 
 export interface AgentOpScope {
 	mode: BuildosAgentScopeMode;
@@ -47,6 +48,9 @@ export interface AgentOpResult {
 	ok: boolean;
 	op: string;
 	data?: unknown;
+	/** Write ops surface the touched entity so the runner can record it. */
+	entityKind?: string | null;
+	entityId?: string | null;
 	error?: { code: AgentOpErrorCode; message: string };
 }
 
@@ -132,8 +136,95 @@ export const AGENT_OP_READ_CATALOG: readonly string[] = Object.freeze(
 	Object.keys(READ_OP_HANDLERS)
 );
 
+/**
+ * The write ops the worker op executor can run, sourced from the carved gateway
+ * handler map (non-calendar writes). Exposed to the runner so it can build the
+ * tool surface for `read_write` runs.
+ */
+export const AGENT_OP_WRITE_CATALOG: readonly string[] = AGENT_OP_GATEWAY_WRITE_CATALOG;
+
 function fail(op: string, code: AgentOpErrorCode, message: string): AgentOpResult {
 	return { ok: false, op, error: { code, message } };
+}
+
+/** Map the gateway's error codes onto the worker AgentOpResult error codes. */
+function mapGatewayErrorCode(
+	code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'FORBIDDEN' | 'CONFLICT' | 'INTERNAL'
+): AgentOpErrorCode {
+	switch (code) {
+		case 'NOT_FOUND':
+			return 'NOT_FOUND';
+		case 'VALIDATION_ERROR':
+			return 'VALIDATION_ERROR';
+		case 'FORBIDDEN':
+			return 'FORBIDDEN';
+		default:
+			// CONFLICT / INTERNAL collapse to a generic execution error.
+			return 'EXECUTION_ERROR';
+	}
+}
+
+/**
+ * Execute a write op via the carved gateway handler map. Scope/allowed-op policy
+ * is enforced by the caller (executeAgentOp); here we add run-scope project
+ * fencing (mirroring the read path) and delegate to runGatewayWriteOp. No
+ * external write-audit/idempotency — the runner records agent_tool_executions.
+ */
+async function executeWriteOp(
+	ctx: AgentOpContext,
+	op: string,
+	args: Record<string, unknown>
+): Promise<AgentOpResult> {
+	if (ctx.scope.mode !== 'read_write') {
+		return fail(op, 'FORBIDDEN', `Op ${op} requires a read_write run scope`);
+	}
+
+	// Run-scope project fence: a project-scoped run can only write to its project
+	// (best-effort — applies when the op carries an explicit project_id).
+	const projectId = typeof args.project_id === 'string' ? args.project_id.trim() : '';
+	if (
+		ctx.runContext?.context_type === 'project' &&
+		projectId &&
+		ctx.runContext.project_id !== projectId
+	) {
+		return fail(op, 'FORBIDDEN', 'Op project_id is outside this run scope');
+	}
+
+	const scope: AgentCallScope = {
+		mode: 'read_write',
+		allowed_ops: (ctx.scope.allowed_ops ?? undefined) as AgentCallScope['allowed_ops'],
+		project_ids:
+			ctx.runContext?.context_type === 'project' && ctx.runContext.project_id
+				? [ctx.runContext.project_id]
+				: undefined
+	};
+
+	const result = await runGatewayWriteOp({
+		admin: ctx.admin,
+		userId: ctx.userId,
+		scope,
+		op,
+		args
+	});
+
+	if (result.ok) {
+		return {
+			ok: true,
+			op,
+			data: result.data,
+			entityKind: result.entityKind ?? null,
+			entityId: result.entityId ?? null
+		};
+	}
+
+	return {
+		ok: false,
+		op,
+		error: {
+			code: result.error ? mapGatewayErrorCode(result.error.code) : 'EXECUTION_ERROR',
+			message: result.error?.message ?? 'Write op failed'
+		}
+	};
 }
 
 /**
@@ -153,20 +244,16 @@ export async function executeAgentOp(
 	if (!isSupportedOp(trimmed)) {
 		return fail(trimmed, 'NOT_FOUND', `Unknown op: ${trimmed}`);
 	}
-	// Write ops are not yet executable from the worker (read-first cut).
-	if (isWriteOp(trimmed)) {
-		return fail(
-			trimmed,
-			'UNSUPPORTED',
-			`Op ${trimmed} is a write op; the worker op executor currently supports read ops only.`
-		);
-	}
-	if (!isReadOp(trimmed)) {
-		return fail(trimmed, 'UNSUPPORTED', `Op ${trimmed} is not a read op.`);
-	}
 	const allowed = ctx.scope.allowed_ops ?? defaultAllowedOpsForMode(ctx.scope.mode);
 	if (!allowed.includes(trimmed)) {
 		return fail(trimmed, 'FORBIDDEN', `Op ${trimmed} is outside the granted scope`);
+	}
+	// Write ops dispatch to the carved gateway handler map (read_write runs only).
+	if (isWriteOp(trimmed)) {
+		return executeWriteOp(ctx, trimmed, args);
+	}
+	if (!isReadOp(trimmed)) {
+		return fail(trimmed, 'UNSUPPORTED', `Op ${trimmed} is not a read op.`);
 	}
 	const handler = READ_OP_HANDLERS[trimmed];
 	if (!handler) {
