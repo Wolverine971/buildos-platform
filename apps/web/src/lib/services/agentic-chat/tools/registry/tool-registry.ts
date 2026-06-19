@@ -63,7 +63,8 @@ const UTIL_OPS: Record<string, string> = {
 	call_corsair_mcp_tool: 'util.corsair_mcp.tool.call',
 	get_buildos_overview: 'util.buildos.overview',
 	get_buildos_usage_guide: 'util.buildos.usage_guide',
-	delegate_task: 'util.agent.delegate'
+	delegate_task: 'util.agent.delegate',
+	commit_change_set: 'util.agent.commit_changes'
 };
 
 const CALENDAR_OPS: Record<string, string> = {

@@ -285,6 +285,9 @@ export class ChatToolExecutor {
 			case 'delegate_task':
 				return this.utilityExecutor.delegateTask(args);
 
+			case 'commit_change_set':
+				return this.utilityExecutor.commitChangeSet(args);
+
 			case 'search_user_contacts':
 				return this.utilityExecutor.searchUserContacts(args);
 

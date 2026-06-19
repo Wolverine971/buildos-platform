@@ -741,9 +741,50 @@ Do NOT use this for something you can answer directly in one turn.`,
 						type: 'number',
 						description:
 							'Optional budget cap on the number of operations the agent may run.'
+					},
+					review: {
+						type: 'boolean',
+						description:
+							'Set true to have a read_write agent STAGE its changes for review instead of committing directly. The run finishes as a proposal; you then present it and call commit_change_set once the user approves. Use when the blast radius warrants a check or the user says "let me review before you change anything". Ignored for read_only runs.'
 					}
 				},
 				required: ['goal']
+			}
+		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'commit_change_set',
+			description: `Apply the staged changes a review agent proposed (its run is in status "proposal_ready"). Call this ONLY after presenting the proposal to the user and getting their approval. By default approves and applies every staged change; pass \`decisions\` to reject specific ones (or \`default_decision: "rejected"\` to reject all but the ones you approve). Returns how many changes applied/failed/were rejected.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					run_id: {
+						type: 'string',
+						description: 'The Agent Run id whose staged change set to apply.'
+					},
+					decisions: {
+						type: 'array',
+						description:
+							'Optional per-change decisions. Each item: { change_id, decision: "approved" | "rejected" }. Any change not listed uses default_decision.',
+						items: {
+							type: 'object',
+							properties: {
+								change_id: { type: 'string' },
+								decision: { type: 'string', enum: ['approved', 'rejected'] }
+							},
+							required: ['change_id', 'decision']
+						}
+					},
+					default_decision: {
+						type: 'string',
+						enum: ['approved', 'rejected'],
+						description:
+							'Decision for changes not named in `decisions`. Defaults to "approved" (approve all).'
+					}
+				},
+				required: ['run_id']
 			}
 		}
 	}

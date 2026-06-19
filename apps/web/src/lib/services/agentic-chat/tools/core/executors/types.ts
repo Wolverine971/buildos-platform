@@ -727,4 +727,19 @@ export interface DelegateTaskArgs {
 	/** 'read_only' (analyze/summarize) or 'read_write' (may mutate). Defaults to read_only. */
 	scope_mode?: 'read_only' | 'read_write';
 	max_tool_calls?: number;
+	/**
+	 * Opt-in review-before-commit (02). When true on a read_write run, the agent
+	 * STAGES its changes into a proposal instead of committing; you present the
+	 * proposal and call commit_change_set on the user's approval.
+	 */
+	review?: boolean;
+}
+
+export interface CommitChangeSetArgs {
+	/** The Agent Run whose staged Change Set to apply (status 'proposal_ready'). */
+	run_id: string;
+	/** Optional per-change approve/reject; any change not listed uses default_decision. */
+	decisions?: { change_id: string; decision: 'approved' | 'rejected' }[];
+	/** Decision for changes not named in `decisions` (default 'approved'). */
+	default_decision?: 'approved' | 'rejected';
 }

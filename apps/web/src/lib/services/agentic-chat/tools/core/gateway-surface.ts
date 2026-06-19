@@ -62,7 +62,9 @@ const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
 	'search_onto_projects',
 	'search_all_projects',
 	// Orchestrator capability: hand a self-contained task to a background Agent Run.
-	'delegate_task'
+	'delegate_task',
+	// Apply a review run's staged changes once the user approves (02).
+	'commit_change_set'
 ] as const;
 
 // Cross-project action surface for contexts whose whole point is acting on
@@ -97,7 +99,9 @@ const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
 	'get_document_outline',
 	'read_document_section',
 	// Orchestrator capability: hand a self-contained task to a background Agent Run.
-	'delegate_task'
+	'delegate_task',
+	// Apply a review run's staged changes once the user approves (02).
+	'commit_change_set'
 ] as const;
 
 const PROJECT_WRITE_DIRECT_TOOL_NAMES = [

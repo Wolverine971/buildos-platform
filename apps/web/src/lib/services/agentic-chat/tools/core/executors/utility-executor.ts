@@ -27,9 +27,11 @@ import {
 } from '$lib/server/user-contact.service';
 import type { OntologyEntityType } from '$lib/types/agent-chat-enhancement';
 import { validateAgentRunMetadata } from '@buildos/shared-types';
+import { commitChangeSet } from '@buildos/shared-agent-ops';
 import type {
 	ExecutorContext,
 	ChangeChatContextArgs,
+	CommitChangeSetArgs,
 	DelegateTaskArgs,
 	GetFieldInfoArgs,
 	GetProjectOverviewArgs,
@@ -1253,6 +1255,9 @@ export class UtilityExecutor extends BaseExecutor {
 		}
 		const scopeMode: 'read_only' | 'read_write' =
 			args.scope_mode === 'read_write' ? 'read_write' : 'read_only';
+		// Review-before-commit only applies to read_write runs (nothing to stage
+		// on a read-only run). Silently ignore review on read-only.
+		const reviewRequired = args.review === true && scopeMode === 'read_write';
 
 		// Reuse the executor's own membership assertion for project-scoped runs.
 		if (contextType === 'project' && projectId) {
@@ -1306,7 +1311,7 @@ export class UtilityExecutor extends BaseExecutor {
 				context_type: contextType,
 				project_id: projectId,
 				scope_mode: scopeMode,
-				review_required: false,
+				review_required: reviewRequired,
 				status: 'queued',
 				budgets,
 				parent_session_id: this.sessionId ?? null,
@@ -1329,7 +1334,7 @@ export class UtilityExecutor extends BaseExecutor {
 			project_id: projectId,
 			scope_mode: scopeMode,
 			allowed_ops: null,
-			review_required: false,
+			review_required: reviewRequired,
 			budgets
 		};
 		try {
@@ -1367,7 +1372,58 @@ export class UtilityExecutor extends BaseExecutor {
 			context_type: contextType,
 			project_id: projectId,
 			scope_mode: scopeMode,
-			message: `Dispatched background agent "${label}". It will work on this autonomously and post its result back into this conversation when done.`
+			review: reviewRequired,
+			message: `Dispatched background agent "${label}".${reviewRequired ? ' It will STAGE its changes for your review (call commit_change_set after the user approves).' : ' It will work on this autonomously and post its result back into this conversation when done.'}`
+		};
+	}
+
+	/**
+	 * Apply a staged Change Set produced by a review run (02 approval flow #2).
+	 * The orchestrator presents the proposal inline and, on the user's approval,
+	 * calls this to commit. Delegates to the shared commitChangeSet (the same
+	 * write path as direct commits).
+	 */
+	async commitChangeSet(args: CommitChangeSetArgs): Promise<Record<string, any>> {
+		const runId = typeof args.run_id === 'string' ? args.run_id.trim() : '';
+		if (!runId) {
+			throw new Error('A `run_id` is required to commit a change set.');
+		}
+
+		const decisions = Array.isArray(args.decisions)
+			? args.decisions
+					.filter((d) => d && typeof d.change_id === 'string')
+					.map((d) => ({
+						change_id: d.change_id,
+						decision: d.decision === 'rejected' ? ('rejected' as const) : ('approved' as const)
+					}))
+			: [];
+		const defaultDecision: 'approved' | 'rejected' =
+			args.default_decision === 'rejected' ? 'rejected' : 'approved';
+
+		const outcome = await commitChangeSet({
+			admin: this.getAdminSupabase() as any,
+			runId,
+			userId: this.userId,
+			decisions,
+			defaultDecision
+		});
+
+		if (!outcome.ok) {
+			return { ok: false, error: outcome.error.message };
+		}
+		return {
+			ok: true,
+			run_id: runId,
+			applied: outcome.result.applied,
+			rejected: outcome.result.rejected,
+			failed: outcome.result.failed,
+			run_status: outcome.result.run_status,
+			change_set_status: outcome.result.change_set_status,
+			entities_touched: outcome.result.entities_touched,
+			message:
+				outcome.result.failed > 0
+					? `Applied ${outcome.result.applied}, ${outcome.result.failed} failed, ${outcome.result.rejected} rejected.`
+					: `Applied ${outcome.result.applied} change(s)${outcome.result.rejected ? `, rejected ${outcome.result.rejected}` : ''}.`
 		};
 	}
 }
