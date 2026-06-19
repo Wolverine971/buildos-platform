@@ -31,6 +31,8 @@ export default defineConfig({
 		'src/ops/entity-mention-notification.service.ts',
 		'src/ops/gateway-op-aliases.ts',
 		'src/ops/security-event-logger.ts',
+		'src/gateway/agent-call-project-activity.service.ts',
+		'src/gateway/write-audit.service.ts',
 		'src/utils/project-props-sanitizer.ts',
 		'src/utils/markdown-normalization.ts',
 		'src/utils/search-filter.ts',
