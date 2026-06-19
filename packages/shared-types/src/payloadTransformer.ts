@@ -83,15 +83,16 @@ function transformBriefCompleted(payload: BriefCompletedEventPayload): Notificat
 		body: `${taskSummary} across ${projectText}`,
 		action_url: `/projects?briefDate=${payload.brief_date}`,
 		icon_url: '/AppImages/android/android-launchericon-192-192.png',
-		data: {
-			brief_id: payload.brief_id,
-			brief_date: payload.brief_date,
-			timezone: payload.timezone,
-			todays_task_count: todaysCount,
-			overdue_task_count: overdueCount,
-			upcoming_task_count: upcomingCount,
-			blocked_task_count: payload.blocked_task_count
-		}
+			data: {
+				brief_id: payload.brief_id,
+				brief_date: payload.brief_date,
+				timezone: payload.timezone,
+				is_ontology_brief: payload.is_ontology_brief,
+				todays_task_count: todaysCount,
+				overdue_task_count: overdueCount,
+				upcoming_task_count: upcomingCount,
+				blocked_task_count: payload.blocked_task_count
+			}
 	};
 }
 

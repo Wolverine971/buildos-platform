@@ -5,6 +5,7 @@ export interface BackoffDecision {
 	shouldSend: boolean;
 	isReengagement: boolean;
 	daysSinceLastLogin: number;
+	engagementStage: 'standard' | 'reengagement' | 'dormant';
 	reason: string;
 }
 
@@ -34,9 +35,9 @@ export class BriefBackoffCalculator {
 	private readonly BACKOFF_SCHEDULE = {
 		COOLING_OFF_DAYS: 2,
 		FIRST_REENGAGEMENT: 4,
-		SECOND_REENGAGEMENT: 10,
-		THIRD_REENGAGEMENT: 31,
-		RECURRING_INTERVAL: 31
+		SECOND_REENGAGEMENT: 14,
+		DORMANT_CHECK_IN: 60,
+		DORMANT_RECURRING_INTERVAL: 90
 	};
 
 	private readonly latestBriefRpcClient = supabase as typeof supabase & {
@@ -118,6 +119,7 @@ export class BriefBackoffCalculator {
 						shouldSend: true,
 						isReengagement: false,
 						daysSinceLastLogin: 0,
+						engagementStage: 'standard',
 						reason: 'No last visit recorded'
 					});
 					continue;
@@ -168,6 +170,7 @@ export class BriefBackoffCalculator {
 					shouldSend: true,
 					isReengagement: false,
 					daysSinceLastLogin: 0,
+					engagementStage: 'standard',
 					reason: 'Error checking engagement - defaulting to send'
 				});
 			}
@@ -193,6 +196,7 @@ export class BriefBackoffCalculator {
 				shouldSend: true,
 				isReengagement: false,
 				daysSinceLastLogin: 0,
+				engagementStage: 'standard',
 				reason: 'No last visit recorded'
 			};
 		}
@@ -268,6 +272,7 @@ export class BriefBackoffCalculator {
 				shouldSend: true,
 				isReengagement: false,
 				daysSinceLastLogin,
+				engagementStage: 'standard',
 				reason: 'User is active (logged in within 2 days)'
 			};
 		}
@@ -278,75 +283,111 @@ export class BriefBackoffCalculator {
 				shouldSend: false,
 				isReengagement: false,
 				daysSinceLastLogin,
+				engagementStage: 'standard',
 				reason: 'Cooling off period (3 days inactive)'
 			};
 		}
 
 		// Day 4: First re-engagement (if we haven't sent recently)
-		if (daysSinceLastLogin === 4 && daysSinceLastBrief >= 2) {
+		if (
+			daysSinceLastLogin === this.BACKOFF_SCHEDULE.FIRST_REENGAGEMENT &&
+			daysSinceLastBrief >= 2
+		) {
 			return {
 				shouldSend: true,
 				isReengagement: true,
 				daysSinceLastLogin,
+				engagementStage: 'reengagement',
 				reason: '4-day re-engagement email'
 			};
 		}
-
-		// Days 4-10: First backoff
-		if (daysSinceLastLogin > 4 && daysSinceLastLogin < 10) {
+		if (daysSinceLastLogin === this.BACKOFF_SCHEDULE.FIRST_REENGAGEMENT) {
 			return {
 				shouldSend: false,
 				isReengagement: false,
 				daysSinceLastLogin,
-				reason: 'First backoff period (5-9 days)'
+				engagementStage: 'standard',
+				reason: `Waiting after recent brief (last brief ${daysSinceLastBrief} days ago)`
 			};
 		}
 
-		// Day 10: Second re-engagement (if we haven't sent recently)
-		if (daysSinceLastLogin === 10 && daysSinceLastBrief >= 6) {
+		// Days 5-13: First backoff
+		if (
+			daysSinceLastLogin > this.BACKOFF_SCHEDULE.FIRST_REENGAGEMENT &&
+			daysSinceLastLogin < this.BACKOFF_SCHEDULE.SECOND_REENGAGEMENT
+		) {
+			return {
+				shouldSend: false,
+				isReengagement: false,
+				daysSinceLastLogin,
+				engagementStage: 'standard',
+				reason: 'First backoff period (5-13 days)'
+			};
+		}
+
+		// Day 14: Second re-engagement (if we haven't sent recently)
+		if (
+			daysSinceLastLogin === this.BACKOFF_SCHEDULE.SECOND_REENGAGEMENT &&
+			daysSinceLastBrief >= 10
+		) {
 			return {
 				shouldSend: true,
 				isReengagement: true,
 				daysSinceLastLogin,
-				reason: '10-day re-engagement email'
+				engagementStage: 'reengagement',
+				reason: '14-day re-engagement email'
 			};
 		}
-
-		// Days 10-31: Second backoff
-		if (daysSinceLastLogin > 10 && daysSinceLastLogin < 31) {
+		if (daysSinceLastLogin === this.BACKOFF_SCHEDULE.SECOND_REENGAGEMENT) {
 			return {
 				shouldSend: false,
 				isReengagement: false,
 				daysSinceLastLogin,
-				reason: 'Second backoff period (11-30 days)'
+				engagementStage: 'standard',
+				reason: `Waiting after recent brief (last brief ${daysSinceLastBrief} days ago)`
 			};
 		}
 
-		// Day 31+: Send every 31 days if we haven't sent recently
-		if (daysSinceLastLogin >= 31) {
-			// Only send if it's been at least 31 days since last brief
-			if (daysSinceLastBrief >= 31) {
+		// Days 15-59: Long backoff before treating the account as dormant
+		if (
+			daysSinceLastLogin > this.BACKOFF_SCHEDULE.SECOND_REENGAGEMENT &&
+			daysSinceLastLogin < this.BACKOFF_SCHEDULE.DORMANT_CHECK_IN
+		) {
+			return {
+				shouldSend: false,
+				isReengagement: false,
+				daysSinceLastLogin,
+				engagementStage: 'standard',
+				reason: 'Long backoff period (15-59 days)'
+			};
+		}
+
+		// Day 60+: Dormant account check-in, then no more than every 90 days.
+		if (daysSinceLastLogin >= this.BACKOFF_SCHEDULE.DORMANT_CHECK_IN) {
+			if (daysSinceLastBrief >= this.BACKOFF_SCHEDULE.DORMANT_RECURRING_INTERVAL) {
 				return {
 					shouldSend: true,
 					isReengagement: true,
 					daysSinceLastLogin,
-					reason: `31+ day re-engagement (${daysSinceLastLogin} days inactive)`
+					engagementStage: 'dormant',
+					reason: `Dormant account check-in (${daysSinceLastLogin} days inactive)`
 				};
 			}
 			return {
 				shouldSend: false,
 				isReengagement: false,
 				daysSinceLastLogin,
-				reason: `Waiting for 31-day interval (last brief ${daysSinceLastBrief} days ago)`
+				engagementStage: 'standard',
+				reason: `Waiting for 90-day dormant interval (last brief ${daysSinceLastBrief} days ago)`
 			};
 		}
 
-		console.log('daysSinceLastLogin', daysSinceLastLogin);
 		// Fallback (shouldn't reach here)
 		return {
 			shouldSend: false,
 			isReengagement: false,
 			daysSinceLastLogin,
+			engagementStage: 'standard',
 			reason: 'Default: no email'
 		};
 	}

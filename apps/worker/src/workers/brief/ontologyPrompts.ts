@@ -745,12 +745,36 @@ export interface OntologyReengagementPromptInput {
 	timezone: string;
 	daysSinceLastLogin: number;
 	lastLoginDate: string;
+	engagementStage: 'reengagement' | 'dormant';
 	briefData: OntologyBriefData;
 }
 
 export class OntologyReengagementPrompt {
-	static getSystemPrompt(daysSinceLastLogin: number): string {
-		const tone = this.getToneForInactivityLevel(daysSinceLastLogin);
+	static getSystemPrompt(
+		daysSinceLastLogin: number,
+		engagementStage: 'reengagement' | 'dormant' = 'reengagement'
+	): string {
+		const tone = this.getToneForInactivityLevel(daysSinceLastLogin, engagementStage);
+
+		if (engagementStage === 'dormant') {
+			return `You are writing a dormant-account daily brief email for a BuildOS user who has not logged in for ${daysSinceLastLogin} days.
+
+Your tone should be ${tone}. Focus on:
+1. Being direct that BuildOS has not seen them since their last visit date
+2. Reminding them what projects they created and when those projects started
+3. Avoiding a fake "today's work" framing if there is no recent activity
+4. Offering two clear choices: return to BuildOS or turn off daily briefs
+5. Keeping the message useful even if they no longer want the product
+
+Structure:
+- Start with one plain sentence acknowledging the long gap
+- Mention the oldest or most important projects by name with created dates when available
+- Summarize any unresolved tasks, goals, or blockers as "left open" context
+- End by telling them they can return to BuildOS or turn off daily briefs from the email/footer
+
+Keep it under 175 words. Use Markdown formatting.
+Be specific about their actual work - no placeholders. Do not guilt-trip the user.`;
+		}
 
 		return `You are a BuildOS productivity coach writing a re-engagement message for a user who hasn't logged in for ${daysSinceLastLogin} days.
 
@@ -772,10 +796,16 @@ Keep it under 200 words. Use Markdown formatting.
 Be specific about their actual work - no placeholders.`;
 	}
 
-	static getToneForInactivityLevel(daysSinceLastLogin: number): string {
+	static getToneForInactivityLevel(
+		daysSinceLastLogin: number,
+		engagementStage: 'reengagement' | 'dormant' = 'reengagement'
+	): string {
+		if (engagementStage === 'dormant') {
+			return 'plain, respectful, and low-pressure';
+		}
 		if (daysSinceLastLogin <= 4) {
 			return 'gentle and encouraging';
-		} else if (daysSinceLastLogin <= 10) {
+		} else if (daysSinceLastLogin <= 14) {
 			return 'motivating and goal-focused';
 		} else {
 			return 'warm but direct with strategic value proposition';
@@ -783,7 +813,8 @@ Be specific about their actual work - no placeholders.`;
 	}
 
 	static buildUserPrompt(input: OntologyReengagementPromptInput): string {
-		const { date, timezone, daysSinceLastLogin, lastLoginDate, briefData } = input;
+		const { date, timezone, daysSinceLastLogin, lastLoginDate, engagementStage, briefData } =
+			input;
 		const recentlyPausedProjects = briefData.recentlyPausedProjects ?? [];
 
 		const activeGoals = briefData.goals.filter(
@@ -799,6 +830,7 @@ Date: ${date}
 Timezone: ${timezone}
 Days since last login: ${daysSinceLastLogin}
 Last login: ${lastLoginDate}
+Engagement stage: ${engagementStage}
 
 ## Quick Stats
 - Active Projects: ${briefData.projects.length}
@@ -814,6 +846,29 @@ Last login: ${lastLoginDate}
 - Goals at Risk: ${goalsAtRisk.length}
 
 `;
+
+		if (engagementStage === 'dormant') {
+			const projectTimeline = briefData.projects
+				.slice()
+				.sort(
+					(a, b) =>
+						new Date(a.project.created_at).getTime() -
+						new Date(b.project.created_at).getTime()
+				)
+				.slice(0, 8);
+
+			if (projectTimeline.length > 0) {
+				prompt += `## Project Timeline\n`;
+				prompt += `Use this to remind the user what they started. Include dates when they help the message feel concrete.\n`;
+				for (const project of projectTimeline) {
+					prompt += `- ${project.project.name}: created ${project.project.created_at}, last updated ${project.project.updated_at}, state ${project.project.state_key}\n`;
+				}
+				prompt += '\n';
+			}
+
+			prompt += `## Dormant Account CTA\n`;
+			prompt += `The email footer includes links to open BuildOS, manage preferences, and turn off daily briefs. End with those choices, not with a generic productivity pep talk.\n\n`;
+		}
 
 		if (recentlyPausedProjects.length > 0) {
 			prompt += `## Recently Paused Projects\n`;
@@ -856,7 +911,12 @@ Last login: ${lastLoginDate}
 			prompt += '\n';
 		}
 
-		prompt += `
+		prompt +=
+			engagementStage === 'dormant'
+				? `
+Write a dormant-account check-in following the system instructions.
+Lead with the last-visit date and project timeline. Make the choices clear: return to BuildOS or turn off daily briefs.`
+				: `
 Write a re-engagement message following the system instructions.
 Lead with goal targets (if set) and make it easy to jump back in.`;
 

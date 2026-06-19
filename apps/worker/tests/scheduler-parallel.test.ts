@@ -26,7 +26,8 @@ describe('Scheduler - Batch Parallel Processing', () => {
 			shouldSendDailyBrief: vi.fn(async (userId: string) => ({
 				shouldSend: true,
 				isReengagement: false,
-				daysSinceLastLogin: 0
+				daysSinceLastLogin: 0,
+				engagementStage: 'standard'
 			}))
 		};
 
@@ -52,7 +53,8 @@ describe('Scheduler - Batch Parallel Processing', () => {
 				return {
 					shouldSend: true,
 					isReengagement: false,
-					daysSinceLastLogin: 0
+					daysSinceLastLogin: 0,
+					engagementStage: 'standard'
 				};
 			});
 
@@ -113,7 +115,8 @@ describe('Scheduler - Batch Parallel Processing', () => {
 				return {
 					shouldSend: true,
 					isReengagement: false,
-					daysSinceLastLogin: 0
+					daysSinceLastLogin: 0,
+					engagementStage: 'standard'
 				};
 			});
 
@@ -439,7 +442,8 @@ describe('Scheduler - Batch Parallel Processing', () => {
 			mockBackoffCalculator.shouldSendDailyBrief = vi.fn(async () => ({
 				shouldSend: true,
 				isReengagement: false,
-				daysSinceLastLogin: 0
+				daysSinceLastLogin: 0,
+				engagementStage: 'standard'
 			}));
 
 			const engagementChecks = await Promise.allSettled(
@@ -466,7 +470,8 @@ describe('Scheduler - Batch Parallel Processing', () => {
 			mockBackoffCalculator.shouldSendDailyBrief = vi.fn(async () => ({
 				shouldSend: true,
 				isReengagement: false,
-				daysSinceLastLogin: 0
+				daysSinceLastLogin: 0,
+				engagementStage: 'standard'
 			}));
 
 			const startTime = Date.now();

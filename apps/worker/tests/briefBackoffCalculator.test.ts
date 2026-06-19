@@ -147,7 +147,7 @@ describe('BriefBackoffCalculator', () => {
 		});
 	});
 
-	describe('First backoff period (5-9 days)', () => {
+	describe('First backoff period (5-13 days)', () => {
 		it('should skip briefs during first backoff (day 5)', async () => {
 			mockUserLastVisit(5);
 			mockLastBriefSent(3);
@@ -156,7 +156,7 @@ describe('BriefBackoffCalculator', () => {
 
 			expect(result.shouldSend).toBe(false);
 			expect(result.isReengagement).toBe(false);
-			expect(result.reason).toBe('First backoff period (5-9 days)');
+			expect(result.reason).toBe('First backoff period (5-13 days)');
 		});
 
 		it('should skip briefs during first backoff (day 9)', async () => {
@@ -166,26 +166,27 @@ describe('BriefBackoffCalculator', () => {
 			const result = await calculator.shouldSendDailyBrief('user-1');
 
 			expect(result.shouldSend).toBe(false);
-			expect(result.reason).toBe('First backoff period (5-9 days)');
+			expect(result.reason).toBe('First backoff period (5-13 days)');
 		});
 	});
 
-	describe('10-day re-engagement', () => {
-		it('should send re-engagement email on day 10 if last brief was 6+ days ago', async () => {
-			mockUserLastVisit(10);
-			mockLastBriefSent(6);
+	describe('14-day re-engagement', () => {
+		it('should send re-engagement email on day 14 if last brief was 10+ days ago', async () => {
+			mockUserLastVisit(14);
+			mockLastBriefSent(10);
 
 			const result = await calculator.shouldSendDailyBrief('user-1');
 
 			expect(result.shouldSend).toBe(true);
 			expect(result.isReengagement).toBe(true);
-			expect(result.daysSinceLastLogin).toBe(10);
-			expect(result.reason).toBe('10-day re-engagement email');
+			expect(result.daysSinceLastLogin).toBe(14);
+			expect(result.engagementStage).toBe('reengagement');
+			expect(result.reason).toBe('14-day re-engagement email');
 		});
 
-		it('should NOT send on day 10 if brief was sent recently (less than 6 days)', async () => {
-			mockUserLastVisit(10);
-			mockLastBriefSent(5);
+		it('should NOT send on day 14 if brief was sent recently (less than 10 days)', async () => {
+			mockUserLastVisit(14);
+			mockLastBriefSent(9);
 
 			const result = await calculator.shouldSendDailyBrief('user-1');
 
@@ -194,8 +195,8 @@ describe('BriefBackoffCalculator', () => {
 		});
 	});
 
-	describe('Second backoff period (11-30 days)', () => {
-		it('should skip briefs during second backoff (day 15)', async () => {
+	describe('Long backoff period (15-59 days)', () => {
+		it('should skip briefs during long backoff (day 15)', async () => {
 			mockUserLastVisit(15);
 			mockLastBriefSent(10);
 
@@ -203,52 +204,54 @@ describe('BriefBackoffCalculator', () => {
 
 			expect(result.shouldSend).toBe(false);
 			expect(result.isReengagement).toBe(false);
-			expect(result.reason).toBe('Second backoff period (11-30 days)');
+			expect(result.reason).toBe('Long backoff period (15-59 days)');
 		});
 
-		it('should skip briefs during second backoff (day 30)', async () => {
-			mockUserLastVisit(30);
-			mockLastBriefSent(20);
+		it('should skip briefs during long backoff (day 59)', async () => {
+			mockUserLastVisit(59);
+			mockLastBriefSent(45);
 
 			const result = await calculator.shouldSendDailyBrief('user-1');
 
 			expect(result.shouldSend).toBe(false);
-			expect(result.reason).toBe('Second backoff period (11-30 days)');
+			expect(result.reason).toBe('Long backoff period (15-59 days)');
 		});
 	});
 
-	describe('31+ day re-engagement (recurring)', () => {
-		it('should send re-engagement email on day 31+ if last brief was 31+ days ago', async () => {
-			mockUserLastVisit(31);
-			mockLastBriefSent(31);
-
-			const result = await calculator.shouldSendDailyBrief('user-1');
-
-			expect(result.shouldSend).toBe(true);
-			expect(result.isReengagement).toBe(true);
-			expect(result.daysSinceLastLogin).toBe(31);
-			expect(result.reason).toContain('31+ day re-engagement');
-		});
-
-		it('should send re-engagement for very inactive users (60 days) if 31+ days since last brief', async () => {
+	describe('Dormant account check-in (60+ days)', () => {
+		it('should send dormant check-in if no brief has ever been sent', async () => {
 			mockUserLastVisit(60);
-			mockLastBriefSent(31);
+			mockLastBriefSent(null);
 
 			const result = await calculator.shouldSendDailyBrief('user-1');
 
 			expect(result.shouldSend).toBe(true);
 			expect(result.isReengagement).toBe(true);
 			expect(result.daysSinceLastLogin).toBe(60);
+			expect(result.engagementStage).toBe('dormant');
+			expect(result.reason).toContain('Dormant account check-in');
 		});
 
-		it('should NOT send if last brief was sent less than 31 days ago', async () => {
-			mockUserLastVisit(35);
-			mockLastBriefSent(20);
+		it('should send dormant check-in for very inactive users if 90+ days since last brief', async () => {
+			mockUserLastVisit(120);
+			mockLastBriefSent(90);
+
+			const result = await calculator.shouldSendDailyBrief('user-1');
+
+			expect(result.shouldSend).toBe(true);
+			expect(result.isReengagement).toBe(true);
+			expect(result.daysSinceLastLogin).toBe(120);
+			expect(result.engagementStage).toBe('dormant');
+		});
+
+		it('should NOT send if last brief was sent less than 90 days ago', async () => {
+			mockUserLastVisit(120);
+			mockLastBriefSent(45);
 
 			const result = await calculator.shouldSendDailyBrief('user-1');
 
 			expect(result.shouldSend).toBe(false);
-			expect(result.reason).toContain('Waiting for 31-day interval');
+			expect(result.reason).toContain('Waiting for 90-day dormant interval');
 		});
 	});
 
@@ -273,7 +276,7 @@ describe('BriefBackoffCalculator', () => {
 
 			// Should be in first backoff period based on 5 days inactive
 			expect(result.shouldSend).toBe(false);
-			expect(result.reason).toBe('First backoff period (5-9 days)');
+			expect(result.reason).toBe('First backoff period (5-13 days)');
 		});
 
 		it('should handle database errors gracefully (null last_visit)', async () => {
@@ -296,9 +299,9 @@ describe('BriefBackoffCalculator', () => {
 	});
 
 	describe('Automatic reset on user activity', () => {
-		it('should resume normal briefs when inactive user returns (was at day 10, now at day 1)', async () => {
+		it('should resume normal briefs when inactive user returns (was at day 14, now at day 1)', async () => {
 			mockUserLastVisit(1);
-			mockLastBriefSent(10);
+			mockLastBriefSent(14);
 
 			const result = await calculator.shouldSendDailyBrief('user-1');
 

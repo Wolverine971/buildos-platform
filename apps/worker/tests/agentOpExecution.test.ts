@@ -7,6 +7,7 @@ import {
 	executeAgentOp,
 	AGENT_OP_READ_CATALOG,
 	AGENT_OP_WRITE_CATALOG,
+	buildAgentRunOpCatalog,
 	type AgentOpContext
 } from '@buildos/shared-agent-ops';
 
@@ -77,10 +78,74 @@ describe('executeAgentOp policy + dispatch', () => {
 		expect(AGENT_OP_WRITE_CATALOG.every((op) => !op.startsWith('cal.'))).toBe(true);
 	});
 
+	it('builds a runtime catalog from granted ops and available calendar capability', () => {
+		const scope: AgentOpContext['scope'] = {
+			mode: 'read_write',
+			allowed_ops: [
+				'onto.project.list',
+				'onto.task.create',
+				'cal.event.list',
+				'cal.event.create'
+			]
+		};
+
+		expect(buildAgentRunOpCatalog({ scope, mutationMode: 'commit' })).toEqual([
+			'onto.project.list',
+			'onto.task.create'
+		]);
+
+		const calendar = {} as NonNullable<AgentOpContext['calendar']>;
+		expect(buildAgentRunOpCatalog({ scope, mutationMode: 'commit', calendar })).toEqual([
+			'onto.project.list',
+			'onto.task.create',
+			'cal.event.list',
+			'cal.event.create'
+		]);
+
+		expect(buildAgentRunOpCatalog({ scope, mutationMode: 'stage', calendar })).toEqual([
+			'onto.project.list',
+			'onto.task.create',
+			'cal.event.list'
+		]);
+	});
+
 	it('rejects a write op in a read_only run as FORBIDDEN (before any DB handler)', async () => {
-		const r = await executeAgentOp({ ...ctx(), scope: { mode: 'read_only' } }, 'onto.task.create');
+		const r = await executeAgentOp(
+			{ ...ctx(), scope: { mode: 'read_only' } },
+			'onto.task.create'
+		);
 		expect(r.ok).toBe(false);
 		expect(r.error?.code).toBe('FORBIDDEN');
+	});
+
+	it('rejects calendar writes in stage mode instead of producing unappliable proposals', async () => {
+		const r = await executeAgentOp(
+			{
+				...ctx(),
+				scope: { mode: 'read_write', allowed_ops: ['cal.event.create'] },
+				mutationMode: 'stage'
+			},
+			'cal.event.create',
+			{ title: 'Launch sync', start_at: '2026-07-01T10:00:00Z' }
+		);
+		expect(r.ok).toBe(false);
+		expect(r.error?.code).toBe('UNSUPPORTED');
+		expect(r.proposedChange).toBeUndefined();
+	});
+
+	it('rejects direct calendar writes when no CalendarPort is wired', async () => {
+		const r = await executeAgentOp(
+			{
+				...ctx(),
+				scope: { mode: 'read_write', allowed_ops: ['cal.event.create'] },
+				mutationMode: 'commit'
+			},
+			'cal.event.create',
+			{ title: 'Launch sync', start_at: '2026-07-01T10:00:00Z' }
+		);
+		expect(r.ok).toBe(false);
+		expect(r.error?.code).toBe('UNSUPPORTED');
+		expect(r.error?.message).toContain('CalendarPort');
 	});
 
 	it('validates a write op’s args before reaching the DB handler', async () => {
@@ -107,7 +172,10 @@ describe('executeAgentOp policy + dispatch', () => {
 		expect(r.proposedChange).toBeDefined();
 		expect(r.proposedChange?.action).toBe('create');
 		expect(r.proposedChange?.entity_type).toBe('task');
-		expect(r.proposedChange?.after).toMatchObject({ project_id: 'project-1', title: 'Draft task' });
+		expect(r.proposedChange?.after).toMatchObject({
+			project_id: 'project-1',
+			title: 'Draft task'
+		});
 		expect((r.data as { staged?: boolean }).staged).toBe(true);
 	});
 

@@ -350,6 +350,7 @@ export interface OntologyBriefMetadata {
 	timezone: string;
 	isReengagement?: boolean;
 	daysSinceLastLogin?: number;
+	engagementStage?: 'standard' | 'reengagement' | 'dormant';
 }
 
 // ============================================================================

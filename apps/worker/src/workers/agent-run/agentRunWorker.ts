@@ -4,8 +4,8 @@
 // runs a JSON action-loop where the LLM either calls a BuildOS op or submits a
 // result, executing ops in-process via @buildos/shared-agent-ops (no SvelteKit,
 // no chat session). Supports read ops and (for read_write runs) the carved
-// gateway write ops; calendar write ops are excluded until the CalendarPort is
-// wired in the worker.
+// gateway write ops; calendar ops are capability-gated on worker OAuth/token
+// encryption env before they are offered to the LLM.
 
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -17,10 +17,9 @@ import type {
 	ProposedChange
 } from '@buildos/shared-types';
 import {
-	AGENT_OP_READ_CATALOG,
-	AGENT_OP_WRITE_CATALOG,
+	buildAgentRunOpCatalog,
+	createAgentRunCalendarPort,
 	type AgentOpScope,
-	defaultAllowedOpsForMode,
 	executeAgentOp,
 	isWriteOp
 } from '@buildos/shared-agent-ops';
@@ -267,8 +266,48 @@ function parseBudgets(value: unknown): RunBudgets {
 	};
 }
 
+function trimmedEnv(name: string): string | undefined {
+	const value = process.env[name]?.trim();
+	return value ? value : undefined;
+}
+
+async function createCalendarPortForRun(userId: string) {
+	const clientId = trimmedEnv('PRIVATE_GOOGLE_CLIENT_ID') ?? trimmedEnv('GOOGLE_CLIENT_ID');
+	const clientSecret =
+		trimmedEnv('PRIVATE_GOOGLE_CLIENT_SECRET') ?? trimmedEnv('GOOGLE_CLIENT_SECRET');
+	const tokenEncryptionKey = trimmedEnv('PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY');
+
+	if (!clientId || !clientSecret || !tokenEncryptionKey) {
+		return null;
+	}
+
+	const { data: tokenRow, error: tokenError } = await supabase
+		.from('user_calendar_tokens')
+		.select('access_token, refresh_token')
+		.eq('user_id', userId)
+		.maybeSingle();
+
+	if (tokenError) {
+		console.error('[agentRunWorker] failed to check calendar token availability', {
+			userId,
+			error: tokenError.message
+		});
+		return null;
+	}
+
+	if (!tokenRow?.access_token || !tokenRow.refresh_token) {
+		return null;
+	}
+
+	return createAgentRunCalendarPort({
+		admin: supabase as SupabaseClient<Database>,
+		userId,
+		credentials: { clientId, clientSecret }
+	});
+}
+
 function buildSystemPrompt(runnableOps: string[]): string {
-	const hasWriteOps = runnableOps.some((op) => AGENT_OP_WRITE_CATALOG.includes(op));
+	const hasWriteOps = runnableOps.some((op) => isWriteOp(op));
 	const surfaceLabel = hasWriteOps ? 'read + write' : 'read-only';
 	return [
 		'You are a focused background agent (an "Agent Run") inside BuildOS.',
@@ -396,17 +435,17 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		mode: run.scope_mode === 'read_write' ? 'read_write' : 'read_only',
 		allowed_ops: run.allowed_ops
 	};
-	const grantedOps = scope.allowed_ops ?? defaultAllowedOpsForMode(scope.mode);
-	const runnableOps = grantedOps.filter(
-		(op) =>
-			AGENT_OP_READ_CATALOG.includes(op) ||
-			(scope.mode === 'read_write' && AGENT_OP_WRITE_CATALOG.includes(op))
-	);
 
 	// Phase 4: review_required runs STAGE writes into a Change Set instead of
 	// committing. Read-only runs never stage (dispatch rejects review+read_only).
 	const mutationMode: AgentRunMutationMode =
 		run.review_required && scope.mode === 'read_write' ? 'stage' : 'commit';
+	const calendar = await createCalendarPortForRun(run.user_id);
+	const runnableOps = buildAgentRunOpCatalog({
+		scope,
+		mutationMode,
+		calendar
+	});
 	const proposedChanges: ProposedChange[] = [];
 
 	const budgets = parseBudgets(run.budgets);
@@ -691,7 +730,8 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 					context_type: run.context_type === 'project' ? 'project' : 'global',
 					project_id: run.project_id
 				},
-				mutationMode
+				mutationMode,
+				calendar: calendar ?? undefined
 			},
 			op,
 			args

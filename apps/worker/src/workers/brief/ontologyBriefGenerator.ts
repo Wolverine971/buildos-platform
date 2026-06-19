@@ -1277,6 +1277,12 @@ export async function generateOntologyDailyBrief(
 		let llmAnalysis: string | null = null;
 		const isReengagement = options?.isReengagement === true;
 		const daysSinceLastLogin = options?.daysSinceLastLogin || 0;
+		const engagementStage =
+			options?.engagementStage === 'dormant'
+				? 'dormant'
+				: isReengagement
+					? 'reengagement'
+					: 'standard';
 
 		try {
 			const llmService = new SmartLLMService({
@@ -1291,12 +1297,15 @@ export async function generateOntologyDailyBrief(
 					.select('last_visit')
 					.eq('id', userId)
 					.single();
+				const reengagementStage =
+					engagementStage === 'dormant' ? 'dormant' : 'reengagement';
 
 				const reengagementPrompt = OntologyReengagementPrompt.buildUserPrompt({
 					date: briefDateInUserTz,
 					timezone: userTimezone,
 					daysSinceLastLogin,
 					lastLoginDate: userData?.last_visit || 'Unknown',
+					engagementStage: reengagementStage,
 					briefData
 				});
 
@@ -1306,7 +1315,10 @@ export async function generateOntologyDailyBrief(
 					profile: 'quality',
 					temperature: 0.7,
 					maxTokens: 1200,
-					systemPrompt: OntologyReengagementPrompt.getSystemPrompt(daysSinceLastLogin)
+					systemPrompt: OntologyReengagementPrompt.getSystemPrompt(
+						daysSinceLastLogin,
+						reengagementStage
+					)
 				});
 			} else {
 				// Standard analysis - include project briefs for full context
@@ -1384,7 +1396,8 @@ export async function generateOntologyDailyBrief(
 		const finalMetadata: OntologyBriefMetadata = {
 			...metadata,
 			isReengagement,
-			daysSinceLastLogin
+			daysSinceLastLogin,
+			engagementStage
 		};
 
 		const { data: finalBrief, error: updateError } = await supabase

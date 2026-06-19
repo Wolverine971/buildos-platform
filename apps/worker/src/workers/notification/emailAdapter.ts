@@ -210,13 +210,20 @@ export async function sendEmailNotification(
 		let html: string;
 		let text: string;
 		let subject: string;
+		const isDailyBriefEmail = eventType === 'brief.completed';
+		const trackingId = crypto.randomUUID();
+		const dailyBriefUnsubscribeUrl = `${baseUrl}/api/email-tracking/${trackingId}/unsubscribe`;
+		let dailyBriefId: string | null = null;
+		let dailyBriefDate: string | null = null;
 
-		if (eventType === 'brief.completed') {
+		if (isDailyBriefEmail) {
 			const briefId = delivery.payload.data?.brief_id || delivery.payload.brief_id;
 			const briefDate =
 				delivery.payload.data?.brief_date ||
 				delivery.payload.brief_date ||
 				new Date().toISOString();
+			dailyBriefId = briefId ?? null;
+			dailyBriefDate = briefDate;
 			const isOntologyBrief = Boolean(
 				delivery.payload.is_ontology_brief || delivery.payload.data?.is_ontology_brief
 			);
@@ -281,6 +288,8 @@ export async function sendEmailNotification(
               <a href="${baseUrl}/projects?briefDate=${briefDate}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
               <span style="color: #8C8B91; margin: 0 8px;">|</span>
               <a href="${baseUrl}/profile?tab=notifications" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
+              <span style="color: #8C8B91; margin: 0 8px;">|</span>
+              <a href="${dailyBriefUnsubscribeUrl}" style="color: #6F6E75; text-decoration: none; font-size: 14px;">Turn off daily briefs</a>
             </div>
           `;
 
@@ -362,6 +371,8 @@ export async function sendEmailNotification(
               <a href="${baseUrl}/projects?briefDate=${briefDate}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
               <span style="color: #8C8B91; margin: 0 8px;">|</span>
               <a href="${baseUrl}/profile?tab=notifications" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
+              <span style="color: #8C8B91; margin: 0 8px;">|</span>
+              <a href="${dailyBriefUnsubscribeUrl}" style="color: #6F6E75; text-decoration: none; font-size: 14px;">Turn off daily briefs</a>
             </div>
           `;
 
@@ -397,9 +408,6 @@ export async function sendEmailNotification(
 			subject = delivery.payload.title;
 		}
 
-		// Generate tracking ID
-		const trackingId = crypto.randomUUID();
-
 		// Rewrite links for click tracking
 		const htmlWithTrackedLinks = rewriteLinksForTracking(html, trackingId);
 
@@ -416,14 +424,18 @@ export async function sendEmailNotification(
 				from_name: 'BuildOS',
 				subject,
 				content: htmlWithTracking,
-				category: 'notification',
+				category: isDailyBriefEmail ? 'daily_brief' : 'notification',
 				status: 'scheduled',
 				tracking_enabled: true,
 				tracking_id: trackingId,
 				template_data: {
 					delivery_id: delivery.id,
 					event_id: delivery.event_id,
-					event_type: delivery.payload.event_type
+					event_type: delivery.payload.event_type,
+					brief_id: dailyBriefId,
+					brief_date: dailyBriefDate,
+					user_id: delivery.recipient_user_id,
+					category: isDailyBriefEmail ? 'daily_brief' : 'notification'
 				}
 			})
 			.select()
@@ -440,6 +452,7 @@ export async function sendEmailNotification(
 		const { error: recipientError } = await supabase.from('email_recipients').insert({
 			email_id: emailRecord.id,
 			recipient_email: user.email,
+			recipient_id: delivery.recipient_user_id,
 			recipient_type: 'to',
 			recipient_name: user.name,
 			status: 'pending'

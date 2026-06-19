@@ -47,6 +47,7 @@ async function queueBriefGeneration(
 	engagementMetadata?: {
 		isReengagement: boolean;
 		daysSinceLastLogin: number;
+		engagementStage: 'standard' | 'reengagement' | 'dormant';
 	},
 	notificationScheduledFor?: Date,
 	userNameMap?: Map<string, string>
@@ -82,6 +83,7 @@ async function queueBriefGeneration(
 	if (engagementMetadata) {
 		console.log(`   - Is re-engagement: ${engagementMetadata.isReengagement}`);
 		console.log(`   - Days since last login: ${engagementMetadata.daysSinceLastLogin}`);
+		console.log(`   - Engagement stage: ${engagementMetadata.engagementStage}`);
 	}
 
 	const jobData = {
@@ -302,6 +304,7 @@ async function checkAndScheduleBriefs() {
 				shouldSend: boolean;
 				isReengagement: boolean;
 				daysSinceLastLogin: number;
+				engagementStage: 'standard' | 'reengagement' | 'dormant';
 				reason?: string;
 			}
 		>();
@@ -367,6 +370,7 @@ async function checkAndScheduleBriefs() {
 			engagementMetadata?: {
 				isReengagement: boolean;
 				daysSinceLastLogin: number;
+				engagementStage: 'standard' | 'reengagement' | 'dormant';
 			};
 		}> = [];
 
@@ -378,7 +382,11 @@ async function checkAndScheduleBriefs() {
 
 			// Check engagement status
 			let engagementMetadata:
-				| { isReengagement: boolean; daysSinceLastLogin: number }
+				| {
+						isReengagement: boolean;
+						daysSinceLastLogin: number;
+						engagementStage: 'standard' | 'reengagement' | 'dormant';
+				  }
 				| undefined;
 
 			if (ENGAGEMENT_BACKOFF_ENABLED) {
@@ -394,10 +402,16 @@ async function checkAndScheduleBriefs() {
 
 				engagementMetadata = {
 					isReengagement: backoffDecision.isReengagement,
-					daysSinceLastLogin: backoffDecision.daysSinceLastLogin
+					daysSinceLastLogin: backoffDecision.daysSinceLastLogin,
+					engagementStage: backoffDecision.engagementStage
 				};
 
-				const briefType = backoffDecision.isReengagement ? 're-engagement' : 'standard';
+				const briefType =
+					backoffDecision.engagementStage === 'dormant'
+						? 'dormant-account'
+						: backoffDecision.isReengagement
+							? 're-engagement'
+							: 'standard';
 				const userName = userNameMap.get(preference.user_id) || preference.user_id;
 				console.log(
 					`📧 Will queue ${briefType} brief for user ${userName} (inactive for ${backoffDecision.daysSinceLastLogin} days)`

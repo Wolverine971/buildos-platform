@@ -719,53 +719,53 @@ class AgentRunCalendarPort implements CalendarPort {
 			}
 
 			let updated = await this.patchEvent(ontoEventId, patch);
-				if (args?.sync_to_calendar !== false) {
-					const syncRows = this.eventSyncRows(existing);
-					for (const sync of syncRows) {
-						if (sync.user_id !== this.userId || !sync.external_event_id) continue;
-						const googleCalendarId = await this.resolveGoogleCalendarIdForSyncRow(sync);
-						if (!googleCalendarId) {
-							updated = await this.patchEvent(updated.id, {
-								sync_status: 'error',
-								sync_error: 'Project calendar mapping not found'
-							});
-							continue;
-						}
-						try {
-							await this.patchGoogleEvent(googleCalendarId, sync.external_event_id, {
-								title: typeof patch.title === 'string' ? patch.title : undefined,
-								description:
-									Object.prototype.hasOwnProperty.call(patch, 'description') &&
-									(typeof patch.description === 'string' ||
-										patch.description === null)
-										? patch.description
-										: undefined,
-								location:
-									Object.prototype.hasOwnProperty.call(patch, 'location') &&
-									(typeof patch.location === 'string' || patch.location === null)
-										? patch.location
-										: undefined,
-								startAt:
-									typeof patch.start_at === 'string' ? patch.start_at : undefined,
-								endAt:
-									typeof patch.start_at === 'string' ||
-									Object.prototype.hasOwnProperty.call(patch, 'end_at')
-										? googleEnd
-										: undefined,
-								timezone
-							});
-							await this.upsertEventSync({
-								eventId: updated.id,
-								projectCalendarId: sync.calendar_id,
-								externalEventId: sync.external_event_id,
-								status: 'synced',
-								error: null
-							});
-							updated = await this.patchEvent(updated.id, {
-								sync_status: 'synced',
-								sync_error: null,
-								last_synced_at: new Date().toISOString()
-							});
+			if (args?.sync_to_calendar !== false) {
+				const syncRows = this.eventSyncRows(existing);
+				for (const sync of syncRows) {
+					if (sync.user_id !== this.userId || !sync.external_event_id) continue;
+					const googleCalendarId = await this.resolveGoogleCalendarIdForSyncRow(sync);
+					if (!googleCalendarId) {
+						updated = await this.patchEvent(updated.id, {
+							sync_status: 'error',
+							sync_error: 'Project calendar mapping not found'
+						});
+						continue;
+					}
+					try {
+						await this.patchGoogleEvent(googleCalendarId, sync.external_event_id, {
+							title: typeof patch.title === 'string' ? patch.title : undefined,
+							description:
+								Object.prototype.hasOwnProperty.call(patch, 'description') &&
+								(typeof patch.description === 'string' ||
+									patch.description === null)
+									? patch.description
+									: undefined,
+							location:
+								Object.prototype.hasOwnProperty.call(patch, 'location') &&
+								(typeof patch.location === 'string' || patch.location === null)
+									? patch.location
+									: undefined,
+							startAt:
+								typeof patch.start_at === 'string' ? patch.start_at : undefined,
+							endAt:
+								typeof patch.start_at === 'string' ||
+								Object.prototype.hasOwnProperty.call(patch, 'end_at')
+									? googleEnd
+									: undefined,
+							timezone
+						});
+						await this.upsertEventSync({
+							eventId: updated.id,
+							projectCalendarId: sync.calendar_id,
+							externalEventId: sync.external_event_id,
+							status: 'synced',
+							error: null
+						});
+						updated = await this.patchEvent(updated.id, {
+							sync_status: 'synced',
+							sync_error: null,
+							last_synced_at: new Date().toISOString()
+						});
 					} catch (error) {
 						updated = await this.patchEvent(updated.id, {
 							sync_status: 'error',
@@ -833,18 +833,18 @@ class AgentRunCalendarPort implements CalendarPort {
 			if (!existing) {
 				throw new Error('Event not found');
 			}
-				if (args?.sync_to_calendar !== false) {
-					for (const sync of this.eventSyncRows(existing)) {
-						if (sync.user_id !== this.userId || !sync.external_event_id) continue;
-						const googleCalendarId = await this.resolveGoogleCalendarIdForSyncRow(sync);
-						if (!googleCalendarId) continue;
-						await this.deleteGoogleEvent(googleCalendarId, sync.external_event_id);
-						await this.upsertEventSync({
-							eventId: existing.id,
-							projectCalendarId: sync.calendar_id,
-							externalEventId: sync.external_event_id,
-							status: 'deleted',
-							error: null
+			if (args?.sync_to_calendar !== false) {
+				for (const sync of this.eventSyncRows(existing)) {
+					if (sync.user_id !== this.userId || !sync.external_event_id) continue;
+					const googleCalendarId = await this.resolveGoogleCalendarIdForSyncRow(sync);
+					if (!googleCalendarId) continue;
+					await this.deleteGoogleEvent(googleCalendarId, sync.external_event_id);
+					await this.upsertEventSync({
+						eventId: existing.id,
+						projectCalendarId: sync.calendar_id,
+						externalEventId: sync.external_event_id,
+						status: 'deleted',
+						error: null
 					});
 				}
 			}
