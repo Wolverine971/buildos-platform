@@ -39,6 +39,9 @@ export * from './ontology/ontology-projects.service';
 // Worker-safe op execution (Phase 1b foundation — read ops)
 export * from './gateway/op-execution';
 
+// Staged-mutation commit (Phase 4)
+export * from './gateway/change-set';
+
 // Document outline extraction (pure; used by versioning)
 export * from './utils/document-outline';
 

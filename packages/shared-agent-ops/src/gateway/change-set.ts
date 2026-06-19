@@ -1,0 +1,249 @@
+// packages/shared-agent-ops/src/gateway/change-set.ts
+//
+// Phase 4 — commit a staged Change Set. Applies the approved ProposedChanges
+// through the SAME worker-safe write path used for direct-commit runs
+// (runGatewayWriteOp), so there is one mutation path, not two. Per-change result
+// is recorded (applied_entity_id / error); applied changes are promoted into the
+// run's entities_touched; the run is flipped to a terminal status.
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type {
+	AgentCallScope,
+	ChangeSet,
+	ChangeSetDecision,
+	ChangeSetStatus,
+	Database,
+	EntityAction,
+	EntityTouch,
+	ProposedChange,
+	ProposedChangeAction
+} from '@buildos/shared-types';
+import { runGatewayWriteOp } from './op-execution-gateway';
+
+export interface CommitChangeSetResult {
+	change_set_status: ChangeSetStatus;
+	run_status: 'completed' | 'partial';
+	applied: number;
+	rejected: number;
+	failed: number;
+	change_set: ChangeSet;
+	entities_touched: EntityTouch[];
+}
+
+export type CommitChangeSetOutcome =
+	| { ok: true; result: CommitChangeSetResult }
+	| { ok: false; error: { code: 'NOT_FOUND' | 'CONFLICT' | 'VALIDATION_ERROR' | 'INTERNAL'; message: string } };
+
+const ACTION_TO_ENTITY_ACTION: Record<ProposedChangeAction, EntityAction> = {
+	create: 'created',
+	update: 'updated',
+	delete: 'deleted'
+};
+
+function asChangeSet(value: unknown, runId: string): ChangeSet | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const v = value as Record<string, unknown>;
+	if (!Array.isArray(v.changes)) return null;
+	return {
+		run_id: typeof v.run_id === 'string' ? v.run_id : runId,
+		status: (v.status as ChangeSetStatus) ?? 'pending',
+		changes: v.changes as ProposedChange[],
+		created_at: typeof v.created_at === 'string' ? v.created_at : new Date().toISOString()
+	};
+}
+
+/**
+ * Apply a run's staged Change Set. `decisions` carries per-change approve/reject;
+ * any change not named defaults to `defaultDecision` ('approved' unless set). The
+ * run must currently be 'proposal_ready' (the caller should gate on this; we also
+ * verify to avoid double-apply).
+ */
+export async function commitChangeSet(params: {
+	admin: SupabaseClient<Database>;
+	runId: string;
+	userId: string;
+	decisions?: ChangeSetDecision[];
+	defaultDecision?: 'approved' | 'rejected';
+}): Promise<CommitChangeSetOutcome> {
+	const { admin, runId, userId } = params;
+	const defaultDecision = params.defaultDecision ?? 'approved';
+
+	const { data: run, error: runError } = await admin
+		.from('agent_runs')
+		.select('*')
+		.eq('id', runId)
+		.eq('user_id', userId)
+		.maybeSingle();
+
+	if (runError) {
+		return { ok: false, error: { code: 'INTERNAL', message: runError.message } };
+	}
+	if (!run) {
+		return { ok: false, error: { code: 'NOT_FOUND', message: 'Agent run not found' } };
+	}
+	if (run.status !== 'proposal_ready') {
+		return {
+			ok: false,
+			error: {
+				code: 'CONFLICT',
+				message: `Run is ${run.status}, not awaiting proposal review`
+			}
+		};
+	}
+
+	const changeSet = asChangeSet(run.change_set, runId);
+	if (!changeSet || changeSet.changes.length === 0) {
+		return {
+			ok: false,
+			error: { code: 'VALIDATION_ERROR', message: 'Run has no staged changes to commit' }
+		};
+	}
+
+	const decisionById = new Map<string, 'approved' | 'rejected'>();
+	for (const d of params.decisions ?? []) {
+		if (d && typeof d.change_id === 'string') {
+			decisionById.set(d.change_id, d.decision === 'rejected' ? 'rejected' : 'approved');
+		}
+	}
+
+	const scope: AgentCallScope = {
+		mode: 'read_write',
+		allowed_ops: (run.allowed_ops ?? undefined) as AgentCallScope['allowed_ops'],
+		project_ids:
+			run.context_type === 'project' && run.project_id ? [run.project_id] : undefined
+	};
+
+	const entitiesTouched: EntityTouch[] = [];
+	let applied = 0;
+	let rejected = 0;
+	let failed = 0;
+
+	const committedAt = new Date().toISOString();
+
+	for (const change of changeSet.changes) {
+		const decision = decisionById.get(change.id) ?? defaultDecision;
+		change.decision = decision;
+
+		if (decision === 'rejected') {
+			rejected += 1;
+			continue;
+		}
+
+		const args =
+			change.after && typeof change.after === 'object' && !Array.isArray(change.after)
+				? (change.after as Record<string, unknown>)
+				: {};
+
+		const result = await runGatewayWriteOp({
+			admin,
+			userId,
+			scope,
+			op: change.op,
+			args
+		});
+
+		if (result.ok) {
+			applied += 1;
+			const appliedId = result.entityId ?? change.entity_id ?? undefined;
+			change.applied_entity_id = appliedId;
+			change.error = undefined;
+			if (appliedId) {
+				entitiesTouched.push({
+					type: change.entity_type,
+					id: appliedId,
+					action: ACTION_TO_ENTITY_ACTION[change.action] ?? 'updated',
+					description: change.rationale
+				});
+			}
+			// Telemetry: record the actual commit, keyed to the proposed change.
+			await admin.from('agent_tool_executions').insert({
+				agent_run_id: runId,
+				user_id: userId,
+				tool_name: change.op,
+				gateway_op: change.op,
+				tool_category: 'write',
+				arguments: args as never,
+				result: (result.data ?? null) as never,
+				success: true,
+				mutation_mode: 'commit',
+				proposed_change_id: change.id,
+				entity_kind: result.entityKind ?? change.entity_type,
+				entity_id: appliedId ?? null
+			});
+		} else {
+			failed += 1;
+			change.error = result.error?.message ?? 'Failed to apply change';
+			await admin.from('agent_tool_executions').insert({
+				agent_run_id: runId,
+				user_id: userId,
+				tool_name: change.op,
+				gateway_op: change.op,
+				tool_category: 'write',
+				arguments: args as never,
+				result: null as never,
+				success: false,
+				error_message: change.error,
+				mutation_mode: 'commit',
+				proposed_change_id: change.id,
+				entity_kind: change.entity_type
+			});
+		}
+	}
+
+	const approved = applied + failed;
+	let changeSetStatus: ChangeSetStatus;
+	if (approved === 0) {
+		changeSetStatus = 'rejected';
+	} else if (failed === 0 && rejected === 0) {
+		changeSetStatus = 'applied';
+	} else {
+		changeSetStatus = 'partially_applied';
+	}
+	changeSet.status = changeSetStatus;
+
+	// A commit where every approved change failed is a 'partial' run; otherwise
+	// the run is 'completed' (rejections are a normal review outcome).
+	const runStatus: 'completed' | 'partial' = applied === 0 && failed > 0 ? 'partial' : 'completed';
+
+	// Merge the newly-applied entities into the run's result envelope.
+	const priorResult =
+		run.result && typeof run.result === 'object' && !Array.isArray(run.result)
+			? (run.result as Record<string, unknown>)
+			: {};
+	const priorTouched = Array.isArray(priorResult.entities_touched)
+		? (priorResult.entities_touched as EntityTouch[])
+		: [];
+	const mergedResult = {
+		...priorResult,
+		entities_touched: [...priorTouched, ...entitiesTouched],
+		proposed_changes: changeSet
+	};
+
+	const { error: updateError } = await admin
+		.from('agent_runs')
+		.update({
+			status: runStatus,
+			change_set: changeSet as never,
+			result: mergedResult as never,
+			completed_at: committedAt
+		})
+		.eq('id', runId)
+		.eq('user_id', userId)
+		.eq('status', 'proposal_ready');
+
+	if (updateError) {
+		return { ok: false, error: { code: 'INTERNAL', message: updateError.message } };
+	}
+
+	return {
+		ok: true,
+		result: {
+			change_set_status: changeSetStatus,
+			run_status: runStatus,
+			applied,
+			rejected,
+			failed,
+			change_set: changeSet,
+			entities_touched: entitiesTouched
+		}
+	};
+}
