@@ -30,6 +30,7 @@ export default defineConfig({
 		'src/ops/tracked-in-app-notification.service.ts',
 		'src/ops/entity-mention-notification.service.ts',
 		'src/ops/gateway-op-aliases.ts',
+		'src/ops/security-event-logger.ts',
 		'src/utils/project-props-sanitizer.ts',
 		'src/utils/markdown-normalization.ts',
 		'src/utils/search-filter.ts',
