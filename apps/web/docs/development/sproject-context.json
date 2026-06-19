@@ -36,7 +36,8 @@
 			"components": [
 				"ProjectSynthesisMinimizedView",
 				"CalendarAnalysisMinimizedView",
-				"TimeBlockMinimizedView"
+				"TimeBlockMinimizedView",
+				"AgentRunMinimizedView"
 			]
 		},
 		{
@@ -45,7 +46,8 @@
 			"components": [
 				"ProjectSynthesisModalContent",
 				"CalendarAnalysisModalContent",
-				"TimeBlockModalContent"
+				"TimeBlockModalContent",
+				"AgentRunModalContent"
 			]
 		},
 		{
@@ -143,14 +145,14 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal", "ProjectModalsHost"]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -190,18 +192,27 @@
 			]
 		},
 		{
-			"file": "src/lib/services/async-activity-logger.ts",
+			"file": "src/lib/services/agent-run-notification.bridge.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["initAgentRunNotificationBridge", "destroyAgentRunNotificationBridge"]
+		},
+		{
+			"file": "src/lib/services/agentRunsRealtime.service.ts",
 			"type": "service",
 			"components": [],
 			"exports": [
-				"getChangeSourceFromRequest",
-				"getChatSessionIdFromRequest",
-				"logActivityAsync",
-				"logActivitiesAsync",
-				"logCreateAsync",
-				"logUpdateAsync",
-				"logDeleteAsync"
+				"isActiveAgentRunStatus",
+				"agentRunsStore",
+				"activeAgentRunCount",
+				"AgentRunsRealtimeService"
 			]
+		},
+		{
+			"file": "src/lib/services/async-activity-logger.ts",
+			"type": "service",
+			"components": [],
+			"exports": ["getChangeSourceFromRequest", "getChatSessionIdFromRequest"]
 		},
 		{
 			"file": "src/lib/services/briefClient.service.ts",

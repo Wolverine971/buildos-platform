@@ -2,6 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildAdminChatDashboardAnalytics } from './admin-chat-dashboard-analytics';
 
+const TEST_MODEL_ID = 'deepseek/deepseek-v4-flash';
+
 describe('buildAdminChatDashboardAnalytics', () => {
 	it('aggregates current chat telemetry from turn, usage, tool, and message rows', () => {
 		const result = buildAdminChatDashboardAnalytics({
@@ -103,7 +105,7 @@ describe('buildAdminChatDashboardAnalytics', () => {
 					chat_session_id: 'session-1',
 					turn_run_id: 'turn-1',
 					operation_type: 'agentic_chat',
-					model_used: 'openai/gpt-4o-mini',
+					model_used: TEST_MODEL_ID,
 					total_tokens: 1000,
 					total_cost_usd: 0.01,
 					response_time_ms: 1200,
@@ -117,7 +119,7 @@ describe('buildAdminChatDashboardAnalytics', () => {
 					chat_session_id: 'session-2',
 					turn_run_id: 'turn-2',
 					operation_type: 'agentic_chat',
-					model_used: 'openai/gpt-4o-mini',
+					model_used: TEST_MODEL_ID,
 					total_tokens: 500,
 					total_cost_usd: 0.005,
 					response_time_ms: 5000,
@@ -133,7 +135,7 @@ describe('buildAdminChatDashboardAnalytics', () => {
 					turn_run_id: 'turn-1',
 					event_type: 'llm_pass_completed',
 					payload: {
-						model: 'openai/gpt-4o-mini',
+						model: TEST_MODEL_ID,
 						prompt_tokens: 800,
 						completion_tokens: 200,
 						total_tokens: 1000,
@@ -247,7 +249,7 @@ describe('buildAdminChatDashboardAnalytics', () => {
 				{
 					event_type: 'llm_pass_completed',
 					payload: {
-						model: 'openai/gpt-4o-mini',
+						model: TEST_MODEL_ID,
 						prompt_tokens: 1000,
 						completion_tokens: 500,
 						total_tokens: 1500
@@ -340,7 +342,7 @@ describe('buildAdminChatDashboardAnalytics', () => {
 					user_id: 'user-4',
 					event_type: 'llm_pass_completed',
 					payload: {
-						model: 'openai/gpt-4o-mini',
+						model: TEST_MODEL_ID,
 						prompt_tokens: 100,
 						completion_tokens: 50,
 						total_tokens: 150

@@ -843,11 +843,14 @@
 									>
 										<div class="min-w-0 flex-1">
 											<div class="flex flex-wrap items-center gap-2">
-												<p
-													class="text-sm font-semibold text-foreground break-words"
+												<a
+													href="/projects/{task.project_id}/tasks/{task.id}"
+													target="_blank"
+													rel="noopener noreferrer"
+													class="text-sm font-semibold text-foreground break-words hover:text-accent hover:underline underline-offset-2"
 												>
 													{task.title}
-												</p>
+												</a>
 												{#if task.is_assigned_to_me}
 													<span
 														class="inline-flex items-center rounded-full border border-success/30 bg-success/10 px-1.5 py-0.5 text-[10px] font-medium text-success"

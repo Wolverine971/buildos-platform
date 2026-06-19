@@ -119,76 +119,14 @@ export function validatePaginationCustom(
 // ============================================
 // SEARCH QUERY SANITIZATION
 // ============================================
-
-/**
- * Sanitizes a search query for use in Supabase ilike/or filters.
- * Escapes special characters that could cause issues in pattern matching.
- *
- * @param query - The raw search query from user input
- * @returns Sanitized query safe for use in filter strings
- *
- * @example
- * const sanitized = sanitizeSearchQuery(userInput);
- * query = query.ilike('name', `%${sanitized}%`);
- */
-export function sanitizeSearchQuery(query: string): string {
-	const normalized = normalizeSearchQuery(query);
-	if (!normalized) {
-		return '';
-	}
-
-	return escapeLikePattern(normalized);
-}
-
-/**
- * Builds a safe search filter string for Supabase .or() queries
- *
- * @param query - The raw search query
- * @param fields - Array of field names to search
- * @returns Filter string for use with .or(), or null if query is empty
- *
- * @example
- * const filter = buildSearchFilter(query, ['name', 'description']);
- * if (filter) {
- *   dbQuery = dbQuery.or(filter);
- * }
- */
-export function buildSearchFilter(query: string, fields: string[]): string | null {
-	const normalized = normalizeSearchQuery(query);
-	if (!normalized) {
-		return null;
-	}
-
-	const pattern = escapeLikePattern(normalized);
-	const quotedValue = `"${escapePostgrestValue(`%${pattern}%`)}"`;
-	return fields.map((field) => `${field}.ilike.${quotedValue}`).join(',');
-}
-
-function normalizeSearchQuery(query: string): string {
-	if (!query || typeof query !== 'string') {
-		return '';
-	}
-
-	let normalized = query.trim();
-
-	// Remove control characters to keep filters predictable
-	normalized = normalized.replace(/[\u0000-\u001f\u007f]/g, '');
-
-	// Limit length to prevent abuse (reasonable search query length)
-	if (normalized.length > 200) {
-		normalized = normalized.substring(0, 200);
-	}
-
-	return normalized;
-}
-
-function escapeLikePattern(value: string): string {
-	return value.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-}
-
-function escapePostgrestValue(value: string): string {
-	return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-}
+//
+// Extracted to @buildos/shared-agent-ops (R1) so the worker op layer can build
+// search filters without SvelteKit. Re-exported so $lib/utils/api-helpers importers
+// stay unaffected.
+export {
+	sanitizeSearchQuery,
+	buildSearchFilter
+} from '@buildos/shared-agent-ops/utils/search-filter';
 
 // ============================================
 // AUTHORIZATION HELPERS

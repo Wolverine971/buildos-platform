@@ -11,7 +11,9 @@
 -->
 
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, getContext } from 'svelte';
+	import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
+	import type { Database } from '@buildos/shared-types';
 	import { browser, dev } from '$app/environment';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import ContextSelectionScreen from '../chat/ContextSelectionScreen.svelte';
@@ -21,6 +23,10 @@
 	import AgentComposer from './AgentComposer.svelte';
 	import AgentAutomationWizard from './AgentAutomationWizard.svelte';
 	import AgentMessageList from './AgentMessageList.svelte';
+	import AgentRunDock from './AgentRunDock.svelte';
+	import { agentRunsStore, type AgentRunRow } from '$lib/services/agentRunsRealtime.service';
+	import { notificationStore } from '$lib/stores/notification.store';
+	import { get } from 'svelte/store';
 	import ProjectImageLibrary from '$lib/components/ontology/ProjectImageLibrary.svelte';
 	import type { OntologyImageAsset } from '$lib/components/ontology/image-assets/types';
 	import { SSEProcessor, type StreamCallbacks } from '$lib/utils/sse-processor';
@@ -220,6 +226,147 @@
 	let activeStreamRunId = $state(0);
 	let activeTransportStreamRunId = $state<string | null>(null);
 	let activeClientTurnId = $state<string | null>(null);
+
+	// ── Agent Work: in-chat run dock + completion-message reload (UI-P4) ──
+	const ACTIVE_AGENT_RUN_STATUSES = [
+		'queued',
+		'running',
+		'paused',
+		'needs_input',
+		'proposal_ready'
+	];
+	let sessionAgentRuns = $derived.by(() => {
+		const sid = currentSession?.id;
+		if (!sid) return [] as AgentRunRow[];
+		return Array.from($agentRunsStore.values())
+			.filter((r) => r.parent_session_id === sid)
+			.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+	});
+	let activeSessionAgentRunCount = $derived(
+		sessionAgentRuns.filter((r) => ACTIVE_AGENT_RUN_STATUSES.includes(r.status)).length
+	);
+
+	// Render worker-injected completion messages (01 §7) after the SSE turn ended.
+	// Fast path: a chat_messages realtime subscription appends the message the
+	// instant it lands. Fallback: when a session run goes terminal, a delayed
+	// check reloads the thread only if realtime didn't deliver the message — so
+	// the result always shows even if chat_messages isn't in the publication.
+	type ChatMessageRow = Database['public']['Tables']['chat_messages']['Row'];
+	const supabaseClient = getContext<SupabaseClient | undefined>('supabase');
+	let chatMessagesChannel: RealtimeChannel | null = null;
+	let subscribedSessionId: string | null = null;
+	const seenTerminalAgentRunIds = new Set<string>();
+	const agentRunFallbackTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+	function messageHasAgentRun(runId: string): boolean {
+		return messages.some((m) => (m.metadata as any)?.agent_run_id === runId);
+	}
+
+	function appendInjectedAgentMessage(row: ChatMessageRow): void {
+		if (!row?.id || row.role !== 'assistant') return;
+		if (row.session_id !== currentSession?.id) return;
+		const agentRunId = (row.metadata as any)?.agent_run_id;
+		if (!agentRunId) return; // only agent-run injected messages flow through here
+		if (messages.some((m) => m.id === row.id) || messageHasAgentRun(agentRunId)) return;
+		messages = [
+			...messages,
+			{
+				id: row.id,
+				session_id: row.session_id,
+				user_id: row.user_id ?? undefined,
+				role: 'assistant',
+				type: 'assistant',
+				content: row.content ?? '',
+				created_at: row.created_at ?? undefined,
+				timestamp: row.created_at ? new Date(row.created_at) : new Date(),
+				metadata: (row.metadata as Record<string, any>) ?? undefined
+			} as UIMessage
+		];
+	}
+
+	async function unsubscribeSessionMessages(): Promise<void> {
+		const channel = chatMessagesChannel;
+		chatMessagesChannel = null;
+		subscribedSessionId = null;
+		if (channel && supabaseClient) {
+			try {
+				await supabaseClient.removeChannel(channel);
+			} catch {
+				/* noop */
+			}
+		}
+	}
+
+	function subscribeSessionMessages(sid: string): void {
+		if (!browser || !supabaseClient) return;
+		if (subscribedSessionId === sid && chatMessagesChannel) return;
+		void unsubscribeSessionMessages();
+		subscribedSessionId = sid;
+		const channel = supabaseClient.channel(`chat-messages:${sid}`);
+		channel.on(
+			'postgres_changes',
+			{
+				event: 'INSERT',
+				schema: 'public',
+				table: 'chat_messages',
+				filter: `session_id=eq.${sid}`
+			},
+			(payload) => appendInjectedAgentMessage(payload.new as ChatMessageRow)
+		);
+		void channel.subscribe();
+		chatMessagesChannel = channel;
+	}
+
+	// Keep the realtime subscription pinned to the active session.
+	$effect(() => {
+		const sid = currentSession?.id;
+		if (sid) subscribeSessionMessages(sid);
+	});
+
+	// Detect newly-terminal session runs and arm the fallback reload.
+	$effect(() => {
+		const runs = $agentRunsStore;
+		const sid = currentSession?.id;
+		if (!sid) return;
+		for (const r of runs.values()) {
+			if (r.parent_session_id !== sid) continue;
+			if (
+				!ACTIVE_AGENT_RUN_STATUSES.includes(r.status) &&
+				!seenTerminalAgentRunIds.has(r.id)
+			) {
+				seenTerminalAgentRunIds.add(r.id);
+				scheduleAgentRunMessageFallback(sid, r.id);
+			}
+		}
+	});
+
+	function scheduleAgentRunMessageFallback(sid: string, runId: string): void {
+		const existing = agentRunFallbackTimers.get(runId);
+		if (existing) clearTimeout(existing);
+		const timer = setTimeout(() => {
+			agentRunFallbackTimers.delete(runId);
+			if (currentSession?.id !== sid) return;
+			// Realtime already delivered it — nothing to do.
+			if (messageHasAgentRun(runId)) return;
+			// Don't clobber an in-flight streamed turn; retry shortly.
+			if (isStreaming) {
+				scheduleAgentRunMessageFallback(sid, runId);
+				return;
+			}
+			void loadChatSession(sid, { backgroundRefresh: true });
+		}, 2500);
+		agentRunFallbackTimers.set(runId, timer);
+	}
+
+	function openAgentRun(runId: string) {
+		const state = get(notificationStore);
+		for (const n of state.notifications.values()) {
+			if (n.type === 'agent-run' && n.data.runId === runId) {
+				notificationStore.expand(n.id);
+				return;
+			}
+		}
+	}
 	let inputValue = $state('');
 	let imageAttachments = $state<AgentChatImageAttachment[]>([]);
 	let showExistingImagePicker = $state(false);
@@ -3081,6 +3228,10 @@
 		pendingTimeouts.forEach((id) => clearTimeout(id));
 		pendingTimeouts.clear();
 
+		for (const timer of agentRunFallbackTimers.values()) clearTimeout(timer);
+		agentRunFallbackTimers.clear();
+		void unsubscribeSessionMessages();
+
 		if (
 			pendingAssistantTextFlushHandle !== null &&
 			typeof cancelAnimationFrame === 'function'
@@ -3183,6 +3334,12 @@
 			{error}
 		</div>
 	{/if}
+
+	<AgentRunDock
+		runs={sessionAgentRuns}
+		activeCount={activeSessionAgentRunCount}
+		onOpen={openAgentRun}
+	/>
 {/snippet}
 
 {#snippet chatComposerFooter()}

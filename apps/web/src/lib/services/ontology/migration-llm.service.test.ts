@@ -143,7 +143,7 @@ describe('estimateMigrationCost', () => {
 	});
 
 	it('should clamp unsupported models to the default migration model', () => {
-		const unsupportedEstimate = estimateMigrationCost(10, 8, 2, 'openai/gpt-oss-120b');
+		const unsupportedEstimate = estimateMigrationCost(10, 8, 2, 'legacy/removed-model');
 		const defaultEstimate = estimateMigrationCost(10, 8, 2, DEFAULT_MIGRATION_MODEL);
 
 		expect(unsupportedEstimate.model).toBe(DEFAULT_MIGRATION_MODEL);
@@ -212,7 +212,7 @@ describe('createLLMUsageMetadata', () => {
 	it('should calculate estimated cost', () => {
 		const metadata = createLLMUsageMetadata('qwen', ACTIVE_EXPERIMENT_MODEL, 1000, 500, 1000);
 
-		expect(metadata.estimatedCost).toBe(0.0012);
+		expect(metadata.estimatedCost).toBe(0.001);
 	});
 });
 

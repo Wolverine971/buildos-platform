@@ -93,12 +93,23 @@ Special-case write tool:
 
 Source: `ontology-read-executor.ts`
 
-- Direct Supabase reads from `onto_*` tables:
-    - `list_onto_projects`, `list_onto_tasks`, `list_onto_goals`, `list_onto_plans`, `list_onto_documents`, `list_onto_milestones`, `list_onto_risks`
+There are **two search families** (neither uses vector/semantic search today — both are keyword-based):
+
+- **Primary "smart" search (ranked, FTS + trigram, with snippets)** — internal API reads:
+    - `search_all_projects` (broad) and `search_project` (scoped) -> `POST /api/onto/search`
+    - `search_ontology` (compatibility alias) -> `POST /api/onto/search`
+    - `/api/onto/search` calls the `onto_search_entities` RPC (Postgres `websearch_to_tsquery` over weighted `search_vector` + `pg_trgm` fuzzy), then merges task-bucket + calendar-event matches and re-ranks. These are the search tools the gateway preloads, so they are the default path.
+- **Per-entity "keyword" search (filterable, direct Supabase `ILIKE`)** — direct reads from `onto_*` tables:
     - `search_onto_projects`, `search_onto_tasks`, `search_onto_goals`, `search_onto_plans`, `search_onto_documents`, `search_onto_milestones`, `search_onto_risks`
-- Internal API reads:
-    - `search_ontology` -> `POST /api/onto/search`
-    - `get_onto_*_details` -> `/api/onto/{entity}/{id}`
+    - Word-order-tolerant: a plain multi-word query requires every significant token to appear in some field (AND across tokens, OR across fields, stopwords dropped); explicit `OR`/`|` queries match alternatives. `search_onto_documents` matches title + description + **body content** (body matched, not returned). Tool descriptions steer the agent to prefer the smart search; reach for these only to filter one entity type by `state_key`/`type_key`/`impact`.
+
+Direct Supabase reads from `onto_*` tables (non-search):
+
+- `list_onto_projects`, `list_onto_tasks`, `list_onto_goals`, `list_onto_plans`, `list_onto_documents`, `list_onto_milestones`, `list_onto_risks`
+
+Internal API reads:
+
+- `get_onto_*_details` -> `/api/onto/{entity}/{id}`
     - `get_onto_project_graph` -> `/api/onto/projects/{project_id}/graph/full`
     - `list_task_documents` -> `/api/onto/tasks/{task_id}/documents`
     - `get_document_tree` -> `/api/onto/projects/{project_id}/doc-tree`
@@ -168,6 +179,8 @@ Current behavior:
 | `chat_tool_executions` | `ChatToolExecutor.logToolExecution()`       |
 | `chat_messages`        | V2 session service (`persistMessage`)       |
 | `chat_sessions`        | V2 session service + route metadata updates |
+
+**Search telemetry:** `chat_tool_executions` carries two search-only columns, `result_count` and `zero_result` (both `NULL` for non-search tools). `ChatToolExecutor` derives them via `extractSearchResultCount()` in `tools/core/search-telemetry.ts` and also emits a `[ChatToolExecutor] search executed` log line (query, scope, count, zero-result, latency). Zero-result rate by tool: `select tool_name, avg(zero_result::int) from chat_tool_executions where result_count is not null group by 1;` (migration `20260617000000_search_tool_telemetry.sql`).
 
 ## 8. Related Doc
 

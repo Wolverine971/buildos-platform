@@ -23,6 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { getToolCategory } from './tools.config';
+import { extractSearchResultCount } from './search-telemetry';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -281,6 +282,9 @@ export class ChatToolExecutor {
 			case 'change_chat_context':
 				return this.utilityExecutor.changeChatContext(args);
 
+			case 'delegate_task':
+				return this.utilityExecutor.delegateTask(args);
+
 			case 'search_user_contacts':
 				return this.utilityExecutor.searchUserContacts(args);
 
@@ -442,6 +446,12 @@ export class ChatToolExecutor {
 
 			case 'get_document_path':
 				return this.readExecutor.getDocumentPath(args);
+
+			case 'get_document_outline':
+				return this.readExecutor.getDocumentOutline(args);
+
+			case 'read_document_section':
+				return this.readExecutor.readDocumentSection(args);
 
 			// ==================
 			// ONTOLOGY WRITE TOOLS
@@ -616,17 +626,45 @@ export class ChatToolExecutor {
 			return;
 		}
 
-		const category = getToolCategory(toolCall.function.name);
+		const toolName = toolCall.function.name;
+		const category = getToolCategory(toolName);
 		const argumentsPayload = parsedArgs ?? this.safeParseArguments(toolCall.function.arguments);
 		const sanitizedArgs = sanitizeLogData(argumentsPayload);
+
+		// Search telemetry: surface result counts as first-class columns so the
+		// zero-result rate is queryable without parsing the per-tool result blob.
+		// Only populated for search tools; null for everything else and on failure.
+		const resultCount = success ? extractSearchResultCount(toolName, result) : null;
+		const zeroResult = resultCount === null ? null : resultCount === 0;
+
+		if (resultCount !== null) {
+			const searchQuery =
+				typeof argumentsPayload?.query === 'string'
+					? argumentsPayload.query
+					: typeof argumentsPayload?.search === 'string'
+						? argumentsPayload.search
+						: undefined;
+			logger.info('[ChatToolExecutor] search executed', {
+				sessionId: this.sessionId,
+				tool: toolName,
+				query: searchQuery,
+				projectScoped: Boolean(argumentsPayload?.project_id),
+				types: Array.isArray(argumentsPayload?.types) ? argumentsPayload.types : undefined,
+				resultCount,
+				zeroResult,
+				durationMs: duration
+			});
+		}
 
 		try {
 			const { error: insertError } = await this.supabase.from('chat_tool_executions').insert({
 				session_id: this.sessionId,
-				tool_name: toolCall.function.name,
+				tool_name: toolName,
 				tool_category: category,
 				arguments: argumentsPayload,
 				result: success ? result : null,
+				result_count: resultCount,
+				zero_result: zeroResult,
 				execution_time_ms: duration,
 				tokens_consumed: tokensConsumed ?? null,
 				success,

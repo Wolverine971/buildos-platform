@@ -10,12 +10,17 @@
 import type {
 	TimeBlockSuggestion,
 	TimeBlockSuggestionsState,
-	TimeBlockType
+	TimeBlockType,
+	AgentRunStatus,
+	AgentRunTrigger,
+	AgentRunContextType,
+	AgentRunScopeMode,
+	AgentRunMetrics,
+	RunResult
 } from '@buildos/shared-types';
 import type { ParsedOperation } from './operations';
 import type { SynthesisOptions } from './synthesis';
 import type { TaskComparison } from '$lib/types';
-
 
 // ============================================================================
 // Core Enums & Primitives
@@ -40,6 +45,7 @@ export type NotificationType =
 	| 'calendar-analysis'
 	| 'daily-brief'
 	| 'time-block'
+	| 'agent-run'
 	| 'generic';
 
 /**
@@ -250,6 +256,44 @@ export interface CalendarAnalysisNotification extends BaseNotification {
 }
 
 // ============================================================================
+// Agent Run Notification (Run Stack — Agent Work / 03 Monitoring UI)
+// ============================================================================
+
+/**
+ * A live background Agent Run surfaced in the notification stack. Driven by
+ * `agentRunsRealtime` → `agent-run-notification.bridge`. `runStatus` is the
+ * domain status (`agent_runs.status`); the base `status` is the UI lifecycle
+ * mapping consumed by the generic stack chrome.
+ */
+export interface AgentRunNotification extends BaseNotification {
+	type: 'agent-run';
+	data: {
+		runId: string;
+		label: string;
+		goal: string;
+		/** Domain status from `agent_runs.status` (distinct from the UI `status`). */
+		runStatus: AgentRunStatus;
+		trigger: AgentRunTrigger;
+		contextType: AgentRunContextType;
+		projectId?: string | null;
+		scopeMode: AgentRunScopeMode;
+		reviewRequired: boolean;
+		/** Run row timestamps (ISO) — distinct from the base numeric createdAt. */
+		runCreatedAt: string;
+		startedAt?: string | null;
+		completedAt?: string | null;
+		/** Populated on terminal status. */
+		result?: RunResult | null;
+		metrics?: AgentRunMetrics | null;
+		/** Count of committed entities (from result.entities_touched). */
+		entityCount?: number;
+		error?: string | null;
+	};
+	progress: NotificationProgress;
+	actions: NotificationActions;
+}
+
+// ============================================================================
 // Generic Notification
 // ============================================================================
 
@@ -278,6 +322,7 @@ export type Notification =
 	| TimeBlockNotification
 	| ProjectSynthesisNotification
 	| CalendarAnalysisNotification
+	| AgentRunNotification
 	| GenericNotification;
 
 // ============================================================================
@@ -347,6 +392,12 @@ export function isGenericNotification(
 	notification: Notification
 ): notification is GenericNotification {
 	return notification.type === 'generic';
+}
+
+export function isAgentRunNotification(
+	notification: Notification
+): notification is AgentRunNotification {
+	return notification.type === 'agent-run';
 }
 
 // ============================================================================

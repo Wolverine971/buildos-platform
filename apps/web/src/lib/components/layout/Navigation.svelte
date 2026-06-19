@@ -31,6 +31,7 @@
 	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
 	import type { ChatContextType, ProjectFocus } from '@buildos/shared-types';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
+	import { activeAgentRunCount } from '$lib/services/agentRunsRealtime.service';
 
 	type Props = {
 		user: any | null;
@@ -522,7 +523,9 @@
 						size="sm"
 						onclick={handleOpenChat}
 						class={`relative flex items-center gap-2 px-3 h-9 rounded-md font-bold tracking-tight text-xs md:text-sm transition-all duration-200 group pressable border tx tx-grain tx-weak ${showChatModal ? 'text-accent-foreground bg-accent border-accent shadow-ink' : 'text-muted-foreground bg-card border-border hover:border-accent hover:bg-accent/10 hover:text-accent shadow-ink'}`}
-						aria-label={`Open ${chatLabel}`}
+						aria-label={$activeAgentRunCount > 0 && !showChatModal
+							? `Open ${chatLabel}. ${$activeAgentRunCount} agent${$activeAgentRunCount === 1 ? '' : 's'} working in the background`
+							: `Open ${chatLabel}`}
 						title={chatLabel}
 						btnType="container"
 					>
@@ -573,6 +576,18 @@
 						</div>
 						<!-- Text - Hidden on smaller screens, shown on larger -->
 						<span class="hidden xl:inline-block leading-none">{chatLabel}</span>
+						<!-- "N agents working" badge (Agent Work UI-P4): shown while
+							     background runs are active and the chat is closed. Keep it in
+							     flow so it doesn't clip against the nav edge or neighboring controls. -->
+						{#if $activeAgentRunCount > 0 && !showChatModal}
+							<span
+								class="pointer-events-none inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent px-1.5 text-[10px] font-black leading-none text-accent-foreground shadow-ink"
+								aria-hidden="true"
+								title={`${$activeAgentRunCount} agent${$activeAgentRunCount === 1 ? '' : 's'} working in the background`}
+							>
+								{$activeAgentRunCount}
+							</span>
+						{/if}
 					</Button>
 				{/if}
 

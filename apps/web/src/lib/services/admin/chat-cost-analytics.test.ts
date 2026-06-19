@@ -51,7 +51,7 @@ describe('buildChatCostAnalytics', () => {
 					user_id: 'user-1',
 					chat_session_id: 'session-1',
 					turn_run_id: 'turn-1',
-					model_used: 'openai/gpt-4o-mini',
+					model_used: 'deepseek/deepseek-v4-flash',
 					prompt_tokens: 100,
 					completion_tokens: 50,
 					total_tokens: 150,
@@ -64,7 +64,7 @@ describe('buildChatCostAnalytics', () => {
 					id: 'usage-2',
 					user_id: 'user-1',
 					chat_session_id: 'session-1',
-					model_used: 'openai/gpt-4o-mini',
+					model_used: 'deepseek/deepseek-v4-flash',
 					prompt_tokens: 500,
 					completion_tokens: 100,
 					total_tokens: 600,
@@ -79,7 +79,7 @@ describe('buildChatCostAnalytics', () => {
 					user_id: 'user-1',
 					chat_session_id: 'session-1',
 					turn_run_id: 'turn-2',
-					model_used: 'anthropic/claude-sonnet-4.6',
+					model_used: 'qwen/qwen3.7-plus',
 					prompt_tokens: 700,
 					completion_tokens: 200,
 					total_tokens: 900,
@@ -93,7 +93,7 @@ describe('buildChatCostAnalytics', () => {
 					user_id: 'user-1',
 					chat_session_id: 'session-1',
 					turn_run_id: 'turn-3',
-					model_used: 'anthropic/claude-sonnet-4.6',
+					model_used: 'qwen/qwen3.7-plus',
 					prompt_tokens: 2_000,
 					completion_tokens: 500,
 					total_tokens: 2_500,
@@ -113,7 +113,7 @@ describe('buildChatCostAnalytics', () => {
 		expect(analytics.top_turns[0]).toMatchObject({
 			turn_run_id: 'turn-3',
 			turn_index: 3,
-			primary_model: 'anthropic/claude-sonnet-4.6',
+			primary_model: 'qwen/qwen3.7-plus',
 			cost: 0.3
 		});
 		expect(analytics.top_turns[0]?.prompt_preview).toContain('rewrite the whole plan');
@@ -123,17 +123,15 @@ describe('buildChatCostAnalytics', () => {
 		]);
 		expect(analytics.growth_summary.shape).toBe('compounding');
 
-		const claude = analytics.by_model.find(
-			(model) => model.model === 'anthropic/claude-sonnet-4.6'
-		);
-		expect(claude?.turn_count).toBe(2);
-		expect(claude?.avg_cost_per_turn).toBeCloseTo(0.2);
+		const qwen = analytics.by_model.find((model) => model.model === 'qwen/qwen3.7-plus');
+		expect(qwen?.turn_count).toBe(2);
+		expect(qwen?.avg_cost_per_turn).toBeCloseTo(0.2);
 
 		expect(analytics.top_sessions[0]).toMatchObject({
 			id: 'session-1',
 			turn_count: 3,
 			max_turn_index: 3,
-			primary_model: 'anthropic/claude-sonnet-4.6'
+			primary_model: 'qwen/qwen3.7-plus'
 		});
 	});
 
@@ -163,7 +161,7 @@ describe('buildChatCostAnalytics', () => {
 					id: 'usage-1',
 					user_id: 'user-1',
 					chat_session_id: 'session-1',
-					model_used: 'openai/gpt-4o-mini',
+					model_used: 'deepseek/deepseek-v4-flash',
 					total_tokens: 10,
 					total_cost_usd: 0.02,
 					created_at: '2026-04-10T09:59:00.000Z'

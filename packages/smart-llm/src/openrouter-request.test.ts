@@ -8,41 +8,41 @@ import {
 describe('resolveOpenRouterFallbackModels', () => {
 	it('deduplicates fallbacks and excludes the requested primary model', () => {
 		expect(
-			resolveOpenRouterFallbackModels('qwen/qwen3.6-plus', [
-				'qwen/qwen3.6-plus',
-				' deepseek/deepseek-v3.2 ',
-				'deepseek/deepseek-v3.2',
-				'openai/gpt-oss-120b'
+			resolveOpenRouterFallbackModels('qwen/qwen3.7-plus', [
+				'qwen/qwen3.7-plus',
+				' deepseek/deepseek-v4-flash ',
+				'deepseek/deepseek-v4-flash',
+				'minimax/minimax-m3'
 			])
-		).toEqual(['deepseek/deepseek-v3.2', 'openai/gpt-oss-120b']);
+		).toEqual(['deepseek/deepseek-v4-flash', 'minimax/minimax-m3']);
 	});
 
 	it("caps serialized fallbacks to OpenRouter's accepted models array size", () => {
 		expect(
-			resolveOpenRouterFallbackModels('x-ai/grok-4.1-fast', [
-				'minimax/minimax-m2.7',
-				'qwen/qwen3.6-plus',
-				'openai/gpt-oss-120b',
-				'qwen/qwen3.5-flash-02-23',
-				'openai/gpt-4.1-nano'
+			resolveOpenRouterFallbackModels('deepseek/deepseek-v4-flash', [
+				'qwen/qwen3.7-plus',
+				'minimax/minimax-m3',
+				'xiaomi/mimo-v2.5',
+				'google/gemini-3.1-flash-lite',
+				'moonshotai/kimi-k2.6'
 			])
-		).toEqual(['minimax/minimax-m2.7', 'qwen/qwen3.6-plus', 'openai/gpt-oss-120b']);
+		).toEqual(['qwen/qwen3.7-plus', 'minimax/minimax-m3', 'xiaomi/mimo-v2.5']);
 	});
 });
 
 describe('buildOpenRouterChatCompletionBody', () => {
 	it('serializes fallback models with the top-level OpenRouter models field', () => {
 		const body = buildOpenRouterChatCompletionBody({
-			model: 'qwen/qwen3.6-plus',
-			models: ['qwen/qwen3.6-plus', 'deepseek/deepseek-v3.2', 'openai/gpt-oss-120b'],
+			model: 'qwen/qwen3.7-plus',
+			models: ['qwen/qwen3.7-plus', 'deepseek/deepseek-v4-flash', 'minimax/minimax-m3'],
 			messages: [{ role: 'user', content: 'Return JSON.' }],
 			response_format: { type: 'json_object' },
 			stream: false
 		});
 
 		expect(body).toMatchObject({
-			model: 'qwen/qwen3.6-plus',
-			models: ['deepseek/deepseek-v3.2', 'openai/gpt-oss-120b'],
+			model: 'qwen/qwen3.7-plus',
+			models: ['deepseek/deepseek-v4-flash', 'minimax/minimax-m3'],
 			response_format: { type: 'json_object' },
 			stream: false
 		});

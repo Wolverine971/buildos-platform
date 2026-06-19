@@ -231,6 +231,16 @@ export interface GetDocumentPathArgs {
 	project_id?: string;
 }
 
+export interface GetDocumentOutlineArgs {
+	document_id: string;
+}
+
+export interface ReadDocumentSectionArgs {
+	document_id: string;
+	/** Heading anchor (slug) of the section to read, e.g. from get_document_outline. */
+	anchor: string;
+}
+
 // ============================================
 // ONTOLOGY WRITE ARGS
 // ============================================
@@ -699,4 +709,22 @@ export interface LinkUserContactArgs {
 	entity_type?: string | null;
 	entity_id?: string | null;
 	props?: Record<string, unknown>;
+}
+
+export interface DelegateTaskArgs {
+	/** Short human label for the run (defaults to a slice of the goal). */
+	label?: string;
+	/** The task the background agent should accomplish. */
+	goal: string;
+	/** Extra constraints/preferences for how to do it. */
+	instructions?: string;
+	/** What a good result looks like. */
+	expected_output?: string;
+	/** 'project' (scoped to one project) or 'global' (cross-project). */
+	context_type?: 'project' | 'global';
+	/** Required when context_type is 'project'. */
+	project_id?: string;
+	/** 'read_only' (analyze/summarize) or 'read_write' (may mutate). Defaults to read_only. */
+	scope_mode?: 'read_only' | 'read_write';
+	max_tool_calls?: number;
 }

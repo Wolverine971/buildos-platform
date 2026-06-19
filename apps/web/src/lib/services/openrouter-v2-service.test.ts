@@ -9,7 +9,9 @@ import {
 	OPENROUTER_V2_JSON_MODELS,
 	OPENROUTER_V2_MULTIMODAL_MODELS,
 	OPENROUTER_V2_TEXT_MODELS,
-	OPENROUTER_V2_TOOL_MODELS
+	OPENROUTER_V2_TOOL_MODELS,
+	TENCENT_HY3_PREVIEW_MODEL,
+	XIAOMI_MIMO_V25_MODEL
 } from '@buildos/smart-llm';
 
 vi.mock('$env/static/private', () => ({
@@ -60,7 +62,7 @@ function createServiceWithDirectFallbacks() {
 		openai: {
 			apiKey: 'openai-test-key',
 			apiUrl: 'https://api.openai.com/v1/chat/completions',
-			model: 'gpt-4o-mini'
+			model: 'configured-openai-fallback-model'
 		},
 		directFallbacks: {
 			providers: ['moonshot', 'openai']
@@ -217,7 +219,7 @@ describe('OpenRouterV2Service model routing', () => {
 			require_parameters: true
 		});
 		expect(requestBodies[1]?.model).toBe(OPENROUTER_V2_JSON_MODELS[1]);
-		expect(requestBodies[1]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(2, 4));
+		expect(requestBodies[1]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(2));
 	});
 
 	it('honors JSON profile hints while keeping DeepSeek as the primary model', async () => {
@@ -270,14 +272,18 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(requestBodies[0]?.model).toBe(OPENROUTER_V2_JSON_MODELS[0]);
 		expect(requestBodies[0]?.response_format).toEqual({ type: 'json_object' });
-		expect(requestBodies[0]?.models).toEqual(OPENROUTER_V2_JSON_MODELS.slice(1, 4));
+		expect(requestBodies[0]?.models).toEqual([
+			XIAOMI_MIMO_V25_MODEL,
+			GEMINI_31_FLASH_LITE_MODEL,
+			ACTIVE_EXPERIMENT_MODEL
+		]);
 		expect(requestBodies[0]?.provider).toEqual({
 			allow_fallbacks: true,
 			require_parameters: true
 		});
 	});
 
-	it('routes allowlisted reconciliation JSON calls to the cheaper side-route model', async () => {
+	it('routes allowlisted reconciliation JSON calls without default fallbacks', async () => {
 		const requestBodies: any[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
@@ -633,7 +639,7 @@ describe('OpenRouterV2Service model routing', () => {
 			return createSseResponse([
 				JSON.stringify({
 					id: 'openai-stream-fallback',
-					model: 'gpt-4o-mini',
+					model: 'configured-openai-fallback-model',
 					choices: [{ delta: { content: 'OpenAI answer' } }]
 				}),
 				JSON.stringify({
@@ -669,7 +675,7 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(text).toBe('OpenAI answer');
 		expect(done).toMatchObject({
 			type: 'done',
-			model: 'openai/gpt-4o-mini',
+			model: 'openai/configured-openai-fallback-model',
 			provider: 'openai'
 		});
 		expect(fetchMock).toHaveBeenCalledTimes(OPENROUTER_V2_TEXT_MODELS.length + 2);
@@ -684,7 +690,9 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestUrls[OPENROUTER_V2_TEXT_MODELS.length + 1]).toBe(
 			'https://api.openai.com/v1/chat/completions'
 		);
-		expect(requestBodies[OPENROUTER_V2_TEXT_MODELS.length + 1]?.model).toBe('gpt-4o-mini');
+		expect(requestBodies[OPENROUTER_V2_TEXT_MODELS.length + 1]?.model).toBe(
+			'configured-openai-fallback-model'
+		);
 		expect(requestBodies[OPENROUTER_V2_TEXT_MODELS.length + 1]?.stream_options).toEqual({
 			include_usage: true
 		});
@@ -1340,7 +1348,7 @@ describe('OpenRouterV2Service visible text filtering', () => {
 		expect(requestBodies[0]?.models).toEqual([
 			DEEPSEEK_V4_FLASH_MODEL,
 			GEMINI_31_FLASH_LITE_MODEL,
-			OPENROUTER_V2_TEXT_MODELS[0]
+			TENCENT_HY3_PREVIEW_MODEL
 		]);
 		expect(events.find((event) => event.type === 'done')).toMatchObject({
 			type: 'done',

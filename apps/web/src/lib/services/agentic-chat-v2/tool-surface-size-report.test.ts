@@ -106,7 +106,13 @@ describe('tool surface size report', () => {
 		// deliberate composition, not description-bloat -- verified per-tool, no
 		// single definition regressed. 11000 keeps the guard meaningful (~400 chars
 		// of headroom) while no longer flagging the intended surface.
-		expect(projectBasic?.totalChars).toBeLessThanOrEqual(11000);
+		// 2026-06-16: budget bumped from 11000 -> 12000. Project Knowledge Layer (L2)
+		// ungates the two lean document-retrieval tools (get_document_outline +
+		// read_document_section, ~1067 chars) on every project turn so the
+		// scan->read flow works without a discovery round. The full-body
+		// get_onto_document_details was intentionally NOT added here. Serializes to
+		// ~11684 chars; 12000 keeps ~300 chars of headroom.
+		expect(projectBasic?.totalChars).toBeLessThanOrEqual(12000);
 		expect(projectWrite?.totalChars).toBeLessThan(21000);
 	});
 });

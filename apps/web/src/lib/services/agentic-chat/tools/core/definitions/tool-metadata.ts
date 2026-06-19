@@ -240,6 +240,26 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		contexts: ['project'],
 		category: 'read'
 	},
+	get_document_outline: {
+		summary: 'Get a document’s heading outline (table of contents) without the full body.',
+		capabilities: [
+			'Cheap relevance scan: see what a document covers',
+			'Returns heading anchors for read_document_section',
+			'Prefer over full document details when you only need structure'
+		],
+		contexts: ['project'],
+		category: 'read'
+	},
+	read_document_section: {
+		summary: 'Read one section of a document by heading anchor, not the whole body.',
+		capabilities: [
+			'Pulls in only the relevant section (with nested subsections)',
+			'Re-parses live content so the slice is always current',
+			'Lists available anchors when the anchor is unknown'
+		],
+		contexts: ['project'],
+		category: 'read'
+	},
 
 	// ============================================
 	// CALENDAR TOOLS

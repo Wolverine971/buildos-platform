@@ -70,6 +70,7 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 	if (writeIntentOps.length === 0) return false;
 
 	if (looksLikePureClarifyingQuestion(finalText)) return false;
+	if (mutationOutcomes.attempted > 0 && looksLikeWriteFailureDisclosure(finalText)) return false;
 
 	return true;
 }
@@ -744,8 +745,59 @@ function hasLaterSuccessfulRetry(
 		if (!didWriteExecutionSucceed(execution)) continue;
 		if (!failedTargetId) return true;
 		if (getPrimaryMutationTargetId(execution) === failedTargetId) return true;
+		if (
+			looksLikeNotFoundError(failedExecution.result.error) &&
+			hasSameMutationIntentIgnoringIds(failedExecution, execution)
+		) {
+			return true;
+		}
 	}
 	return false;
+}
+
+function looksLikeNotFoundError(error: unknown): boolean {
+	return typeof error === 'string' && /\bnot found\b/i.test(error);
+}
+
+function hasSameMutationIntentIgnoringIds(
+	failedExecution: FastToolExecution,
+	successfulExecution: FastToolExecution
+): boolean {
+	const failedComparable = buildMutationIntentComparable(failedExecution);
+	const successfulComparable = buildMutationIntentComparable(successfulExecution);
+	return (
+		failedComparable !== null &&
+		successfulComparable !== null &&
+		failedComparable === successfulComparable
+	);
+}
+
+function buildMutationIntentComparable(execution: FastToolExecution): string | null {
+	const parsed = parseToolArguments(execution.toolCall.function?.arguments);
+	const comparable: Record<string, unknown> = {};
+	for (const [key, value] of Object.entries(parsed.args)) {
+		if (isEntityIdArgKey(key)) continue;
+		comparable[key] = value;
+	}
+	if (Object.keys(comparable).length === 0) return null;
+	return stableStringify(comparable);
+}
+
+function isEntityIdArgKey(key: string): boolean {
+	return key === 'id' || key.endsWith('_id') || key.endsWith('Id');
+}
+
+function stableStringify(value: unknown): string {
+	if (value === undefined) return 'undefined';
+	if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? String(value);
+	if (Array.isArray(value)) {
+		return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+	}
+	const record = value as Record<string, unknown>;
+	return `{${Object.keys(record)
+		.sort()
+		.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+		.join(',')}}`;
 }
 
 function getPrimaryMutationTargetId(execution: FastToolExecution): string | null {

@@ -3,16 +3,15 @@
 import type { JSONProfile, ModelCapabilities, ModelProfile, TextProfile } from './types';
 
 export const KIMI_EXPERIMENT_MODEL = 'moonshotai/kimi-k2.6' as const;
-export const KIMI_EXPERIMENT_MODELS = [KIMI_EXPERIMENT_MODEL] as const;
+export const KIMI_CODING_MODEL = 'moonshotai/kimi-k2.7-code' as const;
+export const KIMI_EXPERIMENT_MODELS = [KIMI_EXPERIMENT_MODEL, KIMI_CODING_MODEL] as const;
 export const QWEN_37_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.7-plus' as const;
-export const QWEN_36_PLUS_EXPERIMENT_MODEL = 'qwen/qwen3.6-plus' as const;
 export const DEEPSEEK_V4_FLASH_MODEL = 'deepseek/deepseek-v4-flash' as const;
 export const DEEPSEEK_V4_PRO_MODEL = 'deepseek/deepseek-v4-pro' as const;
 export const MINIMAX_M3_MODEL = 'minimax/minimax-m3' as const;
 export const XIAOMI_MIMO_V25_MODEL = 'xiaomi/mimo-v2.5' as const;
 export const TENCENT_HY3_PREVIEW_MODEL = 'tencent/hy3-preview' as const;
 export const GEMINI_31_FLASH_LITE_MODEL = 'google/gemini-3.1-flash-lite' as const;
-export const GEMINI_31_FLASH_LITE_PREVIEW_MODEL = 'google/gemini-3.1-flash-lite-preview' as const;
 export const ACTIVE_EXPERIMENT_MODEL = QWEN_37_PLUS_EXPERIMENT_MODEL;
 export const ACTIVE_EXPERIMENT_MODELS = [ACTIVE_EXPERIMENT_MODEL] as const;
 // Universal last-resort fallback used only when lane resolution yields no models.
@@ -20,30 +19,10 @@ export const ACTIVE_EXPERIMENT_MODELS = [ACTIVE_EXPERIMENT_MODEL] as const;
 // experiment never silently changes the global safety net. DeepSeek V4 Flash is a
 // stable, widely available, strong tool-caller present across the text/json/tool lanes.
 export const LAST_RESORT_MODEL = DEEPSEEK_V4_FLASH_MODEL;
-export const AGENT_STATE_RECONCILIATION_MODEL = 'qwen/qwen3.5-flash-02-23' as const;
+export const AGENT_STATE_RECONCILIATION_MODEL = DEEPSEEK_V4_FLASH_MODEL;
 export const AGENT_STATE_RECONCILIATION_MODELS = [AGENT_STATE_RECONCILIATION_MODEL] as const;
 
 export const MODEL_CATALOG: Record<string, ModelProfile> = {
-	'google/gemini-2.5-flash-lite': {
-		id: 'google/gemini-2.5-flash-lite',
-		name: 'Gemini 2.5 Flash Lite',
-		speed: 4.5,
-		smartness: 4.2,
-		creativity: 4,
-		cost: 0.1,
-		outputCost: 0.4,
-		provider: 'google',
-		bestFor: ['ultra-fast', 'json-mode', 'classification', 'autocomplete', 'ultra-low-cost'],
-		limitations: ['reasoning-disabled-by-default'],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			multimodal: true,
-			longContext: true
-		}
-	},
 	[GEMINI_31_FLASH_LITE_MODEL]: {
 		id: GEMINI_31_FLASH_LITE_MODEL,
 		name: 'Gemini 3.1 Flash Lite',
@@ -72,213 +51,14 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
-	[GEMINI_31_FLASH_LITE_PREVIEW_MODEL]: {
-		id: GEMINI_31_FLASH_LITE_PREVIEW_MODEL,
-		name: 'Gemini 3.1 Flash Lite Preview',
-		speed: 4.7,
-		smartness: 4.45,
-		creativity: 4.2,
-		cost: 0.25,
-		outputCost: 1.5,
-		provider: 'google',
-		bestFor: [
-			'legacy-preview-route',
-			'ultra-fast',
-			'high-volume-text',
-			'json-mode',
-			'tool-calling',
-			'classification',
-			'1m-context'
-		],
-		limitations: ['legacy-preview-model', 'prefer-google/gemini-3.1-flash-lite'],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			multimodal: true,
-			longContext: true
-		}
-	},
-	'qwen/qwen3.5-flash-02-23': {
-		id: 'qwen/qwen3.5-flash-02-23',
-		name: 'Qwen 3.5 Flash',
-		speed: 4.8,
-		smartness: 4.55,
-		creativity: 4.2,
-		cost: 0.065,
-		outputCost: 0.26,
-		provider: 'qwen',
-		bestFor: [
-			'cheap-long-context',
-			'fast-multimodal',
-			'json-mode',
-			'structured-output',
-			'tool-calling',
-			'classification',
-			'routing',
-			'1m-context'
-		],
-		limitations: ['single-provider-alibaba'],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			multimodal: true,
-			longContext: true
-		}
-	},
-	'openai/gpt-4o-mini': {
-		id: 'openai/gpt-4o-mini',
-		name: 'GPT-4o Mini',
-		speed: 4,
-		smartness: 4,
-		creativity: 4,
-		cost: 0.15,
-		outputCost: 0.6,
-		provider: 'openai',
-		bestFor: ['json-mode', 'cost-effective', 'structured-output', 'general-purpose'],
-		capabilities: { jsonMode: true, structuredOutputs: true, tools: true, multimodal: true }
-	},
-	'openai/gpt-4.1-nano': {
-		id: 'openai/gpt-4.1-nano',
-		name: 'GPT-4.1 Nano',
-		speed: 4.7,
-		smartness: 4.3,
-		creativity: 4,
-		cost: 0.1,
-		outputCost: 0.4,
-		provider: 'openai',
-		bestFor: [
-			'low-latency',
-			'classification',
-			'autocomplete',
-			'stable-provider-fallback',
-			'structured-output',
-			'tool-calling',
-			'1m-context'
-		],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			multimodal: true,
-			longContext: true
-		}
-	},
-	'openai/gpt-oss-120b': {
-		id: 'openai/gpt-oss-120b',
-		name: 'GPT-OSS 120B',
-		speed: 4.1,
-		smartness: 4.65,
-		creativity: 4.2,
-		cost: 0.039,
-		outputCost: 0.19,
-		provider: 'openai',
-		bestFor: [
-			'ultra-low-cost-reasoning',
-			'agentic-workflows',
-			'json-mode',
-			'structured-output',
-			'tool-calling',
-			'multi-provider-fallback',
-			'131k-context'
-		],
-		limitations: ['open-weight-provider-variance', 'text-only'],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			longContext: true
-		}
-	},
-	'openai/gpt-oss-20b': {
-		id: 'openai/gpt-oss-20b',
-		name: 'GPT-OSS 20B',
-		speed: 4.5,
-		smartness: 4.35,
-		creativity: 4,
-		cost: 0.03,
-		outputCost: 0.14,
-		provider: 'openai',
-		bestFor: [
-			'cheapest-project-briefs',
-			'ultra-low-cost-json',
-			'structured-output',
-			'short-synthesis',
-			'131k-context'
-		],
-		limitations: ['open-weight-provider-variance', 'text-only'],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			longContext: true
-		}
-	},
-	'openai/gpt-oss-20b:free': {
-		id: 'openai/gpt-oss-20b:free',
-		name: 'GPT-OSS 20B Free',
-		speed: 4.2,
-		smartness: 4.35,
-		creativity: 4,
-		cost: 0,
-		outputCost: 0,
-		provider: 'openai',
-		bestFor: [
-			'zero-cost-project-briefs',
-			'ultra-low-cost-json',
-			'structured-output',
-			'short-synthesis',
-			'131k-context'
-		],
-		limitations: ['free-route-rate-limited', 'open-weight-provider-variance', 'text-only'],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			longContext: true
-		}
-	},
-	'x-ai/grok-4.1-fast': {
-		id: 'x-ai/grok-4.1-fast',
-		name: 'Grok 4.1 Fast',
-		speed: 4.5,
-		smartness: 4.5,
-		creativity: 4.2,
-		cost: 0.2,
-		outputCost: 0.5,
-		provider: 'x-ai',
-		bestFor: [
-			'best-agentic-tool-calling',
-			'tool-calling',
-			'json-mode',
-			'agentic-workflows',
-			'deep-research',
-			'2m-context',
-			'tau2-bench-100%'
-		],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			multimodal: true,
-			longContext: true
-		}
-	},
 	[DEEPSEEK_V4_FLASH_MODEL]: {
 		id: DEEPSEEK_V4_FLASH_MODEL,
 		name: 'DeepSeek V4 Flash',
 		speed: 4.6,
 		smartness: 4.85,
 		creativity: 4.3,
-		cost: 0.14,
-		outputCost: 0.28,
+		cost: 0.09,
+		outputCost: 0.18,
 		provider: 'deepseek',
 		bestFor: [
 			'low-cost-agentic-workflows',
@@ -289,7 +69,7 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			'1m-context',
 			'high-throughput'
 		],
-		limitations: ['brand-new-endpoint', 'text-only'],
+		limitations: ['new-endpoint', 'text-only'],
 		capabilities: {
 			jsonMode: true,
 			tools: true,
@@ -303,8 +83,8 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		speed: 2.8,
 		smartness: 5,
 		creativity: 4.5,
-		cost: 1.74,
-		outputCost: 3.48,
+		cost: 0.435,
+		outputCost: 0.87,
 		provider: 'deepseek',
 		bestFor: [
 			'frontier-open-source-reasoning',
@@ -314,7 +94,7 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			'large-scale-synthesis',
 			'1m-context'
 		],
-		limitations: ['expensive', 'text-only', 'reasoning-tokens-can-increase-cost'],
+		limitations: ['higher-cost-than-flash', 'text-only', 'reasoning-tokens-can-increase-cost'],
 		capabilities: {
 			jsonMode: true,
 			tools: true,
@@ -328,8 +108,8 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 		speed: 4.4,
 		smartness: 4.65,
 		creativity: 4.1,
-		cost: 0.063,
-		outputCost: 0.21,
+		cost: 0.066,
+		outputCost: 0.26,
 		provider: 'tencent',
 		bestFor: [
 			'ultra-low-cost-agentic-workflows',
@@ -345,53 +125,6 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			reasoning: true,
 			longContext: true
 		}
-	},
-	'deepseek/deepseek-v3.2': {
-		id: 'deepseek/deepseek-v3.2',
-		name: 'DeepSeek V3.2',
-		speed: 3.6,
-		smartness: 4.7,
-		creativity: 4.2,
-		cost: 0.26,
-		outputCost: 0.38,
-		provider: 'deepseek',
-		bestFor: [
-			'complex-json',
-			'structured-output',
-			'instruction-following',
-			'tool-calling',
-			'agentic-tool-use',
-			'best-value'
-		],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			longContext: true
-		}
-	},
-	'minimax/minimax-m2.7': {
-		id: 'minimax/minimax-m2.7',
-		name: 'MiniMax M2.7',
-		speed: 3.4,
-		smartness: 4.8,
-		creativity: 4.4,
-		cost: 0.3,
-		outputCost: 1.2,
-		provider: 'minimax',
-		bestFor: [
-			'agentic-workflows',
-			'tool-calling',
-			'autonomous-productivity',
-			'multi-agent-workflows',
-			'live-debugging',
-			'root-cause-analysis',
-			'long-output',
-			'204k-context'
-		],
-		limitations: ['reasoning-tokens-can-increase-cost'],
-		capabilities: { jsonMode: true, tools: true, reasoning: true, longContext: true }
 	},
 	[MINIMAX_M3_MODEL]: {
 		id: MINIMAX_M3_MODEL,
@@ -448,66 +181,14 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
-	'anthropic/claude-haiku-4.5': {
-		id: 'anthropic/claude-haiku-4.5',
-		name: 'Claude Haiku 4.5',
-		speed: 4.5,
-		smartness: 4.3,
-		creativity: 4.2,
-		cost: 1.0,
-		outputCost: 5.0,
-		provider: 'anthropic',
-		bestFor: [
-			'fast-generation',
-			'excellent-tool-calling',
-			'agent-chat',
-			'briefs',
-			'extended-thinking'
-		],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			multimodal: true,
-			longContext: true
-		}
-	},
-	'qwen/qwen3-32b': {
-		id: 'qwen/qwen3-32b',
-		name: 'Qwen3 32B',
-		speed: 4.1,
-		smartness: 4.4,
-		creativity: 4.1,
-		cost: 0.08,
-		outputCost: 0.24,
-		provider: 'qwen',
-		bestFor: [
-			'cheap-reasoning',
-			'tool-calling',
-			'instruction-following',
-			'multilingual',
-			'medium-context',
-			'fallback-chat'
-		],
-		limitations: ['provider-availability-variable'],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			multimodal: false,
-			longContext: true
-		}
-	},
 	[QWEN_37_PLUS_EXPERIMENT_MODEL]: {
 		id: QWEN_37_PLUS_EXPERIMENT_MODEL,
 		name: 'Qwen 3.7 Plus',
 		speed: 3.5,
 		smartness: 4.98,
 		creativity: 4.6,
-		cost: 0.4,
-		outputCost: 1.6,
+		cost: 0.32,
+		outputCost: 1.28,
 		provider: 'qwen',
 		bestFor: [
 			'agentic-coding',
@@ -530,72 +211,14 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
-	[QWEN_36_PLUS_EXPERIMENT_MODEL]: {
-		id: QWEN_36_PLUS_EXPERIMENT_MODEL,
-		name: 'Qwen 3.6 Plus',
-		speed: 3.3,
-		smartness: 4.95,
-		creativity: 4.6,
-		cost: 0.325,
-		outputCost: 1.95,
-		provider: 'qwen',
-		bestFor: [
-			'agentic-coding',
-			'repo-level-problem-solving',
-			'front-end-development',
-			'3d-scenes-games',
-			'complex-reasoning',
-			'multimodal',
-			'structured-output',
-			'tool-calling',
-			'1m-context',
-			'swe-bench-verified-78.8%',
-			'legacy-qwen-plus-route'
-		],
-		limitations: ['legacy-model', 'reasoning-tokens-can-increase-cost'],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			multimodal: true,
-			longContext: true
-		}
-	},
-	'deepseek/deepseek-v3.1-terminus:exacto': {
-		id: 'deepseek/deepseek-v3.1-terminus:exacto',
-		name: 'DeepSeek V3.1 Terminus Exacto',
-		speed: 3.5,
-		smartness: 4.6,
-		creativity: 4.1,
-		cost: 0.21,
-		outputCost: 0.79,
-		provider: 'deepseek',
-		bestFor: ['exacto-tool-calling', 'provider-pinned-routing', 'argument-fidelity'],
-		limitations: ['route-only', 'exacto-provider-pinned'],
-		capabilities: { jsonMode: true, structuredOutputs: true, tools: true, reasoning: true }
-	},
-	'qwen/qwen3-coder:exacto': {
-		id: 'qwen/qwen3-coder:exacto',
-		name: 'Qwen 3 Coder Exacto',
-		speed: 3.8,
-		smartness: 4.6,
-		creativity: 4.2,
-		cost: 0.22,
-		outputCost: 1,
-		provider: 'qwen',
-		bestFor: ['exacto-tool-calling', 'coding-tools', 'provider-pinned-routing'],
-		limitations: ['route-only', 'exacto-provider-pinned'],
-		capabilities: { jsonMode: true, structuredOutputs: true, tools: true }
-	},
 	[KIMI_EXPERIMENT_MODEL]: {
 		id: KIMI_EXPERIMENT_MODEL,
 		name: 'Kimi K2.6',
 		speed: 3.4,
 		smartness: 5,
 		creativity: 4.8,
-		cost: 0.95,
-		outputCost: 4,
+		cost: 0.67,
+		outputCost: 3.5,
 		provider: 'moonshotai',
 		bestFor: [
 			'long-horizon-coding',
@@ -616,124 +239,26 @@ export const MODEL_CATALOG: Record<string, ModelProfile> = {
 			longContext: true
 		}
 	},
-	'moonshotai/kimi-k2.5': {
-		id: 'moonshotai/kimi-k2.5',
-		name: 'Kimi K2.5',
-		speed: 3.5,
-		smartness: 4.9,
-		creativity: 4.6,
-		cost: 0.3827,
-		outputCost: 1.72,
-		provider: 'moonshotai',
-		bestFor: [
-			'agentic-workflows',
-			'visual-coding',
-			'multimodal',
-			'agent-swarm-100-agents',
-			'office-productivity',
-			'research-workflows',
-			'1500-parallel-tool-calls',
-			'262k-context',
-			'cost-effective-reasoning'
-		],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			multimodal: true,
-			longContext: true
-		}
-	},
-	'moonshotai/kimi-k2-0905:exacto': {
-		id: 'moonshotai/kimi-k2-0905:exacto',
-		name: 'Kimi K2 0905 Exacto',
-		speed: 3.4,
-		smartness: 4.7,
-		creativity: 4.4,
-		cost: 0.4,
-		outputCost: 2,
-		provider: 'moonshotai',
-		bestFor: ['exacto-tool-calling', 'agentic-workflows', 'provider-pinned-routing'],
-		limitations: ['route-only', 'exacto-provider-pinned'],
-		capabilities: { jsonMode: true, structuredOutputs: true, tools: true, longContext: true }
-	},
-	'nvidia/nemotron-3-super-120b-a12b:free': {
-		id: 'nvidia/nemotron-3-super-120b-a12b:free',
-		name: 'NVIDIA Nemotron 3 Super Free',
+	[KIMI_CODING_MODEL]: {
+		id: KIMI_CODING_MODEL,
+		name: 'Kimi K2.7 Code',
 		speed: 3.2,
-		smartness: 4.6,
-		creativity: 4.1,
-		cost: 0,
-		outputCost: 0,
-		provider: 'nvidia',
+		smartness: 5,
+		creativity: 4.7,
+		cost: 0.74,
+		outputCost: 3.5,
+		provider: 'moonshotai',
 		bestFor: [
-			'zero-cost-long-context',
-			'multi-agent-workflows',
-			'agentic-reasoning',
+			'long-horizon-coding',
+			'agentic-task-decomposition',
+			'multi-turn-coding-dialogue',
+			'complex-reasoning',
+			'multimodal',
 			'structured-output',
 			'tool-calling',
-			'262k-context',
-			'long-output'
+			'262k-context'
 		],
-		limitations: [
-			'free-tier-rate-limits',
-			'provider-availability-variable',
-			'text-only',
-			'explicit-free-tier-only',
-			'not-default-production-routing'
-		],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			longContext: true
-		}
-	},
-	'anthropic/claude-sonnet-4.6': {
-		id: 'anthropic/claude-sonnet-4.6',
-		name: 'Claude Sonnet 4.6',
-		speed: 2,
-		smartness: 4.95,
-		creativity: 4.7,
-		cost: 3.0,
-		outputCost: 15.0,
-		provider: 'anthropic',
-		bestFor: [
-			'extended-thinking',
-			'complex-reasoning',
-			'creative-writing',
-			'agentic-workflows',
-			'1m-context'
-		],
-		capabilities: {
-			jsonMode: true,
-			structuredOutputs: true,
-			tools: true,
-			reasoning: true,
-			multimodal: true,
-			longContext: true
-		}
-	},
-	'anthropic/claude-opus-4.6': {
-		id: 'anthropic/claude-opus-4.6',
-		name: 'Claude Opus 4.6',
-		speed: 1.5,
-		smartness: 5.0,
-		creativity: 4.8,
-		cost: 5.0,
-		outputCost: 25.0,
-		provider: 'anthropic',
-		bestFor: [
-			'best-coding',
-			'agents',
-			'computer-use',
-			'deep-research',
-			'frontier-reasoning',
-			'1m-context'
-		],
-		limitations: ['expensive'],
+		limitations: ['high-output-cost', 'always-thinking', 'reserve-for-quality-profile'],
 		capabilities: {
 			jsonMode: true,
 			structuredOutputs: true,
@@ -752,25 +277,29 @@ export function modelSupportsCapability(
 	return MODEL_CATALOG[modelId]?.capabilities?.[capability] === true;
 }
 
+// Reviewed 2026-06-19 against OpenRouter model pages/API. Keep preview or
+// text-only models out of JSON routes, and reserve expensive specialists for
+// explicit quality/maximum profiles.
 const OPENROUTER_TEXT_ROUTE = [
-	TENCENT_HY3_PREVIEW_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
+	ACTIVE_EXPERIMENT_MODEL,
+	TENCENT_HY3_PREVIEW_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
-	GEMINI_31_FLASH_LITE_MODEL,
-	ACTIVE_EXPERIMENT_MODEL
+	GEMINI_31_FLASH_LITE_MODEL
 ] as const;
 const OPENROUTER_JSON_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
+	ACTIVE_EXPERIMENT_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
 	MINIMAX_M3_MODEL,
-	ACTIVE_EXPERIMENT_MODEL
+	GEMINI_31_FLASH_LITE_MODEL
 ] as const;
 const OPENROUTER_TOOL_ROUTE = [
-	TENCENT_HY3_PREVIEW_MODEL,
 	DEEPSEEK_V4_FLASH_MODEL,
+	ACTIVE_EXPERIMENT_MODEL,
 	MINIMAX_M3_MODEL,
-	XIAOMI_MIMO_V25_MODEL,
-	ACTIVE_EXPERIMENT_MODEL
+	TENCENT_HY3_PREVIEW_MODEL,
+	XIAOMI_MIMO_V25_MODEL
 ] as const;
 const OPENROUTER_MULTIMODAL_ROUTE = [
 	XIAOMI_MIMO_V25_MODEL,
@@ -781,8 +310,48 @@ const OPENROUTER_MULTIMODAL_ROUTE = [
 const EMERGENCY_TEXT_ROUTE = [
 	DEEPSEEK_V4_FLASH_MODEL,
 	XIAOMI_MIMO_V25_MODEL,
+	GEMINI_31_FLASH_LITE_MODEL,
 	ACTIVE_EXPERIMENT_MODEL,
+	TENCENT_HY3_PREVIEW_MODEL
+] as const;
+const JSON_FAST_ROUTE = [
+	DEEPSEEK_V4_FLASH_MODEL,
+	XIAOMI_MIMO_V25_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL
+] as const;
+const JSON_POWERFUL_ROUTE = [
+	DEEPSEEK_V4_PRO_MODEL,
+	ACTIVE_EXPERIMENT_MODEL,
+	MINIMAX_M3_MODEL,
+	DEEPSEEK_V4_FLASH_MODEL
+] as const;
+const JSON_MAXIMUM_ROUTE = [
+	DEEPSEEK_V4_PRO_MODEL,
+	ACTIVE_EXPERIMENT_MODEL,
+	KIMI_CODING_MODEL,
+	MINIMAX_M3_MODEL
+] as const;
+const TEXT_SPEED_ROUTE = [
+	DEEPSEEK_V4_FLASH_MODEL,
+	TENCENT_HY3_PREVIEW_MODEL,
+	XIAOMI_MIMO_V25_MODEL,
+	GEMINI_31_FLASH_LITE_MODEL,
+	ACTIVE_EXPERIMENT_MODEL
+] as const;
+const TEXT_QUALITY_ROUTE = [
+	ACTIVE_EXPERIMENT_MODEL,
+	DEEPSEEK_V4_PRO_MODEL,
+	KIMI_CODING_MODEL,
+	MINIMAX_M3_MODEL,
+	KIMI_EXPERIMENT_MODEL,
+	DEEPSEEK_V4_FLASH_MODEL
+] as const;
+const TEXT_CREATIVE_ROUTE = [
+	KIMI_CODING_MODEL,
+	KIMI_EXPERIMENT_MODEL,
+	ACTIVE_EXPERIMENT_MODEL,
+	MINIMAX_M3_MODEL,
+	DEEPSEEK_V4_PRO_MODEL
 ] as const;
 
 export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(
@@ -792,7 +361,10 @@ export const ACTIVE_RUNTIME_MODEL_IDS = Array.from(
 		...OPENROUTER_TOOL_ROUTE,
 		...OPENROUTER_MULTIMODAL_ROUTE,
 		...EMERGENCY_TEXT_ROUTE,
-		DEEPSEEK_V4_PRO_MODEL
+		...JSON_POWERFUL_ROUTE,
+		...JSON_MAXIMUM_ROUTE,
+		...TEXT_QUALITY_ROUTE,
+		...TEXT_CREATIVE_ROUTE
 	])
 );
 export const ACTIVE_RUNTIME_MODEL_SET = new Set<string>(ACTIVE_RUNTIME_MODEL_IDS);
@@ -880,16 +452,16 @@ const MODEL_ROUTES = {
 	toolCalling: OPENROUTER_TOOL_ROUTE,
 	emergencyTextFallbacks: EMERGENCY_TEXT_ROUTE,
 	jsonProfiles: {
-		fast: OPENROUTER_JSON_ROUTE,
+		fast: JSON_FAST_ROUTE,
 		balanced: OPENROUTER_JSON_ROUTE,
-		powerful: OPENROUTER_JSON_ROUTE,
-		maximum: [DEEPSEEK_V4_PRO_MODEL, ACTIVE_EXPERIMENT_MODEL]
+		powerful: JSON_POWERFUL_ROUTE,
+		maximum: JSON_MAXIMUM_ROUTE
 	},
 	textProfiles: {
-		speed: OPENROUTER_TEXT_ROUTE,
+		speed: TEXT_SPEED_ROUTE,
 		balanced: OPENROUTER_TEXT_ROUTE,
-		quality: OPENROUTER_TEXT_ROUTE,
-		creative: OPENROUTER_TEXT_ROUTE
+		quality: TEXT_QUALITY_ROUTE,
+		creative: TEXT_CREATIVE_ROUTE
 	}
 } as const;
 

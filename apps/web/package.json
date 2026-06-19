@@ -127,6 +127,7 @@
 	},
 	"dependencies": {
 		"@antv/g6": "^5.0.50",
+		"@buildos/shared-agent-ops": "workspace:*",
 		"@buildos/shared-types": "workspace:*",
 		"@buildos/shared-utils": "workspace:*",
 		"@buildos/smart-llm": "workspace:*",

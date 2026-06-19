@@ -270,90 +270,6 @@ export type Database = {
           },
         ]
       }
-      agent_chat_messages: {
-        Row: {
-          agent_session_id: string
-          content: string
-          created_at: string
-          id: string
-          model_used: string | null
-          parent_user_session_id: string
-          role: Database["public"]["Enums"]["message_role"]
-          sender_agent_id: string | null
-          sender_type: Database["public"]["Enums"]["message_sender_type"]
-          tokens_used: number | null
-          tool_call_id: string | null
-          tool_calls: Json | null
-          user_id: string
-        }
-        Insert: {
-          agent_session_id: string
-          content: string
-          created_at?: string
-          id?: string
-          model_used?: string | null
-          parent_user_session_id: string
-          role: Database["public"]["Enums"]["message_role"]
-          sender_agent_id?: string | null
-          sender_type: Database["public"]["Enums"]["message_sender_type"]
-          tokens_used?: number | null
-          tool_call_id?: string | null
-          tool_calls?: Json | null
-          user_id: string
-        }
-        Update: {
-          agent_session_id?: string
-          content?: string
-          created_at?: string
-          id?: string
-          model_used?: string | null
-          parent_user_session_id?: string
-          role?: Database["public"]["Enums"]["message_role"]
-          sender_agent_id?: string | null
-          sender_type?: Database["public"]["Enums"]["message_sender_type"]
-          tokens_used?: number | null
-          tool_call_id?: string | null
-          tool_calls?: Json | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "agent_chat_messages_parent_user_session_id_fkey"
-            columns: ["parent_user_session_id"]
-            isOneToOne: false
-            referencedRelation: "chat_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "agent_chat_messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_agent_messages_sender"
-            columns: ["sender_agent_id"]
-            isOneToOne: false
-            referencedRelation: "agents"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_agent_messages_session"
-            columns: ["agent_session_id"]
-            isOneToOne: false
-            referencedRelation: "agent_chat_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_agent_messages_user"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       agent_chat_media_events: {
         Row: {
           asset_id: string | null
@@ -444,6 +360,90 @@ export type Database = {
           },
           {
             foreignKeyName: "agent_chat_media_events_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_chat_messages: {
+        Row: {
+          agent_session_id: string
+          content: string
+          created_at: string
+          id: string
+          model_used: string | null
+          parent_user_session_id: string
+          role: Database["public"]["Enums"]["message_role"]
+          sender_agent_id: string | null
+          sender_type: Database["public"]["Enums"]["message_sender_type"]
+          tokens_used: number | null
+          tool_call_id: string | null
+          tool_calls: Json | null
+          user_id: string
+        }
+        Insert: {
+          agent_session_id: string
+          content: string
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          parent_user_session_id: string
+          role: Database["public"]["Enums"]["message_role"]
+          sender_agent_id?: string | null
+          sender_type: Database["public"]["Enums"]["message_sender_type"]
+          tokens_used?: number | null
+          tool_call_id?: string | null
+          tool_calls?: Json | null
+          user_id: string
+        }
+        Update: {
+          agent_session_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          model_used?: string | null
+          parent_user_session_id?: string
+          role?: Database["public"]["Enums"]["message_role"]
+          sender_agent_id?: string | null
+          sender_type?: Database["public"]["Enums"]["message_sender_type"]
+          tokens_used?: number | null
+          tool_call_id?: string | null
+          tool_calls?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_chat_messages_parent_user_session_id_fkey"
+            columns: ["parent_user_session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_chat_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_messages_sender"
+            columns: ["sender_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_messages_session"
+            columns: ["agent_session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_agent_messages_user"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -647,6 +647,386 @@ export type Database = {
           },
         ]
       }
+      agent_oauth_access_tokens: {
+        Row: {
+          client_id: string
+          created_at: string
+          expires_at: string
+          external_agent_caller_id: string
+          grant_id: string
+          id: string
+          last_used_at: string | null
+          resource: string
+          revoked_at: string | null
+          scope: string
+          token_hash: string
+          token_prefix: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          expires_at: string
+          external_agent_caller_id: string
+          grant_id: string
+          id?: string
+          last_used_at?: string | null
+          resource: string
+          revoked_at?: string | null
+          scope: string
+          token_hash: string
+          token_prefix: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          expires_at?: string
+          external_agent_caller_id?: string
+          grant_id?: string
+          id?: string
+          last_used_at?: string | null
+          resource?: string
+          revoked_at?: string | null
+          scope?: string
+          token_hash?: string
+          token_prefix?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_oauth_access_tokens_client_fk"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "agent_oauth_clients"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "agent_oauth_access_tokens_external_agent_caller_id_fkey"
+            columns: ["external_agent_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_oauth_access_tokens_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "agent_oauth_grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_oauth_access_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      agent_oauth_authorization_codes: {
+        Row: {
+          client_id: string
+          code_challenge: string
+          code_challenge_method: string
+          code_hash: string
+          created_at: string
+          expires_at: string
+          external_agent_caller_id: string
+          grant_id: string
+          id: string
+          redirect_uri: string
+          resource: string
+          scope: string
+          updated_at: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          code_challenge: string
+          code_challenge_method?: string
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          external_agent_caller_id: string
+          grant_id: string
+          id?: string
+          redirect_uri: string
+          resource: string
+          scope: string
+          updated_at?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          code_challenge?: string
+          code_challenge_method?: string
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          external_agent_caller_id?: string
+          grant_id?: string
+          id?: string
+          redirect_uri?: string
+          resource?: string
+          scope?: string
+          updated_at?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_oauth_authorization_codes_client_fk"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "agent_oauth_clients"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "agent_oauth_authorization_codes_external_agent_caller_id_fkey"
+            columns: ["external_agent_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_oauth_authorization_codes_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "agent_oauth_grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_oauth_authorization_codes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      agent_oauth_clients: {
+        Row: {
+          allowed_scopes: Json
+          client_id: string
+          client_name: string
+          client_secret_hash: string | null
+          client_type: string
+          client_uri: string | null
+          created_at: string
+          id: string
+          logo_uri: string | null
+          metadata: Json
+          redirect_uris: Json
+          registration_source: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_scopes?: Json
+          client_id: string
+          client_name: string
+          client_secret_hash?: string | null
+          client_type?: string
+          client_uri?: string | null
+          created_at?: string
+          id?: string
+          logo_uri?: string | null
+          metadata?: Json
+          redirect_uris?: Json
+          registration_source?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_scopes?: Json
+          client_id?: string
+          client_name?: string
+          client_secret_hash?: string | null
+          client_type?: string
+          client_uri?: string | null
+          created_at?: string
+          id?: string
+          logo_uri?: string | null
+          metadata?: Json
+          redirect_uris?: Json
+          registration_source?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      agent_oauth_grants: {
+        Row: {
+          allowed_ops: Json
+          allowed_project_ids: Json | null
+          client_id: string
+          client_profile_id: string
+          created_at: string
+          external_agent_caller_id: string
+          id: string
+          last_used_at: string | null
+          resource: string
+          scope: string
+          scope_mode: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowed_ops?: Json
+          allowed_project_ids?: Json | null
+          client_id: string
+          client_profile_id?: string
+          created_at?: string
+          external_agent_caller_id: string
+          id?: string
+          last_used_at?: string | null
+          resource: string
+          scope?: string
+          scope_mode?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowed_ops?: Json
+          allowed_project_ids?: Json | null
+          client_id?: string
+          client_profile_id?: string
+          created_at?: string
+          external_agent_caller_id?: string
+          id?: string
+          last_used_at?: string | null
+          resource?: string
+          scope?: string
+          scope_mode?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_oauth_grants_client_fk"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "agent_oauth_clients"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "agent_oauth_grants_external_agent_caller_id_fkey"
+            columns: ["external_agent_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_oauth_grants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      agent_oauth_refresh_tokens: {
+        Row: {
+          client_id: string
+          created_at: string
+          expires_at: string
+          external_agent_caller_id: string
+          family_id: string
+          grant_id: string
+          id: string
+          resource: string
+          revoked_at: string | null
+          rotated_from_id: string | null
+          scope: string
+          token_hash: string
+          token_prefix: string
+          updated_at: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          expires_at: string
+          external_agent_caller_id: string
+          family_id?: string
+          grant_id: string
+          id?: string
+          resource: string
+          revoked_at?: string | null
+          rotated_from_id?: string | null
+          scope: string
+          token_hash: string
+          token_prefix: string
+          updated_at?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          expires_at?: string
+          external_agent_caller_id?: string
+          family_id?: string
+          grant_id?: string
+          id?: string
+          resource?: string
+          revoked_at?: string | null
+          rotated_from_id?: string | null
+          scope?: string
+          token_hash?: string
+          token_prefix?: string
+          updated_at?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_oauth_refresh_tokens_client_fk"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "agent_oauth_clients"
+            referencedColumns: ["client_id"]
+          },
+          {
+            foreignKeyName: "agent_oauth_refresh_tokens_external_agent_caller_id_fkey"
+            columns: ["external_agent_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_oauth_refresh_tokens_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "agent_oauth_grants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_oauth_refresh_tokens_rotated_from_id_fkey"
+            columns: ["rotated_from_id"]
+            isOneToOne: false
+            referencedRelation: "agent_oauth_refresh_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_oauth_refresh_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
       agent_plans: {
         Row: {
           completed_at: string | null
@@ -714,6 +1094,365 @@ export type Database = {
           },
           {
             foreignKeyName: "fk_agent_plans_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_run_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json
+          run_id: string
+          seq: number | null
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json
+          run_id: string
+          seq?: number | null
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+          run_id?: string
+          seq?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_run_events_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_run_signals: {
+        Row: {
+          consumed_at: string | null
+          created_at: string
+          id: string
+          kind: Database["public"]["Enums"]["agent_run_signal_kind"]
+          payload: Json | null
+          run_id: string
+          source: string
+        }
+        Insert: {
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          kind: Database["public"]["Enums"]["agent_run_signal_kind"]
+          payload?: Json | null
+          run_id: string
+          source: string
+        }
+        Update: {
+          consumed_at?: string | null
+          created_at?: string
+          id?: string
+          kind?: Database["public"]["Enums"]["agent_run_signal_kind"]
+          payload?: Json | null
+          run_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_run_signals_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agent_runs: {
+        Row: {
+          allowed_ops: string[] | null
+          budgets: Json
+          change_set: Json | null
+          completed_at: string | null
+          context_type: string
+          created_at: string
+          depth: number
+          error: string | null
+          expected_output: string | null
+          goal: string
+          id: string
+          instructions: string | null
+          label: string
+          metrics: Json | null
+          operative_id: string | null
+          parent_message_id: string | null
+          parent_run_id: string | null
+          parent_session_id: string | null
+          project_id: string | null
+          result: Json | null
+          review_required: boolean
+          scope_mode: string
+          started_at: string | null
+          status: Database["public"]["Enums"]["agent_run_status"]
+          trigger: Database["public"]["Enums"]["agent_run_trigger"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowed_ops?: string[] | null
+          budgets?: Json
+          change_set?: Json | null
+          completed_at?: string | null
+          context_type: string
+          created_at?: string
+          depth?: number
+          error?: string | null
+          expected_output?: string | null
+          goal: string
+          id?: string
+          instructions?: string | null
+          label: string
+          metrics?: Json | null
+          operative_id?: string | null
+          parent_message_id?: string | null
+          parent_run_id?: string | null
+          parent_session_id?: string | null
+          project_id?: string | null
+          result?: Json | null
+          review_required?: boolean
+          scope_mode?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["agent_run_status"]
+          trigger: Database["public"]["Enums"]["agent_run_trigger"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowed_ops?: string[] | null
+          budgets?: Json
+          change_set?: Json | null
+          completed_at?: string | null
+          context_type?: string
+          created_at?: string
+          depth?: number
+          error?: string | null
+          expected_output?: string | null
+          goal?: string
+          id?: string
+          instructions?: string | null
+          label?: string
+          metrics?: Json | null
+          operative_id?: string | null
+          parent_message_id?: string | null
+          parent_run_id?: string | null
+          parent_session_id?: string | null
+          project_id?: string | null
+          result?: Json | null
+          review_required?: boolean
+          scope_mode?: string
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["agent_run_status"]
+          trigger?: Database["public"]["Enums"]["agent_run_trigger"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_runs_parent_run_id_fkey"
+            columns: ["parent_run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_runs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      agent_tool_executions: {
+        Row: {
+          agent_run_id: string
+          arguments: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_kind: string | null
+          error_message: string | null
+          execution_time_ms: number | null
+          gateway_op: string | null
+          id: string
+          mutation_mode: string | null
+          proposed_change_id: string | null
+          result: Json | null
+          success: boolean
+          tokens_consumed: number | null
+          tool_category: string | null
+          tool_name: string
+          user_id: string
+        }
+        Insert: {
+          agent_run_id: string
+          arguments?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_kind?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          gateway_op?: string | null
+          id?: string
+          mutation_mode?: string | null
+          proposed_change_id?: string | null
+          result?: Json | null
+          success?: boolean
+          tokens_consumed?: number | null
+          tool_category?: string | null
+          tool_name: string
+          user_id: string
+        }
+        Update: {
+          agent_run_id?: string
+          arguments?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_kind?: string | null
+          error_message?: string | null
+          execution_time_ms?: number | null
+          gateway_op?: string | null
+          id?: string
+          mutation_mode?: string | null
+          proposed_change_id?: string | null
+          result?: Json | null
+          success?: boolean
+          tokens_consumed?: number | null
+          tool_category?: string | null
+          tool_name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_tool_executions_agent_run_id_fkey"
+            columns: ["agent_run_id"]
+            isOneToOne: false
+            referencedRelation: "agent_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_tool_executions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      agentic_chat_prepared_prompts: {
+        Row: {
+          cache_key: string
+          consumed_at: string | null
+          context_cache_version: number
+          context_payload: Json
+          context_payload_sha256: string
+          context_type: string
+          conversation_summary: string | null
+          created_at: string
+          default_surface_profile: string
+          entity_id: string | null
+          expires_at: string
+          history_compressed: boolean | null
+          history_for_model: Json
+          history_for_model_count: number | null
+          history_strategy: string | null
+          id: string
+          nonce_sha256: string
+          prepared_surfaces: Json
+          project_focus: Json | null
+          project_id: string | null
+          prompt_variant: string
+          raw_history_count: number | null
+          session_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cache_key: string
+          consumed_at?: string | null
+          context_cache_version: number
+          context_payload: Json
+          context_payload_sha256: string
+          context_type: string
+          conversation_summary?: string | null
+          created_at?: string
+          default_surface_profile: string
+          entity_id?: string | null
+          expires_at: string
+          history_compressed?: boolean | null
+          history_for_model?: Json
+          history_for_model_count?: number | null
+          history_strategy?: string | null
+          id?: string
+          nonce_sha256: string
+          prepared_surfaces: Json
+          project_focus?: Json | null
+          project_id?: string | null
+          prompt_variant?: string
+          raw_history_count?: number | null
+          session_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cache_key?: string
+          consumed_at?: string | null
+          context_cache_version?: number
+          context_payload?: Json
+          context_payload_sha256?: string
+          context_type?: string
+          conversation_summary?: string | null
+          created_at?: string
+          default_surface_profile?: string
+          entity_id?: string | null
+          expires_at?: string
+          history_compressed?: boolean | null
+          history_for_model?: Json
+          history_for_model_count?: number | null
+          history_strategy?: string | null
+          id?: string
+          nonce_sha256?: string
+          prepared_surfaces?: Json
+          project_focus?: Json | null
+          project_id?: string | null
+          prompt_variant?: string
+          raw_history_count?: number | null
+          session_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agentic_chat_prepared_prompts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agentic_chat_prepared_prompts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -2197,84 +2936,6 @@ export type Database = {
           },
         ]
       }
-      chat_messages: {
-        Row: {
-          completion_tokens: number | null
-          content: string
-          created_at: string | null
-          error_code: string | null
-          error_message: string | null
-          id: string
-          message_type: string | null
-          metadata: Json | null
-          operation_ids: string[] | null
-          prompt_tokens: number | null
-          role: string
-          session_id: string
-          tool_call_id: string | null
-          tool_calls: Json | null
-          tool_name: string | null
-          tool_result: Json | null
-          total_tokens: number | null
-          user_id: string
-        }
-        Insert: {
-          completion_tokens?: number | null
-          content: string
-          created_at?: string | null
-          error_code?: string | null
-          error_message?: string | null
-          id?: string
-          message_type?: string | null
-          metadata?: Json | null
-          operation_ids?: string[] | null
-          prompt_tokens?: number | null
-          role: string
-          session_id: string
-          tool_call_id?: string | null
-          tool_calls?: Json | null
-          tool_name?: string | null
-          tool_result?: Json | null
-          total_tokens?: number | null
-          user_id: string
-        }
-        Update: {
-          completion_tokens?: number | null
-          content?: string
-          created_at?: string | null
-          error_code?: string | null
-          error_message?: string | null
-          id?: string
-          message_type?: string | null
-          metadata?: Json | null
-          operation_ids?: string[] | null
-          prompt_tokens?: number | null
-          role?: string
-          session_id?: string
-          tool_call_id?: string | null
-          tool_calls?: Json | null
-          tool_name?: string | null
-          tool_result?: Json | null
-          total_tokens?: number | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chat_messages_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "chat_sessions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "chat_messages_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       chat_message_attachments: {
         Row: {
           asset_id: string | null
@@ -2349,6 +3010,84 @@ export type Database = {
           },
           {
             foreignKeyName: "chat_message_attachments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_messages: {
+        Row: {
+          completion_tokens: number | null
+          content: string
+          created_at: string | null
+          error_code: string | null
+          error_message: string | null
+          id: string
+          message_type: string | null
+          metadata: Json | null
+          operation_ids: string[] | null
+          prompt_tokens: number | null
+          role: string
+          session_id: string
+          tool_call_id: string | null
+          tool_calls: Json | null
+          tool_name: string | null
+          tool_result: Json | null
+          total_tokens: number | null
+          user_id: string
+        }
+        Insert: {
+          completion_tokens?: number | null
+          content: string
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          message_type?: string | null
+          metadata?: Json | null
+          operation_ids?: string[] | null
+          prompt_tokens?: number | null
+          role: string
+          session_id: string
+          tool_call_id?: string | null
+          tool_calls?: Json | null
+          tool_name?: string | null
+          tool_result?: Json | null
+          total_tokens?: number | null
+          user_id: string
+        }
+        Update: {
+          completion_tokens?: number | null
+          content?: string
+          created_at?: string | null
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          message_type?: string | null
+          metadata?: Json | null
+          operation_ids?: string[] | null
+          prompt_tokens?: number | null
+          role?: string
+          session_id?: string
+          tool_call_id?: string | null
+          tool_calls?: Json | null
+          tool_name?: string | null
+          tool_result?: Json | null
+          total_tokens?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_messages_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -2849,6 +3588,7 @@ export type Database = {
           message_id: string | null
           requires_user_action: boolean | null
           result: Json | null
+          result_count: number | null
           sequence_index: number | null
           session_id: string
           stream_run_id: string | null
@@ -2857,6 +3597,7 @@ export type Database = {
           tool_category: string | null
           tool_name: string
           turn_run_id: string | null
+          zero_result: boolean | null
         }
         Insert: {
           arguments: Json
@@ -2870,6 +3611,7 @@ export type Database = {
           message_id?: string | null
           requires_user_action?: boolean | null
           result?: Json | null
+          result_count?: number | null
           sequence_index?: number | null
           session_id: string
           stream_run_id?: string | null
@@ -2878,6 +3620,7 @@ export type Database = {
           tool_category?: string | null
           tool_name: string
           turn_run_id?: string | null
+          zero_result?: boolean | null
         }
         Update: {
           arguments?: Json
@@ -2891,6 +3634,7 @@ export type Database = {
           message_id?: string | null
           requires_user_action?: boolean | null
           result?: Json | null
+          result_count?: number | null
           sequence_index?: number | null
           session_id?: string
           stream_run_id?: string | null
@@ -2899,6 +3643,7 @@ export type Database = {
           tool_category?: string | null
           tool_name?: string
           turn_run_id?: string | null
+          zero_result?: boolean | null
         }
         Relationships: [
           {
@@ -2920,6 +3665,95 @@ export type Database = {
             columns: ["turn_run_id"]
             isOneToOne: false
             referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_turn_checkpoints: {
+        Row: {
+          checkpoint_type: string
+          created_at: string
+          digest: Json
+          expires_at: string | null
+          id: string
+          question: string | null
+          reason: string
+          resume_context: Json
+          resume_started_at: string | null
+          resume_turn_run_id: string | null
+          resumed_at: string | null
+          session_id: string
+          status: string
+          supervisor_decision: Json
+          turn_run_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          checkpoint_type: string
+          created_at?: string
+          digest?: Json
+          expires_at?: string | null
+          id?: string
+          question?: string | null
+          reason: string
+          resume_context?: Json
+          resume_started_at?: string | null
+          resume_turn_run_id?: string | null
+          resumed_at?: string | null
+          session_id: string
+          status?: string
+          supervisor_decision?: Json
+          turn_run_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          checkpoint_type?: string
+          created_at?: string
+          digest?: Json
+          expires_at?: string | null
+          id?: string
+          question?: string | null
+          reason?: string
+          resume_context?: Json
+          resume_started_at?: string | null
+          resume_turn_run_id?: string | null
+          resumed_at?: string | null
+          session_id?: string
+          status?: string
+          supervisor_decision?: Json
+          turn_run_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_turn_checkpoints_resume_turn_run_id_fkey"
+            columns: ["resume_turn_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_turn_checkpoints_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_turn_checkpoints_turn_run_id_fkey"
+            columns: ["turn_run_id"]
+            isOneToOne: false
+            referencedRelation: "chat_turn_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_turn_checkpoints_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -3006,6 +3840,10 @@ export type Database = {
           history_strategy: string | null
           id: string
           llm_pass_count: number
+          prepared_prompt_hit: boolean | null
+          prepared_prompt_id: string | null
+          prepared_prompt_miss_reason: string | null
+          prepared_surface_profile: string | null
           project_id: string | null
           prompt_snapshot_id: string | null
           raw_history_count: number | null
@@ -3044,6 +3882,10 @@ export type Database = {
           history_strategy?: string | null
           id?: string
           llm_pass_count?: number
+          prepared_prompt_hit?: boolean | null
+          prepared_prompt_id?: string | null
+          prepared_prompt_miss_reason?: string | null
+          prepared_surface_profile?: string | null
           project_id?: string | null
           prompt_snapshot_id?: string | null
           raw_history_count?: number | null
@@ -3082,6 +3924,10 @@ export type Database = {
           history_strategy?: string | null
           id?: string
           llm_pass_count?: number
+          prepared_prompt_hit?: boolean | null
+          prepared_prompt_id?: string | null
+          prepared_prompt_miss_reason?: string | null
+          prepared_surface_profile?: string | null
           project_id?: string | null
           prompt_snapshot_id?: string | null
           raw_history_count?: number | null
@@ -3106,6 +3952,13 @@ export type Database = {
             columns: ["assistant_message_id"]
             isOneToOne: false
             referencedRelation: "chat_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_turn_runs_prepared_prompt_id_fkey"
+            columns: ["prepared_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "agentic_chat_prepared_prompts"
             referencedColumns: ["id"]
           },
           {
@@ -3362,6 +4215,90 @@ export type Database = {
           updated_at?: string | null
           valid_from?: string | null
           valid_until?: string | null
+        }
+        Relationships: []
+      }
+      domain_research_queue: {
+        Row: {
+          budget: Json
+          claimed_at: string | null
+          claimed_by: string | null
+          completed_at: string | null
+          created_at: string
+          domain_ids: string[]
+          evidence: Json
+          first_seen_at: string
+          id: string
+          kind: string
+          last_seen_at: string
+          missing_resource_id: string | null
+          missing_skill_id: string | null
+          occurrences: number
+          parent_skill_id: string | null
+          priority: string
+          queue_key: string
+          result: Json | null
+          source_session_ids: string[]
+          source_user_count: number
+          status: string
+          summary: string
+          updated_at: string
+          user_need: string
+          work_capability_id: string | null
+        }
+        Insert: {
+          budget?: Json
+          claimed_at?: string | null
+          claimed_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          domain_ids?: string[]
+          evidence?: Json
+          first_seen_at?: string
+          id?: string
+          kind: string
+          last_seen_at?: string
+          missing_resource_id?: string | null
+          missing_skill_id?: string | null
+          occurrences?: number
+          parent_skill_id?: string | null
+          priority?: string
+          queue_key: string
+          result?: Json | null
+          source_session_ids?: string[]
+          source_user_count?: number
+          status?: string
+          summary: string
+          updated_at?: string
+          user_need: string
+          work_capability_id?: string | null
+        }
+        Update: {
+          budget?: Json
+          claimed_at?: string | null
+          claimed_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          domain_ids?: string[]
+          evidence?: Json
+          first_seen_at?: string
+          id?: string
+          kind?: string
+          last_seen_at?: string
+          missing_resource_id?: string | null
+          missing_skill_id?: string | null
+          occurrences?: number
+          parent_skill_id?: string | null
+          priority?: string
+          queue_key?: string
+          result?: Json | null
+          source_session_ids?: string[]
+          source_user_count?: number
+          status?: string
+          summary?: string
+          updated_at?: string
+          user_need?: string
+          work_capability_id?: string | null
         }
         Relationships: []
       }
@@ -3671,6 +4608,63 @@ export type Database = {
             columns: ["email_id"]
             isOneToOne: false
             referencedRelation: "emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_sequence_copy_overrides: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          metadata: Json
+          sequence_key: string
+          step_key: string
+          subject: string
+          updated_at: string
+          updated_by: string | null
+          variant_key: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metadata?: Json
+          sequence_key: string
+          step_key: string
+          subject: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_key?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metadata?: Json
+          sequence_key?: string
+          step_key?: string
+          subject?: string
+          updated_at?: string
+          updated_by?: string | null
+          variant_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sequence_copy_overrides_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_sequence_copy_overrides_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -6157,6 +7151,7 @@ export type Database = {
           deleted_at: string | null
           description: string | null
           id: string
+          outline: Json | null
           project_id: string
           props: Json
           search_vector: unknown
@@ -6174,6 +7169,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           id?: string
+          outline?: Json | null
           project_id: string
           props?: Json
           search_vector?: unknown
@@ -6191,6 +7187,7 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           id?: string
+          outline?: Json | null
           project_id?: string
           props?: Json
           search_vector?: unknown
@@ -7045,6 +8042,7 @@ export type Database = {
         Row: {
           action: string
           after_data: Json | null
+          agent_call_session_id: string | null
           before_data: Json | null
           change_source: string | null
           changed_by: string
@@ -7053,12 +8051,14 @@ export type Database = {
           created_at: string
           entity_id: string
           entity_type: string
+          external_agent_caller_id: string | null
           id: string
           project_id: string
         }
         Insert: {
           action: string
           after_data?: Json | null
+          agent_call_session_id?: string | null
           before_data?: Json | null
           change_source?: string | null
           changed_by: string
@@ -7067,12 +8067,14 @@ export type Database = {
           created_at?: string
           entity_id: string
           entity_type: string
+          external_agent_caller_id?: string | null
           id?: string
           project_id: string
         }
         Update: {
           action?: string
           after_data?: Json | null
+          agent_call_session_id?: string | null
           before_data?: Json | null
           change_source?: string | null
           changed_by?: string
@@ -7081,10 +8083,18 @@ export type Database = {
           created_at?: string
           entity_id?: string
           entity_type?: string
+          external_agent_caller_id?: string | null
           id?: string
           project_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "onto_project_logs_agent_call_session_id_fkey"
+            columns: ["agent_call_session_id"]
+            isOneToOne: false
+            referencedRelation: "agent_call_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "onto_project_logs_changed_by_actor_id_fkey"
             columns: ["changed_by_actor_id"]
@@ -7104,6 +8114,13 @@ export type Database = {
             columns: ["chat_session_id"]
             isOneToOne: false
             referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onto_project_logs_external_agent_caller_id_fkey"
+            columns: ["external_agent_caller_id"]
+            isOneToOne: false
+            referencedRelation: "external_agent_callers"
             referencedColumns: ["id"]
           },
           {
@@ -9755,8 +10772,8 @@ export type Database = {
           max_attempts: number | null
           metadata: Json | null
           priority: number | null
-          processing_token: string | null
           processed_at: string | null
+          processing_token: string | null
           queue_job_id: string
           result: Json | null
           scheduled_for: string
@@ -9776,8 +10793,8 @@ export type Database = {
           max_attempts?: number | null
           metadata?: Json | null
           priority?: number | null
-          processing_token?: string | null
           processed_at?: string | null
+          processing_token?: string | null
           queue_job_id: string
           result?: Json | null
           scheduled_for: string
@@ -9797,8 +10814,8 @@ export type Database = {
           max_attempts?: number | null
           metadata?: Json | null
           priority?: number | null
-          processing_token?: string | null
           processed_at?: string | null
+          processing_token?: string | null
           queue_job_id?: string
           result?: Json | null
           scheduled_for?: string
@@ -10091,6 +11108,120 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "retargeting_founder_pilot_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      retargeting_founder_pilot_sends: {
+        Row: {
+          batch_id: string
+          campaign_id: string
+          cohort_id: string
+          created_at: string
+          email_id: string | null
+          failed_at: string | null
+          failure_reason: string | null
+          id: string
+          member_id: string
+          metadata: Json
+          queued_by_admin: string | null
+          recipient_email: string
+          scheduled_for: string
+          sent_at: string | null
+          sent_by_admin: string | null
+          skipped_at: string | null
+          status: string
+          step: string
+          trigger_mode: string
+          trigger_source: string
+          updated_at: string
+          user_id: string | null
+          variant: string
+        }
+        Insert: {
+          batch_id: string
+          campaign_id?: string
+          cohort_id: string
+          created_at?: string
+          email_id?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          member_id: string
+          metadata?: Json
+          queued_by_admin?: string | null
+          recipient_email: string
+          scheduled_for: string
+          sent_at?: string | null
+          sent_by_admin?: string | null
+          skipped_at?: string | null
+          status?: string
+          step: string
+          trigger_mode?: string
+          trigger_source?: string
+          updated_at?: string
+          user_id?: string | null
+          variant?: string
+        }
+        Update: {
+          batch_id?: string
+          campaign_id?: string
+          cohort_id?: string
+          created_at?: string
+          email_id?: string | null
+          failed_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          member_id?: string
+          metadata?: Json
+          queued_by_admin?: string | null
+          recipient_email?: string
+          scheduled_for?: string
+          sent_at?: string | null
+          sent_by_admin?: string | null
+          skipped_at?: string | null
+          status?: string
+          step?: string
+          trigger_mode?: string
+          trigger_source?: string
+          updated_at?: string
+          user_id?: string | null
+          variant?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retargeting_founder_pilot_sends_email_id_fkey"
+            columns: ["email_id"]
+            isOneToOne: false
+            referencedRelation: "emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retargeting_founder_pilot_sends_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "retargeting_founder_pilot_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retargeting_founder_pilot_sends_queued_by_admin_fkey"
+            columns: ["queued_by_admin"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "retargeting_founder_pilot_sends_sent_by_admin_fkey"
+            columns: ["sent_by_admin"]
+            isOneToOne: false
+            referencedRelation: "user_migration_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "retargeting_founder_pilot_sends_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -12966,8 +14097,8 @@ export type Database = {
           trial_ends_at: string | null
           updated_at: string
           usage_archetype: string | null
-          voice_narration_enabled: boolean
           username: string | null
+          voice_narration_enabled: boolean
         }
         Insert: {
           access_restricted?: boolean | null
@@ -12994,8 +14125,8 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string
           usage_archetype?: string | null
-          voice_narration_enabled?: boolean
           username?: string | null
+          voice_narration_enabled?: boolean
         }
         Update: {
           access_restricted?: boolean | null
@@ -13022,8 +14153,8 @@ export type Database = {
           trial_ends_at?: string | null
           updated_at?: string
           usage_archetype?: string | null
-          voice_narration_enabled?: boolean
           username?: string | null
+          voice_narration_enabled?: boolean
         }
         Relationships: [
           {
@@ -13675,6 +14806,14 @@ export type Database = {
           existing_run_id: string
         }[]
       }
+      actor_has_project_member_access: {
+        Args: {
+          p_actor_id: string
+          p_project_id: string
+          p_required_access?: string
+        }
+        Returns: boolean
+      }
       add_queue_job: {
         Args: {
           p_dedup_key?: string
@@ -13890,6 +15029,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      cleanup_expired_agentic_chat_prepared_prompts: {
+        Args: never
+        Returns: number
+      }
       cleanup_project_history: {
         Args: { target_project_id: string }
         Returns: undefined
@@ -13966,14 +15109,6 @@ export type Database = {
       create_tracking_link: {
         Args: { p_delivery_id: string; p_destination_url: string }
         Returns: string
-      }
-      actor_has_project_member_access: {
-        Args: {
-          p_actor_id: string
-          p_project_id: string
-          p_required_access?: string
-        }
-        Returns: boolean
       }
       current_actor_has_project_access: {
         Args: { p_project_id: string; p_required_access?: string }
@@ -14498,13 +15633,21 @@ export type Database = {
         Args: { p_actor_id: string; p_project_id: string }
         Returns: Json
       }
+      get_project_full_legacy_public_20260514: {
+        Args: { p_actor_id: string; p_project_id: string }
+        Returns: Json
+      }
+      get_project_full_with_project_edge_context: {
+        Args: { p_actor_id: string; p_project_id: string }
+        Returns: Json
+      }
       get_project_invite_preview: {
         Args: { p_token_hash: string }
         Returns: {
           access: string
           can_accept: boolean
           created_at: string
-          declined_at: string | null
+          declined_at: string
           expires_at: string
           invite_id: string
           invited_by_actor_id: string
@@ -14513,7 +15656,7 @@ export type Database = {
           invitee_email: string
           project_id: string
           project_name: string
-          recoverable_until: string | null
+          recoverable_until: string
           role_key: string
           status: string
         }[]
@@ -14539,7 +15682,15 @@ export type Database = {
         Args: { p_actor_id: string; p_project_id: string }
         Returns: Json
       }
+      get_project_skeleton_legacy_public_20260514: {
+        Args: { p_actor_id: string; p_project_id: string }
+        Returns: Json
+      }
       get_project_skeleton_with_access: {
+        Args: { p_project_id: string }
+        Returns: Json
+      }
+      get_project_skeleton_with_access_legacy_public_20260514: {
         Args: { p_project_id: string }
         Returns: Json
       }
@@ -14564,18 +15715,32 @@ export type Database = {
           campaign_id: string
           cohort_frozen_at: string
           cohort_id: string
+          cohort_size: number
           conversion_window_days: number
+          created_at: string
           email: string
+          first_14d_activity_count: number
           first_action_at: string
+          first_activity_at: string
           first_post_send_action_at: string
           first_post_send_activity_at: string
           first_send_at: string
           holdout: boolean
+          id: string
+          last_meaningful_activity_at: string
+          last_outbound_email_at: string
+          last_seen_at: string
           last_send_at: string
+          lifetime_activity_count: number
           manual_stop: boolean
+          manual_stop_at: string
+          manual_stop_reason: string
           member_id: string
           name: string
+          notes: string
           pilot_segment: string
+          prioritized_rank: number
+          reply_recorded_at: string
           reply_status: string
           return_session_at: string
           touch_1_clicked: boolean
@@ -14583,6 +15748,7 @@ export type Database = {
           touch_1_sent_at: string
           touch_2_sent_at: string
           touch_3_sent_at: string
+          updated_at: string
           user_id: string
           variant: string
         }[]
@@ -14830,7 +15996,7 @@ export type Database = {
           access: string
           can_accept: boolean
           created_at: string
-          declined_at: string | null
+          declined_at: string
           expires_at: string
           invite_id: string
           invited_by_actor_id: string
@@ -14838,7 +16004,7 @@ export type Database = {
           invited_by_name: string
           project_id: string
           project_name: string
-          recoverable_until: string | null
+          recoverable_until: string
           role_key: string
           status: string
         }[]
@@ -14870,6 +16036,22 @@ export type Database = {
           p_user_id?: string
         }
         Returns: undefined
+      }
+      log_project_change: {
+        Args: {
+          p_action: string
+          p_after_data?: Json
+          p_agent_call_session_id?: string
+          p_before_data?: Json
+          p_change_source?: string
+          p_changed_by?: string
+          p_chat_session_id?: string
+          p_entity_id: string
+          p_entity_type: string
+          p_external_agent_caller_id?: string
+          p_project_id: string
+        }
+        Returns: string
       }
       merge_chat_session_agent_metadata: {
         Args: { p_patch?: Json; p_session_id: string }
@@ -15264,6 +16446,18 @@ export type Database = {
     }
     Enums: {
       agent_permission: "read_only" | "read_write"
+      agent_run_signal_kind: "steer" | "pause" | "resume" | "cancel"
+      agent_run_status:
+        | "queued"
+        | "running"
+        | "paused"
+        | "needs_input"
+        | "proposal_ready"
+        | "completed"
+        | "partial"
+        | "failed"
+        | "cancelled"
+      agent_run_trigger: "chat" | "manual" | "scheduled" | "event"
       agent_session_type: "planner_thinking" | "planner_executor"
       agent_status: "active" | "completed" | "failed"
       agent_type: "planner" | "executor"
@@ -15321,7 +16515,12 @@ export type Database = {
         | "ask_clarifying_questions"
         | "project_creation"
       priority_level: "low" | "medium" | "high"
-      project_state: "planning" | "active" | "paused" | "completed" | "cancelled"
+      project_state:
+        | "planning"
+        | "active"
+        | "paused"
+        | "completed"
+        | "cancelled"
       project_status: "active" | "paused" | "completed" | "archived"
       queue_status:
         | "pending"
@@ -15350,11 +16549,12 @@ export type Database = {
         | "buildos_homework"
         | "buildos_tree_agent"
         | "build_project_context_snapshot"
-        | "buildos_project_loop"
         | "project_activity_batch_flush"
         | "generate_project_icon"
         | "extract_onto_asset_ocr"
         | "generate_brief_audio"
+        | "buildos_project_loop"
+        | "agent_run"
       recurrence_end_reason:
         | "indefinite"
         | "project_inherited"
@@ -15535,6 +16735,19 @@ export const Constants = {
   public: {
     Enums: {
       agent_permission: ["read_only", "read_write"],
+      agent_run_signal_kind: ["steer", "pause", "resume", "cancel"],
+      agent_run_status: [
+        "queued",
+        "running",
+        "paused",
+        "needs_input",
+        "proposal_ready",
+        "completed",
+        "partial",
+        "failed",
+        "cancelled",
+      ],
+      agent_run_trigger: ["chat", "manual", "scheduled", "event"],
       agent_session_type: ["planner_thinking", "planner_executor"],
       agent_status: ["active", "completed", "failed"],
       agent_type: ["planner", "executor"],
@@ -15627,11 +16840,12 @@ export const Constants = {
         "buildos_homework",
         "buildos_tree_agent",
         "build_project_context_snapshot",
-        "buildos_project_loop",
         "project_activity_batch_flush",
         "generate_project_icon",
         "extract_onto_asset_ocr",
         "generate_brief_audio",
+        "buildos_project_loop",
+        "agent_run",
       ],
       recurrence_end_reason: [
         "indefinite",

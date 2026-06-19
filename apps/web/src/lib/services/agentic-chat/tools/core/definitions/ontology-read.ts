@@ -405,8 +405,8 @@ Returns typed ontology matches with snippets so you can quickly shortlist items 
 		type: 'function',
 		function: {
 			name: 'search_onto_tasks',
-			description: `Search tasks across all ontology projects using keywords. Returns concise task matches with project context.
-Use when the user references a task by name or description but the project is unknown. For broader project-scoped discovery across tasks, documents, plans, and goals, prefer search_project.`,
+			description: `Keyword search over tasks only, returning concise task matches with project context.
+Prefer search_project (project known) or search_all_projects (project unknown) for relevance-ranked results with snippets. Reach for this task-only tool when you specifically need to filter tasks by state_key/type_key or page through many task matches. Multi-word queries match in any word order; explicit "blog OR instagram" queries match alternatives.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -449,7 +449,7 @@ Use when the user references a task by name or description but the project is un
 		type: 'function',
 		function: {
 			name: 'search_onto_projects',
-			description: `Search ontology projects by name or description. Returns concise project matches ideal for global discovery queries.`,
+			description: `Keyword search over projects only, by name/description. Prefer search_all_projects for relevance-ranked cross-project discovery with snippets. Reach for this project-only tool when you need to filter projects by state_key/type_key. Multi-word queries match in any word order.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -488,8 +488,8 @@ Use when the user references a task by name or description but the project is un
 		type: 'function',
 		function: {
 			name: 'search_onto_documents',
-			description: `Search ontology documents by title. Returns concise metadata matches only, not full body content.
-Use get_onto_document_details when full document content is needed.`,
+			description: `Keyword search over documents only (matches title, description, and body content). Returns concise metadata matches, not full body content — use get_onto_document_details for that.
+Prefer search_project (project known) or search_all_projects (project unknown) for relevance-ranked results with snippets. Reach for this document-only tool when you need to filter documents by state_key/type_key. Multi-word queries match in any word order.`,
 			parameters: {
 				type: 'object',
 				properties: {
@@ -533,7 +533,7 @@ Use get_onto_document_details when full document content is needed.`,
 		function: {
 			name: 'search_onto_goals',
 			description:
-				'Search ontology goals by name or description. Returns concise matches for goal discovery.',
+				'Keyword search over goals only, by name/description. Prefer search_project or search_all_projects for relevance-ranked results with snippets; use this goal-only tool to filter goals by state_key/type_key. Multi-word queries match in any word order.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -576,7 +576,7 @@ Use get_onto_document_details when full document content is needed.`,
 		function: {
 			name: 'search_onto_plans',
 			description:
-				'Search ontology plans by name or description. Returns concise matches for plan discovery.',
+				'Keyword search over plans only, by name/description. Prefer search_project or search_all_projects for relevance-ranked results with snippets; use this plan-only tool to filter plans by state_key/type_key. Multi-word queries match in any word order.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -619,7 +619,7 @@ Use get_onto_document_details when full document content is needed.`,
 		function: {
 			name: 'search_onto_milestones',
 			description:
-				'Search ontology milestones by title or description. Returns concise matches for timeline discovery.',
+				'Keyword search over milestones only, by title/description. Prefer search_project or search_all_projects for relevance-ranked results with snippets; use this milestone-only tool to filter milestones by state_key/type_key. Multi-word queries match in any word order.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -663,7 +663,7 @@ Use get_onto_document_details when full document content is needed.`,
 		function: {
 			name: 'search_onto_risks',
 			description:
-				'Search ontology risks by title or content. Returns concise matches for risk discovery.',
+				'Keyword search over risks only, by title/content. Prefer search_project or search_all_projects for relevance-ranked results with snippets; use this risk-only tool to filter risks by state_key/impact/type_key. Multi-word queries match in any word order.',
 			parameters: {
 				type: 'object',
 				properties: {
@@ -952,6 +952,47 @@ Useful for showing where a document lives in the hierarchy.`,
 					}
 				},
 				required: ['document_id']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'get_document_outline',
+			description: `Get a document's heading outline (table of contents), not its body. Cheap way to decide if a doc is relevant and which part to read; each heading has an anchor for read_document_section. Prefer over get_onto_document_details for scanning.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					document_id: {
+						type: 'string',
+						description: 'Document ID to outline (required)'
+					}
+				},
+				required: ['document_id']
+			}
+		}
+	},
+
+	{
+		type: 'function',
+		function: {
+			name: 'read_document_section',
+			description: `Read one section of a document by heading anchor (from get_document_outline), not the whole body. Returns that section plus nested subsections — pull in only the relevant context. Lists available anchors if the anchor is unknown.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					document_id: {
+						type: 'string',
+						description: 'Document ID to read from (required)'
+					},
+					anchor: {
+						type: 'string',
+						description:
+							'Heading anchor (slug) of the section to read, e.g. "channels" (required)'
+					}
+				},
+				required: ['document_id', 'anchor']
 			}
 		}
 	},

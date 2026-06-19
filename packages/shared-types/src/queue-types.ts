@@ -205,6 +205,24 @@ export interface TreeAgentJobMetadata {
 	project_ids?: string[] | null;
 }
 
+export interface AgentRunJobMetadata {
+	run_id: string;
+	trigger: 'chat' | 'manual' | 'scheduled' | 'event';
+	context_type: 'global' | 'project';
+	project_id?: string | null;
+	parent_run_id?: string | null;
+	depth?: number;
+	continuation_from?: 'paused' | 'needs_input';
+	scope_mode?: 'read_only' | 'read_write';
+	allowed_ops?: string[] | null;
+	review_required?: boolean;
+	budgets?: {
+		wall_clock_ms?: number;
+		max_tokens?: number;
+		max_tool_calls?: number;
+	};
+}
+
 export interface ProjectContextSnapshotJobMetadata {
 	projectId: string;
 	reason?: string;
@@ -259,6 +277,7 @@ export interface JobMetadataMap {
 	generate_brief_audio: GenerateBriefAudioJobMetadata;
 	buildos_homework: HomeworkJobMetadata;
 	buildos_tree_agent: TreeAgentJobMetadata;
+	agent_run: AgentRunJobMetadata;
 	build_project_context_snapshot: ProjectContextSnapshotJobMetadata;
 	buildos_project_loop: ProjectLoopJobMetadata;
 	generate_project_icon: ProjectIconGenerationJobMetadata;
@@ -373,6 +392,21 @@ export interface TreeAgentJobResult {
 	rootResult?: unknown;
 }
 
+export interface AgentRunJobResult {
+	success: boolean;
+	run_id: string;
+	status:
+		| 'completed'
+		| 'partial'
+		| 'failed'
+		| 'needs_input'
+		| 'proposal_ready'
+		| 'cancelled'
+		| 'paused'
+		| 'skipped';
+	message?: string;
+}
+
 // Job result types
 export interface JobResultMap {
 	// Allow indexing by queue job types that are not explicitly listed yet.
@@ -394,6 +428,7 @@ export interface JobResultMap {
 	generate_brief_audio: GenerateBriefAudioResult;
 	buildos_homework: HomeworkJobResult;
 	buildos_tree_agent: TreeAgentJobResult;
+	agent_run: AgentRunJobResult;
 	build_project_context_snapshot: ProjectContextSnapshotResult;
 	generate_project_icon: ProjectIconGenerationResult;
 	project_activity_batch_flush: ProjectActivityBatchFlushResult;

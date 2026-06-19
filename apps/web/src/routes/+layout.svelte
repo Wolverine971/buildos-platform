@@ -40,6 +40,11 @@
 		initTimeBlockNotificationBridge,
 		destroyTimeBlockNotificationBridge
 	} from '$lib/services/time-block-notification.bridge';
+	import {
+		initAgentRunNotificationBridge,
+		destroyAgentRunNotificationBridge
+	} from '$lib/services/agent-run-notification.bridge';
+	import { AgentRunsRealtimeService } from '$lib/services/agentRunsRealtime.service';
 	import { timeBlocksStore } from '$lib/stores/timeBlocksStore';
 
 	// Vercel Analytics & Speed Insights
@@ -340,6 +345,9 @@
 				resourcesLoaded = true;
 				resourcesLoadPromise = undefined;
 			});
+
+			// Ensure the Agent Run Stack listener is live for authenticated users.
+			initAgentRunsRealtime();
 		} catch (error) {
 			console.error('Failed to load authenticated resources:', error);
 			// Use untrack to allow retry without triggering effects immediately
@@ -349,9 +357,19 @@
 		}
 	}
 
+	// Passive global listener for background Agent Runs → Run Stack cards.
+	// Idempotent for the same user; safe to call from multiple entry points.
+	function initAgentRunsRealtime() {
+		if (!browser || !supabase) return;
+		const uid = user?.id;
+		if (!uid) return;
+		void AgentRunsRealtimeService.initialize(uid, supabase);
+	}
+
 	function resetResourceLoaders() {
 		resourcesLoadPromise = undefined;
 		resourcesLoaded = false;
+		void AgentRunsRealtimeService.cleanup();
 	}
 
 	function consumeLogoutRedirect(): string | null {
@@ -611,10 +629,12 @@
 		initCalendarAnalysisNotificationBridge();
 		initProjectSynthesisNotificationBridge();
 		initTimeBlockNotificationBridge();
+		initAgentRunNotificationBridge();
 
 		// Pre-load authenticated resources if user is already available
 		if (user) {
 			loadAuthenticatedResources();
+			initAgentRunsRealtime();
 		}
 
 		// Subscribe to navigation store for global navigation handling
@@ -695,6 +715,8 @@
 			// Cleanup notification bridges
 			cleanupCalendarAnalysisNotificationBridge();
 			cleanupProjectSynthesisNotificationBridge();
+			destroyAgentRunNotificationBridge();
+			void AgentRunsRealtimeService.cleanup();
 
 			// Clear any pending timeouts
 			if (briefCompleteTimeout) {
@@ -789,8 +811,8 @@
 	});
 
 	// Handle payment warning dismissal
-	async function handlePaymentWarningDismiss(event: CustomEvent) {
-		const { id } = event.detail;
+	async function handlePaymentWarningDismiss(payload: { id: string }) {
+		const { id } = payload;
 		if (!id) return;
 
 		const previousWarnings = billingContext.paymentWarnings;

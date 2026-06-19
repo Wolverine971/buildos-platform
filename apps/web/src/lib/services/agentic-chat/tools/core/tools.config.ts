@@ -99,7 +99,9 @@ export const TOOL_CATEGORIES = {
 			'get_entity_relationships',
 			'get_linked_entities',
 			'get_document_tree',
-			'get_document_path'
+			'get_document_path',
+			'get_document_outline',
+			'read_document_section'
 		],
 		averageTokens: 350,
 		costTier: 'medium'
@@ -269,6 +271,8 @@ const TOOL_GROUPS: Record<ToolContextScope, string[]> = {
 		'list_task_documents',
 		'get_document_tree',
 		'get_document_path',
+		'get_document_outline',
+		'read_document_section',
 		'create_onto_task',
 		'create_onto_goal',
 		'create_onto_plan',

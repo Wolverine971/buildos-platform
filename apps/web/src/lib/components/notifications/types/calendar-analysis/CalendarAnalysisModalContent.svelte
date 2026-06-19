@@ -2,7 +2,6 @@
 <svelte:options runes={true} />
 
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { LoaderCircle, X, ChevronDown } from 'lucide-svelte';
@@ -11,11 +10,11 @@
 	import type { CalendarAnalysisNotification } from '$lib/types/notification.types';
 
 	let { notification }: { notification: CalendarAnalysisNotification } = $props();
-	const dispatch = createEventDispatcher();
 
 	function handleClose() {
-		notification?.actions?.dismiss?.();
-		dispatch('close');
+		const dismiss = notification?.actions?.dismiss;
+		if (dismiss) dismiss();
+		else if (notification?.id) notificationStore.remove(notification.id);
 	}
 
 	function handleMinimize() {
@@ -26,7 +25,6 @@
 			return;
 		}
 		notificationStore.minimize(notification.id);
-		dispatch('minimize');
 	}
 
 	const isProcessing = $derived(notification.status === 'processing');

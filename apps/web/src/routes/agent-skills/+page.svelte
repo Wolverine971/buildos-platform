@@ -184,6 +184,13 @@
 	}
 
 	let jsonLdString = $derived(generateJsonLd());
+	let jsonLdScriptHtml = $derived(
+		'<' +
+			'script type="application/ld+json">' +
+			escapeSerializedJsonLd(jsonLdString) +
+			'</' +
+			'script>'
+	);
 </script>
 
 <svelte:head>
@@ -228,7 +235,7 @@
 	<meta name="twitter:image:alt" content={DEFAULT_SOCIAL_IMAGE_ALT} />
 	<meta name="robots" content="index, follow" />
 
-	{@html `<script type="application/ld+json">${escapeSerializedJsonLd(jsonLdString)}</script>`}
+	{@html jsonLdScriptHtml}
 </svelte:head>
 
 <div class="min-h-screen bg-background text-foreground">

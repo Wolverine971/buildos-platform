@@ -71,6 +71,7 @@ export const LITE_PROMPT_SECTION_ORDER: LitePromptSectionId[] = [
 	'safety_data_rules',
 	'focus_purpose',
 	'location_loaded_context',
+	'project_knowledge_map',
 	'timeline_recent_activity',
 	'context_inventory_retrieval'
 ];
@@ -147,6 +148,7 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 	const timelineSection = shouldRenderTimelineSection(focus)
 		? buildTimelineRecentActivitySection(timeline, focus, projectDigest)
 		: null;
+	const knowledgeMapSection = buildProjectKnowledgeMapSection(focus, input.data);
 
 	const sections: LitePromptSection[] = [
 		buildIdentityMissionSection(),
@@ -157,6 +159,7 @@ export function buildLitePromptEnvelope(input: LitePromptInput): LitePromptEnvel
 		buildSafetyDataRulesSection(input.data ?? null),
 		buildFocusPurposeSection(focus, projectDigest, input.data ?? null),
 		buildLocationLoadedContextSection(focus, input.data),
+		...(knowledgeMapSection ? [knowledgeMapSection] : []),
 		...(timelineSection ? [timelineSection] : []),
 		buildContextInventoryRetrievalSection(contextInventory)
 	];
@@ -329,6 +332,108 @@ function buildLocationLoadedContextSection(
 			'',
 			serializeLoadedContext(data)
 		].join('\n')
+	});
+}
+
+// Project Knowledge Layer (L1): the always-on, document-level "table of contents"
+// for the project — folder/doc hierarchy with titles + descriptions, drawn from the
+// doc_structure summary already in context. It is the scan surface: the agent reads
+// it to judge relevance, then zooms in with get_document_outline + read_document_section.
+const KNOWLEDGE_MAP_MAX_NODES = 60;
+const KNOWLEDGE_MAP_MAX_CHARS = 2200;
+const KNOWLEDGE_MAP_DESCRIPTION_MAX_CHARS = 100;
+
+function renderKnowledgeMapNodes(root: unknown[]): {
+	lines: string[];
+	shown: number;
+	total: number;
+} {
+	const lines: string[] = [];
+	let shown = 0;
+	let total = 0;
+	let chars = 0;
+	let budgetReached = false;
+
+	const walk = (nodes: unknown[], depth: number): void => {
+		for (const node of nodes) {
+			if (!isRecord(node) || typeof node.id !== 'string') continue;
+			total += 1;
+			const children = Array.isArray(node.children) ? node.children : [];
+
+			if (!budgetReached) {
+				const indent = '  '.repeat(depth);
+				const title =
+					typeof node.title === 'string' && node.title.trim()
+						? node.title.trim()
+						: '(untitled)';
+				const description =
+					typeof node.description === 'string' && node.description.trim()
+						? ` — ${truncateText(node.description.trim(), KNOWLEDGE_MAP_DESCRIPTION_MAX_CHARS)}`
+						: '';
+				const line = `${indent}- ${title}${description} [id: ${node.id}]`;
+				if (
+					shown >= KNOWLEDGE_MAP_MAX_NODES ||
+					chars + line.length + 1 > KNOWLEDGE_MAP_MAX_CHARS
+				) {
+					budgetReached = true;
+				} else {
+					lines.push(line);
+					shown += 1;
+					chars += line.length + 1;
+				}
+			}
+
+			if (children.length) walk(children, depth + 1);
+		}
+	};
+
+	walk(root, 0);
+	return { lines, shown, total };
+}
+
+function buildProjectKnowledgeMapSection(
+	focus: LitePromptFocus,
+	data: LitePromptInput['data']
+): LitePromptSection | null {
+	// Only project-scoped chats have a single project's document tree to map.
+	if (focus.contextType !== 'project' && focus.contextType !== 'ontology') return null;
+	if (!isRecord(data)) return null;
+
+	const structure = data.doc_structure;
+	if (!isRecord(structure) || !Array.isArray(structure.root) || structure.root.length === 0) {
+		return null;
+	}
+
+	const { lines, shown, total } = renderKnowledgeMapNodes(structure.root);
+	if (lines.length === 0) return null;
+
+	const omitted = Math.max(0, total - shown);
+	const content = [
+		'Project Knowledge Map (documents in this project, indented by folder):',
+		'- Scan this to judge which documents are relevant before you answer or act on a topic.',
+		'- To pull in specifics: get_document_outline({ document_id }) for a doc’s sections, then read_document_section({ document_id, anchor }) for the part you need.',
+		'- Prefer existing project documents over re-deriving context. This is an index of titles and descriptions, not the full content.',
+		'',
+		...lines,
+		omitted > 0
+			? `… and ${omitted} more document(s) not shown — use list_onto_documents or get_document_tree for the full set.`
+			: null
+	]
+		.filter((line): line is string => line !== null)
+		.join('\n');
+
+	return makeSection({
+		id: 'project_knowledge_map',
+		title: 'Project Knowledge Map',
+		kind: 'dynamic',
+		source: 'lite.knowledge_map',
+		slots: {
+			contextType: focus.contextType,
+			projectId: focus.projectId,
+			documentsShown: shown,
+			documentsOmitted: omitted
+		},
+		content
 	});
 }
 

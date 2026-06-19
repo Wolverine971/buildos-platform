@@ -33,6 +33,7 @@ export type LitePromptSectionId =
 	| 'active_domain_signals'
 	| 'focus_purpose'
 	| 'location_loaded_context'
+	| 'project_knowledge_map'
 	| 'timeline_recent_activity'
 	| 'context_inventory_retrieval'
 	| 'tool_surface_dynamic';

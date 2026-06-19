@@ -1,5 +1,6 @@
 // apps/worker/src/worker.ts
 import type {
+	AgentRunJobMetadata,
 	AssetOcrJobMetadata,
 	GenerateBriefAudioJobMetadata,
 	HomeworkJobMetadata,
@@ -32,6 +33,7 @@ import { processVoiceNoteTranscriptionJob } from './workers/voice-notes/voiceNot
 import { processAssetOcrJob } from './workers/assets/assetOcrWorker';
 import { processHomeworkJob } from './workers/homework/homeworkWorker';
 import { processTreeAgentJob } from './workers/tree-agent/treeAgentWorker';
+import { processAgentRunJob } from './workers/agent-run/agentRunWorker';
 import { processProjectContextSnapshotJob } from './workers/ontology/projectContextSnapshotWorker';
 import { processProjectIconJob } from './workers/project-icon/projectIconWorker';
 import { processProjectLoopJob } from './workers/project-loop/projectLoopWorker';
@@ -338,6 +340,19 @@ async function processTreeAgent(job: ProcessingJob<TreeAgentJobMetadata>) {
 	}
 }
 
+async function processAgentRun(job: ProcessingJob<AgentRunJobMetadata>) {
+	await job.log('Agent Run job received');
+
+	try {
+		const result = await processAgentRunJob(job);
+		await job.log('Agent Run job completed');
+		return result;
+	} catch (error) {
+		await job.log(`Agent Run job failed: ${getErrorMessage(error)}`);
+		throw error;
+	}
+}
+
 /**
  * Project context snapshot processor
  */
@@ -442,6 +457,9 @@ export async function startWorker() {
 
 	// Register Tree Agent processor
 	queue.process('buildos_tree_agent', processTreeAgent);
+
+	// Register Agent Run processor (Phase 1b)
+	queue.process('agent_run', processAgentRun);
 
 	// Register project context snapshot processor
 	queue.process('build_project_context_snapshot', processProjectContextSnapshot);

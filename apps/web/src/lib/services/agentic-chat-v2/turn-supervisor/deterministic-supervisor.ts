@@ -3,6 +3,7 @@ import type {
 	TurnDigest,
 	TurnSupervisor,
 	TurnSupervisorConfig,
+	TurnSupervisorCreateParams,
 	TurnSupervisorDecision,
 	TurnSupervisorObservation,
 	TurnSupervisorRisk
@@ -12,23 +13,28 @@ import {
 	buildToolPatternKey,
 	classifyToolError,
 	isLikelyReadToolName,
-	isLikelyWriteToolName
+	isLikelyWriteToolName,
+	summarizeToolArguments
 } from './digest';
-import type { ChatContextType } from '@buildos/shared-types';
-
-type CreateTurnSupervisorParams = {
-	turnRunId?: string | null;
-	sessionId: string;
-	userId: string;
-	contextType: ChatContextType;
-	entityId?: string | null;
-	projectId?: string | null;
-	userMessage: string;
-	config?: TurnSupervisorConfig;
-};
+import {
+	findEntityIndexEntry,
+	normalizeEntityKind,
+	normalizeTurnSupervisorEntityIndex,
+	type TurnSupervisorEntityIndexEntry
+} from './entity-index';
 
 type RecentToolEntry = TurnDigest['recentTools'][number] & {
 	toolCallId: string;
+};
+
+type FailedWriteRecord = {
+	toolName: string;
+	canonicalOp?: string | null;
+	argsFingerprint: string;
+	idArgs: Record<string, string>;
+	errorClass?: string | null;
+	resultSummary?: string | null;
+	count: number;
 };
 
 const DEFAULT_CONFIG: Required<TurnSupervisorConfig> = {
@@ -46,14 +52,15 @@ const FORCE_SYNTHESIS_INSTRUCTION =
 	'Supervisor note: enough tool work has happened for this turn. Stop calling tools and write the final user-facing answer from the available tool results. Be explicit about what was completed, what was found, and what could not be completed. Do not say you will check, inspect, load, search, update, or create anything else.';
 
 export function createDeterministicTurnSupervisor(
-	params: CreateTurnSupervisorParams
+	params: TurnSupervisorCreateParams
 ): TurnSupervisor {
 	return new DeterministicTurnSupervisor(params);
 }
 
 class DeterministicTurnSupervisor implements TurnSupervisor {
-	private readonly params: CreateTurnSupervisorParams;
+	private readonly params: TurnSupervisorCreateParams;
 	private readonly config: Required<TurnSupervisorConfig>;
+	private readonly entityIndex: TurnSupervisorEntityIndexEntry[];
 	private readonly startedAt: number;
 	private lastVisibleTextAt: number | null = null;
 	private assistantTextChars = 0;
@@ -77,10 +84,13 @@ class DeterministicTurnSupervisor implements TurnSupervisor {
 	private currentRoundTools: Array<{ toolName: string; canonicalOp?: string | null }> = [];
 	private readonly recentTools: RecentToolEntry[] = [];
 	private readonly failureCounts = new Map<string, number>();
+	private readonly failedWriteRecords = new Map<string, FailedWriteRecord>();
+	private readonly recoveryInstructionKeys = new Set<string>();
 
-	constructor(params: CreateTurnSupervisorParams) {
+	constructor(params: TurnSupervisorCreateParams) {
 		this.params = params;
 		this.config = { ...DEFAULT_CONFIG, ...(params.config ?? {}) };
+		this.entityIndex = normalizeTurnSupervisorEntityIndex(params.entityIndex);
 		this.startedAt = Date.now();
 	}
 
@@ -111,11 +121,14 @@ class DeterministicTurnSupervisor implements TurnSupervisor {
 			case 'tool_call_emitted': {
 				this.toolCallCount += 1;
 				const canonicalOp = extractCanonicalOpFromPreview(observation.argsPreview);
+				const argsSummary = summarizeToolArguments(observation.argsPreview);
 				const entry: RecentToolEntry = {
 					sequence: this.toolCallCount,
 					toolName: observation.toolName,
 					toolCallId: observation.toolCallId,
 					canonicalOp,
+					argsFingerprint: argsSummary.fingerprint,
+					idArgs: argsSummary.idArgs,
 					success: null,
 					errorClass: null,
 					resultSummary: null
@@ -161,6 +174,7 @@ class DeterministicTurnSupervisor implements TurnSupervisor {
 					isLikelyWriteToolName(entry.toolName, entry.canonicalOp)
 				) {
 					this.failedWrites += 1;
+					this.recordFailedWrite(entry);
 				}
 				break;
 			}
@@ -199,10 +213,20 @@ class DeterministicTurnSupervisor implements TurnSupervisor {
 		const decisions: TurnSupervisorDecision[] = [];
 		const digest = this.buildDigest(at);
 
+		const blockedRetryDecision = this.buildBlockedRetryDecision(observation);
+		if (blockedRetryDecision) {
+			return [blockedRetryDecision];
+		}
+
 		const askUserDecision = this.buildAskUserDecision(observation, digest);
 		if (askUserDecision) {
 			this.askUserIssued = true;
 			return [askUserDecision];
+		}
+
+		const failedWriteRecoveryDecision = this.buildFailedWriteRecoveryDecision(observation);
+		if (failedWriteRecoveryDecision) {
+			decisions.push(failedWriteRecoveryDecision);
 		}
 
 		if (this.shouldEmitStatus(observation, digest, at)) {
@@ -243,6 +267,52 @@ class DeterministicTurnSupervisor implements TurnSupervisor {
 		}
 
 		return decisions.length > 0 ? decisions : [{ action: 'continue' }];
+	}
+
+	private buildBlockedRetryDecision(
+		observation: TurnSupervisorObservation
+	): TurnSupervisorDecision | null {
+		if (observation.type !== 'tool_call_emitted') return null;
+		const canonicalOp = extractCanonicalOpFromPreview(observation.argsPreview);
+		if (!isLikelyWriteToolName(observation.toolName, canonicalOp)) return null;
+		const argsSummary = summarizeToolArguments(observation.argsPreview);
+		if (!argsSummary.fingerprint) return null;
+		const key = buildFailedWriteKey(observation.toolName, canonicalOp, argsSummary.fingerprint);
+		const failedWrite = this.failedWriteRecords.get(key);
+		if (!failedWrite) return null;
+
+		return {
+			action: 'inject_recovery_instruction',
+			reason: 'blocked_repeated_failed_write',
+			toolCallId: observation.toolCallId,
+			blockToolCall: true,
+			instruction: buildBlockedRetryInstruction(failedWrite)
+		};
+	}
+
+	private buildFailedWriteRecoveryDecision(
+		observation: TurnSupervisorObservation
+	): TurnSupervisorDecision | null {
+		if (observation.type !== 'tool_result_received' || observation.success) return null;
+		const entry = this.recentTools.find((tool) => tool.toolCallId === observation.toolCallId);
+		if (!entry || !isLikelyWriteToolName(entry.toolName, entry.canonicalOp)) return null;
+		if (entry.errorClass === 'validation') return null;
+		if (!entry.argsFingerprint) return null;
+
+		const key = buildFailedWriteKey(entry.toolName, entry.canonicalOp, entry.argsFingerprint);
+		if (this.recoveryInstructionKeys.has(key)) return null;
+		this.recoveryInstructionKeys.add(key);
+
+		const instruction = buildFailedWriteRecoveryInstruction({
+			tool: entry,
+			entityIndex: this.entityIndex
+		});
+		return {
+			action: 'inject_recovery_instruction',
+			reason: instruction.reason,
+			instruction: instruction.text,
+			toolCallId: entry.toolCallId
+		};
 	}
 
 	private buildAskUserDecision(
@@ -344,6 +414,22 @@ class DeterministicTurnSupervisor implements TurnSupervisor {
 		return digest.toolRoundCount >= Math.max(1, this.config.maxToolRounds - 1);
 	}
 
+	private recordFailedWrite(entry: RecentToolEntry): void {
+		if (entry.errorClass === 'validation') return;
+		if (!entry.argsFingerprint) return;
+		const key = buildFailedWriteKey(entry.toolName, entry.canonicalOp, entry.argsFingerprint);
+		const existing = this.failedWriteRecords.get(key);
+		this.failedWriteRecords.set(key, {
+			toolName: entry.toolName,
+			canonicalOp: entry.canonicalOp,
+			argsFingerprint: entry.argsFingerprint,
+			idArgs: entry.idArgs ?? {},
+			errorClass: entry.errorClass,
+			resultSummary: entry.resultSummary,
+			count: (existing?.count ?? 0) + 1
+		});
+	}
+
 	private buildDigest(at: number): TurnDigest {
 		const elapsedMs = Math.max(0, at - this.startedAt);
 		const msSinceVisibleText =
@@ -369,6 +455,8 @@ class DeterministicTurnSupervisor implements TurnSupervisor {
 				sequence: tool.sequence,
 				toolName: tool.toolName,
 				canonicalOp: tool.canonicalOp,
+				argsFingerprint: tool.argsFingerprint,
+				idArgs: tool.idArgs,
 				success: tool.success,
 				errorClass: tool.errorClass,
 				resultSummary: tool.resultSummary
@@ -417,6 +505,122 @@ function extractCanonicalOpFromPreview(preview: unknown): string | null {
 		if (typeof value === 'string' && value.trim()) return value.trim();
 	}
 	return null;
+}
+
+function buildFailedWriteKey(
+	toolName: string,
+	canonicalOp: string | null | undefined,
+	argsFingerprint: string
+): string {
+	return [toolName, canonicalOp ?? '', argsFingerprint].join('|');
+}
+
+function buildBlockedRetryInstruction(failedWrite: FailedWriteRecord): string {
+	const opLabel = failedWrite.canonicalOp ?? failedWrite.toolName;
+	const errorText = failedWrite.resultSummary
+		? ` The previous error was: ${failedWrite.resultSummary}`
+		: '';
+	return [
+		`Supervisor blocked an exact retry of ${opLabel} because the same write payload already failed.`,
+		'Do not call that exact tool with those exact arguments again in this turn.',
+		errorText,
+		'Use a different exact id or the correct tool for the entity kind, or ask one concise blocker question if the target cannot be inferred.'
+	]
+		.filter((line) => line.trim().length > 0)
+		.join(' ');
+}
+
+function buildFailedWriteRecoveryInstruction(params: {
+	tool: RecentToolEntry;
+	entityIndex: TurnSupervisorEntityIndexEntry[];
+}): { reason: string; text: string } {
+	const { tool, entityIndex } = params;
+	const opLabel = tool.canonicalOp ?? tool.toolName;
+	const wrongKind = findWrongEntityKind(tool.idArgs ?? {}, entityIndex);
+	if (wrongKind) {
+		const actualLabel = wrongKind.actual.label ? ` ("${wrongKind.actual.label}")` : '';
+		return {
+			reason: 'wrong_entity_kind_failed_write',
+			text: [
+				`A write failed because ${opLabel} used ${wrongKind.idField}=${wrongKind.id}, but loaded context identifies that UUID as a ${wrongKind.actual.kind}${actualLabel}.`,
+				`${opLabel} needs ${articleFor(wrongKind.expectedKind)} ${wrongKind.expectedKind} id for ${wrongKind.idField}.`,
+				'Do not retry the same call.',
+				`Use an actual ${wrongKind.expectedKind} id from loaded context, use the correct tool for the ${wrongKind.actual.kind}, or ask one concise clarifying question if the intended target is ambiguous.`
+			].join(' ')
+		};
+	}
+
+	if (tool.errorClass === 'not_found') {
+		return {
+			reason: 'not_found_failed_write',
+			text: [
+				`A write failed with not_found while calling ${opLabel}.`,
+				'Do not retry the same arguments.',
+				'Check whether each *_id belongs to the entity kind required by that field.',
+				'If the exact target is already present in loaded context, use that exact id; otherwise ask one concise clarifying question.'
+			].join(' ')
+		};
+	}
+
+	const errorText = tool.resultSummary ? ` Error: ${tool.resultSummary}` : '';
+	return {
+		reason: 'failed_write_recovery',
+		text: [
+			`A write failed while calling ${opLabel}.`,
+			errorText,
+			'Do not retry the same arguments.',
+			'Treat the tool error as literal feedback, correct the failing field or id, and only call the tool again when the fix is determined from context. If it is not determined, ask one concise blocker question.'
+		]
+			.filter((line) => line.trim().length > 0)
+			.join(' ')
+	};
+}
+
+function findWrongEntityKind(
+	idArgs: Record<string, string>,
+	entityIndex: TurnSupervisorEntityIndexEntry[]
+): {
+	idField: string;
+	id: string;
+	expectedKind: string;
+	actual: TurnSupervisorEntityIndexEntry;
+} | null {
+	for (const [idField, id] of Object.entries(idArgs)) {
+		const expectedKind = expectedEntityKindFromIdField(idField);
+		if (!expectedKind) continue;
+		const actual = findEntityIndexEntry(entityIndex, id);
+		if (!actual || actual.kind === expectedKind) continue;
+		return { idField, id, expectedKind, actual };
+	}
+	return null;
+}
+
+const KNOWN_ID_FIELD_KINDS = new Set([
+	'project',
+	'goal',
+	'milestone',
+	'plan',
+	'task',
+	'document',
+	'event',
+	'calendar_event'
+]);
+
+function expectedEntityKindFromIdField(idField: string): string | null {
+	if (idField === 'id') return null;
+	const withoutSuffix = idField.endsWith('_id')
+		? idField.slice(0, -3)
+		: idField.endsWith('Id')
+			? idField.slice(0, -2)
+			: null;
+	const normalized = normalizeEntityKind(withoutSuffix);
+	if (!normalized || !KNOWN_ID_FIELD_KINDS.has(normalized)) return null;
+	if (normalized === 'calendar_event') return 'event';
+	return normalized;
+}
+
+function articleFor(value: string): 'a' | 'an' {
+	return /^[aeiou]/i.test(value) ? 'an' : 'a';
 }
 
 function extractMissingRequiredField(summary: string | null | undefined): string | null {

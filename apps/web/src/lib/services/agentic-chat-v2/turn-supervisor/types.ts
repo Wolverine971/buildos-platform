@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/types.ts
 import type { ChatContextType } from '@buildos/shared-types';
 import type { FastAgentStreamUsage } from '../types';
+import type { TurnSupervisorEntityIndexInput } from './entity-index';
 
 export type TurnSupervisorRisk =
 	| 'long_silence'
@@ -73,6 +74,8 @@ export type TurnDigest = {
 		sequence: number;
 		toolName: string;
 		canonicalOp?: string | null;
+		argsFingerprint?: string | null;
+		idArgs?: Record<string, string>;
 		success?: boolean | null;
 		errorClass?: string | null;
 		resultSummary?: string | null;
@@ -100,6 +103,13 @@ export type TurnSupervisorDecision =
 	| { action: 'continue'; reason?: string }
 	| { action: 'emit_status'; message: string; reason: string }
 	| { action: 'force_synthesis'; instruction: string; reason: string }
+	| {
+			action: 'inject_recovery_instruction';
+			instruction: string;
+			reason: string;
+			toolCallId?: string;
+			blockToolCall?: boolean;
+	  }
 	| { action: 'ask_user'; question: string; checkpoint: TurnCheckpointPayload; reason: string }
 	| { action: 'stop_with_message'; message: string; reason: string; finishedReason: string }
 	| { action: 'flag_eval'; reason: string };
@@ -127,6 +137,7 @@ export type TurnSupervisorDecisionTrigger =
 	| 'many_tool_calls'
 	| 'low_novelty_reads'
 	| 'near_tool_budget'
+	| 'failed_write_recovery'
 	| 'empty_final_candidate';
 
 export type TurnSupervisorConfig = {
@@ -138,4 +149,16 @@ export type TurnSupervisorConfig = {
 	forceSynthesisAfterReadRounds?: number;
 	maxToolRounds?: number;
 	askUserAfterRepeatedValidationFailures?: number;
+};
+
+export type TurnSupervisorCreateParams = {
+	turnRunId?: string | null;
+	sessionId: string;
+	userId: string;
+	contextType: ChatContextType;
+	entityId?: string | null;
+	projectId?: string | null;
+	userMessage: string;
+	entityIndex?: TurnSupervisorEntityIndexInput;
+	config?: TurnSupervisorConfig;
 };

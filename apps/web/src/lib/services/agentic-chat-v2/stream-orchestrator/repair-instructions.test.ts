@@ -92,6 +92,55 @@ describe('repair instruction policy', () => {
 		).toBe(false);
 	});
 
+	it('allows explicit failure disclosures after failed writes', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'update_onto_task',
+				args: {
+					task_id: 'ccbbc592-7138-46a5-9aa9-7d4549e1fa50',
+					state_key: 'in_progress'
+				},
+				success: false,
+				error: 'Task not found'
+			})
+		];
+
+		expect(
+			shouldRepairGatewayMutationNoExecution({
+				gatewayModeActive: true,
+				contextType: 'project',
+				finalText:
+					'I was unable to update that task because the id was not a task id. Nothing changed.',
+				toolExecutions,
+				repairAlreadyInjected: false
+			})
+		).toBe(false);
+	});
+
+	it('still repairs failure disclosures after schema-only write discovery', () => {
+		const toolExecutions = [
+			createExecution({
+				name: 'tool_schema',
+				args: { op: 'onto.task.create', include_schema: true },
+				result: {
+					type: 'tool_schema',
+					op: 'onto.task.create',
+					tool_name: 'create_onto_task'
+				}
+			})
+		];
+
+		expect(
+			shouldRepairGatewayMutationNoExecution({
+				gatewayModeActive: true,
+				contextType: 'project',
+				finalText: 'I was unable to create that task. Nothing changed.',
+				toolExecutions,
+				repairAlreadyInjected: false
+			})
+		).toBe(true);
+	});
+
 	it('does not force project_create repair when the assistant asks a pure clarification', () => {
 		expect(
 			shouldRepairProjectCreateNoExecution({
@@ -224,6 +273,69 @@ describe('repair instruction policy', () => {
 				toolExecutions
 			})
 		).toBe('I updated the document.');
+	});
+
+	it('does not disclose a not_found write when a later retry uses a corrected id for the same update', () => {
+		const staleId = 'ccbbc592-7138-46a5-9aa9-7d4549e1fa50';
+		const correctedTaskId = 'c7441a46-a892-429d-ac1d-8814db45c650';
+		const toolExecutions = [
+			createExecution({
+				name: 'update_onto_task',
+				args: {
+					task_id: staleId,
+					title: 'Complete The Last Ember First Draft',
+					state_key: 'in_progress'
+				},
+				success: false,
+				error: `API PATCH /api/onto/tasks/${staleId} failed: Task not found`
+			}),
+			createExecution({
+				name: 'update_onto_task',
+				args: {
+					task_id: correctedTaskId,
+					title: 'Complete The Last Ember First Draft',
+					state_key: 'in_progress'
+				}
+			})
+		];
+
+		expect(
+			enforceMutationOutcomeIntegrity('Updated the first draft task.', {
+				contextType: 'project',
+				toolExecutions
+			})
+		).toBe('Updated the first draft task.');
+	});
+
+	it('still discloses a failed write when the later success has different update fields', () => {
+		const failedTaskId = 'ccbbc592-7138-46a5-9aa9-7d4549e1fa50';
+		const otherTaskId = 'c7441a46-a892-429d-ac1d-8814db45c650';
+		const toolExecutions = [
+			createExecution({
+				name: 'update_onto_task',
+				args: {
+					task_id: failedTaskId,
+					title: 'Complete The Last Ember First Draft'
+				},
+				success: false,
+				error: `API PATCH /api/onto/tasks/${failedTaskId} failed: Task not found`
+			}),
+			createExecution({
+				name: 'update_onto_task',
+				args: {
+					task_id: otherTaskId,
+					state_key: 'in_progress'
+				}
+			})
+		];
+
+		const finalText = enforceMutationOutcomeIntegrity('Updated one task.', {
+			contextType: 'project',
+			toolExecutions
+		});
+
+		expect(finalText).toContain('Updated one task.');
+		expect(finalText).toContain('One write did not complete: task update failed');
 	});
 
 	it('corrects document link claims when no link write succeeded', () => {

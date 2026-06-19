@@ -45,7 +45,6 @@ import type {
 const DEFAULT_MOONSHOT_CHAT_COMPLETIONS_URL = 'https://api.moonshot.ai/v1/chat/completions';
 const DEFAULT_MOONSHOT_FALLBACK_MODEL = 'kimi-k2.6';
 const DEFAULT_OPENAI_CHAT_COMPLETIONS_URL = 'https://api.openai.com/v1/chat/completions';
-const DEFAULT_OPENAI_FALLBACK_MODEL = 'gpt-4o-mini';
 const MOONSHOT_REASONING_CONTENT_FALLBACK = '[reasoning omitted]';
 
 type DirectFallbackProvider = 'moonshot' | 'openai';
@@ -585,7 +584,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 	private moonshotFallbackModel: string;
 	private openAiFallbackApiKey?: string;
 	private openAiFallbackApiUrl: string;
-	private openAiFallbackModel: string;
+	private openAiFallbackModel?: string;
 
 	constructor(config?: OpenRouterV2ServiceConfig) {
 		super({
@@ -643,7 +642,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		this.openAiFallbackModel =
 			config?.openai?.model ||
 			readPrivateEnv('PRIVATE_OPENAI_CHAT_FALLBACK_MODEL') ||
-			DEFAULT_OPENAI_FALLBACK_MODEL;
+			readPrivateEnv('OPENAI_CHAT_FALLBACK_MODEL');
 
 		this.client = new OpenRouterV2Client({
 			apiKey,
@@ -719,7 +718,7 @@ export class OpenRouterV2Service extends SmartLLMService {
 		if (normalized.toLowerCase().startsWith('openai/')) {
 			return normalized.slice('openai/'.length);
 		}
-		return normalized || DEFAULT_OPENAI_FALLBACK_MODEL;
+		return normalized;
 	}
 
 	private normalizeOpenAiModelForLogging(model: string): string {
@@ -747,7 +746,10 @@ export class OpenRouterV2Service extends SmartLLMService {
 				});
 			}
 			if (provider === 'openai' && this.openAiFallbackApiKey) {
-				const requestModel = this.normalizeOpenAiModelForRequest(this.openAiFallbackModel);
+				const requestModel = this.normalizeOpenAiModelForRequest(
+					this.openAiFallbackModel ?? ''
+				);
+				if (!requestModel) continue;
 				routes.push({
 					provider,
 					providerLabel: 'OpenAI',

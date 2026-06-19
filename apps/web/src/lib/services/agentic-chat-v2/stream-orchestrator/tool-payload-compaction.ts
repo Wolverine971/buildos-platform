@@ -67,10 +67,15 @@ function normalizeMaterializedToolName(name: string): string {
 
 function compactMaterializedTools(value: unknown, limit = 4): string[] {
 	if (!Array.isArray(value)) return [];
-	return value
-		.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
-		.map((name) => normalizeMaterializedToolName(name.trim()))
-		.slice(0, limit);
+	return Array.from(
+		new Set(
+			value
+				.filter(
+					(name): name is string => typeof name === 'string' && name.trim().length > 0
+				)
+				.map((name) => normalizeMaterializedToolName(name.trim()))
+		)
+	).slice(0, limit);
 }
 
 function compactOutcomeCardIds(record: Record<string, any>): string[] {

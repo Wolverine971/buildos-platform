@@ -1,0 +1,570 @@
+// packages/shared-agent-ops/src/ontology/onto-api.ts
+/**
+ * Type definitions for Ontology API responses and database operations
+ *
+ * These types ensure type safety across all ontology API endpoints
+ * and eliminate the need for 'any' type casts.
+ *
+ * ⚠️ Note: the `Onto*` entity interfaces below are UI-facing projections of
+ * the `onto_*` tables. They intentionally omit internal columns like
+ * `search_vector` and may add UI-computed fields (e.g. `children`,
+ * `doc_structure`). For raw DB row types, use
+ * `Database['public']['Tables']['onto_<table>']['Row']` from `@buildos/shared-types`.
+ */
+
+import type { Template, Facets } from './onto';
+
+// ============================================
+// RPC RESPONSE TYPES
+// ============================================
+
+/**
+ * Response from ensure_actor_for_user RPC call
+ */
+export type EnsureActorResponse = string;
+
+/**
+ * Response from get_allowed_transitions RPC call
+ * @deprecated FSM transitions are no longer used. Use state enums from onto.ts instead.
+ */
+export interface AllowedTransitionResponse {
+	event: string;
+	to_state: string;
+	guards?: any[];
+	actions?: any[];
+	failed_guards?: any[];
+	can_run?: boolean;
+}
+
+/**
+ * Response from instantiate_project_from_template RPC call
+ */
+export interface InstantiateProjectResponse {
+	project_id: string;
+	message?: string;
+	details?: {
+		goals_created?: number;
+		requirements_created?: number;
+		tasks_created?: number;
+		plans_created?: number;
+	};
+}
+
+/**
+ * Response from get_template_catalog RPC call
+ */
+export interface TemplateCatalogResponse extends Template {
+	// Inherits all Template properties
+}
+
+// ============================================
+// DATABASE ENTITY TYPES
+// ============================================
+
+/**
+ * Project entity from onto_projects table
+ */
+export interface OntoProject {
+	id: string;
+	name: string;
+	description?: string | null;
+	type_key: string;
+	state_key: string;
+	props: Record<string, unknown>;
+	start_at?: string | null;
+	end_at?: string | null;
+	next_step_short?: string | null;
+	next_step_long?: string | null;
+	next_step_source?: string | null;
+	next_step_updated_at?: string | null;
+	facet_context?: string | null;
+	facet_scale?: string | null;
+	facet_stage?: string | null;
+	/** Hierarchical document tree structure */
+	doc_structure?: DocStructure | null;
+	created_by: string;
+	created_at: string;
+	updated_at: string;
+	archived_at?: string | null;
+}
+
+/**
+ * Task entity from onto_tasks table
+ * Note: plan_id is no longer a column - task-plan relationships are stored in onto_edges
+ * with rel='has_task' (src_kind='plan', dst_kind='task')
+ */
+export interface OntoTask {
+	id: string;
+	project_id: string;
+	type_key: string;
+	title: string;
+	description?: string | null;
+	state_key: string;
+	priority: number;
+	props: Record<string, unknown>;
+	created_by: string;
+	created_at: string;
+	updated_at: string;
+	start_at?: string | null;
+	completed_at?: string | null;
+	due_at?: string | null;
+	archived_at?: string | null;
+	deleted_at?: string | null;
+}
+
+/**
+ * Goal entity from onto_goals table
+ */
+export interface OntoGoal {
+	id: string;
+	project_id: string;
+	type_key: string | null;
+	name: string;
+	goal?: string | null;
+	description?: string | null;
+	state_key?: string | null;
+	target_date?: string | null;
+	props: Record<string, unknown>;
+	created_by: string;
+	created_at: string;
+	updated_at?: string;
+	completed_at?: string | null;
+	archived_at?: string | null;
+	deleted_at?: string | null;
+}
+
+/**
+ * Plan entity from onto_plans table
+ */
+export interface OntoPlan {
+	id: string;
+	project_id: string;
+	type_key: string;
+	name: string;
+	plan?: string | null;
+	description?: string | null;
+	state_key: string;
+	props: Record<string, unknown>;
+	created_by: string;
+	created_at: string;
+	updated_at: string;
+	archived_at?: string | null;
+	deleted_at?: string | null;
+}
+
+/**
+ * Edge entity from onto_edges table.
+ * Edges include a denormalized project_id for efficient project-scoped queries.
+ * See: docs/specs/PROJECT_GRAPH_QUERY_PATTERN_SPEC.md
+ */
+export interface OntoEdge {
+	id: string;
+	src_id: string;
+	src_kind: string;
+	dst_id: string;
+	dst_kind: string;
+	rel: string;
+	props: Record<string, unknown>;
+	created_at: string;
+	/** Denormalized project reference for efficient project-scoped queries */
+	project_id: string;
+}
+
+/**
+ * Document entity from onto_documents table
+ */
+export interface OntoDocument {
+	id: string;
+	project_id: string;
+	type_key: string;
+	title: string;
+	state_key: string;
+	content?: string | null;
+	/** Present on lightweight document projections that omit the body content. */
+	has_content?: boolean;
+	description?: string | null;
+	props: Record<string, unknown>;
+	/** Immediate child documents for hierarchy */
+	children?: DocumentChildren | null;
+	created_by: string;
+	created_at: string;
+	updated_at: string;
+	archived_at?: string | null;
+	deleted_at?: string | null;
+}
+
+/**
+ * Children structure stored on onto_documents.children column
+ */
+export interface DocumentChildren {
+	children: Array<{
+		id: string;
+		order: number;
+	}>;
+}
+
+/**
+ * Requirement entity from onto_requirements table
+ */
+export interface OntoRequirement {
+	id: string;
+	project_id: string;
+	text: string;
+	type_key?: string | null;
+	props: Record<string, unknown>;
+	created_by: string;
+	created_at: string;
+}
+
+/**
+ * Risk entity from onto_risks table
+ */
+export interface OntoRisk {
+	id: string;
+	project_id: string;
+	title: string;
+	type_key?: string | null;
+	probability?: number | null;
+	impact?: string;
+	state_key?: string;
+	content?: string | null;
+	props: Record<string, unknown>;
+	created_by: string;
+	created_at: string;
+	updated_at?: string;
+	mitigated_at?: string | null;
+	archived_at?: string | null;
+	deleted_at?: string | null;
+}
+
+/**
+ * Milestone entity from onto_milestones table
+ */
+export interface OntoMilestone {
+	id: string;
+	project_id: string;
+	title: string;
+	type_key?: string | null;
+	state_key?: string | null;
+	due_at?: string | null;
+	milestone?: string | null;
+	description?: string | null;
+	props: Record<string, unknown>;
+	created_by: string;
+	created_at: string;
+	updated_at?: string;
+	completed_at?: string | null;
+	archived_at?: string | null;
+	deleted_at?: string | null;
+}
+
+/**
+ * Metric entity from onto_metrics table
+ */
+export interface OntoMetric {
+	id: string;
+	project_id: string;
+	name: string;
+	definition?: string | null;
+	unit?: string | null;
+	target_value?: number | null;
+	props: Record<string, unknown>;
+	created_by: string;
+	created_at: string;
+}
+
+/**
+ * Source entity from onto_sources table
+ */
+export interface OntoSource {
+	id: string;
+	project_id: string;
+	name: string;
+	uri?: string | null;
+	props: Record<string, unknown>;
+	created_at: string;
+}
+
+// ============================================
+// DOCUMENT TREE TYPES
+// ============================================
+
+/**
+ * A node in the document tree structure
+ * Stored in onto_projects.doc_structure
+ */
+export interface DocTreeNode {
+	/** Document ID (UUID) from onto_documents */
+	id: string;
+	/** Optional hint; UI derives folder/doc from children at render time. */
+	type?: 'folder' | 'doc';
+	/** Optional cached title for faster doc tree rendering */
+	title?: string | null;
+	/** Optional cached description for faster doc tree rendering */
+	description?: string | null;
+	/** Whether this document currently has a live public page */
+	is_public?: boolean;
+	/** Public slug when document is public */
+	public_slug?: string | null;
+	/**
+	 * Canonical public URL path when document is public
+	 * (e.g. `/p/dj-wayne/market-map`). Cached here so copy-link/open surfaces
+	 * emit the canonical two-part form without a service round-trip.
+	 */
+	public_url_path?: string | null;
+	/** Public lifecycle status for badges/UI */
+	public_status?: 'not_public' | 'pending_confirmation' | 'live' | 'unpublished' | 'archived';
+	/** Order among siblings (0-indexed) */
+	order: number;
+	/** Child nodes (optional) */
+	children?: DocTreeNode[];
+}
+
+/**
+ * The root document structure stored on onto_projects.doc_structure
+ */
+export interface DocStructure {
+	/** Schema version for future migrations */
+	version: number;
+	/** Top-level nodes in the tree */
+	root: DocTreeNode[];
+}
+
+/**
+ * Enriched tree node with full document metadata for UI rendering
+ * Created by joining DocTreeNode with onto_documents
+ */
+export interface EnrichedDocTreeNode {
+	// From JSON structure
+	id: string;
+	type: 'folder' | 'doc';
+	order: number;
+	children?: EnrichedDocTreeNode[];
+
+	// From onto_documents JOIN
+	title: string;
+	description: string | null;
+	state_key: string;
+	type_key: string;
+	/** Whether document has non-empty content */
+	has_content: boolean;
+	created_at: string;
+	updated_at: string;
+	is_public: boolean;
+	public_slug: string | null;
+	public_url_path: string | null;
+	public_status: 'not_public' | 'pending_confirmation' | 'live' | 'unpublished' | 'archived';
+
+	// Computed for UI
+	/** Icon derived from type_key or props */
+	icon?: string;
+	/** Tree depth for indentation */
+	depth: number;
+	/** Full path from root */
+	path: string[];
+}
+
+/**
+ * Structure history entry for undo/redo
+ */
+export interface DocStructureHistoryEntry {
+	id: string;
+	project_id: string;
+	doc_structure: DocStructure;
+	version: number;
+	changed_by: string | null;
+	changed_at: string;
+	change_type: 'create' | 'move' | 'delete' | 'reorder' | 'reorganize';
+}
+
+/**
+ * Response from GET /api/onto/projects/[id]/doc-tree
+ */
+export interface GetDocTreeResponse {
+	structure: DocStructure;
+	/** Documents keyed by ID for O(1) lookup */
+	documents: Record<string, OntoDocument>;
+	/** Orphaned documents not in the tree structure */
+	unlinked: OntoDocument[];
+	/** Archived documents (always shown outside the active tree) */
+	archived: OntoDocument[];
+}
+
+export interface DocumentPublicPageState {
+	id: string;
+	slug: string;
+	slug_prefix: string | null;
+	slug_base: string;
+	url_path: string;
+	title: string;
+	summary: string | null;
+	public_status: 'not_public' | 'pending_confirmation' | 'live' | 'unpublished' | 'archived';
+	visibility: 'public' | 'unlisted';
+	noindex: boolean;
+	live_sync_enabled: boolean;
+	last_live_sync_at: string | null;
+	last_live_sync_error: string | null;
+	is_live_public: boolean;
+	is_listed_public: boolean;
+}
+
+export interface DocumentPublicPagePreview {
+	slug: string;
+	slug_prefix: string | null;
+	slug_base: string;
+	slug_was_deduped: boolean;
+	url_path: string;
+	title: string;
+	summary: string | null;
+	content: string;
+	visibility: 'public' | 'unlisted';
+	noindex: boolean;
+	live_sync_enabled: boolean;
+}
+
+/**
+ * Request to move a document in the tree
+ */
+export interface MoveDocumentRequest {
+	document_id: string;
+	/** New parent document ID, or null for root level */
+	new_parent_id: string | null;
+	/** Position among siblings (0-indexed) */
+	new_position: number;
+}
+
+// ============================================
+// API RESPONSE TYPES
+// ============================================
+
+/**
+ * Project detail response with all related entities
+ */
+export interface ProjectDetailResponse {
+	project: OntoProject;
+	goals: OntoGoal[];
+	requirements: OntoRequirement[];
+	plans: OntoPlan[];
+	tasks: OntoTask[];
+	documents: OntoDocument[];
+	sources: OntoSource[];
+	milestones: OntoMilestone[];
+	risks: OntoRisk[];
+	metrics: OntoMetric[];
+	template: Template | null;
+	/**
+	 * @deprecated FSM transitions are no longer used. Use state enums from onto.ts instead.
+	 */
+	allowed_transitions: Array<{
+		event: string;
+		to: string;
+		label: string;
+		guards: any[];
+		actions: any[];
+	}>;
+}
+
+/**
+ * Project summary with counts
+ */
+export interface ProjectSummary extends OntoProject {
+	task_count: number;
+}
+
+/**
+ * Template response with grouped data
+ */
+export interface TemplateListResponse {
+	templates: Template[];
+	grouped: Record<string, Template[]>;
+	count: number;
+}
+
+// ============================================
+// HELPER TYPE GUARDS
+// ============================================
+
+/**
+ * Type guard to check if response has actor_id
+ */
+export function isEnsureActorResponse(value: any): value is EnsureActorResponse {
+	return typeof value === 'string' && value.length > 0;
+}
+
+/**
+ * Type guard for project entity
+ */
+export function isOntoProject(value: any): value is OntoProject {
+	return (
+		value &&
+		typeof value.id === 'string' &&
+		typeof value.name === 'string' &&
+		typeof value.type_key === 'string' &&
+		typeof value.state_key === 'string'
+	);
+}
+
+/**
+ * Type guard for task entity
+ */
+export function isOntoTask(value: any): value is OntoTask {
+	return (
+		value &&
+		typeof value.id === 'string' &&
+		typeof value.project_id === 'string' &&
+		typeof value.title === 'string' &&
+		typeof value.state_key === 'string'
+	);
+}
+
+// ============================================
+// UTILITY TYPES
+// ============================================
+
+/**
+ * Common create payload for entities
+ */
+export interface CreateEntityPayload {
+	project_id: string;
+	type_key: string;
+	name?: string;
+	title?: string;
+	description?: string;
+	state_key?: string;
+	props?: Record<string, unknown>;
+	created_by?: string;
+}
+
+/**
+ * Common update payload for entities
+ */
+export interface UpdateEntityPayload {
+	name?: string;
+	title?: string;
+	state_key?: string;
+	props?: Record<string, unknown>;
+	updated_at?: string;
+}
+
+/**
+ * Facet filter parameters
+ */
+export interface FacetFilters {
+	context?: string[];
+	scale?: string[];
+	stage?: string[];
+}
+
+/**
+ * Common query parameters
+ */
+export interface QueryParams {
+	scope?: string;
+	realm?: string;
+	search?: string;
+	primitive?: string;
+	sort?: string;
+	direction?: 'asc' | 'desc';
+	limit?: number;
+	offset?: number;
+}

@@ -1,3 +1,5 @@
+<!-- apps/web/docs/technical/architecture/AGENTIC_CHAT_LAYER_TAXONOMY_PROPOSAL_2026-06-15.md -->
+
 # Agentic Chat — Layer Taxonomy & Naming Proposal (2026-06-15)
 
 **Status:** Implemented on 2026-06-15 with compatibility aliases retained.
@@ -65,6 +67,10 @@ The qualified-go path was implemented:
 - Follow-up review fixed one alias edge case: gateway materialization and materialized
   tool extraction now dedupe after legacy names normalize to canonical
   `outcome_card_*` names.
+- Final integration pass moved the stream endpoint's live continuity path to
+  `priorOutcomeCardIds`, kept the deprecated `priorWorkCapabilityIds` only as a
+  compatibility input, and made compacted model payloads dedupe normalized
+  `materialized_tools`.
 
 ### 1.2 Verification
 
@@ -83,14 +89,14 @@ The qualified-go path was implemented:
 
 All paths below are under `apps/web/src/lib/services/agentic-chat/tools/` unless noted.
 
-| Layer | Current name        | Defined in                                                              | Count | What it is                                                                                                                                                                     |
-| ----- | ------------------- | ----------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1     | **Domain**          | `domains/catalog.ts`                                                    | 14    | Subject territory / niche (marketing, sales_and_growth, product_and_design, writing, agent_engineering, …). Links skills + capabilities + gaps.                                |
-| 2     | **Outcome card**    | `outcome-cards/catalog.ts`                                              | 10    | Composite "outcome lane": a named job = domain(s) + skills + tool hints + `outputs` + `evaluationCriteria`. e.g. `cold_email_campaign_build`, `ui_ux_screen_review`.           |
-| 3     | **Capability**      | `registry/capability-catalog.ts`                                        | 12    | BuildOS _tool-capability bucket_ — what the agent can do at runtime. e.g. `planning`, `documents`, `calendar`, `project_audit`. Maps to `skillIds` + `directPaths` (op paths). |
-| 4     | **Skill**           | `skills/registry.ts` + `skills/definitions/**/SKILL.md`                 | 45    | The loadable workflow playbook (markdown body, `whenToUse`, `workflow`, `## Output`, guardrails, examples).                                                                    |
-| 5     | **Tool / Op**       | `registry/tool-registry.ts` + `core/`                                   | —     | The executable surface. Ops (`onto.task.update`) resolve to callable tool names (`update_onto_task`).                                                                          |
-| 6     | **Resource**        | declared on skills/domains; loaded via `skills/skill-reference-load.ts` | —     | Deep reference modules / source maps, loaded on demand.                                                                                                                        |
+| Layer | Current name     | Defined in                                                              | Count | What it is                                                                                                                                                                     |
+| ----- | ---------------- | ----------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 1     | **Domain**       | `domains/catalog.ts`                                                    | 14    | Subject territory / niche (marketing, sales_and_growth, product_and_design, writing, agent_engineering, …). Links skills + capabilities + gaps.                                |
+| 2     | **Outcome card** | `outcome-cards/catalog.ts`                                              | 10    | Composite "outcome lane": a named job = domain(s) + skills + tool hints + `outputs` + `evaluationCriteria`. e.g. `cold_email_campaign_build`, `ui_ux_screen_review`.           |
+| 3     | **Capability**   | `registry/capability-catalog.ts`                                        | 12    | BuildOS _tool-capability bucket_ — what the agent can do at runtime. e.g. `planning`, `documents`, `calendar`, `project_audit`. Maps to `skillIds` + `directPaths` (op paths). |
+| 4     | **Skill**        | `skills/registry.ts` + `skills/definitions/**/SKILL.md`                 | 45    | The loadable workflow playbook (markdown body, `whenToUse`, `workflow`, `## Output`, guardrails, examples).                                                                    |
+| 5     | **Tool / Op**    | `registry/tool-registry.ts` + `core/`                                   | —     | The executable surface. Ops (`onto.task.update`) resolve to callable tool names (`update_onto_task`).                                                                          |
+| 6     | **Resource**     | declared on skills/domains; loaded via `skills/skill-reference-load.ts` | —     | Deep reference modules / source maps, loaded on demand.                                                                                                                        |
 
 ### How discovery flows at runtime
 

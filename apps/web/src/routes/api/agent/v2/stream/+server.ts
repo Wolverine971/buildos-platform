@@ -112,7 +112,7 @@ import {
 } from '$lib/services/agentic-chat/tools/domains/domain-sensing';
 import {
 	getActiveDomainIds,
-	getActiveWorkCapabilityIds,
+	getActiveOutcomeCardIds,
 	getNewDomainResearchBacklogEntries,
 	mergeDomainSessionState,
 	readDomainSessionState
@@ -3141,12 +3141,12 @@ export const POST: RequestHandler = async ({
 				sessionMetadata.fastchat_domain_state
 			);
 			const priorDomainIds = getActiveDomainIds(previousDomainState);
-			const priorWorkCapabilityIds = getActiveWorkCapabilityIds(previousDomainState);
+			const priorOutcomeCardIds = getActiveOutcomeCardIds(previousDomainState);
 			const turnDomainSensing = senseDomains({
 				currentUserMessage: messageForModel,
 				conversationSummary,
 				priorDomainIds,
-				priorWorkCapabilityIds,
+				priorOutcomeCardIds,
 				limit: 3
 			});
 			const recentContextShiftHint = readRecentContextShiftHint(sessionMetadata);
@@ -3680,7 +3680,7 @@ export const POST: RequestHandler = async ({
 						conversationPosition: `live stream turn ${streamRunId}`,
 						currentUserMessage: messageForModel,
 						priorDomainIds,
-						priorWorkCapabilityIds,
+						priorOutcomeCardIds,
 						domainSensingResult: turnDomainSensing
 					});
 					systemPrompt = litePromptEnvelope.systemPrompt;
@@ -4026,6 +4026,7 @@ export const POST: RequestHandler = async ({
 				// mislead the user. See docs/specs/agent-token-tracking-
 				// investigation-2026-05-12.md for the two-budget design.
 				onContextUsageUpdate: undefined,
+				supervisorContextData: promptContext?.data ?? null,
 				debugContext: {
 					promptVariant: LITE_PROMPT_VARIANT,
 					turnNumber: promptDumpTurnNumber,

@@ -71,7 +71,11 @@ describe('buildLitePromptEnvelope', () => {
 		});
 
 		expect(envelope.promptVariant).toBe('lite_seed_v1');
-		expect(envelope.sections.map((section) => section.id)).toEqual(LITE_PROMPT_SECTION_ORDER);
+		// project_knowledge_map is project-only (Project Knowledge Layer L1); a global
+		// seed renders every canonical section except that one.
+		expect(envelope.sections.map((section) => section.id)).toEqual(
+			LITE_PROMPT_SECTION_ORDER.filter((id) => id !== 'project_knowledge_map')
+		);
 		expect(
 			envelope.sections.find((section) => section.id === 'capabilities_skills_tools')?.kind
 		).toBe('static');
@@ -436,6 +440,71 @@ describe('buildLitePromptEnvelope', () => {
 
 		expect(envelope.systemPrompt).not.toContain('Loaded project intelligence:');
 		expect(envelope.systemPrompt).toContain('No project timeline or recent activity details');
+	});
+
+	it('renders a Project Knowledge Map from doc_structure for project context', () => {
+		const envelope = buildLitePromptEnvelope({
+			contextType: 'project',
+			projectId: 'project-1',
+			projectName: 'Launch Alpha',
+			now: '2026-04-14T19:00:00Z',
+			data: {
+				project: {
+					id: 'project-1',
+					name: 'Launch Alpha',
+					state_key: 'active',
+					description: null,
+					start_at: null,
+					end_at: null,
+					next_step_short: null,
+					updated_at: '2026-04-14T12:00:00Z'
+				},
+				doc_structure: {
+					version: 1,
+					root: [
+						{
+							id: 'doc-marketing',
+							type: 'folder',
+							order: 0,
+							title: 'Marketing',
+							description: 'Go-to-market plans',
+							children: [
+								{
+									id: 'doc-channels',
+									type: 'doc',
+									order: 0,
+									title: 'Channels',
+									description: 'Where we reach people',
+									children: []
+								}
+							]
+						}
+					]
+				},
+				goals: [],
+				milestones: [],
+				plans: [],
+				tasks: [],
+				documents: [],
+				events: [],
+				members: [],
+				context_meta: { generated_at: '2026-04-14T19:00:00Z', source: 'rpc' }
+			}
+		});
+
+		const mapSection = envelope.sections.find(
+			(section) => section.id === 'project_knowledge_map'
+		);
+		expect(mapSection).toBeDefined();
+		expect(mapSection?.content).toContain('Project Knowledge Map');
+		expect(mapSection?.content).toContain('Marketing');
+		expect(mapSection?.content).toContain('Channels');
+		// carries the document id so the agent can call get_document_outline
+		expect(mapSection?.content).toContain('[id: doc-channels]');
+		// points the agent at the L2 zoom-in tools
+		expect(mapSection?.content).toContain('get_document_outline');
+		expect(mapSection?.content).toContain('read_document_section');
+		expect(envelope.systemPrompt).toContain('## Project Knowledge Map');
 	});
 
 	it('renders project entity focus without hiding the focused context slots', () => {

@@ -1,0 +1,175 @@
+{
+	"name": "@buildos/shared-agent-ops",
+	"version": "1.0.0",
+	"private": true,
+	"main": "./dist/index.js",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.mjs",
+			"require": "./dist/index.js"
+		},
+		"./ontology/onto": {
+			"types": "./dist/ontology/onto.d.ts",
+			"import": "./dist/ontology/onto.mjs",
+			"require": "./dist/ontology/onto.js"
+		},
+		"./ontology/onto-api": {
+			"types": "./dist/ontology/onto-api.d.ts",
+			"import": "./dist/ontology/onto-api.mjs",
+			"require": "./dist/ontology/onto-api.js"
+		},
+		"./ontology/project-graph.types": {
+			"types": "./dist/ontology/project-graph.types.d.ts",
+			"import": "./dist/ontology/project-graph.types.mjs",
+			"require": "./dist/ontology/project-graph.types.js"
+		},
+		"./ontology/task-state": {
+			"types": "./dist/ontology/task-state.d.ts",
+			"import": "./dist/ontology/task-state.mjs",
+			"require": "./dist/ontology/task-state.js"
+		},
+		"./ontology/document-state": {
+			"types": "./dist/ontology/document-state.d.ts",
+			"import": "./dist/ontology/document-state.mjs",
+			"require": "./dist/ontology/document-state.js"
+		},
+		"./ontology/relationship-resolver": {
+			"types": "./dist/ontology/relationship-resolver.d.ts",
+			"import": "./dist/ontology/relationship-resolver.mjs",
+			"require": "./dist/ontology/relationship-resolver.js"
+		},
+		"./ontology/auto-organizer.service": {
+			"types": "./dist/ontology/auto-organizer.service.d.ts",
+			"import": "./dist/ontology/auto-organizer.service.mjs",
+			"require": "./dist/ontology/auto-organizer.service.js"
+		},
+		"./ontology/doc-structure.service": {
+			"types": "./dist/ontology/doc-structure.service.d.ts",
+			"import": "./dist/ontology/doc-structure.service.mjs",
+			"require": "./dist/ontology/doc-structure.service.js"
+		},
+		"./ontology/project-graph-loader": {
+			"types": "./dist/ontology/project-graph-loader.d.ts",
+			"import": "./dist/ontology/project-graph-loader.mjs",
+			"require": "./dist/ontology/project-graph-loader.js"
+		},
+		"./ontology/instantiation.service": {
+			"types": "./dist/ontology/instantiation.service.d.ts",
+			"import": "./dist/ontology/instantiation.service.mjs",
+			"require": "./dist/ontology/instantiation.service.js"
+		},
+		"./ontology/ontology-projects.service": {
+			"types": "./dist/ontology/ontology-projects.service.d.ts",
+			"import": "./dist/ontology/ontology-projects.service.mjs",
+			"require": "./dist/ontology/ontology-projects.service.js"
+		},
+		"./ontology/edge-direction": {
+			"types": "./dist/ontology/edge-direction.d.ts",
+			"import": "./dist/ontology/edge-direction.mjs",
+			"require": "./dist/ontology/edge-direction.js"
+		},
+		"./ontology/containment-organizer": {
+			"types": "./dist/ontology/containment-organizer.d.ts",
+			"import": "./dist/ontology/containment-organizer.mjs",
+			"require": "./dist/ontology/containment-organizer.js"
+		},
+		"./ontology/relationship-policy": {
+			"types": "./dist/ontology/relationship-policy.d.ts",
+			"import": "./dist/ontology/relationship-policy.mjs",
+			"require": "./dist/ontology/relationship-policy.js"
+		},
+		"./ontology/edge-relationship-resolver": {
+			"types": "./dist/ontology/edge-relationship-resolver.d.ts",
+			"import": "./dist/ontology/edge-relationship-resolver.mjs",
+			"require": "./dist/ontology/edge-relationship-resolver.js"
+		},
+		"./ontology/versioning.service": {
+			"types": "./dist/ontology/versioning.service.d.ts",
+			"import": "./dist/ontology/versioning.service.mjs",
+			"require": "./dist/ontology/versioning.service.js"
+		},
+		"./ops/update-value-validation": {
+			"types": "./dist/ops/update-value-validation.d.ts",
+			"import": "./dist/ops/update-value-validation.mjs",
+			"require": "./dist/ops/update-value-validation.js"
+		},
+		"./ops/async-activity-logger": {
+			"types": "./dist/ops/async-activity-logger.d.ts",
+			"import": "./dist/ops/async-activity-logger.mjs",
+			"require": "./dist/ops/async-activity-logger.js"
+		},
+		"./ops/tracked-in-app-notification.service": {
+			"types": "./dist/ops/tracked-in-app-notification.service.d.ts",
+			"import": "./dist/ops/tracked-in-app-notification.service.mjs",
+			"require": "./dist/ops/tracked-in-app-notification.service.js"
+		},
+		"./ops/entity-mention-notification.service": {
+			"types": "./dist/ops/entity-mention-notification.service.d.ts",
+			"import": "./dist/ops/entity-mention-notification.service.mjs",
+			"require": "./dist/ops/entity-mention-notification.service.js"
+		},
+		"./ops/gateway-op-aliases": {
+			"types": "./dist/ops/gateway-op-aliases.d.ts",
+			"import": "./dist/ops/gateway-op-aliases.mjs",
+			"require": "./dist/ops/gateway-op-aliases.js"
+		},
+		"./utils/project-props-sanitizer": {
+			"types": "./dist/utils/project-props-sanitizer.d.ts",
+			"import": "./dist/utils/project-props-sanitizer.mjs",
+			"require": "./dist/utils/project-props-sanitizer.js"
+		},
+		"./utils/markdown-normalization": {
+			"types": "./dist/utils/markdown-normalization.d.ts",
+			"import": "./dist/utils/markdown-normalization.mjs",
+			"require": "./dist/utils/markdown-normalization.js"
+		},
+		"./utils/search-filter": {
+			"types": "./dist/utils/search-filter.d.ts",
+			"import": "./dist/utils/search-filter.mjs",
+			"require": "./dist/utils/search-filter.js"
+		},
+		"./utils/entity-reference-parser": {
+			"types": "./dist/utils/entity-reference-parser.d.ts",
+			"import": "./dist/utils/entity-reference-parser.mjs",
+			"require": "./dist/utils/entity-reference-parser.js"
+		},
+		"./utils/validation-utils": {
+			"types": "./dist/utils/validation-utils.d.ts",
+			"import": "./dist/utils/validation-utils.mjs",
+			"require": "./dist/utils/validation-utils.js"
+		},
+		"./utils/document-outline": {
+			"types": "./dist/utils/document-outline.d.ts",
+			"import": "./dist/utils/document-outline.mjs",
+			"require": "./dist/utils/document-outline.js"
+		},
+		"./policy": {
+			"types": "./dist/policy.d.ts",
+			"import": "./dist/policy.mjs",
+			"require": "./dist/policy.js"
+		}
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"clean": "rm -rf dist .turbo",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@buildos/shared-types": "workspace:*",
+		"@buildos/shared-utils": "workspace:*",
+		"@buildos/supabase-client": "workspace:*",
+		"@supabase/supabase-js": "^2.89.0",
+		"marked": "^16.1.1",
+		"marked-gfm-heading-id": "^4.1.3",
+		"zod": "^3.23.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.11.10",
+		"tsup": "^8.3.5",
+		"typescript": "^5.9.2"
+	}
+}

@@ -290,7 +290,11 @@ describe('buildToolPayloadForModel', () => {
 				],
 				resources: [],
 				gaps: [],
-				materialized_tools: ['work_capability_load', 'resource_search'],
+				materialized_tools: [
+					'work_capability_load',
+					'outcome_card_load',
+					'resource_search'
+				],
 				next_step: 'Load a linked skill only when needed.'
 			}),
 			parseArgs

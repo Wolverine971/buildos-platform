@@ -689,5 +689,62 @@ It responds with a structured guide that walks through onboarding, planning, aut
 				properties: {}
 			}
 		}
+	},
+	{
+		type: 'function',
+		function: {
+			name: 'delegate_task',
+			description: `Hand a task off to a background agent ("Agent Run") that works autonomously and reports back into this conversation when done — without blocking the chat.
+Use this when the user asks you to "go do X in the background", "have an agent handle X", "research/analyze X and get back to me", or for any self-contained task that is better run on its own than answered inline right now (e.g. "review this whole project and summarize the risks", "go through my projects and find stale tasks").
+The tool returns immediately with { run_ids }; tell the user you've dispatched it and that you'll surface the result here. The agent's summary will be posted back into this thread automatically on completion — do not poll.
+Prefer scope_mode "read_only" for analysis/summaries. Only use "read_write" when the user explicitly wants the agent to make changes. For a project task, pass context_type "project" + the project_id; otherwise use "global".
+Do NOT use this for something you can answer directly in one turn.`,
+			parameters: {
+				type: 'object',
+				properties: {
+					goal: {
+						type: 'string',
+						description:
+							'The task the background agent should accomplish (a clear, self-contained objective).'
+					},
+					label: {
+						type: 'string',
+						description:
+							'Short human-readable label for the run (optional; defaults to a slice of the goal).'
+					},
+					instructions: {
+						type: 'string',
+						description:
+							'Optional extra constraints or preferences for how to do the task.'
+					},
+					expected_output: {
+						type: 'string',
+						description: 'Optional description of what a good result looks like.'
+					},
+					context_type: {
+						type: 'string',
+						enum: ['project', 'global'],
+						description:
+							"Use 'project' to scope to one project (requires project_id); 'global' for cross-project. Defaults to the current chat context."
+					},
+					project_id: {
+						type: 'string',
+						description: "Project UUID. Required when context_type is 'project'."
+					},
+					scope_mode: {
+						type: 'string',
+						enum: ['read_only', 'read_write'],
+						description:
+							"'read_only' (analyze/summarize, default) or 'read_write' (may make changes — only when the user explicitly asks)."
+					},
+					max_tool_calls: {
+						type: 'number',
+						description:
+							'Optional budget cap on the number of operations the agent may run.'
+					}
+				},
+				required: ['goal']
+			}
+		}
 	}
 ];

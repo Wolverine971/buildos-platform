@@ -1,11 +1,7 @@
 // packages/smart-llm/src/smart-llm-service.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { SmartLLMService } from './smart-llm-service';
-import {
-	ACTIVE_EXPERIMENT_MODEL,
-	DEEPSEEK_V4_FLASH_MODEL,
-	TENCENT_HY3_PREVIEW_MODEL
-} from './model-config';
+import { ACTIVE_EXPERIMENT_MODEL, DEEPSEEK_V4_FLASH_MODEL } from './model-config';
 
 function buildSSE(payloads: string[], headers?: Record<string, string>): Response {
 	const encoder = new TextEncoder();
@@ -532,7 +528,7 @@ describe('SmartLLMService streamText Moonshot tool handling', () => {
 
 		expect(requestBodies.length).toBeGreaterThan(0);
 		expect(requestUrls[0]).toContain('openrouter.ai/api/v1/chat/completions');
-		expect(requestBodies[0]?.model).toBe(TENCENT_HY3_PREVIEW_MODEL);
+		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(requestBodies[0]?.reasoning).toEqual({ effort: 'low', exclude: false });
 	});
 });
@@ -552,7 +548,7 @@ describe('SmartLLMService model failover', () => {
 				return new Response(
 					JSON.stringify({
 						error: {
-							message: `Model ${TENCENT_HY3_PREVIEW_MODEL} is no longer available.`
+							message: `Model ${DEEPSEEK_V4_FLASH_MODEL} is no longer available.`
 						}
 					}),
 					{
@@ -569,7 +565,7 @@ describe('SmartLLMService model failover', () => {
 					id: 'chatcmpl-fallback',
 					object: 'chat.completion.chunk',
 					created: 0,
-					model: DEEPSEEK_V4_FLASH_MODEL,
+					model: ACTIVE_EXPERIMENT_MODEL,
 					choices: [
 						{
 							index: 0,
@@ -583,7 +579,7 @@ describe('SmartLLMService model failover', () => {
 					id: 'chatcmpl-fallback',
 					object: 'chat.completion.chunk',
 					created: 0,
-					model: DEEPSEEK_V4_FLASH_MODEL,
+					model: ACTIVE_EXPERIMENT_MODEL,
 					choices: [
 						{
 							index: 0,
@@ -623,14 +619,14 @@ describe('SmartLLMService model failover', () => {
 		}
 
 		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(requestBodies[0]?.model).toBe(TENCENT_HY3_PREVIEW_MODEL);
-		expect(requestBodies[1]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(requestBodies[0]?.model).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(requestBodies[1]?.model).toBe(ACTIVE_EXPERIMENT_MODEL);
 		expect(events.some((event) => event.type === 'error')).toBe(false);
 		expect(events.some((event) => event.type === 'text')).toBe(true);
 		expect(usageLogger.logUsageToDatabase).toHaveBeenCalledWith(
 			expect.objectContaining({
-				modelRequested: DEEPSEEK_V4_FLASH_MODEL,
-				modelUsed: DEEPSEEK_V4_FLASH_MODEL,
+				modelRequested: ACTIVE_EXPERIMENT_MODEL,
+				modelUsed: ACTIVE_EXPERIMENT_MODEL,
 				status: 'success',
 				streaming: true
 			})

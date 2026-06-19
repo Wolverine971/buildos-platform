@@ -17,11 +17,11 @@ import { SmartLLMService } from '../../lib/services/smart-llm-service';
 import type { UsageEvent } from '../homework/engine/homeworkEngine';
 import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
 import {
-	generateDocOrganization,
-	generateOutdatedDocs,
 	type LoopContext,
 	type LoopDocument,
-	type LoopTask
+	type LoopTask,
+	generateDocOrganization,
+	generateOutdatedDocs
 } from './generators';
 
 const MAX_SUGGESTIONS = 25;

@@ -1,19 +1,24 @@
 <!-- apps/web/src/lib/components/notifications/PaymentWarning.svelte -->
+<svelte:options runes={true} />
+
 <script lang="ts">
 	import { AlertTriangle, CreditCard, X } from 'lucide-svelte';
-	import { createEventDispatcher } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	export let notification: {
-		id: string;
-		title: string;
-		message: string;
-		priority: string;
-		action_url?: string;
-	};
-
-	const dispatch = createEventDispatcher();
+	let {
+		notification,
+		ondismiss
+	}: {
+		notification: {
+			id: string;
+			title: string;
+			message: string;
+			priority: string;
+			action_url?: string;
+		};
+		ondismiss?: (payload: { id: string }) => void;
+	} = $props();
 
 	function handleAction() {
 		if (notification.action_url) {
@@ -22,7 +27,7 @@
 	}
 
 	function dismiss() {
-		dispatch('dismiss', { id: notification.id });
+		ondismiss?.({ id: notification.id });
 	}
 </script>
 

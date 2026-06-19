@@ -12,12 +12,16 @@ type VersioningState = {
 	insertError?: Error | null;
 	updatePayload?: Record<string, unknown>;
 	insertPayload?: Record<string, unknown>;
+	documentUpdatePayload?: Record<string, unknown>;
 };
 
 function createSupabaseMock(state: VersioningState) {
 	return {
-		from: () => {
+		from: (table: string) => {
 			let mode: 'merge' | 'insert' | null = null;
+			// Outline persistence writes to onto_documents; the version-table
+			// assertions below should only track onto_document_versions writes.
+			const isVersionsTable = table === 'onto_document_versions';
 
 			const builder = {
 				select: () => builder,
@@ -30,12 +34,13 @@ function createSupabaseMock(state: VersioningState) {
 				}),
 				update: (payload: Record<string, unknown>) => {
 					mode = 'merge';
-					state.updatePayload = payload;
+					if (isVersionsTable) state.updatePayload = payload;
+					else if (table === 'onto_documents') state.documentUpdatePayload = payload;
 					return builder;
 				},
 				insert: (payload: Record<string, unknown>) => {
 					mode = 'insert';
-					state.insertPayload = payload;
+					if (isVersionsTable) state.insertPayload = payload;
 					return builder;
 				},
 				single: async () => {
@@ -138,5 +143,39 @@ describe('createOrMergeDocumentVersion', () => {
 		});
 		expect(state.insertPayload).toBeDefined();
 		expect(state.updatePayload).toBeUndefined();
+	});
+
+	it('refreshes the derived document outline cache when a version is written', async () => {
+		const now = new Date().toISOString();
+		const state: VersioningState = {
+			latestVersion: {
+				id: 'v1',
+				number: 1,
+				created_by: 'actor-1',
+				created_at: now,
+				props: {
+					snapshot_hash: 'old-hash',
+					window: { started_at: now, ended_at: now },
+					change_count: 1
+				}
+			},
+			insertResult: { id: 'v2', number: 2 }
+		};
+		const supabase = createSupabaseMock(state);
+
+		await createOrMergeDocumentVersion({
+			supabase,
+			documentId: 'doc-1',
+			actorId: 'actor-1',
+			snapshot: { ...BASE_SNAPSHOT, content: '# Heading\n\nbody text' },
+			previousSnapshot: BASE_SNAPSHOT,
+			forceCreateVersion: true
+		});
+
+		const outline = state.documentUpdatePayload?.outline as
+			| { nodes: Array<{ text: string }> }
+			| undefined;
+		expect(outline).toBeDefined();
+		expect(outline?.nodes?.[0]?.text).toBe('Heading');
 	});
 });

@@ -6,6 +6,8 @@ import {
 	DEEPSEEK_V4_FLASH_MODEL,
 	DEEPSEEK_V4_PRO_MODEL,
 	GEMINI_31_FLASH_LITE_MODEL,
+	JSON_PROFILE_MODELS,
+	KIMI_CODING_MODEL,
 	KIMI_EXPERIMENT_MODEL,
 	MINIMAX_M3_MODEL,
 	MODEL_CATALOG,
@@ -17,6 +19,7 @@ import {
 	PROJECT_NEXT_STEP_MODELS,
 	QWEN_37_PLUS_EXPERIMENT_MODEL,
 	TENCENT_HY3_PREVIEW_MODEL,
+	TEXT_PROFILE_MODELS,
 	XIAOMI_MIMO_V25_MODEL,
 	TOOL_CALLING_MODEL_ORDER
 } from './model-config';
@@ -43,12 +46,12 @@ function collectModelIds(value: unknown): string[] {
 describe('ensureToolCompatibleModels', () => {
 	it('preserves requested order while filtering to tool-capable models', () => {
 		const requested = [
-			'google/gemini-2.5-flash-lite',
+			'legacy/google-model',
 			'alpha/model',
 			'legacy/qwen-32b',
 			ACTIVE_EXPERIMENT_MODEL,
-			'openai/gpt-4o-mini',
-			'anthropic/claude-haiku-4.5',
+			'legacy/openai-model',
+			'legacy/anthropic-model',
 			'legacy/deepseek-v3'
 		];
 
@@ -56,7 +59,7 @@ describe('ensureToolCompatibleModels', () => {
 	});
 
 	it('falls back to the default tool-calling order when no requested models are tool-capable', () => {
-		const requested = ['google/gemini-2.5-flash-lite', 'google/gemini-2.0-flash-001'];
+		const requested = ['legacy/google-model', 'legacy/google-model-2'];
 		expect(ensureToolCompatibleModels(requested)).toEqual([...TOOL_CALLING_MODEL_ORDER]);
 	});
 
@@ -205,29 +208,47 @@ describe('ensureToolCompatibleModels', () => {
 	});
 
 	it('routes new OpenRouter models only through compatible lanes', () => {
-		expect(OPENROUTER_V2_TEXT_MODELS[0]).toBe(TENCENT_HY3_PREVIEW_MODEL);
+		expect(OPENROUTER_V2_TEXT_MODELS[0]).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(OPENROUTER_V2_TEXT_MODELS).toContain(TENCENT_HY3_PREVIEW_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(XIAOMI_MIMO_V25_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
 		expect(OPENROUTER_V2_TEXT_MODELS).toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
-		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain('google/gemini-3.1-flash-lite-preview');
-		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain('qwen/qwen3.6-plus');
+		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain(KIMI_CODING_MODEL);
+		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain('legacy/removed-preview');
+		expect(OPENROUTER_V2_TEXT_MODELS).not.toContain('legacy/removed-qwen-plus');
 
+		expect(OPENROUTER_V2_JSON_MODELS[0]).toBe(DEEPSEEK_V4_FLASH_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(XIAOMI_MIMO_V25_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(MINIMAX_M3_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
+		expect(OPENROUTER_V2_JSON_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
 		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
-		expect(OPENROUTER_V2_JSON_MODELS).not.toContain('qwen/qwen3.6-plus');
+		expect(OPENROUTER_V2_JSON_MODELS).not.toContain(KIMI_CODING_MODEL);
+		expect(OPENROUTER_V2_JSON_MODELS).not.toContain('legacy/removed-qwen-plus');
 
-		expect(OPENROUTER_V2_TOOL_MODELS[0]).toBe(TENCENT_HY3_PREVIEW_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS[0]).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS).toContain(TENCENT_HY3_PREVIEW_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(MINIMAX_M3_MODEL);
 		expect(OPENROUTER_V2_TOOL_MODELS).toContain(QWEN_37_PLUS_EXPERIMENT_MODEL);
-		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain('qwen/qwen3.6-plus');
+		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain(KIMI_CODING_MODEL);
+		expect(OPENROUTER_V2_TOOL_MODELS).not.toContain('legacy/removed-qwen-plus');
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS[0]).toBe(XIAOMI_MIMO_V25_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(MINIMAX_M3_MODEL);
 		expect(OPENROUTER_V2_MULTIMODAL_MODELS).toContain(GEMINI_31_FLASH_LITE_MODEL);
-		expect(OPENROUTER_V2_MULTIMODAL_MODELS).not.toContain(
-			'google/gemini-3.1-flash-lite-preview'
-		);
+		expect(OPENROUTER_V2_MULTIMODAL_MODELS).not.toContain('legacy/removed-preview');
+	});
+
+	it('uses stronger specialist models only for quality and maximum profiles', () => {
+		expect(TEXT_PROFILE_MODELS.speed[0]).toBe(DEEPSEEK_V4_FLASH_MODEL);
+		expect(TEXT_PROFILE_MODELS.quality[0]).toBe(ACTIVE_EXPERIMENT_MODEL);
+		expect(TEXT_PROFILE_MODELS.quality).toContain(DEEPSEEK_V4_PRO_MODEL);
+		expect(TEXT_PROFILE_MODELS.quality).toContain(KIMI_CODING_MODEL);
+		expect(TEXT_PROFILE_MODELS.creative[0]).toBe(KIMI_CODING_MODEL);
+
+		expect(JSON_PROFILE_MODELS.fast).not.toContain(DEEPSEEK_V4_PRO_MODEL);
+		expect(JSON_PROFILE_MODELS.maximum[0]).toBe(DEEPSEEK_V4_PRO_MODEL);
+		expect(JSON_PROFILE_MODELS.maximum).toContain(KIMI_CODING_MODEL);
+		expect(JSON_PROFILE_MODELS.maximum).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
 	});
 
 	it('excludes non-json active models from custom JSON selection', () => {
@@ -237,25 +258,16 @@ describe('ensureToolCompatibleModels', () => {
 		expect(models).not.toContain(TENCENT_HY3_PREVIEW_MODEL);
 	});
 
-	it('recognizes the new structured-output-capable OpenRouter models', () => {
-		expect(supportsJsonMode('qwen/qwen3.5-flash-02-23')).toBe(true);
+	it('recognizes the supported structured-output-capable OpenRouter models', () => {
 		expect(supportsJsonMode(QWEN_37_PLUS_EXPERIMENT_MODEL)).toBe(true);
-		expect(supportsJsonMode('qwen/qwen3.6-plus')).toBe(true);
-		expect(supportsJsonMode('deepseek/deepseek-v3.2')).toBe(true);
-		expect(supportsJsonMode('openai/gpt-4.1-nano')).toBe(true);
-		expect(supportsJsonMode('openai/gpt-oss-20b')).toBe(true);
-		expect(supportsJsonMode('openai/gpt-oss-20b:free')).toBe(true);
-		expect(supportsJsonMode('openai/gpt-oss-120b')).toBe(true);
 		expect(supportsJsonMode(GEMINI_31_FLASH_LITE_MODEL)).toBe(true);
-		expect(supportsJsonMode('google/gemini-3.1-flash-lite-preview')).toBe(true);
 		expect(supportsJsonMode(DEEPSEEK_V4_FLASH_MODEL)).toBe(true);
 		expect(supportsJsonMode(DEEPSEEK_V4_PRO_MODEL)).toBe(true);
-		expect(supportsJsonMode('minimax/minimax-m2.7')).toBe(true);
 		expect(supportsJsonMode(MINIMAX_M3_MODEL)).toBe(true);
 		expect(supportsJsonMode(XIAOMI_MIMO_V25_MODEL)).toBe(true);
 		expect(supportsJsonMode(TENCENT_HY3_PREVIEW_MODEL)).toBe(false);
-		expect(supportsJsonMode('nvidia/nemotron-3-super-120b-a12b:free')).toBe(true);
 		expect(supportsJsonMode(KIMI_EXPERIMENT_MODEL)).toBe(true);
+		expect(supportsJsonMode(KIMI_CODING_MODEL)).toBe(true);
 	});
 
 	it('keeps centralized route models in the shared catalog', () => {

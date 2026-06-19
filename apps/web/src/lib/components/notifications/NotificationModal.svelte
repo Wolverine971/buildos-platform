@@ -22,6 +22,7 @@
 	let ProjectSynthesisModalContent = $state<any>(null);
 	let CalendarAnalysisModalContent = $state<any>(null);
 	let TimeBlockModalContent = $state<any>(null);
+	let AgentRunModalContent = $state<any>(null);
 
 	// Lazy load type-specific component
 	async function loadTypeSpecificComponent() {
@@ -51,6 +52,14 @@
 						TimeBlockModalContent = module.default;
 					}
 					break;
+				case 'agent-run':
+					if (!AgentRunModalContent) {
+						const module = await import(
+							'./types/agent-run/AgentRunModalContent.svelte'
+						);
+						AgentRunModalContent = module.default;
+					}
+					break;
 				default:
 					break;
 			}
@@ -78,7 +87,9 @@
 				? CalendarAnalysisModalContent
 				: notification.type === 'time-block'
 					? TimeBlockModalContent
-					: null
+					: notification.type === 'agent-run'
+						? AgentRunModalContent
+						: null
 	);
 
 	// Get modal title based on notification type (fallback for generic view)

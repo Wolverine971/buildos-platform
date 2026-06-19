@@ -5,8 +5,8 @@ import { resolveUsageLogCostBreakdown } from './llm-usage-costs';
 describe('resolveUsageLogCostBreakdown', () => {
 	it('keeps stored costs when they are present', () => {
 		const result = resolveUsageLogCostBreakdown({
-			model_used: 'qwen/qwen3.5-flash-20260224',
-			model_requested: 'qwen/qwen3.5-flash-02-23',
+			model_used: 'deepseek/deepseek-v4-flash-20260423',
+			model_requested: 'deepseek/deepseek-v4-flash',
 			prompt_tokens: 1_000,
 			completion_tokens: 500,
 			input_cost_usd: 0.001,
@@ -22,8 +22,8 @@ describe('resolveUsageLogCostBreakdown', () => {
 
 	it('prefers OpenRouter usage cost when available', () => {
 		const result = resolveUsageLogCostBreakdown({
-			model_used: 'x-ai/grok-4.1-fast',
-			model_requested: 'x-ai/grok-4.1-fast',
+			model_used: 'deepseek/deepseek-v4-flash',
+			model_requested: 'deepseek/deepseek-v4-flash',
 			prompt_tokens: 10_000,
 			completion_tokens: 1_000,
 			input_cost_usd: 0.002,
@@ -40,14 +40,14 @@ describe('resolveUsageLogCostBreakdown', () => {
 
 	it('recomputes zero-cost provider aliases from the requested model fallback', () => {
 		const result = resolveUsageLogCostBreakdown({
-			model_used: 'qwen/qwen3.5-flash-20260224',
-			model_requested: 'qwen/qwen3.5-flash-02-23',
+			model_used: 'deepseek/deepseek-v4-flash-20260423',
+			model_requested: 'deepseek/deepseek-v4-flash',
 			prompt_tokens: 29_537,
 			completion_tokens: 313,
 			total_cost_usd: 0
 		});
 
-		expect(result.pricingModel).toBe('qwen/qwen3.5-flash-02-23');
+		expect(result.pricingModel).toBe('deepseek/deepseek-v4-flash');
 		expect(result.inputCost).toBeGreaterThan(0);
 		expect(result.outputCost).toBeGreaterThan(0);
 		expect(result.totalCost).toBeCloseTo(result.inputCost + result.outputCost);
@@ -62,12 +62,12 @@ describe('resolveUsageLogCostBreakdown', () => {
 			completion_tokens: 500,
 			total_cost_usd: 0,
 			metadata: {
-				modelsAttempted: ['qwen/qwen3-32b']
+				modelsAttempted: ['deepseek/deepseek-v4-flash']
 			}
 		});
 
-		expect(result.pricingModel).toBe('qwen/qwen3-32b');
-		expect(result.totalCost).toBeCloseTo(0.0002);
+		expect(result.pricingModel).toBe('deepseek/deepseek-v4-flash');
+		expect(result.totalCost).toBeCloseTo(0.00018);
 		expect(result.wasEstimated).toBe(true);
 	});
 });

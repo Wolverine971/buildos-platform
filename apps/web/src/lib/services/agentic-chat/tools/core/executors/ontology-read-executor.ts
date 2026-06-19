@@ -42,8 +42,16 @@ import type {
 	GetOntoRiskDetailsArgs,
 	ListTaskDocumentsArgs,
 	GetDocumentTreeArgs,
-	GetDocumentPathArgs
+	GetDocumentPathArgs,
+	GetDocumentOutlineArgs,
+	ReadDocumentSectionArgs
 } from './types';
+import {
+	collectOutlineAnchors,
+	countOutlineNodes,
+	extractOutline,
+	getSectionByAnchor
+} from '$utils/document-outline';
 
 /**
  * Executor for ontology read operations.
@@ -171,6 +179,117 @@ export class OntologyReadExecutor extends BaseExecutor {
 			.filter((filter): filter is string => Boolean(filter));
 
 		return filters.length > 0 ? filters.join(',') : null;
+	}
+
+	// Very common English words that, when AND-ed across tokens, would only hurt
+	// recall (Postgres full-text strips these too). Kept tiny and conservative.
+	private static readonly SEARCH_STOPWORDS = new Set([
+		'a',
+		'an',
+		'and',
+		'are',
+		'as',
+		'at',
+		'be',
+		'by',
+		'for',
+		'from',
+		'in',
+		'is',
+		'it',
+		'me',
+		'my',
+		'of',
+		'on',
+		'or',
+		'the',
+		'to',
+		'with'
+	]);
+
+	/**
+	 * Split a plain (non-boolean) query into significant tokens for AND matching.
+	 * Drops stopwords and single characters; de-dupes; caps the token count.
+	 */
+	private tokenizeForKeywordSearch(term: string): string[] {
+		return Array.from(
+			new Set(
+				term
+					.split(/\s+/)
+					.map((part) => this.prepareSearchTerm(part))
+					.filter(
+						(part) =>
+							part.length >= 2 &&
+							!OntologyReadExecutor.SEARCH_STOPWORDS.has(part.toLowerCase())
+					)
+			)
+		).slice(0, 12);
+	}
+
+	/**
+	 * Apply keyword matching to a Supabase query so multi-word phrases match
+	 * regardless of word order. ILIKE `%a b c%` only matches the contiguous
+	 * phrase, so "ideas for blog posts" would miss a task titled "blog post
+	 * ideas". Instead:
+	 *   - Explicit boolean queries ("blog OR instagram", "a|b") keep OR semantics:
+	 *     any alternative may match any field.
+	 *   - Plain queries require every significant token to appear in some field
+	 *     (AND across tokens, OR across fields) — chaining multiple `.or()` calls,
+	 *     which PostgREST combines with AND.
+	 */
+	private applyKeywordSearch<Q>(query: Q, term: string, fields: string[]): Q {
+		const normalized = term.trim();
+		if (!normalized) return query;
+
+		const hasExplicitOr = /\s+\bOR\b\s+/i.test(normalized) || normalized.includes('|');
+		if (hasExplicitOr) {
+			const filter = this.buildMultiTermSearchFilter(normalized, fields);
+			return filter ? (query as any).or(filter) : query;
+		}
+
+		const tokens = this.tokenizeForKeywordSearch(normalized);
+		if (tokens.length === 0) {
+			const filter = buildSearchFilter(normalized, fields);
+			return filter ? (query as any).or(filter) : query;
+		}
+
+		let next = query;
+		for (const token of tokens) {
+			const filter = buildSearchFilter(token, fields);
+			if (filter) next = (next as any).or(filter);
+		}
+		return next;
+	}
+
+	/**
+	 * In-memory counterpart of applyKeywordSearch for the project-summary search
+	 * (project access is resolved by loading accessible summaries, so matching is
+	 * done in JS rather than SQL). Same semantics: OR across explicit alternatives,
+	 * otherwise every token must appear somewhere in the combined fields.
+	 */
+	private matchesKeywordSearch(
+		haystackParts: Array<string | null | undefined>,
+		term: string
+	): boolean {
+		const haystack = haystackParts
+			.map((part) => (typeof part === 'string' ? part.toLowerCase() : ''))
+			.join(' ');
+		if (!haystack.trim()) return false;
+
+		const normalized = term.trim();
+		const hasExplicitOr = /\s+\bOR\b\s+/i.test(normalized) || normalized.includes('|');
+		if (hasExplicitOr) {
+			const alternatives = this.expandBooleanSearchTerms(normalized).map((part) =>
+				part.toLowerCase()
+			);
+			return alternatives.some((alt) => alt && haystack.includes(alt));
+		}
+
+		const tokens = this.tokenizeForKeywordSearch(normalized);
+		if (tokens.length === 0) {
+			return haystack.includes(normalized.toLowerCase());
+		}
+		return tokens.every((token) => haystack.includes(token.toLowerCase()));
 	}
 
 	private normalizeAgenticSearchTypes(types?: string[]): string[] | undefined {
@@ -977,13 +1096,9 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_projects');
 		}
 
-		const normalizedSearch = searchTerm.toLowerCase();
-		let projects = (await this.loadAccessibleProjectSummaries()).filter((project) => {
-			const name = typeof project.name === 'string' ? project.name.toLowerCase() : '';
-			const description =
-				typeof project.description === 'string' ? project.description.toLowerCase() : '';
-			return name.includes(normalizedSearch) || description.includes(normalizedSearch);
-		});
+		let projects = (await this.loadAccessibleProjectSummaries()).filter((project) =>
+			this.matchesKeywordSearch([project.name, project.description], searchTerm)
+		);
 
 		if (args.state_key) {
 			projects = projects.filter((project) => project.state_key === args.state_key);
@@ -1015,11 +1130,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_tasks');
 		}
 
-		const searchFilter = this.buildMultiTermSearchFilter(searchTerm, ['title', 'description']);
-		if (!searchFilter) {
-			throw new Error('Search term is required for search_onto_tasks');
-		}
-
 		let query = this.supabase
 			.from('onto_tasks')
 			.select(
@@ -1039,8 +1149,9 @@ export class OntologyReadExecutor extends BaseExecutor {
 			`,
 				{ count: 'exact' }
 			)
-			.order('updated_at', { ascending: false })
-			.or(searchFilter);
+			.order('updated_at', { ascending: false });
+
+		query = this.applyKeywordSearch(query, searchTerm, ['title', 'description']);
 
 		query = this.applyArchivedReadFilter(query, args);
 		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
@@ -1084,16 +1195,15 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_goals');
 		}
 
-		const likePattern = `%${searchTerm}%`;
-
 		let query = this.supabase
 			.from('onto_goals')
 			.select(
 				'id, project_id, name, type_key, description, target_date, state_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.order('updated_at', { ascending: false })
-			.or(`name.ilike.${likePattern},description.ilike.${likePattern}`);
+			.order('updated_at', { ascending: false });
+
+		query = this.applyKeywordSearch(query, searchTerm, ['name', 'description']);
 
 		query = this.applyArchivedReadFilter(query, args);
 		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
@@ -1121,16 +1231,15 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_plans');
 		}
 
-		const likePattern = `%${searchTerm}%`;
-
 		let query = this.supabase
 			.from('onto_plans')
 			.select(
 				'id, project_id, name, state_key, type_key, description, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.order('updated_at', { ascending: false })
-			.or(`name.ilike.${likePattern},description.ilike.${likePattern}`);
+			.order('updated_at', { ascending: false });
+
+		query = this.applyKeywordSearch(query, searchTerm, ['name', 'description']);
 
 		query = this.applyArchivedReadFilter(query, args);
 		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
@@ -1158,8 +1267,6 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_documents');
 		}
 
-		const likePattern = `%${searchTerm}%`;
-
 		let query = this.supabase
 			.from('onto_documents')
 			.select(
@@ -1168,8 +1275,11 @@ export class OntologyReadExecutor extends BaseExecutor {
 					count: 'exact'
 				}
 			)
-			.order('updated_at', { ascending: false })
-			.ilike('title', likePattern);
+			.order('updated_at', { ascending: false });
+
+		// Match title, description, and body content (the body is matched but not
+		// selected, so large documents are still summarized for the list payload).
+		query = this.applyKeywordSearch(query, searchTerm, ['title', 'description', 'content']);
 
 		query = this.applyArchivedReadFilter(query, args);
 		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
@@ -1206,16 +1316,15 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_milestones');
 		}
 
-		const likePattern = `%${searchTerm}%`;
-
 		let query = this.supabase
 			.from('onto_milestones')
 			.select(
 				'id, project_id, title, due_at, state_key, description, type_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.order('due_at', { ascending: true, nullsFirst: true })
-			.or(`title.ilike.${likePattern},description.ilike.${likePattern}`);
+			.order('due_at', { ascending: true, nullsFirst: true });
+
+		query = this.applyKeywordSearch(query, searchTerm, ['title', 'description']);
 
 		query = this.applyArchivedReadFilter(query, args);
 		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
@@ -1247,16 +1356,15 @@ export class OntologyReadExecutor extends BaseExecutor {
 			throw new Error('Search term is required for search_onto_risks');
 		}
 
-		const likePattern = `%${searchTerm}%`;
-
 		let query = this.supabase
 			.from('onto_risks')
 			.select(
 				'id, project_id, title, impact, probability, state_key, content, type_key, props, created_at, updated_at',
 				{ count: 'exact' }
 			)
-			.order('updated_at', { ascending: false })
-			.or(`title.ilike.${likePattern},content.ilike.${likePattern}`);
+			.order('updated_at', { ascending: false });
+
+		query = this.applyKeywordSearch(query, searchTerm, ['title', 'content']);
 
 		query = this.applyArchivedReadFilter(query, args);
 		({ q: query } = await this.scopeEntityQueryToReadableProject(query, args.project_id));
@@ -1485,6 +1593,88 @@ export class OntologyReadExecutor extends BaseExecutor {
 		return {
 			...details,
 			message: 'Complete ontology document details loaded.'
+		};
+	}
+
+	/**
+	 * Project Knowledge Layer (L2): return just the heading outline of a document.
+	 * Cheap "what is this doc about" scan — lets the agent decide relevance and pick
+	 * a section to read without pulling the full body. Computed live from content.
+	 */
+	async getDocumentOutline(args: GetDocumentOutlineArgs): Promise<any> {
+		const details = await this.loadAgentDocumentDetails(args.document_id);
+		const document = details?.document as Record<string, any> | undefined;
+		if (!document) {
+			return this.buildDetailNotFoundPayload({
+				entityType: 'document',
+				idKey: 'document_id',
+				id: args.document_id,
+				listTool: 'list_onto_documents',
+				searchTool: 'search_onto_documents'
+			});
+		}
+
+		const outline = extractOutline(
+			typeof document.content === 'string' ? document.content : ''
+		);
+		const headingCount = countOutlineNodes(outline.nodes);
+
+		return {
+			document_id: document.id,
+			title: document.title ?? null,
+			outline: outline.nodes,
+			message:
+				headingCount > 0
+					? `Outline loaded: ${headingCount} headings. Use read_document_section with an anchor to read a specific section.`
+					: 'This document has no markdown headings. Use get_onto_document_details to read the full body.'
+		};
+	}
+
+	/**
+	 * Project Knowledge Layer (L2): return the body of one section by heading anchor.
+	 * Re-parses live content, so the slice is always correct even after edits. Lets
+	 * the agent zoom into the relevant part instead of loading the whole document.
+	 */
+	async readDocumentSection(args: ReadDocumentSectionArgs): Promise<any> {
+		const details = await this.loadAgentDocumentDetails(args.document_id);
+		const document = details?.document as Record<string, any> | undefined;
+		if (!document) {
+			return this.buildDetailNotFoundPayload({
+				entityType: 'document',
+				idKey: 'document_id',
+				id: args.document_id,
+				listTool: 'list_onto_documents',
+				searchTool: 'search_onto_documents'
+			});
+		}
+
+		const content = typeof document.content === 'string' ? document.content : '';
+		const anchor = typeof args.anchor === 'string' ? args.anchor.trim() : '';
+		const section = getSectionByAnchor(content, anchor);
+
+		if (!section.found) {
+			const outline = extractOutline(content);
+			const available = collectOutlineAnchors(outline.nodes);
+			return {
+				document_id: document.id,
+				anchor,
+				found: false,
+				available_anchors: available,
+				message:
+					available.length > 0
+						? `No section with anchor "${anchor}". Available anchors: ${available.join(', ')}. Call get_document_outline for the full structure.`
+						: `No section with anchor "${anchor}". This document has no headings; use get_onto_document_details for the full body.`
+			};
+		}
+
+		return {
+			document_id: document.id,
+			title: document.title ?? null,
+			anchor: section.anchor,
+			heading: section.heading,
+			level: section.level,
+			content: section.content,
+			message: `Section "${section.heading}" loaded.`
 		};
 	}
 

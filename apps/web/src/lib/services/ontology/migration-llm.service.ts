@@ -45,9 +45,9 @@ export const DEFAULT_MIGRATION_MODEL = DEEPSEEK_V4_FLASH_MODEL;
 
 // Token costs per 1000 tokens (OpenRouter pricing checked June 2026)
 const TOKEN_COSTS: Record<string, TokenCosts> = {
-	[DEEPSEEK_V4_FLASH_MODEL]: { input: 0.00014, output: 0.00028 },
+	[DEEPSEEK_V4_FLASH_MODEL]: { input: 0.00009, output: 0.00018 },
 	[GEMINI_31_FLASH_LITE_MODEL]: { input: 0.00025, output: 0.0015 },
-	[ACTIVE_EXPERIMENT_MODEL]: { input: 0.0004, output: 0.0016 }
+	[ACTIVE_EXPERIMENT_MODEL]: { input: 0.00032, output: 0.00128 }
 };
 
 // Estimated tokens per entity type (based on typical prompt/response sizes)

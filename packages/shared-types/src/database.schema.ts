@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-06-15T06:07:36.332Z
+// Generated on: 2026-06-19T02:18:52.068Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -62,21 +62,6 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 	};
-	agent_chat_messages: {
-		agent_session_id: string;
-		content: string;
-		created_at: string;
-		id: string;
-		model_used: string | null;
-		parent_user_session_id: string;
-		role: string;
-		sender_agent_id: string | null;
-		sender_type: string;
-		tokens_used: number | null;
-		tool_call_id: string | null;
-		tool_calls: Json | null;
-		user_id: string;
-	};
 	agent_chat_media_events: {
 		asset_id: string | null;
 		checksum_sha256: string | null;
@@ -92,6 +77,21 @@ export type DatabaseSchema = {
 		project_id: string | null;
 		session_id: string | null;
 		source: string;
+		user_id: string;
+	};
+	agent_chat_messages: {
+		agent_session_id: string;
+		content: string;
+		created_at: string;
+		id: string;
+		model_used: string | null;
+		parent_user_session_id: string;
+		role: string;
+		sender_agent_id: string | null;
+		sender_type: string;
+		tokens_used: number | null;
+		tool_call_id: string | null;
+		tool_calls: Json | null;
 		user_id: string;
 	};
 	agent_chat_sessions: {
@@ -131,6 +131,89 @@ export type DatabaseSchema = {
 		tools_available: Json;
 		user_id: string;
 	};
+	agent_oauth_access_tokens: {
+		client_id: string;
+		created_at: string;
+		expires_at: string;
+		external_agent_caller_id: string;
+		grant_id: string;
+		id: string;
+		last_used_at: string | null;
+		resource: string;
+		revoked_at: string | null;
+		scope: string;
+		token_hash: string;
+		token_prefix: string;
+		updated_at: string;
+		user_id: string;
+	};
+	agent_oauth_authorization_codes: {
+		client_id: string;
+		code_challenge: string;
+		code_challenge_method: string;
+		code_hash: string;
+		created_at: string;
+		expires_at: string;
+		external_agent_caller_id: string;
+		grant_id: string;
+		id: string;
+		redirect_uri: string;
+		resource: string;
+		scope: string;
+		updated_at: string;
+		used_at: string | null;
+		user_id: string;
+	};
+	agent_oauth_clients: {
+		allowed_scopes: Json;
+		client_id: string;
+		client_name: string;
+		client_secret_hash: string | null;
+		client_type: string;
+		client_uri: string | null;
+		created_at: string;
+		id: string;
+		logo_uri: string | null;
+		metadata: Json;
+		redirect_uris: Json;
+		registration_source: string;
+		status: string;
+		updated_at: string;
+	};
+	agent_oauth_grants: {
+		allowed_ops: Json;
+		allowed_project_ids: Json | null;
+		client_id: string;
+		client_profile_id: string;
+		created_at: string;
+		external_agent_caller_id: string;
+		id: string;
+		last_used_at: string | null;
+		resource: string;
+		scope: string;
+		scope_mode: string;
+		status: string;
+		updated_at: string;
+		user_id: string;
+	};
+	agent_oauth_refresh_tokens: {
+		client_id: string;
+		created_at: string;
+		expires_at: string;
+		external_agent_caller_id: string;
+		family_id: string;
+		grant_id: string;
+		id: string;
+		resource: string;
+		revoked_at: string | null;
+		rotated_from_id: string | null;
+		scope: string;
+		token_hash: string;
+		token_prefix: string;
+		updated_at: string;
+		used_at: string | null;
+		user_id: string;
+	};
 	agent_plans: {
 		completed_at: string | null;
 		created_at: string;
@@ -144,6 +227,98 @@ export type DatabaseSchema = {
 		updated_at: string;
 		user_id: string;
 		user_message: string;
+	};
+	agent_run_events: {
+		created_at: string;
+		event_type: string;
+		id: string;
+		payload: Json;
+		run_id: string;
+		seq: number | null;
+	};
+	agent_run_signals: {
+		consumed_at: string | null;
+		created_at: string;
+		id: string;
+		kind: string;
+		payload: Json | null;
+		run_id: string;
+		source: string;
+	};
+	agent_runs: {
+		allowed_ops: string[] | null;
+		budgets: Json;
+		change_set: Json | null;
+		completed_at: string | null;
+		context_type: string;
+		created_at: string;
+		depth: number;
+		error: string | null;
+		expected_output: string | null;
+		goal: string;
+		id: string;
+		instructions: string | null;
+		label: string;
+		metrics: Json | null;
+		operative_id: string | null;
+		parent_message_id: string | null;
+		parent_run_id: string | null;
+		parent_session_id: string | null;
+		project_id: string | null;
+		result: Json | null;
+		review_required: boolean;
+		scope_mode: string;
+		started_at: string | null;
+		status: string;
+		trigger: string;
+		updated_at: string;
+		user_id: string;
+	};
+	agent_tool_executions: {
+		agent_run_id: string;
+		arguments: Json | null;
+		created_at: string;
+		entity_id: string | null;
+		entity_kind: string | null;
+		error_message: string | null;
+		execution_time_ms: number | null;
+		gateway_op: string | null;
+		id: string;
+		mutation_mode: string | null;
+		proposed_change_id: string | null;
+		result: Json | null;
+		success: boolean;
+		tokens_consumed: number | null;
+		tool_category: string | null;
+		tool_name: string;
+		user_id: string;
+	};
+	agentic_chat_prepared_prompts: {
+		cache_key: string;
+		consumed_at: string | null;
+		context_cache_version: number;
+		context_payload: Json;
+		context_payload_sha256: string;
+		context_type: string;
+		conversation_summary: string | null;
+		created_at: string;
+		default_surface_profile: string;
+		entity_id: string | null;
+		expires_at: string;
+		history_compressed: boolean | null;
+		history_for_model: Json;
+		history_for_model_count: number | null;
+		history_strategy: string | null;
+		id: string;
+		nonce_sha256: string;
+		prepared_surfaces: Json;
+		project_focus: Json | null;
+		project_id: string | null;
+		prompt_variant: string;
+		raw_history_count: number | null;
+		session_id: string | null;
+		updated_at: string;
+		user_id: string;
 	};
 	agents: {
 		available_tools: Json | null;
@@ -518,6 +693,20 @@ export type DatabaseSchema = {
 		related_entity_ids: string[] | null;
 		user_id: string;
 	};
+	chat_message_attachments: {
+		asset_id: string | null;
+		attachment_kind: string;
+		created_at: string;
+		display_order: number;
+		id: string;
+		media_type: string;
+		message_id: string;
+		metadata: Json;
+		project_id: string | null;
+		role: string;
+		session_id: string;
+		user_id: string;
+	};
 	chat_messages: {
 		completion_tokens: number | null;
 		content: string;
@@ -536,20 +725,6 @@ export type DatabaseSchema = {
 		tool_name: string | null;
 		tool_result: Json | null;
 		total_tokens: number | null;
-		user_id: string;
-	};
-	chat_message_attachments: {
-		asset_id: string | null;
-		attachment_kind: string;
-		created_at: string;
-		display_order: number;
-		id: string;
-		media_type: string;
-		message_id: string;
-		metadata: Json;
-		project_id: string | null;
-		role: string;
-		session_id: string;
 		user_id: string;
 	};
 	chat_operations: {
@@ -676,6 +851,7 @@ export type DatabaseSchema = {
 		message_id: string | null;
 		requires_user_action: boolean | null;
 		result: Json | null;
+		result_count: number | null;
 		sequence_index: number | null;
 		session_id: string;
 		stream_run_id: string | null;
@@ -684,6 +860,26 @@ export type DatabaseSchema = {
 		tool_category: string | null;
 		tool_name: string;
 		turn_run_id: string | null;
+		zero_result: boolean | null;
+	};
+	chat_turn_checkpoints: {
+		checkpoint_type: string;
+		created_at: string;
+		digest: Json;
+		expires_at: string | null;
+		id: string;
+		question: string | null;
+		reason: string;
+		resume_context: Json;
+		resume_started_at: string | null;
+		resume_turn_run_id: string | null;
+		resumed_at: string | null;
+		session_id: string;
+		status: string;
+		supervisor_decision: Json;
+		turn_run_id: string;
+		updated_at: string;
+		user_id: string;
 	};
 	chat_turn_events: {
 		created_at: string;
@@ -717,6 +913,10 @@ export type DatabaseSchema = {
 		history_strategy: string | null;
 		id: string;
 		llm_pass_count: number;
+		prepared_prompt_hit: boolean | null;
+		prepared_prompt_id: string | null;
+		prepared_prompt_miss_reason: string | null;
+		prepared_surface_profile: string | null;
 		project_id: string | null;
 		prompt_snapshot_id: string | null;
 		raw_history_count: number | null;
@@ -799,6 +999,33 @@ export type DatabaseSchema = {
 		valid_from: string | null;
 		valid_until: string | null;
 	};
+	domain_research_queue: {
+		budget: Json;
+		claimed_at: string | null;
+		claimed_by: string | null;
+		completed_at: string | null;
+		created_at: string;
+		domain_ids: string[];
+		evidence: Json;
+		first_seen_at: string;
+		id: string;
+		kind: string;
+		last_seen_at: string;
+		missing_resource_id: string | null;
+		missing_skill_id: string | null;
+		occurrences: number;
+		parent_skill_id: string | null;
+		priority: string;
+		queue_key: string;
+		result: Json | null;
+		source_session_ids: string[];
+		source_user_count: number;
+		status: string;
+		summary: string;
+		updated_at: string;
+		user_need: string;
+		work_capability_id: string | null;
+	};
 	draft_tasks: {
 		completed_at: string | null;
 		created_at: string | null;
@@ -875,6 +1102,19 @@ export type DatabaseSchema = {
 		sent_at: string | null;
 		status: string;
 		updated_at: string | null;
+	};
+	email_sequence_copy_overrides: {
+		body: string;
+		created_at: string;
+		created_by: string | null;
+		id: string;
+		metadata: Json;
+		sequence_key: string;
+		step_key: string;
+		subject: string;
+		updated_at: string;
+		updated_by: string | null;
+		variant_key: string;
 	};
 	email_sequence_enrollments: {
 		created_at: string;
@@ -1472,6 +1712,7 @@ export type DatabaseSchema = {
 		deleted_at: string | null;
 		description: string | null;
 		id: string;
+		outline: Json | null;
 		project_id: string;
 		props: Json;
 		search_vector: unknown;
@@ -1692,6 +1933,7 @@ export type DatabaseSchema = {
 	onto_project_logs: {
 		action: string;
 		after_data: Json | null;
+		agent_call_session_id: string | null;
 		before_data: Json | null;
 		change_source: string | null;
 		changed_by: string;
@@ -1700,6 +1942,7 @@ export type DatabaseSchema = {
 		created_at: string;
 		entity_id: string;
 		entity_type: string;
+		external_agent_caller_id: string | null;
 		id: string;
 		project_id: string;
 	};
@@ -2342,8 +2585,8 @@ export type DatabaseSchema = {
 		max_attempts: number | null;
 		metadata: Json | null;
 		priority: number | null;
-		processing_token: string | null;
 		processed_at: string | null;
+		processing_token: string | null;
 		queue_job_id: string;
 		result: Json | null;
 		scheduled_for: string;
@@ -2420,6 +2663,31 @@ export type DatabaseSchema = {
 		touch_3_sent_at: string | null;
 		updated_at: string;
 		user_id: string;
+		variant: string;
+	};
+	retargeting_founder_pilot_sends: {
+		batch_id: string;
+		campaign_id: string;
+		cohort_id: string;
+		created_at: string;
+		email_id: string | null;
+		failed_at: string | null;
+		failure_reason: string | null;
+		id: string;
+		member_id: string;
+		metadata: Json;
+		queued_by_admin: string | null;
+		recipient_email: string;
+		scheduled_for: string;
+		sent_at: string | null;
+		sent_by_admin: string | null;
+		skipped_at: string | null;
+		status: string;
+		step: string;
+		trigger_mode: string;
+		trigger_source: string;
+		updated_at: string;
+		user_id: string | null;
 		variant: string;
 	};
 	scheduled_sms_messages: {
@@ -3130,8 +3398,8 @@ export type DatabaseSchema = {
 		trial_ends_at: string | null;
 		updated_at: string;
 		usage_archetype: string | null;
-		voice_narration_enabled: boolean;
 		username: string | null;
+		voice_narration_enabled: boolean;
 	};
 	visitors: {
 		created_at: string;
@@ -3244,11 +3512,21 @@ export const tableNames = [
 	'agent_call_bootstrap_links',
 	'agent_call_sessions',
 	'agent_call_tool_executions',
-	'agent_chat_messages',
 	'agent_chat_media_events',
+	'agent_chat_messages',
 	'agent_chat_sessions',
 	'agent_executions',
+	'agent_oauth_access_tokens',
+	'agent_oauth_authorization_codes',
+	'agent_oauth_clients',
+	'agent_oauth_grants',
+	'agent_oauth_refresh_tokens',
 	'agent_plans',
+	'agent_run_events',
+	'agent_run_signals',
+	'agent_runs',
+	'agent_tool_executions',
+	'agentic_chat_prepared_prompts',
 	'agents',
 	'api_keys',
 	'beta_event_attendance',
@@ -3272,8 +3550,8 @@ export const tableNames = [
 	'calendar_webhook_channels',
 	'chat_compressions',
 	'chat_context_cache',
-	'chat_messages',
 	'chat_message_attachments',
+	'chat_messages',
 	'chat_operations',
 	'chat_prompt_eval_assertions',
 	'chat_prompt_eval_runs',
@@ -3283,16 +3561,19 @@ export const tableNames = [
 	'chat_sessions_projects',
 	'chat_sessions_tasks',
 	'chat_tool_executions',
+	'chat_turn_checkpoints',
 	'chat_turn_events',
 	'chat_turn_runs',
 	'cron_logs',
 	'customer_subscriptions',
 	'daily_briefs',
 	'discount_codes',
+	'domain_research_queue',
 	'draft_tasks',
 	'email_attachments',
 	'email_logs',
 	'email_recipients',
+	'email_sequence_copy_overrides',
 	'email_sequence_enrollments',
 	'email_sequence_events',
 	'email_sequence_steps',
@@ -3396,6 +3677,7 @@ export const tableNames = [
 	'recurring_task_migration_log',
 	'research_artifact_refs',
 	'retargeting_founder_pilot_members',
+	'retargeting_founder_pilot_sends',
 	'scheduled_sms_messages',
 	'security_event_daily_rollups',
 	'security_events',

@@ -892,6 +892,235 @@ describe('streamFastChat direct tool orchestration', () => {
 		]);
 	});
 
+	it('injects failed-write recovery and blocks an exact repeated not_found write', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		const goalId = 'ccbbc592-7138-46a5-9aa9-7d4549e1fa50';
+		let streamInvocation = 0;
+		const streamParams: Array<{ messages: FastChatHistoryMessage[] }> = [];
+		const supervisorRecords: Array<{ action: string; reason?: string; trigger?: string }> = [];
+		const badArgs = {
+			task_id: goalId,
+			title: 'Complete The Last Ember First Draft',
+			state_key: 'in_progress'
+		};
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					messages: JSON.parse(JSON.stringify(params.messages))
+				});
+
+				if (streamInvocation <= 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_task',
+							badArgs,
+							`update_onto_task:bad-goal-id-${streamInvocation}`
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield {
+					type: 'text',
+					content:
+						'I was unable to update that task because the id I tried was not a task id. Nothing changed.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			return {
+				tool_call_id: call.id,
+				result: null,
+				success: false,
+				error: 'API PATCH /api/onto/tasks/' + goalId + ' failed: Task not found'
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Create a writing schedule and update the first draft task.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'update_onto_task']),
+			supervisorContextData: {
+				project: { id: projectId, name: 'The Last Ember' },
+				goals: [
+					{
+						id: goalId,
+						name: 'Complete The Last Ember Novel Development'
+					}
+				],
+				tasks: [
+					{
+						id: 'c7441a46-a892-429d-ac1d-8814db45c650',
+						title: 'Outline the first three chapters'
+					}
+				]
+			},
+			toolExecutor,
+			onDelta: async () => {},
+			onSupervisorDecision: async ({ decision, trigger }) => {
+				supervisorRecords.push({
+					action: decision.action,
+					reason: 'reason' in decision ? decision.reason : undefined,
+					trigger
+				});
+			}
+		});
+
+		const passTwoSystemText = (streamParams[1]?.messages ?? [])
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
+		const passThreeSystemText = (streamParams[2]?.messages ?? [])
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
+
+		expect(llm.streamText).toHaveBeenCalledTimes(3);
+		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(passTwoSystemText).toContain('identifies that UUID as a goal');
+		expect(passTwoSystemText).toContain('needs a task id');
+		expect(passThreeSystemText).toContain('Supervisor blocked an exact retry');
+		expect(result.toolExecutions).toHaveLength(2);
+		expect(result.toolExecutions?.[1]?.result.error).toContain(
+			'Supervisor blocked this exact write retry'
+		);
+		expect(supervisorRecords).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					action: 'inject_recovery_instruction',
+					reason: 'wrong_entity_kind_failed_write',
+					trigger: 'failed_write_recovery'
+				}),
+				expect.objectContaining({
+					action: 'inject_recovery_instruction',
+					reason: 'blocked_repeated_failed_write',
+					trigger: 'failed_write_recovery'
+				})
+			])
+		);
+		expect(result.finalAssistantText).toContain('Nothing changed');
+	});
+
+	it('allows a corrected write after failed-write recovery', async () => {
+		const projectId = '4cfdbed1-840a-4fe4-9751-77c7884daa70';
+		const goalId = 'ccbbc592-7138-46a5-9aa9-7d4549e1fa50';
+		const taskId = 'c7441a46-a892-429d-ac1d-8814db45c650';
+		let streamInvocation = 0;
+		const streamParams: Array<{ messages: FastChatHistoryMessage[] }> = [];
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				streamParams.push({
+					messages: JSON.parse(JSON.stringify(params.messages))
+				});
+
+				if (streamInvocation === 1) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_task',
+							{
+								task_id: goalId,
+								title: 'Complete The Last Ember First Draft',
+								state_key: 'in_progress'
+							},
+							'update_onto_task:bad-goal-id'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				if (streamInvocation === 2) {
+					yield {
+						type: 'tool_call',
+						tool_call: toolCall(
+							'update_onto_task',
+							{
+								task_id: taskId,
+								title: 'Complete The Last Ember First Draft',
+								state_key: 'in_progress'
+							},
+							'update_onto_task:corrected-task-id'
+						)
+					};
+					yield { type: 'done', finished_reason: 'tool_calls' };
+					return;
+				}
+
+				yield { type: 'text', content: 'Updated the first draft task.' };
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (call: ChatToolCall): Promise<ChatToolResult> => {
+			const args = JSON.parse(call.function.arguments || '{}') as Record<string, unknown>;
+			if (args.task_id === goalId) {
+				return {
+					tool_call_id: call.id,
+					result: null,
+					success: false,
+					error: 'API PATCH /api/onto/tasks/' + goalId + ' failed: Task not found'
+				};
+			}
+			return {
+				tool_call_id: call.id,
+				result: { ok: true },
+				success: true
+			};
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: projectId,
+			projectId,
+			history: [],
+			message: 'Update the first draft task.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'update_onto_task']),
+			supervisorContextData: {
+				project: { id: projectId, name: 'The Last Ember' },
+				goals: [{ id: goalId, name: 'Complete The Last Ember Novel Development' }],
+				tasks: [{ id: taskId, title: 'Outline the first three chapters' }]
+			},
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		const passTwoSystemText = (streamParams[1]?.messages ?? [])
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
+		const allSystemText = streamParams
+			.flatMap((params) => params.messages)
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
+
+		expect(toolExecutor).toHaveBeenCalledTimes(2);
+		expect(toolExecutor.mock.calls[1]?.[0].function.arguments).toContain(taskId);
+		expect(passTwoSystemText).toContain('identifies that UUID as a goal');
+		expect(allSystemText).not.toContain('Supervisor blocked an exact retry');
+		expect(result.toolExecutions?.map((execution) => execution.result.success)).toEqual([
+			false,
+			true
+		]);
+		expect(result.finalAssistantText).toBe('Updated the first draft task.');
+	});
+
 	it('redacts invalid durable text from repair replay before retry', async () => {
 		let streamInvocation = 0;
 		let repairPassMessages: FastChatHistoryMessage[] | undefined;

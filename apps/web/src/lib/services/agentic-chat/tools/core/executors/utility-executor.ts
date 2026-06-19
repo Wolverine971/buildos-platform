@@ -26,9 +26,11 @@ import {
 	searchUserContacts
 } from '$lib/server/user-contact.service';
 import type { OntologyEntityType } from '$lib/types/agent-chat-enhancement';
+import { validateAgentRunMetadata } from '@buildos/shared-types';
 import type {
 	ExecutorContext,
 	ChangeChatContextArgs,
+	DelegateTaskArgs,
 	GetFieldInfoArgs,
 	GetProjectOverviewArgs,
 	GetUserProfileOverviewArgs,
@@ -1224,5 +1226,148 @@ export class UtilityExecutor extends BaseExecutor {
 			(data as any).text ||
 			entityId
 		);
+	}
+
+	/**
+	 * delegate_task — spawn a background Agent Run from this chat (Phase 3).
+	 * Two-phase create (mirrors POST /api/agent-runs): insert the `agent_runs`
+	 * row with trigger='chat' + parent_session_id, then enqueue the `agent_run`
+	 * job. Returns immediately with { run_ids }; the worker posts the result back
+	 * into this thread on completion (see injectChatCompletionMessage in the
+	 * worker). Read-first by default.
+	 */
+	async delegateTask(args: DelegateTaskArgs): Promise<Record<string, any>> {
+		const goal = (args.goal ?? '').trim();
+		if (!goal) {
+			throw new Error('A non-empty `goal` is required to delegate a task.');
+		}
+
+		const projectId =
+			typeof args.project_id === 'string' && args.project_id.trim()
+				? args.project_id.trim()
+				: null;
+		const contextType: 'project' | 'global' =
+			args.context_type ?? (projectId ? 'project' : 'global');
+		if (contextType === 'project' && !projectId) {
+			throw new Error("`project_id` is required when context_type is 'project'.");
+		}
+		const scopeMode: 'read_only' | 'read_write' =
+			args.scope_mode === 'read_write' ? 'read_write' : 'read_only';
+
+		// Reuse the executor's own membership assertion for project-scoped runs.
+		if (contextType === 'project' && projectId) {
+			await this.assertProjectAccess(
+				projectId,
+				scopeMode === 'read_write' ? 'write' : 'read'
+			);
+		}
+
+		const admin = this.getAdminSupabase();
+
+		// Per-user active-run cap (mirrors the manual dispatch route + the
+		// fan-out guardrail in 01 §8): bound runaway delegation.
+		const MAX_CONCURRENT_RUNS = 3;
+		const ACTIVE_STATUSES = ['queued', 'running', 'paused', 'needs_input', 'proposal_ready'];
+		const { count, error: countError } = await admin
+			.from('agent_runs')
+			.select('id', { count: 'exact', head: true })
+			.eq('user_id', this.userId)
+			.in('status', ACTIVE_STATUSES as any);
+		if (countError) {
+			throw new Error(`Failed to check active runs: ${countError.message}`);
+		}
+		if ((count ?? 0) >= MAX_CONCURRENT_RUNS) {
+			return {
+				ok: false,
+				error: `You already have ${MAX_CONCURRENT_RUNS} active agent runs — wait for one to finish before delegating another.`
+			};
+		}
+
+		const label =
+			typeof args.label === 'string' && args.label.trim()
+				? args.label.trim()
+				: goal.slice(0, 80);
+		const budgets: Record<string, number> = {};
+		if (typeof args.max_tool_calls === 'number' && args.max_tool_calls > 0) {
+			budgets.max_tool_calls = Math.floor(args.max_tool_calls);
+		}
+
+		// Phase 1: insert the run row (trigger='chat', attached to this session).
+		const { data: run, error: runError } = await admin
+			.from('agent_runs')
+			.insert({
+				user_id: this.userId,
+				trigger: 'chat',
+				label,
+				goal,
+				instructions: typeof args.instructions === 'string' ? args.instructions : null,
+				expected_output:
+					typeof args.expected_output === 'string' ? args.expected_output : null,
+				context_type: contextType,
+				project_id: projectId,
+				scope_mode: scopeMode,
+				review_required: false,
+				status: 'queued',
+				budgets,
+				parent_session_id: this.sessionId ?? null,
+				// parent_message_id is set once the orchestrator turn id is threaded
+				// through (follow-up); session linkage is sufficient for now.
+				parent_message_id: null
+			})
+			.select('*')
+			.single();
+
+		if (runError || !run) {
+			throw new Error(runError?.message ?? 'Failed to create the agent run.');
+		}
+
+		// Phase 2: enqueue the job (validate metadata up front).
+		const metadata = {
+			run_id: run.id,
+			trigger: 'chat' as const,
+			context_type: contextType,
+			project_id: projectId,
+			scope_mode: scopeMode,
+			allowed_ops: null,
+			review_required: false,
+			budgets
+		};
+		try {
+			validateAgentRunMetadata(metadata);
+		} catch (e) {
+			await admin
+				.from('agent_runs')
+				.update({ status: 'failed', error: 'Invalid job metadata' })
+				.eq('id', run.id);
+			throw new Error(e instanceof Error ? e.message : 'Invalid job metadata');
+		}
+
+		const { error: jobError } = await admin.rpc('add_queue_job', {
+			p_user_id: this.userId,
+			p_job_type: 'agent_run',
+			p_metadata: metadata as any,
+			p_priority: 7,
+			p_scheduled_for: new Date().toISOString(),
+			p_dedup_key: `agent-run:${run.id}`
+		});
+
+		if (jobError) {
+			await admin
+				.from('agent_runs')
+				.update({ status: 'failed', error: `queue_error: ${jobError.message}` })
+				.eq('id', run.id);
+			throw new Error(`Failed to queue the agent run: ${jobError.message}`);
+		}
+
+		return {
+			ok: true,
+			run_ids: [run.id],
+			label,
+			status: 'queued',
+			context_type: contextType,
+			project_id: projectId,
+			scope_mode: scopeMode,
+			message: `Dispatched background agent "${label}". It will work on this autonomously and post its result back into this conversation when done.`
+		};
 	}
 }

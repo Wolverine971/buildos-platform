@@ -30,6 +30,9 @@ export * from './project-activity.types';
 // Export Tree Agent orchestration types
 export * from './tree-agent.types';
 
+// Export Agent Work (durable Agent Runs) contract
+export * from './agent-work.types';
+
 // Export external agent call gateway types
 export * from './agent-call.types';
 

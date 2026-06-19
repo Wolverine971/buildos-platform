@@ -39,6 +39,7 @@ import {
 } from './tool-arguments';
 import {
 	applyFinalizationGuard,
+	buildTurnSupervisorEntityIndexFromContextData,
 	createDeterministicTurnSupervisor,
 	type FinalizationGuardResult,
 	type TurnSupervisor,
@@ -106,6 +107,7 @@ type StreamFastChatParams = {
 	onToolResult?: (execution: FastToolExecution) => Promise<void> | void;
 	onContextUsageUpdate?: (snapshot: ContextUsageSnapshot) => Promise<void> | void;
 	turnSupervisor?: TurnSupervisor;
+	supervisorContextData?: Record<string, unknown> | string | null;
 	onSupervisorDecision?: (record: TurnSupervisorDecisionRecord) => Promise<void> | void;
 	orchestrationTokenBudget?: number;
 	maxToolRounds?: number;
@@ -221,6 +223,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let activeAssistantBuffer = '';
 	let activePendingToolCallCount = 0;
 	let supervisorStopRequested = false;
+	const supervisorBlockedToolCallIds = new Set<string>();
 	let finalizationGuardResult: FinalizationGuardResult | undefined;
 	const pendingRepairInstructions: string[] = [];
 	const contextGatheringLedger = new ContextGatheringLedger();
@@ -234,6 +237,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			entityId: entityId ?? null,
 			projectId: params.projectId ?? null,
 			userMessage: message,
+			entityIndex: buildTurnSupervisorEntityIndexFromContextData(
+				params.supervisorContextData
+			),
 			config: {
 				maxToolRounds
 			}
@@ -605,6 +611,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			if (decision.reason === 'near_tool_budget') return 'near_tool_budget';
 			return 'many_tool_calls';
 		}
+		if (decision.action === 'inject_recovery_instruction') {
+			return 'failed_write_recovery';
+		}
 		if (
 			decision.action === 'flag_eval' &&
 			decision.reason === 'empty_final_candidate_after_tool_work'
@@ -635,6 +644,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		if (decision.action === 'force_synthesis') {
 			queueRepairInstruction(decision.instruction);
 			forceNoToolSynthesisPass = true;
+			return;
+		}
+		if (decision.action === 'inject_recovery_instruction') {
+			queueRepairInstruction(decision.instruction);
+			if (decision.blockToolCall && decision.toolCallId) {
+				supervisorBlockedToolCallIds.add(decision.toolCallId);
+			}
 			return;
 		}
 		if (decision.action === 'ask_user') {
@@ -1072,13 +1088,60 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			let roundModelPayloadChars = 0;
 			const toolCallsToExecute: Array<{ original: ChatToolCall; executable: ChatToolCall }> =
 				[];
-			if (validationIssues.length > 0) {
+			const blockedRetryCallIdsInRound = new Set(
+				pendingToolCalls
+					.filter((toolCall) => supervisorBlockedToolCallIds.has(toolCall.id))
+					.map((toolCall) => toolCall.id)
+			);
+			if (validationIssues.length > 0 || blockedRetryCallIdsInRound.size > 0) {
 				if (hasDocumentOrganizationValidationIssue(validationIssues)) {
 					docOrganizationRecoveryEligible = true;
 				}
 				for (let index = 0; index < pendingToolCalls.length; index += 1) {
 					const toolCall = pendingToolCalls[index];
 					if (!toolCall) {
+						continue;
+					}
+					if (blockedRetryCallIdsInRound.has(toolCall.id)) {
+						const errorMessage =
+							'Supervisor blocked this exact write retry because the same tool arguments already failed earlier in the turn. Use corrected arguments, the correct tool for the entity kind, or ask one concise clarifying question.';
+						const result: ChatToolResult = {
+							tool_call_id: toolCall.id,
+							result: null,
+							success: false,
+							error: errorMessage
+						};
+
+						toolExecutions.push({ toolCall, result });
+						roundExecutions.push({ toolCall, result });
+						await observeSupervisor({
+							type: 'tool_result_received',
+							toolName: toolCall.function.name,
+							toolCallId: toolCall.id,
+							success: false,
+							error: result.error ?? null,
+							resultSummary: summarizeToolResult(result)
+						});
+						if (params.onToolResult) {
+							try {
+								await params.onToolResult({ toolCall, result });
+							} catch {
+								// UI/logging callbacks must not crash tool orchestration.
+							}
+						}
+
+						const blockedPayload = JSON.stringify({
+							error: errorMessage,
+							supervisor_recovery: {
+								blocked_exact_retry: true
+							}
+						});
+						roundModelPayloadChars += blockedPayload.length;
+						messages.push({
+							role: 'tool',
+							content: blockedPayload,
+							tool_call_id: toolCall.id
+						});
 						continue;
 					}
 					const validationIssue = validationIssueByToolCallId.get(toolCall.id);
@@ -1135,7 +1198,9 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 
 				if (toolCallsToExecute.length === 0) {
-					consecutiveValidationIssueRounds += 1;
+					if (validationIssues.length > 0) {
+						consecutiveValidationIssueRounds += 1;
+					}
 					const requiredFieldFailures =
 						extractGatewayRequiredFieldFailuresFromValidationIssues(validationIssues);
 					const maxRequiredFieldFailure =
@@ -1147,6 +1212,10 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					});
 					if (supervisorStopRequested) {
 						break;
+					}
+					if (validationIssues.length === 0) {
+						flushRepairInstructions();
+						continue;
 					}
 					if (
 						gatewayModeActive &&

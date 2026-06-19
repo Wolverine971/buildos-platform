@@ -60,7 +60,9 @@ const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
 	'list_corsair_mcp_tools',
 	'call_corsair_mcp_tool',
 	'search_onto_projects',
-	'search_all_projects'
+	'search_all_projects',
+	// Orchestrator capability: hand a self-contained task to a background Agent Run.
+	'delegate_task'
 ] as const;
 
 // Cross-project action surface for contexts whose whole point is acting on
@@ -87,7 +89,15 @@ const PROJECT_BASIC_DIRECT_TOOL_NAMES = [
 	'call_corsair_mcp_tool',
 	'search_project',
 	'list_onto_tasks',
-	'list_onto_documents'
+	'list_onto_documents',
+	// Document reading is ungated on every project turn (Project Knowledge Layer L2):
+	// the scan→read flow ("does a marketing doc cover this? read that section") must
+	// not depend on a document-write turn or a discovery round. These two are the lean
+	// path; the full-body get_onto_document_details stays in the document profiles.
+	'get_document_outline',
+	'read_document_section',
+	// Orchestrator capability: hand a self-contained task to a background Agent Run.
+	'delegate_task'
 ] as const;
 
 const PROJECT_WRITE_DIRECT_TOOL_NAMES = [
@@ -274,7 +284,9 @@ export function extractGatewayMaterializedToolNames(payload: unknown): string[] 
 						? (match as Record<string, unknown>).tool_name
 						: undefined
 				)
-				.filter((name): name is string => typeof name === 'string' && name.trim().length > 0)
+				.filter(
+					(name): name is string => typeof name === 'string' && name.trim().length > 0
+				)
 				.map((name) => normalizeGatewayToolName(name.trim()))
 		);
 	}

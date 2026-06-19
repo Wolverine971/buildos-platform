@@ -14,8 +14,8 @@ describe('LLMUsageLogger', () => {
 		await logger.logUsageToDatabase({
 			userId: '11111111-1111-4111-8111-111111111111',
 			operationType: 'agent_state_reconciliation',
-			modelRequested: 'deepseek/deepseek-v3.2',
-			modelUsed: 'deepseek/deepseek-v3.2-20251201',
+			modelRequested: 'deepseek/deepseek-v4-flash',
+			modelUsed: 'deepseek/deepseek-v4-flash-20260423',
 			promptTokens: 1000,
 			completionTokens: 500,
 			totalTokens: 1500,
@@ -30,15 +30,15 @@ describe('LLMUsageLogger', () => {
 
 		expect(insert).toHaveBeenCalledTimes(1);
 		expect(insert.mock.calls[0]?.[0]).toMatchObject({
-			model_requested: 'deepseek/deepseek-v3.2',
-			model_used: 'deepseek/deepseek-v3.2-20251201',
+			model_requested: 'deepseek/deepseek-v4-flash',
+			model_used: 'deepseek/deepseek-v4-flash-20260423',
 			prompt_tokens: 1000,
 			completion_tokens: 500,
 			total_tokens: 1500
 		});
-		expect(insert.mock.calls[0]?.[0]?.input_cost_usd).toBeCloseTo(0.00026);
-		expect(insert.mock.calls[0]?.[0]?.output_cost_usd).toBeCloseTo(0.00019);
-		expect(insert.mock.calls[0]?.[0]?.total_cost_usd).toBeCloseTo(0.00045);
+		expect(insert.mock.calls[0]?.[0]?.input_cost_usd).toBeCloseTo(0.00009);
+		expect(insert.mock.calls[0]?.[0]?.output_cost_usd).toBeCloseTo(0.00009);
+		expect(insert.mock.calls[0]?.[0]?.total_cost_usd).toBeCloseTo(0.00018);
 	});
 
 	it('persists OpenRouter-native accounting fields when provided', async () => {
@@ -52,8 +52,8 @@ describe('LLMUsageLogger', () => {
 		await logger.logUsageToDatabase({
 			userId: '11111111-1111-4111-8111-111111111111',
 			operationType: 'agentic_chat_v2_stream',
-			modelRequested: 'x-ai/grok-4.1-fast',
-			modelUsed: 'x-ai/grok-4.1-fast',
+			modelRequested: 'deepseek/deepseek-v4-flash',
+			modelUsed: 'deepseek/deepseek-v4-flash',
 			promptTokens: 1000,
 			completionTokens: 500,
 			totalTokens: 1500,
@@ -118,8 +118,8 @@ describe('LLMUsageLogger', () => {
 		await logger.logUsageToDatabase({
 			userId: '11111111-1111-4111-8111-111111111111',
 			operationType: 'daily_brief_project_brief',
-			modelRequested: 'deepseek/deepseek-v3.2',
-			modelUsed: 'deepseek/deepseek-v3.2',
+			modelRequested: 'deepseek/deepseek-v4-flash',
+			modelUsed: 'deepseek/deepseek-v4-flash',
 			promptTokens: 1000,
 			completionTokens: 500,
 			totalTokens: 1500,
@@ -160,8 +160,8 @@ describe('LLMUsageLogger', () => {
 		await logger.logUsageToDatabase({
 			userId: '11111111-1111-4111-8111-111111111111',
 			operationType: 'agentic_chat_v2_stream',
-			modelRequested: 'x-ai/grok-4.1-fast',
-			modelUsed: 'x-ai/grok-4.1-fast',
+			modelRequested: 'deepseek/deepseek-v4-flash',
+			modelUsed: 'deepseek/deepseek-v4-flash',
 			promptTokens: 1000,
 			completionTokens: 500,
 			totalTokens: 1500,

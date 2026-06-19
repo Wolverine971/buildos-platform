@@ -23,6 +23,7 @@
 	let ProjectSynthesisMinimizedView = $state<any>(null);
 	let CalendarAnalysisMinimizedView = $state<any>(null);
 	let TimeBlockMinimizedView = $state<any>(null);
+	let AgentRunMinimizedView = $state<any>(null);
 
 	// Lazy load type-specific component
 	async function loadTypeSpecificComponent() {
@@ -50,6 +51,14 @@
 							'./types/time-block/TimeBlockMinimizedView.svelte'
 						);
 						TimeBlockMinimizedView = module.default;
+					}
+					break;
+				case 'agent-run':
+					if (!AgentRunMinimizedView) {
+						const module = await import(
+							'./types/agent-run/AgentRunMinimizedView.svelte'
+						);
+						AgentRunMinimizedView = module.default;
 					}
 					break;
 				default:
@@ -83,7 +92,9 @@
 				? CalendarAnalysisMinimizedView
 				: notification.type === 'time-block'
 					? TimeBlockMinimizedView
-					: null
+					: notification.type === 'agent-run'
+						? AgentRunMinimizedView
+						: null
 	);
 
 	// Get notification title based on type (fallback for generic view)

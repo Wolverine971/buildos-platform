@@ -363,8 +363,8 @@ describe('buildSessionDetailPayload', () => {
 				{
 					id: 'llm-stream-1',
 					operation_type: 'agentic_chat_v2_stream',
-					model_requested: 'x-ai/grok-4.1-fast',
-					model_used: 'x-ai/grok-4.1-fast',
+					model_requested: 'deepseek/deepseek-v4-flash',
+					model_used: 'deepseek/deepseek-v4-flash',
 					provider: 'openrouter',
 					status: 'success',
 					total_tokens: 76_038,
@@ -376,9 +376,9 @@ describe('buildSessionDetailPayload', () => {
 				{
 					id: 'llm-reconcile-1',
 					operation_type: 'agent_state_reconciliation',
-					model_requested: 'qwen/qwen3.6-plus',
-					model_used: 'qwen/qwen3.6-plus',
-					provider: 'qwen',
+					model_requested: 'deepseek/deepseek-v4-flash',
+					model_used: 'deepseek/deepseek-v4-flash',
+					provider: 'deepseek',
 					status: 'success',
 					total_tokens: 13_618,
 					total_cost_usd: 0.01656623,

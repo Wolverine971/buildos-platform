@@ -4,11 +4,13 @@ import { describe, expect, it } from 'vitest';
 import {
 	ACTIVE_EXPERIMENT_MODEL,
 	AGENT_STATE_RECONCILIATION_MODEL,
+	JSON_PROFILE_MODELS,
 	OPENROUTER_V2_JSON_MODELS,
 	OPENROUTER_V2_MULTIMODAL_MODELS,
 	OPENROUTER_V2_TEXT_MODELS,
 	OPENROUTER_V2_TOOL_MODELS,
-	OPENROUTER_V2_TOOL_MODELS_EXACTO
+	OPENROUTER_V2_TOOL_MODELS_EXACTO,
+	TEXT_PROFILE_MODELS
 } from '@buildos/smart-llm';
 import { resolveLaneModels, resolveLaneReasoning } from './model-lanes';
 
@@ -47,7 +49,7 @@ describe('resolveLaneModels', () => {
 		const result = resolveLaneModels({
 			lane: 'json',
 			model: ACTIVE_EXPERIMENT_MODEL,
-			models: [ACTIVE_EXPERIMENT_MODEL, 'openai/gpt-4o-mini']
+			models: [ACTIVE_EXPERIMENT_MODEL, 'legacy/openai-model']
 		});
 
 		expect(result).toEqual(
@@ -61,15 +63,15 @@ describe('resolveLaneModels', () => {
 		const result = resolveLaneModels({
 			lane: 'json',
 			model: 'custom/model',
-			models: ['custom/model', 'nvidia/nemotron-3-super-120b-a12b:free']
+			models: ['custom/model', 'legacy/free-model']
 		});
 
 		expect(result).not.toContain('custom/model');
-		expect(result).not.toContain('nvidia/nemotron-3-super-120b-a12b:free');
+		expect(result).not.toContain('legacy/free-model');
 		expect(result).toEqual([...OPENROUTER_V2_JSON_MODELS]);
 	});
 
-	it('filters non-active side-route models unless they are explicitly allowlisted', () => {
+	it('falls back to JSON defaults for the reconciliation model without allowlist overrides', () => {
 		const result = resolveLaneModels({
 			lane: 'json',
 			model: AGENT_STATE_RECONCILIATION_MODEL
@@ -78,7 +80,7 @@ describe('resolveLaneModels', () => {
 		expect(result).toEqual([...OPENROUTER_V2_JSON_MODELS]);
 	});
 
-	it('can route a JSON side-route to an allowlisted model without active defaults', () => {
+	it('can route reconciliation JSON without adding active defaults', () => {
 		const result = resolveLaneModels({
 			lane: 'json',
 			model: AGENT_STATE_RECONCILIATION_MODEL,
@@ -93,14 +95,22 @@ describe('resolveLaneModels', () => {
 	it('honors text profile hints before text lane defaults', () => {
 		const result = resolveLaneModels({ lane: 'text', profile: 'quality' });
 
-		expect(result).toEqual([...OPENROUTER_V2_TEXT_MODELS]);
+		expect(result).toEqual(
+			[...TEXT_PROFILE_MODELS.quality, ...OPENROUTER_V2_TEXT_MODELS].filter(
+				(model, index, models) => models.indexOf(model) === index
+			)
+		);
 	});
 
 	it('honors JSON profile hints with JSON-capable models only', () => {
 		const result = resolveLaneModels({ lane: 'json', profile: 'fast' });
 
 		expect(result).not.toContain('custom/model');
-		expect(result).toEqual([...OPENROUTER_V2_JSON_MODELS]);
+		expect(result).toEqual(
+			[...JSON_PROFILE_MODELS.fast, ...OPENROUTER_V2_JSON_MODELS].filter(
+				(model, index, models) => models.indexOf(model) === index
+			)
+		);
 	});
 
 	it('keeps tool lane defaults ahead of broad profile fallbacks', () => {

@@ -609,6 +609,26 @@
 		return browser ? window.location.origin : $page.url.origin;
 	}
 
+	function mcpEndpointUrl(): string {
+		return `${buildosBaseUrl()}/mcp/buildos`;
+	}
+
+	function gatewayEndpointUrl(): string {
+		return `${buildosBaseUrl()}/api/agent-call/buildos`;
+	}
+
+	function claudeCodeAuthSnippet(): string {
+		return buildMcpQuickConnect('claude-code', '<BUILDOS_AGENT_TOKEN>').value;
+	}
+
+	function openClawAuthSnippet(token = '<BUILDOS_AGENT_TOKEN>', callerKey?: string): string {
+		return buildOpenClawQuickConnect({
+			token,
+			calleeHandle: buildosAgent?.handle ?? '<BUILDOS_CALLEE_HANDLE>',
+			callerKey: callerKey ?? 'openclaw:workspace:<installation-name>'
+		}).value;
+	}
+
 	function requestedScopeForCaller(caller: BuildosAgentCallerSummary): Record<string, unknown> {
 		const scope: Record<string, unknown> = {
 			mode: caller.scope_mode
@@ -773,16 +793,36 @@
 		includeKey: boolean
 	): McpQuickConnect {
 		const token = includeKey ? provisioned.credentials.bearer_token : '<BUILDOS_AGENT_TOKEN>';
-		return buildMcpQuickConnect(bootstrapProfile(provisioned).id, token);
+		const profileId = bootstrapProfile(provisioned).id;
+
+		if (profileId === 'openclaw') {
+			return buildOpenClawQuickConnect({
+				token,
+				calleeHandle: provisioned.buildos_agent.handle,
+				callerKey: provisioned.caller.caller_key
+			});
+		}
+
+		return buildMcpQuickConnect(profileId, token);
 	}
 
 	function mcpQuickConnectForCaller(caller: BuildosAgentCallerSummary): McpQuickConnect {
 		// Existing keys never expose the secret again, so always use the placeholder.
-		return buildMcpQuickConnect(profileForCaller(caller).id, '<BUILDOS_AGENT_TOKEN>');
+		const profileId = profileForCaller(caller).id;
+
+		if (profileId === 'openclaw') {
+			return buildOpenClawQuickConnect({
+				token: '<BUILDOS_AGENT_TOKEN>',
+				calleeHandle: buildosAgent?.handle ?? '<BUILDOS_CALLEE_HANDLE>',
+				callerKey: caller.caller_key
+			});
+		}
+
+		return buildMcpQuickConnect(profileId, '<BUILDOS_AGENT_TOKEN>');
 	}
 
 	function buildMcpQuickConnect(profileId: AgentClientProfileId, token: string): McpQuickConnect {
-		const mcpUrl = `${buildosBaseUrl()}/mcp/buildos`;
+		const mcpUrl = mcpEndpointUrl();
 
 		switch (profileId) {
 			case 'claude-code':
@@ -819,6 +859,28 @@
 					note: 'Point any streamable-HTTP MCP client at this URL with the bearer header. Browser-based clients can connect to the same URL with OAuth instead.'
 				};
 		}
+	}
+
+	function buildOpenClawQuickConnect(params: {
+		token: string;
+		calleeHandle: string;
+		callerKey: string;
+	}): McpQuickConnect {
+		return {
+			label: 'Add to OpenClaw secrets',
+			language: 'env',
+			value: [
+				buildBuildosEnvBlock({
+					baseUrl: buildosBaseUrl(),
+					bearerToken: params.token,
+					calleeHandle: params.calleeHandle,
+					callerKey: params.callerKey
+				}),
+				`BUILDOS_MCP_URL=${mcpEndpointUrl()}`,
+				`BUILDOS_GATEWAY_URL=${gatewayEndpointUrl()}`
+			].join('\n'),
+			note: 'Store this in OpenClaw env, SecretRef, or plugin config. OpenClaw authenticates by sending the BuildOS agent key as a bearer token; do not paste it into chat.'
+		};
 	}
 
 	function mcpQuickConnectIncludesSecret(
@@ -1098,6 +1160,138 @@
 			</Button>
 		{/snippet}
 	</TabHeader>
+
+	<div class="overflow-hidden rounded-lg border border-border bg-card shadow-ink">
+		<div
+			class="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5"
+		>
+			<div class="space-y-1">
+				<h3 class="text-sm font-semibold text-foreground">Connect an agent to BuildOS</h3>
+				<p class="max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
+					Generate a BuildOS Agent Key, store it in the client config, then authenticate
+					with
+					<code class="rounded bg-muted px-1 py-0.5 text-[0.72rem] text-foreground"
+						>Authorization: Bearer &lt;BUILDOS_AGENT_TOKEN&gt;</code
+					>. Use one key per tool so you can rotate or revoke access without touching
+					other agents.
+				</p>
+			</div>
+			<a
+				href="/docs/connect-agents"
+				class="inline-flex shrink-0 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-accent"
+			>
+				Full setup docs
+				<ExternalLink class="h-3.5 w-3.5" />
+			</a>
+		</div>
+
+		<div
+			class="grid divide-y divide-border text-xs text-muted-foreground lg:grid-cols-3 lg:divide-x lg:divide-y-0"
+		>
+			<div class="space-y-2 px-4 py-4 sm:px-5">
+				<div
+					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
+				>
+					Claude Code
+				</div>
+				<p class="leading-relaxed">
+					Add BuildOS as an HTTP MCP server. After generating a key, the confirmation
+					modal can copy this command with the key filled in.
+				</p>
+				<pre
+					class="overflow-x-auto rounded border border-border bg-muted/30 p-2.5 text-[0.7rem] text-foreground whitespace-pre-wrap"><code
+						>{claudeCodeAuthSnippet()}</code
+					></pre>
+				<div class="flex justify-end">
+					<Button
+						variant="ghost"
+						size="sm"
+						icon={copiedId === 'setup-claude-code' ? CircleCheck : Copy}
+						onclick={() =>
+							copyToClipboard(
+								'setup-claude-code',
+								claudeCodeAuthSnippet(),
+								'Claude Code command copied'
+							)}
+					>
+						{copiedId === 'setup-claude-code' ? 'Copied' : 'Copy'}
+					</Button>
+				</div>
+			</div>
+
+			<div class="space-y-2 px-4 py-4 sm:px-5">
+				<div
+					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
+				>
+					OpenClaw
+				</div>
+				<p class="leading-relaxed">
+					Store the BuildOS values in OpenClaw env, SecretRef, or plugin config. The
+					connector uses the token against the MCP endpoint or JSON-RPC gateway.
+				</p>
+				<pre
+					class="overflow-x-auto rounded border border-border bg-muted/30 p-2.5 text-[0.7rem] text-foreground whitespace-pre-wrap"><code
+						>{openClawAuthSnippet()}</code
+					></pre>
+				<div class="flex justify-end">
+					<Button
+						variant="ghost"
+						size="sm"
+						icon={copiedId === 'setup-openclaw' ? CircleCheck : Copy}
+						onclick={() =>
+							copyToClipboard(
+								'setup-openclaw',
+								openClawAuthSnippet(),
+								'OpenClaw env block copied'
+							)}
+					>
+						{copiedId === 'setup-openclaw' ? 'Copied' : 'Copy'}
+					</Button>
+				</div>
+			</div>
+
+			<div class="space-y-2 px-4 py-4 sm:px-5">
+				<div
+					class="text-[0.65rem] font-semibold uppercase tracking-wider text-foreground/70"
+				>
+					Browser or remote clients
+				</div>
+				<p class="leading-relaxed">
+					Use OAuth for Claude.ai, ChatGPT MCP, or other cloud-hosted clients. Add the
+					remote connector URL and approve BuildOS in the browser instead of pasting a
+					bearer token into chat.
+				</p>
+				<pre
+					class="overflow-x-auto rounded border border-border bg-muted/30 p-2.5 text-[0.7rem] text-foreground whitespace-pre-wrap"><code
+						>{mcpEndpointUrl()}</code
+					></pre>
+				<div class="flex justify-end">
+					<Button
+						variant="ghost"
+						size="sm"
+						icon={copiedId === 'setup-remote-mcp' ? CircleCheck : Copy}
+						onclick={() =>
+							copyToClipboard(
+								'setup-remote-mcp',
+								mcpEndpointUrl(),
+								'Remote MCP URL copied'
+							)}
+					>
+						{copiedId === 'setup-remote-mcp' ? 'Copied' : 'Copy'}
+					</Button>
+				</div>
+			</div>
+		</div>
+
+		<div class="border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5">
+			<span class="font-medium text-foreground">Connection check:</span>
+			Ask the agent to connect to BuildOS, list your projects, and call
+			<code class="rounded bg-muted px-1 py-0.5 text-[0.72rem] text-foreground"
+				>get_onto_project_status</code
+			>
+			before changing an existing project.
+		</div>
+	</div>
 
 	<!-- What is this? -->
 	<details
