@@ -17,6 +17,7 @@ import { generateMinimalEmailHTML } from '$lib/utils/emailTemplate';
 import { ErrorLoggerService } from './errorLogger.service';
 
 type LifecycleEmailSink = 'log' | 'smtp' | 'gmail';
+type EmailOptOutScope = 'lifecycle' | 'daily_brief';
 
 export interface EmailData {
 	to: string;
@@ -74,36 +75,39 @@ export class EmailService {
 			: null;
 		const sender = getSenderByType(senderType);
 		const baseUrl = PUBLIC_APP_URL || (dev ? 'http://localhost:5173' : 'https://build-os.com');
-		const isLifecycleEmail = this.isLifecycleEmail(data.metadata);
+		const optOutScope = this.getOptOutScope(data.metadata);
 		const unsubscribeUrl =
-			isLifecycleEmail && trackingId
+			optOutScope && trackingId
 				? `${baseUrl}/api/email-tracking/${trackingId}/unsubscribe`
 				: null;
 		const sendMetadata = unsubscribeUrl
 			? {
 					...data.metadata,
-					unsubscribe_url: unsubscribeUrl
+					unsubscribe_url: unsubscribeUrl,
+					unsubscribe_scope: optOutScope
 				}
 			: data.metadata;
 		const trackingPixel = trackingId
 			? `<img src="${baseUrl}/api/email-tracking/${trackingId}" width="1" height="1" style="display:none;" alt="" />`
 			: '';
 
-		const textBody = this.composeTextBody(data.body, unsubscribeUrl);
+		const textBody = this.composeTextBody(data.body, unsubscribeUrl, optOutScope);
 		const htmlBody = this.composeHtmlBody({
 			subject: data.subject,
 			html: data.html,
 			textBody,
 			trackingPixel,
 			trackingId,
-			unsubscribeUrl
+			unsubscribeUrl,
+			optOutScope
 		});
-		const replyTo = data.replyTo ?? (isLifecycleEmail ? sender.email : undefined);
-		const headers = this.buildLifecycleHeaders({
+		const replyTo = data.replyTo ?? (optOutScope ? sender.email : undefined);
+		const headers = this.buildOptOutHeaders({
 			sender,
-			unsubscribeUrl
+			unsubscribeUrl,
+			optOutScope
 		});
-		const lifecycleSink = isLifecycleEmail ? this.getLifecycleEmailSink() : null;
+		const lifecycleSink = optOutScope === 'lifecycle' ? this.getLifecycleEmailSink() : null;
 
 		try {
 			if (lifecycleSink === 'log') {
@@ -392,7 +396,8 @@ export class EmailService {
 		textBody,
 		trackingPixel,
 		trackingId,
-		unsubscribeUrl
+		unsubscribeUrl,
+		optOutScope
 	}: {
 		subject: string;
 		html?: string;
@@ -400,10 +405,11 @@ export class EmailService {
 		trackingPixel: string;
 		trackingId: string | null;
 		unsubscribeUrl: string | null;
+		optOutScope: EmailOptOutScope | null;
 	}): string {
 		if (html) {
 			// Rewrite links for click tracking if tracking is enabled
-			let processedHtml = this.appendLifecycleHtmlFooter(html, unsubscribeUrl);
+			let processedHtml = this.appendOptOutHtmlFooter(html, unsubscribeUrl, optOutScope);
 			if (trackingId) {
 				processedHtml = this.rewriteLinksForTracking(processedHtml, trackingId);
 			}
@@ -424,7 +430,11 @@ export class EmailService {
 		});
 	}
 
-	private composeTextBody(textBody: string, unsubscribeUrl: string | null): string {
+	private composeTextBody(
+		textBody: string,
+		unsubscribeUrl: string | null,
+		optOutScope: EmailOptOutScope | null
+	): string {
 		if (!unsubscribeUrl) {
 			return textBody;
 		}
@@ -433,9 +443,14 @@ export class EmailService {
 			return textBody;
 		}
 
+		const message =
+			optOutScope === 'daily_brief'
+				? 'You can turn off BuildOS daily briefs here:'
+				: 'You can opt out of these BuildOS emails here:';
+
 		return `${textBody.trimEnd()}
 
-You can opt out of these BuildOS emails here:
+${message}
 ${unsubscribeUrl}`;
 	}
 
@@ -472,15 +487,24 @@ ${unsubscribeUrl}`;
 		return `${html}${trackingPixel}`;
 	}
 
-	private appendLifecycleHtmlFooter(html: string, unsubscribeUrl: string | null): string {
+	private appendOptOutHtmlFooter(
+		html: string,
+		unsubscribeUrl: string | null,
+		optOutScope: EmailOptOutScope | null
+	): string {
 		if (!unsubscribeUrl || html.includes(unsubscribeUrl)) {
 			return html;
 		}
 
+		const message =
+			optOutScope === 'daily_brief'
+				? 'You can turn off BuildOS daily briefs'
+				: 'You can opt out of these BuildOS emails';
+
 		const footer = `
 			<hr style="border: 0; border-top: 1px solid #E5E0DA; margin: 28px 0 16px;" />
 			<p style="font-size: 12px; line-height: 1.5; color: #6B625C;">
-				You can opt out of these BuildOS emails
+				${message}
 				<a href="${this.escapeHtml(unsubscribeUrl)}" style="color: #6B625C;">here</a>.
 			</p>
 		`;
@@ -527,29 +551,52 @@ ${unsubscribeUrl}`;
 		).test(html);
 	}
 
-	private isLifecycleEmail(metadata?: Record<string, any>): boolean {
-		return (
+	private getOptOutScope(metadata?: Record<string, any>): EmailOptOutScope | null {
+		if (!metadata || typeof metadata !== 'object') {
+			return null;
+		}
+
+		if (
+			metadata?.event_type === 'brief.completed' ||
+			metadata?.event_type === 'brief.failed' ||
+			metadata?.category === 'daily_brief' ||
+			metadata?.category === 'daily-brief' ||
+			metadata?.campaign_type === 'daily_brief'
+		) {
+			return 'daily_brief';
+		}
+
+		if (
 			metadata?.campaign_type === 'lifecycle' ||
 			metadata?.campaign_type === 'retargeting' ||
 			metadata?.category === 'welcome_sequence' ||
 			metadata?.category === 'retargeting_pilot' ||
 			metadata?.campaign === 'welcome-sequence'
-		);
+		) {
+			return 'lifecycle';
+		}
+
+		return null;
 	}
 
-	private buildLifecycleHeaders({
+	private buildOptOutHeaders({
 		sender,
-		unsubscribeUrl
+		unsubscribeUrl,
+		optOutScope
 	}: {
 		sender: EmailSender;
 		unsubscribeUrl: string | null;
+		optOutScope: EmailOptOutScope | null;
 	}): Record<string, string> | undefined {
-		if (!unsubscribeUrl) {
+		if (!unsubscribeUrl || !optOutScope) {
 			return undefined;
 		}
 
 		return {
-			'List-ID': 'BuildOS <emails.build-os.com>',
+			'List-ID':
+				optOutScope === 'daily_brief'
+					? 'BuildOS Daily Briefs <daily-briefs.build-os.com>'
+					: 'BuildOS <emails.build-os.com>',
 			'List-Unsubscribe': `<${unsubscribeUrl}>, <mailto:${sender.email}?subject=unsubscribe>`,
 			'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
 		};

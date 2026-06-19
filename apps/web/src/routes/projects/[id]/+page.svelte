@@ -80,6 +80,7 @@
 	import type { DocStructure, OntoDocument } from '$lib/types/onto-api';
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
+	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -496,6 +497,19 @@
 			seedCoreProjectData(currentData);
 			startProjectDataLoading(currentData);
 		});
+	});
+
+	// When the agentic chat (from anywhere — global launcher, embedded edit modals, …)
+	// reports that it mutated data affecting this project, silently refetch so newly
+	// created/updated entities appear without a manual reload.
+	let lastHandledMutationNonce = 0;
+	$effect(() => {
+		const event = $dataMutationEvents;
+		if (!event || event.nonce === lastHandledMutationNonce) return;
+		lastHandledMutationNonce = event.nonce;
+		if (mutationAffectsProject(event.summary, data.projectId)) {
+			untrack(() => void refreshSilently());
+		}
 	});
 
 	// ============================================================
@@ -921,12 +935,10 @@
 		await loadAgentChatModal();
 		showRecentChatAgentModal = true;
 	}
-	function closeRecentChatAgentModal(summary?: DataMutationSummary) {
+	function closeRecentChatAgentModal(_summary?: DataMutationSummary) {
 		showRecentChatAgentModal = false;
 		selectedRecentChatSessionId = null;
-		if (summary?.hasChanges) {
-			void refreshSilently();
-		}
+		// Refresh is handled globally via the dataMutationEvents subscription above.
 	}
 	function handleCollaborationLeftProject() {
 		goto('/projects');

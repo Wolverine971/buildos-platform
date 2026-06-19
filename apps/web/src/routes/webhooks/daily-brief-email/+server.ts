@@ -279,14 +279,18 @@ export const POST: RequestHandler = async ({ request }) => {
 			body: briefContent, // Plain text version
 			html: emailHtml,
 			userId: payload.userId,
+			createdBy: payload.userId,
 			metadata: {
 				brief_id: payload.briefId,
 				brief_date: payload.briefDate,
 				sent_via: 'webhook',
-				category: 'daily-brief',
+				category: 'daily_brief',
+				campaign_type: 'daily_brief',
+				event_type: 'brief.completed',
+				created_by: payload.userId,
 				...payload.metadata
 			},
-			trackingEnabled: !!payload.metadata?.trackingId,
+			trackingEnabled: true,
 			emailId: payload.metadata?.emailRecordId
 		});
 

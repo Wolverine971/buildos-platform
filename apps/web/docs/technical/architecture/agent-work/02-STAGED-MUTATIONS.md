@@ -2,9 +2,22 @@
 
 # Agent Work — 02 Staged Mutations (Optional Review-Before-Commit)
 
-**Status:** Design · **Date:** 2026-06-15 · Part of the [Agent Work](./00-OVERVIEW.md) doc set.
+**Status:** ✅ **SHIPPED 2026-06-19** (design 2026-06-15) · Part of the [Agent Work](./00-OVERVIEW.md) doc set. Pickup: [HANDOFF_2026-06-19](./HANDOFF_2026-06-19.md) §3.
 
 An **opt-in** trust subsystem. Staging is **off by default** — runs mutate the user's data directly, exactly like the chat does today. When a caller asks for it (a `review` flag), the run instead produces a reviewable **Change Set** and waits for approval before anything lands.
+
+> **Implementation map (2026-06-19):**
+>
+> - Stage path: `packages/shared-agent-ops/src/gateway/op-execution-gateway.ts` (`stageGatewayWriteOp`) + `op-execution.ts` (`AgentOpContext.mutationMode`, `executeWriteOp` stage branch).
+> - Runner: `apps/worker/src/workers/agent-run/agentRunWorker.ts` (derives `mutationMode` from `review_required`, accumulates changes, finalizes `proposal_ready` + persists `agent_runs.change_set`).
+> - Commit: `packages/shared-agent-ops/src/gateway/change-set.ts` (`commitChangeSet`) + `POST /api/agent-runs/[id]/commit`.
+> - UI: `apps/web/.../notifications/types/agent-run/ChangeSetReview.svelte` (in the run modal + Work Panel detail).
+> - Chat (approval flow #2): `delegate_task` `review` flag + `commit_change_set` tool (`UtilityExecutor.commitChangeSet`).
+> - Coverage guard: `apps/worker/tests/changeSetCoverage.test.ts`.
+>
+> **Not yet implemented from this spec:** full **calendar** staging for external side effects and **auto-approve Operative policy** (approval flow #3 — Phase 6).
+>
+> **Implemented after initial ship:** commit-time **staleness/drift detection** now re-fetches known ontology rows for staged update/delete changes and fails stale changes instead of blindly applying `after`.
 
 > **Default = direct commit.** Review-before-commit is a capability you turn on, not overhead you manage on every run.
 
@@ -66,7 +79,8 @@ Write tools gain a **stage mode** that is engaged only when the run's `mutationM
 
 - `RunContext` carries `mutationMode: 'commit' | 'stage'`, derived from the brief's `review` flag (see §3a).
 - In `commit` mode (default), write ops execute normally — no Change Set, no extra path.
-- In `stage` mode, a write op **does not perform the DB/external mutation.** It validates inputs, computes `before` (fetch current state) and `after` (the would-be payload), and appends a `ProposedChange` to the run's Change Set.
+- In `stage` mode, a stage-supported write op **does not perform the DB/external mutation.** It validates inputs, computes `before` (fetch current state) and `after` (the would-be payload), and appends a `ProposedChange` to the run's Change Set.
+- Calendar writes are **not** stage-supported in v1. Review-mode runs may read calendar context when a `CalendarPort` is available, but `cal.event.create/update/delete` and `cal.project.set` are hidden from the tool catalog and rejected if called directly.
 - The tool returns a synthetic success result (so the LLM's loop continues naturally) carrying the proposed-change id — which also flows into run-aware telemetry, so `entities_touched` vs `proposed_changes` stay consistent.
 
 This keeps the LLM unaware of commit-vs-stage; the agent just "does the work," and the substrate decides whether that work lands now or after review.
@@ -103,10 +117,11 @@ A Change Set can be approved three ways — all funnel through one commit endpoi
 A single server-side `commitChangeSet(run_id, decisions)`:
 
 1. Loads the Change Set; filters to `approved` changes.
-2. Applies each approved change via the **same worker-safe adapter/executors** used in `commit` mode (so there's one mutation path, not two), inside a logical transaction where possible.
-3. Records `applied_entity_id` per change; promotes applied changes into the run's `entities_touched`.
-4. Sets Change Set `status` → `applied` / `partially_applied`; updates `agent_runs.status` → `completed`.
-5. **Partial failure:** a failed change records `error` and does not roll back already-applied siblings unless they're declared dependent; the user sees exactly what landed. (Atomicity granularity is an open question — start per-change with clear reporting.)
+2. For staged update/delete changes on known ontology tables, re-fetches the current row and compares it to the reviewed `before` snapshot. A mismatch marks that change stale and skips it.
+3. Applies each approved fresh change via the **same worker-safe adapter/executors** used in `commit` mode (so there's one mutation path, not two), inside a logical transaction where possible.
+4. Records `applied_entity_id` per change; promotes applied changes into the run's `entities_touched`.
+5. Sets Change Set `status` → `applied` / `partially_applied`; updates `agent_runs.status` → `completed` or `partial`.
+6. **Partial failure:** a failed change records `error` and does not roll back already-applied siblings unless they're declared dependent; the user sees exactly what landed. (Atomicity granularity is an open question — start per-change with clear reporting.)
 
 ---
 
@@ -120,9 +135,9 @@ A single server-side `commitChangeSet(run_id, decisions)`:
 ## 7. Open questions
 
 - **Atomicity:** per-change vs whole-set transaction. Cross-entity dependencies (create project → create tasks in it) need ordering + dependency hints in `ProposedChange`.
-- **Staleness:** if the user edits an entity between proposal and approval, `before` no longer matches. Detect drift on commit and surface conflicts rather than blindly applying `after`.
-- **Coverage:** every write executor must support `stage` mode and emit a faithful `before`/`after`. Same registry-coverage concern as `entities_touched` (01 §5). Add a test that every op in `BUILDOS_AGENT_WRITE_OPS` is either stage-supported or explicitly marked unsupported for review mode.
-- **Calendar/external side effects:** Google Calendar writes aren't pure DB ops — staging them needs a dry-run representation and careful commit (idempotency).
+- **Staleness beyond core ontology rows:** commit now detects drift for known ontology update/delete rows. Future work should decide how to represent drift for relationships, cross-entity dependencies, and external resources.
+- **Coverage:** every write executor must support `stage` mode and emit a faithful `before`/`after`, or be explicitly unavailable in review mode. Same registry-coverage concern as `entities_touched` (01 §5). Keep tests that every op in `BUILDOS_AGENT_WRITE_OPS` is either stage-supported or explicitly categorized.
+- **Calendar/external side effects:** Google Calendar writes aren't pure DB ops. V1 blocks them in review mode rather than committing behind the review UI. Full staging needs a dry-run external intent, idempotent commit replay, and clear conflict handling if the Google event/calendar changed after proposal.
 
 ## 8. Phase dependency
 

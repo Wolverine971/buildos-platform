@@ -5,6 +5,7 @@
 	import Button from '$components/ui/Button.svelte';
 	import { Plus, Pencil, Trash2, Check, X } from 'lucide-svelte';
 	import { toastService } from '$lib/stores/toast.store';
+	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
 	import type { ChangeSet, ProposedChange, ProposedChangeAction } from '@buildos/shared-types';
 
 	let {
@@ -38,12 +39,14 @@
 		overrides = Object.fromEntries(changeSet.changes.map((c) => [c.id, decision]));
 	}
 
-	const ACTION_META: Record<ProposedChangeAction, { icon: typeof Plus; cls: string; label: string }> =
-		{
-			create: { icon: Plus, cls: 'text-success', label: 'Create' },
-			update: { icon: Pencil, cls: 'text-info', label: 'Update' },
-			delete: { icon: Trash2, cls: 'text-destructive', label: 'Delete' }
-		};
+	const ACTION_META: Record<
+		ProposedChangeAction,
+		{ icon: typeof Plus; cls: string; label: string }
+	> = {
+		create: { icon: Plus, cls: 'text-success', label: 'Create' },
+		update: { icon: Pencil, cls: 'text-info', label: 'Update' },
+		delete: { icon: Trash2, cls: 'text-destructive', label: 'Delete' }
+	};
 
 	// Fields to hide from the diff (targeting ids, not meaningful content).
 	const HIDDEN_KEYS = new Set([
@@ -58,7 +61,8 @@
 
 	function formatValue(value: unknown): string {
 		if (value === null || value === undefined) return '—';
-		if (typeof value === 'string') return value.length > 160 ? value.slice(0, 160) + '…' : value;
+		if (typeof value === 'string')
+			return value.length > 160 ? value.slice(0, 160) + '…' : value;
 		if (typeof value === 'object') {
 			const json = JSON.stringify(value);
 			return json.length > 160 ? json.slice(0, 160) + '…' : json;
@@ -71,7 +75,29 @@
 		const before = (change.before ?? {}) as Record<string, unknown>;
 		return Object.keys(after)
 			.filter((k) => !HIDDEN_KEYS.has(k))
-			.map((k) => ({ key: k, before: change.before ? before[k] : undefined, after: after[k] }));
+			.map((k) => ({
+				key: k,
+				before: change.before ? before[k] : undefined,
+				after: after[k]
+			}));
+	}
+
+	// Best-effort project scope for the mutation signal: any `project_id` referenced by a
+	// change, plus the entity id of any project-level change. Empty = scope unknown.
+	function collectAffectedProjectIds(set: ChangeSet): string[] {
+		const ids = new Set<string>();
+		for (const change of set.changes) {
+			for (const payload of [change.after, change.before]) {
+				const pid = (payload as Record<string, unknown> | null | undefined)?.project_id;
+				if (typeof pid === 'string' && pid) ids.add(pid);
+			}
+			if (change.entity_type === 'project') {
+				const projectEntityId = change.entity_id ?? change.applied_entity_id;
+				if (typeof projectEntityId === 'string' && projectEntityId)
+					ids.add(projectEntityId);
+			}
+		}
+		return Array.from(ids);
 	}
 
 	async function apply() {
@@ -97,12 +123,24 @@
 			const r = payload?.data;
 			const failed = r?.failed ?? 0;
 			if (failed > 0) {
-				toastService.warning(`Applied ${r.applied}, ${failed} failed, ${r.rejected} rejected`);
+				toastService.warning(
+					`Applied ${r.applied}, ${failed} failed, ${r.rejected} rejected`
+				);
 			} else {
 				toastService.success(
 					`Applied ${r?.applied ?? 0} change${r?.applied === 1 ? '' : 's'}` +
 						(r?.rejected ? `, rejected ${r.rejected}` : '')
 				);
+			}
+			// Tell the rest of the app to refetch so the applied changes show up live.
+			const applied = r?.applied ?? 0;
+			if (applied > 0) {
+				notifyDataMutation({
+					hasChanges: true,
+					totalMutations: applied,
+					affectedProjectIds: collectAffectedProjectIds(changeSet),
+					hasMessagesSent: false
+				});
 			}
 			onApplied?.();
 		} catch {
@@ -179,9 +217,13 @@
 										>{formatValue(row.before)}</span
 									>
 									<span class="text-muted-foreground">→</span>
-									<span class="text-foreground break-words">{formatValue(row.after)}</span>
+									<span class="text-foreground break-words"
+										>{formatValue(row.after)}</span
+									>
 								{:else}
-									<span class="text-foreground break-words">{formatValue(row.after)}</span>
+									<span class="text-foreground break-words"
+										>{formatValue(row.after)}</span
+									>
 								{/if}
 							</div>
 						{/each}

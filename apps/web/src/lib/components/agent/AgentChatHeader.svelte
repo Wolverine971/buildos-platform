@@ -27,6 +27,8 @@
 		sessionStatusLabel?: string | null;
 		contextUsage?: ContextUsageSnapshot | null;
 		sessionId?: string | null;
+		/** Bumped each time we shift into a (new) project context — triggers the title glimmer. */
+		contextShiftPulse?: number;
 	}
 
 	let {
@@ -46,10 +48,35 @@
 		currentActivity,
 		sessionStatusLabel = null,
 		contextUsage = null,
-		sessionId = null
+		sessionId = null,
+		contextShiftPulse = 0
 	}: Props = $props();
 
 	const isProjectContext = $derived.by(() => selectedContextType === 'project');
+
+	// One-shot glimmer when the project context shifts. We key the title on the
+	// pulse so the CSS animation re-fires on every transition, and gate it on
+	// `glimmer` so it never plays on first mount (pulse starts at 0).
+	let glimmer = $state(false);
+	let lastPulse = 0;
+	let glimmerTimer: ReturnType<typeof setTimeout> | null = null;
+
+	$effect(() => {
+		const pulse = contextShiftPulse;
+		if (pulse === lastPulse) return;
+		lastPulse = pulse;
+		if (pulse <= 0) return;
+		glimmer = true;
+		if (glimmerTimer) clearTimeout(glimmerTimer);
+		glimmerTimer = setTimeout(() => {
+			glimmer = false;
+			glimmerTimer = null;
+		}, 1200);
+	});
+
+	$effect(() => () => {
+		if (glimmerTimer) clearTimeout(glimmerTimer);
+	});
 
 	// Determine project URL based on context
 	const projectUrl = $derived(projectId ? `/projects/${projectId}` : null);
@@ -103,9 +130,14 @@
 	<!-- Title & Focus Section -->
 	<div class="flex min-w-0 flex-1 items-center gap-2">
 		{#if selectedContextType}
-			<h2 class="truncate text-sm font-semibold text-foreground">
-				{displayContextLabel}
-			</h2>
+			{#key contextShiftPulse}
+				<h2
+					class="agent-context-title truncate text-sm font-semibold text-foreground"
+					class:agent-context-title--glimmer={glimmer}
+				>
+					{displayContextLabel}
+				</h2>
+			{/key}
 		{:else}
 			<!-- BuildOS with accent color -->
 			<h2 class="inline-flex items-baseline gap-[0.05em] text-sm font-bold tracking-tight">
@@ -224,3 +256,74 @@
 		{/if}
 	</div>
 </div>
+
+<style>
+	/*
+	 * INKPRINT glimmer: when the agent shifts us onto a (new) project, the title
+	 * gently rises into place while a single band of accent "ink" sweeps across
+	 * the letters — a small, joyful signal that the context just changed.
+	 */
+	.agent-context-title--glimmer {
+		/*
+		 * Mostly-foreground gradient with a narrow accent band at its centre.
+		 * Sized to 300% so the painted image always fully covers the title (the
+		 * band can sweep fully in and out without ever leaving a glyph unpainted
+		 * — important, since unpainted area + text-clip = invisible text).
+		 */
+		background-image: linear-gradient(
+			100deg,
+			hsl(var(--foreground)) 0%,
+			hsl(var(--foreground)) 42%,
+			hsl(var(--accent)) 50%,
+			hsl(var(--foreground)) 58%,
+			hsl(var(--foreground)) 100%
+		);
+		background-size: 300% 100%;
+		background-repeat: no-repeat;
+		/* Resting/end state: window sits on a pure-foreground slice of the gradient. */
+		background-position: 0% 0;
+		-webkit-background-clip: text;
+		background-clip: text;
+		-webkit-text-fill-color: transparent;
+		color: transparent;
+		transform-origin: left center;
+		animation:
+			agent-context-pop 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+			agent-context-shimmer 1s ease-out 0.04s;
+	}
+
+	@keyframes agent-context-pop {
+		0% {
+			opacity: 0;
+			transform: translateY(3px) scale(0.97);
+		}
+		60% {
+			opacity: 1;
+		}
+		100% {
+			opacity: 1;
+			transform: translateY(0) scale(1);
+		}
+	}
+
+	/* Accent band travels left→right across the letters, then settles off-frame. */
+	@keyframes agent-context-shimmer {
+		from {
+			background-position: 100% 0;
+		}
+		to {
+			background-position: 0% 0;
+		}
+	}
+
+	/* Respect users who prefer reduced motion — keep the moment, drop the movement. */
+	@media (prefers-reduced-motion: reduce) {
+		.agent-context-title--glimmer {
+			background-image: none;
+			-webkit-text-fill-color: hsl(var(--foreground));
+			color: hsl(var(--foreground));
+			transform: none;
+			animation: none;
+		}
+	}
+</style>

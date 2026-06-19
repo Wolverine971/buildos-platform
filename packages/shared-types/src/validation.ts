@@ -183,6 +183,17 @@ export function validateDailyBriefMetadata(metadata: unknown): DailyBriefJobMeta
 				'number'
 			);
 		}
+
+		if (
+			options.engagementStage !== undefined &&
+			!['standard', 'reengagement', 'dormant'].includes(options.engagementStage as string)
+		) {
+			throw new ValidationError(
+				'options.engagementStage',
+				options.engagementStage,
+				'standard, reengagement, or dormant'
+			);
+		}
 	}
 
 	if (

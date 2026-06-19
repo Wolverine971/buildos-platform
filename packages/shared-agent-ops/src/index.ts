@@ -39,6 +39,9 @@ export * from './ontology/ontology-projects.service';
 // Worker-safe op execution (Phase 1b foundation — read ops)
 export * from './gateway/op-execution';
 
+// Worker-safe calendar capability for Agent Runs (no SvelteKit imports)
+export * from './calendar/agent-run-calendar-port';
+
 // Staged-mutation commit (Phase 4)
 export * from './gateway/change-set';
 

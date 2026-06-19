@@ -314,15 +314,22 @@ Do not call for plain task metadata updates (title/state/priority) unless docume
 		type: 'function',
 		function: {
 			name: 'search_all_projects',
-			description: `Primary agent search across all accessible BuildOS projects. Use this broad search when the project is unknown or the user is asking a cross-project question.
-Returns typed ontology matches with snippets so you can quickly shortlist items before loading details.`,
+			description: `Primary agent search across accessible BuildOS projects. Use this broad search when the project is unknown or the user is asking a cross-project question.
+Returns typed ontology matches with snippets so you can quickly shortlist items before loading details.
+
+QUERY TIP: search the distinctive content terms only (rare nouns, names, IDs). Search terms are AND-combined, so adding extra words — especially the project name — can EXCLUDE the very item you want. To restrict to one project, pass project_id; do NOT put the project name in the query. Example: for "in Aurora Field Notes, find the rockwool doc", call with query="rockwool" and project_id=<that project's id> — not query="Aurora Field Notes rockwool".`,
 			parameters: {
 				type: 'object',
 				properties: {
 					query: {
 						type: 'string',
 						description:
-							'Search text to match across accessible BuildOS projects (required)'
+							'Distinctive content terms to match (required). Use rare/specific words; omit the project name (pass project_id to scope instead).'
+					},
+					project_id: {
+						type: 'string',
+						description:
+							'Optional. When known, scope the search to this project instead of putting the project name in the query. Prefer this for "in <project>, find X" requests.'
 					},
 					types: {
 						type: 'array',

@@ -69,6 +69,11 @@ import {
 import { ChatToolExecutor } from '$lib/services/agentic-chat/tools/core/tool-executor';
 import { ToolExecutionService } from '$lib/services/agentic-chat/execution/tool-execution-service';
 import { getToolCategory } from '$lib/services/agentic-chat/tools/core/tools.config';
+import {
+	isSearchTool,
+	searchToolFamily,
+	searchTelemetryColumns
+} from '$lib/services/agentic-chat/tools/core/search-telemetry';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	AgentStateReconciliationService,
@@ -2120,6 +2125,8 @@ type ToolExecutionInsertRow = {
 	sequence_index: number | null;
 	arguments: Json;
 	result: Json | null;
+	result_count: number | null;
+	zero_result: boolean | null;
 	execution_time_ms: number | null;
 	tokens_consumed: number | null;
 	success: boolean;
@@ -2168,6 +2175,14 @@ function buildToolExecutionInsertRows(params: {
 	if (!Array.isArray(params.executions) || params.executions.length === 0) return [];
 	return params.executions.map(({ toolCall, result }, index) => {
 		const meta = extractFastChatToolCallMeta(toolCall);
+		// Populate search telemetry (result_count / zero_result) on the live persistence
+		// path. Without this the columns are always NULL in prod because ChatToolExecutor
+		// (the other writer that sets them) runs with logExecutions=false here.
+		const searchTelemetry = searchTelemetryColumns({
+			toolName: toolCall.function.name,
+			success: result.success === true,
+			result: result.result
+		});
 		return {
 			session_id: params.sessionId,
 			message_id: params.messageId,
@@ -2181,6 +2196,8 @@ function buildToolExecutionInsertRows(params: {
 			sequence_index: index + 1,
 			arguments: parseToolArgumentsForPersistence(toolCall.function.arguments),
 			result: result.success ? normalizeToolResultForPersistence(result.result) : null,
+			result_count: searchTelemetry.result_count,
+			zero_result: searchTelemetry.zero_result,
 			execution_time_ms:
 				typeof result.duration_ms === 'number' && Number.isFinite(result.duration_ms)
 					? result.duration_ms
@@ -4164,6 +4181,41 @@ export const POST: RequestHandler = async ({
 					try {
 						const patchedCall = patchToolCall(toolCall);
 						const toolCallMeta = extractFastChatToolCallMeta(patchedCall);
+						// Dev-only: surface exactly what the agent's search is doing so we can
+						// watch tool choice (smart vs legacy family), the query, scope, and
+						// result/zero-result counts live while smoke-testing. Gated on `dev`
+						// so it never adds noise/cost in production.
+						if (dev && isSearchTool(patchedCall.function.name)) {
+							const searchArgs = parseToolArgumentsForPersistence(
+								patchedCall.function.arguments
+							);
+							const argRecord =
+								searchArgs &&
+								typeof searchArgs === 'object' &&
+								!Array.isArray(searchArgs)
+									? (searchArgs as Record<string, unknown>)
+									: {};
+							const searchTelemetry = searchTelemetryColumns({
+								toolName: patchedCall.function.name,
+								success: result.success === true,
+								result: result.result
+							});
+							logger.info('[search] agent search executed', {
+								tool: patchedCall.function.name,
+								family: searchToolFamily(patchedCall.function.name),
+								query: argRecord.query ?? argRecord.search ?? null,
+								projectScoped: Boolean(argRecord.project_id),
+								types: Array.isArray(argRecord.types) ? argRecord.types : undefined,
+								resultCount: searchTelemetry.result_count,
+								zeroResult: searchTelemetry.zero_result,
+								success: result.success === true,
+								durationMs:
+									typeof result.duration_ms === 'number'
+										? result.duration_ms
+										: null,
+								sessionId: session.id
+							});
+						}
 						emitToolResult(agentStream, patchedCall, result, {
 							onError: (error) => {
 								logFastChatError({

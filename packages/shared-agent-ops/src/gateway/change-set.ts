@@ -32,12 +32,55 @@ export interface CommitChangeSetResult {
 
 export type CommitChangeSetOutcome =
 	| { ok: true; result: CommitChangeSetResult }
-	| { ok: false; error: { code: 'NOT_FOUND' | 'CONFLICT' | 'VALIDATION_ERROR' | 'INTERNAL'; message: string } };
+	| {
+			ok: false;
+			error: {
+				code: 'NOT_FOUND' | 'CONFLICT' | 'VALIDATION_ERROR' | 'INTERNAL';
+				message: string;
+			};
+	  };
 
 const ACTION_TO_ENTITY_ACTION: Record<ProposedChangeAction, EntityAction> = {
 	create: 'created',
 	update: 'updated',
 	delete: 'deleted'
+};
+
+const CHANGE_SET_DRIFT_ENTITY_CONFIG: Record<
+	string,
+	{
+		table: string;
+		select: string;
+	}
+> = {
+	project: {
+		table: 'onto_projects',
+		select: 'id, name, description, type_key, state_key, props, start_at, end_at, created_by, created_at, updated_at, archived_at, deleted_at'
+	},
+	task: {
+		table: 'onto_tasks',
+		select: 'id, project_id, title, description, type_key, state_key, priority, start_at, due_at, completed_at, props, created_at, updated_at, archived_at, deleted_at'
+	},
+	document: {
+		table: 'onto_documents',
+		select: 'id, project_id, title, description, type_key, state_key, content, props, children, created_at, updated_at, archived_at, deleted_at'
+	},
+	goal: {
+		table: 'onto_goals',
+		select: 'id, project_id, name, goal, description, type_key, state_key, target_date, completed_at, props, created_at, updated_at, archived_at, deleted_at'
+	},
+	plan: {
+		table: 'onto_plans',
+		select: 'id, project_id, name, description, plan, type_key, state_key, props, created_at, updated_at, archived_at, deleted_at'
+	},
+	milestone: {
+		table: 'onto_milestones',
+		select: 'id, project_id, title, description, type_key, state_key, target_date, completed_at, props, created_at, updated_at, archived_at, deleted_at'
+	},
+	risk: {
+		table: 'onto_risks',
+		select: 'id, project_id, title, description, type_key, state_key, probability, impact, mitigation, owner_actor_id, resolved_at, props, created_at, updated_at, archived_at, deleted_at'
+	}
 };
 
 function asChangeSet(value: unknown, runId: string): ChangeSet | null {
@@ -50,6 +93,93 @@ function asChangeSet(value: unknown, runId: string): ChangeSet | null {
 		changes: v.changes as ProposedChange[],
 		created_at: typeof v.created_at === 'string' ? v.created_at : new Date().toISOString()
 	};
+}
+
+function normalizeForComparison(value: unknown): unknown {
+	if (Array.isArray(value)) {
+		return value.map((entry) => normalizeForComparison(entry));
+	}
+	if (!value || typeof value !== 'object') {
+		return value;
+	}
+
+	const sorted: Record<string, unknown> = {};
+	for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+		const entry = (value as Record<string, unknown>)[key];
+		if (entry !== undefined) {
+			sorted[key] = normalizeForComparison(entry);
+		}
+	}
+	return sorted;
+}
+
+function sameSnapshot(left: unknown, right: unknown): boolean {
+	return (
+		JSON.stringify(normalizeForComparison(left)) ===
+		JSON.stringify(normalizeForComparison(right))
+	);
+}
+
+function subsetToSnapshotKeys(
+	current: Record<string, unknown>,
+	before: Record<string, unknown>
+): Record<string, unknown> {
+	const subset: Record<string, unknown> = {};
+	for (const key of Object.keys(before)) {
+		subset[key] = current[key];
+	}
+	return subset;
+}
+
+async function verifyStagedChangeFreshness(params: {
+	admin: SupabaseClient<Database>;
+	change: ProposedChange;
+}): Promise<{ ok: true } | { ok: false; message: string }> {
+	const { admin, change } = params;
+	if (change.action === 'create') {
+		return { ok: true };
+	}
+	if (!change.before || typeof change.before !== 'object' || Array.isArray(change.before)) {
+		return { ok: true };
+	}
+	if (!change.entity_id) {
+		return { ok: true };
+	}
+
+	const config = CHANGE_SET_DRIFT_ENTITY_CONFIG[change.entity_type];
+	if (!config) {
+		return { ok: true };
+	}
+
+	const before = change.before as Record<string, unknown>;
+	const { data, error } = await (admin as any)
+		.from(config.table)
+		.select(config.select)
+		.eq('id', change.entity_id)
+		.maybeSingle();
+
+	if (error) {
+		return {
+			ok: false,
+			message: `Failed to verify staged ${change.entity_type} freshness: ${error.message}`
+		};
+	}
+	if (!data) {
+		return {
+			ok: false,
+			message: `Staged ${change.entity_type} change is stale: the reviewed entity no longer exists`
+		};
+	}
+
+	const currentSubset = subsetToSnapshotKeys(data as Record<string, unknown>, before);
+	if (!sameSnapshot(currentSubset, before)) {
+		return {
+			ok: false,
+			message: `Staged ${change.entity_type} change is stale: current data no longer matches the reviewed before snapshot`
+		};
+	}
+
+	return { ok: true };
 }
 
 /**
@@ -134,8 +264,7 @@ export async function commitChangeSet(params: {
 	const scope: AgentCallScope = {
 		mode: 'read_write',
 		allowed_ops: (run.allowed_ops ?? undefined) as AgentCallScope['allowed_ops'],
-		project_ids:
-			run.context_type === 'project' && run.project_id ? [run.project_id] : undefined
+		project_ids: run.context_type === 'project' && run.project_id ? [run.project_id] : undefined
 	};
 
 	const entitiesTouched: EntityTouch[] = [];
@@ -159,6 +288,28 @@ export async function commitChangeSet(params: {
 		if (!allowedOps.includes(change.op)) {
 			failed += 1;
 			change.error = `Op ${change.op} is outside the run's granted scope`;
+			continue;
+		}
+
+		const freshness = await verifyStagedChangeFreshness({ admin, change });
+		if (!freshness.ok) {
+			failed += 1;
+			change.error = freshness.message;
+			await admin.from('agent_tool_executions').insert({
+				agent_run_id: runId,
+				user_id: userId,
+				tool_name: change.op,
+				gateway_op: change.op,
+				tool_category: 'write',
+				arguments: (change.after ?? null) as never,
+				result: null as never,
+				success: false,
+				error_message: change.error,
+				mutation_mode: 'commit',
+				proposed_change_id: change.id,
+				entity_kind: change.entity_type,
+				entity_id: change.entity_id ?? null
+			});
 			continue;
 		}
 

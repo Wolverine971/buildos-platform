@@ -131,3 +131,67 @@ describe('OntologyReadExecutor searchOntoDocuments', () => {
 		expect(filter).toContain('content.ilike."%launch%"');
 	});
 });
+
+describe('OntologyReadExecutor searchAllProjects scoping', () => {
+	let fetchFn: ReturnType<typeof vi.fn>;
+	let context: ExecutorContext;
+
+	beforeEach(() => {
+		fetchFn = vi.fn().mockResolvedValue({
+			ok: true,
+			status: 200,
+			headers: { get: () => 'application/json' },
+			json: async () => ({
+				query: 'rockwool',
+				results: [],
+				total: 0,
+				total_returned: 0,
+				maybe_more: false,
+				search_scope: 'project',
+				project_id: 'proj-1'
+			})
+		});
+
+		const mockSupabase = {
+			rpc: vi.fn().mockResolvedValue({ data: 'actor-1', error: null }),
+			auth: {
+				getSession: vi.fn().mockResolvedValue({
+					data: { session: { access_token: 'test-token' } }
+				})
+			}
+		} as unknown as SupabaseClient<Database>;
+
+		context = {
+			supabase: mockSupabase,
+			userId: 'user-1',
+			sessionId: 'session-1',
+			fetchFn: fetchFn as unknown as typeof fetch
+		};
+	});
+
+	it('forwards project_id so the broad tool can scope to one project', async () => {
+		const executor = new OntologyReadExecutor(context);
+
+		const result = await executor.searchAllProjects({
+			query: 'rockwool',
+			project_id: 'proj-1'
+		});
+
+		const [path, options] = fetchFn.mock.calls[0];
+		expect(path).toBe('/api/onto/search');
+		const body = JSON.parse((options as RequestInit).body as string);
+		expect(body.query).toBe('rockwool');
+		expect(body.project_id).toBe('proj-1');
+		expect(result.search_scope).toBe('project');
+	});
+
+	it('omits project scope for a broad workspace search', async () => {
+		const executor = new OntologyReadExecutor(context);
+
+		await executor.searchAllProjects({ query: 'rockwool' });
+
+		const [, options] = fetchFn.mock.calls[0];
+		const body = JSON.parse((options as RequestInit).body as string);
+		expect(body.project_id).toBeUndefined();
+	});
+});

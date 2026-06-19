@@ -178,6 +178,34 @@ describe('EmailService lifecycle compliance', () => {
 		expect(mailOptions.html).not.toContain('opt out');
 	});
 
+	it('adds one-click unsubscribe headers and daily-brief opt-out copy to daily brief emails', async () => {
+		const service = new EmailService(createSupabaseMock() as any);
+
+		const result = await service.sendEmail({
+			to: 'user@example.com',
+			subject: 'BuildOS Daily Brief',
+			body: 'Your brief is ready.',
+			html: '<p>Your brief is ready.</p><a href="https://build-os.com/projects">Open BuildOS</a>',
+			metadata: {
+				category: 'daily_brief',
+				event_type: 'brief.completed',
+				campaign_type: 'daily_brief'
+			}
+		});
+
+		expect(result.success).toBe(true);
+		const mailOptions = sendMailMock.mock.calls[0]?.[0];
+		expect(mailOptions.replyTo).toBe('dj@build-os.com');
+		expect(mailOptions.headers).toMatchObject({
+			'List-ID': 'BuildOS Daily Briefs <daily-briefs.build-os.com>',
+			'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+		});
+		expect(mailOptions.headers['List-Unsubscribe']).toContain('/unsubscribe');
+		expect(mailOptions.text).toContain('You can turn off BuildOS daily briefs here:');
+		expect(mailOptions.html).toContain('You can turn off BuildOS daily briefs');
+		expect(mailOptions.html).toContain('/unsubscribe');
+	});
+
 	it('routes lifecycle emails to the local log sink without calling Gmail', async () => {
 		privateEnv.PRIVATE_LIFECYCLE_EMAIL_SINK = 'log';
 		const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => undefined);

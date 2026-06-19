@@ -3,13 +3,17 @@ import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { CalendarTokens } from '../../app';
-import { PRIVATE_GOOGLE_CLIENT_ID, PRIVATE_GOOGLE_CLIENT_SECRET } from '$env/static/private';
 import { randomBytes } from 'node:crypto';
 import { ErrorLoggerService } from './errorLogger.service';
 import {
 	buildEncryptedCalendarTokenPatch,
 	decodeStoredCalendarTokens
 } from '$lib/server/calendar-token-crypto';
+
+export interface GoogleOAuthCredentials {
+	clientId?: string | null;
+	clientSecret?: string | null;
+}
 
 export interface CalendarStatus {
 	isConnected: boolean;
@@ -36,6 +40,34 @@ export interface AutoRefreshResult {
 	requiresReconnect?: boolean;
 }
 
+function getPrivateEnv(name: string): string | undefined {
+	return normalizeCredential(process.env[name]);
+}
+
+function normalizeCredential(value: string | null | undefined): string | undefined {
+	if (typeof value !== 'string') return undefined;
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function resolveGoogleOAuthCredentials(credentials?: GoogleOAuthCredentials): {
+	clientId: string;
+	clientSecret: string;
+} {
+	return {
+		clientId:
+			normalizeCredential(credentials?.clientId) ??
+			getPrivateEnv('PRIVATE_GOOGLE_CLIENT_ID') ??
+			getPrivateEnv('GOOGLE_CLIENT_ID') ??
+			'',
+		clientSecret:
+			normalizeCredential(credentials?.clientSecret) ??
+			getPrivateEnv('PRIVATE_GOOGLE_CLIENT_SECRET') ??
+			getPrivateEnv('GOOGLE_CLIENT_SECRET') ??
+			''
+	};
+}
+
 export class GoogleOAuthConnectionError extends Error {
 	public readonly requiresReconnection: boolean;
 
@@ -50,12 +82,35 @@ export class GoogleOAuthService {
 	private supabase: SupabaseClient;
 	private errorLogger: ErrorLoggerService;
 	private clientCache = new Map<string, { client: OAuth2Client; expires: number }>();
+	private readonly clientId: string;
+	private readonly clientSecret: string;
 	private readonly MAX_RETRIES = 3;
 	private readonly RETRY_DELAY_MS = 1000;
 
-	constructor(supabase: SupabaseClient) {
+	constructor(supabase: SupabaseClient, credentials?: GoogleOAuthCredentials) {
 		this.supabase = supabase;
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
+		const resolvedCredentials = resolveGoogleOAuthCredentials(credentials);
+		this.clientId = resolvedCredentials.clientId;
+		this.clientSecret = resolvedCredentials.clientSecret;
+	}
+
+	private requireClientId(): string {
+		if (!this.clientId) {
+			throw new GoogleOAuthConnectionError('Google OAuth client ID is not configured');
+		}
+		return this.clientId;
+	}
+
+	private requireClientSecret(): string {
+		if (!this.clientSecret) {
+			throw new GoogleOAuthConnectionError('Google OAuth client secret is not configured');
+		}
+		return this.clientSecret;
+	}
+
+	private createOAuth2Client(): OAuth2Client {
+		return new google.auth.OAuth2(this.requireClientId(), this.requireClientSecret());
 	}
 
 	private async upgradeStoredTokensIfNeeded(
@@ -172,7 +227,7 @@ export class GoogleOAuthService {
 		};
 
 		const params = new URLSearchParams({
-			client_id: PRIVATE_GOOGLE_CLIENT_ID,
+			client_id: this.requireClientId(),
 			response_type: 'code',
 			scope: scopes,
 			redirect_uri: redirectUri,
@@ -261,10 +316,7 @@ export class GoogleOAuthService {
 		}
 
 		// Create OAuth2 client
-		const oauth2Client = new google.auth.OAuth2(
-			PRIVATE_GOOGLE_CLIENT_ID,
-			PRIVATE_GOOGLE_CLIENT_SECRET
-		);
+		const oauth2Client = this.createOAuth2Client();
 
 		// Set credentials
 		oauth2Client.setCredentials({
@@ -458,10 +510,7 @@ export class GoogleOAuthService {
 			}
 
 			// Create OAuth2 client
-			const oauth2Client = new google.auth.OAuth2(
-				PRIVATE_GOOGLE_CLIENT_ID,
-				PRIVATE_GOOGLE_CLIENT_SECRET
-			);
+			const oauth2Client = this.createOAuth2Client();
 
 			// Set the refresh token
 			oauth2Client.setCredentials({
@@ -655,10 +704,7 @@ export class GoogleOAuthService {
 			// If tokens are very expired, try a quick verification
 			if (tokens.needsRefresh) {
 				try {
-					const oauth2Client = new google.auth.OAuth2(
-						PRIVATE_GOOGLE_CLIENT_ID,
-						PRIVATE_GOOGLE_CLIENT_SECRET
-					);
+					const oauth2Client = this.createOAuth2Client();
 
 					oauth2Client.setCredentials({
 						access_token: tokens.access_token,
@@ -741,8 +787,8 @@ export class GoogleOAuthService {
 					Accept: 'application/json'
 				},
 				body: new URLSearchParams({
-					client_id: PRIVATE_GOOGLE_CLIENT_ID,
-					client_secret: PRIVATE_GOOGLE_CLIENT_SECRET,
+					client_id: this.requireClientId(),
+					client_secret: this.requireClientSecret(),
 					code,
 					grant_type: 'authorization_code',
 					redirect_uri: redirectUri

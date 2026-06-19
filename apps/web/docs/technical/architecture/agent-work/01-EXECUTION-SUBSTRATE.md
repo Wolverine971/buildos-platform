@@ -89,7 +89,7 @@ Every tool call a run makes must be tagged with `agent_run_id`, so `entities_tou
 - ✅ `validateAgentRunMetadata` added and **wired into the `validateJobMetadata` dispatcher** (`case 'agent_run'`).
 - ✅ `allowed_capabilities` → `scope_mode` + `allowed_ops` (typed via the Agent Call vocabulary `BUILDOS_AGENT_READ_OPS` / `BUILDOS_AGENT_WRITE_OPS`).
 - ✅ Telemetry shape decided + migrated (`agent_tool_executions`); executor logging wiring lands with the worker-safe adapter (Phase 1a).
-- ✅ Contract test (`apps/worker/tests/queueContracts.test.ts`) — validator + dispatcher + reject cases. shared-types typechecks; 9/9 pass.
+- ✅ Contract test (`apps/worker/tests/queueContracts.test.ts`) — validator + dispatcher + reject cases. shared-types typechecks; worker targeted contract/op tests currently pass **22/22**.
 
 Next: **Phase 1a — the worker-safe tool adapter.**
 
@@ -111,7 +111,7 @@ A focused sibling of `streamFastChat`, **not** a refactor of it. Reuses the lowe
 - **Discovery:** `materializeGatewayTools()` for lazy tool loading (lean discovery inherited).
 - **LLM:** worker `SmartLLMService` with tool-calling; profile `balanced`; usage tracked into `metrics`.
 - **Event sink:** instead of SSE-to-client, the worker sink appends `agent_run_events` rows and updates `agent_runs.status/metrics`. Realtime delivers these to the UI (see 03).
-- **Termination:** the run finishes by calling the terminal **`submit_result`** tool. If the loop ends without it (budget/stop), wrap the last narration as `answer` with `status='partial'`.
+- **Termination:** the run finishes by calling the terminal **`submit_result`** tool. If a hard budget (`wall_clock_ms` / `max_tokens`) expires without it, wrap the last narration as `answer` with `status='partial'`. If `max_tool_calls` is reached, the runner gives the model one final no-more-tools turn to submit a result; another op attempt after that ends as `partial`.
 
 ### Worker-safe tool adapter
 
@@ -238,7 +238,7 @@ This makes the chat a persistent collaboration thread (Slack-with-agents), and i
 1. **No recursion:** subagent surface excludes `delegate_task`; backstop hard check `depth >= 1 ⇒ reject spawn`.
 2. **Fan-out cap:** `AGENTIC_CHAT_MAX_SUBAGENTS` (default 3) per `delegate_task` batch; per-session active-run cap. Excess → tool error ("sequence these").
 3. **Policy scope:** `scope_mode='read_only'` strips/rejects write ops. `allowed_ops` is intersected with the default allowed ops for that scope. A project-scoped run must validate `project_id` access before enqueue and again before execution.
-4. **Budgets:** per-run `wall_clock_ms` / `max_tokens` / `max_tool_calls` (reuse tree-agent's deadline pattern). Worker enforces; timeout → `status='partial'`, not `failed`.
+4. **Budgets:** per-run `wall_clock_ms` / `max_tokens` / `max_tool_calls` (reuse tree-agent's deadline pattern). Worker enforces wall-clock and token budgets as hard stops (`partial`, not `failed`); tool-call budget exhaustion still allows one final `submit_result` turn so the agent can summarize the last result without another op.
 5. **Concurrency:** rely on the queue's existing claim/limit; cap concurrent runs per user.
 6. **Cost rollup:** subagent token/cost rolls into the parent run's `metrics` and into LLM usage tracking.
 7. **Failure isolation:** batch dispatch uses independent runs; one failing run does not affect siblings.
@@ -270,28 +270,29 @@ Signals are written by `POST /api/agent-runs/[id]/steer | /pause | /resume | /ca
 
 ### Where the loop checks (the steering boundary)
 
-`runAgentLoop` checks for unconsumed signals **at the top of each iteration** — i.e. between the model's turns, after a tool batch completes and before the next LLM call. This is the natural safe point: no tool call is interrupted half-way, and the agent's next reasoning step sees the new input.
+`runAgentLoop` checks for unconsumed signals **at the top of each iteration** and again **immediately after each LLM turn before acting on that turn**. This keeps the natural safe point (no tool call is interrupted half-way) while avoiding a race where a cancel/pause/steer arrives while the model is responding and the worker then executes a stale returned op.
 
 ```
 loop iteration:
   ├─ drain unconsumed agent_run_signals for this run
-  │    ├ cancel  → mark consumed, finalize as 'partial' (wrap last narration), stop
+  │    ├ cancel  → mark consumed, finalize as 'cancelled', stop
   │    ├ pause   → mark consumed, checkpoint state, set status='paused', release/requeue
   │    ├ resume  → enqueue/claim again, set status='running', continue from checkpoint
   │    └ steer   → mark consumed, append payload.message to the conversation as a user turn,
   │               emit run.steer event, continue (agent adapts next turn)
   ├─ call LLM with current messages (+ any steer)
+  ├─ drain unconsumed signals again before acting on the returned turn
   ├─ execute tool calls
   └─ append events; repeat until submit_result / budget / signal
 ```
 
 - **Steer** = inject a `user`-role message ("Steering from supervisor: <message>") into the run's conversation so the agent incorporates it on its next turn. Multiple steers queue and apply in order. The agent treats it as new instruction within the same goal.
 - **Pause/resume** = checkpoint the loop and release the worker slot. Budget wall-clock should exclude paused time (track `paused_ms`, subtract from deadline). Holding a queue slot while paused is only acceptable as an explicit small-scale shortcut; the preferred design is `paused` status + resume enqueues/claims a continuation job.
-- **Cancel** = graceful stop → `status='partial'` with whatever it has, not `failed`. (A hard kill for a wedged run is the existing stalled-job path.)
+- **Cancel** = graceful stop → `status='cancelled'` with whatever it has, not `failed`. (A hard kill for a wedged run is the existing stalled-job path.)
 
 ### Latency
 
-Steering applies at the next iteration boundary, so a steer issued during a long single tool call lands after that tool returns — typically seconds. Good enough for "redirect," not for "abort this exact instant" (that's cancel, which also waits for the current tool to return). The UI shows the signal as **pending → applied** so the user knows it was received (03 §3).
+Steering applies at the next safe boundary: before the next LLM turn, or immediately after an in-flight LLM turn returns and before its action is executed. A steer issued during a long single tool call still lands after that tool returns — typically seconds. Good enough for "redirect," not for "abort this exact instant" (cancel also waits for the current tool to return). The UI shows the signal as **pending → applied** so the user knows it was received (03 §3).
 
 ### Worker delivery (don't rely only on polling)
 

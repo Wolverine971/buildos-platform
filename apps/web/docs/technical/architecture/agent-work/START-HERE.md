@@ -2,9 +2,9 @@
 
 # Agent Work — Start Here (the simplified view)
 
-**Status (2026-06-18):** The **interactive run lifecycle is built end-to-end** — dispatch (manual + from chat via `delegate_task`) → watch (Run Stack cards + in-chat dock + launcher badge) → steer / pause / resume → answer (`needs_input`) → result posts back into chat. Backend substrate + op-layer + runner are live-confirmed (read-only); everything after is green (worker typecheck + svelte-check) pending a live pass. **Not yet built:** write ops (Wave 7 — runs can read/analyze but not yet create/update), calendar (Waves 5–6), proposal review (Phase 4), Work Panel (UI-P2).
+**Status (2026-06-19):** The **interactive run lifecycle is built end-to-end** — dispatch (manual + from chat via `delegate_task`) → watch (Run Stack cards + in-chat dock + launcher badge) → steer / pause / resume → answer (`needs_input`) → result posts back into chat. Backend substrate + op-layer + runner are live-confirmed for ontology reads/writes and review-before-commit. Calendar now has an initial worker-safe `CalendarPort` and is env/token gated in Agent Runs; direct-commit calendar writes are available only when the user has stored Google tokens, while review-mode runs expose calendar reads only. **Still pending:** live calendar smoke, manual-dispatch UI + review toggle, full calendar staging, and polish.
 **Full specs:** [00-OVERVIEW](./00-OVERVIEW.md) · [01-EXECUTION-SUBSTRATE](./01-EXECUTION-SUBSTRATE.md) · [02-STAGED-MUTATIONS](./02-STAGED-MUTATIONS.md) · [03-MONITORING-UI](./03-MONITORING-UI.md)
-**Execution detail:** [SHARED_AGENT_OPS_EXTRACTION_PLAN](./SHARED_AGENT_OPS_EXTRACTION_PLAN.md) · **[HANDOFF](./HANDOFF_2026-06-18.md)** ← pick up here
+**Execution detail:** **[HANDOFF_2026-06-20](./HANDOFF_2026-06-20.md)** ← current pickup/status (calendar worker port shipped; live smoke next) · [HANDOFF_2026-06-19](./HANDOFF_2026-06-19.md) (state of the world: Wave 7 + Phase 4 shipped) · [SHARED_AGENT_OPS_EXTRACTION_PLAN](./SHARED_AGENT_OPS_EXTRACTION_PLAN.md) · [HANDOFF_2026-06-18](./HANDOFF_2026-06-18.md) (detailed phase log)
 
 This is the plain-English entry point. Read it first; drop into the numbered specs for detail.
 
@@ -34,20 +34,21 @@ An Agent Run fixes all three: it's a persisted row, it runs in the background, a
 
 ## The moving parts
 
-| Piece                                                               | What it is                                                                                               | Built?                        |
-| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| **`agent_runs` / `_events` / `_signals` / `agent_tool_executions`** | Durable substrate (brief, status, result, event log, control channel, tool telemetry).                   | ✅ Phase 0/0.5                |
-| **`@buildos/shared-agent-ops`**                                     | Extracted, worker-importable op layer (policy, ontology services, op execution).                         | ✅ Waves 0–4                  |
-| **Op dispatcher (`executeAgentOp`)**                                | Scope-enforced op execution (read ops) reusing the extracted services.                                   | ✅ (read-first)               |
-| **The runner (`agentRunWorker`)**                                   | Worker loop: JSON action-loop → ops → events + telemetry → `submit_result`. Registered as `agent_run`.   | ✅ Phase 1b (live-verified)   |
-| **Dispatch/monitor/cancel API**                                     | `POST/GET /api/agent-runs`, `GET /[id]`, `POST /[id]/cancel`. Cancel drains in the runner.               | ✅                            |
-| **Run Stack**                                                       | Live cards (bottom-right) showing active runs — extends the existing notification stack.                 | ✅ UI-P1 (visually confirmed) |
-| **`delegate_task` tool + chat presence**                            | The chat orchestrator dispatches runs; in-chat dock + launcher badge; results post back into the thread. | ✅ Phase 3 + UI-P4            |
-| **Steering (steer / pause / resume) + answer**                      | "Tell the agent something" box (pending→applied), pause/resume, and the `needs_input` answer box.        | ✅ Phase 3.5 + UI-P3 pt1      |
-| **Write ops**                                                       | Create/update via the op layer (runs can read/analyze but not yet mutate).                               | ⬜ needs Wave 7 carve         |
-| **Staged mutations / proposal review**                              | _Opt-in_ review-before-commit (a diff you approve). Off by default.                                      | ⬜ Phase 4 (needs write ops)  |
-| **Work Panel**                                                      | Persistent inbox + history + detail + proposal review.                                                   | ⬜ UI-P2                      |
-| **Calendar ops / gateway convergence**                              | GoogleOAuth `$env`→process.env (R4) + the ~5,100-line gateway handler carve.                             | ⬜ Waves 5–7                  |
+| Piece                                                               | What it is                                                                                                      | Built?                                   |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| **`agent_runs` / `_events` / `_signals` / `agent_tool_executions`** | Durable substrate (brief, status, result, event log, control channel, tool telemetry).                          | ✅ Phase 0/0.5                           |
+| **`@buildos/shared-agent-ops`**                                     | Extracted, worker-importable op layer (policy, ontology services, op execution).                                | ✅ Waves 0–4                             |
+| **Op dispatcher (`executeAgentOp`)**                                | Scope-enforced read **and** write op execution reusing the extracted services.                                  | ✅ (read + write)                        |
+| **The runner (`agentRunWorker`)**                                   | Worker loop: JSON action-loop → ops → events + telemetry → `submit_result`. Registered as `agent_run`.          | ✅ Phase 1b (live-verified)              |
+| **Dispatch/monitor/cancel API**                                     | `POST/GET /api/agent-runs`, `GET /[id]`, `POST /[id]/cancel`. Cancel drains in the runner.                      | ✅                                       |
+| **Run Stack**                                                       | Live cards (bottom-right) showing active runs — extends the existing notification stack.                        | ✅ UI-P1 (visually confirmed)            |
+| **`delegate_task` tool + chat presence**                            | The chat orchestrator dispatches runs; in-chat dock + launcher badge; results post back into the thread.        | ✅ Phase 3 + UI-P4                       |
+| **Steering (steer / pause / resume) + answer**                      | "Tell the agent something" box (pending→applied), pause/resume, and the `needs_input` answer box.               | ✅ Phase 3.5 + UI-P3 pt1                 |
+| **Write ops**                                                       | Create/update via the op layer (same gateway handler map as the chat). Calendar `cal.*` capability-gated.       | ✅ Wave 7 (live-confirmed)               |
+| **Staged mutations / proposal review**                              | _Opt-in_ review-before-commit (a diff you approve). Off by default. `ChangeSetReview` + chat commit tool.       | ✅ Phase 4 (stage→commit live)           |
+| **Work Panel**                                                      | Persistent inbox + history + detail + proposal review.                                                          | ✅ UI-P2                                 |
+| **Calendar ops in runs**                                            | Initial worker-safe `CalendarPort`; exposed only when worker env + user token row exist. Stage mode reads only. | ✅ initial Waves 5–6; live smoke pending |
+| **Manual-dispatch UI + review toggle**                              | Human-facing "run an agent / review first" button (backend ready).                                              | ⬜ Phase 6                               |
 
 Two key design decisions we locked:
 

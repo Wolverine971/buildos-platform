@@ -2,11 +2,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decryptCalendarToken } from '$lib/server/calendar-token-crypto';
 
-vi.mock('$env/static/private', () => ({
-	PRIVATE_GOOGLE_CLIENT_ID: 'google-client-id',
-	PRIVATE_GOOGLE_CLIENT_SECRET: 'google-client-secret'
-}));
-
 vi.mock('./errorLogger.service', () => ({
 	ErrorLoggerService: {
 		getInstance: vi.fn(() => ({
@@ -56,16 +51,38 @@ function createTokenSupabase(existingToken: { id: string; refresh_token: string 
 
 describe('GoogleOAuthService calendar token exchange', () => {
 	let fetchMock: ReturnType<typeof vi.fn>;
+	const originalEnv = {
+		PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY: process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY,
+		PRIVATE_GOOGLE_CLIENT_ID: process.env.PRIVATE_GOOGLE_CLIENT_ID,
+		PRIVATE_GOOGLE_CLIENT_SECRET: process.env.PRIVATE_GOOGLE_CLIENT_SECRET
+	};
 
 	beforeEach(() => {
 		process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY = 'calendar-token-test-key';
+		process.env.PRIVATE_GOOGLE_CLIENT_ID = 'google-client-id';
+		process.env.PRIVATE_GOOGLE_CLIENT_SECRET = 'google-client-secret';
 		fetchMock = vi.fn();
 		vi.stubGlobal('fetch', fetchMock);
 	});
 
 	afterEach(() => {
 		vi.unstubAllGlobals();
-		delete process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY;
+		if (originalEnv.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY === undefined) {
+			delete process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY;
+		} else {
+			process.env.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY =
+				originalEnv.PRIVATE_CALENDAR_TOKEN_ENCRYPTION_KEY;
+		}
+		if (originalEnv.PRIVATE_GOOGLE_CLIENT_ID === undefined) {
+			delete process.env.PRIVATE_GOOGLE_CLIENT_ID;
+		} else {
+			process.env.PRIVATE_GOOGLE_CLIENT_ID = originalEnv.PRIVATE_GOOGLE_CLIENT_ID;
+		}
+		if (originalEnv.PRIVATE_GOOGLE_CLIENT_SECRET === undefined) {
+			delete process.env.PRIVATE_GOOGLE_CLIENT_SECRET;
+		} else {
+			process.env.PRIVATE_GOOGLE_CLIENT_SECRET = originalEnv.PRIVATE_GOOGLE_CLIENT_SECRET;
+		}
 	});
 
 	it('does not save a first-time calendar connection without a refresh token', async () => {

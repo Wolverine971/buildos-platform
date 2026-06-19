@@ -170,6 +170,14 @@ export interface SearchOntologyArgs {
 
 export interface SearchAllProjectsArgs {
 	query: string;
+	/**
+	 * Optional project scope. When set, the broad search narrows to this project
+	 * (scope='project') without the agent needing the separate search_project tool —
+	 * which is not preloaded in global context. Lets a global-context turn answer
+	 * "in <project>, find X" by searching distinctive terms scoped to the project,
+	 * instead of stuffing the project name into the FTS query (which AND-excludes matches).
+	 */
+	project_id?: string;
 	types?: string[];
 	limit?: number;
 }

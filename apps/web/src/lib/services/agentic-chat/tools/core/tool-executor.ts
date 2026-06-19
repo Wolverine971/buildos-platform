@@ -23,7 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import { getToolCategory } from './tools.config';
-import { extractSearchResultCount } from './search-telemetry';
+import { searchTelemetryColumns } from './search-telemetry';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { ensureActorId } from '$lib/services/ontology/ontology-projects.service';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
@@ -637,8 +637,11 @@ export class ChatToolExecutor {
 		// Search telemetry: surface result counts as first-class columns so the
 		// zero-result rate is queryable without parsing the per-tool result blob.
 		// Only populated for search tools; null for everything else and on failure.
-		const resultCount = success ? extractSearchResultCount(toolName, result) : null;
-		const zeroResult = resultCount === null ? null : resultCount === 0;
+		const { result_count: resultCount, zero_result: zeroResult } = searchTelemetryColumns({
+			toolName,
+			success,
+			result
+		});
 
 		if (resultCount !== null) {
 			const searchQuery =

@@ -2,7 +2,7 @@
 
 # Agent Work — Overview & North Star
 
-**Status:** Backend implemented & verified (2026-06-18) — Phases 0–1b shipped + dispatch/monitor/cancel API; runner live-confirmed (read-only). UI phases (2/3/3.5/5) + write ops (Waves 5–7) remain. See [HANDOFF_2026-06-18](./HANDOFF_2026-06-18.md).
+**Status:** Backend + UI implemented (2026-06-19). Phases 0–4 shipped: substrate, runner, dispatch/monitor/steer/answer API, Run Stack + Work Panel + chat integration, **Wave 7 write ops**, and **Phase 4 staged mutations (review-before-commit)**. Write ops + stage→commit are live-confirmed. Calendar in runs has an initial worker-safe `CalendarPort` and is env/token gated; live calendar smoke is still pending. Remaining: manual-dispatch UI, full calendar staging, live UI/calendar passes, polish. See [HANDOFF_2026-06-20](./HANDOFF_2026-06-20.md) (current pickup).
 **Date:** 2026-06-15 (design) · 2026-06-18 (implementation status)
 **Owner:** DJ
 **Supersedes:** `apps/web/docs/technical/architecture/AGENTIC_CHAT_SUBAGENTS_DESIGN_2026-06-15.md` (v1 in-process plan — see §"What changed")
@@ -107,16 +107,18 @@ Detail in the per-area specs below.
 ## Phased roadmap (cross-cutting)
 
 - ✅ **Phase 0 — Contracts & schema.** `agent_runs` + `agent_run_events` + `agent_run_signals` (+ `agent_tool_executions`) tables; envelope/Change Set types in `shared-types`; event types; `agent_run` queue job type registered. **Done, applied.**
-- ✅ **Phase 0.5 — Contract hardening.** DB types regenerated; `validateAgentRunMetadata` wired; telemetry = dedicated `agent_tool_executions`; `allowed_capabilities` → typed `scope_mode` / `allowed_ops`. **Done.**
+- ✅ **Phase 0.5 — Contract hardening.** DB types regenerated; `validateAgentRunMetadata` wired; telemetry = dedicated `agent_tool_executions`; `allowed_capabilities` → typed `scope_mode` / `allowed_ops`; continuation metadata, allowed-op, and budget validation hardened. **Done.**
 - ✅ **Phase 1a — Worker-safe op substrate.** Resolved by extracting `@buildos/shared-agent-ops` (Waves 0–4) — the worker imports the op layer in-process; no SvelteKit/chat-session dependency. `executeAgentOp` dispatcher (read-first). **Done.**
-- ✅ **Phase 1b — Durable runner.** `apps/worker/src/workers/agent-run/agentRunWorker.ts` — JSON action-loop, `submit_result`, telemetry, budgets, cancel-drain. Registered `agent_run`. **Done; live-verified (read-only). Direct-commit writes pending the Wave 7 gateway carve.**
+- ✅ **Phase 1b — Durable runner.** `apps/worker/src/workers/agent-run/agentRunWorker.ts` — JSON action-loop, `submit_result`, telemetry, budget enforcement, conditional claiming, and steer/pause/cancel signal drains. Registered `agent_run`. **Done; live-verified for read and write ops (Wave 7 carve shipped).**
 - ✅ **Dispatch/monitor/cancel API** — `apps/web/src/routes/api/agent-runs/`. **Done.**
 - **Phase 2 — Run Stack (live UI).** Extend notification store with `agent_run` type; `agent-run-notification.bridge.ts` fed by `agent_runs` realtime; live cards. _(Next up; the "peek at background processes" MVP.)_
 - **Phase 3 — Chat supervision + async injection + chat presence.** `delegate_task` orchestrator tool; dispatch + monitor via realtime; agent-authored messages injected into the chat session on completion; in-chat run dock + "N agents working" launcher badge so runs stay visible when the modal is open _and_ after it's closed (open/closed handoff, 03 §6).
 - **Phase 3.5 — Steering & interruption.** `agent_run_signals` drain in `runAgentLoop` (steer/pause/resume/cancel); steer/pause/stop endpoints; `AgentRunSteerControl` on the stack card. Pause should release/requeue the run unless we explicitly accept worker-slot occupancy. _(The "interject while it runs" ask.)_
-- **Phase 4 — Staged mutations (opt-in).** `review` flag → write-tool stage mode; Change Set model; proposal review UI in the Work Panel; commit/reject. Off by default.
-- **Phase 5 — Work Panel (full).** Persistent inbox, history, detail view (narration log + event timeline + entities + proposal diff), actions (cancel/retry/steer/answer).
-- **Phase 6 — Triggers & Operatives.** Manual-dispatch button (with a "review changes" toggle); scheduled runs via existing scheduler; saved Operative definitions.
+- ✅ **Wave 7 — Write ops.** The gateway op-execution core carved into `@buildos/shared-agent-ops` (dependency-inverted registry; Calendar/TaskSync ports); the worker executes read **and** write ops in-process via the same handler map as the chat. **Done; live-confirmed.**
+- ✅ **Initial Waves 5–6 — Calendar ops in runs.** `@buildos/shared-agent-ops` now exports a worker-safe `createAgentRunCalendarPort`; the worker exposes `cal.*` only when Google env vars and a user token row exist. Direct-commit runs can read/write calendar; review/stage runs expose calendar reads only. **Headless checks green; live calendar smoke pending.**
+- ✅ **Phase 4 — Staged mutations (opt-in).** `review` flag → stage mode (`stageGatewayWriteOp`); runner finalizes `proposal_ready` with a `ChangeSet`; `commitChangeSet` + `POST /api/agent-runs/[id]/commit` apply approved fresh changes via the one write path; `ChangeSetReview.svelte` (Work Panel + run modal); chat `commit_change_set` tool. Off by default. **Done; stage→commit live-confirmed, UI pending live pass.** Drift detection for known ontology update/delete rows is implemented.
+- ✅ **Phase 5 — Work Panel.** Persistent inbox + history + detail view (reuses the run modal: narration, entities, steer, answer, **proposal review**). **Built; live confirm pending.**
+- **Phase 6 — Triggers & Operatives.** Manual-dispatch button (with a "review changes" toggle — backend ready, UI not built); scheduled runs via existing scheduler; saved Operative definitions (incl. auto-approve = staging approval flow #3).
 
 > Phases 2 and 3.5 are independently shippable value: Phase 2 gives visibility, Phase 3.5 gives control. Phase 4 (trust/staging) is opt-in and can come later. Order can flex.
 
@@ -124,7 +126,7 @@ Detail in the per-area specs below.
 
 ## Open questions index (resolved in sub-specs)
 
-- Turn-level + per-run budget accounting; excluding paused time from wall-clock deadline (01)
+- Exact paused-time accounting / cumulative duration semantics across pause-resume cycles (01)
 - Run-aware tool telemetry: whether to adapt `chat_tool_executions` or add `agent_tool_executions`; manual/scheduled runs cannot require `chat_messages.session_id` (01)
 - Worker-safe tool adapter: relative API fetch/auth assumptions in current chat executors (01)
 - Run scope representation: replace free-form `allowed_capabilities` with `scope_mode` + `allowed_ops` aligned to Agent Call policy (01)

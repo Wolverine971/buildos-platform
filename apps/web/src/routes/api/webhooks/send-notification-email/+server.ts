@@ -118,9 +118,14 @@ export const POST: RequestHandler = async ({ request }) => {
 			html: body.htmlContent,
 			from: 'dj', // ✅ Fixed: Use valid sender type (was 'buildos' which doesn't exist)
 			userId: body.recipientUserId,
+			createdBy: body.recipientUserId,
 			emailId: body.emailRecordId,
 			trackingEnabled: !!body.trackingId,
 			metadata: {
+				category: isDailyBriefEvent ? 'daily_brief' : 'notification',
+				...(isDailyBriefEvent ? { campaign_type: 'daily_brief' } : {}),
+				created_by: body.recipientUserId,
+				recipient_user_id: body.recipientUserId,
 				delivery_id: body.deliveryId,
 				event_id: body.eventId,
 				event_type: body.eventType,

@@ -63,7 +63,7 @@
 	import { toastService } from '$lib/stores/toast.store';
 	import { haptic } from '$lib/utils/haptic';
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
-	import { createProjectInvalidation } from '$lib/utils/invalidation';
+	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
 	import { uploadFileToSignedStorageUrl } from '$lib/utils/signed-storage-upload';
 	import {
 		buildProjectWideFocus,
@@ -166,6 +166,10 @@
 	let projectFocus = $state<ProjectFocus | null>(null);
 	let showFocusSelector = $state(false);
 	let showProjectActionSelector = $state(false);
+	// Bumped whenever the agent shifts us into a (new) project context — drives a
+	// one-shot glimmer on the header title so landing on a freshly created project
+	// feels like a small moment of magic rather than a silent label swap.
+	let contextShiftPulse = $state(0);
 	let autoInitDismissed = $state(false);
 	let lastAutoInitProjectId = $state<string | null>(null);
 	let wasOpen = $state(false);
@@ -1873,14 +1877,12 @@
 			hasMessagesSent: hasSentMessage,
 			sessionId: currentSession?.id ?? null
 		});
-		if (summary.hasChanges && isProjectContext(selectedContextType) && selectedEntityId) {
-			void createProjectInvalidation(selectedEntityId)
-				.all()
-				.catch((err) => {
-					if (dev) {
-						console.warn('[AgentChat] Project invalidation failed on close:', err);
-					}
-				});
+		// Broadcast mutations globally so any surface showing this data (project page,
+		// dashboard, embedded edit modals, …) can refetch itself. This works regardless
+		// of launch surface or chat context — unlike the old per-project `invalidate()`
+		// path, which was inert because the pages refresh via their own client refetch.
+		if (summary.hasChanges) {
+			notifyDataMutation(summary);
 		}
 
 		presenter.resetMutationTracking();
@@ -2879,9 +2881,19 @@
 				error = message;
 			},
 			setSelectedContext: ({ contextType, entityId, label }) => {
+				// Detect when the agent lands us on a project we weren't already
+				// focused on (e.g. right after it creates one) so the header can
+				// celebrate the transition.
+				const isNewProjectFocus =
+					isProjectContext(contextType) &&
+					!!entityId &&
+					(entityId !== selectedEntityId || !isProjectContext(selectedContextType));
 				selectedContextType = contextType;
 				selectedEntityId = entityId;
 				selectedContextLabel = label;
+				if (isNewProjectFocus) {
+					contextShiftPulse += 1;
+				}
 			},
 			setShowFocusSelector: (value) => {
 				showFocusSelector = value;
@@ -3458,6 +3470,7 @@
 					{sessionStatusLabel}
 					contextUsage={displayContextUsage}
 					sessionId={currentSession?.id ?? null}
+					{contextShiftPulse}
 				/>
 			</div>
 		{/snippet}

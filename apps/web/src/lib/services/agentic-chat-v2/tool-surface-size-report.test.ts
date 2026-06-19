@@ -112,7 +112,16 @@ describe('tool surface size report', () => {
 		// scan->read flow works without a discovery round. The full-body
 		// get_onto_document_details was intentionally NOT added here. Serializes to
 		// ~11684 chars; 12000 keeps ~300 chars of headroom.
-		expect(projectBasic?.totalChars).toBeLessThanOrEqual(12000);
-		expect(projectWrite?.totalChars).toBeLessThan(21000);
+		// 2026-06-19: budget bumped from 12000 -> 16000. Agent Work (Phase 4) added the
+		// two orchestrator tools delegate_task + commit_change_set to project_basic
+		// (deliberate composition, not description-bloat). Surface serializes to ~15482
+		// chars; 16000 keeps ~500 chars of headroom. (Unrelated to the search work in the
+		// same changeset; bumped here because the guard was already stale on main.)
+		expect(projectBasic?.totalChars).toBeLessThanOrEqual(16000);
+		// 2026-06-19: budget bumped from 21000 -> 25000. project_write extends
+		// project_basic, so the same Agent Work additions (delegate_task +
+		// commit_change_set) cascade here. Serializes to ~23710 chars; 25000 keeps
+		// ~1290 chars of headroom. (Pre-existing on main, unrelated to the search work.)
+		expect(projectWrite?.totalChars).toBeLessThan(25000);
 	});
 });

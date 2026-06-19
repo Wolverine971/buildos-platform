@@ -28,7 +28,7 @@
 		{
 			"file": "src/lib/components/layout/Navigation.svelte",
 			"type": "component",
-			"components": ["AgentChatModal"]
+			"components": ["AgentChatModal", "WorkPanel"]
 		},
 		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
@@ -145,14 +145,14 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal", "ProjectModalsHost"]
-		},
-		{
 			"file": "src/routes/projects/create/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal", "ProjectModalsHost"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -189,6 +189,20 @@
 				"MilestoneEditModal",
 				"EventCreateModal",
 				"EventEditModal"
+			]
+		},
+		{
+			"file": "src/lib/services/agent-run-notification-data.ts",
+			"type": "service",
+			"components": [],
+			"exports": [
+				"parseAgentRunResult",
+				"parseAgentRunMetrics",
+				"toUiAgentRunStatus",
+				"agentRunStatusMessage",
+				"buildAgentRunNotificationData",
+				"buildAgentRunProgress",
+				"synthesizeAgentRunNotification"
 			]
 		},
 		{
@@ -602,6 +616,12 @@
 			]
 		},
 		{
+			"file": "src/lib/stores/projectDataMutations.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["dataMutationEvents", "notifyDataMutation", "mutationAffectsProject"]
+		},
+		{
 			"file": "src/lib/stores/timeBlocksStore.ts",
 			"type": "store",
 			"components": [],
@@ -638,6 +658,12 @@
 			"exports": ["userContextStore"]
 		},
 		{
+			"file": "src/lib/stores/workRunsStore.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["workRunsStore", "workRunsLoading", "loadWorkRuns", "mergeWorkRuns"]
+		},
+		{
 			"file": "src/lib/components/admin/adminRoutes.ts",
 			"type": "component",
 			"components": [],
@@ -646,20 +672,6 @@
 				"CHAT_ADMIN_TITLE",
 				"CHAT_ADMIN_NAV_ITEMS",
 				"isChatAdminSubpath"
-			]
-		},
-		{
-			"file": "src/lib/components/chat/project-selector-browser.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"DEFAULT_PROJECT_SELECTOR_LIMIT",
-				"MAX_PROJECT_SELECTOR_LIMIT",
-				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
-				"normalizeProjectSelectionSearch",
-				"normalizeProjectSelectionLimit",
-				"clearProjectSelectionBrowserCache",
-				"fetchProjectSelectionSummaries"
 			]
 		},
 		{
@@ -771,6 +783,20 @@
 				"fetchProjectEntities",
 				"normalizeEntitySearch",
 				"normalizeEntityLimit"
+			]
+		},
+		{
+			"file": "src/lib/components/chat/project-selector-browser.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"DEFAULT_PROJECT_SELECTOR_LIMIT",
+				"MAX_PROJECT_SELECTOR_LIMIT",
+				"PROJECT_SELECTOR_SEARCH_DEBOUNCE_MS",
+				"normalizeProjectSelectionSearch",
+				"normalizeProjectSelectionLimit",
+				"clearProjectSelectionBrowserCache",
+				"fetchProjectSelectionSummaries"
 			]
 		},
 		{
@@ -1094,7 +1120,6 @@
 		"src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
 		"src/lib/components/project/v2/EntityTabStrip.svelte",
 		"src/lib/components/admin/adminRoutes.ts",
-		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/agent/agent-chat-formatters.ts",
 		"src/lib/components/agent/agent-chat-operation-activity.ts",
 		"src/lib/components/agent/agent-chat-prewarm.svelte.ts",
@@ -1106,6 +1131,7 @@
 		"src/lib/components/agent/agent-chat.constants.ts",
 		"src/lib/components/agent/agent-chat.types.ts",
 		"src/lib/components/agent/project-entity-browser.ts",
+		"src/lib/components/chat/project-selector-browser.ts",
 		"src/lib/components/project/project-event-filters.ts",
 		"src/lib/components/project/project-page-data-controller.ts",
 		"src/lib/components/project/project-page-interactions.ts",

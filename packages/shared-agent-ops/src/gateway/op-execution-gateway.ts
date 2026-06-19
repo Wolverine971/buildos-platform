@@ -27,6 +27,7 @@ import {
 import { normalizeGatewayOpName } from '../ops/gateway-op-aliases';
 import {
 	defaultAllowedOpsForMode,
+	isReadOp,
 	isSupportedOp,
 	isWriteOp,
 	requiredScopeModeForOp
@@ -47,10 +48,7 @@ import {
 import { normalizeTaskStateInput } from '../ontology/task-state';
 import { normalizeDocumentStateInput } from '../ontology/document-state';
 import { normalizeMarkdownInput } from '../utils/markdown-normalization';
-import {
-	createOrMergeDocumentVersion,
-	toDocumentSnapshot
-} from '../ontology/versioning.service';
+import { createOrMergeDocumentVersion, toDocumentSnapshot } from '../ontology/versioning.service';
 import {
 	addDocumentToTree,
 	getDocTree,
@@ -78,11 +76,7 @@ import {
 	OntologyInstantiationError,
 	validateProjectSpec
 } from '../ontology/instantiation.service';
-import {
-	normalizeEdgeDirection,
-	VALID_RELS,
-	type EntityKind
-} from '../ontology/edge-direction';
+import { normalizeEdgeDirection, VALID_RELS, type EntityKind } from '../ontology/edge-direction';
 import { resolveEdgeRelationship } from '../ontology/edge-relationship-resolver';
 
 /**
@@ -429,7 +423,9 @@ export class ExternalToolGatewayError extends Error {
 	}
 }
 
-export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<Record<BuildosAgentAllowedOp, Record<string, unknown>>> = {
+export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
+	Record<BuildosAgentAllowedOp, Record<string, unknown>>
+> = {
 	'onto.task.create': {
 		type: 'object',
 		additionalProperties: false,
@@ -6233,10 +6229,21 @@ export async function executeGatewayOp(params: {
 // Worker write-op execution (internal Agent Runs)
 // ---------------------------------------------------------------------------
 
+/** Calendar read ops that can run in a worker only when a CalendarPort is present. */
+export const AGENT_OP_GATEWAY_CALENDAR_READ_CATALOG: readonly string[] = Object.freeze(
+	Object.keys(EXTERNAL_OP_HANDLERS).filter((op) => isReadOp(op) && op.startsWith('cal.'))
+);
+
+/** Calendar write ops that can run in a worker only when a CalendarPort is present. */
+export const AGENT_OP_GATEWAY_CALENDAR_WRITE_CATALOG: readonly string[] = Object.freeze(
+	Object.keys(EXTERNAL_OP_HANDLERS).filter((op) => isWriteOp(op) && op.startsWith('cal.'))
+);
+
 /**
  * Non-calendar write ops that have a gateway handler — the set a worker Agent
- * Run can execute via runGatewayWriteOp. Calendar (`cal.*`) write ops are
- * excluded until the CalendarPort is wired in the worker (Wave 5).
+ * Run can stage+commit without a CalendarPort. Calendar (`cal.*`) write ops
+ * stay separate so the runner can advertise them only when the runtime has a
+ * real calendar capability.
  */
 export const AGENT_OP_GATEWAY_WRITE_CATALOG: readonly string[] = Object.freeze(
 	Object.keys(EXTERNAL_OP_HANDLERS).filter((op) => isWriteOp(op) && !op.startsWith('cal.'))
@@ -6252,6 +6259,74 @@ export interface GatewayWriteOpResult {
 		message: string;
 		details?: Record<string, unknown>;
 	};
+}
+
+export interface GatewayReadOpResult {
+	ok: boolean;
+	data?: Record<string, unknown>;
+	error?: {
+		code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'FORBIDDEN' | 'CONFLICT' | 'INTERNAL';
+		message: string;
+		details?: Record<string, unknown>;
+	};
+}
+
+/**
+ * Execute a single BuildOS read op through the carved gateway handler map for
+ * INTERNAL Agent Runs. This is primarily used for calendar reads, whose logic is
+ * already in the gateway behind CalendarPort and should not be duplicated in the
+ * worker.
+ */
+export async function runGatewayReadOp(params: {
+	admin: any;
+	userId: string;
+	scope: AgentCallScope;
+	op: string;
+	args?: Record<string, unknown>;
+	callSessionId?: string;
+	calendar?: CalendarPort;
+	taskSync?: TaskSyncPort;
+}): Promise<GatewayReadOpResult> {
+	const canonicalOp = normalizeGatewayOpName(
+		typeof params.op === 'string' ? params.op.trim() : ''
+	) as BuildosAgentAllowedOp;
+	const handler = EXTERNAL_OP_HANDLERS[canonicalOp];
+	if (!handler || !isReadOp(canonicalOp)) {
+		return {
+			ok: false,
+			error: { code: 'NOT_FOUND', message: `No worker read handler for op: ${canonicalOp}` }
+		};
+	}
+
+	const args =
+		params.args && typeof params.args === 'object' && !Array.isArray(params.args)
+			? params.args
+			: {};
+
+	const context: ToolExecutionContext = {
+		admin: params.admin,
+		userId: params.userId,
+		callerId: undefined,
+		callSessionId: params.callSessionId,
+		scope: params.scope,
+		calendar: params.calendar,
+		taskSync: params.taskSync
+	};
+
+	try {
+		const result = await handler(context, args);
+		return { ok: true, data: result };
+	} catch (error) {
+		const normalized = normalizeGatewayError(error);
+		return {
+			ok: false,
+			error: {
+				code: normalized.code,
+				message: normalized.message,
+				details: normalized.details
+			}
+		};
+	}
 }
 
 /**
@@ -6445,9 +6520,9 @@ export async function stageGatewayWriteOp(params: {
 	let before: Record<string, unknown> | undefined;
 
 	// For update/delete of a core entity, fetch a compact current snapshot.
-	const cfg = (CORE_ENTITY_CONFIG as Record<string, { table: string; idArg: string; select: string }>)[
-		entityKind
-	];
+	const cfg = (
+		CORE_ENTITY_CONFIG as Record<string, { table: string; idArg: string; select: string }>
+	)[entityKind];
 	if (action !== 'create' && cfg) {
 		const idVal = args[cfg.idArg];
 		if (typeof idVal === 'string' && idVal) {
@@ -6479,4 +6554,3 @@ export async function stageGatewayWriteOp(params: {
 		}
 	};
 }
-

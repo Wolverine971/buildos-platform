@@ -61,6 +61,10 @@ const GLOBAL_BASIC_DIRECT_TOOL_NAMES = [
 	'call_corsair_mcp_tool',
 	'search_onto_projects',
 	'search_all_projects',
+	// Reading a doc body after a cross-project search is the common next step; without
+	// this preloaded, a global-context turn burns a tool_search + tool_schema round just
+	// to discover the doc-read tool (see SEARCH_EVAL_2026-06-19 F5).
+	'get_onto_document_details',
 	// Orchestrator capability: hand a self-contained task to a background Agent Run.
 	'delegate_task',
 	// Apply a review run's staged changes once the user approves (02).

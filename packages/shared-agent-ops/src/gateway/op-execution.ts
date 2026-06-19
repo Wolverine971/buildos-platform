@@ -26,9 +26,18 @@ import { ensureActorId } from '../ontology/ontology-projects.service';
 import { loadProjectGraphData, loadUserProjectSummaries } from '../ontology/project-graph-loader';
 import { getDocTree } from '../ontology/doc-structure.service';
 import {
+	AGENT_OP_GATEWAY_CALENDAR_READ_CATALOG,
+	AGENT_OP_GATEWAY_CALENDAR_WRITE_CATALOG,
 	AGENT_OP_GATEWAY_WRITE_CATALOG,
+	type CalendarPort,
+	runGatewayReadOp,
 	runGatewayWriteOp,
 	stageGatewayWriteOp
+} from './op-execution-gateway';
+
+export {
+	AGENT_OP_GATEWAY_CALENDAR_READ_CATALOG,
+	AGENT_OP_GATEWAY_CALENDAR_WRITE_CATALOG
 } from './op-execution-gateway';
 
 export interface AgentOpScope {
@@ -50,6 +59,8 @@ export interface AgentOpContext {
 	 * review-before-commit runs (review_required).
 	 */
 	mutationMode?: AgentRunMutationMode;
+	/** Optional runtime capability for calendar reads/writes in Agent Runs. */
+	calendar?: CalendarPort;
 }
 
 export type AgentOpErrorCode =
@@ -165,6 +176,35 @@ export const AGENT_OP_READ_CATALOG: readonly string[] = Object.freeze(
  */
 export const AGENT_OP_WRITE_CATALOG: readonly string[] = AGENT_OP_GATEWAY_WRITE_CATALOG;
 
+export interface BuildAgentRunOpCatalogParams {
+	scope: AgentOpScope;
+	mutationMode?: AgentRunMutationMode;
+	calendar?: CalendarPort | null;
+}
+
+/**
+ * Build the concrete op surface an Agent Run should see at runtime. Policy says
+ * what a run may do; this helper intersects that with worker capabilities.
+ *
+ * Calendar reads/writes are only included when a CalendarPort exists. Calendar
+ * writes are additionally hidden from staged review runs until external
+ * side-effect staging has a faithful commit representation.
+ */
+export function buildAgentRunOpCatalog(params: BuildAgentRunOpCatalogParams): string[] {
+	const grantedOps = params.scope.allowed_ops ?? defaultAllowedOpsForMode(params.scope.mode);
+	const hasCalendar = Boolean(params.calendar);
+	const canWrite = params.scope.mode === 'read_write';
+	const canRunCalendarWrites = canWrite && hasCalendar && params.mutationMode !== 'stage';
+
+	return grantedOps.filter((op) => {
+		if (AGENT_OP_READ_CATALOG.includes(op)) return true;
+		if (hasCalendar && AGENT_OP_GATEWAY_CALENDAR_READ_CATALOG.includes(op)) return true;
+		if (!canWrite) return false;
+		if (AGENT_OP_WRITE_CATALOG.includes(op)) return true;
+		return canRunCalendarWrites && AGENT_OP_GATEWAY_CALENDAR_WRITE_CATALOG.includes(op);
+	});
+}
+
 function fail(op: string, code: AgentOpErrorCode, message: string): AgentOpResult {
 	return { ok: false, op, error: { code, message } };
 }
@@ -212,6 +252,17 @@ async function executeWriteOp(
 		return fail(op, 'FORBIDDEN', 'Op project_id is outside this run scope');
 	}
 
+	if (ctx.mutationMode === 'stage' && AGENT_OP_GATEWAY_CALENDAR_WRITE_CATALOG.includes(op)) {
+		return fail(
+			op,
+			'UNSUPPORTED',
+			`Calendar write op ${op} is not available in review mode until calendar staging is implemented`
+		);
+	}
+	if (AGENT_OP_GATEWAY_CALENDAR_WRITE_CATALOG.includes(op) && !ctx.calendar) {
+		return fail(op, 'UNSUPPORTED', `Calendar op ${op} requires a CalendarPort`);
+	}
+
 	// Stage mode (Phase 4): compute a ProposedChange and return WITHOUT mutating.
 	// Scope/fence checks above still apply — a staged write must be one the run
 	// is actually allowed to make.
@@ -248,7 +299,8 @@ async function executeWriteOp(
 		userId: ctx.userId,
 		scope,
 		op,
-		args
+		args,
+		calendar: ctx.calendar
 	});
 
 	if (result.ok) {
@@ -300,6 +352,35 @@ export async function executeAgentOp(
 		return fail(trimmed, 'UNSUPPORTED', `Op ${trimmed} is not a read op.`);
 	}
 	const handler = READ_OP_HANDLERS[trimmed];
+	if (!handler && AGENT_OP_GATEWAY_CALENDAR_READ_CATALOG.includes(trimmed)) {
+		if (!ctx.calendar) {
+			return fail(trimmed, 'UNSUPPORTED', `Calendar op ${trimmed} requires a CalendarPort`);
+		}
+		const scope: AgentCallScope = {
+			mode: ctx.scope.mode,
+			allowed_ops: (ctx.scope.allowed_ops ?? undefined) as AgentCallScope['allowed_ops'],
+			project_ids:
+				ctx.runContext?.context_type === 'project' && ctx.runContext.project_id
+					? [ctx.runContext.project_id]
+					: undefined
+		};
+		const result = await runGatewayReadOp({
+			admin: ctx.admin,
+			userId: ctx.userId,
+			scope,
+			op: trimmed,
+			args,
+			calendar: ctx.calendar
+		});
+		if (result.ok) {
+			return { ok: true, op: trimmed, data: result.data };
+		}
+		return fail(
+			trimmed,
+			result.error ? mapGatewayErrorCode(result.error.code) : 'EXECUTION_ERROR',
+			result.error?.message ?? 'Read op failed'
+		);
+	}
 	if (!handler) {
 		return fail(
 			trimmed,

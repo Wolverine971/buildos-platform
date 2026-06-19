@@ -1402,9 +1402,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 	}> {
 		return this.runAgenticSearch({
 			query: args.query,
+			project_id: args.project_id,
 			types: args.types,
 			limit: args.limit,
-			scope: 'workspace'
+			scope: args.project_id ? 'project' : 'workspace'
 		});
 	}
 

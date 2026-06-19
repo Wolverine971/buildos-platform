@@ -31,6 +31,7 @@ export default defineConfig({
 		'src/ops/entity-mention-notification.service.ts',
 		'src/ops/gateway-op-aliases.ts',
 		'src/ops/security-event-logger.ts',
+		'src/calendar/agent-run-calendar-port.ts',
 		'src/gateway/agent-call-project-activity.service.ts',
 		'src/gateway/write-audit.service.ts',
 		'src/gateway/op-execution-gateway.ts',

@@ -46,6 +46,7 @@ export interface DailyBriefJobMetadata {
 		useOntology?: boolean;
 		isReengagement?: boolean;
 		daysSinceLastLogin?: number;
+		engagementStage?: 'standard' | 'reengagement' | 'dormant';
 	};
 	generation_progress?: BriefGenerationProgress;
 	notificationScheduledFor?: string; // ISO 8601 timestamp for when to send notification

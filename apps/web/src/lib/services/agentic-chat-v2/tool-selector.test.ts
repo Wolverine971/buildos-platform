@@ -39,6 +39,9 @@ describe('selectFastChatTools', () => {
 		expect(names).toContain('search_all_projects');
 		expect(names).not.toContain('search_buildos');
 		expect(names).toContain('search_onto_projects');
+		// Doc-read tool is preloaded so reading a body after a cross-project search
+		// doesn't require a tool_search/tool_schema discovery round (SEARCH_EVAL F5).
+		expect(names).toContain('get_onto_document_details');
 		expect(names).not.toContain('list_onto_tasks');
 		expect(names).not.toContain('resolve_libri_resource');
 	});

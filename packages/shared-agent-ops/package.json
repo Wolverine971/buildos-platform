@@ -136,6 +136,11 @@
 			"import": "./dist/gateway/op-execution-gateway.mjs",
 			"require": "./dist/gateway/op-execution-gateway.js"
 		},
+		"./calendar/agent-run-calendar-port": {
+			"types": "./dist/calendar/agent-run-calendar-port.d.ts",
+			"import": "./dist/calendar/agent-run-calendar-port.mjs",
+			"require": "./dist/calendar/agent-run-calendar-port.js"
+		},
 		"./utils/project-props-sanitizer": {
 			"types": "./dist/utils/project-props-sanitizer.d.ts",
 			"import": "./dist/utils/project-props-sanitizer.mjs",
@@ -183,6 +188,8 @@
 		"@buildos/shared-utils": "workspace:*",
 		"@buildos/supabase-client": "workspace:*",
 		"@supabase/supabase-js": "^2.89.0",
+		"google-auth-library": "^10.6.2",
+		"googleapis": "^171.4.0",
 		"marked": "^16.1.1",
 		"marked-gfm-heading-id": "^4.1.3",
 		"zod": "^3.23.0"
