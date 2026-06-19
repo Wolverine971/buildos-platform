@@ -6390,6 +6390,8 @@ export type StageWriteOpResult =
  * telemetry against it.
  */
 export async function stageGatewayWriteOp(params: {
+	// `any` matches ToolExecutionContext.admin (see runGatewayWriteOp); callers
+	// pass a real SupabaseClient<Database>.
 	admin: any;
 	op: string;
 	args?: Record<string, unknown>;

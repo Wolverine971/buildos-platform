@@ -17,6 +17,7 @@ import type {
 	ProposedChange,
 	ProposedChangeAction
 } from '@buildos/shared-types';
+import { defaultAllowedOpsForMode } from '../policy';
 import { runGatewayWriteOp } from './op-execution-gateway';
 
 export interface CommitChangeSetResult {
@@ -98,6 +99,31 @@ export async function commitChangeSet(params: {
 		};
 	}
 
+	// Atomically CLAIM the run before applying anything. Two concurrent commit
+	// requests would otherwise both pass the status check above and both apply
+	// the (non-idempotent) writes, duplicating creates. Flipping
+	// proposal_ready -> running here means the loser's claim affects 0 rows.
+	const { data: claimed, error: claimError } = await admin
+		.from('agent_runs')
+		.update({ status: 'running' })
+		.eq('id', runId)
+		.eq('user_id', userId)
+		.eq('status', 'proposal_ready')
+		.select('id')
+		.maybeSingle();
+	if (claimError) {
+		return { ok: false, error: { code: 'INTERNAL', message: claimError.message } };
+	}
+	if (!claimed) {
+		return {
+			ok: false,
+			error: { code: 'CONFLICT', message: 'Change set is already being committed' }
+		};
+	}
+
+	// Defense-in-depth: a staged op must still be within the run's granted scope.
+	const allowedOps = run.allowed_ops ?? defaultAllowedOpsForMode('read_write');
+
 	const decisionById = new Map<string, 'approved' | 'rejected'>();
 	for (const d of params.decisions ?? []) {
 		if (d && typeof d.change_id === 'string') {
@@ -125,6 +151,14 @@ export async function commitChangeSet(params: {
 
 		if (decision === 'rejected') {
 			rejected += 1;
+			continue;
+		}
+
+		// The op must still be within the run's granted scope (the change set is
+		// worker-written, so this only fires on a genuine scope mismatch).
+		if (!allowedOps.includes(change.op)) {
+			failed += 1;
+			change.error = `Op ${change.op} is outside the run's granted scope`;
 			continue;
 		}
 
@@ -200,9 +234,10 @@ export async function commitChangeSet(params: {
 	}
 	changeSet.status = changeSetStatus;
 
-	// A commit where every approved change failed is a 'partial' run; otherwise
-	// the run is 'completed' (rejections are a normal review outcome).
-	const runStatus: 'completed' | 'partial' = applied === 0 && failed > 0 ? 'partial' : 'completed';
+	// Any approved change that failed to apply makes the run 'partial' — an
+	// approved-but-failed write must not be hidden behind a 'completed' status.
+	// Rejections are a normal review outcome and do not downgrade the status.
+	const runStatus: 'completed' | 'partial' = failed > 0 ? 'partial' : 'completed';
 
 	// Merge the newly-applied entities into the run's result envelope.
 	const priorResult =
@@ -228,7 +263,7 @@ export async function commitChangeSet(params: {
 		})
 		.eq('id', runId)
 		.eq('user_id', userId)
-		.eq('status', 'proposal_ready');
+		.eq('status', 'running');
 
 	if (updateError) {
 		return { ok: false, error: { code: 'INTERNAL', message: updateError.message } };
