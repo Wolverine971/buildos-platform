@@ -27,6 +27,7 @@
 	import { agentRunsStore } from '$lib/services/agentRunsRealtime.service';
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
 	import AgentRunSteerControl from './AgentRunSteerControl.svelte';
+	import ChangeSetReview from './ChangeSetReview.svelte';
 
 	const proseClasses = getProseClasses('sm');
 
@@ -376,6 +377,11 @@
 				<!-- Steer / pause / resume (live runs; needs_input uses the answer box) -->
 				{#if runStatus === 'running' || runStatus === 'paused' || runStatus === 'queued'}
 					<AgentRunSteerControl {runId} {runStatus} {appliedSteerMessages} />
+				{/if}
+
+				<!-- Proposal review — the run staged changes for your approval (review run) -->
+				{#if runStatus === 'proposal_ready' && result?.proposed_changes?.changes?.length}
+					<ChangeSetReview {runId} changeSet={result.proposed_changes} />
 				{/if}
 
 				<!-- Answer box — the run is blocked waiting on you (needs_input) -->
