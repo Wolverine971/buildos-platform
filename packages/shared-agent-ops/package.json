@@ -131,6 +131,11 @@
 			"import": "./dist/gateway/write-audit.service.mjs",
 			"require": "./dist/gateway/write-audit.service.js"
 		},
+		"./gateway/op-execution-gateway": {
+			"types": "./dist/gateway/op-execution-gateway.d.ts",
+			"import": "./dist/gateway/op-execution-gateway.mjs",
+			"require": "./dist/gateway/op-execution-gateway.js"
+		},
 		"./utils/project-props-sanitizer": {
 			"types": "./dist/utils/project-props-sanitizer.d.ts",
 			"import": "./dist/utils/project-props-sanitizer.mjs",
