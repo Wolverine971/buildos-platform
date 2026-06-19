@@ -14,12 +14,22 @@
 // SHARED_AGENT_OPS_EXTRACTION_PLAN.md (Wave 7).
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AgentCallScope, Database, BuildosAgentScopeMode } from '@buildos/shared-types';
+import type {
+	AgentCallScope,
+	AgentRunMutationMode,
+	Database,
+	BuildosAgentScopeMode,
+	ProposedChange
+} from '@buildos/shared-types';
 import { defaultAllowedOpsForMode, isReadOp, isSupportedOp, isWriteOp } from '../policy';
 import { ensureActorId } from '../ontology/ontology-projects.service';
 import { loadProjectGraphData, loadUserProjectSummaries } from '../ontology/project-graph-loader';
 import { getDocTree } from '../ontology/doc-structure.service';
-import { AGENT_OP_GATEWAY_WRITE_CATALOG, runGatewayWriteOp } from './op-execution-gateway';
+import {
+	AGENT_OP_GATEWAY_WRITE_CATALOG,
+	runGatewayWriteOp,
+	stageGatewayWriteOp
+} from './op-execution-gateway';
 
 export interface AgentOpScope {
 	mode: BuildosAgentScopeMode;
@@ -34,6 +44,12 @@ export interface AgentOpContext {
 		context_type: 'global' | 'project';
 		project_id?: string | null;
 	} | null;
+	/**
+	 * Write disposition (Phase 4). 'commit' (default) applies writes immediately;
+	 * 'stage' computes a ProposedChange and returns it WITHOUT mutating, for
+	 * review-before-commit runs (review_required).
+	 */
+	mutationMode?: AgentRunMutationMode;
 }
 
 export type AgentOpErrorCode =
@@ -51,6 +67,12 @@ export interface AgentOpResult {
 	/** Write ops surface the touched entity so the runner can record it. */
 	entityKind?: string | null;
 	entityId?: string | null;
+	/**
+	 * Set when a write op was STAGED instead of committed (mutationMode='stage').
+	 * The change minus its id — the runner assigns a stable id and accumulates
+	 * these into the run's Change Set.
+	 */
+	proposedChange?: Omit<ProposedChange, 'id'>;
 	error?: { code: AgentOpErrorCode; message: string };
 }
 
@@ -188,6 +210,28 @@ async function executeWriteOp(
 		ctx.runContext.project_id !== projectId
 	) {
 		return fail(op, 'FORBIDDEN', 'Op project_id is outside this run scope');
+	}
+
+	// Stage mode (Phase 4): compute a ProposedChange and return WITHOUT mutating.
+	// Scope/fence checks above still apply — a staged write must be one the run
+	// is actually allowed to make.
+	if (ctx.mutationMode === 'stage') {
+		const staged = await stageGatewayWriteOp({ admin: ctx.admin, op, args });
+		if (!staged.ok) {
+			return fail(op, mapGatewayErrorCode(staged.error.code), staged.error.message);
+		}
+		return {
+			ok: true,
+			op,
+			// Synthetic success so the LLM loop continues unaware of commit-vs-stage.
+			data: {
+				staged: true,
+				op,
+				action: staged.change.action,
+				entity_type: staged.change.entity_type
+			},
+			proposedChange: staged.change
+		};
 	}
 
 	const scope: AgentCallScope = {

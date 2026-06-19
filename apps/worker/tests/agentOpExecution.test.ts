@@ -96,6 +96,47 @@ describe('executeAgentOp policy + dispatch', () => {
 		expect(r.error?.code).toBe('VALIDATION_ERROR');
 	});
 
+	it('stages a write op (mutationMode=stage) instead of committing, without mutating', async () => {
+		// throwingAdmin proves no create handler ran; staging a create does no DB read.
+		const r = await executeAgentOp(
+			{ ...ctx(), scope: { mode: 'read_write' }, mutationMode: 'stage' },
+			'onto.task.create',
+			{ project_id: 'project-1', title: 'Draft task' }
+		);
+		expect(r.ok).toBe(true);
+		expect(r.proposedChange).toBeDefined();
+		expect(r.proposedChange?.action).toBe('create');
+		expect(r.proposedChange?.entity_type).toBe('task');
+		expect(r.proposedChange?.after).toMatchObject({ project_id: 'project-1', title: 'Draft task' });
+		expect((r.data as { staged?: boolean }).staged).toBe(true);
+	});
+
+	it('still validates args when staging a write op', async () => {
+		const r = await executeAgentOp(
+			{ ...ctx(), scope: { mode: 'read_write' }, mutationMode: 'stage' },
+			'onto.task.create',
+			{}
+		);
+		expect(r.ok).toBe(false);
+		expect(r.error?.code).toBe('VALIDATION_ERROR');
+		expect(r.proposedChange).toBeUndefined();
+	});
+
+	it('still enforces the project fence when staging', async () => {
+		const r = await executeAgentOp(
+			{
+				...ctx(),
+				scope: { mode: 'read_write' },
+				mutationMode: 'stage',
+				runContext: { context_type: 'project', project_id: 'project-1' }
+			},
+			'onto.task.create',
+			{ project_id: 'project-2', title: 'x' }
+		);
+		expect(r.ok).toBe(false);
+		expect(r.error?.code).toBe('FORBIDDEN');
+	});
+
 	it('fences a write op to its project-scoped run before any DB handler', async () => {
 		const r = await executeAgentOp(
 			{

@@ -9,7 +9,9 @@ import { isValidUUID } from '@buildos/shared-types';
 import type {
 	AgentCallScope,
 	BuildosAgentAllowedOp,
-	BuildosAgentScopeMode
+	BuildosAgentScopeMode,
+	ProposedChange,
+	ProposedChangeAction
 } from '@buildos/shared-types';
 import { buildSearchFilter } from '../utils/search-filter';
 import {
@@ -6351,5 +6353,128 @@ export async function runGatewayWriteOp(params: {
 			}
 		};
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Staged write ops (Phase 4 — opt-in review-before-commit)
+// ---------------------------------------------------------------------------
+
+/** Derive the ProposedChange action from the op name. */
+export function deriveProposedChangeAction(op: string): ProposedChangeAction {
+	if (op === 'onto.edge.unlink') return 'delete';
+	if (
+		op.endsWith('.create') ||
+		op === 'onto.edge.link' ||
+		op === 'onto.task.docs.create_or_attach'
+	) {
+		return 'create';
+	}
+	// *.update, onto.document.tree.move, archive-via-update
+	return 'update';
+}
+
+export type StageWriteOpResult =
+	| { ok: true; change: Omit<ProposedChange, 'id'> }
+	| {
+			ok: false;
+			error: { code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'INTERNAL'; message: string };
+	  };
+
+/**
+ * Compute a ProposedChange for a write op WITHOUT performing the mutation
+ * (Phase 4 stage mode). Validates args the same way the commit path does,
+ * derives the action/entity, and fetches a compact `before` snapshot for
+ * update/delete ops so the review UI can render a diff. The `after` payload is
+ * the proposed op args (what the commit will re-apply verbatim). Returns the
+ * change minus its `id` — the caller (runner) assigns a stable id and records
+ * telemetry against it.
+ */
+export async function stageGatewayWriteOp(params: {
+	admin: any;
+	op: string;
+	args?: Record<string, unknown>;
+	rationale?: string;
+}): Promise<StageWriteOpResult> {
+	const canonicalOp = normalizeGatewayOpName(
+		typeof params.op === 'string' ? params.op.trim() : ''
+	) as BuildosAgentAllowedOp;
+	const handler = EXTERNAL_OP_HANDLERS[canonicalOp];
+	if (!handler) {
+		return {
+			ok: false,
+			error: { code: 'NOT_FOUND', message: `No worker write handler for op: ${canonicalOp}` }
+		};
+	}
+
+	const args =
+		params.args && typeof params.args === 'object' && !Array.isArray(params.args)
+			? params.args
+			: {};
+
+	// Same arg validation as the commit path — a proposal must be applyable.
+	const schema = EXTERNAL_WRITE_OP_SCHEMAS[canonicalOp];
+	if (schema) {
+		const missing = validateRequiredArgs(schema, args);
+		if (missing.length > 0) {
+			return {
+				ok: false,
+				error: {
+					code: 'VALIDATION_ERROR',
+					message: `Missing required parameter${missing.length === 1 ? '' : 's'}: ${missing.join(', ')}`
+				}
+			};
+		}
+		const unexpected = validateUnexpectedArgs(schema, args);
+		if (unexpected.length > 0) {
+			return {
+				ok: false,
+				error: {
+					code: 'VALIDATION_ERROR',
+					message: `Unsupported parameter${unexpected.length === 1 ? '' : 's'}: ${unexpected.join(', ')}`
+				}
+			};
+		}
+	}
+
+	const action = deriveProposedChangeAction(canonicalOp);
+	const entityKind = entityKindFromGatewayOp(canonicalOp) ?? 'unknown';
+
+	let entityId: string | undefined;
+	let before: Record<string, unknown> | undefined;
+
+	// For update/delete of a core entity, fetch a compact current snapshot.
+	const cfg = (CORE_ENTITY_CONFIG as Record<string, { table: string; idArg: string; select: string }>)[
+		entityKind
+	];
+	if (action !== 'create' && cfg) {
+		const idVal = args[cfg.idArg];
+		if (typeof idVal === 'string' && idVal) {
+			entityId = idVal;
+			try {
+				const { data } = await params.admin
+					.from(cfg.table)
+					.select(cfg.select)
+					.eq('id', idVal)
+					.maybeSingle();
+				before = (data as Record<string, unknown> | null) ?? undefined;
+			} catch {
+				before = undefined;
+			}
+		}
+	}
+
+	return {
+		ok: true,
+		change: {
+			op: canonicalOp,
+			entity_type: entityKind,
+			entity_id: entityId,
+			action,
+			before,
+			after: args,
+			rationale: params.rationale ?? `Proposed ${action} of ${entityKind}`,
+			decision: 'pending'
+		}
+	};
 }
 
