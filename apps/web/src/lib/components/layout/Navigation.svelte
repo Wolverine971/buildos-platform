@@ -19,7 +19,8 @@
 		Clock,
 		Sun,
 		Moon,
-		Bell
+		Bell,
+		Inbox
 	} from 'lucide-svelte';
 	import { toggleMode } from 'mode-watcher';
 	import BriefStatusIndicator from './BriefStatusIndicator.svelte';
@@ -61,6 +62,7 @@
 	let previousPath = $state('');
 	let isDark = $state(false);
 	let showChatModal = $state(false);
+	let showWorkPanel = $state(false);
 	let chatOpenedWithContext = $state<ChatContextType | null>(null);
 
 	// Mobile-menu accessibility: drawer ref for the focus trap, and the element to restore
@@ -516,6 +518,23 @@
 					<div class="hidden xl:block">
 						<BriefStatusIndicator />
 					</div>
+
+					<!-- Work Panel (agent runs inbox). Activity badge lives on the chat
+					     launcher; this is the durable inbox access point. -->
+					<button
+						type="button"
+						onclick={() => (showWorkPanel = true)}
+						class="relative flex h-9 w-9 items-center justify-center rounded-md border bg-card shadow-ink transition-all duration-200 hover:border-accent hover:bg-accent/10 hover:text-accent {$activeAgentRunCount >
+						0
+							? 'border-accent/50 text-accent'
+							: 'border-border text-muted-foreground'}"
+						aria-label={$activeAgentRunCount > 0
+							? `Open Work — ${$activeAgentRunCount} agents working`
+							: 'Open Work'}
+						title="Work — agent runs"
+					>
+						<Inbox class="h-4 w-4" />
+					</button>
 
 					<!-- Agent Chat Button -->
 					<Button
@@ -1201,6 +1220,12 @@
 			initialProjectFocus={chatInitialProjectFocus}
 			onClose={handleChatClose}
 		/>
+	{/await}
+{/if}
+
+{#if showWorkPanel}
+	{#await import('$lib/components/agent/WorkPanel.svelte') then { default: WorkPanel }}
+		<WorkPanel open={showWorkPanel} onClose={() => (showWorkPanel = false)} />
 	{/await}
 {/if}
 

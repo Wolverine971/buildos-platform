@@ -32,7 +32,17 @@
 
 	type AgentRunEventRow = Database['public']['Tables']['agent_run_events']['Row'];
 
-	let { notification }: { notification: AgentRunNotification | null } = $props();
+	let {
+		notification,
+		onMinimize,
+		onClose,
+		onCancel
+	}: {
+		notification: AgentRunNotification | null;
+		onMinimize?: () => void;
+		onClose?: () => void;
+		onCancel?: () => void;
+	} = $props();
 
 	const supabase = getContext<SupabaseClient | undefined>('supabase');
 
@@ -224,19 +234,23 @@
 
 	function handleMinimize() {
 		const id = notification?.id;
-		if (!id) return;
+		const callback = onMinimize;
+		if (!id && !callback) return;
 		deferNotificationUpdate(() => {
-			notificationStore.minimize(id);
+			if (callback) callback();
+			else if (id) notificationStore.minimize(id);
 		});
 	}
 
 	function handleDismiss() {
 		const id = notification?.id;
 		const dismiss = notification?.actions?.dismiss;
-		if (!id) return;
+		const callback = onClose;
+		if (!id && !callback) return;
 		deferNotificationUpdate(() => {
-			if (dismiss) dismiss();
-			else notificationStore.remove(id);
+			if (callback) callback();
+			else if (dismiss) dismiss();
+			else if (id) notificationStore.remove(id);
 		});
 	}
 
@@ -254,6 +268,7 @@
 				return;
 			}
 			toastService.info('Cancelling run…');
+			onCancel?.();
 		} catch {
 			toastService.error('Could not cancel the run');
 		}

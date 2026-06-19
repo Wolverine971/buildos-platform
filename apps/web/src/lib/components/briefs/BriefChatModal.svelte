@@ -18,7 +18,7 @@
 -->
 <script lang="ts">
 	import { fade } from 'svelte/transition';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { browser } from '$app/environment';
 	import { X, FileText, MessageCircle } from 'lucide-svelte';
 	import { portal } from '$lib/actions/portal';
@@ -53,7 +53,7 @@
 	let lastSummary = $state<DataMutationSummary | undefined>(undefined);
 	// Active chat session id, mirrored up from the embedded AgentChatModal so
 	// session actions (Logs / Export) can live in this modal's header bar.
-	let chatSessionId = $state<string | null>(initialChatSessionId);
+	let chatSessionId = $state<string | null>(untrack(() => initialChatSessionId));
 	let briefChatEntityId = $derived(brief.chat_brief_id || brief.id);
 	let displayTitle = $derived(title ?? `Daily Brief — ${formatBriefDate(brief.brief_date)}`);
 

@@ -14,20 +14,19 @@
 
 import { browser } from '$app/environment';
 import { get } from 'svelte/store';
-import type {
-	AgentRunStatus,
-	AgentRunContextType,
-	AgentRunScopeMode,
-	AgentRunMetrics,
-	RunResult
-} from '@buildos/shared-types';
 import { notificationStore } from '$lib/stores/notification.store';
 import {
 	agentRunsStore,
 	isActiveAgentRunStatus,
 	type AgentRunRow
 } from './agentRunsRealtime.service';
-import type { AgentRunNotification, UiNotificationStatus } from '$lib/types/notification.types';
+import {
+	buildAgentRunNotificationData,
+	buildAgentRunProgress,
+	toUiAgentRunStatus,
+	parseAgentRunResult
+} from './agent-run-notification-data';
+import type { AgentRunNotification } from '$lib/types/notification.types';
 import { toastService } from '$lib/stores/toast.store';
 
 const AUTO_MINIMIZE_MS = 4000;
@@ -117,12 +116,12 @@ function syncRunToNotification(run: AgentRunRow): void {
 function createNotification(run: AgentRunRow): string {
 	const notification: Omit<AgentRunNotification, 'id' | 'createdAt' | 'updatedAt'> = {
 		type: 'agent-run',
-		status: toUiStatus(run.status),
+		status: toUiAgentRunStatus(run.status),
 		isMinimized: true,
 		isPersistent: true,
 		autoCloseMs: null,
-		data: buildData(run),
-		progress: buildProgress(run),
+		data: buildAgentRunNotificationData(run),
+		progress: buildAgentRunProgress(run),
 		actions: buildActions(run.id)
 	};
 	const notificationId = notificationStore.add(notification);
@@ -132,9 +131,9 @@ function createNotification(run: AgentRunRow): string {
 
 function updateNotification(notificationId: string, run: AgentRunRow): void {
 	notificationStore.update(notificationId, {
-		status: toUiStatus(run.status),
-		data: buildData(run),
-		progress: buildProgress(run),
+		status: toUiAgentRunStatus(run.status),
+		data: buildAgentRunNotificationData(run),
+		progress: buildAgentRunProgress(run),
 		actions: buildActions(run.id)
 	});
 
@@ -143,78 +142,6 @@ function updateNotification(notificationId: string, run: AgentRunRow): void {
 		startAutoMinimize(notificationId);
 	} else {
 		clearAutoMinimize(notificationId);
-	}
-}
-
-function buildData(run: AgentRunRow): AgentRunNotification['data'] {
-	const result = parseResult(run.result);
-	const metrics = parseMetrics(run.metrics) ?? result?.metrics ?? null;
-	return {
-		runId: run.id,
-		label: run.label,
-		goal: run.goal,
-		runStatus: run.status,
-		trigger: run.trigger,
-		contextType: run.context_type as AgentRunContextType,
-		projectId: run.project_id,
-		scopeMode: run.scope_mode as AgentRunScopeMode,
-		reviewRequired: run.review_required,
-		runCreatedAt: run.created_at,
-		startedAt: run.started_at,
-		completedAt: run.completed_at,
-		result,
-		metrics,
-		entityCount: result?.entities_touched?.length ?? 0,
-		error: run.error
-	};
-}
-
-function buildProgress(run: AgentRunRow): AgentRunNotification['progress'] {
-	const result = parseResult(run.result);
-	return { type: 'indeterminate', message: statusMessage(run.status, run.error, result) };
-}
-
-function statusMessage(
-	status: AgentRunStatus,
-	error: string | null,
-	result: RunResult | null
-): string {
-	switch (status) {
-		case 'queued':
-			return 'Queued…';
-		case 'running':
-			return 'Working…';
-		case 'paused':
-			return 'Paused';
-		case 'needs_input':
-			return 'Needs your input';
-		case 'proposal_ready':
-			return 'Changes proposed — review';
-		case 'completed':
-			return result?.summary?.trim() || 'Done';
-		case 'partial':
-			return result?.summary?.trim() || 'Finished partially';
-		case 'failed':
-			return error?.trim() || result?.error?.trim() || 'Run failed';
-		case 'cancelled':
-			return 'Cancelled';
-		default:
-			return 'Working…';
-	}
-}
-
-function toUiStatus(status: AgentRunStatus): UiNotificationStatus {
-	switch (status) {
-		case 'completed':
-			return 'success';
-		case 'partial':
-			return 'warning';
-		case 'failed':
-			return 'error';
-		case 'cancelled':
-			return 'cancelled';
-		default:
-			return 'processing';
 	}
 }
 
@@ -293,7 +220,7 @@ function maybeToastTerminal(run: AgentRunRow): void {
 	if (toasted.has(run.id)) return;
 	toasted.add(run.id);
 
-	const result = parseResult(run.result);
+	const result = parseAgentRunResult(run.result);
 	if (run.status === 'completed') {
 		const n = result?.entities_touched?.length ?? 0;
 		toastService.success(
@@ -327,14 +254,4 @@ function clearAutoMinimize(notificationId: string): void {
 		clearTimeout(timer);
 		autoMinimizeTimers.delete(notificationId);
 	}
-}
-
-function parseResult(value: AgentRunRow['result']): RunResult | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-	return value as unknown as RunResult;
-}
-
-function parseMetrics(value: AgentRunRow['metrics']): AgentRunMetrics | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-	return value as unknown as AgentRunMetrics;
 }

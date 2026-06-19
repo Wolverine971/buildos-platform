@@ -3,16 +3,19 @@
 // Phase 1b — the durable Agent Run worker. Executes an Agent Run headlessly:
 // runs a JSON action-loop where the LLM either calls a BuildOS op or submits a
 // result, executing ops in-process via @buildos/shared-agent-ops (no SvelteKit,
-// no chat session). Read-first cut: the op executor currently supports read ops;
-// write ops + the full gateway-handler catalog are tracked follow-on work.
+// no chat session). Supports read ops and (for read_write runs) the carved
+// gateway write ops; calendar write ops are excluded until the CalendarPort is
+// wired in the worker.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AgentRunJobMetadata, Database } from '@buildos/shared-types';
 import {
 	AGENT_OP_READ_CATALOG,
+	AGENT_OP_WRITE_CATALOG,
 	type AgentOpScope,
 	defaultAllowedOpsForMode,
-	executeAgentOp
+	executeAgentOp,
+	isWriteOp
 } from '@buildos/shared-agent-ops';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
@@ -155,18 +158,23 @@ async function recordToolExecution(params: {
 	result: unknown;
 	errorMessage?: string;
 	durationMs: number;
+	entityKind?: string | null;
+	entityId?: string | null;
 }): Promise<void> {
+	const isWrite = isWriteOp(params.op);
 	const { error } = await supabase.from('agent_tool_executions').insert({
 		agent_run_id: params.runId,
 		user_id: params.userId,
 		tool_name: params.op,
 		gateway_op: params.op,
-		tool_category: 'read',
+		tool_category: isWrite ? 'write' : 'read',
 		arguments: params.args as never,
 		result: (params.ok ? params.result : null) as never,
 		success: params.ok,
 		error_message: params.errorMessage ?? null,
 		mutation_mode: 'commit',
+		entity_kind: params.entityKind ?? null,
+		entity_id: params.entityId ?? null,
 		execution_time_ms: params.durationMs
 	});
 	if (error) {
@@ -369,7 +377,11 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		allowed_ops: run.allowed_ops
 	};
 	const grantedOps = scope.allowed_ops ?? defaultAllowedOpsForMode(scope.mode);
-	const runnableOps = grantedOps.filter((op) => AGENT_OP_READ_CATALOG.includes(op));
+	const runnableOps = grantedOps.filter(
+		(op) =>
+			AGENT_OP_READ_CATALOG.includes(op) ||
+			(scope.mode === 'read_write' && AGENT_OP_WRITE_CATALOG.includes(op))
+	);
 
 	const budgets = parseBudgets(run.budgets);
 	const maxToolCalls = budgets.max_tool_calls ?? DEFAULT_MAX_TOOL_CALLS;
@@ -638,7 +650,9 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			ok: result.ok,
 			result: result.data,
 			errorMessage: result.error?.message,
-			durationMs
+			durationMs,
+			entityKind: result.entityKind,
+			entityId: result.entityId
 		});
 		await emitEvent(runId, 'run.tool_result', {
 			op,
