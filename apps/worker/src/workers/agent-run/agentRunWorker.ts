@@ -7,8 +7,15 @@
 // gateway write ops; calendar write ops are excluded until the CalendarPort is
 // wired in the worker.
 
+import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { AgentRunJobMetadata, Database } from '@buildos/shared-types';
+import type {
+	AgentRunJobMetadata,
+	AgentRunMutationMode,
+	ChangeSet,
+	Database,
+	ProposedChange
+} from '@buildos/shared-types';
 import {
 	AGENT_OP_READ_CATALOG,
 	AGENT_OP_WRITE_CATALOG,
@@ -160,8 +167,13 @@ async function recordToolExecution(params: {
 	durationMs: number;
 	entityKind?: string | null;
 	entityId?: string | null;
+	mutationMode?: AgentRunMutationMode;
+	proposedChangeId?: string;
 }): Promise<void> {
 	const isWrite = isWriteOp(params.op);
+	// Reads are never staged; a staged write records mutation_mode='stage' + its
+	// proposed_change_id. mutation_mode is null for reads (semantically n/a).
+	const mutationMode = isWrite ? (params.mutationMode ?? 'commit') : null;
 	const { error } = await supabase.from('agent_tool_executions').insert({
 		agent_run_id: params.runId,
 		user_id: params.userId,
@@ -172,7 +184,8 @@ async function recordToolExecution(params: {
 		result: (params.ok ? params.result : null) as never,
 		success: params.ok,
 		error_message: params.errorMessage ?? null,
-		mutation_mode: 'commit',
+		mutation_mode: mutationMode,
+		proposed_change_id: params.proposedChangeId ?? null,
 		entity_kind: params.entityKind ?? null,
 		entity_id: params.entityId ?? null,
 		execution_time_ms: params.durationMs
@@ -255,6 +268,8 @@ function parseBudgets(value: unknown): RunBudgets {
 }
 
 function buildSystemPrompt(runnableOps: string[]): string {
+	const hasWriteOps = runnableOps.some((op) => AGENT_OP_WRITE_CATALOG.includes(op));
+	const surfaceLabel = hasWriteOps ? 'read + write' : 'read-only';
 	return [
 		'You are a focused background agent (an "Agent Run") inside BuildOS.',
 		'You work autonomously to accomplish a single goal, then report back. You cannot delegate to other agents.',
@@ -265,8 +280,11 @@ function buildSystemPrompt(runnableOps: string[]): string {
 		'2) Finish and report:',
 		'   { "thought": "<short reasoning>", "action": "submit_result", "status": "completed" | "partial" | "needs_input", "summary": "<what you did>", "answer": "<the finding/response>", "open_questions": ["..."] }',
 		'',
-		`Available operations (read-only): ${runnableOps.length ? runnableOps.join(', ') : '(none in scope)'}`,
+		`Available operations (${surfaceLabel}): ${runnableOps.length ? runnableOps.join(', ') : '(none in scope)'}`,
 		'Most ops accept { "project_id": "<uuid>" }. Use onto.project.list first to discover projects.',
+		hasWriteOps
+			? '- When the goal calls for creating or updating entities, use the write ops directly; just do the work.'
+			: '',
 		'',
 		'Rules:',
 		'- Respond with JSON only. No prose outside the JSON.',
@@ -274,7 +292,9 @@ function buildSystemPrompt(runnableOps: string[]): string {
 		'- Use status "completed" only when no user input is required; keep open_questions empty for completed results.',
 		'- If you need the user to answer before you can continue, submit_result with status "needs_input" and put the questions in open_questions.',
 		'- If you cannot make progress or an op is unavailable, submit_result with status "partial" or "needs_input" and explain in open_questions.'
-	].join('\n');
+	]
+		.filter(Boolean)
+		.join('\n');
 }
 
 function buildUserPrompt(
@@ -383,6 +403,12 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			(scope.mode === 'read_write' && AGENT_OP_WRITE_CATALOG.includes(op))
 	);
 
+	// Phase 4: review_required runs STAGE writes into a Change Set instead of
+	// committing. Read-only runs never stage (dispatch rejects review+read_only).
+	const mutationMode: AgentRunMutationMode =
+		run.review_required && scope.mode === 'read_write' ? 'stage' : 'commit';
+	const proposedChanges: ProposedChange[] = [];
+
 	const budgets = parseBudgets(run.budgets);
 	const maxToolCalls = budgets.max_tool_calls ?? DEFAULT_MAX_TOOL_CALLS;
 	const maxTokens = budgets.max_tokens;
@@ -423,21 +449,50 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			tool_calls: toolCalls,
 			duration_ms: Date.now() - startedAtMs
 		};
+
+		// Phase 4: a review run that staged at least one write ends as
+		// 'proposal_ready' with a pending Change Set, regardless of the LLM's
+		// requested terminal status (it doesn't know writes were staged). A review
+		// run that staged nothing finalizes normally (no proposal).
+		let finalStatus = status;
+		let changeSet: ChangeSet | null = null;
+		const isTerminalSuccess =
+			status === 'completed' || status === 'partial' || status === 'failed';
+		if (mutationMode === 'stage' && proposedChanges.length > 0 && isTerminalSuccess) {
+			finalStatus = 'proposal_ready';
+			changeSet = {
+				run_id: runId,
+				status: 'pending',
+				changes: proposedChanges,
+				created_at: new Date().toISOString()
+			};
+		}
+
+		const resultWithProposal = changeSet
+			? { ...result, metrics, proposed_changes: changeSet }
+			: { ...result, metrics };
+
 		// Chat integration: surface the outcome back into the originating thread
 		// BEFORE flipping status — the chat UI reloads its thread when it sees a
 		// session run go terminal, so the injected message must already exist.
-		await injectChatCompletionMessage(run, status, { ...result, metrics });
+		await injectChatCompletionMessage(run, finalStatus, resultWithProposal);
 		await supabase
 			.from('agent_runs')
 			.update({
-				status,
-				result: { ...result, metrics } as never,
+				status: finalStatus,
+				result: resultWithProposal as never,
 				metrics: metrics as never,
+				change_set: (changeSet ?? null) as never,
 				completed_at: new Date().toISOString()
 			})
 			.eq('id', runId);
-		await emitEvent(runId, 'run.status', { status });
-		return { success: status === 'completed', run_id: runId, status };
+		if (changeSet) {
+			await emitEvent(runId, 'run.proposal', {
+				change_count: changeSet.changes.length
+			});
+		}
+		await emitEvent(runId, 'run.status', { status: finalStatus });
+		return { success: finalStatus === 'completed', run_id: runId, status: finalStatus };
 	};
 
 	const hardBudgetExhaustionReason = (): string | null => {
@@ -635,12 +690,22 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				runContext: {
 					context_type: run.context_type === 'project' ? 'project' : 'global',
 					project_id: run.project_id
-				}
+				},
+				mutationMode
 			},
 			op,
 			args
 		);
 		const durationMs = Date.now() - opStart;
+
+		// Phase 4: a staged write returns a ProposedChange (no mutation). Assign a
+		// stable id, accumulate it into the run's Change Set, and key telemetry to
+		// it so `proposed_changes` and `agent_tool_executions` stay consistent.
+		let proposedChangeId: string | undefined;
+		if (result.ok && result.proposedChange) {
+			proposedChangeId = randomUUID();
+			proposedChanges.push({ id: proposedChangeId, ...result.proposedChange });
+		}
 
 		await recordToolExecution({
 			runId,
@@ -652,7 +717,9 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			errorMessage: result.error?.message,
 			durationMs,
 			entityKind: result.entityKind,
-			entityId: result.entityId
+			entityId: result.entityId,
+			mutationMode,
+			proposedChangeId
 		});
 		await emitEvent(runId, 'run.tool_result', {
 			op,
