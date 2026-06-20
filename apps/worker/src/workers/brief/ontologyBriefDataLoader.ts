@@ -1606,7 +1606,7 @@ export class OntologyBriefDataLoader {
 		const { data: projectsData, error: projectsError } = await this.supabase
 			.from('onto_projects')
 			.select(
-				'id, name, state_key, type_key, description, next_step_short, next_step_long, updated_at, created_by'
+				'id, name, state_key, type_key, description, next_step_short, next_step_long, created_at, updated_at, created_by'
 			)
 			.or(projectAccessFilter)
 			.in('state_key', ['planning', 'active'])

@@ -146,15 +146,16 @@ expression to include `content`.
 | 1   | **Verify telemetry populates** (load + re-run, confirm `result_count`/`zero_result`)                                         | ops                    | F4 — needed before measurement                                     | ✅ live rows populated for this session                |
 | 2   | **Stop the agent stuffing the project name into FTS queries** — guidance to search distinctive tokens; explain AND semantics | prompt                 | F1 — the actual root cause of the only miss                        | ✅ guidance added to `search_all_projects` description |
 | 3   | **Add optional `project_id` to `search_all_projects`** so the preloaded global tool can scope without a discovery round      | tool schema + executor | F2 — gives "search within this one project" with zero extra tools  | ✅ schema + executor + tests                           |
-| 4   | **Deprecate legacy `search_onto_*` tools** (start with the 0-usage goals/plans/milestones/risks)                             | cleanup                | F3 — audit §5.2, evidence now strong                               | ⏸️ **deferred** — see §3.1 below                       |
+| 4   | **Hide legacy `search_onto_*` tools from chat discovery** (0-usage goals/plans/milestones/risks)                             | cleanup                | F3 — audit §5.2, evidence now strong                               | ✅ chat discovery hiding shipped; external API intact  |
 | 5   | **Preload `get_onto_document_details`** in global context                                                                    | gateway-surface        | F5 — kills the observed discovery rounds for short/no-heading docs | ✅ added to `global_basic` + selector test             |
 | 6   | **Update document search snippets to include canonical `content`** before dropping `props.body_markdown`                     | SQL cleanup            | F7 — snippets still rely on the legacy mirror                      | ✅ migration `20260619120000` written (pending apply)  |
 
 Not doing (yet): trigram-on-body, score-floor tuning (F6) — revisit with real-corpus telemetry.
 
-### 3.1 Why step 4 (deprecation) was deferred — architectural coupling
+### 3.1 How step 4 shipped without breaking external callers
 
-Removing the four `search_onto_*` tools is **not** chat-local. Two facts make it a public-API change:
+Removing the four `search_onto_*` tools is **not** chat-local. Two facts made deletion a public-API
+change:
 
 - The chat tool registry is built from `CHAT_TOOL_DEFINITIONS`, and the **external BuildOS Agent API**
   gateway (`external-tool-gateway.ts`) resolves its ops through that **same registry**. Its read-ops
@@ -166,10 +167,11 @@ Removing the four `search_onto_*` tools is **not** chat-local. Two facts make it
   the only lever that hides them from chat is removing the definitions — which is the very thing that
   breaks the external API.
 
-**Decision (2026-06-19):** defer. The funnel rewording + new query guidance already keep the agent
-off these tools (0 use in the live run). Revisit only if telemetry shows the agent still picking them.
-If we do act, the clean option is a chat-only "hidden from discovery" flag that `searchToolRegistry`
-respects but the external gateway ignores — not a registry deletion.
+**Shipped follow-up (2026-06-19):** added chat-only discovery visibility metadata and made
+`searchToolRegistry` surface-aware. Chat `tool_search` now filters the zero-use
+`search_onto_goals`, `search_onto_plans`, `search_onto_milestones`, and `search_onto_risks` tools.
+The shared registry, external `tool_search`, external `tool_schema`, direct external tool listing,
+and direct execution still expose these public read ops for callers whose scopes allow them.
 
 ---
 

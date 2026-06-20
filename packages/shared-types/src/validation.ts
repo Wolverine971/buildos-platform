@@ -905,12 +905,13 @@ export function validateAgentRunMetadata(metadata: unknown): AgentRunJobMetadata
 	if (
 		meta.continuation_from !== undefined &&
 		meta.continuation_from !== 'paused' &&
-		meta.continuation_from !== 'needs_input'
+		meta.continuation_from !== 'needs_input' &&
+		meta.continuation_from !== 'partial'
 	) {
 		throw new ValidationError(
 			'continuation_from',
 			meta.continuation_from,
-			'paused | needs_input'
+			'paused | needs_input | partial'
 		);
 	}
 

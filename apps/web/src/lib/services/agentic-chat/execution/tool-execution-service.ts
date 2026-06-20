@@ -941,7 +941,8 @@ export class ToolExecutionService implements BaseService {
 						: undefined,
 				kind: args.kind === 'read' || args.kind === 'write' ? args.kind : undefined,
 				entity: typeof args.entity === 'string' ? args.entity : undefined,
-				limit: typeof args.limit === 'number' ? args.limit : undefined
+				limit: typeof args.limit === 'number' ? args.limit : undefined,
+				surface: 'chat'
 			});
 			return { success: true, data: result, toolName, toolCallId: 'gateway' };
 		}

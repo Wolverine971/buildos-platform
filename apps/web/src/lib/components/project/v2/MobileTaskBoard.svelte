@@ -36,7 +36,10 @@
 	} from 'lucide-svelte';
 	import { slide } from 'svelte/transition';
 	import { toastService } from '$lib/stores/toast.store';
+	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
 	import type { Task } from '$lib/types/onto';
+
+	const recentlyCreated = getRecentlyCreatedContext();
 
 	type BucketKey =
 		| 'overdue'
@@ -507,10 +510,12 @@
 								{@const assignee = assigneeLabel(task)}
 								{@const archivedAt = archivedAtLabel(task)}
 								{@const isArchivedCard = !!task.deleted_at}
+								{@const justCreated = recentlyCreated?.has(task.id) ?? false}
 								<button
 									type="button"
 									onclick={() => onEditTask(task.id)}
-									class="w-full min-w-0 text-left bg-background hover:bg-muted/50 active:bg-muted border border-border/60 rounded-md px-3 py-2.5 transition-colors pressable min-h-[44px]"
+									class="w-full min-w-0 text-left bg-background hover:bg-muted/50 active:bg-muted border border-border/60 rounded-md px-3 py-2.5 transition-colors pressable min-h-[44px]
+										{justCreated ? 'entity-just-created' : ''}"
 								>
 									<p
 										class="text-sm font-medium text-foreground line-clamp-2 leading-snug break-words

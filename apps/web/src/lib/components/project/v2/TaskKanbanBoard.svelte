@@ -55,7 +55,10 @@
 		User
 	} from 'lucide-svelte';
 	import { toastService } from '$lib/stores/toast.store';
+	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
 	import type { Task, TaskState } from '$lib/types/onto';
+
+	const recentlyCreated = getRecentlyCreatedContext();
 
 	type ColumnKey =
 		| 'backlog'
@@ -294,6 +297,28 @@
 	let dragOverColumn = $state<ColumnKey | null>(null);
 	let pendingTaskIds = $state<Set<string>>(new Set());
 
+	// Tasks just confirmed done — pulse the card as a small "nice, that's finished" beat.
+	let recentlyCompletedIds = $state<Set<string>>(new Set());
+	const completionTimers = new Map<string, ReturnType<typeof setTimeout>>();
+	function celebrateCompletion(taskId: string) {
+		recentlyCompletedIds = new Set(recentlyCompletedIds).add(taskId);
+		const existing = completionTimers.get(taskId);
+		if (existing) clearTimeout(existing);
+		completionTimers.set(
+			taskId,
+			setTimeout(() => {
+				const next = new Set(recentlyCompletedIds);
+				next.delete(taskId);
+				recentlyCompletedIds = next;
+				completionTimers.delete(taskId);
+			}, 900)
+		);
+	}
+	$effect(() => () => {
+		for (const timer of completionTimers.values()) clearTimeout(timer);
+		completionTimers.clear();
+	});
+
 	function handleDragStart(event: DragEvent, task: Task) {
 		if (!canEdit) {
 			event.preventDefault();
@@ -433,6 +458,7 @@
 				if (restoredOnServer) {
 					archivedTotal = Math.max(0, archivedTotal - 1);
 				}
+				if (target === 'done') celebrateCompletion(taskId);
 				onTaskMoved?.(taskId, target);
 			} catch (err) {
 				// Rollback to whatever the server actually has, not to `before`:
@@ -640,6 +666,8 @@
 						{@const isPending = pendingTaskIds.has(task.id)}
 						{@const isDragging = draggingTaskId === task.id}
 						{@const isArchivedCard = !!task.deleted_at}
+						{@const justCreated = recentlyCreated?.has(task.id) ?? false}
+						{@const justCompleted = recentlyCompletedIds.has(task.id)}
 						<button
 							type="button"
 							draggable={canEdit}
@@ -651,6 +679,8 @@
 								{isDragging ? 'opacity-40' : ''}
 								{isPending ? 'opacity-70' : ''}
 								{isArchivedCard ? 'opacity-70' : ''}
+								{justCreated ? 'entity-just-created' : ''}
+								{justCompleted ? 'task-just-completed' : ''}
 								{canEdit ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}"
 						>
 							<p
@@ -722,3 +752,26 @@
 		</div>
 	</div>
 </section>
+
+<style>
+	/* A brief success-green pulse when a task is confirmed done. The global
+	   reduced-motion guard (app.css) neutralizes this for opted-out users. */
+	@keyframes task-completed-pulse {
+		0% {
+			box-shadow: 0 0 0 0 hsl(var(--success) / 0);
+		}
+		40% {
+			transform: scale(1.015);
+			box-shadow:
+				0 0 0 2px hsl(var(--success) / 0.5),
+				0 8px 22px -10px hsl(var(--success) / 0.55);
+		}
+		100% {
+			transform: scale(1);
+			box-shadow: 0 0 0 0 hsl(var(--success) / 0);
+		}
+	}
+	.task-just-completed {
+		animation: task-completed-pulse 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+</style>

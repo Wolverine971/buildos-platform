@@ -3,7 +3,9 @@
 # Agentic Chat — Post-Mutation Refresh Bugs & Delight Opportunities
 
 **Date:** 2026-06-19
-**Status:** 🚧 Phases 1–3 done (refresh bugs fixed); Phase 4 (delight) not started
+**Status:** 🚧 Phases 1–5 done (refresh bugs fixed; "new entity appears" entrance across tasks,
+documents, goals, milestones, plans, risks; task-completion delight in list + kanban); Phase 6
+(project-creation reveal, first-project celebration, inline chat entity cards) needs direction
 **Author:** DJ + Claude
 **Scope:** What happens in the UI when the agentic chat creates/updates entities, whether
 those changes show up after the chat closes, and where we can add moments of delight.
@@ -112,12 +114,45 @@ View Transitions (`project-title` morph). See `tailwind.config.js:110-153`, `ink
       `tool_call`. Rare (server emits call before result), and the mutation is still tracked at
       `agent-chat-sse-handler.ts:403` so **refresh is unaffected** — only a toast is lost.
 
-### Phase 4+ — Delight (Layer 3) — NOT STARTED
+### Phase 4 — "New entity appears" entrance ✅ DONE (tasks + documents)
 
-- [ ] Plumb `affectedEntityIds` through the mutation signal.
-- [ ] "New entity appears" entry animation on entity lists.
-- [ ] Task-done micro-animation.
-- [ ] Project-creation reveal + first-project celebration.
+Instead of plumbing `affectedEntityIds` through the whole chat/SSE/summary chain, the project page
+**diffs entity IDs before/after** a mutation-driven `refreshSilently()` and marks whichever IDs are
+newly present. Those flow to descendant rows via Svelte **context** (set once at the page), so even
+deeply nested surfaces opt in with one line and no prop-threading.
+
+- [x] `recentlyCreatedContext.ts` — context provider/consumer (`has(id)`), closes over reactive
+      `$state` so membership stays live.
+- [x] Project `[id]` page computes newly-appeared IDs after a mutation refresh
+      (`refreshAndHighlight`), with a skeleton-race guard, ~2.4s clear timer, and a `get()`-based
+      nonce baseline so stale events from a prior page don't fire on mount.
+- [x] Reusable `.entity-just-created` entrance in `app.css` — rises in + a brief accent ink-bloom
+      ring, then settles. Covered by the global reduced-motion guard.
+- [x] Wired: `TaskKanbanBoard`, `MobileTaskBoard` (tasks), `DocTreeNode` (documents).
+
+### Phase 5 — completion delight + wider entrance coverage ✅ DONE
+
+- [x] Extended the "new entity appears" entrance to **goals / milestones / plans / risks** rows in
+      `EntityTabStrip` (context was already in place; one `getRecentlyCreatedContext()` + class per row).
+- [x] **Task-done checkmark pop** in `EntityListItem` — the checkmark pops (`entity-check-pop`) when a
+      task transitions into completion (not on mount of an already-done task).
+- [x] **Kanban "task completed" pulse** — dragging a task to Done and getting server confirmation
+      pulses the card in success-green (`task-just-completed`), the highest-traffic completion path.
+
+> **Bug found & fixed while here:** `EntityListItem` has a prop named `state`, which collides with
+> the `$state` rune (`$state(...)` was parsed as store-subscription of the `state` prop → type error).
+> Renamed the local binding to `taskState` (public prop name unchanged).
+
+### Phase 6+ — remaining delight (needs product direction)
+
+- [ ] **Project-creation reveal.** The list↔detail `project-title` morph already works via the View
+      Transitions API default (elements carry unique `view-transition-name`s). _Pre-existing minor bug:_
+      the custom-timing rule in `app.css` targets `project-title` but the real names are
+      `project-title-<id>`, so the custom 200ms cubic-bezier never applies (default UA timing is used).
+      Fixing needs either a per-id rule strategy or accepting the default.
+- [ ] **One-time first-project celebration** — needs a "first project ever" signal + a celebration UI.
+- [ ] **Inline tappable entity cards in the chat conversation** (replaces the text-only "Created X"
+      line; also closes the Layer-2 "no link to created entity" gap).
 
 ### Known follow-ups (not blocking)
 
@@ -137,11 +172,28 @@ View Transitions (`project-title` morph). See `tailwind.config.js:110-153`, `ink
 
 ## Files changed
 
+_Phase 1–3 (refresh):_
+
 - `src/lib/stores/projectDataMutations.ts` _(new)_
 - `src/lib/components/agent/AgentChatModal.svelte`
 - `src/routes/projects/[id]/+page.svelte`
 - `src/lib/components/notifications/types/agent-run/ChangeSetReview.svelte`
 - `src/lib/components/agent/agent-chat-tool-presenter.ts`
+
+_Phase 4 (delight — entity entrance):_
+
+- `src/lib/stores/recentlyCreatedContext.ts` _(new)_
+- `src/app.css` (`.entity-just-created`)
+- `src/routes/projects/[id]/+page.svelte` (diff + context provider)
+- `src/lib/components/project/v2/TaskKanbanBoard.svelte`
+- `src/lib/components/project/v2/MobileTaskBoard.svelte`
+- `src/lib/components/ontology/doc-tree/DocTreeNode.svelte`
+
+_Phase 5 (delight — wider entrance + completion):_
+
+- `src/lib/components/project/v2/EntityTabStrip.svelte` (entrance for goals/milestones/plans/risks)
+- `src/lib/components/ontology/EntityListItem.svelte` (checkmark pop; fixed `state`/`$state` collision)
+- `src/lib/components/project/v2/TaskKanbanBoard.svelte` (drag-to-Done completion pulse)
 
 ---
 
@@ -149,4 +201,10 @@ View Transitions (`project-title` morph). See `tailwind.config.js:110-153`, `ink
 
 - **2026-06-19** — Audit complete (3 research agents). Doc created.
 - **2026-06-19** — Phases 1–3 implemented (universal refresh signal, staged-commit refresh, silent
-  entity-type registration). Type-clean, touched tests green. Phase 4 (delight) ready to start.
+  entity-type registration). Type-clean, touched tests green.
+- **2026-06-19** — Phase 4 shipped: "new entity appears" entrance for tasks + documents via a
+  before/after refresh diff + Svelte context + reusable `.entity-just-created` ink-bloom. Cleanup:
+  mount nonce baseline, skeleton-race guard, highlight-timer teardown. 0 errors / 0 warnings.
+- **2026-06-19** — Phase 5 shipped: entrance extended to goals/milestones/plans/risks; task-completion
+  delight (checkmark pop in lists, success pulse on kanban drag-to-Done). Fixed a `state`/`$state`
+  rune collision in `EntityListItem`. 0 errors / 0 warnings; 61 component tests pass.

@@ -1884,7 +1884,10 @@ describe('external tool gateway', () => {
 		expect(toolNames).toEqual(
 			expect.arrayContaining([
 				'list_onto_goals',
+				'search_onto_goals',
 				'search_onto_plans',
+				'search_onto_milestones',
+				'search_onto_risks',
 				'get_onto_project_graph',
 				'get_document_tree',
 				'list_task_documents',
@@ -1963,6 +1966,47 @@ describe('external tool gateway', () => {
 				})
 			])
 		});
+	});
+
+	it('keeps legacy ontology search tools discoverable for scoped external callers', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const scope = {
+			mode: 'read_only' as const,
+			allowed_ops: [...BUILDOS_AGENT_READ_OPS]
+		};
+		const admin = createAdminMock({
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		});
+		const legacySearchTools = [
+			{ op: 'onto.goal.search', toolName: 'search_onto_goals' },
+			{ op: 'onto.plan.search', toolName: 'search_onto_plans' },
+			{ op: 'onto.milestone.search', toolName: 'search_onto_milestones' },
+			{ op: 'onto.risk.search', toolName: 'search_onto_risks' }
+		] as const;
+
+		for (const { op, toolName } of legacySearchTools) {
+			const result = await executeBuildosAgentGatewayTool({
+				admin,
+				userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+				scope,
+				toolName: 'tool_search',
+				arguments: { query: toolName, group: 'onto', kind: 'read', limit: 8 }
+			});
+
+			expect(result).toMatchObject({
+				type: 'tool_search_results',
+				matches: expect.arrayContaining([
+					expect.objectContaining({
+						op,
+						tool_name: toolName
+					})
+				])
+			});
+		}
 	});
 
 	it('exposes image asset tools through scoped discovery without granting media URLs', async () => {

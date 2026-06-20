@@ -20,6 +20,7 @@ export type RegistryOp = {
 	entity?: string;
 	action?: string;
 	contexts?: ToolContextScope[];
+	chat_discoverable: boolean;
 };
 
 export type ToolRegistry = {
@@ -151,7 +152,8 @@ export function buildToolRegistry(
 			kind: inferKind(toolName, toolMeta),
 			entity,
 			action,
-			contexts: toolMeta?.contexts
+			contexts: toolMeta?.contexts,
+			chat_discoverable: toolMeta?.chatDiscovery !== 'hidden'
 		};
 
 		ops[op] = registryOp;
@@ -225,12 +227,27 @@ function computeRegistryVersion(
 		parameters: tool.function?.parameters ?? {}
 	}));
 
-	const metaPayload = Object.keys(metadata)
-		.sort()
-		.map((key) => ({ key, meta: metadata[key] }));
+	const metaPayload = Object.entries(metadata)
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([key, meta]) => ({ key, meta: metadataForRegistryVersion(meta) }));
 
 	const input = JSON.stringify({ tools: toolPayload, metadata: metaPayload, opMap });
 	return `tool-registry/${fnv1a(input)}`;
+}
+
+function metadataForRegistryVersion(meta: ToolMetadata): Omit<ToolMetadata, 'chatDiscovery'> {
+	const versioned: Omit<ToolMetadata, 'chatDiscovery'> = {
+		summary: meta.summary,
+		capabilities: meta.capabilities,
+		contexts: meta.contexts,
+		category: meta.category
+	};
+
+	if (meta.timeoutMs !== undefined) {
+		versioned.timeoutMs = meta.timeoutMs;
+	}
+
+	return versioned;
 }
 
 function fnv1a(input: string): string {

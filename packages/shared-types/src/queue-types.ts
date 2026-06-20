@@ -213,7 +213,7 @@ export interface AgentRunJobMetadata {
 	project_id?: string | null;
 	parent_run_id?: string | null;
 	depth?: number;
-	continuation_from?: 'paused' | 'needs_input';
+	continuation_from?: 'paused' | 'needs_input' | 'partial';
 	scope_mode?: 'read_only' | 'read_write';
 	allowed_ops?: string[] | null;
 	review_required?: boolean;

@@ -94,6 +94,7 @@ export type RegistryOp = {
 	entity?: string;
 	action?: string;
 	contexts?: unknown[];
+	chat_discoverable?: boolean;
 };
 
 /**
@@ -5859,6 +5860,107 @@ function validateUnexpectedArgs(
 	return Object.keys(args).filter((field) => !allowed.has(field));
 }
 
+function readGatewayArg(args: Record<string, unknown>, alias: string): unknown {
+	if (Object.prototype.hasOwnProperty.call(args, alias)) {
+		return args[alias];
+	}
+
+	if (!alias.includes('.')) {
+		return undefined;
+	}
+
+	let current: unknown = args;
+	for (const part of alias.split('.')) {
+		if (!current || typeof current !== 'object' || Array.isArray(current)) {
+			return undefined;
+		}
+		const record = current as Record<string, unknown>;
+		if (!Object.prototype.hasOwnProperty.call(record, part)) {
+			return undefined;
+		}
+		current = record[part];
+	}
+	return current;
+}
+
+function deleteFlatGatewayAliases(args: Record<string, unknown>, aliases: readonly string[]) {
+	for (const alias of aliases) {
+		if (!alias.includes('.')) {
+			delete args[alias];
+		}
+	}
+}
+
+function mapGatewayArgAlias(
+	args: Record<string, unknown>,
+	target: string,
+	aliases: readonly string[],
+	options: { allowNonString?: boolean } = {}
+) {
+	if (args[target] === undefined) {
+		for (const alias of aliases) {
+			const value = readGatewayArg(args, alias);
+			if (value === undefined) continue;
+			if (!options.allowNonString && typeof value !== 'string') continue;
+			args[target] = value;
+			break;
+		}
+	}
+	deleteFlatGatewayAliases(args, aliases);
+}
+
+function normalizeGatewayOpArgs(
+	op: BuildosAgentAllowedOp,
+	args: Record<string, unknown>
+): Record<string, unknown> {
+	if (op !== 'onto.edge.link') {
+		return args;
+	}
+
+	const normalized = { ...args };
+	mapGatewayArgAlias(normalized, 'src_kind', [
+		'source_kind',
+		'from_kind',
+		'from.kind',
+		'source.kind',
+		'src.kind'
+	]);
+	mapGatewayArgAlias(normalized, 'src_id', [
+		'source_id',
+		'from_id',
+		'from.id',
+		'source.id',
+		'src.id'
+	]);
+	mapGatewayArgAlias(normalized, 'dst_kind', [
+		'target_kind',
+		'tgt_kind',
+		'to_kind',
+		'to.kind',
+		'target.kind',
+		'tgt.kind',
+		'dst.kind'
+	]);
+	mapGatewayArgAlias(normalized, 'dst_id', [
+		'target_id',
+		'tgt_id',
+		'to_id',
+		'to.id',
+		'target.id',
+		'tgt.id',
+		'dst.id'
+	]);
+	mapGatewayArgAlias(normalized, 'rel', [
+		'relationship',
+		'relation',
+		'relationship_type',
+		'edge_type',
+		'type'
+	]);
+	mapGatewayArgAlias(normalized, 'props', ['edge_props', 'metadata'], { allowNonString: true });
+	return normalized;
+}
+
 export function buildExecError(
 	requestedOp: string,
 	code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'FORBIDDEN' | 'CONFLICT' | 'INTERNAL',
@@ -5945,10 +6047,11 @@ export async function executeGatewayOp(params: {
 		return buildExecError(requestedOp, 'NOT_FOUND', `Unknown op: ${requestedOp}`, 'root');
 	}
 
-	const opArgs =
+	const rawOpArgs =
 		input.args && typeof input.args === 'object' && !Array.isArray(input.args)
 			? (input.args as Record<string, unknown>)
 			: {};
+	const opArgs = normalizeGatewayOpArgs(canonicalOp as BuildosAgentAllowedOp, rawOpArgs);
 	const missingRequired = validateRequiredArgs(entry.parameters_schema, opArgs);
 	if (missingRequired.length > 0) {
 		return buildExecError(
@@ -6367,10 +6470,11 @@ export async function runGatewayWriteOp(params: {
 		};
 	}
 
-	const args =
+	const rawArgs =
 		params.args && typeof params.args === 'object' && !Array.isArray(params.args)
 			? params.args
 			: {};
+	const args = normalizeGatewayOpArgs(canonicalOp, rawArgs);
 
 	// Validate against the external write schema when one is defined (handlers
 	// also self-validate their args, so a missing schema is not fatal).
@@ -6483,10 +6587,11 @@ export async function stageGatewayWriteOp(params: {
 		};
 	}
 
-	const args =
+	const rawArgs =
 		params.args && typeof params.args === 'object' && !Array.isArray(params.args)
 			? params.args
 			: {};
+	const args = normalizeGatewayOpArgs(canonicalOp, rawArgs);
 
 	// Same arg validation as the commit path — a proposal must be applyable.
 	const schema = EXTERNAL_WRITE_OP_SCHEMAS[canonicalOp];

@@ -55,6 +55,7 @@
 		type AgentChatImageAttachment,
 		type AgentProjectSummary,
 		type AgentToAgentStep,
+		type CreatedEntityRef,
 		type DataMutationSummary,
 		type ProjectAction,
 		type ThinkingBlockMessage,
@@ -2919,6 +2920,7 @@
 		hiddenToolCallIds,
 		pendingToolResults,
 		addClarifyingQuestionsMessage,
+		addCreatedEntitiesMessage,
 		logFocusActivity,
 		isDev: dev
 	};
@@ -2964,6 +2966,18 @@
 		};
 
 		messages = [...messages, clarificationMessage];
+	}
+
+	function addCreatedEntitiesMessage(entities: CreatedEntityRef[]) {
+		if (!entities || entities.length === 0) return;
+		const createdMessage: UIMessage = {
+			id: crypto.randomUUID(),
+			type: 'created_entities',
+			content: '',
+			data: { entities },
+			timestamp: new Date()
+		};
+		messages = [...messages, createdMessage];
 	}
 
 	function normalizeMessageContent(value: unknown): string {

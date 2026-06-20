@@ -476,7 +476,8 @@ export async function executeBuildosAgentGatewayTool(params: {
 				group: filters.group,
 				kind: filters.kind,
 				entity: filters.entity,
-				limit: filters.limit
+				limit: filters.limit,
+				surface: 'external'
 			}) as Record<string, unknown>;
 			const matches = mergeScopedToolSearchMatches({
 				payloadMatches: Array.isArray(payload.matches) ? payload.matches : [],

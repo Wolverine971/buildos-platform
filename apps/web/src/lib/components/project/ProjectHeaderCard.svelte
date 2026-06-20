@@ -73,6 +73,7 @@
 					<h1
 						class="text-lg sm:text-xl font-semibold text-foreground leading-tight line-clamp-1 sm:line-clamp-2"
 						style:view-transition-name="project-title-{project.id}"
+						style:view-transition-class="project-title"
 					>
 						{project.name || 'Untitled Project'}
 					</h1>

@@ -20,7 +20,7 @@
 
 import type { ChatContextType } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-import type { ActivityEntry, DataMutationSummary } from './agent-chat.types';
+import type { ActivityEntry, CreatedEntityRef, DataMutationSummary } from './agent-chat.types';
 import {
 	extractSkillPathFromSkillLoadArgs,
 	formatSkillActivityContent
@@ -85,6 +85,12 @@ export interface ToolPresenter {
 	): string | undefined;
 	indexEntitiesFromPayload(payload: Record<string, any>): void;
 	indexEntitiesFromToolResult(toolResult: unknown): void;
+	/** For a successful create_onto_* tool, pull out the new entity (kind/id/name/projectId). */
+	extractCreatedEntity(
+		toolName: string | undefined,
+		args: string | Record<string, unknown> | undefined,
+		toolResult: unknown
+	): CreatedEntityRef | null;
 
 	// Mutation tracking
 	recordDataMutation(
@@ -188,6 +194,17 @@ const ENTITY_PLURAL_KEYS: Record<string, OntologyEntityKind> = {
 	milestones: 'milestone',
 	risks: 'risk',
 	events: 'event'
+};
+
+// create_onto_* tool name → the entity kind it produces.
+const CREATE_TOOL_KINDS: Record<string, OntologyEntityKind> = {
+	create_onto_project: 'project',
+	create_onto_task: 'task',
+	create_onto_goal: 'goal',
+	create_onto_plan: 'plan',
+	create_onto_document: 'document',
+	create_onto_milestone: 'milestone',
+	create_onto_risk: 'risk'
 };
 
 // ---------------------------------------------------------------------------
@@ -1321,6 +1338,50 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		return undefined;
 	}
 
+	function extractCreatedEntity(
+		toolName: string | undefined,
+		argsJson: string | Record<string, unknown> | undefined,
+		toolResult: unknown
+	): CreatedEntityRef | null {
+		if (!toolName) return null;
+		const kind = CREATE_TOOL_KINDS[toolName];
+		if (!kind) return null;
+
+		const payload = extractToolResultPayload(toolResult);
+		// Locate the entity record across the common result shapes.
+		const nested = payload?.result as Record<string, any> | undefined;
+		const record = [payload?.[kind], nested?.[kind], payload?.entity].find(
+			(r): r is Record<string, any> => !!r && typeof r === 'object'
+		);
+
+		const args = safeParseArgs(argsJson);
+		const id =
+			normalizeEntityLabel(record?.id) ||
+			normalizeEntityLabel(record?.[`${kind}_id`]) ||
+			normalizeEntityLabel(payload?.entity_id) ||
+			normalizeEntityLabel(nested?.id);
+		if (!id) return null;
+
+		const name =
+			(record ? extractEntityDisplayName(record) : undefined) ||
+			resolveEntityName(kind, id) ||
+			normalizeEntityLabel(args?.title) ||
+			normalizeEntityLabel(args?.name) ||
+			'Untitled';
+
+		const projectId =
+			kind === 'project'
+				? id
+				: normalizeEntityLabel(record?.project_id) ||
+					resolveProjectId(
+						args,
+						(toolResult ?? undefined) as { result?: any; data?: any }
+					) ||
+					null;
+
+		return { kind, id, name, projectId };
+	}
+
 	function recordDataMutation(
 		toolName: string | undefined,
 		argsJson: string | Record<string, unknown> | undefined,
@@ -1409,6 +1470,7 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		resolveEntityName,
 		indexEntitiesFromPayload,
 		indexEntitiesFromToolResult,
+		extractCreatedEntity,
 		recordDataMutation,
 		resetMutationTracking,
 		buildMutationSummary,

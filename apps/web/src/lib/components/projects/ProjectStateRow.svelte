@@ -50,7 +50,7 @@
 				<h4
 					class="min-w-0 truncate text-base sm:text-xl font-semibold text-foreground tracking-tight"
 					class:sm:text-lg={isSecondary}
-					style="view-transition-name: project-title-{project.id}"
+					style="view-transition-name: project-title-{project.id}; view-transition-class: project-title"
 				>
 					{project.name}
 				</h4>

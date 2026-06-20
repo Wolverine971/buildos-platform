@@ -25,6 +25,61 @@ interface WebhookPayload {
 	};
 }
 
+type DailyBriefEngagementStage = 'standard' | 'reengagement' | 'dormant';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function resolveDailyBriefEngagementStage(metadata: unknown): DailyBriefEngagementStage {
+	if (!isRecord(metadata)) {
+		return 'standard';
+	}
+
+	if (metadata.engagementStage === 'dormant') {
+		return 'dormant';
+	}
+
+	if (metadata.engagementStage === 'reengagement' || metadata.isReengagement === true) {
+		return 'reengagement';
+	}
+
+	return 'standard';
+}
+
+function selectDailyBriefEmailContent(
+	brief: { executive_summary?: string | null; llm_analysis?: string | null },
+	engagementStage: DailyBriefEngagementStage
+): string {
+	const executiveSummary = brief.executive_summary?.trim() || '';
+	const llmAnalysis = brief.llm_analysis?.trim() || '';
+
+	if (engagementStage === 'standard') {
+		return executiveSummary || llmAnalysis;
+	}
+
+	return llmAnalysis || executiveSummary;
+}
+
+function getDailyBriefEmailSubject(
+	dateFormatted: string,
+	engagementStage: DailyBriefEngagementStage
+): string {
+	if (engagementStage === 'dormant') {
+		return 'Still want BuildOS daily briefs?';
+	}
+
+	if (engagementStage === 'reengagement') {
+		return 'A quick check-in on your BuildOS projects';
+	}
+
+	return `Daily Brief - ${dateFormatted}`;
+}
+
+function getDailyBriefPrimaryActionLabel(engagementStage: DailyBriefEngagementStage): string {
+	return engagementStage === 'standard' ? 'View in BuildOS →' : 'Resume in BuildOS →';
+}
+
 /**
  * Verify webhook signature using HMAC SHA-256
  */
@@ -195,8 +250,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			throw error(404, 'Brief not found');
 		}
 
-		// Get llm_analysis content or fallback to executive_summary
-		const briefContent = brief.llm_analysis || brief.executive_summary || '';
+		const engagementStage = resolveDailyBriefEngagementStage(brief.metadata);
+		const briefContent = selectDailyBriefEmailContent(brief, engagementStage);
 
 		if (!briefContent) {
 			await errorLogger.logAPIError(
@@ -222,29 +277,27 @@ export const POST: RequestHandler = async ({ request }) => {
 			.single();
 
 		// 6. Generate email subject
+		const formattedBriefDate = new Date(payload.briefDate).toLocaleDateString('en-US', {
+			weekday: 'long',
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric'
+		});
 		const emailSubject =
 			payload.metadata?.subject ||
-			`Daily Brief - ${new Date(payload.briefDate).toLocaleDateString('en-US', {
-				weekday: 'long',
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric'
-			})}`;
+			getDailyBriefEmailSubject(formattedBriefDate, engagementStage);
 
 		// 7. Convert markdown to HTML
 		const contentHtml = renderMarkdown(briefContent);
+		const primaryActionLabel = getDailyBriefPrimaryActionLabel(engagementStage);
+		const unsubscribeUrl = payload.metadata?.trackingId
+			? `https://build-os.com/api/email-tracking/${payload.metadata.trackingId}/unsubscribe`
+			: null;
 
 		// Add brief-specific header and footer
 		const fullContent = `
-			<h1 style="color: #111827; font-size: 24px; margin-bottom: 8px;">Your Daily Brief</h1>
-			<p style="color: #6b7280; font-size: 14px; margin-bottom: 24px;">${new Date(
-				payload.briefDate
-			).toLocaleDateString('en-US', {
-				weekday: 'long',
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric'
-			})}</p>
+				<h1 style="color: #111827; font-size: 24px; margin-bottom: 8px;">Your Daily Brief</h1>
+				<p style="color: #6b7280; font-size: 14px; margin-bottom: 24px;">${formattedBriefDate}</p>
 
 			<div style="margin: 20px 0;">
 				${contentHtml}
@@ -252,12 +305,18 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			<hr style="border: none; border-top: 1px solid #DCD9D1; margin: 32px 0;">
 
-			<div style="text-align: center; margin-top: 24px;">
-				<a href="https://build-os.com/projects?briefDate=${payload.briefDate}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
-				<span style="color: #8C8B91; margin: 0 8px;">|</span>
-				<a href="https://build-os.com/settings/daily-briefs" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
-			</div>
-		`;
+				<div style="text-align: center; margin-top: 24px;">
+					<a href="https://build-os.com/projects?briefDate=${payload.briefDate}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">${primaryActionLabel}</a>
+					<span style="color: #8C8B91; margin: 0 8px;">|</span>
+					<a href="https://build-os.com/settings/daily-briefs" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
+					${
+						unsubscribeUrl
+							? `<span style="color: #8C8B91; margin: 0 8px;">|</span>
+					<a href="${unsubscribeUrl}" style="color: #6F6E75; text-decoration: none; font-size: 14px;">Turn off daily briefs</a>`
+							: ''
+					}
+				</div>
+			`;
 
 		// 8. Generate the full email HTML using the template
 		const trackingPixel = payload.metadata?.trackingId

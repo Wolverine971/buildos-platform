@@ -45,9 +45,12 @@
 	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 	import type { ProjectLogEntityType } from '@buildos/shared-types';
 	import { briefChatSessionStore } from '$lib/stores/briefChatSession.store';
+	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import type { DailyBrief } from '$lib/types/daily-brief';
 	import type { Goal, Milestone, OntoEvent, Plan, Risk } from '$lib/types/onto';
+
+	const recentlyCreated = getRecentlyCreatedContext();
 
 	type TabKey = 'briefs' | 'goals' | 'milestones' | 'plans' | 'risks';
 	type TabActionKey = 'chats' | 'graph' | 'events';
@@ -597,8 +600,11 @@
 										(m) => resolveMilestoneState(m).state === 'completed'
 									).length}
 									{@const chip = stateChip(goal.state_key, goalStateAccents)}
+									{@const justCreated = recentlyCreated?.has(goal.id) ?? false}
 									<article
-										class="rounded-md border border-border bg-background overflow-hidden"
+										class="rounded-md border border-border bg-background overflow-hidden {justCreated
+											? 'entity-just-created'
+											: ''}"
 									>
 										<button
 											type="button"
@@ -746,10 +752,13 @@
 									{@const mChip = stateChip(mState, milestoneStateAccents)}
 									{@const mDue = dueLabel(m.due_at)}
 									{@const standalone = isMilestoneStandalone(m)}
+									{@const justCreated = recentlyCreated?.has(m.id) ?? false}
 									<button
 										type="button"
 										onclick={() => onEditMilestone(m.id)}
-										class="w-full text-left rounded-md border border-border bg-background hover:bg-muted/40 px-3 py-2 transition-colors pressable"
+										class="w-full text-left rounded-md border border-border bg-background hover:bg-muted/40 px-3 py-2 transition-colors pressable {justCreated
+											? 'entity-just-created'
+											: ''}"
 									>
 										<div class="flex items-start justify-between gap-2 min-w-0">
 											<div class="min-w-0 flex-1">
@@ -819,10 +828,13 @@
 							{:else}
 								{#each plans as plan (plan.id)}
 									{@const chip = stateChip(plan.state_key, planStateAccents)}
+									{@const justCreated = recentlyCreated?.has(plan.id) ?? false}
 									<button
 										type="button"
 										onclick={() => onEditPlan(plan.id)}
-										class="w-full text-left rounded-md border border-border bg-background hover:bg-muted/40 px-3 py-2 transition-colors pressable"
+										class="w-full text-left rounded-md border border-border bg-background hover:bg-muted/40 px-3 py-2 transition-colors pressable {justCreated
+											? 'entity-just-created'
+											: ''}"
 									>
 										<div class="flex items-start justify-between gap-2 min-w-0">
 											<div class="min-w-0 flex-1">
@@ -878,10 +890,13 @@
 							{:else}
 								{#each risks as risk (risk.id)}
 									{@const chip = stateChip(risk.state_key, riskStateAccents)}
+									{@const justCreated = recentlyCreated?.has(risk.id) ?? false}
 									<button
 										type="button"
 										onclick={() => onEditRisk(risk.id)}
-										class="w-full text-left rounded-md border border-border bg-background hover:bg-muted/40 px-3 py-2 transition-colors pressable"
+										class="w-full text-left rounded-md border border-border bg-background hover:bg-muted/40 px-3 py-2 transition-colors pressable {justCreated
+											? 'entity-just-created'
+											: ''}"
 									>
 										<div class="flex items-start justify-between gap-2 min-w-0">
 											<div class="min-w-0 flex-1">

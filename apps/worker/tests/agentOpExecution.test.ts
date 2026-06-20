@@ -161,6 +161,26 @@ describe('executeAgentOp policy + dispatch', () => {
 		expect(r.error?.code).toBe('VALIDATION_ERROR');
 	});
 
+	it('normalizes legacy edge-link aliases before direct write validation', async () => {
+		const r = await executeAgentOp(
+			{ ...ctx(), scope: { mode: 'read_write' } },
+			'onto.edge.link',
+			{
+				from_kind: 'task',
+				from_id: 'not-a-uuid',
+				tgt_kind: 'task',
+				to_id: 'also-not-a-uuid',
+				type: 'blocks'
+			}
+		);
+
+		expect(r.ok).toBe(false);
+		expect(r.error?.code).toBe('VALIDATION_ERROR');
+		expect(r.error?.message).toContain('task_id must be a valid UUID');
+		expect(r.error?.message).not.toContain('src_kind must be a string');
+		expect(r.error?.message).not.toContain('dst_kind must be a string');
+	});
+
 	it('stages a write op (mutationMode=stage) instead of committing, without mutating', async () => {
 		// throwingAdmin proves no create handler ran; staging a create does no DB read.
 		const r = await executeAgentOp(
@@ -177,6 +197,34 @@ describe('executeAgentOp policy + dispatch', () => {
 			title: 'Draft task'
 		});
 		expect((r.data as { staged?: boolean }).staged).toBe(true);
+	});
+
+	it('normalizes legacy edge-link aliases in staged proposals', async () => {
+		const r = await executeAgentOp(
+			{ ...ctx(), scope: { mode: 'read_write' }, mutationMode: 'stage' },
+			'onto.edge.link',
+			{
+				from_kind: 'task',
+				from_id: 'source-task-id',
+				tgt_kind: 'task',
+				to_id: 'target-task-id',
+				type: 'blocks',
+				metadata: { origin: 'test' }
+			}
+		);
+
+		expect(r.ok).toBe(true);
+		expect(r.proposedChange?.after).toMatchObject({
+			src_kind: 'task',
+			src_id: 'source-task-id',
+			dst_kind: 'task',
+			dst_id: 'target-task-id',
+			rel: 'blocks',
+			props: { origin: 'test' }
+		});
+		expect(r.proposedChange?.after).not.toHaveProperty('from_kind');
+		expect(r.proposedChange?.after).not.toHaveProperty('tgt_kind');
+		expect(r.proposedChange?.after).not.toHaveProperty('type');
 	});
 
 	it('still validates args when staging a write op', async () => {

@@ -13,6 +13,9 @@ function createSupabaseQuery(result: Record<string, unknown>) {
 	query.ilike = vi.fn(() => query);
 	query.in = vi.fn(() => query);
 	query.not = vi.fn(() => query);
+	// searchOntoDocuments → applyKeywordSearch chains .or() for tokenized content
+	// matching (added with the §3.4 body-search work); the mock must support it.
+	query.or = vi.fn(() => query);
 	query.order = vi.fn(() => query);
 	query.limit = vi.fn(() => Promise.resolve(result));
 	query.maybeSingle = vi.fn(() => Promise.resolve(result));
@@ -147,7 +150,11 @@ describe('OntologyReadExecutor payload hygiene', () => {
 			expect(selections[0]).not.toContain('body_markdown');
 			expect(selections[0]).not.toContain('search_vector');
 		}
-		expect(searchQuery.ilike).toHaveBeenCalledWith('title', '%Rod%');
+		// §3.4 routed searchOntoDocuments through applyKeywordSearch, which builds a
+		// combined `.or(...)` filter (title/description/content) instead of a direct
+		// `.ilike('title', ...)` call. Assert the title match is present in that filter.
+		const orFilters = searchQuery.or.mock.calls.map(([filter]: [string]) => String(filter));
+		expect(orFilters.some((filter) => filter.includes('title.ilike."%Rod%"'))).toBe(true);
 		expect(JSON.stringify(listResult.documents)).not.toContain('Full content');
 		expect(JSON.stringify(searchResult.documents)).not.toContain('Full search content');
 		expect(JSON.stringify(listResult.documents)).not.toContain('search_vector');

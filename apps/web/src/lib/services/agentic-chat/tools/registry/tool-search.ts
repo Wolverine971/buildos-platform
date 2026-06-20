@@ -10,6 +10,7 @@ export type ToolSearchOptions = {
 	kind?: 'read' | 'write';
 	entity?: string;
 	limit?: number;
+	surface?: 'chat' | 'external' | 'all';
 };
 
 type ToolSearchMatch = {
@@ -87,9 +88,11 @@ export function searchToolRegistry(options: ToolSearchOptions = {}): Record<stri
 	const capabilityPrefixes = capability?.directPaths ?? [];
 	const query = typeof options.query === 'string' ? options.query.trim() : '';
 	const limit = Math.max(1, Math.min(25, options.limit ?? 8));
+	const surface = options.surface ?? 'chat';
 
 	const matches = Object.values(registry.ops)
 		.filter((entry) => {
+			if (surface === 'chat' && entry.chat_discoverable === false) return false;
 			if (options.group && entry.group !== options.group) return false;
 			if (options.kind && entry.kind !== options.kind) return false;
 			if (options.entity && entry.entity !== options.entity) return false;

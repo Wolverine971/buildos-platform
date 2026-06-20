@@ -24,6 +24,9 @@
 	import type { DragState } from './useDragDrop.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { buildAbsolutePublicPageUrl, copyTextToClipboard } from '$lib/utils/public-page-url';
+	import { getRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
+
+	const recentlyCreated = getRecentlyCreatedContext();
 
 	interface Props {
 		node: EnrichedDocTreeNode;
@@ -85,6 +88,7 @@
 	const isSelected = $derived(selectedId === node.id);
 	const indent = $derived(node.depth * indentPx);
 	const isCut = $derived(cutNodeId === node.id);
+	const justCreated = $derived(recentlyCreated?.has(node.id) ?? false);
 
 	// Drag state derivations
 	const isDragging = $derived(dragState?.isDragging && dragState?.draggedNode?.id === node.id);
@@ -244,7 +248,8 @@
 			{isDragging ? 'opacity-40' : ''}
 			{isCut ? 'opacity-50 border border-dashed border-muted-foreground' : ''}
 			{isValidDropTarget ? 'bg-accent/10 outline outline-2 outline-dashed outline-accent' : ''}
-			{isConverting ? 'bg-accent/20 outline-solid' : ''}"
+			{isConverting ? 'bg-accent/20 outline-solid' : ''}
+			{justCreated ? 'entity-just-created' : ''}"
 		style="padding-left: {indent + 4}px"
 	>
 		<!-- Drag handle (left side only) -->

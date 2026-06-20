@@ -2,7 +2,7 @@
 
 # Agent Work — Start Here (the simplified view)
 
-**Status (2026-06-19):** The **interactive run lifecycle is built end-to-end** — dispatch (manual + from chat via `delegate_task`) → watch (Run Stack cards + in-chat dock + launcher badge) → steer / pause / resume → answer (`needs_input`) → result posts back into chat. Backend substrate + op-layer + runner are live-confirmed for ontology reads/writes and review-before-commit. Calendar now has an initial worker-safe `CalendarPort` and is env/token gated in Agent Runs; direct-commit calendar writes are available only when the user has stored Google tokens, while review-mode runs expose calendar reads only. **Still pending:** live calendar smoke, manual-dispatch UI + review toggle, full calendar staging, and polish.
+**Status (2026-06-19):** The **interactive run lifecycle is built end-to-end** — dispatch (manual UI + from chat via `delegate_task`) → watch (Run Stack cards + in-chat dock + launcher badge) → steer / pause / resume → answer (`needs_input`, plus continuable `partial` runs with open questions) → result posts back into chat. Backend substrate + op-layer + runner are live-confirmed for ontology reads/writes and review-before-commit. Calendar now has an initial worker-safe `CalendarPort` and is env/token gated in Agent Runs; direct-commit calendar writes are available only when the user has stored Google tokens, while review-mode runs expose calendar reads only. **Still pending:** live calendar smoke with a Google-connected test user/project, scheduled/saved Operative triggers, full calendar staging, and polish/live UI passes.
 **Full specs:** [00-OVERVIEW](./00-OVERVIEW.md) · [01-EXECUTION-SUBSTRATE](./01-EXECUTION-SUBSTRATE.md) · [02-STAGED-MUTATIONS](./02-STAGED-MUTATIONS.md) · [03-MONITORING-UI](./03-MONITORING-UI.md)
 **Execution detail:** **[HANDOFF_2026-06-20](./HANDOFF_2026-06-20.md)** ← current pickup/status (calendar worker port shipped; live smoke next) · [HANDOFF_2026-06-19](./HANDOFF_2026-06-19.md) (state of the world: Wave 7 + Phase 4 shipped) · [SHARED_AGENT_OPS_EXTRACTION_PLAN](./SHARED_AGENT_OPS_EXTRACTION_PLAN.md) · [HANDOFF_2026-06-18](./HANDOFF_2026-06-18.md) (detailed phase log)
 
@@ -43,12 +43,12 @@ An Agent Run fixes all three: it's a persisted row, it runs in the background, a
 | **Dispatch/monitor/cancel API**                                     | `POST/GET /api/agent-runs`, `GET /[id]`, `POST /[id]/cancel`. Cancel drains in the runner.                      | ✅                                       |
 | **Run Stack**                                                       | Live cards (bottom-right) showing active runs — extends the existing notification stack.                        | ✅ UI-P1 (visually confirmed)            |
 | **`delegate_task` tool + chat presence**                            | The chat orchestrator dispatches runs; in-chat dock + launcher badge; results post back into the thread.        | ✅ Phase 3 + UI-P4                       |
-| **Steering (steer / pause / resume) + answer**                      | "Tell the agent something" box (pending→applied), pause/resume, and the `needs_input` answer box.               | ✅ Phase 3.5 + UI-P3 pt1                 |
+| **Steering (steer / pause / resume) + answer**                      | "Tell the agent something" box (pending→applied), pause/resume, `needs_input` answers, and continuable `partial` open questions. | ✅ Phase 3.5 + UI-P3 pt1                 |
 | **Write ops**                                                       | Create/update via the op layer (same gateway handler map as the chat). Calendar `cal.*` capability-gated.       | ✅ Wave 7 (live-confirmed)               |
 | **Staged mutations / proposal review**                              | _Opt-in_ review-before-commit (a diff you approve). Off by default. `ChangeSetReview` + chat commit tool.       | ✅ Phase 4 (stage→commit live)           |
 | **Work Panel**                                                      | Persistent inbox + history + detail + proposal review.                                                          | ✅ UI-P2                                 |
 | **Calendar ops in runs**                                            | Initial worker-safe `CalendarPort`; exposed only when worker env + user token row exist. Stage mode reads only. | ✅ initial Waves 5–6; live smoke pending |
-| **Manual-dispatch UI + review toggle**                              | Human-facing "run an agent / review first" button (backend ready).                                              | ⬜ Phase 6                               |
+| **Manual-dispatch UI + review toggle**                              | Human-facing "run an agent / review first" button in the Work Panel.                                            | ✅ initial Phase 6                       |
 
 Two key design decisions we locked:
 
@@ -122,18 +122,16 @@ Phases 1b–2 stand alone (manually send an agent, watch it work). Phase 3 is wh
 
 ## Right now / next step
 
-Phase 0 schema is **applied**. Phase 0.5 is mostly **done in code** — what's left needs your Supabase credentials.
+Current implementation state (2026-06-19):
 
-**Done (Phase 0.5):**
+- ✅ Agent Runs, worker op execution, write ops, steering/answer, Work Panel, staged mutations, Change Set commit, chat `delegate_task`, and manual Work Panel dispatch are built.
+- ✅ The manual dispatch UI posts to `POST /api/agent-runs` with goal, context, project, scope, and the opt-in `review` flag. Review defaults to `false`, matching the direct-commit-by-default design.
+- ✅ `partial` runs with `open_questions` are continuable through the same answer endpoint/UI as `needs_input`; `needs_input` remains the preferred status when a user answer is required before progress can continue.
+- ✅ The initial worker `CalendarPort` is wired and headless checks are green.
+- ⏳ Live calendar smoke is blocked for the known throwaway fixture because that user has no stored Google calendar token row.
 
-- ✅ Follow-up migration `20260616000000_agent_work_phase05.sql`: `scope_mode` + `allowed_ops` replace `allowed_capabilities`; new run-native `agent_tool_executions` telemetry table; dropped the superseded `chat_tool_executions.agent_run_id`.
-- ✅ Telemetry decision: dedicated `agent_tool_executions` (not nullable `session_id` on the chat table).
-- ✅ `shared-types`: `scope_mode`/`allowed_ops` on the brief + job metadata, `AgentToolExecution` type, `validateAgentRunMetadata` + a passing worker contract test. Package typechecks.
+Next work:
 
-**Your turn (credential-gated, in order):**
-
-1. Apply `20260616000000_agent_work_phase05.sql`.
-2. `supabase login` (or set `SUPABASE_ACCESS_TOKEN`), then **`pnpm gen:types`** — pulls all Agent Work tables/enums + `'agent_run'` into generated types.
-3. Uncomment the `case 'agent_run'` in `validateJobMetadata` (it's staged behind the regen), then `pnpm --filter @buildos/shared-types typecheck` + re-run the worker contract test.
-
-**Then we resume building:** 4. Phase 1a — the worker-safe tool adapter. 5. Phase 1b — scaffold `runAgentLoop`.
+1. Run a direct-commit calendar create/read/delete smoke with a Google-connected test user/project, then verify review-mode catalogs expose calendar reads only.
+2. Do a live UI click-through: Work Panel manual run → optional `review` run → `proposal_ready` → `ChangeSetReview` apply.
+3. Build the remaining Phase 6 trigger layer: scheduled runs and saved Operative definitions.

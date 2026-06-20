@@ -154,6 +154,36 @@
 	}
 }
 
+/* ============================================================
+   "Just created" entrance — entities that just appeared via a
+   chat/agent mutation rise in with a brief accent ink-bloom.
+   (Global reduced-motion guard above already neutralizes this.)
+   ============================================================ */
+@keyframes entity-just-created {
+	0% {
+		opacity: 0;
+		transform: translateY(6px) scale(0.985);
+		box-shadow: 0 0 0 0 hsl(var(--accent) / 0);
+	}
+	35% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+	50% {
+		box-shadow:
+			0 0 0 2px hsl(var(--accent) / 0.35),
+			0 10px 26px -10px hsl(var(--accent) / 0.5);
+	}
+	100% {
+		transform: none;
+		box-shadow: 0 0 0 0 hsl(var(--accent) / 0);
+	}
+}
+
+.entity-just-created {
+	animation: entity-just-created 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Print styles */
 @media print {
 	.no-print,
@@ -186,9 +216,13 @@
 	animation-timing-function: ease-out;
 }
 
-/* Project title morph animation between list and detail pages */
-::view-transition-old(project-title),
-::view-transition-new(project-title) {
+/* Project title morph between list and detail pages.
+   Targeted via `view-transition-class: project-title` on the <h4>/<h1> titles —
+   their `view-transition-name`s are per-id (project-title-<id>), so a plain name
+   selector can't match. `group` carries the position/size morph; old/new the fade. */
+::view-transition-group(.project-title),
+::view-transition-old(.project-title),
+::view-transition-new(.project-title) {
 	animation-duration: 200ms;
 	animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -202,8 +236,9 @@
 @media (prefers-reduced-motion: reduce) {
 	::view-transition-old(root),
 	::view-transition-new(root),
-	::view-transition-old(project-title),
-	::view-transition-new(project-title) {
+	::view-transition-group(.project-title),
+	::view-transition-old(.project-title),
+	::view-transition-new(.project-title) {
 		animation-duration: 0.01ms !important;
 	}
 }

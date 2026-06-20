@@ -56,13 +56,15 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		summary: 'Keyword search for goals by name or description.',
 		capabilities: ['Optional project filters', 'Useful for strategic discovery'],
 		contexts: ['global', 'project'],
-		category: 'search'
+		category: 'search',
+		chatDiscovery: 'hidden'
 	},
 	search_onto_plans: {
 		summary: 'Keyword search for plans by name or description.',
 		capabilities: ['Optional project filters', 'Useful for plan discovery'],
 		contexts: ['global', 'project'],
-		category: 'search'
+		category: 'search',
+		chatDiscovery: 'hidden'
 	},
 	list_onto_goals: {
 		summary: 'List project goals with brief descriptions.',
@@ -124,13 +126,15 @@ export const TOOL_METADATA: Record<string, ToolMetadata> = {
 		summary: 'Keyword search for milestones by title or description.',
 		capabilities: ['Supports project/state filters', 'Helps locate timeline checkpoints'],
 		contexts: ['global', 'project'],
-		category: 'search'
+		category: 'search',
+		chatDiscovery: 'hidden'
 	},
 	search_onto_risks: {
 		summary: 'Keyword search for risks by title or content.',
 		capabilities: ['Supports project/state/impact filters', 'Fast risk discovery'],
 		contexts: ['global', 'project'],
-		category: 'search'
+		category: 'search',
+		chatDiscovery: 'hidden'
 	},
 	search_ontology: {
 		summary: 'Compatibility fuzzy search across ontology entities with snippets.',

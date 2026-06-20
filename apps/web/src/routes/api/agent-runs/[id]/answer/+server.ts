@@ -1,17 +1,25 @@
 // apps/web/src/routes/api/agent-runs/[id]/answer/+server.ts
 //
-// Answer a run that stopped with status='needs_input' (UI-P3). The answer is
+// Answer/continue a run that stopped with status='needs_input' or 'partial'
+// (UI-P3). The answer is
 // injected as a steer-style message and the run is re-enqueued; the worker
-// detects the prior 'needs_input' status, reconstructs the transcript, drains
-// the answer at the first loop boundary, and continues (01 §10).
+// detects the prior status, reconstructs the transcript, drains the answer at
+// the first loop boundary, and continues (01 §10).
 import type { RequestHandler } from './$types';
 import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { validateAgentRunMetadata } from '@buildos/shared-types';
 
+type ContinuableAnswerStatus = 'needs_input' | 'partial';
+
+function isContinuableAnswerStatus(status: unknown): status is ContinuableAnswerStatus {
+	return status === 'needs_input' || status === 'partial';
+}
+
 async function rollbackAnsweredRun(
 	admin: ReturnType<typeof createAdminSupabaseClient>,
 	runId: string,
+	status: ContinuableAnswerStatus,
 	completedAt: string | null,
 	signalId?: string
 ) {
@@ -25,7 +33,7 @@ async function rollbackAnsweredRun(
 	}
 	await admin
 		.from('agent_runs')
-		.update({ status: 'needs_input', completed_at: completedAt })
+		.update({ status, completed_at: completedAt })
 		.eq('id', runId)
 		.eq('status', 'queued');
 }
@@ -56,16 +64,17 @@ export const POST: RequestHandler = async ({ params, request, locals: { safeGetS
 		);
 	}
 	if (!run) return ApiResponse.notFound('Agent run');
-	if (run.status !== 'needs_input') {
-		return ApiResponse.badRequest(`Run is ${run.status} and is not awaiting input`);
+	if (!isContinuableAnswerStatus(run.status)) {
+		return ApiResponse.badRequest(`Run is ${run.status} and cannot be continued with an answer`);
 	}
+	const continuationFrom = run.status;
 
 	const { data: claimedRun, error: claimError } = await admin
 		.from('agent_runs')
 		.update({ status: 'queued', completed_at: null })
 		.eq('id', params.id)
 		.eq('user_id', user.id)
-		.eq('status', 'needs_input')
+		.eq('status', continuationFrom)
 		.select('*')
 		.maybeSingle();
 
@@ -94,7 +103,7 @@ export const POST: RequestHandler = async ({ params, request, locals: { safeGetS
 		.select('id')
 		.single();
 	if (signalError) {
-		await rollbackAnsweredRun(admin, params.id, run.completed_at);
+		await rollbackAnsweredRun(admin, params.id, continuationFrom, run.completed_at);
 		return ApiResponse.error(
 			'Failed to queue answer',
 			HttpStatus.INTERNAL_SERVER_ERROR,
@@ -109,7 +118,7 @@ export const POST: RequestHandler = async ({ params, request, locals: { safeGetS
 		trigger: claimedRun.trigger,
 		context_type: claimedRun.context_type,
 		project_id: claimedRun.project_id,
-		continuation_from: 'needs_input' as const,
+		continuation_from: continuationFrom,
 		scope_mode: claimedRun.scope_mode,
 		allowed_ops: claimedRun.allowed_ops,
 		review_required: claimedRun.review_required,
@@ -118,7 +127,7 @@ export const POST: RequestHandler = async ({ params, request, locals: { safeGetS
 	try {
 		validateAgentRunMetadata(metadata);
 	} catch (e) {
-		await rollbackAnsweredRun(admin, params.id, run.completed_at, signalId);
+		await rollbackAnsweredRun(admin, params.id, continuationFrom, run.completed_at, signalId);
 		return ApiResponse.badRequest(e instanceof Error ? e.message : 'Invalid job metadata');
 	}
 
@@ -128,11 +137,11 @@ export const POST: RequestHandler = async ({ params, request, locals: { safeGetS
 		p_metadata: metadata as never,
 		p_priority: 7,
 		p_scheduled_for: new Date().toISOString(),
-		p_dedup_key: `agent-run-answer:${claimedRun.id}`
+		p_dedup_key: `agent-run-answer:${claimedRun.id}:${Date.now()}`
 	});
 
 	if (jobError) {
-		await rollbackAnsweredRun(admin, params.id, run.completed_at, signalId);
+		await rollbackAnsweredRun(admin, params.id, continuationFrom, run.completed_at, signalId);
 		return ApiResponse.error(
 			'Failed to re-enqueue agent run',
 			HttpStatus.INTERNAL_SERVER_ERROR,

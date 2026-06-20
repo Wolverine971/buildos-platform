@@ -9,6 +9,7 @@
 	- Clean separation: weight system + entity colors
 -->
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import {
 		FolderKanban,
 		Target,
@@ -49,7 +50,7 @@
 		type,
 		title,
 		metadata,
-		state,
+		state: taskState,
 		severity,
 		onclick,
 		class: className = ''
@@ -121,8 +122,8 @@
 	// Get effective state for tasks
 	const effectiveTaskState = $derived.by(() => {
 		if (type !== 'task') return null;
-		if (state === 'done' || state === 'completed') return 'completed';
-		if (state === 'in_progress' || state === 'active') return 'active';
+		if (taskState === 'done' || taskState === 'completed') return 'completed';
+		if (taskState === 'in_progress' || taskState === 'active') return 'active';
 		return 'todo';
 	});
 
@@ -159,6 +160,28 @@
 	// Text styling for completed tasks
 	const isCompleted = $derived(type === 'task' && effectiveTaskState === 'completed');
 
+	// Pop the checkmark when a task transitions into completion (not on initial mount
+	// of an already-done task). A small, earned moment for the app's most frequent win.
+	let celebrateCheck = $state(false);
+	// Baseline so an already-completed task on mount doesn't celebrate; updated in the effect.
+	let prevCompleted = untrack(() => isCompleted);
+	let celebrateTimer: ReturnType<typeof setTimeout> | null = null;
+	$effect(() => {
+		const now = isCompleted;
+		if (now && !prevCompleted) {
+			celebrateCheck = true;
+			if (celebrateTimer) clearTimeout(celebrateTimer);
+			celebrateTimer = setTimeout(() => {
+				celebrateCheck = false;
+				celebrateTimer = null;
+			}, 500);
+		}
+		prevCompleted = now;
+	});
+	$effect(() => () => {
+		if (celebrateTimer) clearTimeout(celebrateTimer);
+	});
+
 	// Build border style classes
 	const borderStyle = $derived.by(() => {
 		const config = entityConfig[type];
@@ -185,7 +208,10 @@
 	].texture} {borderStyle} transition-colors pressable {className}"
 	style="content-visibility: auto; contain-intrinsic-size: 0 44px;"
 >
-	<span class="entity-icon w-4 h-4 shrink-0 {iconAnimation}">
+	<span
+		class="entity-icon w-4 h-4 shrink-0 {iconAnimation}"
+		class:entity-icon--celebrate={celebrateCheck}
+	>
 		<Icon class="h-full w-full" />
 	</span>
 	<div class="min-w-0 flex-1">
@@ -205,6 +231,23 @@
 </button>
 
 <style>
+	/* Checkmark "pop" when a task becomes completed. Global reduced-motion guard
+	   (app.css) neutralizes this for users who opt out. */
+	@keyframes entity-check-pop {
+		0% {
+			transform: scale(0.5);
+		}
+		55% {
+			transform: scale(1.25);
+		}
+		100% {
+			transform: scale(1);
+		}
+	}
+	.entity-icon--celebrate {
+		animation: entity-check-pop 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+	}
+
 	/* Entity-specific colors using CSS custom properties */
 	/* No !important needed - specificity is handled by data attributes */
 

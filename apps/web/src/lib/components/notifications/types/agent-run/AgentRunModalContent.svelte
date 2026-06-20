@@ -51,6 +51,10 @@
 	let runStatus = $derived<AgentRunStatus>(notification?.data.runStatus ?? 'cancelled');
 	let result = $derived(notification?.data.result ?? null);
 	let metrics = $derived(notification?.data.metrics ?? null);
+	let canAnswerRun = $derived(
+		runStatus === 'needs_input' ||
+			(runStatus === 'partial' && Boolean(result?.open_questions?.length))
+	);
 	let isActive = $derived(
 		runStatus === 'queued' ||
 			runStatus === 'running' ||
@@ -384,11 +388,13 @@
 					<ChangeSetReview {runId} changeSet={result.proposed_changes} />
 				{/if}
 
-				<!-- Answer box — the run is blocked waiting on you (needs_input) -->
-				{#if runStatus === 'needs_input'}
+				<!-- Answer box — the run is blocked or can continue from a partial result -->
+				{#if canAnswerRun}
 					<div class="rounded-lg border border-warning/40 bg-warning/5 p-3 space-y-2">
 						<div class="text-xs font-medium text-warning uppercase tracking-wide">
-							The agent needs your input
+							{runStatus === 'partial'
+								? 'Continue this partial run'
+								: 'The agent needs your input'}
 						</div>
 						{#if result?.open_questions?.length}
 							<ul class="list-disc list-inside space-y-0.5">
@@ -402,7 +408,9 @@
 								bind:value={answerText}
 								rows="2"
 								disabled={answering}
-								placeholder="Type your answer…"
+								placeholder={runStatus === 'partial'
+									? 'Tell the agent what to do next…'
+									: 'Type your answer…'}
 								class="flex-1 resize-none rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-accent disabled:opacity-50"
 							></textarea>
 							<Button
@@ -411,7 +419,7 @@
 								size="md"
 								disabled={answering || !answerText.trim()}
 							>
-								Answer
+								{runStatus === 'partial' ? 'Continue' : 'Answer'}
 							</Button>
 						</div>
 					</div>
@@ -481,8 +489,8 @@
 					</div>
 				{/if}
 
-				<!-- Open questions (needs_input renders them in the answer box above) -->
-				{#if result?.open_questions?.length && runStatus !== 'needs_input'}
+				<!-- Open questions (continuable runs render them in the answer box above) -->
+				{#if result?.open_questions?.length && !canAnswerRun}
 					<div>
 						<div
 							class="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5"

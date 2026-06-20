@@ -62,7 +62,7 @@ const TRANSCRIPT_RESULT_CHARS = 4000;
 function isContinuationFrom(
 	value: unknown
 ): value is NonNullable<AgentRunJobMetadata['continuation_from']> {
-	return value === 'paused' || value === 'needs_input';
+	return value === 'paused' || value === 'needs_input' || value === 'partial';
 }
 
 function isClaimableStatus(
@@ -71,6 +71,7 @@ function isClaimableStatus(
 ): boolean {
 	if (continuationFrom === 'paused') return status === 'queued' || status === 'paused';
 	if (continuationFrom === 'needs_input') return status === 'queued' || status === 'needs_input';
+	if (continuationFrom === 'partial') return status === 'queued' || status === 'partial';
 	return status === 'queued';
 }
 
@@ -202,7 +203,10 @@ async function recordToolExecution(params: {
  */
 async function reconstructPriorState(
 	runId: string,
-	priorMetrics: unknown
+	priorMetrics: unknown,
+	priorResult?: unknown,
+	priorStatus?: AgentRunRow['status'],
+	priorCompletedAt?: string | null
 ): Promise<{
 	transcript: string[];
 	toolCalls: number;
@@ -240,6 +244,37 @@ async function reconstructPriorState(
 		const message = (s.payload as { message?: string } | null)?.message;
 		if (message) items.push({ at: s.created_at, line: `SUPERVISOR (steer): ${message}` });
 	}
+
+	if (
+		(priorStatus === 'partial' || priorStatus === 'needs_input') &&
+		priorResult &&
+		typeof priorResult === 'object' &&
+		!Array.isArray(priorResult)
+	) {
+		const result = priorResult as {
+			summary?: unknown;
+			answer?: unknown;
+			open_questions?: unknown;
+		};
+		const summary = typeof result.summary === 'string' ? result.summary.trim() : '';
+		const answer = typeof result.answer === 'string' ? result.answer.trim() : '';
+		const openQuestions = Array.isArray(result.open_questions)
+			? result.open_questions.filter(
+					(q): q is string => typeof q === 'string' && q.trim().length > 0
+				)
+			: [];
+		if (summary || answer || openQuestions.length) {
+			items.push({
+				at: priorCompletedAt ?? new Date().toISOString(),
+				line: `PREVIOUS RESULT (${priorStatus}): ${JSON.stringify({
+					summary,
+					answer,
+					open_questions: openQuestions
+				}).slice(0, TRANSCRIPT_RESULT_CHARS)}`
+			});
+		}
+	}
+
 	items.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
 
 	const m =
@@ -330,7 +365,8 @@ function buildSystemPrompt(runnableOps: string[]): string {
 		'- Call ops to gather what you need, then submit_result.',
 		'- Use status "completed" only when no user input is required; keep open_questions empty for completed results.',
 		'- If you need the user to answer before you can continue, submit_result with status "needs_input" and put the questions in open_questions.',
-		'- If you cannot make progress or an op is unavailable, submit_result with status "partial" or "needs_input" and explain in open_questions.'
+		'- Use status "partial" when you made a useful partial deliverable but cannot fully finish with the current tool/data surface.',
+		'- If a user answer could unblock the work, prefer "needs_input" over "partial".'
 	]
 		.filter(Boolean)
 		.join('\n');
@@ -465,7 +501,13 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	let toolCalls = 0;
 
 	if (isResume) {
-		const prior = await reconstructPriorState(runId, run.metrics);
+		const prior = await reconstructPriorState(
+			runId,
+			run.metrics,
+			run.result,
+			initialRun.status,
+			initialRun.completed_at
+		);
 		transcript.push(...prior.transcript);
 		toolCalls = prior.toolCalls;
 		tokensTotal = prior.tokens;

@@ -12,6 +12,67 @@ import { checkUserPreferences } from './preferenceChecker.js';
 
 const supabase = createServiceClient();
 
+type DailyBriefEngagementStage = 'standard' | 'reengagement' | 'dormant';
+
+interface DailyBriefContentCandidate {
+	executive_summary?: string | null;
+	llm_analysis?: string | null;
+	metadata?: unknown;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function resolveDailyBriefEngagementStage(metadata: unknown): DailyBriefEngagementStage {
+	if (!isRecord(metadata)) {
+		return 'standard';
+	}
+
+	if (metadata.engagementStage === 'dormant') {
+		return 'dormant';
+	}
+
+	if (metadata.engagementStage === 'reengagement' || metadata.isReengagement === true) {
+		return 'reengagement';
+	}
+
+	return 'standard';
+}
+
+function selectDailyBriefEmailContent(
+	brief: DailyBriefContentCandidate,
+	engagementStage: DailyBriefEngagementStage
+): string {
+	const executiveSummary = brief.executive_summary?.trim() || '';
+	const llmAnalysis = brief.llm_analysis?.trim() || '';
+
+	if (engagementStage === 'standard') {
+		return executiveSummary || llmAnalysis;
+	}
+
+	return llmAnalysis || executiveSummary;
+}
+
+function getDailyBriefEmailSubject(
+	dateFormatted: string,
+	engagementStage: DailyBriefEngagementStage
+): string {
+	if (engagementStage === 'dormant') {
+		return 'Still want BuildOS daily briefs?';
+	}
+
+	if (engagementStage === 'reengagement') {
+		return 'A quick check-in on your BuildOS projects';
+	}
+
+	return `BuildOS Daily Brief - ${dateFormatted}`;
+}
+
+function getDailyBriefPrimaryActionLabel(engagementStage: DailyBriefEngagementStage): string {
+	return engagementStage === 'standard' ? 'View in BuildOS →' : 'Resume in BuildOS →';
+}
+
 export interface DeliveryResult {
 	success: boolean;
 	external_id?: string;
@@ -215,6 +276,7 @@ export async function sendEmailNotification(
 		const dailyBriefUnsubscribeUrl = `${baseUrl}/api/email-tracking/${trackingId}/unsubscribe`;
 		let dailyBriefId: string | null = null;
 		let dailyBriefDate: string | null = null;
+		let dailyBriefEngagementStage: DailyBriefEngagementStage = 'standard';
 
 		if (isDailyBriefEmail) {
 			const briefId = delivery.payload.data?.brief_id || delivery.payload.brief_id;
@@ -232,7 +294,7 @@ export async function sendEmailNotification(
 				if (isOntologyBrief) {
 					const { data: brief, error: briefError } = await supabase
 						.from('ontology_daily_briefs')
-						.select('executive_summary, llm_analysis, brief_date')
+						.select('executive_summary, llm_analysis, brief_date, metadata')
 						.eq('id', briefId)
 						.single();
 
@@ -249,7 +311,13 @@ export async function sendEmailNotification(
 						text = emailContent.text;
 						subject = delivery.payload.title;
 					} else {
-						const briefContent = brief.executive_summary || brief.llm_analysis || '';
+						dailyBriefEngagementStage = resolveDailyBriefEngagementStage(
+							brief.metadata
+						);
+						const briefContent = selectDailyBriefEmailContent(
+							brief,
+							dailyBriefEngagementStage
+						);
 
 						if (!briefContent) {
 							emailLogger.warn(
@@ -275,19 +343,24 @@ export async function sendEmailNotification(
 								day: 'numeric'
 							});
 
-							subject = `BuildOS Daily Brief - ${dateFormatted}`;
+							subject = getDailyBriefEmailSubject(
+								dateFormatted,
+								dailyBriefEngagementStage
+							);
+							const primaryActionLabel =
+								getDailyBriefPrimaryActionLabel(dailyBriefEngagementStage);
 
 							const fullContent = `
-            <div style="margin: 20px 0;">
-              ${contentHtml}
+	            <div style="margin: 20px 0;">
+	              ${contentHtml}
             </div>
 
             <hr style="border: none; border-top: 1px solid #DCD9D1; margin: 32px 0;">
 
-            <div style="text-align: center; margin-top: 24px;">
-              <a href="${baseUrl}/projects?briefDate=${briefDate}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
-              <span style="color: #8C8B91; margin: 0 8px;">|</span>
-              <a href="${baseUrl}/profile?tab=notifications" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
+	            <div style="text-align: center; margin-top: 24px;">
+	              <a href="${baseUrl}/projects?briefDate=${briefDate}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">${primaryActionLabel}</a>
+	              <span style="color: #8C8B91; margin: 0 8px;">|</span>
+	              <a href="${baseUrl}/profile?tab=notifications" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
               <span style="color: #8C8B91; margin: 0 8px;">|</span>
               <a href="${dailyBriefUnsubscribeUrl}" style="color: #6F6E75; text-decoration: none; font-size: 14px;">Turn off daily briefs</a>
             </div>
@@ -332,7 +405,13 @@ export async function sendEmailNotification(
 						subject = delivery.payload.title;
 					} else {
 						// Use the full brief content (LLM analysis or summary)
-						const briefContent = brief.llm_analysis || brief.executive_summary || '';
+						dailyBriefEngagementStage = resolveDailyBriefEngagementStage(
+							brief.metadata
+						);
+						const briefContent = selectDailyBriefEmailContent(
+							brief,
+							dailyBriefEngagementStage
+						);
 
 						if (!briefContent) {
 							emailLogger.warn(
@@ -357,7 +436,12 @@ export async function sendEmailNotification(
 								day: 'numeric'
 							});
 
-							subject = `BuildOS Daily Brief - ${dateFormatted}`;
+							subject = getDailyBriefEmailSubject(
+								dateFormatted,
+								dailyBriefEngagementStage
+							);
+							const primaryActionLabel =
+								getDailyBriefPrimaryActionLabel(dailyBriefEngagementStage);
 
 							// Inkprint Design System colors
 							const fullContent = `
@@ -367,10 +451,10 @@ export async function sendEmailNotification(
 
             <hr style="border: none; border-top: 1px solid #DCD9D1; margin: 32px 0;">
 
-            <div style="text-align: center; margin-top: 24px;">
-              <a href="${baseUrl}/projects?briefDate=${briefDate}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">View in BuildOS →</a>
-              <span style="color: #8C8B91; margin: 0 8px;">|</span>
-              <a href="${baseUrl}/profile?tab=notifications" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
+	            <div style="text-align: center; margin-top: 24px;">
+	              <a href="${baseUrl}/projects?briefDate=${briefDate}" style="color: #D96C1E; text-decoration: none; font-size: 14px;">${primaryActionLabel}</a>
+	              <span style="color: #8C8B91; margin: 0 8px;">|</span>
+	              <a href="${baseUrl}/profile?tab=notifications" style="color: #D96C1E; text-decoration: none; font-size: 14px;">Manage Preferences</a>
               <span style="color: #8C8B91; margin: 0 8px;">|</span>
               <a href="${dailyBriefUnsubscribeUrl}" style="color: #6F6E75; text-decoration: none; font-size: 14px;">Turn off daily briefs</a>
             </div>
@@ -434,6 +518,7 @@ export async function sendEmailNotification(
 					event_type: delivery.payload.event_type,
 					brief_id: dailyBriefId,
 					brief_date: dailyBriefDate,
+					engagement_stage: dailyBriefEngagementStage,
 					user_id: delivery.recipient_user_id,
 					category: isDailyBriefEmail ? 'daily_brief' : 'notification'
 				}

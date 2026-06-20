@@ -2,6 +2,7 @@
 <!-- INKPRINT Design System: Message list with semantic textures -->
 <script lang="ts">
 	import ThinkingBlock from './ThinkingBlock.svelte';
+	import CreatedEntityCards from './CreatedEntityCards.svelte';
 	import { renderMarkdown, getProseClasses } from '$lib/utils/markdown';
 	import type { UIMessage, ThinkingBlockMessage } from './agent-chat.types';
 	import { shouldRenderAsMarkdown, formatTime } from './agent-chat-formatters';
@@ -411,6 +412,12 @@
 						</span>
 					</div>
 				</div>
+			{:else if message.type === 'created_entities'}
+				{#if message.data?.entities?.length}
+					<div class="ml-9">
+						<CreatedEntityCards entities={message.data.entities} />
+					</div>
+				{/if}
 			{:else if message.type === 'activity'}
 				{#if dev}
 					<div

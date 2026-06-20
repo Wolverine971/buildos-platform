@@ -2,7 +2,7 @@
 
 # Agentic Chat Tool Discovery Visibility Tasker
 
-Status: ready for follow-up agent
+Status: shipped
 Created: 2026-06-19
 Owner: BuildOS agentic chat
 Source: `AGENTIC_CHAT_SEARCH_EVAL_2026-06-19.md` Step 4 defer
@@ -21,47 +21,51 @@ Recommended implementation: add an explicit surface/audience flag to the registr
 Chat `tool_search` should filter hidden-from-chat tools; external `tool_search`, `tool_schema`,
 direct tool listing, and direct execution should still expose all allowed public ops.
 
+Shipped 2026-06-19: chat discovery now hides the four zero-use legacy entity-search tools via
+surface-aware registry search, while the external BuildOS Agent API keeps the public read ops
+available for scoped callers.
+
 ## Required Reading
 
 Read these before editing:
 
 1. `apps/web/docs/technical/audits/AGENTIC_CHAT_SEARCH_EVAL_2026-06-19.md`
-   - See F3 and Section 3.1.
-   - This is where Step 4 was deferred because the registry is shared.
+    - See F3 and Section 3.1.
+    - This is where Step 4 was deferred because the registry is shared.
 2. `apps/web/docs/technical/audits/AGENTIC_CHAT_SEARCH_AUDIT_2026-06-17.md`
-   - Original audit context and Family B cleanup motivation.
+    - Original audit context and Family B cleanup motivation.
 3. `apps/web/docs/technical/audits/AGENTIC_CHAT_SEARCH_SMOKE_TEST_2026-06-19.md`
-   - Test matrix that produced the chat-side evidence.
+    - Test matrix that produced the chat-side evidence.
 4. `packages/shared-types/src/agent-call.types.ts`
-   - `BUILDOS_AGENT_READ_OPS` intentionally includes:
-     - `onto.goal.search`
-     - `onto.plan.search`
-     - `onto.milestone.search`
-     - `onto.risk.search`
+    - `BUILDOS_AGENT_READ_OPS` intentionally includes:
+        - `onto.goal.search`
+        - `onto.plan.search`
+        - `onto.milestone.search`
+        - `onto.risk.search`
 5. `apps/web/src/lib/services/agentic-chat/tools/registry/tool-registry.ts`
-   - Builds registry ops from `CHAT_TOOL_DEFINITIONS` plus `TOOL_METADATA`.
+    - Builds registry ops from `CHAT_TOOL_DEFINITIONS` plus `TOOL_METADATA`.
 6. `apps/web/src/lib/services/agentic-chat/tools/registry/tool-search.ts`
-   - `searchToolRegistry()` currently searches the full registry with no chat/external surface
-     distinction.
+    - `searchToolRegistry()` currently searches the full registry with no chat/external surface
+      distinction.
 7. `apps/web/src/lib/server/agent-call/external-tool-gateway.ts`
-   - External gateway also calls `searchToolRegistry()` and then scopes results to allowed ops.
+    - External gateway also calls `searchToolRegistry()` and then scopes results to allowed ops.
 8. `packages/shared-agent-ops/src/gateway/op-execution-gateway.ts`
-   - `buildExternalGatewayRegistry()` resolves allowed public ops from injected registry ops,
-     falling back to `EXTERNAL_CUSTOM_OPS`.
+    - `buildExternalGatewayRegistry()` resolves allowed public ops from injected registry ops,
+      falling back to `EXTERNAL_CUSTOM_OPS`.
 
 ## Current State
 
 ### What the chat search eval proved
 
 - The agent used the smart search family for 8/8 live search tasks:
-  - `search_all_projects`
-  - `search_project`
+    - `search_all_projects`
+    - `search_project`
 - It used zero legacy Family B entity search tools in the evaluated run.
 - Production chat telemetry showed zero total calls for:
-  - `search_onto_goals`
-  - `search_onto_plans`
-  - `search_onto_milestones`
-  - `search_onto_risks`
+    - `search_onto_goals`
+    - `search_onto_plans`
+    - `search_onto_milestones`
+    - `search_onto_risks`
 
 This is enough evidence to make those four tools **chat-deprecation candidates**.
 It is not enough evidence to remove them from the shared registry because the telemetry is chat-only.
@@ -134,12 +138,12 @@ Recommended shape:
 
 ```ts
 export interface ToolMetadata {
-  summary: string;
-  capabilities: string[];
-  contexts: ToolContextScope[];
-  category: 'search' | 'read' | 'write' | 'utility';
-  timeoutMs?: number;
-  chatDiscovery?: 'visible' | 'hidden';
+	summary: string;
+	capabilities: string[];
+	contexts: ToolContextScope[];
+	category: 'search' | 'read' | 'write' | 'utility';
+	timeoutMs?: number;
+	chatDiscovery?: 'visible' | 'hidden';
 }
 ```
 
@@ -181,7 +185,7 @@ chat_discoverable?: boolean;
 When building each `registryOp`, set:
 
 ```ts
-chat_discoverable: toolMeta?.chatDiscovery !== 'hidden'
+chat_discoverable: toolMeta?.chatDiscovery !== 'hidden';
 ```
 
 Default true. Do not let this field affect op derivation, `byToolName`, schemas, external execution,
@@ -222,13 +226,13 @@ apps/web/src/lib/server/agent-call/external-tool-gateway.ts
 The chat call should pass:
 
 ```ts
-surface: 'chat'
+surface: 'chat';
 ```
 
 The external gateway call should pass:
 
 ```ts
-surface: 'external'
+surface: 'external';
 ```
 
 This is the core fix. It lets the same registry serve both surfaces with different discovery
@@ -278,10 +282,10 @@ const entry = registryOps[op] ?? EXTERNAL_CUSTOM_OPS[op];
 This means another possible solution is:
 
 1. Add external-only `RegistryOp` entries for:
-   - `onto.goal.search`
-   - `onto.plan.search`
-   - `onto.milestone.search`
-   - `onto.risk.search`
+    - `onto.goal.search`
+    - `onto.plan.search`
+    - `onto.milestone.search`
+    - `onto.risk.search`
 2. Then delete the chat tool definitions.
 3. Prove external listing/search/schema/direct execution still works.
 
@@ -315,8 +319,8 @@ Cases:
   does not return `onto.goal.search` / `search_onto_goals`.
 - Same for plan, milestone, and risk.
 - Smart search remains discoverable:
-  - `x.search.all_projects` / `search_all_projects`
-  - `x.search.project` / `search_project`
+    - `x.search.all_projects` / `search_all_projects`
+    - `x.search.project` / `search_project`
 - Non-hidden read tools remain discoverable where expected, for example list/detail tools.
 
 ### External gateway
@@ -331,17 +335,17 @@ Cases:
 
 - `getBuildosAgentGatewayTools({ mode: 'read_only', allowed_ops: BUILDOS_AGENT_READ_OPS })`
   still includes:
-  - `search_onto_goals`
-  - `search_onto_plans`
-  - `search_onto_milestones`
-  - `search_onto_risks`
+    - `search_onto_goals`
+    - `search_onto_plans`
+    - `search_onto_milestones`
+    - `search_onto_risks`
 - `tool_schema` returns schemas for all four ops.
 - External `tool_search` with `surface: 'external'` behavior still returns the allowed public ops
   when queried directly:
-  - query `goal search`, group `onto`, kind `read`
-  - query `plan search`, group `onto`, kind `read`
-  - query `milestone search`, group `onto`, kind `read`
-  - query `risk search`, group `onto`, kind `read`
+    - query `goal search`, group `onto`, kind `read`
+    - query `plan search`, group `onto`, kind `read`
+    - query `milestone search`, group `onto`, kind `read`
+    - query `risk search`, group `onto`, kind `read`
 - Read-only callers still do not see write tools.
 
 ### Chat preload/default surface

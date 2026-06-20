@@ -7,7 +7,7 @@
 	 * user's Agent Runs — Active + History — with a detail view (reuses the rich
 	 * run modal). Complements the transient Run Stack cards.
 	 */
-	import { X, RefreshCw, Bot, LoaderCircle } from 'lucide-svelte';
+	import { X, RefreshCw, Bot, LoaderCircle, Plus } from 'lucide-svelte';
 	import { formatDistanceToNow } from 'date-fns';
 	import {
 		agentRunsStore,
@@ -25,11 +25,13 @@
 		toUiAgentRunStatus
 	} from '$lib/services/agent-run-notification-data';
 	import AgentRunModalContent from '$lib/components/notifications/types/agent-run/AgentRunModalContent.svelte';
+	import AgentRunDispatchModal from '$lib/components/agent/AgentRunDispatchModal.svelte';
 	import type { AgentRunStatus } from '@buildos/shared-types';
 
 	let { open, onClose }: { open: boolean; onClose: () => void } = $props();
 
 	let selectedRunId = $state<string | null>(null);
+	let dispatchOpen = $state(false);
 	let loadedForOpen = false;
 
 	// Load on open; keep merging live updates from the realtime store.
@@ -83,6 +85,17 @@
 			return '';
 		}
 	}
+	function handleRunDispatched(run: AgentRunRow) {
+		mergeWorkRuns([run]);
+		agentRunsStore.update((current) => {
+			const next = new Map(current);
+			next.set(run.id, run);
+			return next;
+		});
+		selectedRunId = run.id;
+		dispatchOpen = false;
+		void loadWorkRuns();
+	}
 </script>
 
 {#if open}
@@ -114,6 +127,15 @@
 				{/if}
 			</div>
 			<div class="flex items-center gap-1">
+				<button
+					type="button"
+					class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+					title="Run agent"
+					aria-label="Run agent"
+					onclick={() => (dispatchOpen = true)}
+				>
+					<Plus class="h-4 w-4" />
+				</button>
 				<button
 					type="button"
 					class="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -218,4 +240,10 @@
 			onCancel={() => (selectedRunId = null)}
 		/>
 	{/if}
+
+	<AgentRunDispatchModal
+		isOpen={dispatchOpen}
+		onClose={() => (dispatchOpen = false)}
+		onDispatched={handleRunDispatched}
+	/>
 {/if}

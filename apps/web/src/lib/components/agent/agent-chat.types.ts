@@ -23,6 +23,16 @@ export interface ActivityEntry {
 
 export type AgentLoopState = 'thinking' | 'waiting_on_user';
 
+/** A just-created entity surfaced as a tappable card in the conversation. */
+export interface CreatedEntityRef {
+	/** OntologyEntityKind: project | task | goal | plan | document | milestone | risk */
+	kind: string;
+	id: string;
+	name: string;
+	/** Project the entity lives in (the id itself when kind === 'project'). */
+	projectId: string | null;
+}
+
 export interface UIMessage {
 	id: string;
 	session_id?: string;
@@ -38,7 +48,8 @@ export interface UIMessage {
 		| 'activity'
 		| 'thinking_block'
 		| 'clarification'
-		| 'agent_peer';
+		| 'agent_peer'
+		| 'created_entities';
 	data?: any;
 	timestamp: Date;
 	tool_calls?: any;

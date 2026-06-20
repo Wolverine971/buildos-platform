@@ -2,7 +2,7 @@
 
 # Agent Work — 03 Monitoring UI
 
-**Status:** Design · **Date:** 2026-06-15 · Part of the [Agent Work](./00-OVERVIEW.md) doc set.
+**Status:** Implemented through Run Stack, Work Panel, proposal review, steering/answer, chat presence, and manual Work Panel dispatch · **Date:** 2026-06-15 design / 2026-06-19 implementation status · Part of the [Agent Work](./00-OVERVIEW.md) doc set.
 
 The UI to **see what's running in the background and peek into it.** Two surfaces over one data source (`agent_runs` + `agent_run_events` via realtime):
 
@@ -59,12 +59,12 @@ Compact collapsible card per active/just-finished run, in the existing stack. Dr
 | `needs_input`    | amber badge + the open question(s) + "Answer" action                                                                           |
 | `proposal_ready` | "N changes proposed" + entity chips + "Review" action (opens Work Panel proposal) — only when run was dispatched with `review` |
 | `completed`      | green check + 1-line summary + entity chips; auto-collapses after a beat                                                       |
-| `partial`        | "Partial" + summary + open questions (also how a steered/cancelled run lands)                                                  |
+| `partial`        | "Partial" + summary; if `open_questions` exist, show the same continuation box so the user can steer the next attempt          |
 | `failed`         | red + error + "Retry" / "View"                                                                                                 |
 | `cancelled`      | muted                                                                                                                          |
 
 - **Nesting:** subagents (`parent_run_id`) render as indented child rows under the orchestrator run's card, so a fan-out reads as one group.
-- **Card actions:** Steer, Pause/Resume, Stop (cancel), Retry, Open in Work Panel, Answer (needs_input).
+- **Card actions:** Steer, Pause/Resume, Stop (cancel), Retry, Open in Work Panel, Answer/Continue (`needs_input`, or `partial` with open questions).
 
 ### 3a. Steering from the card (interject while it runs)
 
@@ -81,7 +81,7 @@ The signature interaction: while a run is `running` or `paused`, the card expose
 
 ## 4. Work Panel (persistent)
 
-Openable surface (slide-over from the right on desktop; full-screen sheet on mobile). Entry points: a top-nav "Work" affordance with a live count badge of active runs, and "Open in Work Panel" from any stack card.
+Openable surface (slide-over from the right on desktop; full-screen sheet on mobile). Entry points: a top-nav "Work" affordance with a live count badge of active runs, "Open in Work Panel" from any stack card, and the Work Panel header "Run agent" action for manual dispatch.
 
 ### 4a. Inbox (list)
 
@@ -92,7 +92,7 @@ Openable surface (slide-over from the right on desktop; full-screen sheet on mob
 
 - **Header:** label, goal, status, project, trigger, budgets/metrics (tokens, cost, duration, tool calls).
 - **Narration log + event timeline:** streamed from `agent_run_events` (`run.narration`, `run.tool_call`, `run.tool_result`) — this is the "peek into the process." Collapsible tool-call entries showing args/results.
-- **Result:** `summary` + `answer`; artifact links; `open_questions` (with an answer box for `needs_input`).
+- **Result:** `summary` + `answer`; artifact links; `open_questions` (with an answer box for `needs_input` and continuable `partial` runs).
 - **Entities touched:** list of committed `EntityTouch` with deep links into the project/task/doc.
 - **Live steering** (while `running`/`paused`): the steer box + Pause/Resume/Stop (same as the stack card, §3a), with the running narration above it so the user reads, then redirects.
 - **Actions:** Steer, Pause/Resume, Stop (cancel → `partial`), Retry (re-dispatch with edited brief), Answer.
@@ -105,6 +105,18 @@ Only appears for runs dispatched with `review` (`status='proposal_ready'`). Defa
 - **Per-change approve/reject** toggles + "Approve all" / "Reject all".
 - **Apply** → calls `commitChangeSet(run_id, decisions)`; shows applied/failed per change; run transitions to `completed`.
 - Drift warning if `before` no longer matches current state (02 §7).
+
+### 4d. Manual dispatch (initial Phase 6 trigger)
+
+The Work Panel header opens `AgentRunDispatchModal.svelte`, which POSTs directly to `/api/agent-runs`:
+
+- Required: `goal`.
+- Optional: label, instructions, expected output.
+- Context: global or project; project context loads selectable active/planning projects from `/api/projects`.
+- Scope: read-only or read-write.
+- Review: opt-in toggle, enabled only for read-write runs. Default remains `false` to preserve the direct-commit-by-default decision in 02.
+
+After dispatch, the returned run is merged into both the Work Panel store and live agent-run store so it appears immediately while realtime/polling catches up.
 
 ---
 
@@ -171,6 +183,8 @@ Closing the modal must **not** stop, hide, or orphan runs:
 - `NotificationStack` / `NotificationStackManager` — render the new type
 - new `agent-run-notification.bridge.ts` (pattern: `project-synthesis-notification.bridge.ts`)
 - new `agentRunsRealtime.service.ts` (pattern: `realtimeBrief.service.ts` + `treeAgentRealtime.service.ts`)
+- `WorkPanel.svelte` — persistent inbox/detail surface plus manual dispatch launcher
+- `AgentRunDispatchModal.svelte` — initial manual trigger form with context/project/scope/review controls
 
 **New:**
 
@@ -188,7 +202,7 @@ Closing the modal must **not** stop, hide, or orphan runs:
 
 **API (web):**
 
-- `GET /api/agent-runs` (list, filters) · `GET /api/agent-runs/[id]` (detail + events) · `POST /api/agent-runs` (manual dispatch, incl. `review` flag) · `POST /api/agent-runs/[id]/cancel` · `POST /api/agent-runs/[id]/commit` (Change Set — only for `review` runs) · `POST /api/agent-runs/[id]/answer`
+- `GET /api/agent-runs` (list, filters) · `GET /api/agent-runs/[id]` (detail + events) · `POST /api/agent-runs` (manual dispatch, incl. `review` flag) · `POST /api/agent-runs/[id]/cancel` · `POST /api/agent-runs/[id]/commit` (Change Set — only for `review` runs) · `POST /api/agent-runs/[id]/answer` (`needs_input`, plus `partial` continuation)
 - **Steering:** `POST /api/agent-runs/[id]/steer` (`{ message }`) · `POST /api/agent-runs/[id]/pause` · `POST /api/agent-runs/[id]/resume` — each writes an `agent_run_signals` row (01 §9).
 
 ---
@@ -198,7 +212,7 @@ Closing the modal must **not** stop, hide, or orphan runs:
 - ✅ **UI-P1 (with substrate Phase 2) — SHIPPED 2026-06-18:** `agentRunsRealtime` (postgres*changes + polling backbone) + notification-store `agent_run` type + bridge + lazy `AgentRunMinimizedView`/`AgentRunModalContent` → **Run Stack live**, with a detail modal that streams `agent-run:<id>` narration, shows metrics, and renders summary/answer as **markdown**. Built as notification-stack type-views (not a standalone `AgentRunCard.svelte` yet — that gets extracted for UI-P4's shared dock). \_Ships the "see background processes" ask.*
 - ⏭️ **UI-P4 (chat presence, with substrate Phase 3) — NEXT (current arc):** in-chat run dock (shared card filtered by `parent_session_id`) + "N agents working" badge on the chat launcher (from `activeAgentRunCount`) + `chat_messages` realtime subscription so injected completion messages render in the thread. _(The open/closed handoff, §6.)_ Paired with the Phase 3 substrate: `delegate_task` + completion-message injection.
 - ⬜ **UI-P1.5 (with substrate Phase 3.5 — steering):** `AgentRunSteerControl` on the card → steer/pause/resume/stop with pending→applied feedback. _Ships the "interject while it runs" ask._
-- ⬜ **UI-P3 (with substrate Phase 4 + answer flow):** `ChangeSetReview` proposal UI + commit (review runs); `needs_input` answer flow (needs Phase 3.5 resume).
+- ✅ **UI-P3 (with substrate Phase 4 + answer flow):** `ChangeSetReview` proposal UI + commit (review runs); `needs_input` answer flow; `partial` with open questions can continue through the same answer endpoint.
 - ⬜ **UI-P2 (with substrate Phase 5):** Work Panel inbox + run detail (narration log, entities, metrics) + actions (incl. steering in detail).
 - ⬜ **UI-P5:** nesting (subagent child rows); mobile polish; web push when backgrounded.
 

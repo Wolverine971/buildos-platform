@@ -29,6 +29,7 @@
 -->
 <script lang="ts">
 	import { onMount, tick, untrack } from 'svelte';
+	import { get } from 'svelte/store';
 	import { fade } from 'svelte/transition';
 	import { goto } from '$app/navigation';
 	import { toastService } from '$lib/stores/toast.store';
@@ -81,6 +82,7 @@
 	import type { GraphNode } from '$lib/components/ontology/graph/lib/graph.types';
 	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
 	import { dataMutationEvents, mutationAffectsProject } from '$lib/stores/projectDataMutations';
+	import { setRecentlyCreatedContext } from '$lib/stores/recentlyCreatedContext';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -502,15 +504,62 @@
 	// When the agentic chat (from anywhere — global launcher, embedded edit modals, …)
 	// reports that it mutated data affecting this project, silently refetch so newly
 	// created/updated entities appear without a manual reload.
-	let lastHandledMutationNonce = 0;
+	// Only react to mutation events that arrive AFTER this page is set up — a stale
+	// event left in the store by a prior page should not trigger a refresh here.
+	let lastHandledMutationNonce = get(dataMutationEvents)?.nonce ?? 0;
+
+	// IDs of entities that just appeared via a chat/agent mutation, so the lists can
+	// give them a brief "just created" entrance. Cleared shortly after.
+	let recentlyCreatedIds = $state<ReadonlySet<string>>(new Set());
+	let recentlyCreatedTimer: ReturnType<typeof setTimeout> | null = null;
+
+	// Expose the highlight set to descendant lists (task boards, doc tree, …). The
+	// closure reads reactive `$state`, so `has()` stays live as the set updates/clears.
+	setRecentlyCreatedContext({ has: (id) => recentlyCreatedIds.has(id) });
+
 	$effect(() => {
 		const event = $dataMutationEvents;
 		if (!event || event.nonce === lastHandledMutationNonce) return;
 		lastHandledMutationNonce = event.nonce;
 		if (mutationAffectsProject(event.summary, data.projectId)) {
-			untrack(() => void refreshSilently());
+			untrack(() => void refreshAndHighlight());
 		}
 	});
+
+	$effect(() => () => {
+		if (recentlyCreatedTimer) clearTimeout(recentlyCreatedTimer);
+	});
+
+	function snapshotEntityIds(): Set<string> {
+		return new Set<string>([
+			...tasks.map((t) => t.id),
+			...documents.map((d) => d.id),
+			...plans.map((p) => p.id),
+			...goals.map((g) => g.id),
+			...milestones.map((m) => m.id),
+			...risks.map((r) => r.id)
+		]);
+	}
+
+	// Refresh, then mark whichever entities are newly present so the lists can animate
+	// them in. Skips highlighting while hydrating (lists aren't populated yet, so a diff
+	// would misflag every pre-existing entity as new).
+	async function refreshAndHighlight() {
+		if (isHydrating) {
+			await refreshSilently();
+			return;
+		}
+		const before = snapshotEntityIds();
+		await refreshSilently();
+		const appeared = [...snapshotEntityIds()].filter((id) => !before.has(id));
+		if (appeared.length === 0) return;
+		recentlyCreatedIds = new Set(appeared);
+		if (recentlyCreatedTimer) clearTimeout(recentlyCreatedTimer);
+		recentlyCreatedTimer = setTimeout(() => {
+			recentlyCreatedIds = new Set();
+			recentlyCreatedTimer = null;
+		}, 2400);
+	}
 
 	// ============================================================
 	// MOUNT

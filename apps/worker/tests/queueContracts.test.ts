@@ -2,7 +2,11 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { validateAgentRunMetadata, validateJobMetadata } from '@buildos/shared-types';
+import {
+	transformEventPayload,
+	validateAgentRunMetadata,
+	validateJobMetadata
+} from '@buildos/shared-types';
 
 const repoRoot = resolve(__dirname, '../../..');
 
@@ -59,6 +63,52 @@ describe('queue processor timeout', () => {
 		expect(source).toContain('queueConfig.workerTimeout');
 		expect(source).toContain('Promise.race');
 		expect(source).toContain('Worker timed out after');
+	});
+
+	it('processes claimed queue jobs concurrently within each batch', () => {
+		const source = readRepoFile('apps/worker/src/lib/supabaseQueue.ts');
+
+		expect(source).toContain('Promise.allSettled(');
+		expect(source).toContain('jobs.map((job) => this.processJob(job as ClaimedQueueJob))');
+	});
+});
+
+describe('daily brief reactivation email contracts', () => {
+	it('uses stored LLM analysis for re-engagement email content without send-time LLM calls', () => {
+		const source = readRepoFile('apps/worker/src/workers/notification/emailAdapter.ts');
+
+		expect(source).toContain('function selectDailyBriefEmailContent');
+		expect(source).toContain("if (engagementStage === 'standard')");
+		expect(source).toContain('return executiveSummary || llmAnalysis');
+		expect(source).toContain('return llmAnalysis || executiveSummary');
+		expect(source).not.toContain('new SmartLLMService');
+		expect(source).not.toContain('generateText(');
+	});
+
+	it('loads project creation dates for dormant project timeline prompts', () => {
+		const source = readRepoFile('apps/worker/src/workers/brief/ontologyBriefDataLoader.ts');
+
+		expect(source).toContain(
+			'id, name, state_key, type_key, description, next_step_short, next_step_long, created_at, updated_at, created_by'
+		);
+	});
+
+	it('preserves the ontology brief flag when transforming completed brief notifications', () => {
+		const payload = transformEventPayload('brief.completed', {
+			brief_id: 'brief-1',
+			brief_date: '2026-06-19',
+			timezone: 'America/New_York',
+			task_count: 0,
+			todays_task_count: 0,
+			overdue_task_count: 0,
+			upcoming_task_count: 0,
+			next_seven_days_task_count: 0,
+			recently_completed_count: 0,
+			project_count: 1,
+			is_ontology_brief: true
+		});
+
+		expect(payload.data?.is_ontology_brief).toBe(true);
 	});
 });
 
@@ -194,6 +244,16 @@ describe('agent_run job metadata contract', () => {
 			continuation_from: 'needs_input'
 		});
 		expect(meta.continuation_from).toBe('needs_input');
+
+		const partialMeta = validateAgentRunMetadata({
+			run_id: RUN_ID,
+			trigger: 'chat',
+			context_type: 'project',
+			project_id: PROJECT_ID,
+			scope_mode: 'read_write',
+			continuation_from: 'partial'
+		});
+		expect(partialMeta.continuation_from).toBe('partial');
 
 		expect(() =>
 			validateAgentRunMetadata({

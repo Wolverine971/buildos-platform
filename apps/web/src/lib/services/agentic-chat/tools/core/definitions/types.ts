@@ -30,4 +30,5 @@ export interface ToolMetadata {
 	contexts: ToolContextScope[];
 	category: 'search' | 'read' | 'write' | 'utility';
 	timeoutMs?: number;
+	chatDiscovery?: 'visible' | 'hidden';
 }

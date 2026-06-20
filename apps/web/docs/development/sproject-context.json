@@ -622,6 +622,12 @@
 			"exports": ["dataMutationEvents", "notifyDataMutation", "mutationAffectsProject"]
 		},
 		{
+			"file": "src/lib/stores/recentlyCreatedContext.ts",
+			"type": "store",
+			"components": [],
+			"exports": ["setRecentlyCreatedContext", "getRecentlyCreatedContext"]
+		},
+		{
 			"file": "src/lib/stores/timeBlocksStore.ts",
 			"type": "store",
 			"components": [],

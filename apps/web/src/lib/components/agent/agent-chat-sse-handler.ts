@@ -26,6 +26,7 @@ import type {
 	ActivityEntry,
 	ActivityType,
 	AgentLoopState,
+	CreatedEntityRef,
 	ThinkingBlockMessage,
 	UIMessage
 } from './agent-chat.types';
@@ -253,6 +254,9 @@ export interface SSEHandlerDeps {
 	// Clarifications
 	addClarifyingQuestionsMessage(questions: unknown): void;
 
+	// Created-entity cards (appended at end of a turn that created entities)
+	addCreatedEntitiesMessage(entities: CreatedEntityRef[]): void;
+
 	// Focus logging
 	logFocusActivity(action: string, focus: ProjectFocus | null): void;
 
@@ -262,6 +266,9 @@ export interface SSEHandlerDeps {
 export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage) => void {
 	const { presenter, thinking, state } = deps;
 	const isDev = deps.isDev ?? false;
+
+	// Entities created during the current turn; flushed to a card message on `done`.
+	let createdEntitiesBuffer: CreatedEntityRef[] = [];
 
 	function handleContextShift(shift: ContextShiftPayload): void {
 		const normalizedContext = normalizeContextShiftContext(shift.new_context);
@@ -401,12 +408,28 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 		}
 
 		presenter.recordDataMutation(resolvedToolName, resolvedArgs, info.success, toolResult);
+
+		if (info.success) {
+			const created = presenter.extractCreatedEntity(
+				resolvedToolName,
+				resolvedArgs,
+				toolResult
+			);
+			if (created && !createdEntitiesBuffer.some((e) => e.id === created.id)) {
+				createdEntitiesBuffer.push(created);
+			}
+		}
 	}
 
 	function handleDone(): void {
 		state.setCurrentActivity('');
 		deps.finalizeAssistantMessage();
 		thinking.finalize();
+		// Surface any entities created this turn as tappable cards, then reset.
+		if (createdEntitiesBuffer.length > 0) {
+			deps.addCreatedEntitiesMessage(createdEntitiesBuffer);
+			createdEntitiesBuffer = [];
+		}
 		// Note: isStreaming is also set to false by onComplete; this is for immediate UI response
 		state.setIsStreaming(false);
 		if (state.isAgentToAgentMode() && state.getAgentLoopActive()) {
@@ -426,6 +449,9 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 		state.setError(streamErrorMessage);
 		state.setIsStreaming(false);
 		state.setCurrentActivity('');
+		// Drop any buffered create cards from this failed turn (the close-time refresh
+		// still surfaces whatever actually committed).
+		createdEntitiesBuffer = [];
 		if (thinking.getCurrentBlockId()) {
 			thinking.addActivity(
 				streamErrorMessage,
