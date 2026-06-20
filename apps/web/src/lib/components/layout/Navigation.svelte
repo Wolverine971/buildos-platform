@@ -31,7 +31,10 @@
 	import { browser, dev } from '$app/environment';
 	import { DEFAULT_APP_ICON_URL } from '$lib/constants/seo';
 	import type { ChatContextType, ProjectFocus } from '@buildos/shared-types';
-	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
+	import type {
+		AgentBrainDumpContext,
+		DataMutationSummary
+	} from '$lib/components/agent/agent-chat.types';
 	import { activeAgentRunCount } from '$lib/services/agentRunsRealtime.service';
 
 	type Props = {
@@ -64,6 +67,9 @@
 	let showChatModal = $state(false);
 	let showWorkPanel = $state(false);
 	let chatOpenedWithContext = $state<ChatContextType | null>(null);
+	let chatInitialSessionId = $state<string | null>(null);
+	let chatInitialBrainDumpContext = $state<AgentBrainDumpContext | null>(null);
+	let isOpeningBrainDumpChat = $state(false);
 
 	// Mobile-menu accessibility: drawer ref for the focus trap, and the element to restore
 	// focus to when the drawer closes (the hamburger button the user came from).
@@ -137,6 +143,12 @@
 	const chatModalAutoInitProject = $derived.by(() =>
 		chatInitialProjectFocus ? null : chatAutoInitProject
 	);
+	const selectedHistoryBrainDumpId = $derived.by(() => {
+		if (currentPath !== '/history') return null;
+		if ($page.url.searchParams.get('itemType') !== 'braindump') return null;
+		const id = $page.url.searchParams.get('id');
+		return id && id.trim() ? id : null;
+	});
 
 	// Context-aware label for the chat launcher button
 	const chatLabel = $derived.by((): string => {
@@ -317,10 +329,41 @@
 		}
 	}
 
+	async function openSelectedHistoryBrainDumpChat(braindumpId: string): Promise<boolean> {
+		if (isOpeningBrainDumpChat) return true;
+		isOpeningBrainDumpChat = true;
+		try {
+			const response = await fetch(`/api/onto/braindumps/${braindumpId}/chat-session`, {
+				method: 'POST'
+			});
+			const result = await response.json().catch(() => null);
+			if (!response.ok || !result?.success || !result?.data?.chat_session_id) {
+				throw new Error(result?.error || 'Failed to open Brain Dump chat');
+			}
+			chatInitialSessionId = result.data.chat_session_id;
+			chatInitialBrainDumpContext = result.data.braindump as AgentBrainDumpContext;
+			chatOpenedWithContext = 'global';
+			showChatModal = true;
+			return true;
+		} catch (error) {
+			console.error('Failed to open Brain Dump chat from navigation:', error);
+			toastService.error('Could not open Brain Dump chat.');
+			return false;
+		} finally {
+			isOpeningBrainDumpChat = false;
+		}
+	}
+
 	function handleOpenChat(
 		detailOrEvent?: { projectId: string; chatType: string } | MouseEvent | CustomEvent
 	) {
 		closeAllMenus();
+		chatInitialSessionId = null;
+		chatInitialBrainDumpContext = null;
+		if (selectedHistoryBrainDumpId) {
+			void openSelectedHistoryBrainDumpChat(selectedHistoryBrainDumpId);
+			return;
+		}
 		chatOpenedWithContext = chatContextType;
 		showChatModal = true;
 		// TODO: Pass projectId and chatType to AgentChatModal when needed
@@ -331,6 +374,8 @@
 		const wasProjectCreate = chatOpenedWithContext === 'project_create';
 		showChatModal = false;
 		chatOpenedWithContext = null;
+		chatInitialSessionId = null;
+		chatInitialBrainDumpContext = null;
 
 		if (summary?.hasChanges && summary.affectedProjectIds.length > 0) {
 			if (wasProjectCreate) {
@@ -1217,6 +1262,8 @@
 			contextType={chatModalContextType}
 			entityId={chatModalEntityId}
 			autoInitProject={chatModalAutoInitProject}
+			initialChatSessionId={chatInitialSessionId}
+			initialBrainDumpContext={chatInitialBrainDumpContext}
 			initialProjectFocus={chatInitialProjectFocus}
 			onClose={handleChatClose}
 		/>

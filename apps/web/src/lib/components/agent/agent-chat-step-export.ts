@@ -4,6 +4,8 @@ import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import {
 	isThinkingBlockMessage,
 	type ActivityEntry,
+	type AgentTimelineEntityRef,
+	type AgentTimelineItem,
 	type ThinkingBlockMessage,
 	type UIMessage
 } from './agent-chat.types';
@@ -15,6 +17,7 @@ const SENSITIVE_METADATA_KEY_PATTERN =
 
 export interface AgentChatStepsExportParams {
 	messages: UIMessage[];
+	timelineItems?: AgentTimelineItem[];
 	sessionId?: string | null;
 	contextLabel: string;
 	contextType?: ChatContextType | null;
@@ -205,6 +208,54 @@ function formatMessage(message: UIMessage, index: number): string {
 	return lines.join('\n');
 }
 
+function formatTimelineStatus(status: string): string {
+	return status
+		.split('_')
+		.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+		.join(' ');
+}
+
+function formatEntityRef(ref: AgentTimelineEntityRef): string {
+	const label = ref.title || ref.id;
+	const prefix = ref.operation ? `${ref.operation} ` : '';
+	const text = `${prefix}${ref.kind}: ${label}`;
+	return ref.url ? `[${text}](${ref.url})` : text;
+}
+
+function formatTimelineItem(item: AgentTimelineItem, index: number): string {
+	const lines = [
+		`${index + 1}. **${item.title}** [${formatTimelineStatus(item.status)}] - ${formatTimestamp(item.timestamp)}`,
+		item.summary ? `   - Summary: ${formatContent(item.summary, MAX_METADATA_CHARS)}` : null,
+		item.tool?.name ? `   - Tool: ${inlineCode(item.tool.name)}` : null,
+		item.tool?.gatewayOp ? `   - Operation: ${inlineCode(item.tool.gatewayOp)}` : null,
+		typeof item.tool?.durationMs === 'number'
+			? `   - Duration: ${item.tool.durationMs}ms`
+			: null,
+		item.tool?.argsPreview ? `   - Arguments: ${inlineCode(item.tool.argsPreview)}` : null,
+		item.tool?.resultPreview ? `   - Result: ${inlineCode(item.tool.resultPreview)}` : null,
+		item.tool?.errorMessage ? `   - Error: ${inlineCode(item.tool.errorMessage)}` : null,
+		item.projectRef ? `   - Project: ${formatEntityRef(item.projectRef)}` : null,
+		item.entityRefs.length > 0
+			? `   - Entities: ${item.entityRefs.map(formatEntityRef).join(', ')}`
+			: null,
+		item.redaction?.argsRedacted || item.redaction?.resultRedacted
+			? `   - Redaction: ${item.redaction.reason ?? 'sensitive fields'}`
+			: null
+	].filter((line): line is string => line !== null);
+
+	return lines.join('\n');
+}
+
+function formatTimelineSection(title: string, items: AgentTimelineItem[]): string[] {
+	const lines = [`## ${title}`, ''];
+	if (items.length === 0) {
+		lines.push('_No entries._', '');
+		return lines;
+	}
+	lines.push(...items.map((item, index) => formatTimelineItem(item, index)), '');
+	return lines;
+}
+
 function countActivities(messages: UIMessage[]): number {
 	return messages.reduce((count, message) => {
 		if (!isThinkingBlockMessage(message)) return count;
@@ -228,6 +279,13 @@ export function buildAgentChatStepsMarkdown(params: AgentChatStepsExportParams):
 	const exportedAt = params.exportedAt ?? new Date();
 	const thinkingBlocks = params.messages.filter(isThinkingBlockMessage);
 	const activityCount = countActivities(params.messages);
+	const timelineItems = params.timelineItems ?? [];
+	const hasTimeline = timelineItems.length > 0;
+	const stepItems = timelineItems.filter(
+		(item) => item.kind === 'step' || item.kind === 'status'
+	);
+	const toolItems = timelineItems.filter((item) => item.kind === 'tool');
+	const changeItems = timelineItems.filter((item) => item.kind === 'change');
 	const toolCallCount = thinkingBlocks.reduce(
 		(count, block) =>
 			count +
@@ -249,17 +307,29 @@ export function buildAgentChatStepsMarkdown(params: AgentChatStepsExportParams):
 		'',
 		'## Summary',
 		`- Messages exported: ${params.messages.length}`,
+		hasTimeline ? `- Timeline entries: ${timelineItems.length}` : null,
 		`- Agent step blocks: ${thinkingBlocks.length}`,
 		`- Activity entries: ${activityCount}`,
-		`- Tool calls: ${toolCallCount}`,
+		`- Tool calls: ${hasTimeline ? toolItems.length : toolCallCount}`,
+		hasTimeline ? `- Changes: ${changeItems.length}` : null,
 		'',
-		'## Timeline',
-		''
+		hasTimeline ? null : '## Timeline',
+		hasTimeline ? null : ''
 	].filter((line): line is string => line !== null);
 
 	if (params.messages.length === 0) {
 		lines.push('_No messages were loaded in this chat modal._');
 		return `${lines.join('\n')}\n`;
+	}
+
+	if (hasTimeline) {
+		lines.push(
+			...formatTimelineSection('Steps', stepItems),
+			...formatTimelineSection('Tool Calls', toolItems),
+			...formatTimelineSection('Changes', changeItems),
+			'## Conversation',
+			''
+		);
 	}
 
 	params.messages.forEach((message, index) => {

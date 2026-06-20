@@ -1,5 +1,14 @@
 // apps/worker/src/scheduler.ts
-import { addDays, addHours, isAfter, isBefore, setHours, setMinutes, setSeconds } from 'date-fns';
+import {
+	addDays,
+	addHours,
+	addMinutes,
+	isAfter,
+	isBefore,
+	setHours,
+	setMinutes,
+	setSeconds
+} from 'date-fns';
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import cron from 'node-cron';
 import { format } from 'date-fns';
@@ -10,12 +19,19 @@ import { cleanupStaleJobs } from './lib/utils/queueCleanup';
 import { queue } from './worker';
 import { PROJECT_LOOPS_ENABLED } from './config/projectLoops';
 import { enqueueEndOfDayProjectLoops } from './workers/project-loop/enqueue';
-import type { DailyBriefJobMetadata, Database } from '@buildos/shared-types';
+import {
+	validateAgentRunMetadata,
+	type AgentOperativeRowShape,
+	type DailyBriefJobMetadata,
+	type Database,
+	type Json
+} from '@buildos/shared-types';
 import { BriefBackoffCalculator } from './lib/briefBackoffCalculator';
 import { type Alert, smsAlertsService, smsMetricsService } from '@buildos/shared-utils';
 import { resolveScheduledBriefDate } from './workers/brief/briefDateGuard';
 
 export type UserBriefPreference = Database['public']['Tables']['user_brief_preferences']['Row'];
+type AgentOperativeRow = AgentOperativeRowShape;
 
 // Feature flag for engagement backoff (defaults to false for safety)
 const ENGAGEMENT_BACKOFF_ENABLED = process.env.ENGAGEMENT_BACKOFF_ENABLED === 'true';
@@ -192,6 +208,12 @@ export function startScheduler() {
 		}
 	});
 
+	// Saved Operatives: enqueue due Agent Runs through the normal agent_run queue.
+	cron.schedule('*/5 * * * *', async () => {
+		console.log('🧭 Checking scheduled Operatives...');
+		await checkAndScheduleAgentOperatives();
+	});
+
 	// Run queue retention cleanup on a cron schedule
 	if (queueConfig.enableRetentionCleanup) {
 		if (cron.validate(queueConfig.retentionCleanupCron)) {
@@ -212,10 +234,253 @@ export function startScheduler() {
 	setTimeout(() => {
 		checkAndScheduleBriefs();
 	}, 5000);
+	setTimeout(() => {
+		checkAndScheduleAgentOperatives();
+	}, 8000);
 
 	console.log(
-		'⏰ Scheduler started - checking every hour (briefs, SMS alerts) and midnight (SMS scheduling)'
+		'⏰ Scheduler started - checking every hour (briefs, SMS alerts), every 5 minutes (Operatives), and midnight (SMS scheduling)'
 	);
+}
+
+function parseOperativeTimeOfDay(value: string | null): {
+	hours: number;
+	minutes: number;
+	seconds: number;
+} | null {
+	if (!value) return null;
+	const parts = value.split(':');
+	if (parts.length < 2) return null;
+	const hours = Number(parts[0]);
+	const minutes = Number(parts[1]);
+	const seconds = Number(parts[2] ?? '0');
+	if (
+		!Number.isInteger(hours) ||
+		!Number.isInteger(minutes) ||
+		!Number.isInteger(seconds) ||
+		hours < 0 ||
+		hours > 23 ||
+		minutes < 0 ||
+		minutes > 59 ||
+		seconds < 0 ||
+		seconds > 59
+	) {
+		return null;
+	}
+	return { hours, minutes, seconds };
+}
+
+export function calculateNextOperativeRunTime(
+	operative: Pick<
+		AgentOperativeRow,
+		'schedule_frequency' | 'schedule_time_of_day' | 'schedule_day_of_week' | 'schedule_timezone'
+	>,
+	now: Date = new Date()
+): Date | null {
+	const time = parseOperativeTimeOfDay(operative.schedule_time_of_day);
+	if (!time) return null;
+	const frequency = operative.schedule_frequency;
+	if (frequency !== 'daily' && frequency !== 'weekly') return null;
+
+	const timezone = operative.schedule_timezone || 'UTC';
+	const nowInTz = toZonedTime(now, timezone);
+	let targetInTz = setHours(nowInTz, time.hours);
+	targetInTz = setMinutes(targetInTz, time.minutes);
+	targetInTz = setSeconds(targetInTz, time.seconds);
+	targetInTz.setMilliseconds(0);
+
+	if (frequency === 'weekly') {
+		const desiredDay = operative.schedule_day_of_week ?? 1;
+		if (desiredDay < 0 || desiredDay > 6) return null;
+		const currentDay = nowInTz.getDay();
+		let daysUntilTarget = desiredDay - currentDay;
+		if (daysUntilTarget < 0 || (daysUntilTarget === 0 && isBefore(targetInTz, nowInTz))) {
+			daysUntilTarget += 7;
+		}
+		if (daysUntilTarget > 0) targetInTz = addDays(targetInTz, daysUntilTarget);
+		return fromZonedTime(targetInTz, timezone);
+	}
+
+	if (isBefore(targetInTz, nowInTz)) targetInTz = addDays(targetInTz, 1);
+	return fromZonedTime(targetInTz, timezone);
+}
+
+async function deferOperativeSchedule(
+	operativeId: string,
+	message: string,
+	retryAt: Date = addMinutes(new Date(), 15)
+) {
+	await (supabase as any)
+		.from('agent_operatives')
+		.update({
+			next_run_at: retryAt.toISOString(),
+			schedule_locked_at: null,
+			schedule_error: message
+		})
+		.eq('id', operativeId);
+}
+
+async function enqueueScheduledOperativeRun(
+	operative: AgentOperativeRow,
+	scheduledFor: Date,
+	nextRunAt: Date
+): Promise<{ runId?: string; error?: string }> {
+	const budgets =
+		operative.budgets &&
+		typeof operative.budgets === 'object' &&
+		!Array.isArray(operative.budgets)
+			? operative.budgets
+			: ({} as Json);
+	const metadata = {
+		run_id: '',
+		trigger: 'scheduled' as const,
+		context_type: operative.context_type,
+		project_id: operative.project_id,
+		scope_mode: operative.scope_mode,
+		allowed_ops: operative.allowed_ops,
+		review_required: operative.review_required,
+		budgets
+	};
+
+	const { data: run, error: runError } = await supabase
+		.from('agent_runs')
+		.insert({
+			user_id: operative.user_id,
+			trigger: 'scheduled',
+			operative_id: operative.id,
+			label: operative.label,
+			goal: operative.goal,
+			instructions: operative.instructions,
+			expected_output: operative.expected_output,
+			context_type: operative.context_type,
+			project_id: operative.project_id,
+			scope_mode: operative.scope_mode,
+			allowed_ops: operative.allowed_ops,
+			review_required: operative.review_required,
+			status: 'queued',
+			budgets: budgets as Json
+		})
+		.select('id')
+		.single();
+
+	if (runError || !run?.id) return { error: runError?.message ?? 'failed to create run' };
+
+	const jobMetadata = { ...metadata, run_id: run.id };
+	try {
+		validateAgentRunMetadata(jobMetadata);
+		await queue.add(
+			'agent_run',
+			operative.user_id,
+			jobMetadata as Record<string, Json | undefined>,
+			{
+				priority: 8,
+				scheduledFor,
+				dedupKey: `agent-operative:${operative.id}:${scheduledFor.toISOString()}`
+			}
+		);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'failed to queue run';
+		await supabase
+			.from('agent_runs')
+			.update({ status: 'failed', error: `queue_error: ${message}` })
+			.eq('id', run.id);
+		return { error: message };
+	}
+
+	await (supabase as any)
+		.from('agent_operatives')
+		.update({
+			last_run_at: scheduledFor.toISOString(),
+			last_run_id: run.id,
+			next_run_at: nextRunAt.toISOString(),
+			schedule_locked_at: null,
+			schedule_error: null
+		})
+		.eq('id', operative.id);
+
+	return { runId: run.id };
+}
+
+export async function checkAndScheduleAgentOperatives(now: Date = new Date()): Promise<void> {
+	const dueThrough = addMinutes(now, 5);
+	const { data: operatives, error } = await (supabase as any)
+		.from('agent_operatives')
+		.select('*')
+		.eq('schedule_enabled', true)
+		.is('schedule_locked_at', null)
+		.not('next_run_at', 'is', null)
+		.lte('next_run_at', dueThrough.toISOString())
+		.order('next_run_at', { ascending: true })
+		.limit(25);
+
+	if (error) {
+		console.error('🧭 Failed to fetch scheduled Operatives:', error);
+		return;
+	}
+	if (!operatives?.length) {
+		console.log('🧭 No scheduled Operatives due');
+		return;
+	}
+
+	console.log(`🧭 Found ${operatives.length} scheduled Operative(s) due soon`);
+
+	for (const candidate of operatives as AgentOperativeRow[]) {
+		const scheduledFor = candidate.next_run_at ? new Date(candidate.next_run_at) : now;
+		const nextRunAt = calculateNextOperativeRunTime(
+			candidate,
+			new Date(Math.max(scheduledFor.getTime(), now.getTime()) + 1000)
+		);
+		if (!nextRunAt) {
+			await deferOperativeSchedule(candidate.id, 'Could not calculate next run time');
+			continue;
+		}
+
+		const { data: locked, error: lockError } = await (supabase as any)
+			.from('agent_operatives')
+			.update({ schedule_locked_at: now.toISOString(), schedule_error: null })
+			.eq('id', candidate.id)
+			.eq('next_run_at', candidate.next_run_at)
+			.is('schedule_locked_at', null)
+			.select('*')
+			.maybeSingle();
+		if (lockError) {
+			console.error(`🧭 Failed to lock Operative ${candidate.id}:`, lockError);
+			continue;
+		}
+		if (!locked) continue;
+
+		const { count: activeCount, error: activeError } = await supabase
+			.from('agent_runs')
+			.select('id', { count: 'exact', head: true })
+			.eq('user_id', candidate.user_id)
+			.in('status', ['queued', 'running', 'paused', 'needs_input', 'proposal_ready'] as any);
+		if (activeError) {
+			await deferOperativeSchedule(
+				candidate.id,
+				`Failed to check active runs: ${activeError.message}`
+			);
+			continue;
+		}
+		if ((activeCount ?? 0) >= 3) {
+			await deferOperativeSchedule(
+				candidate.id,
+				'Deferred because the user already has 3 active agent runs'
+			);
+			continue;
+		}
+
+		const result = await enqueueScheduledOperativeRun(
+			locked as AgentOperativeRow,
+			scheduledFor,
+			nextRunAt
+		);
+		if (result.error) {
+			await deferOperativeSchedule(candidate.id, result.error);
+			console.error(`🧭 Failed to enqueue Operative ${candidate.id}: ${result.error}`);
+			continue;
+		}
+		console.log(`🧭 Scheduled Operative ${candidate.id} as Agent Run ${result.runId}`);
+	}
 }
 
 async function runQueueRetentionCleanup() {

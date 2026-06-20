@@ -1,6 +1,7 @@
 // apps/web/src/routes/api/chat/sessions/[id]/+server.ts
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
+import { buildAgentTimeline } from '$lib/components/agent/agent-chat-timeline';
 
 type ChatMessageAttachmentRow = {
 	message_id?: string | null;
@@ -206,6 +207,8 @@ export const GET: RequestHandler = async ({
 			sequence_index,
 			arguments,
 			result,
+			result_count,
+			zero_result,
 			execution_time_ms,
 			tokens_consumed,
 			success,
@@ -234,6 +237,20 @@ export const GET: RequestHandler = async ({
 
 	if (turnRunsError) {
 		return ApiResponse.databaseError(turnRunsError);
+	}
+
+	const { data: turnEvents, error: turnEventsError } = await supabase
+		.from('chat_turn_events')
+		.select(
+			'id, session_id, user_id, turn_run_id, stream_run_id, event_type, phase, payload, sequence_index, created_at'
+		)
+		.eq('session_id', sessionId)
+		.eq('user_id', user.id)
+		.order('created_at', { ascending: true })
+		.limit(1000);
+
+	if (turnEventsError) {
+		return ApiResponse.databaseError(turnEventsError);
 	}
 
 	let voiceNotes: any[] = [];
@@ -281,12 +298,20 @@ export const GET: RequestHandler = async ({
 
 	// Check if there are more messages than we fetched (truncation indicator)
 	const truncated = (messages?.length || 0) >= MESSAGE_LIMIT;
+	const timelineItems = buildAgentTimeline({
+		sessionId,
+		messages: messagesWithAttachments,
+		toolExecutions: toolExecutions || [],
+		turnRuns: turnRuns || [],
+		turnEvents: turnEvents || []
+	});
 
 	return ApiResponse.success({
 		session,
 		messages: messagesWithAttachments,
 		toolExecutions: toolExecutions || [],
 		turnRuns: turnRuns || [],
+		timelineItems,
 		voiceNoteGroups,
 		voiceNotes,
 		truncated

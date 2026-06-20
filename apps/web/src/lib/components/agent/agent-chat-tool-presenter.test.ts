@@ -165,6 +165,85 @@ describe('agent-chat-tool-presenter — formatToolMessage', () => {
 		).toBe('Searched 9takes: "pricing page"');
 	});
 
+	it('formats document outline and section reads with document names when available', () => {
+		const h = makeHarness();
+		const presenter = createToolPresenter(h.ctx);
+		presenter.cacheEntityName('document', 'doc-1', 'Basil Grow Log');
+
+		expect(
+			presenter.formatToolMessage('get_document_outline', { document_id: 'doc-1' }, 'pending')
+		).toBe('Reading document outline: "Basil Grow Log"');
+		expect(
+			presenter.formatToolMessage(
+				'read_document_section',
+				{ document_id: 'doc-1', anchor: 'daily-readings' },
+				'completed'
+			)
+		).toBe('Read document section: "Basil Grow Log · section: daily-readings"');
+	});
+
+	it('formats document section reads with section context when the document name is unknown', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+
+		expect(
+			presenter.formatToolMessage(
+				'read_document_section',
+				{ document_id: 'doc-1', anchor: 'daily-readings' },
+				'pending'
+			)
+		).toBe('Reading document section: "section: daily-readings"');
+	});
+
+	it('formats discovery, connector, and orchestration tools with readable targets', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+
+		expect(
+			presenter.formatToolMessage(
+				'domain_search',
+				{ query: 'linkedin company page growth' },
+				'pending'
+			)
+		).toBe('Searching domains: "linkedin company page growth"');
+		expect(
+			presenter.formatToolMessage(
+				'outcome_card_load',
+				{ outcomeCard: 'ui_ux_screen_review' },
+				'completed'
+			)
+		).toBe('Loaded outcome card: "ui_ux_screen_review"');
+		expect(
+			presenter.formatToolMessage(
+				'skill_reference_load',
+				{ skill: 'document_workspace', reference: 'append_rules' },
+				'completed'
+			)
+		).toBe('Loaded skill reference: "document_workspace · append_rules"');
+		expect(presenter.formatToolMessage('list_corsair_mcp_tools', {}, 'completed')).toBe(
+			'Listed Corsair tools'
+		);
+		expect(
+			presenter.formatToolMessage(
+				'call_corsair_mcp_tool',
+				{ name: 'search_contacts' },
+				'pending'
+			)
+		).toBe('Calling Corsair tool: "search_contacts"');
+		expect(
+			presenter.formatToolMessage(
+				'delegate_task',
+				{ label: 'Audit stale tasks', scope_mode: 'read_only' },
+				'completed'
+			)
+		).toBe('Delegated background agent: "Audit stale tasks · read_only"');
+		expect(
+			presenter.formatToolMessage(
+				'commit_change_set',
+				{ run_id: '12345678-1234-4abc-8def-123456789abc' },
+				'completed'
+			)
+		).toBe('Committed agent change set: "run 12345678"');
+	});
+
 	it('formats tool discovery and schema calls with their requested target', () => {
 		const presenter = createToolPresenter(makeHarness().ctx);
 		expect(
@@ -332,6 +411,24 @@ describe('agent-chat-tool-presenter — indexEntitiesFromPayload', () => {
 			}
 		});
 		expect(presenter.resolveEntityName('task', 't-nested')).toBe('Nested task');
+	});
+
+	it('caches top-level document titles from outline and section payloads', () => {
+		const presenter = createToolPresenter(makeHarness().ctx);
+		presenter.indexEntitiesFromToolResult({
+			result: {
+				document_id: 'doc-outline',
+				title: 'Basil Grow Log'
+			}
+		});
+
+		expect(
+			presenter.formatToolMessage(
+				'get_document_outline',
+				{ document_id: 'doc-outline' },
+				'completed'
+			)
+		).toBe('Read document outline: "Basil Grow Log"');
 	});
 
 	it('indexes results arrays using entity_type / entity_id / entity_name', () => {

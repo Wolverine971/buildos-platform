@@ -77,6 +77,23 @@ describe('GET /api/chat/sessions/[id]', () => {
 		const attachmentsQuery = createQuery({ data: [], error: null });
 		const toolExecutionsQuery = createQuery({ data: toolExecutions, error: null });
 		const turnRunsQuery = createQuery({ data: turnRuns, error: null });
+		const turnEventsQuery = createQuery({
+			data: [
+				{
+					id: 'event-1',
+					session_id: 'session-1',
+					user_id: 'user-1',
+					turn_run_id: 'turn-run-1',
+					stream_run_id: 'stream-1',
+					event_type: 'tool_started',
+					phase: 'tool',
+					payload: { message: 'Creating task' },
+					sequence_index: 1,
+					created_at: '2026-03-28T10:00:20.000Z'
+				}
+			],
+			error: null
+		});
 		const supabase = {
 			from: vi.fn((table: string) => {
 				if (table === 'chat_sessions') return sessionQuery;
@@ -84,6 +101,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 				if (table === 'chat_message_attachments') return attachmentsQuery;
 				if (table === 'chat_tool_executions') return toolExecutionsQuery;
 				if (table === 'chat_turn_runs') return turnRunsQuery;
+				if (table === 'chat_turn_events') return turnEventsQuery;
 				throw new Error(`Unexpected table ${table}`);
 			})
 		};
@@ -102,12 +120,49 @@ describe('GET /api/chat/sessions/[id]', () => {
 		expect(payload.data.messages).toEqual(messages);
 		expect(payload.data.toolExecutions).toEqual(toolExecutions);
 		expect(payload.data.turnRuns).toEqual(turnRuns);
+		expect(payload.data.timelineItems).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: 'turn_run:turn-run-1',
+					kind: 'status',
+					status: 'completed'
+				}),
+				expect.objectContaining({
+					id: 'turn_event:event-1',
+					kind: 'step',
+					title: 'Creating task'
+				}),
+				expect.objectContaining({
+					id: 'tool_execution:exec-1',
+					kind: 'tool',
+					tool: expect.objectContaining({ name: 'create_onto_task' })
+				}),
+				expect.objectContaining({
+					id: 'entity_change:exec-1:task:task-1',
+					kind: 'change',
+					entityRefs: [
+						expect.objectContaining({
+							kind: 'task',
+							id: 'task-1',
+							operation: 'created'
+						})
+					]
+				}),
+				expect.objectContaining({
+					id: 'message:assistant-1',
+					kind: 'message'
+				})
+			])
+		);
 		expect(supabase.from).toHaveBeenCalledWith('chat_tool_executions');
 		expect(supabase.from).toHaveBeenCalledWith('chat_message_attachments');
 		expect(supabase.from).toHaveBeenCalledWith('chat_turn_runs');
+		expect(supabase.from).toHaveBeenCalledWith('chat_turn_events');
 		expect(toolExecutionsQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
 		expect(turnRunsQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
 		expect(turnRunsQuery.eq).toHaveBeenCalledWith('user_id', 'user-1');
+		expect(turnEventsQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
+		expect(turnEventsQuery.eq).toHaveBeenCalledWith('user_id', 'user-1');
 	});
 
 	it('hydrates persisted image attachments when restoring a chat session', async () => {
@@ -168,6 +223,7 @@ describe('GET /api/chat/sessions/[id]', () => {
 				}
 				if (table === 'chat_tool_executions') return createQuery({ data: [], error: null });
 				if (table === 'chat_turn_runs') return createQuery({ data: [], error: null });
+				if (table === 'chat_turn_events') return createQuery({ data: [], error: null });
 				throw new Error(`Unexpected table ${table}`);
 			})
 		};

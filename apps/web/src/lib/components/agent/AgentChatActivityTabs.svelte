@@ -1,0 +1,311 @@
+<!-- apps/web/src/lib/components/agent/AgentChatActivityTabs.svelte -->
+<script lang="ts">
+	import {
+		CheckCircle2,
+		CircleDashed,
+		Clock3,
+		ExternalLink,
+		ListChecks,
+		TerminalSquare,
+		TriangleAlert,
+		Wrench
+	} from 'lucide-svelte';
+	import type {
+		AgentChatPanelTab,
+		AgentTimelineEntityRef,
+		AgentTimelineItem
+	} from './agent-chat.types';
+
+	interface Props {
+		activeTab: AgentChatPanelTab;
+		timelineItems: AgentTimelineItem[];
+		onTabChange: (tab: AgentChatPanelTab) => void;
+	}
+
+	let { activeTab, timelineItems, onTabChange }: Props = $props();
+
+	const tabs: Array<{ id: AgentChatPanelTab; label: string }> = [
+		{ id: 'chat', label: 'Chat' },
+		{ id: 'steps', label: 'Steps' },
+		{ id: 'tools', label: 'Tools' },
+		{ id: 'changes', label: 'Changes' }
+	];
+
+	const stepItems = $derived(
+		timelineItems.filter((item) => item.kind === 'step' || item.kind === 'status')
+	);
+	const toolItems = $derived(timelineItems.filter((item) => item.kind === 'tool'));
+	const changeItems = $derived(timelineItems.filter((item) => item.kind === 'change'));
+	const visibleItems = $derived.by(() => {
+		if (activeTab === 'steps') return stepItems;
+		if (activeTab === 'tools') return toolItems;
+		if (activeTab === 'changes') return changeItems;
+		return [];
+	});
+
+	function countFor(tab: AgentChatPanelTab): number | null {
+		if (tab === 'chat') return null;
+		if (tab === 'steps') return stepItems.length;
+		if (tab === 'tools') return toolItems.length;
+		return changeItems.length;
+	}
+
+	function formatTime(value: string): string {
+		const date = new Date(value);
+		if (Number.isNaN(date.getTime())) return 'Unknown time';
+		return new Intl.DateTimeFormat(undefined, {
+			month: 'short',
+			day: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit'
+		}).format(date);
+	}
+
+	function statusMeta(status: AgentTimelineItem['status']) {
+		switch (status) {
+			case 'completed':
+				return { icon: CheckCircle2, className: 'text-success', label: 'Completed' };
+			case 'failed':
+				return { icon: TriangleAlert, className: 'text-destructive', label: 'Failed' };
+			case 'running':
+			case 'pending':
+				return { icon: CircleDashed, className: 'text-warning', label: 'Running' };
+			case 'needs_input':
+			case 'partial':
+				return { icon: Clock3, className: 'text-warning', label: 'Needs input' };
+			case 'cancelled':
+				return {
+					icon: TriangleAlert,
+					className: 'text-muted-foreground',
+					label: 'Cancelled'
+				};
+			default:
+				return { icon: CircleDashed, className: 'text-muted-foreground', label: status };
+		}
+	}
+
+	function panelTitle(tab: AgentChatPanelTab): string {
+		if (tab === 'steps') return 'Agent steps';
+		if (tab === 'tools') return 'Tool calls';
+		if (tab === 'changes') return 'Changes';
+		return 'Chat';
+	}
+
+	function emptyText(tab: AgentChatPanelTab): string {
+		if (tab === 'steps') return 'No agent steps have been recorded yet.';
+		if (tab === 'tools') return 'No tool calls have been recorded yet.';
+		if (tab === 'changes') return 'No created or updated entities have been recorded yet.';
+		return '';
+	}
+
+	function entityLabel(ref: AgentTimelineEntityRef): string {
+		const title = ref.title || ref.id;
+		return `${ref.kind}: ${title}`;
+	}
+</script>
+
+<div class="border-b border-border bg-card px-3 py-2 tx tx-frame tx-weak sm:px-4">
+	<div class="flex gap-1 overflow-x-auto" role="tablist" aria-label="Agent chat views">
+		{#each tabs as tab (tab.id)}
+			{@const count = countFor(tab.id)}
+			<button
+				type="button"
+				role="tab"
+				aria-selected={activeTab === tab.id}
+				class={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition pressable focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+					activeTab === tab.id
+						? 'border-accent bg-accent text-accent-foreground shadow-ink'
+						: 'border-border bg-background/70 text-muted-foreground hover:border-accent hover:text-foreground'
+				}`}
+				onclick={() => onTabChange(tab.id)}
+			>
+				<span>{tab.label}</span>
+				{#if count !== null}
+					<span
+						class={`rounded-full px-1.5 py-0.5 text-[0.65rem] ${
+							activeTab === tab.id
+								? 'bg-accent-foreground/15 text-accent-foreground'
+								: 'bg-muted text-muted-foreground'
+						}`}
+					>
+						{count}
+					</span>
+				{/if}
+			</button>
+		{/each}
+	</div>
+</div>
+
+{#if activeTab !== 'chat'}
+	<section class="flex min-h-0 flex-1 flex-col bg-muted/40" aria-label={panelTitle(activeTab)}>
+		<div
+			class="flex items-center justify-between border-b border-border bg-card/70 px-4 py-2 text-xs"
+		>
+			<div class="flex items-center gap-2 font-semibold text-foreground">
+				{#if activeTab === 'steps'}
+					<ListChecks class="h-4 w-4 text-accent" />
+				{:else if activeTab === 'tools'}
+					<Wrench class="h-4 w-4 text-accent" />
+				{:else}
+					<TerminalSquare class="h-4 w-4 text-accent" />
+				{/if}
+				<span>{panelTitle(activeTab)}</span>
+			</div>
+			<span
+				class="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+			>
+				{visibleItems.length} entries
+			</span>
+		</div>
+
+		<div class="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4">
+			{#if visibleItems.length === 0}
+				<div
+					class="flex min-h-48 items-center justify-center rounded-lg border border-dashed border-border bg-card/60 px-4 text-center text-sm text-muted-foreground"
+				>
+					{emptyText(activeTab)}
+				</div>
+			{:else}
+				<div class="space-y-2">
+					{#each visibleItems as item (item.id)}
+						{@const meta = statusMeta(item.status)}
+						{@const StatusIcon = meta.icon}
+						<article
+							class="rounded-lg border border-border bg-card p-3 shadow-ink tx tx-thread tx-weak"
+						>
+							<div class="flex items-start gap-3">
+								<span
+									class={`mt-0.5 shrink-0 ${meta.className}`}
+									title={meta.label}
+								>
+									<StatusIcon class="h-4 w-4" />
+								</span>
+								<div class="min-w-0 flex-1 space-y-2">
+									<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+										<h3 class="min-w-0 text-sm font-semibold text-foreground">
+											{item.title}
+										</h3>
+										<span
+											class="text-[0.65rem] font-medium text-muted-foreground"
+										>
+											{formatTime(item.timestamp)}
+										</span>
+									</div>
+
+									{#if item.summary}
+										<p class="text-sm leading-relaxed text-muted-foreground">
+											{item.summary}
+										</p>
+									{/if}
+
+									{#if item.tool}
+										<div class="flex flex-wrap gap-1.5 text-[0.65rem]">
+											<span
+												class="rounded-md border border-border bg-muted px-1.5 py-0.5 font-semibold text-muted-foreground"
+											>
+												{item.tool.name}
+											</span>
+											{#if item.tool.gatewayOp}
+												<span
+													class="rounded-md border border-border bg-muted px-1.5 py-0.5 font-semibold text-muted-foreground"
+												>
+													{item.tool.gatewayOp}
+												</span>
+											{/if}
+											{#if typeof item.tool.durationMs === 'number'}
+												<span
+													class="rounded-md border border-border bg-muted px-1.5 py-0.5 font-semibold text-muted-foreground"
+												>
+													{item.tool.durationMs}ms
+												</span>
+											{/if}
+										</div>
+									{/if}
+
+									{#if item.tool?.argsPreview || item.tool?.resultPreview || item.detailPreview}
+										<details
+											class="group rounded-lg border border-border bg-background/60"
+										>
+											<summary
+												class="cursor-pointer px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+											>
+												Details
+											</summary>
+											<div class="space-y-2 border-t border-border p-2.5">
+												{#if item.tool?.argsPreview}
+													<div>
+														<div
+															class="mb-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+														>
+															Args
+														</div>
+														<pre
+															class="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-2 text-xs text-foreground">{item
+																.tool.argsPreview}</pre>
+													</div>
+												{/if}
+												{#if item.tool?.resultPreview || item.detailPreview}
+													<div>
+														<div
+															class="mb-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
+														>
+															Result
+														</div>
+														<pre
+															class="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-2 text-xs text-foreground">{item
+																.tool?.resultPreview ??
+																item.detailPreview}</pre>
+													</div>
+												{/if}
+											</div>
+										</details>
+									{/if}
+
+									{#if item.entityRefs.length > 0 || item.projectRef}
+										<div class="flex flex-wrap gap-1.5">
+											{#if item.projectRef}
+												<a
+													href={item.projectRef.url ??
+														`/projects/${item.projectRef.id}`}
+													target="_blank"
+													rel="noopener noreferrer"
+													class="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-1 text-xs font-semibold text-foreground hover:border-accent hover:text-accent"
+												>
+													<span class="truncate">Project</span>
+													<ExternalLink class="h-3 w-3 shrink-0" />
+												</a>
+											{/if}
+											{#each item.entityRefs as ref (`${ref.kind}:${ref.id}:${ref.operation ?? ''}`)}
+												{#if ref.url}
+													<a
+														href={ref.url}
+														target="_blank"
+														rel="noopener noreferrer"
+														class="inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-muted px-2 py-1 text-xs font-semibold text-foreground hover:border-accent hover:text-accent"
+													>
+														<span class="truncate"
+															>{entityLabel(ref)}</span
+														>
+														<ExternalLink class="h-3 w-3 shrink-0" />
+													</a>
+												{:else}
+													<span
+														class="inline-flex max-w-full items-center rounded-md border border-border bg-muted px-2 py-1 text-xs font-semibold text-muted-foreground"
+													>
+														<span class="truncate"
+															>{entityLabel(ref)}</span
+														>
+													</span>
+												{/if}
+											{/each}
+										</div>
+									{/if}
+								</div>
+							</div>
+						</article>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	</section>
+{/if}

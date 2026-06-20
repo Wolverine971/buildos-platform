@@ -213,6 +213,7 @@ const CREATE_TOOL_KINDS: Record<string, OntologyEntityKind> = {
 
 const TOOL_ACTION_PAST_TENSE: Record<string, string> = {
 	Querying: 'Queried',
+	Reading: 'Read',
 	Resolving: 'Resolved',
 	Running: 'Ran',
 	Setting: 'Set'
@@ -330,6 +331,22 @@ function formatListPreview(values: string[], limit = 2): string {
 	if (cleaned.length === 0) return '';
 	if (cleaned.length <= limit) return cleaned.join(', ');
 	return `${cleaned.slice(0, limit).join(', ')} (+${cleaned.length - limit} more)`;
+}
+
+function truncateDisplayLabel(value: unknown, maxLength = 96): string | undefined {
+	const label = normalizeEntityLabel(value);
+	if (!label) return undefined;
+	if (label.length <= maxLength) return label;
+	return `${label.slice(0, Math.max(0, maxLength - 3))}...`;
+}
+
+function shortIdLabel(value: unknown): string | undefined {
+	const label = normalizeEntityLabel(value);
+	if (!label) return undefined;
+	if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(label)) {
+		return label.slice(0, 8);
+	}
+	return label.length > 18 ? `${label.slice(0, 18)}...` : label;
 }
 
 function normalizeCalendarTimeZone(value: unknown): string | undefined {
@@ -680,6 +697,14 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			cacheEntityName('project', payload.project_id, payload.project_name);
 		}
 
+		if (payload.document_id && (payload.title || payload.document_title)) {
+			cacheEntityName(
+				'document',
+				payload.document_id,
+				payload.title ?? payload.document_title
+			);
+		}
+
 		for (const [key, kind] of Object.entries(ENTITY_SINGULAR_KEYS)) {
 			const entity = payload[key];
 			if (entity && typeof entity === 'object') {
@@ -771,6 +796,67 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		return parts.length > 0 ? parts.join(' · ') : undefined;
 	}
 
+	function searchWithScopeTarget(
+		args: Record<string, any> | undefined,
+		options: { capabilityKey?: string } = {}
+	): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		const query = firstDisplayLabel(args.query, args.q, args.search);
+		const domain = firstDisplayLabel(args.domain, args.skill);
+		const capability = firstDisplayLabel(
+			args[options.capabilityKey ?? 'buildosCapability'],
+			args.buildos_capability,
+			args.capability,
+			args.kind,
+			args.entity,
+			args.group
+		);
+		const scope = joinDisplayParts(domain, capability);
+		if (scope && query) return `${scope}: ${query}`;
+		return query || scope;
+	}
+
+	function loadTarget(
+		args: Record<string, any> | undefined,
+		...keys: string[]
+	): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		for (const key of keys) {
+			const label = firstDisplayLabel(args[key]);
+			if (label) return label;
+		}
+		return undefined;
+	}
+
+	function skillReferenceTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		const skill = firstDisplayLabel(args.skill, args.id, args.path);
+		const reference = firstDisplayLabel(args.reference, args.reference_id, args.module);
+		if (skill && reference) return `${skill} · ${reference}`;
+		return reference || skill;
+	}
+
+	function corsairToolTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		return firstDisplayLabel(args.name, args.reason);
+	}
+
+	function delegatedTaskTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		const label = truncateDisplayLabel(args.label) ?? truncateDisplayLabel(args.goal);
+		const mode = firstDisplayLabel(args.scope_mode, args.context_type);
+		if (label && mode) return `${label} · ${mode}`;
+		return label || mode;
+	}
+
+	function changeSetTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		const run = shortIdLabel(args.run_id);
+		const defaultDecision = firstDisplayLabel(args.default_decision);
+		if (run && defaultDecision) return `run ${run} · ${defaultDecision}`;
+		return run ? `run ${run}` : defaultDecision;
+	}
+
 	function libriCapabilityTarget(args: Record<string, any> | undefined): string | undefined {
 		if (!args || typeof args !== 'object') return undefined;
 		const query = firstDisplayLabel(args.query, args.capability, args.name);
@@ -794,6 +880,32 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			args.project_id ?? args.projectId,
 			args.project_name ?? args.projectName ?? args.project?.name
 		);
+	}
+
+	function resolveDocumentNameFromArgs(
+		args: Record<string, any> | undefined
+	): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		return resolveEntityName(
+			'document',
+			args.document_id ?? args.documentId,
+			args.document_title ?? args.documentTitle ?? args.title ?? args.document?.title
+		);
+	}
+
+	function documentSectionTarget(args: Record<string, any> | undefined): string | undefined {
+		if (!args || typeof args !== 'object') return undefined;
+		const documentName = resolveDocumentNameFromArgs(args);
+		const section = firstDisplayLabel(
+			args.heading,
+			args.section_title,
+			args.sectionTitle,
+			args.anchor
+		);
+		if (documentName && section) return `${documentName} · section: ${section}`;
+		if (documentName) return documentName;
+		if (section) return `section: ${section}`;
+		return undefined;
 	}
 
 	function resolveProjectTarget(args: Record<string, any> | undefined): string | undefined {
@@ -988,6 +1100,14 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			action: 'Loading document',
 			target: resolveEntityName('document', args?.document_id)
 		}),
+		get_document_outline: (args) => ({
+			action: 'Reading document outline',
+			target: resolveDocumentNameFromArgs(args)
+		}),
+		read_document_section: (args) => ({
+			action: 'Reading document section',
+			target: documentSectionTarget(args)
+		}),
 		get_onto_milestone_details: (args) => ({
 			action: 'Loading milestone',
 			target: resolveEntityName('milestone', args?.milestone_id)
@@ -1133,6 +1253,46 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 			action: 'Linking contact',
 			target: firstDisplayLabel(args?.link_type, args?.entity_type)
 		}),
+		domain_search: (args) => ({
+			action: 'Searching domains',
+			target: searchWithScopeTarget(args)
+		}),
+		domain_load: (args) => ({
+			action: 'Loading domain',
+			target: loadTarget(args, 'domain', 'domain_id', 'id')
+		}),
+		outcome_card_search: (args) => ({
+			action: 'Searching outcome cards',
+			target: searchWithScopeTarget(args)
+		}),
+		outcome_card_load: (args) => ({
+			action: 'Loading outcome card',
+			target: loadTarget(args, 'outcomeCard', 'outcome_card', 'id')
+		}),
+		work_capability_search: (args) => ({
+			action: 'Searching outcome cards',
+			target: searchWithScopeTarget(args, { capabilityKey: 'workCapability' })
+		}),
+		work_capability_load: (args) => ({
+			action: 'Loading outcome card',
+			target: loadTarget(args, 'workCapability', 'work_capability', 'outcomeCard', 'id')
+		}),
+		skill_search: (args) => ({
+			action: 'Searching skills',
+			target: searchWithScopeTarget(args)
+		}),
+		resource_search: (args) => ({
+			action: 'Searching resources',
+			target: searchWithScopeTarget(args)
+		}),
+		resource_load: (args) => ({
+			action: 'Loading resource',
+			target: loadTarget(args, 'resource', 'resource_id', 'id')
+		}),
+		skill_reference_load: (args) => ({
+			action: 'Loading skill reference',
+			target: skillReferenceTarget(args)
+		}),
 		tool_search: (args) => ({
 			action: 'Searching tools',
 			target: firstDisplayLabel(args?.query, args?.capability, args?.entity, args?.group)
@@ -1171,6 +1331,13 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 				libriCapabilityTarget(args) ??
 				firstDisplayLabel(args?.query, args?.category, args?.action)
 		}),
+		list_corsair_mcp_tools: () => ({
+			action: 'Listing Corsair tools'
+		}),
+		call_corsair_mcp_tool: (args) => ({
+			action: 'Calling Corsair tool',
+			target: corsairToolTarget(args)
+		}),
 		tag_onto_entity: (args) => ({
 			action: 'Tagging entity',
 			target: buildEntityTarget(
@@ -1184,6 +1351,14 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		}),
 		get_buildos_usage_guide: () => ({
 			action: 'Loading BuildOS usage guide'
+		}),
+		delegate_task: (args) => ({
+			action: 'Delegating background agent',
+			target: delegatedTaskTarget(args)
+		}),
+		commit_change_set: (args) => ({
+			action: 'Committing agent change set',
+			target: changeSetTarget(args)
 		}),
 		fetch_project_data: (args) => ({
 			action: 'Fetching project',

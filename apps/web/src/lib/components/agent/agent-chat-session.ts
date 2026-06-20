@@ -13,12 +13,14 @@ import type { FastAgentPrewarmRequest } from '$lib/services/agentic-chat-v2';
 import type { FastChatContextCache } from '$lib/services/agentic-chat-v2/context-cache';
 import type {
 	ActivityEntry,
+	AgentTimelineItem,
 	CreatedEntityRef,
 	ThinkingBlockMessage,
 	UIMessage
 } from './agent-chat.types';
 import { extractCreatedEntityFromResult } from './agent-chat-tool-presenter';
 import { formatElapsedDuration } from './agent-chat-formatters';
+import { timelineItemsFromMessages } from './agent-chat-timeline';
 
 export type PreparedPromptClient = {
 	id: string;
@@ -65,6 +67,7 @@ type LoadedChatSessionPayload = {
 	messages?: LoadedChatMessage[];
 	toolExecutions?: LoadedChatToolExecution[];
 	turnRuns?: LoadedChatTurnRun[];
+	timelineItems?: AgentTimelineItem[];
 	truncated?: boolean;
 	voiceNotes?: VoiceNote[];
 };
@@ -110,6 +113,7 @@ export interface AgentChatSessionSnapshot {
 	selectedContextLabel: string;
 	projectFocus: ProjectFocus | null;
 	messages: UIMessage[];
+	timelineItems: AgentTimelineItem[];
 	voiceNotesByGroupId: Record<string, VoiceNote[]>;
 	turnRuns: LoadedChatTurnRun[];
 	activeTurnRun: LoadedChatTurnRun | null;
@@ -310,6 +314,20 @@ function compactLabel(value: unknown, maxLength = 90): string | null {
 	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
 }
 
+function shortIdLabel(value: unknown): string | null {
+	const raw = stringValue(value);
+	if (!raw) return null;
+	const normalized = raw.replace(/\s+/g, ' ').trim();
+	if (
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+			normalized
+		)
+	) {
+		return normalized.slice(0, 8);
+	}
+	return normalized.length > 18 ? `${normalized.slice(0, 18)}...` : normalized;
+}
+
 function joinCompactLabels(...values: unknown[]): string | null {
 	const parts = values
 		.map((value) => compactLabel(value))
@@ -335,6 +353,93 @@ function webVisitTarget(record: Record<string, unknown> | null): string | null {
 	return url ?? details;
 }
 
+function searchWithScopeTarget(record: Record<string, unknown> | null): string | null {
+	if (!record) return null;
+	const query =
+		compactLabel(record.query) ?? compactLabel(record.q) ?? compactLabel(record.search);
+	const domain = compactLabel(record.domain) ?? compactLabel(record.skill);
+	const capability =
+		compactLabel(record.buildosCapability) ??
+		compactLabel(record.buildos_capability) ??
+		compactLabel(record.workCapability) ??
+		compactLabel(record.work_capability) ??
+		compactLabel(record.capability) ??
+		compactLabel(record.kind) ??
+		compactLabel(record.entity) ??
+		compactLabel(record.group);
+	const scope = joinCompactLabels(domain, capability);
+	if (scope && query) return `${scope}: ${query}`;
+	return query ?? scope;
+}
+
+function loadTarget(record: Record<string, unknown> | null, ...keys: string[]): string | null {
+	if (!record) return null;
+	for (const key of keys) {
+		const label = compactLabel(record[key]);
+		if (label) return label;
+	}
+	return null;
+}
+
+function skillReferenceTarget(record: Record<string, unknown> | null): string | null {
+	if (!record) return null;
+	const skill = loadTarget(record, 'skill', 'id', 'path');
+	const reference = loadTarget(record, 'reference', 'reference_id', 'module');
+	if (skill && reference) return `${skill} · ${reference}`;
+	return reference ?? skill;
+}
+
+function corsairToolTarget(record: Record<string, unknown> | null): string | null {
+	if (!record) return null;
+	return compactLabel(record.name) ?? compactLabel(record.reason);
+}
+
+function delegatedTaskTarget(record: Record<string, unknown> | null): string | null {
+	if (!record) return null;
+	const label = compactLabel(record.label) ?? compactLabel(record.goal);
+	const mode = compactLabel(record.scope_mode) ?? compactLabel(record.context_type);
+	if (label && mode) return `${label} · ${mode}`;
+	return label ?? mode;
+}
+
+function changeSetTarget(record: Record<string, unknown> | null): string | null {
+	if (!record) return null;
+	const runId = shortIdLabel(record.run_id);
+	const defaultDecision = compactLabel(record.default_decision);
+	if (runId && defaultDecision) return `run ${runId} · ${defaultDecision}`;
+	return runId ? `run ${runId}` : defaultDecision;
+}
+
+function documentTitleTarget(...records: Array<Record<string, unknown> | null>): string | null {
+	for (const record of records) {
+		if (!record) continue;
+		const title =
+			compactLabel(record.document_title) ??
+			compactLabel(record.documentTitle) ??
+			compactLabel(record.title) ??
+			compactLabel((record.document as Record<string, unknown> | undefined)?.title);
+		if (title) return title;
+	}
+	return null;
+}
+
+function documentSectionTarget(...records: Array<Record<string, unknown> | null>): string | null {
+	const documentTitle = documentTitleTarget(...records);
+	let section: string | null = null;
+	for (const record of records) {
+		if (!record) continue;
+		section =
+			compactLabel(record.heading) ??
+			compactLabel(record.section_title) ??
+			compactLabel(record.sectionTitle) ??
+			compactLabel(record.anchor);
+		if (section) break;
+	}
+
+	if (documentTitle && section) return `${documentTitle} · section: ${section}`;
+	return documentTitle ?? (section ? `section: ${section}` : null);
+}
+
 const TOOL_TARGET_KEYS = [
 	'title',
 	'name',
@@ -350,6 +455,14 @@ const TOOL_TARGET_KEYS = [
 	'event_title',
 	'entity_name',
 	'label',
+	'skill',
+	'reference',
+	'resource',
+	'domain',
+	'outcomeCard',
+	'outcome_card',
+	'workCapability',
+	'work_capability',
 	'display_name',
 	'query',
 	'search',
@@ -396,7 +509,67 @@ function extractTargetFromRecord(record: Record<string, unknown> | null, depth =
 
 function extractToolTarget(source: RestoredToolActivitySource): string | null {
 	const argumentRecord = parseRecord(source.arguments) ?? parseRecord(source.argumentPreview);
+	const resultRecord = parseRecord(source.result) ?? parseRecord(source.resultPreview);
 	const toolName = source.toolName.toLowerCase();
+	if (toolName === 'domain_search' || toolName === 'skill_search') {
+		const target = searchWithScopeTarget(argumentRecord);
+		if (target) return target;
+	}
+	if (toolName === 'domain_load') {
+		const target = loadTarget(argumentRecord, 'domain', 'domain_id', 'id');
+		if (target) return target;
+	}
+	if (
+		toolName === 'outcome_card_search' ||
+		toolName === 'work_capability_search' ||
+		toolName === 'resource_search'
+	) {
+		const target = searchWithScopeTarget(argumentRecord);
+		if (target) return target;
+	}
+	if (toolName === 'outcome_card_load' || toolName === 'work_capability_load') {
+		const target = loadTarget(
+			argumentRecord,
+			'outcomeCard',
+			'outcome_card',
+			'workCapability',
+			'work_capability',
+			'id'
+		);
+		if (target) return target;
+	}
+	if (toolName === 'resource_load') {
+		const target = loadTarget(argumentRecord, 'resource', 'resource_id', 'id');
+		if (target) return target;
+	}
+	if (toolName === 'skill_load') {
+		const target = loadTarget(argumentRecord, 'skill', 'id', 'path');
+		if (target) return target;
+	}
+	if (toolName === 'skill_reference_load') {
+		const target = skillReferenceTarget(argumentRecord);
+		if (target) return target;
+	}
+	if (toolName === 'call_corsair_mcp_tool') {
+		const target = corsairToolTarget(argumentRecord);
+		if (target) return target;
+	}
+	if (toolName === 'delegate_task') {
+		const target = delegatedTaskTarget(argumentRecord);
+		if (target) return target;
+	}
+	if (toolName === 'commit_change_set') {
+		const target = changeSetTarget(argumentRecord);
+		if (target) return target;
+	}
+	if (toolName === 'get_document_outline') {
+		const target = documentTitleTarget(argumentRecord, resultRecord);
+		if (target) return target;
+	}
+	if (toolName === 'read_document_section') {
+		const target = documentSectionTarget(argumentRecord, resultRecord);
+		if (target) return target;
+	}
 	if (toolName === 'web_visit') {
 		const target = webVisitTarget(argumentRecord);
 		if (target) return target;
@@ -418,11 +591,7 @@ function extractToolTarget(source: RestoredToolActivitySource): string | null {
 		if (target) return target;
 	}
 
-	return (
-		extractTargetFromRecord(argumentRecord) ??
-		extractTargetFromRecord(parseRecord(source.result)) ??
-		extractTargetFromRecord(parseRecord(source.resultPreview))
-	);
+	return extractTargetFromRecord(argumentRecord) ?? extractTargetFromRecord(resultRecord);
 }
 
 function entityFromToolName(toolName: string, gatewayOp?: string | null): string {
@@ -454,6 +623,29 @@ function restoredToolAction(source: RestoredToolActivitySource): {
 	const entity = entityFromToolName(toolName, gatewayOp);
 
 	if (toolName === 'skill_load') return { completed: 'Loaded skill', failed: 'load skill' };
+	if (toolName === 'skill_search')
+		return { completed: 'Searched skills', failed: 'search skills' };
+	if (toolName === 'skill_reference_load') {
+		return { completed: 'Loaded skill reference', failed: 'load skill reference' };
+	}
+	if (toolName === 'domain_search') {
+		return { completed: 'Searched domains', failed: 'search domains' };
+	}
+	if (toolName === 'domain_load') {
+		return { completed: 'Loaded domain', failed: 'load domain' };
+	}
+	if (toolName === 'outcome_card_search' || toolName === 'work_capability_search') {
+		return { completed: 'Searched outcome cards', failed: 'search outcome cards' };
+	}
+	if (toolName === 'outcome_card_load' || toolName === 'work_capability_load') {
+		return { completed: 'Loaded outcome card', failed: 'load outcome card' };
+	}
+	if (toolName === 'resource_search') {
+		return { completed: 'Searched resources', failed: 'search resources' };
+	}
+	if (toolName === 'resource_load') {
+		return { completed: 'Loaded resource', failed: 'load resource' };
+	}
 	if (toolName === 'tool_search') return { completed: 'Searched tools', failed: 'search tools' };
 	if (toolName === 'tool_schema') {
 		return { completed: 'Loaded tool schema', failed: 'load tool schema' };
@@ -463,6 +655,12 @@ function restoredToolAction(source: RestoredToolActivitySource): {
 	}
 	if (toolName === 'get_project_overview') {
 		return { completed: 'Loaded project overview', failed: 'load project overview' };
+	}
+	if (toolName === 'get_document_outline') {
+		return { completed: 'Read document outline', failed: 'read document outline' };
+	}
+	if (toolName === 'read_document_section') {
+		return { completed: 'Read document section', failed: 'read document section' };
 	}
 	if (toolName === 'change_chat_context') {
 		return { completed: 'Switched chat context', failed: 'switch chat context' };
@@ -500,6 +698,12 @@ function restoredToolAction(source: RestoredToolActivitySource): {
 	if (toolName === 'query_libri_library') {
 		return { completed: 'Queried library', failed: 'query library' };
 	}
+	if (toolName === 'list_corsair_mcp_tools') {
+		return { completed: 'Listed Corsair tools', failed: 'list Corsair tools' };
+	}
+	if (toolName === 'call_corsair_mcp_tool') {
+		return { completed: 'Called Corsair tool', failed: 'call Corsair tool' };
+	}
 	if (toolName === 'link_onto_entities') {
 		return { completed: 'Linked entities', failed: 'link entities' };
 	}
@@ -511,6 +715,12 @@ function restoredToolAction(source: RestoredToolActivitySource): {
 	}
 	if (toolName === 'move_document_in_tree') {
 		return { completed: 'Moved document in tree', failed: 'move document in tree' };
+	}
+	if (toolName === 'delegate_task') {
+		return { completed: 'Delegated background agent', failed: 'delegate background agent' };
+	}
+	if (toolName === 'commit_change_set') {
+		return { completed: 'Committed agent change set', failed: 'commit agent change set' };
 	}
 
 	if (toolName.startsWith('create_') || gatewayOp.endsWith('.create')) {
@@ -855,6 +1065,7 @@ export function buildAgentChatSessionSnapshot(
 		messages: loadedMessages,
 		toolExecutions,
 		turnRuns: loadedTurnRuns = [],
+		timelineItems: loadedTimelineItems,
 		truncated,
 		voiceNotes = []
 	} = payload;
@@ -876,6 +1087,9 @@ export function buildAgentChatSessionSnapshot(
 	}
 
 	let messages = mapLoadedMessagesToUI(loadedMessages, toolExecutions);
+	const timelineItems = Array.isArray(loadedTimelineItems)
+		? loadedTimelineItems
+		: timelineItemsFromMessages(session.id, messages);
 	const activeTurnRun = turnRuns.find((run) => run.status === 'running') ?? null;
 
 	if (truncated) {
@@ -924,6 +1138,7 @@ export function buildAgentChatSessionSnapshot(
 		selectedContextLabel,
 		projectFocus,
 		messages,
+		timelineItems,
 		voiceNotesByGroupId: groupVoiceNotesByGroupId(voiceNotes),
 		turnRuns,
 		activeTurnRun

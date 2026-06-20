@@ -15,6 +15,7 @@ vi.mock('./queue', () => ({
 }));
 
 import {
+	calculateNextOperativeRunTime,
 	calculateNextRunTime,
 	UserBriefPreference,
 	validateUserPreference
@@ -146,6 +147,36 @@ describe('Brief Scheduler', () => {
 			expect(errors).toContain(
 				'Invalid day_of_week. Must be between 0 (Sunday) and 6 (Saturday)'
 			);
+		});
+	});
+
+	describe('calculateNextOperativeRunTime', () => {
+		it('schedules a daily Operative in the configured timezone', () => {
+			const nextRun = calculateNextOperativeRunTime(
+				{
+					schedule_frequency: 'daily',
+					schedule_time_of_day: '09:30:00',
+					schedule_day_of_week: null,
+					schedule_timezone: 'America/New_York'
+				},
+				new Date('2024-01-15T13:00:00Z')
+			);
+
+			expect(nextRun).toEqual(new Date('2024-01-15T14:30:00Z'));
+		});
+
+		it('rolls a weekly Operative to the next requested weekday after the time passes', () => {
+			const nextRun = calculateNextOperativeRunTime(
+				{
+					schedule_frequency: 'weekly',
+					schedule_time_of_day: '09:00:00',
+					schedule_day_of_week: 1,
+					schedule_timezone: 'UTC'
+				},
+				new Date('2024-01-15T10:00:00Z')
+			);
+
+			expect(nextRun).toEqual(new Date('2024-01-22T09:00:00Z'));
 		});
 	});
 });

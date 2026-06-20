@@ -21,14 +21,14 @@
 			"components": ["DailyBriefModal", "BriefChatModal", "OverdueTaskTriageModal"]
 		},
 		{
-			"file": "src/lib/components/layout/Navigation.svelte",
-			"type": "component",
-			"components": ["AgentChatModal", "WorkPanel"]
-		},
-		{
 			"file": "src/lib/components/landing/HomepageV2.svelte",
 			"type": "component",
 			"components": ["PublicProjectView"]
+		},
+		{
+			"file": "src/lib/components/layout/Navigation.svelte",
+			"type": "component",
+			"components": ["AgentChatModal", "WorkPanel"]
 		},
 		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
@@ -145,14 +145,14 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal", "ProjectModalsHost"]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -559,6 +559,18 @@
 			"exports": ["VoiceRecordingService", "voiceRecordingService"]
 		},
 		{
+			"file": "src/lib/stores/agentOperativesStore.ts",
+			"type": "store",
+			"components": [],
+			"exports": [
+				"agentOperativesStore",
+				"agentOperativesLoading",
+				"loadAgentOperatives",
+				"mergeAgentOperatives",
+				"removeAgentOperative"
+			]
+		},
+		{
 			"file": "src/lib/stores/briefChatSession.store.ts",
 			"type": "store",
 			"components": [],
@@ -757,6 +769,16 @@
 				"buildAgentChatStepsMarkdown",
 				"buildAgentChatStepsFilename",
 				"downloadAgentChatStepsMarkdown"
+			]
+		},
+		{
+			"file": "src/lib/components/agent/agent-chat-timeline.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"buildAgentTimeline",
+				"mergeAgentTimelineItems",
+				"timelineItemsFromMessages"
 			]
 		},
 		{
@@ -1127,8 +1149,8 @@
 	},
 	"unusedComponents": [
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
-		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/landing/HomepageV2.svelte",
+		"src/lib/components/layout/Navigation.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
@@ -1143,6 +1165,7 @@
 		"src/lib/components/agent/agent-chat-skill-activity.ts",
 		"src/lib/components/agent/agent-chat-sse-handler.ts",
 		"src/lib/components/agent/agent-chat-step-export.ts",
+		"src/lib/components/agent/agent-chat-timeline.ts",
 		"src/lib/components/agent/agent-chat-tool-presenter.ts",
 		"src/lib/components/agent/agent-chat-voice.svelte.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",

@@ -32,7 +32,10 @@
 	} from 'lucide-svelte';
 	import AgentChatModal from '$lib/components/agent/AgentChatModal.svelte';
 	import HistoryListSkeleton from '$lib/components/history/HistoryListSkeleton.svelte';
-	import type { DataMutationSummary } from '$lib/components/agent/agent-chat.types';
+	import type {
+		AgentBrainDumpContext,
+		DataMutationSummary
+	} from '$lib/components/agent/agent-chat.types';
 	import type { HistoryItem } from './+page.server';
 
 	interface OntoBraindump {
@@ -126,7 +129,10 @@
 	let typeFilter = $state<'all' | 'braindumps' | 'chats'>(initialFilters.typeFilter || 'all');
 	let isAgentModalOpen = $state(false);
 	let selectedChatSessionId = $state<string | null>(null);
+	let selectedBrainDumpContext = $state<AgentBrainDumpContext | null>(null);
 	let chatClassificationState = $state<Record<string, 'loading' | 'queued' | 'error'>>({});
+	let openingBraindumpId = $state<string | null>(null);
+	let lastAutoOpenedSelection = $state<string | null>(null);
 
 	function getBraindumpChatSessionId(item: HistoryItem): string | null {
 		if (item.type !== 'braindump') return null;
@@ -136,11 +142,13 @@
 	// Open modal if we have a selectedItem from streamed data
 	$effect(() => {
 		if (resolvedData?.selectedItem && browser) {
+			const selectionKey = `${resolvedData.selectedItem.type}:${resolvedData.selectedItem.id}`;
+			if (selectionKey === lastAutoOpenedSelection) return;
+			lastAutoOpenedSelection = selectionKey;
 			if (resolvedData.selectedItem.type === 'braindump') {
-				const chatSessionId = getBraindumpChatSessionId(resolvedData.selectedItem);
-				selectedChatSessionId = chatSessionId;
-				isAgentModalOpen = Boolean(chatSessionId);
+				openBraindumpChat(resolvedData.selectedItem);
 			} else if (resolvedData.selectedItem.type === 'chat_session') {
+				selectedBrainDumpContext = null;
 				selectedChatSessionId = resolvedData.selectedItem.id;
 				isAgentModalOpen = true;
 			}
@@ -320,13 +328,38 @@
 		goto(`/history?${params.toString()}`);
 	}
 
+	async function openBraindumpChat(item: HistoryItem) {
+		if (item.type !== 'braindump') return;
+		openingBraindumpId = item.id;
+		try {
+			const response = await fetch(`/api/onto/braindumps/${item.id}/chat-session`, {
+				method: 'POST'
+			});
+			const result = await response.json().catch(() => null);
+			if (!response.ok || !result?.success || !result?.data?.chat_session_id) {
+				throw new Error(result?.error || 'Failed to open Brain Dump chat');
+			}
+			selectedChatSessionId = result.data.chat_session_id;
+			selectedBrainDumpContext = result.data.braindump as AgentBrainDumpContext;
+			isAgentModalOpen = true;
+			void invalidate('/history');
+		} catch (error) {
+			console.error('Failed to open Brain Dump chat:', error);
+		} finally {
+			if (openingBraindumpId === item.id) {
+				openingBraindumpId = null;
+			}
+		}
+	}
+
 	function openItem(item: HistoryItem) {
 		if (item.type === 'braindump') {
-			selectedChatSessionId = getBraindumpChatSessionId(item);
+			void openBraindumpChat(item);
 		} else {
+			selectedBrainDumpContext = null;
 			selectedChatSessionId = item.id;
+			isAgentModalOpen = true;
 		}
-		isAgentModalOpen = Boolean(selectedChatSessionId);
 		// Update URL to reflect selection
 		const params = new URLSearchParams($page.url.searchParams);
 		params.set('id', item.id);
@@ -337,6 +370,7 @@
 	function closeAgentModal(summary?: DataMutationSummary) {
 		isAgentModalOpen = false;
 		selectedChatSessionId = null;
+		selectedBrainDumpContext = null;
 		// Remove selection from URL
 		const params = new URLSearchParams($page.url.searchParams);
 		params.delete('id');
@@ -602,7 +636,12 @@
 							tabindex="0"
 							onclick={() => openItem(item)}
 							onkeydown={(event) => handleItemKeydown(event, item)}
-							class="group flex h-full flex-col rounded-lg border border-border bg-card p-2 sm:p-4 text-left shadow-ink transition-all hover:border-accent/50 hover:shadow-ink-strong tx tx-frame tx-weak pressable"
+							aria-busy={openingBraindumpId === item.id}
+							class={`group flex h-full flex-col rounded-lg border border-border bg-card p-2 text-left shadow-ink transition-all hover:border-accent/50 hover:shadow-ink-strong tx tx-frame tx-weak pressable sm:p-4 ${
+								openingBraindumpId === item.id
+									? 'pointer-events-none opacity-70'
+									: ''
+							}`}
 						>
 							<!-- Header: Type badge and status -->
 							<div class="mb-1 sm:mb-2 flex items-center justify-between">
@@ -739,5 +778,6 @@
 		isOpen={isAgentModalOpen}
 		onClose={closeAgentModal}
 		initialChatSessionId={selectedChatSessionId}
+		initialBrainDumpContext={selectedBrainDumpContext}
 	/>
 {/if}

@@ -23,6 +23,8 @@
 	import AgentComposer from './AgentComposer.svelte';
 	import AgentAutomationWizard from './AgentAutomationWizard.svelte';
 	import AgentMessageList from './AgentMessageList.svelte';
+	import AgentChatActivityTabs from './AgentChatActivityTabs.svelte';
+	import BrainDumpContextPanel from './BrainDumpContextPanel.svelte';
 	import AgentRunDock from './AgentRunDock.svelte';
 	import { agentRunsStore, type AgentRunRow } from '$lib/services/agentRunsRealtime.service';
 	import { notificationStore } from '$lib/stores/notification.store';
@@ -52,9 +54,12 @@
 		isThinkingBlockMessage,
 		type ActivityEntry,
 		type ActivityType,
+		type AgentBrainDumpContext,
 		type AgentLoopState,
 		type AgentChatImageAttachment,
+		type AgentChatPanelTab,
 		type AgentProjectSummary,
+		type AgentTimelineItem,
 		type AgentToAgentStep,
 		type CreatedEntityRef,
 		type DataMutationSummary,
@@ -62,6 +67,7 @@
 		type ThinkingBlockMessage,
 		type UIMessage
 	} from './agent-chat.types';
+	import { mergeAgentTimelineItems, timelineItemsFromMessages } from './agent-chat-timeline';
 	import { toastService } from '$lib/stores/toast.store';
 	import { haptic } from '$lib/utils/haptic';
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
@@ -109,6 +115,7 @@
 		onClose?: (summary?: DataMutationSummary) => void;
 		autoInitProject?: AutoInitProjectConfig | null;
 		initialChatSessionId?: string | null;
+		initialBrainDumpContext?: AgentBrainDumpContext | null;
 		initialProjectFocus?: ProjectFocus | null;
 		embedded?: boolean;
 		/** Reports the active chat session id so embedding surfaces can render
@@ -157,6 +164,7 @@
 		onClose,
 		autoInitProject = null,
 		initialChatSessionId = null,
+		initialBrainDumpContext = null,
 		initialProjectFocus = null,
 		embedded = false,
 		onSessionChange
@@ -227,19 +235,31 @@
 
 	// Conversation state
 	let messages = $state<UIMessage[]>([]);
+	let persistedTimelineItems = $state<AgentTimelineItem[]>([]);
+	let activeChatTab = $state<AgentChatPanelTab>('chat');
+	let brainDumpContext = $state<AgentBrainDumpContext | null>(null);
 	let currentSession = $state<ChatSession | null>(null);
 	let isStreaming = $state(false);
 	let currentStreamController: AbortController | null = null;
 	let activeStreamRunId = $state(0);
 	let activeTransportStreamRunId = $state<string | null>(null);
 	let activeClientTurnId = $state<string | null>(null);
-	const exportableStepCount = $derived.by(() =>
-		messages.reduce((count, message) => {
-			if (!isThinkingBlockMessage(message)) return count;
-			return count + message.activities.length;
-		}, 0)
+	const liveTimelineItems = $derived.by(() =>
+		timelineItemsFromMessages(currentSession?.id ?? 'local-session', messages)
+	);
+	const agentTimelineItems = $derived.by(() =>
+		mergeAgentTimelineItems(persistedTimelineItems, liveTimelineItems)
+	);
+	const exportableStepCount = $derived.by(
+		() => agentTimelineItems.filter((item) => item.kind !== 'message').length
 	);
 	const canExportAgentSteps = $derived(messages.length > 0);
+
+	$effect(() => {
+		if (initialBrainDumpContext?.id) {
+			brainDumpContext = initialBrainDumpContext;
+		}
+	});
 
 	// ── Agent Work: in-chat run dock + completion-message reload (UI-P4) ──
 	const ACTIVE_AGENT_RUN_STATUSES = [
@@ -875,6 +895,7 @@
 		try {
 			downloadAgentChatStepsMarkdown({
 				messages,
+				timelineItems: agentTimelineItems,
 				sessionId: currentSession?.id ?? null,
 				contextLabel: displayContextLabel,
 				contextType: selectedContextType,
@@ -895,6 +916,9 @@
 		cancelSessionBootstrap();
 
 		messages = [];
+		persistedTimelineItems = [];
+		activeChatTab = 'chat';
+		brainDumpContext = null;
 		currentSession = null;
 		currentActivity = '';
 		inputValue = '';
@@ -1396,6 +1420,29 @@
 	});
 
 	// Load a chat session and restore its messages for resumption
+	async function hydrateBrainDumpContextFromSession(session: ChatSession): Promise<void> {
+		const metadata = (session.agent_metadata ?? {}) as Record<string, unknown>;
+		const braindumpId =
+			typeof metadata.braindump_id === 'string'
+				? metadata.braindump_id
+				: typeof metadata.source_id === 'string' && metadata.source === 'onto_braindump'
+					? metadata.source_id
+					: null;
+		if (!braindumpId || brainDumpContext?.id === braindumpId) return;
+
+		try {
+			const response = await fetch(`/api/onto/braindumps/${braindumpId}`);
+			const result = await response.json().catch(() => null);
+			if (response.ok && result?.success && result?.data?.braindump) {
+				brainDumpContext = result.data.braindump as AgentBrainDumpContext;
+			}
+		} catch (err) {
+			if (dev) {
+				console.warn('[AgentChatModal] Failed to hydrate Brain Dump context', err);
+			}
+		}
+	}
+
 	async function loadChatSession(
 		sessionId: string,
 		options: { backgroundRefresh?: boolean } = {}
@@ -1442,6 +1489,12 @@
 			selectedContextLabel = snapshot.selectedContextLabel;
 			projectFocus = snapshot.projectFocus;
 			messages = snapshot.messages;
+			persistedTimelineItems = snapshot.timelineItems;
+			if (initialBrainDumpContext?.id) {
+				brainDumpContext = initialBrainDumpContext;
+			} else {
+				void hydrateBrainDumpContextFromSession(snapshot.session);
+			}
 			voice.hydrateNotesByGroupId(snapshot.voiceNotesByGroupId);
 			activeRestoredTurnRunId = nextActiveTurnRun?.id ?? null;
 			if (nextActiveTurnRun) {
@@ -3381,18 +3434,37 @@
 			</div>
 		</div>
 	{:else}
-		<AgentMessageList
-			{messages}
-			{displayContextLabel}
-			{selectedContextType}
-			{resolvedProjectFocus}
-			onToggleThinkingBlock={toggleThinkingBlockCollapse}
-			bind:container={messagesContainer}
-			onScroll={handleScroll}
-			voiceNotesByGroupId={voice.notesByGroupId}
-			onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
-			onSelectSuggestion={handleSelectSuggestion}
-		/>
+		<div class={`flex min-h-0 flex-1 flex-col ${brainDumpContext ? 'lg:flex-row' : ''}`}>
+			<div class="flex min-h-0 flex-1 flex-col">
+				<AgentChatActivityTabs
+					activeTab={activeChatTab}
+					timelineItems={agentTimelineItems}
+					onTabChange={(tab) => {
+						activeChatTab = tab;
+					}}
+				/>
+				{#if activeChatTab === 'chat'}
+					<AgentMessageList
+						{messages}
+						{displayContextLabel}
+						{selectedContextType}
+						{resolvedProjectFocus}
+						onToggleThinkingBlock={toggleThinkingBlockCollapse}
+						bind:container={messagesContainer}
+						onScroll={handleScroll}
+						voiceNotesByGroupId={voice.notesByGroupId}
+						onDeleteVoiceNote={voice.removeNoteFromGroup.bind(voice)}
+						onSelectSuggestion={handleSelectSuggestion}
+					/>
+				{/if}
+			</div>
+			{#if brainDumpContext}
+				<BrainDumpContextPanel
+					context={brainDumpContext}
+					timelineItems={agentTimelineItems}
+				/>
+			{/if}
+		</div>
 	{/if}
 
 	{#if error && !showSessionLoadErrorState}

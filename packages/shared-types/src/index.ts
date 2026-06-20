@@ -32,6 +32,7 @@ export * from './tree-agent.types';
 
 // Export Agent Work (durable Agent Runs) contract
 export * from './agent-work.types';
+export * from './agent-operative.types';
 
 // Export external agent call gateway types
 export * from './agent-call.types';

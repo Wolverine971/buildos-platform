@@ -1,6 +1,6 @@
 // apps/web/src/lib/components/agent/agent-chat-step-export.test.ts
 import { describe, expect, it } from 'vitest';
-import type { ThinkingBlockMessage, UIMessage } from './agent-chat.types';
+import type { AgentTimelineItem, ThinkingBlockMessage, UIMessage } from './agent-chat.types';
 import { buildAgentChatStepsFilename, buildAgentChatStepsMarkdown } from './agent-chat-step-export';
 
 const exportedAt = new Date('2026-06-20T12:00:00.000Z');
@@ -170,6 +170,89 @@ describe('agent-chat-step-export', () => {
 		expect(markdown).not.toContain('secret-api-key');
 		expect(markdown).not.toContain('secret-token');
 		expect(markdown).not.toContain('secret-password');
+	});
+
+	it('exports durable timeline sections when timeline items are available', () => {
+		const timelineItems: AgentTimelineItem[] = [
+			{
+				id: 'turn_run:turn-1',
+				sessionId: 'session-abc',
+				source: 'turn_run',
+				kind: 'status',
+				status: 'completed',
+				timestamp: '2026-06-20T11:58:00.000Z',
+				title: 'Agent turn completed',
+				summary: 'Create the launch task.',
+				entityRefs: []
+			},
+			{
+				id: 'tool_execution:exec-1',
+				sessionId: 'session-abc',
+				source: 'tool_execution',
+				kind: 'tool',
+				status: 'completed',
+				timestamp: '2026-06-20T11:58:20.000Z',
+				title: 'Ran Task Create',
+				summary: 'Created task: Ship launch links',
+				tool: {
+					name: 'create_onto_task',
+					gatewayOp: 'onto.task.create',
+					argsPreview: '{"title":"Ship launch links"}',
+					resultPreview: '[redacted sensitive fields]'
+				},
+				entityRefs: [
+					{
+						kind: 'task',
+						id: 'task-1',
+						title: 'Ship launch links',
+						projectId: 'project-1',
+						url: '/projects/project-1?entity=task&entity_id=task-1',
+						operation: 'created'
+					}
+				],
+				redaction: { resultRedacted: true, reason: 'sensitive fields' }
+			},
+			{
+				id: 'entity_change:exec-1:task:task-1',
+				sessionId: 'session-abc',
+				source: 'entity_change',
+				kind: 'change',
+				status: 'completed',
+				timestamp: '2026-06-20T11:58:20.000Z',
+				title: 'Created Task',
+				summary: 'Ship launch links',
+				entityRefs: [
+					{
+						kind: 'task',
+						id: 'task-1',
+						title: 'Ship launch links',
+						projectId: 'project-1',
+						url: '/projects/project-1?entity=task&entity_id=task-1',
+						operation: 'created'
+					}
+				]
+			}
+		];
+
+		const markdown = buildAgentChatStepsMarkdown({
+			messages: [userMessage('Create the launch task.'), assistantMessage('Done.')],
+			timelineItems,
+			sessionId: 'session-abc',
+			contextLabel: 'Launch Plan',
+			exportedAt
+		});
+
+		expect(markdown).toContain('- Timeline entries: 3');
+		expect(markdown).toContain('## Steps');
+		expect(markdown).toContain('## Tool Calls');
+		expect(markdown).toContain('## Changes');
+		expect(markdown).toContain('## Conversation');
+		expect(markdown).toContain('- Tool: `create_onto_task`');
+		expect(markdown).toContain('- Operation: `onto.task.create`');
+		expect(markdown).toContain(
+			'[created task: Ship launch links](/projects/project-1?entity=task&entity_id=task-1)'
+		);
+		expect(markdown).toContain('- Redaction: sensitive fields');
 	});
 
 	it('builds stable filenames from context and session', () => {

@@ -379,6 +379,68 @@ describe('agent-chat-session helpers', () => {
 		]);
 	});
 
+	it('buildAgentChatSessionSnapshot restores readable discovery and orchestration labels', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'I routed the work.',
+					created_at: '2026-03-28T10:01:00.000Z',
+					metadata: {
+						fastchat_tool_trace_v1: [
+							{
+								tool_call_id: 'call-domain',
+								tool_name: 'domain_search',
+								success: true,
+								arguments_preview: '{"query":"linkedin company page growth"}'
+							},
+							{
+								tool_call_id: 'call-reference',
+								tool_name: 'skill_reference_load',
+								success: true,
+								arguments_preview:
+									'{"skill":"document_workspace","reference":"append_rules"}'
+							},
+							{
+								tool_call_id: 'call-corsair',
+								tool_name: 'call_corsair_mcp_tool',
+								success: true,
+								arguments_preview: '{"name":"search_contacts"}'
+							},
+							{
+								tool_call_id: 'call-delegate',
+								tool_name: 'delegate_task',
+								success: true,
+								arguments_preview:
+									'{"label":"Audit stale tasks","scope_mode":"read_only"}'
+							},
+							{
+								tool_call_id: 'call-commit',
+								tool_name: 'commit_change_set',
+								success: true,
+								arguments_preview:
+									'{"run_id":"12345678-1234-4abc-8def-123456789abc"}'
+							}
+						]
+					}
+				}
+			] as any
+		});
+
+		expect(snapshot.messages[0]?.type).toBe('thinking_block');
+		expect(
+			(snapshot.messages[0] as any).activities.map((activity: any) => activity.content)
+		).toEqual([
+			'Searched domains: "linkedin company page growth"',
+			'Loaded skill reference: "document_workspace · append_rules"',
+			'Called Corsair tool: "search_contacts"',
+			'Delegated background agent: "Audit stale tasks · read_only"',
+			'Committed agent change set: "run 12345678"'
+		]);
+	});
+
 	it('buildAgentChatSessionSnapshot restores project overview labels with project names', () => {
 		const snapshot = buildAgentChatSessionSnapshot({
 			session: makeSession(),
@@ -418,6 +480,68 @@ describe('agent-chat-session helpers', () => {
 			status: 'completed',
 			content: 'Loaded project overview: "9takes" (<1s)'
 		});
+	});
+
+	it('buildAgentChatSessionSnapshot restores document outline and section labels with titles', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'I checked the grow log.',
+					created_at: '2026-03-28T10:01:00.000Z'
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'exec-outline',
+					message_id: 'assistant-1',
+					client_turn_id: 'turn-1',
+					tool_name: 'get_document_outline',
+					gateway_op: null,
+					sequence_index: 1,
+					arguments: { document_id: 'bd5fddfb-b5e3-477a-afcf-e0f38b28edb2' },
+					result: {
+						document_id: 'bd5fddfb-b5e3-477a-afcf-e0f38b28edb2',
+						title: 'Basil Grow Log'
+					},
+					execution_time_ms: 42,
+					success: true,
+					error_message: null,
+					created_at: '2026-03-28T10:00:30.000Z'
+				},
+				{
+					id: 'exec-section',
+					message_id: 'assistant-1',
+					client_turn_id: 'turn-1',
+					tool_name: 'read_document_section',
+					gateway_op: null,
+					sequence_index: 2,
+					arguments: {
+						document_id: 'bd5fddfb-b5e3-477a-afcf-e0f38b28edb2',
+						anchor: 'daily-readings'
+					},
+					result: {
+						document_id: 'bd5fddfb-b5e3-477a-afcf-e0f38b28edb2',
+						title: 'Basil Grow Log',
+						heading: 'Daily readings'
+					},
+					execution_time_ms: 58,
+					success: true,
+					error_message: null,
+					created_at: '2026-03-28T10:00:31.000Z'
+				}
+			] as any
+		});
+
+		expect(snapshot.messages[0]?.type).toBe('thinking_block');
+		expect(
+			(snapshot.messages[0] as any).activities.map((activity: any) => activity.content)
+		).toEqual([
+			'Read document outline: "Basil Grow Log" (<1s)',
+			'Read document section: "Basil Grow Log · section: daily-readings" (<1s)'
+		]);
 	});
 
 	it('prewarmAgentContext returns parsed session data from the v2 prewarm endpoint', async () => {
