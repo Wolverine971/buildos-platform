@@ -52,6 +52,21 @@ describe('GET /api/chat/sessions/[id]', () => {
 				success: true,
 				error_message: null,
 				created_at: '2026-03-28T10:00:30.000Z'
+			},
+			{
+				id: 'exec-2',
+				session_id: 'session-1',
+				message_id: 'assistant-1',
+				tool_name: 'update_onto_document',
+				gateway_op: 'onto.document.update',
+				sequence_index: 2,
+				arguments: { document_id: 'doc-1' },
+				result: { ok: true },
+				execution_time_ms: 57,
+				success: true,
+				error_message: null,
+				affected_entities: [{ kind: 'document', id: 'doc-1', operation: 'updated' }],
+				created_at: '2026-03-28T10:00:40.000Z'
 			}
 		];
 		const turnRuns = [
@@ -77,6 +92,35 @@ describe('GET /api/chat/sessions/[id]', () => {
 		const attachmentsQuery = createQuery({ data: [], error: null });
 		const toolExecutionsQuery = createQuery({ data: toolExecutions, error: null });
 		const turnRunsQuery = createQuery({ data: turnRuns, error: null });
+		const tasksQuery = createQuery({
+			data: [
+				{
+					id: 'task-1',
+					title: 'Fix history restore',
+					project_id: 'project-1'
+				}
+			],
+			error: null
+		});
+		const projectsQuery = createQuery({
+			data: [
+				{
+					id: 'project-1',
+					name: 'Launch Project'
+				}
+			],
+			error: null
+		});
+		const documentsQuery = createQuery({
+			data: [
+				{
+					id: 'doc-1',
+					title: 'Launch Notes',
+					project_id: 'project-1'
+				}
+			],
+			error: null
+		});
 		const turnEventsQuery = createQuery({
 			data: [
 				{
@@ -102,6 +146,9 @@ describe('GET /api/chat/sessions/[id]', () => {
 				if (table === 'chat_tool_executions') return toolExecutionsQuery;
 				if (table === 'chat_turn_runs') return turnRunsQuery;
 				if (table === 'chat_turn_events') return turnEventsQuery;
+				if (table === 'onto_tasks') return tasksQuery;
+				if (table === 'onto_projects') return projectsQuery;
+				if (table === 'onto_documents') return documentsQuery;
 				throw new Error(`Unexpected table ${table}`);
 			})
 		};
@@ -144,9 +191,37 @@ describe('GET /api/chat/sessions/[id]', () => {
 						expect.objectContaining({
 							kind: 'task',
 							id: 'task-1',
+							title: 'Fix history restore',
+							projectId: 'project-1',
+							url: '/projects/project-1?entity=task&entity_id=task-1',
 							operation: 'created'
 						})
-					]
+					],
+					projectRef: expect.objectContaining({
+						id: 'project-1',
+						title: 'Launch Project',
+						url: '/projects/project-1'
+					})
+				}),
+				expect.objectContaining({
+					id: 'entity_change:exec-2:document:doc-1',
+					kind: 'change',
+					summary: 'Launch Notes',
+					entityRefs: [
+						expect.objectContaining({
+							kind: 'document',
+							id: 'doc-1',
+							title: 'Launch Notes',
+							projectId: 'project-1',
+							url: '/projects/project-1?doc=doc-1',
+							operation: 'updated'
+						})
+					],
+					projectRef: expect.objectContaining({
+						id: 'project-1',
+						title: 'Launch Project',
+						url: '/projects/project-1'
+					})
 				}),
 				expect.objectContaining({
 					id: 'message:assistant-1',
@@ -158,11 +233,17 @@ describe('GET /api/chat/sessions/[id]', () => {
 		expect(supabase.from).toHaveBeenCalledWith('chat_message_attachments');
 		expect(supabase.from).toHaveBeenCalledWith('chat_turn_runs');
 		expect(supabase.from).toHaveBeenCalledWith('chat_turn_events');
+		expect(supabase.from).toHaveBeenCalledWith('onto_tasks');
+		expect(supabase.from).toHaveBeenCalledWith('onto_documents');
+		expect(supabase.from).toHaveBeenCalledWith('onto_projects');
 		expect(toolExecutionsQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
 		expect(turnRunsQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
 		expect(turnRunsQuery.eq).toHaveBeenCalledWith('user_id', 'user-1');
 		expect(turnEventsQuery.eq).toHaveBeenCalledWith('session_id', 'session-1');
 		expect(turnEventsQuery.eq).toHaveBeenCalledWith('user_id', 'user-1');
+		expect(tasksQuery.in).toHaveBeenCalledWith('id', ['task-1']);
+		expect(documentsQuery.in).toHaveBeenCalledWith('id', ['doc-1']);
+		expect(projectsQuery.in).toHaveBeenCalledWith('id', ['project-1']);
 	});
 
 	it('hydrates persisted image attachments when restoring a chat session', async () => {

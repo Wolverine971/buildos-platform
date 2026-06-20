@@ -70,7 +70,9 @@ export interface AgentTimelineToolSummary {
 	durationMs?: number | null;
 	tokensConsumed?: number | null;
 	argsPreview?: string | null;
+	argsFullJson?: string | null;
 	resultPreview?: string | null;
+	resultFullJson?: string | null;
 	errorMessage?: string | null;
 	zeroResult?: boolean | null;
 	resultCount?: number | null;

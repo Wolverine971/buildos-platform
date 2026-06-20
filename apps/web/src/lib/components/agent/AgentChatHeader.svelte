@@ -7,7 +7,8 @@
 		ArrowLeft,
 		LoaderCircle,
 		AlertTriangle,
-		Download
+		Download,
+		FileArchive
 	} from 'lucide-svelte';
 	import { dev } from '$app/environment';
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
@@ -37,6 +38,8 @@
 		onExportSteps?: () => void;
 		canExportSteps?: boolean;
 		exportableStepCount?: number;
+		onExportSupportPacket?: () => void;
+		canExportSupportPacket?: boolean;
 		/** Bumped each time we shift into a (new) project context — triggers the title glimmer. */
 		contextShiftPulse?: number;
 	}
@@ -62,6 +65,8 @@
 		onExportSteps,
 		canExportSteps = false,
 		exportableStepCount = 0,
+		onExportSupportPacket,
+		canExportSupportPacket = false,
 		contextShiftPulse = 0
 	}: Props = $props();
 
@@ -98,6 +103,10 @@
 		if (exportableStepCount <= 0) return 'Export chat transcript';
 		const noun = exportableStepCount === 1 ? 'step' : 'steps';
 		return `Export agent steps (${exportableStepCount} ${noun} logged)`;
+	});
+	const exportSupportPacketTitle = $derived.by(() => {
+		if (!canExportSupportPacket) return 'No chat data to export yet';
+		return 'Export support packet';
 	});
 
 	const contextUsageCounter = $derived.by(() => {
@@ -271,6 +280,21 @@
 			>
 				<Download class="h-3.5 w-3.5 shrink-0" />
 				<span class="hidden sm:inline">Steps</span>
+			</button>
+		{/if}
+
+		{#if onExportSupportPacket}
+			<button
+				type="button"
+				onclick={onExportSupportPacket}
+				disabled={!canExportSupportPacket}
+				class="flex h-9 sm:h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
+				style="-webkit-tap-highlight-color: transparent;"
+				title={exportSupportPacketTitle}
+				aria-label={exportSupportPacketTitle}
+			>
+				<FileArchive class="h-3.5 w-3.5 shrink-0" />
+				<span class="hidden sm:inline">Support</span>
 			</button>
 		{/if}
 

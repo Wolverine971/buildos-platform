@@ -51,6 +51,9 @@ describe('ChatToolExecutor - Update Behavior', () => {
 				if (fn === 'current_actor_has_project_access') {
 					return Promise.resolve({ data: true, error: null });
 				}
+				if (fn === 'current_actor_has_project_member_access') {
+					return Promise.resolve({ data: true, error: null });
+				}
 				if (fn === 'ensure_actor_for_user') {
 					return Promise.resolve({ data: 'actor-123', error: null });
 				}

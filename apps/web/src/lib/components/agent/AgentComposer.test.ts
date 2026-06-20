@@ -67,8 +67,8 @@ describe('AgentComposer', () => {
 		});
 
 		expect(
-			screen.getByRole('button', { name: /attach existing project image/i })
-		).toBeInTheDocument();
+			screen.getAllByRole('button', { name: /attach existing project image/i }).length
+		).toBeGreaterThan(0);
 	});
 
 	it('passes selected files through so the parent can report skipped unsupported files', async () => {

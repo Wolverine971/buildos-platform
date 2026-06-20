@@ -194,6 +194,42 @@ describe('OntoEventSyncService project sync job version guards', () => {
 		);
 	});
 
+	it('skips project calendar creation when google calendar is not connected', async () => {
+		const service = new OntoEventSyncService({} as any);
+		vi.spyOn(service as any, 'getEvent').mockResolvedValue({
+			id: 'event-no-google',
+			project_id: 'project-1',
+			updated_at: '2026-03-01T12:00:00.000Z',
+			created_at: '2026-03-01T10:00:00.000Z',
+			deleted_at: null,
+			external_link: null,
+			sync_status: null,
+			props: {},
+			onto_event_sync: []
+		});
+		vi.spyOn(service as any, 'resolveExternalMapping').mockResolvedValue(null);
+		vi.spyOn((service as any).googleOAuthService, 'safeGetCalendarStatus').mockResolvedValue({
+			isConnected: false
+		});
+		const resolveProjectCalendarSpy = vi.spyOn(service as any, 'resolveProjectCalendar');
+		const syncEventToCalendarSpy = vi.spyOn(service as any, 'syncEventToCalendar');
+
+		const result = await service.processProjectEventSyncJob({
+			action: 'upsert',
+			eventId: 'event-no-google',
+			projectId: 'project-1',
+			targetUserId: 'user-1',
+			createCalendarIfMissing: true
+		});
+
+		expect(result).toEqual({
+			outcome: 'skipped',
+			reason: 'calendar_not_connected'
+		});
+		expect(resolveProjectCalendarSpy).not.toHaveBeenCalled();
+		expect(syncEventToCalendarSpy).not.toHaveBeenCalled();
+	});
+
 	it('does not recreate external events on google 404 during project updates', async () => {
 		const service = new OntoEventSyncService({} as any);
 		vi.spyOn(service as any, 'getEvent').mockResolvedValue({

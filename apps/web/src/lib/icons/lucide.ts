@@ -51,6 +51,7 @@ export { default as ChevronsUpDown } from 'lucide-svelte/icons/chevrons-up-down'
 export { default as Circle } from 'lucide-svelte/icons/circle';
 export { default as CircleAlert } from 'lucide-svelte/icons/circle-alert';
 export { default as CircleCheck } from 'lucide-svelte/icons/circle-check';
+export { default as CircleDashed } from 'lucide-svelte/icons/circle-dashed';
 export { default as CircleDot } from 'lucide-svelte/icons/circle-dot';
 export { default as CircleHelp } from 'lucide-svelte/icons/circle-help';
 export { default as CircleX } from 'lucide-svelte/icons/circle-x';
@@ -216,6 +217,7 @@ export { default as Tag } from 'lucide-svelte/icons/tag';
 export { default as Target } from 'lucide-svelte/icons/target';
 export { default as Telescope } from 'lucide-svelte/icons/telescope';
 export { default as Terminal } from 'lucide-svelte/icons/terminal';
+export { default as TerminalSquare } from 'lucide-svelte/icons/terminal-square';
 export { default as TestTube } from 'lucide-svelte/icons/test-tube';
 export { default as ThumbsUp } from 'lucide-svelte/icons/thumbs-up';
 export { default as Timer } from 'lucide-svelte/icons/timer';

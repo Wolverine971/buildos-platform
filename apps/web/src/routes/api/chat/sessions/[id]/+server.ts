@@ -2,6 +2,10 @@
 import type { RequestHandler } from './$types';
 import { ApiResponse } from '$lib/utils/api-response';
 import { buildAgentTimeline } from '$lib/components/agent/agent-chat-timeline';
+import type {
+	AgentTimelineEntityRef,
+	AgentTimelineItem
+} from '$lib/components/agent/agent-chat.types';
 
 type ChatMessageAttachmentRow = {
 	message_id?: string | null;
@@ -95,6 +99,273 @@ function buildAttachmentRef(row: ChatMessageAttachmentRow): Record<string, unkno
 			preview_url: `/api/onto/assets/${assetId}/render?width=160`
 		}
 	};
+}
+
+type EntityLookupConfig = {
+	table: string;
+	select: string;
+	titleFields: string[];
+	hasProjectId: boolean;
+};
+
+const ENTITY_LOOKUP_CONFIG: Record<string, EntityLookupConfig> = {
+	project: {
+		table: 'onto_projects',
+		select: 'id, name',
+		titleFields: ['name'],
+		hasProjectId: false
+	},
+	task: {
+		table: 'onto_tasks',
+		select: 'id, title, project_id',
+		titleFields: ['title'],
+		hasProjectId: true
+	},
+	document: {
+		table: 'onto_documents',
+		select: 'id, title, project_id',
+		titleFields: ['title'],
+		hasProjectId: true
+	},
+	goal: {
+		table: 'onto_goals',
+		select: 'id, name, project_id',
+		titleFields: ['name'],
+		hasProjectId: true
+	},
+	plan: {
+		table: 'onto_plans',
+		select: 'id, name, project_id',
+		titleFields: ['name'],
+		hasProjectId: true
+	},
+	milestone: {
+		table: 'onto_milestones',
+		select: 'id, title, project_id',
+		titleFields: ['title'],
+		hasProjectId: true
+	},
+	risk: {
+		table: 'onto_risks',
+		select: 'id, title, project_id',
+		titleFields: ['title'],
+		hasProjectId: true
+	},
+	event: {
+		table: 'onto_events',
+		select: 'id, title, project_id',
+		titleFields: ['title'],
+		hasProjectId: true
+	}
+};
+
+type EntityLookupValue = {
+	kind: string;
+	id: string;
+	title: string | null;
+	projectId: string | null;
+};
+
+function entityLookupKey(kind: string, id: string): string {
+	return `${kind}:${id}`;
+}
+
+function resolveRefProjectId(
+	ref: AgentTimelineEntityRef,
+	lookup: EntityLookupValue | undefined
+): string | null {
+	return ref.projectId ?? lookup?.projectId ?? (ref.kind === 'project' ? ref.id : null);
+}
+
+function buildEntityUrl(ref: AgentTimelineEntityRef): string | null {
+	if (!ref.id) return null;
+	if (ref.kind === 'project') return `/projects/${ref.id}`;
+	if (!ref.projectId) return null;
+	if (ref.kind === 'document') return `/projects/${ref.projectId}?doc=${ref.id}`;
+	return `/projects/${ref.projectId}?entity=${encodeURIComponent(ref.kind)}&entity_id=${ref.id}`;
+}
+
+function displayTitleFromRow(row: Record<string, unknown>, fields: string[]): string | null {
+	for (const field of fields) {
+		const value = readString(row[field]);
+		if (value) return value;
+	}
+	return null;
+}
+
+function collectTimelineRefs(items: AgentTimelineItem[]): AgentTimelineEntityRef[] {
+	const refs: AgentTimelineEntityRef[] = [];
+	for (const item of items) {
+		if (item.projectRef) refs.push(item.projectRef);
+		for (const ref of item.entityRefs) refs.push(ref);
+	}
+	return refs;
+}
+
+async function fetchEntityLookups(params: {
+	supabase: unknown;
+	idsByKind: Map<string, Set<string>>;
+}): Promise<Map<string, EntityLookupValue>> {
+	const lookups = new Map<string, EntityLookupValue>();
+	const supabase = params.supabase as any;
+
+	for (const [kind, ids] of params.idsByKind) {
+		const config = ENTITY_LOOKUP_CONFIG[kind];
+		const idList = Array.from(ids).filter(Boolean);
+		if (!config || idList.length === 0) continue;
+
+		const { data, error } = await supabase
+			.from(config.table)
+			.select(config.select)
+			.in('id', idList)
+			.limit(idList.length);
+
+		if (error) {
+			console.warn(`Failed to enrich ${kind} timeline refs`, error);
+			continue;
+		}
+
+		for (const row of (data ?? []) as Record<string, unknown>[]) {
+			const id = readString(row.id);
+			if (!id) continue;
+			const projectId =
+				kind === 'project' ? id : config.hasProjectId ? readString(row.project_id) : null;
+			lookups.set(entityLookupKey(kind, id), {
+				kind,
+				id,
+				title: displayTitleFromRow(row, config.titleFields),
+				projectId
+			});
+		}
+	}
+
+	return lookups;
+}
+
+function addLookupId(idsByKind: Map<string, Set<string>>, kind: string | null, id: string | null) {
+	if (!kind || !id || !ENTITY_LOOKUP_CONFIG[kind]) return;
+	const existing = idsByKind.get(kind) ?? new Set<string>();
+	existing.add(id);
+	idsByKind.set(kind, existing);
+}
+
+function enrichRef(
+	ref: AgentTimelineEntityRef,
+	lookups: Map<string, EntityLookupValue>,
+	projectLookups: Map<string, EntityLookupValue>
+): AgentTimelineEntityRef {
+	const lookup = lookups.get(entityLookupKey(ref.kind, ref.id));
+	const projectId = resolveRefProjectId(ref, lookup);
+	const title = ref.title ?? lookup?.title ?? null;
+	const enriched: AgentTimelineEntityRef = {
+		...ref,
+		title,
+		projectId
+	};
+	enriched.url = ref.url ?? buildEntityUrl(enriched);
+
+	if (enriched.kind === 'project') {
+		const projectLookup = projectLookups.get(enriched.id);
+		enriched.title = enriched.title ?? projectLookup?.title ?? null;
+		enriched.url = enriched.url ?? `/projects/${enriched.id}`;
+	}
+
+	return enriched;
+}
+
+function primaryChangeRef(item: AgentTimelineItem): AgentTimelineEntityRef | null {
+	return (
+		item.entityRefs.find((ref) =>
+			['created', 'updated', 'deleted', 'linked'].includes(String(ref.operation))
+		) ?? null
+	);
+}
+
+function updateTimelineItemAfterEnrichment(item: AgentTimelineItem): AgentTimelineItem {
+	const primaryRef = primaryChangeRef(item);
+	if (!primaryRef?.title) return item;
+	if (item.kind === 'change') {
+		return {
+			...item,
+			summary: primaryRef.title
+		};
+	}
+	if (item.kind === 'tool' && item.summary?.includes(primaryRef.id)) {
+		return {
+			...item,
+			summary: item.summary.replace(primaryRef.id, primaryRef.title)
+		};
+	}
+	return item;
+}
+
+async function enrichTimelineEntityRefs(params: {
+	supabase: unknown;
+	items: AgentTimelineItem[];
+}): Promise<AgentTimelineItem[]> {
+	const refs = collectTimelineRefs(params.items);
+	const idsByKind = new Map<string, Set<string>>();
+	for (const ref of refs) {
+		addLookupId(idsByKind, ref.kind, ref.id);
+		if (ref.projectId) addLookupId(idsByKind, 'project', ref.projectId);
+	}
+
+	if (idsByKind.size === 0) return params.items;
+
+	const lookups = await fetchEntityLookups({ supabase: params.supabase, idsByKind });
+	const projectIds = new Set<string>();
+	for (const ref of refs) {
+		const lookup = lookups.get(entityLookupKey(ref.kind, ref.id));
+		const projectId = resolveRefProjectId(ref, lookup);
+		if (projectId) projectIds.add(projectId);
+	}
+
+	const missingProjectIds = Array.from(projectIds).filter(
+		(id) => !lookups.has(entityLookupKey('project', id))
+	);
+	if (missingProjectIds.length > 0) {
+		const projectIdsByKind = new Map<string, Set<string>>([
+			['project', new Set(missingProjectIds)]
+		]);
+		const projectLookups = await fetchEntityLookups({
+			supabase: params.supabase,
+			idsByKind: projectIdsByKind
+		});
+		for (const [key, value] of projectLookups) {
+			lookups.set(key, value);
+		}
+	}
+
+	const projectLookups = new Map<string, EntityLookupValue>();
+	for (const [key, value] of lookups) {
+		if (value.kind === 'project') projectLookups.set(value.id, value);
+		if (key.startsWith('project:')) projectLookups.set(value.id, value);
+	}
+
+	return params.items.map((item) => {
+		const entityRefs = item.entityRefs.map((ref) => enrichRef(ref, lookups, projectLookups));
+		const projectRef = item.projectRef
+			? enrichRef(item.projectRef, lookups, projectLookups)
+			: (() => {
+					const primaryRef = entityRefs[0];
+					if (!primaryRef?.projectId) return null;
+					const projectLookup = projectLookups.get(primaryRef.projectId);
+					return {
+						kind: 'project',
+						id: primaryRef.projectId,
+						title: projectLookup?.title ?? null,
+						projectId: primaryRef.projectId,
+						url: `/projects/${primaryRef.projectId}`,
+						operation: 'linked'
+					};
+				})();
+
+		return updateTimelineItemAfterEnrichment({
+			...item,
+			projectRef,
+			entityRefs
+		});
+	});
 }
 
 /**
@@ -214,6 +485,7 @@ export const GET: RequestHandler = async ({
 			success,
 			error_message,
 			requires_user_action,
+			affected_entities,
 			created_at
 		`
 		)
@@ -298,12 +570,15 @@ export const GET: RequestHandler = async ({
 
 	// Check if there are more messages than we fetched (truncation indicator)
 	const truncated = (messages?.length || 0) >= MESSAGE_LIMIT;
-	const timelineItems = buildAgentTimeline({
-		sessionId,
-		messages: messagesWithAttachments,
-		toolExecutions: toolExecutions || [],
-		turnRuns: turnRuns || [],
-		turnEvents: turnEvents || []
+	const timelineItems = await enrichTimelineEntityRefs({
+		supabase,
+		items: buildAgentTimeline({
+			sessionId,
+			messages: messagesWithAttachments,
+			toolExecutions: toolExecutions || [],
+			turnRuns: turnRuns || [],
+			turnEvents: turnEvents || []
+		})
 	});
 
 	return ApiResponse.success({

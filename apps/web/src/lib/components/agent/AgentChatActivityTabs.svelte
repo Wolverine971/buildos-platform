@@ -6,6 +6,7 @@
 		Clock3,
 		ExternalLink,
 		ListChecks,
+		MessageCircle,
 		TerminalSquare,
 		TriangleAlert,
 		Wrench
@@ -20,9 +21,10 @@
 		activeTab: AgentChatPanelTab;
 		timelineItems: AgentTimelineItem[];
 		onTabChange: (tab: AgentChatPanelTab) => void;
+		onAskAboutItem?: (item: AgentTimelineItem) => void;
 	}
 
-	let { activeTab, timelineItems, onTabChange }: Props = $props();
+	let { activeTab, timelineItems, onTabChange, onAskAboutItem }: Props = $props();
 
 	const tabs: Array<{ id: AgentChatPanelTab; label: string }> = [
 		{ id: 'chat', label: 'Chat' },
@@ -181,15 +183,33 @@
 									<StatusIcon class="h-4 w-4" />
 								</span>
 								<div class="min-w-0 flex-1 space-y-2">
-									<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-										<h3 class="min-w-0 text-sm font-semibold text-foreground">
-											{item.title}
-										</h3>
-										<span
-											class="text-[0.65rem] font-medium text-muted-foreground"
+									<div class="flex items-start gap-2">
+										<div
+											class="min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1 sm:flex"
 										>
-											{formatTime(item.timestamp)}
-										</span>
+											<h3
+												class="min-w-0 text-sm font-semibold text-foreground"
+											>
+												{item.title}
+											</h3>
+											<span
+												class="text-[0.65rem] font-medium text-muted-foreground"
+											>
+												{formatTime(item.timestamp)}
+											</span>
+										</div>
+										{#if onAskAboutItem}
+											<button
+												type="button"
+												class="inline-flex shrink-0 items-center gap-1 rounded-md border border-border bg-background/70 px-2 py-1 text-[0.68rem] font-semibold text-muted-foreground transition hover:border-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+												title={`Ask about ${item.title}`}
+												aria-label={`Ask about ${item.title}`}
+												onclick={() => onAskAboutItem?.(item)}
+											>
+												<MessageCircle class="h-3.5 w-3.5" />
+												<span>Ask</span>
+											</button>
+										{/if}
 									</div>
 
 									{#if item.summary}
@@ -237,11 +257,25 @@
 														<div
 															class="mb-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
 														>
-															Args
+															Args preview
 														</div>
 														<pre
 															class="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-2 text-xs text-foreground">{item
 																.tool.argsPreview}</pre>
+														{#if item.tool.argsFullJson}
+															<details
+																class="mt-2 rounded-md border border-border bg-card"
+															>
+																<summary
+																	class="cursor-pointer px-2.5 py-1.5 text-[0.68rem] font-semibold text-muted-foreground hover:text-foreground"
+																>
+																	Full JSON
+																</summary>
+																<pre
+																	class="max-h-96 overflow-auto whitespace-pre-wrap break-words border-t border-border bg-muted p-2 text-xs text-foreground">{item
+																		.tool.argsFullJson}</pre>
+															</details>
+														{/if}
 													</div>
 												{/if}
 												{#if item.tool?.resultPreview || item.detailPreview}
@@ -249,12 +283,26 @@
 														<div
 															class="mb-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground"
 														>
-															Result
+															Result preview
 														</div>
 														<pre
 															class="max-h-40 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-2 text-xs text-foreground">{item
 																.tool?.resultPreview ??
 																item.detailPreview}</pre>
+														{#if item.tool?.resultFullJson}
+															<details
+																class="mt-2 rounded-md border border-border bg-card"
+															>
+																<summary
+																	class="cursor-pointer px-2.5 py-1.5 text-[0.68rem] font-semibold text-muted-foreground hover:text-foreground"
+																>
+																	Full JSON
+																</summary>
+																<pre
+																	class="max-h-96 overflow-auto whitespace-pre-wrap break-words border-t border-border bg-muted p-2 text-xs text-foreground">{item
+																		.tool.resultFullJson}</pre>
+															</details>
+														{/if}
 													</div>
 												{/if}
 											</div>

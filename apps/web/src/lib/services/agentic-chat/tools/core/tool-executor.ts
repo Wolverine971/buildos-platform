@@ -31,6 +31,7 @@ import { normalizeToolError } from '$lib/services/agentic-chat/shared/error-util
 import { createLogger } from '$lib/utils/logger';
 import { ErrorLoggerService } from '$lib/services/errorLogger.service';
 import { sanitizeLogData } from '$lib/utils/logging-helpers';
+import { extractAffectedEntitiesFromToolExecution } from '$lib/components/agent/agent-chat-timeline';
 
 import {
 	OntologyReadExecutor,
@@ -671,6 +672,15 @@ export class ChatToolExecutor {
 				result: success ? result : null,
 				result_count: resultCount,
 				zero_result: zeroResult,
+				affected_entities: success
+					? extractAffectedEntitiesFromToolExecution({
+							id: (toolCall as { id?: string }).id ?? toolName,
+							tool_name: toolName,
+							arguments: argumentsPayload,
+							result,
+							success
+						})
+					: [],
 				execution_time_ms: duration,
 				tokens_consumed: tokensConsumed ?? null,
 				success,

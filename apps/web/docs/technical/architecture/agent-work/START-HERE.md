@@ -2,7 +2,7 @@
 
 # Agent Work — Start Here (the simplified view)
 
-**Status (2026-06-20):** The **interactive run lifecycle is built end-to-end** — dispatch (manual UI + from chat via `delegate_task`) → watch (Run Stack cards + in-chat dock + launcher badge) → steer / pause / resume → answer (`needs_input`, plus continuable `partial` runs with open questions) → result posts back into chat with project/change links. Backend substrate + op-layer + runner are live-confirmed for ontology reads/writes and review-before-commit. Calendar now has an initial worker-safe `CalendarPort` and is env/token gated in Agent Runs; direct-commit calendar writes are available only when the user has stored Google tokens, while review-mode runs expose calendar reads only. **New:** saved Operatives + daily/weekly schedules have a V1 durable table, web API, immediate dispatch endpoint, worker scheduler path, and Work Panel management UI. **Still pending:** live calendar smoke with a Google-connected test user/project, live UI click-throughs, live scheduled Operative smoke, full calendar staging, and polish.
+**Status (2026-06-20):** The **interactive run lifecycle is built end-to-end** — dispatch (manual UI + from chat via `delegate_task`) → watch (Run Stack cards + in-chat dock + launcher badge) → steer / pause / resume → answer (`needs_input`, plus continuable `partial` runs with open questions) → result posts back into chat with project/change links. Backend substrate + op-layer + runner are live-confirmed for ontology reads/writes and review-before-commit. Calendar now has an initial worker-safe `CalendarPort` and is env/token gated in Agent Runs; direct-commit calendar writes are available only when the user has stored Google tokens, while review-mode runs expose calendar reads only. **New:** saved Operatives + daily/weekly schedules have a V1 durable table, web API, immediate dispatch endpoint, worker scheduler path, and Work Panel management UI; manual + scheduled Operative enqueue paths are live-smoked via service role. **Still pending:** live calendar smoke with a Google-connected test user/project, live browser UI click-throughs, full calendar staging, and polish.
 **Full specs:** [00-OVERVIEW](./00-OVERVIEW.md) · [01-EXECUTION-SUBSTRATE](./01-EXECUTION-SUBSTRATE.md) · [02-STAGED-MUTATIONS](./02-STAGED-MUTATIONS.md) · [03-MONITORING-UI](./03-MONITORING-UI.md)
 **Execution detail:** **[HANDOFF_2026-06-20](./HANDOFF_2026-06-20.md)** ← current pickup/status (calendar worker port shipped; live smoke next) · [HANDOFF_2026-06-19](./HANDOFF_2026-06-19.md) (state of the world: Wave 7 + Phase 4 shipped) · [SHARED_AGENT_OPS_EXTRACTION_PLAN](./SHARED_AGENT_OPS_EXTRACTION_PLAN.md) · [HANDOFF_2026-06-18](./HANDOFF_2026-06-18.md) (detailed phase log)
 
@@ -49,7 +49,7 @@ An Agent Run fixes all three: it's a persisted row, it runs in the background, a
 | **Work Panel**                                                      | Persistent inbox + history + detail + proposal review.                                                                                                        | ✅ UI-P2                                 |
 | **Calendar ops in runs**                                            | Initial worker-safe `CalendarPort`; exposed only when worker env + user token row exist. Stage mode reads only.                                               | ✅ initial Waves 5–6; live smoke pending |
 | **Manual-dispatch UI + review toggle**                              | Human-facing "run an agent / review first" button in the Work Panel.                                                                                          | ✅ initial Phase 6                       |
-| **Saved/scheduled Operatives**                                      | Reusable Agent Run definitions with optional daily/weekly schedule; worker enqueues due runs through `agent_run`; Work Panel can create/edit/run/delete them. | ✅ V1; live scheduled smoke pending      |
+| **Saved/scheduled Operatives**                                      | Reusable Agent Run definitions with optional daily/weekly schedule; worker enqueues due runs through `agent_run`; Work Panel can create/edit/run/delete them. | ✅ V1; service-role live smoke confirmed |
 
 Two key design decisions we locked:
 
@@ -123,16 +123,17 @@ Phases 1b–2 stand alone (manually send an agent, watch it work). Phase 3 is wh
 
 ## Right now / next step
 
-Current implementation state (2026-06-19):
+Current implementation state (2026-06-20):
 
 - ✅ Agent Runs, worker op execution, write ops, steering/answer, Work Panel, staged mutations, Change Set commit, chat `delegate_task`, and manual Work Panel dispatch are built.
 - ✅ The manual dispatch UI posts to `POST /api/agent-runs` with goal, context, project, scope, and the opt-in `review` flag. Review defaults to `false`, matching the direct-commit-by-default design.
 - ✅ `partial` runs with `open_questions` are continuable through the same answer endpoint/UI as `needs_input`; `needs_input` remains the preferred status when a user answer is required before progress can continue.
 - ✅ The initial worker `CalendarPort` is wired and headless checks are green.
+- ✅ Saved Operatives live smoke: manual dispatch produced an `agent_run` queue job; the worker scheduler enqueued a due scheduled Operative, advanced `next_run_at`, and both smoke jobs were cleaned up as `cancelled`.
 - ⏳ Live calendar smoke is blocked for the known throwaway fixture because that user has no stored Google calendar token row.
 
 Next work:
 
 1. Run a direct-commit calendar create/read/delete smoke with a Google-connected test user/project, then verify review-mode catalogs expose calendar reads only.
 2. Do a live UI click-through: Work Panel manual run → optional `review` run → `proposal_ready` → `ChangeSetReview` apply.
-3. Live-smoke a due scheduled Operative from the Work Panel UI.
+3. Do the in-browser Operatives pass: create/edit/run/delete from the Work Panel, then enable a near-future daily schedule and verify the queued run appears in the panel.

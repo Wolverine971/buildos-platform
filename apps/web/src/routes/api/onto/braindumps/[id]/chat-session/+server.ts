@@ -30,6 +30,41 @@ function buildSeedMessage(content: string): string {
 	return `Original Brain Dump\n\n${content.trim()}`;
 }
 
+async function cleanupCreatedChatSession(
+	supabase: { from: (table: string) => any },
+	sessionId: string,
+	userId: string,
+	reason: string
+): Promise<void> {
+	const { error: messageDeleteError } = await supabase
+		.from('chat_messages')
+		.delete()
+		.eq('session_id', sessionId)
+		.eq('user_id', userId);
+
+	if (messageDeleteError) {
+		console.warn('Failed to clean up Brain Dump chat seed messages:', {
+			sessionId,
+			reason,
+			error: messageDeleteError
+		});
+	}
+
+	const { error: sessionDeleteError } = await supabase
+		.from('chat_sessions')
+		.delete()
+		.eq('id', sessionId)
+		.eq('user_id', userId);
+
+	if (sessionDeleteError) {
+		console.warn('Failed to clean up Brain Dump chat session:', {
+			sessionId,
+			reason,
+			error: sessionDeleteError
+		});
+	}
+}
+
 export const POST: RequestHandler = async ({ params, locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user?.id) {
@@ -112,7 +147,9 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		.single();
 
 	if (sessionError || !session) {
-		return ApiResponse.databaseError(sessionError);
+		return ApiResponse.databaseError(
+			sessionError ?? new Error('Failed to create Brain Dump chat session')
+		);
 	}
 
 	const { error: messageError } = await supabase.from('chat_messages').insert({
@@ -130,6 +167,12 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 	});
 
 	if (messageError) {
+		await cleanupCreatedChatSession(
+			supabase,
+			session.id,
+			user.id,
+			'seed_message_insert_failed'
+		);
 		return ApiResponse.databaseError(messageError);
 	}
 
@@ -153,7 +196,15 @@ export const POST: RequestHandler = async ({ params, locals }) => {
 		.single();
 
 	if (updateError || !updatedBraindump) {
-		return ApiResponse.databaseError(updateError);
+		await cleanupCreatedChatSession(
+			supabase,
+			session.id,
+			user.id,
+			'braindump_link_update_failed'
+		);
+		return ApiResponse.databaseError(
+			updateError ?? new Error('Failed to link Brain Dump chat session')
+		);
 	}
 
 	return ApiResponse.created({

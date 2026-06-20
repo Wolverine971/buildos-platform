@@ -1,7 +1,12 @@
 // apps/web/src/lib/components/agent/agent-chat-step-export.test.ts
 import { describe, expect, it } from 'vitest';
 import type { AgentTimelineItem, ThinkingBlockMessage, UIMessage } from './agent-chat.types';
-import { buildAgentChatStepsFilename, buildAgentChatStepsMarkdown } from './agent-chat-step-export';
+import {
+	buildAgentChatStepsFilename,
+	buildAgentChatStepsMarkdown,
+	buildAgentChatSupportPacketFilename,
+	buildAgentChatSupportPacketMarkdown
+} from './agent-chat-step-export';
 
 const exportedAt = new Date('2026-06-20T12:00:00.000Z');
 
@@ -264,5 +269,134 @@ describe('agent-chat-step-export', () => {
 				exportedAt
 			})
 		).toBe('buildos-agent-steps-launch-email-draft-abcdef12.md');
+	});
+
+	it('exports a support packet with correlation ids, entities, and safe tool details', () => {
+		const timelineItems: AgentTimelineItem[] = [
+			{
+				id: 'tool_execution:exec-1',
+				sessionId: 'session-abc',
+				turnRunId: 'turn-1',
+				streamRunId: 'stream-1',
+				clientTurnId: 'client-turn-1',
+				messageId: 'assistant-1',
+				source: 'tool_execution',
+				kind: 'tool',
+				status: 'completed',
+				timestamp: '2026-06-20T11:58:20.000Z',
+				sequenceIndex: 1,
+				title: 'Ran Task Create',
+				summary: 'Created task: Ship launch links',
+				tool: {
+					name: 'create_onto_task',
+					gatewayOp: 'onto.task.create',
+					durationMs: 120,
+					tokensConsumed: 45,
+					argsPreview: '{"title":"Ship launch links"}',
+					argsFullJson: '{\n  "title": "Ship launch links"\n}',
+					resultPreview: '[redacted sensitive fields]',
+					resultFullJson: null
+				},
+				projectRef: {
+					kind: 'project',
+					id: 'project-1',
+					title: 'Launch Project',
+					url: '/projects/project-1'
+				},
+				entityRefs: [
+					{
+						kind: 'task',
+						id: 'task-1',
+						title: 'Ship launch links',
+						projectId: 'project-1',
+						url: '/projects/project-1?entity=task&entity_id=task-1',
+						operation: 'created'
+					}
+				],
+				redaction: { resultRedacted: true, reason: 'sensitive fields' }
+			},
+			{
+				id: 'entity_change:exec-1:task:task-1',
+				sessionId: 'session-abc',
+				turnRunId: 'turn-1',
+				source: 'entity_change',
+				kind: 'change',
+				status: 'completed',
+				timestamp: '2026-06-20T11:58:20.000Z',
+				title: 'Created Task',
+				summary: 'Ship launch links',
+				entityRefs: [
+					{
+						kind: 'task',
+						id: 'task-1',
+						title: 'Ship launch links',
+						projectId: 'project-1',
+						url: '/projects/project-1?entity=task&entity_id=task-1',
+						operation: 'created'
+					}
+				]
+			},
+			{
+				id: 'turn_run:turn-2',
+				sessionId: 'session-abc',
+				turnRunId: 'turn-2',
+				source: 'turn_run',
+				kind: 'status',
+				status: 'needs_input',
+				timestamp: '2026-06-20T11:59:20.000Z',
+				title: 'Agent needs input',
+				summary: 'Calendar write needs credentials.',
+				entityRefs: []
+			}
+		];
+
+		const markdown = buildAgentChatSupportPacketMarkdown({
+			messages: [
+				userMessage('Create the launch task.'),
+				thinkingBlock(),
+				assistantMessage('Done.')
+			],
+			timelineItems,
+			sessionId: 'session-abc',
+			contextLabel: 'Launch Plan',
+			contextType: 'project',
+			entityId: 'project-1',
+			projectFocus: {
+				projectId: 'project-1',
+				projectName: 'Launch Project',
+				focusType: 'project-wide',
+				focusEntityId: null,
+				focusEntityName: null
+			},
+			exportedAt
+		});
+
+		expect(markdown).toContain('# BuildOS Agent Support Packet');
+		expect(markdown).toContain('- Session ID: session-abc');
+		expect(markdown).toContain('- Tools with redacted payloads: 1');
+		expect(markdown).toContain('- Tools with safe expanded JSON: 1');
+		expect(markdown).toContain('- Turn run IDs:');
+		expect(markdown).toContain('`turn-1`');
+		expect(markdown).toContain('`stream-1`');
+		expect(markdown).toContain('`client-turn-1`');
+		expect(markdown).toContain('[created task: Ship launch links]');
+		expect(markdown).toContain('<summary>Args full JSON</summary>');
+		expect(markdown).toContain('"title": "Ship launch links"');
+		expect(markdown).toContain('- Redaction: sensitive fields');
+		expect(markdown).toContain('## Attention Items');
+		expect(markdown).toContain('Agent needs input');
+		expect(markdown).toContain('## Conversation');
+		expect(markdown).toContain('## Turn 2 - Agent Steps');
+	});
+
+	it('builds stable support packet filenames from context and session', () => {
+		expect(
+			buildAgentChatSupportPacketFilename({
+				messages: [],
+				contextLabel: 'Launch / Email Draft!',
+				sessionId: 'abcdef123456',
+				exportedAt
+			})
+		).toBe('buildos-agent-support-packet-launch-email-draft-abcdef12.md');
 	});
 });

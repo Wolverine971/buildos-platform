@@ -3577,6 +3577,7 @@ export type Database = {
       }
       chat_tool_executions: {
         Row: {
+          affected_entities: Json
           arguments: Json
           client_turn_id: string | null
           created_at: string | null
@@ -3600,6 +3601,7 @@ export type Database = {
           zero_result: boolean | null
         }
         Insert: {
+          affected_entities?: Json
           arguments: Json
           client_turn_id?: string | null
           created_at?: string | null
@@ -3623,6 +3625,7 @@ export type Database = {
           zero_result?: boolean | null
         }
         Update: {
+          affected_entities?: Json
           arguments?: Json
           client_turn_id?: string | null
           created_at?: string | null

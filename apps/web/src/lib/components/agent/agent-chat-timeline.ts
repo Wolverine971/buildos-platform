@@ -8,6 +8,7 @@ import type {
 } from './agent-chat.types';
 
 const MAX_PREVIEW_CHARS = 700;
+const MAX_FULL_JSON_CHARS = 12_000;
 const SENSITIVE_KEY_PATTERN =
 	/(authorization|cookie|credential|password|secret|token|api[_-]?key|access[_-]?token|refresh[_-]?token)/i;
 
@@ -72,6 +73,7 @@ export interface TimelineToolExecutionRow {
 	success?: boolean | null;
 	error_message?: string | null;
 	requires_user_action?: boolean | null;
+	affected_entities?: unknown;
 	created_at?: string | null;
 }
 
@@ -198,33 +200,58 @@ function hasSensitiveKey(value: unknown): boolean {
 	return false;
 }
 
+function safePrettyJson(value: unknown): string | null {
+	try {
+		const fullJson = JSON.stringify(value, null, 2);
+		if (fullJson.length > MAX_FULL_JSON_CHARS) return null;
+		return fullJson;
+	} catch {
+		return null;
+	}
+}
+
 function redactedJsonPreview(value: unknown): {
 	preview: string | null;
+	fullJson: string | null;
 	redacted: boolean;
 } {
-	if (value === undefined || value === null) return { preview: null, redacted: false };
+	if (value === undefined || value === null) {
+		return { preview: null, fullJson: null, redacted: false };
+	}
 	if (hasSensitiveKey(value)) {
-		return { preview: '[redacted sensitive fields]', redacted: true };
+		return { preview: '[redacted sensitive fields]', fullJson: null, redacted: true };
 	}
 
 	if (typeof value === 'string') {
 		const trimmed = value.trim();
-		if (!trimmed) return { preview: null, redacted: false };
+		if (!trimmed) return { preview: null, fullJson: null, redacted: false };
 		try {
 			const parsed = JSON.parse(trimmed);
 			if (hasSensitiveKey(parsed)) {
-				return { preview: '[redacted sensitive fields]', redacted: true };
+				return { preview: '[redacted sensitive fields]', fullJson: null, redacted: true };
 			}
-			return { preview: truncate(JSON.stringify(parsed)), redacted: false };
+			return {
+				preview: truncate(JSON.stringify(parsed)),
+				fullJson: safePrettyJson(parsed),
+				redacted: false
+			};
 		} catch {
-			return { preview: truncate(trimmed.replace(/\s+/g, ' ')), redacted: false };
+			return {
+				preview: truncate(trimmed.replace(/\s+/g, ' ')),
+				fullJson: null,
+				redacted: false
+			};
 		}
 	}
 
 	try {
-		return { preview: truncate(JSON.stringify(value)), redacted: false };
+		return {
+			preview: truncate(JSON.stringify(value)),
+			fullJson: safePrettyJson(value),
+			redacted: false
+		};
 	} catch {
-		return { preview: truncate(String(value)), redacted: false };
+		return { preview: truncate(String(value)), fullJson: null, redacted: false };
 	}
 }
 
@@ -257,6 +284,29 @@ function operationFromTool(toolName?: string | null, gatewayOp?: string | null):
 	if (source.includes('.link') || source.includes('link_') || source.includes('_link'))
 		return 'linked';
 	return null;
+}
+
+function normalizeOperation(value: unknown): string | null {
+	const operation = stringValue(value);
+	if (!operation) return null;
+	switch (operation) {
+		case 'create':
+		case 'created':
+			return 'created';
+		case 'update':
+		case 'updated':
+			return 'updated';
+		case 'delete':
+		case 'deleted':
+			return 'deleted';
+		case 'link':
+		case 'linked':
+			return 'linked';
+		case 'read':
+			return 'read';
+		default:
+			return operation;
+	}
 }
 
 function kindFromTool(toolName?: string | null, gatewayOp?: string | null): string | null {
@@ -338,7 +388,45 @@ function buildEntityUrl(ref: AgentTimelineEntityRef): string | null {
 	return `/projects/${ref.projectId}?entity=${encodeURIComponent(ref.kind)}&entity_id=${ref.id}`;
 }
 
-function extractEntityRef(execution: TimelineToolExecutionRow): AgentTimelineEntityRef | null {
+function normalizePersistedEntityRef(value: unknown): AgentTimelineEntityRef | null {
+	if (!isRecord(value)) return null;
+	const kind = normalizeEntityKind(stringValue(value.kind) ?? stringValue(value.entity_type));
+	const id =
+		stringValue(value.id) ||
+		stringValue(value.entity_id) ||
+		(kind ? stringValue(value[`${kind}_id`]) : null);
+	if (!kind || !id) return null;
+	const ref: AgentTimelineEntityRef = {
+		kind,
+		id,
+		title:
+			stringValue(value.title) || stringValue(value.name) || stringValue(value.label) || null,
+		projectId: stringValue(value.projectId) || stringValue(value.project_id) || null,
+		url: stringValue(value.url),
+		operation: normalizeOperation(value.operation) ?? undefined
+	};
+	ref.url = ref.url ?? buildEntityUrl(ref);
+	return ref;
+}
+
+function extractPersistedAffectedEntities(value: unknown): AgentTimelineEntityRef[] {
+	if (!Array.isArray(value)) return [];
+	const refs: AgentTimelineEntityRef[] = [];
+	const seen = new Set<string>();
+	for (const item of value) {
+		const ref = normalizePersistedEntityRef(item);
+		if (!ref) continue;
+		const key = `${ref.kind}:${ref.id}:${ref.operation ?? ''}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		refs.push(ref);
+	}
+	return refs;
+}
+
+function inferEntityRefFromToolExecution(
+	execution: TimelineToolExecutionRow
+): AgentTimelineEntityRef | null {
 	const kind = kindFromTool(execution.tool_name, execution.gateway_op);
 	const operation = operationFromTool(execution.tool_name, execution.gateway_op);
 	if (!kind || !operation) return null;
@@ -379,6 +467,16 @@ function extractEntityRef(execution: TimelineToolExecutionRow): AgentTimelineEnt
 	};
 	ref.url = buildEntityUrl(ref);
 	return ref;
+}
+
+export function extractAffectedEntitiesFromToolExecution(
+	execution: TimelineToolExecutionRow
+): AgentTimelineEntityRef[] {
+	const persistedRefs = extractPersistedAffectedEntities(execution.affected_entities);
+	if (persistedRefs.length > 0) return persistedRefs;
+	if (execution.success === false) return [];
+	const inferred = inferEntityRefFromToolExecution(execution);
+	return inferred ? [inferred] : [];
 }
 
 function projectRefFromEntity(ref: AgentTimelineEntityRef | null): AgentTimelineEntityRef | null {
@@ -425,7 +523,8 @@ function buildToolTimelineItem(
 	if (!execution.id || !execution.tool_name) return null;
 	const argsPreview = redactedJsonPreview(execution.arguments);
 	const resultPreview = redactedJsonPreview(execution.result);
-	const entityRef = execution.success === false ? null : extractEntityRef(execution);
+	const entityRefs = extractAffectedEntitiesFromToolExecution(execution);
+	const entityRef = entityRefs[0] ?? null;
 	const timestamp = fallbackTimestamp(execution.created_at);
 	const status = execution.requires_user_action
 		? 'needs_input'
@@ -454,13 +553,15 @@ function buildToolTimelineItem(
 			durationMs: execution.execution_time_ms ?? null,
 			tokensConsumed: execution.tokens_consumed ?? null,
 			argsPreview: argsPreview.preview,
+			argsFullJson: argsPreview.fullJson,
 			resultPreview: resultPreview.preview,
+			resultFullJson: resultPreview.fullJson,
 			errorMessage: execution.error_message ?? null,
 			zeroResult: execution.zero_result ?? null,
 			resultCount: execution.result_count ?? null
 		},
 		projectRef: projectRefFromEntity(entityRef),
-		entityRefs: entityRef ? [entityRef] : [],
+		entityRefs,
 		redaction: {
 			argsRedacted: argsPreview.redacted,
 			resultRedacted: resultPreview.redacted,
@@ -690,6 +791,48 @@ export function mergeAgentTimelineItems(
 		}
 	}
 	return Array.from(byId.values()).sort(compareTimelineItems);
+}
+
+function timelineEntityRefLabel(ref: AgentTimelineEntityRef): string {
+	const title = ref.title || ref.id;
+	const operation = ref.operation ? `, ${ref.operation}` : '';
+	return `${ref.kind}: ${title} (${ref.id}${operation})`;
+}
+
+export function buildTimelineItemQuestionDraft(item: AgentTimelineItem): string {
+	const lines: string[] = [
+		`Can you explain this ${item.kind} and what I should do next?`,
+		'',
+		`Timeline item: ${item.title}`,
+		`Status: ${item.status}`
+	];
+
+	if (item.summary) {
+		lines.push(`Summary: ${item.summary}`);
+	}
+
+	if (item.tool?.name) {
+		const gateway = item.tool.gatewayOp ? ` (${item.tool.gatewayOp})` : '';
+		lines.push(`Tool: ${item.tool.name}${gateway}`);
+	}
+
+	if (item.tool?.errorMessage) {
+		lines.push(`Error: ${item.tool.errorMessage}`);
+	}
+
+	const refs = new Map<string, AgentTimelineEntityRef>();
+	if (item.projectRef) {
+		refs.set(`${item.projectRef.kind}:${item.projectRef.id}`, item.projectRef);
+	}
+	for (const ref of item.entityRefs) {
+		refs.set(`${ref.kind}:${ref.id}:${ref.operation ?? ''}`, ref);
+	}
+	if (refs.size > 0) {
+		lines.push(`Related: ${Array.from(refs.values()).map(timelineEntityRefLabel).join('; ')}`);
+	}
+
+	lines.push(`Timeline item id: ${item.id}`);
+	return lines.join('\n');
 }
 
 export function timelineItemsFromMessages(

@@ -67,7 +67,11 @@
 		type ThinkingBlockMessage,
 		type UIMessage
 	} from './agent-chat.types';
-	import { mergeAgentTimelineItems, timelineItemsFromMessages } from './agent-chat-timeline';
+	import {
+		buildTimelineItemQuestionDraft,
+		mergeAgentTimelineItems,
+		timelineItemsFromMessages
+	} from './agent-chat-timeline';
 	import { toastService } from '$lib/stores/toast.store';
 	import { haptic } from '$lib/utils/haptic';
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
@@ -99,7 +103,10 @@
 	} from './agent-chat-sse-handler';
 	import { createVoiceAdapter } from './agent-chat-voice.svelte';
 	import { createPrewarmController } from './agent-chat-prewarm.svelte';
-	import { downloadAgentChatStepsMarkdown } from './agent-chat-step-export';
+	import {
+		downloadAgentChatStepsMarkdown,
+		downloadAgentChatSupportPacketMarkdown
+	} from './agent-chat-step-export';
 
 	interface AutoInitProjectConfig {
 		projectId: string;
@@ -254,6 +261,9 @@
 		() => agentTimelineItems.filter((item) => item.kind !== 'message').length
 	);
 	const canExportAgentSteps = $derived(messages.length > 0);
+	const canExportSupportPacket = $derived(
+		messages.length > 0 || agentTimelineItems.length > 0 || Boolean(currentSession?.id)
+	);
 
 	$effect(() => {
 		if (initialBrainDumpContext?.id) {
@@ -907,6 +917,39 @@
 			console.error('[AgentChatModal] Failed to export agent steps', exportError);
 			toastService.error('Could not export agent steps');
 		}
+	}
+
+	function handleExportSupportPacket() {
+		if (!browser) return;
+		if (!canExportSupportPacket) {
+			toastService.error('No chat data to export yet');
+			return;
+		}
+
+		try {
+			downloadAgentChatSupportPacketMarkdown({
+				messages,
+				timelineItems: agentTimelineItems,
+				sessionId: currentSession?.id ?? null,
+				contextLabel: displayContextLabel,
+				contextType: selectedContextType,
+				entityId: selectedEntityId ?? null,
+				projectFocus: resolvedProjectFocus
+			});
+			toastService.success('Support packet exported');
+		} catch (exportError) {
+			console.error('[AgentChatModal] Failed to export support packet', exportError);
+			toastService.error('Could not export support packet');
+		}
+	}
+
+	function handleAskAboutTimelineItem(item: AgentTimelineItem) {
+		const draft = buildTimelineItemQuestionDraft(item);
+		const existingDraft = inputValue.trim();
+		inputValue = existingDraft ? `${existingDraft}\n\n${draft}` : draft;
+		activeChatTab = 'chat';
+		haptic('light');
+		toastService.success('Added step context to composer');
 	}
 
 	function resetConversation(options: { preserveContext?: boolean } = {}) {
@@ -3442,6 +3485,7 @@
 					onTabChange={(tab) => {
 						activeChatTab = tab;
 					}}
+					onAskAboutItem={handleAskAboutTimelineItem}
 				/>
 				{#if activeChatTab === 'chat'}
 					<AgentMessageList
@@ -3604,6 +3648,8 @@
 					onExportSteps={handleExportAgentSteps}
 					canExportSteps={canExportAgentSteps}
 					{exportableStepCount}
+					onExportSupportPacket={handleExportSupportPacket}
+					{canExportSupportPacket}
 				/>
 			</div>
 		{/snippet}

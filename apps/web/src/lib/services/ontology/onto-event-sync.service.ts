@@ -1470,6 +1470,14 @@ export class OntoEventSyncService {
 				};
 			}
 
+			const status = await this.googleOAuthService.safeGetCalendarStatus(input.targetUserId);
+			if (!status.isConnected) {
+				return {
+					outcome: 'skipped',
+					reason: 'calendar_not_connected'
+				};
+			}
+
 			const projectCalendar = await this.resolveProjectCalendar(
 				event.project_id,
 				input.targetUserId,
@@ -1479,14 +1487,6 @@ export class OntoEventSyncService {
 				return {
 					outcome: 'skipped',
 					reason: 'project_calendar_unavailable'
-				};
-			}
-
-			const status = await this.googleOAuthService.safeGetCalendarStatus(input.targetUserId);
-			if (!status.isConnected) {
-				return {
-					outcome: 'skipped',
-					reason: 'calendar_not_connected'
 				};
 			}
 

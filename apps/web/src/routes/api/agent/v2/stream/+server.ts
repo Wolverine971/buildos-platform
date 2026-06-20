@@ -74,6 +74,7 @@ import {
 	searchToolFamily,
 	searchTelemetryColumns
 } from '$lib/services/agentic-chat/tools/core/search-telemetry';
+import { extractAffectedEntitiesFromToolExecution } from '$lib/components/agent/agent-chat-timeline';
 import { v4 as uuidv4 } from 'uuid';
 import {
 	AgentStateReconciliationService,
@@ -2131,6 +2132,7 @@ type ToolExecutionInsertRow = {
 	tokens_consumed: number | null;
 	success: boolean;
 	error_message: string | null;
+	affected_entities: Json;
 };
 
 function parseToolArgumentsForPersistence(rawArgs: unknown): Json {
@@ -2175,6 +2177,10 @@ function buildToolExecutionInsertRows(params: {
 	if (!Array.isArray(params.executions) || params.executions.length === 0) return [];
 	return params.executions.map(({ toolCall, result }, index) => {
 		const meta = extractFastChatToolCallMeta(toolCall);
+		const argumentsPayload = parseToolArgumentsForPersistence(toolCall.function.arguments);
+		const resultPayload = result.success
+			? normalizeToolResultForPersistence(result.result)
+			: null;
 		// Populate search telemetry (result_count / zero_result) on the live persistence
 		// path. Without this the columns are always NULL in prod because ChatToolExecutor
 		// (the other writer that sets them) runs with logExecutions=false here.
@@ -2194,8 +2200,8 @@ function buildToolExecutionInsertRows(params: {
 			gateway_op: meta.canonicalOp,
 			help_path: meta.helpPath,
 			sequence_index: index + 1,
-			arguments: parseToolArgumentsForPersistence(toolCall.function.arguments),
-			result: result.success ? normalizeToolResultForPersistence(result.result) : null,
+			arguments: argumentsPayload,
+			result: resultPayload,
 			result_count: searchTelemetry.result_count,
 			zero_result: searchTelemetry.zero_result,
 			execution_time_ms:
@@ -2211,7 +2217,15 @@ function buildToolExecutionInsertRows(params: {
 					? (result as ChatToolResult & { tokens_consumed?: number }).tokens_consumed!
 					: null,
 			success: result.success === true,
-			error_message: typeof result.error === 'string' ? result.error : null
+			error_message: typeof result.error === 'string' ? result.error : null,
+			affected_entities: extractAffectedEntitiesFromToolExecution({
+				id: (toolCall as { id?: string }).id ?? `${toolCall.function.name}-${index + 1}`,
+				tool_name: toolCall.function.name,
+				gateway_op: meta.canonicalOp,
+				arguments: argumentsPayload,
+				result: resultPayload,
+				success: result.success === true
+			}) as unknown as Json
 		};
 	});
 }

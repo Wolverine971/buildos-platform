@@ -768,6 +768,9 @@
 			"exports": [
 				"buildAgentChatStepsMarkdown",
 				"buildAgentChatStepsFilename",
+				"buildAgentChatSupportPacketMarkdown",
+				"buildAgentChatSupportPacketFilename",
+				"downloadAgentChatSupportPacketMarkdown",
 				"downloadAgentChatStepsMarkdown"
 			]
 		},
@@ -776,8 +779,10 @@
 			"type": "component",
 			"components": [],
 			"exports": [
+				"extractAffectedEntitiesFromToolExecution",
 				"buildAgentTimeline",
 				"mergeAgentTimelineItems",
+				"buildTimelineItemQuestionDraft",
 				"timelineItemsFromMessages"
 			]
 		},
