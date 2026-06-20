@@ -78,6 +78,8 @@ export interface AgentOpResult {
 	/** Write ops surface the touched entity so the runner can record it. */
 	entityKind?: string | null;
 	entityId?: string | null;
+	entityProjectId?: string | null;
+	entityTitle?: string | null;
 	/**
 	 * Set when a write op was STAGED instead of committed (mutationMode='stage').
 	 * The change minus its id — the runner assigns a stable id and accumulates
@@ -309,7 +311,9 @@ async function executeWriteOp(
 			op,
 			data: result.data,
 			entityKind: result.entityKind ?? null,
-			entityId: result.entityId ?? null
+			entityId: result.entityId ?? null,
+			entityProjectId: result.entityProjectId ?? null,
+			entityTitle: result.entityTitle ?? null
 		};
 	}
 

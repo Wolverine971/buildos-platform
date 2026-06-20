@@ -1,7 +1,14 @@
 <!-- apps/web/src/lib/components/agent/AgentChatHeader.svelte -->
 <!-- INKPRINT Design System: Header component with Frame texture -->
 <script lang="ts">
-	import { X, ExternalLink, ArrowLeft, LoaderCircle, AlertTriangle } from 'lucide-svelte';
+	import {
+		X,
+		ExternalLink,
+		ArrowLeft,
+		LoaderCircle,
+		AlertTriangle,
+		Download
+	} from 'lucide-svelte';
 	import { dev } from '$app/environment';
 	import ProjectFocusIndicator from './ProjectFocusIndicator.svelte';
 	import ChatSessionAuditActions from './ChatSessionAuditActions.svelte';
@@ -27,6 +34,9 @@
 		sessionStatusLabel?: string | null;
 		contextUsage?: ContextUsageSnapshot | null;
 		sessionId?: string | null;
+		onExportSteps?: () => void;
+		canExportSteps?: boolean;
+		exportableStepCount?: number;
 		/** Bumped each time we shift into a (new) project context — triggers the title glimmer. */
 		contextShiftPulse?: number;
 	}
@@ -49,6 +59,9 @@
 		sessionStatusLabel = null,
 		contextUsage = null,
 		sessionId = null,
+		onExportSteps,
+		canExportSteps = false,
+		exportableStepCount = 0,
 		contextShiftPulse = 0
 	}: Props = $props();
 
@@ -80,6 +93,12 @@
 
 	// Determine project URL based on context
 	const projectUrl = $derived(projectId ? `/projects/${projectId}` : null);
+	const exportStepsTitle = $derived.by(() => {
+		if (!canExportSteps) return 'No agent steps to export yet';
+		if (exportableStepCount <= 0) return 'Export chat transcript';
+		const noun = exportableStepCount === 1 ? 'step' : 'steps';
+		return `Export agent steps (${exportableStepCount} ${noun} logged)`;
+	});
 
 	const contextUsageCounter = $derived.by(() => {
 		if (!dev || !contextUsage) {
@@ -240,6 +259,21 @@
 			</a>
 		{/if}
 
+		{#if onExportSteps}
+			<button
+				type="button"
+				onclick={onExportSteps}
+				disabled={!canExportSteps}
+				class="flex h-9 sm:h-7 items-center justify-center gap-2 rounded-lg border border-border bg-card px-2.5 text-[0.65rem] font-semibold uppercase tracking-[0.15em] text-muted-foreground shadow-ink transition-all touch-manipulation pressable hover:border-accent hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-border disabled:hover:text-muted-foreground"
+				style="-webkit-tap-highlight-color: transparent;"
+				title={exportStepsTitle}
+				aria-label={exportStepsTitle}
+			>
+				<Download class="h-3.5 w-3.5 shrink-0" />
+				<span class="hidden sm:inline">Steps</span>
+			</button>
+		{/if}
+
 		<ChatSessionAuditActions {sessionId} />
 
 		<!-- INKPRINT close button -->
@@ -260,22 +294,25 @@
 <style>
 	/*
 	 * INKPRINT glimmer: when the agent shifts us onto a (new) project, the title
-	 * gently rises into place while a single band of accent "ink" sweeps across
-	 * the letters — a small, joyful signal that the context just changed.
+	 * rises into place while a band of accent "ink" sweeps across the letters and
+	 * the whole title briefly blooms accent — a small, deliberate "this is your
+	 * project now" beat. (No pseudo-element underline: the title is `truncate`, and
+	 * `overflow: hidden` would clip anything drawn outside its box. A `filter`
+	 * glow renders past the clip, so the bloom is the safe way to add presence.)
 	 */
 	.agent-context-title--glimmer {
 		/*
-		 * Mostly-foreground gradient with a narrow accent band at its centre.
-		 * Sized to 300% so the painted image always fully covers the title (the
-		 * band can sweep fully in and out without ever leaving a glyph unpainted
-		 * — important, since unpainted area + text-clip = invisible text).
+		 * Mostly-foreground gradient with an accent band at its centre. Sized to
+		 * 300% so the painted image always fully covers the title (the band can
+		 * sweep fully in and out without ever leaving a glyph unpainted — unpainted
+		 * area + text-clip = invisible text).
 		 */
 		background-image: linear-gradient(
 			100deg,
 			hsl(var(--foreground)) 0%,
-			hsl(var(--foreground)) 42%,
+			hsl(var(--foreground)) 34%,
 			hsl(var(--accent)) 50%,
-			hsl(var(--foreground)) 58%,
+			hsl(var(--foreground)) 66%,
 			hsl(var(--foreground)) 100%
 		);
 		background-size: 300% 100%;
@@ -289,7 +326,8 @@
 		transform-origin: left center;
 		animation:
 			agent-context-pop 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-			agent-context-shimmer 1s ease-out 0.04s;
+			agent-context-shimmer 1.05s ease-out 0.04s,
+			agent-context-glow 1.15s ease-out;
 	}
 
 	@keyframes agent-context-pop {
@@ -316,12 +354,27 @@
 		}
 	}
 
+	/* The whole title softly blooms accent, then settles (two layers for presence). */
+	@keyframes agent-context-glow {
+		0% {
+			filter: drop-shadow(0 0 0 hsl(var(--accent) / 0));
+		}
+		45% {
+			filter: drop-shadow(0 0 5px hsl(var(--accent) / 0.55))
+				drop-shadow(0 0 12px hsl(var(--accent) / 0.3));
+		}
+		100% {
+			filter: drop-shadow(0 0 0 hsl(var(--accent) / 0));
+		}
+	}
+
 	/* Respect users who prefer reduced motion — keep the moment, drop the movement. */
 	@media (prefers-reduced-motion: reduce) {
 		.agent-context-title--glimmer {
 			background-image: none;
 			-webkit-text-fill-color: hsl(var(--foreground));
 			color: hsl(var(--foreground));
+			filter: none;
 			transform: none;
 			animation: none;
 		}

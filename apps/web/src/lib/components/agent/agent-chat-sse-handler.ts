@@ -254,7 +254,7 @@ export interface SSEHandlerDeps {
 	// Clarifications
 	addClarifyingQuestionsMessage(questions: unknown): void;
 
-	// Created-entity cards (appended at end of a turn that created entities)
+	// Created-entity chips appended inline at the end of a turn that created entities.
 	addCreatedEntitiesMessage(entities: CreatedEntityRef[]): void;
 
 	// Focus logging
@@ -425,7 +425,7 @@ export function createSSEHandler(deps: SSEHandlerDeps): (event: AgentSSEMessage)
 		state.setCurrentActivity('');
 		deps.finalizeAssistantMessage();
 		thinking.finalize();
-		// Surface any entities created this turn as tappable cards, then reset.
+		// Surface any entities created this turn as inline chips, then reset.
 		if (createdEntitiesBuffer.length > 0) {
 			deps.addCreatedEntitiesMessage(createdEntitiesBuffer);
 			createdEntitiesBuffer = [];

@@ -1821,42 +1821,86 @@ export function normalizeGatewayError(error: unknown): ExternalToolGatewayError 
 	);
 }
 
+type WriteEntityMeta = {
+	entityKind?: string;
+	entityId?: string;
+	entityProjectId?: string;
+	entityTitle?: string;
+};
+
+function stringField(record: Record<string, unknown>, ...keys: string[]): string | undefined {
+	for (const key of keys) {
+		const value = record[key];
+		if (typeof value === 'string' && value.trim()) {
+			return value.trim();
+		}
+	}
+	return undefined;
+}
+
+function metaFromEntityRecord(
+	kind: string,
+	record: Record<string, unknown>,
+	options: { idField?: string; fallbackProjectId?: string; fallbackTitle?: string } = {}
+): WriteEntityMeta {
+	const rawId = record[options.idField ?? 'id'];
+	const entityId = typeof rawId === 'string' && isValidUUID(rawId) ? rawId : undefined;
+	const entityProjectId =
+		kind === 'project'
+			? entityId
+			: (stringField(record, 'project_id') ?? options.fallbackProjectId);
+	const entityTitle = stringField(record, 'title', 'name', 'summary') ?? options.fallbackTitle;
+	return {
+		entityKind: entityId ? kind : undefined,
+		entityId,
+		entityProjectId,
+		entityTitle
+	};
+}
+
 function extractWriteEntityMeta(params: {
 	op: BuildosAgentAllowedOp;
 	result: Record<string, unknown>;
-}): { entityKind?: string; entityId?: string } {
+}): WriteEntityMeta {
 	if (params.op === 'onto.edge.link') {
 		const edge = params.result.edge;
 		if (edge && typeof edge === 'object' && !Array.isArray(edge)) {
-			const entityId = (edge as { id?: unknown }).id;
-			if (typeof entityId === 'string' && isValidUUID(entityId)) {
-				return { entityKind: 'edge', entityId };
-			}
+			const edgeRecord = edge as Record<string, unknown>;
+			return metaFromEntityRecord('edge', edgeRecord, {
+				fallbackTitle: [
+					stringField(edgeRecord, 'src_kind'),
+					stringField(edgeRecord, 'rel'),
+					stringField(edgeRecord, 'dst_kind')
+				]
+					.filter(Boolean)
+					.join(' ')
+			});
 		}
 	}
 
 	if (params.op === 'onto.edge.unlink') {
 		const entityId = params.result.edge_id;
 		if (typeof entityId === 'string' && isValidUUID(entityId)) {
-			return { entityKind: 'edge', entityId };
+			return {
+				entityKind: 'edge',
+				entityId,
+				entityProjectId: stringField(params.result, 'project_id')
+			};
 		}
 	}
 
 	if (params.op === 'onto.task.docs.create_or_attach') {
 		const document = params.result.document;
 		if (document && typeof document === 'object' && !Array.isArray(document)) {
-			const entityId = (document as { id?: unknown }).id;
-			if (typeof entityId === 'string' && isValidUUID(entityId)) {
-				return { entityKind: 'document', entityId };
-			}
+			return metaFromEntityRecord('document', document as Record<string, unknown>);
 		}
 	}
 
 	if (params.op === 'onto.document.tree.move') {
-		const entityId = params.result.document_id;
-		if (typeof entityId === 'string' && isValidUUID(entityId)) {
-			return { entityKind: 'document', entityId };
-		}
+		return metaFromEntityRecord('document', params.result, {
+			idField: 'document_id',
+			fallbackProjectId: stringField(params.result, 'project_id')
+		});
 	}
 
 	const entityKeyMap: Array<{ prefix: string; kind: string; resultKey: string }> = [
@@ -1874,10 +1918,7 @@ function extractWriteEntityMeta(params: {
 		if (!params.op.startsWith(prefix)) continue;
 		const entity = params.result[resultKey];
 		if (entity && typeof entity === 'object' && !Array.isArray(entity)) {
-			const entityId = (entity as { id?: unknown }).id;
-			if (typeof entityId === 'string' && isValidUUID(entityId)) {
-				return { entityKind: kind, entityId };
-			}
+			return metaFromEntityRecord(kind, entity as Record<string, unknown>);
 		}
 	}
 
@@ -6357,6 +6398,8 @@ export interface GatewayWriteOpResult {
 	data?: Record<string, unknown>;
 	entityKind?: string | null;
 	entityId?: string | null;
+	entityProjectId?: string | null;
+	entityTitle?: string | null;
 	error?: {
 		code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'FORBIDDEN' | 'CONFLICT' | 'INTERNAL';
 		message: string;
@@ -6519,7 +6562,9 @@ export async function runGatewayWriteOp(params: {
 			ok: true,
 			data: result,
 			entityKind: meta.entityKind ?? null,
-			entityId: meta.entityId ?? null
+			entityId: meta.entityId ?? null,
+			entityProjectId: meta.entityProjectId ?? null,
+			entityTitle: meta.entityTitle ?? null
 		};
 	} catch (error) {
 		const normalized = normalizeGatewayError(error);

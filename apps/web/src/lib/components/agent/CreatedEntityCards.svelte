@@ -1,5 +1,9 @@
 <!-- apps/web/src/lib/components/agent/CreatedEntityCards.svelte -->
-<!-- INKPRINT: tappable cards for entities the agent just created this turn. -->
+<!--
+	Horizontal "Created" chips shown at the bottom of the conversation. Each chip opens
+	the entity in a NEW TAB so the user keeps their place in the chat. Driven by the
+	session's accumulated created entities (persisted/re-derived on reload).
+-->
 <script lang="ts">
 	import {
 		FolderKanban,
@@ -10,7 +14,7 @@
 		Flag,
 		TriangleAlert,
 		Sparkles,
-		ChevronRight
+		ExternalLink
 	} from 'lucide-svelte';
 	import type { CreatedEntityRef } from './agent-chat.types';
 
@@ -26,8 +30,8 @@
 		risk: { icon: TriangleAlert, label: 'Risk' }
 	};
 
-	// Deep-link to the entity using the project page's query handlers
-	// (?doc= opens a document; ?entity=&entity_id= opens the entity editor).
+	// Deep-link via the project page's query handlers (?doc= opens a document;
+	// ?entity=&entity_id= opens the entity editor); projects open directly.
 	function hrefFor(e: CreatedEntityRef): string | null {
 		if (e.kind === 'project') return `/projects/${e.id}`;
 		if (!e.projectId) return null;
@@ -52,8 +56,10 @@
 			{#if href}
 				<a
 					{href}
+					target="_blank"
+					rel="noopener noreferrer"
 					class="entity-card group inline-flex max-w-[15rem] items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-1.5 shadow-ink transition-all pressable hover:border-accent hover:bg-accent/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-					title={`Open ${meta.label.toLowerCase()}: ${entity.name}`}
+					title={`Open ${meta.label.toLowerCase()} in a new tab: ${entity.name}`}
 				>
 					<span class="text-accent" aria-hidden="true">
 						<EntityIcon class="h-3.5 w-3.5" />
@@ -67,8 +73,8 @@
 							>{meta.label}</span
 						>
 					</span>
-					<ChevronRight
-						class="h-3.5 w-3.5 shrink-0 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-accent"
+					<ExternalLink
+						class="h-3.5 w-3.5 shrink-0 text-muted-foreground transition group-hover:text-accent"
 					/>
 				</a>
 			{:else}
@@ -95,7 +101,7 @@
 </div>
 
 <style>
-	/* Reuse the global "just created" entrance so cards rise in with an ink-bloom. */
+	/* Reuse the global "just created" entrance so new chips rise in with an ink-bloom. */
 	.entity-card {
 		animation: entity-just-created 1.6s cubic-bezier(0.22, 1, 0.36, 1);
 	}

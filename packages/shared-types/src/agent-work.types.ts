@@ -91,6 +91,14 @@ export interface EntityTouch {
 	action: EntityAction;
 	/** LLM-annotated rationale; never used to infer that a change happened. */
 	description: string;
+	/** Owning project, when known. Project touches use the project id itself. */
+	project_id?: string | null;
+	/** Human-readable entity title/name for link text. */
+	title?: string | null;
+	/** App-relative link to the touched entity when a dedicated route or project-page opener exists. */
+	url?: string | null;
+	/** App-relative link to the owning project. */
+	project_url?: string | null;
 }
 
 export interface RunResultArtifact {

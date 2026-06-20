@@ -9,14 +9,34 @@
 
 ---
 
+## Brand Alignment (read first)
+
+The public category is **"thinking environment for people making complex things"** and the core promise is **"turn messy thinking into structured work."** Lead with relief, not AI. The source of truth is `docs/marketing/brand/brand-guide-1-pager.md` — follow its **Terms To Use** ("thinking environment," "the project remembers," "context compounds," "one system," "next move") and **Terms To Avoid At First Contact** ("context infrastructure," "context engineering," "agentic orchestration," "AI-powered productivity," ontology).
+
+This doc is about **who DJ engages with** on LinkedIn. The targeting lanes below skew to AI builders / founders / ADHD because that is where on-thesis conversations actually live on LinkedIn (the brand's "supporting affinity lanes") — but the **language** in every comment and post should be brand voice (relief, plain words, "the project remembers"), never context-engineering-thought-leader jargon. Per the brand, DJ is **not** a thought leader: interesting builder + genuine supporter (see `linkedin-voice-quick-ref.md`). The brand's _lead_ audience — authors and YouTubers — is the lane to expand engagement into over time.
+
 ## Content Pillar Distribution
 
-| Pillar                   | % Focus | Your Angle                                                             |
-| ------------------------ | ------- | ---------------------------------------------------------------------- |
-| **Context Engineering**  | 35%     | "AI has amnesia. Context that compounds > intelligence that resets"    |
-| **Building in Public**   | 30%     | Solo founder, Marines (sparingly), what's working/not                  |
-| **AI + Productivity**    | 20%     | Clarity > time management. Context > prompts. Daily Claude Code user.  |
-| **ADHD/Scattered Minds** | 15%     | Complex tools slow you down. Simple + consistent > complex + abandoned |
+| Pillar                         | % Focus | Your Angle (brand voice)                                                                                        |
+| ------------------------------ | ------- | --------------------------------------------------------------------------------------------------------------- |
+| **Project Memory / Context**   | 35%     | "The project remembers what matters." Stateless chat forgets; context compounds. Relief, not a lecture.         |
+| **Building in Public**         | 30%     | Solo founder turning messy thinking into structured work — what's working/not. Marines as color, sparingly.     |
+| **AI + Productivity (relief)** | 20%     | Talk through the work, it becomes a plan. Replace scattered tools with one system. Less optimizing, more doing. |
+| **ADHD/Scattered Minds**       | 15%     | Complex tools slow you down. Simple + consistent > complex + abandoned. Leave them less judged, more capable.   |
+
+> The pillar weights describe what DJ engages with. They are not a license to lead with AI/context jargon — see Brand Alignment above.
+
+---
+
+## Discovery Learnings (from warmup scans, keep current)
+
+Codified from the 06-14 → 06-16 warmup runs — update as the picture changes:
+
+- **Winning search lanes:** `Claude Code context workflow` and `AI memory agents context` (sorted Latest, past-24h) reliably surface on-thesis practitioner/architecture posts. These beat term-searches and the lanes below.
+- **Dead/low-yield lanes:** `"context engineering"` (permanently polluted by course/challenge/consultant promos — retired). `building in public` past-24h skews to junior-dev build logs and off-lane policy posts. `ADHD brain dump` is promo-saturated (Etsy planners, coach link-drops) — the genuinely on-thesis ADHD content (Samantha Zellers, Alex Kitchen) came from organic build-in-public posts, not the promo stream.
+- **Prioritize 2nd-degree authors when content fit is equal.** 2nd-connection finds (e.g. Manuel C.) are reachable relationships that compound; 3rd+ finds are one-off value-add slots. Relationship-building is the point of LinkedIn over Twitter.
+- **The highest-value moment:** someone posting DJ's exact thesis in their own words (e.g. Manuel C.'s "the model doesn't get smarter, the system does"). Engage as a peer — and flag it as an original-post seed for DJ.
+- **Tooling:** capture direct post URLs via `data-urn` on author `/recent-activity/all/` pages (search-result pages expose no URNs). If screenshots time out, `get_page_text` + `javascript_tool` cover discovery; the compose step may need `find` + `read_page` refs.
 
 ---
 
@@ -434,6 +454,45 @@ _Last updated: 2026-03-24 (Added Blaise Pascual to Tier 1 Founders, Vikas Bansal
 ---
 
 ## Change Log
+
+### 2026-06-18 - New Accounts from LinkedIn Warmup
+
+**Source:** Daily LinkedIn warmup scan (`2026-06-18_linkedin-warmup.md`)
+
+**Added:**
+
+- **Mustafa Ergişi** added to **Tier 2** (Founder / AI Productivity — Adjacent operator, peer founder). Founder of AI2sql.io posting about daily Claude Code practice ("/plan turns a vibe-coded session into a workflow; /context shows where tokens are disappearing; the CLI grows on you once you stack it into routines"). Highest relationship-value find of the scan; connection-request candidate. Profile: `linkedin-profiles/mustafa-ergisi.md`.
+- **Nicole Yahaya** added to **Tier 3** (AI Productivity creator — Adjacent operator, watch for upgrade). Her "Use Claude in 3 stages" post is the BuildOS brain-dump → structure → execute flow verbatim ("Clarity first. Output second."). Best content/thesis fit of the scan; only mention-fit-2. Profile: `linkedin-profiles/nicole-yahaya.md`.
+- **Guilherme Lopes** added to **Tier 3** (AI Builder / Automation — Adjacent operator). Multi-agent orchestration with n8n/LangGraph/Claude Code; "coordination and governance > smarter models, agents pass context — no black boxes." Context-over-agents hook. Profile: `linkedin-profiles/guilherme-lopes.md`.
+- **Dhruv Sahu** added to **Tier 3** (AI Builder / Full-Stack — Adjacent operator seed). "Production AI Agent Checklist" — stateless LLMs → memory/context management; "the system around the LLM is where real software engineering happens." Profile: `linkedin-profiles/dhruv-sahu.md`.
+
+**Key signal:** The `brain dump overwhelmed productivity` lane broke a 3+ scan dry streak with the single best thesis-fit post in weeks (Nicole — BuildOS flow verbatim, mention-fit 2). Meanwhile `context engineering building` has degraded to recruiter-JD spam — demote it. Productive lanes: `Claude Code context workflow`, `AI agents stateless memory`, `brain dump overwhelmed productivity`. **Execution debt is now FIVE scans deep** — both `2026-06-16` and `2026-06-17` reply docs are fully unshipped. Sourcing has not been the bottleneck for over a week.
+
+### 2026-06-17 - New Accounts from LinkedIn Warmup
+
+**Source:** Daily LinkedIn warmup scan (`2026-06-17_linkedin-warmup.md`)
+
+**Added:**
+
+- **Troy McAlpin** added to **Tier 2** (AI Builder / Adjacent operator — peer founder). Atono CEO building a product-team platform for AI teams. His "decisions-as-AI-context" thesis is the BuildOS Project Knowledge Layer from the product-management side: "ADRs the AI reads before it writes a line" → "shared Product Knowledge plus design decisions attached to the work... when the AI knows what your terms mean and what you already decided, the draft matches the product on the first pass." Best fresh thesis fit of the scan; credible CEO. Profile: `linkedin-profiles/troy-mcalpin.md`.
+- **Bobby Umar** added to **Tier 2** (AI Productivity / Creator — Adjacent operator). 2nd connection, 2x LinkedIn Top Voice. Building a Claude Code "Chief of Staff system that reads my context, my voice, my history." Distribution-adjacent relationship seed; note his posts are often comment-gated lead-magnet promos — engage on substance. Profile: `linkedin-profiles/bobby-umar.md`.
+- **Lashika Arunachalam** added to **Tier 3** (Context Engineering learner / Adjacent operator seed). Google AI Agents Intensive recaps using exact BuildOS vocabulary (stateless→stateful, SKILL.md, progressive disclosure). Easy native value-add; low relationship tier. Profile: `linkedin-profiles/lashika-arunachalam.md`.
+- **Brian Jackson Jr.** added to **Tier 3** (AI Builder / Adjacent operator seed). Building Moltis, a self-hosted multi-agent workspace with per-agent memory over MCP. On-thesis ("primitives converge on context / memory / RAG / hand-off"); junior (Per Scholas '26). Profile: `linkedin-profiles/brian-jackson-jr.md`.
+- **Edmund Wist (ARIA)** added to **Tier 3** (Competitor / Monitor only). Founder of ARIA / ariaconnector.com, marketed literally as an "AI Context Management Platform" — the BuildOS category. Competitive intel only; very high-volume poster, NOT an engagement target. Profile: `linkedin-profiles/edmund-wist.md`.
+
+**Key signal:** A direct category competitor surfaced (ARIA — "AI Context Management Platform"). Also: `context engineering building` and `AI agents stateless memory` out-performed the usual `Claude Code context workflow` / `AI memory agents context` lanes today — "stateless→stateful" and "decisions-as-context" are surfacing the most on-vocabulary practitioners. **Execution debt is now 4 scans deep** — `2026-06-16_linkedin-replies.md` is entirely unshipped; sourcing is not the bottleneck.
+
+### 2026-06-16 - New Accounts from LinkedIn Warmup
+
+**Source:** Daily LinkedIn warmup scan (`2026-06-16_linkedin-warmup.md`)
+
+**Added:**
+
+- **Manuel C.** added to **Tier 2** (AI Builder / Peer) — 2nd-connection indie AI builder (Reflective AI LLC, giffpop.com). His "give the model a brain" post is BuildOS's core thesis verbatim: "It wakes up with amnesia... The fix is giving the model a brain... The model doesn't get smarter. The system does." Builds persistent-memory + knowledge-graph architecture around Claude Code. Best non-DJ thesis-fit post in months; reachable 2nd-degree relationship. Profile: `linkedin-profiles/manuel-alejandro-calvino.md`.
+- **Bhuvan Tummala** added to **Tier 3** (AI Builder / Adjacent operator) — VP Product Engineering @ Mondee. "Optimize for decisions, not agents; every handoff compresses context" — context-over-agents thesis from a credible senior voice. Value-add lane. Profile: `linkedin-profiles/bhuvan-tummala.md`.
+- **Yodit Weldegeorgise** added to **Tier 3** (AI Builder / Monitor only) — 2nd-conn AI/Java engineer, GDG-active. Conference-recap content (agents = LLM + tools + memory + loop, MCP). Relationship-seed value. Profile: `linkedin-profiles/yodit-weldegeorgise.md`.
+
+**Key signal:** The best discovery lane remains practitioner/architecture posts about real Claude Code usage (`Claude Code context workflow`, `AI memory agents context`) — not term-searches or ADHD/brain-dump (promo-saturated 2 scans running). Prioritize 2nd-degree authors when content fit is equal.
 
 ### 2026-03-24 - New Accounts from LinkedIn Warmup (PM)
 

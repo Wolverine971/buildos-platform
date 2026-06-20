@@ -188,6 +188,10 @@ interface EntityTouch {
 	id: string;
 	action: 'created' | 'updated' | 'deleted';
 	description: string; // LLM-annotated rationale
+	project_id?: string | null; // owning project, when known
+	title?: string | null; // title/name used as link text
+	url?: string | null; // app-relative link to the touched entity
+	project_url?: string | null; // app-relative link to the owning project
 }
 ```
 
@@ -200,8 +204,9 @@ interface EntityTouch {
 Captured from the run's tool execution receipts (either run-aware `chat_tool_executions` rows or `agent_tool_executions` rows tagged with `agent_run_id`):
 
 1. Filter the run's tool executions to **write ops** via the tool registry / Agent Call op registry (`tool-registry.ts` already classifies read vs write and maps tool → op → entity/action).
-2. Extract `id` from each write op's result payload (write executors already return created/updated IDs).
-3. Let the LLM annotate `description` only.
+2. Extract `id`, `project_id`, and `title`/`name` from each write op's result payload (write executors already return created/updated IDs).
+3. Attach app-relative deep links: projects → `/projects/:id`, tasks → `/projects/:project_id/tasks/:id`, documents → `/projects/:project_id/documents/:id`, and modal-backed entities → `/projects/:project_id?entity=:type&id=:id`.
+4. Let the LLM annotate `description` only.
 
 > An agent cannot misrepresent what it changed. **Verify the registry op→(type, action) mapping covers every write tool** (tasks, projects, documents, goals, plans, calendar) — gaps = missing entities. This verification should be a test, not a manual checklist. (Open question, also relevant to 02.)
 

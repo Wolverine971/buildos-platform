@@ -49,6 +49,7 @@
 	import { buildLiveContextUsageSnapshot } from './agent-chat-formatters';
 	import {
 		findThinkingBlockById,
+		isThinkingBlockMessage,
 		type ActivityEntry,
 		type ActivityType,
 		type AgentLoopState,
@@ -92,6 +93,7 @@
 	} from './agent-chat-sse-handler';
 	import { createVoiceAdapter } from './agent-chat-voice.svelte';
 	import { createPrewarmController } from './agent-chat-prewarm.svelte';
+	import { downloadAgentChatStepsMarkdown } from './agent-chat-step-export';
 
 	interface AutoInitProjectConfig {
 		projectId: string;
@@ -231,6 +233,13 @@
 	let activeStreamRunId = $state(0);
 	let activeTransportStreamRunId = $state<string | null>(null);
 	let activeClientTurnId = $state<string | null>(null);
+	const exportableStepCount = $derived.by(() =>
+		messages.reduce((count, message) => {
+			if (!isThinkingBlockMessage(message)) return count;
+			return count + message.activities.length;
+		}, 0)
+	);
+	const canExportAgentSteps = $derived(messages.length > 0);
 
 	// ── Agent Work: in-chat run dock + completion-message reload (UI-P4) ──
 	const ACTIVE_AGENT_RUN_STATUSES = [
@@ -855,6 +864,29 @@
 			voice.isTranscribing ||
 			voice.pendingSendAfterTranscription // Prevent double-clicks while waiting for transcription
 	);
+
+	function handleExportAgentSteps() {
+		if (!browser) return;
+		if (!canExportAgentSteps) {
+			toastService.error('No agent steps to export yet');
+			return;
+		}
+
+		try {
+			downloadAgentChatStepsMarkdown({
+				messages,
+				sessionId: currentSession?.id ?? null,
+				contextLabel: displayContextLabel,
+				contextType: selectedContextType,
+				entityId: selectedEntityId ?? null,
+				projectFocus: resolvedProjectFocus
+			});
+			toastService.success('Agent steps exported');
+		} catch (exportError) {
+			console.error('[AgentChatModal] Failed to export agent steps', exportError);
+			toastService.error('Could not export agent steps');
+		}
+	}
 
 	function resetConversation(options: { preserveContext?: boolean } = {}) {
 		const { preserveContext = true } = options;
@@ -2970,11 +3002,23 @@
 
 	function addCreatedEntitiesMessage(entities: CreatedEntityRef[]) {
 		if (!entities || entities.length === 0) return;
+		// Global dedupe: never show a chip for an entity already surfaced in the
+		// conversation (guards against a turn's results being re-emitted).
+		const shownIds = new Set<string>();
+		for (const message of messages) {
+			if (message.type !== 'created_entities') continue;
+			for (const entity of (message.data?.entities ?? []) as CreatedEntityRef[]) {
+				if (entity?.id) shownIds.add(entity.id);
+			}
+		}
+		const fresh = entities.filter((e) => e.id && !shownIds.has(e.id));
+		if (fresh.length === 0) return;
+
 		const createdMessage: UIMessage = {
 			id: crypto.randomUUID(),
 			type: 'created_entities',
 			content: '',
-			data: { entities },
+			data: { entities: fresh },
 			timestamp: new Date()
 		};
 		messages = [...messages, createdMessage];
@@ -3485,6 +3529,9 @@
 					contextUsage={displayContextUsage}
 					sessionId={currentSession?.id ?? null}
 					{contextShiftPulse}
+					onExportSteps={handleExportAgentSteps}
+					canExportSteps={canExportAgentSteps}
+					{exportableStepCount}
 				/>
 			</div>
 		{/snippet}

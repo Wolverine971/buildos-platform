@@ -11,7 +11,13 @@ import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { VoiceNote } from '$lib/types/voice-notes';
 import type { FastAgentPrewarmRequest } from '$lib/services/agentic-chat-v2';
 import type { FastChatContextCache } from '$lib/services/agentic-chat-v2/context-cache';
-import type { ActivityEntry, ThinkingBlockMessage, UIMessage } from './agent-chat.types';
+import type {
+	ActivityEntry,
+	CreatedEntityRef,
+	ThinkingBlockMessage,
+	UIMessage
+} from './agent-chat.types';
+import { extractCreatedEntityFromResult } from './agent-chat-tool-presenter';
 import { formatElapsedDuration } from './agent-chat-formatters';
 
 export type PreparedPromptClient = {
@@ -720,8 +726,11 @@ function mapLoadedMessagesToUI(
 
 	const usedSourceIds = new Set<string>();
 	const uiMessages: UIMessage[] = [];
+	// Ids already turned into chips, so an entity never gets a duplicate chip.
+	const seenCreatedIds = new Set<string>();
 
 	for (const msg of messages) {
+		let createdForTurn: CreatedEntityRef[] = [];
 		if (msg.role === 'assistant') {
 			const metadata = msg.metadata as Record<string, any> | undefined;
 			const clientTurnId = stringValue(metadata?.client_turn_id);
@@ -746,9 +755,16 @@ function mapLoadedMessagesToUI(
 					uiMessages.push(restoredBlock);
 				}
 			}
+
+			createdForTurn = deriveCreatedEntitiesFromSources(directSources, seenCreatedIds);
 		}
 
 		uiMessages.push(mapLoadedMessageToUI(msg));
+
+		// Inline chips for whatever this turn created, placed right after its reply.
+		if (createdForTurn.length > 0) {
+			uiMessages.push(buildCreatedEntitiesMessage(createdForTurn, msg.id, msg.created_at));
+		}
 	}
 
 	const unlinkedSources = toolSources.filter(
@@ -761,6 +777,10 @@ function mapLoadedMessagesToUI(
 	});
 	if (unlinkedBlock) {
 		uiMessages.push(unlinkedBlock);
+	}
+	const unlinkedCreated = deriveCreatedEntitiesFromSources(unlinkedSources, seenCreatedIds);
+	if (unlinkedCreated.length > 0) {
+		uiMessages.push(buildCreatedEntitiesMessage(unlinkedCreated, 'unlinked'));
 	}
 
 	return uiMessages;
@@ -785,6 +805,46 @@ function groupVoiceNotesByGroupId(voiceNotes: VoiceNote[]): Record<string, Voice
 	}
 
 	return grouped;
+}
+
+/**
+ * Pull successful created entities out of a turn's restored tool sources (in source
+ * order = creation order), skipping ids already surfaced earlier in the conversation.
+ */
+function deriveCreatedEntitiesFromSources(
+	sources: RestoredToolActivitySource[],
+	seen: Set<string>
+): CreatedEntityRef[] {
+	const out: CreatedEntityRef[] = [];
+	for (const source of sources) {
+		if (!source.success) continue;
+		const created = extractCreatedEntityFromResult(
+			source.toolName,
+			parseRecord(source.arguments) ?? undefined,
+			source.result
+		);
+		if (created && !seen.has(created.id)) {
+			seen.add(created.id);
+			out.push(created);
+		}
+	}
+	return out;
+}
+
+/** Build the inline "created entities" chip message placed after a turn's reply. */
+function buildCreatedEntitiesMessage(
+	entities: CreatedEntityRef[],
+	idSuffix: string,
+	timestamp?: string | null
+): UIMessage {
+	return {
+		id: `created-${idSuffix}`,
+		type: 'created_entities',
+		content: '',
+		data: { entities },
+		timestamp: timestamp ? new Date(timestamp) : new Date(),
+		created_at: timestamp ?? undefined
+	};
 }
 
 export function buildAgentChatSessionSnapshot(

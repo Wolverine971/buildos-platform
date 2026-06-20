@@ -14,6 +14,8 @@ import type {
 	AgentRunMutationMode,
 	ChangeSet,
 	Database,
+	EntityAction,
+	EntityTouch,
 	ProposedChange
 } from '@buildos/shared-types';
 import {
@@ -58,6 +60,65 @@ interface RunBudgets {
 const DEFAULT_MAX_TOOL_CALLS = 20;
 const DEFAULT_WALL_CLOCK_MS = 5 * 60 * 1000;
 const TRANSCRIPT_RESULT_CHARS = 4000;
+
+function buildProjectUrl(projectId?: string | null): string | null {
+	return projectId ? `/projects/${projectId}` : null;
+}
+
+function buildEntityUrl(kind: string, entityId: string, projectId?: string | null): string | null {
+	if (kind === 'project') return `/projects/${entityId}`;
+	if (!projectId) return null;
+	if (kind === 'task') return `/projects/${projectId}/tasks/${entityId}`;
+	if (kind === 'document') return `/projects/${projectId}/documents/${entityId}`;
+	return `/projects/${projectId}?entity=${encodeURIComponent(kind)}&id=${encodeURIComponent(entityId)}`;
+}
+
+function entityActionFromOp(op: string): EntityAction {
+	if (
+		op.endsWith('.create') ||
+		op === 'onto.edge.link' ||
+		op === 'onto.task.docs.create_or_attach'
+	) {
+		return 'created';
+	}
+	if (op.endsWith('.delete') || op === 'onto.edge.unlink') {
+		return 'deleted';
+	}
+	return 'updated';
+}
+
+function isEntityAction(value: unknown): value is EntityAction {
+	return value === 'created' || value === 'updated' || value === 'deleted';
+}
+
+function normalizeEntityTouches(value: unknown): EntityTouch[] {
+	if (!Array.isArray(value)) return [];
+	return value.flatMap((touch): EntityTouch[] => {
+		if (!touch || typeof touch !== 'object' || Array.isArray(touch)) return [];
+		const record = touch as Record<string, unknown>;
+		if (typeof record.type !== 'string' || typeof record.id !== 'string') return [];
+		return [
+			{
+				type: record.type,
+				id: record.id,
+				action: isEntityAction(record.action) ? record.action : 'updated',
+				description: typeof record.description === 'string' ? record.description : '',
+				project_id: typeof record.project_id === 'string' ? record.project_id : null,
+				title: typeof record.title === 'string' ? record.title : null,
+				url: typeof record.url === 'string' ? record.url : null,
+				project_url: typeof record.project_url === 'string' ? record.project_url : null
+			}
+		];
+	});
+}
+
+function mergeEntityTouches(...groups: EntityTouch[][]): EntityTouch[] {
+	const byKey = new Map<string, EntityTouch>();
+	for (const touch of groups.flat()) {
+		byKey.set(`${touch.type}:${touch.id}:${touch.action}`, touch);
+	}
+	return Array.from(byKey.values());
+}
 
 function isContinuationFrom(
 	value: unknown
@@ -108,6 +169,12 @@ function buildCompletionMessageContent(
 	const openQuestions = Array.isArray(result.open_questions)
 		? (result.open_questions.filter((q) => typeof q === 'string' && q.trim()) as string[])
 		: [];
+	const entitiesTouched = normalizeEntityTouches(result.entities_touched);
+	const projectId =
+		run.project_id ??
+		entitiesTouched.find((entity) => typeof entity.project_id === 'string')?.project_id ??
+		null;
+	const projectUrl = buildProjectUrl(projectId);
 	const body = answer || summary;
 
 	const header =
@@ -124,6 +191,24 @@ function buildCompletionMessageContent(
 							: `🤖 Agent **${label}** — ${status}.`;
 
 	const parts = [header];
+	if (projectUrl) {
+		parts.push(`**Project:** [Open project](${projectUrl})`);
+	}
+	if (entitiesTouched.length) {
+		parts.push(
+			[
+				'**Changes:**',
+				...entitiesTouched.map((entity) => {
+					const label = entity.title?.trim() || `${entity.type} ${entity.id.slice(0, 8)}`;
+					const url =
+						entity.url ??
+						buildEntityUrl(entity.type, entity.id, entity.project_id ?? projectId);
+					const linkedLabel = url ? `[${label}](${url})` : label;
+					return `- ${entity.action} ${linkedLabel}`;
+				})
+			].join('\n')
+		);
+	}
 	if (body) parts.push(body);
 	if (openQuestions.length) {
 		parts.push(['**Open questions:**', ...openQuestions.map((q) => `- ${q}`)].join('\n'));
@@ -499,6 +584,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 	let tokensTotal = 0;
 	let costTotal = 0;
 	let toolCalls = 0;
+	const committedEntityTouches: EntityTouch[] = [];
 
 	if (isResume) {
 		const prior = await reconstructPriorState(
@@ -549,9 +635,18 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			};
 		}
 
+		const priorResult =
+			run.result && typeof run.result === 'object' && !Array.isArray(run.result)
+				? (run.result as Record<string, unknown>)
+				: {};
+		const entitiesTouched = mergeEntityTouches(
+			normalizeEntityTouches(priorResult.entities_touched),
+			normalizeEntityTouches(result.entities_touched),
+			committedEntityTouches
+		);
 		const resultWithProposal = changeSet
-			? { ...result, metrics, proposed_changes: changeSet }
-			: { ...result, metrics };
+			? { ...result, entities_touched: entitiesTouched, metrics, proposed_changes: changeSet }
+			: { ...result, entities_touched: entitiesTouched, metrics };
 
 		// Chat integration: surface the outcome back into the originating thread
 		// BEFORE flipping status — the chat UI reloads its thread when it sees a
@@ -787,6 +882,27 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		if (result.ok && result.proposedChange) {
 			proposedChangeId = randomUUID();
 			proposedChanges.push({ id: proposedChangeId, ...result.proposedChange });
+		}
+		if (
+			result.ok &&
+			mutationMode === 'commit' &&
+			isWriteOp(op) &&
+			result.entityKind &&
+			result.entityId
+		) {
+			const projectId =
+				result.entityProjectId ??
+				(result.entityKind === 'project' ? result.entityId : run.project_id);
+			committedEntityTouches.push({
+				type: result.entityKind,
+				id: result.entityId,
+				action: entityActionFromOp(op),
+				description: `Agent run ${entityActionFromOp(op)} ${result.entityKind}.`,
+				project_id: projectId,
+				title: result.entityTitle ?? null,
+				url: buildEntityUrl(result.entityKind, result.entityId, projectId),
+				project_url: buildProjectUrl(projectId)
+			});
 		}
 
 		await recordToolExecution({

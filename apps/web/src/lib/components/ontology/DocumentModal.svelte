@@ -3166,17 +3166,6 @@
 										class="flex items-center justify-between gap-2 mb-1.5 shrink-0"
 									>
 										<h4 class="micro-label text-foreground">CONTENT</h4>
-										{#if isEditing && activeDocumentId}
-											<button
-												type="button"
-												onclick={() => (showImageInsertModal = true)}
-												class="inline-flex items-center gap-1 rounded border border-border bg-card px-2 py-1 text-[10px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors pressable"
-												title="Insert image from project library"
-											>
-												<ImageIcon class="w-3 h-3" />
-												Insert image
-											</button>
-										{/if}
 										<!-- Mobile/tablet: date + save status next to content label -->
 										<p
 											class="micro-label text-muted-foreground/70 lg:hidden flex items-center gap-1.5"

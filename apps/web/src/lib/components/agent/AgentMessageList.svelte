@@ -414,9 +414,7 @@
 				</div>
 			{:else if message.type === 'created_entities'}
 				{#if message.data?.entities?.length}
-					<div class="ml-9">
-						<CreatedEntityCards entities={message.data.entities} />
-					</div>
+					<CreatedEntityCards entities={message.data.entities} />
 				{/if}
 			{:else if message.type === 'activity'}
 				{#if dev}

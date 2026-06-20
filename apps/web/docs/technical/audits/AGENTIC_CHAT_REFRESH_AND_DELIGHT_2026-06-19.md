@@ -3,9 +3,9 @@
 # Agentic Chat — Post-Mutation Refresh Bugs & Delight Opportunities
 
 **Date:** 2026-06-19
-**Status:** 🚧 Phases 1–5 done (refresh bugs fixed; "new entity appears" entrance across tasks,
-documents, goals, milestones, plans, risks; task-completion delight in list + kanban); Phase 6
-(project-creation reveal, first-project celebration, inline chat entity cards) needs direction
+**Status:** ✅ Phases 1–6 + polish done (refresh bugs fixed; "new entity appears" entrance across all
+entity types; task-completion delight; inline tappable created-entity cards in chat; project-title
+morph timing fixed; header glimmer sprucied up). First-project celebration intentionally declined.
 **Author:** DJ + Claude
 **Scope:** What happens in the UI when the agentic chat creates/updates entities, whether
 those changes show up after the chat closes, and where we can add moments of delight.
@@ -143,16 +143,58 @@ deeply nested surfaces opt in with one line and no prop-threading.
 > the `$state` rune (`$state(...)` was parsed as store-subscription of the `state` prop → type error).
 > Renamed the local binding to `taskState` (public prop name unchanged).
 
-### Phase 6+ — remaining delight (needs product direction)
+### Phase 6 — inline chat entity cards + project-title morph timing ✅ DONE
 
-- [ ] **Project-creation reveal.** The list↔detail `project-title` morph already works via the View
-      Transitions API default (elements carry unique `view-transition-name`s). _Pre-existing minor bug:_
-      the custom-timing rule in `app.css` targets `project-title` but the real names are
-      `project-title-<id>`, so the custom 200ms cubic-bezier never applies (default UA timing is used).
-      Fixing needs either a per-id rule strategy or accepting the default.
-- [ ] **One-time first-project celebration** — needs a "first project ever" signal + a celebration UI.
-- [ ] **Inline tappable entity cards in the chat conversation** (replaces the text-only "Created X"
-      line; also closes the Layer-2 "no link to created entity" gap).
+- [x] **Tappable created-entity chips, inline on the timeline** (`CreatedEntityCards` rendered for a
+      `created_entities` message in `AgentMessageList`). A turn that creates entities appends a chip
+      message **right after that turn's reply** — so a chip stays at the point in the conversation where
+      it was made; later turns' chips appear lower. Chips open the entity in a **new tab**
+      (`target="_blank"`) — deep-linking via the project page's query handlers (`?doc=` opens a document;
+      `?entity=&entity_id=` opens the editor; projects → `/projects/<id>`). Ink-bloom entrance.
+    - Live data path: `presenter.extractCreatedEntity(...)` pulls kind/id/name/projectId from successful
+      `create_onto_*` results → buffered per-turn in the SSE handler → flushed on `done` (dropped on
+      error) → `addCreatedEntitiesMessage` appends an inline `created_entities` message after the reply.
+    - **Persists across reloads** (no new storage/migration). Resuming re-derives chips inline from
+      persisted `chat_tool_executions`: shared `extractCreatedEntityFromResult()` runs over each turn's
+      restored tool sources in `mapLoadedMessagesToUI`, inserting a `created_entities` message after the
+      assistant reply that produced them. Unlinked creates get a trailing chip block.
+    - **No duplicate chips.** An entity id can be surfaced once: the live appender dedupes against all
+      ids already in `created_entities` messages, and the reload path carries a global `seenCreatedIds`
+      set across turns. Locked by unit tests in `agent-chat-session.test.ts`.
+    - _Revisions (per request):_ (1) inline-bottom per-turn → (2) right side rail + new-tab → (3) persist
+      on reload → (4) back to bottom chips, sidebar removed → (5) **inline at the turn's timeline
+      position** (not pinned to the bottom) + hardened dedup. Final: persistent, deduped, inline-on-
+      timeline chips that open in a new tab.
+- [x] **Project-title morph timing fix.** Added `view-transition-class: project-title` to the list
+      (`ProjectStateRow`) and detail (`ProjectHeaderCard`) titles, and retargeted the `app.css` rule to
+      `::view-transition-group(.project-title)` (+ old/new). The intended 200ms cubic-bezier morph now
+      actually applies (was dead — the rule targeted `project-title`, names are `project-title-<id>`).
+      Degrades gracefully where `view-transition-class` is unsupported (default morph, as before).
+
+### Phase 6.5 — header glimmer polish ✅ DONE
+
+The project-create header glimmer read as "okay" (a narrow single-letter accent band). Sprucing,
+verified visually in a throwaway Playwright demo (light + dark, frozen-frame strips):
+
+- [x] Widened the accent band (gradient `34/50/66` vs `42/50/58`) so more of the title lights up.
+- [x] Added a two-layer accent **glow bloom** (`agent-context-glow` drop-shadow) so the whole title
+      briefly halos. Truncate-safe — `filter` renders past `overflow: hidden`.
+- [x] Prototyped an ink **underline stamp** but dropped it: the title is `truncate`, and
+      `overflow: hidden` clips a below-box pseudo-element (confirmed in the demo). The glow is the
+      truncate-safe way to add presence.
+
+### Phase 7 — first-project celebration: intentionally deferred (decision, not a gap)
+
+A confetti-style "first project" moment was considered and **declined**: (1) it's off-brand for the
+calm, anti-hype "thinking environment" positioning; (2) a reliable "first project ever" signal isn't
+available where creation lands without extra plumbing. The create moment is already well-served by the
+enhanced header glimmer + the tappable created-entity **project** card + the list entrance. Revisit
+only if there's a product reason and a clean first-project signal.
+
+### Other follow-ups (not started)
+
+- [ ] Created-entity cards for the **staged change-set** path (today they fire only on the in-chat
+      tool path; `ChangeSetReview` already shows a rich diff so this is lower priority).
 
 ### Known follow-ups (not blocking)
 
@@ -195,6 +237,21 @@ _Phase 5 (delight — wider entrance + completion):_
 - `src/lib/components/ontology/EntityListItem.svelte` (checkmark pop; fixed `state`/`$state` collision)
 - `src/lib/components/project/v2/TaskKanbanBoard.svelte` (drag-to-Done completion pulse)
 
+_Phase 6 (delight — chat entity cards + VT morph):_
+
+- `src/lib/components/agent/CreatedEntitiesPanel.svelte` _(new — side rail; replaced the inline cards)_
+- `src/lib/components/agent/agent-chat.types.ts` (`CreatedEntityRef` + `created_entities` type)
+- `src/lib/components/agent/agent-chat-tool-presenter.ts` (`extractCreatedEntity`)
+- `src/lib/components/agent/agent-chat-sse-handler.ts` (per-turn buffer + flush on `done`)
+- `src/lib/components/agent/AgentChatModal.svelte` (`addCreatedEntitiesMessage`)
+- `src/lib/components/agent/AgentMessageList.svelte` (render `created_entities`)
+- `src/lib/components/projects/ProjectStateRow.svelte`, `src/lib/components/project/ProjectHeaderCard.svelte`,
+  `src/app.css` (`view-transition-class: project-title` + retargeted morph timing)
+
+_Phase 6.5 (polish):_
+
+- `src/lib/components/agent/AgentChatHeader.svelte` (wider glimmer band + two-layer glow bloom)
+
 ---
 
 ## Changelog
@@ -208,3 +265,22 @@ _Phase 5 (delight — wider entrance + completion):_
 - **2026-06-19** — Phase 5 shipped: entrance extended to goals/milestones/plans/risks; task-completion
   delight (checkmark pop in lists, success pulse on kanban drag-to-Done). Fixed a `state`/`$state`
   rune collision in `EntityListItem`. 0 errors / 0 warnings; 61 component tests pass.
+- **2026-06-19** — Phase 6 shipped: inline tappable created-entity cards in the chat (deep-link to the
+  entity), and fixed the project-title View-Transition morph timing via `view-transition-class`.
+  0 errors / 0 warnings; tool-presenter + sse-handler tests green (AgentComposer failure pre-existing).
+- **2026-06-19** — Polish: sprucied up the header glimmer (wider accent band + two-layer glow bloom;
+  underline dropped as truncate-clipped), verified in a Playwright light/dark demo. First-project
+  celebration intentionally declined (brand fit + no clean signal). 0 errors / 0 warnings.
+- **2026-06-19** — Created-entity cards moved from inline-bottom to a **side rail** (`CreatedEntitiesPanel`):
+  right rail on desktop, bottom strip on mobile; cards now open in a **new tab** to preserve chat
+  context. Verified desktop+mobile / light+dark in a Playwright demo. 0 errors / 0 warnings; 86 tests pass.
+- **2026-06-19** — Side rail now **persists across reloads**: re-derived from `chat_tool_executions` in
+  `buildAgentChatSessionSnapshot` (shared `extractCreatedEntityFromResult`), merged onto live entities
+  on load. No new storage. New unit test; 0 errors / 0 warnings; 97 agent tests pass.
+- **2026-06-19** — Per request, moved the chips **back to the bottom** of the conversation and removed
+  the sidebar (kept persistence + new-tab). `CreatedEntitiesPanel` → `CreatedEntityCards` (horizontal
+  chips, trailing block in `AgentMessageList`). Verified light+dark; 0 errors / 0 warnings; 98 tests pass.
+- **2026-06-19** — Per request, chips now render **inline at the turn's timeline position** (a
+  `created_entities` message after each turn's reply) instead of pinned to the bottom — live via
+  `addCreatedEntitiesMessage`, on reload via inline re-derivation in `mapLoadedMessagesToUI`. Hardened
+  **dedup** (global seen-set both paths) to rule out duplicate chips. 0 errors / 0 warnings; 98 tests pass.

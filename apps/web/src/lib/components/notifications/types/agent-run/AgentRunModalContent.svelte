@@ -111,6 +111,29 @@
 
 	let headIcon = $derived(statusIcon(runStatus));
 
+	function projectHref(projectId?: string | null): string | null {
+		return projectId ? `/projects/${projectId}` : null;
+	}
+
+	function entityHref(entity: {
+		type: string;
+		id: string;
+		project_id?: string | null;
+		url?: string | null;
+	}): string | null {
+		if (entity.url) return entity.url;
+		const projectId = entity.project_id ?? notification?.data.projectId ?? null;
+		if (entity.type === 'project') return `/projects/${entity.id}`;
+		if (!projectId) return null;
+		if (entity.type === 'task') return `/projects/${projectId}/tasks/${entity.id}`;
+		if (entity.type === 'document') return `/projects/${projectId}/documents/${entity.id}`;
+		return `/projects/${projectId}?entity=${encodeURIComponent(entity.type)}&id=${encodeURIComponent(entity.id)}`;
+	}
+
+	function entityLabel(entity: { type: string; id: string; title?: string | null }): string {
+		return entity.title?.trim() || entity.type;
+	}
+
 	function mergeEvent(row: AgentRunEventRow | null) {
 		if (!row?.id) return;
 		if (events.some((e) => e.id === row.id)) return;
@@ -369,6 +392,15 @@
 							<span class="text-xs text-muted-foreground"
 								>{notification.data.scopeMode.replace('_', ' ')}</span
 							>
+							{#if projectHref(notification.data.projectId)}
+								<span class="text-xs text-muted-foreground">·</span>
+								<a
+									href={projectHref(notification.data.projectId)}
+									class="text-xs text-accent hover:underline"
+								>
+									Project
+								</a>
+							{/if}
 							{#if startedRelative}
 								<span class="text-xs text-muted-foreground">·</span>
 								<span class="text-xs text-muted-foreground">{startedRelative}</span>
@@ -476,14 +508,26 @@
 							Changes ({result.entities_touched.length})
 						</div>
 						<div class="flex flex-wrap gap-1.5">
-							{#each result.entities_touched as entity (entity.id)}
-								<span
-									class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-card border border-border text-foreground"
-									title={entity.description}
-								>
-									<span class="text-muted-foreground">{entity.action}</span>
-									{entity.type}
-								</span>
+							{#each result.entities_touched as entity (`${entity.type}:${entity.id}:${entity.action}`)}
+								{@const href = entityHref(entity)}
+								{#if href}
+									<a
+										{href}
+										class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-card border border-border text-foreground hover:border-accent/50 hover:text-accent"
+										title={entity.description}
+									>
+										<span class="text-muted-foreground">{entity.action}</span>
+										{entityLabel(entity)}
+									</a>
+								{:else}
+									<span
+										class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-card border border-border text-foreground"
+										title={entity.description}
+									>
+										<span class="text-muted-foreground">{entity.action}</span>
+										{entityLabel(entity)}
+									</span>
+								{/if}
 							{/each}
 						</div>
 					</div>

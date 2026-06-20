@@ -151,7 +151,8 @@ describe('agent-chat-session helpers', () => {
 		expect(snapshot.messages.map((message) => message.type)).toEqual([
 			'user',
 			'thinking_block',
-			'assistant'
+			'assistant',
+			'created_entities'
 		]);
 		const block = snapshot.messages[1];
 		expect(block?.type).toBe('thinking_block');
@@ -161,6 +162,84 @@ describe('agent-chat-session helpers', () => {
 			status: 'completed',
 			content: 'Created task: "Fix restored chat tool calls" (<1s)'
 		});
+		expect((snapshot.messages[3] as any).data.entities).toEqual([
+			{ kind: 'task', id: 'task-1', name: 'Fix restored chat tool calls', projectId: null }
+		]);
+	});
+
+	it('buildAgentChatSessionSnapshot inserts created-entity chips inline after the turn that made them', () => {
+		const snapshot = buildAgentChatSessionSnapshot({
+			session: makeSession(),
+			messages: [
+				{
+					id: 'user-1',
+					role: 'user',
+					content: 'Set up the launch.',
+					created_at: '2026-03-28T10:00:00.000Z'
+				},
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Created a task and a doc.',
+					created_at: '2026-03-28T10:01:00.000Z'
+				}
+			] as any,
+			toolExecutions: [
+				{
+					id: 'e1',
+					message_id: 'assistant-1',
+					tool_name: 'create_onto_task',
+					sequence_index: 1,
+					arguments: { title: 'First task', project_id: 'p1' },
+					result: { task: { id: 't1', title: 'First task', project_id: 'p1' } },
+					success: true,
+					created_at: '2026-03-28T10:00:20.000Z'
+				},
+				{
+					id: 'e2',
+					message_id: 'assistant-1',
+					tool_name: 'search_onto_tasks',
+					sequence_index: 2,
+					arguments: {},
+					result: { tasks: [] },
+					success: true,
+					created_at: '2026-03-28T10:00:30.000Z'
+				},
+				{
+					id: 'e3',
+					message_id: 'assistant-1',
+					tool_name: 'create_onto_document',
+					sequence_index: 3,
+					arguments: { title: 'Brand guide', project_id: 'p1' },
+					result: { document: { id: 'd1', title: 'Brand guide', project_id: 'p1' } },
+					success: true,
+					created_at: '2026-03-28T10:00:40.000Z'
+				},
+				{
+					id: 'e4',
+					message_id: 'assistant-1',
+					tool_name: 'create_onto_risk',
+					sequence_index: 4,
+					arguments: { title: 'Failed risk', project_id: 'p1' },
+					result: { error: 'boom' },
+					success: false,
+					created_at: '2026-03-28T10:00:50.000Z'
+				}
+			] as any
+		});
+
+		// Chips land right after the assistant reply for that turn.
+		expect(snapshot.messages.map((m) => m.type)).toEqual([
+			'user',
+			'thinking_block',
+			'assistant',
+			'created_entities'
+		]);
+		// Creation order within the turn; non-creates and failed creates excluded.
+		expect((snapshot.messages[3] as any).data.entities).toEqual([
+			{ kind: 'task', id: 't1', name: 'First task', projectId: 'p1' },
+			{ kind: 'document', id: 'd1', name: 'Brand guide', projectId: 'p1' }
+		]);
 	});
 
 	it('buildAgentChatSessionSnapshot exposes active turn runs for restore polling', () => {

@@ -21,14 +21,14 @@
 			"components": ["DailyBriefModal", "BriefChatModal", "OverdueTaskTriageModal"]
 		},
 		{
-			"file": "src/lib/components/landing/HomepageV2.svelte",
-			"type": "component",
-			"components": ["PublicProjectView"]
-		},
-		{
 			"file": "src/lib/components/layout/Navigation.svelte",
 			"type": "component",
 			"components": ["AgentChatModal", "WorkPanel"]
+		},
+		{
+			"file": "src/lib/components/landing/HomepageV2.svelte",
+			"type": "component",
+			"components": ["PublicProjectView"]
 		},
 		{
 			"file": "src/lib/components/notifications/MinimizedNotification.svelte",
@@ -145,14 +145,14 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/[id]/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal", "ProjectModalsHost"]
-		},
-		{
 			"file": "src/routes/projects/create/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal"]
+		},
+		{
+			"file": "src/routes/projects/[id]/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal", "ProjectModalsHost"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -750,10 +750,20 @@
 			]
 		},
 		{
+			"file": "src/lib/components/agent/agent-chat-step-export.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"buildAgentChatStepsMarkdown",
+				"buildAgentChatStepsFilename",
+				"downloadAgentChatStepsMarkdown"
+			]
+		},
+		{
 			"file": "src/lib/components/agent/agent-chat-tool-presenter.ts",
 			"type": "component",
 			"components": [],
-			"exports": ["createToolPresenter"]
+			"exports": ["extractCreatedEntityFromResult", "createToolPresenter"]
 		},
 		{
 			"file": "src/lib/components/agent/agent-chat-voice.svelte.ts",
@@ -1117,8 +1127,8 @@
 	},
 	"unusedComponents": [
 		"src/lib/components/dashboard/AnalyticsDashboard.svelte",
-		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/layout/Navigation.svelte",
+		"src/lib/components/landing/HomepageV2.svelte",
 		"src/lib/components/notifications/MinimizedNotification.svelte",
 		"src/lib/components/notifications/NotificationModal.svelte",
 		"src/lib/components/onboarding-v2/ProjectsCaptureStep.svelte",
@@ -1132,6 +1142,7 @@
 		"src/lib/components/agent/agent-chat-session.ts",
 		"src/lib/components/agent/agent-chat-skill-activity.ts",
 		"src/lib/components/agent/agent-chat-sse-handler.ts",
+		"src/lib/components/agent/agent-chat-step-export.ts",
 		"src/lib/components/agent/agent-chat-tool-presenter.ts",
 		"src/lib/components/agent/agent-chat-voice.svelte.ts",
 		"src/lib/components/agent/agent-chat.constants.ts",

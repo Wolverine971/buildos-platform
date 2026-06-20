@@ -2,6 +2,7 @@
 description: Draft LinkedIn replies from a queued warmup document using BuildOS voice and relationship context.
 argument-hint: "[warmup-file]"
 disable-model-invocation: true
+path: .claude/commands/linkedin-reply.md
 ---
 
 # LinkedIn Reply - DJ Reply Drafting
@@ -71,11 +72,19 @@ Then read the account profile for every queued account listed in the warmup doc.
 
 1. Read the reply queue from the warmup doc.
 2. Read each queued account profile.
-3. Draft 2-3 comment options per queued post.
+3. For each queued post, commit to **one recommended comment to ship**, with 1-2 alternates beneath it (clearly secondary).
 4. Avoid repeating old angles or phrasing from past interactions.
-5. Write a separate replies doc.
+5. Write a separate replies doc that **opens with a copy-paste Ship List** (see below).
 6. Update account histories with `Drafted` notes.
 7. If the user confirms actual posting, record the exact comment and mark it `Posted`.
+
+### The Ship List is the point
+
+This flow's recurring failure mode is **queued ≠ shipped**: drafts pile up in replies docs and never get posted (e.g. the same #1 opportunity queued three scans running, 0 ships). The output exists to be *acted on in two minutes*, not admired.
+
+So the replies doc must **open with a Ship List** — a numbered, posting-order list where each row is just the two things DJ needs to act: the **direct post URL** and the **exact recommended comment text** (in a copy-paste block, no commentary inside it). DJ should be able to work top-to-bottom — open URL, paste comment, post, next — without scrolling into the analysis or weighing options. All the CRM intel, alternates, and reasoning live *below* the Ship List for the curious, never above it.
+
+Pick the single best comment yourself. Offering DJ 15 options to choose from is the friction that caused the ship gap. Decide, recommend, and make the alternates opt-in.
 
 If the warmup doc is a legacy doc without a `Reply Queue`, convert it into a working queue first using legacy compatibility mode.
 
@@ -125,13 +134,13 @@ If the warmup doc and the actual post context disagree, default to the more cons
 
 ### Modes
 
-Draft with a mix of:
+Each post gets **one recommended comment** plus 1-2 alternates in different modes, so DJ has a fallback if the pick doesn't match his gut — but the recommendation is the default.
 
 - **Value:** One concrete insight or lived-experience reframe
 - **Cheerleader:** Specific support without hollow praise
 - **Friendly nuance:** A respectful "yes, and" or "yes, but" when DJ has a real angle
 
-Do not produce three value comments in a row for the same post.
+Choose the recommended mode from the post and the relationship (the warmup doc's reply angle usually points to it). Make the alternates genuinely different modes, not three flavors of the same value comment.
 
 ### Constraints
 
@@ -230,6 +239,30 @@ Use this structure:
 
 ---
 
+## 🚀 Ship List (copy-paste, in this order)
+
+> Work top to bottom: open the URL, paste the comment, post, move to the next. Everything below this section is reference only — you don't need it to ship. Space comments ~15-30 min apart.
+
+### 1. [Author] — [post topic] · [Mention fit 0/1/2]
+
+[direct post URL]
+
+```
+[exact recommended comment — nothing else in this block]
+```
+
+### 2. [Author] — [post topic] · [Mention fit 0/1/2]
+
+[direct post URL]
+
+```
+[exact recommended comment]
+```
+
+_(one entry per queued post, in recommended posting order)_
+
+---
+
 ## Queue Summary
 
 | # | Author | Topic | Profile | Relationship Note | Status |
@@ -238,7 +271,7 @@ Use this structure:
 
 ---
 
-## Reply Drafts
+## Reply Drafts (reference — recommended pick + alternates)
 
 ### 1. [Author Name] - [Topic]
 
@@ -255,15 +288,15 @@ Use this structure:
 
 - [previous angle or phrasing to avoid]
 
-**Suggested Comment Option 1 (mode: value - [angle]):**
+**✅ RECOMMENDED — ship this (mode: [value/cheerleader/nuance] - [angle]):**
+
+> [the exact comment, identical to the Ship List block above]
+
+**Alternate A (mode: [other mode] - [angle]):**
 
 > [comment]
 
-**Suggested Comment Option 2 (mode: cheerleader - [angle]):**
-
-> [comment]
-
-**Suggested Comment Option 3 (mode: friendly nuance - [angle]):**
+**Alternate B (mode: [other mode] - [angle]):** _(optional)_
 
 > [comment]
 
@@ -307,9 +340,9 @@ Present a concise summary to the user:
 ```text
 LinkedIn replies drafted for [date].
 
-Drafts ready: X
+Ship List ready: X comments, in posting order, copy-paste from the top of the replies doc.
 Profiles updated: X
 Replies doc: docs/marketing/social-media/daily-engagement/[filename]
 
-If you post any of these, tell me which option you used and I will reconcile the CRM history.
+Open the Ship List, post top-to-bottom (~15-30 min apart). Tell me which ones went up (or "all") and I'll mark them Posted and reconcile the CRM history.
 ```

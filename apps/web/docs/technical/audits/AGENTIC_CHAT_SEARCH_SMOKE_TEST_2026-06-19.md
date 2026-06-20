@@ -62,9 +62,7 @@ experiment log.
 **Prompt S2 — document 1 (token lives in BODY, not the title)**
 
 ```
-In Aurora Field Notes, add a document titled "Basil Grow Log". Body: We switched the
-seedlings to rockwool cubes this week and started a nutrient film technique loop. pH
-holding at 5.9.
+In Aurora Field Notes, add a document titled "Basil Grow Log". Body: We switched the seedlings to rockwool cubes this week and started a nutrient film technique loop. pH holding at 5.9.
 ```
 
 **Prompt S3 — document 2**

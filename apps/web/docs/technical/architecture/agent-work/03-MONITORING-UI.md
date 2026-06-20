@@ -90,10 +90,10 @@ Openable surface (slide-over from the right on desktop; full-screen sheet on mob
 
 ### 4b. Run detail
 
-- **Header:** label, goal, status, project, trigger, budgets/metrics (tokens, cost, duration, tool calls).
+- **Header:** label, goal, status, project link, trigger, budgets/metrics (tokens, cost, duration, tool calls).
 - **Narration log + event timeline:** streamed from `agent_run_events` (`run.narration`, `run.tool_call`, `run.tool_result`) — this is the "peek into the process." Collapsible tool-call entries showing args/results.
 - **Result:** `summary` + `answer`; artifact links; `open_questions` (with an answer box for `needs_input` and continuable `partial` runs).
-- **Entities touched:** list of committed `EntityTouch` with deep links into the project/task/doc.
+- **Entities touched:** list of committed `EntityTouch` with deep links into the project and the touched entity. Dedicated task/document pages are used when available; modal-backed entities use the project page query opener.
 - **Live steering** (while `running`/`paused`): the steer box + Pause/Resume/Stop (same as the stack card, §3a), with the running narration above it so the user reads, then redirects.
 - **Actions:** Steer, Pause/Resume, Stop (cancel → `partial`), Retry (re-dispatch with edited brief), Answer.
 

@@ -119,7 +119,7 @@ A single server-side `commitChangeSet(run_id, decisions)`:
 1. Loads the Change Set; filters to `approved` changes.
 2. For staged update/delete changes on known ontology tables, re-fetches the current row and compares it to the reviewed `before` snapshot. A mismatch marks that change stale and skips it.
 3. Applies each approved fresh change via the **same worker-safe adapter/executors** used in `commit` mode (so there's one mutation path, not two), inside a logical transaction where possible.
-4. Records `applied_entity_id` per change; promotes applied changes into the run's `entities_touched`.
+4. Records `applied_entity_id` per change; promotes applied changes into the run's `entities_touched` with project/title/url metadata for the run detail and completion message.
 5. Sets Change Set `status` → `applied` / `partially_applied`; updates `agent_runs.status` → `completed` or `partial`.
 6. **Partial failure:** a failed change records `error` and does not roll back already-applied siblings unless they're declared dependent; the user sees exactly what landed. (Atomicity granularity is an open question — start per-change with clear reporting.)
 

@@ -6,15 +6,17 @@
 **Display Name:** "IRON" Mike Steadman
 **Profile URL:** https://www.linkedin.com/in/iron-mike-steadman/
 **Category:** Founder / Operator / Marketing Strategy
-**Tier:** 2
-**Strategic Role:** Adjacent operator
-**Relationship Status:** Prospect
+**Tier:** 3 (demoted 2026-06-19)
+**Strategic Role:** Monitor only
+**Relationship Status:** Prospect (dormant)
 **Connection Level:** 1st
 **Audience Quality:** Medium
 **Profile Created:** 2026-04-15
-**Last Reviewed:** 2026-06-14
+**Last Reviewed:** 2026-06-19
 **Last Engaged:** Never
-**Source of First Discovery:** 2026-04-15_linkedin-warmup-pm.md (found via Tim Hsia VetraFi reaction signal)
+
+> **DEMOTED to monitor-only 2026-06-19.** Surfaced/queued 6+ times across scans (06-14 → 06-16), never shipped; Level-0 mention fit (pure peer voice, no BuildOS angle). Stop re-queuing. Re-engage only if HE engages DJ first, or organically if a genuinely fresh, on-thesis post appears. Drafted lines preserved below. Tracked in `linkedin-action-board.md`.
+> **Source of First Discovery:** 2026-04-15_linkedin-warmup-pm.md (found via Tim Hsia VetraFi reaction signal)
 
 ## Condensed Intel
 
@@ -65,9 +67,20 @@
 - **Mention fit:** 0. Peer founder voice on DJ's exact territory (category formation). "Most founders skip the slow translation work" is BuildOS-thesis-adjacent. Lived founder reflection, no BuildOS pitch. Single take.
 - **Drafts:** 3 options — (1) value/lived "the translation part is the one I skipped longest" [recommended, veteran peer], (2) friendly-nuance "the self-deception trap," (3) cheerleader light. No question at the end. **Must actually post this scan.**
 
+## 2026-06-15 Re-check (HYROX carryover)
+
+- HYROX post now **3d old** (~9 rxn / 5 comments), still unshipped from 06-14. This is the **6th surfacing / 0th ship**.
+- **Decision forced this round:** ship a single peer comment (06-14 drafts exist) OR demote this profile to **monitor-only** to stop re-queuing a post DJ won't comment on. Carried to `2026-06-15_linkedin-warmup.md` as the final carryover.
+
+## 2026-06-16 Re-check (HYROX carryover — final)
+
+- HYROX post now **~5d old**, visibility fading. Still unshipped from both 06-14 and 06-15. This is the **~7th surfacing / 0th ship** on a 1st connection.
+- **Final call:** ship one peer comment this round (06-14 drafts exist) or **demote to monitor-only**. Re-queuing again without shipping is the noise pattern. Carried to `2026-06-16_linkedin-warmup.md` (queue #5) with this framing.
+- 06-14 drafts carried forward into `2026-06-16_linkedin-replies.md` (3 options; Opt 1 rec — lived founder reflection, Level 0, no end-question). Reconciliation: **Posted / Skipped / Demote**.
+
 ## Open Loops
 
-- **6th scan, still never engaged.** 2026-04-15, 2026-05-09 (skipped), 2026-05-13 (drafted not posted), 2026-05-15 (drafted not posted), 2026-06-14 (HYROX queued). This 1st-conn relationship has been queued 4x and shipped 0x. If DJ doesn't ship the HYROX comment, treat the relationship as effectively dormant.
+- **6th scan, still never engaged.** 2026-04-15, 2026-05-09 (skipped), 2026-05-13 (drafted not posted), 2026-05-15 (drafted not posted), 2026-06-14 (HYROX queued), 2026-06-15 (HYROX re-queued — ship-or-demote). This 1st-conn relationship has been queued 5x and shipped 0x. If DJ doesn't ship the HYROX comment, treat the relationship as effectively dormant / demote to monitor-only.
 - 2026-05-13 category-strategy post (URN 7459955706281164801): never replied, but Dev Chandra commented 8h ago — thread is still active. Could be a "second-chance" reply slot if today's fresh post doesn't move; otherwise drop.
 - 2026-05-15 veteran-founder reflection: first substantive engagement attempt on a high-relationship-value 1st-conn post.
 - If Mike engages with any DJ comment, this relationship is worth building — overlap in founder/category territory + Naval Academy/Marine peer network.

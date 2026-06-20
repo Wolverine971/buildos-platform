@@ -477,6 +477,62 @@ function extractToolResultPayload(toolResult: unknown): Record<string, any> | nu
 	return null;
 }
 
+/**
+ * Pull a created entity (kind/id/name/projectId) out of a successful `create_onto_*`
+ * tool result. Module-level + self-contained so it can run both live (SSE path) and at
+ * load time (re-deriving the side rail from persisted tool executions) — no cache/ctx.
+ * `args` may be a JSON string or an already-parsed record.
+ */
+export function extractCreatedEntityFromResult(
+	toolName: string | undefined,
+	args: string | Record<string, unknown> | undefined,
+	toolResult: unknown
+): CreatedEntityRef | null {
+	if (!toolName) return null;
+	const kind = CREATE_TOOL_KINDS[toolName];
+	if (!kind) return null;
+
+	const argRecord: Record<string, unknown> =
+		typeof args === 'string'
+			? (() => {
+					try {
+						return JSON.parse(args) as Record<string, unknown>;
+					} catch {
+						return {};
+					}
+				})()
+			: (args ?? {});
+
+	const payload = extractToolResultPayload(toolResult);
+	const nested = payload?.result as Record<string, any> | undefined;
+	const record = [payload?.[kind], nested?.[kind], payload?.entity].find(
+		(r): r is Record<string, any> => !!r && typeof r === 'object'
+	);
+
+	const id =
+		normalizeEntityLabel(record?.id) ||
+		normalizeEntityLabel(record?.[`${kind}_id`]) ||
+		normalizeEntityLabel(payload?.entity_id) ||
+		normalizeEntityLabel(nested?.id);
+	if (!id) return null;
+
+	const name =
+		(record ? extractEntityDisplayName(record) : undefined) ||
+		normalizeEntityLabel(argRecord.title) ||
+		normalizeEntityLabel(argRecord.name) ||
+		'Untitled';
+
+	const projectId =
+		kind === 'project'
+			? id
+			: normalizeEntityLabel(record?.project_id) ||
+				normalizeEntityLabel(argRecord.project_id) ||
+				normalizeEntityLabel(argRecord.projectId) ||
+				null;
+
+	return { kind, id, name, projectId };
+}
+
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
@@ -1343,43 +1399,26 @@ export function createToolPresenter(ctx: ToolPresenterContext): ToolPresenter {
 		argsJson: string | Record<string, unknown> | undefined,
 		toolResult: unknown
 	): CreatedEntityRef | null {
-		if (!toolName) return null;
-		const kind = CREATE_TOOL_KINDS[toolName];
-		if (!kind) return null;
+		const base = extractCreatedEntityFromResult(toolName, argsJson, toolResult);
+		if (!base) return null;
 
-		const payload = extractToolResultPayload(toolResult);
-		// Locate the entity record across the common result shapes.
-		const nested = payload?.result as Record<string, any> | undefined;
-		const record = [payload?.[kind], nested?.[kind], payload?.entity].find(
-			(r): r is Record<string, any> => !!r && typeof r === 'object'
-		);
-
+		// Live-path enrichment the standalone can't do: fall back to the name cache and
+		// the current project context when the result payload was thin.
 		const args = safeParseArgs(argsJson);
-		const id =
-			normalizeEntityLabel(record?.id) ||
-			normalizeEntityLabel(record?.[`${kind}_id`]) ||
-			normalizeEntityLabel(payload?.entity_id) ||
-			normalizeEntityLabel(nested?.id);
-		if (!id) return null;
-
 		const name =
-			(record ? extractEntityDisplayName(record) : undefined) ||
-			resolveEntityName(kind, id) ||
-			normalizeEntityLabel(args?.title) ||
-			normalizeEntityLabel(args?.name) ||
-			'Untitled';
-
+			base.name !== 'Untitled'
+				? base.name
+				: (resolveEntityName(base.kind as OntologyEntityKind, base.id) ?? base.name);
 		const projectId =
-			kind === 'project'
-				? id
-				: normalizeEntityLabel(record?.project_id) ||
-					resolveProjectId(
+			base.projectId ??
+			(base.kind === 'project'
+				? base.id
+				: (resolveProjectId(
 						args,
 						(toolResult ?? undefined) as { result?: any; data?: any }
-					) ||
-					null;
+					) ?? null));
 
-		return { kind, id, name, projectId };
+		return { ...base, name, projectId };
 	}
 
 	function recordDataMutation(

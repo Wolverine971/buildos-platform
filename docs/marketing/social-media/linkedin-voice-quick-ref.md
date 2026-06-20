@@ -10,8 +10,9 @@
 ## Identity
 
 - **Who:** DJ, solo founder, Marines veteran (use sparingly), builder
-- **Building:** BuildOS - context infrastructure for the AI era / AI project collaboration for the builders
-- **Angle:** Context engineering > agent engineering, AI that remembers
+- **Building:** BuildOS — a **thinking environment for people making complex things**. Turn messy thinking into structured work; the project remembers what matters.
+- **Angle:** Lead with relief, not AI. Stateless chat forgets; context compounds. Talk through the work, it becomes a plan.
+- **Brand source of truth:** `docs/marketing/brand/brand-guide-1-pager.md`. Use its **Terms To Use** ("thinking environment," "the project remembers," "context compounds," "one system," "next move"); avoid leading with "context infrastructure," "context engineering," "agentic orchestration," "AI-powered productivity," or ontology jargon.
 
 ---
 
@@ -75,12 +76,12 @@
 
 ## Content Pillars (What to Engage With)
 
-| Pillar                   | % Focus | Your Angle                                                              |
-| ------------------------ | ------- | ----------------------------------------------------------------------- |
-| **Context Engineering**  | 35%     | "AI has amnesia. Context that compounds > intelligence that resets"     |
-| **Building in Public**   | 30%     | Solo founder, learning voice, the grind, what's working/not             |
-| **AI + Productivity**    | 20%     | Clarity > time management. Context > prompts.                           |
-| **ADHD/Scattered Minds** | 15%     | Complex tools slow you down. Simple + consistent > complex + abandoned. |
+| Pillar                         | % Focus | Your Angle (brand voice)                                                                           |
+| ------------------------------ | ------- | -------------------------------------------------------------------------------------------------- |
+| **Project Memory / Context**   | 35%     | "The project remembers what matters." Stateless chat forgets; context compounds.                   |
+| **Building in Public**         | 30%     | Solo founder turning messy thinking into structured work; the grind, what's working/not.           |
+| **AI + Productivity (relief)** | 20%     | Talk through the work, it becomes a plan. One system beats scattered tools.                        |
+| **ADHD/Scattered Minds**       | 15%     | Complex tools slow you down. Simple + consistent > complex + abandoned. Less judged, more capable. |
 
 > **Cross-Platform Note:** ADHD pillar was MISSING from LinkedIn but is strong on Twitter. BuildOS's core audience includes scattered minds - engage with this community on LinkedIn too.
 

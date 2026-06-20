@@ -2,9 +2,13 @@
 
 # BuildOS LinkedIn Strategy
 
-> **Status Note (April 2026):** Historical / partial strategy.
-> This document is still useful for founder voice and thought-leadership tactics, but its context-engineering-first framing is not the current public category.
-> Check `../brand/BUILDOS_BRAND_ARCHITECTURE.md`, `../brand/brand-guide-1-pager.md`, and `../START_HERE.md` before using it as source-of-truth.
+> **Status Note (updated 2026-06-18):** Partially superseded on positioning. Useful for founder-voice tactics, profile structure, and discovery mechanics — but its **context-engineering-first framing is NOT the current public category.**
+>
+> **Current category (source of truth — `../brand/brand-guide-1-pager.md`):** "thinking environment for people making complex things." **Core promise:** "turn messy thinking into structured work." **Lead with relief, not AI.** Do not lead with "context engineering," "context infrastructure," "AI agents," or ontology jargon — those are Terms To Avoid At First Contact. The brand's _lead_ audience is authors and YouTubers; AI builders / founders / ADHD are supporting affinity lanes (which is where LinkedIn engagement still concentrates).
+>
+> Where this doc says "context engineering thought leader," read it as: a grounded builder who makes messy thinking into structured work and is honest about what's new. DJ is **not** a thought leader (brand: not guru-branded, not hype).
+>
+> Also check `../brand/BUILDOS_BRAND_ARCHITECTURE.md` and `../START_HERE.md`.
 > Media rule: follow `../brand/BUILDOS_REAL_MEDIA_POLICY.md`. No AI-generated images or videos; use real screenshots, screen recordings, founder footage, workspace photos, or clearly explanatory graphics.
 > Presence rule: follow `../brand/BUILDOS_PROOF_AND_PRESENCE_DOCTRINE.md`. Receipts over vibes; use LinkedIn for real founder judgment and project evidence, not corporate thought-leadership volume.
 
@@ -32,13 +36,15 @@ LinkedIn differs fundamentally from Twitter/X:
 
 ### Your LinkedIn Positioning
 
-**Primary Identity:** Builder/Founder working deeply with AI and context engineering
+> Reconciled to current brand 2026-06-18 — see Status Note.
+
+**Primary Identity:** Solo founder building a **thinking environment for people making complex things** — turning messy thinking into structured work. (Frame, don't lead with, the AI/memory machinery.)
 
 **Secondary Identity:** "Blue collar software engineering" — I tinker, I work, I build, I get it working. Through trial and error, find a system that works.
 
-**Implicit Mission:** Raise curiosity about the problems BuildOS solves (context, memory, AI)
+**Implicit Mission:** Make people feel the relief of one connected system — less judged, more capable — and raise curiosity about the problem BuildOS solves (scattered thinking → a project that remembers).
 
-**Voice:** Learning voice, not authoritative. "This is what I've tried, this is what I've learned." AI/context engineering is all so new—speak from experience, not from "I have the answer."
+**Voice:** Learning voice, not authoritative. "This is what I've tried, this is what I've learned." Grounded and relieving — speak from use and lived frustration, not from "I have the answer." Not a thought leader.
 
 ### The Opportunity
 
