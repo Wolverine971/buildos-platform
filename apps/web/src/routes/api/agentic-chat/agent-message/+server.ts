@@ -281,7 +281,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		.join('\n\n');
 
 	try {
-		const llm = new SmartLLMService({ supabase: locals.supabase });
+		const llm = new SmartLLMService({
+			supabase: locals.supabase,
+			httpReferer: request.headers.get('referer') ?? undefined,
+			appName: 'BuildOS Agentic Chat Agent Message'
+		});
 		const message = await llm.generateText({
 			systemPrompt,
 			prompt: promptSections,

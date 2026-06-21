@@ -216,7 +216,10 @@ export async function processProjectLoopJob(
 			totalCost += event.totalCost ?? 0;
 		};
 
-		const llm = new SmartLLMService({ supabase });
+		const llm = new SmartLLMService({
+			supabase,
+			appName: 'BuildOS Project Loop Worker'
+		});
 		const sourceFingerprint = buildSourceFingerprint(ctx);
 
 		// v1 generators: doc organization + outdated docs.

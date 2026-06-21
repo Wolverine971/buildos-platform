@@ -76,7 +76,10 @@ export class TimeBlockSuggestionService {
 		private readonly supabase: TypedSupabaseClient,
 		private readonly userId: string
 	) {
-		this.llmService = new SmartLLMService({ supabase });
+		this.llmService = new SmartLLMService({
+			supabase,
+			appName: 'BuildOS Time Block Suggestions'
+		});
 	}
 
 	async generateSuggestions(

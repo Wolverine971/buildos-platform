@@ -400,7 +400,7 @@ async function streamOpenRouterResponse(params: {
 			Authorization: `Bearer ${apiKey}`,
 			'Content-Type': 'application/json',
 			'HTTP-Referer': privateEnv.OPENROUTER_HTTP_REFERER || 'https://build-os.com',
-			'X-Title': privateEnv.OPENROUTER_APP_NAME || 'BuildOS Agent Stream'
+			'X-Title': 'BuildOS Agentic Chat DJ Try'
 		},
 		body: JSON.stringify(buildOpenRouterRequest(params.prompt)),
 		signal: params.signal

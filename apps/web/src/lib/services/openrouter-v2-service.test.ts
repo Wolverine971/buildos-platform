@@ -97,9 +97,13 @@ describe('OpenRouterV2Service model routing', () => {
 
 	it('preserves assistant reasoning fields when replaying tool-call context', async () => {
 		const requestBodies: any[] = [];
+		const requestHeaders: HeadersInit[] = [];
 		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
 			if (typeof init?.body === 'string') {
 				requestBodies.push(JSON.parse(init.body));
+			}
+			if (init?.headers) {
+				requestHeaders.push(init.headers);
 			}
 			return createSseResponse([
 				JSON.stringify({
@@ -146,6 +150,10 @@ describe('OpenRouterV2Service model routing', () => {
 			role: 'assistant',
 			reasoning: 'Need an external lookup.',
 			reasoning_details: reasoningDetails
+		});
+		expect(requestHeaders[0]).toMatchObject({
+			'HTTP-Referer': 'https://buildos.test',
+			'X-Title': 'OpenRouter V2 Test'
 		});
 	});
 

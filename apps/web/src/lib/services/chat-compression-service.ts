@@ -30,7 +30,10 @@ export class ChatCompressionService {
 	private llmService: SmartLLMService;
 
 	constructor(private supabase: SupabaseClient) {
-		this.llmService = new SmartLLMService({ supabase });
+		this.llmService = new SmartLLMService({
+			supabase,
+			appName: 'BuildOS Chat Compression'
+		});
 	}
 
 	/**

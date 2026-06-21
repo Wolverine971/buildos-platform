@@ -108,6 +108,8 @@ type ProviderRoute = {
 };
 
 const DEFAULT_MOONSHOT_API_URL = 'https://api.moonshot.ai/v1/chat/completions';
+const DEFAULT_HTTP_REFERER = 'https://build-os.com';
+const DEFAULT_APP_NAME = 'BuildOS Smart LLM';
 const DEFAULT_MOONSHOT_MODEL_MAP: Record<string, string> = {
 	[KIMI_CODING_MODEL]: 'kimi-k2.7-code',
 	[KIMI_EXPERIMENT_MODEL]: 'kimi-k2.6'
@@ -156,8 +158,8 @@ export class SmartLLMService {
 	private appName: string;
 
 	constructor(config: SmartLLMConfig) {
-		this.httpReferer = config.httpReferer || 'https://yourdomain.com';
-		this.appName = config.appName || 'SmartLLMService';
+		this.httpReferer = config.httpReferer || DEFAULT_HTTP_REFERER;
+		this.appName = config.appName || DEFAULT_APP_NAME;
 		this.supabase = config.supabase;
 		this.errorLogger = config.errorLogger;
 		this.apiKey = config.apiKey;

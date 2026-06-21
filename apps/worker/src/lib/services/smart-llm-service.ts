@@ -4,6 +4,9 @@ import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import { SmartLLMService as SharedSmartLLMService, type SmartLLMConfig } from '@buildos/smart-llm';
 import { supabase as defaultSupabase } from '../supabase';
 
+const DEFAULT_HTTP_REFERER = 'https://build-os.com';
+const DEFAULT_APP_NAME = 'BuildOS Worker';
+
 export type {
 	AudioInput,
 	ErrorLogger,
@@ -54,8 +57,8 @@ export class SmartLLMService extends SharedSmartLLMService {
 				: undefined;
 		super({
 			apiKey,
-			httpReferer: config?.httpReferer,
-			appName: config?.appName,
+			httpReferer: config?.httpReferer || DEFAULT_HTTP_REFERER,
+			appName: config?.appName || DEFAULT_APP_NAME,
 			supabase: supabase as SmartLLMConfig['supabase'],
 			enforceUserId: config?.enforceUserId ?? true,
 			openrouter: config?.openrouter,

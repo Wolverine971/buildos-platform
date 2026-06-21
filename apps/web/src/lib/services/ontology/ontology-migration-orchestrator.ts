@@ -82,7 +82,10 @@ export class OntologyMigrationOrchestrator {
 	private readonly llmService: SmartLLMService;
 
 	constructor(private readonly client: TypedSupabaseClient) {
-		this.llmService = new SmartLLMService({ supabase: client });
+		this.llmService = new SmartLLMService({
+			supabase: client,
+			appName: 'BuildOS Ontology Migration'
+		});
 		this.projectService = new ProjectMigrationService(client, this.llmService);
 		this.planGenerator = new PlanGenerationService(this.llmService);
 		this.phaseService = new PhaseMigrationService(client, this.planGenerator, this.llmService);

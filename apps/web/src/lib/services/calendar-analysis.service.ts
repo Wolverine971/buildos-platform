@@ -231,7 +231,10 @@ export class CalendarAnalysisService extends ApiService {
 		super('/api/calendar/analysis');
 		this.supabase = supabase;
 		this.calendarService = new CalendarService(supabase);
-		this.llmService = new SmartLLMService({ supabase });
+		this.llmService = new SmartLLMService({
+			supabase,
+			appName: 'BuildOS Calendar Analysis'
+		});
 		this.errorLogger = ErrorLoggerService.getInstance(supabase);
 	}
 

@@ -7,6 +7,9 @@ import { env as dynamicEnv } from '$env/dynamic/private';
 import { ErrorLoggerService } from './errorLogger.service';
 import { SmartLLMService as SharedSmartLLMService, type SmartLLMConfig } from '@buildos/smart-llm';
 
+const DEFAULT_HTTP_REFERER = 'https://build-os.com';
+const DEFAULT_APP_NAME = 'BuildOS Web';
+
 export type {
 	AudioInput,
 	ErrorLogger,
@@ -61,8 +64,8 @@ export class SmartLLMService extends SharedSmartLLMService {
 				: undefined;
 		super({
 			apiKey: config?.apiKey || PRIVATE_OPENROUTER_API_KEY,
-			httpReferer: config?.httpReferer,
-			appName: config?.appName,
+			httpReferer: config?.httpReferer || DEFAULT_HTTP_REFERER,
+			appName: config?.appName || DEFAULT_APP_NAME,
 			supabase: config?.supabase,
 			errorLogger,
 			enforceUserId: config?.enforceUserId,
