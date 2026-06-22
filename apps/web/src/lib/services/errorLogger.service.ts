@@ -10,7 +10,10 @@ import type {
 	ErrorSummary
 } from '$lib/types/error-logging';
 import { browser } from '$app/environment';
-import { shouldDisplayPersistedErrorLog } from '$lib/utils/error-observability';
+import {
+	isPurgeablePersistedErrorNoise,
+	shouldDisplayPersistedErrorLog
+} from '$lib/utils/error-observability';
 
 type ErrorLogFilters = {
 	userId?: string;
@@ -18,6 +21,17 @@ type ErrorLogFilters = {
 	errorType?: ErrorType;
 	severity?: ErrorSeverity;
 	resolved?: boolean;
+};
+
+type PurgeNoiseOptions = {
+	batchSize?: number;
+	maxRows?: number;
+};
+
+export type PurgeNoiseResult = {
+	deleted: number;
+	scanned: number;
+	stoppedAtLimit: boolean;
 };
 
 const EMPTY_ERROR_SUMMARY: ErrorSummary = {
@@ -739,6 +753,69 @@ export class ErrorLoggerService {
 		}
 
 		return true;
+	}
+
+	public async purgeNonActionableNoise(
+		options: PurgeNoiseOptions = {}
+	): Promise<PurgeNoiseResult> {
+		const batchSize = Math.min(Math.max(options.batchSize ?? 500, 1), 1000);
+		const maxRows = Math.min(Math.max(options.maxRows ?? 10_000, batchSize), 50_000);
+		let scanned = 0;
+		let deleted = 0;
+		let lastCreatedAt: string | null = null;
+
+		while (scanned < maxRows) {
+			const limit = Math.min(batchSize, maxRows - scanned);
+			let query = this.supabase
+				.from('error_logs')
+				.select('id, created_at, endpoint, error_message, metadata, operation_type')
+				.order('created_at', { ascending: false })
+				.limit(limit);
+
+			if (lastCreatedAt) {
+				query = query.lt('created_at', lastCreatedAt);
+			}
+
+			const { data, error } = await query;
+			if (error) {
+				throw error;
+			}
+
+			if (!data || data.length === 0) {
+				break;
+			}
+
+			const rows = data as unknown as ErrorLogEntry[];
+			scanned += rows.length;
+
+			const purgeIds = rows
+				.filter((row) => row.id && isPurgeablePersistedErrorNoise(row as any))
+				.map((row) => row.id!);
+
+			if (purgeIds.length > 0) {
+				const { count, error: deleteError } = await this.supabase
+					.from('error_logs')
+					.delete({ count: 'exact' })
+					.in('id', purgeIds);
+
+				if (deleteError) {
+					throw deleteError;
+				}
+
+				deleted += count ?? purgeIds.length;
+			}
+
+			lastCreatedAt = rows[rows.length - 1]?.created_at ?? null;
+			if (!lastCreatedAt || rows.length < limit) {
+				break;
+			}
+		}
+
+		return {
+			deleted,
+			scanned,
+			stoppedAtLimit: scanned >= maxRows
+		};
 	}
 
 	public async getErrorSummary(filters?: ErrorLogFilters): Promise<ErrorSummary> {

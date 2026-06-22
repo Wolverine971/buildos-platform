@@ -1,6 +1,9 @@
 <!-- apps/web/src/lib/components/dashboard/OverdueTaskTriageModal.svelte -->
 <script lang="ts">
 	import { browser } from '$app/environment';
+	import { flip } from 'svelte/animate';
+	import { cubicOut } from 'svelte/easing';
+	import { fly, slide } from 'svelte/transition';
 	import {
 		ArrowRight,
 		CalendarDays,
@@ -26,7 +29,6 @@
 	} from '$lib/types/overdue-triage';
 	import {
 		buildOverdueProjectBatches,
-		safeTimeMs,
 		sortBatchTasks,
 		sortOverdueProjectBatches
 	} from '$lib/utils/overdue-task-batches';
@@ -55,6 +57,12 @@
 	type CompletedBatch = {
 		project_id: string;
 		project_name: string;
+	};
+	type LocatedTask = {
+		batch: OverdueProjectBatch;
+		batchIndex: number;
+		task: OverdueTask;
+		taskIndex: number;
 	};
 
 	interface Props {
@@ -150,12 +158,6 @@
 		return `${firstLabel} +${task.assignees.length - 1}`;
 	}
 
-	function isOverdue(task: Pick<OverdueTask, 'state_key' | 'due_at'>): boolean {
-		if (!task.due_at) return false;
-		if (task.state_key === 'done') return false;
-		return safeTimeMs(task.due_at) < Date.now();
-	}
-
 	function toIsoEndOfDay(date: Date): string {
 		const local = new Date(date);
 		local.setHours(23, 59, 0, 0);
@@ -227,6 +229,10 @@
 		];
 	}
 
+	function unrecordCompletedBatch(projectId: string) {
+		completedBatches = completedBatches.filter((item) => item.project_id !== projectId);
+	}
+
 	async function loadBatches() {
 		isLoading = true;
 		error = null;
@@ -279,12 +285,7 @@
 		}
 	});
 
-	function findTask(taskId: string): {
-		batch: OverdueProjectBatch;
-		batchIndex: number;
-		task: OverdueTask;
-		taskIndex: number;
-	} | null {
+	function findTask(taskId: string): LocatedTask | null {
 		for (let batchIndex = 0; batchIndex < batches.length; batchIndex += 1) {
 			const batch = batches[batchIndex];
 			if (!batch) continue;
@@ -303,6 +304,10 @@
 		const found = findTask(taskId);
 		if (!found) return;
 
+		if (expandedTaskId === taskId) expandedTaskId = null;
+		if (slotTaskId === taskId) slotTaskId = null;
+		if (slotTaskId === null) activeSlotPreset = null;
+
 		const nextBatches = [...batches];
 		const batchTasks = [...((found.batch.tasks ?? []) as OverdueTask[])];
 		batchTasks.splice(found.taskIndex, 1);
@@ -320,17 +325,29 @@
 		setBatches(nextBatches, found.batch.project_id);
 	}
 
-	function replaceTaskInBatches(taskId: string, nextTask: OverdueTask) {
-		const found = findTask(taskId);
-		if (!found) return;
+	function restoreTaskToBatches(task: OverdueTask) {
+		unrecordCompletedBatch(task.project_id);
 
-		const nextBatches = [...batches];
-		const batchTasks = [...((found.batch.tasks ?? []) as OverdueTask[])];
-		batchTasks[found.taskIndex] = nextTask;
-		const nextBatch = recomputeBatch(batchTasks);
-		if (!nextBatch) return;
-		nextBatches[found.batchIndex] = nextBatch;
-		setBatches(nextBatches, found.batch.project_id);
+		const existingBatchIndex = batches.findIndex(
+			(batch) => batch.project_id === task.project_id
+		);
+		if (existingBatchIndex >= 0) {
+			const existingBatch = batches[existingBatchIndex];
+			if (!existingBatch) return;
+			const existingTasks = ((existingBatch.tasks ?? []) as OverdueTask[]).filter(
+				(item) => item.id !== task.id
+			);
+			const nextBatch = recomputeBatch([...existingTasks, task]);
+			if (!nextBatch) return;
+			const nextBatches = [...batches];
+			nextBatches[existingBatchIndex] = nextBatch;
+			setBatches(nextBatches, task.project_id);
+			return;
+		}
+
+		const restoredBatch = recomputeBatch([task]);
+		if (!restoredBatch) return;
+		setBatches([...batches, restoredBatch], task.project_id);
 	}
 
 	async function patchTask(taskId: string, updates: Record<string, unknown>) {
@@ -354,38 +371,18 @@
 		return payload?.data?.task ?? null;
 	}
 
-	async function mutateTask(
-		taskId: string,
+	async function mutateFoundTask(
+		found: LocatedTask,
 		updates: Record<string, unknown>,
 		options: { silent?: boolean } = {}
 	): Promise<boolean> {
-		const found = findTask(taskId);
-		if (!found || pendingTaskIds.has(taskId)) return false;
+		const taskId = found.task.id;
+		if (pendingTaskIds.has(taskId)) return false;
 
 		pendingTaskIds = new Set([...pendingTaskIds, taskId]);
+		removeTaskFromBatches(taskId);
 		try {
-			const patched = await patchTask(taskId, updates);
-			const merged: OverdueTask = {
-				...found.task,
-				...(patched ?? {}),
-				project_id: found.task.project_id,
-				project_name: found.task.project_name,
-				project_state_key: found.task.project_state_key,
-				project_updated_at: found.task.project_updated_at,
-				project_is_shared: found.task.project_is_shared,
-				project_is_collaborative: found.task.project_is_collaborative,
-				is_assigned_to_me: found.task.is_assigned_to_me,
-				lane: found.task.lane,
-				assignees: Array.isArray(patched?.assignees)
-					? (patched.assignees as OverdueTask['assignees'])
-					: found.task.assignees
-			};
-
-			if (isOverdue(merged)) {
-				replaceTaskInBatches(taskId, merged);
-			} else {
-				removeTaskFromBatches(taskId);
-			}
+			await patchTask(taskId, updates);
 
 			changedCount += 1;
 			if (!options.silent) {
@@ -394,6 +391,7 @@
 			return true;
 		} catch (err) {
 			console.error('[Overdue Project Batch Triage] Failed to update task:', err);
+			restoreTaskToBatches(found.task);
 			toastService.error(err instanceof Error ? err.message : 'Failed to update task');
 			return false;
 		} finally {
@@ -403,11 +401,29 @@
 		}
 	}
 
+	async function mutateTask(
+		taskId: string,
+		updates: Record<string, unknown>,
+		options: { silent?: boolean } = {}
+	): Promise<boolean> {
+		const found = findTask(taskId);
+		if (!found) return false;
+		return mutateFoundTask(found, updates, options);
+	}
+
 	async function handleSetTaskState(taskId: string, state: 'done' | 'in_progress' | 'blocked') {
 		if (state === 'blocked') {
 			await mutateTask(taskId, {
 				state_key: 'blocked',
 				due_at: presetDueAt(BLOCKED_REVISIT_PRESET)
+			});
+			return;
+		}
+
+		if (state === 'in_progress') {
+			await mutateTask(taskId, {
+				state_key: 'in_progress',
+				due_at: presetDueAt('today')
 			});
 			return;
 		}
@@ -520,12 +536,15 @@
 
 	async function runProjectAction(action: 'tomorrow' | 'plus3' | 'in_progress' | 'done') {
 		if (!activeBatch) return;
-		const taskIds = ((activeBatch.tasks ?? []) as OverdueTask[]).map((task) => task.id);
-		if (taskIds.length === 0) return;
+		const projectName = activeBatch.project_name;
+		const locatedTasks = ((activeBatch.tasks ?? []) as OverdueTask[])
+			.map((task) => findTask(task.id))
+			.filter((task): task is LocatedTask => Boolean(task));
+		if (locatedTasks.length === 0) return;
 
 		if (action === 'done' && browser) {
 			const confirmed = window.confirm(
-				`Mark ${taskIds.length} overdue tasks as done in ${activeBatch.project_name}?`
+				`Mark ${locatedTasks.length} overdue tasks as done in ${projectName}?`
 			);
 			if (!confirmed) return;
 		}
@@ -536,17 +555,19 @@
 		let failed = 0;
 
 		try {
-			for (const taskId of taskIds) {
-				const updates =
-					action === 'tomorrow'
-						? { due_at: presetDueAt('tomorrow') }
-						: action === 'plus3'
-							? { due_at: presetDueAt('plus3') }
-							: action === 'in_progress'
-								? { state_key: 'in_progress' }
-								: { state_key: 'done' };
+			const updates =
+				action === 'tomorrow'
+					? { due_at: presetDueAt('tomorrow') }
+					: action === 'plus3'
+						? { due_at: presetDueAt('plus3') }
+						: action === 'in_progress'
+							? { state_key: 'in_progress', due_at: presetDueAt('today') }
+							: { state_key: 'done' };
 
-				const ok = await mutateTask(taskId, updates, { silent: true });
+			const results = await Promise.all(
+				locatedTasks.map((task) => mutateFoundTask(task, updates, { silent: true }))
+			);
+			for (const ok of results) {
 				if (ok) succeeded += 1;
 				else failed += 1;
 			}
@@ -555,7 +576,7 @@
 		}
 
 		if (succeeded > 0 && failed === 0) {
-			toastService.success(`Updated ${succeeded} tasks in ${activeBatch.project_name}`);
+			toastService.success(`Updated ${succeeded} tasks in ${projectName}`);
 			return;
 		}
 		if (succeeded > 0 && failed > 0) {
@@ -607,7 +628,7 @@
 <svelte:window onclick={handleWindowClick} onkeydown={handleWindowKeydown} />
 
 <Modal {isOpen} onClose={closeModal} title="Project Batch Triage" size="xl">
-	<div class="p-3 space-y-3">
+	<div class="space-y-3 p-2 sm:p-3">
 		<div class="flex flex-wrap items-center gap-2 text-xs">
 			<span
 				class="inline-flex items-center gap-1 rounded-full border border-border px-2 py-1"
@@ -662,13 +683,15 @@
 				</div>
 			</div>
 		{:else}
-			<div class="grid gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
-				<div class="space-y-3">
+			<div class="grid min-h-0 gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
+				<div class="space-y-3 lg:max-h-[calc(85dvh-7rem)] lg:overflow-y-auto lg:pr-1">
 					<div class="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible">
 						{#each batches as batch (batch.project_id)}
 							<button
 								type="button"
 								onclick={() => setActiveProject(batch.project_id)}
+								animate:flip={{ duration: 180 }}
+								out:fly={{ x: -48, duration: 160, easing: cubicOut }}
 								class="min-w-[220px] lg:min-w-0 rounded-lg border px-3 py-2.5 text-left transition-colors shadow-ink pressable {activeBatch?.project_id ===
 								batch.project_id
 									? 'border-accent/40 bg-accent/10'
@@ -726,8 +749,10 @@
 				</div>
 
 				{#if activeBatch}
-					<div class="rounded-lg border border-border bg-card shadow-ink overflow-hidden">
-						<div class="border-b border-border px-3 py-3 space-y-3">
+					<div
+						class="flex max-h-[calc(100dvh-9rem)] min-h-0 flex-col overflow-hidden rounded-lg border border-border bg-card shadow-ink sm:max-h-[calc(85dvh-7rem)]"
+					>
+						<div class="shrink-0 space-y-3 border-b border-border px-3 py-3">
 							<div class="flex flex-wrap items-start justify-between gap-3">
 								<div class="min-w-0">
 									<div class="flex flex-wrap items-center gap-2">
@@ -767,10 +792,13 @@
 								</div>
 							</div>
 
-							<div class="flex flex-wrap items-center gap-2">
+							<div
+								class="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center"
+							>
 								<Button
 									size="sm"
 									variant="outline"
+									class="w-full justify-center sm:w-auto"
 									disabled={isProjectActionRunning}
 									onclick={() => runProjectAction('tomorrow')}
 								>
@@ -779,6 +807,7 @@
 								<Button
 									size="sm"
 									variant="outline"
+									class="w-full justify-center sm:w-auto"
 									disabled={isProjectActionRunning}
 									onclick={() => runProjectAction('plus3')}
 								>
@@ -787,6 +816,7 @@
 								<Button
 									size="sm"
 									variant="outline"
+									class="col-span-2 w-full justify-center sm:col-span-1 sm:w-auto"
 									disabled={isProjectActionRunning}
 									onclick={() => runProjectAction('in_progress')}
 								>
@@ -795,7 +825,7 @@
 								<div class="relative" bind:this={projectMenuRef}>
 									<button
 										type="button"
-										class="inline-flex min-h-[44px] items-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-ink transition-colors hover:bg-muted"
+										class="inline-flex min-h-[44px] w-full items-center justify-center gap-1 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-ink transition-colors hover:bg-muted sm:w-auto"
 										disabled={isProjectActionRunning}
 										aria-expanded={projectMenuOpen}
 										onclick={() => (projectMenuOpen = !projectMenuOpen)}
@@ -835,9 +865,15 @@
 							</div>
 						</div>
 
-						<div class="divide-y divide-border">
+						<div
+							class="min-h-0 flex-1 divide-y divide-border overflow-y-auto overscroll-contain"
+						>
 							{#each activeTasks as task (task.id)}
-								<div class="px-3 py-3">
+								<div
+									class="px-3 py-3"
+									animate:flip={{ duration: 180 }}
+									out:fly={{ x: '100%', duration: 180, easing: cubicOut }}
+								>
 									<div
 										class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
 									>
@@ -884,10 +920,12 @@
 											</div>
 										</div>
 
-										<div class="flex flex-wrap items-center gap-2 shrink-0">
+										<div
+											class="grid grid-cols-4 gap-1.5 sm:flex sm:shrink-0 sm:flex-wrap sm:items-center sm:gap-2"
+										>
 											<button
 												type="button"
-												class="rounded-md border border-success/30 bg-success/10 px-2 py-1.5 text-[11px] font-semibold text-success transition-colors hover:bg-success/15 disabled:opacity-50"
+												class="min-h-9 rounded-md border border-success/30 bg-success/10 px-2 py-1.5 text-[11px] font-semibold text-success transition-colors hover:bg-success/15 disabled:opacity-50"
 												disabled={pendingTaskIds.has(task.id)}
 												onclick={() => handleSetTaskState(task.id, 'done')}
 											>
@@ -895,7 +933,7 @@
 											</button>
 											<button
 												type="button"
-												class="rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
 												disabled={pendingTaskIds.has(task.id)}
 												onclick={() =>
 													handleQuickReschedule(task.id, 'tomorrow')}
@@ -904,7 +942,7 @@
 											</button>
 											<button
 												type="button"
-												class="rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50"
 												disabled={pendingTaskIds.has(task.id)}
 												onclick={() =>
 													handleQuickReschedule(task.id, 'plus3')}
@@ -913,7 +951,7 @@
 											</button>
 											<button
 												type="button"
-												class="rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted"
+												class="min-h-9 rounded-md border border-border bg-card px-2 py-1.5 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted"
 												aria-expanded={expandedTaskId === task.id}
 												onclick={() => toggleTaskDetails(task.id)}
 											>
@@ -928,6 +966,7 @@
 									{#if expandedTaskId === task.id}
 										<div
 											class="mt-3 rounded-lg border border-border bg-background/60 p-3 space-y-3"
+											transition:slide={{ duration: 140 }}
 										>
 											<div class="flex flex-wrap items-center gap-2">
 												<Button

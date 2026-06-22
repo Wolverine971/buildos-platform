@@ -39,7 +39,7 @@ function accessDeniedCtx(): {
 		rpc: async (fn: string, args: unknown) => {
 			calls.push({ fn, args });
 			if (fn === 'ensure_actor_for_user') return { data: 'actor-1', error: null };
-			if (fn === 'actor_has_project_member_access') return { data: false, error: null };
+			if (fn === 'get_onto_project_summaries_v1') return { data: [], error: null };
 			throw new Error(`unexpected rpc: ${fn}`);
 		}
 	} as AgentOpContext['admin'];
@@ -50,6 +50,142 @@ function accessDeniedCtx(): {
 			admin,
 			userId: '00000000-0000-4000-8000-000000000000',
 			scope: { mode: 'read_only', allowed_ops: null }
+		}
+	};
+}
+
+function emptyProjectReadCtx(): AgentOpContext {
+	const admin = {
+		rpc: async (fn: string) => {
+			if (fn === 'ensure_actor_for_user') return { data: 'actor-1', error: null };
+			if (fn === 'get_onto_project_summaries_v1') return { data: [], error: null };
+			throw new Error(`unexpected rpc: ${fn}`);
+		}
+	} as AgentOpContext['admin'];
+
+	return {
+		admin,
+		userId: '00000000-0000-4000-8000-000000000000',
+		scope: { mode: 'read_only', allowed_ops: ['onto.goal.list'] }
+	};
+}
+
+const PROJECT_A_ID = '11111111-1111-4111-8111-111111111111';
+const PROJECT_B_ID = '22222222-2222-4222-8222-222222222222';
+const TASK_ID = '33333333-3333-4333-8333-333333333333';
+
+function projectSummaryRow(
+	id: string,
+	overrides: Partial<Record<string, unknown>> = {}
+): Record<string, unknown> {
+	return {
+		id,
+		name: id === PROJECT_A_ID ? 'Allowed project' : 'Other project',
+		description: null,
+		icon_svg: null,
+		icon_concept: null,
+		icon_generated_at: null,
+		icon_generation_source: null,
+		icon_generation_prompt: null,
+		type_key: 'project.default',
+		state_key: 'active',
+		props: {},
+		facet_context: null,
+		facet_scale: null,
+		facet_stage: null,
+		created_at: '2026-06-01T00:00:00Z',
+		updated_at: '2026-06-01T00:00:00Z',
+		task_count: 0,
+		goal_count: 0,
+		plan_count: 0,
+		document_count: 0,
+		owner_actor_id: 'actor-owner',
+		access_role: 'owner',
+		access_level: 'write',
+		is_shared: false,
+		next_step_short: null,
+		next_step_long: null,
+		next_step_source: null,
+		next_step_updated_at: null,
+		...overrides
+	};
+}
+
+function stageUpdateCtx(params: {
+	projects: Array<Record<string, unknown>>;
+	task: Record<string, unknown> | null;
+}): {
+	context: AgentOpContext;
+	calls: Array<{ kind: string; table?: string; column?: string; value?: unknown }>;
+} {
+	const calls: Array<{ kind: string; table?: string; column?: string; value?: unknown }> = [];
+
+	class Query {
+		private id: unknown;
+		private projectIds: unknown[] | null = null;
+		private archivedIsNull = false;
+
+		constructor(private readonly table: string) {}
+
+		select() {
+			calls.push({ kind: 'select', table: this.table });
+			return this;
+		}
+
+		eq(column: string, value: unknown) {
+			calls.push({ kind: 'eq', table: this.table, column, value });
+			if (column === 'id') this.id = value;
+			return this;
+		}
+
+		in(column: string, value: unknown[]) {
+			calls.push({ kind: 'in', table: this.table, column, value });
+			if (column === 'project_id') this.projectIds = value;
+			return this;
+		}
+
+		is(column: string, value: unknown) {
+			calls.push({ kind: 'is', table: this.table, column, value });
+			if (column === 'archived_at' && value === null) this.archivedIsNull = true;
+			return this;
+		}
+
+		async maybeSingle() {
+			if (this.table !== 'onto_tasks' || !params.task) {
+				return { data: null, error: null };
+			}
+			if (this.id !== params.task.id) {
+				return { data: null, error: null };
+			}
+			if (this.projectIds && !this.projectIds.includes(params.task.project_id)) {
+				return { data: null, error: null };
+			}
+			if (this.archivedIsNull && params.task.archived_at !== null) {
+				return { data: null, error: null };
+			}
+			return { data: params.task, error: null };
+		}
+	}
+
+	const admin = {
+		rpc: async (fn: string) => {
+			calls.push({ kind: 'rpc', value: fn });
+			if (fn === 'ensure_actor_for_user') return { data: 'actor-1', error: null };
+			if (fn === 'get_onto_project_summaries_v1') {
+				return { data: params.projects, error: null };
+			}
+			throw new Error(`unexpected rpc: ${fn}`);
+		},
+		from: (table: string) => new Query(table)
+	} as AgentOpContext['admin'];
+
+	return {
+		calls,
+		context: {
+			admin,
+			userId: '00000000-0000-4000-8000-000000000000',
+			scope: { mode: 'read_write', allowed_ops: ['onto.task.update'] },
+			mutationMode: 'stage'
 		}
 	};
 }
@@ -253,6 +389,118 @@ describe('executeAgentOp policy + dispatch', () => {
 		expect(r.error?.code).toBe('FORBIDDEN');
 	});
 
+	it('does not stage a before snapshot for an update outside a project-scoped run', async () => {
+		const { context, calls } = stageUpdateCtx({
+			projects: [projectSummaryRow(PROJECT_A_ID), projectSummaryRow(PROJECT_B_ID)],
+			task: {
+				id: TASK_ID,
+				project_id: PROJECT_B_ID,
+				title: 'Out of scope task',
+				description: null,
+				type_key: null,
+				state_key: 'todo',
+				priority: null,
+				start_at: null,
+				due_at: null,
+				completed_at: null,
+				props: {},
+				created_at: '2026-06-01T00:00:00Z',
+				updated_at: '2026-06-01T00:00:00Z',
+				archived_at: null,
+				deleted_at: null
+			}
+		});
+
+		const r = await executeAgentOp(
+			{ ...context, runContext: { context_type: 'project', project_id: PROJECT_A_ID } },
+			'onto.task.update',
+			{ task_id: TASK_ID, title: 'Leaked title?' }
+		);
+
+		expect(r.ok).toBe(false);
+		expect(r.error?.code).toBe('NOT_FOUND');
+		expect(r.proposedChange).toBeUndefined();
+		expect(calls).toContainEqual({
+			kind: 'in',
+			table: 'onto_tasks',
+			column: 'project_id',
+			value: [PROJECT_A_ID]
+		});
+	});
+
+	it('rejects staged update snapshots when the visible project is not writable', async () => {
+		const { context } = stageUpdateCtx({
+			projects: [projectSummaryRow(PROJECT_A_ID, { access_level: 'read' })],
+			task: {
+				id: TASK_ID,
+				project_id: PROJECT_A_ID,
+				title: 'Read only task',
+				description: null,
+				type_key: null,
+				state_key: 'todo',
+				priority: null,
+				start_at: null,
+				due_at: null,
+				completed_at: null,
+				props: {},
+				created_at: '2026-06-01T00:00:00Z',
+				updated_at: '2026-06-01T00:00:00Z',
+				archived_at: null,
+				deleted_at: null
+			}
+		});
+
+		const r = await executeAgentOp(context, 'onto.task.update', {
+			task_id: TASK_ID,
+			title: 'Should not stage'
+		});
+
+		expect(r.ok).toBe(false);
+		expect(r.error?.code).toBe('FORBIDDEN');
+		expect(r.proposedChange).toBeUndefined();
+	});
+
+	it('stages an authorized update with a scoped before snapshot', async () => {
+		const task = {
+			id: TASK_ID,
+			project_id: PROJECT_A_ID,
+			title: 'Original task',
+			description: null,
+			type_key: null,
+			state_key: 'todo',
+			priority: null,
+			start_at: null,
+			due_at: null,
+			completed_at: null,
+			props: {},
+			created_at: '2026-06-01T00:00:00Z',
+			updated_at: '2026-06-01T00:00:00Z',
+			archived_at: null,
+			deleted_at: null
+		};
+		const { context } = stageUpdateCtx({
+			projects: [projectSummaryRow(PROJECT_A_ID, { access_level: 'write' })],
+			task
+		});
+
+		const r = await executeAgentOp(context, 'onto.task.update', {
+			task_id: TASK_ID,
+			title: 'Updated task'
+		});
+
+		expect(r.ok).toBe(true);
+		expect(r.proposedChange?.entity_id).toBe(TASK_ID);
+		expect(r.proposedChange?.before).toMatchObject({
+			id: TASK_ID,
+			project_id: PROJECT_A_ID,
+			title: 'Original task'
+		});
+		expect(r.proposedChange?.after).toMatchObject({
+			task_id: TASK_ID,
+			title: 'Updated task'
+		});
+	});
+
 	it('fences a write op to its project-scoped run before any DB handler', async () => {
 		const r = await executeAgentOp(
 			{
@@ -276,10 +524,13 @@ describe('executeAgentOp policy + dispatch', () => {
 		expect(r.error?.code).toBe('FORBIDDEN');
 	});
 
-	it('returns NOT_IMPLEMENTED for an allowed read op with no worker handler yet', async () => {
-		const r = await executeAgentOp(ctx({ allowed_ops: ['onto.goal.list'] }), 'onto.goal.list');
-		expect(r.ok).toBe(false);
-		expect(r.error?.code).toBe('NOT_IMPLEMENTED');
+	it('routes allowed non-calendar reads through the shared gateway handlers', async () => {
+		const r = await executeAgentOp(emptyProjectReadCtx(), 'onto.goal.list');
+		expect(r.ok).toBe(true);
+		expect(r.data).toMatchObject({
+			goals: [],
+			total: 0
+		});
 	});
 
 	it('rejects a project op outside a project-scoped run before DB access', async () => {
@@ -299,7 +550,7 @@ describe('executeAgentOp policy + dispatch', () => {
 	it('checks actor-specific project access before loading project data', async () => {
 		const { context, calls } = accessDeniedCtx();
 		const r = await executeAgentOp(context, 'onto.document.tree.get', {
-			project_id: 'project-1'
+			project_id: PROJECT_A_ID
 		});
 
 		expect(r.ok).toBe(false);
@@ -310,12 +561,8 @@ describe('executeAgentOp policy + dispatch', () => {
 				args: { p_user_id: '00000000-0000-4000-8000-000000000000' }
 			},
 			{
-				fn: 'actor_has_project_member_access',
-				args: {
-					p_actor_id: 'actor-1',
-					p_project_id: 'project-1',
-					p_required_access: 'read'
-				}
+				fn: 'get_onto_project_summaries_v1',
+				args: { p_actor_id: 'actor-1' }
 			}
 		]);
 	});

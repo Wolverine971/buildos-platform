@@ -11,6 +11,13 @@ import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
 import type { VoiceNote } from '$lib/types/voice-notes';
 import type { FastAgentPrewarmRequest } from '$lib/services/agentic-chat-v2';
 import type { FastChatContextCache } from '$lib/services/agentic-chat-v2/context-cache';
+import {
+	buildProjectWideFocus as buildScopeProjectWideFocus,
+	isAgenticChatContextType,
+	isProjectScopedContext,
+	normalizeAgenticChatContextType,
+	normalizeProjectFocus
+} from '$lib/services/agentic-chat-v2/scope';
 import type {
 	ActivityEntry,
 	AgentTimelineItem,
@@ -134,51 +141,23 @@ const DEFAULT_CHAT_SESSION_TITLES = [
 ].map((title) => title.toLowerCase());
 
 export function isProjectContext(context: ChatContextType | null | undefined): boolean {
-	return context === 'project';
+	return isProjectScopedContext(context);
 }
 
 export function normalizeSessionContextType(context: string | null | undefined): ChatContextType {
-	switch (context) {
-		case 'general':
-			return 'global';
-		case 'project_audit':
-		case 'project_forecast':
-			return 'project';
-		case 'global':
-		case 'project':
-		case 'calendar':
-		case 'daily_brief':
-		case 'project_create':
-		case 'daily_brief_update':
-		case 'ontology':
-			return context;
-		default:
-			return 'global';
-	}
+	const normalized = normalizeAgenticChatContextType(context);
+	return isAgenticChatContextType(normalized) ? normalized : 'global';
 }
 
 export function buildProjectWideFocus(
 	projectId: string,
 	projectName?: string | null
 ): ProjectFocus {
-	return {
-		focusType: 'project-wide',
-		focusEntityId: null,
-		focusEntityName: null,
-		projectId,
-		projectName: projectName ?? 'Project'
-	};
+	return buildScopeProjectWideFocus(projectId, projectName);
 }
 
 export function normalizeProjectFocusClient(focus?: ProjectFocus | null): ProjectFocus | null {
-	if (!focus || !focus.projectId) return null;
-	return {
-		focusType: focus.focusType ?? 'project-wide',
-		focusEntityId: focus.focusEntityId ?? null,
-		focusEntityName: focus.focusEntityName ?? null,
-		projectId: focus.projectId,
-		projectName: focus.projectName ?? 'Project'
-	};
+	return normalizeProjectFocus(focus);
 }
 
 function isPlaceholderSessionTitle(title?: string | null): boolean {

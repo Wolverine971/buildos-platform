@@ -21,6 +21,7 @@ const KNOWN_NON_ACTIONABLE_PATHS = new Set([
 	'/api/openapi.json',
 	'/app-ads.txt',
 	'/app-config.json',
+	'/humans.txt',
 	'/apple-app-site-association',
 	'/asset-manifest.json',
 	'/assets/manifest.json',
@@ -52,6 +53,7 @@ const KNOWN_NON_ACTIONABLE_PATHS = new Set([
 	'/release_notes.txt',
 	'/runtime-config.js',
 	'/sa.json',
+	'/security.txt',
 	'/service-account.json',
 	'/serviceaccountkey.json',
 	'/settings.json',
@@ -87,6 +89,12 @@ const KNOWN_NON_ACTIONABLE_PATTERNS = [
 	/^\/\.well-known\/(?:ai-plugin|dnt-policy|gpc|jwks|security|trust)\.(?:json|txt)$/i
 ];
 
+const GENERIC_CLIENT_NETWORK_ERROR_MESSAGES = new Set([
+	'failed to fetch',
+	'load failed',
+	'networkerror when attempting to fetch resource.'
+]);
+
 const PRIVATE_CONFIG_PROBE_PREFIXES = [
 	'/.anthropic/',
 	'/.aws/',
@@ -101,6 +109,7 @@ const PRIVATE_CONFIG_PROBE_PREFIXES = [
 	'/.git/',
 	'/.npm/',
 	'/.openai/',
+	'/.openclaw/',
 	'/.ssh/',
 	'/.vscode/'
 ];
@@ -127,9 +136,17 @@ const PRIVATE_CONFIG_PROBE_PATHS = new Set([
 	'/.npmrc',
 	'/.openai',
 	'/.openai/config.json',
+	'/.openclaw',
+	'/.openclaw/openclaw.json',
 	'/.pypirc',
 	'/.ssh',
 	'/.vscode',
+	'/appsettings.development.json',
+	'/appsettings.production.json',
+	'/appsettings.json',
+	'/application_default_credentials.json',
+	'/client_secret.json',
+	'/client_secrets.json',
 	'/config.json',
 	'/config.toml',
 	'/config.yaml',
@@ -137,11 +154,45 @@ const PRIVATE_CONFIG_PROBE_PATHS = new Set([
 	'/credentials.json',
 	'/credentials.yaml',
 	'/credentials.yml',
+	'/firebase.json',
+	'/firebase-adminsdk.json',
+	'/firebase-credentials.json',
+	'/firebase_credentials.json',
+	'/gcloud-service-key.json',
+	'/gcp-key.json',
+	'/gcp-service-account.json',
+	'/gcp.json',
+	'/gcp_key.json',
+	'/google-application-credentials.json',
+	'/google-cloud.json',
+	'/google-credentials.json',
+	'/google-service-account.json',
+	'/google-services.json',
+	'/google_credentials.json',
+	'/google_key.json',
+	'/google_service_app.json',
+	'/keyfile.json',
+	'/sa-key.json',
+	'/sa-private-key.json',
 	'/secret.json',
 	'/secrets.json',
+	'/service-account-config.json',
+	'/service-account-credentials.json',
+	'/service-account-file.json',
+	'/service-account-key.json',
+	'/service-account.json',
+	'/service_account.json',
+	'/serviceaccount.json',
+	'/serviceaccountcredentials.json',
 	'/token.json',
 	'/tokens.json'
 ]);
+
+const PRIVATE_CONFIG_PROBE_DIRECTORY_PATTERN =
+	/^\/(?:api\/)?(?:app|auth|config|credentials|secrets)\/[^/]+\.(?:json|ya?ml|toml)$/i;
+
+const PRIVATE_CONFIG_PROBE_FILENAME_PATTERN =
+	/^\/(?:api\/)?(?:appsettings(?:\.[a-z]+)?|application_default_credentials|client_secrets?|credentials?|firebase(?:[-_]?adminsdk|[-_]?credentials?)?|gcloud[-_]?service[-_]?key|gcp(?:[-_]?credentials?|[-_]?key|[-_]?service[-_]?account)?|google(?:[-_]?application[-_]?credentials|[-_]?cloud|[-_]?credentials?|[-_]?key|[-_]?service[-_]?app|[-_]?services?)|keyfile|sa(?:[-_]?key|[-_]?private[-_]?key)?|service[-_]?account(?:[-_]?config|[-_]?credentials?|[-_]?file|[-_]?key)?|serviceaccount(?:credentials|key)?)(?:\.[a-z0-9]+)?$/i;
 
 const FIRST_PARTY_ASSET_EXTENSIONS = new Set([
 	'css',
@@ -201,6 +252,39 @@ function getPathExtension(pathname: string): string | null {
 	return lastSegment.slice(dotIndex + 1).toLowerCase();
 }
 
+function extractNotFoundPath(message: string | null | undefined): string | null {
+	if (typeof message !== 'string') return null;
+	const match = message.match(/^Not found:\s+(\S+)/i);
+	return match?.[1] ?? null;
+}
+
+function getPersistedErrorPathname(entry: PersistedErrorEventLike): string | null {
+	return (
+		normalizePathname(entry.endpoint) ||
+		normalizePathname(extractNotFoundPath(entry.error_message ?? entry.errorMessage))
+	);
+}
+
+function isGenericClientNetworkErrorMessage(message: string | null | undefined): boolean {
+	if (typeof message !== 'string') return false;
+	return GENERIC_CLIENT_NETWORK_ERROR_MESSAGES.has(message.trim().toLowerCase());
+}
+
+function isPersistedClientNetworkNoise(entry: PersistedErrorEventLike): boolean {
+	const metadata =
+		entry.metadata && typeof entry.metadata === 'object'
+			? (entry.metadata as Record<string, unknown>)
+			: {};
+	const operation = entry.operation_type ?? entry.operationType;
+	const reportKind = metadata.reportKind;
+
+	if (operation !== 'client_fetch_network' && reportKind !== 'fetch_network') {
+		return false;
+	}
+
+	return isGenericClientNetworkErrorMessage(entry.error_message ?? entry.errorMessage);
+}
+
 export function isPrivateConfigProbePath(pathname: string | null | undefined): boolean {
 	const normalizedPath = normalizePathname(pathname);
 	if (!normalizedPath) return false;
@@ -214,7 +298,11 @@ export function isPrivateConfigProbePath(pathname: string | null | undefined): b
 		return true;
 	}
 
-	return /^\/\.env(?:[./_-]|$)/i.test(lowerPath);
+	return (
+		/^\/\.env(?:[./_-]|$)/i.test(lowerPath) ||
+		PRIVATE_CONFIG_PROBE_DIRECTORY_PATTERN.test(lowerPath) ||
+		PRIVATE_CONFIG_PROBE_FILENAME_PATTERN.test(lowerPath)
+	);
 }
 
 export function isIgnorableProbePath(pathname: string | null | undefined): boolean {
@@ -320,6 +408,8 @@ export function shouldPersistGenericErrorEvent(input: GenericErrorEventFilterInp
 		case 'hooks.response_status':
 		case 'client_fetch_http':
 			return typeof input.status === 'number' ? input.status >= 500 : true;
+		case 'client_fetch_network':
+			return false;
 		case 'hooks.handle_error':
 			if (typeof input.status !== 'number') {
 				return true;
@@ -359,8 +449,31 @@ export function shouldDisplayPersistedErrorLog(entry: PersistedErrorEventLike): 
 
 	return shouldPersistGenericErrorEvent({
 		operation: entry.operation_type ?? entry.operationType ?? undefined,
-		pathname: entry.endpoint,
+		pathname: getPersistedErrorPathname(entry),
 		status,
 		routeId
 	});
+}
+
+export function isPurgeablePersistedErrorNoise(entry: PersistedErrorEventLike): boolean {
+	if (isPersistedClientNetworkNoise(entry)) {
+		return true;
+	}
+
+	const pathname = getPersistedErrorPathname(entry);
+	if (!pathname || !isIgnorableProbePath(pathname)) {
+		return false;
+	}
+
+	const metadata =
+		entry.metadata && typeof entry.metadata === 'object'
+			? (entry.metadata as Record<string, unknown>)
+			: {};
+	const metadataStatus = metadata.status;
+	const status =
+		typeof metadataStatus === 'number' && Number.isFinite(metadataStatus)
+			? metadataStatus
+			: getErrorStatus(entry.error_message ?? entry.errorMessage ?? undefined);
+
+	return status === 404;
 }

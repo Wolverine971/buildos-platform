@@ -39,6 +39,17 @@ type AgentMessageOperationType =
 const logger = createLogger('API:AgentMessage');
 const AGENT_MESSAGE_ENDPOINT = '/api/agentic-chat/agent-message';
 const AGENT_MESSAGE_METHOD = 'POST';
+const DEFAULT_OPENROUTER_REFERER = 'https://build-os.com';
+
+function toOpenRouterReferer(value: string | null): string {
+	if (!value) return DEFAULT_OPENROUTER_REFERER;
+	try {
+		const url = new URL(value);
+		return url.origin;
+	} catch {
+		return DEFAULT_OPENROUTER_REFERER;
+	}
+}
 
 async function logAgentMessageError(params: {
 	errorLogger: ErrorLoggerService;
@@ -283,7 +294,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const llm = new SmartLLMService({
 			supabase: locals.supabase,
-			httpReferer: request.headers.get('referer') ?? undefined,
+			httpReferer: toOpenRouterReferer(request.headers.get('referer')),
 			appName: 'BuildOS Agentic Chat Agent Message'
 		});
 		const message = await llm.generateText({

@@ -4,6 +4,7 @@ import {
 	getErrorStatus,
 	isIgnorableProbePath,
 	isPrivateConfigProbePath,
+	isPurgeablePersistedErrorNoise,
 	shouldDisplayPersistedErrorLog,
 	shouldPersistGenericErrorEvent,
 	shouldTrackFailedClientResponse,
@@ -48,6 +49,17 @@ describe('error observability filters', () => {
 		expect(isIgnorableProbePath('/manifest.webmanifest')).toBe(true);
 		expect(isIgnorableProbePath('/feed.xml')).toBe(true);
 		expect(isIgnorableProbePath('/.well-known/security.txt')).toBe(true);
+		expect(isIgnorableProbePath('/humans.txt')).toBe(true);
+		expect(isIgnorableProbePath('/security.txt')).toBe(true);
+		expect(isIgnorableProbePath('/appsettings.Production.json')).toBe(true);
+		expect(isIgnorableProbePath('/google_service_app.json')).toBe(true);
+		expect(isIgnorableProbePath('/config/gcp-credentials.json')).toBe(true);
+		expect(isIgnorableProbePath('/auth/service_key.json')).toBe(true);
+		expect(isIgnorableProbePath('/secrets/gcp-key.json')).toBe(true);
+		expect(isIgnorableProbePath('/google-application-credentials.json')).toBe(true);
+		expect(isIgnorableProbePath('/serviceAccountCredentials.json')).toBe(true);
+		expect(isIgnorableProbePath('/api/client_secret.json')).toBe(true);
+		expect(isIgnorableProbePath('/.openclaw/agents/main/agent/models.json')).toBe(true);
 		expect(isIgnorableProbePath('/brain-bolt-80.png')).toBe(false);
 		expect(isIgnorableProbePath('/site.webmanifest')).toBe(false);
 		expect(isIgnorableProbePath('/openapi.json')).toBe(false);
@@ -58,6 +70,13 @@ describe('error observability filters', () => {
 		expect(isPrivateConfigProbePath('/.anthropic/config.json')).toBe(true);
 		expect(isPrivateConfigProbePath('/.env.production.local')).toBe(true);
 		expect(isPrivateConfigProbePath('/config.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/appsettings.Development.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/service-account-key.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/config/firebase_credentials.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/firebase-adminsdk.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/gcloud-service-key.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/api/client_secret.json')).toBe(true);
+		expect(isPrivateConfigProbePath('/.openclaw/openclaw.json')).toBe(true);
 		expect(isPrivateConfigProbePath('/openapi.json')).toBe(false);
 		expect(isPrivateConfigProbePath('/brain-bolt-80.png')).toBe(false);
 	});
@@ -76,6 +95,13 @@ describe('error observability filters', () => {
 				operation: 'client_fetch_http',
 				pathname: '/api/agent/v2/stream',
 				status: 404
+			})
+		).toBe(false);
+
+		expect(
+			shouldPersistGenericErrorEvent({
+				operation: 'client_fetch_network',
+				pathname: '/api/agent/v2/stream'
 			})
 		).toBe(false);
 
@@ -119,6 +145,15 @@ describe('error observability filters', () => {
 			shouldPersistGenericErrorEvent({
 				operation: 'hooks.handle_error',
 				pathname: '/_next/static/buildManifest.js',
+				status: 404,
+				routeId: null
+			})
+		).toBe(false);
+
+		expect(
+			shouldPersistGenericErrorEvent({
+				operation: 'hooks.handle_error',
+				pathname: '/appsettings.Production.json',
 				status: 404,
 				routeId: null
 			})
@@ -182,6 +217,28 @@ describe('error observability filters', () => {
 
 		expect(
 			shouldDisplayPersistedErrorLog({
+				endpoint: null,
+				error_message: 'Not found: /service-account-key.json',
+				operation_type: 'hooks.handle_error',
+				metadata: {
+					routeId: null
+				}
+			})
+		).toBe(false);
+
+		expect(
+			shouldDisplayPersistedErrorLog({
+				endpoint: '/api/agent/v2/stream',
+				error_message: 'Failed to fetch',
+				operation_type: 'client_fetch_network',
+				metadata: {
+					reportKind: 'fetch_network'
+				}
+			})
+		).toBe(false);
+
+		expect(
+			shouldDisplayPersistedErrorLog({
 				endpoint: '/brain-bolt-80.png',
 				error_message: 'Not found: /brain-bolt-80.png',
 				operation_type: 'hooks.handle_error',
@@ -190,5 +247,43 @@ describe('error observability filters', () => {
 				}
 			})
 		).toBe(true);
+	});
+
+	it('marks scanner probe rows as purgeable without deleting normal asset misses', () => {
+		expect(
+			isPurgeablePersistedErrorNoise({
+				endpoint: '/appsettings.Production.json',
+				error_message: 'Not found: /appsettings.Production.json',
+				operation_type: 'hooks.handle_error',
+				metadata: { routeId: null }
+			})
+		).toBe(true);
+
+		expect(
+			isPurgeablePersistedErrorNoise({
+				endpoint: null,
+				error_message: 'Not found: /api/client_secret.json',
+				operation_type: 'hooks.handle_error',
+				metadata: { routeId: null }
+			})
+		).toBe(true);
+
+		expect(
+			isPurgeablePersistedErrorNoise({
+				endpoint: '/api/agent/v2/stream',
+				error_message: 'Failed to fetch',
+				operation_type: 'client_fetch_network',
+				metadata: { reportKind: 'fetch_network' }
+			})
+		).toBe(true);
+
+		expect(
+			isPurgeablePersistedErrorNoise({
+				endpoint: '/brain-bolt-80.png',
+				error_message: 'Not found: /brain-bolt-80.png',
+				operation_type: 'hooks.handle_error',
+				metadata: { routeId: null }
+			})
+		).toBe(false);
 	});
 });

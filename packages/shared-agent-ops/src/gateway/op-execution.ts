@@ -1,17 +1,10 @@
 // packages/shared-agent-ops/src/gateway/op-execution.ts
 //
-// Worker-safe Agent Run op execution (Phase 1b foundation).
+// Worker-safe Agent Run op execution.
 //
 // A self-contained dispatcher the worker runner calls to execute BuildOS ops
 // in-process — no SvelteKit, no chat session. It reuses the already-extracted
 // ontology services and the shared scope/op policy.
-//
-// SCOPE (read-first): this initial cut implements READ ops only. Write ops and
-// full convergence with the web agent-call gateway's handler catalog
-// (external-tool-gateway.ts EXTERNAL_OP_HANDLERS) are tracked follow-on work —
-// the gateway handler map is ~5,100 lines and entangled with the deferred
-// calendar/GoogleOAuth code, so it is NOT carved here. See
-// SHARED_AGENT_OPS_EXTRACTION_PLAN.md (Wave 7).
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
@@ -22,12 +15,10 @@ import type {
 	ProposedChange
 } from '@buildos/shared-types';
 import { defaultAllowedOpsForMode, isReadOp, isSupportedOp, isWriteOp } from '../policy';
-import { ensureActorId } from '../ontology/ontology-projects.service';
-import { loadProjectGraphData, loadUserProjectSummaries } from '../ontology/project-graph-loader';
-import { getDocTree } from '../ontology/doc-structure.service';
 import {
 	AGENT_OP_GATEWAY_CALENDAR_READ_CATALOG,
 	AGENT_OP_GATEWAY_CALENDAR_WRITE_CATALOG,
+	AGENT_OP_GATEWAY_READ_CATALOG,
 	AGENT_OP_GATEWAY_WRITE_CATALOG,
 	type CalendarPort,
 	runGatewayReadOp,
@@ -36,6 +27,7 @@ import {
 } from './op-execution-gateway';
 
 export {
+	AGENT_OP_GATEWAY_READ_CATALOG,
 	AGENT_OP_GATEWAY_CALENDAR_READ_CATALOG,
 	AGENT_OP_GATEWAY_CALENDAR_WRITE_CATALOG
 } from './op-execution-gateway';
@@ -54,7 +46,7 @@ export interface AgentOpContext {
 		project_id?: string | null;
 	} | null;
 	/**
-	 * Write disposition (Phase 4). 'commit' (default) applies writes immediately;
+	 * Write disposition. 'commit' (default) applies writes immediately;
 	 * 'stage' computes a ProposedChange and returns it WITHOUT mutating, for
 	 * review-before-commit runs (review_required).
 	 */
@@ -89,90 +81,11 @@ export interface AgentOpResult {
 	error?: { code: AgentOpErrorCode; message: string };
 }
 
-class AgentOpError extends Error {
-	constructor(
-		public code: AgentOpErrorCode,
-		message: string
-	) {
-		super(message);
-		this.name = 'AgentOpError';
-	}
-}
-
-function requireProjectId(args: Record<string, unknown>): string {
-	const id = typeof args.project_id === 'string' ? args.project_id.trim() : '';
-	if (!id) {
-		throw new AgentOpError('VALIDATION_ERROR', 'project_id is required');
-	}
-	return id;
-}
-
-async function assertProjectAccess(
-	ctx: AgentOpContext,
-	projectId: string,
-	requiredAccess: 'read' | 'write' | 'admin' = 'read'
-): Promise<void> {
-	if (ctx.runContext?.context_type === 'project' && ctx.runContext.project_id !== projectId) {
-		throw new AgentOpError('FORBIDDEN', 'Op project_id is outside this run scope');
-	}
-
-	const actorId = await ensureActorId(ctx.admin, ctx.userId);
-	const { data, error } = await ctx.admin.rpc('actor_has_project_member_access', {
-		p_actor_id: actorId,
-		p_project_id: projectId,
-		p_required_access: requiredAccess
-	});
-
-	if (error) {
-		throw new AgentOpError(
-			'EXECUTION_ERROR',
-			`Failed to check project access: ${error.message}`
-		);
-	}
-	if (!data) {
-		throw new AgentOpError('FORBIDDEN', 'Project not found or access denied');
-	}
-}
-
-type ReadHandler = (ctx: AgentOpContext, args: Record<string, unknown>) => Promise<unknown>;
-
-const READ_OP_HANDLERS: Record<string, ReadHandler> = {
-	'onto.project.list': async (ctx) => {
-		const actorId = await ensureActorId(ctx.admin, ctx.userId);
-		const summaries = await loadUserProjectSummaries(ctx.admin, actorId);
-		const visibleSummaries =
-			ctx.runContext?.context_type === 'project'
-				? summaries.filter((s) => s.project.id === ctx.runContext?.project_id)
-				: summaries;
-
-		return {
-			projects: visibleSummaries.map((s) => ({
-				...s.project,
-				task_count: s.taskCount,
-				plan_count: s.planCount,
-				edge_count: s.edgeCount
-			}))
-		};
-	},
-	'onto.project.graph.get': async (ctx, args) => {
-		const projectId = requireProjectId(args);
-		await assertProjectAccess(ctx, projectId, 'read');
-		return await loadProjectGraphData(ctx.admin, projectId);
-	},
-	'onto.document.tree.get': async (ctx, args) => {
-		const projectId = requireProjectId(args);
-		await assertProjectAccess(ctx, projectId, 'read');
-		return await getDocTree(ctx.admin, projectId, { includeContent: false });
-	}
-};
-
 /** The read ops the worker op executor can currently run. */
-export const AGENT_OP_READ_CATALOG: readonly string[] = Object.freeze(
-	Object.keys(READ_OP_HANDLERS)
-);
+export const AGENT_OP_READ_CATALOG: readonly string[] = AGENT_OP_GATEWAY_READ_CATALOG;
 
 /**
- * The write ops the worker op executor can run, sourced from the carved gateway
+ * The write ops the worker op executor can run, sourced from the shared gateway
  * handler map (non-calendar writes). Exposed to the runner so it can build the
  * tool surface for `read_write` runs.
  */
@@ -211,6 +124,37 @@ function fail(op: string, code: AgentOpErrorCode, message: string): AgentOpResul
 	return { ok: false, op, error: { code, message } };
 }
 
+function explicitProjectId(args: Record<string, unknown>): string {
+	return typeof args.project_id === 'string' ? args.project_id.trim() : '';
+}
+
+function enforceExplicitProjectFence(
+	ctx: AgentOpContext,
+	op: string,
+	args: Record<string, unknown>
+): AgentOpResult | null {
+	const projectId = explicitProjectId(args);
+	if (
+		ctx.runContext?.context_type === 'project' &&
+		projectId &&
+		ctx.runContext.project_id !== projectId
+	) {
+		return fail(op, 'FORBIDDEN', 'Op project_id is outside this run scope');
+	}
+	return null;
+}
+
+function buildGatewayScope(ctx: AgentOpContext): AgentCallScope {
+	return {
+		mode: ctx.scope.mode,
+		allowed_ops: (ctx.scope.allowed_ops ?? undefined) as AgentCallScope['allowed_ops'],
+		project_ids:
+			ctx.runContext?.context_type === 'project' && ctx.runContext.project_id
+				? [ctx.runContext.project_id]
+				: undefined
+	};
+}
+
 /** Map the gateway's error codes onto the worker AgentOpResult error codes. */
 function mapGatewayErrorCode(
 	code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'FORBIDDEN' | 'CONFLICT' | 'INTERNAL'
@@ -229,7 +173,7 @@ function mapGatewayErrorCode(
 }
 
 /**
- * Execute a write op via the carved gateway handler map. Scope/allowed-op policy
+ * Execute a write op via the shared gateway handler map. Scope/allowed-op policy
  * is enforced by the caller (executeAgentOp); here we add run-scope project
  * fencing (mirroring the read path) and delegate to runGatewayWriteOp. No
  * external write-audit/idempotency — the runner records agent_tool_executions.
@@ -245,13 +189,9 @@ async function executeWriteOp(
 
 	// Run-scope project fence: a project-scoped run can only write to its project
 	// (best-effort — applies when the op carries an explicit project_id).
-	const projectId = typeof args.project_id === 'string' ? args.project_id.trim() : '';
-	if (
-		ctx.runContext?.context_type === 'project' &&
-		projectId &&
-		ctx.runContext.project_id !== projectId
-	) {
-		return fail(op, 'FORBIDDEN', 'Op project_id is outside this run scope');
+	const fenced = enforceExplicitProjectFence(ctx, op, args);
+	if (fenced) {
+		return fenced;
 	}
 
 	if (ctx.mutationMode === 'stage' && AGENT_OP_GATEWAY_CALENDAR_WRITE_CATALOG.includes(op)) {
@@ -265,11 +205,15 @@ async function executeWriteOp(
 		return fail(op, 'UNSUPPORTED', `Calendar op ${op} requires a CalendarPort`);
 	}
 
-	// Stage mode (Phase 4): compute a ProposedChange and return WITHOUT mutating.
+	// Stage mode: compute a ProposedChange and return WITHOUT mutating.
 	// Scope/fence checks above still apply — a staged write must be one the run
 	// is actually allowed to make.
 	if (ctx.mutationMode === 'stage') {
-		const staged = await stageGatewayWriteOp({ admin: ctx.admin, op, args });
+		const staged = await stageGatewayWriteOp({
+			admin: ctx.admin,
+			op,
+			args
+		});
 		if (!staged.ok) {
 			return fail(op, mapGatewayErrorCode(staged.error.code), staged.error.message);
 		}
@@ -287,14 +231,7 @@ async function executeWriteOp(
 		};
 	}
 
-	const scope: AgentCallScope = {
-		mode: 'read_write',
-		allowed_ops: (ctx.scope.allowed_ops ?? undefined) as AgentCallScope['allowed_ops'],
-		project_ids:
-			ctx.runContext?.context_type === 'project' && ctx.runContext.project_id
-				? [ctx.runContext.project_id]
-				: undefined
-	};
+	const scope = buildGatewayScope(ctx);
 
 	const result = await runGatewayWriteOp({
 		admin: ctx.admin,
@@ -329,8 +266,9 @@ async function executeWriteOp(
 
 /**
  * Execute a single BuildOS op for an Agent Run. Enforces scope/op policy, then
- * dispatches to the read handler. Errors are returned as structured results
- * (never thrown) so the runner's loop can surface them to the agent.
+ * dispatches through the shared gateway handlers. Errors are returned as
+ * structured results (never thrown) so the runner's loop can surface them to
+ * the agent.
  */
 export async function executeAgentOp(
 	ctx: AgentOpContext,
@@ -348,26 +286,26 @@ export async function executeAgentOp(
 	if (!allowed.includes(trimmed)) {
 		return fail(trimmed, 'FORBIDDEN', `Op ${trimmed} is outside the granted scope`);
 	}
-	// Write ops dispatch to the carved gateway handler map (read_write runs only).
+	// Write ops dispatch to the shared gateway handler map (read_write runs only).
 	if (isWriteOp(trimmed)) {
 		return executeWriteOp(ctx, trimmed, args);
 	}
 	if (!isReadOp(trimmed)) {
 		return fail(trimmed, 'UNSUPPORTED', `Op ${trimmed} is not a read op.`);
 	}
-	const handler = READ_OP_HANDLERS[trimmed];
-	if (!handler && AGENT_OP_GATEWAY_CALENDAR_READ_CATALOG.includes(trimmed)) {
-		if (!ctx.calendar) {
-			return fail(trimmed, 'UNSUPPORTED', `Calendar op ${trimmed} requires a CalendarPort`);
+	if (AGENT_OP_GATEWAY_CALENDAR_READ_CATALOG.includes(trimmed) && !ctx.calendar) {
+		return fail(trimmed, 'UNSUPPORTED', `Calendar op ${trimmed} requires a CalendarPort`);
+	}
+	if (
+		AGENT_OP_READ_CATALOG.includes(trimmed) ||
+		AGENT_OP_GATEWAY_CALENDAR_READ_CATALOG.includes(trimmed)
+	) {
+		const fenced = enforceExplicitProjectFence(ctx, trimmed, args);
+		if (fenced) {
+			return fenced;
 		}
-		const scope: AgentCallScope = {
-			mode: ctx.scope.mode,
-			allowed_ops: (ctx.scope.allowed_ops ?? undefined) as AgentCallScope['allowed_ops'],
-			project_ids:
-				ctx.runContext?.context_type === 'project' && ctx.runContext.project_id
-					? [ctx.runContext.project_id]
-					: undefined
-		};
+
+		const scope = buildGatewayScope(ctx);
 		const result = await runGatewayReadOp({
 			admin: ctx.admin,
 			userId: ctx.userId,
@@ -385,18 +323,9 @@ export async function executeAgentOp(
 			result.error?.message ?? 'Read op failed'
 		);
 	}
-	if (!handler) {
-		return fail(
-			trimmed,
-			'NOT_IMPLEMENTED',
-			`Op ${trimmed} is allowed but has no worker handler yet.`
-		);
-	}
-	try {
-		const data = await handler(ctx, args);
-		return { ok: true, op: trimmed, data };
-	} catch (error) {
-		const code = error instanceof AgentOpError ? error.code : 'EXECUTION_ERROR';
-		return fail(trimmed, code, error instanceof Error ? error.message : String(error));
-	}
+	return fail(
+		trimmed,
+		'NOT_IMPLEMENTED',
+		`Op ${trimmed} is allowed but has no worker handler yet.`
+	);
 }

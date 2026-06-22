@@ -13,6 +13,7 @@
 	import TextInput from '$components/ui/TextInput.svelte';
 	import AdminPageHeader from '$lib/components/admin/AdminPageHeader.svelte';
 	import InfoModal from '$components/ui/InfoModal.svelte';
+	import { toastService } from '$lib/stores/toast.store';
 	import {
 		Check,
 		TriangleAlert,
@@ -27,7 +28,8 @@
 		CircleCheck,
 		Bug,
 		Zap,
-		ArrowUpRight
+		ArrowUpRight,
+		Trash2
 	} from 'lucide-svelte';
 
 	let { data }: { data: PageData } = $props();
@@ -49,6 +51,7 @@
 	let selectedError = $state<ErrorLogEntry | null>(null);
 	let selectedErrorIds = $state<string[]>([]);
 	let bulkProcessing = $state(false);
+	let purgeProcessing = $state(false);
 
 	// Derived state for selection
 	let selectAll = $derived(
@@ -139,17 +142,16 @@
 				body: JSON.stringify({ notes })
 			});
 
-			if (response.ok) {
-				await loadErrors();
-				selectedError = null;
+			if (!response.ok) {
+				throw new Error('Failed to resolve error');
 			}
+
+			await loadErrors();
+			selectedError = null;
+			toastService.success('Error resolved');
 		} catch (error) {
 			console.error('Failed to resolve error:', error);
-			infoModal = {
-				isOpen: true,
-				title: 'Error',
-				message: 'Failed to resolve error. Please try again.'
-			};
+			toastService.error('Failed to resolve error. Please try again.');
 		}
 	}
 
@@ -172,13 +174,19 @@
 		const idsToResolve = [...selectedErrorIds];
 		bulkProcessing = true;
 		try {
-			const promises = idsToResolve.map((errorId) =>
-				fetch(`/api/admin/errors/${errorId}/resolve`, {
+			const promises = idsToResolve.map(async (errorId) => {
+				const response = await fetch(`/api/admin/errors/${errorId}/resolve`, {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ notes })
-				})
-			);
+				});
+
+				if (!response.ok) {
+					throw new Error(`Failed to resolve error ${errorId}`);
+				}
+
+				return response;
+			});
 
 			const results = await Promise.allSettled(promises);
 			const successCount = results.filter((r) => r.status === 'fulfilled').length;
@@ -189,27 +197,58 @@
 			}
 
 			if (failCount > 0) {
-				infoModal = {
-					isOpen: true,
-					title: 'Partial Success',
-					message: `Resolved ${successCount} error(s). Failed to resolve ${failCount} error(s).`
-				};
+				toastService.warning(
+					`Resolved ${successCount} error(s). Failed to resolve ${failCount} error(s).`
+				);
 			} else {
-				infoModal = {
-					isOpen: true,
-					title: 'Success',
-					message: `Successfully resolved ${successCount} error(s).`
-				};
+				toastService.success(`Resolved ${successCount} error(s).`);
 			}
 		} catch (error) {
 			console.error('Failed to bulk resolve errors:', error);
+			toastService.error('Failed to resolve errors. Please try again.');
+		} finally {
+			bulkProcessing = false;
+		}
+	}
+
+	async function purgeScannerNoise() {
+		const confirmed = confirm(
+			'Delete stored scanner/probe noise from error_logs? This removes known credential/config 404 probes and keeps actionable errors.'
+		);
+		if (!confirmed) return;
+
+		purgeProcessing = true;
+		try {
+			const response = await fetch('/api/admin/errors/purge-noise', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ maxRows: 50000 })
+			});
+			const result = await response.json();
+
+			if (!response.ok || !result.success) {
+				throw new Error(result.error || 'Failed to purge scanner noise');
+			}
+
+			await loadErrors();
+
+			const { deleted = 0, scanned = 0, stoppedAtLimit = false } = result.data || {};
+			infoModal = {
+				isOpen: true,
+				title: 'Scanner Noise Purged',
+				message: stoppedAtLimit
+					? `Deleted ${deleted.toLocaleString()} scanner-noise row(s) after scanning ${scanned.toLocaleString()} row(s). Run it again to continue.`
+					: `Deleted ${deleted.toLocaleString()} scanner-noise row(s) after scanning ${scanned.toLocaleString()} row(s).`
+			};
+		} catch (error) {
+			console.error('Failed to purge scanner noise:', error);
 			infoModal = {
 				isOpen: true,
 				title: 'Error',
-				message: 'Failed to resolve errors. Please try again.'
+				message: 'Failed to purge scanner noise. Please try again.'
 			};
 		} finally {
-			bulkProcessing = false;
+			purgeProcessing = false;
 		}
 	}
 
@@ -483,6 +522,16 @@
 					size="sm"
 				>
 					{filterResolved === false ? 'All' : 'Unresolved'}
+				</Button>
+				<Button
+					onclick={purgeScannerNoise}
+					disabled={purgeProcessing}
+					variant="danger"
+					size="sm"
+					icon={Trash2}
+					loading={purgeProcessing}
+				>
+					<span class="hidden sm:inline">Purge noise</span>
 				</Button>
 				<Button
 					onclick={loadErrors}

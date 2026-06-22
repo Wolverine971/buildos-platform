@@ -34,10 +34,9 @@ import {
 	ensureActorId,
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
+import { isProjectScopedContext, resolveEffectiveProjectId, resolveRpcContextType } from './scope';
 
 const logger = createLogger('FastChatContext');
-
-const PROJECT_CONTEXTS = new Set<ChatContextType>(['project']);
 
 const GLOBAL_CONTEXT_PROJECT_LIMIT = 8;
 const GLOBAL_CONTEXT_RECENT_ACTIVITY_LIMIT = 3;
@@ -434,30 +433,6 @@ const DEFAULT_MEMBER_ROLE_PROFILE = {
 		role_description: 'Tracks progress and context, with read-only access to project work.'
 	}
 } as const;
-
-function isProjectContext(contextType: ChatContextType): boolean {
-	return PROJECT_CONTEXTS.has(contextType);
-}
-
-function resolveProjectId(
-	contextType: ChatContextType,
-	entityId?: string | null,
-	projectFocus?: ProjectFocus | null
-): string | null {
-	if (projectFocus?.projectId) return projectFocus.projectId;
-	if (isProjectContext(contextType)) return entityId ?? null;
-	return null;
-}
-
-function resolveRpcContextType(
-	contextType: ChatContextType,
-	projectFocus?: ProjectFocus | null
-): 'global' | 'project' | null {
-	if (contextType === 'global') return 'global';
-	if (isProjectContext(contextType)) return 'project';
-	if (contextType === 'ontology' && projectFocus?.projectId) return 'project';
-	return null;
-}
 
 function asArray<T>(value: unknown): T[] {
 	return Array.isArray(value) ? (value as T[]) : [];
@@ -2077,10 +2052,10 @@ async function loadFastChatContextViaRpc(
 	params: LoadContextParams
 ): Promise<FastChatContextRpcResponse | null> {
 	const { supabase, userId, contextType, entityId, projectFocus } = params;
-	const rpcContextType = resolveRpcContextType(contextType, projectFocus);
+	const rpcContextType = resolveRpcContextType({ contextType, projectFocus });
 	if (!rpcContextType) return null;
 
-	const projectId = resolveProjectId(contextType, entityId, projectFocus);
+	const projectId = resolveEffectiveProjectId({ contextType, entityId, projectFocus });
 	if (rpcContextType === 'project' && !projectId) return null;
 
 	const focusType =
@@ -2820,7 +2795,7 @@ export async function loadFastChatPromptContext(
 	const { supabase, userId, contextType, entityId, projectFocus } = params;
 	const eventWindow = buildFastChatEventWindow();
 
-	const projectId = resolveProjectId(contextType, entityId, projectFocus);
+	const projectId = resolveEffectiveProjectId({ contextType, entityId, projectFocus });
 	const focusType =
 		projectFocus?.focusType && projectFocus.focusType !== 'project-wide'
 			? projectFocus.focusType
@@ -2856,7 +2831,7 @@ export async function loadFastChatPromptContext(
 		};
 	}
 
-	const rpcContextType = resolveRpcContextType(contextType, projectFocus);
+	const rpcContextType = resolveRpcContextType({ contextType, projectFocus });
 	if (rpcContextType) {
 		const rpcPayload = await loadFastChatContextViaRpc(params);
 		if (rpcPayload) {
@@ -2904,7 +2879,7 @@ export async function loadFastChatPromptContext(
 		return { ...baseContext, data };
 	}
 
-	if (isProjectContext(contextType)) {
+	if (isProjectScopedContext(contextType)) {
 		if (!projectId) {
 			return { ...baseContext, data: null };
 		}

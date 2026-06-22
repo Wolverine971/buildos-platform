@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 const sharedAgentOpsSrc = (sub: string) =>
 	fileURLToPath(new URL(`../../packages/shared-agent-ops/src/${sub}`, import.meta.url));
 
-// Resolve the carved op-execution gateway and the dependency modules it imports
+// Resolve the shared op-execution gateway and the dependency modules it imports
 // to @buildos/shared-agent-ops SOURCE (not the bundled dist). This lets the
 // agent-call gateway guardrail tests intercept those dependencies via vi.mock
 // of the canonical `@buildos/shared-agent-ops/...` specifiers, since the source

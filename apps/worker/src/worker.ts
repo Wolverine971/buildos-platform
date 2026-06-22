@@ -458,7 +458,7 @@ export async function startWorker() {
 	// Register Tree Agent processor
 	queue.process('buildos_tree_agent', processTreeAgent);
 
-	// Register Agent Run processor (Phase 1b)
+	// Register Agent Run processor
 	queue.process('agent_run', processAgentRun);
 
 	// Register project context snapshot processor

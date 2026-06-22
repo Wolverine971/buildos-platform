@@ -1,5 +1,5 @@
 // packages/shared-agent-ops/src/gateway/agent-call-project-activity.service.ts
-// Worker-safe carve of the agent-call project-activity logger (Wave 7). Only
+// Worker-safe agent-call project-activity logger. Only
 // depends on @buildos/shared-types; takes the admin client as a param.
 import type { ProjectLogAction, ProjectLogEntityType } from '@buildos/shared-types';
 

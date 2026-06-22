@@ -5,7 +5,7 @@
 // op policy/scope (and, in later slices, the op handlers themselves).
 export * from './policy';
 
-// Pure type/util leaves (Wave 0)
+// Shared pure utilities
 // NOTE: ./ontology/onto and ./ontology/onto-api are NOT in the barrel — they export
 // colliding names (DocTreeNode/DocumentChildren) and are exposed only via subpath
 // (@buildos/shared-agent-ops/ontology/onto[-api]) so each resolves to the right type.
@@ -14,21 +14,21 @@ export * from './utils/markdown-normalization';
 export * from './ops/update-value-validation';
 export * from './ops/gateway-op-aliases';
 
-// Task/document state normalizers (Wave 1). project-graph.types is subpath-only (EntityKind collision).
+// Task/document state normalizers. project-graph.types is subpath-only (EntityKind collision).
 export * from './ontology/task-state';
 export * from './ontology/document-state';
 
-// Function-level splits (Wave 2)
+// Search and activity utilities
 export * from './utils/search-filter';
 export * from './ops/async-activity-logger';
 
-// Notifications + leaf utils (Wave 3). security-event-logger deferred to Wave 7 (gateway carve).
+// Notifications and validation utilities
 export * from './utils/entity-reference-parser';
 export * from './utils/validation-utils';
 export * from './ops/tracked-in-app-notification.service';
 export * from './ops/entity-mention-notification.service';
 
-// Ontology mutation core (Wave 4)
+// Ontology mutation core
 export * from './ontology/relationship-resolver';
 export * from './ontology/auto-organizer.service';
 export * from './ontology/doc-structure.service';
@@ -36,13 +36,13 @@ export * from './ontology/project-graph-loader';
 export * from './ontology/instantiation.service';
 export * from './ontology/ontology-projects.service';
 
-// Worker-safe op execution (Phase 1b foundation — read ops)
+// Worker-safe op execution
 export * from './gateway/op-execution';
 
 // Worker-safe calendar capability for Agent Runs (no SvelteKit imports)
 export * from './calendar/agent-run-calendar-port';
 
-// Staged-mutation commit (Phase 4)
+// Staged-mutation commit
 export * from './gateway/change-set';
 
 // Document outline extraction (pure; used by versioning)

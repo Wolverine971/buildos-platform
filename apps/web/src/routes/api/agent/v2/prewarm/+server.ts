@@ -8,10 +8,15 @@ import {
 	composeFastChatHistory,
 	createFastChatSessionService,
 	loadFastChatPromptContext,
-	normalizeFastContextType,
 	selectFastChatTools,
 	type FastAgentPrewarmRequest
 } from '$lib/services/agentic-chat-v2';
+import {
+	isProjectScopedContext,
+	normalizeFastContextType,
+	resolveEffectiveEntityId,
+	resolveEffectiveProjectId
+} from '$lib/services/agentic-chat-v2/scope';
 import {
 	buildLitePromptEnvelope,
 	LITE_PROMPT_VARIANT
@@ -69,10 +74,6 @@ function trimOptionalString(value: unknown): string | undefined {
 	if (typeof value !== 'string') return undefined;
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function isProjectContext(contextType: ChatContextType): boolean {
-	return contextType === 'project';
 }
 
 async function checkProjectAccess(
@@ -213,8 +214,11 @@ async function buildPreparedPrompt(params: {
 		entity_id: params.prewarmedContext.context.entityId ?? params.entityId ?? null,
 		project_id:
 			params.prewarmedContext.context.projectId ??
-			params.projectFocus?.projectId ??
-			(params.contextType === 'project' ? (params.entityId ?? null) : null),
+			resolveEffectiveProjectId({
+				contextType: params.contextType,
+				entityId: params.entityId,
+				projectFocus: params.projectFocus
+			}),
 		project_focus: params.projectFocus ?? null,
 		cache_key: params.cacheKey,
 		nonce_sha256: nonceSha256,
@@ -268,15 +272,20 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 	const contextType = normalizeFastContextType(body.context_type);
 	const projectFocus = body.projectFocus ?? null;
-	const entityId = trimOptionalString(body.entity_id) ?? projectFocus?.projectId ?? undefined;
+	const entityId = resolveEffectiveEntityId({
+		contextType,
+		entityId: body.entity_id,
+		projectFocus
+	});
+	const projectId = resolveEffectiveProjectId({ contextType, entityId, projectFocus });
 	const shouldPreparePrompt = isPreparedPromptPrewarmEnabled() && body.prepare_prompt !== false;
-	const requiresEntityId = isProjectContext(contextType) || contextType === 'daily_brief';
+	const requiresEntityId = isProjectScopedContext(contextType) || contextType === 'daily_brief';
 	if (requiresEntityId && !entityId) {
 		return ApiResponse.success({ warmed: false, reason: 'missing_entity' });
 	}
 
-	if (isProjectContext(contextType) && entityId) {
-		const allowed = await checkProjectAccess(supabase, entityId, user.id);
+	if (isProjectScopedContext(contextType) && projectId) {
+		const allowed = await checkProjectAccess(supabase, projectId, user.id);
 		if (!allowed) {
 			return ApiResponse.success({ warmed: false, reason: 'project_not_accessible' });
 		}
@@ -313,7 +322,7 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 			sessionId,
 			userId: user.id,
 			contextType,
-			entityId,
+			entityId: entityId ?? undefined,
 			projectFocus
 		});
 		session = resolved.session;

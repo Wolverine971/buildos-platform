@@ -1,7 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/context-cache.ts
 import type { ChatContextType } from '@buildos/shared-types';
 import type { ProjectFocus } from '$lib/types/agent-chat-enhancement';
-import { normalizeFastContextType } from './prompt-builder';
+import { buildAgenticChatContextCacheKeyInput, normalizeAgenticChatContextType } from './scope';
 
 export const FASTCHAT_CONTEXT_CACHE_TTL_MS = 2 * 60 * 1000;
 export const FASTCHAT_CONTEXT_CACHE_VERSION = 2;
@@ -29,12 +29,13 @@ export function buildFastChatContextCacheKey(params: {
 	entityId?: string | null;
 	projectFocus?: Pick<ProjectFocus, 'focusType' | 'focusEntityId' | 'projectId'> | null;
 }): string {
-	const focusType = params.projectFocus?.focusType ?? null;
-	const focusEntityId = params.projectFocus?.focusEntityId ?? null;
-	const projectId = params.projectFocus?.projectId ?? params.entityId ?? null;
+	const normalized = buildAgenticChatContextCacheKeyInput(params);
+	const focusType = normalized.projectFocus?.focusType ?? null;
+	const focusEntityId = normalized.projectFocus?.focusEntityId ?? null;
+	const projectId = normalized.projectFocus?.projectId ?? normalized.entityId ?? null;
 	return [
 		'v2',
-		params.contextType,
+		normalized.contextType,
 		projectId ?? 'none',
 		focusType ?? 'none',
 		focusEntityId ?? 'none'
@@ -80,7 +81,7 @@ export function normalizeFastChatContextSnapshot(
 
 	const data = record.data;
 	return {
-		contextType: normalizeFastContextType(contextTypeRaw),
+		contextType: normalizeAgenticChatContextType(contextTypeRaw),
 		entityId: readString(record, 'entityId', 'entity_id'),
 		projectId: readString(record, 'projectId', 'project_id'),
 		projectName: readString(record, 'projectName', 'project_name'),

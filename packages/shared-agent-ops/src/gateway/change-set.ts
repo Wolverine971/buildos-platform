@@ -1,6 +1,6 @@
 // packages/shared-agent-ops/src/gateway/change-set.ts
 //
-// Phase 4 — commit a staged Change Set. Applies the approved ProposedChanges
+// Commit a staged Change Set. Applies the approved ProposedChanges
 // through the SAME worker-safe write path used for direct-commit runs
 // (runGatewayWriteOp), so there is one mutation path, not two. Per-change result
 // is recorded (applied_entity_id / error); applied changes are promoted into the

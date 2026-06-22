@@ -90,7 +90,6 @@ import {
 	buildFastContextUsageSnapshot,
 	createChatAttachmentRefFromAsset,
 	loadFastChatPromptContext,
-	normalizeFastContextType,
 	normalizeChatAttachmentRefs,
 	composeFastChatHistory,
 	normalizeFastAgentStreamRequest,
@@ -104,6 +103,12 @@ import {
 	type FastAgentStreamRequestInput,
 	type FastChatHistoryMessage
 } from '$lib/services/agentic-chat-v2';
+import {
+	isProjectScopedContext,
+	normalizeFastContextType,
+	resolveEffectiveEntityId,
+	resolveEffectiveProjectId
+} from '$lib/services/agentic-chat-v2/scope';
 import type { FastChatHistoryCompositionResult } from '$lib/services/agentic-chat-v2/history-composer';
 import type { LLMStreamPassMetadata } from '$lib/services/agentic-chat-v2/stream-orchestrator/shared';
 import {
@@ -518,13 +523,11 @@ function resolveChatAttachmentProjectId(
 	contextType: ChatContextType,
 	streamRequest: FastAgentStreamRequest
 ): string | null {
-	const focusProjectId = streamRequest.projectFocus?.projectId?.trim();
-	if (focusProjectId) return focusProjectId;
-	if (contextType === 'project') {
-		const entityId = streamRequest.entity_id?.trim();
-		if (entityId) return entityId;
-	}
-	return null;
+	return resolveEffectiveProjectId({
+		contextType,
+		entityId: streamRequest.entity_id,
+		projectFocus: streamRequest.projectFocus
+	});
 }
 
 async function loadValidatedChatAttachments(params: {
@@ -1542,10 +1545,6 @@ function summarizeLastTurnText(text: string, maxLength = 180): string {
 	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
 }
 
-function isProjectScopedContext(contextType: ChatContextType): boolean {
-	return contextType === 'project';
-}
-
 function isDailyBriefContext(value: unknown): boolean {
 	return typeof value === 'string' && value === 'daily_brief';
 }
@@ -2499,13 +2498,18 @@ export const POST: RequestHandler = async ({
 	const turnTimeoutId = setTimeout(() => {
 		abortTurn('timeout');
 	}, FASTCHAT_DETACHED_TURN_MAX_DURATION_MS);
-	const timingEntityId =
-		streamRequest.entity_id?.trim() || streamRequest.projectFocus?.projectId || null;
+	const timingEntityId = resolveEffectiveEntityId({
+		contextType: initialContextType,
+		entityId: streamRequest.entity_id,
+		projectFocus: streamRequest.projectFocus
+	});
 	let timingContextType: ChatContextType = initialContextType;
 	let timingSessionId: string | null = null;
-	let timingProjectId =
-		streamRequest.projectFocus?.projectId ??
-		(isProjectScopedContext(initialContextType) ? timingEntityId : null);
+	let timingProjectId = resolveEffectiveProjectId({
+		contextType: initialContextType,
+		entityId: timingEntityId,
+		projectFocus: streamRequest.projectFocus
+	});
 	let sessionResolvedAtMs: number | null = null;
 	let historyLoadStartedAtMs: number | null = null;
 	let historyLoadedAtMs: number | null = null;
@@ -2850,10 +2854,13 @@ export const POST: RequestHandler = async ({
 	void (async () => {
 		const contextType = normalizeFastContextType(streamRequest.context_type);
 		const projectFocus = streamRequest.projectFocus ?? undefined;
-		const entityId = streamRequest.entity_id?.trim() || projectFocus?.projectId || undefined;
+		const entityId = resolveEffectiveEntityId({
+			contextType,
+			entityId: streamRequest.entity_id,
+			projectFocus
+		});
 		const projectIdForLogs =
-			projectFocus?.projectId ??
-			(contextType === 'project' && typeof entityId === 'string' ? entityId : undefined);
+			resolveEffectiveProjectId({ contextType, entityId, projectFocus }) ?? undefined;
 		const sessionService = createFastChatSessionService(supabase, {
 			errorLogger,
 			endpoint: FASTCHAT_STREAM_ENDPOINT,
@@ -2980,17 +2987,22 @@ export const POST: RequestHandler = async ({
 				}
 			}
 
-			if (contextType === 'project' && entityId) {
-				const accessResult = await checkProjectAccess(supabase, entityId, errorLogger, {
-					userId,
-					endpoint: FASTCHAT_STREAM_ENDPOINT,
-					httpMethod: FASTCHAT_STREAM_METHOD
-				});
+			if (isProjectScopedContext(contextType) && projectIdForLogs) {
+				const accessResult = await checkProjectAccess(
+					supabase,
+					projectIdForLogs,
+					errorLogger,
+					{
+						userId,
+						endpoint: FASTCHAT_STREAM_ENDPOINT,
+						httpMethod: FASTCHAT_STREAM_METHOD
+					}
+				);
 				if (!accessResult.allowed) {
 					logFastChatError({
 						error: new Error('FastChat project access denied'),
 						operationType: 'fastchat_project_access_denied',
-						projectId: entityId,
+						projectId: projectIdForLogs,
 						metadata: {
 							contextType,
 							entityId,
@@ -3000,7 +3012,7 @@ export const POST: RequestHandler = async ({
 					await emitErrorThenDone({
 						error: 'Access denied for the selected project.',
 						finishedReason: 'error',
-						projectId: entityId,
+						projectId: projectIdForLogs,
 						errorMetadata: { contextType, entityId, reason: 'project_access_denied' }
 					});
 					await agentStream.close();
@@ -3012,15 +3024,15 @@ export const POST: RequestHandler = async ({
 				sessionId: streamRequest.session_id,
 				userId,
 				contextType,
-				entityId,
+				entityId: entityId ?? undefined,
 				projectFocus
 			});
 			sessionResolvedAtMs = Date.now();
 			timingSessionId = session.id;
 			timingContextType = contextType;
 			timingProjectId =
-				projectFocus?.projectId ??
-				(isProjectScopedContext(contextType) ? (entityId ?? null) : timingProjectId);
+				resolveEffectiveProjectId({ contextType, entityId, projectFocus }) ??
+				timingProjectId;
 
 			await sendTimedMessage(
 				{ type: 'session', session },
@@ -3496,8 +3508,7 @@ export const POST: RequestHandler = async ({
 			let effectiveEntityId: string | null = entityId ?? null;
 			let latestContextShift: ContextShiftPayload | null = null;
 			let effectiveProjectIdForTools =
-				projectFocus?.projectId ??
-				(contextType === 'project' && typeof entityId === 'string' ? entityId : undefined);
+				resolveEffectiveProjectId({ contextType, entityId, projectFocus }) ?? undefined;
 			const toolExecutorInstance =
 				tools.length > 0
 					? new ChatToolExecutor(supabase, userId, session.id, fetch, llm, {
@@ -3883,8 +3894,7 @@ export const POST: RequestHandler = async ({
 							entityId: promptContext.entityId ?? entityId ?? null,
 							projectId:
 								promptContext.projectId ??
-								projectFocus?.projectId ??
-								(isProjectScopedContext(contextType) ? (entityId ?? null) : null),
+								resolveEffectiveProjectId({ contextType, entityId, projectFocus }),
 							promptVariant,
 							systemPrompt,
 							history: historyForModel,
@@ -4037,9 +4047,7 @@ export const POST: RequestHandler = async ({
 				sessionId: session.id,
 				contextType,
 				entityId,
-				projectId:
-					projectFocus?.projectId ??
-					(contextType === 'project' ? (entityId ?? null) : null),
+				projectId: resolveEffectiveProjectId({ contextType, entityId, projectFocus }),
 				turnRunId,
 				streamRunId,
 				clientTurnId,
@@ -4348,14 +4356,11 @@ export const POST: RequestHandler = async ({
 							effectiveContextType = contextShift.new_context;
 							effectiveEntityId = contextShift.entity_id;
 							latestContextShift = contextShift;
-							if (
-								isProjectScopedContext(contextShift.new_context) &&
-								contextShift.entity_id
-							) {
-								effectiveProjectIdForTools = contextShift.entity_id;
-							} else {
-								effectiveProjectIdForTools = undefined;
-							}
+							effectiveProjectIdForTools =
+								resolveEffectiveProjectId({
+									contextType: contextShift.new_context,
+									entityId: contextShift.entity_id
+								}) ?? undefined;
 							void updateAgentMetadata(
 								supabase,
 								session.id,
@@ -4363,9 +4368,7 @@ export const POST: RequestHandler = async ({
 									fastchat_last_context_shift: {
 										context_type: contextShift.new_context,
 										entity_id: contextShift.entity_id ?? null,
-										project_id: isProjectScopedContext(contextShift.new_context)
-											? (contextShift.entity_id ?? null)
-											: null,
+										project_id: effectiveProjectIdForTools ?? null,
 										shifted_at: new Date().toISOString()
 									}
 								},
@@ -4380,10 +4383,7 @@ export const POST: RequestHandler = async ({
 									logFastChatError({
 										error,
 										operationType: 'fastchat_stream_emit_context_shift',
-										projectId:
-											contextShift.entity_type === 'project'
-												? (contextShift.entity_id ?? undefined)
-												: undefined,
+										projectId: effectiveProjectIdForTools,
 										metadata: {
 											sessionId: session.id,
 											contextType: contextShift.new_context,

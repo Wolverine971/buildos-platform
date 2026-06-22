@@ -1,8 +1,8 @@
 // packages/shared-agent-ops/src/gateway/write-audit.service.ts
-// Worker-safe carve of the agent-call write-audit service (Wave 7). Idempotent
+// Worker-safe agent-call write-audit service. Idempotent
 // write reservation/replay + tool-execution receipts in `agent_call_tool_executions`,
 // security-event logging, and project-activity bridging. Takes the admin client
-// as a param; always passes `supabase: admin` to the carved logger.
+// as a param; always passes `supabase: admin` to the shared logger.
 import type { BuildosAgentAllowedOp } from '@buildos/shared-types';
 import { logSecurityEvent, type SecurityEventLogOptions } from '../ops/security-event-logger';
 import { maybeLogAgentCallProjectActivity } from './agent-call-project-activity.service';

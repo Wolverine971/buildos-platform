@@ -1,5 +1,8 @@
 // apps/web/src/lib/services/agentic-chat-v2/prompt-builder.ts
 import type { ChatContextType } from '@buildos/shared-types';
+import { normalizeAgenticChatContextType } from './scope';
+
+export { normalizeFastContextType } from './scope';
 
 export const FAST_SYSTEM_PROMPT_VERSION = 'v2-fast-2026-02-06';
 
@@ -17,15 +20,8 @@ const SCOPE_HINTS: Partial<Record<ChatContextType, string>> = {
 	project_create: 'Project creation assistant. Keep questions minimal and focused.'
 };
 
-export function normalizeFastContextType(input?: string): ChatContextType {
-	if (!input) return 'global';
-	if (input === 'general') return 'global';
-	if (input === 'project_audit' || input === 'project_forecast') return 'project';
-	return input as ChatContextType;
-}
-
 export function buildFastSystemPrompt(context: FastPromptContext): string {
-	const contextType = normalizeFastContextType(context.contextType);
+	const contextType = normalizeAgenticChatContextType(context.contextType);
 	const scopeHint = SCOPE_HINTS[contextType] ?? 'Fast, general-purpose assistant.';
 	const scopeLine = `Context: ${contextType}. ${scopeHint}`;
 

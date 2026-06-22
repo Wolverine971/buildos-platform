@@ -3,13 +3,13 @@
 // Web-side adapter + discovery surface for the BuildOS agent-call gateway.
 //
 // The op-execution core (handlers, dispatcher, registry building, write audit
-// wiring) was carved into @buildos/shared-agent-ops so a Node worker (no
+// wiring) lives in @buildos/shared-agent-ops so a Node worker (no
 // SvelteKit/$lib/$env) can execute BuildOS write+read ops. This file keeps the
 // web-only concerns:
 //   - tool discovery (tool_search / tool_schema / skill_load + direct tools)
 //   - the concrete CalendarPort adapter (CalendarExecutor)
 //   - the concrete TaskSyncPort adapter (TaskEventSyncService)
-//   - wiring the web tool registry into the carved dispatcher
+//   - wiring the web tool registry into the shared dispatcher
 import type {
 	AgentCallScope,
 	BuildosAgentDiscoveryToolName,
@@ -93,7 +93,7 @@ function createCalendarPort(params: {
 }
 
 /**
- * TaskSyncPort adapter: wraps TaskEventSyncService for the carved dispatcher.
+ * TaskSyncPort adapter: wraps TaskEventSyncService for the shared dispatcher.
  */
 function createTaskSyncPort(admin: any): TaskSyncPort {
 	return new TaskEventSyncService(admin);
@@ -101,7 +101,7 @@ function createTaskSyncPort(admin: any): TaskSyncPort {
 
 /**
  * Builds the web tool registry's op map merged with the gateway custom ops, in
- * the shape the carved registry builder expects.
+ * the shape the shared registry builder expects.
  */
 function getRegistryOps(): Record<string, RegistryOp> {
 	return getToolRegistry().ops as Record<string, RegistryOp>;
@@ -112,7 +112,7 @@ function getRegistryVersion(): string {
 }
 
 /**
- * Web-local wrapper that supplies the registry dependencies the carved registry
+ * Web-local wrapper that supplies the registry dependencies the shared registry
  * builder needs. Keeps discovery call sites unchanged.
  */
 function buildExternalGatewayRegistry(scope: AgentCallScope): ExternalGatewayRegistry {
@@ -120,7 +120,7 @@ function buildExternalGatewayRegistry(scope: AgentCallScope): ExternalGatewayReg
 }
 
 /**
- * Executes a gateway op against the carved dispatcher, wiring the web registry
+ * Executes a gateway op against the shared dispatcher, wiring the web registry
  * and the concrete calendar/task-sync ports.
  */
 function runGatewayOp(params: {

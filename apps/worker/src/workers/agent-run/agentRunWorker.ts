@@ -1,9 +1,9 @@
 // apps/worker/src/workers/agent-run/agentRunWorker.ts
 //
-// Phase 1b — the durable Agent Run worker. Executes an Agent Run headlessly:
+// Durable Agent Run worker. Executes an Agent Run headlessly:
 // runs a JSON action-loop where the LLM either calls a BuildOS op or submits a
 // result, executing ops in-process via @buildos/shared-agent-ops (no SvelteKit,
-// no chat session). Supports read ops and (for read_write runs) the carved
+// no chat session). Supports read ops and (for read_write runs) the shared
 // gateway write ops; calendar ops are capability-gated on worker OAuth/token
 // encryption env before they are offered to the LLM.
 
@@ -151,7 +151,7 @@ async function emitEvent(
 }
 
 /**
- * Phase 3 (chat integration): when a run was spawned from a chat session
+ * When a run was spawned from a chat session
  * (`parent_session_id` set), inject an assistant-authored summary message into
  * that thread on terminal status, so the supervising conversation shows the
  * result even though the original SSE turn has long since ended (01 §7). Keyed
@@ -282,7 +282,7 @@ async function recordToolExecution(params: {
 
 /**
  * Rebuild the in-memory transcript + accumulated budget for a RESUMED run from
- * persisted ground truth (Phase 3.5). Tool calls come from `agent_tool_executions`
+ * persisted ground truth. Tool calls come from `agent_tool_executions`
  * and supervisor steers from `run.steer` events; both carry `created_at` so they
  * interleave in the order they happened.
  */
@@ -500,7 +500,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		};
 	}
 	const initialRun = runData as AgentRunRow;
-	// Resume/answer jobs are continuations (Phase 3.5 / UI-P3): rebuild transcript
+	// Resume/answer jobs are continuations: rebuild transcript
 	// + budget below instead of starting fresh. The input arrives as a pending
 	// signal. Stale jobs without this marker may only claim freshly queued runs.
 	const continuationFrom = isContinuationFrom(job.data.continuation_from)
@@ -557,7 +557,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		allowed_ops: run.allowed_ops
 	};
 
-	// Phase 4: review_required runs STAGE writes into a Change Set instead of
+	// review_required runs STAGE writes into a Change Set instead of
 	// committing. Read-only runs never stage (dispatch rejects review+read_only).
 	const mutationMode: AgentRunMutationMode =
 		run.review_required && scope.mode === 'read_write' ? 'stage' : 'commit';
@@ -617,7 +617,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			duration_ms: Date.now() - startedAtMs
 		};
 
-		// Phase 4: a review run that staged at least one write ends as
+		// A review run that staged at least one write ends as
 		// 'proposal_ready' with a pending Change Set, regardless of the LLM's
 		// requested terminal status (it doesn't know writes were staged). A review
 		// run that staged nothing finalizes normally (no proposal).
@@ -875,7 +875,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		);
 		const durationMs = Date.now() - opStart;
 
-		// Phase 4: a staged write returns a ProposedChange (no mutation). Assign a
+		// A staged write returns a ProposedChange (no mutation). Assign a
 		// stable id, accumulate it into the run's Change Set, and key telemetry to
 		// it so `proposed_changes` and `agent_tool_executions` stay consistent.
 		let proposedChangeId: string | undefined;
