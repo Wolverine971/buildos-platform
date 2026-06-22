@@ -38,7 +38,7 @@ export type CookieMethodsServer = {
  * - Any context where user input controls the query
  *
  * @returns TypedSupabaseClient configured with service role key
- * @throws Error if SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars are missing
+ * @throws Error if PUBLIC_SUPABASE_URL or PRIVATE_SUPABASE_SERVICE_KEY env vars are missing
  *
  * @example
  * ```typescript

@@ -10,7 +10,7 @@ Related:
 
 - [Agentic Chat Core Elements](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-core-elements.md)
 - [Agentic Chat Core Elements, Part 2: Context as 5W1H](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-core-elements-part-2-context.md)
-- [Agentic Chat Initial Seed Context Gap Analysis](/Users/djwayne/buildos-platform/docs/reports/agentic-chat-initial-seed-context-gap-analysis-2026-04-14.md)
+- [Agentic Chat Initial Seed Context Gap Analysis](/Users/djwayne/buildos-platform/docs/archive/reports/agentic-chat-initial-seed-context-gap-analysis-2026-04-14.md)
 - [Global prompt dump](/Users/djwayne/buildos-platform/apps/web/.prompt-dumps/fastchat-2026-04-14T15-08-22-536Z.txt)
 - [Project prompt dump](/Users/djwayne/buildos-platform/apps/web/.prompt-dumps/fastchat-2026-04-14T18-09-25-958Z.txt)
 

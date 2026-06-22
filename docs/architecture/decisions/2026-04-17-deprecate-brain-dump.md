@@ -8,7 +8,7 @@
 **Related:**
 
 - Pre-work tasker: `docs/plans/2026-04-17-brain-dump-deprecation-prework.md`
-- Agentic chat services analysis: `docs/plans/AGENTIC_CHAT_SERVICES_ANALYSIS.md`
+- Agentic chat current architecture: `apps/web/docs/features/agentic-chat/README.md`
 - Consumption billing endpoint audit: `docs/business/sales/consumption-pricing-endpoint-audit.md`
 
 ## Context

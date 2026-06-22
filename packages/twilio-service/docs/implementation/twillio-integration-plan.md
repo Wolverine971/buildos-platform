@@ -487,10 +487,10 @@ SUPABASE_ANON_KEY=your-anon-key
 PRIVATE_SUPABASE_SERVICE_KEY=your-service-role-key
 
 # Twilio Configuration
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=your-auth-token
-TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxx
-TWILIO_STATUS_CALLBACK_URL=https://your-domain.com/api/twilio/status
+PRIVATE_TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxx
+PRIVATE_TWILIO_AUTH_TOKEN=your-auth-token
+PRIVATE_TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxx
+PRIVATE_TWILIO_STATUS_CALLBACK_URL=https://your-domain.com/api/twilio/status
 
 # Optional: Rate limiting
 TWILIO_RATE_LIMIT_PER_SECOND=10

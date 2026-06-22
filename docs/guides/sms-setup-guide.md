@@ -131,10 +131,10 @@ Add to `apps/worker/.env`:
 
 ```bash
 # Twilio Configuration
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=your_auth_token_here
-TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_STATUS_CALLBACK_URL=https://your-app.com/api/webhooks/twilio/status
+PRIVATE_TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+PRIVATE_TWILIO_AUTH_TOKEN=your_auth_token_here
+PRIVATE_TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+PRIVATE_TWILIO_STATUS_CALLBACK_URL=https://your-app.com/api/webhooks/twilio/status
 ```
 
 ## Step 5: Run Database Migration

@@ -234,5 +234,5 @@ applyContainment(entityId, entityKind, parentEdges):
 - [Project Graph Query Pattern Spec](./PROJECT_GRAPH_QUERY_PATTERN_SPEC.md)
 - [Project Graph Enhancements Spec](./PROJECT_GRAPH_ENHANCEMENTS_SPEC.md)
 - [Ontology API Reference](../api/ontology-endpoints.md)
-- [Ontology Endpoints Audit](../reports/ontology-endpoints-audit.md)
+- [Ontology Endpoints Audit](../archive/reports/ontology-endpoints-audit.md)
 - [Ontology Data Model Analysis](../architecture/ONTOLOGY_DATA_MODEL_ANALYSIS.md)

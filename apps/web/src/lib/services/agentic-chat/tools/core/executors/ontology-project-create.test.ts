@@ -103,6 +103,79 @@ describe('OntologyWriteExecutor project creation normalization', () => {
 		]);
 	});
 
+	it('repairs a project state value misplaced in the stage facet before instantiate', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await executor.createOntoProject({
+			project: {
+				name: 'Agentic Chat Pentest A - 2026-06-22',
+				type_key: 'project.security.pentest',
+				description: 'Security QA fixture. Do not use for real work.',
+				state_key: 'active',
+				props: {
+					facets: {
+						context: 'internal',
+						scale: 'small',
+						stage: 'active'
+					}
+				}
+			},
+			entities: [],
+			relationships: []
+		});
+
+		const body = (mockFetch as any).lastInstantiateBody();
+		expect(body.project.state_key).toBe('active');
+		expect(body.project.props.facets).toEqual({
+			context: 'internal',
+			scale: 'small',
+			stage: 'planning'
+		});
+	});
+
+	it('moves a misplaced project stage state into state_key when state_key is omitted', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await executor.createOntoProject({
+			project: {
+				name: 'Paused Research',
+				type_key: 'project.business.research',
+				props: {
+					facets: {
+						stage: 'paused'
+					}
+				}
+			},
+			entities: [],
+			relationships: []
+		});
+
+		const body = (mockFetch as any).lastInstantiateBody();
+		expect(body.project.state_key).toBe('paused');
+		expect(body.project.props.facets.stage).toBe('planning');
+	});
+
+	it('fails locally for non-repairable invalid stage facets', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await expect(
+			executor.createOntoProject({
+				project: {
+					name: 'Unknown Stage',
+					type_key: 'project.business.research',
+					props: {
+						facets: {
+							stage: 'ideation'
+						}
+					}
+				},
+				entities: [],
+				relationships: []
+			})
+		).rejects.toThrow('Invalid project.props.facets.stage');
+		expect(mockFetch).not.toHaveBeenCalled();
+	});
+
 	it('fails early with a precise relationship error when shorthand temp ids cannot be resolved', async () => {
 		const executor = new OntologyWriteExecutor(context);
 

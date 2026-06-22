@@ -151,7 +151,7 @@ STEP 3: Inject Tracking Links
   ↓
 STEP 4: Send Email
   ├─ [IF USE_WEBHOOK_EMAIL=true]
-  │   ├─ HMAC-sign with BUILDOS_WEBHOOK_SECRET
+  │   ├─ HMAC-sign with PRIVATE_BUILDOS_WEBHOOK_SECRET
   │   ├─ POST to BUILDOS_WEBHOOK_URL
   │   └─ 30-second timeout + 3 retries
   │

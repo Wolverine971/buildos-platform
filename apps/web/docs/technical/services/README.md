@@ -9,10 +9,6 @@ This directory contains documentation for BuildOS service layer components that 
 ### Core Service Documentation
 
 - **`logger.md`** ⭐: Structured logging service for production-ready logging (NEW 2025-11-17)
-- **`brain-dump-service.md`**: Brain dump processing service architecture and flows
-- **`project-service.md`**: Project management service including CRUD operations and real-time updates
-- **`calendar-service.md`**: Google Calendar integration service patterns
-- **`prompt-service.md`**: AI prompt management and template service
 
 ## 🏗️ Service Architecture Patterns
 

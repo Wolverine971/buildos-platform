@@ -10,7 +10,7 @@ Related:
 
 - [Agentic Chat Prewarm Project Intelligence Spec](/Users/djwayne/buildos-platform/docs/specs/AGENTIC_CHAT_PREWARM_PROJECT_INTELLIGENCE_SPEC.md)
 - [Agentic Chat Lite Prompt Consolidation](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md)
-- [OpenRouter Cost And Prompt Cache Audit](/Users/djwayne/buildos-platform/docs/reports/openrouter-cost-and-prompt-cache-audit-2026-04-16.md)
+- [OpenRouter Cost And Prompt Cache Audit](/Users/djwayne/buildos-platform/docs/archive/reports/openrouter-cost-and-prompt-cache-audit-2026-04-16.md)
 - [Agentic Chat Current Implementation](/Users/djwayne/buildos-platform/apps/web/docs/features/agentic-chat/README.md)
 
 External references:

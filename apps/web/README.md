@@ -141,8 +141,6 @@ pnpm gen:api-docs
 Set in env (see root `.env.example`):
 
 - `PRIVATE_ENABLE_STRIPE` — enable payment processing (off = graceful degradation, trial system still works).
-- `AGENTIC_CHAT_BEHAVIORAL_PROFILE_MODE` — `off | shadow | inject`. `shadow` runs lookups without injecting into prompts; use it first when rolling out.
-- `AGENTIC_CHAT_BEHAVIORAL_PROFILE_TIMEOUT_MS` — max profile lookup budget in ms before failing open (default 25).
 
 ## Deployment (Vercel)
 

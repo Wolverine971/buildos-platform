@@ -156,7 +156,7 @@ The newest repro is the three-turn lite session:
 
 The broader background is still the earlier comparison audit:
 
-- [Fastchat vs Lite Fantasy Novel Flow Audit](../reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md)
+- [Fastchat vs Lite Fantasy Novel Flow Audit](../archive/reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md)
 - [Original write-integrity handoff](./AGENTIC_CHAT_WRITE_INTEGRITY_FIX_HANDOFF.md)
 
 The recent run happened on the shared FastChat V2 stream path:
@@ -751,7 +751,7 @@ Recommended order:
 1. **Next fantasy-novel replay (validation).** Rerun the three-turn flow on
    both `fastchat_prompt_v1` and `lite_seed_v1`. Confirm against the
    acceptance checks in
-   [Expected Next Testing Round](../reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md#expected-next-testing-round)
+   [Expected Next Testing Round](../archive/reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md#expected-next-testing-round)
    of the audit doc — specifically: mixed Chapter-2-style turns land on the
    `project_write_document` union surface and skip `tool_search`; final prose
    names every successful write; dedicated research documents are placed via

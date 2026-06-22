@@ -6,6 +6,49 @@ type ProjectCreateRef = {
 	kind: string;
 };
 
+const PROJECT_STATE_VALUES = new Set(['planning', 'active', 'paused', 'completed', 'cancelled']);
+const PROJECT_STATE_ALIASES: Record<string, string> = {
+	in_progress: 'active',
+	inprogress: 'active',
+	started: 'active',
+	working: 'active',
+	ongoing: 'active',
+	paused: 'paused',
+	on_hold: 'paused',
+	hold: 'paused',
+	pending: 'planning',
+	planned: 'planning',
+	backlog: 'planning',
+	todo: 'planning',
+	draft: 'planning',
+	complete: 'completed',
+	completed: 'completed',
+	done: 'completed',
+	finished: 'completed',
+	shipped: 'completed',
+	cancelled: 'cancelled',
+	canceled: 'cancelled',
+	aborted: 'cancelled',
+	abandoned: 'cancelled',
+	archived: 'cancelled'
+};
+
+const FACET_STAGE_VALUES = new Set([
+	'discovery',
+	'planning',
+	'execution',
+	'launch',
+	'maintenance',
+	'complete'
+]);
+const PROJECT_STATE_TO_FALLBACK_STAGE: Record<string, string> = {
+	planning: 'planning',
+	active: 'planning',
+	paused: 'planning',
+	completed: 'complete',
+	cancelled: 'complete'
+};
+
 function isRecord(value: unknown): value is JsonRecord {
 	return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -14,6 +57,34 @@ function toNonEmptyString(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	const trimmed = value.trim();
 	return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeEnumToken(value: unknown): string | null {
+	const trimmed = toNonEmptyString(value);
+	if (!trimmed) return null;
+	return trimmed.toLowerCase().replace(/[\s-]+/g, '_');
+}
+
+function normalizeProjectState(value: unknown): string | null {
+	const normalized = normalizeEnumToken(value);
+	if (!normalized) return null;
+	const candidate = PROJECT_STATE_ALIASES[normalized] ?? normalized;
+	return PROJECT_STATE_VALUES.has(candidate) ? candidate : null;
+}
+
+function normalizeMisplacedProjectStage(
+	value: unknown
+): { stateKey: string; stage: string } | null {
+	const normalized = normalizeEnumToken(value);
+	if (!normalized || FACET_STAGE_VALUES.has(normalized)) return null;
+
+	const stateKey = normalizeProjectState(normalized);
+	if (!stateKey) return null;
+
+	return {
+		stateKey,
+		stage: PROJECT_STATE_TO_FALLBACK_STAGE[stateKey] ?? 'planning'
+	};
 }
 
 function buildEntityKindIndex(entities: unknown): Map<string, string> {
@@ -77,6 +148,37 @@ function normalizeRelationshipEntry(value: unknown, entityKindIndex: Map<string,
 	return value;
 }
 
+function normalizeProjectFacets<T extends JsonRecord>(args: T): T {
+	const project = isRecord(args.project) ? args.project : null;
+	if (!project) return args;
+
+	const props = isRecord(project.props) ? project.props : null;
+	const facets = isRecord(props?.facets) ? props.facets : null;
+	if (!facets) return args;
+
+	const misplacedStage = normalizeMisplacedProjectStage(facets.stage);
+	if (!misplacedStage) return args;
+
+	const nextProject: JsonRecord = { ...project };
+	if (!normalizeProjectState(nextProject.state_key)) {
+		nextProject.state_key = misplacedStage.stateKey;
+	}
+
+	return {
+		...args,
+		project: {
+			...nextProject,
+			props: {
+				...props,
+				facets: {
+					...facets,
+					stage: misplacedStage.stage
+				}
+			}
+		}
+	} as T;
+}
+
 function validateRelationshipRef(
 	value: unknown,
 	entityKindIndex: Map<string, string>,
@@ -117,17 +219,19 @@ function validateRelationshipRef(
 }
 
 export function normalizeProjectCreateArgs<T extends JsonRecord>(args: T): T {
-	if (!Array.isArray(args.relationships)) {
-		return args;
+	const normalizedArgs = normalizeProjectFacets(args);
+
+	if (!Array.isArray(normalizedArgs.relationships)) {
+		return normalizedArgs;
 	}
 
-	const entityKindIndex = buildEntityKindIndex(args.entities);
-	const normalizedRelationships = args.relationships.map((entry: unknown) =>
+	const entityKindIndex = buildEntityKindIndex(normalizedArgs.entities);
+	const normalizedRelationships = normalizedArgs.relationships.map((entry: unknown) =>
 		normalizeRelationshipEntry(entry, entityKindIndex)
 	);
 
 	return {
-		...args,
+		...normalizedArgs,
 		relationships: normalizedRelationships
 	};
 }
@@ -143,6 +247,17 @@ export function validateProjectCreateArgs(args: JsonRecord): string[] {
 		}
 		if (!toNonEmptyString(args.project.type_key)) {
 			errors.push('Missing required parameter: project.type_key');
+		}
+		const facets = isRecord(args.project.props) ? args.project.props.facets : null;
+		if (isRecord(facets)) {
+			const stage = normalizeEnumToken(facets.stage);
+			if (stage && !FACET_STAGE_VALUES.has(stage)) {
+				errors.push(
+					`Invalid project.props.facets.stage: must be one of ${Array.from(
+						FACET_STAGE_VALUES
+					).join(', ')}. Use project.state_key for status values like active or paused.`
+				);
+			}
 		}
 	}
 

@@ -11,7 +11,7 @@ Related:
 - [Agentic Chat Core Elements](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-core-elements.md)
 - [Agentic Chat Operating Model](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-operating-model.md)
 - [Agentic Chat Current Implementation](/Users/djwayne/buildos-platform/apps/web/docs/features/agentic-chat/README.md)
-- [Agentic Chat Prompt Dump Assessment](/Users/djwayne/buildos-platform/docs/reports/agentic-chat-prompt-dump-assessment-2026-04-09.md)
+- [Agentic Chat Prompt Dump Assessment](/Users/djwayne/buildos-platform/docs/archive/reports/agentic-chat-prompt-dump-assessment-2026-04-09.md)
 
 ## Purpose
 

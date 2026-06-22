@@ -603,7 +603,7 @@ This can still happen through `buildos_call`, but the prompt should teach it as 
 
 Relevant repo background:
 
-- [agentic-chat-v2-overview-refactor-plan-2026-03-30.md](/Users/djwayne/buildos-platform/docs/reports/agentic-chat-v2-overview-refactor-plan-2026-03-30.md)
+- [agentic-chat-v2-overview-refactor-plan-2026-03-30.md](/Users/djwayne/buildos-platform/docs/archive/reports/agentic-chat-v2-overview-refactor-plan-2026-03-30.md)
 - [AGENTIC_BUILDOS_SEARCH_SPEC.md](/Users/djwayne/buildos-platform/docs/specs/AGENTIC_BUILDOS_SEARCH_SPEC.md)
 
 ## 9. Prompt Changes

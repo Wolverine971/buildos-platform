@@ -12,7 +12,7 @@ Related local docs:
 - [Agentic Chat Tool Surface Refactor Plan](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-tool-surface-refactor-plan.md)
 - [Agentic Chat Skill + Tool Architecture V2](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-skill-tool-architecture-v2.md)
 - [Agentic Chat Current Implementation](/Users/djwayne/buildos-platform/apps/web/docs/features/agentic-chat/README.md)
-- [Agentic Chat Prompt Dump Assessment](/Users/djwayne/buildos-platform/docs/reports/agentic-chat-prompt-dump-assessment-2026-04-09.md)
+- [Agentic Chat Prompt Dump Assessment](/Users/djwayne/buildos-platform/docs/archive/reports/agentic-chat-prompt-dump-assessment-2026-04-09.md)
 - [Agentic Chat Design Audit](/Users/djwayne/buildos-platform/research-library/design-agentic-chat-audit.md)
 
 External research inputs:

@@ -96,7 +96,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
     // 3. Initialize Supabase client
     const supabase = createClient(
-      import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL!,
+      import.meta.env.VITE_SUPABASE_URL || process.env.PUBLIC_SUPABASE_URL!,
       import.meta.env.PRIVATE_SUPABASE_SERVICE_KEY || process.env.PRIVATE_SUPABASE_SERVICE_KEY!,
       {
         auth: {

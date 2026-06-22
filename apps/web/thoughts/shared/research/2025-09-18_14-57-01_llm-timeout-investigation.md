@@ -98,7 +98,7 @@ The LLM timeout issues are caused by a combination of **oversized prompts**, **s
 **Anthropic Provider Status**:
 
 - Completely commented out in configuration
-- API key is available: `PRIVATE_ANTHROPIC_API_KEY=sk-ant-api03-...`
+- Legacy Anthropic API key was available during this investigation
 - User manually disabled due to credit balance issues
 - Would provide fallback capability if re-enabled
 
@@ -220,11 +220,10 @@ OpenAI API (network + processing time)
     ```
 
 4. **✅ Fix Environment Variable** - **IMPLEMENTED**
-    ```typescript
-    // Updated .env.example to match code usage
-    PRIVATE_OPENAI_API_KEY = your_openai_api_key;
-    PRIVATE_ANTHROPIC_API_KEY = your_anthropic_api_key;
-    ```
+	```typescript
+	// Updated .env.example to match code usage
+	PRIVATE_OPENAI_API_KEY = your_openai_api_key;
+	```
 
 ### Medium Priority (This Week)
 

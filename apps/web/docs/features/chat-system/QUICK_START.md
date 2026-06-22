@@ -17,7 +17,7 @@ pnpm supabase:types  # Generate TypeScript types
 ```bash
 # In your .env file
 OPENAI_API_KEY=sk-...              # Required for chat
-OPENROUTER_API_KEY=sk-or-...       # Optional alternative
+PRIVATE_OPENROUTER_API_KEY=sk-or-...       # Optional alternative
 ```
 
 ### 3. Test the Chat System

@@ -28,7 +28,7 @@ sources:
       title: Every UI/UX Concept Explained in Under 10 Minutes
       creator: Kole Jain
       url: https://www.youtube.com/watch?v=EcbgbKtOELY
-      local_path: youtube-design.md
+      local_path: transcripts/2026-03-14_kole-jain_every-uiux-concept.md
       source_role: supporting
       used_for:
           - broad UI/UX concept map

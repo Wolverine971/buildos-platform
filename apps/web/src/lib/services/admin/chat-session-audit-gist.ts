@@ -195,6 +195,24 @@ export const deriveAuditGist = (payload: ChatSessionAuditPayload): AuditGist => 
 		: false;
 	const toolFailures = payload.metrics.tool_failures ?? 0;
 	const llmFailures = payload.metrics.llm_failures ?? 0;
+	const hasSuccessfulToolSignal =
+		payload.tool_executions.some((execution) => execution.success === true) ||
+		assistantMessages.some((message) => {
+			const trace = asArray(asRecord(message.metadata)?.fastchat_tool_trace_v1);
+			return trace.some((entry) => asRecord(entry)?.success === true);
+		});
+	const messageErrors = messages.some((message) => asString(message.error_message) !== null);
+	const operationFailures = payload.operations.some(
+		(operation) =>
+			asString(operation.status) === 'failed' || asString(operation.error_message) !== null
+	);
+	const turnFailures = turnRuns.some((run) => asString(run.status) === 'failed');
+	const hardErrorSignal = messageErrors || operationFailures || turnFailures || llmFailures > 0;
+	const unattributedSessionError =
+		payload.session.has_errors &&
+		!hardErrorSignal &&
+		toolFailures === 0 &&
+		validationFailures === 0;
 
 	let outcome: AuditOutcome;
 	let reason: string | null = null;
@@ -202,18 +220,24 @@ export const deriveAuditGist = (payload: ChatSessionAuditPayload): AuditGist => 
 	if (messages.length === 0) {
 		outcome = 'empty';
 	} else if (
-		payload.session.has_errors ||
+		hardErrorSignal ||
+		unattributedSessionError ||
 		hasFailurePhrase ||
-		toolFailures > 0 ||
-		llmFailures > 0
+		(toolFailures > 0 && !hasSuccessfulToolSignal)
 	) {
 		outcome = 'errored';
 		if (hasFailurePhrase && /(safety|rate)\s+limit/i.test(finalAssistantMessage ?? '')) {
 			reason = 'safety limit';
-		} else if (toolFailures > 0) {
-			reason = `${toolFailures} tool failure${toolFailures === 1 ? '' : 's'}`;
 		} else if (llmFailures > 0) {
 			reason = `${llmFailures} LLM failure${llmFailures === 1 ? '' : 's'}`;
+		} else if (toolFailures > 0 && !hasSuccessfulToolSignal) {
+			reason = `${toolFailures} tool failure${toolFailures === 1 ? '' : 's'}`;
+		} else if (messageErrors) {
+			reason = 'message error';
+		} else if (operationFailures) {
+			reason = 'operation error';
+		} else if (turnFailures) {
+			reason = 'turn failed';
 		} else if (hasFailurePhrase) {
 			reason = 'agent reported a problem';
 		} else {
@@ -234,6 +258,9 @@ export const deriveAuditGist = (payload: ChatSessionAuditPayload): AuditGist => 
 	const outcomeLabel = (() => {
 		switch (outcome) {
 			case 'completed':
+				if (toolFailures > 0) {
+					return `COMPLETED — recovered after ${toolFailures} tool failure${toolFailures === 1 ? '' : 's'}`;
+				}
 				return 'COMPLETED';
 			case 'errored':
 				return reason ? `FAILED — ${reason}` : 'FAILED';

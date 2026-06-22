@@ -752,6 +752,7 @@ IMPORTANT: Do not include documents. Documents are flat and managed only via ont
 			name: 'create_onto_project',
 			description: `Create a project from a ProjectSpec. Always include project, entities, relationships; use [] when empty.
 Hard rules: project.type_key starts with project. e.g. project.creative.novel. Entity labels: goal/plan/metric name; task/milestone/document/risk title; requirement text; source uri. Milestone needs due_at.
+Use project.state_key for status values: planning, active, paused, completed, cancelled. Use props.facets.stage only for lifecycle stage: discovery, planning, execution, launch, maintenance, complete. Never put active/paused/completed/cancelled in props.facets.stage.
 Infer name/type_key when clear; ask one clarification only if too vague. Start minimal: one goal for an explicit outcome, tasks for explicit actions, plans/milestones only for phases, dates, or workstreams.
 Extract concrete details into description/props. Use temp_id + kind refs for relationships.`,
 			parameters: {
@@ -776,7 +777,7 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 							state_key: {
 								type: 'string',
 								description:
-									'Initial state. Valid: planning, active, completed, cancelled.'
+									'Initial project status. Valid: planning, active, paused, completed, cancelled. Do not put these values in props.facets.stage.'
 							},
 							props: {
 								type: 'object',
@@ -806,6 +807,8 @@ Extract concrete details into description/props. Use temp_id + kind refs for rel
 											},
 											stage: {
 												type: 'string',
+												description:
+													'Lifecycle stage only. Valid: discovery, planning, execution, launch, maintenance, complete. Use project.state_key for active/paused/completed/cancelled status.',
 												enum: [
 													'discovery',
 													'planning',

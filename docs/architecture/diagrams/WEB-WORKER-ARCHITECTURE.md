@@ -259,49 +259,12 @@ flowchart TD
 - **Non-Blocking:** Email sending doesn't block brief completion
 - **Real-Time Feedback:** Web receives notifications via Realtime
 
-### Brain Dump Processing (100% Web-Based)
+### Brain Dump Processing
 
-```mermaid
-flowchart TD
-    START[User Submits Brain Dump] --> VALIDATE[Validate Content]
-    VALIDATE --> SSE[Open SSE Stream]
-
-    SSE --> ANALYSIS[Preparatory Analysis]
-    ANALYSIS --> PARALLEL{Run Dual Processing}
-
-    PARALLEL --> CONTEXT[Extract Context via LLM]
-    PARALLEL --> TASKS[Extract Tasks via LLM]
-
-    CONTEXT --> MERGE[Merge Results]
-    TASKS --> MERGE
-
-    MERGE --> VALIDATE_OPS[Validate Operations]
-    VALIDATE_OPS --> AUTO{Auto-Accept?}
-
-    AUTO -->|Yes| EXECUTE[Execute Operations]
-    AUTO -->|No| RETURN[Return to User]
-
-    EXECUTE --> DB[Write to Database]
-    DB --> SUCCESS[SSE: Complete]
-
-    RETURN --> USER_REVIEW[User Reviews]
-    USER_REVIEW --> CONFIRM[User Confirms]
-    CONFIRM --> EXECUTE
-```
-
-**Characteristics:**
-
-- **Synchronous:** All processing in API route
-- **SSE Streaming:** Real-time progress updates
-- **No Worker:** Processing happens in web app (Vercel serverless)
-- **Typical Duration:** 8-14 seconds total
-
-**Why Not Worker?**
-
-1. **Real-time UX:** Users expect immediate feedback
-2. **Streaming Required:** Token-by-token LLM responses
-3. **Transaction Integrity:** Atomic success/rollback
-4. **Fits Serverless:** Under 60-second timeout
+> **Updated 2026-04-17.** The original 100%-web-based SSE brain-dump flow described here was
+> deprecated (see `docs/architecture/decisions/2026-04-17-deprecate-brain-dump.md`). Brain dumps
+> now process through the worker via the `process_onto_braindump` job into the ontology pipeline.
+> The historical web-SSE flow diagram is preserved in `docs/archive/brain-dump/`.
 
 ### Calendar Sync (100% Web-Based)
 
@@ -949,31 +912,16 @@ expect(messages).toContainEqual({
 
 ---
 
-## Migration Path (Future Considerations)
+## Queue Design Note
 
-### Potential Evolution: From Supabase Queue to BullMQ/Redis
+**Current (and intended):** Supabase-based queue, **no Redis**. This is a deliberate architectural
+choice — not a transitional state. Jobs are rows in `queue_jobs` claimed atomically via PostgreSQL
+RPCs (`FOR UPDATE SKIP LOCKED`).
 
-**Current:** Supabase-based queue (no Redis)
+The `JobAdapter` bridges this Supabase queue to the legacy **BullMQ-style** processor interface the
+domain workers expect, so processors stay portable without running Redis or BullMQ in production.
 
-**Future:** Redis-backed BullMQ (if scaling requires)
-
-**Benefits:**
-
-- Higher throughput (Redis optimized for queues)
-- Built-in job prioritization
-- Advanced retry strategies
-- Job scheduling with cron
-- Multi-queue support
-
-**Migration Strategy:**
-
-1. Run both systems in parallel
-2. Use `JobAdapter` pattern (already in codebase)
-3. Gradual migration by job type
-4. Monitor performance and costs
-5. Complete cutover when stable
-
-**Current `JobAdapter` (already implemented):**
+**`JobAdapter` (implemented):**
 
 ```typescript
 // File: /apps/worker/src/workers/shared/jobAdapter.ts

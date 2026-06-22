@@ -498,6 +498,14 @@ function isAbortError(error: unknown): boolean {
 	);
 }
 
+function isEmptyJSONContentError(error: Error): boolean {
+	return error.message.endsWith('returned empty JSON content');
+}
+
+function isRetryableJSONGenerationError(error: Error): boolean {
+	return error instanceof SyntaxError || isEmptyJSONContentError(error);
+}
+
 function extractTextFromResponse(response: OpenRouterChatResponse): string {
 	const firstChoice = response.choices?.[0];
 	if (!firstChoice) return '';
@@ -1178,18 +1186,17 @@ export class OpenRouterV2Service extends SmartLLMService {
 				return parsed;
 			} catch (error) {
 				lastError = error instanceof Error ? error : new Error(String(error));
-				const shouldRetryParseError =
-					lastError instanceof SyntaxError &&
+				const shouldRetryJSONGeneration =
+					isRetryableJSONGenerationError(lastError) &&
 					options.validation?.retryOnParseError === true &&
 					parseRetriesUsed < maxParseRetries;
-				if (shouldRetryParseError) {
+				if (shouldRetryJSONGeneration) {
 					parseRetriesUsed++;
 					continue;
 				}
 
 				const shouldFailoverModel =
-					(lastError instanceof SyntaxError ||
-						lastError.message === 'OpenRouter V2 returned empty JSON content' ||
+					(isRetryableJSONGenerationError(lastError) ||
 						shouldFailoverToNextOpenRouterModel(lastError)) &&
 					modelAttempt < maxModelAttempts - 1;
 				if (shouldFailoverModel) {
@@ -1204,63 +1211,77 @@ export class OpenRouterV2Service extends SmartLLMService {
 		let directFallbackError: Error | null = null;
 		for (const route of this.resolveDirectFallbackRoutes()) {
 			providersAttempted.add(route.provider);
-			try {
-				const response = await this.createDirectChatCompletion({
-					route,
-					messages,
-					temperature: options.temperature ?? 0.2,
-					max_tokens: maxTokens,
-					response_format: { type: 'json_object' },
-					timeoutMs: this.resolveTimeout(options.timeoutMs),
-					prompt_cache_key: options.chatSessionId
-				});
-				const content = extractTextFromResponse(response);
-				if (!content || content.trim().length === 0) {
-					throw new Error(`${route.providerLabel} returned empty JSON content`);
-				}
-
-				const parsed = parseJSONContent<T>(content, options.validation);
-				const actualModel = response.model || route.canonicalModel;
-				const usageCost = this.calculateUsageCost(actualModel, 'json', response.usage, [
-					route.canonicalModel
-				]);
-				if (typeof options.onUsage === 'function') {
-					await options.onUsage({
-						model: actualModel,
-						promptTokens: response.usage?.prompt_tokens || 0,
-						completionTokens: response.usage?.completion_tokens || 0,
-						totalTokens: response.usage?.total_tokens || 0,
-						inputCost: usageCost.inputCost,
-						outputCost: usageCost.outputCost,
-						totalCost: usageCost.totalCost
+			while (true) {
+				try {
+					const response = await this.createDirectChatCompletion({
+						route,
+						messages,
+						temperature:
+							parseRetriesUsed > 0
+								? Math.min(options.temperature ?? 0.2, 0.1)
+								: (options.temperature ?? 0.2),
+						max_tokens: maxTokens,
+						response_format: { type: 'json_object' },
+						timeoutMs: this.resolveTimeout(options.timeoutMs),
+						prompt_cache_key: options.chatSessionId
 					});
-				}
-				this.logOpenRouterV2Usage({
-					lane: 'json',
-					options,
-					response,
-					requestedModel: route.canonicalModel,
-					requestStartedAt,
-					startTime,
-					maxTokens,
-					defaultOperationType: 'other',
-					metadata: {
-						models: [route.canonicalModel],
-						openRouterModelsAttempted: Array.from(openRouterModelsAttempted),
-						providerRoute: 'direct',
-						fallbackFrom: 'openrouter',
-						fallbackProvider: route.provider,
-						fallbackReason: lastError?.message ?? null,
-						providersAttempted: Array.from(providersAttempted),
-						parseRetriesUsed
+					const content = extractTextFromResponse(response);
+					if (!content || content.trim().length === 0) {
+						throw new Error(`${route.providerLabel} returned empty JSON content`);
 					}
-				});
-				return parsed;
-			} catch (error) {
-				if (isAbortError(error)) {
-					throw error;
+
+					const parsed = parseJSONContent<T>(content, options.validation);
+					const actualModel = response.model || route.canonicalModel;
+					const usageCost = this.calculateUsageCost(actualModel, 'json', response.usage, [
+						route.canonicalModel
+					]);
+					if (typeof options.onUsage === 'function') {
+						await options.onUsage({
+							model: actualModel,
+							promptTokens: response.usage?.prompt_tokens || 0,
+							completionTokens: response.usage?.completion_tokens || 0,
+							totalTokens: response.usage?.total_tokens || 0,
+							inputCost: usageCost.inputCost,
+							outputCost: usageCost.outputCost,
+							totalCost: usageCost.totalCost
+						});
+					}
+					this.logOpenRouterV2Usage({
+						lane: 'json',
+						options,
+						response,
+						requestedModel: route.canonicalModel,
+						requestStartedAt,
+						startTime,
+						maxTokens,
+						defaultOperationType: 'other',
+						metadata: {
+							models: [route.canonicalModel],
+							openRouterModelsAttempted: Array.from(openRouterModelsAttempted),
+							providerRoute: 'direct',
+							fallbackFrom: 'openrouter',
+							fallbackProvider: route.provider,
+							fallbackReason: lastError?.message ?? null,
+							providersAttempted: Array.from(providersAttempted),
+							parseRetriesUsed
+						}
+					});
+					return parsed;
+				} catch (error) {
+					if (isAbortError(error)) {
+						throw error;
+					}
+					directFallbackError = error instanceof Error ? error : new Error(String(error));
+					const shouldRetryJSONGeneration =
+						isRetryableJSONGenerationError(directFallbackError) &&
+						options.validation?.retryOnParseError === true &&
+						parseRetriesUsed < maxParseRetries;
+					if (shouldRetryJSONGeneration) {
+						parseRetriesUsed++;
+						continue;
+					}
+					break;
 				}
-				directFallbackError = error instanceof Error ? error : new Error(String(error));
 			}
 		}
 

@@ -300,10 +300,10 @@ PRIVATE_SMS_RATE_LIMIT_PER_HOUR=100
 #### Worker Service (.env)
 
 ```bash
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=your_auth_token
-TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_STATUS_CALLBACK_URL=https://your-domain.com/api/webhooks/twilio/status
+PRIVATE_TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+PRIVATE_TWILIO_AUTH_TOKEN=your_auth_token
+PRIVATE_TWILIO_MESSAGING_SERVICE_SID=MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+PRIVATE_TWILIO_STATUS_CALLBACK_URL=https://your-domain.com/api/webhooks/twilio/status
 ```
 
 ### Twilio Setup

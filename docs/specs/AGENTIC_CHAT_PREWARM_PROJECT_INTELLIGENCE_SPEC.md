@@ -9,9 +9,9 @@ Owner: BuildOS Agentic Chat
 Related:
 
 - [Agentic Chat Operating Model](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-operating-model.md)
-- [Agentic Chat Lightweight Harness Plan](/Users/djwayne/buildos-platform/docs/plans/AGENTIC_CHAT_LIGHTWEIGHT_HARNESS_PLAN.md)
-- [Initial Seed Context Gap Analysis](/Users/djwayne/buildos-platform/docs/reports/agentic-chat-initial-seed-context-gap-analysis-2026-04-14.md)
-- [Context Packet Gap Analysis](/Users/djwayne/buildos-platform/docs/reports/agentic-chat-context-packet-gap-analysis-2026-04-14.md)
+- [Lite Prompt Consolidation Spec](/Users/djwayne/buildos-platform/docs/specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md)
+- [Initial Seed Context Gap Analysis](/Users/djwayne/buildos-platform/docs/archive/reports/agentic-chat-initial-seed-context-gap-analysis-2026-04-14.md)
+- [Context Packet Gap Analysis](/Users/djwayne/buildos-platform/docs/archive/reports/agentic-chat-context-packet-gap-analysis-2026-04-14.md)
 - [Agentic Chat Current Implementation](/Users/djwayne/buildos-platform/apps/web/docs/features/agentic-chat/README.md)
 
 ## Purpose

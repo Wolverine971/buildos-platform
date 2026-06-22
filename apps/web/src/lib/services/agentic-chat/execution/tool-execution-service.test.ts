@@ -105,6 +105,29 @@ describe('ToolExecutionService', () => {
 			);
 		});
 
+		it('rejects a different UUID project_id when the turn is project-scoped', async () => {
+			const scopedProjectId = '153dea7b-1fc7-4f68-b014-cd2b00c572ec';
+			const otherProjectId = '972064c0-c2aa-4c74-a735-313802ffd456';
+			const toolCall: ChatToolCall = {
+				id: 'call_cross_project',
+				name: 'list_onto_tasks',
+				arguments: { project_id: otherProjectId }
+			};
+			const scopedContext: ServiceContext = {
+				...mockContext,
+				contextScope: { projectId: scopedProjectId }
+			};
+
+			const result = await service.executeTool(toolCall, scopedContext, mockToolDefinitions);
+
+			expect(result).toMatchObject({
+				success: false,
+				errorType: 'validation_error',
+				error: expect.stringContaining('does not match the current project focus')
+			});
+			expect(mockToolExecutor).not.toHaveBeenCalled();
+		});
+
 		it('should coerce raw string arguments for web_search into query', async () => {
 			const toolCall: ChatToolCall = {
 				id: 'call_web_search',

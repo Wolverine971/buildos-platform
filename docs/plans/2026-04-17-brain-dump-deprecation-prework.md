@@ -39,7 +39,7 @@ This tasker inventories the untangling work needed first. Each task should ship 
 ## Related context
 
 - Brain dump inventory + rough deletion phasing: see conversation transcript 2026-04-17 (not yet a doc; produce from this tasker when ready).
-- Agentic chat services: `docs/plans/AGENTIC_CHAT_SERVICES_ANALYSIS.md`.
+- Agentic chat current architecture: `apps/web/docs/features/agentic-chat/README.md`.
 - Consumption billing endpoint audit: `docs/business/sales/consumption-pricing-endpoint-audit.md`.
 - Inkprint design system (for any UI replacement work): `apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`.
 - Monorepo + engineering conventions: `CLAUDE.md`.

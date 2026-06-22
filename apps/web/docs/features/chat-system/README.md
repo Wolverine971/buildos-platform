@@ -408,7 +408,7 @@ For complete admin monitoring documentation, see:
 - [x] Generate types: `pnpm supabase:types`
 - [x] Set environment variables:
     - `OPENAI_API_KEY`
-    - `OPENROUTER_API_KEY` (optional)
+    - `PRIVATE_OPENROUTER_API_KEY` (optional)
 - [x] Test SSE streaming
 - [x] Verify token usage
 - [x] Check tool permissions
@@ -435,10 +435,10 @@ For complete admin monitoring documentation, see:
 
 ### Design Documents
 
-- [Chat Context & Tools Design](/thoughts/shared/ideas/chat-context-and-tools-design.md)
-- [Chat Specification v2](/thoughts/shared/ideas/chat-spec-improved-v2.md)
-- [Task Integration Notes](/thoughts/shared/ideas/chat-task-integration.md)
-- [Implementation Index](/thoughts/shared/ideas/chat-implementation-index.md)
+- [Chat Context & Tools Design](/thoughts/shared/archive/ideas/chat-context-and-tools-design.md)
+- [Chat Specification v2](/thoughts/shared/archive/ideas/chat-spec-improved-v2.md)
+- [Task Integration Notes](/thoughts/shared/archive/ideas/chat-task-integration.md)
+- [Implementation Index](/thoughts/shared/archive/ideas/chat-implementation-index.md)
 
 ---
 

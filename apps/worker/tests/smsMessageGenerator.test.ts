@@ -5,7 +5,7 @@
  * These tests verify that the SMS message generator creates
  * valid, concise messages under 160 characters.
  *
- * Note: These tests run without the OPENROUTER_API_KEY, so they
+ * Note: These tests run without the PRIVATE_OPENROUTER_API_KEY, so they
  * test the template fallback mechanism. For LLM integration tests,
  * run with the API key set.
  */

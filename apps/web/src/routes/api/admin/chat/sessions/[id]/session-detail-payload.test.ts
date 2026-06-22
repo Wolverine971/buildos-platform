@@ -590,6 +590,107 @@ describe('buildSessionDetailPayload', () => {
 		expect(payload.session.has_errors).toBe(true);
 	});
 
+	it('deduplicates a failed tool execution also captured in assistant metadata trace', () => {
+		const sharedError =
+			"Tool 'create_onto_project' failed: API POST /api/onto/projects/instantiate failed: Invalid ProjectSpec";
+		const payload = buildSessionDetailPayload({
+			sessionRow: {
+				id: 'session-duplicate-failure-trace',
+				user_id: 'user-1',
+				title: 'Recovered project create',
+				status: 'active',
+				context_type: 'project',
+				entity_id: 'project-1',
+				message_count: 1,
+				total_tokens_used: 0,
+				tool_call_count: 2,
+				created_at: '2026-06-22T21:13:53.000Z',
+				updated_at: '2026-06-22T21:14:16.000Z',
+				last_message_at: '2026-06-22T21:14:16.000Z',
+				agent_metadata: {},
+				users: {
+					id: 'user-1',
+					email: 'admin@example.com',
+					name: 'Admin User'
+				}
+			},
+			messages: [
+				{
+					id: 'assistant-1',
+					role: 'assistant',
+					content: 'Project created successfully.',
+					created_at: '2026-06-22T21:14:16.000Z',
+					metadata: {
+						fastchat_tool_trace_v1: [
+							{
+								tool_call_id: 'call-create-failed',
+								tool_name: 'create_onto_project',
+								op: 'onto.project.create',
+								success: false,
+								error: `${sharedError}: project.props.facets.stage received active`
+							},
+							{
+								tool_call_id: 'call-create-success',
+								tool_name: 'create_onto_project',
+								op: 'onto.project.create',
+								success: true
+							}
+						]
+					}
+				}
+			],
+			toolExecutions: [
+				{
+					id: 'tool-exec-failed',
+					message_id: 'assistant-1',
+					turn_run_id: 'run-1',
+					stream_run_id: 'stream-1',
+					client_turn_id: 'turn-1',
+					tool_name: 'create_onto_project',
+					tool_category: 'ontology_action',
+					gateway_op: 'onto.project.create',
+					help_path: null,
+					sequence_index: 1,
+					success: false,
+					execution_time_ms: null,
+					arguments: {},
+					result: null,
+					error_message: `${sharedError}: project.props.facets.stage received active`,
+					created_at: '2026-06-22T21:14:16.000Z'
+				},
+				{
+					id: 'tool-exec-success',
+					message_id: 'assistant-1',
+					turn_run_id: 'run-1',
+					stream_run_id: 'stream-1',
+					client_turn_id: 'turn-1',
+					tool_name: 'create_onto_project',
+					tool_category: 'ontology_action',
+					gateway_op: 'onto.project.create',
+					help_path: null,
+					sequence_index: 2,
+					success: true,
+					execution_time_ms: 1949,
+					arguments: {},
+					result: { project_id: 'project-1' },
+					error_message: null,
+					created_at: '2026-06-22T21:14:16.000Z'
+				}
+			],
+			llmCalls: [],
+			operations: [],
+			timingData: null,
+			turnRuns: [],
+			promptSnapshots: [],
+			turnEvents: [],
+			evalRuns: [],
+			evalAssertions: []
+		});
+
+		expect(payload.metrics.tool_failures).toBe(1);
+		expect(payload.session.has_errors).toBe(true);
+	});
+
 	it('highlights supervisor turn events in the admin timeline', () => {
 		const payload = buildSessionDetailPayload({
 			sessionRow: {

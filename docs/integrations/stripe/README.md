@@ -12,7 +12,6 @@ Comprehensive documentation for Stripe billing, subscriptions, and webhook handl
 - [Implementation Summary](./implementation-summary.md)
 - [Testing Plan](./testing-plan.md)
 - **Runbooks**
-    - [Webhook Validation Checklist](./runbooks/webhook-validation.md)
     - [Webhook Failure Recovery](./runbooks/webhook-failures.md)
 
 ## Scope

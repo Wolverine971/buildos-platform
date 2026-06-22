@@ -548,7 +548,7 @@ const text = await llmService.generateText({
 
 ### Job Adapter Pattern
 
-**Purpose:** Provides backward compatibility for transitioning from BullMQ to Supabase queue.
+**Purpose:** Bridges the Supabase-based queue to the legacy BullMQ-style processor interface the domain workers expect (no Redis/BullMQ runs in production).
 
 **Location:** `/apps/worker/src/workers/shared/jobAdapter.ts`
 

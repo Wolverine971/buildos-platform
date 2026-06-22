@@ -528,11 +528,39 @@ const isFailedToolOutcomeEvent = (
 	return typeof payload.error === 'string' && payload.error.trim().length > 0;
 };
 
+const toolFailureSignature = (value: string | null): string => {
+	const normalized = (value ?? '').replace(/\s+/g, ' ').trim();
+	return normalized ? normalized.slice(0, 120) : 'unknown';
+};
+
+const toolFailureKeyFromExecution = (
+	execution: ToolExecutionRow | Record<string, unknown>
+): string => {
+	const record = execution as Record<string, unknown>;
+	const messageId = stringRecordField(record, 'message_id');
+	const sequenceIndex = asNumber(record.sequence_index);
+	const toolName = stringRecordField(record, 'tool_name') ?? '';
+	const op =
+		stringRecordField(record, 'gateway_op') ?? stringRecordField(record, 'canonical_op') ?? '';
+	const error =
+		stringRecordField(record, 'error_message') ?? stringRecordField(record, 'error') ?? null;
+
+	if (messageId && sequenceIndex > 0 && (toolName || op)) {
+		return `logical_tool_failure:${messageId}:${sequenceIndex}:${toolName}:${op}:${toolFailureSignature(
+			error
+		)}`;
+	}
+
+	const executionId = stringRecordField(record, 'id');
+	return executionId ? `tool_execution:${executionId}` : `tool_execution:${toolName}:${op}`;
+};
+
 const toolFailureKeyFromEvent = (event: TurnEventRow, payload: Record<string, unknown>): string => {
 	const linkedToolExecution = recordField(payload.linked_tool_execution);
+	if (linkedToolExecution) return toolFailureKeyFromExecution(linkedToolExecution);
+
 	const executionId =
-		stringRecordField(payload, 'tool_execution_id') ??
-		(linkedToolExecution ? stringRecordField(linkedToolExecution, 'id') : null);
+		stringRecordField(payload, 'tool_execution_id') ?? stringRecordField(payload, 'id');
 	if (executionId) return `tool_execution:${executionId}`;
 	const toolCallId =
 		stringRecordField(payload, 'tool_call_id') ?? stringRecordField(payload, 'toolCallId');
@@ -545,6 +573,20 @@ const toolFailureKeyFromTraceEntry = (
 	entry: Record<string, unknown>,
 	index: number
 ): string => {
+	const toolName = stringRecordField(entry, 'tool_name') ?? '';
+	const op =
+		stringRecordField(entry, 'op') ??
+		stringRecordField(entry, 'gateway_op') ??
+		stringRecordField(entry, 'canonical_op') ??
+		'';
+	const error =
+		stringRecordField(entry, 'error') ?? stringRecordField(entry, 'error_message') ?? null;
+	if (op && error) {
+		return `logical_tool_failure:${messageId}:${index + 1}:${toolName}:${op}:${toolFailureSignature(
+			error
+		)}`;
+	}
+
 	const toolCallId =
 		stringRecordField(entry, 'tool_call_id') ?? stringRecordField(entry, 'toolCallId');
 	return toolCallId ? `tool_call:${toolCallId}` : `metadata_trace:${messageId}:${index}`;
@@ -558,7 +600,7 @@ const countObservedToolFailures = (params: {
 	const structuredFailures = new Set<string>();
 	for (const execution of params.toolExecutions) {
 		if (execution.success === false) {
-			structuredFailures.add(`tool_execution:${execution.id}`);
+			structuredFailures.add(toolFailureKeyFromExecution(execution));
 		}
 	}
 	for (const event of params.turnEvents) {

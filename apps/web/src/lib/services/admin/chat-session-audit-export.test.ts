@@ -411,6 +411,36 @@ describe('deriveAuditGist', () => {
 		expect(gist.flags).toContain('finished_reason=tool_calls');
 	});
 
+	it('classifies a recovered tool retry as completed with a diagnostic flag', () => {
+		const payload = buildFixturePayload();
+		payload.session.has_errors = true;
+		payload.metrics.tool_failures = 1;
+		payload.messages[1].content = 'Project created successfully.';
+
+		const gist = deriveAuditGist(payload);
+		expect(gist.outcome).toBe('completed');
+		expect(gist.outcomeLabel).toBe('COMPLETED — recovered after 1 tool failure');
+		expect(gist.flags).toContain('1 tool failure');
+	});
+
+	it('classifies an unrecovered tool failure as failed', () => {
+		const payload = buildFixturePayload();
+		payload.session.has_errors = true;
+		payload.metrics.tool_failures = 1;
+		payload.tool_executions = [
+			{
+				id: 'tool-1',
+				success: false,
+				tool_name: 'create_onto_project',
+				gateway_op: 'onto.project.create'
+			}
+		];
+
+		const gist = deriveAuditGist(payload);
+		expect(gist.outcome).toBe('errored');
+		expect(gist.outcomeLabel).toBe('FAILED — 1 tool failure');
+	});
+
 	it('classifies a session with no assistant reply as incomplete', () => {
 		const payload = buildFixturePayload();
 		payload.messages = [payload.messages[0]];

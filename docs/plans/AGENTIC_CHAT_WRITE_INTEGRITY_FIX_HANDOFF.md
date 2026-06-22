@@ -19,7 +19,7 @@ impossible, then final responses should be grounded in the actual write results.
 
 Primary audit:
 
-- [Agentic Chat Fastchat vs Lite Flow Audit](../reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md)
+- [Agentic Chat Fastchat vs Lite Flow Audit](../archive/reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md)
 
 Session audits:
 
@@ -31,12 +31,11 @@ Session audits:
 
 Related plans and reports:
 
-- [Agentic Chat Lightweight Harness Plan](./AGENTIC_CHAT_LIGHTWEIGHT_HARNESS_PLAN.md)
-- [Agentic Chat Lightweight Harness Continuation Handoff](./AGENTIC_CHAT_LIGHTWEIGHT_HARNESS_CONTINUATION_HANDOFF.md)
-- [Agentic Chat Tool Surface Optimization Handoff](./AGENTIC_CHAT_TOOL_SURFACE_OPTIMIZATION_HANDOFF.md)
-- [Agentic Chat Initial Seed Context Gap Analysis](../reports/agentic-chat-initial-seed-context-gap-analysis-2026-04-14.md)
-- [Agentic Chat Context Packet Gap Analysis](../reports/agentic-chat-context-packet-gap-analysis-2026-04-14.md)
-- [Agentic Chat Prompt Dump Assessment](../reports/agentic-chat-prompt-dump-assessment-2026-04-09.md)
+- [Agentic Chat Lite Prompt Consolidation Spec](../specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md)
+- [Agentic Chat Tool Surface Re-evaluation](../specs/AGENTIC_CHAT_TOOL_SURFACE_REEVALUATION_2026-06-11.md)
+- [Agentic Chat Initial Seed Context Gap Analysis](../archive/reports/agentic-chat-initial-seed-context-gap-analysis-2026-04-14.md)
+- [Agentic Chat Context Packet Gap Analysis](../archive/reports/agentic-chat-context-packet-gap-analysis-2026-04-14.md)
+- [Agentic Chat Prompt Dump Assessment](../archive/reports/agentic-chat-prompt-dump-assessment-2026-04-09.md)
 
 ## Code Map
 
@@ -263,7 +262,7 @@ project_document_write_light:
 
 Cross-link:
 
-- [Tool Surface Optimization Handoff](./AGENTIC_CHAT_TOOL_SURFACE_OPTIMIZATION_HANDOFF.md)
+- [Tool Surface Re-evaluation](../specs/AGENTIC_CHAT_TOOL_SURFACE_REEVALUATION_2026-06-11.md)
 - [Gateway surface profiles](../../apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts)
 - [Tool selector](../../apps/web/src/lib/services/agentic-chat-v2/tool-selector.ts)
 
@@ -293,8 +292,8 @@ Requirement:
 
 Cross-link:
 
-- [Lightweight Harness Plan](./AGENTIC_CHAT_LIGHTWEIGHT_HARNESS_PLAN.md)
-- [Tool Surface Optimization Handoff](./AGENTIC_CHAT_TOOL_SURFACE_OPTIMIZATION_HANDOFF.md)
+- [Lite Prompt Consolidation Spec](../specs/agentic-chat-lite-prompt-consolidation-2026-04-16.md)
+- [Tool Surface Re-evaluation](../specs/AGENTIC_CHAT_TOOL_SURFACE_REEVALUATION_2026-06-11.md)
 - [Task management skill](../../apps/web/src/lib/services/agentic-chat/tools/skills/definitions/task_management/SKILL.md)
 
 ## Recommended Architecture

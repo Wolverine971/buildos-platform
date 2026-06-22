@@ -11,7 +11,7 @@ This is **worker service-specific** documentation (`/apps/worker`).
 
 ## What This Service Does
 
-- Background job processing (BullMQ with Supabase queue)
+- Background job processing (Supabase-based queue, no Redis)
 - Daily brief generation and email delivery
 - Scheduled tasks via cron jobs
 - Asynchronous operations offloaded from web app
@@ -19,7 +19,7 @@ This is **worker service-specific** documentation (`/apps/worker`).
 ## Tech Stack
 
 - **Framework:** Node.js + Express
-- **Queue:** BullMQ (Supabase-based, no Redis)
+- **Queue:** Supabase-based queue (no Redis; BullMQ-style processor interface via `JobAdapter`)
 - **Database:** Supabase (via `@buildos/supabase-client`)
 - **Email:** Nodemailer
 - **SMS:** Twilio (via `@buildos/twilio-service`)
@@ -155,9 +155,9 @@ EMAIL_FROM=
 OPENAI_API_KEY=
 
 # Optional: SMS
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_PHONE_NUMBER=
+PRIVATE_TWILIO_ACCOUNT_SID=
+PRIVATE_TWILIO_AUTH_TOKEN=
+PRIVATE_TWILIO_MESSAGING_SERVICE_SID=
 ```
 
 ## Deployment

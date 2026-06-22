@@ -53,5 +53,5 @@ Use this page to find the right documentation quickly. For full route-level navi
 ## Notes
 
 - Onboarding V3 is the active flow: [features/onboarding/README.md](./features/onboarding/README.md)
-- Onboarding V2 is legacy archive: [features/onboarding-v2/README.md](./features/onboarding-v2/README.md)
+- Onboarding V2 is legacy archive: [docs/archive/apps-web/features/onboarding-v2/README.md](../../../docs/archive/apps-web/features/onboarding-v2/README.md)
 - Agentic chat canonical flow doc: [features/agentic-chat/README.md](./features/agentic-chat/README.md)

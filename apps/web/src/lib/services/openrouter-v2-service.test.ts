@@ -468,6 +468,72 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[1]?.temperature).toBe(0.1);
 	});
 
+	it('retries empty content for a single explicit JSON model', async () => {
+		const requestBodies: any[] = [];
+		const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+
+			const content = requestBodies.length === 1 ? '' : '{"ok":true,"retrySucceeded":true}';
+
+			return new Response(
+				JSON.stringify({
+					id: `chatcmpl-v2-json-empty-retry-${requestBodies.length}`,
+					model: AGENT_STATE_RECONCILIATION_MODEL,
+					choices: [
+						{
+							index: 0,
+							message: {
+								role: 'assistant',
+								content
+							},
+							finish_reason: 'stop'
+						}
+					],
+					usage: {
+						prompt_tokens: 10,
+						completion_tokens: 4,
+						total_tokens: 14
+					}
+				}),
+				{
+					status: 200,
+					headers: {
+						'content-type': 'application/json'
+					}
+				}
+			);
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createService();
+		const result = await service.getJSONResponse<{
+			ok: boolean;
+			retrySucceeded: boolean;
+		}>({
+			systemPrompt: 'Return valid JSON.',
+			userPrompt: 'Respond with {"ok":true}.',
+			model: AGENT_STATE_RECONCILIATION_MODEL,
+			models: [AGENT_STATE_RECONCILIATION_MODEL],
+			allowedModelIds: [AGENT_STATE_RECONCILIATION_MODEL],
+			includeDefaultModels: false,
+			validation: {
+				retryOnParseError: true,
+				maxRetries: 1
+			}
+		});
+
+		expect(result).toEqual({ ok: true, retrySucceeded: true });
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(requestBodies.map((body) => body.model)).toEqual([
+			AGENT_STATE_RECONCILIATION_MODEL,
+			AGENT_STATE_RECONCILIATION_MODEL
+		]);
+		expect(requestBodies[1]?.temperature).toBe(0.1);
+	});
+
 	it('falls back to direct Moonshot for JSON when OpenRouter is unavailable', async () => {
 		const requestUrls: string[] = [];
 		const requestBodies: any[] = [];
@@ -533,6 +599,83 @@ describe('OpenRouterV2Service model routing', () => {
 		expect(requestBodies[1]?.model).toBe('kimi-k2.6');
 		expect(requestBodies[1]?.temperature).toBe(1);
 		expect(requestBodies[1]?.response_format).toEqual({ type: 'json_object' });
+	});
+
+	it('retries empty JSON content from direct Moonshot fallback', async () => {
+		const requestUrls: string[] = [];
+		const requestBodies: any[] = [];
+		let directAttempts = 0;
+		const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+			requestUrls.push(url);
+			if (typeof init?.body === 'string') {
+				requestBodies.push(JSON.parse(init.body));
+			}
+
+			if (url.includes('openrouter.ai')) {
+				return new Response(JSON.stringify({ error: { message: 'OpenRouter outage' } }), {
+					status: 503,
+					headers: { 'content-type': 'application/json' }
+				});
+			}
+
+			directAttempts++;
+			return new Response(
+				JSON.stringify({
+					id: `moonshot-json-empty-retry-${directAttempts}`,
+					model: 'kimi-k2.6',
+					choices: [
+						{
+							index: 0,
+							message: {
+								role: 'assistant',
+								content:
+									directAttempts === 1
+										? ''
+										: '{"ok":true,"provider":"moonshot","retrySucceeded":true}'
+							},
+							finish_reason: 'stop'
+						}
+					],
+					usage: {
+						prompt_tokens: 10,
+						completion_tokens: 4,
+						total_tokens: 14
+					}
+				}),
+				{
+					status: 200,
+					headers: { 'content-type': 'application/json' }
+				}
+			);
+		});
+
+		vi.stubGlobal('fetch', fetchMock as unknown as typeof fetch);
+
+		const service = createServiceWithDirectFallbacks();
+		const result = await service.getJSONResponse<{
+			ok: boolean;
+			provider: string;
+			retrySucceeded: boolean;
+		}>({
+			systemPrompt: 'Return valid JSON.',
+			userPrompt: 'Respond with {"ok":true}.',
+			model: DEEPSEEK_V4_FLASH_MODEL,
+			models: [DEEPSEEK_V4_FLASH_MODEL],
+			includeDefaultModels: false,
+			validation: {
+				retryOnParseError: true,
+				maxRetries: 1
+			}
+		});
+
+		expect(result).toEqual({ ok: true, provider: 'moonshot', retrySucceeded: true });
+		expect(fetchMock).toHaveBeenCalledTimes(3);
+		expect(requestUrls[0]).toContain('openrouter.ai/api/v1/chat/completions');
+		expect(requestUrls[1]).toBe('https://api.moonshot.ai/v1/chat/completions');
+		expect(requestUrls[2]).toBe('https://api.moonshot.ai/v1/chat/completions');
+		expect(requestBodies[1]?.model).toBe('kimi-k2.6');
+		expect(requestBodies[2]?.model).toBe('kimi-k2.6');
+		expect(requestBodies[2]?.response_format).toEqual({ type: 'json_object' });
 	});
 
 	it('falls back to direct Moonshot streaming before emitting chat output', async () => {

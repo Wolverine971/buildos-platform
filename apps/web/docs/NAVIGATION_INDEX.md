@@ -29,12 +29,11 @@
 - **Brain Dump**: [`/features/braindump-context/README.md`](./features/braindump-context/README.md) - AI processing system
 - **Calendar**: [`/features/calendar-integration/README.md`](./features/calendar-integration/README.md) - Google Calendar sync
 - **Chat System**: [`/features/chat-system/README.md`](./features/chat-system/README.md) - Chat infrastructure
-- **Conversational Agent**: [`/features/conversational-agent/README.md`](./features/conversational-agent/README.md) - Agent conversation design
 - **History Page**: [`/features/history-page/README.md`](./features/history-page/README.md) - Chat session history and resumption
 - **Integrations**: [`/features/integrations/README.md`](./features/integrations/README.md) - External integration capabilities
 - **Notifications**: [`/features/notifications/README.md`](./features/notifications/README.md) - Notification system
 - **Onboarding**: [`/features/onboarding/README.md`](./features/onboarding/README.md) - User onboarding flow
-- **Onboarding V2**: [`/features/onboarding-v2/README.md`](./features/onboarding-v2/README.md) - Legacy archive
+- **Onboarding V2**: [`archived`](../../../docs/archive/apps-web/features/onboarding-v2/README.md) - Legacy archive (moved to `docs/archive/`)
 - **Phase Generation**: [`/features/phase-generation/README.md`](./features/phase-generation/README.md) - Procedural phase generation
 - **Project Activity Logging**: [`/features/project-activity-logging/README.md`](./features/project-activity-logging/README.md) - Activity tracking and next steps
 - **Project Export**: [`/features/project-export/README.md`](./features/project-export/README.md) - Browser-native PDF export
@@ -135,15 +134,10 @@
 │   │       └── ANALYSIS_SUMMARY.md        # Executive summary
 │   │
 │   ├── /database/                         # Database documentation
-│   │   ├── schema.md                      # Full schema
-│   │   ├── indexes.md                     # Database indexes
-│   │   └── rls-policies.md                # Row-level security
+│   │   └── CALENDAR_AND_ONTOLOGY_SCHEMA.md # Calendar & ontology schema
 │   │
 │   ├── /testing/                          # Testing documentation
-│   │   ├── TESTING_CHECKLIST.md           # Testing requirements
-│   │   ├── strategy.md                    # Testing strategy
-│   │   ├── llm-testing.md                 # LLM test guide
-│   │   └── vitest-setup.md                # Vitest configuration
+│   │   └── TESTING_CHECKLIST.md           # Testing requirements
 │   │
 │   ├── /deployment/                       # Deployment docs
 │   │   ├── DEPLOYMENT_CHECKLIST.md        # Deployment checklist
@@ -180,13 +174,13 @@
 - **Building CRUD Operations**: `/features/ontology/README.md`
 - **Creating Modals**: `/technical/components/modals/QUICK_REFERENCE.md`
 - **Writing API Endpoints**: `/technical/api/README.md`
-- **Database Changes**: `/technical/database/schema.md`
+- **Database Changes**: `packages/shared-types/src/database.schema.ts` (generated)
 - **Testing**: `/technical/testing/` and feature-specific test guides
 - **Deployment**: `/technical/deployment/` and runbooks
 
 ### By User Role
 
-- **New Developers**: Start with `/technical/development/getting-started.md`
+- **New Developers**: Start with the root `README.md` + `CLAUDE.md`, then `/technical/development/DEVELOPMENT_PROCESS.md`
 - **Frontend Engineers**: Focus on `/technical/components/` and `/features/`
 - **Backend Engineers**: Check `/technical/api/` and `/technical/database/`
 - **DevOps**: See `/technical/deployment/` and `/operations/`
@@ -274,7 +268,7 @@ Based on common development tasks:
 2. **[Ontology Data Models](./features/ontology/DATA_MODELS.md)** - Schema & CRUD patterns
 3. **[Modal Quick Reference](./technical/components/modals/QUICK_REFERENCE.md)** - Modal usage
 4. **[API Reference](./technical/api/README.md)** - API documentation
-5. **[Getting Started](./technical/development/getting-started.md)** - New developer guide
+5. **[Development Process](./technical/development/DEVELOPMENT_PROCESS.md)** - New developer guide
 
 ## 🚀 Quick Links for Common Tasks
 

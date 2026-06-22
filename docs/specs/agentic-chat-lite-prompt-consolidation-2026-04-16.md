@@ -8,7 +8,7 @@ Owner: agentic chat
 
 Related docs:
 
-- [FastChat vs Lite fantasy-novel flow audit](../reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md)
+- [FastChat vs Lite fantasy-novel flow audit](../archive/reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md)
 - [Lite prompt builder](../../apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts)
 - [FastChat master prompt builder](../../apps/web/src/lib/services/agentic-chat-v2/master-prompt-builder.ts)
 - [Agentic chat operating model](./agentic-chat-operating-model.md)
@@ -33,7 +33,7 @@ Today `build-lite-prompt.ts` (`lite_seed_v1`) is the target prompt path. A legac
 
 The Lite builder already has the right shape: 9 named sections, a clean static-first order, cheap per-turn cost, and a capability / skill / tool mental model. What it needs is a small set of behavioral additions, per-context workflow guidance inside `Current Focus and Purpose`, and discipline about which rules live in the prompt versus in skills versus in the executor.
 
-Empirical evidence (see the [2026-04-15 fantasy-novel audit](../reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md), including the post-fix `13fc` replay):
+Empirical evidence (see the [2026-04-15 fantasy-novel audit](../archive/reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md), including the post-fix `13fc` replay):
 
 - Lite is cheaper and more reliable on project-shape quality.
 - Both prompts share the same underlying write-integrity and grounding failures; those are harness problems, not prompt problems.
@@ -633,7 +633,7 @@ None of these block the lite-only runtime. They are the next architectural inves
 
 ## 14. Post-Replay Follow-Up — 2026-04-17
 
-The 2026-04-17 replay session (`3283045b-7c5c-4628-a231-1df5010a081e`) ran the consolidated prompt end-to-end for the first time. It improved every operational metric (lowest tokens + cost on record, zero discovery overhead) but surfaced three new problems that this follow-up addresses. See the [benchmark comparison in the audit](../reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md) for the full numeric comparison.
+The 2026-04-17 replay session (`3283045b-7c5c-4628-a231-1df5010a081e`) ran the consolidated prompt end-to-end for the first time. It improved every operational metric (lowest tokens + cost on record, zero discovery overhead) but surfaced three new problems that this follow-up addresses. See the [benchmark comparison in the audit](../archive/reports/agentic-chat-fastchat-vs-lite-fantasy-novel-flow-audit-2026-04-15.md) for the full numeric comparison.
 
 ### 14.1 Findings from the replay
 

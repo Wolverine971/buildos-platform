@@ -236,11 +236,8 @@ STRIPE_SECRET_KEY=            # Stripe API key (if enabled)
 
 ```bash
 PUBLIC_RAILWAY_WORKER_URL=    # Worker service URL
-EMAIL_HOST=                   # SMTP host
-EMAIL_USER=                   # SMTP username
-EMAIL_PASS=                   # SMTP password
-TWILIO_ACCOUNT_SID=           # Twilio account SID (optional)
-TWILIO_AUTH_TOKEN=            # Twilio auth token (optional)
+PRIVATE_TWILIO_ACCOUNT_SID=   # Twilio account SID (optional)
+PRIVATE_TWILIO_AUTH_TOKEN=    # Twilio auth token (optional)
 ```
 
 See [Deployment Environment Checklist](operations/environment/DEPLOYMENT_ENV_CHECKLIST.md) for complete list.

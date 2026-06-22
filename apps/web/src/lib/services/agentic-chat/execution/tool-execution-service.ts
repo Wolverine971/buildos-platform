@@ -369,6 +369,16 @@ export class ToolExecutionService implements BaseService {
 		args = this.applyContextDefaults(toolName, args, context, availableTools);
 		args = this.applyArgumentAliases(toolName, args, availableTools);
 		args = this.normalizeIdFields(args);
+		const projectScopeGuard = this.guardProjectIdMatchesContextScope(
+			toolName,
+			args,
+			context,
+			availableTools,
+			toolCall.id
+		);
+		if (projectScopeGuard) {
+			return finalizeResult(projectScopeGuard);
+		}
 		if (toolName === 'create_onto_project') {
 			args = normalizeProjectCreateArgs(args);
 		}
@@ -2590,6 +2600,39 @@ export class ToolExecutionService implements BaseService {
 		}
 
 		return undefined;
+	}
+
+	private guardProjectIdMatchesContextScope(
+		toolName: string,
+		args: Record<string, any>,
+		context: ServiceContext,
+		availableTools: ChatToolDefinition[],
+		toolCallId: string
+	): ToolExecutionResult | null {
+		if (!this.toolSupportsProjectId(toolName, availableTools)) {
+			return null;
+		}
+
+		const scopedProjectId = this.resolveProjectIdFromContext(context);
+		const requestedProjectId =
+			typeof args.project_id === 'string' ? args.project_id.trim() : '';
+		if (!scopedProjectId || !isValidUUID(scopedProjectId)) {
+			return null;
+		}
+		if (!requestedProjectId || !isValidUUID(requestedProjectId)) {
+			return null;
+		}
+		if (requestedProjectId === scopedProjectId) {
+			return null;
+		}
+
+		return {
+			success: false,
+			error: 'Tool project_id does not match the current project focus. Switch focus or ask for explicit cross-project confirmation before using another project.',
+			errorType: 'validation_error',
+			toolName,
+			toolCallId
+		};
 	}
 
 	private inferDocumentTitle(history: ChatMessage[]): string | undefined {
