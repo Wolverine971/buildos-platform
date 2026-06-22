@@ -7,17 +7,9 @@
 import { isValidUUID } from '@buildos/shared-types';
 import type { AgentCallScope, BuildosAgentAllowedOp } from '@buildos/shared-types';
 import { buildSearchFilter } from '../utils/search-filter';
-import {
-	logCreateAsync,
-	logUpdateAsync,
-	type ActivityLogActorContext
-} from '../ops/async-activity-logger';
-import {
-	ensureActorId,
-	fetchProjectSummaries,
-	type OntologyProjectSummary
-} from '../ontology/ontology-projects.service';
-import { normalizeGatewayOpName } from '../ops/gateway-op-aliases';
+import { logCreateAsync, logUpdateAsync } from '../ops/async-activity-logger';
+import { ensureActorId, type OntologyProjectSummary } from '../ontology/ontology-projects.service';
+import { resolveGatewayOpAlias } from '../ops/gateway-op-aliases';
 import {
 	defaultAllowedOpsForMode,
 	isSupportedOp,
@@ -92,12 +84,54 @@ import type {
 	TaskSyncPort,
 	ToolExecutionContext
 } from './op-execution-gateway.types';
-import { normalizeAndValidateGatewayArgs } from './op-execution-gateway.validation';
+import { entityKindFromGatewayOp } from './op-execution-gateway.mutations';
+import {
+	normalizeAndValidateGatewayArgs,
+	type GatewayLegacyArgAliasUsage
+} from './op-execution-gateway.validation';
+import {
+	ExternalToolGatewayError,
+	buildExecError,
+	buildGatewaySuccessResponse,
+	buildToolExecutionAuditPayload,
+	extractWriteEntityMeta,
+	normalizeGatewayError
+} from './op-execution-gateway.responses';
+import {
+	assertAccessibleProject,
+	assertProjectWriteAccess,
+	assertVisibleEntityProject,
+	getProjectIdsForVisibleContext,
+	getProjectIdsOrThrow,
+	loadVisibleProjects,
+	withProjectName
+} from './op-execution-gateway.access';
+import {
+	createCalendarEvent,
+	deleteCalendarEvent,
+	getCalendarEventDetails,
+	getProjectCalendar,
+	listCalendarEvents,
+	setProjectCalendar,
+	updateCalendarEvent
+} from './op-execution-gateway.calendar';
+import { getProjectStatus } from './op-execution-gateway.project-status';
+import {
+	getExternalAgentActivityContext,
+	syncCreatedTaskSideEffects,
+	syncUpdatedTaskSideEffects
+} from './op-execution-gateway.activity';
 export {
 	EXTERNAL_CUSTOM_OPS,
 	EXTERNAL_WRITE_OP_SCHEMAS,
 	withExternalArchiveUpdateParameter
 } from './op-execution-gateway.config';
+export {
+	ExternalToolGatewayError,
+	buildExecError,
+	extractWriteEntityMeta,
+	normalizeGatewayError
+} from './op-execution-gateway.responses';
 export type {
 	CalendarPort,
 	ExternalGatewayRegistry,
@@ -110,33 +144,12 @@ export type {
 const MAX_DOCUMENT_CONTENT_BYTES = 200 * 1024;
 const TASK_DOCUMENT_REL = 'task_has_document';
 
-type VisibleProjectContext = {
-	projects: OntologyProjectSummary[];
-	projectMap: Map<string, OntologyProjectSummary>;
-};
-
 type EntityAccessResult = {
 	kind: ExternalLinkEntityKind;
 	entity: Record<string, unknown>;
 	project: OntologyProjectSummary;
 	projectId: string;
 };
-
-export class ExternalToolGatewayError extends Error {
-	constructor(
-		public readonly code:
-			| 'NOT_FOUND'
-			| 'VALIDATION_ERROR'
-			| 'FORBIDDEN'
-			| 'CONFLICT'
-			| 'INTERNAL',
-		message: string,
-		public readonly details?: Record<string, unknown>
-	) {
-		super(message);
-		this.name = 'ExternalToolGatewayError';
-	}
-}
 
 export const EXTERNAL_OP_HANDLERS: Record<
 	BuildosAgentAllowedOp,
@@ -446,52 +459,6 @@ function serializeExternalAsset(
 	};
 }
 
-function buildAllowedProjectSet(
-	scope: AgentCallScope,
-	projects: OntologyProjectSummary[]
-): Map<string, OntologyProjectSummary> {
-	const requestedIds = Array.isArray(scope.project_ids) ? new Set(scope.project_ids) : null;
-	const filtered = requestedIds
-		? projects.filter((project) => requestedIds.has(project.id))
-		: projects;
-	return new Map(filtered.map((project) => [project.id, project]));
-}
-
-function assertAccessibleProject(
-	projectMap: Map<string, OntologyProjectSummary>,
-	projectId: unknown
-): OntologyProjectSummary {
-	if (typeof projectId !== 'string' || !isValidUUID(projectId)) {
-		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'project_id must be a valid UUID');
-	}
-
-	const project = projectMap.get(projectId);
-	if (!project) {
-		throw new ExternalToolGatewayError(
-			'FORBIDDEN',
-			'Project is outside the allowed call scope'
-		);
-	}
-
-	return project;
-}
-
-function assertVisibleEntityProject(
-	projectMap: Map<string, OntologyProjectSummary>,
-	projectId: unknown
-): OntologyProjectSummary {
-	if (typeof projectId !== 'string' || !isValidUUID(projectId)) {
-		throw new ExternalToolGatewayError('INTERNAL', 'Entity project_id is invalid');
-	}
-
-	const project = projectMap.get(projectId);
-	if (!project) {
-		throw new ExternalToolGatewayError('FORBIDDEN', 'Entity is outside the allowed call scope');
-	}
-
-	return project;
-}
-
 async function resolveArchivedProjectAccessContext(
 	context: ToolExecutionContext,
 	entity: Record<string, unknown>
@@ -581,37 +548,6 @@ export function buildExternalToolDescription(entry: RegistryOp): string {
 	}
 
 	return `${entry.description} External callers must scope calendar access to an allowed project_id or task_id; broad user calendar access is not exposed through the BuildOS call gateway. ${scopeNotice}`;
-}
-
-async function loadVisibleProjects(context: ToolExecutionContext): Promise<VisibleProjectContext> {
-	const actorId = await ensureActorId(context.admin, context.userId);
-	const projects = await fetchProjectSummaries(context.admin, actorId);
-	const projectMap = buildAllowedProjectSet(context.scope, projects);
-	const scopedProjectIds = Array.isArray(context.scope.project_ids)
-		? new Set(context.scope.project_ids)
-		: null;
-	const visibleProjects = Array.from(projectMap.values()).filter(
-		(project) => scopedProjectIds?.has(project.id) || project.state_key !== 'paused'
-	);
-
-	return {
-		projects: visibleProjects,
-		projectMap
-	};
-}
-
-function assertProjectWriteAccess(project: OntologyProjectSummary): void {
-	if (project.access_level !== 'write' && project.access_level !== 'admin') {
-		throw new ExternalToolGatewayError(
-			'FORBIDDEN',
-			'Write access is not available for this project',
-			{
-				project_id: project.id,
-				project_name: project.name,
-				project_access_level: project.access_level
-			}
-		);
-	}
 }
 
 function normalizeProjectState(value: unknown, fieldName = 'state_key'): string | undefined {
@@ -810,28 +746,6 @@ function assertValidId(value: unknown, fieldName: string): string {
 	return value.trim();
 }
 
-function getProjectIdsForVisibleContext(visible: VisibleProjectContext): string[] {
-	return visible.projects.map((project) => project.id);
-}
-
-function getProjectIdsOrThrow(visible: VisibleProjectContext, entityLabel: string): string[] {
-	const projectIds = getProjectIdsForVisibleContext(visible);
-	if (projectIds.length === 0) {
-		throw new ExternalToolGatewayError('NOT_FOUND', `${entityLabel} not found`);
-	}
-	return projectIds;
-}
-
-function withProjectName(
-	row: Record<string, unknown>,
-	projectMap: Map<string, OntologyProjectSummary>
-): Record<string, unknown> {
-	return {
-		...row,
-		project_name: projectMap.get(String(row.project_id))?.name ?? null
-	};
-}
-
 async function loadEntityForAccess(
 	context: ToolExecutionContext,
 	kind: ExternalLinkEntityKind,
@@ -1022,721 +936,43 @@ function ensureWriteExecutionContext(
 	};
 }
 
-function getExternalAgentActivityContext(
-	context: ToolExecutionContext
-): ActivityLogActorContext | undefined {
-	if (!context.callerId && !context.callSessionId) {
-		return undefined;
-	}
-
-	return {
-		externalAgentCallerId: context.callerId ?? null,
-		agentCallSessionId: context.callSessionId ?? null
-	};
-}
-
-function getStringArg(...values: unknown[]): string | undefined {
-	for (const value of values) {
-		if (typeof value !== 'string') continue;
-		const trimmed = value.trim();
-		if (trimmed.length > 0) {
-			return trimmed;
-		}
-	}
-	return undefined;
-}
-
-function createCalendarExecutor(context: ToolExecutionContext): CalendarPort {
-	if (!context.calendar) {
-		throw new ExternalToolGatewayError('INTERNAL', 'Calendar port not available');
-	}
-	return context.calendar;
-}
-
-function normalizeCalendarToolError(error: unknown): ExternalToolGatewayError {
-	if (error instanceof ExternalToolGatewayError) {
-		return error;
-	}
-
-	const message = error instanceof Error ? error.message : 'Calendar tool execution failed';
-	const normalized = message.toLowerCase();
-	if (normalized.includes('not found')) {
-		return new ExternalToolGatewayError('NOT_FOUND', message);
-	}
-
-	if (
-		normalized.includes('required') ||
-		normalized.includes('invalid') ||
-		normalized.includes('must be') ||
-		normalized.includes('expected') ||
-		normalized.includes('after') ||
-		normalized.includes('before')
-	) {
-		return new ExternalToolGatewayError('VALIDATION_ERROR', message);
-	}
-
-	return new ExternalToolGatewayError('INTERNAL', message);
-}
-
-async function runCalendarTool(
-	context: ToolExecutionContext,
-	args: Record<string, unknown>,
-	invoke: (executor: CalendarPort, args: Record<string, unknown>) => Promise<unknown>
-): Promise<Record<string, unknown>> {
-	try {
-		const result = await invoke(createCalendarExecutor(context), args);
-		if (result && typeof result === 'object' && !Array.isArray(result)) {
-			return result as Record<string, unknown>;
-		}
-		return { result: result ?? null };
-	} catch (error) {
-		throw normalizeCalendarToolError(error);
-	}
-}
-
-async function assertCalendarProjectAccess(
-	context: ToolExecutionContext,
-	projectId: unknown,
-	access: 'read' | 'write'
-): Promise<OntologyProjectSummary> {
-	const visible = await loadVisibleProjects(context);
-	const project = assertAccessibleProject(visible.projectMap, projectId);
-	if (access === 'write') {
-		assertProjectWriteAccess(project);
-	}
-	return project;
-}
-
-async function assertTaskCalendarProjectAccess(
-	context: ToolExecutionContext,
-	taskId: unknown,
-	access: 'read' | 'write',
-	expectedProjectId?: string
-): Promise<OntologyProjectSummary> {
-	if (typeof taskId !== 'string' || !isValidUUID(taskId)) {
-		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'task_id must be a valid UUID');
-	}
-
-	const { data, error } = await context.admin
-		.from('onto_tasks')
-		.select('id, project_id')
-		.eq('id', taskId)
-		.is('archived_at', null)
-		.maybeSingle();
-
-	if (error) {
-		throw new ExternalToolGatewayError('INTERNAL', error.message || 'Failed to load task');
-	}
-
-	if (!data) {
-		throw new ExternalToolGatewayError('NOT_FOUND', 'Task not found');
-	}
-
-	const projectId = (data as { project_id?: unknown }).project_id;
-	if (typeof projectId !== 'string' || !isValidUUID(projectId)) {
-		throw new ExternalToolGatewayError('INTERNAL', 'Task project_id is invalid');
-	}
-
-	if (expectedProjectId && projectId !== expectedProjectId) {
-		throw new ExternalToolGatewayError('VALIDATION_ERROR', 'task_id must belong to project_id');
-	}
-
-	return assertCalendarProjectAccess(context, projectId, access);
-}
-
-async function assertCalendarEventAccess(
-	context: ToolExecutionContext,
-	eventId: unknown,
-	access: 'read' | 'write'
-): Promise<{ projectId: string }> {
-	if (typeof eventId !== 'string' || !isValidUUID(eventId)) {
-		throw new ExternalToolGatewayError(
-			'VALIDATION_ERROR',
-			'onto_event_id must be a valid UUID'
-		);
-	}
-
-	const { data, error } = await context.admin
-		.from('onto_events')
-		.select('id, project_id, owner_entity_type, owner_entity_id')
-		.eq('id', eventId)
-		.is('deleted_at', null)
-		.maybeSingle();
-
-	if (error) {
-		throw new ExternalToolGatewayError('INTERNAL', error.message || 'Failed to load event');
-	}
-
-	if (!data) {
-		throw new ExternalToolGatewayError('NOT_FOUND', 'Event not found');
-	}
-
-	const event = data as {
-		project_id?: unknown;
-		owner_entity_type?: unknown;
-		owner_entity_id?: unknown;
-	};
-	const projectId = typeof event.project_id === 'string' ? event.project_id : null;
-	if (projectId) {
-		const project = await assertCalendarProjectAccess(context, projectId, access);
-		return { projectId: project.id };
-	}
-
-	if (
-		event.owner_entity_type === 'project' &&
-		typeof event.owner_entity_id === 'string' &&
-		isValidUUID(event.owner_entity_id)
-	) {
-		const project = await assertCalendarProjectAccess(context, event.owner_entity_id, access);
-		return { projectId: project.id };
-	}
-
-	if (
-		event.owner_entity_type === 'task' &&
-		typeof event.owner_entity_id === 'string' &&
-		isValidUUID(event.owner_entity_id)
-	) {
-		const project = await assertTaskCalendarProjectAccess(
-			context,
-			event.owner_entity_id,
-			access
-		);
-		return { projectId: project.id };
-	}
-
-	throw new ExternalToolGatewayError(
-		'FORBIDDEN',
-		'External calendar event access must be scoped to an allowed project or task'
-	);
-}
-
-async function resolveExternalCalendarProjectArgs(
-	context: ToolExecutionContext,
-	args: Record<string, unknown>,
-	access: 'read' | 'write',
-	options?: { allowTaskId?: boolean }
-): Promise<Record<string, unknown>> {
-	const requestedProjectId = getStringArg(args.project_id, args.projectId);
-	const taskId = options?.allowTaskId ? getStringArg(args.task_id, args.taskId) : undefined;
-
-	if (taskId) {
-		const project = await assertTaskCalendarProjectAccess(
-			context,
-			taskId,
-			access,
-			requestedProjectId
-		);
-		return {
-			...args,
-			project_id: project.id,
-			calendar_scope: 'project'
-		};
-	}
-
-	if (!requestedProjectId) {
-		const message = options?.allowTaskId
-			? 'External calendar event access must include project_id or task_id'
-			: 'External calendar access must include project_id';
-		throw new ExternalToolGatewayError('FORBIDDEN', message);
-	}
-
-	const project = await assertCalendarProjectAccess(context, requestedProjectId, access);
-	return {
-		...args,
-		project_id: project.id,
-		calendar_scope: 'project'
-	};
-}
-
-export function normalizeGatewayError(error: unknown): ExternalToolGatewayError {
-	if (error instanceof ExternalToolGatewayError) {
-		return error;
-	}
-
-	if (error instanceof AgentCallWritePendingError) {
-		return new ExternalToolGatewayError(
-			'CONFLICT',
-			'An idempotent write with this key is already in progress'
-		);
-	}
-
-	if (error instanceof AgentCallWriteReplayError) {
-		return new ExternalToolGatewayError('INTERNAL', error.message);
-	}
-
-	return new ExternalToolGatewayError(
-		'INTERNAL',
-		error instanceof Error ? error.message : 'Tool execution failed'
-	);
-}
-
-type WriteEntityMeta = {
-	entityKind?: string;
-	entityId?: string;
-	entityProjectId?: string;
-	entityTitle?: string;
-};
-
-function stringField(record: Record<string, unknown>, ...keys: string[]): string | undefined {
-	for (const key of keys) {
-		const value = record[key];
-		if (typeof value === 'string' && value.trim()) {
-			return value.trim();
-		}
-	}
-	return undefined;
-}
-
-function metaFromEntityRecord(
-	kind: string,
-	record: Record<string, unknown>,
-	options: { idField?: string; fallbackProjectId?: string; fallbackTitle?: string } = {}
-): WriteEntityMeta {
-	const rawId = record[options.idField ?? 'id'];
-	const entityId = typeof rawId === 'string' && isValidUUID(rawId) ? rawId : undefined;
-	const entityProjectId =
-		kind === 'project'
-			? entityId
-			: (stringField(record, 'project_id') ?? options.fallbackProjectId);
-	const entityTitle = stringField(record, 'title', 'name', 'summary') ?? options.fallbackTitle;
-	return {
-		entityKind: entityId ? kind : undefined,
-		entityId,
-		entityProjectId,
-		entityTitle
-	};
-}
-
-export function extractWriteEntityMeta(params: {
-	op: BuildosAgentAllowedOp;
-	result: Record<string, unknown>;
-}): WriteEntityMeta {
-	if (params.op === 'onto.edge.link') {
-		const edge = params.result.edge;
-		if (edge && typeof edge === 'object' && !Array.isArray(edge)) {
-			const edgeRecord = edge as Record<string, unknown>;
-			return metaFromEntityRecord('edge', edgeRecord, {
-				fallbackTitle: [
-					stringField(edgeRecord, 'src_kind'),
-					stringField(edgeRecord, 'rel'),
-					stringField(edgeRecord, 'dst_kind')
-				]
-					.filter(Boolean)
-					.join(' ')
-			});
-		}
-	}
-
-	if (params.op === 'onto.edge.unlink') {
-		const entityId = params.result.edge_id;
-		if (typeof entityId === 'string' && isValidUUID(entityId)) {
-			return {
-				entityKind: 'edge',
-				entityId,
-				entityProjectId: stringField(params.result, 'project_id')
-			};
-		}
-	}
-
-	if (params.op === 'onto.task.docs.create_or_attach') {
-		const document = params.result.document;
-		if (document && typeof document === 'object' && !Array.isArray(document)) {
-			return metaFromEntityRecord('document', document as Record<string, unknown>);
-		}
-	}
-
-	if (params.op === 'onto.document.tree.move') {
-		return metaFromEntityRecord('document', params.result, {
-			idField: 'document_id',
-			fallbackProjectId: stringField(params.result, 'project_id')
-		});
-	}
-
-	const entityKeyMap: Array<{ prefix: string; kind: string; resultKey: string }> = [
-		{ prefix: 'onto.task.', kind: 'task', resultKey: 'task' },
-		{ prefix: 'onto.document.', kind: 'document', resultKey: 'document' },
-		{ prefix: 'onto.project.', kind: 'project', resultKey: 'project' },
-		{ prefix: 'onto.goal.', kind: 'goal', resultKey: 'goal' },
-		{ prefix: 'onto.plan.', kind: 'plan', resultKey: 'plan' },
-		{ prefix: 'onto.milestone.', kind: 'milestone', resultKey: 'milestone' },
-		{ prefix: 'onto.risk.', kind: 'risk', resultKey: 'risk' },
-		{ prefix: 'cal.event.', kind: 'event', resultKey: 'event' }
-	];
-
-	for (const { prefix, kind, resultKey } of entityKeyMap) {
-		if (!params.op.startsWith(prefix)) continue;
-		const entity = params.result[resultKey];
-		if (entity && typeof entity === 'object' && !Array.isArray(entity)) {
-			return metaFromEntityRecord(kind, entity as Record<string, unknown>);
-		}
-	}
-
-	return {};
-}
-
-function compactRecordForAudit(value: unknown): Record<string, unknown> | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) {
-		return null;
-	}
-
-	const record = value as Record<string, unknown>;
-	const compact: Record<string, unknown> = {};
-
-	for (const key of ['id', 'project_id', 'project_name', 'title', 'name']) {
-		const entry = record[key];
-		if (typeof entry === 'string' && entry.trim()) {
-			compact[key] = entry;
-		}
-	}
-
-	return Object.keys(compact).length > 0 ? compact : null;
-}
-
-export function entityKindFromGatewayOp(op: string): string | null {
-	const parts = op.split('.');
-	if (parts[0] === 'onto' && parts[1]) return parts[1];
-	if (parts[0] === 'cal' && parts[1] === 'event') return 'event';
-	if (parts[0] === 'cal' && parts[1] === 'project') return 'calendar';
-	return null;
-}
-
-function buildToolExecutionAuditPayload(params: {
-	response: Record<string, unknown>;
-	canonicalOp: BuildosAgentAllowedOp;
-	result: Record<string, unknown>;
-}): {
-	responsePayload: Record<string, unknown>;
-	entityKind?: string;
-	entityId?: string;
-} {
-	const entityMeta = extractWriteEntityMeta({
-		op: params.canonicalOp,
-		result: params.result
-	});
-	const entityKind = entityMeta.entityKind ?? entityKindFromGatewayOp(params.canonicalOp);
-	const responseMeta =
-		params.response.meta &&
-		typeof params.response.meta === 'object' &&
-		!Array.isArray(params.response.meta)
-			? (params.response.meta as Record<string, unknown>)
-			: null;
-	const resultSummary: Record<string, unknown> = {};
-
-	if (entityKind) {
-		const compactEntity = compactRecordForAudit(params.result[entityKind]);
-		if (compactEntity) {
-			resultSummary[entityKind] = compactEntity;
-		}
-	}
-
-	const compactProject = compactRecordForAudit(params.result.project);
-	if (compactProject) {
-		resultSummary.project = compactProject;
-	}
-
-	for (const countKey of ['total', 'count']) {
-		const value = params.result[countKey];
-		if (typeof value === 'number' && Number.isFinite(value)) {
-			resultSummary[countKey] = value;
-		}
-	}
-
-	if (Array.isArray(params.result.results)) {
-		resultSummary.result_count = params.result.results.length;
-	}
-
-	return {
-		responsePayload: {
-			op: params.response.op ?? params.canonicalOp,
-			ok: params.response.ok === true,
-			result: resultSummary,
-			...(responseMeta ? { meta: responseMeta } : {})
-		},
-		...(entityKind ? { entityKind } : {}),
-		...(entityMeta.entityId ? { entityId: entityMeta.entityId } : {})
-	};
-}
-
-function buildGatewayResponseMeta(params: {
+async function logGatewayCompatibilityAliasUsage(params: {
+	admin: any;
+	userId: string;
+	callerId?: string;
+	callSessionId?: string;
+	scope: AgentCallScope;
 	requestedOp: string;
 	canonicalOp: string;
-	warnings: string[];
-	extra?: Record<string, unknown>;
-}): Record<string, unknown> | undefined {
-	const meta: Record<string, unknown> = {
-		...(params.canonicalOp !== params.requestedOp ? { executed_op: params.canonicalOp } : {}),
-		...(params.warnings.length > 0 ? { warnings: params.warnings } : {}),
-		...(params.extra ?? {})
-	};
-
-	return Object.keys(meta).length > 0 ? meta : undefined;
-}
-
-function buildGatewaySuccessResponse(params: {
-	requestedOp: string;
-	canonicalOp: string;
-	result: Record<string, unknown>;
-	warnings: string[];
-	meta?: Record<string, unknown>;
-}): Record<string, unknown> {
-	const responseMeta = buildGatewayResponseMeta({
-		requestedOp: params.requestedOp,
-		canonicalOp: params.canonicalOp,
-		warnings: params.warnings,
-		extra: params.meta
-	});
-
-	return {
-		op: params.requestedOp,
-		ok: true,
-		result: params.result,
-		...(responseMeta ? { meta: responseMeta } : {})
-	};
-}
-
-async function syncCreatedTaskSideEffects(params: {
-	context: ToolExecutionContext;
-	project: OntologyProjectSummary;
-	actorId: string;
-	task: Record<string, unknown>;
+	opAliasUsed: boolean;
+	argAliasesUsed?: GatewayLegacyArgAliasUsage[];
+	securityEventOptions?: SecurityEventLogOptions;
 }): Promise<void> {
-	const actorDisplayName = 'BuildOS agent';
-	const mentionUserIds = await resolveEntityMentionUserIds({
-		supabase: params.context.admin,
-		projectId: params.project.id,
-		projectOwnerActorId: params.project.owner_actor_id,
-		actorUserId: params.context.userId,
-		nextTextValues: [
-			typeof params.task.title === 'string' ? params.task.title : null,
-			typeof params.task.description === 'string' ? params.task.description : null
-		]
-	});
-
-	await notifyEntityMentionsAdded({
-		supabase: params.context.admin,
-		projectId: params.project.id,
-		projectName: params.project.name,
-		entityType: 'task',
-		entityId: String(params.task.id),
-		entityTitle: typeof params.task.title === 'string' ? params.task.title : null,
-		actorUserId: params.context.userId,
-		actorDisplayName,
-		mentionedUserIds: mentionUserIds,
-		source: 'agent_ping'
-	});
-
-	if (params.context.taskSync) {
-		try {
-			await params.context.taskSync.syncTaskEvents(
-				params.context.userId,
-				params.actorId,
-				params.task as any,
-				{
-					activityLog: {
-						changeSource: 'agent_call',
-						actorContext: getExternalAgentActivityContext(params.context)
-					}
-				}
-			);
-		} catch (eventError) {
-			console.warn(
-				'[External Tool Gateway] Failed to sync task events on create:',
-				eventError
-			);
-		}
+	const argAliasesUsed = params.argAliasesUsed ?? [];
+	if (!params.opAliasUsed && argAliasesUsed.length === 0) {
+		return;
 	}
 
-	await logCreateAsync(
-		params.context.admin,
-		params.project.id,
-		'task',
-		String(params.task.id),
+	await logSecurityEvent(
 		{
-			title: params.task.title,
-			type_key: params.task.type_key,
-			state_key: params.task.state_key
+			eventType: 'agent.tool.alias_used',
+			category: 'agent',
+			outcome: 'info',
+			severity: 'low',
+			actorType: 'external_agent',
+			actorUserId: params.userId,
+			externalAgentCallerId: params.callerId ?? null,
+			sessionId: params.callSessionId ?? null,
+			reason: 'gateway_compatibility_alias',
+			metadata: {
+				requestedOp: params.requestedOp,
+				canonicalOp: params.canonicalOp,
+				scopeMode: params.scope.mode,
+				opAliasUsed: params.opAliasUsed,
+				argAliasesUsed
+			}
 		},
-		params.context.userId,
-		'agent_call',
-		undefined,
-		getExternalAgentActivityContext(params.context)
-	);
-}
-
-async function syncUpdatedTaskSideEffects(params: {
-	context: ToolExecutionContext;
-	project: OntologyProjectSummary;
-	actorId: string;
-	existingTask: Record<string, unknown>;
-	updatedTask: Record<string, unknown>;
-	changedArgs: Record<string, unknown>;
-}): Promise<void> {
-	const isTransitioningToDone =
-		params.changedArgs.state_key !== undefined &&
-		params.existingTask.state_key !== 'done' &&
-		params.updatedTask.state_key === 'done';
-	const isTransitioningFromDone =
-		params.changedArgs.state_key !== undefined &&
-		params.existingTask.state_key === 'done' &&
-		params.updatedTask.state_key !== 'done';
-	const hasSchedulingEdit =
-		params.changedArgs.start_at !== undefined || params.changedArgs.due_at !== undefined;
-	const shouldSyncFromTitleEdit =
-		params.changedArgs.title !== undefined && !isTransitioningFromDone;
-	const shouldSyncEvents = shouldSyncFromTitleEdit || hasSchedulingEdit || isTransitioningToDone;
-
-	if (shouldSyncEvents && params.context.taskSync) {
-		try {
-			await params.context.taskSync.syncTaskEvents(
-				params.context.userId,
-				params.actorId,
-				params.updatedTask as any,
-				{
-					activityLog: {
-						changeSource: 'agent_call',
-						actorContext: getExternalAgentActivityContext(params.context)
-					}
-				}
-			);
-		} catch (eventError) {
-			console.warn(
-				'[External Tool Gateway] Failed to sync task events on update:',
-				eventError
-			);
-		}
-	}
-
-	const actorDisplayName = 'BuildOS agent';
-	const mentionUserIds = await resolveEntityMentionUserIds({
-		supabase: params.context.admin,
-		projectId: params.project.id,
-		projectOwnerActorId: params.project.owner_actor_id,
-		actorUserId: params.context.userId,
-		nextTextValues: [
-			typeof params.updatedTask.title === 'string' ? params.updatedTask.title : null,
-			typeof params.updatedTask.description === 'string'
-				? params.updatedTask.description
-				: null
-		],
-		previousTextValues: [
-			typeof params.existingTask.title === 'string' ? params.existingTask.title : null,
-			typeof params.existingTask.description === 'string'
-				? params.existingTask.description
-				: null
-		]
-	});
-
-	await notifyEntityMentionsAdded({
-		supabase: params.context.admin,
-		projectId: params.project.id,
-		projectName: params.project.name,
-		entityType: 'task',
-		entityId: String(params.updatedTask.id),
-		entityTitle: typeof params.updatedTask.title === 'string' ? params.updatedTask.title : null,
-		actorUserId: params.context.userId,
-		actorDisplayName,
-		mentionedUserIds: mentionUserIds,
-		source: 'agent_ping'
-	});
-
-	await logUpdateAsync(
-		params.context.admin,
-		params.project.id,
-		'task',
-		String(params.updatedTask.id),
-		{
-			title: params.existingTask.title,
-			state_key: params.existingTask.state_key,
-			props: params.existingTask.props
-		},
-		{
-			title: params.updatedTask.title,
-			state_key: params.updatedTask.state_key,
-			props: params.updatedTask.props
-		},
-		params.context.userId,
-		'agent_call',
-		undefined,
-		getExternalAgentActivityContext(params.context)
-	);
-}
-
-async function listCalendarEvents(context: ToolExecutionContext, args: Record<string, unknown>) {
-	const scopedArgs = await resolveExternalCalendarProjectArgs(context, args, 'read');
-	return runCalendarTool(context, scopedArgs, (executor, toolArgs) =>
-		executor.listCalendarEvents(toolArgs as any)
-	);
-}
-
-async function getCalendarEventDetails(
-	context: ToolExecutionContext,
-	args: Record<string, unknown>
-) {
-	if (args.onto_event_id !== undefined) {
-		await assertCalendarEventAccess(context, args.onto_event_id, 'read');
-		return runCalendarTool(context, args, (executor, toolArgs) =>
-			executor.getCalendarEventDetails(toolArgs as any)
-		);
-	}
-
-	const scopedArgs = await resolveExternalCalendarProjectArgs(context, args, 'read');
-	return runCalendarTool(context, scopedArgs, (executor, toolArgs) =>
-		executor.getCalendarEventDetails(toolArgs as any)
-	);
-}
-
-async function createCalendarEvent(context: ToolExecutionContext, args: Record<string, unknown>) {
-	const scopedArgs = await resolveExternalCalendarProjectArgs(context, args, 'write', {
-		allowTaskId: true
-	});
-	return runCalendarTool(context, scopedArgs, (executor, toolArgs) =>
-		executor.createCalendarEvent(toolArgs as any)
-	);
-}
-
-async function updateCalendarEvent(context: ToolExecutionContext, args: Record<string, unknown>) {
-	if (args.onto_event_id !== undefined) {
-		await assertCalendarEventAccess(context, args.onto_event_id, 'write');
-		return runCalendarTool(context, args, (executor, toolArgs) =>
-			executor.updateCalendarEvent(toolArgs as any)
-		);
-	}
-
-	const scopedArgs = await resolveExternalCalendarProjectArgs(context, args, 'write');
-	return runCalendarTool(context, scopedArgs, (executor, toolArgs) =>
-		executor.updateCalendarEvent(toolArgs as any)
-	);
-}
-
-async function deleteCalendarEvent(context: ToolExecutionContext, args: Record<string, unknown>) {
-	if (args.onto_event_id !== undefined) {
-		await assertCalendarEventAccess(context, args.onto_event_id, 'write');
-		return runCalendarTool(context, args, (executor, toolArgs) =>
-			executor.deleteCalendarEvent(toolArgs as any)
-		);
-	}
-
-	const scopedArgs = await resolveExternalCalendarProjectArgs(context, args, 'write');
-	return runCalendarTool(context, scopedArgs, (executor, toolArgs) =>
-		executor.deleteCalendarEvent(toolArgs as any)
-	);
-}
-
-async function getProjectCalendar(context: ToolExecutionContext, args: Record<string, unknown>) {
-	const scopedArgs = await resolveExternalCalendarProjectArgs(context, args, 'read');
-	const result = await runCalendarTool(context, scopedArgs, (executor, toolArgs) =>
-		executor.getProjectCalendar(toolArgs as any)
-	);
-	return Object.keys(result).length === 1 &&
-		Object.prototype.hasOwnProperty.call(result, 'result')
-		? { calendar: result.result ?? null }
-		: { calendar: result };
-}
-
-async function setProjectCalendar(context: ToolExecutionContext, args: Record<string, unknown>) {
-	const scopedArgs = await resolveExternalCalendarProjectArgs(context, args, 'write');
-	return runCalendarTool(context, scopedArgs, (executor, toolArgs) =>
-		executor.setProjectCalendar(toolArgs as any)
+		{ ...(params.securityEventOptions ?? {}), supabase: params.admin }
 	);
 }
 
@@ -1847,458 +1083,6 @@ async function getProject(context: ToolExecutionContext, args: Record<string, un
 			access_level: project.access_level
 		},
 		snapshot: data ?? null
-	};
-}
-
-function clampInteger(value: unknown, fallback: number, min: number, max: number): number {
-	if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
-	return Math.min(max, Math.max(min, Math.floor(value)));
-}
-
-function addDays(date: Date, days: number): Date {
-	return new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
-}
-
-function parseDateMs(value: unknown): number | null {
-	if (typeof value !== 'string' || !value.trim()) return null;
-	const parsed = Date.parse(value);
-	return Number.isFinite(parsed) ? parsed : null;
-}
-
-function pluralizeCount(count: number, label: string): string {
-	return `${count} ${label}${count === 1 ? '' : 's'}`;
-}
-
-function extractProjectStatusTitle(value: unknown): string | null {
-	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-	const record = value as Record<string, unknown>;
-	const candidate =
-		record.title ?? record.name ?? record.summary ?? record.text ?? record.display_name;
-	return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : null;
-}
-
-function buildProjectStatusCandidates(projects: OntologyProjectSummary[]) {
-	return projects.slice(0, 8).map((project) => ({
-		project_id: project.id,
-		name: project.name,
-		state_key: project.state_key,
-		updated_at: project.updated_at
-	}));
-}
-
-function isProjectStatusTaskComplete(row: Record<string, unknown>): boolean {
-	if (typeof row.completed_at === 'string' && row.completed_at.trim()) return true;
-	const stateKey = typeof row.state_key === 'string' ? row.state_key.trim().toLowerCase() : '';
-	return ['done', 'completed', 'closed', 'archived', 'cancelled', 'canceled'].includes(stateKey);
-}
-
-function serializeProjectStatusTask(row: Record<string, unknown>) {
-	return {
-		id: typeof row.id === 'string' ? row.id : null,
-		title: typeof row.title === 'string' ? row.title : null,
-		state_key: typeof row.state_key === 'string' ? row.state_key : null,
-		priority: typeof row.priority === 'number' ? row.priority : null,
-		due_at: typeof row.due_at === 'string' ? row.due_at : null,
-		updated_at: typeof row.updated_at === 'string' ? row.updated_at : null
-	};
-}
-
-function serializeProjectStatusEvent(row: Record<string, unknown>) {
-	return {
-		id: typeof row.id === 'string' ? row.id : null,
-		title: typeof row.title === 'string' ? row.title : null,
-		start_at: typeof row.start_at === 'string' ? row.start_at : null,
-		end_at: typeof row.end_at === 'string' ? row.end_at : null,
-		state_key: typeof row.state_key === 'string' ? row.state_key : null,
-		location: typeof row.location === 'string' ? row.location : null
-	};
-}
-
-function serializeProjectStatusChange(row: Record<string, unknown>) {
-	const afterData =
-		row.after_data && typeof row.after_data === 'object' && !Array.isArray(row.after_data)
-			? (row.after_data as Record<string, unknown>)
-			: null;
-	const beforeData =
-		row.before_data && typeof row.before_data === 'object' && !Array.isArray(row.before_data)
-			? (row.before_data as Record<string, unknown>)
-			: null;
-	return {
-		entity_type: typeof row.entity_type === 'string' ? row.entity_type : null,
-		entity_id: typeof row.entity_id === 'string' ? row.entity_id : null,
-		action: typeof row.action === 'string' ? row.action : null,
-		title: extractProjectStatusTitle(afterData) ?? extractProjectStatusTitle(beforeData),
-		changed_at: typeof row.created_at === 'string' ? row.created_at : null,
-		change_source: typeof row.change_source === 'string' ? row.change_source : null
-	};
-}
-
-function extractProjectStatusActor(value: unknown): Record<string, unknown> | null {
-	if (!value) return null;
-	if (Array.isArray(value)) {
-		const first = value[0];
-		return first && typeof first === 'object' && !Array.isArray(first)
-			? (first as Record<string, unknown>)
-			: null;
-	}
-	return typeof value === 'object' ? (value as Record<string, unknown>) : null;
-}
-
-function serializeProjectStatusCollaborator(row: Record<string, unknown>, currentActorId: string) {
-	const actor = extractProjectStatusActor(row.actor);
-	const actorId = typeof row.actor_id === 'string' ? row.actor_id : null;
-	const name = typeof actor?.name === 'string' && actor.name.trim() ? actor.name.trim() : null;
-	const email =
-		typeof actor?.email === 'string' && actor.email.trim() ? actor.email.trim() : null;
-	const displayName = name ?? email ?? (actorId === currentActorId ? 'You' : 'Project member');
-
-	return {
-		id: typeof row.id === 'string' ? row.id : null,
-		actor_id: actorId,
-		display_name: displayName,
-		email,
-		role_key: typeof row.role_key === 'string' ? row.role_key : null,
-		role_name:
-			typeof row.role_name === 'string' && row.role_name.trim() ? row.role_name.trim() : null,
-		role_description:
-			typeof row.role_description === 'string' && row.role_description.trim()
-				? row.role_description.trim()
-				: null,
-		access: typeof row.access === 'string' ? row.access : null,
-		is_current_user: actorId === currentActorId,
-		joined_at: typeof row.created_at === 'string' ? row.created_at : null
-	};
-}
-
-function sortProjectStatusCollaborators(
-	currentActorId: string,
-	left: Record<string, unknown>,
-	right: Record<string, unknown>
-) {
-	const leftActorId = typeof left.actor_id === 'string' ? left.actor_id : null;
-	const rightActorId = typeof right.actor_id === 'string' ? right.actor_id : null;
-	if (leftActorId === currentActorId && rightActorId !== currentActorId) return -1;
-	if (rightActorId === currentActorId && leftActorId !== currentActorId) return 1;
-
-	const roleOrder: Record<string, number> = { owner: 0, editor: 1, viewer: 2 };
-	const leftRole = typeof left.role_key === 'string' ? left.role_key : '';
-	const rightRole = typeof right.role_key === 'string' ? right.role_key : '';
-	const roleDelta = (roleOrder[leftRole] ?? 99) - (roleOrder[rightRole] ?? 99);
-	if (roleDelta !== 0) return roleDelta;
-
-	const leftName = serializeProjectStatusCollaborator(left, currentActorId).display_name;
-	const rightName = serializeProjectStatusCollaborator(right, currentActorId).display_name;
-	return leftName.localeCompare(rightName);
-}
-
-function compareByDate(field: string, ascending: boolean) {
-	return (left: Record<string, unknown>, right: Record<string, unknown>) => {
-		const leftMs = parseDateMs(left[field]) ?? (ascending ? Number.POSITIVE_INFINITY : 0);
-		const rightMs = parseDateMs(right[field]) ?? (ascending ? Number.POSITIVE_INFINITY : 0);
-		return ascending ? leftMs - rightMs : rightMs - leftMs;
-	};
-}
-
-async function resolveProjectStatusTarget(
-	context: ToolExecutionContext,
-	args: Record<string, unknown>
-): Promise<{
-	visible: VisibleProjectContext;
-	project: OntologyProjectSummary;
-	query: string | null;
-}> {
-	const visible = await loadVisibleProjects(context);
-	const projectId = typeof args.project_id === 'string' ? args.project_id.trim() : '';
-	if (projectId) {
-		return {
-			visible,
-			project: assertAccessibleProject(visible.projectMap, projectId),
-			query: null
-		};
-	}
-
-	const query = typeof args.query === 'string' ? args.query.trim() : '';
-	if (query) {
-		const normalizedQuery = query.toLowerCase();
-		const exactMatches = visible.projects.filter(
-			(project) => project.name.trim().toLowerCase() === normalizedQuery
-		);
-		const matches =
-			exactMatches.length > 0
-				? exactMatches
-				: visible.projects.filter((project) => {
-						const haystack =
-							`${project.name} ${project.description ?? ''}`.toLowerCase();
-						return haystack.includes(normalizedQuery);
-					});
-
-		if (matches.length === 1) {
-			return { visible, project: matches[0]!, query };
-		}
-		if (matches.length === 0) {
-			throw new ExternalToolGatewayError(
-				'NOT_FOUND',
-				`No accessible project matched "${query}".`,
-				{
-					candidates: buildProjectStatusCandidates(visible.projects)
-				}
-			);
-		}
-		throw new ExternalToolGatewayError(
-			'VALIDATION_ERROR',
-			`Multiple accessible projects matched "${query}". Pass project_id.`,
-			{ candidates: buildProjectStatusCandidates(matches) }
-		);
-	}
-
-	if (visible.projects.length === 1) {
-		return { visible, project: visible.projects[0]!, query: null };
-	}
-
-	throw new ExternalToolGatewayError(
-		'VALIDATION_ERROR',
-		'project_id is required when more than one project is visible',
-		{ candidates: buildProjectStatusCandidates(visible.projects) }
-	);
-}
-
-async function loadProjectStatusTasks(params: {
-	context: ToolExecutionContext;
-	projectId: string;
-	now: Date;
-	dueSoonDays: number;
-	taskLimit: number;
-}) {
-	const horizonIso = addDays(params.now, params.dueSoonDays).toISOString();
-	const { data, error } = await params.context.admin
-		.from('onto_tasks')
-		.select('id, project_id, title, state_key, priority, due_at, completed_at, updated_at')
-		.eq('project_id', params.projectId)
-		.is('deleted_at', null)
-		.is('archived_at', null)
-		.lte('due_at', horizonIso)
-		.order('due_at', { ascending: true })
-		.limit(params.taskLimit * 4);
-
-	if (error) {
-		throw new ExternalToolGatewayError(
-			'INTERNAL',
-			error.message || 'Failed to load project due tasks'
-		);
-	}
-
-	const nowMs = params.now.getTime();
-	const horizonMs = addDays(params.now, params.dueSoonDays).getTime();
-	const activeDueTasks = ((data ?? []) as Array<Record<string, unknown>>)
-		.filter((row) => !isProjectStatusTaskComplete(row))
-		.filter((row) => {
-			const dueMs = parseDateMs(row.due_at);
-			return dueMs !== null && dueMs <= horizonMs;
-		});
-
-	return {
-		overdue_tasks: activeDueTasks
-			.filter((row) => {
-				const dueMs = parseDateMs(row.due_at);
-				return dueMs !== null && dueMs < nowMs;
-			})
-			.slice(0, params.taskLimit)
-			.map(serializeProjectStatusTask),
-		due_soon_tasks: activeDueTasks
-			.filter((row) => {
-				const dueMs = parseDateMs(row.due_at);
-				return dueMs !== null && dueMs >= nowMs;
-			})
-			.slice(0, params.taskLimit)
-			.map(serializeProjectStatusTask)
-	};
-}
-
-async function loadProjectStatusEvents(params: {
-	context: ToolExecutionContext;
-	projectId: string;
-	now: Date;
-	upcomingDays: number;
-	eventLimit: number;
-}) {
-	const nowIso = params.now.toISOString();
-	const horizonIso = addDays(params.now, params.upcomingDays).toISOString();
-	const { data, error } = await params.context.admin
-		.from('onto_events')
-		.select('id, project_id, title, state_key, start_at, end_at, location, updated_at')
-		.eq('project_id', params.projectId)
-		.is('deleted_at', null)
-		.gte('start_at', nowIso)
-		.lte('start_at', horizonIso)
-		.order('start_at', { ascending: true })
-		.limit(params.eventLimit);
-
-	if (error) {
-		throw new ExternalToolGatewayError(
-			'INTERNAL',
-			error.message || 'Failed to load project upcoming events'
-		);
-	}
-
-	return ((data ?? []) as Array<Record<string, unknown>>)
-		.sort(compareByDate('start_at', true))
-		.slice(0, params.eventLimit)
-		.map(serializeProjectStatusEvent);
-}
-
-async function loadProjectStatusRecentChanges(params: {
-	context: ToolExecutionContext;
-	projectId: string;
-	recentLimit: number;
-}) {
-	const { data, error } = await params.context.admin
-		.from('onto_project_logs')
-		.select(
-			'entity_type, entity_id, action, created_at, before_data, after_data, change_source'
-		)
-		.eq('project_id', params.projectId)
-		.order('created_at', { ascending: false })
-		.limit(params.recentLimit);
-
-	if (error) {
-		throw new ExternalToolGatewayError(
-			'INTERNAL',
-			error.message || 'Failed to load project recent changes'
-		);
-	}
-
-	return ((data ?? []) as Array<Record<string, unknown>>)
-		.sort(compareByDate('created_at', false))
-		.slice(0, params.recentLimit)
-		.map(serializeProjectStatusChange);
-}
-
-async function loadProjectStatusCollaborators(params: {
-	context: ToolExecutionContext;
-	projectId: string;
-	collaboratorLimit: number;
-}) {
-	const currentActorId = await ensureActorId(params.context.admin, params.context.userId);
-	const { data, error, count } = await params.context.admin
-		.from('onto_project_members')
-		.select(
-			'id, project_id, actor_id, role_key, access, role_name, role_description, created_at, actor:onto_actors!onto_project_members_actor_id_fkey(id, user_id, name, email)',
-			{ count: 'exact' }
-		)
-		.eq('project_id', params.projectId)
-		.is('removed_at', null)
-		.order('created_at', { ascending: true })
-		.limit(params.collaboratorLimit + 1);
-
-	if (error) {
-		throw new ExternalToolGatewayError(
-			'INTERNAL',
-			error.message || 'Failed to load project collaborators'
-		);
-	}
-
-	const rows = ((data ?? []) as Array<Record<string, unknown>>).sort((left, right) =>
-		sortProjectStatusCollaborators(currentActorId, left, right)
-	);
-	const visibleRows = rows.slice(0, params.collaboratorLimit);
-	const totalCount = typeof count === 'number' ? count : rows.length;
-
-	return {
-		count: totalCount,
-		shown: visibleRows.length,
-		truncated: totalCount > visibleRows.length,
-		members: visibleRows.map((row) => serializeProjectStatusCollaborator(row, currentActorId))
-	};
-}
-
-async function getProjectStatus(context: ToolExecutionContext, args: Record<string, unknown>) {
-	const { project, query } = await resolveProjectStatusTarget(context, args);
-	const now = new Date();
-	const recentLimit = clampInteger(args.recent_limit, 8, 1, 20);
-	const taskLimit = clampInteger(args.task_limit, 8, 1, 20);
-	const eventLimit = clampInteger(args.event_limit, 8, 1, 20);
-	const collaboratorLimit = clampInteger(args.collaborator_limit, 20, 1, 50);
-	const dueSoonDays = clampInteger(args.due_soon_days, 7, 1, 60);
-	const upcomingDays = clampInteger(args.upcoming_days, 14, 1, 90);
-
-	const [changes, taskStatus, upcomingEvents, collaborators] = await Promise.all([
-		loadProjectStatusRecentChanges({
-			context,
-			projectId: project.id,
-			recentLimit
-		}),
-		loadProjectStatusTasks({
-			context,
-			projectId: project.id,
-			now,
-			dueSoonDays,
-			taskLimit
-		}),
-		loadProjectStatusEvents({
-			context,
-			projectId: project.id,
-			now,
-			upcomingDays,
-			eventLimit
-		}),
-		loadProjectStatusCollaborators({
-			context,
-			projectId: project.id,
-			collaboratorLimit
-		})
-	]);
-
-	const counts = {
-		tasks: project.task_count ?? 0,
-		documents: project.document_count ?? 0,
-		plans: project.plan_count ?? 0,
-		goals: project.goal_count ?? 0,
-		collaborators: collaborators.count
-	};
-	const countSummary = [
-		pluralizeCount(counts.tasks, 'task'),
-		pluralizeCount(counts.documents, 'document'),
-		pluralizeCount(counts.plans, 'plan'),
-		pluralizeCount(counts.goals, 'goal'),
-		pluralizeCount(counts.collaborators, 'collaborator')
-	].join(', ');
-
-	return {
-		generated_at: now.toISOString(),
-		scope: 'project',
-		project: {
-			id: project.id,
-			name: project.name,
-			description: project.description,
-			type_key: project.type_key,
-			state_key: project.state_key,
-			updated_at: project.updated_at,
-			access_role: project.access_role,
-			access_level: project.access_level
-		},
-		overview: {
-			short_description: project.description ?? '',
-			counts,
-			count_summary: `${project.name} has ${countSummary}.`,
-			next_step_short: project.next_step_short ?? null
-		},
-		collaborators,
-		recent_changes: changes,
-		upcoming: {
-			overdue_tasks: taskStatus.overdue_tasks,
-			due_soon_tasks: taskStatus.due_soon_tasks,
-			upcoming_events: upcomingEvents,
-			windows: {
-				due_soon_days: dueSoonDays,
-				upcoming_days: upcomingDays
-			}
-		},
-		match: {
-			status: 'resolved',
-			project_id: project.id,
-			query
-		},
-		message: `Project status prepared for ${project.name}.`
 	};
 }
 
@@ -5329,25 +4113,6 @@ export function buildExternalGatewayRegistry(
 	};
 }
 
-export function buildExecError(
-	requestedOp: string,
-	code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'FORBIDDEN' | 'CONFLICT' | 'INTERNAL',
-	message: string,
-	helpPath?: string,
-	details?: Record<string, unknown>
-) {
-	return {
-		op: requestedOp,
-		ok: false,
-		error: {
-			code,
-			message,
-			...(helpPath ? { help_path: helpPath } : {}),
-			...(details ? { details } : {})
-		}
-	};
-}
-
 export async function executeGatewayOp(params: {
 	admin: any;
 	userId: string;
@@ -5373,10 +4138,40 @@ export async function executeGatewayOp(params: {
 		return buildExecError('', 'VALIDATION_ERROR', 'Missing op', 'root');
 	}
 
-	const canonicalOp = normalizeGatewayOpName(requestedOp);
+	const opAlias = resolveGatewayOpAlias(requestedOp);
+	const canonicalOp = opAlias.canonicalOp;
 	const allowedOps = params.scope.allowed_ops ?? defaultAllowedOpsForMode(params.scope.mode);
+	if (opAlias.usedAlias) {
+		await logGatewayCompatibilityAliasUsage({
+			admin: params.admin,
+			userId: params.userId,
+			callerId: params.callerId,
+			callSessionId: params.callSessionId,
+			scope: params.scope,
+			requestedOp,
+			canonicalOp,
+			opAliasUsed: true,
+			securityEventOptions: params.securityEventOptions
+		});
+		return buildExecError(requestedOp, 'NOT_FOUND', `Unknown op: ${requestedOp}`, 'root', {
+			canonical_op: canonicalOp,
+			reason: 'legacy_op_alias_removed'
+		});
+	}
 	const entry = registry.ops[canonicalOp];
 	if (!entry) {
+		await logGatewayCompatibilityAliasUsage({
+			admin: params.admin,
+			userId: params.userId,
+			callerId: params.callerId,
+			callSessionId: params.callSessionId,
+			scope: params.scope,
+			requestedOp,
+			canonicalOp,
+			opAliasUsed: opAlias.usedAlias,
+			securityEventOptions: params.securityEventOptions
+		});
+
 		if (isSupportedOp(canonicalOp)) {
 			await logSecurityEvent(
 				{
@@ -5418,7 +4213,20 @@ export async function executeGatewayOp(params: {
 	const preparedArgs = normalizeAndValidateGatewayArgs({
 		op: canonicalOp as BuildosAgentAllowedOp,
 		args: input.args,
-		schema: entry.parameters_schema
+		schema: entry.parameters_schema,
+		allowLegacyAliases: false
+	});
+	await logGatewayCompatibilityAliasUsage({
+		admin: params.admin,
+		userId: params.userId,
+		callerId: params.callerId,
+		callSessionId: params.callSessionId,
+		scope: params.scope,
+		requestedOp,
+		canonicalOp,
+		opAliasUsed: opAlias.usedAlias,
+		argAliasesUsed: preparedArgs.legacyAliasesUsed,
+		securityEventOptions: params.securityEventOptions
 	});
 	if (!preparedArgs.ok) {
 		return buildExecError(
@@ -5688,6 +4496,8 @@ export async function executeGatewayOp(params: {
 
 export async function loadStageBeforeSnapshot(params: {
 	admin: any;
+	userId: string;
+	scope: AgentCallScope;
 	entityKind: string;
 	args: Record<string, unknown>;
 }): Promise<{ entityId?: string; before?: Record<string, unknown> }> {
@@ -5703,18 +4513,50 @@ export async function loadStageBeforeSnapshot(params: {
 		return {};
 	}
 
-	const entityId = idVal;
-	let before: Record<string, unknown> | undefined;
-	try {
-		const { data } = await params.admin
-			.from(cfg.table)
-			.select(cfg.select)
-			.eq('id', idVal)
-			.maybeSingle();
-		before = (data as Record<string, unknown> | null) ?? undefined;
-	} catch {
-		before = undefined;
+	const entityId = assertValidId(idVal, cfg.idArg);
+	const visible = await loadVisibleProjects({
+		admin: params.admin,
+		userId: params.userId,
+		scope: params.scope
+	});
+	const projectIds = getProjectIdsForVisibleContext(visible);
+	if (projectIds.length === 0) {
+		throw new ExternalToolGatewayError('NOT_FOUND', `${params.entityKind} not found`);
 	}
+
+	let query = params.admin.from(cfg.table).select(cfg.select).eq('id', entityId);
+	query =
+		params.entityKind === 'project'
+			? query.in('id', projectIds)
+			: query.in('project_id', projectIds);
+	if (ARCHIVABLE_ENTITY_KINDS.has(params.entityKind as ExternalLinkEntityKind)) {
+		const archivedAtUpdate = normalizeArchivedUpdate(params.args.archived);
+		if (archivedAtUpdate !== null) {
+			query = query.is('archived_at', null);
+		}
+	}
+
+	const { data, error } = await query.maybeSingle();
+	if (error) {
+		throw new ExternalToolGatewayError(
+			'INTERNAL',
+			error.message || `Failed to load ${params.entityKind}`
+		);
+	}
+	if (!data) {
+		throw new ExternalToolGatewayError('NOT_FOUND', `${params.entityKind} not found`);
+	}
+
+	const before = data as Record<string, unknown>;
+	const projectId = params.entityKind === 'project' ? entityId : before.project_id;
+	if (typeof projectId !== 'string') {
+		throw new ExternalToolGatewayError('INTERNAL', 'Entity project_id is invalid');
+	}
+	const project = visible.projects.find((candidate) => candidate.id === projectId);
+	if (!project) {
+		throw new ExternalToolGatewayError('NOT_FOUND', `${params.entityKind} not found`);
+	}
+	assertProjectWriteAccess(project);
 
 	return { entityId, before };
 }

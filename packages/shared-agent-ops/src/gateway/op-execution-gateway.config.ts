@@ -316,13 +316,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			content: {
 				type: 'string',
-				description:
-					'Markdown body, stored as-is (up to 200 KB). Use content or body_markdown.'
-			},
-			body_markdown: {
-				type: 'string',
-				description:
-					'Legacy alias for content. Accepted for compatibility with internal document tools.'
+				description: 'Markdown body, stored as-is (up to 200 KB).'
 			},
 			description: {
 				type: ['string', 'null'],
@@ -340,11 +334,6 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			parent_document_id: {
 				type: ['string', 'null'],
 				description: 'Optional parent document UUID for tree placement.'
-			},
-			parent_id: {
-				type: ['string', 'null'],
-				description:
-					'Legacy alias for parent_document_id. Accepted for compatibility with create_onto_document tool naming.'
 			},
 			position: {
 				type: 'integer',
@@ -371,13 +360,7 @@ export const EXTERNAL_WRITE_OP_SCHEMAS: Partial<
 			},
 			content: {
 				type: 'string',
-				description:
-					'Optional replacement or appended markdown body. Use content or body_markdown.'
-			},
-			body_markdown: {
-				type: 'string',
-				description:
-					'Legacy alias for content. Accepted for compatibility with internal document tools.'
+				description: 'Optional replacement or appended markdown body.'
 			},
 			description: {
 				type: ['string', 'null'],

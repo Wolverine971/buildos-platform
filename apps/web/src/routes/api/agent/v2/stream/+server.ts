@@ -2,11 +2,9 @@
 /**
  * Fast Agentic Chat V2 Streaming Endpoint
  *
- * Minimal SSE path optimized for speed:
- * - Lightweight prompt builder
- * - Last-N message history
- * - Streaming LLM with direct/gateway tools, but no planner loop
- * - Async persistence
+ * Live product path for request normalization, scope/context/prepared-prompt
+ * resolution, LLM/tool streaming with supervisor checkpoint/resume, and turn
+ * persistence/telemetry.
  */
 
 // SSE streaming session — needs full duration + room for tool execution.
@@ -18,7 +16,6 @@ export const config = {
 import type { RequestHandler } from './$types';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { dev } from '$app/environment';
-import { env as privateEnv } from '$env/dynamic/private';
 import { ApiResponse } from '$lib/utils/api-response';
 import { SSEResponse } from '$lib/utils/sse-response';
 import { createLogger } from '$lib/utils/logger';
@@ -31,11 +28,8 @@ import {
 } from '$lib/server/error-tracking';
 import { OpenRouterV2Service } from '$lib/services/openrouter-v2-service';
 import type { OpenRouterContentPart } from '$lib/services/openrouter-v2/types';
-import { isValidUUID } from '$lib/utils/operations/validation-utils';
-import { normalizeTimingMetricSessionReference } from '$lib/services/agentic-chat/shared/timing-metrics';
 import type {
 	ChatContextType,
-	ChatAttachmentRef,
 	ChatToolCall,
 	ChatToolDefinition,
 	ChatToolResult,
@@ -43,7 +37,6 @@ import type {
 	ContextUsageSnapshot,
 	Database,
 	Json,
-	LastTurnContext,
 	AgentTimingSummary
 } from '@buildos/shared-types';
 import type { ServiceContext } from '$lib/services/agentic-chat/shared/types';
@@ -84,11 +77,9 @@ import {
 import {
 	createFastChatSessionService,
 	appendAttachmentContextToMessage,
-	assessLiveVisionImageEligibility,
 	buildAttachmentOnlyDisplayText,
 	buildLiveVisionContentParts,
 	buildFastContextUsageSnapshot,
-	createChatAttachmentRefFromAsset,
 	loadFastChatPromptContext,
 	normalizeChatAttachmentRefs,
 	composeFastChatHistory,
@@ -98,9 +89,7 @@ import {
 	selectFastChatTools,
 	shouldUseLiveVisionForTurn,
 	streamFastChat,
-	type ChatAttachmentAssetRow,
 	type FastAgentStreamRequest,
-	type FastAgentStreamRequestInput,
 	type FastChatHistoryMessage
 } from '$lib/services/agentic-chat-v2';
 import {
@@ -109,6 +98,12 @@ import {
 	resolveEffectiveEntityId,
 	resolveEffectiveProjectId
 } from '$lib/services/agentic-chat-v2/scope';
+import {
+	createLiveVisionSignedImages,
+	loadValidatedChatAttachments,
+	resolveChatAttachmentProjectId,
+	type ValidatedChatAttachments
+} from '$lib/services/agentic-chat-v2/stream-attachments';
 import type { FastChatHistoryCompositionResult } from '$lib/services/agentic-chat-v2/history-composer';
 import type { LLMStreamPassMetadata } from '$lib/services/agentic-chat-v2/stream-orchestrator/shared';
 import {
@@ -128,20 +123,16 @@ import {
 	mergeDomainSessionState,
 	readDomainSessionState
 } from '$lib/services/agentic-chat/tools/domains/domain-session-state';
+import { buildEntityResolutionHint } from '$lib/services/agentic-chat-v2/entity-resolution';
 import {
-	buildEntityResolutionHint,
-	extractExplicitEntityMentionsFromText
-} from '$lib/services/agentic-chat-v2/entity-resolution';
-import {
-	normalizeExactEntityId,
-	shouldCollectExactEntityReferencesFromToolName
-} from '$lib/services/agentic-chat-v2/exact-entity-id';
+	buildLastTurnContext,
+	buildLastTurnContinuityHint
+} from '$lib/services/agentic-chat-v2/last-turn-context';
 import {
 	buildPromptSnapshotRow,
 	buildPromptSnapshotSections,
 	buildToolCallEventPayload,
 	buildToolResultEventPayload as buildTurnEventToolResultPayload,
-	deriveFirstLane,
 	extractFastChatToolCallMeta
 } from '$lib/services/agentic-chat-v2/prompt-observability';
 import { buildPromptCostBreakdown } from '$lib/services/agentic-chat-v2/prompt-cost-breakdown';
@@ -176,6 +167,7 @@ import {
 } from '$lib/services/agentic-chat-v2/cancel-reason-channel';
 import { parseFastAgentStreamRequestBody } from '$lib/services/agentic-chat-v2/stream-request';
 import { isRunningTurnUniqueViolation } from '$lib/services/agentic-chat-v2/turn-run-conflicts';
+import { TurnObservabilityWriter } from '$lib/services/agentic-chat-v2/turn-observability-writer';
 import { sanitizeAssistantFinalText } from '$lib/services/agentic-chat-v2/stream-orchestrator/assistant-text-sanitization';
 import {
 	buildCheckpointResumeSystemMessage,
@@ -187,18 +179,10 @@ import {
 	restoreCheckpointToActive,
 	type ChatTurnCheckpoint
 } from '$lib/services/agentic-chat-v2/turn-supervisor';
-import { createAdminSupabaseClient } from '$lib/supabase/admin';
 
 const logger = createLogger('API:AgentStreamV2');
 
 type FastChatSupabaseClient = SupabaseClient<Database>;
-
-// `agentic_chat_prepared_prompts` (migration 20260502000002) is not yet in the
-// generated Database types. Regenerate with `pnpm gen:types`, then query the
-// typed client directly and delete this shim.
-type PreparedPromptsTableClient = {
-	from(table: 'agentic_chat_prepared_prompts'): any;
-};
 
 const FASTCHAT_STREAM_ENDPOINT = '/api/agent/v2/stream';
 const FASTCHAT_STREAM_METHOD = 'POST';
@@ -328,10 +312,6 @@ function parseBooleanFlag(value: string | undefined, fallback: boolean): boolean
 	if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
 	if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
 	return fallback;
-}
-
-function readRuntimeEnv(name: string): string | undefined {
-	return privateEnv[name] ?? process.env[name];
 }
 
 function countBy(values: readonly string[]): Record<string, number> {
@@ -519,360 +499,6 @@ function startFastChatCancelWatcher(params: {
 	};
 }
 
-function resolveChatAttachmentProjectId(
-	contextType: ChatContextType,
-	streamRequest: FastAgentStreamRequest
-): string | null {
-	return resolveEffectiveProjectId({
-		contextType,
-		entityId: streamRequest.entity_id,
-		projectFocus: streamRequest.projectFocus
-	});
-}
-
-async function loadValidatedChatAttachments(params: {
-	supabase: FastChatSupabaseClient;
-	userId: string;
-	projectId: string | null;
-	attachments: ChatAttachmentRef[];
-	errorLogger?: ErrorLoggerService;
-}): Promise<
-	{ attachments: ChatAttachmentRef[]; assets: ChatAttachmentAssetRow[] } | { error: Response }
-> {
-	const projectAttachments = params.attachments.filter(
-		(attachment) => attachment.attachment_kind === 'onto_asset'
-	);
-	const temporaryAttachments = params.attachments.filter(
-		(attachment) => attachment.attachment_kind === 'temporary_file'
-	);
-
-	if (projectAttachments.length > 0 && !params.projectId) {
-		return {
-			error: ApiResponse.badRequest(
-				'Project image attachments require a project chat context'
-			)
-		};
-	}
-
-	const attachmentKeys = params.attachments.map((attachment) =>
-		attachment.attachment_kind === 'temporary_file'
-			? `temporary:${attachment.temporary_attachment_id ?? ''}`
-			: `asset:${attachment.asset_id ?? ''}`
-	);
-	if (
-		new Set(attachmentKeys).size !== attachmentKeys.length ||
-		attachmentKeys.some((key) => key.endsWith(':'))
-	) {
-		return { error: ApiResponse.badRequest('Duplicate chat attachments are not allowed') };
-	}
-
-	const projectAssetsById = new Map<string, ChatAttachmentAssetRow>();
-	if (projectAttachments.length > 0 && params.projectId) {
-		const accessResult = await checkProjectAccess(
-			params.supabase,
-			params.projectId,
-			params.errorLogger,
-			{
-				userId: params.userId,
-				endpoint: FASTCHAT_STREAM_ENDPOINT,
-				httpMethod: FASTCHAT_STREAM_METHOD
-			}
-		);
-
-		if (!accessResult.allowed) {
-			return { error: ApiResponse.forbidden('Access denied for the selected project.') };
-		}
-
-		const assetIds = projectAttachments.map((attachment) => String(attachment.asset_id));
-		const { data, error } = await params.supabase
-			.from('onto_assets')
-			.select(
-				'id, project_id, storage_bucket, storage_path, original_filename, content_type, file_size_bytes, width, height, checksum_sha256, ocr_status, extraction_summary, extracted_text'
-			)
-			.in('id', assetIds)
-			.eq('project_id', params.projectId)
-			.eq('kind', 'image')
-			.is('deleted_at', null);
-
-		if (error) {
-			return { error: ApiResponse.databaseError(error) };
-		}
-
-		for (const asset of (data ?? []) as ChatAttachmentAssetRow[]) {
-			projectAssetsById.set(asset.id, asset);
-		}
-		if (projectAssetsById.size !== assetIds.length) {
-			return {
-				error: ApiResponse.forbidden('One or more image attachments are unavailable')
-			};
-		}
-	}
-
-	const storageAdmin = temporaryAttachments.length > 0 ? createAdminSupabaseClient() : null;
-	const orderedAttachments: ChatAttachmentRef[] = [];
-	const orderedAssets: ChatAttachmentAssetRow[] = [];
-
-	for (const [index, attachment] of params.attachments.entries()) {
-		if (attachment.attachment_kind === 'onto_asset') {
-			const asset = projectAssetsById.get(String(attachment.asset_id));
-			if (!asset) {
-				return {
-					error: ApiResponse.forbidden('One or more image attachments are unavailable')
-				};
-			}
-			orderedAssets.push(asset);
-			orderedAttachments.push(
-				createChatAttachmentRefFromAsset(
-					asset,
-					{
-						...attachment,
-						display_order: attachment.display_order ?? index,
-						role: 'analysis_target'
-					},
-					{ maxExtractedTextChars: FASTCHAT_ATTACHMENT_TEXT_MAX_CHARS }
-				)
-			);
-			continue;
-		}
-
-		const temporaryAttachmentId = attachment.temporary_attachment_id?.trim();
-		const storageBucket = attachment.storage_bucket?.trim();
-		const storagePath = attachment.storage_path?.trim();
-		const contentType = attachment.content_type?.trim().toLowerCase() ?? '';
-		const fileSizeBytes = Number(attachment.file_size_bytes ?? 0);
-		const expectedPrefix = `${FASTCHAT_TEMP_ATTACHMENT_PATH_PREFIX}/${params.userId}/chat-temp/${temporaryAttachmentId}/`;
-		if (
-			!temporaryAttachmentId ||
-			storageBucket !== FASTCHAT_CHAT_ATTACHMENT_STORAGE_BUCKET ||
-			!storagePath ||
-			!storagePath.startsWith(expectedPrefix) ||
-			!contentType.startsWith('image/') ||
-			!Number.isFinite(fileSizeBytes) ||
-			fileSizeBytes <= 0 ||
-			fileSizeBytes > FASTCHAT_TEMP_IMAGE_MAX_BYTES
-		) {
-			return { error: ApiResponse.badRequest('Invalid temporary image attachment') };
-		}
-
-		const pathParts = storagePath.split('/');
-		const filename = pathParts.pop();
-		const folder = pathParts.join('/');
-		if (!filename || !storageAdmin) {
-			return { error: ApiResponse.badRequest('Invalid temporary image attachment') };
-		}
-		const { data: listed, error: listError } = await storageAdmin.storage
-			.from(storageBucket)
-			.list(folder, { limit: 1, search: filename });
-		if (listError) {
-			return {
-				error: ApiResponse.internalError(
-					listError,
-					'Failed to verify temporary image attachment'
-				)
-			};
-		}
-		if (!(listed ?? []).some((entry) => entry.name === filename)) {
-			return { error: ApiResponse.badRequest('Temporary image upload is not complete') };
-		}
-
-		const tempAsset: ChatAttachmentAssetRow = {
-			id: temporaryAttachmentId,
-			project_id: null,
-			storage_bucket: storageBucket,
-			storage_path: storagePath,
-			original_filename: attachment.file_name ?? null,
-			content_type: contentType,
-			file_size_bytes: fileSizeBytes,
-			width: attachment.width ?? null,
-			height: attachment.height ?? null,
-			checksum_sha256: attachment.checksum_sha256 ?? null,
-			ocr_status: 'skipped',
-			extraction_summary: null,
-			extracted_text: null
-		};
-		orderedAssets.push(tempAsset);
-		orderedAttachments.push({
-			...attachment,
-			attachment_kind: 'temporary_file',
-			media_type: 'image',
-			temporary_attachment_id: temporaryAttachmentId,
-			storage_bucket: storageBucket,
-			storage_path: storagePath,
-			ocr_status: 'skipped',
-			role: 'analysis_target',
-			display_order: attachment.display_order ?? index
-		});
-	}
-
-	return {
-		assets: orderedAssets,
-		attachments: orderedAttachments
-	};
-}
-
-type LiveVisionSignedImage = {
-	assetId: string;
-	signedUrl: string;
-};
-
-async function recordAgentChatMediaEvent(params: {
-	supabase: FastChatSupabaseClient;
-	userId: string;
-	projectId: string | null;
-	sessionId?: string | null;
-	messageId?: string | null;
-	asset: ChatAttachmentAssetRow;
-	eventType: 'live_vision_requested' | 'live_vision_failed';
-	metadata?: Record<string, unknown>;
-}): Promise<void> {
-	const { error } = await params.supabase.from('agent_chat_media_events').insert({
-		user_id: params.userId,
-		project_id: params.projectId,
-		session_id: params.sessionId ?? null,
-		message_id: params.messageId ?? null,
-		asset_id: params.asset.project_id ? params.asset.id : null,
-		source: 'agent_chat_ui',
-		event_type: params.eventType,
-		media_type: 'image',
-		content_type: params.asset.content_type,
-		file_size_bytes: params.asset.file_size_bytes,
-		checksum_sha256: params.asset.checksum_sha256,
-		metadata: {
-			...(params.metadata ?? {}),
-			...(params.asset.project_id ? {} : { temporary_attachment_id: params.asset.id })
-		}
-	});
-
-	if (error) {
-		logger.warn('Failed to record agent chat media event', {
-			error,
-			eventType: params.eventType,
-			assetId: params.asset.id
-		});
-	}
-}
-
-async function createLiveVisionSignedImages(params: {
-	supabase: FastChatSupabaseClient;
-	userId: string;
-	projectId: string | null;
-	sessionId: string;
-	assets: ChatAttachmentAssetRow[];
-	maxImages: number;
-	maxImageBytes: number;
-	renderWidth: number;
-	ttlSeconds: number;
-}): Promise<{
-	images: LiveVisionSignedImage[];
-	failedAssetIds: string[];
-	skippedByLimit: number;
-}> {
-	const candidates: ChatAttachmentAssetRow[] = [];
-	const failedAssetIds: string[] = [];
-	for (const asset of params.assets) {
-		const eligibility = assessLiveVisionImageEligibility(asset, {
-			maxBytes: params.maxImageBytes
-		});
-		if (!eligibility.eligible) {
-			failedAssetIds.push(asset.id);
-			await recordAgentChatMediaEvent({
-				supabase: params.supabase,
-				userId: params.userId,
-				projectId: params.projectId,
-				sessionId: params.sessionId,
-				asset,
-				eventType: 'live_vision_failed',
-				metadata: {
-					reason: eligibility.reason,
-					max_file_size_bytes: params.maxImageBytes
-				}
-			});
-			continue;
-		}
-		candidates.push(asset);
-	}
-	const selected = candidates.slice(0, Math.max(0, params.maxImages));
-	const images: LiveVisionSignedImage[] = [];
-	const storageAdmin = createAdminSupabaseClient();
-
-	for (const asset of selected) {
-		const bucket = asset.storage_bucket?.trim();
-		const path = asset.storage_path?.trim();
-		if (!bucket || !path) {
-			failedAssetIds.push(asset.id);
-			await recordAgentChatMediaEvent({
-				supabase: params.supabase,
-				userId: params.userId,
-				projectId: params.projectId,
-				sessionId: params.sessionId,
-				asset,
-				eventType: 'live_vision_failed',
-				metadata: { reason: 'missing_storage_pointer' }
-			});
-			continue;
-		}
-
-		let signedUrlResult: { data?: { signedUrl?: string } | null; error?: unknown } = {};
-		try {
-			const transform =
-				params.renderWidth > 0
-					? {
-							width: params.renderWidth
-						}
-					: undefined;
-			signedUrlResult = await (storageAdmin.storage as any)
-				.from(bucket)
-				.createSignedUrl(path, params.ttlSeconds, transform ? { transform } : undefined);
-		} catch (error) {
-			signedUrlResult = { error };
-		}
-
-		if (signedUrlResult.error || !signedUrlResult.data?.signedUrl) {
-			failedAssetIds.push(asset.id);
-			logger.warn('Failed to create live vision signed image URL', {
-				error: signedUrlResult.error,
-				assetId: asset.id,
-				sessionId: params.sessionId
-			});
-			await recordAgentChatMediaEvent({
-				supabase: params.supabase,
-				userId: params.userId,
-				projectId: params.projectId,
-				sessionId: params.sessionId,
-				asset,
-				eventType: 'live_vision_failed',
-				metadata: { reason: 'signed_url_failed' }
-			});
-			continue;
-		}
-
-		images.push({
-			assetId: asset.id,
-			signedUrl: signedUrlResult.data.signedUrl
-		});
-		await recordAgentChatMediaEvent({
-			supabase: params.supabase,
-			userId: params.userId,
-			projectId: params.projectId,
-			sessionId: params.sessionId,
-			asset,
-			eventType: 'live_vision_requested',
-			metadata: {
-				ttl_seconds: params.ttlSeconds,
-				render_width: params.renderWidth,
-				max_file_size_bytes: params.maxImageBytes,
-				mode: 'current_turn_visual_reasoning'
-			}
-		});
-	}
-
-	return {
-		images,
-		failedAssetIds,
-		skippedByLimit: Math.max(0, candidates.length - selected.length)
-	};
-}
-
 type FastChatContextShiftHint = {
 	context_type: ChatContextType;
 	entity_id?: string | null;
@@ -981,8 +607,7 @@ async function consumePreparedPrompt(params: {
 		return { hit: false, reason: 'bad_format' };
 	}
 
-	const preparedPrompts = params.supabase as unknown as PreparedPromptsTableClient;
-	const { data, error } = await preparedPrompts
+	const { data, error } = await params.supabase
 		.from('agentic_chat_prepared_prompts')
 		.select('*')
 		.eq('id', parsed.id)
@@ -1028,7 +653,7 @@ async function consumePreparedPrompt(params: {
 	}
 
 	const consumedAt = new Date().toISOString();
-	const { data: updated, error: updateError } = await preparedPrompts
+	const { data: updated, error: updateError } = await params.supabase
 		.from('agentic_chat_prepared_prompts')
 		.update({ consumed_at: consumedAt, updated_at: consumedAt })
 		.eq('id', row.id)
@@ -1111,6 +736,22 @@ function extractEntityLabel(
 		return candidate.trim();
 	}
 	return fallback;
+}
+
+function isDailyBriefContext(value: unknown): boolean {
+	return typeof value === 'string' && value === 'daily_brief';
+}
+
+function isExpectedToolValidationFailure(errorMessage: string | null | undefined): boolean {
+	if (!errorMessage) return false;
+	return (
+		/Tool validation failed/i.test(errorMessage) ||
+		/Missing required parameter/i.test(errorMessage) ||
+		/No update fields provided/i.test(errorMessage) ||
+		/Invalid .*expected UUID/i.test(errorMessage) ||
+		/Tool arguments must be a JSON object/i.test(errorMessage) ||
+		/Invalid JSON in tool arguments/i.test(errorMessage)
+	);
 }
 
 function buildContextToolSummary(params: {
@@ -1532,456 +1173,6 @@ async function emitContextShift(
 	}
 }
 
-function normalizeTextValue(value: unknown): string | undefined {
-	if (typeof value !== 'string') return undefined;
-	const trimmed = value.trim();
-	return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function summarizeLastTurnText(text: string, maxLength = 180): string {
-	const normalized = text.replace(/\s+/g, ' ').trim();
-	if (!normalized) return '';
-	if (normalized.length <= maxLength) return normalized;
-	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
-}
-
-function isDailyBriefContext(value: unknown): boolean {
-	return typeof value === 'string' && value === 'daily_brief';
-}
-
-function isExpectedToolValidationFailure(errorMessage: string | null | undefined): boolean {
-	if (!errorMessage) return false;
-	return (
-		/Tool validation failed/i.test(errorMessage) ||
-		/Missing required parameter/i.test(errorMessage) ||
-		/No update fields provided/i.test(errorMessage) ||
-		/Invalid .*expected UUID/i.test(errorMessage) ||
-		/Tool arguments must be a JSON object/i.test(errorMessage) ||
-		/Invalid JSON in tool arguments/i.test(errorMessage)
-	);
-}
-
-type LastTurnEntityType = 'project' | 'task' | 'goal' | 'plan' | 'document' | 'milestone' | 'risk';
-
-const LAST_TURN_ENTITY_LIST_KEY: Record<LastTurnEntityType, keyof LastTurnContext['entities']> = {
-	project: 'projects',
-	task: 'tasks',
-	goal: 'goals',
-	plan: 'plans',
-	document: 'documents',
-	milestone: 'milestones',
-	risk: 'risks'
-};
-
-function truncateEntityText(value: unknown, maxLength: number): string | undefined {
-	if (typeof value !== 'string') return undefined;
-	const normalized = value.replace(/\s+/g, ' ').trim();
-	if (!normalized) return undefined;
-	if (normalized.length <= maxLength) return normalized;
-	return `${normalized.slice(0, Math.max(0, maxLength - 3))}...`;
-}
-
-function extractEntityPreview(
-	value: unknown,
-	fallbackId?: string
-): {
-	id?: string;
-	name?: string;
-	description?: string;
-} {
-	if (!value || typeof value !== 'object') {
-		return { id: normalizeExactEntityId(fallbackId) };
-	}
-	const record = value as Record<string, unknown>;
-	const id = normalizeExactEntityId(
-		record.id ?? record.entity_id ?? record.entityId ?? fallbackId
-	);
-	const name =
-		truncateEntityText(record.name, 80) ??
-		truncateEntityText(record.title, 80) ??
-		truncateEntityText(record.summary, 80) ??
-		truncateEntityText(record.text, 80);
-	const description =
-		truncateEntityText(record.description, 140) ??
-		truncateEntityText(record.content, 140) ??
-		truncateEntityText(record.summary, 140);
-	return { id, name, description };
-}
-
-function upsertLastTurnEntity(
-	entities: LastTurnContext['entities'],
-	entityType: LastTurnEntityType,
-	preview: { id?: string; name?: string; description?: string }
-): void {
-	const id = normalizeExactEntityId(preview.id);
-	if (!id) return;
-
-	const listKey = LAST_TURN_ENTITY_LIST_KEY[entityType];
-	const list =
-		((entities as Record<string, unknown>)[listKey] as
-			| Array<{
-					id: string;
-					name?: string;
-					description?: string;
-			  }>
-			| undefined) ?? [];
-	const existing = list.find((item) => item.id === id);
-	if (existing) {
-		if (!existing.name && preview.name) existing.name = preview.name;
-		if (!existing.description && preview.description)
-			existing.description = preview.description;
-	} else {
-		list.push({
-			id,
-			name: preview.name,
-			description: preview.description
-		});
-	}
-	(entities as Record<string, unknown>)[listKey] = list;
-
-	// Back-compat for existing readers while rollout completes.
-	switch (entityType) {
-		case 'project':
-			entities.project_id = entities.project_id ?? id;
-			break;
-		case 'task':
-			entities.task_ids = Array.from(new Set([...(entities.task_ids ?? []), id]));
-			break;
-		case 'goal':
-			entities.goal_ids = Array.from(new Set([...(entities.goal_ids ?? []), id]));
-			break;
-		case 'plan':
-			entities.plan_id = entities.plan_id ?? id;
-			break;
-		case 'document':
-			entities.document_id = entities.document_id ?? id;
-			break;
-		default:
-			break;
-	}
-}
-
-function assignLastTurnEntity(
-	entities: LastTurnContext['entities'],
-	entityType: string | undefined,
-	entityId: string | undefined,
-	record?: unknown
-): void {
-	if (!entityType) return;
-	const normalizedType = entityType.toLowerCase() as LastTurnEntityType;
-	if (!LAST_TURN_ENTITY_LIST_KEY[normalizedType]) return;
-	const preview = extractEntityPreview(record, entityId);
-	upsertLastTurnEntity(entities, normalizedType, preview);
-}
-
-function assignLastTurnEntityByPrefix(
-	entities: LastTurnContext['entities'],
-	entityId: string
-): void {
-	const normalized = entityId.toLowerCase();
-	if (normalized.startsWith('proj_')) {
-		assignLastTurnEntity(entities, 'project', entityId);
-	} else if (normalized.startsWith('task_')) {
-		assignLastTurnEntity(entities, 'task', entityId);
-	} else if (normalized.startsWith('goal_')) {
-		assignLastTurnEntity(entities, 'goal', entityId);
-	} else if (normalized.startsWith('plan_')) {
-		assignLastTurnEntity(entities, 'plan', entityId);
-	} else if (normalized.startsWith('doc_')) {
-		assignLastTurnEntity(entities, 'document', entityId);
-	} else if (normalized.startsWith('mil_')) {
-		assignLastTurnEntity(entities, 'milestone', entityId);
-	} else if (normalized.startsWith('risk_')) {
-		assignLastTurnEntity(entities, 'risk', entityId);
-	}
-}
-
-function extractEntityIdFromRecord(value: unknown): string | undefined {
-	if (!value || typeof value !== 'object') return undefined;
-	const record = value as Record<string, unknown>;
-	return normalizeExactEntityId(record.id ?? record.entity_id ?? record.entityId);
-}
-
-function collectLastTurnEntitiesFromValue(
-	value: unknown,
-	entities: LastTurnContext['entities'],
-	depth = 0
-): void {
-	if (!value || depth > 6) return;
-
-	if (Array.isArray(value)) {
-		for (const item of value.slice(0, 25)) {
-			collectLastTurnEntitiesFromValue(item, entities, depth + 1);
-		}
-		return;
-	}
-
-	if (typeof value !== 'object') return;
-
-	const record = value as Record<string, unknown>;
-	assignLastTurnEntity(
-		entities,
-		normalizeTextValue(record.entity_type ?? record.entityType),
-		normalizeTextValue(record.entity_id ?? record.entityId),
-		record
-	);
-	assignLastTurnEntity(
-		entities,
-		'project',
-		normalizeTextValue(record.project_id),
-		record.project
-	);
-	assignLastTurnEntity(entities, 'task', normalizeTextValue(record.task_id), record.task);
-	assignLastTurnEntity(entities, 'goal', normalizeTextValue(record.goal_id), record.goal);
-	assignLastTurnEntity(entities, 'plan', normalizeTextValue(record.plan_id), record.plan);
-	assignLastTurnEntity(
-		entities,
-		'document',
-		normalizeTextValue(record.document_id),
-		record.document
-	);
-	assignLastTurnEntity(
-		entities,
-		'milestone',
-		normalizeTextValue(record.milestone_id),
-		record.milestone
-	);
-	assignLastTurnEntity(entities, 'risk', normalizeTextValue(record.risk_id), record.risk);
-
-	const taskIds = Array.isArray(record.task_ids) ? record.task_ids : [];
-	for (const taskId of taskIds) {
-		assignLastTurnEntity(entities, 'task', normalizeTextValue(taskId));
-	}
-	const goalIds = Array.isArray(record.goal_ids) ? record.goal_ids : [];
-	for (const goalId of goalIds) {
-		assignLastTurnEntity(entities, 'goal', normalizeTextValue(goalId));
-	}
-	const planIds = Array.isArray(record.plan_ids) ? record.plan_ids : [];
-	for (const planId of planIds) {
-		assignLastTurnEntity(entities, 'plan', normalizeTextValue(planId));
-	}
-	const documentIds = Array.isArray(record.document_ids) ? record.document_ids : [];
-	for (const documentId of documentIds) {
-		assignLastTurnEntity(entities, 'document', normalizeTextValue(documentId));
-	}
-
-	const entitiesAccessed = Array.isArray(record._entities_accessed)
-		? record._entities_accessed
-		: Array.isArray(record.entities_accessed)
-			? record.entities_accessed
-			: [];
-	for (const entityId of entitiesAccessed) {
-		const normalized = normalizeTextValue(entityId);
-		if (!normalized) continue;
-		assignLastTurnEntityByPrefix(entities, normalized);
-	}
-
-	const singularKeys: Array<'project' | 'task' | 'goal' | 'plan' | 'document'> = [
-		'project',
-		'task',
-		'goal',
-		'plan',
-		'document'
-	];
-	for (const key of singularKeys) {
-		assignLastTurnEntity(entities, key, extractEntityIdFromRecord(record[key]), record[key]);
-	}
-
-	const pluralKeys: Array<{ key: string; entityType: LastTurnEntityType }> = [
-		{ key: 'projects', entityType: 'project' },
-		{ key: 'tasks', entityType: 'task' },
-		{ key: 'goals', entityType: 'goal' },
-		{ key: 'plans', entityType: 'plan' },
-		{ key: 'documents', entityType: 'document' },
-		{ key: 'milestones', entityType: 'milestone' },
-		{ key: 'risks', entityType: 'risk' }
-	];
-	for (const { key, entityType } of pluralKeys) {
-		if (!Array.isArray(record[key])) continue;
-		for (const item of record[key] as unknown[]) {
-			assignLastTurnEntity(entities, entityType, extractEntityIdFromRecord(item), item);
-		}
-	}
-
-	for (const nested of Object.values(record)) {
-		if (nested && typeof nested === 'object') {
-			collectLastTurnEntitiesFromValue(nested, entities, depth + 1);
-		}
-	}
-}
-
-function formatLastTurnEntityReferences(entities: LastTurnContext['entities']): string[] {
-	const refs: string[] = [];
-	const formatItems = (items: Array<{ id: string; name?: string }>): string =>
-		items
-			.map((item) => ({
-				...item,
-				id: normalizeExactEntityId(item.id)
-			}))
-			.filter((item): item is { id: string; name?: string } => Boolean(item.id))
-			.slice(0, 4)
-			.map((item) => (item.name ? `${item.name} (${item.id})` : item.id))
-			.join(',');
-	if (entities.projects?.length) refs.push(`projects:${formatItems(entities.projects)}`);
-	if (entities.tasks?.length) refs.push(`tasks:${formatItems(entities.tasks)}`);
-	if (entities.plans?.length) refs.push(`plans:${formatItems(entities.plans)}`);
-	if (entities.goals?.length) refs.push(`goals:${formatItems(entities.goals)}`);
-	if (entities.documents?.length) refs.push(`documents:${formatItems(entities.documents)}`);
-
-	// Backward-compat with stored legacy contexts.
-	if (refs.length === 0) {
-		const projectId = normalizeExactEntityId(entities.project_id);
-		const planId = normalizeExactEntityId(entities.plan_id);
-		const documentId = normalizeExactEntityId(entities.document_id);
-		const taskIds = (entities.task_ids ?? [])
-			.map((id) => normalizeExactEntityId(id))
-			.filter((id): id is string => Boolean(id))
-			.slice(0, 4);
-		const goalIds = (entities.goal_ids ?? [])
-			.map((id) => normalizeExactEntityId(id))
-			.filter((id): id is string => Boolean(id))
-			.slice(0, 4);
-
-		if (projectId) refs.push(`project:${projectId}`);
-		if (planId) refs.push(`plan:${planId}`);
-		if (documentId) refs.push(`document:${documentId}`);
-		if (taskIds.length > 0) refs.push(`tasks:${taskIds.join(',')}`);
-		if (goalIds.length > 0) refs.push(`goals:${goalIds.join(',')}`);
-	}
-	return refs;
-}
-
-function buildLastTurnContinuityHint(lastTurnContext?: LastTurnContext | null): string | null {
-	if (!lastTurnContext) return null;
-
-	const lines: string[] = [];
-	const summary = summarizeLastTurnText(lastTurnContext.summary ?? '', 140);
-	if (summary) {
-		lines.push(`Last turn summary: ${summary}`);
-	}
-
-	const refs = formatLastTurnEntityReferences(lastTurnContext.entities ?? {});
-	if (refs.length > 0) {
-		lines.push(`Entities referenced: ${refs.join('; ')}`);
-	}
-
-	const dataAccessed = Array.isArray(lastTurnContext.data_accessed)
-		? lastTurnContext.data_accessed
-				.map((item) => normalizeTextValue(item))
-				.filter((item): item is string => Boolean(item))
-		: [];
-	if (dataAccessed.length > 0) {
-		lines.push(`Tools used: ${dataAccessed.slice(0, 6).join(', ')}`);
-	}
-
-	const priorContext =
-		typeof lastTurnContext.context_type === 'string'
-			? normalizeFastContextType(lastTurnContext.context_type as ChatContextType)
-			: 'global';
-	lines.push(`Prior context: ${priorContext}`);
-
-	if (lines.length === 0) return null;
-
-	return [
-		'Conversation continuity hint (lightweight):',
-		...lines,
-		'Use this only as context; prioritize the latest user message.'
-	].join('\n');
-}
-
-function buildLastTurnContext(params: {
-	assistantText: string;
-	userMessage: string;
-	contextType: ChatContextType;
-	entityId?: string | null;
-	contextShift?: ContextShiftPayload | null;
-	toolExecutions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>;
-	timestamp: string;
-}): LastTurnContext {
-	const entities: LastTurnContext['entities'] = {};
-	const toolsUsed = new Set<string>();
-
-	for (const mention of extractExplicitEntityMentionsFromText(params.assistantText)) {
-		assignLastTurnEntity(
-			entities,
-			mention.entityType,
-			mention.id,
-			mention.name ? { id: mention.id, name: mention.name } : { id: mention.id }
-		);
-	}
-
-	for (const mention of extractExplicitEntityMentionsFromText(params.userMessage)) {
-		assignLastTurnEntity(
-			entities,
-			mention.entityType,
-			mention.id,
-			mention.name ? { id: mention.id, name: mention.name } : { id: mention.id }
-		);
-	}
-
-	for (const execution of params.toolExecutions) {
-		const toolName = normalizeTextValue(execution.toolCall.function?.name);
-		if (toolName) {
-			toolsUsed.add(toolName);
-		}
-		if (!shouldCollectExactEntityReferencesFromToolName(toolName)) {
-			continue;
-		}
-		const entitySource =
-			execution.result && typeof execution.result === 'object' && 'result' in execution.result
-				? (execution.result as unknown as Record<string, unknown>).result
-				: execution.result;
-		collectLastTurnEntitiesFromValue(entitySource, entities);
-	}
-
-	if (
-		params.contextShift &&
-		params.contextShift.entity_type !== 'workspace' &&
-		params.contextShift.entity_id
-	) {
-		assignLastTurnEntity(
-			entities,
-			params.contextShift.entity_type,
-			normalizeTextValue(params.contextShift.entity_id),
-			{
-				id: params.contextShift.entity_id,
-				name: params.contextShift.entity_name,
-				description: params.contextShift.message
-			}
-		);
-	}
-
-	const effectiveContextType = params.contextShift?.new_context ?? params.contextType;
-	if (
-		isProjectScopedContext(effectiveContextType) &&
-		params.entityId &&
-		!entities.projects?.length
-	) {
-		assignLastTurnEntity(entities, 'project', params.entityId);
-	}
-
-	const summary =
-		summarizeLastTurnText(params.assistantText, 180) ||
-		(params.contextShift?.message
-			? summarizeLastTurnText(params.contextShift.message, 180)
-			: '') ||
-		summarizeLastTurnText(params.userMessage, 120) ||
-		'Completed the latest turn.';
-
-	const dataAccessed = Array.from(toolsUsed);
-	if (params.contextShift && !dataAccessed.includes('context_shift')) {
-		dataAccessed.push('context_shift');
-	}
-
-	return {
-		summary,
-		entities,
-		context_type: effectiveContextType,
-		data_accessed: dataAccessed,
-		timestamp: params.timestamp
-	};
-}
-
 const TOOL_ENTITY_KEYS = [
 	'project',
 	'task',
@@ -2283,41 +1474,6 @@ async function persistToolExecutionRows(params: {
 	});
 }
 
-function detachFastChatTask(
-	promise: Promise<unknown>,
-	params: {
-		label: string;
-		projectId?: string;
-		contextType: ChatContextType;
-		sessionId: string;
-		entityId?: string | null;
-		logError?: (params: {
-			error: unknown;
-			operationType: string;
-			projectId?: string;
-			metadata?: Record<string, unknown>;
-		}) => void;
-	}
-): void {
-	void promise.catch((error) => {
-		logger.warn(`Detached FastChat task failed: ${params.label}`, {
-			error,
-			sessionId: params.sessionId
-		});
-		params.logError?.({
-			error,
-			operationType: 'fastchat_detached_task',
-			projectId: params.projectId,
-			metadata: {
-				task: params.label,
-				sessionId: params.sessionId,
-				contextType: params.contextType,
-				entityId: params.entityId ?? null
-			}
-		});
-	});
-}
-
 function buildToolMessageSnapshotsForReconciliation(
 	executions: Array<{ toolCall: ChatToolCall; result: ChatToolResult }>,
 	toolSummaries: AgentStateToolSummary[]
@@ -2458,9 +1614,15 @@ export const POST: RequestHandler = async ({
 					userId,
 					projectId: attachmentProjectId,
 					attachments: requestAttachmentRefs,
-					errorLogger
+					errorLogger,
+					endpoint: FASTCHAT_STREAM_ENDPOINT,
+					httpMethod: FASTCHAT_STREAM_METHOD,
+					maxExtractedTextChars: FASTCHAT_ATTACHMENT_TEXT_MAX_CHARS,
+					tempAttachmentPathPrefix: FASTCHAT_TEMP_ATTACHMENT_PATH_PREFIX,
+					storageBucket: FASTCHAT_CHAT_ATTACHMENT_STORAGE_BUCKET,
+					maxTempImageBytes: FASTCHAT_TEMP_IMAGE_MAX_BYTES
 				})
-			: { attachments: [] as ChatAttachmentRef[], assets: [] as ChatAttachmentAssetRow[] };
+			: ({ attachments: [], assets: [] } satisfies ValidatedChatAttachments);
 	if ('error' in attachmentValidation) {
 		return attachmentValidation.error;
 	}
@@ -2539,26 +1701,10 @@ export const POST: RequestHandler = async ({
 	let preparedPromptId: string | null = null;
 	let preparedPromptAgeSeconds: number | null = null;
 	let preparedSurfaceProfile: string | null = null;
-	let timingMetricQueued = false;
-	let timingMetricId: string | null = null;
 	let turnRunId: string | null = null;
 	let promptSnapshotId: string | null = null;
-	let turnEventSequence = 0;
-	let firstHelpPath: string | null = null;
-	let firstHelpSequence: number | null = null;
-	let firstSkillPath: string | null = null;
-	let firstSkillSequence: number | null = null;
-	let firstCanonicalOp: string | null = null;
-	let firstOpSequence: number | null = null;
-	let validationFailureCount = 0;
 	let streamDetached = false;
 
-	const toIsoString = (value: number | null): string | null =>
-		typeof value === 'number' ? new Date(value).toISOString() : null;
-	const durationMs = (start: number | null, end: number | null): number | undefined => {
-		if (typeof start !== 'number' || typeof end !== 'number') return undefined;
-		return Math.max(0, end - start);
-	};
 	const markStreamEventSent = (eventType: string): void => {
 		const now = Date.now();
 		if (firstEventAtMs === null) {
@@ -2568,226 +1714,50 @@ export const POST: RequestHandler = async ({
 			firstResponseAtMs = now;
 		}
 	};
-	const noteFirstHelpPath = (path: string | null, sequenceIndex: number): void => {
-		if (!path || firstHelpPath) return;
-		firstHelpPath = path;
-		firstHelpSequence = sequenceIndex;
-	};
-	const noteFirstSkillPath = (path: string | null, sequenceIndex: number): void => {
-		if (!path || firstSkillPath) return;
-		firstSkillPath = path;
-		firstSkillSequence = sequenceIndex;
-	};
-	const noteFirstCanonicalOp = (op: string | null, sequenceIndex: number): void => {
-		if (!op || firstCanonicalOp) return;
-		firstCanonicalOp = op;
-		firstOpSequence = sequenceIndex;
-	};
-	const queueTurnRunUpdate = (
-		patch: Record<string, unknown>,
-		label: string,
-		metadata?: Record<string, unknown>
-	): void => {
-		if (!turnRunId) return;
-		detachTimingTask(
-			(async () => {
-				const { error } = await supabase
-					.from('chat_turn_runs')
-					.update(patch)
-					.eq('id', turnRunId)
-					.eq('user_id', userId);
-				if (error) throw error;
-			})(),
-			label,
-			metadata
-		);
-	};
-	const recordTurnEvent = (
-		phase: 'prompt' | 'llm' | 'tool' | 'stream' | 'finalize',
-		eventType: string,
-		payload: Json,
-		options?: {
-			helpPath?: string | null;
-			skillPath?: string | null;
-			canonicalOp?: string | null;
-			validationFailed?: boolean;
-		}
-	): void => {
-		if (!turnRunId || !timingSessionId) return;
-		const sequenceIndex = ++turnEventSequence;
-		noteFirstHelpPath(options?.helpPath ?? null, sequenceIndex);
-		noteFirstSkillPath(options?.skillPath ?? null, sequenceIndex);
-		noteFirstCanonicalOp(options?.canonicalOp ?? null, sequenceIndex);
-		if (options?.validationFailed) {
-			validationFailureCount += 1;
-		}
-		detachTimingTask(
-			(async () => {
-				const { error } = await supabase.from('chat_turn_events').insert({
-					turn_run_id: turnRunId,
-					session_id: timingSessionId,
-					user_id: userId,
-					stream_run_id: streamRunId,
-					sequence_index: sequenceIndex,
-					phase,
-					event_type: eventType,
-					payload
-				});
-				if (error) throw error;
-			})(),
-			`insert_turn_event_${eventType}`,
-			{
-				eventType,
-				phase,
-				sequenceIndex
-			}
-		);
-	};
-	const persistTurnRunFinalState = async (
-		patch: Record<string, unknown>,
-		label: string
-	): Promise<void> => {
-		if (!turnRunId) return;
-		const { error } = await supabase
-			.from('chat_turn_runs')
-			.update(patch)
-			.eq('id', turnRunId)
-			.eq('user_id', userId);
-		if (!error) return;
-		logger.warn(`Failed to persist FastChat turn run ${label}`, {
-			error,
+	const observabilityWriter = new TurnObservabilityWriter({
+		supabase,
+		userId,
+		streamRunId,
+		clientTurnId: clientTurnId ?? null,
+		requestStartedAtMs,
+		messageLength: messageForModel.length,
+		requestPrewarmedContext: Boolean(requestPrewarmedContext),
+		logger,
+		logError: logFastChatError,
+		getTimingState: () => ({
 			sessionId: timingSessionId,
-			turnRunId
-		});
-		logFastChatError({
-			error,
-			operationType: 'fastchat_turn_run_update',
-			projectId: timingProjectId ?? undefined,
-			metadata: {
-				label,
-				sessionId: timingSessionId,
-				turnRunId,
-				contextType: timingContextType
-			}
-		});
-	};
-	const detachTimingTask = (
-		promise: Promise<unknown> | PromiseLike<unknown>,
-		label: string,
-		metadata?: Record<string, unknown>
-	): void => {
-		void Promise.resolve(promise).catch((error) => {
-			logger.warn(`Detached FastChat timing task failed: ${label}`, {
-				error,
-				sessionId: timingSessionId
-			});
-			logFastChatError({
-				error,
-				operationType: 'fastchat_timing_metric',
-				projectId: timingProjectId ?? undefined,
-				tableName: 'timing_metrics',
-				recordId: timingSessionId ?? undefined,
-				metadata: {
-					label,
-					sessionId: timingSessionId,
-					contextType: timingContextType,
-					entityId: timingEntityId,
-					...(metadata ?? {})
-				}
-			});
-		});
-	};
-	const buildTimingSummary = (finishedReason?: string | null): AgentTimingSummary => ({
-		request_started_at: new Date(requestStartedAtMs).toISOString(),
-		session_resolved_at: toIsoString(sessionResolvedAtMs),
-		history_loaded_at: toIsoString(historyLoadedAtMs),
-		history_composed_at: toIsoString(historyComposedAtMs),
-		context_ready_at: toIsoString(contextReadyAtMs),
-		first_event_at: toIsoString(firstEventAtMs),
-		first_response_at: toIsoString(firstResponseAtMs),
-		assistant_persisted_at: toIsoString(assistantPersistedAtMs),
-		done_emitted_at: toIsoString(doneEmittedAtMs),
-		cache_source: contextCacheSource,
-		cache_age_seconds: contextCacheAgeSecondsForTiming,
-		bypassed_context_cache: bypassedContextCache,
-		history_strategy: historyStrategy,
-		history_compressed: historyCompressed,
-		raw_history_count: rawHistoryCount,
-		history_for_model_count: historyForModelCount,
-		finished_reason: finishedReason ?? null,
-		phases: {
-			session_resolve_ms: durationMs(requestStartedAtMs, sessionResolvedAtMs),
-			history_load_ms: durationMs(historyLoadStartedAtMs, historyLoadedAtMs),
-			history_compose_ms: durationMs(historyComposeStartedAtMs, historyComposedAtMs),
-			tool_selection_ms: toolSelectionMs ?? undefined,
-			context_build_ms: durationMs(contextBuildStartedAtMs, contextReadyAtMs),
-			request_to_context_ready_ms: durationMs(requestStartedAtMs, contextReadyAtMs),
-			time_to_first_event_ms: durationMs(requestStartedAtMs, firstEventAtMs),
-			time_to_first_response_ms: durationMs(requestStartedAtMs, firstResponseAtMs),
-			response_generation_ms: durationMs(
-				firstResponseAtMs,
-				assistantPersistStartedAtMs ?? assistantPersistedAtMs ?? doneEmittedAtMs
-			),
-			assistant_persist_ms: durationMs(assistantPersistStartedAtMs, assistantPersistedAtMs),
-			finalization_ms: durationMs(finalizationStartedAtMs, doneEmittedAtMs),
-			total_request_ms: durationMs(requestStartedAtMs, doneEmittedAtMs ?? Date.now())
-		}
+			contextType: timingContextType,
+			projectId: timingProjectId ?? null,
+			entityId: timingEntityId ?? null,
+			sessionResolvedAtMs,
+			historyLoadStartedAtMs,
+			historyLoadedAtMs,
+			historyComposeStartedAtMs,
+			historyComposedAtMs,
+			toolSelectionMs,
+			contextBuildStartedAtMs,
+			contextReadyAtMs,
+			firstEventAtMs,
+			firstResponseAtMs,
+			assistantPersistStartedAtMs,
+			assistantPersistedAtMs,
+			finalizationStartedAtMs,
+			doneEmittedAtMs,
+			historyStrategy,
+			historyCompressed,
+			rawHistoryCount,
+			historyForModelCount,
+			contextCacheSource,
+			contextCacheAgeSeconds: contextCacheAgeSecondsForTiming,
+			bypassedContextCache,
+			preparedPromptRequested,
+			preparedPromptHit,
+			preparedPromptMissReason,
+			preparedPromptId,
+			preparedPromptAgeSeconds,
+			preparedSurfaceProfile
+		})
 	});
-	const queueTimingMetric = (finishedReason?: string | null): AgentTimingSummary | null => {
-		if (!timingSessionId) return null;
-		const summary = buildTimingSummary(finishedReason);
-		if (timingMetricQueued) {
-			return summary;
-		}
-		timingMetricQueued = true;
-		timingMetricId = uuidv4();
-		const timingMetricReference = normalizeTimingMetricSessionReference({
-			source: 'chat_sessions',
-			sessionId: timingSessionId,
-			metadata: {
-				stream_version: 'v2',
-				client_turn_id: clientTurnId ?? null,
-				stream_run_id: streamRunId,
-				project_id: timingProjectId,
-				entity_id: timingEntityId,
-				request_prewarmed_context: Boolean(requestPrewarmedContext),
-				prepared_prompt_requested: preparedPromptRequested,
-				prepared_prompt_hit: preparedPromptHit,
-				prepared_prompt_miss_reason: preparedPromptMissReason,
-				prepared_prompt_id: preparedPromptId,
-				prepared_prompt_age_seconds: preparedPromptAgeSeconds,
-				prepared_prompt_surface_profile: preparedSurfaceProfile,
-				timing_summary: JSON.parse(JSON.stringify(summary)) as Json
-			}
-		});
-		const nowIso = new Date().toISOString();
-		detachTimingTask(
-			(async () => {
-				const { error } = await supabase.from('timing_metrics').insert({
-					id: timingMetricId,
-					user_id: userId,
-					session_id: timingMetricReference.session_id,
-					turn_run_id: turnRunId,
-					context_type: timingContextType,
-					message_length: messageForModel.length,
-					message_received_at: new Date(requestStartedAtMs).toISOString(),
-					first_event_at: summary.first_event_at ?? null,
-					first_response_at: summary.first_response_at ?? null,
-					time_to_first_event_ms: summary.phases.time_to_first_event_ms ?? null,
-					time_to_first_response_ms: summary.phases.time_to_first_response_ms ?? null,
-					context_build_ms: summary.phases.context_build_ms ?? null,
-					tool_selection_ms: summary.phases.tool_selection_ms ?? null,
-					metadata: timingMetricReference.metadata,
-					created_at: nowIso,
-					updated_at: nowIso
-				});
-				if (error) throw error;
-			})(),
-			'insert_turn_timing_metric',
-			{ finishedReason }
-		);
-		return summary;
-	};
 	const sendTimedMessage = async (
 		payload: Record<string, unknown> & { type: string },
 		errorContext: {
@@ -2882,7 +1852,7 @@ export const POST: RequestHandler = async ({
 					userId
 				});
 				if (restored) {
-					recordTurnEvent('finalize', 'supervisor_checkpoint_restored', {
+					observabilityWriter.recordEvent('finalize', 'supervisor_checkpoint_restored', {
 						checkpoint_id: checkpointId,
 						reason
 					} as Json);
@@ -3322,6 +2292,7 @@ export const POST: RequestHandler = async ({
 			}
 
 			turnRunId = uuidv4();
+			observabilityWriter.setTurnRunId(turnRunId);
 			let turnRunInsertError: unknown = null;
 			try {
 				const { error: turnRunError } = await supabase.from('chat_turn_runs').insert({
@@ -3354,6 +2325,7 @@ export const POST: RequestHandler = async ({
 				const failedTurnRunId = turnRunId;
 				const activeTurnConflict = isRunningTurnUniqueViolation(turnRunInsertError);
 				turnRunId = null;
+				observabilityWriter.setTurnRunId(null);
 				const conflictMetadata = {
 					sessionId: session.id,
 					turnRunId: failedTurnRunId,
@@ -3404,7 +2376,7 @@ export const POST: RequestHandler = async ({
 						reason: failedReason
 					}
 				});
-				queueTimingMetric(failedReason);
+				observabilityWriter.queueTimingMetric(failedReason);
 				return;
 			}
 			if (activeSupervisorCheckpoint) {
@@ -3430,7 +2402,7 @@ export const POST: RequestHandler = async ({
 							resumingSupervisorCheckpoint.id;
 						userMessageMetadata.supervisor_resume_original_turn_run_id =
 							resumingSupervisorCheckpoint.turn_run_id;
-						queueTurnRunUpdate(
+						observabilityWriter.queueTurnRunUpdate(
 							{
 								history_for_model_count: historyForModelCount
 							},
@@ -3440,14 +2412,18 @@ export const POST: RequestHandler = async ({
 								originalTurnRunId: resumingSupervisorCheckpoint.turn_run_id
 							}
 						);
-						recordTurnEvent('prompt', 'supervisor_checkpoint_resuming', {
-							checkpoint_id: resumingSupervisorCheckpoint.id,
-							original_turn_run_id: resumingSupervisorCheckpoint.turn_run_id,
-							resume_turn_run_id: turnRunId,
-							checkpoint_type: resumingSupervisorCheckpoint.checkpoint_type,
-							reason: resumingSupervisorCheckpoint.reason,
-							history_for_model_count: historyForModelCount
-						} as Json);
+						observabilityWriter.recordEvent(
+							'prompt',
+							'supervisor_checkpoint_resuming',
+							{
+								checkpoint_id: resumingSupervisorCheckpoint.id,
+								original_turn_run_id: resumingSupervisorCheckpoint.turn_run_id,
+								resume_turn_run_id: turnRunId,
+								checkpoint_type: resumingSupervisorCheckpoint.checkpoint_type,
+								reason: resumingSupervisorCheckpoint.reason,
+								history_for_model_count: historyForModelCount
+							} as Json
+						);
 					} else {
 						logger.info('Supervisor checkpoint was already consumed before resume', {
 							checkpointId: activeSupervisorCheckpoint.id,
@@ -3484,7 +2460,7 @@ export const POST: RequestHandler = async ({
 			void userMessagePromise
 				.then(async (persistedUserMessage) => {
 					if (persistedUserMessage?.id) {
-						queueTurnRunUpdate(
+						observabilityWriter.queueTurnRunUpdate(
 							{ user_message_id: persistedUserMessage.id },
 							'link_turn_run_user_message',
 							{ messageId: persistedUserMessage.id }
@@ -3765,7 +2741,7 @@ export const POST: RequestHandler = async ({
 						nextDomainState,
 						previousDomainState
 					);
-					recordTurnEvent('prompt', 'domain_sensing_applied', {
+					observabilityWriter.recordEvent('prompt', 'domain_sensing_applied', {
 						source: turnDomainSensing.source,
 						domain_ids: turnDomainSensing.active_domains.map((domain) => domain.id),
 						candidate_outcome_card_ids: turnDomainSensing.candidate_outcome_card_ids,
@@ -3777,16 +2753,20 @@ export const POST: RequestHandler = async ({
 						)
 					} as Json);
 					if (newResearchBacklogEntries.length > 0) {
-						recordTurnEvent('prompt', 'domain_research_backlog_queued', {
-							entries: newResearchBacklogEntries.map((entry) => ({
-								id: entry.id,
-								kind: entry.kind,
-								priority: entry.priority,
-								domain_ids: entry.domain_ids,
-								missing_skill_id: entry.missing_skill_id ?? null,
-								missing_resource_id: entry.missing_resource_id ?? null
-							}))
-						} as Json);
+						observabilityWriter.recordEvent(
+							'prompt',
+							'domain_research_backlog_queued',
+							{
+								entries: newResearchBacklogEntries.map((entry) => ({
+									id: entry.id,
+									kind: entry.kind,
+									priority: entry.priority,
+									domain_ids: entry.domain_ids,
+									missing_skill_id: entry.missing_skill_id ?? null,
+									missing_resource_id: entry.missing_resource_id ?? null
+								}))
+							} as Json
+						);
 					}
 				}
 
@@ -3800,7 +2780,8 @@ export const POST: RequestHandler = async ({
 						maxImages: FASTCHAT_LIVE_VISION_MAX_IMAGE_ATTACHMENTS_PER_TURN,
 						maxImageBytes: FASTCHAT_LIVE_VISION_MAX_IMAGE_BYTES,
 						renderWidth: FASTCHAT_LIVE_VISION_RENDER_WIDTH,
-						ttlSeconds: FASTCHAT_LIVE_VISION_SIGNED_URL_TTL_SECONDS
+						ttlSeconds: FASTCHAT_LIVE_VISION_SIGNED_URL_TTL_SECONDS,
+						logger
 					});
 					currentTurnContent = buildLiveVisionContentParts({
 						text: messageForModel,
@@ -3818,7 +2799,7 @@ export const POST: RequestHandler = async ({
 						assetIds: liveVision.images.map((image) => image.assetId),
 						failedAssetIds: liveVision.failedAssetIds
 					};
-					recordTurnEvent('prompt', 'live_vision_prepared', {
+					observabilityWriter.recordEvent('prompt', 'live_vision_prepared', {
 						requested: liveVisionPrepared.requested,
 						enabled: liveVisionPrepared.enabled,
 						image_count: liveVisionPrepared.imageCount,
@@ -3853,7 +2834,7 @@ export const POST: RequestHandler = async ({
 					}
 				});
 				contextReadyAtMs = Date.now();
-				queueTurnRunUpdate(
+				observabilityWriter.queueTurnRunUpdate(
 					{
 						cache_source: contextCacheSource,
 						cache_age_seconds: contextCacheAgeSecondsForTiming,
@@ -3970,12 +2951,12 @@ export const POST: RequestHandler = async ({
 								}
 							});
 						} else {
-							queueTurnRunUpdate(
+							observabilityWriter.queueTurnRunUpdate(
 								{ prompt_snapshot_id: promptSnapshotId },
 								'link_turn_run_prompt_snapshot',
 								{ promptSnapshotId }
 							);
-							recordTurnEvent('prompt', 'prompt_snapshot_created', {
+							observabilityWriter.recordEvent('prompt', 'prompt_snapshot_created', {
 								prompt_snapshot_id: promptSnapshotId,
 								prompt_variant: promptVariant,
 								system_prompt_chars: promptSnapshotRow.system_prompt_chars,
@@ -4137,7 +3118,7 @@ export const POST: RequestHandler = async ({
 				onToolCall: async (toolCall) => {
 					const patchedCall = patchToolCall(toolCall);
 					const toolCallMeta = extractFastChatToolCallMeta(patchedCall);
-					recordTurnEvent(
+					observabilityWriter.recordEvent(
 						'tool',
 						'tool_call_emitted',
 						buildToolCallEventPayload(patchedCall),
@@ -4166,7 +3147,7 @@ export const POST: RequestHandler = async ({
 					});
 					const requestedSkillActivity = getRequestedSkillActivity(patchedCall);
 					if (requestedSkillActivity) {
-						recordTurnEvent(
+						observabilityWriter.recordEvent(
 							'tool',
 							'skill_requested',
 							{
@@ -4258,7 +3239,7 @@ export const POST: RequestHandler = async ({
 						});
 						const validationFailed =
 							!result.success && isExpectedToolValidationFailure(result.error);
-						recordTurnEvent(
+						observabilityWriter.recordEvent(
 							'tool',
 							validationFailed
 								? 'tool_call_validation_failed'
@@ -4272,7 +3253,7 @@ export const POST: RequestHandler = async ({
 						);
 						const loadedSkillActivity = getLoadedSkillActivity(patchedCall, result);
 						if (loadedSkillActivity) {
-							recordTurnEvent(
+							observabilityWriter.recordEvent(
 								'tool',
 								'skill_loaded',
 								{
@@ -4349,7 +3330,7 @@ export const POST: RequestHandler = async ({
 
 						const contextShift = extractContextShiftPayload(result);
 						if (contextShift) {
-							recordTurnEvent('tool', 'context_shift_emitted', {
+							observabilityWriter.recordEvent('tool', 'context_shift_emitted', {
 								new_context: contextShift.new_context,
 								entity_id: contextShift.entity_id ?? null
 							} as Json);
@@ -4434,7 +3415,7 @@ export const POST: RequestHandler = async ({
 							recent_tools: digest.recentTools
 						}
 					} as Json;
-					recordTurnEvent(
+					observabilityWriter.recordEvent(
 						decision.action === 'emit_status' ? 'stream' : 'llm',
 						decision.action === 'emit_status'
 							? 'supervisor_status_emitted'
@@ -4481,11 +3462,15 @@ export const POST: RequestHandler = async ({
 									question: decision.question
 								});
 								supervisorQuestionCheckpointId = supervisorQuestionCheckpoint.id;
-								recordTurnEvent('llm', 'supervisor_question_checkpoint_created', {
-									checkpoint_id: supervisorQuestionCheckpointId,
-									reason: decision.reason,
-									question_chars: decision.question.length
-								} as Json);
+								observabilityWriter.recordEvent(
+									'llm',
+									'supervisor_question_checkpoint_created',
+									{
+										checkpoint_id: supervisorQuestionCheckpointId,
+										reason: decision.reason,
+										question_chars: decision.question.length
+									} as Json
+								);
 							}
 						} catch (error) {
 							supervisorQuestionCheckpointFailed = true;
@@ -4502,10 +3487,14 @@ export const POST: RequestHandler = async ({
 									reason: decision.reason
 								}
 							});
-							recordTurnEvent('llm', 'supervisor_question_checkpoint_failed', {
-								reason: decision.reason,
-								error: error instanceof Error ? error.message : String(error)
-							} as Json);
+							observabilityWriter.recordEvent(
+								'llm',
+								'supervisor_question_checkpoint_failed',
+								{
+									reason: decision.reason,
+									error: error instanceof Error ? error.message : String(error)
+								} as Json
+							);
 						}
 						await sendTimedMessage(
 							{
@@ -4553,11 +3542,15 @@ export const POST: RequestHandler = async ({
 			});
 			const normalizedExecutions = toolExecutions ?? [];
 			if (finalizationGuard?.applied) {
-				recordTurnEvent('finalize', 'supervisor_finalization_guard_applied', {
-					reason: finalizationGuard.reason ?? null,
-					text_chars: finalizationGuard.text.length,
-					tool_execution_count: normalizedExecutions.length
-				} as Json);
+				observabilityWriter.recordEvent(
+					'finalize',
+					'supervisor_finalization_guard_applied',
+					{
+						reason: finalizationGuard.reason ?? null,
+						text_chars: finalizationGuard.text.length,
+						tool_execution_count: normalizedExecutions.length
+					} as Json
+				);
 			}
 			if (supervisorDecisions?.length) {
 				const sourceCounts = countBy(
@@ -4568,7 +3561,7 @@ export const POST: RequestHandler = async ({
 						record.trigger ? [record.trigger] : []
 					)
 				);
-				recordTurnEvent('finalize', 'supervisor_decision_summary', {
+				observabilityWriter.recordEvent('finalize', 'supervisor_decision_summary', {
 					count: supervisorDecisions.length,
 					actions: supervisorDecisions.map((record) => record.decision.action),
 					sources: sourceCounts,
@@ -4576,7 +3569,7 @@ export const POST: RequestHandler = async ({
 				} as Json);
 			}
 			for (const pass of llmPasses ?? []) {
-				recordTurnEvent('llm', 'llm_pass_completed', {
+				observabilityWriter.recordEvent('llm', 'llm_pass_completed', {
 					pass: pass.pass,
 					model: pass.model ?? null,
 					provider: pass.provider ?? null,
@@ -4617,22 +3610,26 @@ export const POST: RequestHandler = async ({
 				contextType: effectiveContextType,
 				entityId: effectiveEntityId
 			});
-			detachFastChatTask(finalizeUserMessagePromise, {
-				label: 'finalize_user_message',
-				projectId: projectIdForLogs,
-				contextType: effectiveContextType,
-				sessionId: session.id,
-				entityId: effectiveEntityId,
-				logError: logFastChatError
-			});
-			detachFastChatTask(sessionContextSyncPromise, {
-				label: 'sync_session_context',
-				projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-				contextType: effectiveContextType,
-				sessionId: session.id,
-				entityId: effectiveEntityId,
-				logError: logFastChatError
-			});
+			observabilityWriter.trackDetachedTask(
+				finalizeUserMessagePromise,
+				'finalize_user_message',
+				{
+					projectId: projectIdForLogs,
+					contextType: effectiveContextType,
+					sessionId: session.id,
+					entityId: effectiveEntityId
+				}
+			);
+			observabilityWriter.trackDetachedTask(
+				sessionContextSyncPromise,
+				'sync_session_context',
+				{
+					projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+					contextType: effectiveContextType,
+					sessionId: session.id,
+					entityId: effectiveEntityId
+				}
+			);
 
 			const isCancelledTurn =
 				cancelled === true ||
@@ -4704,14 +3701,16 @@ export const POST: RequestHandler = async ({
 					interrupted: true,
 					logError: logFastChatError
 				});
-				detachFastChatTask(interruptedToolExecutionPersistPromise, {
-					label: 'persist_interrupted_tool_executions',
-					projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-					contextType: effectiveContextType,
-					sessionId: session.id,
-					entityId: effectiveEntityId,
-					logError: logFastChatError
-				});
+				observabilityWriter.trackDetachedTask(
+					interruptedToolExecutionPersistPromise,
+					'persist_interrupted_tool_executions',
+					{
+						projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+						contextType: effectiveContextType,
+						sessionId: session.id,
+						entityId: effectiveEntityId
+					}
+				);
 
 				finalizationStartedAtMs = Date.now();
 				if (!streamDetached) {
@@ -4747,7 +3746,8 @@ export const POST: RequestHandler = async ({
 						});
 					}
 					doneEmittedAtMs = Date.now();
-					const cancelledTimingSummary = buildTimingSummary('cancelled');
+					const cancelledTimingSummary =
+						observabilityWriter.buildTimingSummary('cancelled');
 					if (timingSessionId) {
 						await sendTimedMessage(
 							{
@@ -4782,37 +3782,27 @@ export const POST: RequestHandler = async ({
 						}
 					);
 					doneEmittedAtMs = Date.now();
-					recordTurnEvent('finalize', 'done_emitted', {
+					observabilityWriter.recordEvent('finalize', 'done_emitted', {
 						finished_reason: 'cancelled',
 						total_tokens: usage?.total_tokens ?? null
 					} as Json);
-					queueTimingMetric('cancelled');
+					observabilityWriter.queueTimingMetric('cancelled');
 				} else {
 					doneEmittedAtMs = Date.now();
-					queueTimingMetric(interruptedReason);
+					observabilityWriter.queueTimingMetric(interruptedReason);
 				}
-				await persistTurnRunFinalState(
+				await observabilityWriter.persistFinalState(
 					{
 						assistant_message_id: interruptedMessage?.id ?? null,
 						status: 'cancelled',
 						finished_reason: interruptedReason,
 						tool_round_count: toolRounds ?? 0,
 						tool_call_count: toolCallsMade ?? normalizedExecutions.length,
-						validation_failure_count: validationFailureCount,
+						validation_failure_count: observabilityWriter.getValidationFailureCount(),
 						llm_pass_count: llmPasses?.length ?? 0,
-						first_lane: deriveFirstLane({
-							firstHelpPath,
-							firstHelpSequence,
-							firstSkillPath,
-							firstSkillSequence,
-							firstCanonicalOp,
-							firstOpSequence
-						}),
-						first_help_path: firstHelpPath,
-						first_skill_path: firstSkillPath,
-						first_canonical_op: firstCanonicalOp,
+						...observabilityWriter.getFirstLanePatch(),
 						prompt_snapshot_id: promptSnapshotId,
-						timing_metric_id: timingMetricId,
+						timing_metric_id: observabilityWriter.getTimingMetricId(),
 						cache_source: contextCacheSource,
 						cache_age_seconds: contextCacheAgeSecondsForTiming,
 						finished_at: new Date().toISOString()
@@ -4915,14 +3905,16 @@ export const POST: RequestHandler = async ({
 				contextType: effectiveContextType,
 				logError: logFastChatError
 			});
-			detachFastChatTask(toolExecutionPersistPromise, {
-				label: 'persist_tool_executions',
-				projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-				contextType: effectiveContextType,
-				sessionId: session.id,
-				entityId: effectiveEntityId,
-				logError: logFastChatError
-			});
+			observabilityWriter.trackDetachedTask(
+				toolExecutionPersistPromise,
+				'persist_tool_executions',
+				{
+					projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+					contextType: effectiveContextType,
+					sessionId: session.id,
+					entityId: effectiveEntityId
+				}
+			);
 
 			const lastTurnContext = buildLastTurnContext({
 				assistantText: persistedAssistantContent,
@@ -5025,7 +4017,7 @@ export const POST: RequestHandler = async ({
 			});
 
 			doneEmittedAtMs = Date.now();
-			const timingSummary = buildTimingSummary(finishedReason);
+			const timingSummary = observabilityWriter.buildTimingSummary(finishedReason);
 			if (timingSessionId) {
 				await sendTimedMessage(
 					{
@@ -5052,33 +4044,23 @@ export const POST: RequestHandler = async ({
 				}
 			);
 			doneEmittedAtMs = Date.now();
-			recordTurnEvent('finalize', 'done_emitted', {
+			observabilityWriter.recordEvent('finalize', 'done_emitted', {
 				finished_reason: finishedReason ?? null,
 				total_tokens: usage?.total_tokens ?? null
 			} as Json);
-			queueTimingMetric(finishedReason);
-			await persistTurnRunFinalState(
+			observabilityWriter.queueTimingMetric(finishedReason);
+			await observabilityWriter.persistFinalState(
 				{
 					assistant_message_id: assistantMessage?.id ?? null,
 					status: 'completed',
 					finished_reason: finishedReason ?? null,
 					tool_round_count: toolRounds ?? 0,
 					tool_call_count: toolCallsMade ?? normalizedExecutions.length,
-					validation_failure_count: validationFailureCount,
+					validation_failure_count: observabilityWriter.getValidationFailureCount(),
 					llm_pass_count: llmPasses?.length ?? 0,
-					first_lane: deriveFirstLane({
-						firstHelpPath,
-						firstHelpSequence,
-						firstSkillPath,
-						firstSkillSequence,
-						firstCanonicalOp,
-						firstOpSequence
-					}),
-					first_help_path: firstHelpPath,
-					first_skill_path: firstSkillPath,
-					first_canonical_op: firstCanonicalOp,
+					...observabilityWriter.getFirstLanePatch(),
 					prompt_snapshot_id: promptSnapshotId,
-					timing_metric_id: timingMetricId,
+					timing_metric_id: observabilityWriter.getTimingMetricId(),
 					cache_source: contextCacheSource,
 					cache_age_seconds: contextCacheAgeSecondsForTiming,
 					finished_at: new Date().toISOString()
@@ -5094,11 +4076,15 @@ export const POST: RequestHandler = async ({
 						userId
 					});
 					if (resumed) {
-						recordTurnEvent('finalize', 'supervisor_checkpoint_resumed', {
-							checkpoint_id: checkpointId,
-							original_turn_run_id: resumed.turn_run_id,
-							resume_turn_run_id: turnRunId
-						} as Json);
+						observabilityWriter.recordEvent(
+							'finalize',
+							'supervisor_checkpoint_resumed',
+							{
+								checkpoint_id: checkpointId,
+								original_turn_run_id: resumed.turn_run_id,
+								resume_turn_run_id: turnRunId
+							} as Json
+						);
 						resumingSupervisorCheckpoint = null;
 					} else {
 						logger.warn('Supervisor checkpoint was not resumable at completion', {
@@ -5127,25 +4113,15 @@ export const POST: RequestHandler = async ({
 			if (turnAbortController.signal.aborted || isAbortLikeError(error)) {
 				const interruptedReason = turnAbortReason ?? 'cancelled';
 				doneEmittedAtMs = doneEmittedAtMs ?? Date.now();
-				queueTimingMetric(interruptedReason);
-				await persistTurnRunFinalState(
+				observabilityWriter.queueTimingMetric(interruptedReason);
+				await observabilityWriter.persistFinalState(
 					{
 						status: 'cancelled',
 						finished_reason: interruptedReason,
-						validation_failure_count: validationFailureCount,
-						first_lane: deriveFirstLane({
-							firstHelpPath,
-							firstHelpSequence,
-							firstSkillPath,
-							firstSkillSequence,
-							firstCanonicalOp,
-							firstOpSequence
-						}),
-						first_help_path: firstHelpPath,
-						first_skill_path: firstSkillPath,
-						first_canonical_op: firstCanonicalOp,
+						validation_failure_count: observabilityWriter.getValidationFailureCount(),
+						...observabilityWriter.getFirstLanePatch(),
 						prompt_snapshot_id: promptSnapshotId,
-						timing_metric_id: timingMetricId,
+						timing_metric_id: observabilityWriter.getTimingMetricId(),
 						cache_source: contextCacheSource,
 						cache_age_seconds: contextCacheAgeSecondsForTiming,
 						finished_at: new Date().toISOString()
@@ -5214,11 +4190,11 @@ export const POST: RequestHandler = async ({
 					}
 				);
 				doneEmittedAtMs = Date.now();
-				recordTurnEvent('finalize', 'done_emitted', {
+				observabilityWriter.recordEvent('finalize', 'done_emitted', {
 					finished_reason: 'error',
 					total_tokens: 0
 				} as Json);
-				queueTimingMetric('error');
+				observabilityWriter.queueTimingMetric('error');
 			} catch (sendError) {
 				logFastChatError({
 					error: sendError,
@@ -5231,24 +4207,14 @@ export const POST: RequestHandler = async ({
 					}
 				});
 			}
-			await persistTurnRunFinalState(
+			await observabilityWriter.persistFinalState(
 				{
 					status: 'failed',
 					finished_reason: 'error',
-					validation_failure_count: validationFailureCount,
-					first_lane: deriveFirstLane({
-						firstHelpPath,
-						firstHelpSequence,
-						firstSkillPath,
-						firstSkillSequence,
-						firstCanonicalOp,
-						firstOpSequence
-					}),
-					first_help_path: firstHelpPath,
-					first_skill_path: firstSkillPath,
-					first_canonical_op: firstCanonicalOp,
+					validation_failure_count: observabilityWriter.getValidationFailureCount(),
+					...observabilityWriter.getFirstLanePatch(),
 					prompt_snapshot_id: promptSnapshotId,
-					timing_metric_id: timingMetricId,
+					timing_metric_id: observabilityWriter.getTimingMetricId(),
 					cache_source: contextCacheSource,
 					cache_age_seconds: contextCacheAgeSecondsForTiming,
 					finished_at: new Date().toISOString()
@@ -5259,6 +4225,7 @@ export const POST: RequestHandler = async ({
 		} finally {
 			clearTimeout(turnTimeoutId);
 			stopCancelWatcher?.();
+			await observabilityWriter.flushTurnEvents();
 			if (streamDetached) {
 				return;
 			}

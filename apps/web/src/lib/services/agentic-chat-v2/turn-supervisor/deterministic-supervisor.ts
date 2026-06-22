@@ -22,6 +22,12 @@ import {
 	normalizeTurnSupervisorEntityIndex,
 	type TurnSupervisorEntityIndexEntry
 } from './entity-index';
+import {
+	buildFailureKey as buildToolFailureKey,
+	classifyToolFailure,
+	parseInvalidArgumentFailure,
+	parseRequiredParameterFailure
+} from '../stream-orchestrator/tool-failure';
 
 type RecentToolEntry = TurnDigest['recentTools'][number] & {
 	toolCallId: string;
@@ -147,6 +153,11 @@ class DeterministicTurnSupervisor implements TurnSupervisor {
 				const entry = this.recentTools.find(
 					(tool) => tool.toolCallId === observation.toolCallId
 				);
+				const typedFailure = classifyToolFailure({
+					message: observation.error,
+					toolName: observation.toolName,
+					canonicalOp: entry?.canonicalOp ?? null
+				});
 				const errorClass = classifyToolError(observation.error);
 				if (entry) {
 					entry.success = observation.success;
@@ -154,7 +165,9 @@ class DeterministicTurnSupervisor implements TurnSupervisor {
 					entry.resultSummary = observation.resultSummary ?? null;
 				}
 				if (!observation.success) {
-					const failureKey = `${observation.toolName}|${errorClass ?? 'execution'}|${observation.error ?? ''}`;
+					const failureKey = typedFailure
+						? buildToolFailureKey(typedFailure)
+						: `${observation.toolName}|${errorClass ?? 'execution'}|${observation.error ?? ''}`;
 					const nextCount = (this.failureCounts.get(failureKey) ?? 0) + 1;
 					this.failureCounts.set(failureKey, nextCount);
 					if (nextCount >= 2) {
@@ -625,10 +638,7 @@ function articleFor(value: string): 'a' | 'an' {
 
 function extractMissingRequiredField(summary: string | null | undefined): string | null {
 	if (!summary) return null;
-	const match =
-		summary.match(/Missing required parameter:\s*([a-zA-Z0-9_.-]+)/i) ??
-		summary.match(/Invalid\s+([a-zA-Z0-9_.-]+):/i);
-	return match?.[1] ?? null;
+	return parseRequiredParameterFailure(summary) ?? parseInvalidArgumentFailure(summary);
 }
 
 function buildRequiredFieldQuestion(field: string | null): string {

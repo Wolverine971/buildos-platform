@@ -11,9 +11,80 @@ export type GatewayArgValidationError = {
 	message: string;
 };
 
+export type GatewayLegacyArgAliasUsage = {
+	alias: string;
+	target: string;
+};
+
 export type GatewayArgValidationResult =
-	| { ok: true; args: Record<string, unknown> }
-	| { ok: false; error: GatewayArgValidationError };
+	| {
+			ok: true;
+			args: Record<string, unknown>;
+			legacyAliasesUsed: GatewayLegacyArgAliasUsage[];
+	  }
+	| {
+			ok: false;
+			error: GatewayArgValidationError;
+			legacyAliasesUsed: GatewayLegacyArgAliasUsage[];
+	  };
+
+type GatewayArgAliasGroup = {
+	target: string;
+	aliases: readonly string[];
+	allowNonString?: boolean;
+	normalize?: boolean;
+};
+
+const GATEWAY_ARG_ALIAS_GROUPS: Partial<
+	Record<BuildosAgentAllowedOp, readonly GatewayArgAliasGroup[]>
+> = {
+	'onto.edge.link': [
+		{
+			target: 'src_kind',
+			aliases: ['source_kind', 'from_kind', 'from.kind', 'source.kind', 'src.kind'],
+			normalize: true
+		},
+		{
+			target: 'src_id',
+			aliases: ['source_id', 'from_id', 'from.id', 'source.id', 'src.id'],
+			normalize: true
+		},
+		{
+			target: 'dst_kind',
+			aliases: [
+				'target_kind',
+				'tgt_kind',
+				'to_kind',
+				'to.kind',
+				'target.kind',
+				'tgt.kind',
+				'dst.kind'
+			],
+			normalize: true
+		},
+		{
+			target: 'dst_id',
+			aliases: ['target_id', 'tgt_id', 'to_id', 'to.id', 'target.id', 'tgt.id', 'dst.id'],
+			normalize: true
+		},
+		{
+			target: 'rel',
+			aliases: ['relationship', 'relation', 'relationship_type', 'edge_type', 'type'],
+			normalize: true
+		},
+		{
+			target: 'props',
+			aliases: ['edge_props', 'metadata'],
+			allowNonString: true,
+			normalize: true
+		}
+	],
+	'onto.document.create': [
+		{ target: 'content', aliases: ['body_markdown'], normalize: true },
+		{ target: 'parent_document_id', aliases: ['parent_id'], normalize: true }
+	],
+	'onto.document.update': [{ target: 'content', aliases: ['body_markdown'], normalize: true }]
+};
 
 export function coerceGatewayArgs(value: unknown): Record<string, unknown> {
 	return value && typeof value === 'object' && !Array.isArray(value)
@@ -73,22 +144,17 @@ function deleteFlatGatewayAliases(args: Record<string, unknown>, aliases: readon
 	}
 }
 
-function mapGatewayArgAlias(
-	args: Record<string, unknown>,
-	target: string,
-	aliases: readonly string[],
-	options: { allowNonString?: boolean } = {}
-) {
-	if (args[target] === undefined) {
-		for (const alias of aliases) {
+function mapGatewayArgAlias(args: Record<string, unknown>, group: GatewayArgAliasGroup) {
+	if (args[group.target] === undefined) {
+		for (const alias of group.aliases) {
 			const value = readGatewayArg(args, alias);
 			if (value === undefined) continue;
-			if (!options.allowNonString && typeof value !== 'string') continue;
-			args[target] = value;
+			if (!group.allowNonString && typeof value !== 'string') continue;
+			args[group.target] = value;
 			break;
 		}
 	}
-	deleteFlatGatewayAliases(args, aliases);
+	deleteFlatGatewayAliases(args, group.aliases);
 }
 
 export function normalizeGatewayOpArgs(
@@ -100,47 +166,30 @@ export function normalizeGatewayOpArgs(
 	}
 
 	const normalized = { ...args };
-	mapGatewayArgAlias(normalized, 'src_kind', [
-		'source_kind',
-		'from_kind',
-		'from.kind',
-		'source.kind',
-		'src.kind'
-	]);
-	mapGatewayArgAlias(normalized, 'src_id', [
-		'source_id',
-		'from_id',
-		'from.id',
-		'source.id',
-		'src.id'
-	]);
-	mapGatewayArgAlias(normalized, 'dst_kind', [
-		'target_kind',
-		'tgt_kind',
-		'to_kind',
-		'to.kind',
-		'target.kind',
-		'tgt.kind',
-		'dst.kind'
-	]);
-	mapGatewayArgAlias(normalized, 'dst_id', [
-		'target_id',
-		'tgt_id',
-		'to_id',
-		'to.id',
-		'target.id',
-		'tgt.id',
-		'dst.id'
-	]);
-	mapGatewayArgAlias(normalized, 'rel', [
-		'relationship',
-		'relation',
-		'relationship_type',
-		'edge_type',
-		'type'
-	]);
-	mapGatewayArgAlias(normalized, 'props', ['edge_props', 'metadata'], { allowNonString: true });
+	for (const group of GATEWAY_ARG_ALIAS_GROUPS[op] ?? []) {
+		if (group.normalize) {
+			mapGatewayArgAlias(normalized, group);
+		}
+	}
 	return normalized;
+}
+
+export function detectGatewayLegacyArgAliases(
+	op: BuildosAgentAllowedOp,
+	args: Record<string, unknown>
+): GatewayLegacyArgAliasUsage[] {
+	const groups = GATEWAY_ARG_ALIAS_GROUPS[op] ?? [];
+	const used: GatewayLegacyArgAliasUsage[] = [];
+
+	for (const group of groups) {
+		for (const alias of group.aliases) {
+			if (readGatewayArg(args, alias) !== undefined) {
+				used.push({ alias, target: group.target });
+			}
+		}
+	}
+
+	return used;
 }
 
 export function validateGatewayArgs(
@@ -174,13 +223,27 @@ export function normalizeAndValidateGatewayArgs(params: {
 	op: BuildosAgentAllowedOp;
 	args: unknown;
 	schema?: Record<string, any>;
+	allowLegacyAliases?: boolean;
 }): GatewayArgValidationResult {
-	const args = normalizeGatewayOpArgs(params.op, coerceGatewayArgs(params.args));
+	const rawArgs = coerceGatewayArgs(params.args);
+	const legacyAliasesUsed = detectGatewayLegacyArgAliases(params.op, rawArgs);
+	if (params.allowLegacyAliases === false && legacyAliasesUsed.length > 0) {
+		const aliases = legacyAliasesUsed.map((usage) => usage.alias);
+		return {
+			ok: false,
+			error: {
+				code: 'VALIDATION_ERROR',
+				message: `Unsupported compatibility parameter${aliases.length === 1 ? '' : 's'}: ${aliases.join(', ')}`
+			},
+			legacyAliasesUsed
+		};
+	}
+	const args = normalizeGatewayOpArgs(params.op, rawArgs);
 	const error = validateGatewayArgs(params.schema, args);
 	if (error) {
-		return { ok: false, error };
+		return { ok: false, error, legacyAliasesUsed };
 	}
-	return { ok: true, args };
+	return { ok: true, args, legacyAliasesUsed };
 }
 
 export function normalizeAndValidateGatewayWriteArgs(

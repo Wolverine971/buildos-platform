@@ -11,6 +11,11 @@ import {
 	getGatewayExecOp,
 	isWriteLikeOperation
 } from './round-analysis';
+import {
+	classifyToolFailure,
+	isNotFoundFailure,
+	parseRequiredParameterFailure
+} from './tool-failure';
 
 export function shouldRepairProjectCreateNoExecution(params: {
 	contextType: string;
@@ -214,12 +219,12 @@ export function buildToolValidationRepairInstruction(
 	const hasTaskCreateTitleIssue = issues.some(
 		(issue) =>
 			issue.op === 'onto.task.create' &&
-			issue.errors.some((error) => error.includes('Missing required parameter: title'))
+			issue.errors.some((error) => parseRequiredParameterFailure(error) === 'title')
 	);
 	const hasTaskUpdateIdIssue = issues.some(
 		(issue) =>
 			issue.op === 'onto.task.update' &&
-			issue.errors.some((error) => error.includes('Missing required parameter: task_id'))
+			issue.errors.some((error) => parseRequiredParameterFailure(error) === 'task_id')
 	);
 	const hasTaskUpdateEmptyIssue = issues.some(
 		(issue) =>
@@ -756,7 +761,7 @@ function hasLaterSuccessfulRetry(
 }
 
 function looksLikeNotFoundError(error: unknown): boolean {
-	return typeof error === 'string' && /\bnot found\b/i.test(error);
+	return isNotFoundFailure(classifyToolFailure({ message: error }));
 }
 
 function hasSameMutationIntentIgnoringIds(
@@ -869,14 +874,28 @@ function appendWriteFailureDisclosure(
 	finalText: string,
 	failures: FailedWriteDisclosure[]
 ): string {
-	const uniqueFailures = Array.from(
-		new Map(failures.map((failure) => [failure.op, failure])).values()
-	);
+	const uniqueFailures = groupFailedWriteDisclosures(failures);
 	const labels = uniqueFailures.map((failure) => formatWriteFailureLabel(failure));
 	const subject =
 		uniqueFailures.length === 1 ? 'One write did not complete' : 'Some writes did not complete';
 	const persistedPart = uniqueFailures.length === 1 ? 'that part' : 'those parts';
 	return `${finalText.trim()}\n\n${subject}: ${labels.join('; ')}. I did not persist ${persistedPart}.`;
+}
+
+function groupFailedWriteDisclosures(failures: FailedWriteDisclosure[]): FailedWriteDisclosure[] {
+	return Array.from(
+		new Map(
+			failures.map((failure) => [buildFailedWriteDisclosureGroupKey(failure), failure])
+		).values()
+	);
+}
+
+function buildFailedWriteDisclosureGroupKey(failure: FailedWriteDisclosure): string {
+	const classified = classifyToolFailure({
+		message: failure.error,
+		canonicalOp: failure.op
+	});
+	return classified?.canonicalOp ?? failure.op;
 }
 
 function formatWriteFailureLabel(failure: FailedWriteDisclosure): string {

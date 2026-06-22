@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/checkpoint-service.ts
-import type { Json } from '@buildos/shared-types';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database, Json } from '@buildos/shared-types';
 import type { TurnDigest, TurnSupervisorDecision } from './types';
 
 const DEFAULT_TURN_CHECKPOINT_EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -8,32 +9,17 @@ export type TurnCheckpointStatus = 'active' | 'resuming' | 'resumed' | 'expired'
 
 export type TurnCheckpointType = 'supervisor_question' | 'supervisor_resume';
 
-export type ChatTurnCheckpoint = {
-	id: string;
-	turn_run_id: string;
-	session_id: string;
-	user_id: string;
-	resume_turn_run_id: string | null;
-	checkpoint_type: string;
+type ChatTurnCheckpointRow = Database['public']['Tables']['chat_turn_checkpoints']['Row'];
+
+export type ChatTurnCheckpoint = Omit<ChatTurnCheckpointRow, 'checkpoint_type' | 'status'> & {
+	checkpoint_type: TurnCheckpointType | string;
 	status: TurnCheckpointStatus;
-	reason: string;
-	digest: Json;
-	resume_context: Json;
-	supervisor_decision: Json;
-	question: string | null;
-	resume_started_at: string | null;
-	resumed_at: string | null;
-	expires_at: string | null;
-	created_at: string;
-	updated_at?: string | null;
 };
 
-type SupabaseLike = {
-	from(table: 'chat_turn_checkpoints' | 'chat_turn_runs'): any;
-};
+export type TurnSupervisorSupabaseClient = Pick<SupabaseClient<Database>, 'from'>;
 
 export type CreateTurnCheckpointParams = {
-	supabase: SupabaseLike;
+	supabase: TurnSupervisorSupabaseClient;
 	turnRunId: string;
 	sessionId: string;
 	userId: string;
@@ -47,14 +33,14 @@ export type CreateTurnCheckpointParams = {
 };
 
 export type LoadLatestActiveCheckpointParams = {
-	supabase: SupabaseLike;
+	supabase: TurnSupervisorSupabaseClient;
 	sessionId: string;
 	userId: string;
 	now?: string;
 };
 
 export type MarkCheckpointResumingParams = {
-	supabase: SupabaseLike;
+	supabase: TurnSupervisorSupabaseClient;
 	checkpointId: string;
 	userId: string;
 	resumeTurnRunId: string;
@@ -62,20 +48,20 @@ export type MarkCheckpointResumingParams = {
 };
 
 export type MarkCheckpointResumedParams = {
-	supabase: SupabaseLike;
+	supabase: TurnSupervisorSupabaseClient;
 	checkpointId: string;
 	userId: string;
 	resumedAt?: string;
 };
 
 export type RestoreCheckpointToActiveParams = {
-	supabase: SupabaseLike;
+	supabase: TurnSupervisorSupabaseClient;
 	checkpointId: string;
 	userId: string;
 };
 
 type StaleResumingCheckpointRecoveryParams = {
-	supabase: SupabaseLike;
+	supabase: TurnSupervisorSupabaseClient;
 	userId: string;
 	staleBefore: string;
 };
@@ -120,7 +106,7 @@ export async function createTurnCheckpoint(
 	if (!data) {
 		throw new Error('Failed to create turn checkpoint: no row returned');
 	}
-	return data as ChatTurnCheckpoint;
+	return toChatTurnCheckpoint(data);
 }
 
 export async function loadLatestActiveCheckpoint(
@@ -141,7 +127,7 @@ export async function loadLatestActiveCheckpoint(
 		throw new Error(`Failed to load active turn checkpoint: ${readErrorMessage(error)}`);
 	}
 
-	return Array.isArray(data) ? ((data[0] as ChatTurnCheckpoint | undefined) ?? null) : null;
+	return Array.isArray(data) && data[0] ? toChatTurnCheckpoint(data[0]) : null;
 }
 
 export async function markCheckpointResuming(
@@ -164,7 +150,7 @@ export async function markCheckpointResuming(
 	if (error) {
 		throw new Error(`Failed to mark checkpoint resuming: ${readErrorMessage(error)}`);
 	}
-	return (data as ChatTurnCheckpoint | null) ?? null;
+	return data ? toChatTurnCheckpoint(data) : null;
 }
 
 export async function markCheckpointResumed(
@@ -186,7 +172,7 @@ export async function markCheckpointResumed(
 	if (error) {
 		throw new Error(`Failed to mark checkpoint resumed: ${readErrorMessage(error)}`);
 	}
-	return (data as ChatTurnCheckpoint | null) ?? null;
+	return data ? toChatTurnCheckpoint(data) : null;
 }
 
 export async function restoreCheckpointToActive(
@@ -209,7 +195,7 @@ export async function restoreCheckpointToActive(
 	if (error) {
 		throw new Error(`Failed to restore checkpoint: ${readErrorMessage(error)}`);
 	}
-	return (data as ChatTurnCheckpoint | null) ?? null;
+	return data ? toChatTurnCheckpoint(data) : null;
 }
 
 export async function recoverStaleResumingCheckpoints(
@@ -226,7 +212,7 @@ export async function recoverStaleResumingCheckpoints(
 		throw new Error(`Failed to load stale checkpoints: ${readErrorMessage(error)}`);
 	}
 
-	const staleRows = Array.isArray(data) ? (data as ChatTurnCheckpoint[]) : [];
+	const staleRows = Array.isArray(data) ? data.map(toChatTurnCheckpoint) : [];
 	if (staleRows.length === 0) {
 		return { restoredActive: [], markedResumed: [] };
 	}
@@ -308,7 +294,7 @@ export function buildCheckpointResumeSystemMessage(checkpoint: ChatTurnCheckpoin
 }
 
 async function markStaleCheckpointsResumed(params: {
-	supabase: SupabaseLike;
+	supabase: TurnSupervisorSupabaseClient;
 	userId: string;
 	checkpointIds: string[];
 	resumedAt: string;
@@ -327,11 +313,11 @@ async function markStaleCheckpointsResumed(params: {
 	if (error) {
 		throw new Error(`Failed to mark stale checkpoints resumed: ${readErrorMessage(error)}`);
 	}
-	return Array.isArray(data) ? (data as ChatTurnCheckpoint[]) : [];
+	return Array.isArray(data) ? data.map(toChatTurnCheckpoint) : [];
 }
 
 async function restoreStaleCheckpointsById(params: {
-	supabase: SupabaseLike;
+	supabase: TurnSupervisorSupabaseClient;
 	userId: string;
 	checkpointIds: string[];
 }): Promise<ChatTurnCheckpoint[]> {
@@ -351,7 +337,27 @@ async function restoreStaleCheckpointsById(params: {
 	if (error) {
 		throw new Error(`Failed to restore stale checkpoints: ${readErrorMessage(error)}`);
 	}
-	return Array.isArray(data) ? (data as ChatTurnCheckpoint[]) : [];
+	return Array.isArray(data) ? data.map(toChatTurnCheckpoint) : [];
+}
+
+function toChatTurnCheckpoint(row: ChatTurnCheckpointRow): ChatTurnCheckpoint {
+	if (!isTurnCheckpointStatus(row.status)) {
+		throw new Error(`Unexpected turn checkpoint status: ${row.status}`);
+	}
+	return {
+		...row,
+		status: row.status
+	};
+}
+
+function isTurnCheckpointStatus(value: string): value is TurnCheckpointStatus {
+	return (
+		value === 'active' ||
+		value === 'resuming' ||
+		value === 'resumed' ||
+		value === 'expired' ||
+		value === 'cancelled'
+	);
 }
 
 function readErrorMessage(error: unknown): string {

@@ -130,6 +130,10 @@ vi.mock('$lib/services/agentic-chat-v2', () => ({
 }));
 
 import { GET, POST } from './+server';
+import {
+	buildPreparedPromptKey,
+	buildPreparedPromptSurface
+} from '$lib/services/agentic-chat-v2/prepared-prompt-cache';
 
 type Row = Record<string, any>;
 
@@ -403,6 +407,60 @@ function buildCheckpointRow(overrides: Row = {}): Row {
 	};
 }
 
+function buildPreparedPromptRow(overrides: Row = {}): { key: string; row: Row } {
+	const id = overrides.id ?? '11111111-1111-4111-8111-111111111111';
+	const createdAt = overrides.created_at ?? '2026-06-22T00:00:00.000Z';
+	const contextPayload = overrides.context_payload ?? {
+		contextType: 'global',
+		data: {}
+	};
+	const conversationSummary = overrides.conversation_summary ?? null;
+	const { key, nonceSha256 } = buildPreparedPromptKey(id);
+	const surface = buildPreparedPromptSurface({
+		surfaceProfile: 'general' as any,
+		contextType: 'global',
+		contextPayload,
+		conversationSummary,
+		tools: [],
+		envelope: {
+			promptVariant: 'lite',
+			systemPrompt: 'System prompt',
+			sections: [],
+			contextInventory: null,
+			toolsSummary: null
+		} as any,
+		createdAt
+	});
+
+	return {
+		key,
+		row: {
+			id,
+			user_id: 'user-1',
+			session_id: 'session-1',
+			cache_key: 'v2|global|none|none|none',
+			context_type: 'global',
+			context_payload: contextPayload,
+			conversation_summary: conversationSummary,
+			prepared_surfaces: {
+				general: surface
+			},
+			default_surface_profile: 'general',
+			prompt_variant: 'lite',
+			history_for_model: [],
+			history_compressed: false,
+			history_strategy: 'raw_history',
+			raw_history_count: 0,
+			nonce_sha256: nonceSha256,
+			expires_at: '2099-01-01T00:00:00.000Z',
+			consumed_at: null,
+			created_at: createdAt,
+			updated_at: createdAt,
+			...overrides
+		}
+	};
+}
+
 beforeEach(() => {
 	vi.clearAllMocks();
 	for (const key of Object.keys(runtimeEnv.values)) {
@@ -512,6 +570,60 @@ describe('/api/agent/v2/stream', () => {
 		}
 
 		expect(supabase.from).not.toHaveBeenCalledWith('admin_users');
+	});
+
+	it('consumes a generated-type prepared prompt row for a valid preparedPromptKey', async () => {
+		const preparedPrompt = buildPreparedPromptRow();
+		const supabase = createStreamingSupabase({
+			agentic_chat_prepared_prompts: [preparedPrompt.row]
+		});
+
+		const response = await POST({
+			request: new Request('http://localhost/api/agent/v2/stream', {
+				method: 'POST',
+				body: JSON.stringify({
+					message: 'Hello',
+					context_type: 'global',
+					stream_run_id: 'stream-run-prepared',
+					client_turn_id: 'client-turn-prepared',
+					preparedPromptKey: preparedPrompt.key
+				})
+			}),
+			locals: {
+				supabase,
+				safeGetSession: vi.fn().mockResolvedValue({ user: { id: 'user-1' } })
+			},
+			fetch: vi.fn()
+		} as any);
+
+		expect(response.status).toBe(200);
+		const events = parseSseEvents(await response.text());
+		expect(events).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					type: 'done',
+					finished_reason: 'stop'
+				})
+			])
+		);
+
+		expect(supabase.from).toHaveBeenCalledWith('agentic_chat_prepared_prompts');
+		expect(mocks.loadRecentMessages).not.toHaveBeenCalled();
+		expect(supabase.updatedRows.agentic_chat_prepared_prompts?.[0]).toEqual(
+			expect.objectContaining({
+				id: preparedPrompt.row.id,
+				user_id: 'user-1',
+				consumed_at: expect.any(String)
+			})
+		);
+		expect(
+			supabase.updatedRows.chat_turn_runs?.find((row) => row.status === 'completed')
+		).toEqual(
+			expect.objectContaining({
+				cache_source: 'prepared_prompt',
+				prepared_prompt_id: preparedPrompt.row.id
+			})
+		);
 	});
 
 	it('persists a supervisor question checkpoint and finishes the stream as supervisor_question', async () => {

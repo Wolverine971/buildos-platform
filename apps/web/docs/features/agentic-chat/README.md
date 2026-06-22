@@ -2,7 +2,7 @@
 
 # Agentic Chat (Current Implementation)
 
-> Last updated: 2026-04-14
+> Last updated: 2026-06-22
 > Scope: Runtime behavior in `apps/web` (UI + APIs + tools + persistence)
 
 This is the canonical documentation for the chat system currently running in the web app.
@@ -14,25 +14,36 @@ For the canonical operating model and strategy, see [Agentic Chat Operating Mode
 Primary production path:
 
 - UI: `apps/web/src/lib/components/agent/AgentChatModal.svelte`
+- Prewarm API: `POST /api/agent/v2/prewarm`
 - Stream API: `POST /api/agent/v2/stream`
 - Cancel API: `POST /api/agent/v2/stream/cancel`
 
-The modal currently posts turns to `/api/agent/v2/stream`.
+The modal renders the shell and delegates stream transport to
+`agent-chat-stream-controller.svelte.ts`.
 
 ## 2. Code Map
 
-| Layer                | Primary file(s)                                                              | Responsibility                                                            |
-| -------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Chat UI              | `apps/web/src/lib/components/agent/AgentChatModal.svelte`                    | Sends requests, processes SSE, renders thinking/tool activity             |
-| V2 API               | `apps/web/src/routes/api/agent/v2/stream/+server.ts`                         | Auth, access checks, session lifecycle, context loading, SSE, persistence |
-| V2 cancel channel    | `apps/web/src/routes/api/agent/v2/stream/cancel/+server.ts`                  | Records stop/supersede reason keyed by `stream_run_id`                    |
-| V2 context           | `apps/web/src/lib/services/agentic-chat-v2/context-loader.ts`                | Loads global/project/entity/daily brief prompt context                    |
-| V2 history           | `apps/web/src/lib/services/agentic-chat-v2/history-composer.ts`              | Last-N history + compression strategy                                     |
-| V2 streaming loop    | `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts`     | LLM streaming + tool loop + limits                                        |
-| Tool dispatch        | `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.ts`         | Maps tool names to domain executors                                       |
-| Gateway surface      | `apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts`       | Builds the discovery-tool plus direct-tool surface for gateway mode       |
-| Gateway execution    | `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts` | Executes discovery tools and registry-backed direct tools in gateway mode |
-| Session service (V2) | `apps/web/src/lib/services/agentic-chat-v2/session-service.ts`               | Resolve/create session, load/persist messages, update stats               |
+| Layer                    | Primary file(s)                                                              | Responsibility                                                                 |
+| ------------------------ | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Chat shell               | `apps/web/src/lib/components/agent/AgentChatModal.svelte`                    | Renders modal shell, messages, activity panes, and toolbar glue                |
+| Shell router             | `apps/web/src/lib/components/agent/agent-chat-shell-router.svelte.ts`        | Context/project/focus routing state and agent-to-agent wizard state            |
+| Client stream controller | `apps/web/src/lib/components/agent/agent-chat-stream-controller.svelte.ts`   | Send/receive/cancel lifecycle, stale-run guards, timing, optimistic rollback   |
+| Client SSE handler       | `apps/web/src/lib/components/agent/agent-chat-sse-handler.ts`                | Applies V2 SSE events to message/tool/thinking state                           |
+| Client attachments       | `apps/web/src/lib/components/agent/agent-chat-attachments.svelte.ts`         | Draft image uploads, OCR polling, ready attachment refs                        |
+| Client prewarm/session   | `agent-chat-prewarm.svelte.ts`, `agent-chat-session.ts`                      | Prewarm lifecycle, prepared-prompt handoff, session bootstrap/resume           |
+| V2 stream API            | `apps/web/src/routes/api/agent/v2/stream/+server.ts`                         | Auth, access checks, scope/context/prepared prompt, SSE, persistence           |
+| V2 stream attachments    | `apps/web/src/lib/services/agentic-chat-v2/stream-attachments.ts`            | Stream-time image attachment validation, temporary storage checks, live vision |
+| V2 turn continuity       | `apps/web/src/lib/services/agentic-chat-v2/last-turn-context.ts`             | Last-turn continuity snapshot and prior-turn prompt hint                       |
+| V2 prewarm API           | `apps/web/src/routes/api/agent/v2/prewarm/+server.ts`                        | Warms prompt context and optional prepared prompt rows                         |
+| V2 cancel channel        | `apps/web/src/routes/api/agent/v2/stream/cancel/+server.ts`                  | Records stop/supersede reason keyed by `stream_run_id`                         |
+| V2 context/scope         | `context-loader.ts`, `scope.ts`, `context-cache.ts`                          | Loads and normalizes global/project/entity/daily brief context                 |
+| V2 history               | `apps/web/src/lib/services/agentic-chat-v2/history-composer.ts`              | Last-N history + compression strategy                                          |
+| V2 streaming loop        | `apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/index.ts`     | LLM streaming + tool loop + limits                                             |
+| Turn observability       | `apps/web/src/lib/services/agentic-chat-v2/turn-observability-writer.ts`     | Turn runs, batched turn events, timing metrics, prompt snapshots               |
+| Tool dispatch            | `apps/web/src/lib/services/agentic-chat/tools/core/tool-executor.ts`         | Maps tool names to domain executors                                            |
+| Gateway surface          | `apps/web/src/lib/services/agentic-chat/tools/core/gateway-surface.ts`       | Builds discovery-tool plus direct-tool surfaces                                |
+| Gateway execution        | `apps/web/src/lib/services/agentic-chat/execution/tool-execution-service.ts` | Executes discovery tools and registry-backed direct tools in gateway mode      |
+| Session service (V2)     | `apps/web/src/lib/services/agentic-chat-v2/session-service.ts`               | Resolve/create session, load/persist messages, update stats                    |
 
 Related APIs used by the modal:
 
@@ -57,6 +68,9 @@ Request body (current fields):
 - `stream_run_id`
 - `client_turn_id`
 - `voiceNoteGroupId` or `voice_note_group_id`
+- `prewarmedContext` or `prewarmed_context`
+- `preparedPromptKey` or `prepared_prompt_key`
+- `attachments`
 
 Behavior notes:
 
@@ -64,10 +78,13 @@ Behavior notes:
 - Validates access for project and daily brief contexts before doing heavy work.
 - Creates or resolves `chat_sessions`.
 - First-turn session identity is now stabilized by `POST /api/agent/v2/prewarm` with `ensure_session: true` before the modal opens a cancellable V2 stream when no session exists yet.
+- Prepared-prompt prewarm is default-on. A valid `preparedPromptKey` can supply the prepared prompt surface and prepared history; otherwise the route falls back through session cache, request prewarm, and fresh context load.
+- Image attachments are normalized at request parse, then validated by `stream-attachments.ts`; current-turn live vision signs eligible images only after storage/project checks pass.
 - Loads recent `chat_messages` (last N, default 10) and composes compressed history when needed.
 - Streams text/tool events over SSE.
 - Persists user + assistant messages (idempotent by `client_turn_id` keys).
 - Emits a lightweight `timing` event before terminal `done` and asynchronously records turn metrics in `timing_metrics`.
+- Accumulates `chat_turn_events` in memory during the turn and flushes them as a batch during endpoint cleanup.
 
 ### 3.3 `POST /api/agent/v2/prewarm`
 
@@ -170,6 +187,10 @@ V2 route uses `chat_sessions.agent_metadata` for:
 - `fastchat_cancel_hints_v1` (cancel reason fallback)
 - `agent_state` (post-turn reconciled state)
 
+Prepared prompts live in `agentic_chat_prepared_prompts`, keyed by a
+nonce-protected `preparedPromptKey`. Consumption is one-shot: the stream route
+marks the row `consumed_at` before using its prompt surface.
+
 ### 6.4 History composition
 
 Defaults in `history-composer.ts`:
@@ -204,6 +225,11 @@ Primary tables written/read in the active path:
 - `chat_sessions`
 - `chat_messages`
 - `chat_tool_executions`
+- `agentic_chat_prepared_prompts`
+- `chat_turn_runs`
+- `chat_turn_checkpoints`
+- `chat_turn_events`
+- `chat_prompt_snapshots`
 - `timing_metrics`
 
 Common message metadata written by V2:
@@ -216,6 +242,10 @@ Common message metadata written by V2:
     - `finished_reason: cancelled`
     - `partial_tokens`
 - optional `fastchat_tool_trace_v1` + `fastchat_tool_trace_summary`
+
+Turn observability notes:
+
+- `chat_turn_events` preserve per-event `sequence_index`, but the stream endpoint flushes them with one batched insert at turn cleanup rather than one detached insert per event.
 
 Session finalization from modal close:
 

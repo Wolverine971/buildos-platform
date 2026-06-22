@@ -205,12 +205,16 @@ async function executeWriteOp(
 		return fail(op, 'UNSUPPORTED', `Calendar op ${op} requires a CalendarPort`);
 	}
 
+	const scope = buildGatewayScope(ctx);
+
 	// Stage mode: compute a ProposedChange and return WITHOUT mutating.
 	// Scope/fence checks above still apply — a staged write must be one the run
 	// is actually allowed to make.
 	if (ctx.mutationMode === 'stage') {
 		const staged = await stageGatewayWriteOp({
 			admin: ctx.admin,
+			userId: ctx.userId,
+			scope,
 			op,
 			args
 		});
@@ -230,8 +234,6 @@ async function executeWriteOp(
 			proposedChange: staged.change
 		};
 	}
-
-	const scope = buildGatewayScope(ctx);
 
 	const result = await runGatewayWriteOp({
 		admin: ctx.admin,

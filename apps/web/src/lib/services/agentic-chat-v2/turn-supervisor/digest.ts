@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/agentic-chat-v2/turn-supervisor/digest.ts
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import type { FastToolExecution } from '../stream-orchestrator/shared';
+import { classifyToolFailure, isValidationFailure } from '../stream-orchestrator/tool-failure';
 
 const DISCOVERY_TOOL_NAMES = new Set(['skill_load', 'tool_search', 'tool_schema']);
 
@@ -104,21 +105,9 @@ export function summarizeToolResult(result: ChatToolResult, maxChars = 220): str
 }
 
 export function classifyToolError(error: string | null | undefined): string | null {
-	if (!error) return null;
-	const normalized = error.toLowerCase();
-	if (normalized.includes('validation') || normalized.includes('required parameter')) {
-		return 'validation';
-	}
-	if (normalized.includes('not found') || normalized.includes('missing')) {
-		return 'not_found';
-	}
-	if (normalized.includes('permission') || normalized.includes('unauthorized')) {
-		return 'permission';
-	}
-	if (normalized.includes('timeout') || normalized.includes('timed out')) {
-		return 'timeout';
-	}
-	return 'execution';
+	const failure = classifyToolFailure(error);
+	if (!failure) return null;
+	return isValidationFailure(failure) ? 'validation' : failure.kind;
 }
 
 export function buildToolPatternKey(

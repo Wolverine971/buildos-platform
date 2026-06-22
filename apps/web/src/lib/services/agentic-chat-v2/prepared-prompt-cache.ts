@@ -1,6 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/prepared-prompt-cache.ts
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import type { ChatContextType, ChatToolDefinition, Json } from '@buildos/shared-types';
+import type { ChatContextType, ChatToolDefinition, Database } from '@buildos/shared-types';
 import type {
 	LitePromptEnvelope,
 	LitePromptSection,
@@ -56,32 +56,16 @@ export type PreparedPromptResponse = {
 	system_prompt_sha256: string;
 };
 
-export type PreparedPromptRow = {
-	id: string;
-	user_id: string;
-	session_id?: string | null;
+type PreparedPromptTableRow = Database['public']['Tables']['agentic_chat_prepared_prompts']['Row'];
+
+export type PreparedPromptRow = Omit<
+	PreparedPromptTableRow,
+	'context_type' | 'context_payload' | 'prepared_surfaces' | 'default_surface_profile'
+> & {
 	context_type: ChatContextType;
-	entity_id?: string | null;
-	project_id?: string | null;
-	project_focus?: Json | null;
-	cache_key: string;
-	nonce_sha256: string;
-	prompt_variant: string;
-	context_cache_version: number;
 	context_payload: Record<string, unknown>;
-	conversation_summary?: string | null;
-	history_for_model?: Json | null;
-	history_strategy?: string | null;
-	history_compressed?: boolean | null;
-	raw_history_count?: number | null;
-	history_for_model_count?: number | null;
 	prepared_surfaces: Record<string, PreparedPromptSurface>;
 	default_surface_profile: GatewaySurfaceProfileName;
-	context_payload_sha256: string;
-	expires_at: string;
-	consumed_at?: string | null;
-	created_at: string;
-	updated_at?: string | null;
 };
 
 export type ParsedPreparedPromptKey = {
@@ -103,11 +87,11 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-// Default flipped false → true on 2026-06-11 for a measured trial: telemetry
+// Default flipped false → true on 2026-06-11 for a measured rollout: telemetry
 // showed 0 hits / 60 misses (all `missing_key`) because the flag had never
-// been enabled. Re-check prepared_prompt_hit + time_to_first_response by
-// cache_source after ~1 week; set FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED=false
-// to turn it back off.
+// been enabled. As of the 2026-06-22 cleanup, keep default-on until live
+// prepared_prompt_hit + time_to_first_response by cache_source are reviewed.
+// Set FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED=false as the rollback override.
 export function isPreparedPromptPrewarmEnabled(): boolean {
 	return parseBooleanFlag(process.env.FASTCHAT_PREPARED_PROMPT_PREWARM_ENABLED, true);
 }

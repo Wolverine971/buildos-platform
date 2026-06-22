@@ -31,14 +31,12 @@
 	import { get } from 'svelte/store';
 	import ProjectImageLibrary from '$lib/components/ontology/ProjectImageLibrary.svelte';
 	import type { OntologyImageAsset } from '$lib/components/ontology/image-assets/types';
-	import { SSEProcessor, type StreamCallbacks } from '$lib/utils/sse-processor';
 	import type {
 		ChatSession,
 		ChatContextType,
 		ChatRole,
 		AgentSSEMessage,
 		ContextUsageSnapshot,
-		AgentTimingSummary,
 		SkillActivityEvent
 	} from '@buildos/shared-types';
 	import {
@@ -57,7 +55,6 @@
 		type AgentChatPanelTab,
 		type AgentProjectSummary,
 		type AgentTimelineItem,
-		type AgentToAgentStep,
 		type CreatedEntityRef,
 		type DataMutationSummary,
 		type ProjectAction,
@@ -74,7 +71,6 @@
 	import { initKeyboardAvoiding } from '$lib/utils/keyboard-avoiding';
 	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
 	import {
-		buildProjectWideFocus,
 		deriveSessionTitle,
 		isProjectContext,
 		loadAgentChatSessionSnapshot,
@@ -100,6 +96,10 @@
 	import { createVoiceAdapter } from './agent-chat-voice.svelte';
 	import { createPrewarmController } from './agent-chat-prewarm.svelte';
 	import {
+		createAgentChatStreamController,
+		type SessionBootstrapTarget
+	} from './agent-chat-stream-controller.svelte';
+	import {
 		downloadAgentChatStepsMarkdown,
 		downloadAgentChatSupportPacketMarkdown
 	} from './agent-chat-step-export';
@@ -107,13 +107,11 @@
 		AGENT_CHAT_MAX_IMAGE_ATTACHMENTS,
 		createAttachmentController
 	} from './agent-chat-attachments.svelte';
-
-	interface AutoInitProjectConfig {
-		projectId: string;
-		projectName: string;
-		showActionSelector?: boolean;
-		initialAction?: ProjectAction;
-	}
+	import {
+		createAgentChatShellRouter,
+		type AutoInitProjectConfig,
+		type ContextSelectionDetail
+	} from './agent-chat-shell-router.svelte';
 
 	interface Props {
 		isOpen?: boolean;
@@ -130,33 +128,6 @@
 		onSessionChange?: (sessionId: string | null) => void;
 	}
 
-	type ContextSelectionType = ChatContextType | 'agent_to_agent';
-
-	interface ContextSelectionDetail {
-		contextType: ContextSelectionType;
-		entityId?: string;
-		label?: string;
-	}
-
-	interface SessionBootstrapTarget {
-		contextType: ChatContextType;
-		entityId?: string;
-		projectFocus?: ProjectFocus | null;
-	}
-
-	interface ClientStreamTimingState {
-		runId: number;
-		sendStartedAtMs: number;
-		firstEventAtMs: number | null;
-		firstTextAtMs: number | null;
-		lastTextAtMs: number | null;
-		doneEventAtMs: number | null;
-		streamClosedAtMs: number | null;
-		terminalState: 'completed' | 'error' | 'cancelled' | 'aborted' | null;
-		cancelReason: 'user_cancelled' | 'superseded' | 'error' | null;
-		serverTiming: AgentTimingSummary | null;
-	}
-
 	let {
 		isOpen = false,
 		contextType: _initialContextType = 'global',
@@ -170,59 +141,44 @@
 		onSessionChange
 	}: Props = $props();
 
-	// Context selection state
-	let selectedContextType = $state<ChatContextType | null>(null);
-	let selectedEntityId = $state<string | undefined>(undefined);
-	let selectedContextLabel = $state<string | null>(null);
-	let projectFocus = $state<ProjectFocus | null>(null);
-	let showFocusSelector = $state(false);
-	let showProjectActionSelector = $state(false);
+	const shellRouter = createAgentChatShellRouter({
+		resetConversation: (options) => resetConversation(options),
+		clearMessages: () => {
+			messages = [];
+		},
+		stopVoice: () => voice.stop(),
+		isStreaming: () => stream.isStreaming,
+		logFocusActivity: (label, focus) => logFocusActivity(label, focus),
+		logError: (message, err) => console.error(message, err),
+		hasMultipleAgentHelpers: false,
+		researchAgentId: 'actionable_insight_agent'
+	});
 	// Bumped whenever the agent shifts us into a (new) project context — drives a
 	// one-shot glimmer on the header title so landing on a freshly created project
 	// feels like a small moment of magic rather than a silent label swap.
 	let contextShiftPulse = $state(0);
-	let autoInitDismissed = $state(false);
-	let lastAutoInitProjectId = $state<string | null>(null);
 	let wasOpen = $state(false);
 	// Prewarm state lives in the PrewarmController instance created below,
 	// once all dependent state and helpers are declared.
 
-	const contextDescriptor = $derived(
-		selectedContextType ? CONTEXT_DESCRIPTORS[selectedContextType] : null
-	);
-
 	const displayContextLabel = $derived.by(() => {
-		if (!selectedContextType) {
-			return 'Select a focus to begin';
-		}
-		return selectedContextLabel ?? contextDescriptor?.title ?? 'Selected focus';
+		return shellRouter.displayContextLabel;
 	});
 
 	const displayContextSubtitle = $derived.by(() => {
-		if (!selectedContextType) {
-			return 'Choose what you want to work on before starting the conversation.';
-		}
-		return contextDescriptor?.subtitle ?? '';
-	});
-
-	const defaultProjectFocus = $derived.by<ProjectFocus | null>(() => {
-		if (isProjectContext(selectedContextType) && selectedEntityId) {
-			return buildProjectWideFocus(selectedEntityId, selectedContextLabel);
-		}
-		return null;
+		return shellRouter.displayContextSubtitle;
 	});
 
 	const resolvedProjectFocus = $derived.by<ProjectFocus | null>(() => {
-		if (!isProjectContext(selectedContextType)) {
-			return null;
-		}
-		return projectFocus ?? defaultProjectFocus;
+		return shellRouter.resolvedProjectFocus;
 	});
 
 	const attachmentProjectId = $derived.by(() => {
 		return (
 			resolvedProjectFocus?.projectId ??
-			(isProjectContext(selectedContextType) ? selectedEntityId : null) ??
+			(isProjectContext(shellRouter.selectedContextType)
+				? shellRouter.selectedEntityId
+				: null) ??
 			null
 		);
 	});
@@ -239,11 +195,6 @@
 	let activeChatTab = $state<AgentChatPanelTab>('chat');
 	let brainDumpContext = $state<AgentBrainDumpContext | null>(null);
 	let currentSession = $state<ChatSession | null>(null);
-	let isStreaming = $state(false);
-	let currentStreamController: AbortController | null = null;
-	let activeStreamRunId = $state(0);
-	let activeTransportStreamRunId = $state<string | null>(null);
-	let activeClientTurnId = $state<string | null>(null);
 	const liveTimelineItems = $derived.by(() =>
 		timelineItemsFromMessages(currentSession?.id ?? 'local-session', messages)
 	);
@@ -386,7 +337,7 @@
 			// Realtime already delivered it — nothing to do.
 			if (messageHasAgentRun(runId)) return;
 			// Don't clobber an in-flight streamed turn; retry shortly.
-			if (isStreaming) {
+			if (stream.isStreaming) {
 				scheduleAgentRunMessageFallback(sid, runId);
 				return;
 			}
@@ -420,15 +371,12 @@
 		}
 	});
 	let showExistingImagePicker = $state(false);
-	let error = $state<string | null>(null);
-	let currentActivity = $state<string>('');
 	let userHasScrolled = $state(false);
 	let currentAssistantMessageId = $state<string | null>(null);
 	let currentAssistantMessageIndex = $state<number | null>(null);
 	let pendingAssistantText = '';
 	let pendingAssistantTextFlushHandle: number | null = null;
 	let currentThinkingBlockId = $state<string | null>(null);
-	let hasSentMessage = $state(false);
 	const pendingToolResults = new Map<string, PendingToolStatus>(); // Tool results that arrive before tool_call
 	const hiddenToolCallIds = new Set<string>();
 
@@ -447,8 +395,10 @@
 	let ontologyLoaded = $state(false);
 	let contextUsage = $state<ContextUsageSnapshot | null>(null);
 	let contextUsageOverheadTokens = $state(0);
-	let activeStreamTiming = $state<ClientStreamTimingState | null>(null);
-	let _lastCompletedStreamTiming = $state<ClientStreamTimingState | null>(null);
+	let prewarm: ReturnType<typeof createPrewarmController>;
+	let handleSSEMessage: (event: AgentSSEMessage) => void = () => {
+		/* assigned after SSE deps are created */
+	};
 
 	// Let embedding surfaces (e.g. BriefChatModal) mirror the active session id
 	// into their own header chrome.
@@ -457,7 +407,7 @@
 	});
 
 	const displayContextUsage = $derived.by(() => {
-		if (!selectedContextType) {
+		if (!shellRouter.selectedContextType) {
 			return null;
 		}
 
@@ -477,125 +427,80 @@
 		});
 	});
 
-	function buildClientStreamTimingState(runId: number): ClientStreamTimingState {
-		return {
-			runId,
-			sendStartedAtMs: Date.now(),
-			firstEventAtMs: null,
-			firstTextAtMs: null,
-			lastTextAtMs: null,
-			doneEventAtMs: null,
-			streamClosedAtMs: null,
-			terminalState: null,
-			cancelReason: null,
-			serverTiming: null
-		};
-	}
-
-	function diffMs(start: number | null, end: number | null): number | null {
-		if (typeof start !== 'number' || typeof end !== 'number') return null;
-		return Math.max(0, end - start);
-	}
-
-	function recordClientStreamEvent(
-		runId: number,
-		eventType: AgentSSEMessage['type'] | 'transport_error'
-	) {
-		if (!activeStreamTiming || activeStreamTiming.runId !== runId) return;
-
-		const now = Date.now();
-		let next = activeStreamTiming;
-		if (next.firstEventAtMs === null) {
-			next = { ...next, firstEventAtMs: now };
-		}
-		if (eventType === 'text' || eventType === 'text_delta') {
-			next = {
-				...next,
-				firstTextAtMs: next.firstTextAtMs ?? now,
-				lastTextAtMs: now
-			};
-		}
-		if (eventType === 'done' && next.doneEventAtMs === null) {
-			next = { ...next, doneEventAtMs: now };
-		}
-		activeStreamTiming = next;
-	}
-
-	function attachServerTiming(runId: number, timing: AgentTimingSummary) {
-		if (!activeStreamTiming || activeStreamTiming.runId !== runId) return;
-		activeStreamTiming = {
-			...activeStreamTiming,
-			serverTiming: timing
-		};
-	}
-
-	function summarizeClientStreamTiming(timing: ClientStreamTimingState) {
-		return {
-			runId: timing.runId,
-			timeToFirstStreamEventMs: diffMs(timing.sendStartedAtMs, timing.firstEventAtMs),
-			timeToFirstTextMs: diffMs(timing.sendStartedAtMs, timing.firstTextAtMs),
-			timeFromFirstEventToFirstTextMs: diffMs(timing.firstEventAtMs, timing.firstTextAtMs),
-			timeFromLastTextToDoneMs: diffMs(timing.lastTextAtMs, timing.doneEventAtMs),
-			timeToDoneMs: diffMs(timing.sendStartedAtMs, timing.doneEventAtMs),
-			totalStreamMs: diffMs(
-				timing.sendStartedAtMs,
-				timing.streamClosedAtMs ?? timing.doneEventAtMs
-			),
-			terminalState: timing.terminalState,
-			cancelReason: timing.cancelReason,
-			serverTiming: timing.serverTiming
-		};
-	}
-
-	function finalizeClientStreamTiming(
-		runId: number,
-		terminalState: ClientStreamTimingState['terminalState'],
-		cancelReason: ClientStreamTimingState['cancelReason'] = null
-	) {
-		if (!activeStreamTiming || activeStreamTiming.runId !== runId) return;
-		const finalized: ClientStreamTimingState = {
-			...activeStreamTiming,
-			streamClosedAtMs: Date.now(),
-			terminalState,
-			cancelReason
-		};
-		_lastCompletedStreamTiming = finalized;
-		activeStreamTiming = null;
-		if (dev) {
-			console.debug('[AgentChat] Stream timing', summarizeClientStreamTiming(finalized));
-		}
-	}
-
 	const AGENT_STATE_MESSAGES: Record<AgentLoopState, string> = {
 		thinking: 'BuildOS is thinking...',
 		waiting_on_user: 'Waiting on your direction...'
 	};
 
-	// Actionable Insight agent identifier (used for agent-to-agent bridge)
-	const RESEARCH_AGENT_ID = 'actionable_insight_agent';
-	// Today there is exactly one helper, so the wizard skips the "Pick a helper"
-	// step. Flip this to true once a second helper ships and the agent step
-	// becomes a real choice instead of a forced click-through.
-	const HAS_MULTIPLE_AGENT_HELPERS = false;
 	const ACTIVE_TURN_SESSION_REFRESH_MS = 2000;
-
-	let agentToAgentMode = $state(false);
-	let agentToAgentStep = $state<AgentToAgentStep | null>(null);
-	let agentGoal = $state('');
-	let selectedAgentId = $state<string | null>(null);
-	let agentLoopActive = $state(false);
-	let agentMessageLoading = $state(false);
-	let agentTurnBudget = $state(5);
-	let agentTurnsRemaining = $state(5);
-	let agentProjects = $state<AgentProjectSummary[]>([]);
-	let agentProjectsError = $state<string | null>(null);
-	let agentProjectsLoading = $state(false);
 
 	// Voice recording adapter — see agent-chat-voice.svelte.ts
 	const voice = createVoiceAdapter({
 		toastError: (msg) => toastService.error(msg),
 		logWarn: (msg, err) => {
 			console.error(msg, err);
+		}
+	});
+
+	const stream = createAgentChatStreamController({
+		getInputValue: () => inputValue,
+		setInputValue: (value) => {
+			inputValue = value;
+		},
+		getSelectedContextType: () => shellRouter.selectedContextType,
+		getSelectedEntityId: () => shellRouter.selectedEntityId,
+		getResolvedProjectFocus: () => resolvedProjectFocus,
+		getCurrentSession: () => currentSession,
+		ensureSessionReady: (target) => ensureSessionReady(target),
+		getLastTurnContext: () => lastTurnContext,
+		getIsLoadingSession: () => isLoadingSession,
+		getActiveRestoredTurnRunId: () => activeRestoredTurnRunId,
+		getPrewarm: () => prewarm,
+		attachments: {
+			buildReadyRefs: (includePreviewUrl) => attachments.buildReadyRefs(includePreviewUrl),
+			getDraftSnapshot: () => attachments.imageAttachments,
+			clearDraft: () => attachments.clearDraft(),
+			restoreDraft: (snapshot) => attachments.restoreDraft(snapshot),
+			scheduleMessageOcrPoll: (messageId, assetId, status) =>
+				attachments.scheduleMessageOcrPoll(messageId, assetId, status)
+		},
+		voice,
+		messages: {
+			append: (message) => {
+				messages = [...messages, message];
+			},
+			removeById: (messageId) => {
+				messages = messages.filter((message) => message.id !== messageId);
+			}
+		},
+		thinking: {
+			create: () => createThinkingBlock(),
+			updateState: (state, details) => updateThinkingBlockState(state, details),
+			finalize: (status, note) => finalizeThinkingBlock(status, note)
+		},
+		assistant: {
+			flushText: () => flushAssistantText(),
+			finalizeMessage: () => finalizeAssistantMessage(),
+			markInterrupted: (reason, streamRunId) => markAssistantInterrupted(reason, streamRunId)
+		},
+		clearPendingToolState: () => {
+			pendingToolResults.clear();
+			hiddenToolCallIds.clear();
+		},
+		handleSSEMessage: (event) => handleSSEMessage(event),
+		hydrateSessionFromEvent: (session) => hydrateSessionFromEvent(session),
+		setUserHasScrolled: (value) => {
+			userHasScrolled = value;
+		},
+		setExistingImagePickerOpen: (value) => {
+			showExistingImagePicker = value;
+		},
+		haptic: (style) => haptic(style),
+		logError: (message, err) => console.error(message, err),
+		logDebug: (message, data) => {
+			if (dev) {
+				console.debug(message, data);
+			}
 		}
 	});
 
@@ -608,13 +513,12 @@
 	let sessionLoadController: AbortController | null = null;
 	let sessionRefreshTimeout: ReturnType<typeof setTimeout> | null = null;
 	let activeRestoredTurnRunId = $state<string | null>(null);
-	let isStartingStream = $state(false);
 	let sessionBootstrapRequestId = 0;
 	let sessionBootstrapController: AbortController | null = null;
 	let sessionBootstrapPromise: Promise<ChatSession | null> | null = null;
 	const isSessionBusy = $derived(isLoadingSession || isPreparingSession);
 	const canAttachExistingProjectImages = $derived(
-		Boolean(attachmentProjectId) && !isSessionBusy && !isStreaming
+		Boolean(attachmentProjectId) && !isSessionBusy && !stream.isStreaming
 	);
 	const sessionStatusLabel = $derived.by(() => {
 		if (isLoadingSession) return 'Loading session';
@@ -622,19 +526,14 @@
 		return null;
 	});
 
-	// Controls whether the context selection screen is visible (keeps state alive for back nav)
-	let showContextSelection = $state(true);
-	let contextSelectionView = $state<'primary' | 'project-selection'>('primary');
-	let contextSelectionRef = $state<any>(null);
-
 	// Unified back navigation logic
 	const shouldShowBackButton = $derived.by(() => {
 		// Show back button when in context selection sub-views (not primary)
-		if (showContextSelection && contextSelectionView !== 'primary') {
+		if (shellRouter.showContextSelection && shellRouter.contextSelectionView !== 'primary') {
 			return true;
 		}
 		// Show back button in all other views except the initial context selection primary view
-		if (showContextSelection && contextSelectionView === 'primary') {
+		if (shellRouter.showContextSelection && shellRouter.contextSelectionView === 'primary') {
 			return false;
 		}
 		return true;
@@ -642,23 +541,35 @@
 
 	const shouldShowSessionLoadingState = $derived.by(() => {
 		if (!isSessionBusy || messages.length > 0) return false;
-		if (showContextSelection || showProjectActionSelector || showFocusSelector) return false;
-		if (agentToAgentMode && agentToAgentStep !== 'chat') return false;
+		if (
+			shellRouter.showContextSelection ||
+			shellRouter.showProjectActionSelector ||
+			shellRouter.showFocusSelector
+		) {
+			return false;
+		}
+		if (shellRouter.agentToAgentMode && shellRouter.agentToAgentStep !== 'chat') return false;
 		return true;
 	});
 
 	const shouldShowSessionLoadErrorState = $derived.by(() => {
 		if (!sessionLoadError || isSessionBusy || messages.length > 0) return false;
-		if (showContextSelection || showProjectActionSelector || showFocusSelector) return false;
-		if (agentToAgentMode && agentToAgentStep !== 'chat') return false;
+		if (
+			shellRouter.showContextSelection ||
+			shellRouter.showProjectActionSelector ||
+			shellRouter.showFocusSelector
+		) {
+			return false;
+		}
+		if (shellRouter.agentToAgentMode && shellRouter.agentToAgentStep !== 'chat') return false;
 		return true;
 	});
 
 	const shouldShowComposer = $derived(
-		!showContextSelection &&
-			!showProjectActionSelector &&
-			!showFocusSelector &&
-			!agentToAgentMode
+		!shellRouter.showContextSelection &&
+			!shellRouter.showProjectActionSelector &&
+			!shellRouter.showFocusSelector &&
+			!shellRouter.agentToAgentMode
 	);
 
 	const chatComposerVocabularyTerms = $derived(
@@ -666,19 +577,19 @@
 	);
 
 	const canPrimeActiveChatSession = $derived.by(() => {
-		if (!selectedContextType || !isOpen || currentSession?.id) return false;
-		if (showContextSelection || showProjectActionSelector) return false;
-		if (agentToAgentMode && agentToAgentStep !== 'chat') return false;
+		if (!shellRouter.selectedContextType || !isOpen || currentSession?.id) return false;
+		if (shellRouter.showContextSelection || shellRouter.showProjectActionSelector) return false;
+		if (shellRouter.agentToAgentMode && shellRouter.agentToAgentStep !== 'chat') return false;
 		return true;
 	});
 
 	// Prewarm controller — owns the context-cache prewarm lifecycle.
 	// See agent-chat-prewarm.svelte.ts.
-	const prewarm = createPrewarmController({
+	prewarm = createPrewarmController({
 		getIsOpen: () => isOpen,
 		getIsBrowser: () => browser,
-		getSelectedContextType: () => selectedContextType,
-		getSelectedEntityId: () => selectedEntityId,
+		getSelectedContextType: () => shellRouter.selectedContextType,
+		getSelectedEntityId: () => shellRouter.selectedEntityId,
 		getResolvedProjectFocus: () => resolvedProjectFocus,
 		getIsPreparingSession: () => isPreparingSession,
 		getCurrentSession: () => currentSession,
@@ -721,18 +632,6 @@
 			if (!isOpen) return;
 			void loadChatSession(sessionId, { backgroundRefresh: true });
 		}, ACTIVE_TURN_SESSION_REFRESH_MS);
-	}
-
-	function buildSessionBootstrapTarget(
-		contextType: ChatContextType,
-		entityId?: string,
-		projectFocusOverride?: ProjectFocus | null
-	): SessionBootstrapTarget {
-		return {
-			contextType,
-			entityId: entityId ?? projectFocusOverride?.projectId ?? undefined,
-			projectFocus: projectFocusOverride ?? null
-		};
 	}
 
 	async function ensureSessionReady(target: SessionBootstrapTarget): Promise<ChatSession | null> {
@@ -797,48 +696,7 @@
 	}
 
 	function handleBackNavigation() {
-		if (isStreaming) return;
-		voice.stop();
-
-		// Handle back based on current view state
-		if (showContextSelection && contextSelectionView !== 'primary') {
-			// Delegate to ContextSelectionScreen's internal navigation
-			contextSelectionRef?.handleBackNavigation?.();
-		} else if (showFocusSelector) {
-			// From inline focus selector → back to active chat (no focus change)
-			showFocusSelector = false;
-		} else if (showProjectActionSelector) {
-			// From project action selector → back to context selection
-			autoInitDismissed = true;
-			showProjectActionSelector = false;
-			resetConversation({ preserveContext: false });
-			showContextSelection = true;
-		} else if (agentToAgentMode && agentToAgentStep === 'goal') {
-			// From goal step → back to project selection
-			backToAgentProjectSelection();
-		} else if (agentToAgentMode && agentToAgentStep === 'project') {
-			// With a single helper, the agent step is auto-skipped — so the
-			// project step's back affordance exits the wizard entirely rather
-			// than returning to a one-option screen.
-			if (HAS_MULTIPLE_AGENT_HELPERS) {
-				backToAgentSelection();
-			} else {
-				agentToAgentMode = false;
-				agentToAgentStep = null;
-				changeContext();
-			}
-		} else if (agentToAgentMode && agentToAgentStep === 'agent') {
-			// From agent selection → back to context selection
-			agentToAgentMode = false;
-			agentToAgentStep = null;
-			changeContext();
-		} else if (agentToAgentMode && agentToAgentStep === 'chat') {
-			// From chat with automation → back to context selection
-			changeContext();
-		} else {
-			// From regular chat view → back to context selection
-			changeContext();
-		}
+		shellRouter.handleBackNavigation();
 	}
 
 	/**
@@ -855,7 +713,7 @@
 	}
 
 	function handleContextSelectionNavChange(view: 'primary' | 'project-selection') {
-		contextSelectionView = view;
+		shellRouter.handleContextSelectionNavChange(view);
 	}
 
 	// Note: voice.isRecording is NOT included - clicking send while recording will
@@ -864,14 +722,14 @@
 	const hasSendableImageAttachments = $derived(attachments.hasSendableImageAttachments);
 	const hasBlockedImageAttachments = $derived(attachments.hasPendingOrFailedImageAttachments);
 	const isSendDisabled = $derived(
-		agentToAgentMode ||
-			!selectedContextType ||
+		shellRouter.agentToAgentMode ||
+			!shellRouter.selectedContextType ||
 			isSessionBusy ||
 			activeRestoredTurnRunId !== null ||
-			isStartingStream ||
+			stream.isStartingStream ||
 			hasBlockedImageAttachments ||
 			(!inputValue.trim() && !voice.isRecording && !hasSendableImageAttachments) || // Allow send if recording (will get transcribed text)
-			(isStreaming && !isTouchDevice) ||
+			(stream.isStreaming && !isTouchDevice) ||
 			voice.isInitializing ||
 			voice.isStopping ||
 			voice.isTranscribing ||
@@ -891,8 +749,8 @@
 				timelineItems: agentTimelineItems,
 				sessionId: currentSession?.id ?? null,
 				contextLabel: displayContextLabel,
-				contextType: selectedContextType,
-				entityId: selectedEntityId ?? null,
+				contextType: shellRouter.selectedContextType,
+				entityId: shellRouter.selectedEntityId ?? null,
 				projectFocus: resolvedProjectFocus
 			});
 			toastService.success('Agent steps exported');
@@ -915,8 +773,8 @@
 				timelineItems: agentTimelineItems,
 				sessionId: currentSession?.id ?? null,
 				contextLabel: displayContextLabel,
-				contextType: selectedContextType,
-				entityId: selectedEntityId ?? null,
+				contextType: shellRouter.selectedContextType,
+				entityId: shellRouter.selectedEntityId ?? null,
 				projectFocus: resolvedProjectFocus
 			});
 			toastService.success('Support packet exported');
@@ -946,277 +804,77 @@
 		activeChatTab = 'chat';
 		brainDumpContext = null;
 		currentSession = null;
-		currentActivity = '';
+		stream.currentActivity = '';
 		inputValue = '';
 		showExistingImagePicker = false;
 		attachments.cleanup();
-		error = null;
+		stream.error = null;
 		userHasScrolled = false;
 		currentAssistantMessageId = null;
 		currentAssistantMessageIndex = null;
 		currentThinkingBlockId = null;
-		isStreaming = false;
+		stream.reset();
 		// Reset ontology state
 		lastTurnContext = null;
 		ontologyLoaded = false;
 		contextUsage = null;
 		contextUsageOverheadTokens = 0;
-		activeStreamTiming = null;
-		_lastCompletedStreamTiming = null;
 		pendingToolResults.clear();
 		presenter.resetMutationTracking();
 		voice.reset();
-		showFocusSelector = false;
-		showProjectActionSelector = false;
-		agentLoopActive = false;
-		agentMessageLoading = false;
-		agentTurnBudget = 5;
-		agentTurnsRemaining = 5;
+		shellRouter.resetConversationState({ preserveContext });
 		// Reset session resumption state
 		sessionLoadError = null;
 		activeRestoredTurnRunId = null;
 		clearSessionRefreshTimeout();
-
-		if (!preserveContext) {
-			selectedContextType = null;
-			selectedEntityId = undefined;
-			selectedContextLabel = null;
-			projectFocus = null;
-			agentToAgentMode = false;
-			agentToAgentStep = null;
-			selectedAgentId = null;
-			agentGoal = '';
-			agentProjects = [];
-			agentProjectsError = null;
-			agentProjectsLoading = false;
-		}
 	}
 
 	function handleContextSelect(selection: ContextSelectionDetail) {
-		resetConversation();
-		autoInitDismissed = true;
-
-		if (selection.contextType === 'agent_to_agent') {
-			agentToAgentMode = true;
-			agentToAgentStep = 'agent';
-			selectedAgentId = null;
-			selectedContextType = null;
-			selectedContextLabel = selection.label ?? 'BuildOS automation';
-			projectFocus = null;
-			showContextSelection = false;
-
-			// With a single helper available the agent step is a forced click-through,
-			// so auto-select and advance straight to picking a project.
-			if (!HAS_MULTIPLE_AGENT_HELPERS) {
-				selectAgentForBridge(RESEARCH_AGENT_ID);
-			}
-			return;
-		}
-
-		agentToAgentMode = false;
-		agentToAgentStep = null;
-		selectedAgentId = null;
-		agentGoal = '';
-		agentLoopActive = false;
-		agentMessageLoading = false;
-		selectedContextType = selection.contextType;
-		selectedEntityId = selection.entityId;
-		selectedContextLabel =
-			selection.label ?? CONTEXT_DESCRIPTORS[selection.contextType]?.title ?? null;
-		showContextSelection = false;
-
-		if (isProjectContext(selection.contextType) && selection.entityId) {
-			projectFocus = buildProjectWideFocus(selection.entityId, selection.label);
-		} else {
-			projectFocus = null;
-			showFocusSelector = false;
-		}
-
-		// If user picked a project from the generic flow, funnel them through the shared action selector
-		showProjectActionSelector = selection.contextType === 'project';
+		shellRouter.handleContextSelect(selection);
 	}
 
 	function changeContext() {
-		if (isStreaming) return;
-		voice.stop();
-		autoInitDismissed = true;
-		// Clear the conversation but keep user in context selection mode
-		// This allows them to navigate back through the selection screens
-		resetConversation({ preserveContext: false });
-		showContextSelection = true;
-		showProjectActionSelector = false;
+		shellRouter.changeContext();
 	}
 
 	function openFocusSelector() {
-		if (!isProjectContext(selectedContextType) || !selectedEntityId) return;
-		showFocusSelector = true;
+		shellRouter.openFocusSelector();
 	}
 
 	function handleFocusSelection(newFocus: ProjectFocus) {
-		// Check if we're starting fresh (from action selector) before updating state
-		const isStartingFresh = showProjectActionSelector;
-
-		projectFocus = newFocus;
-		logFocusActivity('Focus updated', newFocus);
-		// Move into project chat with the chosen focus
-		selectedContextType = 'project';
-		selectedContextLabel = buildContextLabelForAction('workspace', newFocus.projectName);
-		showProjectActionSelector = false;
-		showFocusSelector = false;
-		showContextSelection = false;
-
-		// Starting fresh from the action selector means we want a clean message
-		// list. The empty-state card in AgentMessageList branches its suggestions
-		// off `selectedContextType` + `resolvedProjectFocus`, so the user lands
-		// on focus-aware prompts without a preseeded assistant bubble.
-		if (isStartingFresh) {
-			messages = [];
-		}
+		shellRouter.handleFocusSelection(newFocus);
 	}
 
 	function handleFocusClear() {
-		if (!defaultProjectFocus) return;
-		projectFocus = defaultProjectFocus;
-		logFocusActivity('Focus reset', defaultProjectFocus);
-	}
-
-	function mapActionToContextType(_action: ProjectAction): ChatContextType {
-		return 'project';
-	}
-
-	function buildContextLabelForAction(
-		_action: ProjectAction,
-		projectName?: string | null
-	): string {
-		return projectName?.trim() || 'Project';
-	}
-
-	function applyProjectAction(
-		action: ProjectAction,
-		projectId: string,
-		projectName?: string | null,
-		options: { skipReset?: boolean } = {}
-	) {
-		if (!projectId) return;
-		if (!options.skipReset) {
-			resetConversation({ preserveContext: false });
-		}
-
-		const contextType = mapActionToContextType(action);
-		const label = buildContextLabelForAction(action, projectName);
-
-		selectedContextType = contextType;
-		selectedEntityId = projectId;
-		selectedContextLabel = label;
-		projectFocus = buildProjectWideFocus(projectId, projectName ?? label);
-		showContextSelection = false;
-		showProjectActionSelector = false;
-		showFocusSelector = false;
-		agentToAgentMode = false;
-		agentToAgentStep = null;
-	}
-
-	function primeProjectContext(projectId: string, projectName: string | null | undefined) {
-		if (!projectId) return;
-		resetConversation({ preserveContext: false });
-		selectedContextType = 'project';
-		selectedEntityId = projectId;
-		selectedContextLabel = buildContextLabelForAction('workspace', projectName);
-		projectFocus = buildProjectWideFocus(projectId, projectName);
-		showContextSelection = false;
-		showProjectActionSelector = true;
-		showFocusSelector = false;
-		agentToAgentMode = false;
-		agentToAgentStep = null;
+		shellRouter.handleFocusClear();
 	}
 
 	function handleProjectActionSelect(action: ProjectAction) {
-		if (!selectedEntityId) return;
-		const projectName = projectFocus?.projectName ?? selectedContextLabel;
-		applyProjectAction(action, selectedEntityId, projectName, { skipReset: false });
+		shellRouter.handleProjectActionSelect(action);
 	}
 
 	function initializeFromAutoInit(config: AutoInitProjectConfig) {
-		if (!config?.projectId) return;
-
-		const showSelector = config.showActionSelector ?? true;
-		const action = config.initialAction ?? 'workspace';
-
-		lastAutoInitProjectId = config.projectId;
-		autoInitDismissed = false;
-
-		if (showSelector && !config.initialAction) {
-			primeProjectContext(config.projectId, config.projectName);
-			return;
-		}
-
-		resetConversation({ preserveContext: false });
-		applyProjectAction(action, config.projectId, config.projectName, { skipReset: true });
-	}
-
-	const selectedAgentLabel = $derived(selectedAgentId ? 'Actionable Insight' : 'Select a helper');
-
-	async function loadAgentProjects(force = false) {
-		if (agentProjectsLoading || (!force && agentProjects.length > 0)) return;
-		agentProjectsLoading = true;
-		agentProjectsError = null;
-		try {
-			const response = await fetch('/api/onto/projects', {
-				method: 'GET',
-				credentials: 'same-origin',
-				cache: 'no-store',
-				headers: { Accept: 'application/json' }
-			});
-			const payload = await response.json();
-			if (!response.ok || payload?.success === false) {
-				agentProjectsError = payload?.error || 'Failed to load projects';
-				agentProjects = [];
-				return;
-			}
-			const fetched = payload?.data?.projects ?? payload?.projects ?? [];
-			agentProjects = fetched.map((project: any) => ({
-				id: project.id,
-				name: project.name ?? 'Untitled project',
-				description: project.description ?? null
-			}));
-		} catch (err) {
-			console.error('[AgentChat] Failed to load projects for agent bridge', err);
-			agentProjectsError = 'Failed to load projects';
-		} finally {
-			agentProjectsLoading = false;
-		}
+		shellRouter.initializeFromAutoInit(config);
 	}
 
 	function selectAgentForBridge(agentId: string) {
-		selectedAgentId = agentId;
-		agentToAgentStep = 'project';
-		loadAgentProjects(true);
+		shellRouter.selectAgentForBridge(agentId);
 	}
 
 	function selectAgentProject(project: AgentProjectSummary) {
-		selectedContextType = 'project';
-		selectedEntityId = project.id;
-		selectedContextLabel = project.name;
-		projectFocus = buildProjectWideFocus(project.id, project.name);
-		agentToAgentStep = 'goal';
+		shellRouter.selectAgentProject(project);
 	}
 
 	function backToAgentSelection() {
-		agentToAgentStep = 'agent';
-		agentLoopActive = false;
+		shellRouter.backToAgentSelection();
 	}
 
 	function backToAgentProjectSelection() {
-		agentToAgentStep = 'project';
-		agentLoopActive = false;
+		shellRouter.backToAgentProjectSelection();
 	}
 
 	function updateAgentTurnBudget(value: number) {
-		const sanitized = Math.max(1, Math.min(50, Math.round(value)));
-		agentTurnBudget = sanitized;
-		if (!agentLoopActive && !agentMessageLoading && !isStreaming) {
-			agentTurnsRemaining = sanitized;
-		}
+		shellRouter.updateAgentTurnBudget(value);
 	}
 
 	function buildAgentToAgentHistory(): AgentToAgentMessageHistory[] {
@@ -1230,80 +888,70 @@
 	}
 
 	async function runAgentToAgentTurn() {
-		if (!agentToAgentMode || !agentLoopActive || agentMessageLoading) return;
-		if (!selectedAgentId) {
-			error = 'Select a helper to continue.';
+		if (
+			!shellRouter.agentToAgentMode ||
+			!shellRouter.agentLoopActive ||
+			shellRouter.agentMessageLoading
+		)
+			return;
+		if (!shellRouter.selectedAgentId) {
+			stream.error = 'Select a helper to continue.';
 			return;
 		}
-		if (!selectedEntityId || selectedContextType !== 'project') {
-			error = 'Select a project for the automation loop.';
+		if (!shellRouter.selectedEntityId || shellRouter.selectedContextType !== 'project') {
+			stream.error = 'Select a project for the automation loop.';
 			return;
 		}
-		if (!agentGoal.trim()) {
-			error = 'Provide a goal for this automation.';
+		if (!shellRouter.agentGoal.trim()) {
+			stream.error = 'Provide a goal for this automation.';
 			return;
 		}
-		if (agentTurnsRemaining <= 0) {
-			agentLoopActive = false;
+		if (shellRouter.agentTurnsRemaining <= 0) {
+			shellRouter.agentLoopActive = false;
 			return;
 		}
-		if (isStreaming) return;
+		if (stream.isStreaming) return;
 
-		agentMessageLoading = true;
+		shellRouter.agentMessageLoading = true;
 		try {
 			const history = buildAgentToAgentHistory();
 			const response = await requestAgentToAgentMessage({
-				agentId: selectedAgentId,
-				projectId: selectedEntityId,
-				goal: agentGoal.trim(),
+				agentId: shellRouter.selectedAgentId,
+				projectId: shellRouter.selectedEntityId,
+				goal: shellRouter.agentGoal.trim(),
 				history
 			});
 			const agentMessage = response?.message?.trim();
 			if (!agentMessage) {
-				error = 'BuildOS did not receive an update from the helper.';
-				agentLoopActive = false;
+				stream.error = 'BuildOS did not receive an update from the helper.';
+				shellRouter.agentLoopActive = false;
 				return;
 			}
-			await sendMessage(agentMessage, { senderType: 'agent_peer', suppressInputClear: true });
+			await stream.sendMessage(agentMessage, {
+				senderType: 'agent_peer',
+				suppressInputClear: true
+			});
 		} catch (err) {
 			console.error('[AgentChat] Failed to run agent-to-agent turn', err);
-			error = 'Failed to fetch the helper update.';
-			agentLoopActive = false;
+			stream.error = 'Failed to fetch the helper update.';
+			shellRouter.agentLoopActive = false;
 		} finally {
-			agentMessageLoading = false;
+			shellRouter.agentMessageLoading = false;
 		}
 	}
 
 	async function startAgentToAgentChat() {
-		if (isStreaming || agentMessageLoading) return;
-		if (!selectedAgentId) {
-			error = 'Select a helper to start.';
+		const validationError = shellRouter.beginAgentToAgentChat();
+		if (validationError) {
+			stream.error = validationError;
 			return;
 		}
-		if (!selectedEntityId || selectedContextType !== 'project') {
-			error = 'Select a project to start.';
-			return;
-		}
-		if (!agentGoal.trim()) {
-			error = 'Add a goal for BuildOS to pursue.';
-			return;
-		}
-		if (agentTurnBudget <= 0) {
-			error = 'Set at least 1 turn before starting.';
-			return;
-		}
-
-		resetConversation({ preserveContext: true });
-		agentLoopActive = true;
-		agentToAgentMode = true;
-		agentToAgentStep = 'chat';
-		agentTurnsRemaining = agentTurnBudget;
-		error = null;
+		stream.error = null;
 		await runAgentToAgentTurn();
 	}
 
 	function stopAgentLoop() {
-		agentLoopActive = false;
+		shellRouter.stopAgentLoop();
 	}
 
 	// Auto-initialize the modal when launched with a context preset or project preset
@@ -1317,10 +965,10 @@
 					handleClose();
 				}
 				wasOpen = false;
-				autoInitDismissed = false;
-				lastAutoInitProjectId = null;
+				shellRouter.autoInitDismissed = false;
+				shellRouter.lastAutoInitProjectId = null;
 				lastLoadedSessionId = null; // Reset to allow reloading same session
-				showProjectActionSelector = false;
+				shellRouter.showProjectActionSelector = false;
 				prewarm.reset();
 				cancelSessionBootstrap();
 				clearSessionRefreshTimeout();
@@ -1337,7 +985,7 @@
 		if (!wasOpen) {
 			wasOpen = true;
 			hasFinalizedSession = false;
-			hasSentMessage = false;
+			stream.hasSentMessage = false;
 
 			// If resuming a session, skip any auto-init flows that would create a new one
 			if (initialChatSessionId) {
@@ -1348,11 +996,13 @@
 			// Skip context selection and go directly to chat
 			if (_initialContextType && _initialContextType !== 'global' && !autoInitProject) {
 				resetConversation({ preserveContext: false });
-				selectedContextType = _initialContextType;
-				selectedEntityId = _initialEntityId;
-				selectedContextLabel = CONTEXT_DESCRIPTORS[_initialContextType]?.title ?? null;
-				showContextSelection = false;
-				showProjectActionSelector = false;
+				shellRouter.setDirectContext({
+					contextType: _initialContextType,
+					entityId: _initialEntityId,
+					label: CONTEXT_DESCRIPTORS[_initialContextType]?.title ?? null,
+					showContextSelection: false,
+					showProjectActionSelector: false
+				});
 				return;
 			}
 		}
@@ -1369,19 +1019,21 @@
 		const projectId = autoInitProject.projectId;
 		if (!projectId) return;
 
-		if (autoInitDismissed && projectId === lastAutoInitProjectId) {
+		if (shellRouter.autoInitDismissed && projectId === shellRouter.lastAutoInitProjectId) {
 			return;
 		}
 
 		const selectorActiveForProject =
-			showProjectActionSelector && selectedEntityId === projectId && !showContextSelection;
+			shellRouter.showProjectActionSelector &&
+			shellRouter.selectedEntityId === projectId &&
+			!shellRouter.showContextSelection;
 		const contextMatchesProject =
-			isProjectContext(selectedContextType) &&
-			selectedEntityId === projectId &&
-			!showContextSelection;
+			isProjectContext(shellRouter.selectedContextType) &&
+			shellRouter.selectedEntityId === projectId &&
+			!shellRouter.showContextSelection;
 
 		if (
-			lastAutoInitProjectId === projectId &&
+			shellRouter.lastAutoInitProjectId === projectId &&
 			(selectorActiveForProject || contextMatchesProject)
 		) {
 			return;
@@ -1405,30 +1057,32 @@
 		// Skip if already initialized with this focus
 		if (
 			wasOpen &&
-			projectFocus?.focusEntityId === initialProjectFocus.focusEntityId &&
-			projectFocus?.projectId === initialProjectFocus.projectId
+			shellRouter.projectFocus?.focusEntityId === initialProjectFocus.focusEntityId &&
+			shellRouter.projectFocus?.projectId === initialProjectFocus.projectId
 		) {
 			return;
 		}
 
 		// Reset and set up for entity-focused chat
 		resetConversation({ preserveContext: false });
-		selectedContextType = 'project';
-		selectedEntityId = initialProjectFocus.projectId;
-		projectFocus = initialProjectFocus;
 
 		// Build context label based on focus type
 		const focusName = initialProjectFocus.focusEntityName;
 		const projectName = initialProjectFocus.projectName || 'Project';
-		selectedContextLabel =
+		const label =
 			initialProjectFocus.focusType === 'project-wide'
 				? projectName
 				: focusName
 					? `${focusName} (${projectName})`
 					: projectName;
-
-		showContextSelection = false;
-		showProjectActionSelector = false;
+		shellRouter.setDirectContext({
+			contextType: 'project',
+			entityId: initialProjectFocus.projectId,
+			label,
+			projectFocus: initialProjectFocus,
+			showContextSelection: false,
+			showProjectActionSelector: false
+		});
 	});
 
 	// Handle initialChatSessionId prop - when resuming a previous chat session from history
@@ -1488,8 +1142,8 @@
 		sessionLoadError = null;
 		if (!backgroundRefresh) {
 			// Immediately hide context selection when loading a session to prevent flash
-			showContextSelection = false;
-			showProjectActionSelector = false;
+			shellRouter.showContextSelection = false;
+			shellRouter.showProjectActionSelector = false;
 			// Clear any prior session state to avoid bleed-through while loading
 			resetConversation({ preserveContext: false });
 		}
@@ -1508,10 +1162,12 @@
 			lastLoadedSessionId = sessionId;
 			contextUsage = null;
 			contextUsageOverheadTokens = 0;
-			selectedContextType = snapshot.contextType;
-			selectedEntityId = snapshot.selectedEntityId;
-			selectedContextLabel = snapshot.selectedContextLabel;
-			projectFocus = snapshot.projectFocus;
+			shellRouter.hydrateFromSession({
+				contextType: snapshot.contextType,
+				entityId: snapshot.selectedEntityId,
+				label: snapshot.selectedContextLabel,
+				projectFocus: snapshot.projectFocus
+			});
 			messages = snapshot.messages;
 			persistedTimelineItems = snapshot.timelineItems;
 			if (initialBrainDumpContext?.id) {
@@ -1522,11 +1178,11 @@
 			voice.hydrateNotesByGroupId(snapshot.voiceNotesByGroupId);
 			activeRestoredTurnRunId = nextActiveTurnRun?.id ?? null;
 			if (nextActiveTurnRun) {
-				currentActivity = 'BuildOS is still finishing the latest response...';
+				stream.currentActivity = 'BuildOS is still finishing the latest response...';
 				scheduleActiveTurnSessionRefresh(sessionId);
 			} else {
 				clearSessionRefreshTimeout();
-				currentActivity = '';
+				stream.currentActivity = '';
 			}
 		} catch (err: any) {
 			if (controller.signal.aborted || requestId !== sessionLoadRequestId) {
@@ -1534,7 +1190,7 @@
 			}
 			console.error('Failed to load chat session:', err);
 			sessionLoadError = err.message || 'Failed to load chat session';
-			error = sessionLoadError;
+			stream.error = sessionLoadError;
 		} finally {
 			if (requestId === sessionLoadRequestId) {
 				isLoadingSession = false;
@@ -1591,8 +1247,8 @@
 
 	$effect(() => {
 		if (!browser) return;
-		if (agentToAgentMode && agentToAgentStep === 'project') {
-			loadAgentProjects();
+		if (shellRouter.agentToAgentMode && shellRouter.agentToAgentStep === 'project') {
+			void shellRouter.loadAgentProjects();
 		}
 	});
 
@@ -1600,11 +1256,11 @@
 		if (!browser) return;
 		// Auto-run the next turn when the loop is active and idle
 		if (
-			agentToAgentMode &&
-			agentLoopActive &&
-			!agentMessageLoading &&
-			!isStreaming &&
-			agentTurnsRemaining > 0
+			shellRouter.agentToAgentMode &&
+			shellRouter.agentLoopActive &&
+			!shellRouter.agentMessageLoading &&
+			!stream.isStreaming &&
+			shellRouter.agentTurnsRemaining > 0
 		) {
 			runAgentToAgentTurn();
 		}
@@ -1655,10 +1311,10 @@
 	// ========================================================================
 
 	const presenter: ToolPresenter = createToolPresenter({
-		getContextType: () => selectedContextType,
-		getEntityId: () => selectedEntityId,
-		getContextLabel: () => selectedContextLabel,
-		getProjectFocus: () => projectFocus,
+		getContextType: () => shellRouter.selectedContextType,
+		getEntityId: () => shellRouter.selectedEntityId,
+		getContextLabel: () => shellRouter.selectedContextLabel,
+		getProjectFocus: () => shellRouter.projectFocus,
 		getResolvedProjectFocus: () => resolvedProjectFocus,
 		toast: {
 			success: (msg) => toastService.success(msg),
@@ -1687,9 +1343,15 @@
 				resolvedProjectFocus.focusEntityName
 			);
 		}
-		if (selectedEntityId && selectedContextLabel) {
-			const inferredKind = isProjectContext(selectedContextType) ? 'project' : 'entity';
-			presenter.cacheEntityName(inferredKind, selectedEntityId, selectedContextLabel);
+		if (shellRouter.selectedEntityId && shellRouter.selectedContextLabel) {
+			const inferredKind = isProjectContext(shellRouter.selectedContextType)
+				? 'project'
+				: 'entity';
+			presenter.cacheEntityName(
+				inferredKind,
+				shellRouter.selectedEntityId,
+				shellRouter.selectedContextLabel
+			);
 		}
 	});
 
@@ -1918,13 +1580,13 @@
 		const sessionId = session.id;
 
 		const contextType =
-			selectedContextType ?? normalizeSessionContextType(session.context_type);
-		const entityId = selectedEntityId ?? session.entity_id ?? null;
+			shellRouter.selectedContextType ?? normalizeSessionContextType(session.context_type);
+		const entityId = shellRouter.selectedEntityId ?? session.entity_id ?? null;
 
 		hasFinalizedSession = true;
 
 		const fallbackQueueClassification = () => {
-			if (!hasSentMessage) return;
+			if (!stream.hasSentMessage) return;
 			fetch(`/api/chat/sessions/${sessionId}/classify`, {
 				method: 'POST',
 				keepalive: true
@@ -1941,7 +1603,7 @@
 				context_type: contextType,
 				entity_id: entityId,
 				reason,
-				has_messages_sent: hasSentMessage
+				has_messages_sent: stream.hasSentMessage
 			})
 		})
 			.then((response) => {
@@ -1966,14 +1628,7 @@
 		cancelSessionBootstrap();
 		clearSessionRefreshTimeout();
 		activeRestoredTurnRunId = null;
-		if (currentStreamController && isStreaming) {
-			detachActiveStream();
-		} else if (currentStreamController) {
-			currentStreamController.abort();
-			currentStreamController = null;
-			activeTransportStreamRunId = null;
-			activeClientTurnId = null;
-		}
+		stream.disposeActiveStream();
 		voice.cleanup();
 		attachments.cleanup();
 
@@ -1982,7 +1637,7 @@
 		hiddenToolCallIds.clear();
 
 		const summary = presenter.buildMutationSummary({
-			hasMessagesSent: hasSentMessage,
+			hasMessagesSent: stream.hasSentMessage,
 			sessionId: currentSession?.id ?? null
 		});
 		// Broadcast mutations globally so any surface showing this data (project page,
@@ -2013,14 +1668,14 @@
 	}
 
 	function handleSelectSuggestion(text: string) {
-		if (isStreaming || isSessionBusy) return;
+		if (stream.isStreaming || isSessionBusy) return;
 		inputValue = text;
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
-		if (event.key === 'Escape' && isStreaming) {
+		if (event.key === 'Escape' && stream.isStreaming) {
 			event.preventDefault();
-			void handleStopGeneration('user_cancelled');
+			void stream.stopGeneration('user_cancelled');
 			return;
 		}
 
@@ -2030,373 +1685,30 @@
 			event.preventDefault();
 			// If streaming, sendMessage will stop current run first
 			// Use handleSendMessage to properly handle "send while recording" flow
-			if (!isSendDisabled || isStreaming || voice.isRecording) {
-				handleSendMessage();
+			if (!isSendDisabled || stream.isStreaming || voice.isRecording) {
+				void stream.handleSendMessage();
 			}
 		}
 	}
 
-	// Handles "send while recording" - stops recording and auto-sends after transcription
-	async function handleSendMessage() {
-		// Haptic feedback for message send action (mobile)
-		haptic('medium');
-
-		// If currently recording, stop and queue auto-send after transcription
-		if (voice.isRecording) {
-			voice.pendingSendAfterTranscription = true;
-			await voice.stop();
-			return; // The $effect below will auto-send when transcription completes
-		}
-		sendMessage();
-	}
-
-	// Auto-send after transcription completes (when user clicked send while recording)
 	$effect(() => {
 		if (!browser) return;
-		if (!voice.pendingSendAfterTranscription) return;
-		if (voice.isRecording || voice.isStopping || voice.isTranscribing || voice.isInitializing) {
-			return;
-		}
-
-		if (inputValue.trim() || hasSendableImageAttachments) {
-			voice.pendingSendAfterTranscription = false;
-			sendMessage();
-			return;
-		}
-
-		voice.pendingSendAfterTranscription = false;
+		void stream.handlePendingSendAfterTranscription(hasSendableImageAttachments);
 	});
-
-	async function sendMessage(
-		contentOverride?: string,
-		options: { senderType?: 'user' | 'agent_peer'; suppressInputClear?: boolean } = {}
-	) {
-		const { senderType = 'user', suppressInputClear = false } = options;
-		const trimmed = (contentOverride ?? inputValue).trim();
-		const streamAttachmentRefs = senderType === 'user' ? attachments.buildReadyRefs(false) : [];
-		const optimisticAttachmentRefs =
-			senderType === 'user' ? attachments.buildReadyRefs(true) : [];
-		const sentImageAttachments = attachments.imageAttachments;
-		const activeVoiceNoteGroupId = voice.noteGroupId;
-		if (
-			(!trimmed && streamAttachmentRefs.length === 0) ||
-			voice.isInitializing ||
-			voice.isStopping ||
-			voice.isTranscribing
-		) {
-			return;
-		}
-		if (
-			senderType === 'user' &&
-			attachments.imageAttachments.length > streamAttachmentRefs.length
-		) {
-			error = 'Wait for image upload and OCR queueing to finish, or remove failed images.';
-			return;
-		}
-		if (!selectedContextType) {
-			error = 'Select a focus before starting the conversation.';
-			return;
-		}
-		if (isLoadingSession) {
-			error = 'Wait for the existing session to finish loading.';
-			return;
-		}
-		if (activeRestoredTurnRunId) {
-			error = 'BuildOS is still finishing the latest response.';
-			return;
-		}
-		if (isStartingStream) return;
-
-		isStartingStream = true;
-		let userMessage: UIMessage | null = null;
-		let runId: number | null = null;
-		let streamController: AbortController | null = null;
-
-		try {
-			if (isStreaming) {
-				await handleStopGeneration('superseded', { awaitCancelHint: true });
-			}
-
-			const requestContextType = selectedContextType;
-			const requestEntityId = selectedEntityId;
-			const requestProjectFocus = resolvedProjectFocus;
-			let sessionForTurn = currentSession;
-			if (!sessionForTurn?.id) {
-				try {
-					sessionForTurn = await ensureSessionReady(
-						buildSessionBootstrapTarget(
-							requestContextType,
-							requestEntityId,
-							requestProjectFocus
-						)
-					);
-				} catch (sessionError) {
-					if ((sessionError as DOMException)?.name === 'AbortError') {
-						return;
-					}
-					error =
-						sessionError instanceof Error
-							? sessionError.message
-							: 'Unable to prepare a chat session right now.';
-					return;
-				}
-			}
-
-			if (!sessionForTurn?.id) {
-				error = 'Unable to prepare a chat session right now.';
-				return;
-			}
-
-			const now = new Date();
-			const clientTurnId = crypto.randomUUID();
-			const transportStreamRunId = crypto.randomUUID();
-
-			// Add user message
-			userMessage = {
-				id: crypto.randomUUID(),
-				session_id: sessionForTurn.id,
-				user_id: undefined, // Will be set by backend
-				type: senderType as UIMessage['type'],
-				role: 'user' as ChatRole,
-				content:
-					trimmed ||
-					(streamAttachmentRefs.length === 1
-						? 'Attached 1 image'
-						: `Attached ${streamAttachmentRefs.length} images`),
-				timestamp: now,
-				created_at: now.toISOString(),
-				attachments:
-					optimisticAttachmentRefs.length > 0 ? optimisticAttachmentRefs : undefined,
-				metadata: {
-					...(activeVoiceNoteGroupId
-						? { voice_note_group_id: activeVoiceNoteGroupId }
-						: {}),
-					...(optimisticAttachmentRefs.length > 0
-						? {
-								attachment_count: optimisticAttachmentRefs.length,
-								attachment_only: !trimmed,
-								attachments: optimisticAttachmentRefs
-							}
-						: {}),
-					client_turn_id: clientTurnId,
-					stream_run_id: transportStreamRunId
-				}
-			};
-
-			messages = [...messages, userMessage];
-			for (const attachment of optimisticAttachmentRefs) {
-				if (attachment.asset_id) {
-					attachments.scheduleMessageOcrPoll(
-						userMessage.id,
-						attachment.asset_id,
-						attachment.ocr_status ?? 'pending'
-					);
-				}
-			}
-			hasSentMessage = true;
-			if (!suppressInputClear) {
-				inputValue = '';
-				attachments.clearDraft();
-				showExistingImagePicker = false;
-			}
-			if (activeVoiceNoteGroupId) {
-				voice.noteGroupId = null;
-			}
-			error = null;
-
-			// Increment run id for stale-stream guard
-			activeStreamRunId = activeStreamRunId + 1;
-			runId = activeStreamRunId;
-			activeTransportStreamRunId = transportStreamRunId;
-			activeClientTurnId = clientTurnId;
-			activeStreamTiming = buildClientStreamTimingState(runId);
-
-			isStreaming = true;
-			pendingToolResults.clear();
-			hiddenToolCallIds.clear();
-
-			createThinkingBlock();
-
-			currentActivity = 'Analyzing request...';
-			updateThinkingBlockState('thinking', 'BuildOS is processing your request...');
-
-			// NOTE: Do NOT reset lastTurnContext here - it should be preserved and sent with the next request
-			// for conversation continuity. The server will generate fresh context after each turn.
-
-			// Reset scroll flag so we always scroll to show new user message
-			userHasScrolled = false;
-
-			let receivedStreamEvent = false;
-
-			streamController = new AbortController();
-			currentStreamController = streamController;
-			isStartingStream = false;
-
-			const matchingPrewarmedContext = prewarm.matchingFreshContext(
-				prewarm.resolveCurrentKey()
-			);
-			const matchingPreparedPrompt = prewarm.matchingFreshPreparedPrompt(
-				prewarm.resolveCurrentKey()
-			);
-			prewarm.clearPreparedPrompt();
-
-			const response = await fetch('/api/agent/v2/stream', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				signal: streamController.signal,
-				body: JSON.stringify({
-					message: trimmed,
-					session_id: sessionForTurn.id,
-					context_type: requestContextType,
-					entity_id: requestEntityId,
-					attachments: streamAttachmentRefs,
-					projectFocus: requestProjectFocus,
-					lastTurnContext: lastTurnContext, // Pass last turn context for conversation continuity
-					stream_run_id: transportStreamRunId,
-					client_turn_id: clientTurnId,
-					voiceNoteGroupId: activeVoiceNoteGroupId,
-					prewarmedContext: matchingPrewarmedContext,
-					preparedPromptKey: matchingPreparedPrompt?.key ?? null
-				})
-			});
-
-			if (!response.ok) {
-				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-			}
-
-			const callbacks: StreamCallbacks = {
-				onProgress: (data: any) => {
-					if (runId !== activeStreamRunId) {
-						if (!currentSession?.id && data?.type === 'session' && data?.session) {
-							hydrateSessionFromEvent(data.session as ChatSession);
-						}
-						return;
-					}
-					receivedStreamEvent = true;
-					recordClientStreamEvent(
-						runId,
-						(data?.type as AgentSSEMessage['type']) ?? 'text'
-					);
-					handleSSEMessage(data as AgentSSEMessage);
-				},
-				onError: (err) => {
-					if (runId !== activeStreamRunId) return;
-					recordClientStreamEvent(runId, 'transport_error');
-					console.error('SSE error:', err);
-					error =
-						typeof err === 'string' ? err : 'Connection error occurred while streaming';
-					isStreaming = false;
-					currentActivity = '';
-					currentStreamController = null;
-					activeTransportStreamRunId = null;
-					activeClientTurnId = null;
-					finalizeThinkingBlock('error');
-					flushAssistantText();
-					finalizeAssistantMessage();
-					finalizeClientStreamTiming(runId, 'error', 'error');
-				},
-				onComplete: () => {
-					if (runId !== activeStreamRunId) return;
-					isStreaming = false;
-					currentActivity = '';
-					currentStreamController = null;
-					activeClientTurnId = null;
-					if (!receivedStreamEvent && !error) {
-						error = 'BuildOS did not return a response. Please try again.';
-					}
-					activeTransportStreamRunId = null;
-					finalizeThinkingBlock('completed');
-					flushAssistantText();
-					finalizeAssistantMessage();
-					finalizeClientStreamTiming(runId, error ? 'error' : 'completed');
-				}
-			};
-
-			await SSEProcessor.processStream(response, callbacks, {
-				timeout: 0, // Disable inactivity timeouts for long-running streams
-				parseJSON: true,
-				signal: streamController.signal
-			});
-		} catch (err) {
-			currentStreamController = null;
-			if ((err as DOMException)?.name === 'AbortError') {
-				if (runId === null || runId !== activeStreamRunId) {
-					// This stream was superseded; ignore abort cleanup
-					return;
-				}
-				isStreaming = false;
-				currentActivity = '';
-				activeTransportStreamRunId = null;
-				activeClientTurnId = null;
-				finalizeThinkingBlock('interrupted', 'Stopped');
-				flushAssistantText();
-				finalizeAssistantMessage();
-				finalizeClientStreamTiming(runId, 'aborted');
-				return;
-			}
-
-			console.error('Failed to send message:', err);
-			error = 'Failed to send message. Please try again.';
-			isStreaming = false;
-			currentActivity = '';
-			activeTransportStreamRunId = null;
-			activeClientTurnId = null;
-			finalizeThinkingBlock('error'); // Ensure thinking block is closed on error
-			flushAssistantText();
-			finalizeAssistantMessage();
-			if (runId !== null) {
-				finalizeClientStreamTiming(runId, 'error', 'error');
-			}
-
-			// Remove user message on error
-			const failedUserMessageId = userMessage?.id;
-			if (failedUserMessageId) {
-				messages = messages.filter((m) => m.id !== failedUserMessageId);
-			}
-			inputValue = trimmed;
-			if (!suppressInputClear && sentImageAttachments.length > 0) {
-				attachments.restoreDraft(sentImageAttachments);
-			}
-		} finally {
-			isStartingStream = false;
-			if (currentStreamController === streamController) {
-				currentStreamController = null;
-			}
-		}
-	}
 
 	function hydrateSessionFromEvent(sessionEvent: ChatSession) {
 		currentSession = sessionEvent;
 		const sessionTitle = deriveSessionTitle(sessionEvent);
 		const normalizedSessionContext = normalizeSessionContextType(sessionEvent.context_type);
-		if (!selectedContextType) {
-			selectedContextType = normalizedSessionContext;
-			selectedEntityId = sessionEvent.entity_id ?? undefined;
-			selectedContextLabel =
-				sessionTitle ||
-				CONTEXT_DESCRIPTORS[normalizedSessionContext]?.title ||
-				selectedContextLabel;
-			showContextSelection = false;
-		} else if (sessionTitle) {
-			// Update the label when the session already exists but now has a better title
-			selectedContextLabel = sessionTitle;
-		}
-
-		if (normalizedSessionContext === 'project' && sessionEvent.entity_id && !projectFocus) {
-			projectFocus = buildProjectWideFocus(
-				sessionEvent.entity_id,
-				sessionTitle ?? selectedContextLabel
-			);
-		}
-
 		const metadataFocus = (
 			(sessionEvent.agent_metadata as { focus?: ProjectFocus | null }) ?? null
 		)?.focus;
-		if (metadataFocus) {
-			projectFocus = metadataFocus;
-		}
+		shellRouter.hydrateSessionEvent({
+			contextType: normalizedSessionContext,
+			entityId: sessionEvent.entity_id ?? undefined,
+			sessionTitle,
+			metadataFocus
+		});
 	}
 
 	const sseHandlerDeps: SSEHandlerDeps = {
@@ -2416,11 +1728,11 @@
 			getMessages: () => messages,
 			getInputValue: () => inputValue,
 			getCurrentSession: () => currentSession,
-			getSelectedContextLabel: () => selectedContextLabel,
-			getActiveStreamRunId: () => activeStreamRunId,
-			isAgentToAgentMode: () => agentToAgentMode,
-			getAgentLoopActive: () => agentLoopActive,
-			getAgentTurnsRemaining: () => agentTurnsRemaining,
+			getSelectedContextLabel: () => shellRouter.selectedContextLabel,
+			getActiveStreamRunId: () => stream.activeStreamRunId,
+			isAgentToAgentMode: () => shellRouter.agentToAgentMode,
+			getAgentLoopActive: () => shellRouter.agentLoopActive,
+			getAgentTurnsRemaining: () => shellRouter.agentTurnsRemaining,
 			setContextUsage: (usage, overheadTokens) => {
 				contextUsage = usage;
 				contextUsageOverheadTokens = overheadTokens;
@@ -2429,50 +1741,45 @@
 				lastTurnContext = ctx;
 			},
 			setProjectFocus: (focus) => {
-				projectFocus = focus;
+				shellRouter.projectFocus = focus;
 			},
 			setCurrentActivity: (label) => {
-				currentActivity = label;
+				stream.currentActivity = label;
 			},
 			setIsStreaming: (value) => {
-				isStreaming = value;
+				stream.isStreaming = value;
 			},
 			setError: (message) => {
-				error = message;
+				stream.error = message;
 			},
 			setSelectedContext: ({ contextType, entityId, label }) => {
-				// Detect when the agent lands us on a project we weren't already
-				// focused on (e.g. right after it creates one) so the header can
-				// celebrate the transition.
-				const isNewProjectFocus =
-					isProjectContext(contextType) &&
-					!!entityId &&
-					(entityId !== selectedEntityId || !isProjectContext(selectedContextType));
-				selectedContextType = contextType;
-				selectedEntityId = entityId;
-				selectedContextLabel = label;
-				if (isNewProjectFocus) {
+				const { shiftedToNewProject } = shellRouter.setSelectedContext({
+					contextType,
+					entityId,
+					label
+				});
+				if (shiftedToNewProject) {
 					contextShiftPulse += 1;
 				}
 			},
 			setShowFocusSelector: (value) => {
-				showFocusSelector = value;
+				shellRouter.showFocusSelector = value;
 			},
 			setShowProjectActionSelector: (value) => {
-				showProjectActionSelector = value;
+				shellRouter.showProjectActionSelector = value;
 			},
 			setCurrentSession: (session) => {
 				currentSession = session;
 			},
 			setAgentLoopActive: (value) => {
-				agentLoopActive = value;
+				shellRouter.agentLoopActive = value;
 			},
 			setAgentTurnsRemaining: (value) => {
-				agentTurnsRemaining = value;
+				shellRouter.agentTurnsRemaining = value;
 			}
 		},
 		hydrateSessionFromEvent,
-		attachServerTiming,
+		attachServerTiming: (runId, timing) => stream.attachServerTiming(runId, timing),
 		bufferAssistantText,
 		flushAssistantText,
 		finalizeAssistantMessage,
@@ -2484,7 +1791,7 @@
 		isDev: dev
 	};
 
-	const handleSSEMessage = createSSEHandler(sseHandlerDeps);
+	handleSSEMessage = createSSEHandler(sseHandlerDeps);
 
 	function describeFocus(focus: ProjectFocus | null): string {
 		if (!focus) return 'project workspace';
@@ -2673,7 +1980,7 @@
 
 	function markAssistantInterrupted(
 		reason: 'user_cancelled' | 'superseded' | 'error',
-		streamRunId = activeTransportStreamRunId
+		streamRunId: string | null
 	) {
 		if (!currentAssistantMessageId) return;
 		messages = messages.map((msg) =>
@@ -2689,135 +1996,6 @@
 					}
 				: msg
 		);
-	}
-
-	async function reportStreamCancellationReason(
-		reason: 'user_cancelled' | 'superseded',
-		streamRunId: string,
-		options: { awaitAck?: boolean } = {}
-	): Promise<void> {
-		const payload = {
-			session_id: currentSession?.id,
-			stream_run_id: streamRunId,
-			client_turn_id: activeClientTurnId ?? undefined,
-			reason
-		};
-		const request = fetch('/api/agent/v2/stream/cancel', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			keepalive: true,
-			body: JSON.stringify(payload)
-		}).catch((cancelError) => {
-			if (dev) {
-				console.debug(
-					'[AgentChat] Failed to report stream cancellation reason',
-					cancelError
-				);
-			}
-		});
-
-		if (!options.awaitAck) {
-			void request;
-			return;
-		}
-
-		await Promise.race([
-			request,
-			new Promise<void>((resolve) => {
-				setTimeout(resolve, 120);
-			})
-		]);
-	}
-
-	function detachActiveStream() {
-		if (!currentStreamController) return;
-
-		const runId = activeStreamRunId;
-		const streamController = currentStreamController;
-
-		flushAssistantText();
-		finalizeClientStreamTiming(runId, 'aborted');
-		activeStreamRunId = activeStreamRunId + 1;
-		activeTransportStreamRunId = null;
-		activeClientTurnId = null;
-
-		try {
-			streamController.abort();
-		} catch (abortError) {
-			if (dev) {
-				console.debug('Stream detach failed (already closed)', abortError);
-			}
-		}
-
-		if (currentStreamController === streamController) {
-			currentStreamController = null;
-		}
-		finalizeAssistantMessage();
-		isStreaming = false;
-		currentActivity = '';
-	}
-
-	async function handleStopGeneration(
-		reason: 'user_cancelled' | 'superseded' | 'error' = 'user_cancelled',
-		options: { awaitCancelHint?: boolean } = {}
-	) {
-		if (!isStreaming || !currentStreamController) return;
-
-		// Haptic feedback for stop action (mobile) - only for user-initiated stops
-		if (reason === 'user_cancelled') {
-			haptic('heavy');
-		}
-
-		const runId = activeStreamRunId;
-		const streamRunId = activeTransportStreamRunId;
-		const shouldReportReason = reason === 'user_cancelled' || reason === 'superseded';
-		const cancellationReasonPromise =
-			shouldReportReason && streamRunId
-				? reportStreamCancellationReason(reason, streamRunId, {
-						awaitAck: Boolean(options.awaitCancelHint)
-					})
-				: null;
-
-		// Flush any buffered tokens first so interruption metadata lands on the final visible partial.
-		flushAssistantText();
-		markAssistantInterrupted(reason, streamRunId);
-		finalizeClientStreamTiming(
-			runId,
-			'cancelled',
-			reason === 'user_cancelled' || reason === 'superseded' ? reason : null
-		);
-		// Invalidate the active run id so late SSE chunks are dropped
-		activeStreamRunId = activeStreamRunId + 1;
-		activeTransportStreamRunId = null;
-		activeClientTurnId = null;
-
-		if (cancellationReasonPromise && options.awaitCancelHint) {
-			await cancellationReasonPromise;
-		}
-
-		try {
-			currentStreamController.abort();
-		} catch (abortError) {
-			if (dev) {
-				console.debug('Abort failed (already closed)', abortError);
-			}
-		}
-		currentStreamController = null;
-
-		finalizeThinkingBlock(
-			reason === 'superseded' ? 'cancelled' : 'interrupted',
-			reason === 'user_cancelled' ? 'Stopped by you' : 'Stopped'
-		);
-		finalizeAssistantMessage();
-
-		if (cancellationReasonPromise && !options.awaitCancelHint) {
-			void cancellationReasonPromise;
-		}
-
-		isStreaming = false;
-		currentActivity = '';
 	}
 
 	onDestroy(() => {
@@ -2846,14 +2024,7 @@
 		clearSessionRefreshTimeout();
 		finalizeSession('destroy');
 		voice.stop();
-		if (currentStreamController && isStreaming) {
-			detachActiveStream();
-		} else if (currentStreamController) {
-			currentStreamController.abort();
-			currentStreamController = null;
-			activeTransportStreamRunId = null;
-			activeClientTurnId = null;
-		}
+		stream.disposeActiveStream();
 		voice.cleanup();
 		attachments.cleanup();
 	});
@@ -2920,7 +2091,7 @@
 					<AgentMessageList
 						{messages}
 						{displayContextLabel}
-						{selectedContextType}
+						selectedContextType={shellRouter.selectedContextType}
 						{resolvedProjectFocus}
 						onToggleThinkingBlock={toggleThinkingBlockCollapse}
 						bind:container={messagesContainer}
@@ -2940,13 +2111,13 @@
 		</div>
 	{/if}
 
-	{#if error && !showSessionLoadErrorState}
+	{#if stream.error && !showSessionLoadErrorState}
 		<div
 			class="border-t border-destructive/30 bg-destructive/10 p-2 text-xs font-semibold text-destructive tx tx-static tx-weak sm:p-2.5"
 			role="alert"
 			aria-live="assertive"
 		>
-			{error}
+			{stream.error}
 		</div>
 	{/if}
 
@@ -2992,7 +2163,7 @@
 			bind:voiceRecordingDuration={voice.recordingDuration}
 			bind:voiceSupportsLiveTranscript={voice.supportsLiveTranscript}
 			bind:voiceNoteGroupId={voice.noteGroupId}
-			{isStreaming}
+			isStreaming={stream.isStreaming}
 			{isSendDisabled}
 			allowSendWhileStreaming={isTouchDevice}
 			{displayContextLabel}
@@ -3011,8 +2182,8 @@
 			onVoiceNoteSegmentSaved={voice.handleSegmentSaved.bind(voice)}
 			onVoiceNoteSegmentError={voice.handleSegmentError.bind(voice)}
 			onKeyDownHandler={handleKeyDown}
-			onSend={handleSendMessage}
-			onStop={() => void handleStopGeneration('user_cancelled')}
+			onSend={() => void stream.handleSendMessage()}
+			onStop={() => void stream.stopGeneration('user_cancelled')}
 		/>
 	</div>
 {/snippet}
@@ -3056,20 +2227,20 @@
 				class="relative z-20 border-b border-border bg-card pt-[calc(env(safe-area-inset-top,0px)+0.5rem)] sm:pt-0 tx tx-frame tx-weak"
 			>
 				<AgentChatHeader
-					{selectedContextType}
+					selectedContextType={shellRouter.selectedContextType}
 					{displayContextLabel}
 					{displayContextSubtitle}
-					{isStreaming}
+					isStreaming={stream.isStreaming}
 					showBackButton={shouldShowBackButton}
 					onBack={handleBackNavigation}
 					onClose={handleClose}
-					projectId={selectedEntityId}
+					projectId={shellRouter.selectedEntityId}
 					{resolvedProjectFocus}
 					onChangeFocus={openFocusSelector}
 					onClearFocus={handleFocusClear}
 					{ontologyLoaded}
 					hasActiveThinkingBlock={!!currentThinkingBlockId}
-					{currentActivity}
+					currentActivity={stream.currentActivity}
 					{sessionStatusLabel}
 					contextUsage={displayContextUsage}
 					sessionId={currentSession?.id ?? null}
@@ -3088,11 +2259,11 @@
 			<div class="relative z-10 flex h-full flex-col overflow-hidden bg-card">
 				<!-- Keep context selection mounted so Back returns to prior step -->
 				<div
-					class={`flex h-full min-h-0 flex-col ${showContextSelection ? '' : 'hidden'}`}
-					aria-hidden={!showContextSelection}
+					class={`flex h-full min-h-0 flex-col ${shellRouter.showContextSelection ? '' : 'hidden'}`}
+					aria-hidden={!shellRouter.showContextSelection}
 				>
 					<ContextSelectionScreen
-						bind:this={contextSelectionRef}
+						bind:this={shellRouter.contextSelectionRef}
 						inModal
 						onSelect={handleContextSelect}
 						onNavigationChange={handleContextSelectionNavChange}
@@ -3100,43 +2271,46 @@
 				</div>
 
 				<!-- Chat / wizard view - Same height constraint as selection -->
-				<div class={`${showContextSelection ? 'hidden' : 'flex'} h-full min-h-0 flex-col`}>
-					{#if showProjectActionSelector}
+				<div
+					class={`${shellRouter.showContextSelection ? 'hidden' : 'flex'} h-full min-h-0 flex-col`}
+				>
+					{#if shellRouter.showProjectActionSelector}
 						<ProjectActionSelector
-							projectId={selectedEntityId || ''}
-							projectName={projectFocus?.projectName ??
-								selectedContextLabel ??
+							projectId={shellRouter.selectedEntityId || ''}
+							projectName={shellRouter.projectFocus?.projectName ??
+								shellRouter.selectedContextLabel ??
 								'Project'}
 							onSelectAction={(action) => handleProjectActionSelect(action)}
 							onSelectFocus={handleFocusSelection}
 						/>
-					{:else if showFocusSelector && isProjectContext(selectedContextType) && selectedEntityId && resolvedProjectFocus}
+					{:else if shellRouter.showFocusSelector && isProjectContext(shellRouter.selectedContextType) && shellRouter.selectedEntityId && resolvedProjectFocus}
 						<ProjectFocusSelector
-							projectId={selectedEntityId}
+							projectId={shellRouter.selectedEntityId}
 							projectName={resolvedProjectFocus.projectName}
 							currentFocus={resolvedProjectFocus}
 							onSelect={handleFocusSelection}
 						/>
-					{:else if agentToAgentMode && agentToAgentStep !== 'chat'}
+					{:else if shellRouter.agentToAgentMode && shellRouter.agentToAgentStep !== 'chat'}
 						<AgentAutomationWizard
-							step={agentToAgentStep ?? 'agent'}
-							{agentProjects}
-							{agentProjectsLoading}
-							{agentProjectsError}
-							{agentGoal}
-							{agentTurnBudget}
-							{selectedAgentLabel}
-							{selectedContextLabel}
-							hasMultipleHelpers={HAS_MULTIPLE_AGENT_HELPERS}
-							onUseActionableInsight={() => selectAgentForBridge(RESEARCH_AGENT_ID)}
+							step={shellRouter.agentToAgentStep ?? 'agent'}
+							agentProjects={shellRouter.agentProjects}
+							agentProjectsLoading={shellRouter.agentProjectsLoading}
+							agentProjectsError={shellRouter.agentProjectsError}
+							agentGoal={shellRouter.agentGoal}
+							agentTurnBudget={shellRouter.agentTurnBudget}
+							selectedAgentLabel={shellRouter.selectedAgentLabel}
+							selectedContextLabel={shellRouter.selectedContextLabel}
+							hasMultipleHelpers={shellRouter.hasMultipleAgentHelpers}
+							onUseActionableInsight={() =>
+								selectAgentForBridge(shellRouter.researchAgentId)}
 							onProjectSelect={(project) => selectAgentProject(project)}
 							onStartChat={startAgentToAgentChat}
 							onExit={() => {
-								agentToAgentMode = false;
-								agentToAgentStep = null;
+								shellRouter.agentToAgentMode = false;
+								shellRouter.agentToAgentStep = null;
 								changeContext();
 							}}
-							onGoalChange={(value) => (agentGoal = value)}
+							onGoalChange={(value) => (shellRouter.agentGoal = value)}
 							onTurnBudgetChange={updateAgentTurnBudget}
 							onJumpToStep={(target) => {
 								if (target === 'agent') backToAgentSelection();
@@ -3151,7 +2325,7 @@
 						)}
 					{/if}
 
-					{#if !showContextSelection && !showProjectActionSelector && agentToAgentMode}
+					{#if !shellRouter.showContextSelection && !shellRouter.showProjectActionSelector && shellRouter.agentToAgentMode}
 						<!-- INKPRINT automation footer with Thread texture -->
 						<div
 							class="border-t border-border bg-muted px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] tx tx-thread tx-weak sm:px-4 sm:py-2.5"
@@ -3161,18 +2335,21 @@
 							>
 								<div class="space-y-0.5">
 									<p class="text-xs font-semibold text-foreground">
-										Automation loop is {agentLoopActive ? 'active' : 'paused'}.
+										Automation loop is {shellRouter.agentLoopActive
+											? 'active'
+											: 'paused'}.
 									</p>
 									<p
 										class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
 									>
-										Helper: {selectedAgentLabel} • Project: {selectedContextLabel ??
-											'Select a project'} • Goal: {agentGoal || 'Add a goal'}
+										Helper: {shellRouter.selectedAgentLabel} • Project: {shellRouter.selectedContextLabel ??
+											'Select a project'} • Goal: {shellRouter.agentGoal ||
+											'Add a goal'}
 									</p>
 									<p
 										class="text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
 									>
-										Turns remaining: {agentTurnsRemaining} / {agentTurnBudget}
+										Turns remaining: {shellRouter.agentTurnsRemaining} / {shellRouter.agentTurnBudget}
 									</p>
 								</div>
 								<!-- INKPRINT tactile buttons -->
@@ -3180,15 +2357,17 @@
 									<button
 										type="button"
 										class="inline-flex items-center justify-center rounded-lg bg-accent px-3 py-2 text-[0.65rem] font-bold uppercase tracking-[0.15em] text-accent-foreground shadow-ink transition pressable disabled:cursor-not-allowed disabled:opacity-60"
-										disabled={isStreaming ||
-											agentMessageLoading ||
-											agentTurnsRemaining <= 0}
+										disabled={stream.isStreaming ||
+											shellRouter.agentMessageLoading ||
+											shellRouter.agentTurnsRemaining <= 0}
 										onclick={() => {
-											agentLoopActive = true;
+											shellRouter.agentLoopActive = true;
 											runAgentToAgentTurn();
 										}}
 									>
-										{agentLoopActive ? 'Run next turn' : 'Resume loop'}
+										{shellRouter.agentLoopActive
+											? 'Run next turn'
+											: 'Resume loop'}
 									</button>
 									<button
 										type="button"
@@ -3210,17 +2389,17 @@
 										min="1"
 										max="50"
 										class="w-16 rounded-lg border border-border bg-background px-2 py-1 text-[0.65rem] font-semibold text-foreground shadow-ink-inner focus:border-accent focus:outline-none focus:ring-ring"
-										value={agentTurnBudget}
-										disabled={agentLoopActive ||
-											agentMessageLoading ||
-											isStreaming}
+										value={shellRouter.agentTurnBudget}
+										disabled={shellRouter.agentLoopActive ||
+											shellRouter.agentMessageLoading ||
+											stream.isStreaming}
 										oninput={(e) =>
 											updateAgentTurnBudget(
 												Number((e.target as HTMLInputElement).value)
 											)}
 									/>
 								</label>
-								{#if agentTurnsRemaining <= 0}
+								{#if shellRouter.agentTurnsRemaining <= 0}
 									<!-- INKPRINT warning badge with Static texture -->
 									<span
 										class="rounded-lg bg-warning/10 px-2.5 py-1.5 text-[0.65rem] font-semibold text-warning tx tx-static tx-weak"
@@ -3229,7 +2408,7 @@
 									</span>
 								{/if}
 							</div>
-							{#if agentMessageLoading}
+							{#if shellRouter.agentMessageLoading}
 								<p
 									class="mt-1 text-[0.65rem] uppercase tracking-[0.15em] text-muted-foreground"
 								>

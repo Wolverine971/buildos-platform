@@ -2,38 +2,9 @@
 // Worker-safe agent-call project-activity logger. Only
 // depends on @buildos/shared-types; takes the admin client as a param.
 import type { ProjectLogAction, ProjectLogEntityType } from '@buildos/shared-types';
+import { activityConfigForGatewayOp } from './op-execution-gateway.mutations';
 
 type JsonRecord = Record<string, unknown>;
-
-type ActivityConfig = {
-	action: ProjectLogAction;
-	entityType: ProjectLogEntityType | 'calendar';
-};
-
-const WRITE_OP_ACTIVITY: Record<string, ActivityConfig> = {
-	'onto.task.create': { action: 'created', entityType: 'task' },
-	'onto.task.update': { action: 'updated', entityType: 'task' },
-	'onto.task.docs.create_or_attach': { action: 'created', entityType: 'document' },
-	'onto.document.create': { action: 'created', entityType: 'document' },
-	'onto.document.update': { action: 'updated', entityType: 'document' },
-	'onto.document.tree.move': { action: 'updated', entityType: 'document' },
-	'onto.project.create': { action: 'created', entityType: 'project' },
-	'onto.project.update': { action: 'updated', entityType: 'project' },
-	'onto.goal.create': { action: 'created', entityType: 'goal' },
-	'onto.goal.update': { action: 'updated', entityType: 'goal' },
-	'onto.plan.create': { action: 'created', entityType: 'plan' },
-	'onto.plan.update': { action: 'updated', entityType: 'plan' },
-	'onto.milestone.create': { action: 'created', entityType: 'milestone' },
-	'onto.milestone.update': { action: 'updated', entityType: 'milestone' },
-	'onto.risk.create': { action: 'created', entityType: 'risk' },
-	'onto.risk.update': { action: 'updated', entityType: 'risk' },
-	'onto.edge.link': { action: 'created', entityType: 'edge' },
-	'onto.edge.unlink': { action: 'updated', entityType: 'edge' },
-	'cal.event.create': { action: 'created', entityType: 'event' },
-	'cal.event.update': { action: 'updated', entityType: 'event' },
-	'cal.event.delete': { action: 'deleted', entityType: 'event' },
-	'cal.project.set': { action: 'updated', entityType: 'project' }
-};
 
 const TABLE_BY_KIND: Record<string, { table: string; select: string }> = {
 	task: { table: 'onto_tasks', select: 'id, project_id' },
@@ -258,8 +229,8 @@ export async function maybeLogAgentCallProjectActivity(params: {
 	startedAt?: string;
 	completedAt?: string;
 }): Promise<void> {
-	const config = WRITE_OP_ACTIVITY[params.op];
-	if (!config || config.entityType === 'calendar') return;
+	const config = activityConfigForGatewayOp(params.op);
+	if (!config) return;
 
 	try {
 		const projectId = await resolveProjectId({

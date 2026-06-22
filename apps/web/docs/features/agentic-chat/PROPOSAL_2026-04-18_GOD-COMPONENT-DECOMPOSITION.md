@@ -7,6 +7,8 @@
 > Target: `apps/web/src/lib/components/agent/AgentChatModal.svelte` — currently **4,254 LOC**, ~80 `$state`, 12 `$effect`, 99 rune sites.
 > Goal: lift ~2,000 LOC of pure-ish logic into testable modules, leave the modal as shell + glue (~2,200 LOC), enable every subsequent §5 audit item.
 
+> Current status, 2026-06-22: this is now a historical slice plan, not an unstarted proposal. `AgentChatModal.svelte` is ~2,498 LOC. The tool presenter, SSE handler, voice adapter, prewarm controller, session helpers, image/OCR attachment controller, send/stream controller, and shell router have shipped with colocated tests. The largest remaining frontend extraction is session hydration/finalization plus the A2A turn runner. If older notes say image/OCR, send/stream, or A2A/context-router state are still unextracted, prefer the current code: `agent-chat-attachments.svelte.ts` owns the attachment pipeline, `agent-chat-stream-controller.svelte.ts` owns `sendMessage()`/cancel/finalization, and `agent-chat-shell-router.svelte.ts` owns context/focus routing plus A2A wizard state. Adjacent backend endpoint cleanup also moved last-turn continuity into `last-turn-context.ts`, stream attachment/live-vision handling into `stream-attachments.ts`, and turn-event persistence into batched `TurnObservabilityWriter` flushes.
+
 ---
 
 ## 0. Clarification on the parent audit
@@ -390,9 +392,11 @@ Items 2 and 8 are subsumed by this proposal. Recommend updating the audit §5 li
 ## 10. Execution order
 
 1. ✅ **This proposal.**
-2. **Slice C** — tool display presenter + tests + modal wiring. (In progress.)
-3. **Slice B** — SSE reducer + tests + modal wiring.
-4. **Slice E** — voice adapter + tests + modal wiring.
-5. **Slice D** — bootstrap controller + tests + modal wiring.
-6. **Slice A** — stream controller + tests + modal wiring.
-7. Follow-up: revisit §5 items 3, 4, 10, 11 with the new seams in place.
+2. ✅ **Slice C** — tool display presenter + tests + modal wiring shipped as `agent-chat-tool-presenter.ts`.
+3. ✅ **Slice B** — SSE handling + tests shipped as `agent-chat-sse-handler.ts` rather than the exact reducer shape sketched above.
+4. ✅ **Slice E** — voice adapter + tests shipped as `agent-chat-voice.svelte.ts`.
+5. ✅ **Slice D, partial** — prewarm/session helpers shipped as `agent-chat-prewarm.svelte.ts` and `agent-chat-session.ts`; broader bootstrap/context-router extraction is still optional follow-up.
+6. ✅ **Image/OCR attachments** — shipped after this proposal as `agent-chat-attachments.svelte.ts`, including draft/message OCR polling and tests.
+7. ✅ **Slice A** — send/stream controller + tests shipped as `agent-chat-stream-controller.svelte.ts`. It owns `sendMessage()`, stop/supersede/cancel behavior, the three-ID guard, optimistic-message rollback, assistant finalization, and stream timing.
+8. ✅ **Shell router** — context/action/focus routing and A2A wizard state shipped as `agent-chat-shell-router.svelte.ts`.
+9. Remaining frontend follow-up: extract session hydration/finalization and the A2A turn runner, then revisit §5 items 3, 4, 10, 11 with the new seams in place.

@@ -12,13 +12,17 @@ import type {
 	ChangeSetDecision,
 	ChangeSetStatus,
 	Database,
-	EntityAction,
 	EntityTouch,
-	ProposedChange,
-	ProposedChangeAction
+	ProposedChange
 } from '@buildos/shared-types';
 import { defaultAllowedOpsForMode } from '../policy';
-import { runGatewayWriteOp } from './op-execution-gateway';
+import {
+	buildGatewayEntityUrl,
+	buildGatewayProjectUrl,
+	entityActionFromProposedChangeAction,
+	runGatewayWriteOp,
+	titleFromGatewayChange
+} from './op-execution-gateway';
 
 export interface CommitChangeSetResult {
 	change_set_status: ChangeSetStatus;
@@ -39,39 +43,6 @@ export type CommitChangeSetOutcome =
 				message: string;
 			};
 	  };
-
-const ACTION_TO_ENTITY_ACTION: Record<ProposedChangeAction, EntityAction> = {
-	create: 'created',
-	update: 'updated',
-	delete: 'deleted'
-};
-
-function buildProjectUrl(projectId?: string | null): string | null {
-	return projectId ? `/projects/${projectId}` : null;
-}
-
-function buildEntityUrl(kind: string, entityId: string, projectId?: string | null): string | null {
-	if (kind === 'project') return `/projects/${entityId}`;
-	if (!projectId) return null;
-	if (kind === 'task') return `/projects/${projectId}/tasks/${entityId}`;
-	if (kind === 'document') return `/projects/${projectId}/documents/${entityId}`;
-	return `/projects/${projectId}?entity=${encodeURIComponent(kind)}&id=${encodeURIComponent(entityId)}`;
-}
-
-function titleFromChange(change: ProposedChange): string | null {
-	const after = change.after;
-	const before = change.before;
-	const readTitle = (value: unknown): string | null => {
-		if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-		const record = value as Record<string, unknown>;
-		for (const key of ['title', 'name', 'summary'] as const) {
-			const candidate = record[key];
-			if (typeof candidate === 'string' && candidate.trim()) return candidate.trim();
-		}
-		return null;
-	};
-	return readTitle(after) ?? readTitle(before);
-}
 
 const CHANGE_SET_DRIFT_ENTITY_CONFIG: Record<
 	string,
@@ -369,12 +340,12 @@ export async function commitChangeSet(params: {
 				entitiesTouched.push({
 					type: touchType,
 					id: appliedId,
-					action: ACTION_TO_ENTITY_ACTION[change.action] ?? 'updated',
+					action: entityActionFromProposedChangeAction(change.action),
 					description: change.rationale,
 					project_id: projectId,
-					title: result.entityTitle ?? titleFromChange(change),
-					url: buildEntityUrl(touchType, appliedId, projectId),
-					project_url: buildProjectUrl(projectId)
+					title: result.entityTitle ?? titleFromGatewayChange(change),
+					url: buildGatewayEntityUrl(touchType, appliedId, projectId),
+					project_url: buildGatewayProjectUrl(projectId)
 				});
 			}
 			// Telemetry: record the actual commit, keyed to the proposed change.

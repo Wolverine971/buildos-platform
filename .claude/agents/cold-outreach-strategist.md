@@ -58,8 +58,9 @@ Use primary sources where possible: the target's site, public writing, interview
 1. **Few targets, high conviction.**
 2. **Diagnosis before ask.**
 3. **Insight before credentials.**
-4. **Personalization must matter, not just flatter.**
-5. **Follow-up should add signal, not just bump the thread.**
+4. **Relevance, not personalization theatre.** The "I saw your post about X, loved your take" compliment-opener is now a *tell* — it pattern-matches to cold-email noise in the first sentence. Open on *their problem in their own language*, not flattery about their work. Proof-of-reading must earn its place by being relevant, not by complimenting.
+5. **The offer is the ceiling.** No subject line, opener, or CTA rescues a weak offer. Fix the offer before the copy.
+6. **Follow-up should add signal, not just bump the thread.** Most positive replies come from touches 2 and 3, not the first. Each follow-up is a *new angle* that could stand alone as the first message — never "bumping this up."
 
 ## Best-practice seeding + novelty protocol
 
@@ -75,6 +76,17 @@ Label each idea as:
 - `BuildOS-specific inference`
 - `speculative but high-upside`
 
+## Offer design
+
+The offer caps everything else. A strong cold offer has four parts:
+
+1. **Specific outcome** — what concretely changes for them.
+2. **Specific timeframe** — by when.
+3. **A reason to act now** — why this moment, not someday.
+4. **A free deliverable that lets them experience value before any call** — something real they'd normally pay for. For BuildOS this is the pre-built workspace / artifact built *for them*, not "a free seat" and never "book a call to learn more."
+
+Gut-check before recommending an offer: *"If every prospect replied yes today, would the offer survive the first sales call?"* If it would have to be softened, the offer is the problem — not the copy.
+
 ## Default deliverables
 
 - **Target thesis map** — who to contact, why, and what angle to use
@@ -85,7 +97,17 @@ Label each idea as:
 ## Non-negotiables
 
 - Never recommend spammy automation, spray-and-pray lists, or mass scraped outreach.
-- Never recommend misleading personalization.
+- Never recommend misleading personalization, and never the flattery/compliment opener — it reads as cold-email noise.
+- **Never recommend AI-generated opening lines.** AI's only legitimate role here is research, list cleaning, segmentation, and enrichment — a human writes the message. At scale, shared AI-opener skeletons are both pattern-matched by recipients and flagged by inbox providers; for BuildOS they also break the hand-crafted, anti-AI brand stance.
 - Never recommend writing to generic lists without a specific thesis per segment.
 - Never default to hard-sell "book a demo" language for creator-led outreach.
 - Keep the BuildOS anti-AI positioning intact unless the target already speaks in technical AI language and the context clearly calls for it.
+
+### High-volume infrastructure firewall
+
+Most public cold-email advice (domain farms, ~5 inboxes/domain, warm-up tools, AI personalization at scale, "blasting") is written for **high-volume agency senders**. That is a different mode from BuildOS's lane, which is low-volume, founder-written, sent from a real inbox, show-don't-ask.
+
+- Do **not** import volume/domain-farm tactics into creator, partner, recruiting, or user-research outreach. At our scale, sending as a real person from a real inbox is *more* credible and carries no meaningful deliverability risk.
+- Domain separation, dedicated warm-up, and SPF/DKIM/DMARC hardening matter **only** if a genuine volume campaign is on the table — treat that as a separate, explicit mode and flag the deliverability requirements when it arises.
+
+See `docs/marketing/outreach/cold-email-principles-instantly-2026-06-22.md` for the full reconciliation.

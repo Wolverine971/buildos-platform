@@ -25,6 +25,11 @@ import {
 	executeAgentOp,
 	isWriteOp
 } from '@buildos/shared-agent-ops';
+import {
+	buildGatewayEntityUrl,
+	buildGatewayProjectUrl,
+	entityActionForGatewayOp
+} from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
@@ -60,32 +65,6 @@ interface RunBudgets {
 const DEFAULT_MAX_TOOL_CALLS = 20;
 const DEFAULT_WALL_CLOCK_MS = 5 * 60 * 1000;
 const TRANSCRIPT_RESULT_CHARS = 4000;
-
-function buildProjectUrl(projectId?: string | null): string | null {
-	return projectId ? `/projects/${projectId}` : null;
-}
-
-function buildEntityUrl(kind: string, entityId: string, projectId?: string | null): string | null {
-	if (kind === 'project') return `/projects/${entityId}`;
-	if (!projectId) return null;
-	if (kind === 'task') return `/projects/${projectId}/tasks/${entityId}`;
-	if (kind === 'document') return `/projects/${projectId}/documents/${entityId}`;
-	return `/projects/${projectId}?entity=${encodeURIComponent(kind)}&id=${encodeURIComponent(entityId)}`;
-}
-
-function entityActionFromOp(op: string): EntityAction {
-	if (
-		op.endsWith('.create') ||
-		op === 'onto.edge.link' ||
-		op === 'onto.task.docs.create_or_attach'
-	) {
-		return 'created';
-	}
-	if (op.endsWith('.delete') || op === 'onto.edge.unlink') {
-		return 'deleted';
-	}
-	return 'updated';
-}
 
 function isEntityAction(value: unknown): value is EntityAction {
 	return value === 'created' || value === 'updated' || value === 'deleted';
@@ -174,7 +153,7 @@ function buildCompletionMessageContent(
 		run.project_id ??
 		entitiesTouched.find((entity) => typeof entity.project_id === 'string')?.project_id ??
 		null;
-	const projectUrl = buildProjectUrl(projectId);
+	const projectUrl = buildGatewayProjectUrl(projectId);
 	const body = answer || summary;
 
 	const header =
@@ -202,7 +181,11 @@ function buildCompletionMessageContent(
 					const label = entity.title?.trim() || `${entity.type} ${entity.id.slice(0, 8)}`;
 					const url =
 						entity.url ??
-						buildEntityUrl(entity.type, entity.id, entity.project_id ?? projectId);
+						buildGatewayEntityUrl(
+							entity.type,
+							entity.id,
+							entity.project_id ?? projectId
+						);
 					const linkedLabel = url ? `[${label}](${url})` : label;
 					return `- ${entity.action} ${linkedLabel}`;
 				})
@@ -893,15 +876,16 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 			const projectId =
 				result.entityProjectId ??
 				(result.entityKind === 'project' ? result.entityId : run.project_id);
+			const action = entityActionForGatewayOp(op);
 			committedEntityTouches.push({
 				type: result.entityKind,
 				id: result.entityId,
-				action: entityActionFromOp(op),
-				description: `Agent run ${entityActionFromOp(op)} ${result.entityKind}.`,
+				action,
+				description: `Agent run ${action} ${result.entityKind}.`,
 				project_id: projectId,
 				title: result.entityTitle ?? null,
-				url: buildEntityUrl(result.entityKind, result.entityId, projectId),
-				project_url: buildProjectUrl(projectId)
+				url: buildGatewayEntityUrl(result.entityKind, result.entityId, projectId),
+				project_url: buildGatewayProjectUrl(projectId)
 			});
 		}
 

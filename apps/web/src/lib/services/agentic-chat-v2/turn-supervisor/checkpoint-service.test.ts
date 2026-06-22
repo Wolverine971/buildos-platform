@@ -8,13 +8,21 @@ import {
 	markCheckpointResuming,
 	recoverStaleResumingCheckpoints,
 	restoreCheckpointToActive,
-	type ChatTurnCheckpoint
+	type ChatTurnCheckpoint,
+	type TurnSupervisorSupabaseClient
 } from './checkpoint-service';
 import type { TurnDigest, TurnSupervisorDecision } from './types';
 
 type Row = Record<string, any>;
+type CheckpointSupabaseMock = TurnSupervisorSupabaseClient & {
+	rows: Row[];
+	turnRows: Row[];
+};
 
-function createCheckpointSupabaseMock(initialRows: Row[] = [], initialTurnRows: Row[] = []) {
+function createCheckpointSupabaseMock(
+	initialRows: Row[] = [],
+	initialTurnRows: Row[] = []
+): CheckpointSupabaseMock {
 	const rows = initialRows.map((row) => ({ ...row }));
 	const turnRows = initialTurnRows.map((row) => ({ ...row }));
 	const tables: Record<string, Row[]> = {
@@ -153,7 +161,7 @@ function createCheckpointSupabaseMock(initialRows: Row[] = [], initialTurnRows: 
 		},
 		rows,
 		turnRows
-	};
+	} as unknown as CheckpointSupabaseMock;
 }
 
 const digest: TurnDigest = {

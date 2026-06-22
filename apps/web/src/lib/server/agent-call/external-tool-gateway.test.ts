@@ -208,6 +208,7 @@ type State = {
 	projects?: ProjectRow[];
 	projectMembers?: ProjectMemberRow[];
 	toolExecutions: Array<Record<string, unknown>>;
+	securityEvents?: Array<Record<string, unknown>>;
 	projectLogs?: Array<Record<string, unknown>>;
 	callerPolicy?: Record<string, unknown> | null;
 	nextTaskId: number;
@@ -989,6 +990,16 @@ class AgentCallToolExecutionsQueryBuilderMock {
 	}
 }
 
+class SecurityEventsQueryBuilderMock {
+	constructor(private readonly state: State) {}
+
+	insert(payload: Record<string, unknown>) {
+		this.state.securityEvents ??= [];
+		this.state.securityEvents.push(payload);
+		return Promise.resolve({ data: null, error: null });
+	}
+}
+
 class OntoProjectLogsQueryBuilderMock {
 	private filters = new Map<string, unknown>();
 	private inFilters = new Map<string, unknown[]>();
@@ -1373,6 +1384,10 @@ function createAdminMock(state: State) {
 
 			if (table === 'agent_call_tool_executions') {
 				return new AgentCallToolExecutionsQueryBuilderMock(state);
+			}
+
+			if (table === 'security_events') {
+				return new SecurityEventsQueryBuilderMock(state);
 			}
 
 			if (table === 'onto_project_logs') {
@@ -2007,6 +2022,56 @@ describe('external tool gateway', () => {
 				])
 			});
 		}
+	});
+
+	it('records telemetry when a legacy gateway op alias is used', async () => {
+		const { executeGatewayOp } = await import(
+			'@buildos/shared-agent-ops/gateway/op-execution-gateway'
+		);
+		const state: State = {
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+
+		const result = await executeGatewayOp({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_only',
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS]
+			},
+			arguments: {
+				op: 'reorganize_onto_project_graph',
+				args: {}
+			},
+			registryOps: {},
+			registryVersion: 'test',
+			securityEventOptions: { delivery: 'blocking' }
+		});
+
+		expect(result).toMatchObject({
+			ok: false,
+			error: { code: 'NOT_FOUND' }
+		});
+		expect(state.securityEvents).toContainEqual(
+			expect.objectContaining({
+				event_type: 'agent.tool.alias_used',
+				category: 'agent',
+				outcome: 'info',
+				severity: 'low',
+				metadata: expect.objectContaining({
+					requestedOp: 'reorganize_onto_project_graph',
+					canonicalOp: 'onto.project.graph.reorganize',
+					opAliasUsed: true,
+					argAliasesUsed: []
+				})
+			})
+		);
 	});
 
 	it('exposes image asset tools through scoped discovery without granting media URLs', async () => {
@@ -3000,7 +3065,7 @@ describe('external tool gateway', () => {
 		});
 	});
 
-	it('exposes placement and legacy content aliases on external document create tools', async () => {
+	it('exposes canonical placement and content fields on external document create tools', async () => {
 		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
 
 		const tools = getBuildosAgentGatewayTools({
@@ -3011,15 +3076,16 @@ describe('external tool gateway', () => {
 
 		expect(createDocumentTool?.inputSchema).toMatchObject({
 			properties: {
-				body_markdown: expect.any(Object),
 				parent_document_id: expect.any(Object),
-				parent_id: expect.any(Object),
+				content: expect.any(Object),
 				position: expect.any(Object)
 			}
 		});
+		expect(createDocumentTool?.inputSchema.properties).not.toHaveProperty('body_markdown');
+		expect(createDocumentTool?.inputSchema.properties).not.toHaveProperty('parent_id');
 	});
 
-	it('exposes content strategy fields on external document update tools', async () => {
+	it('exposes canonical content strategy fields on external document update tools', async () => {
 		const { getBuildosAgentGatewayTools } = await import('./external-tool-gateway');
 
 		const tools = getBuildosAgentGatewayTools({
@@ -3030,11 +3096,12 @@ describe('external tool gateway', () => {
 
 		expect(updateDocumentTool?.inputSchema).toMatchObject({
 			properties: {
-				body_markdown: expect.any(Object),
+				content: expect.any(Object),
 				update_strategy: expect.any(Object),
 				merge_instructions: expect.any(Object)
 			}
 		});
+		expect(updateDocumentTool?.inputSchema.properties).not.toHaveProperty('body_markdown');
 	});
 
 	it('creates a document through a direct tool and places it in the doc tree', async () => {
@@ -3043,6 +3110,7 @@ describe('external tool gateway', () => {
 			documents: [],
 			tasks: [],
 			toolExecutions: [],
+			securityEvents: [],
 			nextTaskId: 1,
 			nextToolExecutionId: 1
 		};
@@ -3063,7 +3131,7 @@ describe('external tool gateway', () => {
 				project_id: '44444444-4444-4444-4444-444444444444',
 				title: 'Launch brief',
 				description: 'External agent brief',
-				body_markdown: '# Brief',
+				content: '# Brief',
 				parent_document_id: parentDocumentId,
 				position: 2
 			}
@@ -3106,16 +3174,16 @@ describe('external tool gateway', () => {
 		expect(state.toolExecutions[0]?.status).toBe('succeeded');
 	});
 
-	it('accepts parent_id as a legacy alias for external document creates', async () => {
+	it('rejects body_markdown legacy alias for external document creates and records telemetry', async () => {
 		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
 		const state: State = {
 			documents: [],
 			tasks: [],
 			toolExecutions: [],
+			securityEvents: [],
 			nextTaskId: 1,
 			nextToolExecutionId: 1
 		};
-		const parentDocumentId = 'aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb';
 
 		const result = await executeBuildosAgentGatewayTool({
 			admin: createAdminMock(state),
@@ -3128,29 +3196,93 @@ describe('external tool gateway', () => {
 				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.document.create']
 			},
 			toolName: 'create_onto_document',
+			securityEventOptions: { delivery: 'blocking' },
 			arguments: {
 				project_id: '44444444-4444-4444-4444-444444444444',
 				title: 'Alias test',
-				description: 'Uses parent_id',
-				parent_id: parentDocumentId
+				description: 'Uses body_markdown',
+				body_markdown: '# Alias'
 			}
 		});
 
 		expect(result).toMatchObject({
 			op: 'onto.document.create',
-			ok: true
+			ok: false,
+			error: {
+				code: 'VALIDATION_ERROR',
+				message: 'Unsupported compatibility parameter: body_markdown'
+			}
 		});
-		expect(addDocumentToTreeMock).toHaveBeenCalledWith(
-			expect.anything(),
-			'44444444-4444-4444-4444-444444444444',
-			state.documents[0]?.id,
-			{
-				parentId: parentDocumentId,
-				position: undefined,
-				title: 'Alias test',
-				description: 'Uses parent_id'
+		expect(state.documents).toHaveLength(0);
+		expect(state.securityEvents).toContainEqual(
+			expect.objectContaining({
+				event_type: 'agent.tool.alias_used',
+				category: 'agent',
+				outcome: 'info',
+				severity: 'low',
+				metadata: expect.objectContaining({
+					requestedOp: 'onto.document.create',
+					canonicalOp: 'onto.document.create',
+					opAliasUsed: false,
+					argAliasesUsed: [{ alias: 'body_markdown', target: 'content' }]
+				})
+			})
+		);
+	});
+
+	it('rejects parent_id legacy alias for external document creates and records telemetry', async () => {
+		const { executeBuildosAgentGatewayTool } = await import('./external-tool-gateway');
+		const state: State = {
+			documents: [],
+			tasks: [],
+			toolExecutions: [],
+			securityEvents: [],
+			nextTaskId: 1,
+			nextToolExecutionId: 1
+		};
+
+		const result = await executeBuildosAgentGatewayTool({
+			admin: createAdminMock(state),
+			userId: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+			callerId: '11111111-1111-1111-1111-111111111111',
+			callSessionId: '22222222-2222-2222-2222-222222222222',
+			scope: {
+				mode: 'read_write',
+				project_ids: ['44444444-4444-4444-4444-444444444444'],
+				allowed_ops: [...BUILDOS_AGENT_READ_OPS, 'onto.document.create']
 			},
-			'actor-1'
+			toolName: 'create_onto_document',
+			securityEventOptions: { delivery: 'blocking' },
+			arguments: {
+				project_id: '44444444-4444-4444-4444-444444444444',
+				title: 'Alias test',
+				description: 'Uses parent_id',
+				parent_id: 'aaaaaaaa-1111-2222-3333-bbbbbbbbbbbb'
+			}
+		});
+
+		expect(result).toMatchObject({
+			op: 'onto.document.create',
+			ok: false,
+			error: {
+				code: 'VALIDATION_ERROR',
+				message: 'Unsupported compatibility parameter: parent_id'
+			}
+		});
+		expect(state.documents).toHaveLength(0);
+		expect(state.securityEvents).toContainEqual(
+			expect.objectContaining({
+				event_type: 'agent.tool.alias_used',
+				category: 'agent',
+				outcome: 'info',
+				severity: 'low',
+				metadata: expect.objectContaining({
+					requestedOp: 'onto.document.create',
+					canonicalOp: 'onto.document.create',
+					opAliasUsed: false,
+					argAliasesUsed: [{ alias: 'parent_id', target: 'parent_document_id' }]
+				})
+			})
 		);
 	});
 
@@ -3192,7 +3324,7 @@ describe('external tool gateway', () => {
 			toolName: 'update_onto_document',
 			arguments: {
 				document_id: '55555555-5555-5555-5555-555555555555',
-				body_markdown: '## Update',
+				content: '## Update',
 				update_strategy: 'append'
 			}
 		});

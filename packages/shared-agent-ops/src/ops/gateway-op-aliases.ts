@@ -41,8 +41,26 @@ export const GATEWAY_OP_ALIASES: Record<string, string> = {
 	'onto_projects.doc_structure.path.get': 'onto.document.path.get'
 };
 
+export type GatewayOpAliasResolution = {
+	requestedOp: string;
+	canonicalOp: string;
+	usedAlias: boolean;
+};
+
+export function resolveGatewayOpAlias(op: string): GatewayOpAliasResolution {
+	const requestedOp = op.trim();
+	if (!requestedOp) {
+		return { requestedOp: '', canonicalOp: '', usedAlias: false };
+	}
+
+	const canonicalOp = GATEWAY_OP_ALIASES[requestedOp] ?? requestedOp;
+	return {
+		requestedOp,
+		canonicalOp,
+		usedAlias: canonicalOp !== requestedOp
+	};
+}
+
 export function normalizeGatewayOpName(op: string): string {
-	const trimmed = op.trim();
-	if (!trimmed) return '';
-	return GATEWAY_OP_ALIASES[trimmed] ?? trimmed;
+	return resolveGatewayOpAlias(op).canonicalOp;
 }

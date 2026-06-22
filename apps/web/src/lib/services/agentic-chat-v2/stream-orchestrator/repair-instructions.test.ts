@@ -3,11 +3,13 @@ import { describe, expect, it } from 'vitest';
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
 import {
 	buildGatewayMutationNoExecutionRepairInstruction,
+	buildToolValidationRepairInstruction,
 	enforceMutationOutcomeIntegrity,
 	shouldRepairGatewayMutationNoExecution,
 	shouldRepairProjectCreateNoExecution
 } from './repair-instructions';
 import type { FastToolExecution } from './shared';
+import type { ToolValidationIssue } from './tool-validation';
 
 function createToolCall(name: string, args: Record<string, unknown>): ChatToolCall {
 	return {
@@ -38,6 +40,27 @@ function createExecution(params: {
 }
 
 describe('repair instruction policy', () => {
+	it('keeps task-create missing-title repair guidance through shared classification', () => {
+		const toolCall = createToolCall('create_onto_task', {
+			project_id: '56bcc3cf-67ae-491f-ace9-6d1c7d4e9bfc'
+		});
+		const issues: ToolValidationIssue[] = [
+			{
+				toolCall,
+				toolName: 'create_onto_task',
+				op: 'onto.task.create',
+				errors: ['Tool validation failed: Missing required parameter: title']
+			}
+		];
+
+		const instruction = buildToolValidationRepairInstruction(issues, true);
+
+		expect(instruction).toContain(
+			'For onto.task.create, do not emit a blank create. Include a concrete title taken from the user request before calling create_onto_task.'
+		);
+		expect(instruction).toContain('Tool "create_onto_task"');
+	});
+
 	it('repairs schema-only write success claims even when the final text includes a question', () => {
 		const toolExecutions = [
 			createExecution({

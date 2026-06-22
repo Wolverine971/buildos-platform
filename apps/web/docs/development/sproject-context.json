@@ -145,14 +145,14 @@
 			"components": ["TaskEditModal", "EventEditModal"]
 		},
 		{
-			"file": "src/routes/projects/create/+page.svelte",
-			"type": "page",
-			"components": ["AgentChatModal"]
-		},
-		{
 			"file": "src/routes/projects/[id]/+page.svelte",
 			"type": "page",
 			"components": ["AgentChatModal", "ProjectModalsHost"]
+		},
+		{
+			"file": "src/routes/projects/create/+page.svelte",
+			"type": "page",
+			"components": ["AgentChatModal"]
 		},
 		{
 			"file": "src/lib/components/landing/public-project-preview/PublicProjectGraphPanel.svelte",
@@ -760,6 +760,12 @@
 			]
 		},
 		{
+			"file": "src/lib/components/agent/agent-chat-shell-router.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": ["AgentChatShellRouter", "createAgentChatShellRouter"]
+		},
+		{
 			"file": "src/lib/components/agent/agent-chat-skill-activity.ts",
 			"type": "component",
 			"components": [],
@@ -794,6 +800,18 @@
 				"buildAgentChatSupportPacketFilename",
 				"downloadAgentChatSupportPacketMarkdown",
 				"downloadAgentChatStepsMarkdown"
+			]
+		},
+		{
+			"file": "src/lib/components/agent/agent-chat-stream-controller.svelte.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"buildSessionBootstrapTarget",
+				"buildClientStreamTimingState",
+				"summarizeClientStreamTiming",
+				"AgentChatStreamController",
+				"createAgentChatStreamController"
 			]
 		},
 		{
@@ -943,6 +961,36 @@
 			"exports": ["createDragDropState"]
 		},
 		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"fetchLinkedEntities",
+				"fetchAvailableEntities",
+				"createEdges",
+				"linkEntities",
+				"deleteEdge",
+				"unlinkEntity",
+				"filterEntities"
+			]
+		},
+		{
+			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
+			"type": "component",
+			"components": [],
+			"exports": [
+				"ALLOWED_LINKS",
+				"canLink",
+				"RELATIONSHIP_MAP",
+				"getRelationship",
+				"getAllowedTargetKinds",
+				"ENTITY_SECTIONS",
+				"getEntityDisplayName",
+				"formatRelationshipLabel",
+				"getFilteredSections"
+			]
+		},
+		{
 			"file": "src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 			"type": "component",
 			"components": [],
@@ -1000,36 +1048,6 @@
 				"getTaskPersonRelevanceScore",
 				"taskMatchesPersonFocusFilter",
 				"getTaskPersonRelevanceLabel"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"fetchLinkedEntities",
-				"fetchAvailableEntities",
-				"createEdges",
-				"linkEntities",
-				"deleteEdge",
-				"unlinkEntity",
-				"filterEntities"
-			]
-		},
-		{
-			"file": "src/lib/components/ontology/linked-entities/linked-entities.types.ts",
-			"type": "component",
-			"components": [],
-			"exports": [
-				"ALLOWED_LINKS",
-				"canLink",
-				"RELATIONSHIP_MAP",
-				"getRelationship",
-				"getAllowedTargetKinds",
-				"ENTITY_SECTIONS",
-				"getEntityDisplayName",
-				"formatRelationshipLabel",
-				"getFilteredSections"
 			]
 		},
 		{
@@ -1190,9 +1208,11 @@
 		"src/lib/components/agent/agent-chat-operation-activity.ts",
 		"src/lib/components/agent/agent-chat-prewarm.svelte.ts",
 		"src/lib/components/agent/agent-chat-session.ts",
+		"src/lib/components/agent/agent-chat-shell-router.svelte.ts",
 		"src/lib/components/agent/agent-chat-skill-activity.ts",
 		"src/lib/components/agent/agent-chat-sse-handler.ts",
 		"src/lib/components/agent/agent-chat-step-export.ts",
+		"src/lib/components/agent/agent-chat-stream-controller.svelte.ts",
 		"src/lib/components/agent/agent-chat-timeline.ts",
 		"src/lib/components/agent/agent-chat-tool-presenter.ts",
 		"src/lib/components/agent/agent-chat-voice.svelte.ts",
@@ -1207,12 +1227,12 @@
 		"src/lib/components/ui/rich-markdown-editor-voice.ts",
 		"src/lib/components/admin/chat/session-audit-ui.ts",
 		"src/lib/components/ontology/doc-tree/useDragDrop.svelte.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
+		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ontology/insight-panels/insight-panel-config.ts",
 		"src/lib/components/ontology/insight-panels/panel-data-controller.ts",
 		"src/lib/components/ontology/insight-panels/task-assignee-filter.ts",
 		"src/lib/components/ontology/insight-panels/task-person-relevance.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.service.ts",
-		"src/lib/components/ontology/linked-entities/linked-entities.types.ts",
 		"src/lib/components/ui/codemirror/extensions.ts",
 		"src/lib/components/ui/codemirror/inkprint-theme.ts",
 		"src/lib/components/ui/codemirror/sticky-scroll.ts",

@@ -2,40 +2,32 @@
 //
 // Review-mode staging for gateway writes. This validates and snapshots proposed
 // mutations without applying them; commit still flows through runGatewayWriteOp.
-import type {
-	BuildosAgentAllowedOp,
-	ProposedChange,
-	ProposedChangeAction
-} from '@buildos/shared-types';
+import type { AgentCallScope, BuildosAgentAllowedOp, ProposedChange } from '@buildos/shared-types';
 import { normalizeGatewayOpName } from '../ops/gateway-op-aliases';
 import {
 	EXTERNAL_OP_HANDLERS,
-	entityKindFromGatewayOp,
-	loadStageBeforeSnapshot
+	loadStageBeforeSnapshot,
+	normalizeGatewayError
 } from './op-execution-gateway.core';
+import {
+	entityKindFromGatewayOp,
+	proposedChangeActionForGatewayOp
+} from './op-execution-gateway.mutations';
 import { normalizeAndValidateGatewayWriteArgs } from './op-execution-gateway.validation';
 
 // Staged write ops for review-before-commit
 
 /** Derive the ProposedChange action from the op name. */
-export function deriveProposedChangeAction(op: string): ProposedChangeAction {
-	if (op === 'onto.edge.unlink') return 'delete';
-	if (
-		op.endsWith('.create') ||
-		op === 'onto.edge.link' ||
-		op === 'onto.task.docs.create_or_attach'
-	) {
-		return 'create';
-	}
-	// *.update, onto.document.tree.move, archive-via-update
-	return 'update';
-}
+export const deriveProposedChangeAction = proposedChangeActionForGatewayOp;
 
 export type StageWriteOpResult =
 	| { ok: true; change: Omit<ProposedChange, 'id'> }
 	| {
 			ok: false;
-			error: { code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'INTERNAL'; message: string };
+			error: {
+				code: 'NOT_FOUND' | 'VALIDATION_ERROR' | 'FORBIDDEN' | 'CONFLICT' | 'INTERNAL';
+				message: string;
+			};
 	  };
 
 /**
@@ -51,6 +43,8 @@ export async function stageGatewayWriteOp(params: {
 	// `any` matches ToolExecutionContext.admin (see runGatewayWriteOp); callers
 	// pass a real SupabaseClient<Database>.
 	admin: any;
+	userId: string;
+	scope: AgentCallScope;
 	op: string;
 	args?: Record<string, unknown>;
 	rationale?: string;
@@ -83,13 +77,26 @@ export async function stageGatewayWriteOp(params: {
 
 	// For update/delete of a core entity, fetch a compact current snapshot.
 	if (action !== 'create') {
-		const snapshot = await loadStageBeforeSnapshot({
-			admin: params.admin,
-			entityKind,
-			args
-		});
-		entityId = snapshot.entityId;
-		before = snapshot.before;
+		try {
+			const snapshot = await loadStageBeforeSnapshot({
+				admin: params.admin,
+				userId: params.userId,
+				scope: params.scope,
+				entityKind,
+				args
+			});
+			entityId = snapshot.entityId;
+			before = snapshot.before;
+		} catch (error) {
+			const normalized = normalizeGatewayError(error);
+			return {
+				ok: false,
+				error: {
+					code: normalized.code,
+					message: normalized.message
+				}
+			};
+		}
 	}
 
 	return {

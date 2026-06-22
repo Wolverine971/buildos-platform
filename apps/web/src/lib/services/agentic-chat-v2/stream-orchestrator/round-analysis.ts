@@ -5,6 +5,7 @@ import { getToolRegistry } from '$lib/services/agentic-chat/tools/registry/tool-
 import { parseToolArguments } from './tool-arguments';
 import type { FastToolExecution, GatewayRequiredFieldFailure } from './shared';
 import type { ToolValidationIssue } from './tool-validation';
+import { parseRequiredParameterFailure } from './tool-failure';
 
 export type RoundToolPattern = {
 	readOps: string[];
@@ -66,9 +67,7 @@ export function hasDocumentOrganizationValidationIssue(issues: ToolValidationIss
 	return issues.some((issue) => {
 		const op = issue.op ?? '';
 		if (op !== 'onto.document.delete' && op !== 'onto.document.tree.move') return false;
-		return issue.errors.some((error) =>
-			error.includes('Missing required parameter: document_id')
-		);
+		return issue.errors.some((error) => parseRequiredParameterFailure(error) === 'document_id');
 	});
 }
 
@@ -306,13 +305,11 @@ function addGatewayRequiredFieldFailure(
 	op: unknown,
 	errorMessage: unknown
 ): void {
-	const requiredFieldPattern = /Missing required parameter:\s*([a-zA-Z0-9_.-]+)/i;
 	const opName = typeof op === 'string' && op.trim().length > 0 ? normalizeGatewayOpName(op) : '';
 	const errorText = typeof errorMessage === 'string' ? errorMessage : '';
 	if (!opName || !errorText) return;
-	const match = errorText.match(requiredFieldPattern);
-	if (!match || !match[1]) return;
-	const field = match[1];
+	const field = parseRequiredParameterFailure(errorText);
+	if (!field) return;
 	const key = `${opName}|${field}`;
 	const existing = failures.get(key);
 	if (existing) {
