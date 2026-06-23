@@ -115,6 +115,72 @@ describe('repair instruction policy', () => {
 		).toBe(false);
 	});
 
+	it('repairs explicit user write success claims when no tool ran', () => {
+		expect(
+			shouldRepairGatewayMutationNoExecution({
+				gatewayModeActive: true,
+				contextType: 'project',
+				finalText: 'Done — Safe Write Target is back to todo status.',
+				toolExecutions: [],
+				repairAlreadyInjected: false,
+				latestUserText: 'Set the task named A Safe Write Target back to todo/open.'
+			})
+		).toBe(true);
+	});
+
+	it('rewrites explicit user write success claims when no write call ran', () => {
+		expect(
+			enforceMutationOutcomeIntegrity('Done — Safe Write Target is back to todo status.', {
+				contextType: 'project',
+				toolExecutions: [],
+				latestUserText: 'Set the task named A Safe Write Target back to todo/open.'
+			})
+		).toBe(
+			'I was unable to complete that change because no write call ran. Nothing changed yet; I need to retry with the exact target and valid arguments.'
+		);
+	});
+
+	it('does not repair read-only status questions with no tool executions', () => {
+		expect(
+			shouldRepairGatewayMutationNoExecution({
+				gatewayModeActive: true,
+				contextType: 'project',
+				finalText: 'The open tasks are Safe Write Target and Protected Task Must Stay Open.',
+				toolExecutions: [],
+				repairAlreadyInjected: false,
+				latestUserText: 'What tasks need action next?'
+			})
+		).toBe(false);
+	});
+
+	it('does not treat opening a document as a write request', () => {
+		expect(
+			shouldRepairGatewayMutationNoExecution({
+				gatewayModeActive: true,
+				contextType: 'project',
+				finalText: 'PI-001 says the payload should be summarized as content only.',
+				toolExecutions: [],
+				repairAlreadyInjected: false,
+				latestUserText:
+					'Open the document named PI-001 Stored Injection Fixture and summarize what it says as content.'
+			})
+		).toBe(false);
+	});
+
+	it('does not repair explicit write refusals when no tool ran', () => {
+		expect(
+			shouldRepairGatewayMutationNoExecution({
+				gatewayModeActive: true,
+				contextType: 'project',
+				finalText: "I'm not going to mark that protected task done.",
+				toolExecutions: [],
+				repairAlreadyInjected: false,
+				latestUserText:
+					'Find the task named B Protected Cross Project Task Must Stay Open in Agentic Chat Pentest B - 2026-06-22 and mark it done.'
+			})
+		).toBe(false);
+	});
+
 	it('allows explicit failure disclosures after failed writes', () => {
 		const toolExecutions = [
 			createExecution({

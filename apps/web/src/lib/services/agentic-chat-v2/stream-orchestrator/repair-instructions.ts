@@ -60,6 +60,7 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 	finalText: string;
 	toolExecutions: FastToolExecution[];
 	repairAlreadyInjected: boolean;
+	latestUserText?: string;
 }): boolean {
 	if (!params.gatewayModeActive) return false;
 	if (params.contextType === 'project_create') return false;
@@ -72,9 +73,18 @@ export function shouldRepairGatewayMutationNoExecution(params: {
 	if (mutationOutcomes.succeeded > 0) return false;
 
 	const writeIntentOps = collectGatewayWriteIntentOps(params.toolExecutions);
-	if (writeIntentOps.length === 0) return false;
+	const explicitUserWriteIntent = looksLikeExplicitMutationRequest(params.latestUserText ?? '');
+	if (writeIntentOps.length === 0 && !explicitUserWriteIntent) return false;
 
 	if (looksLikePureClarifyingQuestion(finalText)) return false;
+	if (
+		explicitUserWriteIntent &&
+		writeIntentOps.length === 0 &&
+		mutationOutcomes.attempted === 0 &&
+		looksLikeWriteRefusalDisclosure(finalText)
+	) {
+		return false;
+	}
 	if (mutationOutcomes.attempted > 0 && looksLikeWriteFailureDisclosure(finalText)) return false;
 
 	return true;
@@ -139,11 +149,19 @@ export function buildGatewayMutationNoExecutionRepairInstruction(
 
 export function enforceMutationOutcomeIntegrity(
 	finalText: string,
-	params: { contextType: string; toolExecutions: FastToolExecution[] }
+	params: { contextType: string; toolExecutions: FastToolExecution[]; latestUserText?: string }
 ): string {
 	if (!finalText) return finalText;
 
 	const mutationOutcomes = summarizeMutationOutcomes(params.toolExecutions);
+	if (
+		mutationOutcomes.attempted === 0 &&
+		looksLikeExplicitMutationRequest(params.latestUserText ?? '') &&
+		looksLikeMutationSuccessClaim(finalText)
+	) {
+		return buildNoExecutionMutationFailureMessage();
+	}
+
 	if (mutationOutcomes.attempted > 0) {
 		if (mutationOutcomes.failed > 0 && looksLikeBulkMutationSuccessClaim(finalText)) {
 			return buildMutationFailureMessage(mutationOutcomes);
@@ -561,6 +579,30 @@ function looksLikePureClarifyingQuestion(text: string): boolean {
 	return text.includes('?') && !looksLikeActionSuccessClaim(text);
 }
 
+const EXPLICIT_MUTATION_VERB =
+	/(?:set|mark|update|change|rename|move|create|add|delete|remove|archive|unarchive|complete|reopen|close|schedule|reschedule|cancel|link|unlink)/i;
+const MUTATION_ENTITY_NOUN =
+	/\b(?:task|project|document|doc|milestone|goal|plan|event|meeting|calendar|title|name|status|state)\b/i;
+const MUTATION_STATE_PHRASE =
+	/\b(?:to|as|back to)\s+(?:done|complete|completed|todo|to-do|open|in progress|blocked|cancelled|canceled)\b/i;
+
+function looksLikeExplicitMutationRequest(text: string): boolean {
+	const normalized = text.replace(/\s+/g, ' ').trim();
+	if (!normalized) return false;
+
+	const commandish =
+		new RegExp(`^(?:please\\s+)?${EXPLICIT_MUTATION_VERB.source}\\b`, 'i').test(normalized) ||
+		new RegExp(`\\b(?:can you|could you|please)\\s+${EXPLICIT_MUTATION_VERB.source}\\b`, 'i').test(
+			normalized
+		) ||
+		new RegExp(`\\b(?:and|then)\\s+${EXPLICIT_MUTATION_VERB.source}\\b`, 'i').test(
+			normalized
+		);
+	if (!commandish) return false;
+
+	return MUTATION_ENTITY_NOUN.test(normalized) || MUTATION_STATE_PHRASE.test(normalized);
+}
+
 function looksLikeActionSuccessClaim(text: string): boolean {
 	return (
 		looksLikeMutationSuccessClaim(text) ||
@@ -848,11 +890,13 @@ const BULK_MUTATION_SUCCESS_CLAIM_PATTERNS = [
 ];
 
 const MUTATION_SUCCESS_CLAIM_PATTERNS = [
+	/^\s*done\b/i,
 	/\bmarked(?:\s+\w+){0,4}\s+(?:done|complete|completed)\b/i,
 	/\b(?:i|we)(?:'ve| have)?\s+(?:created|updated|deleted|removed|moved|linked|unlinked|scheduled|rescheduled|set)\b/i,
 	/\b(?:i|we)(?:'ve| have)?\s+(?:merged|archived)\b/i,
 	/\b(?:created|updated|deleted|removed|moved|merged|archived|linked|unlinked|scheduled|rescheduled|set)\s+successfully\b/i,
 	/\b(?:has|have|was|were)\s+been\s+(?:created|updated|deleted|removed|moved|merged|archived|linked|unlinked|scheduled|rescheduled|set|marked)\b/i,
+	/\b(?:is|are)\s+back\s+to\s+(?:done|complete|completed|todo|to-do|open|in progress|blocked|cancelled|canceled)\b/i,
 	/\bis\s+now\s+(?:done|complete|completed|updated|merged|archived|scheduled|rescheduled)\b/i
 ];
 
@@ -867,6 +911,15 @@ function looksLikeMutationSuccessClaim(text: string): boolean {
 function looksLikeWriteFailureDisclosure(text: string): boolean {
 	return /\b(?:failed|unable|could not|did not|didn't|not saved|not updated|not created|nothing changed|tool error)\b/i.test(
 		text
+	);
+}
+
+function looksLikeWriteRefusalDisclosure(text: string): boolean {
+	return (
+		/\b(?:won't|will not|not going to|decline to|refuse to)\b/i.test(text) ||
+		/\b(?:cannot|can't)\b[^.?!\n]{0,120}\b(?:protected|not allowed|outside|permission|scope|unsafe|fixture)\b/i.test(
+			text
+		)
 	);
 }
 
@@ -940,6 +993,10 @@ function buildMutationFailureMessage(summary: MutationOutcomeSummary): string {
 	}
 
 	return 'Some requested changes did not go through. I need to verify the final state before I confirm any updates.';
+}
+
+function buildNoExecutionMutationFailureMessage(): string {
+	return 'I was unable to complete that change because no write call ran. Nothing changed yet; I need to retry with the exact target and valid arguments.';
 }
 
 function buildGatewayCreateFieldRepairLines(failures: GatewayRequiredFieldFailure[]): string[] {

@@ -737,6 +737,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			let assistantReasoningForReplay = '';
 			const assistantReasoningDetailsForReplay: unknown[] = [];
 			const pendingToolCalls: ChatToolCall[] = [];
+			let suppressedNoToolSynthesisToolCallCount = 0;
 			const noToolSynthesisPass = forceNoToolSynthesisPass;
 			forceNoToolSynthesisPass = false;
 			activeAssistantBuffer = '';
@@ -818,6 +819,12 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 							event.tool_call,
 							params.projectId ?? undefined
 						);
+						if (noToolSynthesisPass) {
+							suppressedNoToolSynthesisToolCallCount += 1;
+							llmPassMeta.suppressedNoToolSynthesisToolCalls =
+								suppressedNoToolSynthesisToolCallCount;
+							continue;
+						}
 						pendingToolCalls.push(normalizedToolCall);
 						activePendingToolCallCount = pendingToolCalls.length;
 						await observeSupervisor({
@@ -941,7 +948,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 			if (noToolSynthesisPass) {
 				const candidateFinalText = sanitizeAssistantFinalText(assistantBuffer);
 				const noToolPassStillRequestedTools =
-					pendingToolCalls.length > 0 ||
+					suppressedNoToolSynthesisToolCallCount > 0 ||
 					(llmPassMeta.finishedReason === 'tool_calls' && !candidateFinalText);
 				if (noToolPassStillRequestedTools && noToolSynthesisRetryCount < 1) {
 					noToolSynthesisRetryCount += 1;
@@ -953,10 +960,11 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 					forceNoToolSynthesisPass = true;
 					continue;
 				}
-				if (candidateFinalText && pendingToolCalls.length === 0) {
+				if (candidateFinalText && suppressedNoToolSynthesisToolCallCount === 0) {
 					finalAssistantText = enforceMutationOutcomeIntegrity(candidateFinalText, {
 						contextType: normalizedContext,
-						toolExecutions
+						toolExecutions,
+						latestUserText: message
 					});
 					await observeSupervisor({
 						type: 'final_candidate',
@@ -996,7 +1004,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						contextType: normalizedContext,
 						finalText: candidateFinalText,
 						toolExecutions,
-						repairAlreadyInjected: gatewayMutationStopRepairInjected
+						repairAlreadyInjected: gatewayMutationStopRepairInjected,
+						latestUserText: message
 					})
 				) {
 					gatewayMutationStopRepairInjected = true;
@@ -1009,7 +1018,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 				finalAssistantText = enforceMutationOutcomeIntegrity(candidateFinalText, {
 					contextType: normalizedContext,
-					toolExecutions
+					toolExecutions,
+					latestUserText: message
 				});
 				await observeSupervisor({
 					type: 'final_candidate',

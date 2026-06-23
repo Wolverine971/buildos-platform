@@ -40,6 +40,7 @@ export type LLMStreamPassMetadata = {
 	completionTokens?: number;
 	totalTokens?: number;
 	forcedNoToolSynthesis?: boolean;
+	suppressedNoToolSynthesisToolCalls?: number;
 	// Reasoning channel counters (populated when the provider emits reasoning
 	// via delta.reasoning or delta.reasoning_details). Lets us see at a glance
 	// whether a provider properly separates reasoning from content, or leaks

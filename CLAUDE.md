@@ -144,13 +144,11 @@ Prettier config: tabs, single quotes, no trailing commas, 100 char print width. 
 
 ### Environment Variables
 
-Prefix conventions: `PUBLIC_` for client-accessible, `PRIVATE_` for server-only. See `.env.example` for the complete list. Key groups: Supabase, AI/LLM (OpenRouter primary + OpenAI/Anthropic fallback, optional Moonshot for Kimi), Google OAuth, Stripe (optional via `PRIVATE_ENABLE_STRIPE`), Worker communication (`PUBLIC_RAILWAY_WORKER_URL` + `PRIVATE_RAILWAY_WORKER_TOKEN`), Twilio/SMS.
+Prefix conventions: `PUBLIC_` for client-accessible, `PRIVATE_` for server-only. See `.env.example` for the complete list. Key groups: Supabase, AI/LLM (OpenRouter primary + OpenAI fallback, optional Moonshot for Kimi), Google OAuth, Stripe (optional via `PRIVATE_ENABLE_STRIPE`), Worker communication (`PUBLIC_RAILWAY_WORKER_URL` + `PRIVATE_RAILWAY_WORKER_TOKEN`), Twilio/SMS.
 
 Notable feature flags:
 
 - `PRIVATE_ENABLE_STRIPE` — enable payment processing; off = graceful degradation, trial system still works.
-- `AGENTIC_CHAT_BEHAVIORAL_PROFILE_MODE` (`off | shadow | inject`) — behavioral profile rollout mode. Start in `shadow`.
-- `AGENTIC_CHAT_BEHAVIORAL_PROFILE_TIMEOUT_MS` — max profile lookup budget (default 25ms) before failing open.
 - `PERF_TIMING=true` + `PERF_LOG_SLOW=true` — enable `Server-Timing` headers and slow-request logs.
 
 ## Deployment

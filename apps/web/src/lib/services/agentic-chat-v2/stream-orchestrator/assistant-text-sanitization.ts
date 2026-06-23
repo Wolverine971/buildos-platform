@@ -154,10 +154,9 @@ export function sanitizeToolPassLeadIn(raw: string, message: string): string {
 	const cleanSentences = extractCleanAssistantSentences(trimmed, {
 		includeContextualScratchpad: true
 	});
-	const preferredLeadIn =
-		cleanSentences.find((sentence) =>
-			USER_FACING_LEAD_IN_PATTERNS.some((pattern) => pattern.test(sentence))
-		) ?? cleanSentences[0];
+	const preferredLeadIn = cleanSentences.find((sentence) =>
+		USER_FACING_LEAD_IN_PATTERNS.some((pattern) => pattern.test(sentence))
+	);
 
 	if (preferredLeadIn) {
 		return preferredLeadIn;

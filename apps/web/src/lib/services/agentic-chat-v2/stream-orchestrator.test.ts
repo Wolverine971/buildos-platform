@@ -461,6 +461,7 @@ describe('streamFastChat direct tool orchestration', () => {
 	it('retries final synthesis when a no-tool pass still emits tool calls', async () => {
 		let streamInvocation = 0;
 		const streamParams: Array<{ toolChoice?: string; toolNames: string[] }> = [];
+		const onToolCall = vi.fn();
 		const llm = {
 			streamText: vi.fn(async function* (params: any) {
 				streamInvocation += 1;
@@ -538,12 +539,15 @@ describe('streamFastChat direct tool orchestration', () => {
 			message: 'Please note these instructor bios somewhere.',
 			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'search_project']),
 			toolExecutor,
+			onToolCall,
 			onDelta: async () => {},
 			maxToolRounds: 1
 		});
 
 		expect(llm.streamText).toHaveBeenCalledTimes(3);
 		expect(toolExecutor).toHaveBeenCalledTimes(1);
+		expect(onToolCall).toHaveBeenCalledTimes(1);
+		expect(onToolCall.mock.calls[0]?.[0].id).toBe('search_project:email-sequence');
 		expect(streamParams[1]?.toolChoice).toBeUndefined();
 		expect(streamParams[1]?.toolNames).toEqual([]);
 		expect(streamParams[2]?.toolChoice).toBeUndefined();
@@ -553,6 +557,7 @@ describe('streamFastChat direct tool orchestration', () => {
 			'I noted the instructor bios in the project context and found the email sequence task to revisit.'
 		);
 		expect(result.llmPasses?.[1]?.forcedNoToolSynthesis).toBe(true);
+		expect(result.llmPasses?.[1]?.suppressedNoToolSynthesisToolCalls).toBe(1);
 		expect(result.llmPasses?.[2]?.forcedNoToolSynthesis).toBe(true);
 	});
 
@@ -783,6 +788,55 @@ describe('streamFastChat direct tool orchestration', () => {
 			)
 		).toBe(true);
 		expect(result.finalAssistantText).toBe('Marked the task done.');
+	});
+
+	it('repairs explicit write success claims when no write tool ran', async () => {
+		let streamInvocation = 0;
+		let repairPassMessages: FastChatHistoryMessage[] | undefined;
+		const llm = {
+			streamText: vi.fn(async function* (params: any) {
+				streamInvocation += 1;
+				if (streamInvocation === 2) {
+					repairPassMessages = params.messages as FastChatHistoryMessage[];
+				}
+
+				yield {
+					type: 'text',
+					content: 'Done — Safe Write Target is back to todo status.'
+				};
+				yield { type: 'done', finished_reason: 'stop' };
+			})
+		} as any;
+
+		const toolExecutor = vi.fn(async (): Promise<ChatToolResult> => {
+			throw new Error('Tool executor should not run when no tool call is emitted');
+		});
+
+		const result = await streamFastChat({
+			llm,
+			userId: 'user_1',
+			sessionId: 'session_1',
+			contextType: 'project',
+			entityId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			projectId: '4cfdbed1-840a-4fe4-9751-77c7884daa70',
+			history: [],
+			message: 'Set the task named A Safe Write Target back to todo/open.',
+			tools: tools(['skill_load', 'tool_search', 'tool_schema', 'update_onto_task']),
+			toolExecutor,
+			onDelta: async () => {}
+		});
+
+		const repairSystemText = (repairPassMessages ?? [])
+			.filter((message) => message.role === 'system')
+			.map((message) => message.content)
+			.join('\n');
+
+		expect(llm.streamText).toHaveBeenCalledTimes(2);
+		expect(toolExecutor).not.toHaveBeenCalled();
+		expect(repairSystemText).toContain('You have not completed any write yet.');
+		expect(result.finalAssistantText).toBe(
+			'I was unable to complete that change because no write call ran. Nothing changed yet; I need to retry with the exact target and valid arguments.'
+		);
 	});
 
 	it('pauses with a supervisor question after repeated write validation failures', async () => {

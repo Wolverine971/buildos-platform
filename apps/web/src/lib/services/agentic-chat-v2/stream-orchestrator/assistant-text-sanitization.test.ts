@@ -120,6 +120,15 @@ describe('sanitizeAssistantFinalText', () => {
 		);
 	});
 
+	it('does not emit success claims as tool-pass lead-ins', () => {
+		expect(
+			sanitizeToolPassLeadIn(
+				'Done — Safe Write Target is back to todo status.',
+				'Set the task named A Safe Write Target back to todo/open.'
+			)
+		).toBe("I'll look that up in BuildOS and gather the relevant task details.");
+	});
+
 	it('strips legacy scratchpad patterns (actually/no, wait/tool schema echoes)', () => {
 		const raw = [
 			'No, wait. I should fetch schema first.',

@@ -159,6 +159,7 @@ The north star is qualified conversations started per unit of market trust consu
 
 - Do not send, schedule, or publish outreach without human confirmation.
 - Do not fabricate research, proof, metrics, mutual contacts, customer names, or buyer-language claims.
+- Do not generate the opening line with AI. As of 2026, AI-written openers are not just synthetic-sounding — they are actively detectable: recipients pattern-match the shared format and inbox providers flag the common structural skeleton as mass-send, hurting deliverability. AI belongs in list cleaning, segmentation, intent/signal aggregation, and enrichment only; a human writes the message.
 - Do not run mixed personas in one campaign.
 - Do not recommend volume sending without verified sender health.
 - Do not use "worth a chat" as the offer.

@@ -3127,24 +3127,28 @@ export const POST: RequestHandler = async ({
 							canonicalOp: toolCallMeta.canonicalOp
 						}
 					);
-					emitToolCall(agentStream, patchedCall, {
-						onError: (error) => {
-							logFastChatError({
-								error,
-								operationType: 'fastchat_stream_emit_tool_call',
-								projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-								metadata: {
-									sessionId: session.id,
-									contextType: effectiveContextType,
-									toolName: patchedCall.function.name,
-									toolCallId: patchedCall.id
-								}
-							});
-						},
-						onMessageSent: () => {
-							markStreamEventSent('tool_call');
-						}
-					});
+					if (!streamDetached) {
+						emitToolCall(agentStream, patchedCall, {
+							onError: (error) => {
+								streamDetached = true;
+								logFastChatError({
+									error,
+									operationType: 'fastchat_stream_emit_tool_call',
+									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+									metadata: {
+										sessionId: session.id,
+										contextType: effectiveContextType,
+										toolName: patchedCall.function.name,
+										toolCallId: patchedCall.id,
+										streamDetached: true
+									}
+								});
+							},
+							onMessageSent: () => {
+								markStreamEventSent('tool_call');
+							}
+						});
+					}
 					const requestedSkillActivity = getRequestedSkillActivity(patchedCall);
 					if (requestedSkillActivity) {
 						observabilityWriter.recordEvent(
@@ -3157,9 +3161,10 @@ export const POST: RequestHandler = async ({
 							{ skillPath: requestedSkillActivity.path }
 						);
 					}
-					if (dev && requestedSkillActivity) {
+					if (dev && requestedSkillActivity && !streamDetached) {
 						emitSkillActivity(agentStream, requestedSkillActivity, {
 							onError: (error) => {
+								streamDetached = true;
 								logFastChatError({
 									error,
 									operationType: 'fastchat_stream_emit_skill_activity',
@@ -3170,7 +3175,8 @@ export const POST: RequestHandler = async ({
 										toolName: patchedCall.function.name,
 										toolCallId: patchedCall.id,
 										action: requestedSkillActivity.action,
-										path: requestedSkillActivity.path
+										path: requestedSkillActivity.path,
+										streamDetached: true
 									}
 								});
 							},
@@ -3219,24 +3225,28 @@ export const POST: RequestHandler = async ({
 								sessionId: session.id
 							});
 						}
-						emitToolResult(agentStream, patchedCall, result, {
-							onError: (error) => {
-								logFastChatError({
-									error,
-									operationType: 'fastchat_stream_emit_tool_result',
-									projectId: effectiveProjectIdForTools ?? projectIdForLogs,
-									metadata: {
-										sessionId: session.id,
-										contextType: effectiveContextType,
-										toolName: patchedCall.function.name,
-										toolCallId: patchedCall.id
-									}
-								});
-							},
-							onMessageSent: () => {
-								markStreamEventSent('tool_result');
-							}
-						});
+						if (!streamDetached) {
+							emitToolResult(agentStream, patchedCall, result, {
+								onError: (error) => {
+									streamDetached = true;
+									logFastChatError({
+										error,
+										operationType: 'fastchat_stream_emit_tool_result',
+										projectId: effectiveProjectIdForTools ?? projectIdForLogs,
+										metadata: {
+											sessionId: session.id,
+											contextType: effectiveContextType,
+											toolName: patchedCall.function.name,
+											toolCallId: patchedCall.id,
+											streamDetached: true
+										}
+									});
+								},
+								onMessageSent: () => {
+									markStreamEventSent('tool_result');
+								}
+							});
+						}
 						const validationFailed =
 							!result.success && isExpectedToolValidationFailure(result.error);
 						observabilityWriter.recordEvent(
@@ -3263,9 +3273,10 @@ export const POST: RequestHandler = async ({
 								{ skillPath: loadedSkillActivity.path }
 							);
 						}
-						if (dev && loadedSkillActivity) {
+						if (dev && loadedSkillActivity && !streamDetached) {
 							emitSkillActivity(agentStream, loadedSkillActivity, {
 								onError: (error) => {
+									streamDetached = true;
 									logFastChatError({
 										error,
 										operationType: 'fastchat_stream_emit_skill_activity',
@@ -3276,7 +3287,8 @@ export const POST: RequestHandler = async ({
 											toolName: patchedCall.function.name,
 											toolCallId: patchedCall.id,
 											action: loadedSkillActivity.action,
-											path: loadedSkillActivity.path
+											path: loadedSkillActivity.path,
+											streamDetached: true
 										}
 									});
 								},
