@@ -1,5 +1,11 @@
 <!-- apps/web/docs/features/chat-system/README.md -->
 
+> **⚠️ SUPERSEDED (2026-06-22).** This documents the earlier chat infrastructure. The current,
+> canonical chat surface is **agentic-chat (v2)** — see
+> [`../agentic-chat/README.md`](../agentic-chat/README.md). Retained for historical context on the
+> Progressive Disclosure Pattern and the API-based mutation approach, but no longer the source of
+> truth for how chat works today.
+
 # 🤖 BuildOS Chat System with Progressive Disclosure Pattern
 
 ## Overview

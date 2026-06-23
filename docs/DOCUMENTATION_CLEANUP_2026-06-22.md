@@ -85,20 +85,20 @@ All moves used `git mv` (history-preserving) where tracked. Breadcrumb headers +
 
 ### Move + rename map
 
-| From (root) | To | Notes |
-|------|----|-------|
-| `youtube-design.md` | `docs/research/youtube-library/transcripts/2026-03-14_kole-jain_every-uiux-concept.md` | Was a raw transcript (Kole Jain UI/UX) |
-| `youtube-design-principles-guide.md` | `docs/research/youtube-library/analyses/2026-03-14_kole-jain_uiux-concepts_analysis.md` | The "unfinished skill" — it's the analysis feeding `ui-ux-quality-review` skill draft |
-| `youtube-vid.md` | `docs/research/youtube-library/inbox/2026-05-28_oren-meets-world_future-of-marketing.md` | Raw capture → inbox (awaiting processing) |
-| `ai-influencers.md` | `docs/marketing/growth/target-influencers/ai-native-builder-influencer-study.md` | Per loose-ends inventory plan; renamed for clarity |
-| `youtuber-i-follow.md` + `youtubers-i-follow-2.md` | `docs/marketing/research/youtubers-i-follow.md` | **Merged + de-duped** by @handle: 452 → 439 unique (13 dupes removed) |
-| `home-page-design-review.md` | `apps/web/docs/design/home-page-design-review.md` | |
-| `AUDIT-WEB-2026-04-17.md` | `apps/web/docs/technical/audits/WEB_AUDIT_2026-04-17.md` | Renamed to audit-folder convention |
-| `buildos_api_audit.md` | `apps/web/docs/technical/audits/API_AUDIT_2026-05-01.md` | Renamed + dated |
-| `PICKUP-2026-04-18.md` | `thoughts/shared/archive/2026-04-18_pickup.md` | Point-in-time status → archive |
-| `Knowledge_Graphs_Study_Notes.md` | `thoughts/shared/research/2026-04-30_knowledge-graphs-study-notes.md` | |
-| `LIBRI_BUILDOS_DYNAMIC_TOOL_MANIFEST_SPEC.md` | `docs/archive/specs/libri/` | **Dead** — added ARCHIVED banner (Corsair brokers integrations per 2026-05-21) |
-| `BUILDOS_LIBRI_DYNAMIC_DISCOVERY_BRIDGE.md` | `docs/archive/specs/libri/` | Same — ARCHIVED banner added |
+| From (root)                                        | To                                                                                       | Notes                                                                                 |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `youtube-design.md`                                | `docs/research/youtube-library/transcripts/2026-03-14_kole-jain_every-uiux-concept.md`   | Was a raw transcript (Kole Jain UI/UX)                                                |
+| `youtube-design-principles-guide.md`               | `docs/research/youtube-library/analyses/2026-03-14_kole-jain_uiux-concepts_analysis.md`  | The "unfinished skill" — it's the analysis feeding `ui-ux-quality-review` skill draft |
+| `youtube-vid.md`                                   | `docs/research/youtube-library/inbox/2026-05-28_oren-meets-world_future-of-marketing.md` | Raw capture → inbox (awaiting processing)                                             |
+| `ai-influencers.md`                                | `docs/marketing/growth/target-influencers/ai-native-builder-influencer-study.md`         | Per loose-ends inventory plan; renamed for clarity                                    |
+| `youtuber-i-follow.md` + `youtubers-i-follow-2.md` | `docs/marketing/research/youtubers-i-follow.md`                                          | **Merged + de-duped** by @handle: 452 → 439 unique (13 dupes removed)                 |
+| `home-page-design-review.md`                       | `apps/web/docs/design/home-page-design-review.md`                                        |                                                                                       |
+| `AUDIT-WEB-2026-04-17.md`                          | `apps/web/docs/technical/audits/WEB_AUDIT_2026-04-17.md`                                 | Renamed to audit-folder convention                                                    |
+| `buildos_api_audit.md`                             | `apps/web/docs/technical/audits/API_AUDIT_2026-05-01.md`                                 | Renamed + dated                                                                       |
+| `PICKUP-2026-04-18.md`                             | `thoughts/shared/archive/2026-04-18_pickup.md`                                           | Point-in-time status → archive                                                        |
+| `Knowledge_Graphs_Study_Notes.md`                  | `thoughts/shared/research/2026-04-30_knowledge-graphs-study-notes.md`                    |                                                                                       |
+| `LIBRI_BUILDOS_DYNAMIC_TOOL_MANIFEST_SPEC.md`      | `docs/archive/specs/libri/`                                                              | **Dead** — added ARCHIVED banner (Corsair brokers integrations per 2026-05-21)        |
+| `BUILDOS_LIBRI_DYNAMIC_DISCOVERY_BRIDGE.md`        | `docs/archive/specs/libri/`                                                              | Same — ARCHIVED banner added                                                          |
 
 ### Kept at root (decision)
 
@@ -130,21 +130,22 @@ All moves used `git mv` (history-preserving) where tracked. Breadcrumb headers +
 
 **110 files archived** via `git mv` (history preserved). Nothing deleted. Inbound links fixed.
 
-| Batch | Count | From → To |
-|-------|-------|-----------|
-| Reports | 46 | `docs/reports/` → `docs/archive/reports/` (kept: `buildos-loose-ends-inventory-2026-06-11.md`, `daily-brief-quality-efficiency-review-2026-05-19.md`) |
-| SEO audits | 6 | `docs/seo-audits/` → `docs/archive/seo-audits/` (empty dir removed) |
-| Q1 research | 34 | `thoughts/shared/research/` (Jan–Feb dated) → `thoughts/shared/archive/research-2026-Q1/` |
-| Implemented ideas | 11 | `thoughts/shared/ideas/` → `thoughts/shared/archive/ideas/` (chat-spec/braindump-chat/conversational-project — features now live) |
-| Brain-dump (removed feature) | 5 | architecture/blogs/user-guide/philosophy → `docs/archive/brain-dump/` (confirmed: the *served* versions live in `apps/web/src/content/`, so no SEO impact) |
-| Code-review snapshots | 3 | `docs/technical/reviews/2025-12-31|2026-01-01|2026-01-08` → `docs/archive/technical/reviews/` |
-| Legacy feature docs | 3 | `apps/web/docs/design/design-system.md` (pre-Inkprint), `features/onboarding-v2/`, `features/conversational-agent/` (never shipped) → `docs/archive/apps-web/` |
-| agentic-chat audits | 2 | `AUDIT_2026-04-17_OVERVIEW.md`, `AUDIT_2026-05-12_UX-PASS-REVIEW.md` → `docs/archive/apps-web/agentic-chat/` |
+| Batch                        | Count | From → To                                                                                                                                                      |
+| ---------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | --------------------------------------------- |
+| Reports                      | 46    | `docs/reports/` → `docs/archive/reports/` (kept: `buildos-loose-ends-inventory-2026-06-11.md`, `daily-brief-quality-efficiency-review-2026-05-19.md`)          |
+| SEO audits                   | 6     | `docs/seo-audits/` → `docs/archive/seo-audits/` (empty dir removed)                                                                                            |
+| Q1 research                  | 34    | `thoughts/shared/research/` (Jan–Feb dated) → `thoughts/shared/archive/research-2026-Q1/`                                                                      |
+| Implemented ideas            | 11    | `thoughts/shared/ideas/` → `thoughts/shared/archive/ideas/` (chat-spec/braindump-chat/conversational-project — features now live)                              |
+| Brain-dump (removed feature) | 5     | architecture/blogs/user-guide/philosophy → `docs/archive/brain-dump/` (confirmed: the _served_ versions live in `apps/web/src/content/`, so no SEO impact)     |
+| Code-review snapshots        | 3     | `docs/technical/reviews/2025-12-31                                                                                                                             | 2026-01-01 | 2026-01-08`→`docs/archive/technical/reviews/` |
+| Legacy feature docs          | 3     | `apps/web/docs/design/design-system.md` (pre-Inkprint), `features/onboarding-v2/`, `features/conversational-agent/` (never shipped) → `docs/archive/apps-web/` |
+| agentic-chat audits          | 2     | `AUDIT_2026-04-17_OVERVIEW.md`, `AUDIT_2026-05-12_UX-PASS-REVIEW.md` → `docs/archive/apps-web/agentic-chat/`                                                   |
 
 **Excluded by design:** `AUDIT_2026-06-10_HOLISTIC_ASSESSMENT.md` + `PROPOSAL_2026-04-18_GOD-COMPONENT-DECOMPOSITION.md`
 — both have uncommitted edits in your working tree (active agentic-chat work). Left in place.
 
 **Inbound links repaired:**
+
 - ~11 specs/plans (`docs/plans/AGENTIC_CHAT_WRITE_INTEGRITY_*`, `docs/specs/agentic-chat-*`, ontology specs) —
   `../reports/` and absolute report paths → `../archive/reports/`
 - `apps/web/docs/NAVIGATION_INDEX.md` — removed dead `conversational-agent` entry; repointed `onboarding-v2` to archive
@@ -153,6 +154,7 @@ All moves used `git mv` (history-preserving) where tracked. Breadcrumb headers +
 - Final scan: **0 broken links remain.**
 
 ### Ideas NOT archived (kept live, by decision)
+
 `chat-spec-improved.md` (recently updated), `how-to-move-like-stalin.md` (strategy ref), the `ontology/` subdir
 (foundational design), and 4 to verify-then-archive: `project-context-sub-node-design.md`,
 `project-context-sub-node-system.md`, `project-scaffolding.md`, `sticky-scroll-markdown-editor.md`.
@@ -163,22 +165,55 @@ All moves used `git mv` (history-preserving) where tracked. Breadcrumb headers +
 
 In-place edits (no moves). All remaining BullMQ mentions are now accurate "BullMQ-style adapter" context.
 
-| File | Fix applied |
-|------|-------------|
-| `apps/worker/docs/README.md` | 2 lines: "BullMQ" as current queue → "Supabase-based queue (no Redis; BullMQ-style interface via JobAdapter)" |
-| `docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md` | Removed deprecated 100%-web SSE brain-dump flow section (→ note pointing to ADR + `docs/archive/brain-dump/`); replaced speculative "evolve to BullMQ/Redis" section with a "Redis-free is intentional" design note |
-| `docs/architecture/AGENTIC_WORKFLOW_DESIGN_CONTEXT.md` | Reworded JobAdapter "transitioning from BullMQ" → accurate bridge description |
-| `apps/web/docs/technical/architecture/BUILD_OS_MASTER_CONTEXT.md` | "OpenAI + local Ollama" → "OpenRouter primary + OpenAI/Anthropic fallback + Moonshot for Kimi" |
+| File                                                              | Fix applied                                                                                                                                                                                                         |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/worker/docs/README.md`                                      | 2 lines: "BullMQ" as current queue → "Supabase-based queue (no Redis; BullMQ-style interface via JobAdapter)"                                                                                                       |
+| `docs/architecture/diagrams/WEB-WORKER-ARCHITECTURE.md`           | Removed deprecated 100%-web SSE brain-dump flow section (→ note pointing to ADR + `docs/archive/brain-dump/`); replaced speculative "evolve to BullMQ/Redis" section with a "Redis-free is intentional" design note |
+| `docs/architecture/AGENTIC_WORKFLOW_DESIGN_CONTEXT.md`            | Reworded JobAdapter "transitioning from BullMQ" → accurate bridge description                                                                                                                                       |
+| `apps/web/docs/technical/architecture/BUILD_OS_MASTER_CONTEXT.md` | "OpenAI + local Ollama" → "OpenRouter primary + OpenAI/Anthropic fallback + Moonshot for Kimi"                                                                                                                      |
 
 ---
 
-## ⬜ Tier 5 — Duplicate clusters to consolidate (pending approval)
+## ✅ Tier 5 — Duplicate clusters — DONE (2026-06-22)
 
-1. Chat docs: `agentic-chat/` canonical → archive/mark `chat-system/`, purge `conversational-agent/`
-2. Onboarding: v3 canonical → archive `onboarding-v2/`
-3. ADHD-positioning marketing docs (4) → salvage market research, archive rest (reconciling to anti-AI positioning)
-4. SEO 9takes 03-24 vs 03-27 → keep newer
-5. `youtuber-i-follow.md` vs `-2.md` → consolidate (see Tier 2)
+Most sub-items were already resolved by earlier tiers; net-new work was the chat-system banner.
+
+1. **Chat docs** — `agentic-chat/` is canonical. ✅ Added a **SUPERSEDED banner** to
+   `apps/web/docs/features/chat-system/README.md` pointing to `../agentic-chat/README.md`.
+   `conversational-agent/` already archived (Tier 3).
+2. **Onboarding** — `onboarding-v2/` already archived (Tier 3). ✅
+3. **SEO 9takes 03-24 vs 03-27** — both already archived (Tier 3); newer preserved. ✅
+4. **youtuber lists** — merged + de-duped in Tier 2. ✅
+5. **ADHD-positioning docs — NOT archived (decision).** On inspection these are **not stale orphans**:
+   `adhd-productivity-os-strategy.md` is cross-referenced by ~13 marketing docs (incl. the *new*
+   `anti-ai-show-dont-tell-strategy.md` and `strategy/README.md`, which keep it intentionally as the
+   "ADHD wedge / earlier positioning" reference); `instagram-strategy.md` +
+   `instagram-niche-expansion-research.md` are still listed in `START_HERE`/`INDEX`;
+   `users-adhd.md` + `customer-lingo-adhd.md` are live audience research. The ADHD→thinking-environment
+   **reconciliation is an active content/strategy decision (owner's call), not a doc-cleanup move.**
+   Left all in place. They already carry their own "historical / needs reconciling" status notes.
+
+---
+
+## ✅ Second pass — additional stale sweep — DONE (2026-06-22)
+
+Fresh 3-agent staleness pass after Tiers 1–5. **99 more files archived** via `git mv`, 6 inbound links fixed.
+
+| Bucket | Count | From → To |
+|--------|-------|-----------|
+| **Daily-engagement logs >1wk old** | 75 | `docs/marketing/social-media/daily-engagement/` (pre-2026-06-15) → `docs/archive/marketing/social-media/daily-engagement/` (per that folder's own README Archive Rule). Kept 6 recent + README. |
+| **Shipped-feature specs** | 8 | `docs/specs/` → `docs/archive/specs/` (PROJECT_GRAPH_ENHANCEMENTS, DOCUMENT_VOICE_RECORDINGS_PANEL, PROJECT_ICON_GENERATION, PROJECT_MEMBER_ROLE_CONTEXT, ONBOARDING_BEHAVIORAL_SEED, DAILY_BRIEF_ONTOLOGY_MIGRATION, BRIEF_CHAT_EXECUTION_PLAN, sticky-scroll/STICKY_SCROLL_SPEC_UNIFIED) — all status-confirmed Implemented/Complete. Kept `BRIEF_CHAT_SPEC.md` (not yet shipped). |
+| **Superseded engineering** | 12 | `apps/web/docs/technical/` → `docs/archive/apps-web/` (MOBILE_RESPONSIVENESS_AUDIT_2026-04-27 → superseded by MOBILE_EXPERIENCE_2026-06-12; agent-stream-v2 assessment/concern-map 05-25/05-29 → 06-13; 3 resolved Feb incident analyses; 6 DITHERING completed-fix docs) |
+| **Marketing one-shots** | 4 | dated publish-kits (2026-03-09 wave-1, 2× 2026-04-27) + `audits/2026-04-29-blog-audit.md` → `docs/archive/marketing/` |
+
+**Inbound links fixed (6):** ONTOLOGY_AUTO_ORGANIZATION_SPEC + PROJECT_ONTOLOGY_LINKING_PHILOSOPHY (→ archived graph spec), WS09-anti-feed-cluster (×2, → archived publish-kit), onboarding/README (→ archived seed spec), design-system/README (→ archived DITHERING_MIGRATION_PLAN). Scan: 0 broken remaining.
+
+### Second-pass decisions (NOT touched)
+- **YouTube transcripts** (`docs/marketing/growth/research/youtube-transcripts/`, 87) — **KEEP**. New `docs/research/youtube-library/` is canonical but its INDEX still points back to these as a live migration staging ground. Don't force-consolidate mid-migration.
+- **`ENNEAGRAM_PROJECT_COUNCIL_SPEC.md`** — abandoned (0 code) but left in place (not called out).
+- **OpenClaw specs** — verified **37 source files** reference OpenClaw; actively integrated → KEEP (agent was wrong).
+- **`agent-work/HANDOFF_2026-06-18.md`** — active work, referenced for landmines → KEEP (agent was wrong).
+- The engineering agent's broader "64-file" list over-flagged the **Inkprint design-system + modal + component docs** — those are living reference, left in place.
 
 ---
 
@@ -186,8 +221,7 @@ In-place edits (no moves). All remaining BullMQ mentions are now accurate "BullM
 
 - `docs/founder/` resumes + job-applications + conference-outreach (~21 files) — personal & arguably
   active (job search ongoing). Leave unless DJ wants them moved off-repo.
-- `docs/marketing/social-media/daily-engagement/` (82 dated logs) — point-in-time execution records;
-  may be engagement receipts. Archive-or-purge is DJ's call.
+- `docs/marketing/growth/research/youtube-transcripts/` — keep until youtube-library migration finishes.
 
 ---
 

@@ -11,7 +11,7 @@
 -->
 
 <script lang="ts">
-	import { onDestroy, getContext } from 'svelte';
+	import { onDestroy, getContext, untrack } from 'svelte';
 	import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 	import type { Database } from '@buildos/shared-types';
 	import { browser, dev } from '$app/environment';
@@ -1087,14 +1087,15 @@
 
 	// Handle initialChatSessionId prop - when resuming a previous chat session from history
 	$effect(() => {
-		if (!isOpen || !initialChatSessionId) return;
+		const sessionId = initialChatSessionId;
+		if (!isOpen || !sessionId) return;
 
 		// Only load once per session
-		if (lastLoadedSessionId === initialChatSessionId) {
+		if (lastLoadedSessionId === sessionId) {
 			return; // Already loaded this session
 		}
 
-		loadChatSession(initialChatSessionId);
+		void untrack(() => loadChatSession(sessionId));
 	});
 
 	// Load a chat session and restore its messages for resumption

@@ -232,7 +232,7 @@ applyContainment(entityId, entityKind, parentEdges):
 - [Ontology Relationship FSM Spec](./ONTOLOGY_RELATIONSHIP_FSM_SPEC.md)
 - [Project Creation Flow (Agentic Chat)](../../apps/web/docs/features/agentic-chat/README.md#project-creation-flow)
 - [Project Graph Query Pattern Spec](./PROJECT_GRAPH_QUERY_PATTERN_SPEC.md)
-- [Project Graph Enhancements Spec](./PROJECT_GRAPH_ENHANCEMENTS_SPEC.md)
+- [Project Graph Enhancements Spec](../archive/specs/PROJECT_GRAPH_ENHANCEMENTS_SPEC.md)
 - [Ontology API Reference](../api/ontology-endpoints.md)
 - [Ontology Endpoints Audit](../archive/reports/ontology-endpoints-audit.md)
 - [Ontology Data Model Analysis](../architecture/ONTOLOGY_DATA_MODEL_ANALYSIS.md)
