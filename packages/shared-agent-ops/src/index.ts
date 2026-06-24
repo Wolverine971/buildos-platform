@@ -17,6 +17,8 @@ export * from './ops/gateway-op-aliases';
 // Task/document state normalizers. project-graph.types is subpath-only (EntityKind collision).
 export * from './ontology/task-state';
 export * from './ontology/document-state';
+export * from './ontology/start-here';
+export * from './ontology/start-here.service';
 
 // Search and activity utilities
 export * from './utils/search-filter';

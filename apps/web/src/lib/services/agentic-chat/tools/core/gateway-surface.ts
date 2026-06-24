@@ -10,6 +10,7 @@ import {
 	resolveDynamicLibriToolDefinition
 } from '$lib/services/agentic-chat/tools/libri';
 import { GATEWAY_TOOL_DEFINITIONS } from './definitions/gateway';
+import { inferMaterializedToolsFromEntityResults } from './entity-result-materialization';
 
 const GATEWAY_DISCOVERY_TOOL_NAMES = [
 	'domain_search',
@@ -278,8 +279,14 @@ export function extractGatewayMaterializedToolNames(payload: unknown): string[] 
 				.filter((name): name is string => name.length > 0)
 				.map(normalizeGatewayToolName)
 		: [];
-	if (materializedTools.length > 0) {
-		return uniqueToolNames(materializedTools);
+	const inferredEntityTools =
+		inferMaterializedToolsFromEntityResults(record).map(normalizeGatewayToolName);
+	const combinedMaterializedTools = uniqueToolNames([
+		...materializedTools,
+		...inferredEntityTools
+	]);
+	if (combinedMaterializedTools.length > 0) {
+		return combinedMaterializedTools;
 	}
 
 	const type = typeof record.type === 'string' ? record.type : '';

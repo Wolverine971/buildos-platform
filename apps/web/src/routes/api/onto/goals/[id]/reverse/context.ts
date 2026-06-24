@@ -6,6 +6,7 @@ import type {
 	ReverseEngineeringExistingMilestone,
 	ReverseEngineeringExistingTask
 } from '$lib/services/ontology/goal-reverse-engineering.service';
+import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
 
 export type GoalRow = {
 	id: string;
@@ -182,21 +183,28 @@ async function loadContextDocument(
 	supabase: SupabaseClient<Database>,
 	project: ProjectRow
 ): Promise<ReverseEngineeringContextDocument | null> {
-	const { data: document, error: documentError } = await supabase
+	const { data: documents, error: documentError } = await supabase
 		.from('onto_documents')
-		.select('id, title')
+		.select('id, title, content, props, created_at, updated_at')
 		.eq('project_id', project.id)
 		.eq('type_key', 'document.context.project')
 		.is('deleted_at', null)
 		.order('updated_at', { ascending: false })
-		.limit(1)
-		.maybeSingle();
+		.limit(20);
 
 	if (documentError) {
 		console.error('[Goal Reverse] Failed to load context document metadata:', documentError);
 		return null;
 	}
 
+	const document = pickStartHereDocument((documents ?? []) as Array<{
+		id: string;
+		title: string | null;
+		content: string | null;
+		props: unknown;
+		created_at: string | null;
+		updated_at: string | null;
+	}>);
 	const contextDocumentId = document?.id || null;
 
 	if (!contextDocumentId) {
@@ -217,7 +225,12 @@ async function loadContextDocument(
 	}
 
 	const propsPayload = (version?.props as Record<string, unknown> | null) ?? null;
-	const content = typeof propsPayload?.content === 'string' ? propsPayload.content : null;
+	const content =
+		typeof propsPayload?.content === 'string'
+			? propsPayload.content
+			: typeof document?.content === 'string'
+				? document.content
+				: null;
 
 	if (!content) {
 		return null;

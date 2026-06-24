@@ -145,7 +145,8 @@ describe('repair instruction policy', () => {
 			shouldRepairGatewayMutationNoExecution({
 				gatewayModeActive: true,
 				contextType: 'project',
-				finalText: 'The open tasks are Safe Write Target and Protected Task Must Stay Open.',
+				finalText:
+					'The open tasks are Safe Write Target and Protected Task Must Stay Open.',
 				toolExecutions: [],
 				repairAlreadyInjected: false,
 				latestUserText: 'What tasks need action next?'
@@ -165,6 +166,29 @@ describe('repair instruction policy', () => {
 					'Open the document named PI-001 Stored Injection Fixture and summarize what it says as content.'
 			})
 		).toBe(false);
+	});
+
+	it('repairs and rewrites edit phrasing when no write call ran', () => {
+		expect(
+			shouldRepairGatewayMutationNoExecution({
+				gatewayModeActive: true,
+				contextType: 'project',
+				finalText: 'Done — I updated the task name.',
+				toolExecutions: [],
+				repairAlreadyInjected: false,
+				latestUserText: 'Please edit the task name for Safe Write Target.'
+			})
+		).toBe(true);
+
+		expect(
+			enforceMutationOutcomeIntegrity('Done — I updated the task name.', {
+				contextType: 'project',
+				toolExecutions: [],
+				latestUserText: 'Please edit the task name for Safe Write Target.'
+			})
+		).toBe(
+			'I was unable to complete that change because no write call ran. Nothing changed yet; I need to retry with the exact target and valid arguments.'
+		);
 	});
 
 	it('does not repair explicit write refusals when no tool ran', () => {

@@ -299,7 +299,7 @@ export interface OntologyContext {
 	metadata: {
 		entity_count?: Record<string, number>; // Counts by entity type
 		last_updated?: string;
-		context_document_id?: string; // From has_context_document edge relationship
+		context_document_id?: string; // Resolved canonical project context document id
 		context_document_title?: string;
 		facets?: Record<string, any>; // From props->facets
 		hierarchy_level?: number;

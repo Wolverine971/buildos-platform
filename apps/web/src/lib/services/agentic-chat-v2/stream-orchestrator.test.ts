@@ -705,9 +705,8 @@ describe('streamFastChat direct tool orchestration', () => {
 		expect(streamParams[2]?.toolChoice).toBeUndefined();
 		expect(streamParams[2]?.toolNames).toEqual([]);
 		expect(result.finishedReason).toBe('tool_round_limit');
-		expect(result.finalAssistantText).toBe(
-			'I gathered the requested context, but the turn ended before a final response was produced.'
-		);
+		expect(result.finalAssistantText).toContain('I gathered context before the turn ended.');
+		expect(result.finalAssistantText).toContain('document "Meeting prep notes"');
 		expect(emittedDeltas.join('')).toBe(result.finalAssistantText);
 		expect(result.finalAssistantText).not.toContain('safety limit');
 		expect(result.finalizationGuard).toMatchObject({

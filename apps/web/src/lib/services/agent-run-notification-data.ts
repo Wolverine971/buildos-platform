@@ -9,7 +9,8 @@ import type {
 	AgentRunContextType,
 	AgentRunScopeMode,
 	AgentRunMetrics,
-	RunResult
+	RunResult,
+	ChangeSet
 } from '@buildos/shared-types';
 import type { AgentRunNotification, UiNotificationStatus } from '$lib/types/notification.types';
 import type { AgentRunRow } from './agentRunsRealtime.service';
@@ -22,6 +23,44 @@ export function parseAgentRunResult(value: AgentRunRow['result']): RunResult | n
 export function parseAgentRunMetrics(value: AgentRunRow['metrics']): AgentRunMetrics | null {
 	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
 	return value as unknown as AgentRunMetrics;
+}
+
+function parseAgentRunChangeSet(value: AgentRunRow['change_set']): ChangeSet | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const changes = (value as { changes?: unknown }).changes;
+	return Array.isArray(changes) ? (value as unknown as ChangeSet) : null;
+}
+
+function zeroMetrics(): AgentRunMetrics {
+	return {
+		tokens: 0,
+		cost_usd: 0,
+		tool_calls: 0,
+		duration_ms: 0
+	};
+}
+
+function withProposedChangesFallback(
+	run: AgentRunRow,
+	result: RunResult | null,
+	metrics: AgentRunMetrics | null
+): RunResult | null {
+	const changeSet = parseAgentRunChangeSet(run.change_set);
+	if (!changeSet) return result;
+	if (result) {
+		return result.proposed_changes ? result : { ...result, proposed_changes: changeSet };
+	}
+	if (run.status !== 'proposal_ready') return null;
+	return {
+		run_id: run.id,
+		label: run.label,
+		status: 'proposal_ready',
+		summary: run.goal,
+		answer: run.expected_output ?? run.goal,
+		entities_touched: [],
+		proposed_changes: changeSet,
+		metrics: metrics ?? zeroMetrics()
+	};
 }
 
 export function toUiAgentRunStatus(status: AgentRunStatus): UiNotificationStatus {
@@ -69,8 +108,10 @@ export function agentRunStatusMessage(
 }
 
 export function buildAgentRunNotificationData(run: AgentRunRow): AgentRunNotification['data'] {
-	const result = parseAgentRunResult(run.result);
-	const metrics = parseAgentRunMetrics(run.metrics) ?? result?.metrics ?? null;
+	const parsedResult = parseAgentRunResult(run.result);
+	const parsedMetrics = parseAgentRunMetrics(run.metrics);
+	const metrics = parsedMetrics ?? parsedResult?.metrics ?? null;
+	const result = withProposedChangesFallback(run, parsedResult, metrics);
 	return {
 		runId: run.id,
 		label: run.label,

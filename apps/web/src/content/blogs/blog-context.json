@@ -3815,9 +3815,126 @@
 					"filePath": "src/content/blogs/source-analyses/underscore-vc-minimum-viable-segment.md"
 				}
 			}
+		},
+		"user-guides": {
+			"metadata": {
+				"name": "User Guides",
+				"description": "How different kinds of people put BuildOS to work — writers, developers, project managers, and scattered minds.",
+				"color": "teal"
+			},
+			"posts": {
+				"buildos-for-adhd-minds": {
+					"title": "BuildOS for Scattered Minds: When Your Working Memory Needs a Backup",
+					"seoTitle": "BuildOS for ADHD and Scattered Minds",
+					"description": "A working guide for people whose ideas move faster than their tools. How to externalize working memory into a thinking environment that remembers, so your brain does not have to.",
+					"author": "DJ Wayne",
+					"date": "2026-06-23",
+					"lastmod": "2026-06-23",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": true,
+					"tags": [
+						"user-guides",
+						"adhd",
+						"neurodivergent",
+						"thinking-environment",
+						"project-memory",
+						"brain-dumping",
+						"working-memory"
+					],
+					"readingTime": 8,
+					"excerpt": "Your brain does not lose ideas. Your tools do. For people whose thoughts move faster than their hands, here is how to externalize working memory into a system that remembers — so you can capture the idea now and find it later.",
+					"pic": "buildos-for-adhd-minds",
+					"path": "apps/web/src/content/blogs/user-guides/buildos-for-adhd-minds.md",
+					"slug": "buildos-for-adhd-minds",
+					"category": "user-guides",
+					"filePath": "src/content/blogs/user-guides/buildos-for-adhd-minds.md"
+				},
+				"buildos-for-developers": {
+					"title": "BuildOS for Developers: A System That Survives the Context Switch",
+					"seoTitle": "BuildOS for Developers",
+					"description": "A working guide for engineers and indie builders. How to keep side projects, decisions, and the why behind the code in one thinking environment that your AI tools can actually use.",
+					"author": "DJ Wayne",
+					"date": "2026-06-23",
+					"lastmod": "2026-06-23",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": true,
+					"tags": [
+						"user-guides",
+						"developers",
+						"engineers",
+						"indie-builders",
+						"thinking-environment",
+						"project-memory",
+						"context-building"
+					],
+					"readingTime": 9,
+					"excerpt": "You think in systems but live in chaos. Twelve repos, three AI chats with conflicting plans, and the reason you made that decision lives nowhere. Here is how developers use BuildOS to keep the why connected to the work.",
+					"pic": "buildos-for-developers",
+					"path": "apps/web/src/content/blogs/user-guides/buildos-for-developers.md",
+					"slug": "buildos-for-developers",
+					"category": "user-guides",
+					"filePath": "src/content/blogs/user-guides/buildos-for-developers.md"
+				},
+				"buildos-for-technical-project-managers": {
+					"title": "BuildOS for Technical Project Managers: Hold the Whole Portfolio Without Drowning in It",
+					"seoTitle": "BuildOS for Technical Project Managers",
+					"description": "A working guide for TPMs and program managers. How to keep goals, plans, risks, and the why behind every call in one thinking environment that remembers across projects.",
+					"author": "DJ Wayne",
+					"date": "2026-06-23",
+					"lastmod": "2026-06-23",
+					"changefreq": "monthly",
+					"priority": "0.8",
+					"published": true,
+					"tags": [
+						"user-guides",
+						"project-management",
+						"tpm",
+						"program-management",
+						"thinking-environment",
+						"project-memory",
+						"risk-tracking"
+					],
+					"readingTime": 9,
+					"excerpt": "You are the human integration layer between five workstreams, three stakeholders, and a roadmap that changes weekly. Here is how technical project managers use BuildOS to hold the whole picture without becoming the bottleneck.",
+					"pic": "buildos-for-technical-project-managers",
+					"path": "apps/web/src/content/blogs/user-guides/buildos-for-technical-project-managers.md",
+					"slug": "buildos-for-technical-project-managers",
+					"category": "user-guides",
+					"filePath": "src/content/blogs/user-guides/buildos-for-technical-project-managers.md"
+				},
+				"writing-in-the-ai-age-how-writers-can-be-prolific": {
+					"title": "Writing in the AI Age: How Writers Can Be Prolific",
+					"seoTitle": "Writing in the AI Age: How to Be Prolific",
+					"description": "The prolific writers are not generating more. They are losing less. A method for staying prolific in the AI age — built from how the most productive writers actually work.",
+					"author": "DJ Wayne",
+					"date": "2026-06-23",
+					"lastmod": "2026-06-23",
+					"changefreq": "monthly",
+					"priority": "0.9",
+					"published": true,
+					"tags": [
+						"user-guides",
+						"writers",
+						"authors",
+						"writing-in-the-ai-age",
+						"prolific-writing",
+						"thinking-environment",
+						"project-memory"
+					],
+					"readingTime": 15,
+					"excerpt": "You are not unproductive because you lack discipline or the right app. You are unproductive because you keep losing your own thinking. Here is how the most prolific writers stay prolific — and how to do it in the AI age.",
+					"pic": "writing-in-the-ai-age",
+					"path": "apps/web/src/content/blogs/user-guides/writing-in-the-ai-age-how-writers-can-be-prolific.md",
+					"slug": "writing-in-the-ai-age-how-writers-can-be-prolific",
+					"category": "user-guides",
+					"filePath": "src/content/blogs/user-guides/writing-in-the-ai-age-how-writers-can-be-prolific.md"
+				}
+			}
 		}
 	},
-	"generatedAt": "2026-06-23T02:58:00.108Z",
-	"totalPosts": 100,
-	"totalCategories": 8
+	"generatedAt": "2026-06-24T16:35:39.887Z",
+	"totalPosts": 104,
+	"totalCategories": 9
 }

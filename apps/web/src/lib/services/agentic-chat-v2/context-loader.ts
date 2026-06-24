@@ -23,6 +23,7 @@ import type {
 	LightPlan,
 	LightProjectMember,
 	LightProject,
+	ProjectStartHereDocument,
 	LightRecentActivity,
 	LightTask,
 	ProjectContextData,
@@ -35,6 +36,11 @@ import {
 	fetchProjectSummaries
 } from '$lib/services/ontology/ontology-projects.service';
 import { isProjectScopedContext, resolveEffectiveProjectId, resolveRpcContextType } from './scope';
+import {
+	START_HERE_CONTEXT_LOAD_MAX_CHARS,
+	START_HERE_DOCUMENT_TYPE_KEY
+} from '@buildos/shared-agent-ops/ontology/start-here';
+import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
 
 const logger = createLogger('FastChatContext');
 
@@ -92,6 +98,10 @@ type DocumentRow = Database['public']['Tables']['onto_documents']['Row'];
 type ContextDocumentRow = Pick<
 	DocumentRow,
 	'id' | 'title' | 'state_key' | 'created_at' | 'updated_at'
+>;
+type ProjectStartHereDocumentRow = Pick<
+	DocumentRow,
+	'id' | 'title' | 'content' | 'props' | 'created_at' | 'updated_at'
 >;
 type EventRow = Database['public']['Tables']['onto_events']['Row'];
 type ActorRow = Database['public']['Tables']['onto_actors']['Row'];
@@ -604,6 +614,22 @@ function mapDocument(row: ContextDocumentRow, linkedDocIds: Set<string>): LightD
 	};
 }
 
+function mapStartHereDocument(row: ProjectStartHereDocumentRow): ProjectStartHereDocument {
+	const content = typeof row.content === 'string' ? row.content : '';
+	const truncatedContent =
+		content.length > START_HERE_CONTEXT_LOAD_MAX_CHARS
+			? content.slice(0, START_HERE_CONTEXT_LOAD_MAX_CHARS).trimEnd()
+			: content;
+
+	return {
+		id: row.id,
+		title: row.title ?? 'START HERE',
+		content: truncatedContent,
+		content_truncated: truncatedContent.length < content.length,
+		updated_at: row.updated_at
+	};
+}
+
 function normalizeOptionalText(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	const trimmed = value.trim();
@@ -977,6 +1003,7 @@ function buildProjectContextData(params: {
 	return {
 		project: mappedProject,
 		doc_structure,
+		start_here: null,
 		goals: goalRows.map(mapGoal),
 		milestones: milestoneRows.map(mapMilestone),
 		plans: planRows.map(mapPlan),
@@ -2093,6 +2120,42 @@ async function loadFastChatContextViaRpc(
 	return data as FastChatContextRpcResponse;
 }
 
+async function loadProjectStartHereDocument(
+	supabase: SupabaseClient<Database>,
+	projectId: string,
+	onError?: LoadContextParams['onError']
+): Promise<ProjectStartHereDocument | null> {
+	const { data, error } = await supabase
+		.from('onto_documents')
+		.select('id, title, content, props, created_at, updated_at')
+		.eq('project_id', projectId)
+		.eq('type_key', START_HERE_DOCUMENT_TYPE_KEY)
+		.is('deleted_at', null)
+		.is('archived_at', null)
+		.order('updated_at', { ascending: false })
+		.limit(20);
+
+	if (error) {
+		logger.warn('Failed to load project Start Here document', { error, projectId });
+		reportContextLoadError(onError, 'query.project.start_here', error, { projectId });
+		return null;
+	}
+
+	const selected = pickStartHereDocument((data ?? []) as ProjectStartHereDocumentRow[]);
+	return selected ? mapStartHereDocument(selected) : null;
+}
+
+async function attachProjectStartHere<T extends ProjectContextData | EntityContextData | null>(
+	supabase: SupabaseClient<Database>,
+	data: T,
+	onError?: LoadContextParams['onError']
+): Promise<T> {
+	if (!data?.project?.id) return data;
+	const startHere = await loadProjectStartHereDocument(supabase, data.project.id, onError);
+	if (!startHere) return data;
+	return { ...data, start_here: startHere } as T;
+}
+
 async function loadGlobalContextData(
 	supabase: SupabaseClient<Database>,
 	userId: string,
@@ -2843,13 +2906,18 @@ export async function loadFastChatPromptContext(
 			} else {
 				const projectContext = buildProjectContextFromRpc(rpcPayload, eventWindow);
 				if (projectContext) {
+					const projectContextWithStartHere = await attachProjectStartHere(
+						supabase,
+						projectContext,
+						params.onError
+					);
 					const resolvedProjectName =
-						projectContext.project.name ?? baseContext.projectName ?? null;
+						projectContextWithStartHere.project.name ?? baseContext.projectName ?? null;
 					if (focusType && focusEntityId) {
 						const { data, focusEntityName: resolvedFocusName } =
 							buildEntityContextFromRpc({
 								payload: rpcPayload,
-								projectContext,
+								projectContext: projectContextWithStartHere,
 								focusType,
 								focusEntityId
 							});
@@ -2867,7 +2935,7 @@ export async function loadFastChatPromptContext(
 						...baseContext,
 						projectId,
 						projectName: resolvedProjectName,
-						data: projectContext
+						data: projectContextWithStartHere
 					};
 				}
 			}
@@ -2893,16 +2961,21 @@ export async function loadFastChatPromptContext(
 				focusEntityId,
 				onError: params.onError
 			});
+			const dataWithStartHere = await attachProjectStartHere(supabase, data, params.onError);
 			return {
 				...baseContext,
 				projectId,
 				projectName: projectFocus?.projectName ?? baseContext.projectName,
 				focusEntityName: focusEntityName ?? baseContext.focusEntityName ?? null,
-				data
+				data: dataWithStartHere
 			};
 		}
 
-		const data = await loadProjectContextData(supabase, projectId, eventWindow, params.onError);
+		const data = await attachProjectStartHere(
+			supabase,
+			await loadProjectContextData(supabase, projectId, eventWindow, params.onError),
+			params.onError
+		);
 		const projectName = data?.project.name ?? baseContext.projectName ?? null;
 		return {
 			...baseContext,
@@ -2914,10 +2987,9 @@ export async function loadFastChatPromptContext(
 
 	if (contextType === 'ontology' && projectFocus?.projectId) {
 		const resolvedProjectId = projectFocus.projectId;
-		const data = await loadProjectContextData(
+		const data = await attachProjectStartHere(
 			supabase,
-			resolvedProjectId,
-			eventWindow,
+			await loadProjectContextData(supabase, resolvedProjectId, eventWindow, params.onError),
 			params.onError
 		);
 		return {

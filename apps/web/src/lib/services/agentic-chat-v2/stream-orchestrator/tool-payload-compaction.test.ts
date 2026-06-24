@@ -72,6 +72,36 @@ describe('buildToolPayloadForModel', () => {
 		expect(JSON.stringify(payload)).not.toContain('extra_large_field');
 	});
 
+	it('infers materialized tools from compacted ontology search results', () => {
+		const payload = buildToolPayloadForModel(
+			toolCall('search_project'),
+			toolResult({
+				query: 'user guide suite',
+				search_scope: 'project',
+				project_id: 'project-1',
+				total_returned: 1,
+				total: 1,
+				maybe_more: false,
+				materialized_tools: [],
+				results: [
+					{
+						type: 'task',
+						id: '82dfb1b6-e39d-48cb-8c32-d13c3e620daa',
+						project_id: 'project-1',
+						title: 'Create User Guide Suite (ADHD/TPM/Writers/Devs)',
+						state_key: 'todo'
+					}
+				]
+			}),
+			parseArgs
+		) as Record<string, any>;
+
+		expect(payload.materialized_tools).toEqual([
+			'get_onto_task_details',
+			'list_task_documents'
+		]);
+	});
+
 	it('compacts document detail payloads to content previews', () => {
 		const payload = buildToolPayloadForModel(
 			toolCall('get_onto_document_details'),

@@ -28,6 +28,7 @@ import {
 	fetchTaskLastChangedByActorMap
 } from '$lib/server/task-relevance.service';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
+import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -394,12 +395,11 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 				.from('onto_documents')
 				.select(CONTEXT_DOCUMENT_COLUMNS)
 				.eq('project_id', id)
-				.eq('type_key', 'document.context.project')
-				.is('deleted_at', null)
-				.order('updated_at', { ascending: false })
-				.limit(1)
-				.maybeSingle()
-		]);
+					.eq('type_key', 'document.context.project')
+					.is('deleted_at', null)
+					.order('updated_at', { ascending: false })
+					.limit(20)
+			]);
 
 		// Log any errors (non-fatal)
 		if (goalsResult.error) {
@@ -421,7 +421,9 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 			console.error('[Project API] Failed to fetch images:', imagesResult.error);
 		}
 
-		const contextDocument: Document | null = (contextDocResult.data as Document | null) ?? null;
+			const contextDocument: Document | null = pickStartHereDocument(
+				(contextDocResult.data ?? []) as unknown as Document[]
+			);
 
 		const { milestones: decoratedMilestones } = await decorateMilestonesWithGoals(
 			supabase,

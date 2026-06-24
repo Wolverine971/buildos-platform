@@ -36,6 +36,11 @@ import {
 	isContainmentRel,
 	TASK_DISALLOWS_PROJECT_FALLBACK_KINDS
 } from './relationship-policy';
+import {
+	buildStartHereTemplate,
+	buildStartHereTitle,
+	START_HERE_DOCUMENT_TYPE_KEY
+} from './start-here';
 
 type InstantiationCounts = {
 	goals: number;
@@ -331,19 +336,41 @@ export async function instantiateProject(
 		// Create typed constant for type-safe operations (TypeScript narrowing doesn't flow into closures)
 		const typedProjectId: string = projectId;
 
-		if (parsed.context_document) {
+		const contextDocument = parsed.context_document
+			? {
+					title: parsed.context_document.title,
+					type_key: parsed.context_document.type_key ?? START_HERE_DOCUMENT_TYPE_KEY,
+					state_key: parsed.context_document.state_key ?? 'draft',
+					body_markdown: parsed.context_document.body_markdown,
+					props: parsed.context_document.props ?? {}
+				}
+			: {
+					title: buildStartHereTitle(parsed.project.name),
+					type_key: START_HERE_DOCUMENT_TYPE_KEY,
+					state_key: 'draft',
+					body_markdown: buildStartHereTemplate({
+						projectName: parsed.project.name,
+						projectDescription: parsed.project.description
+					}),
+					props: {
+						origin: 'start_here_template',
+						managed_region_version: 1
+					}
+				};
+
+		if (contextDocument) {
 			const contextDocId = await insertDocument(client, typedProjectId, actorId, {
-				title: parsed.context_document.title,
-				type_key: parsed.context_document.type_key ?? 'document.context.project',
-				state_key: parsed.context_document.state_key ?? 'active',
-				body_markdown: parsed.context_document.body_markdown,
-				props: parsed.context_document.props ?? {}
+				title: contextDocument.title,
+				type_key: contextDocument.type_key,
+				state_key: contextDocument.state_key,
+				body_markdown: contextDocument.body_markdown,
+				props: contextDocument.props
 			});
 
 			inserted.documents.push(contextDocId);
 			counts.documents += 1;
 			await addDocumentToDocStructure(client, typedProjectId, contextDocId, actorId, {
-				title: parsed.context_document.title
+				title: contextDocument.title
 			});
 		}
 

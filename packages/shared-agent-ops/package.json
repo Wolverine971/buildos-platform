@@ -36,6 +36,16 @@
 			"import": "./dist/ontology/document-state.mjs",
 			"require": "./dist/ontology/document-state.js"
 		},
+		"./ontology/start-here": {
+			"types": "./dist/ontology/start-here.d.ts",
+			"import": "./dist/ontology/start-here.mjs",
+			"require": "./dist/ontology/start-here.js"
+		},
+		"./ontology/start-here.service": {
+			"types": "./dist/ontology/start-here.service.d.ts",
+			"import": "./dist/ontology/start-here.service.mjs",
+			"require": "./dist/ontology/start-here.service.js"
+		},
 		"./ontology/relationship-resolver": {
 			"types": "./dist/ontology/relationship-resolver.d.ts",
 			"import": "./dist/ontology/relationship-resolver.mjs",

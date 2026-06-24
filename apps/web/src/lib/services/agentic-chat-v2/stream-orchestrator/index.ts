@@ -78,6 +78,11 @@ import {
 } from './round-analysis';
 import { validateToolCalls } from './tool-validation';
 import { buildWriteLedgerMessage } from './write-ledger';
+import {
+	buildWrongEntityKindRepairResult,
+	rememberKnownEntitiesFromToolResult,
+	type KnownEntity
+} from './entity-kind-repair';
 import { ContextGatheringLedger } from './context-gathering-ledger';
 import * as readLoopEscalation from './read-loop-escalation';
 import type { ReadLoopRepairEscalation as ReadLoopRepairEscalationLevel } from './read-loop-escalation';
@@ -227,6 +232,7 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	let finalizationGuardResult: FinalizationGuardResult | undefined;
 	const pendingRepairInstructions: string[] = [];
 	const contextGatheringLedger = new ContextGatheringLedger();
+	const knownEntitiesById = new Map<string, KnownEntity>();
 	const supervisor =
 		params.turnSupervisor ??
 		createDeterministicTurnSupervisor({
@@ -947,15 +953,24 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 
 			if (noToolSynthesisPass) {
 				const candidateFinalText = sanitizeAssistantFinalText(assistantBuffer);
-				const noToolPassStillRequestedTools =
-					suppressedNoToolSynthesisToolCallCount > 0 ||
-					(llmPassMeta.finishedReason === 'tool_calls' && !candidateFinalText);
-				if (noToolPassStillRequestedTools && noToolSynthesisRetryCount < 1) {
+				// Retry the withheld-tools synthesis once when it failed to produce a
+				// usable answer. Two failure modes qualify: the model kept trying to
+				// call tools (suppressed), or it returned no visible text at all
+				// (finished_reason=stop with empty content) — the empty-synthesis
+				// incident 2026-06-23, where the generic finalization-guard fallback
+				// was persisted instead of the answer the reads already supported.
+				const noToolPassStillRequestedTools = suppressedNoToolSynthesisToolCallCount > 0;
+				const noToolPassProducedNoAnswer = !candidateFinalText;
+				if (
+					(noToolPassStillRequestedTools || noToolPassProducedNoAnswer) &&
+					noToolSynthesisRetryCount < 1
+				) {
 					noToolSynthesisRetryCount += 1;
 					messages.push({
 						role: 'system',
-						content:
-							'The previous synthesis attempt still requested tool calls even though tools are unavailable. Ignore all pending or implied tool calls and write the final user-facing answer now from the existing tool results. Do not say you will check, search, pull up, inspect, load, or update anything else.'
+						content: noToolPassStillRequestedTools
+							? 'The previous synthesis attempt still requested tool calls even though tools are unavailable. Ignore all pending or implied tool calls and write the final user-facing answer now from the existing tool results. Do not say you will check, search, pull up, inspect, load, or update anything else.'
+							: 'The previous synthesis attempt produced no visible answer. Write the final user-facing answer now from the existing tool results. Include the concrete entities you found (with their titles and states) and directly answer any definition question the user asked. Do not call tools.'
 					});
 					forceNoToolSynthesisPass = true;
 					continue;
@@ -1304,7 +1319,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 				}
 
 				let result: ChatToolResult;
-				if (!allowedToolNames.has(toolCall.function.name)) {
+				const entityKindRepairResult = buildWrongEntityKindRepairResult({
+					toolCall: originalToolCall,
+					knownEntitiesById
+				});
+				if (entityKindRepairResult) {
+					result = entityKindRepairResult;
+				} else if (!allowedToolNames.has(toolCall.function.name)) {
 					const requestedName = toolCall.function.name;
 					let addedToolNames = gatewayModeActive
 						? materializeDirectTools(
@@ -1386,6 +1407,13 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 						extractGatewayMaterializedToolNames(result.result),
 						'Discovery loaded additional tools.'
 					);
+				}
+				if (result.success) {
+					rememberKnownEntitiesFromToolResult({
+						knownEntitiesById,
+						toolName: originalToolCall.function.name,
+						payload: result.result
+					});
 				}
 				if (params.onToolResult) {
 					try {

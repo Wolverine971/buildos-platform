@@ -10,6 +10,11 @@ import type { TypedSupabaseClient } from '@buildos/supabase-client';
 import type { Database } from '@buildos/shared-types';
 import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { addDays, differenceInDays, parseISO, subDays, subHours } from 'date-fns';
+import {
+	buildStartHerePromptExcerpt,
+	pickProjectStartHereDocument,
+	START_HERE_DOCUMENT_TYPE_KEY
+} from '@buildos/shared-agent-ops/ontology/start-here';
 
 // ============================================================================
 // ENTITY CAPS (from PROJECT_CONTEXT_ENRICHMENT_SPEC.md)
@@ -1812,6 +1817,7 @@ export class OntologyBriefDataLoader {
 			milestonesResult,
 			risksResult,
 			documentsResult,
+			startHereDocsResult,
 			requirementsResult,
 			edgesResult
 		] = await Promise.all([
@@ -1865,6 +1871,13 @@ export class OntologyBriefDataLoader {
 				.is('deleted_at', null)
 				.is('archived_at', null),
 			this.supabase
+				.from('onto_documents')
+				.select('id, project_id, title, content, props, created_at, updated_at')
+				.in('project_id', projectIds)
+				.eq('type_key', START_HERE_DOCUMENT_TYPE_KEY)
+				.is('deleted_at', null)
+				.is('archived_at', null),
+			this.supabase
 				.from('onto_requirements')
 				.select('id, project_id, text, created_at, updated_at, priority, type_key')
 				.in('project_id', projectIds)
@@ -1887,6 +1900,7 @@ export class OntologyBriefDataLoader {
 			{ name: 'milestones', error: milestonesResult.error },
 			{ name: 'risks', error: risksResult.error },
 			{ name: 'documents', error: documentsResult.error },
+			{ name: 'start_here_documents', error: startHereDocsResult.error },
 			{ name: 'requirements', error: requirementsResult.error },
 			{ name: 'edges', error: edgesResult.error }
 		].filter((e) => e.error);
@@ -1901,8 +1915,47 @@ export class OntologyBriefDataLoader {
 		const milestones = (milestonesResult.data || []) as OntoMilestone[];
 		const risks = (risksResult.data || []) as OntoRisk[];
 		const documents = (documentsResult.data || []) as OntoDocument[];
+		const startHereRows = (startHereDocsResult.data || []) as Array<{
+			id: string;
+			project_id: string;
+			title: string | null;
+			content: string | null;
+			props: unknown;
+			created_at: string | null;
+			updated_at: string | null;
+		}>;
 		const requirements = (requirementsResult.data || []) as OntoRequirement[];
 		const edges = (edgesResult.data || []) as OntoEdge[];
+		const startHereByProject = new Map<
+			string,
+			{
+				documentId: string;
+				title: string;
+				excerpt: string;
+				updatedAt: string | null;
+				truncated: boolean;
+			}
+		>();
+		const startHereRowsByProject = new Map<string, typeof startHereRows>();
+		for (const row of startHereRows) {
+			if (!row.project_id) continue;
+			const rows = startHereRowsByProject.get(row.project_id) ?? [];
+			rows.push(row);
+			startHereRowsByProject.set(row.project_id, rows);
+		}
+		for (const [projectId, rows] of startHereRowsByProject.entries()) {
+			const row = pickProjectStartHereDocument(rows);
+			if (!row) continue;
+			const excerpt = buildStartHerePromptExcerpt(row.content ?? '', 1200);
+			if (!excerpt.content.trim()) continue;
+			startHereByProject.set(projectId, {
+				documentId: row.id,
+				title: row.title ?? 'START HERE',
+				excerpt: excerpt.content,
+				updatedAt: row.updated_at,
+				truncated: excerpt.truncated
+			});
+		}
 
 		console.log('[OntologyBriefDataLoader] Loaded entities:', {
 			projects: projects.length,
@@ -1912,6 +1965,7 @@ export class OntologyBriefDataLoader {
 			milestones: milestones.length,
 			risks: risks.length,
 			documents: documents.length,
+			startHereDocuments: startHereByProject.size,
 			requirements: requirements.length,
 			edges: edges.length
 		});
@@ -1945,6 +1999,7 @@ export class OntologyBriefDataLoader {
 				project,
 				isShared,
 				activityLogs: projectActivityLogs,
+				startHere: startHereByProject.get(project.id) ?? null,
 				tasks: projectTasks,
 				goals: projectGoals,
 				plans: projectPlans,
@@ -1963,6 +2018,7 @@ export class OntologyBriefDataLoader {
 				project,
 				isShared,
 				activityLogs: projectActivityLogs,
+				startHere: startHereByProject.get(project.id) ?? null,
 				tasks: projectTasks,
 				goals: projectGoals,
 				plans: projectPlans,
@@ -2586,6 +2642,7 @@ export class OntologyBriefDataLoader {
 				project: data.project,
 				isShared: data.isShared,
 				activityLogs: data.activityLogs,
+				startHere: data.startHere,
 				recentChanges,
 				goals: projectGoals.slice(0, ENTITY_CAPS.GOALS),
 				plans: data.plans.slice(0, ENTITY_CAPS.PLANS),

@@ -38,6 +38,7 @@ import { sanitizeProjectForClient } from '$lib/utils/project-props-sanitizer';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
 import { attachAssigneesToTasks, type TaskAssignee } from '$lib/server/task-assignment.service';
 import { attachLastChangedByActorToTasks } from '$lib/server/task-relevance.service';
+import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
 
 type GoalRow = Database['public']['Tables']['onto_goals']['Row'];
 type MilestoneRow = Database['public']['Tables']['onto_milestones']['Row'];
@@ -277,20 +278,22 @@ async function loadFullData(
 			.from('onto_documents')
 			.select(CONTEXT_DOCUMENT_COLUMNS)
 			.eq('project_id', id)
-			.eq('type_key', 'document.context.project')
-			.is('deleted_at', null)
-			.order('updated_at', { ascending: false })
-			.limit(1)
-			.maybeSingle();
+				.eq('type_key', 'document.context.project')
+				.is('deleted_at', null)
+				.order('updated_at', { ascending: false })
+				.limit(20);
 
 		if (contextDocumentError) {
 			console.warn(
 				'[Project Page] Failed to load context document fallback:',
 				contextDocumentError
 			);
-		} else {
-			data.context_document = contextDocument ?? null;
-		}
+			} else {
+				data.context_document =
+					pickStartHereDocument(
+						(contextDocument ?? []) as unknown as Array<Record<string, unknown>>
+					) ?? null;
+			}
 	}
 	const rawTasks = (data.tasks || []) as Array<{ id: string } & Record<string, unknown>>;
 	const goals = (data.goals || []) as GoalRow[];

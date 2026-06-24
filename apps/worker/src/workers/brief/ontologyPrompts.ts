@@ -607,9 +607,21 @@ Timezone: ${timezone}
 - State: ${project.project.state_key}
 - Type: ${project.project.type_key}
 ${project.project.description ? `- Description: ${project.project.description}` : ''}
-
-## Calendar Today (${project.calendarToday.length})
 `;
+
+		if (project.startHere) {
+			prompt += `\n## Project Start Here\n`;
+			prompt += `Document: ${project.startHere.title} [id: ${project.startHere.documentId}]\n`;
+			if (project.startHere.updatedAt) {
+				prompt += `Updated: ${project.startHere.updatedAt}\n`;
+			}
+			if (project.startHere.truncated) {
+				prompt += `Excerpt is truncated; use it for orientation only.\n`;
+			}
+			prompt += `\n${project.startHere.excerpt}\n`;
+		}
+
+		prompt += `\n## Calendar Today (${project.calendarToday.length})\n`;
 
 		if (project.calendarToday.length > 0) {
 			for (const item of project.calendarToday.slice(0, 5)) {

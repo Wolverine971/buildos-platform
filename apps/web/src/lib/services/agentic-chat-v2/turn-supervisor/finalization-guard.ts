@@ -6,6 +6,7 @@ import { classifyToolExecution } from './digest';
 export type FinalizationGuardReason =
 	| 'empty_after_tools'
 	| 'lead_in_after_successful_writes'
+	| 'lead_in_after_reads'
 	| 'empty_after_successful_writes'
 	| 'empty_after_failed_writes'
 	| 'empty_after_reads';
@@ -20,6 +21,13 @@ type ApplyFinalizationGuardParams = {
 	finalAssistantText?: string | null;
 	assistantText?: string | null;
 	toolExecutions?: FastToolExecution[] | null;
+};
+
+type EvidenceItem = {
+	id?: string;
+	type?: string;
+	title: string;
+	stateKey?: string;
 };
 
 const LEAD_IN_PATTERNS = [
@@ -57,6 +65,7 @@ function buildGuardText(params: {
 	failedReads: number;
 	otherSuccesses: number;
 	otherFailures: number;
+	toolExecutions?: FastToolExecution[] | null;
 }): { text: string; reason: FinalizationGuardReason } {
 	const {
 		successfulWrites,
@@ -99,6 +108,13 @@ function buildGuardText(params: {
 			failedReads + otherFailures > 0
 				? ` ${failedReads + otherFailures} ${plural(failedReads + otherFailures, 'tool call')} failed while gathering context.`
 				: '';
+		const evidenceText = buildReadEvidenceFallbackText(params);
+		if (evidenceText) {
+			return {
+				text: `${evidenceText}${failureSuffix}`,
+				reason: 'empty_after_reads'
+			};
+		}
 		return {
 			text: `I gathered the requested context, but the turn ended before a final response was produced.${failureSuffix}`,
 			reason: 'empty_after_reads'
@@ -116,6 +132,145 @@ function buildGuardText(params: {
 		text: 'I tried to complete the request, but the tool work failed before I could produce a final answer.',
 		reason: 'empty_after_tools'
 	};
+}
+
+function buildReadEvidenceFallbackText(params: {
+	successfulWrites: number;
+	failedWrites: number;
+	successfulReads: number;
+	failedReads: number;
+	otherSuccesses: number;
+	otherFailures: number;
+	toolExecutions?: FastToolExecution[] | null;
+}): string {
+	const executions = params.toolExecutions ?? [];
+	const evidence = collectEvidenceItems(executions).slice(0, 5);
+	const notes = collectReadFailureNotes(executions).slice(0, 2);
+	if (evidence.length === 0 && notes.length === 0) {
+		return '';
+	}
+
+	const parts = ['I gathered context before the turn ended.'];
+	if (evidence.length > 0) {
+		parts.push(`Found: ${evidence.map(formatEvidenceItem).join('; ')}.`);
+	}
+	if (notes.length > 0) {
+		parts.push(`Also: ${notes.join('; ')}.`);
+	}
+	return parts.join(' ');
+}
+
+function collectEvidenceItems(executions: FastToolExecution[]): EvidenceItem[] {
+	const items: EvidenceItem[] = [];
+	const seen = new Set<string>();
+	const addItem = (item: EvidenceItem): void => {
+		const title = item.title.trim();
+		if (!title) return;
+		const key = item.id?.trim() || `${item.type ?? ''}:${title.toLowerCase()}`;
+		if (seen.has(key)) return;
+		seen.add(key);
+		items.push({ ...item, title });
+	};
+
+	for (const execution of executions) {
+		if (execution.result.success !== true) continue;
+		collectEvidenceFromPayload(execution.result.result, addItem);
+	}
+
+	return items;
+}
+
+function collectEvidenceFromPayload(
+	payload: unknown,
+	addItem: (item: EvidenceItem) => void,
+	collectionType?: string
+): void {
+	if (!payload || typeof payload !== 'object') return;
+
+	if (Array.isArray(payload)) {
+		for (const item of payload) {
+			collectEvidenceFromPayload(item, addItem, collectionType);
+		}
+		return;
+	}
+
+	const record = payload as Record<string, unknown>;
+	const type =
+		normalizeEntityType(record.type ?? record.entity_type ?? record.kind) ?? collectionType;
+	const title =
+		typeof record.title === 'string'
+			? record.title
+			: typeof record.name === 'string'
+				? record.name
+				: '';
+	if (type && title) {
+		addItem({
+			id: typeof record.id === 'string' ? record.id : undefined,
+			type,
+			title,
+			stateKey:
+				typeof record.state_key === 'string'
+					? record.state_key
+					: typeof record.status === 'string'
+						? record.status
+						: undefined
+		});
+	}
+
+	for (const [key, nested] of Object.entries(record)) {
+		const nestedCollectionType = collectionTypeForKey(key);
+		if (nestedCollectionType || key === 'results') {
+			collectEvidenceFromPayload(nested, addItem, nestedCollectionType);
+		}
+	}
+}
+
+function collectReadFailureNotes(executions: FastToolExecution[]): string[] {
+	const notes: string[] = [];
+	for (const execution of executions) {
+		const payload = execution.result.result;
+		if (!payload || typeof payload !== 'object' || Array.isArray(payload)) continue;
+		const record = payload as Record<string, unknown>;
+		const status = typeof record.status === 'string' ? record.status : '';
+		if (status !== 'not_found' && status !== 'wrong_entity_kind') continue;
+		const message = typeof record.message === 'string' ? record.message.trim() : '';
+		if (!message) continue;
+		notes.push(message.replace(/\s+/g, ' '));
+	}
+	return notes;
+}
+
+function formatEvidenceItem(item: EvidenceItem): string {
+	const typeText = item.type ? `${item.type} ` : '';
+	const stateText = item.stateKey ? ` (${item.stateKey})` : '';
+	return `${typeText}"${item.title}"${stateText}`;
+}
+
+function normalizeEntityType(value: unknown): string | null {
+	if (typeof value !== 'string') return null;
+	const normalized = value.trim().toLowerCase();
+	if (!normalized) return null;
+	if (normalized === 'doc') return 'document';
+	if (normalized.endsWith('s')) return normalized.slice(0, -1);
+	return normalized;
+}
+
+function collectionTypeForKey(key: string): string | undefined {
+	if (key === 'project') return 'project';
+	if (key === 'projects') return 'project';
+	if (key === 'task') return 'task';
+	if (key === 'tasks') return 'task';
+	if (key === 'document') return 'document';
+	if (key === 'documents') return 'document';
+	if (key === 'goal') return 'goal';
+	if (key === 'goals') return 'goal';
+	if (key === 'plan') return 'plan';
+	if (key === 'plans') return 'plan';
+	if (key === 'milestone') return 'milestone';
+	if (key === 'milestones') return 'milestone';
+	if (key === 'risk') return 'risk';
+	if (key === 'risks') return 'risk';
+	return undefined;
 }
 
 export function applyFinalizationGuard(
@@ -153,7 +308,10 @@ export function applyFinalizationGuard(
 		}
 	}
 
-	const shouldReplaceLeadIn = successfulWrites > 0 && candidate && isLikelyLeadIn(candidate);
+	const shouldReplaceWriteLeadIn = successfulWrites > 0 && candidate && isLikelyLeadIn(candidate);
+	const shouldReplaceReadLeadIn =
+		successfulWrites === 0 && successfulReads > 0 && candidate && isLikelyLeadIn(candidate);
+	const shouldReplaceLeadIn = shouldReplaceWriteLeadIn || shouldReplaceReadLeadIn;
 	const shouldSynthesizeEmpty = !candidate;
 
 	if (!shouldReplaceLeadIn && !shouldSynthesizeEmpty) {
@@ -166,12 +324,17 @@ export function applyFinalizationGuard(
 		successfulReads,
 		failedReads,
 		otherSuccesses,
-		otherFailures
+		otherFailures,
+		toolExecutions
 	});
 
 	return {
 		text: synthesized.text,
 		applied: true,
-		reason: shouldReplaceLeadIn ? 'lead_in_after_successful_writes' : synthesized.reason
+		reason: shouldReplaceWriteLeadIn
+			? 'lead_in_after_successful_writes'
+			: shouldReplaceReadLeadIn
+				? 'lead_in_after_reads'
+				: synthesized.reason
 	};
 }

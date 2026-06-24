@@ -88,4 +88,75 @@ describe('applyFinalizationGuard', () => {
 		expect(guard.reason).toBe('empty_after_failed_writes');
 		expect(guard.text).toContain('nothing was changed');
 	});
+
+	it('summarizes read evidence when reads succeeded but final text is empty', () => {
+		const call = toolCall('search_project', { query: 'user guide suite' });
+		const guard = applyFinalizationGuard({
+			finalAssistantText: '',
+			assistantText: '',
+			toolExecutions: [
+				{
+					toolCall: call,
+					result: toolResult(call, true, {
+						results: [
+							{
+								id: '82dfb1b6-e39d-48cb-8c32-d13c3e620daa',
+								type: 'task',
+								title: 'Create User Guide Suite (ADHD/TPM/Writers/Devs)',
+								state_key: 'todo'
+							},
+							{
+								id: '75ccc94c-30ae-43b8-a05e-5d904899a9d7',
+								type: 'task',
+								title: 'Create detailed BuildOS guides for Tech Project Managers [MERGED]',
+								state_key: 'done'
+							}
+						]
+					})
+				}
+			]
+		});
+
+		expect(guard.applied).toBe(true);
+		expect(guard.reason).toBe('empty_after_reads');
+		expect(guard.text).toContain('I gathered context before the turn ended.');
+		expect(guard.text).toContain(
+			'task "Create User Guide Suite (ADHD/TPM/Writers/Devs)" (todo)'
+		);
+		expect(guard.text).toContain(
+			'task "Create detailed BuildOS guides for Tech Project Managers [MERGED]" (done)'
+		);
+		expect(guard.text).not.toContain('I gathered the requested context');
+	});
+
+	it('replaces a read-only lead-in after successful reads with evidence', () => {
+		const call = toolCall('search_project', { query: 'user guide suite' });
+		const guard = applyFinalizationGuard({
+			finalAssistantText: "I'll look that up now.",
+			assistantText: "I'll look that up now.",
+			toolExecutions: [
+				{
+					toolCall: call,
+					result: toolResult(call, true, {
+						results: [
+							{
+								id: '82dfb1b6-e39d-48cb-8c32-d13c3e620daa',
+								type: 'task',
+								title: 'Create User Guide Suite (ADHD/TPM/Writers/Devs)',
+								state_key: 'todo'
+							}
+						]
+					})
+				}
+			]
+		});
+
+		expect(guard.applied).toBe(true);
+		expect(guard.reason).toBe('lead_in_after_reads');
+		expect(guard.text).toContain('I gathered context before the turn ended.');
+		expect(guard.text).toContain(
+			'task "Create User Guide Suite (ADHD/TPM/Writers/Devs)" (todo)'
+		);
+		expect(guard.text).not.toContain("I'll look that up");
+	});
 });

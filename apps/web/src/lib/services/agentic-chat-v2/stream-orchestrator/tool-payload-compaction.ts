@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/stream-orchestrator/tool-payload-compaction.ts
 import type { ChatToolCall, ChatToolResult } from '@buildos/shared-types';
+import { inferMaterializedToolsFromEntityResults } from '$lib/services/agentic-chat/tools/core/entity-result-materialization';
 
 type ToolArgumentParser = (rawArgs: unknown) => { args: Record<string, any>; error?: string };
 
@@ -533,6 +534,10 @@ function compactOntologySearchPayload(payload: unknown): unknown {
 
 	const record = payload as Record<string, any>;
 	const results = Array.isArray(record.results) ? record.results : [];
+	const inferredMaterializedTools = inferMaterializedToolsFromEntityResults(record);
+	const materializedToolHints = Array.isArray(record.materialized_tools)
+		? [...record.materialized_tools, ...inferredMaterializedTools]
+		: inferredMaterializedTools;
 	const compactResults = results.slice(0, 12).map(compactSearchResult);
 	const compactPayload: Record<string, unknown> = {
 		query: record.query,
@@ -543,6 +548,7 @@ function compactOntologySearchPayload(payload: unknown): unknown {
 		total: typeof record.total === 'number' ? record.total : results.length,
 		maybe_more: Boolean(record.maybe_more),
 		message: record.message,
+		materialized_tools: compactMaterializedTools(materializedToolHints),
 		results: compactResults
 	};
 

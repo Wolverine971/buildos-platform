@@ -19,7 +19,8 @@
 		"test:watch": "vitest watch",
 		"test:coverage": "vitest run --coverage",
 		"test:scheduler": "vitest run tests/scheduler.test.ts",
-		"test:integration": "vitest run tests/integration"
+		"test:integration": "vitest run tests/integration",
+		"backfill:start-here": "tsx src/scripts/backfillStartHereDocuments.ts"
 	},
 	"dependencies": {
 		"@breezystack/lamejs": "^1.2.7",

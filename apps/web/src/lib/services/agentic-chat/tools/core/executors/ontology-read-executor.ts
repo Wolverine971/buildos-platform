@@ -13,6 +13,7 @@
 import { BaseExecutor } from './base-executor';
 import { buildSearchFilter } from '$lib/utils/api-helpers';
 import { fetchProjectSummaries } from '$lib/services/ontology/ontology-projects.service';
+import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
 import type {
 	ExecutorContext,
 	ListOntoProjectsArgs,
@@ -52,6 +53,7 @@ import {
 	extractOutline,
 	getSectionByAnchor
 } from '$utils/document-outline';
+import { inferMaterializedToolsFromEntityResults } from '../entity-result-materialization';
 
 /**
  * Executor for ontology read operations.
@@ -423,16 +425,16 @@ export class OntologyReadExecutor extends BaseExecutor {
 				.is('archived_at', null)
 				.order('updated_at', { ascending: false })
 				.limit(8),
-			supabase
-				.from('onto_documents')
-				.select(
-					'id, project_id, title, description, type_key, state_key, created_at, updated_at, archived_at'
-				)
-				.eq('project_id', projectId)
-				.eq('type_key', 'document.context.project')
-				.is('deleted_at', null)
-				.order('updated_at', { ascending: false })
-				.limit(1)
+				supabase
+					.from('onto_documents')
+					.select(
+						'id, project_id, title, description, type_key, state_key, props, created_at, updated_at, archived_at'
+					)
+					.eq('project_id', projectId)
+					.eq('type_key', 'document.context.project')
+					.is('deleted_at', null)
+					.order('updated_at', { ascending: false })
+					.limit(20)
 		]);
 
 		this.throwFirstQueryError([
@@ -452,10 +454,10 @@ export class OntologyReadExecutor extends BaseExecutor {
 			return null;
 		}
 
-		const contextDocumentRaw = contextDocResult.data ?? null;
-		const contextDocument = Array.isArray(contextDocumentRaw)
-			? (contextDocumentRaw[0] ?? null)
-			: contextDocumentRaw;
+			const contextDocumentRaw = contextDocResult.data ?? null;
+			const contextDocument = Array.isArray(contextDocumentRaw)
+				? pickStartHereDocument(contextDocumentRaw)
+				: contextDocumentRaw;
 
 		return this.stripInternalPayloadFields({
 			project,
@@ -558,6 +560,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 		total_returned: number;
 		maybe_more: boolean;
 		results: any[];
+		materialized_tools: string[];
 		total: number;
 		message: string;
 	}> {
@@ -610,6 +613,7 @@ export class OntologyReadExecutor extends BaseExecutor {
 			total_returned: totalReturned,
 			maybe_more: maybeMore,
 			results,
+			materialized_tools: inferMaterializedToolsFromEntityResults({ results }),
 			total: typeof (data as any)?.total === 'number' ? (data as any).total : totalReturned,
 			message:
 				(data as any)?.message ??

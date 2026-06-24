@@ -2,11 +2,25 @@
 import type { Json, ProjectContextSnapshotJobMetadata } from '@buildos/shared-types';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
+import { ensureActorId } from '@buildos/shared-agent-ops/ontology/ontology-projects.service';
+import {
+	renderStartHereMapContent,
+	renderStartHereStatusContent
+} from '@buildos/shared-agent-ops/ontology/start-here';
+import { refreshProjectStartHereManagedRegions } from '@buildos/shared-agent-ops/ontology/start-here.service';
 
 const SNAPSHOT_VERSION = 1;
 const SNAPSHOT_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const AUTO_ICON_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
 const ACTIVE_PROJECT_STATES = new Set(['planning', 'active']);
+const COMPLETE_STATE_KEYS = new Set([
+	'done',
+	'completed',
+	'closed',
+	'archived',
+	'cancelled',
+	'canceled'
+]);
 const PROJECT_ICON_GENERATION_ENABLED =
 	String(process.env.ENABLE_PROJECT_ICON_GENERATION ?? 'false').toLowerCase() === 'true';
 
@@ -408,6 +422,125 @@ const buildEntityCounts = (graph: ProjectGraphDataLight) => ({
 	edges: graph.edges.length
 });
 
+function stateKey(value: unknown): string {
+	return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function isCompleteState(value: unknown): boolean {
+	return COMPLETE_STATE_KEYS.has(stateKey(value));
+}
+
+function getProjectFacet(project: Record<string, unknown>, key: string): string | null {
+	const direct = project[`facet_${key}`];
+	if (typeof direct === 'string' && direct.trim()) return direct.trim();
+	const props = project.props;
+	if (!props || typeof props !== 'object' || Array.isArray(props)) return null;
+	const facets = (props as Record<string, unknown>).facets;
+	if (!facets || typeof facets !== 'object' || Array.isArray(facets)) return null;
+	const value = (facets as Record<string, unknown>)[key];
+	return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function parseDateMs(value: unknown): number | null {
+	if (typeof value !== 'string' || !value) return null;
+	const parsed = Date.parse(value);
+	return Number.isFinite(parsed) ? parsed : null;
+}
+
+function buildStartHereStatusFromGraph(graph: ProjectGraphDataLight): string {
+	const now = Date.now();
+	const openTasks = graph.tasks.filter(
+		(task) => !task.completed_at && !isCompleteState(task.state_key)
+	);
+	const overdueTasks = openTasks.filter((task) => {
+		const dueMs = parseDateMs(task.due_at);
+		return dueMs !== null && dueMs < now;
+	});
+	const nextMilestone = graph.milestones
+		.filter((milestone) => !milestone.completed_at && !isCompleteState(milestone.state_key))
+		.map((milestone) => ({ milestone, dueMs: parseDateMs(milestone.due_at) }))
+		.filter((entry) => entry.dueMs !== null && entry.dueMs >= now)
+		.sort((left, right) => (left.dueMs ?? 0) - (right.dueMs ?? 0))[0]?.milestone;
+	const project = graph.project as Record<string, unknown>;
+
+	return renderStartHereStatusContent({
+		state: typeof project.state_key === 'string' ? project.state_key : null,
+		scale: getProjectFacet(project, 'scale'),
+		stage: getProjectFacet(project, 'stage'),
+		openTasks: openTasks.length,
+		overdueTasks: overdueTasks.length,
+		nextMilestoneTitle:
+			typeof nextMilestone?.title === 'string' && nextMilestone.title.trim()
+				? nextMilestone.title
+				: null,
+		nextMilestoneDate:
+			typeof nextMilestone?.due_at === 'string' && nextMilestone.due_at.trim()
+				? nextMilestone.due_at.slice(0, 10)
+				: null,
+		nextStep: typeof project.next_step_short === 'string' ? project.next_step_short : null,
+		refreshedAt: new Date().toISOString()
+	});
+}
+
+async function refreshProjectStartHereDocument(params: {
+	job: ProcessingJob<ProjectContextSnapshotJobMetadata>;
+	projectId: string;
+	graph: ProjectGraphDataLight;
+	docStructure: unknown;
+}): Promise<void> {
+	try {
+		const actorId = await ensureActorId(supabase as any, params.job.userId);
+		const result = await refreshProjectStartHereManagedRegions({
+			supabase: supabase as any,
+			projectId: params.projectId,
+			actorId,
+			projectName:
+				typeof params.graph.project?.name === 'string' ? params.graph.project.name : null,
+			projectDescription:
+				typeof params.graph.project?.description === 'string'
+					? params.graph.project.description
+					: null,
+			regions: [
+				{
+					name: 'status',
+					content: buildStartHereStatusFromGraph(params.graph)
+				},
+				{
+					name: 'map',
+					content: renderStartHereMapContent({
+						docStructure: params.docStructure,
+						documents: params.graph.documents.map((document) => ({
+							id: String(document.id),
+							title: typeof document.title === 'string' ? document.title : null,
+							description:
+								typeof document.description === 'string'
+									? document.description
+									: null,
+							type_key:
+								typeof document.type_key === 'string' ? document.type_key : null
+						}))
+					})
+				}
+			]
+		});
+
+		if (!result.ok) {
+			await params.job.log(`Start Here refresh skipped: ${result.error}`);
+			return;
+		}
+
+		if (result.created || result.updated) {
+			await params.job.log(
+				`Start Here ${result.created ? 'created' : 'refreshed'} (${result.documentId})`
+			);
+		}
+	} catch (error) {
+		await params.job.log(
+			`Start Here refresh failed non-fatally: ${error instanceof Error ? error.message : String(error)}`
+		);
+	}
+}
+
 export async function processProjectContextSnapshotJob(
 	job: ProcessingJob<ProjectContextSnapshotJobMetadata>
 ) {
@@ -548,6 +681,13 @@ export async function processProjectContextSnapshotJob(
 		if (upsertError) {
 			throw new Error(`Failed to upsert snapshot: ${upsertError.message}`);
 		}
+
+		await refreshProjectStartHereDocument({
+			job,
+			projectId,
+			graph,
+			docStructure: projectRow?.doc_structure ?? null
+		});
 
 		await supabase.from('project_context_snapshot_metrics').insert({
 			project_id: projectId,

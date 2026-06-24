@@ -89,6 +89,67 @@ describe('selectFastChatTools', () => {
 		expect(materialized.addedToolNames).toEqual(['outcome_card_search', 'outcome_card_load']);
 	});
 
+	it('materializes typed detail tools from search result payloads', () => {
+		expect(
+			extractGatewayMaterializedToolNames({
+				query: 'user guide suite',
+				results: [
+					{
+						id: '82dfb1b6-e39d-48cb-8c32-d13c3e620daa',
+						type: 'task',
+						title: 'Create User Guide Suite (ADHD/TPM/Writers/Devs)'
+					}
+				]
+			})
+		).toEqual(['get_onto_task_details', 'list_task_documents']);
+
+		expect(
+			extractGatewayMaterializedToolNames({
+				task: {
+					id: '82dfb1b6-e39d-48cb-8c32-d13c3e620daa',
+					title: 'Create User Guide Suite (ADHD/TPM/Writers/Devs)'
+				}
+			})
+		).toEqual(['get_onto_task_details', 'list_task_documents']);
+
+		expect(
+			extractGatewayMaterializedToolNames({
+				materialized_tools: [],
+				results: [
+					{
+						id: '82dfb1b6-e39d-48cb-8c32-d13c3e620daa',
+						type: 'task',
+						title: 'Create User Guide Suite (ADHD/TPM/Writers/Devs)'
+					}
+				]
+			})
+		).toEqual(['get_onto_task_details', 'list_task_documents']);
+
+		expect(
+			extractGatewayMaterializedToolNames({
+				materialized_tools: ['get_project_overview'],
+				results: [
+					{
+						id: '82dfb1b6-e39d-48cb-8c32-d13c3e620daa',
+						type: 'task',
+						title: 'Create User Guide Suite (ADHD/TPM/Writers/Devs)'
+					}
+				]
+			})
+		).toEqual(['get_project_overview', 'get_onto_task_details', 'list_task_documents']);
+
+		expect(
+			extractGatewayMaterializedToolNames({
+				documents: [
+					{
+						id: '037e1c22-dad2-4118-ad1b-43cd284fe657',
+						title: 'Agent Skills: Document Operations'
+					}
+				]
+			})
+		).toEqual(['get_document_outline', 'read_document_section', 'get_onto_document_details']);
+	});
+
 	it('normalizes legacy work capability materialization names to outcome cards', () => {
 		const currentTools = selectFastChatTools({ contextType: 'global' });
 		const materialized = materializeGatewayTools(currentTools, [

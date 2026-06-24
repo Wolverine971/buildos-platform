@@ -49,6 +49,12 @@ const DEFAULT_CATEGORY_METADATA: Record<string, BlogCategory> = {
 		description: 'Essential guides to help you master Build OS fundamentals',
 		color: 'purple'
 	},
+	'user-guides': {
+		name: 'User Guides',
+		description:
+			'How different kinds of people put BuildOS to work — writers, developers, project managers, and scattered minds.',
+		color: 'teal'
+	},
 	'productivity-tips': {
 		name: 'Productivity Tips',
 		description: 'Optimize your workflow and boost your efficiency',

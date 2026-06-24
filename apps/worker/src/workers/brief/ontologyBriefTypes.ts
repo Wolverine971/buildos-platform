@@ -234,6 +234,7 @@ export interface OntoProjectWithRelations {
 	project: OntoProject;
 	isShared: boolean;
 	activityLogs: ProjectActivityEntry[];
+	startHere: ProjectStartHereContext | null;
 	tasks: OntoTask[];
 	goals: OntoGoal[];
 	plans: OntoPlan[];
@@ -248,6 +249,14 @@ export interface OntoProjectWithRelations {
 	taskDependencies: Map<string, string[]>; // taskId -> depends on taskIds
 	goalProgress: Map<string, GoalProgress>;
 	recentUpdates: RecentUpdates;
+}
+
+export interface ProjectStartHereContext {
+	documentId: string;
+	title: string;
+	excerpt: string;
+	updatedAt: string | null;
+	truncated: boolean;
 }
 
 // ============================================================================
@@ -410,6 +419,7 @@ export interface ProjectBriefData {
 	project: OntoProject;
 	isShared: boolean;
 	activityLogs: ProjectActivityEntry[];
+	startHere: ProjectStartHereContext | null;
 	recentChanges: ProjectRecentChange[];
 	goals: GoalProgress[];
 	plans: OntoPlan[];

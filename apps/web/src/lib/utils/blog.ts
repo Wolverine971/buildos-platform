@@ -216,17 +216,16 @@ function normalizeScalarRecord(value: unknown): BlogLineageStats | undefined {
 	if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined;
 
 	const normalized = Object.fromEntries(
-		Object.entries(value as Record<string, unknown>).filter((entry): entry is [
-			string,
-			number | string | boolean
-		] => {
-			const [, item] = entry;
-			return (
-				typeof item === 'number' ||
-				typeof item === 'string' ||
-				typeof item === 'boolean'
-			);
-		})
+		Object.entries(value as Record<string, unknown>).filter(
+			(entry): entry is [string, number | string | boolean] => {
+				const [, item] = entry;
+				return (
+					typeof item === 'number' ||
+					typeof item === 'string' ||
+					typeof item === 'boolean'
+				);
+			}
+		)
 	);
 
 	return Object.keys(normalized).length > 0 ? normalized : undefined;
@@ -303,6 +302,12 @@ export const BLOG_CATEGORIES = {
 		name: 'Getting Started',
 		description: 'Essential guides to help you master BuildOS fundamentals',
 		color: 'purple'
+	},
+	'user-guides': {
+		name: 'User Guides',
+		description:
+			'How different kinds of people put BuildOS to work — writers, developers, project managers, and scattered minds.',
+		color: 'teal'
 	},
 	'productivity-tips': {
 		name: 'Productivity Tips',

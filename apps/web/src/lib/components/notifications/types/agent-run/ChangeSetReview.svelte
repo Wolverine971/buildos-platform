@@ -126,11 +126,6 @@
 				toastService.warning(
 					`Applied ${r.applied}, ${failed} failed, ${r.rejected} rejected`
 				);
-			} else {
-				toastService.success(
-					`Applied ${r?.applied ?? 0} change${r?.applied === 1 ? '' : 's'}` +
-						(r?.rejected ? `, rejected ${r.rejected}` : '')
-				);
 			}
 			// Tell the rest of the app to refetch so the applied changes show up live.
 			const applied = r?.applied ?? 0;

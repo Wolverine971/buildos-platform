@@ -31,6 +31,7 @@ export type LitePromptSectionId =
 	| 'safety_data_rules'
 	| 'capabilities_skills_tools'
 	| 'active_domain_signals'
+	| 'project_start_here'
 	| 'focus_purpose'
 	| 'location_loaded_context'
 	| 'project_knowledge_map'

@@ -14,6 +14,8 @@ export default defineConfig({
 		'src/ontology/project-graph.types.ts',
 		'src/ontology/task-state.ts',
 		'src/ontology/document-state.ts',
+		'src/ontology/start-here.ts',
+		'src/ontology/start-here.service.ts',
 		'src/ontology/relationship-resolver.ts',
 		'src/ontology/auto-organizer.service.ts',
 		'src/ontology/doc-structure.service.ts',

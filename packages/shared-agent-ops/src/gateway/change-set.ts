@@ -44,6 +44,39 @@ export type CommitChangeSetOutcome =
 			};
 	  };
 
+function summarizeCommittedChangeSet(params: {
+	changeSet: ChangeSet;
+	runStatus: 'completed' | 'partial';
+	result: Record<string, unknown>;
+}): CommitChangeSetResult {
+	const entitiesTouched = Array.isArray(params.result.entities_touched)
+		? (params.result.entities_touched as EntityTouch[])
+		: [];
+	let applied = 0;
+	let rejected = 0;
+	let failed = 0;
+
+	for (const change of params.changeSet.changes) {
+		if (change.decision === 'rejected') {
+			rejected += 1;
+		} else if (change.error) {
+			failed += 1;
+		} else {
+			applied += 1;
+		}
+	}
+
+	return {
+		change_set_status: params.changeSet.status,
+		run_status: params.runStatus,
+		applied,
+		rejected,
+		failed,
+		change_set: params.changeSet,
+		entities_touched: entitiesTouched
+	};
+}
+
 const CHANGE_SET_DRIFT_ENTITY_CONFIG: Record<
 	string,
 	{
@@ -210,6 +243,23 @@ export async function commitChangeSet(params: {
 		return { ok: false, error: { code: 'NOT_FOUND', message: 'Agent run not found' } };
 	}
 	if (run.status !== 'proposal_ready') {
+		if (run.status === 'completed' || run.status === 'partial') {
+			const committedChangeSet = asChangeSet(run.change_set, runId);
+			if (committedChangeSet && committedChangeSet.status !== 'pending') {
+				const result =
+					run.result && typeof run.result === 'object' && !Array.isArray(run.result)
+						? (run.result as Record<string, unknown>)
+						: {};
+				return {
+					ok: true,
+					result: summarizeCommittedChangeSet({
+						changeSet: committedChangeSet,
+						runStatus: run.status,
+						result
+					})
+				};
+			}
+		}
 		return {
 			ok: false,
 			error: {

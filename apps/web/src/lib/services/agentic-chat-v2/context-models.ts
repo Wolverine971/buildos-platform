@@ -85,6 +85,14 @@ export type LightDocument = {
 	is_unlinked: boolean;
 };
 
+export type ProjectStartHereDocument = {
+	id: string;
+	title: string;
+	content: string;
+	content_truncated: boolean;
+	updated_at: string | null;
+};
+
 export type LightEvent = {
 	id: string;
 	title: string;
@@ -273,6 +281,7 @@ export type GlobalContextData = {
 export type ProjectContextData = {
 	project: LightProject;
 	doc_structure: DocStructureSummary | null;
+	start_here: ProjectStartHereDocument | null;
 	goals: LightGoal[];
 	milestones: LightMilestone[];
 	plans: LightPlan[];

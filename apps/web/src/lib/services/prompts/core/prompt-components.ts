@@ -1051,7 +1051,7 @@ export function generateDocumentTypeKeyGuidance(mode: 'full' | 'short' = 'short'
 
 ### Special Note: Context Documents
 
-\`document.context.project\` is the canonical project context document that links via \`onto_projects.context_document_id\`. It should contain the project's vision, strategy, and key context.`;
+\`document.context.project\` is the canonical project START HERE/context document. It lives in \`onto_documents\` with \`project_id\` set to the owning project; do not expect a separate \`onto_projects.context_document_id\` pointer. It should contain the project's current orientation, goals, decisions, non-goals, and links to deeper project detail.`;
 }
 
 /**

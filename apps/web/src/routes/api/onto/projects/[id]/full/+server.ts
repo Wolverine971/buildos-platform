@@ -27,6 +27,7 @@ import { attachAssigneesToTasks, type TaskAssignee } from '$lib/server/task-assi
 import { attachLastChangedByActorToTasks } from '$lib/server/task-relevance.service';
 import { OntoEventSyncService } from '$lib/services/ontology/onto-event-sync.service';
 import { requireProjectMemberAccess } from '$lib/server/ontology-project-access';
+import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
 
 // Type for the RPC response
 interface ProjectFullData {
@@ -105,17 +106,16 @@ async function fetchContextDocumentByTypeKey(
 		.from('onto_documents')
 		.select(CONTEXT_DOCUMENT_FALLBACK_COLUMNS)
 		.eq('project_id', projectId)
-		.eq('type_key', 'document.context.project')
-		.is('deleted_at', null)
-		.order('updated_at', { ascending: false })
-		.limit(1)
-		.maybeSingle();
+			.eq('type_key', 'document.context.project')
+			.is('deleted_at', null)
+			.order('updated_at', { ascending: false })
+			.limit(20);
 
 	if (error) {
 		throw error;
 	}
 
-	return data ?? null;
+	return pickStartHereDocument((data ?? []) as unknown as Array<Record<string, unknown>>) ?? null;
 }
 
 async function fetchPublicPageCounts(

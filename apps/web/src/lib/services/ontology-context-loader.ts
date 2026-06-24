@@ -24,6 +24,7 @@ import type {
 	LoadLinkedEntitiesOptions
 } from '$lib/types/linked-entity-context.types';
 import { fetchProjectSummaries } from '$lib/services/ontology/ontology-projects.service';
+import { pickStartHereDocument } from '$lib/services/ontology/start-here-selector';
 
 type ProjectRow = Database['public']['Tables']['onto_projects']['Row'];
 type ElementType = Exclude<OntologyEntityType, 'project'>;
@@ -1227,10 +1228,12 @@ export class OntologyContextLoader {
 				edge.rel === 'has_context_document' &&
 				edge.dst_kind === 'document'
 		);
-		const contextDocument =
-			graphData.documents.find((doc) => doc.type_key === 'document.context.project') ??
-			graphData.documents.find((doc) => doc.id === contextEdge?.dst_id) ??
-			null;
+			const contextDocument =
+				pickStartHereDocument(
+					graphData.documents.filter((doc) => doc.type_key === 'document.context.project')
+				) ??
+				graphData.documents.find((doc) => doc.id === contextEdge?.dst_id) ??
+				null;
 		const contextDocumentId = contextDocument?.id ?? null;
 		const contextDocumentTitle = contextDocument?.title;
 

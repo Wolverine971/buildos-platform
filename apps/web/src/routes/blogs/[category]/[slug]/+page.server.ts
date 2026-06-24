@@ -2,7 +2,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { AGENT_SKILLS_CATEGORY_KEY, loadBlogPostMetadata, getRelatedPosts } from '$lib/utils/blog';
-import { renderMarkdown } from '$lib/utils/markdown';
+import { renderBlogMarkdown } from '$lib/utils/markdown';
 
 const blogContentModules = import.meta.glob<string>('/src/content/blogs/**/*.md', {
 	eager: true,
@@ -35,7 +35,7 @@ export const load: PageServerLoad = async ({ params, url }) => {
 	const relatedPosts = await getRelatedPosts(category, slug, 3);
 	const rawContent = blogContentModules[`/src/content/blogs/${post.category}/${post.slug}.md`];
 	const contentHtml = rawContent
-		? renderMarkdown(stripLeadingH1(stripFrontmatter(rawContent)))
+		? renderBlogMarkdown(stripLeadingH1(stripFrontmatter(rawContent)))
 		: '';
 
 	return {

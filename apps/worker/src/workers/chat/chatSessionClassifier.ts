@@ -12,6 +12,7 @@ import {
 } from '../shared/queueUtils';
 import { LegacyJob } from '../shared/jobAdapter';
 import { processSessionActivityAndNextSteps } from './chatSessionActivityProcessor';
+import { processStartHereCaptureProposals } from './startHereCaptureProcessor';
 import { processProfileSignals } from './profileSignalProcessor';
 import { processContactSignals } from './contactSignalProcessor';
 import {
@@ -491,6 +492,36 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 					nonFatal: true
 				}
 			});
+		}
+
+		if (activityResult.projectId) {
+			try {
+				const startHereCapture = await processStartHereCaptureProposals({
+					sessionId: validatedData.sessionId,
+					userId: validatedData.userId,
+					projectId: activityResult.projectId,
+					sessionSummary: summary
+				});
+				if (startHereCapture.proposed) {
+					console.log(
+						`📌 Start Here proposal ready (${startHereCapture.runId}) with ${startHereCapture.updateCount} update(s)`
+					);
+				}
+			} catch (startHereError) {
+				console.error(`⚠️ Start Here capture failed (non-fatal):`, startHereError);
+				void logWorkerError(startHereError, {
+					userId: validatedData.userId,
+					tableName: 'chat_sessions',
+					recordId: validatedData.sessionId,
+					operationType: 'start_here_capture_processing',
+					severity: 'warning',
+					metadata: {
+						jobId: job.id,
+						projectId: activityResult.projectId,
+						nonFatal: true
+					}
+				});
+			}
 		}
 
 		let profileSignalResult: Awaited<ReturnType<typeof processProfileSignals>> = {

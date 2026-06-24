@@ -1,5 +1,6 @@
 // apps/web/src/lib/services/agentic-chat-v2/context-loader.test.ts
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { START_HERE_CONTEXT_LOAD_MAX_CHARS } from '@buildos/shared-agent-ops/ontology/start-here';
 import { loadFastChatPromptContext } from './context-loader';
 
 type QueryResult = {
@@ -41,10 +42,28 @@ function createDailyBriefSupabaseMock(config: {
 	return { from } as any;
 }
 
-function createProjectRpcSupabaseMock(payload: Record<string, unknown>) {
+function createProjectRpcSupabaseMock(
+	payload: Record<string, unknown>,
+	options: { startHere?: QueryResult } = {}
+) {
 	const rpc = vi.fn().mockResolvedValue({ data: payload, error: null });
-	const from = vi.fn().mockImplementation(() => {
-		throw new Error('Unexpected fallback query path for project RPC mock');
+	const from = vi.fn().mockImplementation((table: string) => {
+		if (table === 'onto_documents') {
+			const startHereResult = options.startHere ?? { data: [], error: null };
+			const normalizedStartHereResult =
+				startHereResult.data && !Array.isArray(startHereResult.data)
+					? { ...startHereResult, data: [startHereResult.data] }
+					: startHereResult;
+			const limit = vi.fn().mockResolvedValue(normalizedStartHereResult);
+			const order = vi.fn().mockReturnValue({ limit });
+			const isArchived = vi.fn().mockReturnValue({ order });
+			const isDeleted = vi.fn().mockReturnValue({ is: isArchived });
+			const eqType = vi.fn().mockReturnValue({ is: isDeleted });
+			const eqProject = vi.fn().mockReturnValue({ eq: eqType });
+			const select = vi.fn().mockReturnValue({ eq: eqProject });
+			return { select };
+		}
+		throw new Error(`Unexpected fallback query path for project RPC mock: ${table}`);
 	});
 	return { rpc, from } as any;
 }
@@ -984,6 +1003,140 @@ describe('loadFastChatPromptContext project event window', () => {
 				}
 			}
 		});
+	});
+
+	it('loads bounded Start Here document content for project RPC contexts', async () => {
+		const longBody = [
+			'# START HERE - Project One',
+			'',
+			'## What this is',
+			'This is the project orientation.',
+			'a'.repeat(START_HERE_CONTEXT_LOAD_MAX_CHARS)
+		].join('\n');
+		const supabase = createProjectRpcSupabaseMock(
+			{
+				project: {
+					id: 'proj-1',
+					name: 'Project One',
+					state_key: 'active',
+					description: 'Test project',
+					start_at: null,
+					end_at: null,
+					next_step_short: null,
+					updated_at: '2026-02-15T20:00:00.000Z',
+					doc_structure: null
+				},
+				goals: [],
+				milestones: [],
+				plans: [],
+				tasks: [],
+				documents: [
+					{
+						id: 'doc-1',
+						title: 'Reference Doc',
+						state_key: 'draft',
+						created_at: '2026-02-01T00:00:00.000Z',
+						updated_at: '2026-02-02T00:00:00.000Z'
+					}
+				],
+				events: [],
+				members: []
+			},
+			{
+				startHere: {
+					data: {
+						id: 'start-here-1',
+						title: 'START HERE - Project One',
+						content: longBody,
+						updated_at: '2026-02-15T19:00:00.000Z'
+					},
+					error: null
+				}
+			}
+		);
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'project',
+			entityId: 'proj-1'
+		});
+
+		const data = context.data as Record<string, any>;
+		expect(data.start_here).toMatchObject({
+			id: 'start-here-1',
+			title: 'START HERE - Project One',
+			content_truncated: true,
+			updated_at: '2026-02-15T19:00:00.000Z'
+		});
+		expect(data.start_here.content.length).toBeLessThanOrEqual(
+			START_HERE_CONTEXT_LOAD_MAX_CHARS
+		);
+		expect(data.start_here.content).toContain('This is the project orientation.');
+		expect(data.documents[0]).not.toHaveProperty('content');
+	});
+
+	it('prefers explicit Start Here documents over newer legacy context documents', async () => {
+		const supabase = createProjectRpcSupabaseMock(
+			{
+				project: {
+					id: 'proj-1',
+					name: 'Project One',
+					state_key: 'active',
+					description: 'Test project',
+					start_at: null,
+					end_at: null,
+					next_step_short: null,
+					updated_at: '2026-02-15T20:00:00.000Z',
+					doc_structure: null
+				},
+				goals: [],
+				milestones: [],
+				plans: [],
+				tasks: [],
+				documents: [],
+				events: [],
+				members: []
+			},
+			{
+				startHere: {
+					data: [
+						{
+							id: 'legacy-context',
+							title: 'Legacy Context Document',
+							content: '# Legacy Context\nnewer but not explicit start here',
+							props: {},
+							created_at: '2026-02-16T00:00:00.000Z',
+							updated_at: '2026-02-16T00:00:00.000Z'
+						},
+						{
+							id: 'start-here-1',
+							title: 'START HERE - Project One',
+							content:
+								'# START HERE - Project One\n\n## What this is\nExplicit orientation.',
+							props: { origin: 'start_here_template' },
+							created_at: '2026-02-14T00:00:00.000Z',
+							updated_at: '2026-02-14T00:00:00.000Z'
+						}
+					],
+					error: null
+				}
+			}
+		);
+
+		const context = await loadFastChatPromptContext({
+			supabase,
+			userId: 'user-1',
+			contextType: 'project',
+			entityId: 'proj-1'
+		});
+
+		const data = context.data as Record<string, any>;
+		expect(data.start_here).toMatchObject({
+			id: 'start-here-1',
+			title: 'START HERE - Project One'
+		});
+		expect(data.start_here.content).toContain('Explicit orientation.');
 	});
 
 	it('applies member role defaults and sorts members by role and created_at', async () => {
