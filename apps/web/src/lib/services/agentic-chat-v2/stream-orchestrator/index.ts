@@ -48,6 +48,7 @@ import {
 	type TurnSupervisorObservation
 } from '../turn-supervisor';
 import {
+	classifyToolExecution,
 	parseToolArguments as parseSupervisorToolArguments,
 	summarizeToolResult
 } from '../turn-supervisor/digest';
@@ -60,8 +61,10 @@ import {
 	buildReadLoopRepairInstruction,
 	buildToolRoundBudgetSynthesisInstruction,
 	buildToolValidationRepairInstruction,
+	collectGatewayWriteIntentOps,
 	enforceMutationOutcomeIntegrity,
 	hasGatewayCreateFieldNoProgressFailure,
+	looksLikeExplicitMutationRequest,
 	shouldRepairGatewayMutationNoExecution,
 	shouldRepairProjectCreateNoExecution
 } from './repair-instructions';
@@ -1351,16 +1354,87 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 							}
 						}
 					}
-					result = {
-						tool_call_id: originalToolCall.id,
-						result: null,
-						success: false,
-						error: resolvedOpToolName
-							? `"${requestedName}" is an op name. Call "${resolvedOpToolName}" instead with the exact arguments.`
-							: addedToolNames.length > 0
-								? `Tool "${requestedName}" is now loaded for this turn. Retry with the direct tool and exact arguments.`
-								: 'Tool not available in this context'
-					};
+
+					// Auto-execute the just-materialized tool in THIS round instead of
+					// bouncing the model with a "now loaded, retry" error. The old retry
+					// path burned a full tool round per write (the write tools are not
+					// preloaded under lean discovery), which routinely exhausted the turn
+					// budget before any mutation ran — the agent would search, "load" the
+					// write tool, run out of rounds, and never actually update the
+					// task/doc. Materialize-then-run collapses that into one round.
+					const executableName = resolvedOpToolName ?? requestedName;
+					const canAutoExecute =
+						addedToolNames.length > 0 &&
+						allowedToolNames.has(executableName) &&
+						Boolean(params.toolExecutor);
+					if (canAutoExecute) {
+						const directToolCall: ChatToolCall = resolvedOpToolName
+							? {
+									...toolCall,
+									function: { ...toolCall.function, name: resolvedOpToolName }
+								}
+							: toolCall;
+						// The earlier validateToolCalls pass (run before the tool was
+						// materialized) could not apply the provider-schema required-field
+						// check, because that check needs the tool's definition in `tools`.
+						// Re-validate now that it is loaded so auto-exec is strictly as safe
+						// as the old bounce-and-retry path: on a validation miss, return the
+						// helpful validation error instead of executing with bad arguments.
+						const autoExecValidationIssues = validateToolCalls(
+							[directToolCall],
+							tools,
+							{
+								projectId: validationProjectId
+							}
+						);
+						if (autoExecValidationIssues.length > 0) {
+							result = {
+								tool_call_id: originalToolCall.id,
+								result: null,
+								success: false,
+								error: `Tool validation failed: ${autoExecValidationIssues
+									.flatMap((issue) => issue.errors)
+									.join(' ')}`
+							};
+						} else {
+							const clearAutoToolStatusTimer = startLongRunningOperationHeartbeat(
+								'tool_execution',
+								{
+									toolName: requestedName,
+									toolCallId: originalToolCall.id
+								}
+							);
+							try {
+								result = await params.toolExecutor!(directToolCall, tools);
+								if (result.tool_call_id !== originalToolCall.id) {
+									result = { ...result, tool_call_id: originalToolCall.id };
+								}
+							} catch (error) {
+								const messageText =
+									error instanceof Error
+										? error.message
+										: 'Tool execution failed';
+								result = {
+									tool_call_id: originalToolCall.id,
+									result: null,
+									success: false,
+									error: messageText
+								};
+							} finally {
+								clearAutoToolStatusTimer();
+							}
+						}
+					} else {
+						result = {
+							tool_call_id: originalToolCall.id,
+							result: null,
+							success: false,
+							error:
+								addedToolNames.length > 0
+									? `Tool "${requestedName}" is now loaded for this turn. Retry with the direct tool and exact arguments.`
+									: 'Tool not available in this context'
+						};
+					}
 				} else {
 					const clearToolStatusTimer = startLongRunningOperationHeartbeat(
 						'tool_execution',
@@ -1648,11 +1722,24 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 		throw error;
 	}
 
+	// Did this turn carry a mutation intent that never landed? Used by the
+	// finalization guard so an unfinished write turn says "nothing was updated yet"
+	// instead of the soothing read-context summary. True when the user explicitly
+	// asked for a change OR the model identified a write op but no write succeeded.
+	const turnHadUnfulfilledMutationIntent =
+		(looksLikeExplicitMutationRequest(message) ||
+			collectGatewayWriteIntentOps(toolExecutions).length > 0) &&
+		!toolExecutions.some(
+			(execution) =>
+				classifyToolExecution(execution) === 'write' && execution.result.success === true
+		);
+
 	if (toolLimitNotice) {
 		const toolLimitFinalizationGuard = applyFinalizationGuard({
 			finalAssistantText: '',
 			assistantText: '',
-			toolExecutions
+			toolExecutions,
+			mutationRequested: turnHadUnfulfilledMutationIntent
 		});
 		const finalToolLimitText = toolLimitFinalizationGuard.applied
 			? toolLimitFinalizationGuard.text
@@ -1676,7 +1763,8 @@ export async function streamFastChat(params: StreamFastChatParams): Promise<{
 	const candidateFinalizationGuard = applyFinalizationGuard({
 		finalAssistantText,
 		assistantText,
-		toolExecutions
+		toolExecutions,
+		mutationRequested: turnHadUnfulfilledMutationIntent
 	});
 	if (candidateFinalizationGuard.applied) {
 		finalizationGuardResult = candidateFinalizationGuard;

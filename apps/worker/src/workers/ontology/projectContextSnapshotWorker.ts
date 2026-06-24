@@ -13,13 +13,17 @@ const SNAPSHOT_VERSION = 1;
 const SNAPSHOT_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const AUTO_ICON_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
 const ACTIVE_PROJECT_STATES = new Set(['planning', 'active']);
+// Keep in sync with COMPLETED_STATE_KEYS in
+// apps/web/src/lib/services/agentic-chat-v2/context-loader.ts so the Start Here
+// status counts ("N open tasks") match what project chat reports.
 const COMPLETE_STATE_KEYS = new Set([
 	'done',
 	'completed',
 	'closed',
 	'archived',
 	'cancelled',
-	'canceled'
+	'canceled',
+	'abandoned'
 ]);
 const PROJECT_ICON_GENERATION_ENABLED =
 	String(process.env.ENABLE_PROJECT_ICON_GENERATION ?? 'false').toLowerCase() === 'true';
@@ -151,6 +155,47 @@ async function queueAutoProjectIconGeneration(params: {
 	}
 
 	return { queued: true, reason: 'queued' as const, generationId };
+}
+
+/**
+ * Worker-side producer for the `build_project_context_snapshot` job.
+ *
+ * This is the heartbeat that keeps the Start Here document's managed `status`
+ * and `map` regions current (see refreshProjectStartHereDocument below). The
+ * job is TTL-gated (15min) and dedup-keyed per project, so calling this on a
+ * hot path (e.g. session end) coalesces safely instead of piling up rebuilds.
+ */
+export async function queueProjectContextSnapshot(params: {
+	projectId: string;
+	userId: string;
+	reason?: string;
+	force?: boolean;
+}): Promise<{ queued: boolean; reason?: string }> {
+	try {
+		const { error } = await supabase.rpc('add_queue_job', {
+			p_user_id: params.userId,
+			p_job_type: 'build_project_context_snapshot',
+			p_metadata: asJson({
+				projectId: params.projectId,
+				reason: params.reason ?? 'unspecified',
+				force: params.force ?? false
+			}),
+			p_priority: 7,
+			p_scheduled_for: new Date().toISOString(),
+			p_dedup_key: `project-context-snapshot-${params.projectId}`
+		});
+
+		if (error) {
+			return { queued: false, reason: error.message };
+		}
+
+		return { queued: true, reason: 'queued' };
+	} catch (error) {
+		return {
+			queued: false,
+			reason: error instanceof Error ? error.message : 'Queue failed'
+		};
+	}
 }
 
 const HIGHLIGHT_LIMITS = {

@@ -366,7 +366,7 @@
 		isOpen={true}
 		onClose={handleClose}
 		title={notification.data.label}
-		size="lg"
+		size={runStatus === 'proposal_ready' ? 'xl' : 'lg'}
 		showCloseButton={true}
 	>
 		{#snippet children()}

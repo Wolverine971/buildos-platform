@@ -3,6 +3,7 @@ import { ApiService, type ServiceResponse } from './base/api-service';
 import { CalendarService, type CalendarEvent } from './calendar-service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { instantiateProject } from '$lib/services/ontology/instantiation.service';
+import { queueProjectContextSnapshot } from '$lib/server/project-context-snapshot.service';
 import {
 	convertCalendarSuggestionToProjectSpec,
 	type CalendarSuggestionInput,
@@ -1110,6 +1111,16 @@ When an event has a "recurrence" field with RRULE:
 				projectSpec,
 				userId
 			);
+
+			// Populate the new project's Start Here managed status/map regions.
+			// Awaited so the enqueue completes before the serverless function freezes;
+			// the helper is non-throwing, so a failed enqueue cannot fail acceptance.
+			await queueProjectContextSnapshot({
+				projectId: project_id,
+				userId,
+				reason: 'calendar_suggestion_accepted',
+				force: true
+			});
 
 			await this.updateSuggestionStatus(suggestionId, 'accepted', project_id);
 

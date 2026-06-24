@@ -530,7 +530,7 @@ export function buildConsolidatedRepairInstruction(instructions: string[]): stri
 	return lines.join('\n');
 }
 
-function collectGatewayWriteIntentOps(toolExecutions: FastToolExecution[]): string[] {
+export function collectGatewayWriteIntentOps(toolExecutions: FastToolExecution[]): string[] {
 	const ops = new Set<string>();
 
 	for (const execution of toolExecutions) {
@@ -586,7 +586,7 @@ const MUTATION_ENTITY_NOUN =
 const MUTATION_STATE_PHRASE =
 	/\b(?:to|as|back to)\s+(?:done|complete|completed|todo|to-do|open|in progress|blocked|cancelled|canceled)\b/i;
 
-function looksLikeExplicitMutationRequest(text: string): boolean {
+export function looksLikeExplicitMutationRequest(text: string): boolean {
 	const normalized = text.replace(/\s+/g, ' ').trim();
 	if (!normalized) return false;
 

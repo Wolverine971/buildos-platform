@@ -47,7 +47,7 @@ export const EXTERNAL_CUSTOM_OPS: Partial<Record<BuildosAgentAllowedOp, Registry
 		op: 'onto.project.status.get',
 		tool_name: 'get_onto_project_status',
 		description:
-			'Get a compact project status packet for external agents: short project description, task/document/plan/goal/collaborator counts, active collaborators, most recent changes, overdue and due-soon tasks, and upcoming project events.',
+			'Get a compact project status packet for external agents: the START HERE orientation excerpt (purpose, non-goals, decisions, current state — read it first), short project description, task/document/plan/goal/collaborator counts, active collaborators, most recent changes, overdue and due-soon tasks, and upcoming project events.',
 		parameters_schema: {
 			type: 'object',
 			additionalProperties: false,

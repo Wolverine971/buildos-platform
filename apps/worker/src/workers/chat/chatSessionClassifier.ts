@@ -13,6 +13,7 @@ import {
 import { LegacyJob } from '../shared/jobAdapter';
 import { processSessionActivityAndNextSteps } from './chatSessionActivityProcessor';
 import { processStartHereCaptureProposals } from './startHereCaptureProcessor';
+import { queueProjectContextSnapshot } from '../ontology/projectContextSnapshotWorker';
 import { processProfileSignals } from './profileSignalProcessor';
 import { processContactSignals } from './contactSignalProcessor';
 import {
@@ -521,6 +522,20 @@ export async function processChatClassificationJob(job: LegacyJob<ChatClassifica
 						nonFatal: true
 					}
 				});
+			}
+
+			// Refresh the Start Here document's managed status/map regions after a
+			// project chat session. TTL-gated + dedup-keyed in the snapshot worker,
+			// so frequent sessions coalesce instead of churning rebuilds.
+			const snapshotQueue = await queueProjectContextSnapshot({
+				projectId: activityResult.projectId,
+				userId: validatedData.userId,
+				reason: 'chat_session_end'
+			});
+			if (!snapshotQueue.queued) {
+				console.warn(
+					`⚠️ Project context snapshot enqueue skipped (non-fatal): ${snapshotQueue.reason}`
+				);
 			}
 		}
 

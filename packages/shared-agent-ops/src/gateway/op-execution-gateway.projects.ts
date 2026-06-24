@@ -12,6 +12,7 @@ import {
 } from './op-execution-gateway.pagination';
 import { ExternalToolGatewayError } from './op-execution-gateway.responses';
 import type { ToolExecutionContext } from './op-execution-gateway.types';
+import { loadProjectStartHereExcerpt } from '../ontology/start-here.service';
 
 function serializeProjectSummary(project: OntologyProjectSummary) {
 	return {
@@ -110,8 +111,16 @@ export async function getProject(context: ToolExecutionContext, args: Record<str
 		);
 	}
 
+	// Surface the Start Here orientation document so external (API-key / MCP)
+	// agents get the same "lay of the land" the internal chat injects.
+	const startHere = await loadProjectStartHereExcerpt({
+		supabase: context.admin,
+		projectId: project.id
+	});
+
 	return {
 		project: serializeProjectSummary(project),
+		start_here: startHere,
 		snapshot: data ?? null
 	};
 }

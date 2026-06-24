@@ -557,12 +557,18 @@ async function runMcpFetch(params: {
 		(typeof entity.title === 'string' && entity.title) ||
 		(typeof entity.name === 'string' && entity.name) ||
 		'(untitled)';
-	const text =
+	let text =
 		typeof entity.content === 'string'
 			? entity.content
 			: typeof entity.description === 'string'
 				? entity.description
 				: '';
+	// For a project fetch, lead with the START HERE orientation document so the
+	// agent gets the "lay of the land" instead of just the one-line description.
+	const startHere = isRecord(result.start_here) ? result.start_here : null;
+	if (type === 'project' && startHere && typeof startHere.content === 'string') {
+		text = text ? `${startHere.content}\n\n---\n\n${text}` : startHere.content;
+	}
 	return {
 		id: params.id,
 		title,

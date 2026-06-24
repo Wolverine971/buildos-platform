@@ -129,6 +129,68 @@ describe('applyFinalizationGuard', () => {
 		expect(guard.text).not.toContain('I gathered the requested context');
 	});
 
+	it('says the change was not made when a mutation was requested but never ran', () => {
+		// Reproduces the "did you update it?" pattern: the turn spent its budget on
+		// reads, never executed the requested write, and previously emitted the soothing
+		// "I gathered context before the turn ended" summary that reads as a finished
+		// answer. With mutationRequested set, the guard must say nothing was updated.
+		const call = toolCall('search_project', { query: 'start here doc' });
+		const guard = applyFinalizationGuard({
+			finalAssistantText: '',
+			assistantText: '',
+			mutationRequested: true,
+			toolExecutions: [
+				{
+					toolCall: call,
+					result: toolResult(call, true, {
+						results: [
+							{
+								id: 'doc_1',
+								type: 'document',
+								title: 'START HERE',
+								state_key: 'active'
+							}
+						]
+					})
+				}
+			]
+		});
+
+		expect(guard.applied).toBe(true);
+		expect(guard.reason).toBe('incomplete_mutation_after_reads');
+		expect(guard.text).toContain('not made the change yet');
+		expect(guard.text).toContain('nothing was updated');
+	});
+
+	it('replaces a write lead-in with an honest incomplete notice when no write ran', () => {
+		const call = toolCall('search_project', { query: 'start here doc' });
+		const guard = applyFinalizationGuard({
+			finalAssistantText: "I'll update that doc now.",
+			assistantText: "I'll update that doc now.",
+			mutationRequested: true,
+			toolExecutions: [{ toolCall: call, result: toolResult(call, true, { results: [] }) }]
+		});
+
+		expect(guard.applied).toBe(true);
+		expect(guard.reason).toBe('incomplete_mutation_after_reads');
+		expect(guard.text).not.toContain("I'll update that doc");
+		expect(guard.text).toContain('nothing was updated');
+	});
+
+	it('still credits a successful write even when mutationRequested is set', () => {
+		const call = toolCall('update_onto_task', { task_id: 'task_1', state_key: 'done' });
+		const guard = applyFinalizationGuard({
+			finalAssistantText: '',
+			assistantText: '',
+			mutationRequested: true,
+			toolExecutions: [{ toolCall: call, result: toolResult(call, true) }]
+		});
+
+		expect(guard.applied).toBe(true);
+		expect(guard.reason).toBe('empty_after_successful_writes');
+		expect(guard.text).toBe('I completed the requested change.');
+	});
+
 	it('replaces a read-only lead-in after successful reads with evidence', () => {
 		const call = toolCall('search_project', { query: 'user guide suite' });
 		const guard = applyFinalizationGuard({

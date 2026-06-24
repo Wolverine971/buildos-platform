@@ -4,6 +4,7 @@
 <script lang="ts">
 	import Button from '$components/ui/Button.svelte';
 	import { Plus, Pencil, Trash2, Check, X } from 'lucide-svelte';
+	import DocumentProposalDiff from './DocumentProposalDiff.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import { notifyDataMutation } from '$lib/stores/projectDataMutations';
 	import type { ChangeSet, ProposedChange, ProposedChangeAction } from '@buildos/shared-types';
@@ -80,6 +81,20 @@
 				before: change.before ? before[k] : undefined,
 				after: after[k]
 			}));
+	}
+
+	function isDocumentDiffChange(change: ProposedChange): boolean {
+		if (change.entity_type !== 'document' && !change.op.startsWith('onto.document.'))
+			return false;
+		const before = (change.before ?? {}) as Record<string, unknown>;
+		const after = (change.after ?? {}) as Record<string, unknown>;
+		return [before, after].some(
+			(record) =>
+				typeof record.title === 'string' ||
+				typeof record.description === 'string' ||
+				typeof record.content === 'string' ||
+				typeof record.state_key === 'string'
+		);
 	}
 
 	// Best-effort project scope for the mutation signal: any `project_id` referenced by a
@@ -202,7 +217,9 @@
 					<p class="text-xs text-muted-foreground mt-1">{change.rationale}</p>
 				{/if}
 
-				{#if diffRows(change).length}
+				{#if isDocumentDiffChange(change)}
+					<DocumentProposalDiff {change} />
+				{:else if diffRows(change).length}
 					<div class="mt-1.5 space-y-0.5">
 						{#each diffRows(change) as row (row.key)}
 							<div class="text-xs flex gap-1.5">

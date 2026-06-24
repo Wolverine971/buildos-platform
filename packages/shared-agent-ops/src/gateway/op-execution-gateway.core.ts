@@ -50,6 +50,10 @@ import {
 	validateProjectSpec
 } from '../ontology/instantiation.service';
 import {
+	preserveCurrentStartHereManagedRegions,
+	START_HERE_DOCUMENT_TYPE_KEY
+} from '../ontology/start-here';
+import {
 	ARCHIVABLE_ENTITY_KINDS,
 	CORE_ENTITY_CONFIG,
 	EXTERNAL_CUSTOM_OPS,
@@ -737,9 +741,22 @@ async function updateDocument(context: ToolExecutionContext, args: Record<string
 								.body_markdown as string)
 						: ''
 		});
-		assertContentWithinCap(resolvedContent, 'content');
-		updateData.content = resolvedContent;
-		mergedProps.body_markdown = resolvedContent;
+		const nextTypeKey =
+			typeof updateData.type_key === 'string'
+				? updateData.type_key
+				: existingDocument.type_key;
+		const nextContent =
+			nextTypeKey === START_HERE_DOCUMENT_TYPE_KEY
+				? preserveCurrentStartHereManagedRegions(
+						typeof existingDocument.content === 'string'
+							? existingDocument.content
+							: '',
+						resolvedContent
+					)
+				: resolvedContent;
+		assertContentWithinCap(nextContent, 'content');
+		updateData.content = nextContent;
+		mergedProps.body_markdown = nextContent;
 		propsTouched = true;
 		changedFieldCount += 1;
 	}

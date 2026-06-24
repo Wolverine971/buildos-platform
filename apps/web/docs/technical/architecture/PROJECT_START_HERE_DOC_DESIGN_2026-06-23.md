@@ -114,7 +114,7 @@ The document should capture what structured tables cannot.
 - Product/ - Architecture, Roadmap
 - Marketing/ - GTM Plan, Audience Notes
   _(Auto-generated from the project knowledge map. Use get_document_outline, then read_document_section to drill in.)_
-  <!-- /managed:map -->
+      <!-- /managed:map -->
 ```
 
 Rules:
@@ -174,12 +174,27 @@ After `build_project_context_snapshot` computes fresh project context:
 4. Merge with `mergeStartHereManagedRegions`.
 5. Persist only if changed.
 
-Open implementation detail: managed-only writes should not pollute human-facing document recency or version history. The current `update_onto_documents_updated_at()` guard is outline-specific, so this phase needs either:
+**Producers (who enqueues `build_project_context_snapshot`):** the snapshot worker
+is the consumer; the refresh only runs when the job is enqueued. As of 2026-06-24
+these producers are wired:
 
-- a DB trigger carve-out for Start Here managed-only content changes, or
-- a dedicated metadata field / write path that keeps recency based on authored body changes.
+- **Project create** — the instantiate route (`/api/onto/projects/instantiate`) and
+  the calendar-suggestion accept path both call `queueProjectContextSnapshot(..., { force: true })`
+  after `instantiateProject` succeeds, so a new project's managed regions populate immediately.
+- **Session end** — `chatSessionClassifier` enqueues a snapshot (`reason: 'chat_session_end'`,
+  TTL-respecting) after processing a project chat session, giving the ongoing refresh cadence.
 
-Until that guard exists, managed refresh should be conservative.
+The job is dedup-keyed (`project-context-snapshot-${projectId}`) and TTL-gated
+(15 min, unless `force`), so frequent triggers coalesce instead of churning rebuilds.
+Web producer: `apps/web/src/lib/server/project-context-snapshot.service.ts`. Worker
+producer: `queueProjectContextSnapshot` exported from `projectContextSnapshotWorker.ts`.
+
+**Recency guard (resolved):** managed-only writes must not pollute human-facing
+document recency. The `update_onto_documents_updated_at()` trigger now carves out
+Start Here managed-region writes — if only `content` changed and the authored body
+outside the managed fences is byte-identical, the prior `updated_at` is preserved
+(migration `20260624000000_start_here_managed_region_recency_guard.sql`). Authored
+edits still bump recency normally.
 
 ### 6.3 Authored Capture From Chat
 
@@ -256,17 +271,18 @@ This avoids duplicating two separate "project narrative" systems.
 
 ## 9. Upstream and Downstream Impact
 
-| Surface                  | Impact                                                                                                    |
-| ------------------------ | --------------------------------------------------------------------------------------------------------- |
-| Project create APIs      | Create-or-ensure Start Here by `type_key`, not legacy project pointer.                                    |
-| Project full/detail APIs | Already use the right lookup pattern; expose Start Here metadata/body deliberately.                       |
-| Fast chat context loader | Runs one extra bounded query for the Start Here body in project/ontology contexts.                        |
-| Lite prompt builder      | Adds a guarded `project_start_here` section and keeps `focus_purpose`.                                    |
-| Snapshot worker          | Renders deterministic `status` and `map` managed regions.                                                 |
-| Session-end worker       | Adds staged authored-section capture proposals after chat classification/activity processing.             |
-| Daily brief loader       | Consumes bounded Start Here excerpts for scoped project narratives.                                       |
-| Document versioning      | The recency guard preserves `updated_at` for managed-only refreshes; authored changes still bump recency. |
-| Prompt safety            | Must wrap document content as untrusted data and preserve existing prompt injection rules.                |
+| Surface                  | Impact                                                                                                                                                                                                                                               |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project create APIs      | Create-or-ensure Start Here by `type_key`, not legacy project pointer.                                                                                                                                                                               |
+| Project full/detail APIs | Already use the right lookup pattern; expose Start Here metadata/body deliberately.                                                                                                                                                                  |
+| Fast chat context loader | Runs one extra bounded query for the Start Here body in project/ontology contexts.                                                                                                                                                                   |
+| Lite prompt builder      | Adds a guarded `project_start_here` section and keeps `focus_purpose`.                                                                                                                                                                               |
+| Snapshot worker          | Renders deterministic `status` and `map` managed regions.                                                                                                                                                                                            |
+| Session-end worker       | Adds staged authored-section capture proposals after chat classification/activity processing.                                                                                                                                                        |
+| Daily brief loader       | Consumes bounded Start Here excerpts for scoped project narratives.                                                                                                                                                                                  |
+| External tool gateway    | API-key + MCP project reads (`onto.project.get`, `onto.project.status.get`) return a bounded `start_here` excerpt so third-party agents get the same orientation as internal chat. MCP `fetch` of a project leads its text with the Start Here body. |
+| Document versioning      | The recency guard preserves `updated_at` for managed-only refreshes; authored changes still bump recency.                                                                                                                                            |
+| Prompt safety            | Must wrap document content as untrusted data and preserve existing prompt injection rules.                                                                                                                                                           |
 
 ---
 
@@ -294,9 +310,14 @@ P0-P2 make agents orient around the Start Here doc. P3-P6 make it self-maintaini
 - Prompt context model: `apps/web/src/lib/services/agentic-chat-v2/context-models.ts`
 - Prompt context loader: `apps/web/src/lib/services/agentic-chat-v2/context-loader.ts`
 - Lite prompt builder: `apps/web/src/lib/services/agentic-chat-lite/prompt/build-lite-prompt.ts`
-- Snapshot worker: `apps/worker/src/workers/ontology/projectContextSnapshotWorker.ts`
+- Snapshot worker (consumer + worker-side producer `queueProjectContextSnapshot`): `apps/worker/src/workers/ontology/projectContextSnapshotWorker.ts`
+- Web-side snapshot producer: `apps/web/src/lib/server/project-context-snapshot.service.ts`
+- Snapshot producers (call sites): `apps/web/src/routes/api/onto/projects/instantiate/+server.ts`, `apps/web/src/lib/services/calendar-analysis.service.ts` (create), `apps/worker/src/workers/chat/chatSessionClassifier.ts` (session end)
 - Session-end capture path: `apps/worker/src/workers/chat/chatSessionClassifier.ts` and `apps/worker/src/workers/chat/startHereCaptureProcessor.ts`
 - Daily brief loader: `apps/worker/src/workers/brief/ontologyBriefDataLoader.ts`
+- External-agent surfacing (shared loader `loadProjectStartHereExcerpt`): `packages/shared-agent-ops/src/ontology/start-here.service.ts`
+- External gateway project reads: `packages/shared-agent-ops/src/gateway/op-execution-gateway.projects.ts` (`onto.project.get`), `op-execution-gateway.project-status.ts` (`onto.project.status.get`), tool description in `op-execution-gateway.config.ts`
+- MCP connector (`search`/`fetch` + tool surface): `apps/web/src/lib/server/agent-call/mcp-connector.service.ts`
 - Backfill script: `apps/worker/src/scripts/backfillStartHereDocuments.ts`
 - DB recency guard: `update_onto_documents_updated_at()` migration/function
 

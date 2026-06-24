@@ -226,13 +226,20 @@ const FASTCHAT_HISTORY_MAX_MESSAGE_CHARS = parsePositiveInt(
 	process.env.FASTCHAT_HISTORY_MAX_MESSAGE_CHARS,
 	1200
 );
+// 2026-06-24: raised from 8 -> 12 (and near-limit 6 -> 9). Under lean discovery a
+// write tool costs a discover/materialize round before it can run, so a "read the
+// context, then update the task/doc" turn routinely spent its whole budget on reads
+// + the materialize round-trip and ended before the write. Auto-executing the
+// materialized tool in the same round (stream-orchestrator) removes most of that
+// tax; the higher cap is the headroom so a multi-step mutation turn finishes instead
+// of being masked by the finalization guard. Still env-overridable.
 const FASTCHAT_GATEWAY_MAX_TOOL_ROUNDS = parsePositiveInt(
 	process.env.FASTCHAT_GATEWAY_MAX_TOOL_ROUNDS,
-	8
+	12
 );
 const FASTCHAT_GATEWAY_NEAR_LIMIT_MAX_TOOL_ROUNDS = parsePositiveInt(
 	process.env.FASTCHAT_GATEWAY_NEAR_LIMIT_MAX_TOOL_ROUNDS,
-	6
+	9
 );
 const FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS = parsePositiveInt(
 	process.env.FASTCHAT_CONTEXT_SHIFT_HINT_TTL_MS,

@@ -68,7 +68,7 @@ export async function enqueueProjectLoop(params: {
 		} as unknown as Json,
 		p_priority: 7,
 		p_scheduled_for: new Date().toISOString(),
-		p_dedup_key: `project-loop:${params.projectId}`
+		p_dedup_key: `project-loop:${params.projectId}:${runRow.id}`
 	});
 
 	if (queueError) {

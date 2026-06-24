@@ -14,6 +14,8 @@ import { ensureActorId } from '@buildos/shared-agent-ops/ontology/ontology-proje
 import { ensureProjectStartHereDocument } from '@buildos/shared-agent-ops/ontology/start-here.service';
 import {
 	appendStartHereAuthoredSectionUpdates,
+	sanitizeStartHereAuthoredMarkdown,
+	stripStartHereManagedRegions,
 	START_HERE_AUTHORED_SECTION_NAMES,
 	type StartHereAuthoredSectionName,
 	type StartHereAuthoredSectionUpdate
@@ -90,9 +92,11 @@ function normalizeCandidate(value: unknown): CaptureCandidate | null {
 	const record = value as Record<string, unknown>;
 	if (!isAllowedSection(record.section)) return null;
 	if (typeof record.markdown !== 'string' || !record.markdown.trim()) return null;
+	const sanitized = sanitizeStartHereAuthoredMarkdown(record.markdown);
+	if (!sanitized) return null;
 	return {
 		section: record.section,
-		markdown: truncate(record.markdown, 900),
+		markdown: truncate(sanitized, 900),
 		rationale:
 			typeof record.rationale === 'string' && record.rationale.trim()
 				? truncate(record.rationale, 300)
@@ -272,11 +276,17 @@ export async function processStartHereCaptureProposals(params: {
 			section: update.section,
 			markdown: update.markdown
 		}));
-		const nextContent = appendStartHereAuthoredSectionUpdates(
-			ensured.document.content ?? '',
-			sectionUpdates
-		);
-		if (nextContent === (ensured.document.content ?? '')) {
+		const currentContent = ensured.document.content ?? '';
+		// Append into authored sections using the full document (managed fences act
+		// as section boundaries), then stage only the authored body. Managed regions
+		// (status/map) are owned by the snapshot worker — including them in a staged
+		// full-content replace would let a concurrent snapshot refresh make the
+		// proposal stale before the user commits, and would clobber the freshest
+		// managed regions back to stage-time values on commit. The next snapshot
+		// re-inserts the managed regions at their canonical positions.
+		const mergedContent = appendStartHereAuthoredSectionUpdates(currentContent, sectionUpdates);
+		const nextContent = stripStartHereManagedRegions(mergedContent);
+		if (stripStartHereManagedRegions(currentContent) === nextContent) {
 			return { proposed: false, runId: null, updateCount: 0 };
 		}
 

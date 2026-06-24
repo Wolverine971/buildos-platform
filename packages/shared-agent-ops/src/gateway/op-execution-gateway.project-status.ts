@@ -9,6 +9,8 @@ import {
 } from './op-execution-gateway.access';
 import { ExternalToolGatewayError } from './op-execution-gateway.responses';
 import type { ToolExecutionContext } from './op-execution-gateway.types';
+import { loadProjectStartHereExcerpt } from '../ontology/start-here.service';
+import { START_HERE_PROMPT_MAX_CHARS } from '../ontology/start-here';
 
 function clampInteger(value: unknown, fallback: number, min: number, max: number): number {
 	if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
@@ -384,7 +386,7 @@ export async function getProjectStatus(
 	const dueSoonDays = clampInteger(args.due_soon_days, 7, 1, 60);
 	const upcomingDays = clampInteger(args.upcoming_days, 14, 1, 90);
 
-	const [changes, taskStatus, upcomingEvents, collaborators] = await Promise.all([
+	const [changes, taskStatus, upcomingEvents, collaborators, startHere] = await Promise.all([
 		loadProjectStatusRecentChanges({
 			context,
 			projectId: project.id,
@@ -408,6 +410,12 @@ export async function getProjectStatus(
 			context,
 			projectId: project.id,
 			collaboratorLimit
+		}),
+		// Compact Start Here excerpt so external agents are oriented on a status read.
+		loadProjectStartHereExcerpt({
+			supabase: context.admin,
+			projectId: project.id,
+			maxChars: START_HERE_PROMPT_MAX_CHARS
 		})
 	]);
 
@@ -445,6 +453,7 @@ export async function getProjectStatus(
 			count_summary: `${project.name} has ${countSummary}.`,
 			next_step_short: project.next_step_short ?? null
 		},
+		start_here: startHere,
 		collaborators,
 		recent_changes: changes,
 		upcoming: {

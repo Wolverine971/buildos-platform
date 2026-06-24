@@ -9,7 +9,8 @@ export type FinalizationGuardReason =
 	| 'lead_in_after_reads'
 	| 'empty_after_successful_writes'
 	| 'empty_after_failed_writes'
-	| 'empty_after_reads';
+	| 'empty_after_reads'
+	| 'incomplete_mutation_after_reads';
 
 export type FinalizationGuardResult = {
 	text: string;
@@ -21,6 +22,12 @@ type ApplyFinalizationGuardParams = {
 	finalAssistantText?: string | null;
 	assistantText?: string | null;
 	toolExecutions?: FastToolExecution[] | null;
+	// The user asked for a mutation this turn (explicit request or an identified write op).
+	// When set and no write actually succeeded or failed, the turn ended before the
+	// change was made — say so honestly instead of emitting the soothing
+	// "I gathered context before the turn ended" read summary, which reads as a
+	// completed answer and is the root of the "did you update it?" complaint pattern.
+	mutationRequested?: boolean;
 };
 
 type EvidenceItem = {
@@ -65,6 +72,7 @@ function buildGuardText(params: {
 	failedReads: number;
 	otherSuccesses: number;
 	otherFailures: number;
+	mutationRequested?: boolean;
 	toolExecutions?: FastToolExecution[] | null;
 }): { text: string; reason: FinalizationGuardReason } {
 	const {
@@ -73,8 +81,23 @@ function buildGuardText(params: {
 		successfulReads,
 		failedReads,
 		otherSuccesses,
-		otherFailures
+		otherFailures,
+		mutationRequested
 	} = params;
+
+	// A write was requested but none was even attempted — the turn ran out of room
+	// before the change happened. Be explicit that nothing was updated so the user
+	// knows to continue, rather than reading a context summary as a finished result.
+	if (mutationRequested && successfulWrites === 0 && failedWrites === 0) {
+		const evidenceText = buildReadEvidenceFallbackText(params);
+		const lead =
+			evidenceText ||
+			'I gathered the context I needed but ran out of steps before making the change.';
+		return {
+			text: `${lead} I have not made the change yet — nothing was updated. Tell me to go ahead and I'll apply it now.`,
+			reason: 'incomplete_mutation_after_reads'
+		};
+	}
 
 	if (successfulWrites > 0) {
 		const writeText =
@@ -308,10 +331,17 @@ export function applyFinalizationGuard(
 		}
 	}
 
+	// A requested mutation that never ran (no write succeeded or failed) must not be
+	// papered over with a lead-in like "let me update that" — the change did not happen.
+	const mutationIncomplete =
+		params.mutationRequested === true && successfulWrites === 0 && failedWrites === 0;
 	const shouldReplaceWriteLeadIn = successfulWrites > 0 && candidate && isLikelyLeadIn(candidate);
 	const shouldReplaceReadLeadIn =
 		successfulWrites === 0 && successfulReads > 0 && candidate && isLikelyLeadIn(candidate);
-	const shouldReplaceLeadIn = shouldReplaceWriteLeadIn || shouldReplaceReadLeadIn;
+	const shouldReplaceMutationLeadIn =
+		mutationIncomplete && Boolean(candidate) && isLikelyLeadIn(candidate);
+	const shouldReplaceLeadIn =
+		shouldReplaceWriteLeadIn || shouldReplaceReadLeadIn || shouldReplaceMutationLeadIn;
 	const shouldSynthesizeEmpty = !candidate;
 
 	if (!shouldReplaceLeadIn && !shouldSynthesizeEmpty) {
@@ -325,8 +355,13 @@ export function applyFinalizationGuard(
 		failedReads,
 		otherSuccesses,
 		otherFailures,
+		mutationRequested: params.mutationRequested,
 		toolExecutions
 	});
+
+	if (synthesized.reason === 'incomplete_mutation_after_reads') {
+		return { text: synthesized.text, applied: true, reason: synthesized.reason };
+	}
 
 	return {
 		text: synthesized.text,

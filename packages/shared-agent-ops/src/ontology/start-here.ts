@@ -184,29 +184,28 @@ export function buildStartHereTemplate(input: StartHereTemplateInput = {}): stri
 			].join('\n')
 		}),
 		'',
+		// Authoring guidance is a single italic-blockquote "capture target" line per
+		// section. These are human/agent scaffolding for editing the doc, NOT project
+		// context — buildStartHerePromptExcerpt strips them so they never reach the
+		// model. Real authored content (or a seeded description) replaces them.
 		'## What this is',
-		'> _authored - capture target_',
-		description ?? 'One paragraph: what this project is and what "done" looks like.',
+		description ??
+			'> _Capture target: one paragraph on what this project is and what "done" looks like._',
 		'',
 		'## Non-goals',
-		'> _authored - capture target_',
-		'- Things we are deliberately not doing, with the reason in brief.',
+		'> _Capture target: what this project is deliberately not doing, and why._',
 		'',
 		'## Current state',
-		'> _authored - capture target_',
-		'2-4 sentences: what just happened, what is in progress, and what is blocked.',
+		'> _Capture target: what just happened, what is in progress, and what is blocked._',
 		'',
 		'## Decisions',
-		'> _authored - capture target_',
-		'- **Decision** - one-line rationale. _(YYYY-MM-DD)_',
+		'> _Capture target: settled decisions and one-line rationale, with dates._',
 		'',
 		'## Vocabulary and mental model',
-		'> _authored - capture target_',
-		'- **Term** - what it means in this project.',
+		'> _Capture target: project-specific terms and how to think about them._',
 		'',
 		'## Open questions',
-		'> _authored - capture target_',
-		'- Live question we have not resolved.',
+		'> _Capture target: live questions the project has not resolved._',
 		'',
 		renderStartHereManagedRegion({
 			name: 'map',
@@ -371,8 +370,19 @@ function findSectionBounds(
 	const headingEnd = match.index + match[0].length;
 	const rest = body.slice(headingEnd);
 	const nextHeadingMatch = /^##\s+.+$/im.exec(rest);
+	// A managed-region fence also terminates an authored section. Authored content
+	// must never be appended inside a machine-owned managed block: it would be
+	// silently wiped on the next deterministic merge (and wrongly counted as
+	// "managed" by the recency guard). The last authored section ("Open questions")
+	// is immediately followed by the managed:map region, whose body opens with a
+	// "## Where the detail lives" heading — so without this guard, appends to the
+	// final authored section land inside the fence.
+	const nextManagedMatch = /<!--\s*managed:[a-z0-9_-]+\s+v=\d+\s*-->/i.exec(rest);
+	const candidateOffsets = [nextHeadingMatch?.index, nextManagedMatch?.index].filter(
+		(index): index is number => typeof index === 'number'
+	);
 	const end =
-		nextHeadingMatch?.index === undefined ? body.length : headingEnd + nextHeadingMatch.index;
+		candidateOffsets.length > 0 ? headingEnd + Math.min(...candidateOffsets) : body.length;
 	return { start: headingEnd, end };
 }
 
@@ -391,6 +401,23 @@ function appendToAuthoredSection(
 	const before = body.slice(0, bounds.end).trimEnd();
 	const after = body.slice(bounds.end).trimStart();
 	return [before, trimmed, after].filter(Boolean).join('\n\n');
+}
+
+/**
+ * Sanitize authored markdown before it is appended into a Start Here document.
+ * Authored content is often model output (session-end capture); neutralize two
+ * structural hazards so it cannot corrupt the document's machinery:
+ * - HTML comments — especially `<!-- managed:* -->` fences — would break the
+ *   managed/authored boundary used by merge, strip, and the recency-guard trigger.
+ * - Markdown headings would create phantom sections that break authored-section
+ *   boundary detection on later appends/merges. Demote to bold so the text survives.
+ */
+export function sanitizeStartHereAuthoredMarkdown(value: string): string {
+	return normalizeMarkdownLineEndings(value)
+		.replace(/<!--[\s\S]*?-->/g, '')
+		.replace(/^\s{0,3}#{1,6}\s+(.*)$/gm, '**$1**')
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
 }
 
 export function appendStartHereAuthoredSectionUpdates(
@@ -476,10 +503,45 @@ export function stripStartHereManagedRegions(body: string): string {
 	return normalizeMarkdownLineEndings(body).replace(MANAGED_REGION_PATTERN, '').trim();
 }
 
-function stripVolatileManagedLines(body: string): string {
+/**
+ * Apply an authored-body update without losing the current machine-owned managed
+ * regions. This is used by generic document update paths that receive a proposed
+ * Start Here body from review/capture flows: callers may pass a body that omits
+ * status/map fences, but the stored document should keep the latest current
+ * managed regions.
+ */
+export function preserveCurrentStartHereManagedRegions(
+	currentBody: string,
+	nextBody: string
+): string {
+	const regions = extractStartHereManagedRegions(currentBody);
+	const managedInputs: StartHereManagedRegionInput[] = START_HERE_MANAGED_REGION_NAMES.flatMap(
+		(name) => {
+			const content = regions[name];
+			return typeof content === 'string' && content.trim() ? [{ name, content }] : [];
+		}
+	);
+	const authoredBody = stripStartHereManagedRegions(nextBody);
+	return managedInputs.length > 0
+		? mergeStartHereManagedRegions(authoredBody, managedInputs)
+		: authoredBody;
+}
+
+function stripPromptNoiseLines(body: string): string {
 	return normalizeMarkdownLineEndings(body)
 		.split('\n')
-		.filter((line) => !/^_?last refreshed\b/i.test(line.trim()))
+		.filter((line) => {
+			const trimmed = line.trim();
+			// Volatile per-run managed footer.
+			if (/^_?last refreshed\b/i.test(trimmed)) return false;
+			// Authoring scaffolding: a line that is entirely an italic blockquote
+			// (e.g. "> _Capture target: ..._" or the legacy "> _authored - capture
+			// target_"). This is editing guidance, not project context, so it must
+			// not be injected into the prompt. Real content is never a pure-italic
+			// blockquote line.
+			if (/^>\s*_.+_\s*$/.test(trimmed)) return false;
+			return true;
+		})
 		.join('\n')
 		.trim();
 }
@@ -499,7 +561,7 @@ export function buildStartHerePromptExcerpt(
 	body: string,
 	maxChars = START_HERE_PROMPT_MAX_CHARS
 ): StartHerePromptExcerpt {
-	const normalized = stripVolatileManagedLines(body);
+	const normalized = stripPromptNoiseLines(body);
 	const originalChars = normalized.length;
 	const safeMaxChars = Math.max(0, Math.floor(maxChars));
 

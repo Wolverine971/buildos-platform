@@ -23,6 +23,7 @@ import {
 	runGatewayWriteOp,
 	titleFromGatewayChange
 } from './op-execution-gateway';
+import { START_HERE_DOCUMENT_TYPE_KEY, stripStartHereManagedRegions } from '../ontology/start-here';
 
 export interface CommitChangeSetResult {
 	change_set_status: ChangeSetStatus;
@@ -203,7 +204,16 @@ async function verifyStagedChangeFreshness(params: {
 	}
 
 	const currentSubset = subsetToSnapshotKeys(data as Record<string, unknown>, before);
-	if (!sameSnapshot(currentSubset, before)) {
+	// Start Here documents have machine-owned managed regions (status/map) that the
+	// snapshot worker refreshes independently of authored edits. Drift inside those
+	// fences must not block an authored-section proposal, so compare only the
+	// authored body for `document.context.project` docs.
+	const [beforeForCompare, currentForCompare] = normalizeStartHereDriftSnapshots(
+		change.entity_type,
+		before,
+		currentSubset
+	);
+	if (!sameSnapshot(currentForCompare, beforeForCompare)) {
 		return {
 			ok: false,
 			message: `Staged ${change.entity_type} change is stale: current data no longer matches the reviewed before snapshot`
@@ -211,6 +221,25 @@ async function verifyStagedChangeFreshness(params: {
 	}
 
 	return { ok: true };
+}
+
+function normalizeStartHereDriftSnapshots(
+	entityType: string,
+	before: Record<string, unknown>,
+	current: Record<string, unknown>
+): [Record<string, unknown>, Record<string, unknown>] {
+	const isStartHereDoc =
+		entityType === 'document' && before.type_key === START_HERE_DOCUMENT_TYPE_KEY;
+	if (!isStartHereDoc) {
+		return [before, current];
+	}
+
+	const stripContent = (snapshot: Record<string, unknown>): Record<string, unknown> => {
+		if (typeof snapshot.content !== 'string') return snapshot;
+		return { ...snapshot, content: stripStartHereManagedRegions(snapshot.content) };
+	};
+
+	return [stripContent(before), stripContent(current)];
 }
 
 /**

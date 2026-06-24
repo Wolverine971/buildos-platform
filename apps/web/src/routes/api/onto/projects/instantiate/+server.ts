@@ -9,6 +9,7 @@ import {
 	validateProjectSpec,
 	OntologyInstantiationError
 } from '$lib/services/ontology/instantiation.service';
+import { queueProjectContextSnapshot } from '$lib/server/project-context-snapshot.service';
 
 export const POST: RequestHandler = async ({ request, locals: { supabase, safeGetSession } }) => {
 	try {
@@ -52,6 +53,16 @@ export const POST: RequestHandler = async ({ request, locals: { supabase, safeGe
 
 		const typedSupabase = supabase as unknown as TypedSupabaseClient;
 		const result = await instantiateProject(typedSupabase, spec, user.id);
+
+		// Populate the new project's Start Here managed status/map regions.
+		// Awaited so the enqueue completes before the serverless function freezes;
+		// the helper is non-throwing, so a failed enqueue cannot fail creation.
+		await queueProjectContextSnapshot({
+			projectId: result.project_id,
+			userId: user.id,
+			reason: 'project_created',
+			force: true
+		});
 
 		return ApiResponse.success({
 			project_id: result.project_id,

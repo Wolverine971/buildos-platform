@@ -21,6 +21,12 @@
 	let loading = $state(true);
 	let triggering = $state(false);
 	let pendingIds = $state<Set<string>>(new Set());
+	let pollingRunId = $state<string | null>(null);
+
+	const POLL_INTERVAL_MS = 2500;
+	const MAX_POLL_MS = 2 * 60 * 1000;
+	let pollTimer: ReturnType<typeof setTimeout> | null = null;
+	const notifiedRunIds = new Set<string>();
 
 	type TierMeta = { label: string; cls: string };
 	const tierMeta: Record<number, TierMeta> = {
@@ -41,7 +47,7 @@
 		task_conflict: 'Conflict'
 	};
 
-	const runActive = $derived(latestRun?.status === 'queued' || latestRun?.status === 'running');
+	const runActive = $derived(isRunActive(latestRun));
 
 	const evidenceTypeLabel: Record<string, string> = {
 		project: 'Project',
@@ -61,19 +67,108 @@
 	const reviewItemSummary = (count: number) =>
 		`${count} review item${count === 1 ? '' : 's'} need${count === 1 ? 's' : ''} your call`;
 
-	async function load() {
-		loading = true;
+	function isRunActive(run: ProjectLoopRun | null | undefined): boolean {
+		return run?.status === 'queued' || run?.status === 'running';
+	}
+
+	function clearPoll() {
+		if (pollTimer) {
+			clearTimeout(pollTimer);
+			pollTimer = null;
+		}
+		pollingRunId = null;
+	}
+
+	function completionMessage(run: ProjectLoopRun, suggestionCount: number): string {
+		if (run.status === 'waiting_review') {
+			return `Project review finished — ${reviewItemSummary(suggestionCount)}.`;
+		}
+		if (run.status === 'completed') {
+			return run.summary ?? 'Project review finished — no review items found.';
+		}
+		if (run.status === 'failed') {
+			return run.error_message ?? 'Project review failed.';
+		}
+		return run.summary ?? 'Project review updated.';
+	}
+
+	function notifyRunFinished(run: ProjectLoopRun, suggestionCount: number) {
+		if (notifiedRunIds.has(run.id)) return;
+		notifiedRunIds.add(run.id);
+		if (run.status === 'failed') {
+			toastService.error(completionMessage(run, suggestionCount));
+		} else {
+			toastService.success(completionMessage(run, suggestionCount));
+		}
+	}
+
+	type LoopPayload = {
+		runs: ProjectLoopRun[];
+		latestRun: ProjectLoopRun | null;
+		suggestions: ProjectSuggestion[];
+	};
+
+	async function load(options: { silent?: boolean } = {}): Promise<LoopPayload | null> {
+		if (!options.silent) loading = true;
 		try {
 			const res = await fetch(`/api/onto/projects/${projectId}/loops`);
 			if (!res.ok) throw new Error(`Failed to load (${res.status})`);
 			const json = await res.json();
-			suggestions = json.data?.suggestions ?? [];
-			latestRun = json.data?.latestRun ?? null;
+			const data = {
+				runs: json.data?.runs ?? [],
+				latestRun: json.data?.latestRun ?? null,
+				suggestions: json.data?.suggestions ?? []
+			} satisfies LoopPayload;
+			suggestions = data.suggestions;
+			latestRun = data.latestRun;
+			return data;
 		} catch (error) {
 			console.error('[ProjectSuggestionsPanel] load failed', error);
+			return null;
 		} finally {
-			loading = false;
+			if (!options.silent) loading = false;
 		}
+	}
+
+	function findRun(data: LoopPayload, runId: string): ProjectLoopRun | null {
+		return data.runs.find((run) => run.id === runId) ?? null;
+	}
+
+	function startPolling(runId: string) {
+		clearPoll();
+		pollingRunId = runId;
+		const startedAt = Date.now();
+
+		const tick = async () => {
+			const data = await load({ silent: true });
+			if (!data) {
+				if (Date.now() - startedAt < MAX_POLL_MS) {
+					pollTimer = setTimeout(tick, POLL_INTERVAL_MS);
+				} else {
+					clearPoll();
+				}
+				return;
+			}
+
+			const run = findRun(data, runId);
+			if (run && !isRunActive(run)) {
+				notifyRunFinished(run, data.suggestions.length);
+				clearPoll();
+				return;
+			}
+
+			if (Date.now() - startedAt >= MAX_POLL_MS) {
+				clearPoll();
+				toastService.info(
+					'Project review is still running. The panel will update on refresh.'
+				);
+				return;
+			}
+
+			pollTimer = setTimeout(tick, POLL_INTERVAL_MS);
+		};
+
+		pollTimer = setTimeout(tick, POLL_INTERVAL_MS);
 	}
 
 	async function runLoop() {
@@ -88,9 +183,16 @@
 			} else {
 				toastService.success('Project review started.');
 			}
-			await load();
-			// Re-check once the worker has had time to produce suggestions.
-			setTimeout(load, 6000);
+			const data = await load({ silent: true });
+			const runId = json.data?.runId ?? data?.latestRun?.id;
+			if (runId) {
+				const run = data ? findRun(data, runId) : null;
+				if (run && !isRunActive(run)) {
+					notifyRunFinished(run, data?.suggestions.length ?? 0);
+				} else {
+					startPolling(runId);
+				}
+			}
 		} catch (error) {
 			toastService.error(error instanceof Error ? error.message : 'Failed to start loop');
 		} finally {
@@ -128,7 +230,14 @@
 		}
 	}
 
-	onMount(load);
+	onMount(() => {
+		void load().then((data) => {
+			if (data?.latestRun && isRunActive(data.latestRun)) {
+				startPolling(data.latestRun.id);
+			}
+		});
+		return clearPoll;
+	});
 </script>
 
 <section class="rounded-lg border border-border bg-card shadow-ink wt-card overflow-hidden">
@@ -146,8 +255,10 @@
 						Loading…
 					{:else if suggestions.length}
 						{reviewItemSummary(suggestions.length)}
-					{:else if runActive}
+					{:else if runActive || pollingRunId}
 						Review running…
+					{:else if latestRun?.status === 'failed'}
+						{latestRun.error_message ?? 'Review failed'}
 					{:else if latestRun?.summary}
 						{latestRun.summary}
 					{:else}
@@ -161,12 +272,14 @@
 				variant="secondary"
 				size="sm"
 				onclick={runLoop}
-				disabled={triggering || runActive}
+				disabled={triggering || runActive || Boolean(pollingRunId)}
 			>
 				<RefreshCw
-					class="mr-1.5 h-3.5 w-3.5 {triggering || runActive ? 'animate-spin' : ''}"
+					class="mr-1.5 h-3.5 w-3.5 {triggering || runActive || pollingRunId
+						? 'animate-spin'
+						: ''}"
 				/>
-				{runActive ? 'Reviewing' : 'Run review'}
+				{runActive || pollingRunId ? 'Reviewing' : 'Run review'}
 			</Button>
 		{/if}
 	</div>
