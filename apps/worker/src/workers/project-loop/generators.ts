@@ -5,16 +5,18 @@
 // (validated against the real ChatToolExecutor write-tool arg shapes) that the
 // web app replays on approval.
 //
-// v1 ships two generators: doc_org and doc_outdated. drift + task_conflict are
-// later phases.
+// Current families: doc_org, doc_outdated, drift, and task_conflict. Drift is
+// informational; task_conflict only writes reversible metadata flags.
 
 import type {
 	LoopOperation,
+	ProjectLoopBrief,
 	ProjectSuggestionEvidenceRef,
 	ProjectSuggestionEvidenceType,
 	ProjectSuggestionPreview,
 	ProposedSuggestion
 } from '@buildos/shared-types';
+import { buildHeuristicProjectLoopBrief } from '@buildos/shared-agent-ops';
 import type { SmartLLMService } from '../../lib/services/smart-llm-service';
 import type { UsageEvent } from '../homework/engine/homeworkEngine';
 
@@ -54,10 +56,15 @@ interface RawSuggestion {
 	preview?: RawPreview;
 	reversible?: boolean;
 	operations?: Array<{ tool?: string; args?: Record<string, unknown>; label?: string }>;
+	undo_operations?: Array<{ tool?: string; args?: Record<string, unknown>; label?: string }>;
 }
 
 interface RawSuggestionEnvelope {
 	suggestions?: RawSuggestion[];
+}
+
+interface RawBriefEnvelope {
+	brief?: Partial<ProjectLoopBrief>;
 }
 
 interface RawEvidenceRef {
@@ -186,7 +193,12 @@ function sanitizePreview(rawPreview: unknown): ProjectSuggestionPreview | undefi
  */
 function sanitizeOperations(
 	rawOps: RawSuggestion['operations'],
-	params: { projectId: string; allowedTools: Set<string>; knownDocIds: Set<string> }
+	params: {
+		projectId: string;
+		allowedTools: Set<string>;
+		knownDocIds?: Set<string>;
+		knownTaskIds?: Set<string>;
+	}
 ): LoopOperation[] {
 	if (!Array.isArray(rawOps)) return [];
 	const ops: LoopOperation[] = [];
@@ -197,9 +209,16 @@ function sanitizeOperations(
 		args.project_id = params.projectId;
 
 		const docId = typeof args.document_id === 'string' ? args.document_id : null;
-		if (docId && !params.knownDocIds.has(docId)) continue;
+		if (docId && params.knownDocIds && !params.knownDocIds.has(docId)) continue;
 		const parentId = typeof args.new_parent_id === 'string' ? args.new_parent_id : null;
-		if (parentId && !params.knownDocIds.has(parentId)) continue;
+		if (parentId && params.knownDocIds && !params.knownDocIds.has(parentId)) continue;
+		const taskId = typeof args.task_id === 'string' ? args.task_id : null;
+		if (taskId && params.knownTaskIds && !params.knownTaskIds.has(taskId)) continue;
+		if (raw.tool === 'update_onto_task' && !taskId) continue;
+		if (raw.tool === 'update_onto_document' && !docId) continue;
+		if (raw.tool === 'create_onto_task') {
+			if (typeof args.title !== 'string' || !args.title.trim()) continue;
+		}
 
 		ops.push({
 			tool: raw.tool,
@@ -233,6 +252,33 @@ async function callGenerator(params: {
 	return Array.isArray(result?.suggestions) ? result.suggestions : [];
 }
 
+async function callBriefGenerator(params: {
+	llm: SmartLLMService;
+	userId: string;
+	chatSessionId?: string;
+	projectId: string;
+	systemPrompt: string;
+	userPrompt: string;
+	onUsage: (event: UsageEvent) => Promise<void>;
+}): Promise<Partial<ProjectLoopBrief> | null> {
+	const result = await params.llm.getJSONResponse<RawBriefEnvelope>({
+		systemPrompt: params.systemPrompt,
+		userPrompt: params.userPrompt,
+		userId: params.userId,
+		profile: 'balanced',
+		validation: { retryOnParseError: true, maxRetries: 2 },
+		operationType: 'other',
+		chatSessionId: params.chatSessionId,
+		metadata: {
+			project_loop: true,
+			project_loop_brief: true,
+			onto_project_id: params.projectId
+		},
+		onUsage: params.onUsage
+	});
+	return result?.brief && typeof result.brief === 'object' ? result.brief : null;
+}
+
 function describeDocuments(documents: LoopDocument[]): string {
 	if (!documents.length) return '(none)';
 	return documents
@@ -244,6 +290,110 @@ function describeDocuments(documents: LoopDocument[]): string {
 		.join('\n');
 }
 
+function describeTasks(tasks: LoopTask[]): string {
+	if (!tasks.length) return '(none)';
+	return tasks
+		.map(
+			(t) =>
+				`- [${t.id}] "${t.title}" (state=${t.state_key ?? 'n/a'}, updated=${t.updated_at ?? 'n/a'})`
+		)
+		.join('\n');
+}
+
+function docMoveUndoOperations(operations: LoopOperation[], ctx: LoopContext): LoopOperation[] {
+	const parentById = new Map(ctx.documents.map((doc) => [doc.id, doc.parent_id]));
+	const undo: LoopOperation[] = [];
+	for (const op of operations) {
+		if (op.tool !== 'move_document_in_tree') continue;
+		const documentId = typeof op.args.document_id === 'string' ? op.args.document_id : null;
+		if (!documentId || !parentById.has(documentId)) continue;
+		undo.push({
+			tool: 'move_document_in_tree',
+			args: {
+				document_id: documentId,
+				new_parent_id: parentById.get(documentId) ?? null,
+				new_position: 0,
+				project_id: ctx.projectId
+			},
+			label: 'Move document back to its previous parent'
+		});
+	}
+	return undo;
+}
+
+function outdatedFlagUndoOperations(
+	operations: LoopOperation[],
+	ctx: LoopContext
+): LoopOperation[] {
+	return operations
+		.map((op) => (typeof op.args.document_id === 'string' ? op.args.document_id : null))
+		.filter((documentId): documentId is string =>
+			Boolean(documentId && ctx.documents.some((doc) => doc.id === documentId))
+		)
+		.map((documentId) => ({
+			tool: 'update_onto_document',
+			args: {
+				document_id: documentId,
+				project_id: ctx.projectId,
+				props: {
+					loop_flagged_outdated: false,
+					loop_outdated_reason: null
+				}
+			},
+			label: 'Remove outdated-document flag'
+		}));
+}
+
+function taskConflictUndoOperations(
+	operations: LoopOperation[],
+	ctx: LoopContext
+): LoopOperation[] {
+	return operations
+		.map((op) => (typeof op.args.task_id === 'string' ? op.args.task_id : null))
+		.filter((taskId): taskId is string =>
+			Boolean(taskId && ctx.tasks.some((task) => task.id === taskId))
+		)
+		.map((taskId) => ({
+			tool: 'update_onto_task',
+			args: {
+				task_id: taskId,
+				project_id: ctx.projectId,
+				props: {
+					loop_flagged_conflict: false,
+					loop_conflict_kind: null,
+					loop_conflict_with_task_id: null,
+					loop_conflict_reason: null
+				}
+			},
+			label: 'Remove task-conflict flag'
+		}));
+}
+
+function sanitizeBrief(raw: Partial<ProjectLoopBrief> | null, ctx: LoopContext): ProjectLoopBrief {
+	const fallback = buildHeuristicProjectLoopBrief(ctx);
+	if (!raw) return fallback;
+	const list = (value: unknown, maxItems = 5): string[] =>
+		Array.isArray(value)
+			? value
+					.map((item) => truncate(item, 180))
+					.filter((item): item is string => Boolean(item))
+					.slice(0, maxItems)
+			: [];
+
+	return {
+		current_goal: truncate(raw.current_goal, 220) ?? fallback.current_goal,
+		recent_changes: list(raw.recent_changes).length
+			? list(raw.recent_changes)
+			: fallback.recent_changes,
+		open_decisions: list(raw.open_decisions),
+		stale_assumptions: list(raw.stale_assumptions),
+		contradictions_or_drift: list(raw.contradictions_or_drift),
+		next_best_action: truncate(raw.next_best_action, 220) ?? fallback.next_best_action,
+		generated_at: new Date().toISOString(),
+		source: 'llm'
+	};
+}
+
 const PROJECT_HEADER = (ctx: LoopContext): string => {
 	const goals = ctx.goals.length
 		? ctx.goals
@@ -252,6 +402,51 @@ const PROJECT_HEADER = (ctx: LoopContext): string => {
 		: '(none)';
 	return `Project: ${ctx.projectName}\nDescription: ${ctx.projectDescription ?? '(none)'}\nGoals:\n${goals}`;
 };
+
+export async function generateProjectBrief(params: {
+	llm: SmartLLMService;
+	ctx: LoopContext;
+	userId: string;
+	chatSessionId?: string;
+	onUsage: (event: UsageEvent) => Promise<void>;
+}): Promise<ProjectLoopBrief> {
+	const { ctx } = params;
+	const systemPrompt = [
+		'You write a compact BuildOS Project Review brief.',
+		'Use only the project evidence provided. Be specific, cautious, and concise.',
+		'Do not invent dates, documents, tasks, or facts.',
+		'',
+		'Return ONLY JSON: { "brief": {',
+		'  "current_goal": string|null,',
+		'  "recent_changes": string[],',
+		'  "open_decisions": string[],',
+		'  "stale_assumptions": string[],',
+		'  "contradictions_or_drift": string[],',
+		'  "next_best_action": string|null',
+		'} }'
+	].join('\n');
+
+	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nCurrent document tree:\n${ctx.docStructureSummary}\n\nDocuments:\n${describeDocuments(ctx.documents)}\n\nOpen tasks:\n${describeTasks(ctx.tasks)}`;
+
+	try {
+		const raw = await callBriefGenerator({
+			llm: params.llm,
+			userId: params.userId,
+			chatSessionId: params.chatSessionId,
+			projectId: ctx.projectId,
+			systemPrompt,
+			userPrompt,
+			onUsage: params.onUsage
+		});
+		return sanitizeBrief(raw, ctx);
+	} catch (error) {
+		console.warn(
+			'[ProjectLoops] brief generator failed, falling back to heuristic:',
+			error instanceof Error ? error.message : error
+		);
+		return buildHeuristicProjectLoopBrief(ctx);
+	}
+}
 
 /**
  * DOC ORGANIZATION (tier 2)
@@ -331,8 +526,9 @@ export async function generateDocOrganization(params: {
 			evidence_refs: sanitizeEvidenceRefs(s.evidence_refs, ctx),
 			preview: sanitizePreview(s.preview),
 			freshness_state: 'fresh',
-			reversible: false,
-			operations
+			reversible: true,
+			operations,
+			undo_operations: docMoveUndoOperations(operations, ctx)
 		});
 	}
 	return suggestions;
@@ -422,7 +618,166 @@ export async function generateOutdatedDocs(params: {
 			preview: sanitizePreview(s.preview),
 			freshness_state: 'fresh',
 			reversible: true,
-			operations
+			operations,
+			undo_operations: outdatedFlagUndoOperations(operations, ctx)
+		});
+	}
+	return suggestions;
+}
+
+/**
+ * DRIFT (tier 2 informational)
+ * Surfaces evidence-backed mismatches between the stated project intent and
+ * the current docs/tasks. Drift items are no-op review decisions: applying them
+ * acknowledges the item; dismissing with feedback teaches later runs.
+ */
+export async function generateDrift(params: {
+	llm: SmartLLMService;
+	ctx: LoopContext;
+	userId: string;
+	chatSessionId?: string;
+	onUsage: (event: UsageEvent) => Promise<void>;
+}): Promise<ProposedSuggestion[]> {
+	const { ctx } = params;
+	if (ctx.documents.length === 0 && ctx.tasks.length === 0) return [];
+
+	const systemPrompt = [
+		'You are a BuildOS project reviewer. Find PROJECT DRIFT: places where',
+		'the stated goals/description and the current documents or tasks appear',
+		'to point in different directions, contain stale assumptions, or leave an',
+		'important decision unresolved.',
+		'',
+		'Rules:',
+		'- Be conservative. Only raise drift that is supported by specific evidence.',
+		'- Do NOT propose writes. Drift items are informational review decisions.',
+		'- Prefer 0-3 high-signal items.',
+		'- Attach evidence_refs from documents, tasks, goals, or project.',
+		'',
+		'Return ONLY JSON: { "suggestions": [ {',
+		'  "title": string,',
+		'  "why_now": string,',
+		'  "rationale": string,',
+		'  "confidence": number,',
+		'  "evidence_refs": [ { "entity_type": "project"|"goal"|"document"|"task", "entity_id": "<uuid optional>", "title": string, "reason": string } ],',
+		'  "preview": { "kind": "drift", "summary": string, "before": [string], "after": [string], "impact": string },',
+		'  "operations": []',
+		'} ] }',
+		'If no clear drift exists, return { "suggestions": [] }.'
+	].join('\n');
+
+	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nDocuments:\n${describeDocuments(ctx.documents)}\n\nOpen tasks:\n${describeTasks(ctx.tasks)}`;
+
+	const raw = await callGenerator({
+		llm: params.llm,
+		userId: params.userId,
+		chatSessionId: params.chatSessionId,
+		projectId: ctx.projectId,
+		systemPrompt,
+		userPrompt,
+		onUsage: params.onUsage
+	});
+
+	const suggestions: ProposedSuggestion[] = [];
+	for (const s of raw.slice(0, 5)) {
+		if (!s.title) continue;
+		const evidenceRefs = sanitizeEvidenceRefs(s.evidence_refs, ctx);
+		if (!evidenceRefs.length) continue;
+		suggestions.push({
+			kind: 'drift',
+			risk_tier: 2,
+			title: s.title.slice(0, 200),
+			rationale: s.rationale,
+			why_now: truncate(s.why_now, 220),
+			confidence: typeof s.confidence === 'number' ? s.confidence : undefined,
+			evidence_refs: evidenceRefs,
+			preview: sanitizePreview(s.preview),
+			freshness_state: 'fresh',
+			reversible: true,
+			operations: [],
+			undo_operations: []
+		});
+	}
+	return suggestions;
+}
+
+/**
+ * TASK CONFLICTS (tier 1)
+ * Flags duplicate/contradictory open tasks non-destructively. The operation
+ * writes conflict metadata to one task; it does not delete, merge, or complete.
+ */
+export async function generateTaskConflicts(params: {
+	llm: SmartLLMService;
+	ctx: LoopContext;
+	userId: string;
+	chatSessionId?: string;
+	onUsage: (event: UsageEvent) => Promise<void>;
+}): Promise<ProposedSuggestion[]> {
+	const { ctx } = params;
+	if (ctx.tasks.length < 2) return [];
+
+	const systemPrompt = [
+		'You are a BuildOS task reviewer. Find open tasks that appear duplicated,',
+		'contradictory, or mutually blocking based only on the provided task list',
+		'and project goals.',
+		'',
+		'Rules:',
+		'- Be conservative. Prefer no suggestion over a weak match.',
+		'- Do not delete, merge, or mark tasks done.',
+		'- For each conflict, emit one non-destructive update_onto_task operation',
+		'  that flags ONE task with props:',
+		'  { "loop_flagged_conflict": true, "loop_conflict_kind": "duplicate|contradiction|blocked_by", "loop_conflict_with_task_id": "<other task id>", "loop_conflict_reason": "<short reason>" }',
+		'- Only use task ids provided in the task list.',
+		'',
+		'Return ONLY JSON: { "suggestions": [ {',
+		'  "title": string,',
+		'  "why_now": string,',
+		'  "rationale": string,',
+		'  "confidence": number,',
+		'  "evidence_refs": [ { "entity_type": "task", "entity_id": "<uuid>", "reason": string } ],',
+		'  "preview": { "kind": "task_merge", "summary": string, "before": [string], "after": [string], "impact": string },',
+		'  "operations": [ { "tool": "update_onto_task", "args": { "task_id": "<uuid>", "props": {…} }, "label": string } ]',
+		'} ] }',
+		'If no clear conflicts exist, return { "suggestions": [] }.'
+	].join('\n');
+
+	const userPrompt = `${PROJECT_HEADER(ctx)}\n\nOpen tasks:\n${describeTasks(ctx.tasks)}`;
+
+	const raw = await callGenerator({
+		llm: params.llm,
+		userId: params.userId,
+		chatSessionId: params.chatSessionId,
+		projectId: ctx.projectId,
+		systemPrompt,
+		userPrompt,
+		onUsage: params.onUsage
+	});
+
+	const knownTaskIds = new Set(ctx.tasks.map((task) => task.id));
+	const allowedTools = new Set(['update_onto_task']);
+
+	const suggestions: ProposedSuggestion[] = [];
+	for (const s of raw) {
+		const operations = sanitizeOperations(s.operations, {
+			projectId: ctx.projectId,
+			allowedTools,
+			knownTaskIds
+		});
+		if (!operations.length || !s.title) continue;
+		const evidenceRefs = sanitizeEvidenceRefs(s.evidence_refs, ctx);
+		if (evidenceRefs.filter((ref) => ref.entity_type === 'task').length < 2) continue;
+		suggestions.push({
+			kind: 'task_conflict',
+			risk_tier: 1,
+			title: s.title.slice(0, 200),
+			rationale: s.rationale,
+			why_now: truncate(s.why_now, 220),
+			confidence: typeof s.confidence === 'number' ? s.confidence : undefined,
+			evidence_refs: evidenceRefs,
+			preview: sanitizePreview(s.preview),
+			freshness_state: 'fresh',
+			reversible: true,
+			operations,
+			undo_operations: taskConflictUndoOperations(operations, ctx)
 		});
 	}
 	return suggestions;

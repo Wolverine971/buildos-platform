@@ -151,6 +151,11 @@
 			"import": "./dist/calendar/agent-run-calendar-port.mjs",
 			"require": "./dist/calendar/agent-run-calendar-port.js"
 		},
+		"./inbox-index": {
+			"types": "./dist/inbox-index.d.ts",
+			"import": "./dist/inbox-index.mjs",
+			"require": "./dist/inbox-index.js"
+		},
 		"./utils/project-props-sanitizer": {
 			"types": "./dist/utils/project-props-sanitizer.d.ts",
 			"import": "./dist/utils/project-props-sanitizer.mjs",

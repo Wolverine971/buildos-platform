@@ -64,6 +64,8 @@ Do not use for: breadth of angles (`idea_expansion_lens`); a story arc (`storybo
 3. Name the framework and its components with a closed, memorable vocabulary.
 4. Return the labeled framework or teardown and hand to Curate → Draft. Do not write the piece.
 
+The framework is drafted at `content_creation_pipeline` Stage 4. Note: a framework/teaching shape has **no dedicated draft-execution craft skill yet** (unlike story or conviction shapes) — it is drafted inline, with the opening escalated to `hook_craft_short_form`. See the Stage 4 "Known gap" note.
+
 ## Guardrails
 
 - Do not fabricate a framework from a single instance — route to `lived_conviction_lens` or `idea_expansion_lens`.

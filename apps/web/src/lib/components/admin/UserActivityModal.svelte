@@ -89,13 +89,13 @@
 		selectedError = error;
 	}
 
-	function handleComposeEmail(event: CustomEvent<{ template: string; instructions: string }>) {
+	function handleComposeEmail(detail: { template: string; instructions: string }) {
 		if (!onComposeEmail) return;
 
 		onComposeEmail({
 			user,
-			template: event.detail.template,
-			instructions: event.detail.instructions
+			template: detail.template,
+			instructions: detail.instructions
 		});
 		handleClose();
 	}
@@ -332,7 +332,7 @@
 					{userContext}
 					expanded={true}
 					showActions={true}
-					on:composeEmail={handleComposeEmail}
+					onComposeEmail={handleComposeEmail}
 				/>
 			{/if}
 

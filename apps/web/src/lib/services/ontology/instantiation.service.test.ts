@@ -1,6 +1,7 @@
 // apps/web/src/lib/services/ontology/instantiation.service.test.ts
 import { describe, expect, it, vi } from 'vitest';
 import { resolveActorId, resolveFacets, validateProjectSpec } from './instantiation.service';
+import { ProjectSpecSchema } from '../../types/onto';
 
 function fakeRpcClient(impl: (name: string, args?: unknown) => { data: unknown; error?: unknown }) {
 	return { rpc: vi.fn(impl) } as any;
@@ -149,5 +150,28 @@ describe('validateProjectSpec', () => {
 
 		expect(valid).toBe(true);
 		expect(errors).toHaveLength(0);
+	});
+
+	it('accepts and normalizes capitalized risk impact values', () => {
+		const spec = {
+			project: {
+				name: 'Impact Casing Test',
+				type_key: 'project.business.launch'
+			},
+			entities: [
+				{
+					temp_id: 'risk-1',
+					kind: 'risk',
+					title: 'Timeline slips',
+					impact: 'Medium'
+				}
+			],
+			relationships: []
+		};
+
+		const { valid, errors } = validateProjectSpec(spec);
+		expect(valid).toBe(true);
+		expect(errors).toHaveLength(0);
+		expect(ProjectSpecSchema.parse(spec).entities[0]?.impact).toBe('medium');
 	});
 });

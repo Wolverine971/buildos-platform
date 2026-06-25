@@ -1,0 +1,201 @@
+// apps/worker/tests/projectLoopGenerators.test.ts
+import { describe, expect, it, vi } from 'vitest';
+import {
+	generateDrift,
+	generateTaskConflicts,
+	type LoopContext
+} from '../src/workers/project-loop/generators';
+import type { SmartLLMService } from '../src/lib/services/smart-llm-service';
+
+function makeContext(): LoopContext {
+	return {
+		projectId: 'project-1',
+		projectName: 'Launch',
+		projectDescription: 'Ship v1',
+		goals: [{ name: 'Public launch', description: 'Get the first release out' }],
+		docStructureSummary: '- Launch plan',
+		documents: [
+			{
+				id: 'doc-1',
+				title: 'Launch plan',
+				type_key: 'document.plan',
+				state_key: 'active',
+				description: 'Current launch plan',
+				updated_at: '2026-06-22T00:00:00.000Z',
+				parent_id: null
+			}
+		],
+		tasks: [
+			{
+				id: 'task-1',
+				title: 'Publish launch announcement',
+				state_key: 'todo',
+				updated_at: '2026-06-22T00:00:00.000Z'
+			},
+			{
+				id: 'task-2',
+				title: 'Publish announcement draft',
+				state_key: 'todo',
+				updated_at: '2026-06-23T00:00:00.000Z'
+			}
+		]
+	};
+}
+
+function makeLlm(response: unknown): SmartLLMService {
+	return {
+		getJSONResponse: vi.fn().mockResolvedValue(response)
+	} as unknown as SmartLLMService;
+}
+
+const onUsage = vi.fn(async () => undefined);
+
+describe('project loop generators', () => {
+	it('turns task conflicts into reversible non-destructive task flags', async () => {
+		const suggestions = await generateTaskConflicts({
+			llm: makeLlm({
+				suggestions: [
+					{
+						title: 'Duplicate launch announcement tasks',
+						rationale: 'Both tasks describe the same publishing work.',
+						why_now: 'The launch project has two active announcement tasks.',
+						confidence: 0.82,
+						evidence_refs: [
+							{ entity_type: 'task', entity_id: 'task-1', reason: 'Same outcome' },
+							{ entity_type: 'task', entity_id: 'task-2', reason: 'Same outcome' }
+						],
+						preview: {
+							kind: 'task_merge',
+							summary: 'Flag task-1 as a likely duplicate of task-2.',
+							impact: 'No task is deleted or completed.'
+						},
+						operations: [
+							{
+								tool: 'update_onto_task',
+								args: {
+									task_id: 'task-1',
+									props: {
+										loop_flagged_conflict: true,
+										loop_conflict_kind: 'duplicate',
+										loop_conflict_with_task_id: 'task-2',
+										loop_conflict_reason:
+											'Both tasks ask for launch announcement publishing.'
+									}
+								},
+								label: 'Flag likely duplicate'
+							}
+						]
+					}
+				]
+			}),
+			ctx: makeContext(),
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(suggestions).toHaveLength(1);
+		expect(suggestions[0]).toMatchObject({
+			kind: 'task_conflict',
+			risk_tier: 1,
+			reversible: true,
+			operations: [
+				{
+					tool: 'update_onto_task',
+					args: {
+						task_id: 'task-1',
+						project_id: 'project-1',
+						props: {
+							loop_flagged_conflict: true,
+							loop_conflict_kind: 'duplicate',
+							loop_conflict_with_task_id: 'task-2'
+						}
+					}
+				}
+			],
+			undo_operations: [
+				{
+					tool: 'update_onto_task',
+					args: {
+						task_id: 'task-1',
+						project_id: 'project-1',
+						props: {
+							loop_flagged_conflict: false,
+							loop_conflict_kind: null,
+							loop_conflict_with_task_id: null,
+							loop_conflict_reason: null
+						}
+					}
+				}
+			]
+		});
+	});
+
+	it('drops task conflict suggestions with unknown task ids', async () => {
+		const suggestions = await generateTaskConflicts({
+			llm: makeLlm({
+				suggestions: [
+					{
+						title: 'Unknown task conflict',
+						evidence_refs: [
+							{ entity_type: 'task', entity_id: 'task-1', reason: 'Known' },
+							{ entity_type: 'task', entity_id: 'task-2', reason: 'Known' }
+						],
+						operations: [
+							{
+								tool: 'update_onto_task',
+								args: {
+									task_id: 'task-missing',
+									props: { loop_flagged_conflict: true }
+								}
+							}
+						]
+					}
+				]
+			}),
+			ctx: makeContext(),
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(suggestions).toEqual([]);
+	});
+
+	it('emits drift as an evidence-backed no-op review item', async () => {
+		const suggestions = await generateDrift({
+			llm: makeLlm({
+				suggestions: [
+					{
+						title: 'Launch scope drifted toward research',
+						rationale:
+							'The project says ship v1, but recent artifacts are research-heavy.',
+						why_now:
+							'The current review found active shipping tasks and research docs.',
+						confidence: 0.7,
+						evidence_refs: [
+							{ entity_type: 'document', entity_id: 'doc-1', reason: 'Current plan' }
+						],
+						preview: {
+							kind: 'drift',
+							summary:
+								'Decide whether launch or research is the current project priority.'
+						},
+						operations: []
+					}
+				]
+			}),
+			ctx: makeContext(),
+			userId: 'user-1',
+			onUsage
+		});
+
+		expect(suggestions).toHaveLength(1);
+		expect(suggestions[0]).toMatchObject({
+			kind: 'drift',
+			risk_tier: 2,
+			reversible: true,
+			operations: [],
+			undo_operations: [],
+			evidence_refs: [{ entity_type: 'document', entity_id: 'doc-1', title: 'Launch plan' }]
+		});
+	});
+});

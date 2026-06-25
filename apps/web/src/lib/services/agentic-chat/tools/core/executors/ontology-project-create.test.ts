@@ -155,6 +155,29 @@ describe('OntologyWriteExecutor project creation normalization', () => {
 		expect(body.project.props.facets.stage).toBe('planning');
 	});
 
+	it('normalizes capitalized risk impact values before instantiate', async () => {
+		const executor = new OntologyWriteExecutor(context);
+
+		await executor.createOntoProject({
+			project: {
+				name: 'Risky Launch',
+				type_key: 'project.business.launch'
+			},
+			entities: [
+				{
+					temp_id: 'r1',
+					kind: 'risk',
+					title: 'Launch timeline slips',
+					impact: 'Medium'
+				}
+			] as any,
+			relationships: []
+		});
+
+		const body = (mockFetch as any).lastInstantiateBody();
+		expect(body.entities[0].impact).toBe('medium');
+	});
+
 	it('fails locally for non-repairable invalid stage facets', async () => {
 		const executor = new OntologyWriteExecutor(context);
 

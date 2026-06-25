@@ -14,10 +14,7 @@ export type ProjectLoopRunStatus =
 	| 'completed'
 	| 'failed';
 
-/**
- * The reconciliation jobs a loop performs. v1 ships doc_org + doc_outdated;
- * drift + task_conflict follow in later phases.
- */
+/** The reconciliation jobs a project loop performs. */
 export type ProjectSuggestionKind = 'doc_org' | 'doc_outdated' | 'drift' | 'task_conflict';
 
 /**
@@ -76,12 +73,24 @@ export interface ProjectSuggestionPreview {
 	impact?: string;
 }
 
+export interface ProjectLoopBrief {
+	current_goal: string | null;
+	recent_changes: string[];
+	open_decisions: string[];
+	stale_assumptions: string[];
+	contradictions_or_drift: string[];
+	next_best_action: string | null;
+	generated_at?: string;
+	source?: 'heuristic' | 'llm';
+}
+
 export interface ProjectLoopRun {
 	id: string;
 	project_id: string;
 	user_id: string;
 	trigger_reason: ProjectLoopTriggerReason;
 	status: ProjectLoopRunStatus;
+	brief: ProjectLoopBrief | null;
 	summary: string | null;
 	suggestion_count: number;
 	error_message: string | null;

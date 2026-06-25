@@ -41,6 +41,10 @@ import {
 	notifyEntityMentionsAdded,
 	resolveEntityMentionUserIds
 } from '$lib/server/entity-mention-notification.service';
+import {
+	queueProjectLoopBurstAsync,
+	shouldSkipProjectLoopBurst
+} from '$lib/server/project-loop-burst.service';
 const ALLOWED_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
 export const POST: RequestHandler = async ({ request, locals }) => {
 	// Check authentication
@@ -386,6 +390,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			taskWithAssignees = attachAssigneesToTask(task, assigneeMap);
 		} catch (assigneeError) {
 			console.warn('[Task Create] Failed to enrich assignees in response:', assigneeError);
+		}
+		if (!shouldSkipProjectLoopBurst(request)) {
+			queueProjectLoopBurstAsync({
+				projectId,
+				userId: user.id,
+				source: 'task_create'
+			});
 		}
 		return ApiResponse.created({ task: taskWithAssignees });
 	} catch (error) {

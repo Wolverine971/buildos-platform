@@ -52,6 +52,8 @@ Run the idea through each axis in order. These are the closed vocabulary — nam
 4. Flag the 1–2 strongest angles and say _why_ (usually a consequence or a counter-turn that reframes the reader's situation).
 5. Return the labeled spread and hand the choice back to the Curate stage. Do not draft.
 
+The chosen angle is drafted at `content_creation_pipeline` Stage 4. Note: a claim/argument shape has **no dedicated draft-execution craft skill yet** (unlike story or conviction shapes) — it is drafted inline, with the opening escalated to `hook_craft_short_form`. See the Stage 4 "Known gap" note.
+
 ## Guardrails
 
 - Do not return prose or a finished draft — only labeled one-line angles. If asked to "just write it", hand back to `content_creation_pipeline` Stage 4 with the chosen angle.

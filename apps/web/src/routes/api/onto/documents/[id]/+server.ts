@@ -45,6 +45,10 @@ import {
 	syncLivePublicPageForDocument,
 	type PublicPageLiveSyncResult
 } from '$lib/server/public-page.service';
+import {
+	queueProjectLoopBurstAsync,
+	shouldSkipProjectLoopBurst
+} from '$lib/server/project-loop-burst.service';
 
 type Locals = App.Locals;
 type ArchiveChildrenMode = 'archive_children' | 'promote_children' | 'unlink_children';
@@ -411,6 +415,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				chatSessionId
 			);
 
+			if (!shouldSkipProjectLoopBurst(request)) {
+				queueProjectLoopBurstAsync({
+					projectId: document.project_id,
+					userId: session.user.id,
+					source: 'document_archive'
+				});
+			}
+
 			return ApiResponse.success({
 				document: archivedDocument,
 				structure,
@@ -506,6 +518,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 				getChangeSourceFromRequest(request),
 				chatSessionId
 			);
+
+			if (!shouldSkipProjectLoopBurst(request)) {
+				queueProjectLoopBurstAsync({
+					projectId: document.project_id,
+					userId: session.user.id,
+					source: 'document_restore'
+				});
+			}
 
 			return ApiResponse.success({
 				document: restoredDocument,
@@ -872,6 +892,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 					review: null
 				};
 			}
+		}
+
+		if (!shouldSkipProjectLoopBurst(request)) {
+			queueProjectLoopBurstAsync({
+				projectId: document.project_id,
+				userId,
+				source: 'document_update'
+			});
 		}
 
 		return ApiResponse.success({ document: updatedDocument, publicPageSync });

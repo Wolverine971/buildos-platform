@@ -75,6 +75,9 @@
 	let triggering = $state(false);
 	let pendingIds = $state<Set<string>>(new Set());
 	let pollingRunId = $state<string | null>(null);
+	let selectedIds = $state<Set<string>>(new Set());
+	let dismissReasonById = $state<Record<string, string>>({});
+	let dismissNoteById = $state<Record<string, string>>({});
 
 	const POLL_INTERVAL_MS = 2500;
 	const MAX_POLL_MS = 2 * 60 * 1000;
@@ -113,6 +116,44 @@
 		external: 'Source',
 		unknown: 'Source'
 	};
+
+	const dismissReasons = [
+		{ value: 'not_relevant', label: 'Not relevant' },
+		{ value: 'wrong_evidence', label: 'Wrong evidence' },
+		{ value: 'intentional', label: 'Intentional' },
+		{ value: 'too_risky', label: 'Too risky' },
+		{ value: 'other', label: 'Other' }
+	];
+
+	const groupedItems = $derived.by(() => {
+		const safe = { key: 'safe', label: 'Safe cleanup', items: [] as InboxItem[] };
+		const decision = {
+			key: 'decision',
+			label: 'Needs your call',
+			items: [] as InboxItem[]
+		};
+		const drift = { key: 'drift', label: 'Project drift', items: [] as InboxItem[] };
+		const other = { key: 'other', label: 'Other proposals', items: [] as InboxItem[] };
+		const groups = [safe, decision, drift, other];
+		for (const item of items) {
+			const payload = projectSuggestion(item);
+			if (payload?.kind === 'drift') drift.items.push(item);
+			else if (
+				item.source_type === 'project_suggestion' &&
+				(payload?.risk_tier ?? item.risk_tier ?? 2) <= 1
+			)
+				safe.items.push(item);
+			else if (item.source_type === 'project_suggestion') decision.items.push(item);
+			else other.items.push(item);
+		}
+		return groups.filter((group) => group.items.length > 0);
+	});
+
+	const selectedBatchIds = $derived.by(() =>
+		items
+			.filter((item) => selectedIds.has(item.id) && canBatchApprove(item))
+			.map((item) => item.id)
+	);
 
 	function isRunActive(run: ProjectLoopRun | null | undefined): boolean {
 		return run?.status === 'queued' || run?.status === 'running';
@@ -190,6 +231,34 @@
 
 	function canDecide(item: InboxItem): boolean {
 		return canEdit && item.status === 'pending' && item.can_decide !== false;
+	}
+
+	function canBatchApprove(item: InboxItem): boolean {
+		if (!canDecide(item) || item.source_type !== 'project_suggestion') return false;
+		const payload = projectSuggestion(item);
+		const riskTier = payload?.risk_tier ?? item.risk_tier ?? 3;
+		const operations = arrayValue<{ tool?: string }>(payload?.operations);
+		return (
+			riskTier <= 2 &&
+			payload?.reversible !== false &&
+			operations.length > 0 &&
+			!operations.some((operation) => operation.tool === 'move_document_in_tree')
+		);
+	}
+
+	function updateSelected(item: InboxItem, checked: boolean) {
+		const next = new Set(selectedIds);
+		if (checked) next.add(item.id);
+		else next.delete(item.id);
+		selectedIds = next;
+	}
+
+	function setDismissReason(itemId: string, reason: string) {
+		dismissReasonById = { ...dismissReasonById, [itemId]: reason };
+	}
+
+	function setDismissNote(itemId: string, note: string) {
+		dismissNoteById = { ...dismissNoteById, [itemId]: note };
 	}
 
 	function completionMessage(run: ProjectLoopRun, itemCount: number): string {
@@ -323,7 +392,7 @@
 			return action === 'approve' ? 'Apply all' : 'Reject all';
 		if (item.source_type === 'calendar_suggestion')
 			return action === 'approve' ? 'Accept' : 'Reject';
-		return action === 'approve' ? 'Apply' : 'Dismiss';
+		return action === 'approve' ? (changeCount(item) ? 'Apply' : 'Acknowledge') : 'Dismiss';
 	}
 
 	async function decide(item: InboxItem, action: 'approve' | 'reject') {
@@ -333,21 +402,37 @@
 			const res = await fetch('/api/inbox/decide', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ item_id: item.id, action })
+				body: JSON.stringify({
+					item_id: item.id,
+					action,
+					...(action === 'reject' && item.source_type === 'project_suggestion'
+						? {
+								reason: dismissReasonById[item.id] || 'other',
+								note: dismissNoteById[item.id] || undefined
+							}
+						: {})
+				})
 			});
 			const json = await res.json();
 			if (!res.ok) throw new Error(json?.error ?? 'Action failed');
 
 			const result = json.data?.result as ProjectSuggestionResult | undefined;
-			if (action === 'approve' && result && result.ok === false) {
+			if (json.data?.superseded) {
+				toastService.error('Review item changed. Rerun Project Review.');
+			} else if (action === 'approve' && result && result.ok === false) {
 				toastService.error('Some changes could not be applied.');
 			} else if (action === 'approve') {
-				toastService.success('Review item applied.');
+				toastService.success(
+					changeCount(item) ? 'Review item applied.' : 'Review item acknowledged.'
+				);
 			} else {
 				toastService.success('Review item dismissed.');
 			}
 
 			items = items.filter((candidate) => candidate.id !== item.id);
+			const nextSelected = new Set(selectedIds);
+			nextSelected.delete(item.id);
+			selectedIds = nextSelected;
 			onCountChange?.(items.length);
 		} catch (error) {
 			toastService.error(error instanceof Error ? error.message : 'Action failed');
@@ -361,6 +446,52 @@
 	function handleAgentRunApplied(item: InboxItem) {
 		items = items.filter((candidate) => candidate.id !== item.id);
 		onCountChange?.(items.length);
+	}
+
+	async function batchApproveSelected() {
+		const ids = selectedBatchIds;
+		if (ids.length === 0) return;
+		for (const id of ids) pendingIds = new Set(pendingIds).add(id);
+		try {
+			const res = await fetch('/api/inbox/decide', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ item_ids: ids, action: 'approve' })
+			});
+			const json = await res.json();
+			if (!res.ok) throw new Error(json?.error ?? 'Batch apply failed');
+			const results = Array.isArray(json.data?.results) ? json.data.results : [];
+			const appliedIds = new Set(
+				results
+					.map((result: { item_id?: unknown }) => result.item_id)
+					.filter((id: unknown): id is string => typeof id === 'string')
+			);
+			const superseded = results.filter(
+				(result: { superseded?: unknown }) => result.superseded === true
+			).length;
+			const appliedCount = appliedIds.size - superseded;
+			items = items.filter((item) => !appliedIds.has(item.id));
+			selectedIds = new Set([...selectedIds].filter((id) => !appliedIds.has(id)));
+			onCountChange?.(items.length);
+			const failed = Number(json.data?.failed ?? 0);
+			if (failed > 0) {
+				toastService.error(
+					`${appliedCount} applied, ${superseded} changed, ${failed} failed.`
+				);
+			} else if (superseded > 0) {
+				toastService.error(
+					`${appliedCount} applied, ${superseded} changed. Rerun Project Review.`
+				);
+			} else {
+				toastService.success(`${appliedCount} review items applied.`);
+			}
+		} catch (error) {
+			toastService.error(error instanceof Error ? error.message : 'Batch apply failed');
+		} finally {
+			const next = new Set(pendingIds);
+			for (const id of ids) next.delete(id);
+			pendingIds = next;
+		}
 	}
 
 	onMount(() => {
@@ -419,8 +550,71 @@
 					{runActive || pollingRunId ? 'Reviewing' : 'Run review'}
 				</Button>
 			{/if}
+			{#if selectedBatchIds.length}
+				<Button
+					variant="secondary"
+					size="sm"
+					onclick={batchApproveSelected}
+					disabled={selectedBatchIds.some((id) => pendingIds.has(id))}
+					class="min-h-8 px-2.5 py-1 text-xs"
+				>
+					<Check class="mr-1.5 h-3.5 w-3.5" />
+					Apply {selectedBatchIds.length}
+				</Button>
+			{/if}
 		</div>
 	</div>
+
+	{#if latestRun?.brief}
+		<div class="border-t border-border bg-muted/20 px-3 py-3">
+			<p class="text-[10px] font-semibold uppercase text-muted-foreground">Project brief</p>
+			{#if latestRun.brief.current_goal}
+				<p class="mt-1 text-xs font-semibold text-foreground">
+					{latestRun.brief.current_goal}
+				</p>
+			{/if}
+			<div class="mt-2 grid gap-2 sm:grid-cols-2">
+				{#if latestRun.brief.next_best_action}
+					<div>
+						<p class="text-[10px] font-semibold uppercase text-muted-foreground">
+							Next
+						</p>
+						<p class="mt-0.5 text-[11px] text-foreground/80">
+							{latestRun.brief.next_best_action}
+						</p>
+					</div>
+				{/if}
+				{#if latestRun.brief.open_decisions?.length}
+					<div>
+						<p class="text-[10px] font-semibold uppercase text-muted-foreground">
+							Open decisions
+						</p>
+						<p class="mt-0.5 line-clamp-2 text-[11px] text-foreground/80">
+							{latestRun.brief.open_decisions.slice(0, 3).join(' · ')}
+						</p>
+					</div>
+				{/if}
+			</div>
+			{#if latestRun.brief.stale_assumptions?.length || latestRun.brief.contradictions_or_drift?.length}
+				<div class="mt-2 flex flex-wrap gap-1.5">
+					{#each latestRun.brief.stale_assumptions.slice(0, 3) as item}
+						<span
+							class="rounded border border-warning/30 bg-warning/10 px-1.5 py-0.5 text-[10px] text-warning"
+						>
+							{item}
+						</span>
+					{/each}
+					{#each latestRun.brief.contradictions_or_drift.slice(0, 3) as item}
+						<span
+							class="rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground"
+						>
+							{item}
+						</span>
+					{/each}
+				</div>
+			{/if}
+		</div>
+	{/if}
 
 	{#if loading}
 		<div class="space-y-2 border-t border-border p-2 sm:p-3">
@@ -438,120 +632,174 @@
 		</div>
 	{:else}
 		<div class="border-t border-border">
-			{#each items as item (item.id)}
-				{@const payload = projectSuggestion(item)}
-				{@const agent = agentRun(item)}
-				{@const changeSet = agentChangeSet(item)}
-				{@const tier = tierFor(item.risk_tier ?? payload?.risk_tier)}
-				{@const Icon = sourceIcon(item)}
-				{@const evidence = arrayValue<ProjectSuggestionEvidenceRef>(
-					payload?.evidence_refs
-				).slice(0, 3)}
-				{@const changes = changeCount(item)}
-				<div class="border-b border-border px-3 py-3 last:border-b-0">
-					<div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-						<div class="min-w-0 flex-1">
-							<div class="flex flex-wrap items-center gap-2">
-								<span
-									class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold {tier.cls}"
-								>
-									<Icon class="h-3 w-3" />
-									{tier.label}
-								</span>
-								<span
-									class="text-[10px] font-medium uppercase text-muted-foreground"
-								>
-									{sourceLabel(item)}
-								</span>
-								{#if payload?.kind}
+			{#each groupedItems as group (group.key)}
+				<div
+					class="bg-muted/20 px-3 py-2 text-[10px] font-semibold uppercase text-muted-foreground"
+				>
+					{group.label} ({group.items.length})
+				</div>
+				{#each group.items as item (item.id)}
+					{@const payload = projectSuggestion(item)}
+					{@const agent = agentRun(item)}
+					{@const changeSet = agentChangeSet(item)}
+					{@const tier = tierFor(item.risk_tier ?? payload?.risk_tier)}
+					{@const Icon = sourceIcon(item)}
+					{@const evidence = arrayValue<ProjectSuggestionEvidenceRef>(
+						payload?.evidence_refs
+					).slice(0, 3)}
+					{@const changes = changeCount(item)}
+					<div class="border-b border-border px-3 py-3 last:border-b-0">
+						<div
+							class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+						>
+							<div class="min-w-0 flex-1">
+								<div class="flex flex-wrap items-center gap-2">
+									{#if canBatchApprove(item)}
+										<input
+											type="checkbox"
+											class="h-3.5 w-3.5 rounded border-border"
+											checked={selectedIds.has(item.id)}
+											onchange={(event) =>
+												updateSelected(
+													item,
+													(event.currentTarget as HTMLInputElement)
+														.checked
+												)}
+											aria-label="Select review item"
+										/>
+									{/if}
+									<span
+										class="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold {tier.cls}"
+									>
+										<Icon class="h-3 w-3" />
+										{tier.label}
+									</span>
 									<span
 										class="text-[10px] font-medium uppercase text-muted-foreground"
 									>
-										{kindLabel[payload.kind] ?? payload.kind}
+										{sourceLabel(item)}
 									</span>
+									{#if payload?.kind}
+										<span
+											class="text-[10px] font-medium uppercase text-muted-foreground"
+										>
+											{kindLabel[payload.kind] ?? payload.kind}
+										</span>
+									{/if}
+								</div>
+								<p class="mt-1.5 text-sm font-semibold text-foreground">
+									{item.title || payload?.title || agent?.label || 'Review item'}
+								</p>
+								{#if payload?.why_now}
+									<p class="mt-1 text-[12px] text-foreground/80">
+										<span class="font-semibold">Why now:</span>
+										{payload.why_now}
+									</p>
+								{:else if item.summary || payload?.rationale || agent?.goal}
+									<p class="mt-1 text-[12px] text-muted-foreground">
+										{item.summary ?? payload?.rationale ?? agent?.goal}
+									</p>
+								{/if}
+								{#if payload?.preview?.summary}
+									<p
+										class="mt-1.5 border-l-2 border-accent/30 pl-2 text-[12px] text-muted-foreground"
+									>
+										<span class="font-semibold text-foreground/80"
+											>Preview:</span
+										>
+										{payload.preview.summary}
+									</p>
+								{/if}
+								{#if evidence.length}
+									<div class="mt-2 flex flex-wrap gap-1.5">
+										{#each evidence as ref}
+											<span
+												class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+											>
+												{evidenceLabel(ref)}
+											</span>
+										{/each}
+									</div>
+								{/if}
+								{#if changes}
+									<p class="mt-1.5 text-[11px] text-muted-foreground">
+										{changes} proposed change{changes === 1 ? '' : 's'}
+									</p>
+								{/if}
+								{#if changeSet && canDecide(item)}
+									<div class="mt-3">
+										<ChangeSetReview
+											runId={item.source_ref_id}
+											{changeSet}
+											onApplied={() => handleAgentRunApplied(item)}
+										/>
+									</div>
 								{/if}
 							</div>
-							<p class="mt-1.5 text-sm font-semibold text-foreground">
-								{item.title || payload?.title || agent?.label || 'Review item'}
-							</p>
-							{#if payload?.why_now}
-								<p class="mt-1 text-[12px] text-foreground/80">
-									<span class="font-semibold">Why now:</span>
-									{payload.why_now}
-								</p>
-							{:else if item.summary || payload?.rationale || agent?.goal}
-								<p class="mt-1 text-[12px] text-muted-foreground">
-									{item.summary ?? payload?.rationale ?? agent?.goal}
-								</p>
-							{/if}
-							{#if payload?.preview?.summary}
-								<p
-									class="mt-1.5 border-l-2 border-accent/30 pl-2 text-[12px] text-muted-foreground"
-								>
-									<span class="font-semibold text-foreground/80">Preview:</span>
-									{payload.preview.summary}
-								</p>
-							{/if}
-							{#if evidence.length}
-								<div class="mt-2 flex flex-wrap gap-1.5">
-									{#each evidence as ref}
-										<span
-											class="rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] text-muted-foreground"
+							{#if canDecide(item) && !changeSet}
+								<div class="flex shrink-0 flex-col items-stretch gap-2 sm:w-44">
+									<div class="flex items-center gap-2">
+										<button
+											type="button"
+											class="pressable inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-[12px] font-semibold text-success hover:bg-success/15 disabled:opacity-50"
+											onclick={() => decide(item, 'approve')}
+											disabled={pendingIds.has(item.id)}
 										>
-											{evidenceLabel(ref)}
-										</span>
-									{/each}
+											{#if pendingIds.has(item.id)}
+												<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
+											{:else}
+												<Check class="h-3.5 w-3.5" />
+											{/if}
+											{actionLabel(item, 'approve')}
+										</button>
+										<button
+											type="button"
+											class="pressable inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-muted disabled:opacity-50"
+											onclick={() => decide(item, 'reject')}
+											disabled={pendingIds.has(item.id)}
+										>
+											<X class="h-3.5 w-3.5" />
+											{actionLabel(item, 'reject')}
+										</button>
+									</div>
+									{#if item.source_type === 'project_suggestion'}
+										<select
+											class="h-8 rounded-md border border-border bg-card px-2 text-[11px] text-foreground"
+											value={dismissReasonById[item.id] || 'other'}
+											onchange={(event) =>
+												setDismissReason(
+													item.id,
+													(event.currentTarget as HTMLSelectElement).value
+												)}
+											aria-label="Dismiss reason"
+										>
+											{#each dismissReasons as reason}
+												<option value={reason.value}>{reason.label}</option>
+											{/each}
+										</select>
+										<input
+											class="h-8 rounded-md border border-border bg-card px-2 text-[11px] text-foreground placeholder:text-muted-foreground"
+											value={dismissNoteById[item.id] ?? ''}
+											oninput={(event) =>
+												setDismissNote(
+													item.id,
+													(event.currentTarget as HTMLInputElement).value
+												)}
+											placeholder="Optional note"
+											aria-label="Dismiss note"
+										/>
+									{/if}
 								</div>
-							{/if}
-							{#if changes}
-								<p class="mt-1.5 text-[11px] text-muted-foreground">
-									{changes} proposed change{changes === 1 ? '' : 's'}
-								</p>
-							{/if}
-							{#if changeSet && canDecide(item)}
-								<div class="mt-3">
-									<ChangeSetReview
-										runId={item.source_ref_id}
-										{changeSet}
-										onApplied={() => handleAgentRunApplied(item)}
-									/>
+							{:else if item.decision_disabled_reason}
+								<div
+									class="shrink-0 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground"
+								>
+									{item.decision_disabled_reason}
 								</div>
 							{/if}
 						</div>
-						{#if canDecide(item) && !changeSet}
-							<div class="flex shrink-0 items-center gap-2">
-								<button
-									type="button"
-									class="pressable inline-flex items-center gap-1 rounded-md border border-success/30 bg-success/10 px-2.5 py-1.5 text-[12px] font-semibold text-success hover:bg-success/15 disabled:opacity-50"
-									onclick={() => decide(item, 'approve')}
-									disabled={pendingIds.has(item.id)}
-								>
-									{#if pendingIds.has(item.id)}
-										<LoaderCircle class="h-3.5 w-3.5 animate-spin" />
-									{:else}
-										<Check class="h-3.5 w-3.5" />
-									{/if}
-									{actionLabel(item, 'approve')}
-								</button>
-								<button
-									type="button"
-									class="pressable inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1.5 text-[12px] font-semibold text-muted-foreground hover:bg-muted disabled:opacity-50"
-									onclick={() => decide(item, 'reject')}
-									disabled={pendingIds.has(item.id)}
-								>
-									<X class="h-3.5 w-3.5" />
-									{actionLabel(item, 'reject')}
-								</button>
-							</div>
-						{:else if item.decision_disabled_reason}
-							<div
-								class="shrink-0 rounded-md border border-border bg-muted/30 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground"
-							>
-								{item.decision_disabled_reason}
-							</div>
-						{/if}
 					</div>
-				</div>
+				{/each}
 			{/each}
 		</div>
 	{/if}

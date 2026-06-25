@@ -41,6 +41,7 @@ const FACET_STAGE_VALUES = new Set([
 	'maintenance',
 	'complete'
 ]);
+const RISK_IMPACT_VALUES = new Set(['low', 'medium', 'high', 'critical']);
 const PROJECT_STATE_TO_FALLBACK_STAGE: Record<string, string> = {
 	planning: 'planning',
 	active: 'planning',
@@ -179,6 +180,34 @@ function normalizeProjectFacets<T extends JsonRecord>(args: T): T {
 	} as T;
 }
 
+function normalizeRiskImpact(value: unknown): string | null {
+	const normalized = normalizeEnumToken(value);
+	return normalized && RISK_IMPACT_VALUES.has(normalized) ? normalized : null;
+}
+
+function normalizeEntityEnums(entity: unknown): unknown {
+	if (!isRecord(entity) || entity.kind !== 'risk' || entity.impact === undefined) {
+		return entity;
+	}
+
+	const impact = normalizeRiskImpact(entity.impact);
+	if (!impact) return entity;
+
+	return {
+		...entity,
+		impact
+	};
+}
+
+function normalizeProjectEntities<T extends JsonRecord>(args: T): T {
+	if (!Array.isArray(args.entities)) return args;
+
+	return {
+		...args,
+		entities: args.entities.map(normalizeEntityEnums)
+	} as T;
+}
+
 function validateRelationshipRef(
 	value: unknown,
 	entityKindIndex: Map<string, string>,
@@ -219,7 +248,7 @@ function validateRelationshipRef(
 }
 
 export function normalizeProjectCreateArgs<T extends JsonRecord>(args: T): T {
-	const normalizedArgs = normalizeProjectFacets(args);
+	const normalizedArgs = normalizeProjectEntities(normalizeProjectFacets(args));
 
 	if (!Array.isArray(normalizedArgs.relationships)) {
 		return normalizedArgs;

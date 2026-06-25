@@ -18,6 +18,41 @@ export interface QueueProjectLoopResult {
 	reason?: string;
 }
 
+async function createLoopChatSession(
+	supabase: ReturnType<typeof createAdminSupabaseClient>,
+	params: { userId: string; projectId: string; triggerReason: ProjectLoopTriggerReason }
+): Promise<string> {
+	const { data: chatSession, error: chatError } = await supabase
+		.from('chat_sessions')
+		.insert({
+			user_id: params.userId,
+			context_type: 'project',
+			entity_id: params.projectId,
+			status: 'active',
+			chat_type: 'project_loop',
+			title:
+				params.triggerReason === 'manual'
+					? 'Manual Project Review'
+					: 'Automated Project Review'
+		})
+		.select('id')
+		.single();
+
+	if (chatError || !chatSession?.id) {
+		throw new Error(chatError?.message ?? 'Failed to create project review chat session');
+	}
+
+	await supabase
+		.from('chat_sessions_projects')
+		.insert({
+			chat_session_id: chatSession.id,
+			project_id: params.projectId
+		})
+		.throwOnError();
+
+	return chatSession.id;
+}
+
 /**
  * Create a project_loop_runs row and enqueue a buildos_project_loop job.
  * Used by the manual "Run loop" trigger, the end-of-day scheduler, and the
@@ -63,13 +98,26 @@ export async function queueProjectLoop(params: {
 		}
 	}
 
+	let chatSessionId: string;
+	try {
+		chatSessionId = await createLoopChatSession(supabase, params);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'Failed to create loop session';
+		logger.warn('Create loop chat session failed', {
+			error: message,
+			projectId: params.projectId
+		});
+		return { queued: false, reason: message };
+	}
+
 	const { data: runRow, error: runError } = await supabase
 		.from('project_loop_runs')
 		.insert({
 			project_id: params.projectId,
 			user_id: params.userId,
 			trigger_reason: params.triggerReason,
-			status: 'queued'
+			status: 'queued',
+			chat_session_id: chatSessionId
 		})
 		.select('id')
 		.single();

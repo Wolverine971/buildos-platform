@@ -48,6 +48,13 @@ export const RISK_STATES = ['identified', 'mitigated', 'occurred', 'closed'] as 
 export type RiskState = (typeof RISK_STATES)[number];
 export const RiskStateSchema = z.enum(RISK_STATES);
 
+export const RISK_IMPACTS = ['low', 'medium', 'high', 'critical'] as const;
+export type RiskImpact = (typeof RISK_IMPACTS)[number];
+export const RiskImpactSchema = z.preprocess(
+	(value) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
+	z.enum(RISK_IMPACTS)
+);
+
 /**
  * Get valid states for an entity kind
  */
@@ -357,7 +364,7 @@ const ProjectSpecEntitySchema = z.discriminatedUnion('kind', [
 	ProjectSpecEntityBaseSchema.extend({
 		kind: z.literal('risk'),
 		title: z.string().min(1),
-		impact: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+		impact: RiskImpactSchema.optional(),
 		probability: z.number().min(0).max(1).optional(),
 		content: z.string().optional()
 	}),
@@ -680,7 +687,7 @@ export const RiskSchema = z.object({
 	title: z.string(),
 	type_key: z.string().nullable().optional(),
 	state_key: RiskStateSchema,
-	impact: z.enum(['low', 'medium', 'high', 'critical']),
+	impact: RiskImpactSchema,
 	probability: z.number().min(0).max(1).nullable().optional(),
 	content: z.string().nullable().optional(),
 	mitigated_at: z.string().datetime().nullable().optional(),

@@ -35,6 +35,10 @@ import type { ConnectionRef } from '$lib/services/ontology/relationship-resolver
 import type { ParentRef } from '$lib/services/ontology/containment-organizer';
 import { isValidTypeKey, type DocumentState, type DocStructure } from '$lib/types/onto';
 import { logOntologyApiError } from '../../shared/error-logging';
+import {
+	queueProjectLoopBurstAsync,
+	shouldSkipProjectLoopBurst
+} from '$lib/server/project-loop-burst.service';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -377,6 +381,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				classificationSource: 'create_modal'
 			}).catch((err) => {
 				if (dev) console.warn('[Document Create] Classification failed:', err);
+			});
+		}
+
+		if (!shouldSkipProjectLoopBurst(request)) {
+			queueProjectLoopBurstAsync({
+				projectId: project_id as string,
+				userId: session.user.id,
+				source: 'document_create'
 			});
 		}
 

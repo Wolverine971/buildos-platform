@@ -8,6 +8,10 @@ import { ApiResponse } from '$lib/utils/api-response';
 import { moveDocument } from '$lib/services/ontology/doc-structure.service';
 import { logOntologyApiError } from '../../../../shared/error-logging';
 import { isValidUUID } from '$lib/utils/operations/validation-utils';
+import {
+	queueProjectLoopBurstAsync,
+	shouldSkipProjectLoopBurst
+} from '$lib/server/project-loop-burst.service';
 
 export const POST: RequestHandler = async ({ params, request, locals }) => {
 	try {
@@ -181,6 +185,14 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 				return ApiResponse.error(message, 409);
 			}
 			throw err;
+		}
+
+		if (!shouldSkipProjectLoopBurst(request)) {
+			queueProjectLoopBurstAsync({
+				projectId: id,
+				userId: session.user.id,
+				source: 'doc_tree_move'
+			});
 		}
 
 		return ApiResponse.success({ structure: updated });

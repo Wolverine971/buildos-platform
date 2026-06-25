@@ -185,7 +185,7 @@ Most sub-items were already resolved by earlier tiers; net-new work was the chat
 3. **SEO 9takes 03-24 vs 03-27** — both already archived (Tier 3); newer preserved. ✅
 4. **youtuber lists** — merged + de-duped in Tier 2. ✅
 5. **ADHD-positioning docs — NOT archived (decision).** On inspection these are **not stale orphans**:
-   `adhd-productivity-os-strategy.md` is cross-referenced by ~13 marketing docs (incl. the *new*
+   `adhd-productivity-os-strategy.md` is cross-referenced by ~13 marketing docs (incl. the _new_
    `anti-ai-show-dont-tell-strategy.md` and `strategy/README.md`, which keep it intentionally as the
    "ADHD wedge / earlier positioning" reference); `instagram-strategy.md` +
    `instagram-niche-expansion-research.md` are still listed in `START_HERE`/`INDEX`;
@@ -199,16 +199,17 @@ Most sub-items were already resolved by earlier tiers; net-new work was the chat
 
 Fresh 3-agent staleness pass after Tiers 1–5. **99 more files archived** via `git mv`, 6 inbound links fixed.
 
-| Bucket | Count | From → To |
-|--------|-------|-----------|
-| **Daily-engagement logs >1wk old** | 75 | `docs/marketing/social-media/daily-engagement/` (pre-2026-06-15) → `docs/archive/marketing/social-media/daily-engagement/` (per that folder's own README Archive Rule). Kept 6 recent + README. |
-| **Shipped-feature specs** | 8 | `docs/specs/` → `docs/archive/specs/` (PROJECT_GRAPH_ENHANCEMENTS, DOCUMENT_VOICE_RECORDINGS_PANEL, PROJECT_ICON_GENERATION, PROJECT_MEMBER_ROLE_CONTEXT, ONBOARDING_BEHAVIORAL_SEED, DAILY_BRIEF_ONTOLOGY_MIGRATION, BRIEF_CHAT_EXECUTION_PLAN, sticky-scroll/STICKY_SCROLL_SPEC_UNIFIED) — all status-confirmed Implemented/Complete. Kept `BRIEF_CHAT_SPEC.md` (not yet shipped). |
-| **Superseded engineering** | 12 | `apps/web/docs/technical/` → `docs/archive/apps-web/` (MOBILE_RESPONSIVENESS_AUDIT_2026-04-27 → superseded by MOBILE_EXPERIENCE_2026-06-12; agent-stream-v2 assessment/concern-map 05-25/05-29 → 06-13; 3 resolved Feb incident analyses; 6 DITHERING completed-fix docs) |
-| **Marketing one-shots** | 4 | dated publish-kits (2026-03-09 wave-1, 2× 2026-04-27) + `audits/2026-04-29-blog-audit.md` → `docs/archive/marketing/` |
+| Bucket                             | Count | From → To                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Daily-engagement logs >1wk old** | 75    | `docs/marketing/social-media/daily-engagement/` (pre-2026-06-15) → `docs/archive/marketing/social-media/daily-engagement/` (per that folder's own README Archive Rule). Kept 6 recent + README.                                                                                                                                                                                      |
+| **Shipped-feature specs**          | 8     | `docs/specs/` → `docs/archive/specs/` (PROJECT_GRAPH_ENHANCEMENTS, DOCUMENT_VOICE_RECORDINGS_PANEL, PROJECT_ICON_GENERATION, PROJECT_MEMBER_ROLE_CONTEXT, ONBOARDING_BEHAVIORAL_SEED, DAILY_BRIEF_ONTOLOGY_MIGRATION, BRIEF_CHAT_EXECUTION_PLAN, sticky-scroll/STICKY_SCROLL_SPEC_UNIFIED) — all status-confirmed Implemented/Complete. Kept `BRIEF_CHAT_SPEC.md` (not yet shipped). |
+| **Superseded engineering**         | 12    | `apps/web/docs/technical/` → `docs/archive/apps-web/` (MOBILE_RESPONSIVENESS_AUDIT_2026-04-27 → superseded by MOBILE_EXPERIENCE_2026-06-12; agent-stream-v2 assessment/concern-map 05-25/05-29 → 06-13; 3 resolved Feb incident analyses; 6 DITHERING completed-fix docs)                                                                                                            |
+| **Marketing one-shots**            | 4     | dated publish-kits (2026-03-09 wave-1, 2× 2026-04-27) + `audits/2026-04-29-blog-audit.md` → `docs/archive/marketing/`                                                                                                                                                                                                                                                                |
 
 **Inbound links fixed (6):** ONTOLOGY_AUTO_ORGANIZATION_SPEC + PROJECT_ONTOLOGY_LINKING_PHILOSOPHY (→ archived graph spec), WS09-anti-feed-cluster (×2, → archived publish-kit), onboarding/README (→ archived seed spec), design-system/README (→ archived DITHERING_MIGRATION_PLAN). Scan: 0 broken remaining.
 
 ### Second-pass decisions (NOT touched)
+
 - **YouTube transcripts** (`docs/marketing/growth/research/youtube-transcripts/`, 87) — **KEEP**. New `docs/research/youtube-library/` is canonical but its INDEX still points back to these as a live migration staging ground. Don't force-consolidate mid-migration.
 - **`ENNEAGRAM_PROJECT_COUNCIL_SPEC.md`** — abandoned (0 code) but left in place (not called out).
 - **OpenClaw specs** — verified **37 source files** reference OpenClaw; actively integrated → KEEP (agent was wrong).

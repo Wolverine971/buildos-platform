@@ -25,7 +25,7 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 	});
 	if (!access.ok) return access.response;
 
-	let body: { action?: string };
+	let body: { action?: string; reason?: unknown; note?: unknown; feedback?: unknown };
 	try {
 		body = await request.json();
 	} catch {
@@ -42,7 +42,8 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 		userId: access.userId,
 		projectId: access.projectId,
 		suggestionId: params.suggestion_id,
-		action
+		action,
+		feedback: body.feedback ?? { reason: body.reason, note: body.note }
 	});
 
 	if (!outcome.ok) {
@@ -52,6 +53,7 @@ export const POST: RequestHandler = async ({ params, locals, request }) => {
 	return ApiResponse.success({
 		suggestion: outcome.suggestion,
 		result: outcome.result,
-		alreadyDecided: outcome.alreadyDecided ?? false
+		alreadyDecided: outcome.alreadyDecided ?? false,
+		superseded: outcome.superseded ?? false
 	});
 };

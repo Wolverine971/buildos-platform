@@ -5,10 +5,12 @@ import type {
 	Json,
 	LoopOperation,
 	ProjectSuggestion,
+	ProjectSuggestionFeedback,
 	ProjectSuggestionResult
 } from '@buildos/shared-types';
 import type { ChatToolCall } from '@buildos/shared-types';
 import { syncInboxItemForProjectSuggestion } from '@buildos/shared-agent-ops';
+import { loadProjectLoopSourceFingerprint } from '$lib/server/project-loop-snapshot.service';
 
 type AnySupabase = any;
 
@@ -20,6 +22,7 @@ export type ProjectSuggestionDecisionOutcome =
 			suggestion: Record<string, unknown>;
 			result?: ProjectSuggestionResult;
 			alreadyDecided?: boolean;
+			superseded?: boolean;
 	  }
 	| {
 			ok: false;
@@ -57,12 +60,52 @@ async function loadSuggestion(params: {
 	return data ?? null;
 }
 
+async function loadRunChatSessionId(params: {
+	supabase: AnySupabase;
+	runId: string;
+}): Promise<string | null> {
+	const { data, error } = await params.supabase
+		.from('project_loop_runs')
+		.select('chat_session_id')
+		.eq('id', params.runId)
+		.maybeSingle();
+	if (error) throw error;
+	return typeof data?.chat_session_id === 'string' ? data.chat_session_id : null;
+}
+
+const FEEDBACK_REASONS = new Set<ProjectSuggestionFeedback['reason']>([
+	'not_relevant',
+	'wrong_evidence',
+	'intentional',
+	'too_risky',
+	'other'
+]);
+
+function sanitizeFeedback(value: unknown): ProjectSuggestionFeedback | null {
+	if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+	const record = value as Record<string, unknown>;
+	const reason = FEEDBACK_REASONS.has(record.reason as ProjectSuggestionFeedback['reason'])
+		? (record.reason as ProjectSuggestionFeedback['reason'])
+		: undefined;
+	const note =
+		typeof record.note === 'string' && record.note.trim()
+			? record.note.trim().slice(0, 1000)
+			: undefined;
+	if (!reason && !note) return null;
+	return {
+		...(reason ? { reason } : {}),
+		...(note ? { note } : {}),
+		created_at: new Date().toISOString()
+	};
+}
+
 export async function decideProjectSuggestion(params: {
 	supabase: AnySupabase;
 	userId: string;
 	projectId: string;
 	suggestionId: string;
 	action: ProjectSuggestionDecisionAction;
+	feedback?: unknown;
 }): Promise<ProjectSuggestionDecisionOutcome> {
 	const { supabase, userId, projectId, suggestionId, action } = params;
 	const nowIso = new Date().toISOString();
@@ -87,9 +130,14 @@ export async function decideProjectSuggestion(params: {
 	}
 
 	if (action === 'dismiss') {
+		const feedback = sanitizeFeedback(params.feedback);
 		const { data: updated, error: updateError } = await supabase
 			.from('project_suggestions')
-			.update({ status: 'rejected', decided_at: nowIso })
+			.update({
+				status: 'rejected',
+				decided_at: nowIso,
+				...(feedback ? { user_feedback: feedback as unknown as Json } : {})
+			})
 			.eq('id', suggestionId)
 			.eq('project_id', projectId)
 			.eq('status', 'pending')
@@ -105,6 +153,59 @@ export async function decideProjectSuggestion(params: {
 		}
 		await syncProjectSuggestionInboxItem(updated);
 		return { ok: true, suggestion: updated };
+	}
+
+	const suggestionBeforeClaim = current as unknown as ProjectSuggestion;
+	if (suggestionBeforeClaim.source_fingerprint) {
+		let currentFingerprint: string | null = null;
+		try {
+			currentFingerprint = await loadProjectLoopSourceFingerprint(supabase, projectId);
+		} catch (error) {
+			return {
+				ok: false,
+				status: 500,
+				message:
+					error instanceof Error
+						? `Failed to check suggestion freshness: ${error.message}`
+						: 'Failed to check suggestion freshness'
+			};
+		}
+
+		if (currentFingerprint !== suggestionBeforeClaim.source_fingerprint) {
+			const result: ProjectSuggestionResult = {
+				ok: false,
+				applied_operations: 0,
+				errors: [
+					{
+						tool: 'freshness_guard',
+						error: 'Project changed since this review item was generated. Rerun Project Review.'
+					}
+				]
+			};
+			const { data: updated, error: updateError } = await supabase
+				.from('project_suggestions')
+				.update({
+					status: 'superseded',
+					freshness_state: 'changed',
+					decided_at: nowIso,
+					result: result as unknown as Json
+				})
+				.eq('id', suggestionId)
+				.eq('project_id', projectId)
+				.eq('status', 'pending')
+				.select('*')
+				.maybeSingle();
+			if (updateError) return { ok: false, status: 500, message: updateError.message };
+			if (updated) {
+				await syncProjectSuggestionInboxItem(updated);
+				return { ok: true, suggestion: updated, result, superseded: true };
+			}
+			const latest = await loadSuggestion({ supabase, projectId, suggestionId });
+			if (latest) await syncProjectSuggestionInboxItem(latest);
+			return latest
+				? { ok: true, suggestion: latest, alreadyDecided: true }
+				: { ok: false, status: 404, message: 'Suggestion not found' };
+		}
 	}
 
 	const { data: claimed, error: claimError } = await supabase
@@ -126,7 +227,29 @@ export async function decideProjectSuggestion(params: {
 	await syncProjectSuggestionInboxItem(claimed);
 
 	const suggestion = claimed as unknown as ProjectSuggestion;
-	const executor = new ChatToolExecutor(supabase, userId);
+	let chatSessionId: string | null = null;
+	try {
+		chatSessionId = await loadRunChatSessionId({ supabase, runId: suggestion.run_id });
+	} catch (error) {
+		console.warn(
+			`[ProjectSuggestions] Failed to load loop chat session ${suggestion.run_id}:`,
+			error instanceof Error ? error.message : error
+		);
+	}
+	const projectLoopFetch: typeof fetch = (input, init = {}) =>
+		fetch(input, {
+			...init,
+			headers: {
+				...(init.headers ?? {}),
+				'X-Skip-Project-Loop-Burst': 'true'
+			}
+		});
+	const executor = new ChatToolExecutor(
+		supabase,
+		userId,
+		chatSessionId ?? undefined,
+		projectLoopFetch
+	);
 	const operations: LoopOperation[] = Array.isArray(suggestion.operations)
 		? suggestion.operations
 		: [];

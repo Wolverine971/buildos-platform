@@ -7,9 +7,10 @@ import { requireProjectMemberAccess } from '$lib/server/ontology-project-access'
 import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import { ApiResponse, HttpStatus } from '$lib/utils/api-response';
 import { isInboxSourceType } from '$lib/server/inbox.service';
-import { commitChangeSet, syncInboxItemForSource } from '@buildos/shared-agent-ops';
+import { commitChangeSet } from '@buildos/shared-agent-ops';
+import { syncInboxItemForSource } from '@buildos/shared-agent-ops/inbox-index';
 import type { ChangeSetDecision } from '@buildos/shared-types';
-import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops';
+import type { InboxIndexRow, InboxSourceType } from '@buildos/shared-agent-ops/inbox-index';
 
 type DecisionAction = 'approve' | 'reject';
 
@@ -70,6 +71,156 @@ function statusForCommitError(code: string): number {
 	return HttpStatus.INTERNAL_SERVER_ERROR;
 }
 
+async function decideLoadedInboxItem(params: {
+	item: InboxIndexRow;
+	action: DecisionAction;
+	body: Record<string, unknown>;
+	locals: App.Locals;
+	user: NonNullable<Awaited<ReturnType<App.Locals['safeGetSession']>>['user']>;
+	admin: ReturnType<typeof createAdminSupabaseClient>;
+}): Promise<
+	| { ok: true; payload: Record<string, unknown> }
+	| { ok: false; response: Response; message: string }
+> {
+	const { item, action, body, locals, user, admin } = params;
+
+	if (item.source_type === 'agent_run') {
+		const defaultDecision: 'approved' | 'rejected' =
+			action === 'reject'
+				? 'rejected'
+				: body.default_decision === 'rejected'
+					? 'rejected'
+					: 'approved';
+		const outcome = await commitChangeSet({
+			admin,
+			runId: item.source_ref_id,
+			userId: user.id,
+			decisions: action === 'reject' ? [] : parseDecisions(body.decisions),
+			defaultDecision
+		});
+
+		if (!outcome.ok) {
+			return {
+				ok: false,
+				message: outcome.error.message,
+				response: ApiResponse.error(
+					outcome.error.message,
+					statusForCommitError(outcome.error.code),
+					outcome.error.code
+				)
+			};
+		}
+
+		return {
+			ok: true,
+			payload: {
+				item: await syncResultItem(admin as any, item),
+				result: outcome.result
+			}
+		};
+	}
+
+	if (item.source_type === 'project_suggestion') {
+		if (!PROJECT_LOOPS_ENABLED) {
+			return {
+				ok: false,
+				message: 'Inbox item not found',
+				response: ApiResponse.notFound('Inbox item')
+			};
+		}
+		if (!item.project_id) {
+			return {
+				ok: false,
+				message: 'Project suggestion is missing project_id',
+				response: ApiResponse.badRequest('Project suggestion is missing project_id')
+			};
+		}
+
+		const access = await requireProjectMemberAccess({
+			locals,
+			user,
+			projectId: item.project_id,
+			requiredAccess: 'write'
+		});
+		if (!access.ok) {
+			return { ok: false, message: 'Project access denied', response: access.response };
+		}
+
+		const outcome = await decideProjectSuggestion({
+			supabase: locals.supabase as any,
+			userId: user.id,
+			projectId: access.projectId,
+			suggestionId: item.source_ref_id,
+			action: action === 'approve' ? 'approve' : 'dismiss',
+			feedback: {
+				reason: typeof body.reason === 'string' ? body.reason : undefined,
+				note: typeof body.note === 'string' ? body.note : undefined
+			}
+		});
+		if (!outcome.ok) {
+			return {
+				ok: false,
+				message: outcome.message,
+				response: ApiResponse.error(outcome.message, outcome.status)
+			};
+		}
+
+		return {
+			ok: true,
+			payload: {
+				item: await syncResultItem(admin as any, item),
+				suggestion: outcome.suggestion,
+				result: outcome.result,
+				alreadyDecided: outcome.alreadyDecided ?? false,
+				superseded: outcome.superseded ?? false
+			}
+		};
+	}
+
+	if (item.source_type === 'calendar_suggestion') {
+		const service = CalendarAnalysisService.getInstance(locals.supabase as any);
+		const result =
+			action === 'approve'
+				? await service.acceptSuggestion(
+						item.source_ref_id,
+						user.id,
+						body.modifications as any
+					)
+				: await service.rejectSuggestion(
+						item.source_ref_id,
+						user.id,
+						typeof body.reason === 'string' ? body.reason : undefined
+					);
+
+		if (!result.success) {
+			const message = result.errors?.[0] ?? 'Failed to process suggestion';
+			return {
+				ok: false,
+				message,
+				response: ApiResponse.badRequest(message)
+			};
+		}
+
+		return {
+			ok: true,
+			payload: {
+				item: await syncResultItem(admin as any, item),
+				result: result.data ?? null
+			}
+		};
+	}
+
+	return {
+		ok: false,
+		message: 'Inbox source does not support unified decisions yet',
+		response: ApiResponse.error(
+			'Inbox source does not support unified decisions yet',
+			HttpStatus.UNPROCESSABLE_ENTITY,
+			'UNSUPPORTED_INBOX_SOURCE'
+		)
+	};
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
 	const { user } = await locals.safeGetSession();
 	if (!user) return ApiResponse.unauthorized();
@@ -93,18 +244,70 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		return ApiResponse.badRequest('Invalid source_type');
 	}
 
+	const admin = createAdminSupabaseClient();
+	const bodyRecord = body as Record<string, unknown>;
+	const itemIds = Array.isArray(bodyRecord.item_ids)
+		? bodyRecord.item_ids.filter((id): id is string => typeof id === 'string')
+		: [];
+
+	if (itemIds.length > 0) {
+		const results: Array<Record<string, unknown>> = [];
+		const errors: Array<{ item_id: string; message: string }> = [];
+
+		for (const itemId of [...new Set(itemIds)].slice(0, 50)) {
+			let item: InboxIndexRow | null;
+			try {
+				item = await loadInboxItem({
+					supabase: locals.supabase as any,
+					itemId,
+					sourceType: null,
+					sourceRefId: null
+				});
+			} catch (error) {
+				errors.push({
+					item_id: itemId,
+					message: error instanceof Error ? error.message : 'Failed to load inbox item'
+				});
+				continue;
+			}
+
+			if (!item) {
+				errors.push({ item_id: itemId, message: 'Inbox item not found' });
+				continue;
+			}
+
+			const result = await decideLoadedInboxItem({
+				item,
+				action,
+				body: bodyRecord,
+				locals,
+				user,
+				admin
+			});
+			if (result.ok) {
+				results.push({ item_id: itemId, ...result.payload });
+			} else {
+				errors.push({ item_id: itemId, message: result.message });
+			}
+		}
+
+		return ApiResponse.success({
+			results,
+			errors,
+			applied: results.length,
+			failed: errors.length
+		});
+	}
+
 	let item: InboxIndexRow | null;
 	try {
 		item = await loadInboxItem({
 			supabase: locals.supabase as any,
-			itemId:
-				typeof (body as { item_id?: unknown }).item_id === 'string'
-					? (body as { item_id: string }).item_id
-					: null,
+			itemId: typeof bodyRecord.item_id === 'string' ? (bodyRecord.item_id as string) : null,
 			sourceType,
 			sourceRefId:
-				typeof (body as { source_ref_id?: unknown }).source_ref_id === 'string'
-					? (body as { source_ref_id: string }).source_ref_id
+				typeof bodyRecord.source_ref_id === 'string'
+					? (bodyRecord.source_ref_id as string)
 					: null
 		});
 	} catch (error) {
@@ -113,102 +316,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 	if (!item) return ApiResponse.notFound('Inbox item');
 
-	const admin = createAdminSupabaseClient();
-
-	if (item.source_type === 'agent_run') {
-		const defaultDecision: 'approved' | 'rejected' =
-			action === 'reject'
-				? 'rejected'
-				: (body as { default_decision?: unknown }).default_decision === 'rejected'
-					? 'rejected'
-					: 'approved';
-		const outcome = await commitChangeSet({
-			admin,
-			runId: item.source_ref_id,
-			userId: user.id,
-			decisions:
-				action === 'reject'
-					? []
-					: parseDecisions((body as { decisions?: unknown }).decisions),
-			defaultDecision
-		});
-
-		if (!outcome.ok) {
-			return ApiResponse.error(
-				outcome.error.message,
-				statusForCommitError(outcome.error.code),
-				outcome.error.code
-			);
-		}
-
-		return ApiResponse.success({
-			item: await syncResultItem(admin as any, item),
-			result: outcome.result
-		});
-	}
-
-	if (item.source_type === 'project_suggestion') {
-		if (!PROJECT_LOOPS_ENABLED) return ApiResponse.notFound('Inbox item');
-		if (!item.project_id)
-			return ApiResponse.badRequest('Project suggestion is missing project_id');
-
-		const access = await requireProjectMemberAccess({
-			locals,
-			user,
-			projectId: item.project_id,
-			requiredAccess: 'write'
-		});
-		if (!access.ok) return access.response;
-
-		const outcome = await decideProjectSuggestion({
-			supabase: locals.supabase as any,
-			userId: user.id,
-			projectId: access.projectId,
-			suggestionId: item.source_ref_id,
-			action: action === 'approve' ? 'approve' : 'dismiss'
-		});
-		if (!outcome.ok) {
-			return ApiResponse.error(outcome.message, outcome.status);
-		}
-
-		return ApiResponse.success({
-			item: await syncResultItem(admin as any, item),
-			suggestion: outcome.suggestion,
-			result: outcome.result,
-			alreadyDecided: outcome.alreadyDecided ?? false
-		});
-	}
-
-	if (item.source_type === 'calendar_suggestion') {
-		const service = CalendarAnalysisService.getInstance(locals.supabase as any);
-		const result =
-			action === 'approve'
-				? await service.acceptSuggestion(
-						item.source_ref_id,
-						user.id,
-						(body as { modifications?: unknown }).modifications as any
-					)
-				: await service.rejectSuggestion(
-						item.source_ref_id,
-						user.id,
-						typeof (body as { reason?: unknown }).reason === 'string'
-							? (body as { reason: string }).reason
-							: undefined
-					);
-
-		if (!result.success) {
-			return ApiResponse.badRequest(result.errors?.[0] ?? 'Failed to process suggestion');
-		}
-
-		return ApiResponse.success({
-			item: await syncResultItem(admin as any, item),
-			result: result.data ?? null
-		});
-	}
-
-	return ApiResponse.error(
-		'Inbox source does not support unified decisions yet',
-		HttpStatus.UNPROCESSABLE_ENTITY,
-		'UNSUPPORTED_INBOX_SOURCE'
-	);
+	const result = await decideLoadedInboxItem({
+		item,
+		action,
+		body: bodyRecord,
+		locals,
+		user,
+		admin
+	});
+	return result.ok ? ApiResponse.success(result.payload) : result.response;
 };

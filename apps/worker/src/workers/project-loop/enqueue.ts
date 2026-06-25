@@ -10,6 +10,42 @@ import { PROJECT_LOOPS_ENABLED } from '../../config/projectLoops';
 
 const AUTO_TRIGGER_COOLDOWN_MS = 30 * 60 * 1000; // 30 minutes
 
+async function createLoopChatSession(params: {
+	projectId: string;
+	userId: string;
+	triggerReason: ProjectLoopTriggerReason;
+}): Promise<string> {
+	const { data: chatSession, error: chatError } = await supabase
+		.from('chat_sessions')
+		.insert({
+			user_id: params.userId,
+			context_type: 'project',
+			entity_id: params.projectId,
+			status: 'active',
+			chat_type: 'project_loop',
+			title:
+				params.triggerReason === 'manual'
+					? 'Manual Project Review'
+					: 'Automated Project Review'
+		})
+		.select('id')
+		.single();
+
+	if (chatError || !chatSession?.id) {
+		throw new Error(chatError?.message ?? 'Failed to create project review chat session');
+	}
+
+	const { error: linkError } = await supabase.from('chat_sessions_projects').insert({
+		chat_session_id: chatSession.id,
+		project_id: params.projectId
+	});
+	if (linkError) {
+		throw new Error(linkError.message);
+	}
+
+	return chatSession.id;
+}
+
 export async function enqueueProjectLoop(params: {
 	projectId: string;
 	userId: string;
@@ -42,13 +78,24 @@ export async function enqueueProjectLoop(params: {
 		}
 	}
 
+	let chatSessionId: string;
+	try {
+		chatSessionId = await createLoopChatSession(params);
+	} catch (error) {
+		return {
+			queued: false,
+			reason: error instanceof Error ? error.message : 'create_chat_session_failed'
+		};
+	}
+
 	const { data: runRow, error: runError } = await supabase
 		.from('project_loop_runs')
 		.insert({
 			project_id: params.projectId,
 			user_id: params.userId,
 			trigger_reason: params.triggerReason,
-			status: 'queued'
+			status: 'queued',
+			chat_session_id: chatSessionId
 		})
 		.select('id')
 		.single();

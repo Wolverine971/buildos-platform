@@ -4,7 +4,7 @@ import {
 	type InboxIndexRow,
 	type InboxItemStatus,
 	type InboxSourceType
-} from '@buildos/shared-agent-ops';
+} from '@buildos/shared-agent-ops/inbox-index';
 
 type AnySupabase = any;
 

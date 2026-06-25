@@ -113,10 +113,31 @@ From the spread, choose **one path**. Name what you are killing or **banking** (
 
 ## Stage 4 — Draft
 
-Write the core **spine** in the structure the lens implies. Plain prose, no platform formatting, no hooks-polish yet. Match the user's voice if samples exist; otherwise write clean and flag that a voice pass is needed.
+This is the hinge of the pipeline: every lens converges here, and the curated shape becomes prose. Write the core **spine** in the structure the chosen lens implies — plain prose, no platform formatting, no hook-polish yet. Match the user's voice if samples exist; otherwise write clean and flag that a voice pass is needed.
+
+**Translate the lens output into a spine.** Each Expand lens produces a different shape; each shape implies a different spine and (where one exists) a different craft skill to execute it.
+
+| Curated shape (from Expand)                        | Spine structure to write                                              | Execute via                                                                       |
+| -------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Chosen angle — a claim/insight (`idea_expansion`)  | claim → support → counter-turn → so-what (argument shape)            | ⚠️ no specialist skill — draft inline; escalate the opening to `hook_craft_short_form`. _(gap, see below)_ |
+| Journey map + entry point (`storyboard_journey`)   | open at the chosen entry point → situation → wrong path → turn → new state | `story_driven_content_craft`                                                  |
+| Earned claim + scar + bridge (`lived_conviction`)  | scar → earned claim → receipts → universal bridge                    | `nonfiction_writing_from_lived_conviction`                                         |
+| Named framework / teardown (`framework_extraction`)| name it → sequence the steps (or causal moves → principle) → apply-to-you | ⚠️ no specialist skill — draft inline; escalate the opening to `hook_craft_short_form`. _(gap, see below)_ |
+
+**Set a length budget from the carried medium.** The Frame medium is a length constraint here, not just at Tailor. Draft the spine to roughly **70%** of the medium's budget — Enhance and Tailor add the rest. Rough budgets:
+
+- **X / Twitter:** single post 1–3 sentences; thread ~5–9 beats.
+- **LinkedIn:** ~150–250 words (~900–1,500 chars).
+- **Instagram carousel:** 6–10 slides, one beat per slide.
+- **YouTube:** Short ~120–150 spoken words (~60s); long-form as ordered segments.
+- **Blog:** 800–2,000 words. **Newsletter:** 300–800 words.
+
+**Craft escalations:**
 
 - If the opening is the hard part, escalate to `hook_craft_short_form`.
 - If it is a video and the body structure is the work, escalate to `viral_video_script_structure`.
+
+> **Known gap — missing draft executors.** Story-shaped and conviction-shaped drafts each have a dedicated craft skill (`story_driven_content_craft`, `nonfiction_writing_from_lived_conviction`). Claim/argument-shaped and framework/teaching-shaped drafts do **not** — today they are drafted inline with only `hook_craft_short_form` for the opening. Two craft skills should be built to close this: an **argument / POV craft** skill (execute a curated angle into a persuasive piece) and a **teaching / how-to craft** skill (execute a framework or teardown into a instructional piece). Until they exist, draft these two shapes inline and say so.
 
 ## Stage 5 — Approve (gate)
 

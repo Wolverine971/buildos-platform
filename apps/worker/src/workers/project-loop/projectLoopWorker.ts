@@ -6,11 +6,11 @@
 
 import type {
 	Json,
+	ProjectLoopBrief,
 	ProjectLoopJobMetadata,
 	ProjectLoopRun,
 	ProposedSuggestion
 } from '@buildos/shared-types';
-import { createHash } from 'node:crypto';
 import type { ProcessingJob } from '../../lib/supabaseQueue';
 import { supabase } from '../../lib/supabase';
 import { SmartLLMService } from '../../lib/services/smart-llm-service';
@@ -20,81 +20,24 @@ import {
 	type LoopContext,
 	type LoopDocument,
 	type LoopTask,
+	generateDrift,
 	generateDocOrganization,
-	generateOutdatedDocs
+	generateOutdatedDocs,
+	generateProjectBrief,
+	generateTaskConflicts
 } from './generators';
-import { syncInboxItemForProjectSuggestion } from '@buildos/shared-agent-ops';
+import {
+	buildProjectLoopParentMap,
+	buildProjectLoopSourceFingerprint,
+	summarizeProjectLoopDocTree,
+	syncInboxItemForProjectSuggestion
+} from '@buildos/shared-agent-ops';
 
 const MAX_SUGGESTIONS = 25;
+const PROJECT_LOOP_COST_CAP_USD = 0.35;
 
 function nowIso(): string {
 	return new Date().toISOString();
-}
-
-function buildSourceFingerprint(ctx: LoopContext): string {
-	return createHash('sha256')
-		.update(
-			JSON.stringify({
-				project: {
-					id: ctx.projectId,
-					name: ctx.projectName,
-					description: ctx.projectDescription
-				},
-				goals: ctx.goals.map((g) => ({ name: g.name, description: g.description })),
-				documents: ctx.documents.map((d) => ({
-					id: d.id,
-					title: d.title,
-					state_key: d.state_key,
-					updated_at: d.updated_at,
-					parent_id: d.parent_id
-				})),
-				tasks: ctx.tasks.map((t) => ({
-					id: t.id,
-					title: t.title,
-					state_key: t.state_key,
-					updated_at: t.updated_at
-				}))
-			})
-		)
-		.digest('hex');
-}
-
-/** Walk a doc_structure tree into a childId -> parentId map. Tolerant of shape. */
-function buildParentMap(docStructure: unknown): Map<string, string | null> {
-	const map = new Map<string, string | null>();
-	const root =
-		docStructure && typeof docStructure === 'object' && 'root' in (docStructure as any)
-			? (docStructure as any).root
-			: docStructure;
-	const visit = (nodes: any, parentId: string | null) => {
-		if (!Array.isArray(nodes)) return;
-		for (const node of nodes) {
-			if (!node || typeof node.id !== 'string') continue;
-			map.set(node.id, parentId);
-			if (Array.isArray(node.children)) visit(node.children, node.id);
-		}
-	};
-	visit(root, null);
-	return map;
-}
-
-/** Render a shallow indented outline of the doc tree using document titles. */
-function summarizeDocTree(docStructure: unknown, titleById: Map<string, string>): string {
-	const root =
-		docStructure && typeof docStructure === 'object' && 'root' in (docStructure as any)
-			? (docStructure as any).root
-			: docStructure;
-	const lines: string[] = [];
-	const visit = (nodes: any, depth: number) => {
-		if (!Array.isArray(nodes)) return;
-		for (const node of nodes) {
-			if (!node || typeof node.id !== 'string') continue;
-			lines.push(`${'  '.repeat(depth)}- ${titleById.get(node.id) ?? node.id}`);
-			if (Array.isArray(node.children)) visit(node.children, depth + 1);
-		}
-	};
-	visit(root, 0);
-	return lines.length ? lines.join('\n') : '(flat — no hierarchy yet)';
 }
 
 async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
@@ -118,7 +61,7 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 	const rawTasks: any[] = Array.isArray(payload?.tasks) ? payload.tasks : [];
 	const rawGoals: any[] = Array.isArray(payload?.goals) ? payload.goals : [];
 
-	const parentMap = buildParentMap(projectRow.doc_structure);
+	const parentMap = buildProjectLoopParentMap(projectRow.doc_structure);
 	const titleById = new Map<string, string>(
 		rawDocs.map((d) => [d.id as string, (d.title as string) ?? 'Untitled'])
 	);
@@ -152,7 +95,7 @@ async function loadLoopContext(projectId: string): Promise<LoopContext | null> {
 			description: g.description ?? null
 		})),
 		documents,
-		docStructureSummary: summarizeDocTree(projectRow.doc_structure, titleById),
+		docStructureSummary: summarizeProjectLoopDocTree(projectRow.doc_structure, titleById),
 		tasks
 	};
 }
@@ -221,17 +164,40 @@ export async function processProjectLoopJob(
 			supabase,
 			appName: 'BuildOS Project Loop Worker'
 		});
-		const sourceFingerprint = buildSourceFingerprint(ctx);
+		const sourceFingerprint = buildProjectLoopSourceFingerprint(ctx);
+		const skippedGenerators: string[] = [];
+		const runGenerator = async (
+			label: string,
+			generator: () => Promise<ProposedSuggestion[]>
+		): Promise<ProposedSuggestion[]> => {
+			if (totalCost >= PROJECT_LOOP_COST_CAP_USD) {
+				skippedGenerators.push(label);
+				await job.log(
+					`Skipping ${label}; project loop cost cap reached ($${totalCost.toFixed(4)})`
+				);
+				return [];
+			}
+			return generator();
+		};
 
-		// v1 generators: doc organization + outdated docs.
-		const [docOrg, outdated] = await Promise.all([
+		const brief: ProjectLoopBrief = await generateProjectBrief({
+			llm,
+			ctx,
+			userId: run.user_id,
+			chatSessionId: run.chat_session_id ?? undefined,
+			onUsage
+		});
+
+		const docOrg = await runGenerator('doc organization', () =>
 			generateDocOrganization({
 				llm,
 				ctx,
 				userId: run.user_id,
 				chatSessionId: run.chat_session_id ?? undefined,
 				onUsage
-			}),
+			})
+		);
+		const outdated = await runGenerator('outdated docs', () =>
 			generateOutdatedDocs({
 				llm,
 				ctx,
@@ -239,9 +205,32 @@ export async function processProjectLoopJob(
 				chatSessionId: run.chat_session_id ?? undefined,
 				onUsage
 			})
-		]);
+		);
+		const drift = await runGenerator('drift', () =>
+			generateDrift({
+				llm,
+				ctx,
+				userId: run.user_id,
+				chatSessionId: run.chat_session_id ?? undefined,
+				onUsage
+			})
+		);
+		const taskConflicts = await runGenerator('task conflicts', () =>
+			generateTaskConflicts({
+				llm,
+				ctx,
+				userId: run.user_id,
+				chatSessionId: run.chat_session_id ?? undefined,
+				onUsage
+			})
+		);
 
-		const proposed: ProposedSuggestion[] = [...docOrg, ...outdated].slice(0, MAX_SUGGESTIONS);
+		const proposed: ProposedSuggestion[] = [
+			...outdated,
+			...taskConflicts,
+			...docOrg,
+			...drift
+		].slice(0, MAX_SUGGESTIONS);
 
 		if (proposed.length) {
 			const rows = proposed.map((s, index) => ({
@@ -284,14 +273,18 @@ export async function processProjectLoopJob(
 			}
 		}
 
-		const summary = proposed.length
-			? `${proposed.length} suggestion${proposed.length === 1 ? '' : 's'}: ${docOrg.length} organization, ${outdated.length} outdated-doc.`
+		const summaryBase = proposed.length
+			? `${proposed.length} suggestion${proposed.length === 1 ? '' : 's'}: ${docOrg.length} organization, ${outdated.length} outdated-doc, ${drift.length} drift, ${taskConflicts.length} task-conflict.`
 			: 'No reconciliation suggestions — project looks tidy.';
+		const summary = skippedGenerators.length
+			? `${summaryBase} Skipped ${skippedGenerators.join(', ')} after cost cap.`
+			: summaryBase;
 
 		await supabase
 			.from('project_loop_runs')
 			.update({
 				status: proposed.length ? 'waiting_review' : 'completed',
+				brief: brief as unknown as Json,
 				summary,
 				suggestion_count: proposed.length,
 				cost_usd: totalCost || null,

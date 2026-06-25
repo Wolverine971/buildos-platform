@@ -21,20 +21,15 @@
 	} from 'lucide-svelte';
 	import type { EmailGenerationContext } from '$lib/services/email-generation-service';
 	import { toastService } from '$lib/stores/toast.store';
-	import { createEventDispatcher } from 'svelte';
 
 	interface Props {
 		userContext: EmailGenerationContext['userInfo'];
 		expanded?: boolean;
 		showActions?: boolean;
+		onComposeEmail?: (payload: { template: string; instructions: string }) => void;
 	}
 
-	let { userContext, expanded = true, showActions = true }: Props = $props();
-
-	const dispatch = createEventDispatcher<{
-		composeEmail: { template: string; instructions: string };
-		copyContext: { markdown: string };
-	}>();
+	let { userContext, expanded = true, showActions = true, onComposeEmail }: Props = $props();
 
 	let copyButtonState = $state<'idle' | 'success'>('idle');
 	let expandedSections = $state<Set<string>>(new Set(['basic', 'activity']));
@@ -111,12 +106,15 @@
 	}
 
 	function toggleSection(section: string) {
-		if (expandedSections.has(section)) {
-			expandedSections.delete(section);
+		// Reassign a NEW Set: Svelte 5 does not proxy Set/Map, and reassigning the
+		// same reference (`x = x`) is a no-op that never triggers reactivity.
+		const next = new Set(expandedSections);
+		if (next.has(section)) {
+			next.delete(section);
 		} else {
-			expandedSections.add(section);
+			next.add(section);
 		}
-		expandedSections = expandedSections;
+		expandedSections = next;
 	}
 
 	function formatDate(dateString: string | null): string {
@@ -215,7 +213,7 @@
 				instructions = `Re-engage this user who hasn't been active recently. Highlight new features and offer help getting started again.`;
 				break;
 		}
-		dispatch('composeEmail', { template, instructions });
+		onComposeEmail?.({ template, instructions });
 	}
 
 	function formatUserContextAsMarkdown(): string {
@@ -352,12 +350,14 @@
 	let expandedEmails = $state<Set<string>>(new Set());
 
 	function toggleEmailExpanded(emailId: string) {
-		if (expandedEmails.has(emailId)) {
-			expandedEmails.delete(emailId);
+		// Reassign a NEW Set so Svelte 5 reactivity fires (see toggleSection).
+		const next = new Set(expandedEmails);
+		if (next.has(emailId)) {
+			next.delete(emailId);
 		} else {
-			expandedEmails.add(emailId);
+			next.add(emailId);
 		}
-		expandedEmails = expandedEmails;
+		expandedEmails = next;
 	}
 
 	async function copyEmailContent(content: string) {
@@ -375,7 +375,6 @@
 			const markdown = formatUserContextAsMarkdown();
 			await navigator.clipboard.writeText(markdown);
 			copyButtonState = 'success';
-			dispatch('copyContext', { markdown });
 			toastService.success('Context copied');
 			setTimeout(() => {
 				copyButtonState = 'idle';

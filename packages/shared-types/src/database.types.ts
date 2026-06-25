@@ -10183,6 +10183,7 @@ export type Database = {
       }
       project_loop_runs: {
         Row: {
+          brief: Json | null
           chat_session_id: string | null
           cost_usd: number | null
           created_at: string
@@ -10200,6 +10201,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          brief?: Json | null
           chat_session_id?: string | null
           cost_usd?: number | null
           created_at?: string
@@ -10217,6 +10219,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          brief?: Json | null
           chat_session_id?: string | null
           cost_usd?: number | null
           created_at?: string

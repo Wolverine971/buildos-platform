@@ -50,6 +50,9 @@ export * from './gateway/change-set';
 // AI Inbox denormalized index maintenance
 export * from './inbox-index';
 
+// Project Review Loop helpers
+export * from './project-loops';
+
 // Document outline extraction (pure; used by versioning)
 export * from './utils/document-outline';
 

@@ -73,6 +73,10 @@ import {
 	notifyEntityMentionsAdded,
 	resolveEntityMentionUserIds
 } from '$lib/server/entity-mention-notification.service';
+import {
+	queueProjectLoopBurstAsync,
+	shouldSkipProjectLoopBurst
+} from '$lib/server/project-loop-burst.service';
 
 const ALLOWED_PARENT_KINDS = new Set(Object.keys(ENTITY_TABLES));
 
@@ -720,6 +724,14 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
 			taskWithAssignees = attachAssigneesToTask(updatedTask, assigneeMap);
 		} catch (assigneeError) {
 			console.warn('[Task PATCH] Failed to enrich assignees in response:', assigneeError);
+		}
+
+		if (!shouldSkipProjectLoopBurst(request)) {
+			queueProjectLoopBurstAsync({
+				projectId: existingTask.project_id,
+				userId: session.user.id,
+				source: 'task_update'
+			});
 		}
 
 		return ApiResponse.success({ task: taskWithAssignees });

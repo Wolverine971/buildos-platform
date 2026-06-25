@@ -630,10 +630,10 @@ Guidelines:
 							<UserContextPanel
 								{userContext}
 								expanded={true}
-								on:composeEmail={(e) => {
-									instructions = e.detail.instructions;
-									emailType = normalizeTemplate(e.detail.template);
-									subject = getTemplateSubject(e.detail.template);
+								onComposeEmail={(detail) => {
+									instructions = detail.instructions;
+									emailType = normalizeTemplate(detail.template);
+									subject = getTemplateSubject(detail.template);
 									setTimeout(() => generateEmail(), 100);
 								}}
 							/>
