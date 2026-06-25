@@ -1,5 +1,5 @@
 // packages/shared-types/src/database.schema.ts
-// Generated on: 2026-06-24T22:29:41.451Z
+// Generated on: 2026-06-25T04:10:51.374Z
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
@@ -1360,6 +1360,26 @@ export type DatabaseSchema = {
 		user_id: string;
 		workspace_document_id: string | null;
 		workspace_project_id: string | null;
+	};
+	inbox_items: {
+		action_kinds: string[];
+		audience: string;
+		blocked_reason: string | null;
+		created_at: string;
+		decided_at: string | null;
+		expires_at: string | null;
+		id: string;
+		project_id: string | null;
+		risk_tier: number | null;
+		snoozed_until: string | null;
+		source_ref_id: string;
+		source_status: string | null;
+		source_type: string;
+		status: string;
+		summary: string | null;
+		title: string;
+		updated_at: string;
+		user_id: string | null;
 	};
 	invoices: {
 		amount_due: number;
@@ -3591,6 +3611,7 @@ export const tableNames = [
 	'homework_run_events',
 	'homework_run_iterations',
 	'homework_runs',
+	'inbox_items',
 	'invoices',
 	'legacy_entity_mappings',
 	'llm_prompts',

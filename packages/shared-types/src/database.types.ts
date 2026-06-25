@@ -5654,6 +5654,84 @@ export type Database = {
           },
         ]
       }
+      inbox_items: {
+        Row: {
+          action_kinds: string[]
+          audience: string
+          blocked_reason: string | null
+          created_at: string
+          decided_at: string | null
+          expires_at: string | null
+          id: string
+          project_id: string | null
+          risk_tier: number | null
+          snoozed_until: string | null
+          source_ref_id: string
+          source_status: string | null
+          source_type: string
+          status: string
+          summary: string | null
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          action_kinds?: string[]
+          audience?: string
+          blocked_reason?: string | null
+          created_at?: string
+          decided_at?: string | null
+          expires_at?: string | null
+          id?: string
+          project_id?: string | null
+          risk_tier?: number | null
+          snoozed_until?: string | null
+          source_ref_id: string
+          source_status?: string | null
+          source_type: string
+          status?: string
+          summary?: string | null
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          action_kinds?: string[]
+          audience?: string
+          blocked_reason?: string | null
+          created_at?: string
+          decided_at?: string | null
+          expires_at?: string | null
+          id?: string
+          project_id?: string | null
+          risk_tier?: number | null
+          snoozed_until?: string | null
+          source_ref_id?: string
+          source_status?: string | null
+          source_type?: string
+          status?: string
+          summary?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbox_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onto_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbox_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount_due: number

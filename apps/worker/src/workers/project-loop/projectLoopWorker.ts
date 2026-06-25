@@ -23,6 +23,7 @@ import {
 	generateDocOrganization,
 	generateOutdatedDocs
 } from './generators';
+import { syncInboxItemForProjectSuggestion } from '@buildos/shared-agent-ops';
 
 const MAX_SUGGESTIONS = 25;
 
@@ -262,9 +263,25 @@ export async function processProjectLoopJob(
 				status: 'pending' as const,
 				sort_order: s.sort_order ?? index
 			}));
-			const { error: insertError } = await supabase.from('project_suggestions').insert(rows);
+			const { data: insertedSuggestions, error: insertError } = await supabase
+				.from('project_suggestions')
+				.insert(rows)
+				.select('*');
 			if (insertError)
 				throw new Error(`Failed to insert suggestions: ${insertError.message}`);
+			for (const suggestion of insertedSuggestions ?? []) {
+				try {
+					await syncInboxItemForProjectSuggestion({
+						supabase: supabase as any,
+						suggestion: suggestion as unknown as Record<string, unknown>
+					});
+				} catch (syncError) {
+					console.warn(
+						`⚠️ Failed to sync AI Inbox item for project suggestion ${suggestion.id}:`,
+						syncError instanceof Error ? syncError.message : syncError
+					);
+				}
+			}
 		}
 
 		const summary = proposed.length

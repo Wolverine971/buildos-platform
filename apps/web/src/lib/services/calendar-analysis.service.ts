@@ -4,6 +4,7 @@ import { CalendarService, type CalendarEvent } from './calendar-service';
 import { SmartLLMService } from '$lib/services/smart-llm-service';
 import { instantiateProject } from '$lib/services/ontology/instantiation.service';
 import { queueProjectContextSnapshot } from '$lib/server/project-context-snapshot.service';
+import { createAdminSupabaseClient } from '$lib/supabase/admin';
 import {
 	convertCalendarSuggestionToProjectSpec,
 	type CalendarSuggestionInput,
@@ -11,6 +12,7 @@ import {
 	type CalendarSuggestionTask
 } from '$lib/services/ontology/calendar-suggestion-to-ontology-adapter';
 import type { Database } from '@buildos/shared-types';
+import { syncInboxItemForCalendarSuggestion } from '@buildos/shared-agent-ops';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ErrorLoggerService } from './errorLogger.service';
 import { generateProjectContextFramework } from './prompts/core/prompt-components';
@@ -35,6 +37,13 @@ type CalendarProjectSuggestion =
 	Database['public']['Tables']['calendar_project_suggestions']['Row'];
 type CalendarAnalysisPreferences =
 	Database['public']['Tables']['calendar_analysis_preferences']['Row'];
+type CalendarSuggestionStatus =
+	| 'pending'
+	| 'processing'
+	| 'accepted'
+	| 'rejected'
+	| 'modified'
+	| 'deferred';
 
 interface AnalysisResult {
 	analysisId: string;
@@ -240,9 +249,7 @@ export class CalendarAnalysisService extends ApiService {
 	}
 
 	public static getInstance(supabase: SupabaseClient<Database>): CalendarAnalysisService {
-		if (!this.instance) {
-			this.instance = new CalendarAnalysisService(supabase);
-		}
+		this.instance = new CalendarAnalysisService(supabase);
 		return this.instance;
 	}
 
@@ -1075,11 +1082,27 @@ When an event has a "recurrence" field with RRULE:
 		userId: string,
 		modifications?: CalendarSuggestionModifications
 	): Promise<ServiceResponse<any>> {
+		let claimed = false;
+		let instantiatedProjectId: string | null = null;
 		try {
-			const suggestion = await this.getSuggestion(suggestionId, userId);
+			const suggestion = await this.claimSuggestion(suggestionId, userId);
 			if (!suggestion) {
-				throw new Error('Suggestion not found');
+				const current = await this.getSuggestion(suggestionId, userId);
+				if (!current) throw new Error('Suggestion not found');
+				if (current.status === 'accepted' && current.created_project_id) {
+					await this.syncSuggestionToInbox(current);
+					return {
+						success: true,
+						data: {
+							projectId: current.created_project_id,
+							counts: null,
+							alreadyProcessed: true
+						}
+					};
+				}
+				throw new Error(`Suggestion already ${current.status ?? 'processed'}`);
 			}
+			claimed = true;
 
 			const parsedEventPatterns =
 				parseJsonValue<CalendarSuggestionEventPatterns>(suggestion.event_patterns) ??
@@ -1111,6 +1134,7 @@ When an event has a "recurrence" field with RRULE:
 				projectSpec,
 				userId
 			);
+			instantiatedProjectId = project_id;
 
 			// Populate the new project's Start Here managed status/map regions.
 			// Awaited so the enqueue completes before the serverless function freezes;
@@ -1132,6 +1156,9 @@ When an event has a "recurrence" field with RRULE:
 				}
 			};
 		} catch (error) {
+			if (claimed && !instantiatedProjectId) {
+				await this.resetProcessingSuggestion(suggestionId, userId);
+			}
 			this.errorLogger.logError(error, {
 				userId,
 				metadata: {
@@ -1152,12 +1179,21 @@ When an event has a "recurrence" field with RRULE:
 	 */
 	async rejectSuggestion(
 		suggestionId: string,
-		_userId: string,
+		userId: string,
 		reason?: string
 	): Promise<ServiceResponse> {
 		try {
-			await this.updateSuggestionStatus(suggestionId, 'rejected', null, reason);
-			return { success: true };
+			const rejected = await this.rejectPendingSuggestion(suggestionId, userId, reason);
+			if (rejected) {
+				return { success: true };
+			}
+
+			const suggestion = await this.getSuggestion(suggestionId, userId);
+			if (!suggestion) {
+				throw new Error('Suggestion not found');
+			}
+			await this.syncSuggestionToInbox(suggestion);
+			return { success: true, data: { alreadyProcessed: true } };
 		} catch (error) {
 			return {
 				success: false,
@@ -1411,12 +1447,17 @@ When an event has a "recurrence" field with RRULE:
 			status: 'pending' as const
 		}));
 
-		const { error } = await this.supabase
+		const { data, error } = await this.supabase
 			.from('calendar_project_suggestions')
-			.insert(suggestionRecords);
+			.insert(suggestionRecords)
+			.select('*');
 
 		if (error) {
 			throw new Error('Failed to store suggestions');
+		}
+
+		for (const suggestion of data ?? []) {
+			await this.syncSuggestionToInbox(suggestion);
 		}
 	}
 
@@ -1445,7 +1486,7 @@ When an event has a "recurrence" field with RRULE:
 			.select('*')
 			.eq('id', suggestionId)
 			.eq('user_id', userId)
-			.single();
+			.maybeSingle();
 
 		if (error) {
 			throw new Error('Failed to get suggestion');
@@ -1454,14 +1495,99 @@ When an event has a "recurrence" field with RRULE:
 		return data;
 	}
 
+	private async claimSuggestion(
+		suggestionId: string,
+		userId: string
+	): Promise<CalendarProjectSuggestion | null> {
+		const now = new Date().toISOString();
+		const { data, error } = await this.supabase
+			.from('calendar_project_suggestions')
+			.update({
+				status: 'processing',
+				status_changed_at: now,
+				updated_at: now
+			})
+			.eq('id', suggestionId)
+			.eq('user_id', userId)
+			.eq('status', 'pending')
+			.select('*')
+			.maybeSingle();
+
+		if (error) {
+			throw new Error('Failed to claim suggestion');
+		}
+		if (data) {
+			await this.syncSuggestionToInbox(data);
+		}
+		return data;
+	}
+
+	private async resetProcessingSuggestion(suggestionId: string, userId: string): Promise<void> {
+		const now = new Date().toISOString();
+		const { data, error } = await this.supabase
+			.from('calendar_project_suggestions')
+			.update({
+				status: 'pending',
+				status_changed_at: now,
+				updated_at: now
+			})
+			.eq('id', suggestionId)
+			.eq('user_id', userId)
+			.eq('status', 'processing')
+			.select('*')
+			.maybeSingle();
+		if (error) {
+			this.errorLogger.logError(error, {
+				userId,
+				metadata: {
+					operation: 'reset_calendar_suggestion_processing',
+					suggestionId
+				}
+			});
+			return;
+		}
+		if (data) {
+			await this.syncSuggestionToInbox(data);
+		}
+	}
+
+	private async rejectPendingSuggestion(
+		suggestionId: string,
+		userId: string,
+		reason?: string
+	): Promise<CalendarProjectSuggestion | null> {
+		const now = new Date().toISOString();
+		const { data, error } = await this.supabase
+			.from('calendar_project_suggestions')
+			.update({
+				status: 'rejected',
+				status_changed_at: now,
+				updated_at: now,
+				...(reason ? { rejection_reason: reason } : {})
+			})
+			.eq('id', suggestionId)
+			.eq('user_id', userId)
+			.eq('status', 'pending')
+			.select('*')
+			.maybeSingle();
+
+		if (error) {
+			throw new Error('Failed to reject suggestion');
+		}
+		if (data) {
+			await this.syncSuggestionToInbox(data);
+		}
+		return data;
+	}
+
 	private async updateSuggestionStatus(
 		suggestionId: string,
-		status: 'accepted' | 'rejected' | 'modified' | 'deferred',
+		status: CalendarSuggestionStatus,
 		projectId?: string | null,
 		reason?: string
 	): Promise<void> {
 		const updates: {
-			status: 'accepted' | 'rejected' | 'modified' | 'deferred';
+			status: CalendarSuggestionStatus;
 			status_changed_at: string;
 			updated_at: string;
 			created_project_id?: string | null;
@@ -1480,13 +1606,33 @@ When an event has a "recurrence" field with RRULE:
 			updates.rejection_reason = reason;
 		}
 
-		const { error } = await this.supabase
+		const { data, error } = await this.supabase
 			.from('calendar_project_suggestions')
 			.update(updates)
-			.eq('id', suggestionId);
+			.eq('id', suggestionId)
+			.select('*')
+			.single();
 
 		if (error) {
 			throw new Error('Failed to update suggestion status');
+		}
+		if (data) {
+			await this.syncSuggestionToInbox(data);
+		}
+	}
+
+	private async syncSuggestionToInbox(suggestion: CalendarProjectSuggestion): Promise<void> {
+		try {
+			const admin = createAdminSupabaseClient();
+			await syncInboxItemForCalendarSuggestion({
+				supabase: admin as any,
+				suggestion: suggestion as unknown as Record<string, unknown>
+			});
+		} catch (error) {
+			console.warn(
+				`[AI Inbox] Failed to sync calendar suggestion ${suggestion.id}:`,
+				error instanceof Error ? error.message : error
+			);
 		}
 	}
 }

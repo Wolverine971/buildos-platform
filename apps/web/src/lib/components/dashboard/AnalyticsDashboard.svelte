@@ -7,6 +7,7 @@
 		Calendar,
 		FileText,
 		FolderKanban,
+		Inbox,
 		ListChecks,
 		LoaderCircle,
 		MessageSquare,
@@ -66,6 +67,12 @@
 		invited_by_email?: string | null;
 	};
 
+	type DashboardInboxCountPayload = {
+		total?: number;
+		account?: number;
+		by_project?: Record<string, number>;
+	};
+
 	type ActivityItem =
 		| {
 				kind: 'task';
@@ -121,8 +128,11 @@
 	let DailyBriefModal = $state<any>(null);
 	let BriefChatModal = $state<any>(null);
 	let OverdueTaskTriageModal = $state<any>(null);
+	let DashboardInboxModal = $state<any>(null);
 	let showOverdueTaskTriageModal = $state(false);
+	let showDashboardInboxModal = $state(false);
 	let isOpeningOverdueTriage = $state(false);
+	let isOpeningDashboardInbox = $state(false);
 	let selectedOverdueProjectId = $state<string | null>(null);
 	let overdueProjectBatches = $state<OverdueProjectBatch[]>([]);
 	let overdueProjectBatchTotal = $state(0);
@@ -130,6 +140,11 @@
 	let isLoadingOverdueProjectBatches = $state(false);
 	let overdueProjectBatchError = $state<string | null>(null);
 	let overdueProjectBatchRequestToken = 0;
+	let dashboardInboxCount = $state(0);
+	let dashboardInboxProjectCount = $state(0);
+	let dashboardInboxAccountCount = $state(0);
+	let isLoadingDashboardInboxCount = $state(false);
+	let dashboardInboxCountError = $state<string | null>(null);
 
 	// Brief chat state
 	let showBriefChatModal = $state(false);
@@ -164,6 +179,24 @@
 			batchesByProject.set(batch.project_id, batch);
 		}
 		return batchesByProject;
+	});
+	const dashboardInboxSummary = $derived.by(() => {
+		const itemLabel = `${dashboardInboxCount} pending review item${dashboardInboxCount === 1 ? '' : 's'}`;
+		const projectLabel =
+			dashboardInboxProjectCount === 1
+				? '1 project'
+				: `${dashboardInboxProjectCount} projects`;
+
+		if (dashboardInboxProjectCount > 0 && dashboardInboxAccountCount > 0) {
+			return `${itemLabel} across ${projectLabel} and account`;
+		}
+		if (dashboardInboxProjectCount > 0) {
+			return `${itemLabel} across ${projectLabel}`;
+		}
+		if (dashboardInboxAccountCount > 0) {
+			return `${itemLabel} in account`;
+		}
+		return itemLabel;
 	});
 
 	const TERMINAL_PROJECT_STATES = new Set([
@@ -494,6 +527,69 @@
 
 	$effect(() => {
 		if (!browser) return;
+		void loadDashboardInboxCount();
+	});
+
+	async function loadDashboardInboxCount() {
+		isLoadingDashboardInboxCount = true;
+		dashboardInboxCountError = null;
+		try {
+			const response = await fetch('/api/inbox/count?status=pending&limit=5000');
+			const payload = await response.json();
+			if (!response.ok || !payload.success) {
+				throw new Error(payload.error || 'Failed to load inbox count');
+			}
+			const data = (payload.data ?? {}) as DashboardInboxCountPayload;
+			dashboardInboxCount = Number(data.total ?? 0);
+			dashboardInboxAccountCount = Number(data.account ?? 0);
+			dashboardInboxProjectCount = Object.keys(data.by_project ?? {}).length;
+		} catch (err) {
+			console.error('[Dashboard] Failed to load inbox count:', err);
+			dashboardInboxCountError =
+				err instanceof Error ? err.message : 'Failed to load inbox count';
+		} finally {
+			isLoadingDashboardInboxCount = false;
+		}
+	}
+
+	async function openDashboardInbox() {
+		if (isOpeningDashboardInbox) return;
+		isOpeningDashboardInbox = true;
+		try {
+			if (!DashboardInboxModal) {
+				const module = await import('./DashboardInboxModal.svelte');
+				DashboardInboxModal = module.default;
+			}
+			showDashboardInboxModal = true;
+		} catch (err) {
+			console.error('Failed to load DashboardInboxModal:', err);
+			toastService.error('Failed to open inbox');
+		} finally {
+			isOpeningDashboardInbox = false;
+		}
+	}
+
+	function handleDashboardInboxClose(summary?: {
+		hasChanges: boolean;
+		changedCount: number;
+		remainingCount: number;
+	}) {
+		showDashboardInboxModal = false;
+		if (summary) {
+			dashboardInboxCount = summary.remainingCount;
+		}
+		if (summary?.hasChanges) {
+			const refreshPromise = refreshHandler
+				? Promise.resolve(refreshHandler())
+				: Promise.resolve();
+			void refreshPromise.finally(() => {
+				if (browser) void loadDashboardInboxCount();
+			});
+		}
+	}
+
+	$effect(() => {
+		if (!browser) return;
 		if (overdueTasks <= 0) {
 			overdueProjectBatches = [];
 			overdueProjectBatchTotal = 0;
@@ -630,7 +726,11 @@
 
 <PullToRefresh
 	onRefresh={handleRefresh}
-	disabled={isRefreshing || showBriefModal || showBriefChatModal || showOverdueTaskTriageModal}
+	disabled={isRefreshing ||
+		showBriefModal ||
+		showBriefChatModal ||
+		showOverdueTaskTriageModal ||
+		showDashboardInboxModal}
 >
 	<main class="min-h-screen bg-background transition-colors rounded-md">
 		<div
@@ -694,6 +794,57 @@
 			<section>
 				<DashboardBriefWidget {user} onviewbrief={handleViewBrief} />
 			</section>
+
+			{#if dashboardInboxCount > 0 || dashboardInboxCountError}
+				<section class="border border-border bg-card shadow-ink wt-card overflow-hidden">
+					<div class="flex flex-wrap items-start justify-between gap-3 px-3 py-3">
+						<div class="min-w-0 flex items-start gap-2.5">
+							<div
+								class="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-warning/10"
+							>
+								<Inbox class="h-4 w-4 text-warning" />
+							</div>
+							<div class="min-w-0">
+								<p class="text-sm font-semibold text-foreground">AI Inbox</p>
+								<p class="mt-0.5 text-xs text-muted-foreground">
+									{#if dashboardInboxCountError}
+										Inbox count unavailable
+									{:else}
+										{dashboardInboxSummary}
+									{/if}
+								</p>
+							</div>
+						</div>
+						<div class="flex items-center gap-1.5 shrink-0">
+							{#if dashboardInboxCountError}
+								<button
+									type="button"
+									class="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground shadow-ink pressable hover:bg-muted"
+									onclick={loadDashboardInboxCount}
+									disabled={isLoadingDashboardInboxCount}
+								>
+									Retry
+								</button>
+							{:else}
+								<button
+									type="button"
+									onclick={openDashboardInbox}
+									disabled={isOpeningDashboardInbox}
+									class="inline-flex items-center gap-1 rounded-md border border-warning/30 bg-warning/10 px-2.5 py-1 text-xs font-semibold text-warning shadow-ink pressable transition-colors hover:border-warning/50 hover:bg-warning/15 disabled:opacity-60"
+								>
+									{#if isOpeningDashboardInbox}
+										<LoaderCircle class="h-3 w-3 animate-spin" />
+										<span class="hidden sm:inline">Opening...</span>
+									{:else}
+										Review inbox
+										<ArrowRight class="h-3 w-3" />
+									{/if}
+								</button>
+							{/if}
+						</div>
+					</div>
+				</section>
+			{/if}
 
 			{#if showAgentConnectionCta}
 				<section class="border border-accent/25 bg-accent/5 shadow-ink wt-card">
@@ -1297,4 +1448,8 @@
 		initialProjectId={selectedOverdueProjectId}
 		onClose={handleOverdueTaskTriageClose}
 	/>
+{/if}
+
+{#if DashboardInboxModal && showDashboardInboxModal}
+	<DashboardInboxModal isOpen={showDashboardInboxModal} onClose={handleDashboardInboxClose} />
 {/if}

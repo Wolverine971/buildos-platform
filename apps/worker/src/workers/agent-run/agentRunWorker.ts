@@ -23,7 +23,8 @@ import {
 	createAgentRunCalendarPort,
 	type AgentOpScope,
 	executeAgentOp,
-	isWriteOp
+	isWriteOp,
+	syncInboxItemForAgentRun
 } from '@buildos/shared-agent-ops';
 import {
 	buildGatewayEntityUrl,
@@ -635,6 +636,7 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 		// BEFORE flipping status — the chat UI reloads its thread when it sees a
 		// session run go terminal, so the injected message must already exist.
 		await injectChatCompletionMessage(run, finalStatus, resultWithProposal);
+		const completedAt = new Date().toISOString();
 		await supabase
 			.from('agent_runs')
 			.update({
@@ -642,10 +644,28 @@ export async function processAgentRunJob(job: ProcessingJob<AgentRunJobMetadata>
 				result: resultWithProposal as never,
 				metrics: metrics as never,
 				change_set: (changeSet ?? null) as never,
-				completed_at: new Date().toISOString()
+				completed_at: completedAt
 			})
 			.eq('id', runId);
 		if (changeSet) {
+			try {
+				await syncInboxItemForAgentRun({
+					supabase: supabase as any,
+					run: {
+						...(run as unknown as Record<string, unknown>),
+						status: finalStatus,
+						result: resultWithProposal,
+						metrics,
+						change_set: changeSet,
+						completed_at: completedAt
+					}
+				});
+			} catch (error) {
+				console.warn(
+					`⚠️ Failed to sync AI Inbox item for agent run ${runId}:`,
+					error instanceof Error ? error.message : error
+				);
+			}
 			await emitEvent(runId, 'run.proposal', {
 				change_count: changeSet.changes.length
 			});

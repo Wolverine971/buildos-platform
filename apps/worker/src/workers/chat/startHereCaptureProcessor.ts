@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type {
 	AgentCallScope,
 	ChangeSet,
+	Database,
 	Json,
 	ProposedChange,
 	RunResult
@@ -21,6 +22,7 @@ import {
 	type StartHereAuthoredSectionUpdate
 } from '@buildos/shared-agent-ops/ontology/start-here';
 import { stageGatewayWriteOp } from '@buildos/shared-agent-ops/gateway/op-execution-gateway';
+import { syncInboxItemForAgentRun } from '@buildos/shared-agent-ops';
 
 type CaptureCandidate = {
 	section: StartHereAuthoredSectionName;
@@ -37,6 +39,8 @@ type ChatMessage = {
 	content: string;
 	created_at: string | null;
 };
+
+type AgentRunInsert = Database['public']['Tables']['agent_runs']['Insert'];
 
 const START_HERE_CAPTURE_SYSTEM_PROMPT = `You extract durable project orientation facts for a BuildOS START HERE document.
 
@@ -188,7 +192,7 @@ async function createProposalRun(params: {
 		metrics
 	};
 
-	const { error } = await supabase.from('agent_runs').insert({
+	const runRow: AgentRunInsert = {
 		id: runId,
 		user_id: params.userId,
 		trigger: 'chat',
@@ -210,9 +214,21 @@ async function createProposalRun(params: {
 		result: result as unknown as Json,
 		metrics: metrics as unknown as Json,
 		completed_at: now
-	});
+	};
+	const { error } = await supabase.from('agent_runs').insert(runRow);
 
 	if (error) throw error;
+	try {
+		await syncInboxItemForAgentRun({
+			supabase: supabase as any,
+			run: runRow as unknown as Record<string, unknown>
+		});
+	} catch (syncError) {
+		console.warn(
+			`⚠️ Failed to sync AI Inbox item for Start Here proposal ${runId}:`,
+			syncError instanceof Error ? syncError.message : syncError
+		);
+	}
 	return runId;
 }
 

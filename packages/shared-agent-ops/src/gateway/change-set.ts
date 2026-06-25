@@ -24,6 +24,7 @@ import {
 	titleFromGatewayChange
 } from './op-execution-gateway';
 import { START_HERE_DOCUMENT_TYPE_KEY, stripStartHereManagedRegions } from '../ontology/start-here';
+import { syncInboxItemForAgentRun } from '../inbox-index';
 
 export interface CommitChangeSetResult {
 	change_set_status: ChangeSetStatus;
@@ -275,6 +276,14 @@ export async function commitChangeSet(params: {
 		if (run.status === 'completed' || run.status === 'partial') {
 			const committedChangeSet = asChangeSet(run.change_set, runId);
 			if (committedChangeSet && committedChangeSet.status !== 'pending') {
+				try {
+					await syncInboxItemForAgentRun({ supabase: admin as any, run: run as any });
+				} catch (error) {
+					console.warn('[AI Inbox] Failed to sync committed change set', {
+						runId,
+						error: error instanceof Error ? error.message : String(error)
+					});
+				}
 				const result =
 					run.result && typeof run.result === 'object' && !Array.isArray(run.result)
 						? (run.result as Record<string, unknown>)
@@ -506,6 +515,24 @@ export async function commitChangeSet(params: {
 
 	if (updateError) {
 		return { ok: false, error: { code: 'INTERNAL', message: updateError.message } };
+	}
+
+	try {
+		await syncInboxItemForAgentRun({
+			supabase: admin as any,
+			run: {
+				...(run as Record<string, unknown>),
+				status: runStatus,
+				change_set: changeSet,
+				result: mergedResult,
+				completed_at: committedAt
+			}
+		});
+	} catch (error) {
+		console.warn('[AI Inbox] Failed to sync committed change set', {
+			runId,
+			error: error instanceof Error ? error.message : String(error)
+		});
 	}
 
 	return {

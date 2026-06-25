@@ -22,6 +22,11 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 					'the user asks for a broad content strategy, channel strategy, distribution plan, or format decision'
 			},
 			{
+				id: 'content_creation_pipeline',
+				useWhen:
+					'the user has one idea or half-formed thought and wants a step-by-step path from idea to a drafted post, video, essay, or newsletter'
+			},
+			{
 				id: 'linkedin_company_page_growth',
 				useWhen: 'the user asks about growing a LinkedIn Company Page or company account'
 			},
@@ -99,6 +104,21 @@ const DOMAIN_CATALOG: DomainDefinition[] = [
 				useWhen:
 					'the user needs a channel or content system plan rather than one asset rewrite',
 				skillIds: ['content_strategy_beyond_blogging', 'algorithm_aware_publishing']
+			},
+			{
+				id: 'idea_to_draft_pipeline',
+				name: 'Idea-to-Draft Pipeline',
+				useWhen:
+					'the user has one idea and wants it walked from raw thought to a ship-ready draft, not a channel strategy',
+				skillIds: [
+					'content_creation_pipeline',
+					'idea_expansion_lens',
+					'storyboard_journey_lens',
+					'lived_conviction_lens',
+					'framework_extraction_lens',
+					'sensory_double_tap',
+					'medium_tailoring'
+				]
 			}
 		],
 		resources: [

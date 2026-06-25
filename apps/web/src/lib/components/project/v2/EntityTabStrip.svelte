@@ -21,6 +21,7 @@
 	action-oriented way, so the dedicated Activity tab was removed.
 -->
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import {
 		AlertTriangle,
@@ -30,6 +31,7 @@
 		ExternalLink,
 		Flag,
 		GitBranch,
+		Inbox,
 		LoaderCircle,
 		MessageCircle,
 		MessagesSquare,
@@ -41,6 +43,7 @@
 		fetchProjectBriefs,
 		type ProjectBriefSummary
 	} from '$lib/components/project/project-page-data-controller';
+	import ProjectInboxPanel from '$lib/components/project/ProjectInboxPanel.svelte';
 	import { getUpcomingEvents } from '$lib/components/project/project-event-filters';
 	import { resolveMilestoneState } from '$lib/utils/milestone-state';
 	import type { ProjectLogEntityType } from '@buildos/shared-types';
@@ -52,7 +55,7 @@
 
 	const recentlyCreated = getRecentlyCreatedContext();
 
-	type TabKey = 'briefs' | 'goals' | 'milestones' | 'plans' | 'risks';
+	type TabKey = 'briefs' | 'inbox' | 'goals' | 'milestones' | 'plans' | 'risks';
 	type TabActionKey = 'chats' | 'graph' | 'events';
 	type TabItemKey = TabKey | TabActionKey;
 
@@ -105,7 +108,9 @@
 	let expanded = $state<TabKey | null>(null);
 
 	function toggle(key: TabKey) {
-		expanded = expanded === key ? null : key;
+		const nextExpanded = expanded === key ? null : key;
+		expanded = nextExpanded;
+		if (nextExpanded === 'inbox') void loadInboxCount();
 	}
 
 	// ----------------------------------------------------------------
@@ -123,6 +128,28 @@
 	let briefChatSessionId = $state<string | null>(null);
 	let briefChatTitle = $state<string | null>(null);
 	let openingBriefId = $state<string | null>(null);
+	let inboxCount = $state(0);
+	let inboxCountLoaded = $state(false);
+
+	async function loadInboxCount() {
+		try {
+			const url = new URL('/api/inbox/count', window.location.origin);
+			url.searchParams.set('project_id', projectId);
+			url.searchParams.set('status', 'pending');
+			const res = await fetch(url);
+			const json = await res.json();
+			if (!res.ok) throw new Error(json?.error ?? 'Failed to load inbox count');
+			inboxCount = Number(json.data?.total ?? 0);
+			inboxCountLoaded = true;
+		} catch (error) {
+			console.warn('[EntityTabStrip] Failed to load inbox count', error);
+			inboxCountLoaded = false;
+		}
+	}
+
+	onMount(() => {
+		void loadInboxCount();
+	});
 
 	async function loadBriefs(reset = false) {
 		if (briefsLoading) return;
@@ -286,6 +313,14 @@
 				icon: Sparkles,
 				accent: 'text-accent',
 				bg: 'bg-accent/10'
+			},
+			{
+				key: 'inbox',
+				label: 'Inbox',
+				count: inboxCountLoaded ? inboxCount : null,
+				icon: Inbox,
+				accent: inboxCount > 0 ? 'text-warning' : 'text-muted-foreground',
+				bg: inboxCount > 0 ? 'bg-warning/10' : 'bg-muted/20'
 			},
 			{
 				key: 'chats',
@@ -573,6 +608,17 @@
 									</button>
 								{/if}
 							{/if}
+						</div>
+					{:else if tab.key === 'inbox'}
+						<div class="max-h-[60vh] overflow-y-auto">
+							<ProjectInboxPanel
+								{projectId}
+								{canEdit}
+								onCountChange={(count) => {
+									inboxCount = count;
+									inboxCountLoaded = true;
+								}}
+							/>
 						</div>
 					{:else if tab.key === 'goals'}
 						<div class="p-2 sm:p-3 space-y-2 max-h-[60vh] overflow-y-auto">

@@ -43,8 +43,6 @@
 	} from '$lib/services/ontology/doc-structure.service';
 	import ProjectHeaderCard from '$lib/components/project/ProjectHeaderCard.svelte';
 	import ProjectDocumentsSection from '$lib/components/project/ProjectDocumentsSection.svelte';
-	import ProjectSuggestionsPanel from '$lib/components/project/ProjectSuggestionsPanel.svelte';
-	import { PROJECT_LOOPS_ENABLED } from '$lib/config/project-loops';
 	import ProjectEventsModal from '$lib/components/project/ProjectEventsModal.svelte';
 	import RecentProjectChatsModal from '$lib/components/project/RecentProjectChatsModal.svelte';
 	import PulseStrip from '$lib/components/project/v2/PulseStrip.svelte';
@@ -1173,7 +1171,7 @@
 			 open modals; the rest expand inline. -->
 		{#if isHydrating}
 			<div class="mb-2 sm:mb-3 flex flex-wrap gap-1.5 sm:gap-2">
-				{#each Array(8) as _, i (i)}
+				{#each Array(9) as _, i (i)}
 					<div
 						class="h-10 min-w-[88px] flex-1 sm:flex-none bg-card border border-border rounded-lg shadow-ink tx tx-frame tx-weak animate-pulse"
 					></div>
@@ -1256,13 +1254,6 @@
 				/>
 			{/if}
 		</div>
-
-		<!-- Project Review (project loops) — dev-only until green-lit -->
-		{#if PROJECT_LOOPS_ENABLED && !isHydrating && project?.id}
-			<div class="mt-2 sm:mt-3">
-				<ProjectSuggestionsPanel projectId={project.id} {canEdit} />
-			</div>
-		{/if}
 
 		<!-- Documents (shared mobile + desktop) -->
 		{#if !isHydrating}
