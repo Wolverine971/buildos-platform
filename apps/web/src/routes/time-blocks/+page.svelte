@@ -367,8 +367,8 @@
 					<TimeBlockList
 						blocks={$timeBlocksStore.blocks}
 						regeneratingIds={$timeBlocksStore.regeneratingIds}
-						on:delete={(event) => handleDeleteBlock(event.detail.blockId)}
-						on:regenerate={(event) => handleRegenerateBlock(event.detail.blockId)}
+						ondelete={(event) => handleDeleteBlock(event.blockId)}
+						onregenerate={(event) => handleRegenerateBlock(event.blockId)}
 					/>
 				</div>
 			{/if}
@@ -385,8 +385,8 @@
 		initialStart={draftStart}
 		initialEnd={draftEnd}
 		isCreating={$timeBlocksStore.isCreating}
-		on:create={(event) => handleCreateBlock(event.detail)}
-		on:close={() => {
+		oncreate={(event) => handleCreateBlock(event)}
+		onclose={() => {
 			showCreateModal = false;
 			draftStart = undefined;
 			draftEnd = undefined;

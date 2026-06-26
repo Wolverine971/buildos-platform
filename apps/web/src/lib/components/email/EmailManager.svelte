@@ -170,9 +170,7 @@
 		}
 	}
 
-	function handleEmailSaved(event: any) {
-		const savedEmail = event.detail;
-
+	function handleEmailSaved(savedEmail: any) {
 		// Update or add email in list
 		const existingIndex = emails.findIndex((e) => e.id === savedEmail.id);
 		if (existingIndex >= 0) {
@@ -186,7 +184,7 @@
 		selectedEmail = savedEmail;
 	}
 
-	function handleEmailSent(event: any) {
+	function handleEmailSent() {
 		// Refresh emails to get updated status
 		loadEmails();
 		// Return to list view
@@ -706,12 +704,12 @@
 			{/if}
 		</div>
 	{:else if activeView === 'compose'}
-		<EmailComposer on:saved={handleEmailSaved} on:sent={handleEmailSent} />
+		<EmailComposer onsaved={handleEmailSaved} onsent={handleEmailSent} />
 	{:else if activeView === 'edit'}
 		<EmailComposer
 			initialEmail={selectedEmail}
-			on:saved={handleEmailSaved}
-			on:sent={handleEmailSent}
+			onsaved={handleEmailSaved}
+			onsent={handleEmailSent}
 		/>
 	{:else if activeView === 'preview'}
 		<EmailPreview

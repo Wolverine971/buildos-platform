@@ -47,22 +47,25 @@ function baseContext(): ProjectLoopFingerprintContext {
 }
 
 describe('project loop shared helpers', () => {
-	it('builds an order-independent fingerprint that ignores updated_at churn', () => {
+	it('builds an order-independent fingerprint but changes when project recency changes', () => {
 		const first = baseContext();
 		const reordered: ProjectLoopFingerprintContext = {
 			...first,
 			goals: [...first.goals].reverse(),
-			documents: [...first.documents].reverse().map((doc) => ({
-				...doc,
-				updated_at: '2026-06-25T00:00:00.000Z'
-			})),
-			tasks: [...first.tasks].reverse().map((task) => ({
-				...task,
-				updated_at: '2026-06-25T00:00:00.000Z'
-			}))
+			documents: [...first.documents].reverse(),
+			tasks: [...first.tasks].reverse()
+		};
+		const updatedDocTimestamp: ProjectLoopFingerprintContext = {
+			...first,
+			documents: first.documents.map((doc) =>
+				doc.id === 'doc-a' ? { ...doc, updated_at: '2026-06-25T00:00:00.000Z' } : doc
+			)
 		};
 
 		expect(buildProjectLoopSourceFingerprint(reordered)).toBe(
+			buildProjectLoopSourceFingerprint(first)
+		);
+		expect(buildProjectLoopSourceFingerprint(updatedDocTimestamp)).not.toBe(
 			buildProjectLoopSourceFingerprint(first)
 		);
 	});

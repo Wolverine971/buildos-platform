@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/email/EmailComposer.svelte -->
 <script lang="ts">
-	import { onMount, createEventDispatcher, afterUpdate } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import {
 		Mail,
 		Send,
@@ -30,9 +30,15 @@
 	import TextInput from '$lib/components/ui/TextInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	export let initialEmail: any = null;
-
-	const dispatch = createEventDispatcher();
+	let {
+		initialEmail = null,
+		onsaved,
+		onsent
+	}: {
+		initialEmail?: any;
+		onsaved?: (email: any) => void;
+		onsent?: (result: any) => void;
+	} = $props();
 
 	// Recipient type for email data
 	interface EmailRecipient {
@@ -52,16 +58,16 @@
 	}
 
 	// Editor state
-	let editor: Editor | null = null;
-	let editorElement: HTMLElement;
-	let aiEditorElement: HTMLElement;
-	let aiEditor: Editor | null = null;
-	let activeTab: 'compose' | 'preview' = 'compose';
+	let editor: Editor | null = $state(null);
+	let editorElement = $state<HTMLElement>();
+	let aiEditorElement = $state<HTMLElement>();
+	let aiEditor: Editor | null = $state(null);
+	let activeTab: 'compose' | 'preview' = $state('compose');
 	let previousTab: 'compose' | 'preview' = 'compose';
-	let composeMode: 'manual' | 'ai-assist' = 'manual';
-	let aiGeneratedContent = '';
-	let isGeneratingEmail = false;
-	let generationInstructions = '';
+	let composeMode: 'manual' | 'ai-assist' = $state('manual');
+	let aiGeneratedContent = $state('');
+	let isGeneratingEmail = $state(false);
+	let generationInstructions = $state('');
 
 	// Email data
 	let emailData: {
@@ -75,7 +81,7 @@
 		scheduled_at: string | null;
 		recipients: EmailRecipient[];
 		attachments: any[];
-	} = {
+	} = $state({
 		id: null,
 		subject: '',
 		content: '',
@@ -86,30 +92,30 @@
 		scheduled_at: null,
 		recipients: [],
 		attachments: []
-	};
+	});
 
 	// AI Generation options
-	let emailType: 'welcome' | 'follow-up' | 'feature' | 'feedback' | 'custom' = 'custom';
-	let emailTone: 'professional' | 'friendly' | 'casual' = 'friendly';
+	let emailType: 'welcome' | 'follow-up' | 'feature' | 'feedback' | 'custom' = $state('custom');
+	let emailTone: 'professional' | 'friendly' | 'casual' = $state('friendly');
 
 	// UI state
-	let isLoading = false;
-	let isSaving = false;
-	let isSending = false;
-	let showSendModal = false;
-	let showImageModal = false;
-	let showRecipientModal = false;
-	let error: string | null = null;
-	let success: string | null = null;
+	let isLoading = $state(false);
+	let isSaving = $state(false);
+	let isSending = $state(false);
+	let showSendModal = $state(false);
+	let showImageModal = $state(false);
+	let showRecipientModal = $state(false);
+	let error: string | null = $state(null);
+	let success: string | null = $state(null);
 
 	// Scheduling
-	let scheduleDate = '';
-	let scheduleTime = '';
-	let isScheduled = false;
+	let scheduleDate = $state('');
+	let scheduleTime = $state('');
+	let isScheduled = $state(false);
 
 	// Track if editor needs reinitialization
-	let editorNeedsInit = true;
-	let aiEditorNeedsInit = true;
+	let editorNeedsInit = $state(true);
+	let aiEditorNeedsInit = $state(true);
 
 	onMount(() => {
 		// Load initial email if provided
@@ -118,16 +124,23 @@
 		}
 	});
 
-	// Watch for tab changes and handle editor reinitialization
-	$: if (activeTab !== previousTab) {
-		handleTabChange(activeTab, previousTab);
-		previousTab = activeTab;
-	}
+	// Watch for tab changes and handle editor reinitialization.
+	// untrack the handler so the effect only reacts to activeTab, not the editor
+	// state it tears down/reads internally.
+	$effect(() => {
+		if (activeTab !== previousTab) {
+			untrack(() => handleTabChange(activeTab, previousTab));
+			previousTab = activeTab;
+		}
+	});
 
-	// Watch for activeTab changes and ensure editor is initialized when switching to compose
-	$: if (activeTab === 'compose' && editorElement && editorNeedsInit) {
-		initializeEditor();
-	}
+	// Ensure the editor is initialized when switching to compose. untrack the
+	// initializer so editor content reads don't make this re-run on every keystroke.
+	$effect(() => {
+		if (activeTab === 'compose' && editorElement && editorNeedsInit) {
+			untrack(() => initializeEditor());
+		}
+	});
 
 	function handleTabChange(newTab: string, oldTab: string) {
 		if (oldTab === 'compose') {
@@ -207,14 +220,16 @@
 	});
 
 	// Initialize AI editor when needed
-	$: if (
-		activeTab === 'compose' &&
-		composeMode === 'ai-assist' &&
-		aiEditorElement &&
-		aiEditorNeedsInit
-	) {
-		initializeAiEditor();
-	}
+	$effect(() => {
+		if (
+			activeTab === 'compose' &&
+			composeMode === 'ai-assist' &&
+			aiEditorElement &&
+			aiEditorNeedsInit
+		) {
+			untrack(() => initializeAiEditor());
+		}
+	});
 
 	function initializeAiEditor() {
 		// Clean up existing editor if it exists
@@ -480,7 +495,7 @@
 				emailData.id = result.data.email.id;
 				emailData.status = result.data.email.status;
 				success = 'Email saved successfully';
-				dispatch('saved', result.data.email);
+				onsaved?.(result.data.email);
 
 				// Clear success message after 3 seconds
 				setTimeout(() => {
@@ -526,7 +541,7 @@
 			if (result.success) {
 				success = `Email sent successfully! Sent: ${result.summary.sent}, Failed: ${result.summary.failed}`;
 				emailData.status = 'sent';
-				dispatch('sent', result);
+				onsent?.(result);
 				showSendModal = false;
 			} else {
 				throw new Error(result.error || 'Failed to send email');
@@ -607,9 +622,12 @@
 		success = null;
 	}
 
-	$: canSend =
-		emailData.subject.trim() && emailData.content.trim() && emailData.recipients.length > 0;
-	$: isEmailSent = emailData.status === 'sent' || emailData.status === 'delivered';
+	let canSend = $derived(
+		Boolean(emailData.subject.trim()) &&
+			Boolean(emailData.content.trim()) &&
+			emailData.recipients.length > 0
+	);
+	let isEmailSent = $derived(emailData.status === 'sent' || emailData.status === 'delivered');
 </script>
 
 <div class="bg-card rounded-lg shadow-ink border border-border overflow-hidden tx tx-frame tx-weak">
@@ -1286,6 +1304,6 @@
 <RecipientSelector
 	isOpen={showRecipientModal}
 	selectedRecipients={emailData.recipients}
-	on:close={() => (showRecipientModal = false)}
-	on:recipientsSelected={(event) => updateRecipients(event.detail)}
+	onclose={() => (showRecipientModal = false)}
+	onrecipientsSelected={(recipients) => updateRecipients(recipients)}
 />

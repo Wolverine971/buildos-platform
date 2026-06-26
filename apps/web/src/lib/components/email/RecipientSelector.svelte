@@ -1,6 +1,6 @@
 <!-- apps/web/src/lib/components/email/RecipientSelector.svelte -->
 <script lang="ts">
-	import { onMount, createEventDispatcher } from 'svelte';
+	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { Users, Search, Plus, X, Mail, Building, Shield, User } from 'lucide-svelte';
 	import Modal from '../ui/Modal.svelte';
@@ -11,11 +11,16 @@
 	interface Props {
 		isOpen?: boolean;
 		selectedRecipients?: any[];
+		onclose?: () => void;
+		onrecipientsSelected?: (recipients: any[]) => void;
 	}
 
-	let { isOpen = false, selectedRecipients = [] }: Props = $props();
-
-	const dispatch = createEventDispatcher();
+	let {
+		isOpen = false,
+		selectedRecipients = [],
+		onclose,
+		onrecipientsSelected
+	}: Props = $props();
 
 	let activeTab = $state<'beta_users' | 'beta_members' | 'custom'>('beta_users');
 	let isLoading = $state(false);
@@ -263,11 +268,11 @@
 			}
 		}
 
-		dispatch('recipientsSelected', recipients);
+		onrecipientsSelected?.(recipients);
 	}
 
 	function close() {
-		dispatch('close');
+		onclose?.();
 	}
 
 	function clearMessages() {

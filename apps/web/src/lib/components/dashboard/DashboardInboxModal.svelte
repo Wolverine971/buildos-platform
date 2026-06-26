@@ -12,6 +12,7 @@
 	} from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import ChangeSetReview from '$lib/components/notifications/types/agent-run/ChangeSetReview.svelte';
+	import InboxChangeDetails from '$lib/components/inbox/InboxChangeDetails.svelte';
 	import { toastService } from '$lib/stores/toast.store';
 	import type {
 		ChangeSet,
@@ -676,7 +677,12 @@
 													{/each}
 												</div>
 											{/if}
-											{#if changes}
+											{#if item.source_type === 'project_suggestion' && (changes || payload?.preview)}
+												<InboxChangeDetails
+													operations={payload?.operations ?? []}
+													preview={payload?.preview ?? null}
+												/>
+											{:else if changes}
 												<p class="mt-1.5 text-[11px] text-muted-foreground">
 													{changes} proposed change{changes === 1
 														? ''

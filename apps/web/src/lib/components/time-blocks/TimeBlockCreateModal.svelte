@@ -1,30 +1,31 @@
 <!-- apps/web/src/lib/components/time-blocks/TimeBlockCreateModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher, untrack } from 'svelte';
+	import { untrack } from 'svelte';
 	import FormModal from '$lib/components/ui/FormModal.svelte';
 	import type { FormConfig } from '$lib/types/form';
+
+	type CreatePayload = {
+		blockType: 'project' | 'build';
+		projectId: string | null;
+		startTime: Date;
+		endTime: Date;
+	};
 
 	let {
 		projects = [],
 		initialStart,
 		initialEnd,
-		isCreating = false
+		isCreating = false,
+		oncreate,
+		onclose
 	}: {
 		projects?: Array<{ id: string; name: string; calendar_color_id?: string | null }>;
 		initialStart?: Date;
 		initialEnd?: Date;
 		isCreating?: boolean;
+		oncreate?: (payload: CreatePayload) => void;
+		onclose?: () => void;
 	} = $props();
-
-	const dispatch = createEventDispatcher<{
-		create: {
-			blockType: 'project' | 'build';
-			projectId: string | null;
-			startTime: Date;
-			endTime: Date;
-		};
-		close: void;
-	}>();
 
 	function defaultStart() {
 		const start = new Date();
@@ -159,7 +160,7 @@
 		startValue = data.startTime;
 		endValue = data.endTime;
 
-		dispatch('create', {
+		oncreate?.({
 			blockType,
 			projectId: blockType === 'project' ? selectedProjectId : null,
 			startTime: start,
@@ -177,7 +178,7 @@
 	{initialData}
 	externalLoading={isCreating}
 	onSubmit={handleSubmit}
-	onClose={() => dispatch('close')}
+	onClose={() => onclose?.()}
 	size="lg"
 >
 	<!-- Block type selector and project selector before form fields -->

@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/briefs/ProjectBriefCard.svelte -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { ExternalLink, FileText, Hash } from 'lucide-svelte';
 	import Card from '$lib/components/ui/Card.svelte';
 	import CardHeader from '$lib/components/ui/CardHeader.svelte';
@@ -8,12 +7,13 @@
 	import type { ProjectDailyBrief } from '$lib/types/daily-brief';
 
 	// Using $props() for Svelte 5 runes mode
-	let { brief }: { brief: ProjectDailyBrief } = $props();
-
-	const dispatch = createEventDispatcher();
+	let {
+		brief,
+		onopen
+	}: { brief: ProjectDailyBrief; onopen?: (brief: ProjectDailyBrief) => void } = $props();
 
 	function handleClick() {
-		dispatch('open', brief);
+		onopen?.(brief);
 	}
 
 	// Extract plain text from markdown for preview

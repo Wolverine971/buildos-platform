@@ -139,9 +139,9 @@
 	{@const TypeSpecificComponent = typeSpecificComponent}
 	<TypeSpecificComponent
 		{notification}
-		on:minimize={handleMinimize}
-		on:close={handleDismiss}
-		on:cancel={handleDismiss}
+		onminimize={handleMinimize}
+		onclose={handleDismiss}
+		oncancel={handleDismiss}
 	/>
 {:else}
 	<!-- Generic fallback modal -->

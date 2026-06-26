@@ -1,21 +1,19 @@
 <!-- apps/web/src/lib/components/time-blocks/TimeBlockList.svelte -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import type { TimeBlockSuggestion, TimeBlockWithProject } from '@buildos/shared-types';
 	import { resolveBlockAccentColor } from '$lib/utils/time-block-colors';
 
 	let {
 		blocks = [],
-		regeneratingIds = []
+		regeneratingIds = [],
+		ondelete,
+		onregenerate
 	}: {
 		blocks?: TimeBlockWithProject[];
 		regeneratingIds?: string[];
+		ondelete?: (payload: { blockId: string }) => void;
+		onregenerate?: (payload: { blockId: string }) => void;
 	} = $props();
-
-	const dispatch = createEventDispatcher<{
-		delete: { blockId: string };
-		regenerate: { blockId: string };
-	}>();
 
 	const formatter = new Intl.DateTimeFormat(undefined, {
 		weekday: 'short',
@@ -84,13 +82,13 @@
 
 	function handleDelete(blockId: string) {
 		if (confirm('Delete this time block?')) {
-			dispatch('delete', { blockId });
+			ondelete?.({ blockId });
 		}
 	}
 
 	function handleRegenerate(blockId: string) {
 		if (isRegenerating(blockId)) return;
-		dispatch('regenerate', { blockId });
+		onregenerate?.({ blockId });
 	}
 </script>
 

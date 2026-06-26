@@ -3,15 +3,20 @@
 
 <script lang="ts">
 	import Modal from '$lib/components/ui/Modal.svelte';
-	import { createEventDispatcher } from 'svelte';
 	import { LoaderCircle, AlertCircle, CheckCircle, Calendar, Clock, X } from 'lucide-svelte';
 	import type { TimeBlockNotification } from '$lib/types/notification.types';
 	import { format } from 'date-fns';
 	import Button from '$components/ui/Button.svelte';
 
-	let { notification }: { notification: TimeBlockNotification } = $props();
-
-	const dispatch = createEventDispatcher();
+	let {
+		notification,
+		onminimize,
+		onclose
+	}: {
+		notification: TimeBlockNotification;
+		onminimize?: () => void;
+		onclose?: () => void;
+	} = $props();
 
 	let formattedDate = $derived(
 		notification.data.startTime
@@ -79,11 +84,11 @@
 	});
 
 	function handleMinimize() {
-		dispatch('minimize');
+		onminimize?.();
 	}
 
 	function handleDismiss() {
-		dispatch('close');
+		onclose?.();
 	}
 
 	function handleClose() {

@@ -166,17 +166,19 @@
 
 	function handleRetrySelected() {
 		onRetry(Array.from(localSelectedIds));
-		localSelectedIds.clear();
+		// Reassign a new Set: a bare .clear() mutates in place and never fires
+		// Svelte 5 reactivity, leaving the selection visually stuck.
+		localSelectedIds = new Set();
 	}
 
 	function handleRetryWithFallbackSelected() {
 		onRetryWithFallback(Array.from(localSelectedIds));
-		localSelectedIds.clear();
+		localSelectedIds = new Set();
 	}
 
 	function handleDeleteSelected() {
 		onDelete(Array.from(localSelectedIds));
-		localSelectedIds.clear();
+		localSelectedIds = new Set();
 	}
 
 	function getCategoryIcon(category: ErrorCategory | null) {

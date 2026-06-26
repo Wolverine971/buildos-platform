@@ -1,7 +1,6 @@
 <!-- apps/web/src/lib/components/trial/TrialBanner.svelte -->
 <script lang="ts">
 	import { AlertTriangle, Clock, CreditCard, X } from 'lucide-svelte';
-	import { createEventDispatcher } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Button from '$lib/components/ui/Button.svelte';
 	import {
@@ -19,8 +18,6 @@
 	}
 
 	let { user }: Props = $props();
-
-	const dispatch = createEventDispatcher();
 
 	// Check if previously dismissed this session
 	let dismissed = $state(

@@ -5,12 +5,14 @@
 	import ProjectBriefModal from './ProjectBriefModal.svelte';
 	import ProjectBriefCard from './ProjectBriefCard.svelte';
 
-	export let briefs: ProjectDailyBrief[] = [];
-	export let title = 'Project Briefs';
-	export let showTitle = true;
+	let {
+		briefs = [],
+		title = 'Project Briefs',
+		showTitle = true
+	}: { briefs?: ProjectDailyBrief[]; title?: string; showTitle?: boolean } = $props();
 
-	let selectedBrief: ProjectDailyBrief | null = null;
-	let isModalOpen = false;
+	let selectedBrief = $state<ProjectDailyBrief | null>(null);
+	let isModalOpen = $state(false);
 
 	function handleOpenBrief(brief: ProjectDailyBrief) {
 		selectedBrief = brief;
@@ -40,7 +42,7 @@
 
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 			{#each briefs as brief}
-				<ProjectBriefCard {brief} on:open={() => handleOpenBrief(brief)} />
+				<ProjectBriefCard {brief} onopen={() => handleOpenBrief(brief)} />
 			{/each}
 		</div>
 	</div>

@@ -56,6 +56,7 @@ export function buildProjectLoopSourceFingerprint(ctx: ProjectLoopFingerprintCon
 						id: d.id,
 						title: d.title,
 						state_key: d.state_key,
+						updated_at: d.updated_at,
 						parent_id: d.parent_id
 					})),
 				tasks: [...ctx.tasks]
@@ -63,7 +64,8 @@ export function buildProjectLoopSourceFingerprint(ctx: ProjectLoopFingerprintCon
 					.map((t) => ({
 						id: t.id,
 						title: t.title,
-						state_key: t.state_key
+						state_key: t.state_key,
+						updated_at: t.updated_at
 					}))
 			})
 		)

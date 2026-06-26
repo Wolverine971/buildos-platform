@@ -11,33 +11,50 @@
 	} from '$lib/constants/seo';
 	import { serializeJsonLd } from '$lib/utils/json-ld';
 
-	export let title = 'BuildOS - Turn Messy Thinking into Structured Work';
-	export let description =
-		'BuildOS is a thinking environment for people making complex things. Bring rough ideas, notes, and research, then turn them into structured projects with memory and a clear next move.';
-	export let canonical = 'https://build-os.com/';
-	export let keywords =
-		'thinking environment, project memory, creator workflow, author workflow, YouTube workflow, task organization, daily briefs, voice notes';
-	export let ogType = 'website';
-	export let ogImage = DEFAULT_SOCIAL_IMAGE_URL;
-	export let ogImageAlt = DEFAULT_SOCIAL_IMAGE_ALT;
-	export let ogImageWidth = DEFAULT_SOCIAL_IMAGE_WIDTH;
-	export let ogImageHeight = DEFAULT_SOCIAL_IMAGE_HEIGHT;
-	export let ogImageType = DEFAULT_SOCIAL_IMAGE_TYPE;
-	export let twitterImage: string | null = null;
-	export let twitterImageAlt: string | null = null;
-	export let twitterCardType: 'summary' | 'summary_large_image' = 'summary_large_image';
-	export let author = 'DJ Wayne';
-	export let twitterSite = DEFAULT_TWITTER_SITE;
-	export let twitterCreator = DEFAULT_TWITTER_CREATOR;
-	export let jsonLd: Record<string, any> | null = null;
-	export let noindex = false;
-	export let additionalMeta: Array<{ name?: string; property?: string; content: string }> = [];
+	let {
+		title = 'BuildOS - Turn Messy Thinking into Structured Work',
+		description = 'BuildOS is a thinking environment for people making complex things. Bring rough ideas, notes, and research, then turn them into structured projects with memory and a clear next move.',
+		canonical = 'https://build-os.com/',
+		keywords = 'thinking environment, project memory, creator workflow, author workflow, YouTube workflow, task organization, daily briefs, voice notes',
+		ogType = 'website',
+		ogImage = DEFAULT_SOCIAL_IMAGE_URL,
+		ogImageAlt = DEFAULT_SOCIAL_IMAGE_ALT,
+		ogImageWidth = DEFAULT_SOCIAL_IMAGE_WIDTH,
+		ogImageHeight = DEFAULT_SOCIAL_IMAGE_HEIGHT,
+		ogImageType = DEFAULT_SOCIAL_IMAGE_TYPE,
+		twitterImage = null,
+		twitterImageAlt = null,
+		twitterCardType = 'summary_large_image',
+		author = 'DJ Wayne',
+		twitterSite = DEFAULT_TWITTER_SITE,
+		twitterCreator = DEFAULT_TWITTER_CREATOR,
+		jsonLd = null,
+		noindex = false,
+		additionalMeta = []
+	}: {
+		title?: string;
+		description?: string;
+		canonical?: string;
+		keywords?: string;
+		ogType?: string;
+		ogImage?: string;
+		ogImageAlt?: string;
+		ogImageWidth?: number;
+		ogImageHeight?: number;
+		ogImageType?: string;
+		twitterImage?: string | null;
+		twitterImageAlt?: string | null;
+		twitterCardType?: 'summary' | 'summary_large_image';
+		author?: string;
+		twitterSite?: string;
+		twitterCreator?: string;
+		jsonLd?: Record<string, any> | null;
+		noindex?: boolean;
+		additionalMeta?: Array<{ name?: string; property?: string; content: string }>;
+	} = $props();
 
-	let resolvedTwitterImage = twitterImage ?? ogImage;
-	let resolvedTwitterImageAlt = twitterImageAlt ?? ogImageAlt;
-
-	$: resolvedTwitterImage = twitterImage ?? ogImage;
-	$: resolvedTwitterImageAlt = twitterImageAlt ?? ogImageAlt;
+	let resolvedTwitterImage = $derived(twitterImage ?? ogImage);
+	let resolvedTwitterImageAlt = $derived(twitterImageAlt ?? ogImageAlt);
 </script>
 
 <svelte:head>

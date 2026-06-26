@@ -5,11 +5,17 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { onMount } from 'svelte';
 
-	export let emailData: any;
-	export let showTracking: boolean = false;
-	export let trackingData: any = null;
+	let {
+		emailData,
+		showTracking = false,
+		trackingData = null
+	}: {
+		emailData: any;
+		showTracking?: boolean;
+		trackingData?: any;
+	} = $props();
 
-	let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	let timeZone = $state(Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 	onMount(() => {
 		timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -26,11 +32,13 @@
 		});
 	}
 
-	$: emailHTML = generateMinimalEmailHTML({
-		subject: emailData.subject || 'Preview',
-		content: emailData.content || '',
-		trackingPixel: '' // No tracking pixel in preview
-	});
+	let emailHTML = $derived(
+		generateMinimalEmailHTML({
+			subject: emailData.subject || 'Preview',
+			content: emailData.content || '',
+			trackingPixel: '' // No tracking pixel in preview
+		})
+	);
 </script>
 
 <div class="space-y-6">

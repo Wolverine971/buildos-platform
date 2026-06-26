@@ -138,6 +138,8 @@ Protocol endpoints (SSE streams, file downloads, tracking pixels, webhooks) may 
 
 The current design system is **Inkprint** (see `apps/web/docs/technical/components/INKPRINT_DESIGN_SYSTEM.md`). Uses synesthetic texture-based design language inspired by halftone printing and field notes. Key tokens: `bg-card`, `text-foreground`, `shadow-ink`, texture classes like `tx-bloom`, `tx-grain`. All components must support light and dark modes with `dark:` prefix.
 
+Lucide root imports are Vite-aliased through `apps/web/src/lib/icons/lucide.ts`; when adding a new `lucide-svelte` icon, verify the exact installed icon subpath and add the matching re-export there before using it.
+
 ### Formatting
 
 Prettier config: tabs, single quotes, no trailing commas, 100 char print width. Svelte files use the `svelte` parser via `prettier-plugin-svelte`.

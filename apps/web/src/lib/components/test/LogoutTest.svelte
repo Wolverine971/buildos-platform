@@ -4,12 +4,12 @@
 	import { createSupabaseBrowser } from '$lib/supabase';
 	import Button from '$lib/components/ui/Button.svelte';
 
-	export let user: any;
+	let { user }: { user: any } = $props();
 
-	let isLoggingOut = false;
-	let testResults: string[] = [];
-	let clientSession: any = null;
-	let serverAuthState: any = null;
+	let isLoggingOut = $state(false);
+	let testResults = $state<string[]>([]);
+	let clientSession = $state<any>(null);
+	let serverAuthState = $state<any>(null);
 
 	const supabase = createSupabaseBrowser();
 

@@ -1,6 +1,5 @@
 <!-- apps/web/src/lib/components/calendar/CalendarDisconnectModal.svelte -->
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { AlertTriangle, Calendar, Clock, Unlink, X, CheckCircle } from 'lucide-svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -24,8 +23,6 @@
 	// State
 	let selectedAction = $state<'keep' | 'remove' | null>('keep');
 
-	const dispatch = createEventDispatcher();
-
 	function handleConfirm() {
 		if (!selectedAction) {
 			console.warn('No action selected for calendar disconnect');
@@ -33,13 +30,11 @@
 		}
 
 		onconfirm?.({ action: selectedAction });
-		dispatch('confirm', { action: selectedAction });
 	}
 
 	function handleCancel() {
 		selectedAction = 'keep'; // Reset to default
 		oncancel?.();
-		dispatch('cancel');
 	}
 
 	// Computed values

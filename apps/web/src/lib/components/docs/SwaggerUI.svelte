@@ -3,13 +3,19 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 
-	export let specUrl = '/openapi.json';
-	export let title = 'API Documentation';
-	export let description = 'Interactive API documentation';
+	let {
+		specUrl = '/openapi.json',
+		title = 'API Documentation',
+		description = 'Interactive API documentation'
+	}: {
+		specUrl?: string;
+		title?: string;
+		description?: string;
+	} = $props();
 
-	let swaggerContainer: HTMLElement;
-	let isLoading = true;
-	let error: string | null = null;
+	let swaggerContainer = $state<HTMLElement>();
+	let isLoading = $state(true);
+	let error: string | null = $state(null);
 
 	onMount(async () => {
 		if (!browser) return;

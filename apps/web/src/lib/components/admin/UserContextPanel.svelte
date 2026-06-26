@@ -805,42 +805,65 @@
 					</button>
 
 					{#if expandedSections.has('onboarding')}
+						{@const ob = userContext.onboarding}
+						{@const hasOnboardingText = Boolean(
+							ob.projects || ob.workStyle || ob.challenges || ob.helpFocus
+						)}
 						<div class="px-3 pb-2 space-y-2">
-							{#if userContext.onboarding.projects}
+							{#if ob.projects}
 								<div class="p-2 rounded-md bg-info/5 border border-info/20">
 									<div
 										class="text-[0.65rem] uppercase tracking-wide text-info mb-0.5"
 									>
 										Projects
 									</div>
-									<p class="text-xs text-foreground line-clamp-2">
-										{userContext.onboarding.projects}
+									<p class="text-xs text-foreground whitespace-pre-wrap">
+										{ob.projects}
 									</p>
 								</div>
 							{/if}
-							{#if userContext.onboarding.challenges}
+							{#if ob.workStyle}
+								<div class="p-2 rounded-md bg-success/5 border border-success/20">
+									<div
+										class="text-[0.65rem] uppercase tracking-wide text-success mb-0.5"
+									>
+										Work Style
+									</div>
+									<p class="text-xs text-foreground whitespace-pre-wrap">
+										{ob.workStyle}
+									</p>
+								</div>
+							{/if}
+							{#if ob.challenges}
 								<div class="p-2 rounded-md bg-warning/5 border border-warning/20">
 									<div
 										class="text-[0.65rem] uppercase tracking-wide text-warning mb-0.5"
 									>
 										Challenges
 									</div>
-									<p class="text-xs text-foreground line-clamp-2">
-										{userContext.onboarding.challenges}
+									<p class="text-xs text-foreground whitespace-pre-wrap">
+										{ob.challenges}
 									</p>
 								</div>
 							{/if}
-							{#if userContext.onboarding.helpFocus}
+							{#if ob.helpFocus}
 								<div class="p-2 rounded-md bg-accent/5 border border-accent/20">
 									<div
 										class="text-[0.65rem] uppercase tracking-wide text-accent mb-0.5"
 									>
 										Focus
 									</div>
-									<p class="text-xs text-foreground line-clamp-2">
-										{userContext.onboarding.helpFocus}
+									<p class="text-xs text-foreground whitespace-pre-wrap">
+										{ob.helpFocus}
 									</p>
 								</div>
+							{/if}
+							{#if !hasOnboardingText}
+								<p class="text-xs text-muted-foreground">
+									{ob.completedAt
+										? 'Onboarding marked complete, but no written responses were captured.'
+										: 'This user has not filled out onboarding yet.'}
+								</p>
 							{/if}
 						</div>
 					{/if}

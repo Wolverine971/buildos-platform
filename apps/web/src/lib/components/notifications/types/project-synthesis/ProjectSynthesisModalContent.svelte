@@ -25,11 +25,16 @@
 		ProjectSynthesisNotification,
 		StepsProgress
 	} from '$lib/types/notification.types';
-	import { createEventDispatcher } from 'svelte';
 
-	let { notification }: { notification: ProjectSynthesisNotification } = $props();
-
-	const dispatch = createEventDispatcher();
+	let {
+		notification,
+		onminimize,
+		onclose
+	}: {
+		notification: ProjectSynthesisNotification;
+		onminimize?: () => void;
+		onclose?: () => void;
+	} = $props();
 
 	// Module metadata
 	const MODULE_METADATA: Record<string, { name: string; icon: any; shortLabel: string }> = {
@@ -77,12 +82,12 @@
 	}
 
 	function handleMinimize() {
-		dispatch('minimize');
+		onminimize?.();
 	}
 
 	function handleClose() {
 		notification?.actions?.dismiss?.();
-		dispatch('close');
+		onclose?.();
 	}
 
 	function handleRetry() {
